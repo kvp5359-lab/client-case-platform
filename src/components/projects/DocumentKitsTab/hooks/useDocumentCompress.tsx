@@ -22,7 +22,7 @@ async function callCompressDocument(
   accessToken: string,
 ): Promise<{ originalSize: number; compressedSize: number; savings: number; newVersion: string }> {
   const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/compress-document`,
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/compress-document`,
     {
       method: 'POST',
       headers: {
