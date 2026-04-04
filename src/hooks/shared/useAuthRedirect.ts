@@ -22,14 +22,14 @@ export function useAuthRedirect() {
   const redirectNow = (path?: string) => {
     const redirectTo = path ?? localStorage.getItem('auth_redirect') ?? '/profile'
     localStorage.removeItem('auth_redirect')
-    navigate(redirectTo)
+    router.push(redirectTo)
   }
 
   /** Редирект с задержкой — для OTP-входа и регистрации */
   const redirectDelayed = (path?: string, delayMs = 500) => {
     const redirectTo = path ?? localStorage.getItem('auth_redirect') ?? '/profile'
     localStorage.removeItem('auth_redirect')
-    redirectTimerRef.current = setTimeout(() => navigate(redirectTo), delayMs)
+    redirectTimerRef.current = setTimeout(() => router.push(redirectTo), delayMs)
   }
 
   return { redirectNow, redirectDelayed }

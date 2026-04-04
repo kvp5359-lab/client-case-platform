@@ -14,6 +14,7 @@ import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ProfileInfoSection } from './ProfilePage/ProfileInfoSection'
@@ -305,14 +306,15 @@ export function ProfilePage() {
   const errorMessage = settingsError ? 'Не удалось загрузить настройки' : null
 
   return (
-    <div className="min-h-screen bg-white">
-      <ConfirmDialog
-        state={confirmState}
-        onConfirm={handleConfirm}
-        onCancel={handleConfirmCancel}
-      />
+    <WorkspaceLayout>
+      <div className="min-h-screen bg-white">
+        <ConfirmDialog
+          state={confirmState}
+          onConfirm={handleConfirm}
+          onCancel={handleConfirmCancel}
+        />
 
-      <div className="container max-w-2xl mx-auto p-6">
+        <div className="container max-w-2xl mx-auto p-6">
           {/* Заголовок */}
           <div className="mb-6">
             <Button variant="ghost" onClick={() => router.back()} className="mb-4 gap-2">
@@ -353,6 +355,7 @@ export function ProfilePage() {
             onCancel={handleCancelSettings}
           />
         </div>
-    </div>
+      </div>
+    </WorkspaceLayout>
   )
 }

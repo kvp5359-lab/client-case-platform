@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { useParams, useNavigate, useLocation } from 'next/navigation'
+import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -55,7 +55,8 @@ import { logger } from '@/utils/logger'
 export default function ProjectPage() {
   const { workspaceId, projectId } = useParams<{ workspaceId: string; projectId: string }>()
   const router = useRouter()
-  const location = useLocation()
+  const pathname = usePathname()
+  const currentSearchParams = useSearchParams()
   const { user } = useAuth()
   const { data: documentKits = [] } = useDocumentKitsQuery(projectId)
   const { data: formKits = [] } = useFormKitsQuery(projectId)
@@ -132,7 +133,7 @@ export default function ProjectPage() {
 
   // === URL И НАВИГАЦИЯ ===
 
-  const searchParams = new URLSearchParams(location.search)
+  const searchParams = new URLSearchParams(currentSearchParams.toString())
   const urlTab = searchParams.get('tab') || 'documents'
 
   const isTabAccessible = (tab: string) => availableModules.some((m) => m.id === tab)
@@ -223,7 +224,7 @@ export default function ProjectPage() {
   // chatId уже сохранён в localStorage ДО навигации — restoreActiveChatId загрузит его при монтировании
   const openMessenger = useSidePanelStore((s) => s.openMessenger)
   useEffect(() => {
-    const params = new URLSearchParams(location.search)
+    const params = new URLSearchParams(currentSearchParams.toString())
     if (params.get('panel') === 'messenger' && modules.messenger) {
       const channel = params.get('channel') === 'internal' ? ('internal' as const) : undefined
       const chatId = params.get('chatId')
@@ -237,12 +238,11 @@ export default function ProjectPage() {
       params.delete('channel')
       params.delete('chatId')
       const remaining = params.toString()
-      navigate(
+      router.replace(
         `/workspaces/${workspaceId}/projects/${projectId}${remaining ? `?${remaining}` : ''}`,
-        { replace: true },
       )
     }
-  }, [projectId, location.search, modules.messenger]) // eslint-disable-line react-hooks/exhaustive-deps -- navigate/openMessenger stable refs
+  }, [projectId, currentSearchParams.toString(), modules.messenger]) // eslint-disable-line react-hooks/exhaustive-deps -- navigate/openMessenger stable refs
 
   // === ОБРАБОТЧИКИ ===
 

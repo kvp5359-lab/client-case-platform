@@ -1,13 +1,14 @@
 "use client"
 
 /**
- * WorkspaceLayout — временная упрощённая версия
+ * WorkspaceLayout — упрощённая версия с sidebar
  *
  * Полная версия (WorkspaceLayout.full.tsx) будет восстановлена
- * после переноса мессенджера и AI-панели (этапы 7-8).
+ * после стабилизации всех зависимостей.
  */
 
 import { useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -21,12 +22,17 @@ import {
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode
+  workspaceId?: string
 }
 
-export function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
+export function WorkspaceLayout({ children, workspaceId: propWorkspaceId }: WorkspaceLayoutProps) {
+  const params = useParams<{ workspaceId?: string }>()
+  const router = useRouter()
+  const workspaceId = propWorkspaceId || params.workspaceId || ''
+
   const [mobileOpen, setMobileOpen] = useState(false)
   const { width, onMouseDown } = useSidebarResize()
-  const { workspaces, projects, loading } = useSidebarData()
+  const { workspaces, projects, loading } = useSidebarData({ workspaceId })
 
   return (
     <div className="flex h-screen bg-background">
@@ -51,9 +57,9 @@ export function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           <WorkspacePicker
             workspaces={workspaces}
-            onSelectWorkspace={() => {}}
-            onNavigateSettings={() => {}}
-            onCreateWorkspace={() => {}}
+            onSelectWorkspace={(id: string) => router.push(`/workspaces/${id}`)}
+            onNavigateSettings={() => router.push(`/workspaces/${workspaceId}/settings`)}
+            onCreateWorkspace={() => router.push('/workspaces')}
           />
           <ProjectsList
             projects={projects}
