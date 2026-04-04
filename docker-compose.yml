@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  app:
+    image: ghcr.io/kvp5359-lab/client-case-platform:latest
+    container_name: clientcase-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
+      - NEXT_PUBLIC_TECHNICAL_ADMIN_EMAILS=${NEXT_PUBLIC_TECHNICAL_ADMIN_EMAILS}
+    ports:
+      - "3002:3000"
+    networks:
+      - web
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  web:
+    external: true
+    name: relostart_web
