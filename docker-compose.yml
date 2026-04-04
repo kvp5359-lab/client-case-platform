@@ -12,7 +12,7 @@ services:
       - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
       - NEXT_PUBLIC_TECHNICAL_ADMIN_EMAILS=${NEXT_PUBLIC_TECHNICAL_ADMIN_EMAILS}
     ports:
-      - "3002:3000"
+      - "3005:3000"
     networks:
       - web
     healthcheck:
