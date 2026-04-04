@@ -1,0 +1,216 @@
+"use client"
+
+/**
+ * useMessengerPanelData — агрегирует все данные для MessengerPanelContent.
+ * Вынесено из MessengerPanelContent.tsx для уменьшения размера компонента.
+ */
+
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
+import {
+  useThreadIdByChannel,
+  useDeleteThread,
+  usePinThread,
+} from '@/hooks/messenger/useProjectThreads'
+import { useTaskStatuses } from '@/hooks/useStatuses'
+import { useUnreadCount } from '@/hooks/messenger/useUnreadCount'
+import {
+  useHasUnreadReaction,
+  useUnreadReactionEmoji,
+  useIsManuallyUnread,
+} from '@/hooks/messenger/useInbox'
+import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
+import { useThreadMembersMap } from '@/components/tasks/useThreadMembersMap'
+import { useThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
+import { useAccessibleThreadIds } from '@/hooks/messenger/useAccessibleThreadIds'
+
+/** Названия ролей проекта для tooltip */
+const PROJECT_ROLE_LABELS: Record<string, string> = {
+  Администратор: 'Администраторы',
+  Исполнитель: 'Исполнители',
+  Клиент: 'Клиенты',
+  Участник: 'Наблюдатели',
+}
+
+function formatParticipantName(p: { name: string; last_name: string | null }): string {
+  return p.last_name ? `${p.name} ${p.last_name}` : p.name
+}
+
+export function useMessengerPanelData(projectId: string, workspaceId: string) {
+  // Thread ID helpers
+  const clientChatId = useThreadIdByChannel(projectId, 'client')
+  const internalChatId = useThreadIdByChannel(projectId, 'internal')
+
+  // All threads + access filtering
+  const {
+    accessibleThreadIds,
+    accessibleChats,
+    allThreads: chats,
+    threadsLoading: chatsLoading,
+  } = useAccessibleThreadIds(projectId)
+
+  // Unread counts for legacy channels
+  const { data: clientUnread = 0 } = useUnreadCount(projectId, 'client', undefined, clientChatId)
+  const { data: internalUnread = 0 } = useUnreadCount(
+    projectId,
+    'internal',
+    undefined,
+    internalChatId,
+  )
+
+  // Reactions / manually unread
+  const { data: hasClientReaction = false } = useHasUnreadReaction(workspaceId, projectId, 'client')
+  const { data: reactionEmoji = null } = useUnreadReactionEmoji(workspaceId, projectId)
+  const { data: isClientManuallyUnread = false } = useIsManuallyUnread(
+    workspaceId,
+    projectId,
+    'client',
+  )
+  const { data: isInternalManuallyUnread = false } = useIsManuallyUnread(
+    workspaceId,
+    projectId,
+    'internal',
+  )
+
+  // Mutations
+  const deleteChatMutation = useDeleteThread()
+  const pinThreadMutation = usePinThread()
+
+  // Task statuses (for hiding completed tasks)
+  const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)
+  const finalStatusIds = useMemo(
+    () => new Set(taskStatuses.filter((s) => s.is_final).map((s) => s.id)),
+    [taskStatuses],
+  )
+
+  // Inbox threads (filtered by access)
+  const { data: inboxThreads = [] } = useFilteredInbox(workspaceId)
+  const unreadThreadIds = useMemo(
+    () =>
+      new Set(
+        inboxThreads
+          .filter((t) => t.unread_count > 0 || t.has_unread_reaction || t.manually_unread)
+          .map((t) => t.thread_id),
+      ),
+    [inboxThreads],
+  )
+
+  // Unread map by thread_id (for badges on non-legacy tabs)
+  const unreadByThreadId = useMemo(() => {
+    const map: Record<string, { count: number; manuallyUnread: boolean; hasReaction: boolean }> = {}
+    for (const t of inboxThreads) {
+      map[t.thread_id] = {
+        count: t.unread_count ?? 0,
+        manuallyUnread: !!t.manually_unread,
+        hasReaction: !!t.has_unread_reaction,
+      }
+    }
+    return map
+  }, [inboxThreads])
+
+  // Project participants (for access tooltips)
+  const { data: projectParticipants = [] } = useQuery({
+    queryKey: ['project-participants-with-roles', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('project_participants')
+        .select(
+          'participant_id, project_roles, participants!inner(id, name, last_name, is_deleted)',
+        )
+        .eq('project_id', projectId)
+      if (error) throw error
+      return (data ?? [])
+        .filter((pp) => {
+          const p = pp.participants as unknown as { is_deleted?: boolean }
+          return !p.is_deleted
+        })
+        .map((pp) => {
+          const participant = pp.participants as unknown as {
+            id: string
+            name: string
+            last_name: string | null
+          }
+          return {
+            ...participant,
+            project_roles: (pp.project_roles ?? []) as string[],
+          }
+        })
+    },
+    enabled: !!projectId,
+    staleTime: 60_000,
+  })
+
+  // Members for custom threads (for tooltips)
+  const customThreadIds = useMemo(
+    () => accessibleChats.filter((c) => c.access_type === 'custom').map((c) => c.id),
+    [accessibleChats],
+  )
+  const { data: threadMembersMap = {} } = useThreadMembersMap(customThreadIds)
+
+  // Visible (sorted) chats — already access-filtered by useAccessibleThreadIds
+  const visibleChats = useMemo(
+    () =>
+      accessibleChats
+        .filter((c) => {
+          if (c.is_pinned) return true
+          if (unreadThreadIds.has(c.id)) return true
+          if (c.type === 'task' && c.status_id && finalStatusIds.has(c.status_id)) return false
+          if (c.type === 'task' && !unreadThreadIds.has(c.id)) return false
+          return true
+        })
+        .sort((a, b) => {
+          if (a.type === 'chat' && b.type === 'task') return -1
+          if (a.type === 'task' && b.type === 'chat') return 1
+          return 0
+        }),
+    [accessibleChats, finalStatusIds, unreadThreadIds],
+  )
+
+  // Access tooltip text per chat
+  const chatAccessTooltips = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const chat of visibleChats) {
+      if (chat.access_type === 'all') {
+        const names = projectParticipants.map(formatParticipantName)
+        map[chat.id] = names.length > 0 ? `Все участники:\n${names.join('\n')}` : 'Все участники'
+      } else if (chat.access_type === 'roles') {
+        const accessRoles = chat.access_roles ?? []
+        const rolesLabel = accessRoles.map((r: string) => PROJECT_ROLE_LABELS[r] ?? r).join(', ')
+        const matched = projectParticipants.filter((p) =>
+          p.project_roles.some((r) => accessRoles.includes(r)),
+        )
+        const names = matched.map(formatParticipantName)
+        map[chat.id] =
+          names.length > 0 ? `${rolesLabel}:\n${names.join('\n')}` : rolesLabel || 'По ролям'
+      } else if (chat.access_type === 'custom') {
+        const members = threadMembersMap[chat.id] ?? []
+        const names = members.map(formatParticipantName)
+        map[chat.id] = names.length > 0 ? `Доступ:\n${names.join('\n')}` : 'Выборочный доступ'
+      }
+    }
+    return map
+  }, [visibleChats, projectParticipants, threadMembersMap])
+
+  // Thread templates
+  const { data: threadTemplates = [] } = useThreadTemplates(workspaceId)
+
+  return {
+    chats,
+    chatsLoading,
+    visibleChats,
+    clientChatId,
+    internalChatId,
+    clientUnread,
+    internalUnread,
+    hasClientReaction,
+    reactionEmoji,
+    isClientManuallyUnread,
+    isInternalManuallyUnread,
+    unreadByThreadId,
+    chatAccessTooltips,
+    threadTemplates,
+    deleteChatMutation,
+    pinThreadMutation,
+  }
+}

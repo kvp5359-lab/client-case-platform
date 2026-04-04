@@ -1,0 +1,228 @@
+/**
+ * Фабрика query keys для React Query
+ *
+ * Единый источник правды для всех ключей кэша.
+ * Использование: import { formKitKeys, documentKitKeys } from '@/hooks/queryKeys'
+ */
+
+export const formKitKeys = {
+  all: ['form-kit'] as const,
+  byProject: (projectId: string) => ['form-kit', 'project', projectId] as const,
+  byId: (formKitId: string) => ['form-kit', formKitId] as const,
+  detail: (formKitId: string) => ['form-kit', formKitId, 'detail'] as const,
+  structure: (formKitId: string) => ['form-kit', formKitId, 'structure'] as const,
+  fieldValues: (formKitId: string) => ['form-kit', formKitId, 'field-values'] as const,
+  compositeItems: (formKitId: string) => ['form-kit', formKitId, 'composite-items'] as const,
+  selectOptions: (formKitId: string) => ['form-kit', formKitId, 'select-options'] as const,
+}
+
+export const documentKitKeys = {
+  all: ['documentKits'] as const,
+  byProject: (projectId: string) => ['documentKits', projectId] as const,
+}
+
+export const kitlessDocumentKeys = {
+  all: ['kitless-documents'] as const,
+  byProject: (projectId: string) => ['kitless-documents', projectId] as const,
+}
+
+export const projectKeys = {
+  all: ['projects'] as const,
+  detail: (projectId: string) => ['projects', projectId] as const,
+  folderCheck: (projectId: string) => ['projects', 'folder-check', projectId] as const,
+}
+
+export const folderSlotKeys = {
+  all: ['folder-slots'] as const,
+  byProject: (projectId: string) => ['folder-slots', projectId] as const,
+  byProjectForTasks: (projectId: string) => ['folder-slots', projectId, 'tasks'] as const,
+}
+
+export const folderTemplateSlotKeys = {
+  all: ['folder-template-slots'] as const,
+  byTemplate: (templateId: string) => ['folder-template-slots', templateId] as const,
+}
+
+export const workspaceKeys = {
+  all: ['workspaces'] as const,
+  userWorkspaces: (userEmail: string) => ['workspaces', 'user', userEmail] as const,
+}
+
+export const sidebarKeys = {
+  /** All sidebar project lists for a workspace (any canViewAll value) */
+  projectsBase: (workspaceId: string) => ['sidebar', 'projects', workspaceId] as const,
+  projects: (workspaceId: string, canViewAll: boolean) =>
+    ['sidebar', 'projects', workspaceId, canViewAll] as const,
+}
+
+export const userSettingsKeys = {
+  all: ['user-settings'] as const,
+  byUser: (userId: string) => ['user-settings', userId] as const,
+}
+
+export const googleDriveKeys = {
+  all: ['google-drive'] as const,
+  connection: (userId: string) => ['google-drive', 'connection', userId] as const,
+}
+
+export const emailAccountKeys = {
+  all: ['email-accounts'] as const,
+  byUser: (userId: string) => ['email-accounts', userId] as const,
+  emailLink: (threadId: string) => ['email-accounts', 'link', threadId] as const,
+}
+
+export const commentKeys = {
+  all: ['comments'] as const,
+  byEntity: (entityType: string, entityId: string) => ['comments', entityType, entityId] as const,
+  // Z7-04: Хешируем entityIds вместо spread — предотвращает огромные ключи
+  // и путаницу кэшей при разном порядке IDs
+  counts: (entityType: string, entityIds: string[]) =>
+    ['comments', 'counts', entityType, [...entityIds].sort().join(',')] as const,
+}
+
+export const knowledgeBaseKeys = {
+  all: ['knowledge-base'] as const,
+  articles: (workspaceId: string) => ['knowledge-base', 'articles', workspaceId] as const,
+  article: (articleId: string) => ['knowledge-base', 'article', articleId] as const,
+  articleGroups: (articleId: string) => ['knowledge-base', 'article-groups', articleId] as const,
+  groups: (workspaceId: string) => ['knowledge-base', 'groups', workspaceId] as const,
+  templateArticles: (templateId: string) =>
+    ['knowledge-base', 'template-articles', templateId] as const,
+  templateGroups: (templateId: string) =>
+    ['knowledge-base', 'template-groups', templateId] as const,
+  projectArticles: (templateId: string) =>
+    ['knowledge-base', 'project-articles', templateId] as const,
+  // Доступ: какие шаблоны привязаны к группе/статье
+  groupAccess: (groupId: string) => ['knowledge-base', 'group-access', groupId] as const,
+  articleAccess: (articleId: string) => ['knowledge-base', 'article-access', articleId] as const,
+  // AI-поиск
+  conversations: (workspaceId: string, projectId?: string) =>
+    ['knowledge-base', 'conversations', workspaceId, projectId ?? 'admin'] as const,
+  messages: (conversationId: string) => ['knowledge-base', 'messages', conversationId] as const,
+  indexStatus: (articleId: string) => ['knowledge-base', 'index-status', articleId] as const,
+  // Версии
+  versions: (articleId: string) => ['knowledge-base', 'versions', articleId] as const,
+  version: (versionId: string) => ['knowledge-base', 'version', versionId] as const,
+  // Теги
+  tags: (workspaceId: string) => ['knowledge-base', 'tags', workspaceId] as const,
+  // Q&A
+  qa: (workspaceId: string) => ['knowledge-base', 'qa', workspaceId] as const,
+}
+
+export const quickReplyKeys = {
+  all: ['quick-replies'] as const,
+  groups: (workspaceId: string) => ['quick-replies', 'groups', workspaceId] as const,
+  list: (workspaceId: string) => ['quick-replies', 'list', workspaceId] as const,
+  groupAccess: (groupId: string) => ['quick-replies', 'group-access', groupId] as const,
+  replyAccess: (replyId: string) => ['quick-replies', 'reply-access', replyId] as const,
+  forPicker: (workspaceId: string, templateId?: string | null) =>
+    ['quick-replies', 'picker', workspaceId, templateId ?? 'all'] as const,
+}
+
+export const inboxKeys = {
+  all: ['inbox'] as const,
+  threads: (workspaceId: string) => ['inbox', 'threads', workspaceId] as const,
+  threadsV2: (workspaceId: string) => ['inbox', 'threads-v2', workspaceId] as const,
+}
+
+export const taskKeys = {
+  all: ['tasks'] as const,
+  workspace: (workspaceId: string) => ['tasks', 'workspace', workspaceId] as const,
+  urgentCount: ['my-urgent-tasks-count'] as const,
+}
+
+/**
+ * Инвалидировать все кэши мессенджера: inbox (v1 + v2) + sidebar projects.
+ * Вызывать после markAsRead, markAsUnread, отправки сообщения, реакций и т.д.
+ */
+export function invalidateMessengerCaches(
+  queryClient: { invalidateQueries: (opts: { queryKey: readonly unknown[] }) => void },
+  workspaceId: string,
+) {
+  queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+  queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
+  queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, true) })
+  queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, false) })
+}
+
+export const messengerKeys = {
+  all: ['messenger'] as const,
+  // Project+channel based keys (legacy format, used by project-level hooks)
+  messages: (projectId: string, channel: string = 'client') =>
+    ['messenger', 'messages', projectId, channel] as const,
+  unreadCount: (projectId: string, channel: string = 'client') =>
+    ['messenger', 'unread-count', projectId, channel] as const,
+  telegramLink: (projectId: string, channel: string = 'client') =>
+    ['messenger', 'telegram-link', projectId, channel] as const,
+  lastReadAt: (projectId: string, channel: string = 'client') =>
+    ['messenger', 'last-read-at', projectId, channel] as const,
+  // Thread-based keys (new, preferred)
+  messagesByThreadId: (threadId: string) => ['messenger', 'messages', 'chat', threadId] as const,
+  unreadCountByThreadId: (threadId: string) =>
+    ['messenger', 'unread-count', 'chat', threadId] as const,
+  telegramLinkByThreadId: (threadId: string) =>
+    ['messenger', 'telegram-link', 'chat', threadId] as const,
+  lastReadAtByThreadId: (threadId: string) =>
+    ['messenger', 'last-read-at', 'chat', threadId] as const,
+  searchByThreadId: (threadId: string, query: string) =>
+    ['messenger', 'search', 'chat', threadId, query] as const,
+  projectThreads: (projectId: string) => ['messenger', 'project-chats', projectId] as const,
+}
+
+export const documentGenerationKeys = {
+  all: ['document-generations'] as const,
+  byProject: (projectId: string) => ['document-generations', projectId] as const,
+}
+
+export const threadTemplateKeys = {
+  all: ['thread-templates'] as const,
+  byWorkspace: (workspaceId: string) => ['thread-templates', workspaceId] as const,
+}
+
+export const documentTemplateKeys = {
+  all: ['document-templates'] as const,
+  byWorkspace: (workspaceId: string) => ['document-templates', workspaceId] as const,
+  detail: (templateId: string) => ['document-templates', 'detail', templateId] as const,
+}
+
+export const customDirectoryKeys = {
+  all: ['custom-directories'] as const,
+  byWorkspace: (workspaceId: string) => ['custom-directories', workspaceId] as const,
+  detail: (directoryId: string) => ['custom-directories', 'detail', directoryId] as const,
+  fields: (directoryId: string) => ['custom-directories', 'fields', directoryId] as const,
+  entries: (directoryId: string) => ['custom-directories', 'entries', directoryId] as const,
+  entryValues: (entryId: string) => ['custom-directories', 'entry-values', entryId] as const,
+}
+
+export const autofillKeys = {
+  projectDocuments: (projectId: string) => ['project-documents-for-autofill', projectId] as const,
+}
+
+export const historyKeys = {
+  all: ['history'] as const,
+  byProject: (projectId: string) => ['history', projectId] as const,
+  unreadCount: (projectId: string) => ['history', 'unread-count', projectId] as const,
+}
+
+export const permissionKeys = {
+  participantRoles: (workspaceId: string, userId?: string) =>
+    ['participant-roles', workspaceId, userId] as const,
+  workspaceRoles: (workspaceId: string) => ['workspace-roles', workspaceId] as const,
+  workspaceFeatures: (workspaceId: string) => ['workspace-features', workspaceId] as const,
+  projectWorkspace: (projectId: string) => ['project-workspace', projectId] as const,
+  projectParticipant: (projectId: string, userId?: string, workspaceId?: string) =>
+    ['project-participant', projectId, userId, workspaceId] as const,
+  projectRoles: (workspaceId: string) => ['project-roles', workspaceId] as const,
+}
+
+export const participantKeys = {
+  authorName: (userId: string) => ['author-name', userId] as const,
+}
+
+export const statusKeys = {
+  document: (workspaceId: string) => ['statuses', 'document', workspaceId] as const,
+  documentKit: (workspaceId: string) => ['statuses', 'document_kit', workspaceId] as const,
+  task: (workspaceId: string) => ['statuses', 'task', workspaceId] as const,
+  knowledgeArticle: (workspaceId: string) =>
+    ['statuses', 'knowledge_article', workspaceId] as const,
+}
