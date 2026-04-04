@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import localFont from 'next/font/local'
+import { Providers } from '@/components/providers/Providers'
 import './globals.css'
 
 const inter = localFont({
@@ -41,7 +42,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" className={`${inter.variable} h-full`}>
-      <body className="min-h-full font-sans antialiased">{children}</body>
+      <body className="min-h-full font-sans antialiased">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   )
 }

@@ -6,10 +6,10 @@
  */
 
 import { useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 
 export function useAuthRedirect() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {

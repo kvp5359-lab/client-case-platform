@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -30,7 +30,7 @@ import { lsSet, LS_KEY_ACTIVE_THREAD_PREFIX } from '@/store/sidePanelStore.local
 export function useNewMessageToast(workspaceId: string | undefined) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const navigate = useNavigate()
+  const router = useRouter()
 
   const navigateRef = useRef(navigate)
   useEffect(() => {

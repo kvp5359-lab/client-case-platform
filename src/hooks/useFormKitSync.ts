@@ -52,8 +52,8 @@ export function useFormKitSync({ formKitId, projectId, googleSheetId }: UseFormK
         throw new Error('Необходима авторизация')
       }
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 60_000)

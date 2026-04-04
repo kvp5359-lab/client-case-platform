@@ -7,7 +7,7 @@
  */
 
 import { useEffect, ReactNode } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useWorkspaceStore } from '@/store/workspaceStore'
 import { useAuth } from './AuthContext'

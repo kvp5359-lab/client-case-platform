@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { quickReplyKeys } from '@/hooks/queryKeys'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'

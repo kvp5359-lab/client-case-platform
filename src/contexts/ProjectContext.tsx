@@ -12,7 +12,7 @@
  */
 
 import { createContext, useContext, ReactNode, useCallback, useMemo } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
