@@ -2,20 +2,18 @@
 
 /**
  * WorkspaceLayout — упрощённая версия с sidebar
- *
- * Полная версия (WorkspaceLayout.full.tsx) будет восстановлена
- * после стабилизации всех зависимостей.
  */
 
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 import {
   WorkspacePicker,
   ProjectsList,
   UserProfile,
-  SidebarNavButton,
   useSidebarData,
   useSidebarResize,
 } from './WorkspaceSidebar'
@@ -28,11 +26,27 @@ interface WorkspaceLayoutProps {
 export function WorkspaceLayout({ children, workspaceId: propWorkspaceId }: WorkspaceLayoutProps) {
   const params = useParams<{ workspaceId?: string }>()
   const router = useRouter()
+  const { user } = useAuth()
   const workspaceId = propWorkspaceId || params.workspaceId || ''
 
   const [mobileOpen, setMobileOpen] = useState(false)
   const { width, onMouseDown } = useSidebarResize()
-  const { workspaces, projects, loading } = useSidebarData({ workspaceId })
+  const {
+    workspaces,
+    projects,
+    loadingWorkspaces,
+    loadingProjects,
+    currentWorkspace,
+    permissionsResult,
+  } = useSidebarData({ workspaceId })
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
+  const isOwner = currentWorkspace?.participant?.role === 'owner'
+  const canManageSettings = permissionsResult?.can?.('manage_settings') ?? isOwner
 
   return (
     <div className="flex h-screen bg-background">
@@ -57,18 +71,32 @@ export function WorkspaceLayout({ children, workspaceId: propWorkspaceId }: Work
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           <WorkspacePicker
             workspaces={workspaces}
-            onSelectWorkspace={(id: string) => router.push(`/workspaces/${id}`)}
-            onNavigateSettings={() => router.push(`/workspaces/${workspaceId}/settings`)}
-            onCreateWorkspace={() => router.push('/workspaces')}
+            currentWorkspace={currentWorkspace}
+            workspaceId={workspaceId}
+            loadingWorkspaces={loadingWorkspaces}
+            isOwner={isOwner}
+            canManageSettings={canManageSettings}
           />
           <ProjectsList
             projects={projects}
-            loading={loading}
+            loading={loadingProjects}
+            onProjectClick={(projectId) =>
+              router.push(`/workspaces/${workspaceId}/projects/${projectId}`)
+            }
+            getProjectHref={(projectId) =>
+              `/workspaces/${workspaceId}/projects/${projectId}`
+            }
           />
         </div>
-        <div className="border-t border-sidebar-border p-2">
-          <UserProfile />
-        </div>
+        {user && (
+          <div className="border-t border-sidebar-border p-2">
+            <UserProfile
+              user={user}
+              onProfileClick={() => router.push('/profile')}
+              onSignOut={handleSignOut}
+            />
+          </div>
+        )}
 
         {/* Resize handle */}
         <div
