@@ -1,0 +1,6 @@
+export { KnowledgeChat } from './KnowledgeChat'
+export { KnowledgeChatInput } from './KnowledgeChatInput'
+export { KnowledgeChatMessage } from './KnowledgeChatMessage'
+export { KnowledgeConversationList } from './KnowledgeConversationList'
+export { KnowledgeIndexBadge } from './KnowledgeIndexBadge'
+export { ArticleVersionHistoryDialog } from './ArticleVersionHistoryDialog'
