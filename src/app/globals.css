@@ -1,0 +1,434 @@
+/**
+ * Tailwind CSS Directives
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 20 14.3% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14.3% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14.3% 4.1%;
+    --primary: 47.9 95.8% 53.1%;
+    --primary-foreground: 26 83.3% 14.1%;
+    --secondary: 60 4.8% 95.9%;
+    --secondary-foreground: 24 9.8% 10%;
+    --muted: 60 4.8% 95.9%;
+    --muted-foreground: 25 5.3% 44.7%;
+    --accent: 60 4.8% 95.9%;
+    --accent-foreground: 24 9.8% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 20 5.9% 90%;
+    --input: 20 5.9% 90%;
+    --ring: 20 14.3% 4.1%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 47.9 95.8% 53.1%;
+    --sidebar-primary-foreground: 26 83.3% 14.1%;
+    --sidebar-accent: 60 4.8% 95.9%;
+    --sidebar-accent-foreground: 24 9.8% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 47.9 95.8% 53.1%;
+
+    /* Brand accent — фирменный тёмно-золотой */
+    --brand-50: 45 93% 47% / 0.05;
+    --brand-100: 45 93% 47% / 0.25;
+    --brand-200: 45 80% 82%;
+    --brand-400: 45 93% 58%;
+    --brand-500: 45 93% 47%;
+    --brand-600: 40 82% 38%;
+    --brand-700: 36 78% 30%;
+  }
+  .dark {
+    --background: 20 14.3% 4.1%;
+    --foreground: 60 9.1% 97.8%;
+    --card: 20 14.3% 4.1%;
+    --card-foreground: 60 9.1% 97.8%;
+    --popover: 20 14.3% 4.1%;
+    --popover-foreground: 60 9.1% 97.8%;
+    --primary: 47.9 95.8% 53.1%;
+    --primary-foreground: 26 83.3% 14.1%;
+    --secondary: 12 6.5% 15.1%;
+    --secondary-foreground: 60 9.1% 97.8%;
+    --muted: 12 6.5% 15.1%;
+    --muted-foreground: 24 5.4% 63.9%;
+    --accent: 12 6.5% 15.1%;
+    --accent-foreground: 60 9.1% 97.8%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 12 6.5% 15.1%;
+    --input: 12 6.5% 15.1%;
+    --ring: 35.5 91.7% 32.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 47.9 95.8% 53.1%;
+    --sidebar-primary-foreground: 26 83.3% 14.1%;
+    --sidebar-accent: 12 6.5% 15.1%;
+    --sidebar-accent-foreground: 60 9.1% 97.8%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 47.9 95.8% 53.1%;
+
+    /* Brand accent — фирменный тёмно-золотой (dark mode) */
+    --brand-50: 40 30% 15%;
+    --brand-100: 40 40% 20%;
+    --brand-200: 40 50% 30%;
+    --brand-400: 45 93% 58%;
+    --brand-500: 45 93% 65%;
+    --brand-600: 45 90% 72%;
+    --brand-700: 45 85% 80%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-color: #e8e8e8;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Скроллбар появляется только при наведении */
+  .scrollbar-auto-hide {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.3s;
+  }
+  .scrollbar-auto-hide:hover {
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  }
+  .scrollbar-auto-hide::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-auto-hide::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-auto-hide::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 3px;
+    transition: background 0.3s;
+  }
+  .scrollbar-auto-hide:hover::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Tiptap: Empty paragraphs — ensure visible height in read-only view.
+   Exclude messenger editor — ProseMirror already handles empty lines via <br>. */
+.prose p:empty::after,
+.prose p:has(> br:only-child)::after {
+  content: '\00a0';
+  display: inline;
+}
+.messenger-editor .prose p:empty::after,
+.messenger-editor .prose p:has(> br:only-child)::after {
+  content: none;
+}
+
+/* Tiptap: Trailing <br> — browser ignores a <br> that is the last child of a block element. */
+.prose p:has(> br:last-child)::after {
+  content: '\A';
+  white-space: pre;
+}
+.messenger-editor .prose p:has(> br:last-child)::after {
+  content: none;
+}
+
+/* Tiptap: Inline code — remove prose backticks and bold for inline code (not code blocks) */
+.prose :not(pre) > code {
+  font-weight: inherit !important;
+}
+.prose :not(pre) > code::before,
+.prose :not(pre) > code::after {
+  content: none !important;
+}
+
+/* Tiptap: Columns layout */
+.ProseMirror div[data-type='columns'] {
+  display: grid !important;
+  gap: 16px;
+  width: 100%;
+  margin: 16px 0;
+}
+
+.ProseMirror div[data-type='columns'][data-count='2'] {
+  grid-template-columns: 1fr 1fr;
+}
+
+.ProseMirror div[data-type='columns'][data-count='3'] {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.ProseMirror div[data-type='columns'] .column-item {
+  min-width: 0;
+}
+
+/* Tiptap: Callout (HTML read-only render) */
+.prose div[data-type='callout'] {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 20px 12px 12px;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+.prose div[data-type='callout'][data-color='gray'] {
+  background: #f3f4f6;
+}
+.prose div[data-type='callout'][data-color='blue'] {
+  background: #eff6ff;
+}
+.prose div[data-type='callout'][data-color='green'] {
+  background: #f0fdf4;
+}
+.prose div[data-type='callout'][data-color='yellow'] {
+  background: #fefce8;
+}
+.prose div[data-type='callout'][data-color='red'] {
+  background: #fef2f2;
+}
+.prose div[data-type='callout'][data-color='purple'] {
+  background: #faf5ff;
+}
+.prose div[data-type='callout'][data-color='pink'] {
+  background: #fdf2f8;
+}
+.prose div[data-type='callout'] .callout-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.prose div[data-type='callout'] .callout-content {
+  flex: 1;
+  line-height: 1.625;
+}
+
+/* Tiptap: Accordion (HTML read-only render) */
+.prose details[data-type='accordion'] {
+  border: 1px solid hsl(var(--muted-foreground) / 0.2);
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+  overflow: hidden;
+}
+.prose details[data-type='accordion'] summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: hsl(var(--muted-foreground) / 0.12);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.prose details[data-type='accordion'] summary::before {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  transition: transform 0.2s ease;
+}
+.prose details[data-type='accordion'][open] summary::before {
+  transform: rotate(90deg);
+}
+.prose details[data-type='accordion'] summary::-webkit-details-marker {
+  display: none;
+}
+.prose details[data-type='accordion'] .accordion-content {
+  padding: 12px 16px 16px;
+}
+
+/* Tiptap: Columns (HTML read-only render) */
+.prose div[data-type='columns'] {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  margin: 16px 0;
+}
+.prose div[data-type='columns'][data-count='2'] {
+  grid-template-columns: 1fr 1fr;
+}
+.prose div[data-type='columns'][data-count='3'] {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.prose div[data-type='columns'] div[data-type='column'] {
+  min-width: 0;
+}
+
+/* Messenger: prevent horizontal overflow in chat scroll area */
+.messenger-scroll-area [data-radix-scroll-area-viewport] > div {
+  display: block !important;
+}
+
+/* Messenger: HTML content inside message bubbles */
+.messenger-content p {
+  margin: 0;
+}
+.messenger-content p:empty,
+.messenger-content p:has(> br:only-child) {
+  min-height: 1em;
+}
+.messenger-content strong,
+.messenger-content b {
+  font-weight: 700;
+}
+.messenger-content em,
+.messenger-content i {
+  font-style: italic;
+}
+.messenger-content blockquote {
+  border-left: 2px solid currentColor;
+  padding-left: 0.5rem;
+  opacity: 0.75;
+  margin: 0.25rem 0;
+  font-style: normal;
+  font-weight: normal;
+  quotes: none;
+}
+.messenger-content blockquote::before,
+.messenger-content blockquote::after {
+  content: none;
+}
+.messenger-content ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+.messenger-content ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin: 0.25rem 0;
+}
+.messenger-content li {
+  margin: 0;
+}
+.messenger-content li p {
+  margin: 0;
+}
+
+/* Messenger: clickable links in message bubbles */
+.messenger-links a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+.messenger-links a:hover {
+  opacity: 0.8;
+}
+
+/* Messenger: Tiptap editor in input area */
+.messenger-editor .ProseMirror {
+  outline: none;
+  line-height: 1.4;
+}
+.messenger-editor .ProseMirror p {
+  margin: 0;
+}
+.messenger-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: hsl(var(--muted-foreground) / 0.4);
+  pointer-events: none;
+  height: 0;
+}
+.messenger-editor .ProseMirror blockquote {
+  border-left: 2px solid hsl(var(--muted-foreground));
+  padding-left: 0.5rem;
+  margin: 0.25rem 0;
+  font-style: normal;
+  font-weight: normal;
+  quotes: none;
+}
+.messenger-editor .ProseMirror blockquote::before,
+.messenger-editor .ProseMirror blockquote::after {
+  content: none;
+}
+.messenger-editor .ProseMirror blockquote p {
+  font-style: normal;
+  font-weight: normal;
+  color: hsl(var(--muted-foreground) / 0.7);
+}
+.messenger-editor .ProseMirror ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+.messenger-editor .ProseMirror ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+.messenger-editor .ProseMirror li p {
+  margin: 0;
+}
+
+/* Sonner toast: кликабельность поверх Radix Dialog */
+[data-sonner-toaster] {
+  pointer-events: auto !important;
+  transition: right 0.3s ease !important;
+}
+
+/* Когда боковая панель открыта — сдвигаем тосты */
+body[data-panel-open] [data-sonner-toaster][data-x-position='right'] {
+  right: 46% !important;
+}
+
+/* Sonner toast: крестик закрытия — верхний правый угол */
+[data-sonner-toast] [data-close-button] {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  left: unset !important;
+  transform: none !important;
+}
+
+/* Sonner toast: кнопка «Прочитано» видна только при hover */
+[data-sonner-toast] .toast-actions {
+  display: none;
+}
+[data-sonner-toast]:hover .toast-actions {
+  display: inline-flex;
+}
+
+/* Кнопка-полоска боковой панели: выезжает справа налево */
+@keyframes panel-tab-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
