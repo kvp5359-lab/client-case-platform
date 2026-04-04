@@ -61,7 +61,7 @@ export const ProjectListItem = memo(function ProjectListItem({
   return (
     <div data-project-id={project.id} className="group/item relative">
       <Link
-        to={getProjectHref ? getProjectHref(project.id) : '#'}
+        href={getProjectHref ? getProjectHref(project.id) : '#'}
         onClick={() => onProjectClick(project.id)}
         className={`w-full flex items-center gap-3 px-2 py-2 text-sm rounded-md transition-colors ${
           isActive

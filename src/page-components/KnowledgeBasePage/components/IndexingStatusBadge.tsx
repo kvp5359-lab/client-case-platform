@@ -35,20 +35,20 @@ export function IndexingStatusBadge({ status, variant = 'article' }: IndexingSta
     return (
       <CircleDashed
         className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 animate-spin"
-        title="Индексируется..."
+        aria-label="Индексируется..."
       />
     )
   }
   if (status === 'error') {
     return (
-      <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" title="Ошибка индексации" />
+      <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" aria-label="Ошибка индексации" />
     )
   }
   // none or null — not indexed
   return (
     <DatabaseZap
       className="w-3.5 h-3.5 text-muted-foreground/50 flex-shrink-0"
-      title="Не проиндексирована"
+      aria-label="Не проиндексирована"
     />
   )
 }

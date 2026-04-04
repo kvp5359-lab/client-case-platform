@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * Workspace Settings Page — настройки рабочего пространства с вкладками
  * Тяжёлые табы загружаются лениво через React.lazy (Z5-23)
@@ -29,8 +31,11 @@ export function WorkspaceSettingsPage() {
 
   // Определяем активный таб по URL
   const getActiveTab = () => {
-    const path = pathname.split('/').pop()
-    return path || 'general'
+    if (pathname.includes('/participants')) return 'participants'
+    if (pathname.includes('/permissions')) return 'permissions'
+    if (pathname.includes('/directories')) return 'directories'
+    if (pathname.includes('/templates')) return 'templates'
+    return 'general'
   }
 
   const handleTabChange = (tab: string) => {
@@ -80,16 +85,13 @@ export function WorkspaceSettingsPage() {
             </TabsList>
           </Tabs>
 
-          {/* Routes */}
+          {/* Tab content */}
           <Suspense fallback={<div className="p-4">Загрузка...</div>}>
-            <Routes>
-              <Route path="/" element={<Navigate to="general" replace />} />
-              <Route path="/general" element={<GeneralSettingsTab />} />
-              <Route path="/participants" element={<ParticipantsTab />} />
-              <Route path="/permissions" element={<PermissionsTab />} />
-              <Route path="/directories/*" element={<DirectoriesTab />} />
-              <Route path="/templates/*" element={<TemplatesTab />} />
-            </Routes>
+            {activeTab === 'general' && <GeneralSettingsTab />}
+            {activeTab === 'participants' && <ParticipantsTab />}
+            {activeTab === 'permissions' && <PermissionsTab />}
+            {(activeTab === 'directories' || pathname.includes('/directories')) && <DirectoriesTab />}
+            {(activeTab === 'templates' || pathname.includes('/templates')) && <TemplatesTab />}
           </Suspense>
         </div>
       </main>

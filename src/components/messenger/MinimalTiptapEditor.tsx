@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * Минималистичный Tiptap-редактор для мессенджера
  * Поддерживает: Bold, Italic, Underline, Strikethrough, Blockquote, OrderedList, BulletList
@@ -138,6 +140,7 @@ export function MinimalTiptapEditor({
   const stableSend = useCallback(() => onSendRef.current(), [])
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: false,

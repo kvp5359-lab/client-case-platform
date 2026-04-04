@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * KnowledgeBasePage — единая страница базы знаний
  *
@@ -8,7 +10,7 @@ import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { BookOpen, MessageCircleQuestion, TableProperties, TreePine } from 'lucide-react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useKnowledgeBasePage } from './KnowledgeBasePage/useKnowledgeBasePage'
 import { KnowledgeTreeView } from './KnowledgeBasePage/KnowledgeTreeView'
 import { KnowledgeTableView } from './KnowledgeBasePage/KnowledgeTableView'
@@ -16,12 +18,14 @@ import { KnowledgeQAView } from './KnowledgeBasePage/KnowledgeQAView'
 
 export default function KnowledgeBasePage() {
   const page = useKnowledgeBasePage()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
   const tabParam = searchParams.get('tab')
   const activeTab = tabParam === 'qa' ? 'qa' : tabParam === 'table' ? 'table' : 'tree'
 
   const handleTabChange = (value: string) => {
-    setSearchParams(value === 'tree' ? {} : { tab: value }, { replace: true })
+    router.replace(value === 'tree' ? pathname : `${pathname}?tab=${value}`)
   }
 
   if (!page.workspaceId) {

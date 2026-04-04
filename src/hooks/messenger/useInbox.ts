@@ -8,11 +8,12 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { getInboxThreads, getInboxThreadsV2 } from '@/services/api/inboxService'
 import { inboxKeys } from '@/hooks/queryKeys'
+import { calcThreadUnread, calcTotalUnread } from '@/utils/inboxUnread'
 
 // ─── v2: тред-ориентированные хуки ───────────────────────────────
 
@@ -20,6 +21,7 @@ import { inboxKeys } from '@/hooks/queryKeys'
 export function useInboxThreadsV2(workspaceId: string) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const instanceId = useRef(Math.random().toString(36).slice(2))
 
   const query = useQuery({
     queryKey: inboxKeys.threadsV2(workspaceId),
@@ -32,8 +34,11 @@ export function useInboxThreadsV2(workspaceId: string) {
   useEffect(() => {
     if (!workspaceId) return
 
+    // Уникальное имя канала для каждого монтирования (защита от React StrictMode)
+    const channelName = `inbox-v2:${workspaceId}:${instanceId.current}`
+
     const channel = supabase
-      .channel(`inbox-v2:${workspaceId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -96,6 +101,7 @@ export function useInboxThreadsV2(workspaceId: string) {
 export function useInboxThreads(workspaceId: string) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const instanceId = useRef(Math.random().toString(36).slice(2))
 
   const query = useQuery({
     queryKey: inboxKeys.threads(workspaceId),
@@ -108,8 +114,11 @@ export function useInboxThreads(workspaceId: string) {
   useEffect(() => {
     if (!workspaceId) return
 
+    // Уникальное имя канала для каждого монтирования (защита от React StrictMode)
+    const channelName = `inbox:${workspaceId}:${instanceId.current}`
+
     const channel = supabase
-      .channel(`inbox:${workspaceId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -175,18 +184,7 @@ export function useTotalUnreadCount(workspaceId: string) {
     queryFn: () => getInboxThreadsV2(workspaceId, user!.id),
     enabled: !!workspaceId && !!user,
     staleTime: 30_000,
-    select: (threads) => {
-      let count = 0
-      for (const thread of threads) {
-        const total = thread.unread_count + (thread.has_unread_reaction ? 1 : 0)
-        if (total > 0) {
-          count += total
-        } else if (thread.manually_unread) {
-          count++
-        }
-      }
-      return count
-    },
+    select: (threads) => calcTotalUnread(threads),
   })
 }
 
@@ -303,23 +301,23 @@ export function useProjectUnreadCounts(workspaceId: string) {
         const pid = thread.project_id
         const isClient = thread.legacy_channel === 'client'
         const isInternal = thread.legacy_channel === 'internal'
-        const count = thread.unread_count + (thread.has_unread_reaction ? 1 : 0)
-        const hasAny = count > 0 || thread.manually_unread
+        const count = calcThreadUnread(thread)
+        const hasAny = count !== 0
 
         // Суммарные непрочитанные по проекту
         if (count > 0) {
           map.set(pid, (map.get(pid) ?? 0) + count)
-        } else if (thread.manually_unread && !map.has(pid)) {
+        } else if (count === -1 && !map.has(pid)) {
           map.set(pid, -1)
         }
 
         // По каналам (client/internal) — для навигации при клике
         if (isClient) {
           if (count > 0) clientMap.set(pid, (clientMap.get(pid) ?? 0) + count)
-          else if (thread.manually_unread && !clientMap.has(pid)) clientMap.set(pid, -1)
+          else if (count === -1 && !clientMap.has(pid)) clientMap.set(pid, -1)
         } else if (isInternal) {
           if (count > 0) internalMap.set(pid, (internalMap.get(pid) ?? 0) + count)
-          else if (thread.manually_unread && !internalMap.has(pid)) internalMap.set(pid, -1)
+          else if (count === -1 && !internalMap.has(pid)) internalMap.set(pid, -1)
         }
 
         // Реакции

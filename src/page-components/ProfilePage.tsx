@@ -30,6 +30,9 @@ type UserSettings = Database['public']['Tables']['user_settings']['Row']
 export function ProfilePage() {
   const { user } = useAuth()
   const router = useRouter()
+  const savedWorkspaceId = typeof window !== 'undefined'
+    ? (localStorage.getItem('cc:last-workspace-id') ?? undefined)
+    : undefined
   const queryClient = useQueryClient()
   const {
     state: confirmState,
@@ -306,7 +309,7 @@ export function ProfilePage() {
   const errorMessage = settingsError ? 'Не удалось загрузить настройки' : null
 
   return (
-    <WorkspaceLayout>
+    <WorkspaceLayout workspaceId={savedWorkspaceId}>
       <div className="min-h-screen bg-white">
         <ConfirmDialog
           state={confirmState}

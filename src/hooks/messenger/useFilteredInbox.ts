@@ -13,6 +13,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { calcThreadUnread, calcTotalUnread } from '@/utils/inboxUnread'
 import { useInboxThreadsV2 } from './useInbox'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 
@@ -191,15 +192,7 @@ export function useFilteredInbox(workspaceId: string) {
 export function useTotalFilteredUnreadCount(workspaceId: string) {
   const { data: threads } = useFilteredInbox(workspaceId)
 
-  const totalUnread = useMemo(() => {
-    let count = 0
-    for (const t of threads) {
-      count += t.unread_count
-      if (t.has_unread_reaction) count += 1
-      if (t.manually_unread && t.unread_count === 0) count += 1
-    }
-    return count
-  }, [threads])
+  const totalUnread = useMemo(() => calcTotalUnread(threads), [threads])
 
   return { data: totalUnread }
 }
@@ -228,23 +221,23 @@ export function useProjectFilteredUnreadCounts(workspaceId: string) {
       const pid = t.project_id
       const isClient = t.legacy_channel === 'client'
       const isInternal = t.legacy_channel === 'internal'
-      const count = t.unread_count + (t.has_unread_reaction ? 1 : 0)
-      const hasAny = count > 0 || t.manually_unread
+      const count = calcThreadUnread(t)
+      const hasAny = count !== 0
 
       // Суммарные непрочитанные по проекту
       if (count > 0) {
         unreadCounts.set(pid, (unreadCounts.get(pid) ?? 0) + count)
-      } else if (t.manually_unread && !unreadCounts.has(pid)) {
+      } else if (count === -1 && !unreadCounts.has(pid)) {
         unreadCounts.set(pid, -1)
       }
 
       // По каналам (client/internal) — для навигации при клике
       if (isClient) {
         if (count > 0) clientUnreadCounts.set(pid, (clientUnreadCounts.get(pid) ?? 0) + count)
-        else if (t.manually_unread && !clientUnreadCounts.has(pid)) clientUnreadCounts.set(pid, -1)
+        else if (count === -1 && !clientUnreadCounts.has(pid)) clientUnreadCounts.set(pid, -1)
       } else if (isInternal) {
         if (count > 0) internalUnreadCounts.set(pid, (internalUnreadCounts.get(pid) ?? 0) + count)
-        else if (t.manually_unread && !internalUnreadCounts.has(pid))
+        else if (count === -1 && !internalUnreadCounts.has(pid))
           internalUnreadCounts.set(pid, -1)
       }
 

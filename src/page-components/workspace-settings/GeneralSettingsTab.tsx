@@ -32,7 +32,7 @@ export function GeneralSettingsTab() {
       <VoyageAISettingsSection workspaceId={workspaceId} />
       <KnowledgeSummaryPromptSection workspaceId={workspaceId} />
 
-      <p className="text-xs text-muted-foreground/40 pt-4">v{__APP_VERSION__}</p>
+      <p className="text-xs text-muted-foreground/40 pt-4">v{process.env.NEXT_PUBLIC_APP_VERSION ?? '—'}</p>
     </div>
   )
 }

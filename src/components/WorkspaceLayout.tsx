@@ -1,22 +1,41 @@
 "use client"
 
 /**
- * WorkspaceLayout — упрощённая версия с sidebar
+ * WorkspaceLayout — layout с sidebar и правой панелью
  */
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { WorkspaceSidebarFull } from './WorkspaceSidebarFull'
+import { useSidePanelStore } from '@/store/sidePanelStore'
+import { AiPanelContent } from '@/components/ai-panel'
+import { PanelTabs } from './PanelTabs'
+import { FloatingPanelButtons } from './FloatingPanelButtons'
+import { MessengerPanelContent } from './MessengerPanelContent'
+import { useProjectPermissions, useWorkspacePermissions } from '@/hooks/permissions'
+import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
 import {
-  WorkspacePicker,
-  ProjectsList,
-  UserProfile,
-  useSidebarData,
-  useSidebarResize,
-} from './WorkspaceSidebar'
+  ChatSettingsDialog,
+  type ChatSettingsResult,
+} from '@/components/messenger/ChatSettingsDialog'
+import { useCreateThread, useUpdateThread } from '@/hooks/messenger/useProjectThreads'
+import type { ProjectThread, ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
+import type { ThreadTemplate } from '@/types/threadTemplate'
+import { getCurrentWorkspaceParticipant } from '@/services/api/messengerService'
+import { useNewMessageToast } from '@/hooks/messenger/useNewMessageToast'
+import { useFaviconBadge } from '@/hooks/messenger/useFaviconBadge'
+
+const ExtraPanelContent = lazy(() =>
+  import('@/components/extra-panel/ExtraPanelContent').then((m) => ({
+    default: m.ExtraPanelContent,
+  })),
+)
+
+const PANEL_DEFAULT_WIDTH = '45%'
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode
@@ -30,26 +49,83 @@ export function WorkspaceLayout({ children, workspaceId: propWorkspaceId }: Work
   const workspaceId = propWorkspaceId || params.workspaceId || ''
 
   const [mobileOpen, setMobileOpen] = useState(false)
-  const { width, onMouseDown } = useSidebarResize()
-  const {
-    workspaces,
-    projects,
-    loadingWorkspaces,
-    loadingProjects,
-    currentWorkspace,
-    permissionsResult,
-  } = useSidebarData({ workspaceId })
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
+  // Side Panel
+  const panelTab = useSidePanelStore((s) => s.panelTab)
+  const pageContext = useSidePanelStore((s) => s.pageContext)
+  const openPanel = useSidePanelStore((s) => s.openPanel)
+  const closePanel = useSidePanelStore((s) => s.closePanel)
+  const setContext = useSidePanelStore((s) => s.setContext)
+  const messengerEnabled = useSidePanelStore((s) => s.messengerEnabled)
+  const panelOpen = panelTab !== null
 
-  const isOwner = currentWorkspace?.participant?.role === 'owner'
-  const canManageSettings = permissionsResult?.can?.('manage_settings') ?? isOwner
+  // Sync workspaceId in store
+  useEffect(() => {
+    if (workspaceId) {
+      setContext({ workspaceId })
+    }
+  }, [workspaceId, setContext])
+
+  // data-panel-open for toast positioning
+  useEffect(() => {
+    if (panelOpen) {
+      document.body.setAttribute('data-panel-open', '')
+    } else {
+      document.body.removeAttribute('data-panel-open')
+    }
+    return () => document.body.removeAttribute('data-panel-open')
+  }, [panelOpen])
+
+  // Горячая клавиша Cmd+Shift+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'k') {
+        e.preventDefault()
+        useSidePanelStore.getState().togglePanel('assistant')
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Доступные вкладки панели
+  const hasProject = !!pageContext.projectId
+  const showMessenger = hasProject && messengerEnabled
+
+  const { hasModuleAccess } = useProjectPermissions({ projectId: pageContext.projectId ?? '' })
+  const showAssistant =
+    !hasProject ||
+    hasModuleAccess('ai_knowledge_all') ||
+    hasModuleAccess('ai_knowledge_project') ||
+    hasModuleAccess('ai_project_assistant')
+
+  const { userRoles } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
+  const isClientOnly =
+    userRoles.length > 0 && userRoles.every((r) => r === SYSTEM_WORKSPACE_ROLES.CLIENT)
+  const showExtra = hasProject && !isClientOnly
+
+  // Toast уведомления и favicon badge
+  useNewMessageToast(workspaceId)
+  useFaviconBadge(workspaceId)
+
+  // Чат-диалог (создание/редактирование)
+  const activeChatId = useSidePanelStore((s) => s.activeChatId)
+  const openChat = useSidePanelStore((s) => s.openChat)
+  const [settingsChat, setSettingsChat] = useState<ProjectThread | null | undefined>(null)
+  const [defaultTab, setDefaultTab] = useState<'task' | 'chat' | 'email'>('chat')
+  const [initialTemplate, setInitialTemplate] = useState<ThreadTemplate | null>(null)
+  const settingsOpen = settingsChat !== null
+
+  const handleSelectChat = useCallback(
+    (chat: ProjectThread) => {
+      const channel = chat.legacy_channel ?? 'client'
+      openChat(chat.id, channel as 'client' | 'internal')
+    },
+    [openChat],
+  )
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background relative">
       {/* Мобильная кнопка меню */}
       <button
         className="fixed top-3 left-3 z-50 md:hidden p-2 rounded-md bg-background border"
@@ -59,51 +135,15 @@ export function WorkspaceLayout({ children, workspaceId: propWorkspaceId }: Work
       </button>
 
       {/* Sidebar */}
-      <aside
+      <div
         className={cn(
-          'flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-full',
           'fixed inset-y-0 left-0 z-40 md:relative md:z-auto',
           'transition-transform duration-200 md:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
-        style={{ width }}
       >
-        <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          <WorkspacePicker
-            workspaces={workspaces}
-            currentWorkspace={currentWorkspace}
-            workspaceId={workspaceId}
-            loadingWorkspaces={loadingWorkspaces}
-            isOwner={isOwner}
-            canManageSettings={canManageSettings}
-          />
-          <ProjectsList
-            projects={projects}
-            loading={loadingProjects}
-            onProjectClick={(projectId) =>
-              router.push(`/workspaces/${workspaceId}/projects/${projectId}`)
-            }
-            getProjectHref={(projectId) =>
-              `/workspaces/${workspaceId}/projects/${projectId}`
-            }
-          />
-        </div>
-        {user && (
-          <div className="border-t border-sidebar-border p-2">
-            <UserProfile
-              user={user}
-              onProfileClick={() => router.push('/profile')}
-              onSignOut={handleSignOut}
-            />
-          </div>
-        )}
-
-        {/* Resize handle */}
-        <div
-          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20"
-          onMouseDown={onMouseDown}
-        />
-      </aside>
+        <WorkspaceSidebarFull workspaceId={workspaceId} />
+      </div>
 
       {/* Overlay для мобильных */}
       {mobileOpen && (
@@ -113,8 +153,212 @@ export function WorkspaceLayout({ children, workspaceId: propWorkspaceId }: Work
         />
       )}
 
-      {/* Main content */}
-      <main className="flex-1 overflow-auto">{children}</main>
+      {/* Main content + right panel */}
+      <div className="flex-1 flex min-w-0 relative overflow-hidden">
+        {/* Main content */}
+        <main
+          className="flex-1 overflow-auto"
+          style={panelOpen ? { marginRight: PANEL_DEFAULT_WIDTH } : undefined}
+        >
+          {children}
+        </main>
+
+        {/* Правая панель */}
+        <div
+          className={cn(
+            'absolute top-0 right-0 h-full w-[45%] min-w-[360px] border-l border-gray-200 bg-white flex flex-col overflow-hidden shadow-[-2px_0_8px_rgba(0,0,0,0.08)] z-20',
+            !panelOpen && 'hidden',
+          )}
+        >
+          {panelOpen && (
+            <div className="flex flex-col h-full min-w-0">
+              {/* Шапка с вкладками */}
+              <div className="flex items-center px-3 py-2 border-b bg-gray-50/80 shrink-0">
+                <PanelTabs
+                  activeTab={panelTab}
+                  onTabChange={openPanel}
+                  showMessenger={showMessenger}
+                  showAssistant={showAssistant}
+                  showExtra={showExtra}
+                  projectId={pageContext.projectId}
+                  workspaceId={workspaceId}
+                />
+              </div>
+
+              {/* Контент панели */}
+              <div className="flex-1 min-h-0">
+                {(panelTab === 'client' || panelTab === 'internal') &&
+                  pageContext.projectId &&
+                  pageContext.workspaceId && (
+                    <MessengerPanelContent
+                      projectId={pageContext.projectId}
+                      workspaceId={pageContext.workspaceId}
+                      overrideChatId={activeChatId ?? undefined}
+                      onSelectChat={handleSelectChat}
+                      onCreateChat={(tab, template) => {
+                        setDefaultTab(tab ?? 'chat')
+                        setInitialTemplate(template ?? null)
+                        setSettingsChat(undefined)
+                      }}
+                      onEditChat={(chat) => setSettingsChat(chat)}
+                    />
+                  )}
+                {panelTab === 'assistant' && workspaceId && (
+                  <AiPanelContent
+                    workspaceId={workspaceId}
+                    projectId={pageContext.projectId}
+                    templateId={pageContext.templateId}
+                  />
+                )}
+                {panelTab === 'extra' && pageContext.projectId && workspaceId && (
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center h-full">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      </div>
+                    }
+                  >
+                    <ExtraPanelContent
+                      projectId={pageContext.projectId}
+                      workspaceId={workspaceId}
+                    />
+                  </Suspense>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Плавающие кнопки */}
+      <FloatingPanelButtons />
+
+      {/* Диалог создания/редактирования чата */}
+      {pageContext.projectId && (
+        <ChatSettingsSection
+          projectId={pageContext.projectId}
+          workspaceId={pageContext.workspaceId ?? workspaceId}
+          settingsChat={settingsChat}
+          settingsOpen={settingsOpen}
+          defaultTab={defaultTab}
+          initialTemplate={initialTemplate}
+          onClose={() => {
+            setSettingsChat(null)
+            setInitialTemplate(null)
+          }}
+          onCreated={(newChat) => {
+            setSettingsChat(null)
+            openChat(newChat.id)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+function ChatSettingsSection({
+  projectId,
+  workspaceId,
+  settingsChat,
+  settingsOpen,
+  defaultTab,
+  initialTemplate,
+  onClose,
+  onCreated,
+}: {
+  projectId: string
+  workspaceId: string
+  settingsChat: ProjectThread | null | undefined
+  settingsOpen: boolean
+  defaultTab?: 'task' | 'chat' | 'email'
+  initialTemplate?: ThreadTemplate | null
+  onClose: () => void
+  onCreated: (chat: ProjectThread) => void
+}) {
+  const { user } = useAuth()
+  const createChatMutation = useCreateThread(projectId, workspaceId)
+  const updateChatMutation = useUpdateThread()
+  const setPendingInitialMessage = useSidePanelStore((s) => s.setPendingInitialMessage)
+  const openChat = useSidePanelStore((s) => s.openChat)
+
+  const handleCreateChat = useCallback(
+    async (result: ChatSettingsResult) => {
+      let senderName = 'Вы'
+      if (result.initialMessage && user) {
+        try {
+          const p = await getCurrentWorkspaceParticipant(workspaceId, user.id)
+          if (p) senderName = p.name
+        } catch {
+          /* fallback */
+        }
+      }
+
+      createChatMutation.mutate(
+        {
+          name: result.name,
+          accessType: result.accessType,
+          accentColor: result.accentColor,
+          icon: result.icon,
+          type: result.threadType,
+          emailData:
+            result.channelType === 'email' && result.contactEmails?.length
+              ? {
+                  contactEmails: result.contactEmails.map((e) => e.email),
+                  subject: result.emailSubject,
+                }
+              : undefined,
+          memberIds: result.memberIds,
+          accessRoles: result.accessRoles,
+          deadline: result.deadline,
+          statusId: result.statusId,
+          assigneeIds: result.assigneeIds,
+          projectIdOverride: result.projectId !== undefined ? result.projectId : undefined,
+        },
+        {
+          onSuccess: (newChat) => {
+            if (result.initialMessage) {
+              setPendingInitialMessage({
+                threadId: newChat.id,
+                html: result.initialMessage.html,
+                files: result.initialMessage.files,
+                isEmail: result.channelType === 'email',
+                senderName,
+              })
+            }
+            onCreated(newChat)
+          },
+        },
+      )
+    },
+    [createChatMutation, onCreated, workspaceId, user, setPendingInitialMessage],
+  )
+
+  const handleEditSave = useCallback(
+    (params: { name: string; accent_color: ThreadAccentColor; icon: string }) => {
+      if (!settingsChat) return
+      updateChatMutation.mutate(
+        { threadId: settingsChat.id, projectId, ...params },
+        { onSuccess: () => onClose() },
+      )
+    },
+    [settingsChat, updateChatMutation, projectId, onClose],
+  )
+
+  return (
+    <ChatSettingsDialog
+      chat={settingsChat ?? null}
+      projectId={projectId}
+      workspaceId={workspaceId}
+      defaultThreadType={defaultTab === 'task' ? 'task' : 'chat'}
+      defaultTabMode={defaultTab}
+      initialTemplate={initialTemplate}
+      open={settingsOpen}
+      onOpenChange={(v) => {
+        if (!v) onClose()
+      }}
+      onCreate={handleCreateChat}
+      onUpdate={handleEditSave}
+      isPending={createChatMutation.isPending || updateChatMutation.isPending}
+    />
   )
 }

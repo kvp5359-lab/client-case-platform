@@ -261,10 +261,9 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
 
   forwardMessageToChannel: (msg) => {
     set({
-      panelTab: msg.targetChannel,
       messengerOpen: true,
       aiOpen: false,
-      requestedMessengerChannel: msg.targetChannel,
+      activeChatId: msg.targetChatId,
       pendingForwardMessage: msg,
     })
   },

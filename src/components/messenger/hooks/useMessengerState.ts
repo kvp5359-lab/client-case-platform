@@ -97,7 +97,7 @@ export function useMessengerState({
     channel,
     threadId,
   )
-  const sendEmail = useSendEmail(projectId, workspaceId, threadId)
+  const sendEmail = useSendEmail(projectId ?? '', workspaceId, threadId)
 
   const editMessageMutation = useEditMessage(projectId, channel, threadId)
   const deleteMessageMutation = useDeleteMessage(projectId, channel, threadId)
@@ -123,13 +123,13 @@ export function useMessengerState({
   const { data: unreadCount = 0 } = useUnreadCount(projectId, channel, pid, threadId)
   const { data: isManuallyUnread = false } = useIsManuallyUnread(
     workspaceId,
-    projectId,
+    projectId ?? '',
     channel,
     threadId,
   )
   const { data: hasUnreadReaction = false } = useHasUnreadReaction(
     workspaceId,
-    projectId,
+    projectId ?? '',
     channel,
     threadId,
   )
@@ -147,7 +147,7 @@ export function useMessengerState({
   const { searchQuery, setSearchQuery, searchResults, isSearching, isSearchActive, resultCount } =
     useMessageSearch(projectId, channel, threadId)
 
-  const documentPickerLogic = useDocumentPickerLogic(projectId, workspaceId)
+  const documentPickerLogic = useDocumentPickerLogic(projectId ?? '', workspaceId)
 
   // Handle pending initial message from chat creation
   const pendingInitialMessage = useSidePanelStore((s) => s.pendingInitialMessage)
@@ -205,7 +205,7 @@ export function useMessengerState({
 
   useEffect(() => {
     if (!pendingForwardMessage) return
-    if (pendingForwardMessage.targetChannel !== channel) return
+    if (pendingForwardMessage.targetChatId !== threadId) return
     clearPendingForwardMessage()
 
     const plainText = stripHtmlKeepNewlines(pendingForwardMessage.content)
@@ -225,7 +225,7 @@ export function useMessengerState({
         }))
       setForwardedAttachmentsRef.current(fwdAtts)
     }
-  }, [pendingForwardMessage, channel, clearPendingForwardMessage])
+  }, [pendingForwardMessage, threadId, clearPendingForwardMessage])
 
   const showUnread = unreadCount > 0 || isManuallyUnread || hasUnreadReaction
 

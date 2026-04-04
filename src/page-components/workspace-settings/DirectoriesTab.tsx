@@ -20,6 +20,7 @@ type DirectorySection =
   | 'project-roles' // Роли проекта
   | 'quick-replies' // Быстрые ответы
   | 'custom' // Пользовательские справочники
+  | 'custom-detail' // Конкретный справочник
 
 export function DirectoriesTab() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -31,8 +32,10 @@ export function DirectoriesTab() {
     const pathParts = pathname.split('/')
     const directoriesIdx = pathParts.indexOf('directories')
     const section = directoriesIdx >= 0 ? pathParts[directoriesIdx + 1] : undefined
+    const subsection = directoriesIdx >= 0 ? pathParts[directoriesIdx + 2] : undefined
     if (section === 'workspace-roles' || section === 'project-roles') return section
     if (section === 'quick-replies') return section
+    if (section === 'custom' && subsection) return 'custom-detail'
     if (section === 'custom') return 'custom'
     return 'statuses'
   }
@@ -133,15 +136,12 @@ export function DirectoriesTab() {
 
         {/* Контент */}
         <div className="flex-1 p-6">
-          <Routes>
-            <Route path="/" element={<Navigate to="statuses" replace />} />
-            <Route path="/statuses" element={<StatusesDirectory />} />
-            <Route path="/workspace-roles" element={<WorkspaceRolesDirectory />} />
-            <Route path="/project-roles" element={<ProjectRolesDirectory />} />
-            <Route path="/quick-replies" element={<QuickRepliesDirectory />} />
-            <Route path="/custom" element={<CustomDirectoriesList />} />
-            <Route path="/custom/:directoryId" element={<CustomDirectoryPage />} />
-          </Routes>
+          {activeSection === 'statuses' && <StatusesDirectory />}
+          {activeSection === 'workspace-roles' && <WorkspaceRolesDirectory />}
+          {activeSection === 'project-roles' && <ProjectRolesDirectory />}
+          {activeSection === 'quick-replies' && <QuickRepliesDirectory />}
+          {activeSection === 'custom' && <CustomDirectoriesList />}
+          {activeSection === 'custom-detail' && <CustomDirectoryPage />}
         </div>
       </div>
     </div>

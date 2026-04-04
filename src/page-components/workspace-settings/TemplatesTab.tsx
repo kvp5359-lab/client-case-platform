@@ -166,16 +166,13 @@ export function TemplatesTab() {
 
       {/* Контент */}
       <div className="flex-1 min-w-0 p-6 overflow-hidden">
-        <Routes>
-          <Route path="/" element={<Navigate to="project-templates" replace />} />
-          <Route path="/project-templates" element={<ProjectTemplatesContent />} />
-          <Route path="/form-templates" element={<FormTemplatesContent />} />
-          <Route path="/field-templates" element={<FieldTemplatesContent />} />
-          <Route path="/document-kit-templates" element={<DocumentKitTemplatesContent />} />
-          <Route path="/folder-templates" element={<FolderTemplatesContent />} />
-          <Route path="/document-templates" element={<DocumentTemplatesContent />} />
-          <Route path="/thread-templates" element={<ThreadTemplatesContent />} />
-        </Routes>
+        {activeSection === 'project-templates' && <ProjectTemplatesContent />}
+        {activeSection === 'form-templates' && <FormTemplatesContent />}
+        {activeSection === 'field-templates' && <FieldTemplatesContent />}
+        {activeSection === 'document-kit-templates' && <DocumentKitTemplatesContent />}
+        {activeSection === 'folder-templates' && <FolderTemplatesContent />}
+        {activeSection === 'document-templates' && <DocumentTemplatesContent />}
+        {activeSection === 'thread-templates' && <ThreadTemplatesContent />}
       </div>
     </div>
   )

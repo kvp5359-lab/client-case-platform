@@ -3,6 +3,7 @@ import { MessageSquare, Send, Mail, EyeOff, CheckCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { stripHtml } from '@/utils/messengerHtml'
 import type { InboxThreadEntry, InboxChannelType } from '@/services/api/inboxService'
+import { calcThreadUnread } from '@/utils/inboxUnread'
 import { formatShortDate } from '@/utils/dateFormat'
 
 function formatTime(isoString: string | null): string {
@@ -221,7 +222,7 @@ export const InboxChatItem = memo(function InboxChatItem({
                     accent.badge,
                   )}
                 >
-                  {chat.unread_count > 99 ? '99+' : chat.unread_count}
+                  {calcThreadUnread(chat) > 99 ? '99+' : calcThreadUnread(chat)}
                 </span>
               )}
               <span className="hidden group-hover/badge:flex w-5 h-5 items-center justify-center rounded-full bg-blue-100">

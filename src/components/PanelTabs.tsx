@@ -8,6 +8,7 @@ import { MessageSquare, Sparkles, FolderCog, type LucideIcon } from 'lucide-reac
 import { cn } from '@/lib/utils'
 import type { PanelTab } from '@/store/sidePanelStore'
 import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
+import { calcTotalUnread } from '@/utils/inboxUnread'
 
 interface PanelTabsProps {
   activeTab: PanelTab
@@ -69,12 +70,7 @@ export function PanelTabs({
   const { data: inboxThreads = [] } = useFilteredInbox(workspaceId ?? '')
 
   // Count unread only for this project (already access-filtered)
-  const totalUnread = inboxThreads
-    .filter((t) => t.project_id === projectId)
-    .reduce((sum, t) => {
-      const count = t.unread_count + (t.has_unread_reaction ? 1 : 0)
-      return sum + count
-    }, 0)
+  const totalUnread = calcTotalUnread(inboxThreads.filter((t) => t.project_id === projectId))
   const isChatsActive = activeTab === 'client' || activeTab === 'internal'
 
   return (

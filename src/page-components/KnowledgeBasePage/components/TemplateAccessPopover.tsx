@@ -126,7 +126,8 @@ export function TemplateAccessPopover({
   // Добавить связь
   const addMutation = useMutation({
     mutationFn: async (templateId: string) => {
-      const { error } = await supabase.from(table).insert({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from(table) as any).insert({
         [fkColumn]: entityId,
         project_template_id: templateId,
       })
@@ -289,7 +290,7 @@ export function useTemplateAccessCounts(entityIds: string[], entityType: Templat
 
       const counts: Record<string, number> = {}
       for (const row of data || []) {
-        const id = (row as Record<string, string>)[fkColumn]
+        const id = (row as unknown as Record<string, string>)[fkColumn]
         counts[id] = (counts[id] || 0) + 1
       }
       return counts

@@ -228,10 +228,10 @@ export function MessageActions({
                 Копировать текст
               </DropdownMenuItem>
 
-              {onForward && channel && (
+              {onForward && (
                 <DropdownMenuItem onClick={() => onForward(message)}>
                   <Forward className="h-4 w-4 mr-2" />
-                  {channel === 'client' ? 'Переслать в чат команды' : 'Переслать в чат клиента'}
+                  Переслать в чат
                 </DropdownMenuItem>
               )}
 

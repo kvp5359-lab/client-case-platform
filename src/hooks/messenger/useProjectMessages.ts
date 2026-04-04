@@ -5,7 +5,7 @@
  */
 
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useCallback, useMemo } from 'react'
+import { useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getMessages, type MessageChannel } from '@/services/api/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
@@ -17,6 +17,7 @@ export function useProjectMessages(
   threadId?: string,
 ) {
   const queryClient = useQueryClient()
+  const instanceId = useRef(Math.random().toString(36).slice(2))
   const messagesKey = threadId
     ? messengerKeys.messagesByThreadId(threadId)
     : messengerKeys.messages(projectId ?? '', channel)
@@ -53,9 +54,10 @@ export function useProjectMessages(
     const unreadKey = threadId
       ? messengerKeys.unreadCountByThreadId(threadId)
       : messengerKeys.unreadCount(projectId ?? '', channel)
+    // Уникальное имя канала для каждого монтирования (защита от React StrictMode)
     const channelName = threadId
-      ? `project-messages:thread:${threadId}`
-      : `project-messages:${projectId}:${channel}`
+      ? `project-messages:thread:${threadId}:${instanceId.current}`
+      : `project-messages:${projectId}:${channel}:${instanceId.current}`
 
     // Realtime filter: use thread_id if available (works for tasks without project), else project_id
     const realtimeFilter = threadId ? `thread_id=eq.${threadId}` : `project_id=eq.${projectId}`

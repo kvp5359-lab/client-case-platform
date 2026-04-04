@@ -26,7 +26,7 @@ export interface PendingForwardMessage {
     storage_path: string
     file_id: string | null
   }>
-  targetChannel: 'client' | 'internal'
+  targetChatId: string
 }
 
 export interface PanelContext {
@@ -49,8 +49,6 @@ export interface PendingAiDocumentItem {
   name: string
   textContent?: string | null
 }
-
-export { PendingAiDocument }
 
 export const DEFAULT_AI_SOURCES: AiSources = {
   clientMessages: true,

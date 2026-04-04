@@ -213,7 +213,7 @@ export function useKnowledgeBasePage() {
 
   return {
     workspaceId,
-    navigate,
+    navigate: router.push,
     queryClient,
     // Search & filter
     searchQuery,

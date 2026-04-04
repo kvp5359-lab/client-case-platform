@@ -101,8 +101,6 @@ export function useDocumentKitHandlers({
     exportSyncMode,
     mergeDocsList,
     folders,
-    navigate,
-    location,
     confirm,
     closeMoveDialog,
     closeSourceMoveDialog,
@@ -147,8 +145,6 @@ export function useDocumentKitHandlers({
       exportSyncMode,
       mergeDocsList,
       folders,
-      navigate,
-      location,
       confirm,
       closeMoveDialog,
       closeSourceMoveDialog,
@@ -191,7 +187,7 @@ export function useDocumentKitHandlers({
     if (!ok) return
     try {
       await r.deleteDocumentKit(r.kit.id)
-      r.navigate(r.pathname + '?tab=settings', { replace: true })
+      router.replace(pathname + '?tab=settings')
     } catch (error) {
       logger.error('Ошибка удаления набора документов:', error)
       toast.error('Не удалось удалить набор документов')

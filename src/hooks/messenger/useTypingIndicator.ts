@@ -31,6 +31,13 @@ export function useTypingIndicator(
     const presenceChannelName = threadId
       ? `typing:thread:${threadId}`
       : `typing:${projectId}:${channel}`
+
+    // Удаляем старый канал с таким именем, если он ещё висит в Supabase
+    const existingChannel = supabase.getChannels().find(ch => ch.topic === presenceChannelName)
+    if (existingChannel) {
+      supabase.removeChannel(existingChannel)
+    }
+
     const presenceChannel = supabase.channel(presenceChannelName, {
       config: { presence: { key: currentParticipantId } },
     })

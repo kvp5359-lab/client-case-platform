@@ -69,7 +69,7 @@ export function useArticleEditor() {
   const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false)
 
   // Debounce ref
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
   const initializedRef = useRef(false)
 

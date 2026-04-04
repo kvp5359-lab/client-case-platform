@@ -7,6 +7,7 @@
 
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { calcThreadUnread } from '@/utils/inboxUnread'
 import { supabase } from '@/lib/supabase'
 import {
   useThreadIdByChannel,
@@ -101,7 +102,7 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
     const map: Record<string, { count: number; manuallyUnread: boolean; hasReaction: boolean }> = {}
     for (const t of inboxThreads) {
       map[t.thread_id] = {
-        count: t.unread_count ?? 0,
+        count: calcThreadUnread(t),
         manuallyUnread: !!t.manually_unread,
         hasReaction: !!t.has_unread_reaction,
       }

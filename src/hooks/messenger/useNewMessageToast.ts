@@ -32,10 +32,10 @@ export function useNewMessageToast(workspaceId: string | undefined) {
   const queryClient = useQueryClient()
   const router = useRouter()
 
-  const navigateRef = useRef(navigate)
+  const routerRef = useRef(router)
   useEffect(() => {
-    navigateRef.current = navigate
-  }, [navigate])
+    routerRef.current = router
+  }, [router])
 
   const userRef = useRef(user)
   useEffect(() => {
@@ -56,11 +56,16 @@ export function useNewMessageToast(workspaceId: string | undefined) {
       })
   }, [workspaceId, user])
 
+  const instanceId = useRef(Math.random().toString(36).slice(2))
+
   useEffect(() => {
     if (!workspaceId || !user) return
 
+    // Уникальное имя канала для каждого монтирования (защита от React StrictMode)
+    const toastChannelName = `msg-toast:${workspaceId}:${instanceId.current}`
+
     const channel = supabase
-      .channel(`msg-toast:${workspaceId}`)
+      .channel(toastChannelName)
       .on(
         'postgres_changes',
         {
@@ -147,7 +152,7 @@ export function useNewMessageToast(workspaceId: string | undefined) {
               msgChannel === 'internal'
                 ? `/workspaces/${workspaceId}/projects/${msg.project_id}?panel=messenger&channel=internal${chatParam}`
                 : `/workspaces/${workspaceId}/projects/${msg.project_id}?panel=messenger${chatParam}`
-            navigateRef.current(messengerUrl)
+            routerRef.current.push(messengerUrl)
           }
 
           const doMarkAsRead = async () => {

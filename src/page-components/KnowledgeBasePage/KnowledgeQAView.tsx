@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * KnowledgeQAView — Notion-style таблица Q&A элементов базы знаний.
  *
@@ -37,7 +39,7 @@ import {
   Filter,
   MessageCircleQuestion,
 } from 'lucide-react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, usePathname } from 'next/navigation'
 import { QAEditDialog } from '@/components/knowledge/QAEditDialog'
 import { QAImportDialog } from '@/components/knowledge/QAImportDialog'
 import { getGroupColor, NotionPill } from '@/utils/notionPill'
@@ -79,7 +81,8 @@ export function KnowledgeQAView({ workspaceId }: KnowledgeQAViewProps) {
 
   // --- Dialogs ---
 
-  const [searchParams, setSearchParams] = useSearchParams()
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
   const [showFilters, setShowFilters] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingQA, setEditingQA] = useState<KnowledgeQA | null>(null)
@@ -94,11 +97,12 @@ export function KnowledgeQAView({ workspaceId }: KnowledgeQAViewProps) {
     if (found) {
       setEditingQA(found)
       setEditDialogOpen(true)
-      const next = new URLSearchParams(searchParams)
+      const next = new URLSearchParams(searchParams.toString())
       next.delete('qaId')
-      setSearchParams(next, { replace: true })
+      const qs = next.toString()
+      router.replace(pathname + (qs ? `?${qs}` : ''))
     }
-  }, [searchParams, qaItems, setSearchParams])
+  }, [searchParams, qaItems, router, pathname])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)

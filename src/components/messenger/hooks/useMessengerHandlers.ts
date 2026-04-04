@@ -13,6 +13,7 @@ interface UseMessengerHandlersParams {
   channel: MessageChannel
   threadId?: string
   projectId?: string
+  onOpenForwardDialog?: (msg: ProjectMessage) => void
   isEmailChat: boolean
   currentParticipant:
     | { participantId: string; name: string; role: string | null }
@@ -110,6 +111,7 @@ export function useMessengerHandlers({
   setForwardedAttachments,
   setSendTrigger,
   editingMessage,
+  onOpenForwardDialog,
 }: UseMessengerHandlersParams) {
   const forwardMessageToChannel = useSidePanelStore((s) => s.forwardMessageToChannel)
 
@@ -225,7 +227,15 @@ export function useMessengerHandlers({
 
   const handleForward = useCallback(
     (msg: ProjectMessage) => {
-      const targetChannel = channel === 'client' ? 'internal' : 'client'
+      if (onOpenForwardDialog) {
+        onOpenForwardDialog(msg)
+      }
+    },
+    [onOpenForwardDialog],
+  )
+
+  const handleForwardToChat = useCallback(
+    (msg: ProjectMessage, targetChatId: string) => {
       forwardMessageToChannel({
         senderName: msg.sender_name,
         content: msg.content,
@@ -236,10 +246,10 @@ export function useMessengerHandlers({
           storage_path: a.storage_path,
           file_id: a.file_id,
         })),
-        targetChannel,
+        targetChatId,
       })
     },
-    [channel, forwardMessageToChannel],
+    [forwardMessageToChannel],
   )
 
   const handleSaveDraft = useCallback(
@@ -293,6 +303,7 @@ export function useMessengerHandlers({
     handleEdit,
     handleStartEdit,
     handleForward,
+    handleForwardToChat,
     handleSaveDraft,
     handleEditDraft,
     handlePublishDraft,

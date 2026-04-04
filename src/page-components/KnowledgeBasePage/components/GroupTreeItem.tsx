@@ -40,6 +40,7 @@ export interface TreeGroup {
   name: string
   parent_id: string | null
   sort_order?: number
+  color?: string | null
 }
 
 // ---------- Group tree item ----------
