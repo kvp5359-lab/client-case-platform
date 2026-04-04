@@ -10,11 +10,22 @@
 import { useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 export function AuthCallbackPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading } = useAuth()
+
+  // Обмениваем code на сессию (PKCE flow для Google OAuth)
+  useEffect(() => {
+    const code = searchParams.get('code')
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).catch(() => {
+        router.replace('/login')
+      })
+    }
+  }, [searchParams, router])
 
   useEffect(() => {
     if (loading) return
