@@ -9,7 +9,7 @@
 import { memo, useState, useRef, useEffect, useMemo } from 'react'
 import { Search, X, Plus } from 'lucide-react'
 import type { Database } from '@/types/database'
-import type { ModuleDefinition } from '@/pages/ProjectPage/moduleRegistry'
+import type { ModuleDefinition } from '@/page-components/ProjectPage/moduleRegistry'
 import { usePinnedProjects } from './usePinnedProjects'
 import { useFlipAnimation } from './useFlipAnimation'
 import { ProjectListItem } from './ProjectListItem'

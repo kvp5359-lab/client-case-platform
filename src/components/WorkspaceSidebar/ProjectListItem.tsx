@@ -4,7 +4,7 @@ import { memo } from 'react'
 import Link from 'next/link'
 import { FolderOpen, ChevronRight, ChevronDown, Pin, PinOff } from 'lucide-react'
 import type { Database } from '@/types/database'
-import type { ModuleDefinition } from '@/pages/ProjectPage/moduleRegistry'
+import type { ModuleDefinition } from '@/page-components/ProjectPage/moduleRegistry'
 import { getBadgeClasses, getStatusIconColor, FOLDER_ICON_COLOR } from './projectListConstants'
 
 type Project = Database['public']['Tables']['projects']['Row']
