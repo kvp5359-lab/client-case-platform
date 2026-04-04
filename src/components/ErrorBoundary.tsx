@@ -52,13 +52,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       (error.name === 'TypeError' && msg.includes('fetch'))
     if (isChunkError) {
       const key = 'chunk-reload'
-      const lastReload = sessionStorage.getItem(key)
       const now = Date.now()
       // Перезагружаем максимум раз за 10 сек, чтобы не зациклиться
-      if (!lastReload || now - Number(lastReload) > 10_000) {
-        sessionStorage.setItem(key, now.toString())
-        window.location.reload()
-        return
+      if (typeof window !== 'undefined') {
+        const lastReload = sessionStorage.getItem(key)
+        if (!lastReload || now - Number(lastReload) > 10_000) {
+          sessionStorage.setItem(key, now.toString())
+          window.location.reload()
+          return
+        }
       }
     }
   }

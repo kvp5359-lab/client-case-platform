@@ -35,22 +35,30 @@ export function useAuthLockout({
   const lockoutKey = `${storagePrefix}_lockout_until`
 
   const getStoredAttempts = () => {
+    if (typeof window === 'undefined') return 0
     const val = sessionStorage.getItem(attemptsKey)
     return val ? parseInt(val, 10) : 0
   }
 
   const setStoredAttempts = (n: number) => {
+    if (typeof window === 'undefined') return
     sessionStorage.setItem(attemptsKey, String(n))
   }
 
-  const failedAttemptsRef = useRef(getStoredAttempts())
+  const failedAttemptsRef = useRef(0)
 
-  const [remainingSeconds, setRemainingSeconds] = useState(() => {
+  const [remainingSeconds, setRemainingSeconds] = useState(0)
+
+  // Инициализация из sessionStorage на клиенте
+  useEffect(() => {
+    failedAttemptsRef.current = getStoredAttempts()
     const until = sessionStorage.getItem(lockoutKey)
-    if (!until) return 0
-    const remaining = Math.ceil((parseInt(until, 10) - Date.now()) / 1000)
-    return remaining > 0 ? remaining : 0
-  })
+    if (until) {
+      const remaining = Math.ceil((parseInt(until, 10) - Date.now()) / 1000)
+      if (remaining > 0) setRemainingSeconds(remaining)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (remainingSeconds <= 0) return
