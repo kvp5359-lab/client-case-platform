@@ -7,14 +7,17 @@
  * Управляет собственным <link>-тегом с id=dynamic-favicon, чтобы не конфликтовать
  * с тегами, которые генерит Next.js из src/app/favicon.ico.
  * Использует useTotalUnreadCount — тот же queryKey, что и бейдж в сайдбаре.
+ *
+ * MutationObserver следит за <head> и удаляет любые <link rel=icon>, которые
+ * Next.js может вставить при клиентской навигации между страницами.
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useTotalFilteredUnreadCount } from './useFilteredInbox'
 
 const DYNAMIC_FAVICON_ID = 'dynamic-favicon'
 
-function removeNextFavicons() {
+function removeConflictingFavicons() {
   // Next.js генерит <link rel="icon" href="/favicon.ico"> — отключаем, чтобы
   // наш динамический тег гарантированно показывался вкладкой.
   const existing = document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]')
@@ -37,16 +40,25 @@ function ensureDynamicLink(): HTMLLinkElement {
 
 export function useFaviconBadge(workspaceId: string | undefined) {
   const { data: totalUnread } = useTotalFilteredUnreadCount(workspaceId ?? '')
-  const prevCountRef = useRef<number>(-1)
+
+  // Следим за <head>: если Next.js вставит новый <link rel=icon> — убираем его.
+  useEffect(() => {
+    removeConflictingFavicons()
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (!(node instanceof HTMLLinkElement)) continue
+          if (node.id === DYNAMIC_FAVICON_ID) continue
+          if (node.rel && node.rel.includes('icon')) node.remove()
+        }
+      }
+    })
+    observer.observe(document.head, { childList: true })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const count = totalUnread ?? 0
-
-    // Не перерисовывать, если число не изменилось
-    if (count === prevCountRef.current) return
-    prevCountRef.current = count
-
-    removeNextFavicons()
     const link = ensureDynamicLink()
 
     // Без непрочитанных — показать оригинальный favicon.ico
