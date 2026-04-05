@@ -25,6 +25,7 @@ import { ChatEmptyState } from '@/components/shared/ChatEmptyState'
 import { useProjectAiConversations } from './hooks/useProjectAiConversations'
 import { useProjectAiRestore } from './hooks/useProjectAiRestore'
 import { useProjectAiDocuments } from './hooks/useProjectAiDocuments'
+import { logger } from '@/utils/logger'
 
 interface ProjectAiChatProps {
   projectId?: string
@@ -155,7 +156,9 @@ export function ProjectAiChat({
           // Сохраняем sources в БД для текущего диалога
           const convId = conversationIdRef.current
           if (convId) {
-            updateConversation(convId, { sources: s as ConversationSources }).catch(() => {})
+            updateConversation(convId, { sources: s as ConversationSources }).catch((err) => {
+              logger.warn('Не удалось сохранить sources диалога:', err)
+            })
           }
         },
         [sessionKey, updateAiSession],

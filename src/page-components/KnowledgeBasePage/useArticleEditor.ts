@@ -6,6 +6,7 @@ import { knowledgeBaseKeys, statusKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
 import { useKnowledgeIndex, useArticleVersions } from '@/hooks/knowledge'
 import { useArticleEditorMutations } from './useArticleEditorMutations'
+import { logger } from '@/utils/logger'
 
 // ---------- Types ----------
 
@@ -273,7 +274,9 @@ export function useArticleEditor() {
       },
       {
         onSuccess: () => {
-          createVersion(undefined).catch(() => {})
+          createVersion(undefined).catch((err) => {
+            logger.warn('Не удалось создать версию статьи:', err)
+          })
           if (articleId && workspaceId) {
             indexNow(articleId, workspaceId)
           }

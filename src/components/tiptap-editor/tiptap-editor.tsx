@@ -23,6 +23,7 @@ import { BlockGapInserter } from './block-gap-inserter'
 import { LinkPreviewPopup } from './link-preview-popup'
 import { MenuBar } from './menu-bar'
 import { cn } from '@/lib/utils'
+import { logger } from '@/utils/logger'
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -54,7 +55,7 @@ async function uploadImageToStorage(file: File, config: ImageUploadConfig): Prom
 
   const { error } = await supabase.storage.from('files').upload(path, file)
   if (error) {
-    console.error('[Image upload] Storage error:', error.message, error)
+    logger.error('[Image upload] Storage error:', error.message, error)
     throw error
   }
 

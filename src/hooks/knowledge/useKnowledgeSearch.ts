@@ -23,6 +23,7 @@ import {
   type ArticleSource,
 } from '@/services/api/knowledgeSearchService'
 import { knowledgeBaseKeys } from '../queryKeys'
+import { logger } from '@/utils/logger'
 
 export type SearchMode = 'quick' | 'selective'
 
@@ -238,7 +239,7 @@ export function useKnowledgeSearch({
           setMessages((prev) => prev.map((m) => (m.id === localAssistantMsg.id ? savedMsg : m)))
         })
         .catch((err) => {
-          console.error('Failed to save assistant message:', err)
+          logger.error('Failed to save assistant message:', err)
         })
 
       queryClient.invalidateQueries({

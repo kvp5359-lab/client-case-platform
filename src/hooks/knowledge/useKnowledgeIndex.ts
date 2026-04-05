@@ -10,6 +10,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { indexArticle } from '@/services/api/knowledgeSearchService'
 import { knowledgeBaseKeys } from '../queryKeys'
+import { logger } from '@/utils/logger'
 
 const INDEX_DEBOUNCE_MS = 10_000
 
@@ -33,7 +34,7 @@ export function useKnowledgeIndex() {
       })
     },
     onError: (err) => {
-      console.warn('Knowledge indexing failed:', err)
+      logger.warn('Knowledge indexing failed:', err)
       toast.error('Ошибка индексации', {
         description: err instanceof Error ? err.message : 'Неизвестная ошибка',
       })

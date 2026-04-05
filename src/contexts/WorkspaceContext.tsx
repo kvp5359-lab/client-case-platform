@@ -11,6 +11,7 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useWorkspaceStore } from '@/store/workspaceStore'
 import { useAuth } from './AuthContext'
+import { logger } from '@/utils/logger'
 
 interface WorkspaceProviderProps {
   children: ReactNode
@@ -40,7 +41,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
           .from('user_settings')
           .upsert({ user_id: userId, last_workspace_id: workspaceId }, { onConflict: 'user_id' })
       } catch (err) {
-        console.warn('Ошибка сохранения последнего workspace:', err)
+        logger.warn('Ошибка сохранения последнего workspace:', err)
       }
     }
 

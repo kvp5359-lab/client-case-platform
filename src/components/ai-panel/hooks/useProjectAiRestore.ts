@@ -5,6 +5,7 @@
 
 import { useRef, useEffect, useState } from 'react'
 import type { AiMessage } from '@/store/sidePanelStore'
+import { logger } from '@/utils/logger'
 import {
   getMessages as getConversationMessages,
   type KnowledgeConversation,
@@ -62,7 +63,8 @@ export function useProjectAiRestore({
         })
         setAiMessages(mapped)
       })
-      .catch(() => {
+      .catch((err) => {
+        logger.warn('Не удалось восстановить AI-диалог:', err)
         setActiveConversationId(null)
       })
       .finally(() => {
