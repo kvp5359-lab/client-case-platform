@@ -47,6 +47,7 @@ import {
   useKitDownload,
   useCompressAnalysis,
   useDocumentsDialogActions,
+  useDocumentsFlatList,
 } from './Documents/hooks'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import { useProjectPermissions } from '@/hooks/permissions/useProjectPermissions'
@@ -87,19 +88,6 @@ export function DocumentsTabContent({
   const [driveFoldersKit, setDriveFoldersKit] = useState<DocumentKitWithDocuments | null>(null)
 
   const { data: kitlessDocuments = [] } = useKitlessDocumentsQuery(projectId)
-  const allUngroupedDocuments = useMemo(() => {
-    const fromKits = documentKits.flatMap((kit) =>
-      (kit.documents || []).filter((d) => !d.folder_id && !d.is_deleted),
-    )
-    const seen = new Set<string>()
-    return [...fromKits, ...kitlessDocuments]
-      .filter((d) => {
-        if (seen.has(d.id)) return false
-        seen.add(d.id)
-        return true
-      })
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-  }, [documentKits, kitlessDocuments])
 
   // Слоты папок
   const {
@@ -111,32 +99,12 @@ export function DocumentsTabContent({
     unlinkSlot,
   } = useFolderSlots(projectId)
 
-  // Плоский список для Shift-click selection
-  const allDocumentsFlat = useMemo(() => {
-    const result: { id: string }[] = []
-    for (const kit of documentKits) {
-      const folders = kit.folders || []
-      const documents = kit.documents || []
-      const kitFolderIds = new Set(folders.map((f) => f.id))
-      const kitSlots = folderSlots.filter((s) => kitFolderIds.has(s.folder_id))
-      const slotDocIds = new Set(kitSlots.filter((s) => s.document_id).map((s) => s.document_id!))
-      for (const folder of folders) {
-        const folderDocs = documents
-          .filter((d) => d.folder_id === folder.id && !d.is_deleted && !slotDocIds.has(d.id))
-          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-        for (const doc of folderDocs) result.push(doc)
-        const folderFilledSlots = kitSlots
-          .filter((s) => s.folder_id === folder.id && s.document_id && s.document)
-          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-        for (const slot of folderFilledSlots) result.push(slot.document!)
-      }
-      const ungrouped = documents
-        .filter((d) => !d.folder_id && !d.is_deleted)
-        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-      for (const doc of ungrouped) result.push(doc)
-    }
-    return result
-  }, [documentKits, folderSlots])
+  // allUngroupedDocuments + allDocumentsFlat — мемоизированные списки, вынесены в хук
+  const { allUngroupedDocuments, allDocumentsFlat } = useDocumentsFlatList(
+    documentKits,
+    kitlessDocuments,
+    folderSlots,
+  )
 
   // Selection
   const { selectedDocuments, hasSelection, toggleSelection, clearSelection } = useDocumentSelection(

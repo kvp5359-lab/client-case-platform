@@ -25,6 +25,8 @@ import {
 } from './useChatSettingsData'
 import { useChatSettingsMutations } from './useChatSettingsMutations'
 import { useDocumentPickerLogic } from './useDocumentPickerLogic'
+import { useTelegramLinkCopy } from './useTelegramLinkCopy'
+import { useEmailSuggestionsFilter } from './useEmailSuggestionsFilter'
 import type { ComposeFieldHandle } from '../ComposeField'
 import type { useChatSettingsFormState } from './useChatSettingsFormState'
 
@@ -111,45 +113,18 @@ export function useChatSettingsActions({
     isUnlinking: isTelegramUnlinking,
   } = useTelegramLink(chat?.project_id ?? '', 'client', chat?.id, open)
 
-  const [telegramCopied, setTelegramCopied] = useState(false)
-  const handleCopyTelegramCode = useCallback(async () => {
-    if (!telegramLinkCode) return
-    try {
-      await navigator.clipboard.writeText(`/link ${telegramLinkCode}`)
-      setTelegramCopied(true)
-      setTimeout(() => setTelegramCopied(false), 2000)
-    } catch {
-      /* clipboard unavailable */
-    }
-  }, [telegramLinkCode])
+  const { telegramCopied, handleCopyTelegramCode } = useTelegramLinkCopy(telegramLinkCode)
 
   // ── Email suggestions ──
   const { data: emailSuggestions = [] } = useEmailSuggestions(
     form.channelType === 'email' ? resolvedWorkspaceId : undefined,
   )
-  useEffect(() => {
-    if (emailSuggestions.length === 0 || form.selectedEmails.length === 0) return
-    form.setSelectedEmails((prev) =>
-      prev.map((chip) => {
-        if (chip.label !== chip.email) return chip
-        const match = emailSuggestions.find(
-          (s) => s.email.toLowerCase() === chip.email.toLowerCase(),
-        )
-        return match ? { ...chip, label: match.label } : chip
-      }),
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [emailSuggestions])
-
-  const filteredSuggestions = useMemo(() => {
-    const selectedSet = new Set(form.selectedEmails.map((e) => e.email.toLowerCase()))
-    const base = emailSuggestions.filter((s) => !selectedSet.has(s.email.toLowerCase()))
-    if (!form.emailInput.trim()) return base
-    const q = form.emailInput.toLowerCase()
-    return base.filter(
-      (s) => s.email.toLowerCase().includes(q) || s.label.toLowerCase().includes(q),
-    )
-  }, [form.emailInput, emailSuggestions, form.selectedEmails])
+  const { filteredSuggestions } = useEmailSuggestionsFilter(
+    emailSuggestions,
+    form.selectedEmails,
+    form.emailInput,
+    form.setSelectedEmails,
+  )
 
   // ── Document picker ──
   const composeProjectId = form.selectedProjectId ?? propProjectId ?? ''
