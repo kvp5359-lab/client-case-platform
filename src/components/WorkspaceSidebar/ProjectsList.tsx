@@ -77,8 +77,12 @@ export const ProjectsList = memo(function ProjectsList({
 
   const searchQuery = externalSearchQuery ?? localSearchQuery
 
-  const filteredProjects = projects.filter((project) =>
-    project.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredProjects = useMemo(
+    () =>
+      projects.filter((project) =>
+        project.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [projects, searchQuery],
   )
 
   // Разделение на закреплённые и обычные
@@ -97,7 +101,7 @@ export const ProjectsList = memo(function ProjectsList({
   }, [filteredProjects, pinnedIds])
 
   // FLIP-анимация при изменении порядка проектов
-  const projectIds = filteredProjects.map((p) => p.id).join(',')
+  const projectIds = useMemo(() => filteredProjects.map((p) => p.id).join(','), [filteredProjects])
   useFlipAnimation(listRef, [projectIds])
 
   // Фокус на поле при открытии
@@ -117,23 +121,45 @@ export const ProjectsList = memo(function ProjectsList({
     setLocalSearchQuery('')
   }
 
-  const sharedItemProps = {
-    unreadCounts,
-    clientUnreadCounts,
-    internalUnreadCounts,
-    reactionEmojis,
-    reactionOnlyProjects,
-    badgeColors,
-    activeProjectId,
-    onProjectClick,
-    getProjectHref,
-    onBadgeClick,
-    isClientOnly,
-    clientTabs,
-    activeTab,
-    onTabClick,
-    togglePin,
-  }
+  // sharedItemProps стабилизирован через useMemo — иначе memo у ProjectListItem бесполезен:
+  // shallow compare на каждый рендер видел бы новую ссылку объекта, все карточки ререндерились
+  // при любом realtime-событии.
+  const sharedItemProps = useMemo(
+    () => ({
+      unreadCounts,
+      clientUnreadCounts,
+      internalUnreadCounts,
+      reactionEmojis,
+      reactionOnlyProjects,
+      badgeColors,
+      activeProjectId,
+      onProjectClick,
+      getProjectHref,
+      onBadgeClick,
+      isClientOnly,
+      clientTabs,
+      activeTab,
+      onTabClick,
+      togglePin,
+    }),
+    [
+      unreadCounts,
+      clientUnreadCounts,
+      internalUnreadCounts,
+      reactionEmojis,
+      reactionOnlyProjects,
+      badgeColors,
+      activeProjectId,
+      onProjectClick,
+      getProjectHref,
+      onBadgeClick,
+      isClientOnly,
+      clientTabs,
+      activeTab,
+      onTabClick,
+      togglePin,
+    ],
+  )
 
   return (
     <div className="group/projects flex flex-col h-full min-h-0">

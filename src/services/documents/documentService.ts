@@ -193,36 +193,57 @@ export async function hardDeleteDocument(documentId: string): Promise<void> {
   )
 
   // 2. Для каждого файла проверяем, есть ли другие ссылки
+  // Оптимизация: вместо N+1 запросов в цикле — 3 батч-запроса через .in(file_ids).
   if (docFiles && docFiles.length > 0) {
-    for (const df of docFiles) {
-      if (df.file_id) {
-        // Проверяем ссылки из других document_files и message_attachments
-        const { count: dfCount } = await supabase
-          .from('document_files')
-          .select('id', { count: 'exact', head: true })
-          .eq('file_id', df.file_id)
-          .neq('document_id', documentId)
-        const { count: maCount } = await supabase
-          .from('message_attachments')
-          .select('id', { count: 'exact', head: true })
-          .eq('file_id', df.file_id)
-        const totalRefs = (dfCount || 0) + (maCount || 0)
+    const fileIds = docFiles
+      .map((df) => df.file_id)
+      .filter((id): id is string => !!id)
 
-        if (totalRefs === 0) {
-          // Нет других ссылок — удаляем файл из Storage и запись из files
-          const { data: fileRecord } = await supabase
-            .from('files')
-            .select('bucket, storage_path')
-            .eq('id', df.file_id)
-            .single()
-          if (fileRecord) {
-            await supabase.storage.from(fileRecord.bucket).remove([fileRecord.storage_path])
+    // Файлы без file_id (legacy): удаляем по file_path из бакета
+    const legacyPaths = docFiles.filter((df) => !df.file_id).map((df) => df.file_path)
+    if (legacyPaths.length > 0) {
+      await supabase.storage.from('document-files').remove(legacyPaths)
+    }
+
+    if (fileIds.length > 0) {
+      // 2.1. Батч-запрос: ссылки из document_files в других документах
+      const [{ data: otherDocFiles }, { data: messageAttachments }, { data: fileRecords }] =
+        await Promise.all([
+          supabase
+            .from('document_files')
+            .select('file_id')
+            .in('file_id', fileIds)
+            .neq('document_id', documentId),
+          supabase.from('message_attachments').select('file_id').in('file_id', fileIds),
+          supabase.from('files').select('id, bucket, storage_path').in('id', fileIds),
+        ])
+
+      // 2.2. Считаем ссылки на каждый file_id
+      const refCounts = new Map<string, number>()
+      otherDocFiles?.forEach((r) => {
+        if (r.file_id) refCounts.set(r.file_id, (refCounts.get(r.file_id) ?? 0) + 1)
+      })
+      messageAttachments?.forEach((r) => {
+        if (r.file_id) refCounts.set(r.file_id, (refCounts.get(r.file_id) ?? 0) + 1)
+      })
+
+      // 2.3. Собираем file_id без других ссылок — их удаляем из Storage и files
+      const orphanIds = fileIds.filter((id) => (refCounts.get(id) ?? 0) === 0)
+      if (orphanIds.length > 0) {
+        // Группируем по bucket для батч-удаления из Storage
+        const byBucket = new Map<string, string[]>()
+        fileRecords?.forEach((f) => {
+          if (orphanIds.includes(f.id)) {
+            if (!byBucket.has(f.bucket)) byBucket.set(f.bucket, [])
+            byBucket.get(f.bucket)!.push(f.storage_path)
           }
-          await supabase.from('files').delete().eq('id', df.file_id)
-        }
-      } else {
-        // Старый файл без file_id — удаляем из document-files бакета
-        await supabase.storage.from('document-files').remove([df.file_path])
+        })
+        await Promise.all(
+          Array.from(byBucket.entries()).map(([bucket, paths]) =>
+            supabase.storage.from(bucket).remove(paths),
+          ),
+        )
+        await supabase.from('files').delete().in('id', orphanIds)
       }
     }
   }

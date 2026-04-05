@@ -50,18 +50,22 @@ export function useDocumentPickerLogic(projectId: string, workspaceId: string) {
         return
       }
 
-      const downloadedFiles: File[] = []
-      for (const df of docFiles) {
-        try {
-          const blob = await downloadDocumentBlob(df.file_path, df.file_id)
-          const file = new File([blob], df.file_name, {
-            type: df.mime_type || 'application/octet-stream',
-          })
-          downloadedFiles.push(file)
-        } catch {
-          toast.warning(`Не удалось скачать: ${df.file_name}`)
-        }
-      }
+      // Параллельное скачивание: вместо последовательного цикла ждём все загрузки разом.
+      // Для 10 файлов — ускорение с суммы на максимум длительности.
+      const results = await Promise.all(
+        docFiles.map(async (df) => {
+          try {
+            const blob = await downloadDocumentBlob(df.file_path, df.file_id)
+            return new File([blob], df.file_name, {
+              type: df.mime_type || 'application/octet-stream',
+            })
+          } catch {
+            toast.warning(`Не удалось скачать: ${df.file_name}`)
+            return null
+          }
+        }),
+      )
+      const downloadedFiles: File[] = results.filter((f): f is File => f !== null)
 
       if (downloadedFiles.length > 0) {
         addFilesRef.current?.(downloadedFiles)

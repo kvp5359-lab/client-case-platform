@@ -41,9 +41,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         .from('workspaces')
         .select('*')
         .eq('id', workspaceId)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
+      if (!data) throw new Error('Рабочее пространство не найдено или нет доступа')
 
       // Only apply result if this is still the latest request
       if (get()._requestId !== currentRequestId) return

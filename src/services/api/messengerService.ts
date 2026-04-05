@@ -352,7 +352,7 @@ export async function deleteMessage(messageId: string): Promise<void> {
           .from('files')
           .select('bucket, storage_path')
           .eq('id', att.file_id)
-          .single()
+          .maybeSingle()
         if (fileRecord) {
           await supabase.storage.from(fileRecord.bucket).remove([fileRecord.storage_path])
         }

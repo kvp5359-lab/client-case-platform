@@ -55,9 +55,10 @@ export function useFormKitData({ formKitId, enabled: enabledProp = true }: UseFo
         .from('form_kits')
         .select('*')
         .eq('id', formKitId)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
+      if (!data) throw new Error('Анкета не найдена')
       return data as FormKit
     },
     enabled: !!formKitId,

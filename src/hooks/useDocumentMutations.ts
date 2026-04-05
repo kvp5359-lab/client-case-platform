@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { DocumentKitWithDocuments, FolderSlotWithDocument } from '@/components/documents/types'
 import { documentKitKeys, folderSlotKeys, kitlessDocumentKeys } from '@/hooks/queryKeys'
+import { hardDeleteDocument } from '@/services/documents/documentService'
 
 export function useDocumentMutations(
   projectId: string | undefined,
@@ -49,48 +50,7 @@ export function useDocumentMutations(
 
   /** Полное удаление документа (вместе с файлами) */
   const hardDeleteDocumentMutation = useMutation({
-    mutationFn: async (documentId: string) => {
-      const { data: files, error: filesError } = await supabase
-        .from('document_files')
-        .select('file_path, file_id')
-        .eq('document_id', documentId)
-
-      if (filesError) throw new Error(`Ошибка получения файлов: ${filesError.message}`)
-
-      if (files && files.length > 0) {
-        for (const df of files) {
-          if (df.file_id) {
-            const { count: dfCount } = await supabase
-              .from('document_files')
-              .select('id', { count: 'exact', head: true })
-              .eq('file_id', df.file_id)
-              .neq('document_id', documentId)
-            const { count: maCount } = await supabase
-              .from('message_attachments')
-              .select('id', { count: 'exact', head: true })
-              .eq('file_id', df.file_id)
-            const totalRefs = (dfCount || 0) + (maCount || 0)
-
-            if (totalRefs === 0) {
-              const { data: fileRecord } = await supabase
-                .from('files')
-                .select('bucket, storage_path')
-                .eq('id', df.file_id)
-                .single()
-              if (fileRecord) {
-                await supabase.storage.from(fileRecord.bucket).remove([fileRecord.storage_path])
-              }
-              await supabase.from('files').delete().eq('id', df.file_id)
-            }
-          } else {
-            await supabase.storage.from('document-files').remove([df.file_path])
-          }
-        }
-      }
-
-      const { error: deleteError } = await supabase.from('documents').delete().eq('id', documentId)
-      if (deleteError) throw new Error(`Ошибка удаления документа: ${deleteError.message}`)
-    },
+    mutationFn: (documentId: string) => hardDeleteDocument(documentId),
     onSuccess: () => {
       invalidateCache()
     },

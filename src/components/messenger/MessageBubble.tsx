@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { memo, useState, useRef, useCallback, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageAttachments } from './MessageAttachment'
@@ -44,7 +44,7 @@ interface MessageBubbleProps {
   onCancelDelayed?: () => void
 }
 
-export function MessageBubble({
+function MessageBubbleImpl({
   message,
   isOwn,
   currentParticipantId,
@@ -290,3 +290,7 @@ export function MessageBubble({
     </div>
   )
 }
+
+// memo нужен потому, что MessageBubble рендерится десятками в MessageList.map() и
+// при каждом новом сообщении/скролле/realtime-событии все баблы иначе ререндерятся.
+export const MessageBubble = memo(MessageBubbleImpl)

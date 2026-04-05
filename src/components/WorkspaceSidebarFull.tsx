@@ -161,6 +161,8 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   }, [workspaceId, queryClient])
 
   const buildHref = (path: string) => {
+    // Защита от open-redirect: блокируем protocol-relative URL (//evil.com) и /\evil.com
+    if (path.startsWith('//') || path.startsWith('/\\')) return '#'
     if (path.startsWith('/')) return path
     if (!workspaceId) return '#'
     return `/workspaces/${workspaceId}/${path}`

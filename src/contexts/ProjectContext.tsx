@@ -69,9 +69,10 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         `,
         )
         .eq('id', projectId ?? '')
-        .single()
+        .maybeSingle()
 
       if (error) throw error
+      if (!data) throw new Error('Проект не найден или нет доступа')
       return data as unknown as ProjectWithTemplate
     },
     enabled: !!projectId,
