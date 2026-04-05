@@ -97,6 +97,7 @@ export function AttachmentMenuButton({
               size="icon"
               className="h-7 w-7 shrink-0"
               onClick={(e) => e.stopPropagation()}
+              aria-label="Меню вложения"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>

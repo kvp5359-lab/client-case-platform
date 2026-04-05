@@ -187,6 +187,7 @@ export function QuickReplyPicker({
           size="icon"
           className="h-8 w-8 text-muted-foreground hover:text-foreground"
           title="Быстрые ответы"
+          aria-label="Быстрые ответы"
           onClick={() => setOpen(!open)}
         >
           <Zap className="h-4 w-4" />

@@ -21,7 +21,13 @@ export function MessageSearch({
 }: MessageSearchProps) {
   if (!isOpen) {
     return (
-      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggle}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7"
+        onClick={onToggle}
+        aria-label="Поиск сообщений"
+      >
         <Search className="h-3.5 w-3.5" />
       </Button>
     )
@@ -51,6 +57,7 @@ export function MessageSearch({
           onSearchChange('')
           onToggle()
         }}
+        aria-label="Закрыть поиск"
       >
         <X className="h-3.5 w-3.5" />
       </Button>

@@ -18,7 +18,13 @@ export function EditingBanner({ editingMessage, onClearEdit }: EditingBannerProp
           {stripHtml(editingMessage.content)}
         </p>
       </div>
-      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onClearEdit}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 shrink-0"
+        onClick={onClearEdit}
+        aria-label="Отменить редактирование"
+      >
         <X className="h-3.5 w-3.5" />
       </Button>
     </div>
@@ -37,7 +43,13 @@ export function ReplyBanner({ replyTo, onClearReply }: ReplyBannerProps) {
         <p className="text-xs font-medium text-foreground">{replyTo.sender_name}</p>
         <p className="text-xs text-muted-foreground line-clamp-1">{stripHtml(replyTo.content)}</p>
       </div>
-      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onClearReply}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 shrink-0"
+        onClick={onClearReply}
+        aria-label="Отменить ответ"
+      >
         <X className="h-3.5 w-3.5" />
       </Button>
     </div>

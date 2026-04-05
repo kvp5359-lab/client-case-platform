@@ -35,7 +35,7 @@ export function ReactionPicker({ onPick }: ReactionPickerProps) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-6 w-6">
+        <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Добавить реакцию">
           <SmilePlus className="h-3.5 w-3.5" />
         </Button>
       </PopoverTrigger>
