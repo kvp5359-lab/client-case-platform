@@ -1,3 +1,10 @@
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'О платформе — ClientCase',
+  description: 'ClientCase — платформа управления клиентскими делами для юристов',
+}
+
 export default function AboutPage() {
   return (
     <div className="container mx-auto py-16 text-center">
