@@ -65,7 +65,7 @@ export const ProjectListItem = memo(function ProjectListItem({
   return (
     <div
       data-project-id={project.id}
-      className={`group/item relative border rounded-md p-1 transition-colors ${
+      className={`group/item relative border rounded-md p-1 transition-colors duration-150 ease-out ${
         showTabs
           ? 'border-gray-200 bg-gray-50/40'
           : 'border-transparent bg-transparent'

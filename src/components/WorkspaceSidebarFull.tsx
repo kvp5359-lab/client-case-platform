@@ -5,7 +5,7 @@
  * Мигрирован из WorkspaceSidebar.tsx оригинального ClientCase.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, startTransition } from 'react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Home, Inbox, CheckSquare, Users, Layout, Settings, BookOpen } from 'lucide-react'
@@ -56,8 +56,14 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   const searchParams = useSearchParams()
   const workspaceId = propsWorkspaceId || params.workspaceId
 
-  // Extract projectId from URL
-  const activeProjectId = pathname.match(/\/projects\/([^/]+)/)?.[1]
+  // Extract projectId from URL + оптимистичный state для мгновенной анимации.
+  const urlProjectId = pathname.match(/\/projects\/([^/]+)/)?.[1]
+  const [optimisticProjectId, setOptimisticProjectId] = useState<string | undefined>(urlProjectId)
+  // Синхронизация с URL, когда навигация завершилась (или была сделана не через sidebar).
+  useEffect(() => {
+    setOptimisticProjectId(urlProjectId)
+  }, [urlProjectId])
+  const activeProjectId = optimisticProjectId
   const { user } = useAuth()
 
   const {
@@ -161,7 +167,11 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   }
 
   const handleNavigate = (path: string) => {
-    router.push(buildHref(path))
+    // startTransition: навигация — low-priority update, так что Next.js не блокирует
+    // main thread тяжёлым ререндером страницы и CSS-анимация в сайдбаре запускается сразу.
+    startTransition(() => {
+      router.push(buildHref(path))
+    })
   }
 
   const isNavActive = (href: string) => {
@@ -298,7 +308,10 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
           reactionOnlyProjects={reactionOnlyProjects}
           badgeColors={badgeColors}
           activeProjectId={activeProjectId}
-          onProjectClick={(projectId) => handleNavigate(`projects/${projectId}`)}
+          onProjectClick={(projectId) => {
+            setOptimisticProjectId(projectId)
+            handleNavigate(`projects/${projectId}`)
+          }}
           getProjectHref={(projectId) => buildHref(`projects/${projectId}`)}
           onBadgeClick={handleBadgeClick}
           onCreateProject={isClientOnly ? undefined : createProjectDialog.open}

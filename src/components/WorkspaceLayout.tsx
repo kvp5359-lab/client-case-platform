@@ -4,7 +4,7 @@
  * WorkspaceLayout — layout с sidebar и правой панелью
  */
 
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense, createContext, useContext } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Menu, X, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -37,12 +37,44 @@ const ExtraPanelContent = lazy(() =>
 
 const PANEL_DEFAULT_WIDTH = '45%'
 
+/**
+ * Контекст «shell уже выше по дереву». Устанавливается в Next.js layout —
+ * тогда внутренние <WorkspaceLayout> в page-components работают как no-op
+ * passthrough, чтобы не размонтировать сайдбар при смене проекта.
+ */
+const WorkspaceShellContext = createContext<boolean>(false)
+
 interface WorkspaceLayoutProps {
   children: React.ReactNode
   workspaceId?: string
 }
 
 export function WorkspaceLayout({ children, workspaceId: propWorkspaceId }: WorkspaceLayoutProps) {
+  const hasShellAbove = useContext(WorkspaceShellContext)
+  // Если shell уже есть в дереве выше — просто пропускаем children дальше.
+  // Это позволяет страницам продолжать оборачивать свой контент в <WorkspaceLayout>,
+  // но между переходами сайдбар живёт в Next.js layout и не перемонтируется.
+  if (hasShellAbove) {
+    return <>{children}</>
+  }
+
+  return <WorkspaceLayoutImpl workspaceId={propWorkspaceId}>{children}</WorkspaceLayoutImpl>
+}
+
+/**
+ * Shell-обёртка для использования в Next.js layout.tsx.
+ * Рендерит сайдбар, правую панель, диалоги — всё, кроме children area.
+ * Дочерние WorkspaceLayout через контекст станут no-op.
+ */
+export function WorkspaceLayoutShell({ children, workspaceId: propWorkspaceId }: WorkspaceLayoutProps) {
+  return (
+    <WorkspaceShellContext.Provider value={true}>
+      <WorkspaceLayoutImpl workspaceId={propWorkspaceId}>{children}</WorkspaceLayoutImpl>
+    </WorkspaceShellContext.Provider>
+  )
+}
+
+function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: WorkspaceLayoutProps) {
   const params = useParams<{ workspaceId?: string }>()
   const router = useRouter()
   const { user } = useAuth()

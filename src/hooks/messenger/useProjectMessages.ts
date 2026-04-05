@@ -220,6 +220,14 @@ export function useProjectMessages(
   }, [projectId, channel, threadId, queryClient, messagesKey])
 
   const fetchOlderMessages = useCallback(() => {
+    // DEBUG: диагностика подгрузки старых сообщений
+    console.log('[useProjectMessages] fetchOlder called', {
+      hasNextPage: query.hasNextPage,
+      isFetchingNextPage: query.isFetchingNextPage,
+      pagesCount: query.data?.pages?.length,
+      lastPageHasMore: query.data?.pages?.[query.data.pages.length - 1]?.hasMore,
+      lastPageFirstMsgDate: query.data?.pages?.[query.data.pages.length - 1]?.messages?.[0]?.created_at,
+    })
     if (query.hasNextPage && !query.isFetchingNextPage) {
       query.fetchNextPage()
     }
