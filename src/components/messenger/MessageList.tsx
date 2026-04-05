@@ -298,7 +298,24 @@ export function MessageList({
             !prevMsg || !isSameSender || !isSameDay(msg.created_at, prevMsg.created_at)
 
           return (
-            <div key={msg.id}>
+            <div
+              key={msg.id}
+              // Браузерная виртуализация: для сообщений вне viewport'а браузер
+              // пропускает рендеринг (layout/paint), сохраняя при этом структуру
+              // DOM и scroll-логику. При >100 сообщениях это заметно снижает
+              // нагрузку без переписывания scroll-инвариантов.
+              // contain-intrinsic-size — плейсхолдер-высота до реального рендера.
+              // Для первых 20 и последних 20 сообщений отключаем, чтобы не мешать
+              // авто-скроллу и плавности у краёв.
+              style={
+                messages.length > 100 && i >= 20 && i < messages.length - 20
+                  ? {
+                      contentVisibility: 'auto',
+                      containIntrinsicSize: 'auto 80px',
+                    }
+                  : undefined
+              }
+            >
               {showDate && <DateSeparator date={msg.created_at} />}
               {showUnreadSeparator && <UnreadSeparator />}
               {msg.source === 'telegram_service' ? (
