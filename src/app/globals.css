@@ -433,16 +433,16 @@ body[data-panel-open] [data-sonner-toaster][data-x-position='right'] {
   }
 }
 
-/* Radix Collapsible: анимация раскрытия/сворачивания через max-height + opacity.
-   cubic-bezier(0.32, 0.72, 0, 1) — быстрый старт, мягкое торможение (Apple-style). */
+/* Radix Collapsible: последовательная анимация — сначала свернуть старое,
+   потом развернуть новое. Разворачивание ждёт завершения сворачивания. */
 [data-slot='sidebar-tabs-collapsible'] {
   overflow: hidden;
 }
 [data-slot='sidebar-tabs-collapsible'][data-state='open'] {
-  animation: sidebar-collapsible-down 160ms cubic-bezier(0.32, 0.72, 0, 1);
+  animation: sidebar-collapsible-down 200ms cubic-bezier(0.32, 0.72, 0, 1) 200ms both;
 }
 [data-slot='sidebar-tabs-collapsible'][data-state='closed'] {
-  animation: sidebar-collapsible-up 140ms cubic-bezier(0.4, 0, 1, 1);
+  animation: sidebar-collapsible-up 180ms cubic-bezier(0.4, 0, 1, 1);
 }
 @keyframes sidebar-collapsible-down {
   from {
