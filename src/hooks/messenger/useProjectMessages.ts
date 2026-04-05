@@ -18,9 +18,15 @@ export function useProjectMessages(
 ) {
   const queryClient = useQueryClient()
   const instanceId = useRef(Math.random().toString(36).slice(2))
-  const messagesKey = threadId
-    ? messengerKeys.messagesByThreadId(threadId)
-    : messengerKeys.messages(projectId ?? '', channel)
+  // Стабильная ссылка — иначе useEffect ниже срабатывает на каждом рендере и инвалидирует
+  // queries, сбрасывая подгруженные страницы истории.
+  const messagesKey = useMemo(
+    () =>
+      threadId
+        ? messengerKeys.messagesByThreadId(threadId)
+        : messengerKeys.messages(projectId ?? '', channel),
+    [threadId, projectId, channel],
+  )
 
   const query = useInfiniteQuery({
     queryKey: messagesKey,
@@ -220,14 +226,6 @@ export function useProjectMessages(
   }, [projectId, channel, threadId, queryClient, messagesKey])
 
   const fetchOlderMessages = useCallback(() => {
-    // DEBUG: диагностика подгрузки старых сообщений
-    console.log('[useProjectMessages] fetchOlder called', {
-      hasNextPage: query.hasNextPage,
-      isFetchingNextPage: query.isFetchingNextPage,
-      pagesCount: query.data?.pages?.length,
-      lastPageHasMore: query.data?.pages?.[query.data.pages.length - 1]?.hasMore,
-      lastPageFirstMsgDate: query.data?.pages?.[query.data.pages.length - 1]?.messages?.[0]?.created_at,
-    })
     if (query.hasNextPage && !query.isFetchingNextPage) {
       query.fetchNextPage()
     }

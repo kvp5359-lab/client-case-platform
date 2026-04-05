@@ -205,20 +205,12 @@ export function MessageList({
     const observer = new IntersectionObserver(
       (entries) => {
         const s = stateRef.current
-        const isIntersecting = entries[0]?.isIntersecting
-        // DEBUG: логи для диагностики подгрузки старых сообщений
-        console.log('[MessageList] observer', {
-          isIntersecting,
-          hasMoreOlder: s.hasMoreOlder,
-          isFetchingOlder: s.isFetchingOlder,
-        })
-        if (isIntersecting && s.hasMoreOlder && !s.isFetchingOlder) {
+        if (entries[0]?.isIntersecting && s.hasMoreOlder && !s.isFetchingOlder) {
           // Зафиксировать высоту ДО подгрузки — чтобы компенсировать scrollTop после рендера
           const viewport = getViewport()
           if (viewport) {
             preLoadScrollHeightRef.current = viewport.scrollHeight
           }
-          console.log('[MessageList] → fetchOlder()')
           s.onFetchOlder()
         }
       },
