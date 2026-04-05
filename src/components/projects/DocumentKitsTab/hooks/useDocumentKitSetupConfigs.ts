@@ -72,9 +72,9 @@ interface BatchActionsParams {
     isCompressing: boolean
     isCheckingBatch: boolean
     isExportingToDisk: boolean
-    mergeProgress: number
-    compressProgress: number
-    exportProgress: number
+    mergeProgress: { current: number; total: number } | null
+    compressProgress: { current: number; total: number } | null
+    exportProgress: { current: number; total: number } | null
   }
   permissions: {
     canBatchCheck: boolean

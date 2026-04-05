@@ -30,6 +30,7 @@ describe('folderService', () => {
       const result = await createFolder({
         name: 'Test',
         kitId: 'kit-1',
+        projectId: 'project-1',
         workspaceId: 'ws-1',
       })
 
@@ -50,7 +51,7 @@ describe('folderService', () => {
       } as unknown as SupabaseFrom)
 
       await expect(
-        createFolder({ name: 'Test', kitId: 'kit-1', workspaceId: 'ws-1' })
+        createFolder({ name: 'Test', kitId: 'kit-1', projectId: 'project-1', workspaceId: 'ws-1' })
       ).rejects.toThrow()
     })
   })

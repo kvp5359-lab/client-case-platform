@@ -33,7 +33,7 @@ interface UseFolderAndUIHandlersParams {
   openSourceSettingsDialog: () => void
   openDestinationSettingsDialog: () => void
   setHoveredFolder: (folderId: string | null) => void
-  setSystemSectionTab: (tab: 'unassigned' | 'destination' | 'trash') => void
+  setSystemSectionTab: (tab: 'unassigned' | 'source' | 'destination' | 'trash') => void
   setUnassignedCollapsed: (collapsed: boolean) => void
   setSourceCollapsed: (collapsed: boolean) => void
   setDestinationCollapsed: (collapsed: boolean) => void

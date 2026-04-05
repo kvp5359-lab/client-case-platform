@@ -13,7 +13,11 @@ function makeStructure(
     fields: Array<{ id: string; field_definition_id: string; field_type: string }>
   }>,
 ) {
+  // Минимальный template для тестов; хук его не читает, но тип требует присутствия поля.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const template: any = { id: 'tpl', workspace_id: 'ws', name: 'Tpl' }
   return {
+    template,
     sections: sections.map((s) => ({
       id: s.id,
       name: `Section ${s.id}`,
@@ -24,7 +28,8 @@ function makeStructure(
         field_type: f.field_type,
       })),
     })),
-  }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any
 }
 
 describe('useFormKitFilter', () => {
@@ -88,7 +93,8 @@ describe('useFormKitFilter', () => {
         ],
       },
     ])
-    const compositeItems = [
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const compositeItems: any = [
       { composite_field_id: 'comp1', nested_field_id: 'n1', nested_field: { id: 'n1', name: 'N1', field_type: 'text' } },
       { composite_field_id: 'comp1', nested_field_id: 'n2', nested_field: { id: 'n2', name: 'N2', field_type: 'text' } },
     ]

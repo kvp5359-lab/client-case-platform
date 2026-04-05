@@ -14,6 +14,7 @@ export interface CreateFolderParams {
   description?: string
   knowledgeArticleId?: string | null
   kitId: string
+  projectId: string
   workspaceId: string
 }
 
@@ -32,6 +33,7 @@ export async function createFolder({
   description = '',
   knowledgeArticleId,
   kitId,
+  projectId,
   workspaceId,
 }: CreateFolderParams): Promise<Folder> {
   return safeFetchOrThrow(
@@ -42,6 +44,7 @@ export async function createFolder({
         description,
         knowledge_article_id: knowledgeArticleId ?? null,
         document_kit_id: kitId,
+        project_id: projectId,
         workspace_id: workspaceId,
       })
       .select()

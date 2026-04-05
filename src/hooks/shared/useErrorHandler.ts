@@ -15,7 +15,7 @@
  * ```
  */
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { AppError } from '@/services/errors'
@@ -89,4 +89,35 @@ export function useErrorHandler(): UseErrorHandlerReturn {
   )
 
   return { handleError }
+}
+
+/**
+ * Обёртка над async-операциями с loading и error состояниями.
+ * Возвращает null при ошибке, автоматически показывает toast с userMessage.
+ */
+export function useAsyncErrorHandler() {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  const execute = useCallback(
+    async <T>(fn: () => Promise<T>, userMessage?: string): Promise<T | null> => {
+      setLoading(true)
+      setError(null)
+      try {
+        const result = await fn()
+        return result
+      } catch (err) {
+        const e = err instanceof Error ? err : new Error(String(err))
+        setError(e)
+        if (userMessage) toast.error(userMessage)
+        else if (e instanceof Error) toast.error(e.message || DEFAULT_ERROR_MESSAGE)
+        return null
+      } finally {
+        setLoading(false)
+      }
+    },
+    [],
+  )
+
+  return { execute, loading, error }
 }

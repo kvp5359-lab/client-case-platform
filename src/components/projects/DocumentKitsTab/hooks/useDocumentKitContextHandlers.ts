@@ -72,7 +72,7 @@ interface UseDocumentKitContextHandlersParams {
     event?: React.MouseEvent,
   ) => void
   // Collapsed states setters
-  setSystemSectionTab: (tab: 'unassigned' | 'destination' | 'trash') => void
+  setSystemSectionTab: (tab: 'unassigned' | 'source' | 'destination' | 'trash') => void
   setUnassignedCollapsed: (collapsed: boolean) => void
   setSourceCollapsed: (collapsed: boolean) => void
   setDestinationCollapsed: (collapsed: boolean) => void

@@ -21,6 +21,7 @@ interface UploadDocumentParams {
   documentName?: string
   documentDescription?: string
   folderId?: string | null
+  sourceDocumentId?: string | null
 }
 
 type UploadDocumentFn = (

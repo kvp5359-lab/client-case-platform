@@ -26,6 +26,7 @@ interface UploadDocumentParams {
   documentName?: string
   documentDescription?: string
   folderId?: string | null
+  sourceDocumentId?: string | null
 }
 
 type UploadDocumentFn = (
@@ -80,13 +81,23 @@ export function useFolderOperations(
 
       const data = await getTemplateFolders(kit.template_id)
 
+      // После миграции KitTemplateFolder хранит данные inline, а не через JOIN folder_templates.
+      // Маппим inline-поля в форму Tables<'folder_templates'>, чтобы UI (отображение имени/описания)
+      // продолжал работать без переделки консюмеров.
       const templates: Tables<'folder_templates'>[] = []
       if (data) {
         for (const item of data) {
-          const t = item.folder_templates
-          if (t && typeof t === 'object' && !Array.isArray(t)) {
-            templates.push(t as Tables<'folder_templates'>)
-          }
+          // Собираем минимальный folder_templates-подобный объект из inline-полей
+          templates.push({
+            id: item.folder_template_id ?? item.id,
+            name: item.name,
+            description: item.description,
+            ai_naming_prompt: item.ai_naming_prompt,
+            ai_check_prompt: item.ai_check_prompt,
+            knowledge_article_id: item.knowledge_article_id,
+            // Остальные поля folder_templates не используются в UI — проставляем безопасные значения
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any)
         }
       }
 

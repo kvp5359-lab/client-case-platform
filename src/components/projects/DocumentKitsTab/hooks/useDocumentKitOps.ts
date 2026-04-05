@@ -26,8 +26,9 @@ import { useProjectDestinationFolder } from '@/hooks/documents/useProjectDestina
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import { projectKeys } from '@/hooks/queryKeys'
 import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
-import type { DocumentWithFiles, Folder, SourceDocument } from '@/components/documents/types'
+import type { DocumentWithFiles, Folder, SourceDocument, DestinationDocument } from '@/components/documents/types'
 import type { ProjectPermissionCode } from '@/types/permissions'
+import type { Tables } from '@/types/database'
 
 interface UseDocumentKitOpsParams {
   projectId: string
@@ -50,7 +51,7 @@ interface UseDocumentKitOpsParams {
     documentDescription?: string
     folderId?: string | null
     sourceDocumentId?: string | null
-  }) => Promise<{ document: { id: string }; fileId: string }>
+  }) => Promise<{ document: Tables<'documents'>; fileId: string }>
   hardDeleteDocument: (documentId: string) => Promise<void>
   reorderDocuments: (
     updates: {
@@ -87,7 +88,7 @@ interface UseDocumentKitOpsParams {
   // Selection & drag state
   selectedDocuments: Set<string>
   draggedDocId: string | null
-  dragOverPosition: 'before' | 'after' | null
+  dragOverPosition: 'top' | 'bottom' | null
   draggedSourceDoc: SourceDocument | null
   resetDragState: () => void
 
@@ -96,10 +97,10 @@ interface UseDocumentKitOpsParams {
   showHiddenSourceDocs: boolean
   setSourceDocuments: (docs: SourceDocument[]) => void
   setSyncing: (value: boolean) => void
-  setSystemSectionTab: (tab: 'unassigned' | 'destination' | 'trash') => void
+  setSystemSectionTab: (tab: 'unassigned' | 'source' | 'destination' | 'trash') => void
   setSourceCollapsed: (collapsed: boolean) => void
   setSourceFolderName: (name: string) => void
-  setDestinationDocuments: (docs: SourceDocument[]) => void
+  setDestinationDocuments: (docs: DestinationDocument[]) => void
   setExportingToDestination: (value: boolean) => void
   setFetchingDestination: (value: boolean) => void
   setHasExported: (value: boolean) => void
@@ -108,8 +109,9 @@ interface UseDocumentKitOpsParams {
   setExportPhase: (phase: 'idle' | 'cleaning' | 'uploading' | 'completed') => void
   setExportDocuments: (docs: import('../dialogs/ExportProgressDialog').ExportDocument[]) => void
   updateExportDocumentStatus: (
-    docId: string,
-    status: 'pending' | 'uploading' | 'done' | 'error',
+    documentId: string,
+    status: 'pending' | 'uploading' | 'success' | 'error',
+    progress?: number,
     error?: string,
   ) => void
   setExportCleaningProgress: (progress: number) => void

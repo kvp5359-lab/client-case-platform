@@ -33,18 +33,26 @@ export const SystemSectionContainer = memo(function SystemSectionContainer() {
     exportPhase = 'idle',
   } = uiState
 
-  // Маппинг вкладок на обработчики свёрнутости
-  const collapseHandlers: Record<SystemSectionTab, (collapsed: boolean) => void> = {
+  // Маппинг вкладок на обработчики свёрнутости.
+  // 'source' не имеет собственного collapsed-состояния и ведёт себя как 'unassigned',
+  // поэтому используем тип CollapsibleTab = подмножество SystemSectionTab без 'source'.
+  type CollapsibleTab = Exclude<SystemSectionTab, 'source'>
+
+  const collapseHandlers: Record<CollapsibleTab, (collapsed: boolean) => void> = {
     unassigned: handlers.onUnassignedCollapsedChange,
     destination: handlers.onDestinationCollapsedChange,
     trash: handlers.onTrashCollapsedChange,
   }
 
-  const collapsedStates: Record<SystemSectionTab, boolean> = {
+  const collapsedStates: Record<CollapsibleTab, boolean> = {
     unassigned: unassignedCollapsed,
     destination: destinationCollapsed,
     trash: trashCollapsed,
   }
+
+  // Нормализуем 'source' к 'unassigned' для collapse-операций
+  const toCollapsibleTab = (t: SystemSectionTab): CollapsibleTab =>
+    t === 'source' ? 'unassigned' : t
 
   // Cleanup таймера при unmount
   const tabSwitchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -55,15 +63,17 @@ export const SystemSectionContainer = memo(function SystemSectionContainer() {
   }, [])
 
   const handleTabClick = (tab: SystemSectionTab) => {
+    const tabKey = toCollapsibleTab(tab)
+    const activeKey = toCollapsibleTab(activeTab)
     if (activeTab === tab) {
-      collapseHandlers[tab](!collapsedStates[tab])
+      collapseHandlers[tabKey](!collapsedStates[tabKey])
     } else {
-      collapseHandlers[activeTab](true)
+      collapseHandlers[activeKey](true)
       if (tabSwitchTimerRef.current) clearTimeout(tabSwitchTimerRef.current)
       tabSwitchTimerRef.current = setTimeout(
         () => {
           handlers.onTabChange(tab)
-          collapseHandlers[tab](false)
+          collapseHandlers[tabKey](false)
         },
         tab === 'unassigned' ? 100 : 150,
       )

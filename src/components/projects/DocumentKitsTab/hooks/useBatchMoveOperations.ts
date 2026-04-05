@@ -24,7 +24,8 @@ interface UseBatchMoveOperationsProps {
     sourceDoc: SourceDocumentInfo,
     folderId: string | null,
     showToast?: boolean,
-  ) => Promise<boolean>
+    onPhaseChange?: (phase: 'downloading' | 'uploading' | null) => void,
+  ) => Promise<string | null>
   sourceDocuments: SourceDocument[]
 }
 

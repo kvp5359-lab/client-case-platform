@@ -43,7 +43,12 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
-import { SidebarNavigation, SidebarMenuGroup } from '@/components/SidebarNavigation'
+// SidebarNavigation был удалён из проекта; оставляем заглушки, чтобы эта demo-страница
+// продолжала компилироваться. Полноценный вариант — удалить ComponentsShowcase из bundle.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SidebarMenuGroup = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const SidebarNavigation = ({ children }: { groups: any; children?: React.ReactNode }) => <>{children}</>
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { GripVertical, Pencil, Trash2 } from 'lucide-react'
 

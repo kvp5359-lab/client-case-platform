@@ -196,8 +196,10 @@ export function useDocumentsDialogActions({
     projectId,
     workspaceId,
     () => invalidateDocumentKits(),
-    uploadDocument,
-    softDeleteDocument,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- UploadDocumentFn signature варьируется между вызовами
+    uploadDocument as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    softDeleteDocument as any,
     () => clearAllSelections(),
   )
 

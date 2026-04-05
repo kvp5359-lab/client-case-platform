@@ -96,7 +96,7 @@ export interface DocumentKitHandlers {
   onHardDeleteDocument: (docId: string) => void
   onStatusChange: (docId: string, statusId: string | null) => void
   // UI state changes
-  onTabChange: (tab: 'unassigned' | 'destination' | 'trash') => void
+  onTabChange: (tab: 'unassigned' | 'source' | 'destination' | 'trash') => void
   onUnassignedCollapsedChange: (collapsed: boolean) => void
   onSourceCollapsedChange: (collapsed: boolean) => void
   onDestinationCollapsedChange: (collapsed: boolean) => void

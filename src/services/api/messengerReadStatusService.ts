@@ -88,12 +88,15 @@ export async function getUnreadCount(
   channel: MessageChannel = 'client',
   threadId?: string,
 ): Promise<number> {
+  // Автоген типов Supabase помечает p_project_id как non-null, но RPC
+  // на стороне Postgres корректно обрабатывает NULL (для тредов без проекта).
+  // Каст через never — единственный способ обойти автоген без отключения правил.
   const { data, error } = await supabase.rpc('get_unread_messages_count', {
     p_participant_id: participantId,
     ...(projectId ? { p_project_id: projectId } : {}),
     p_channel: channel,
     ...(threadId ? { p_thread_id: threadId } : {}),
-  })
+  } as never)
 
   if (error) throw new ConversationError(`Ошибка подсчёта непрочитанных: ${error.message}`)
 

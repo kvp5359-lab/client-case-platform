@@ -5,7 +5,7 @@
  */
 
 import React from 'react'
-import type { DocumentWithFiles, SourceDocument, Folder } from '@/components/documents/types'
+import type { DocumentWithFiles, SourceDocument, SourceDocumentInfo, Folder } from '@/components/documents/types'
 import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
 import type { Tables } from '@/types/database'
 import type { ConfirmDialogState } from '@/hooks/dialogs/useConfirmDialog'
@@ -139,8 +139,17 @@ export interface UseDocumentKitHandlersProps {
   }
 
   sourceUpload: {
-    uploadSourceDocument: (file: SourceDocument, folderId: string | null) => Promise<boolean>
-    uploadSourceDocumentSilent: (file: SourceDocument, folderId: string | null) => Promise<boolean>
+    uploadSourceDocument: (
+      file: SourceDocumentInfo,
+      folderId: string | null,
+      showToast?: boolean,
+      onPhaseChange?: (phase: 'downloading' | 'uploading' | null) => void,
+    ) => Promise<string | null>
+    uploadSourceDocumentSilent: (
+      file: SourceDocumentInfo,
+      folderId: string | null,
+    ) => Promise<string | null>
+    uploadSourceDocumentForSlot?: unknown
   }
 
   // Перемещение
