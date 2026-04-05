@@ -5,7 +5,7 @@
  */
 
 import { useMemo, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useWorkspacePermissions } from './useWorkspacePermissions'
@@ -138,6 +138,10 @@ export function useProjectPermissions(
       return data
     },
     enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   })
 
   const workspaceId = projectData?.workspace_id
@@ -156,41 +160,30 @@ export function useProjectPermissions(
   } = useQuery({
     queryKey: permissionKeys.projectParticipant(projectId ?? '', user?.id, workspaceId),
     queryFn: async () => {
-      if (!projectId || !user?.id) return null
+      if (!projectId || !user?.id || !workspaceId) return null
 
-      // Сначала находим participant_id пользователя
-      const { data: participant, error: pError } = await supabase
-        .from('participants')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('workspace_id', workspaceId)
-        .eq('is_deleted', false)
-        .single()
-
-      if (pError) {
-        // PGRST116 (no rows) — нет participant = нет прав, не ошибка
-        if (pError.code !== 'PGRST116') {
-          logger.warn('useProjectPermissions: ошибка загрузки participant', pError)
-        }
-        return null
-      }
-      if (!participant) return null
-
-      // Затем находим роли в проекте
+      // Один запрос с JOIN: участие в проекте + привязка к workspace через participants.
+      // Раньше делалось 2 последовательных roundtrip, теперь один.
       const { data, error } = await supabase
         .from('project_participants')
-        .select('project_roles')
+        .select('project_roles, participants!inner(user_id, workspace_id, is_deleted)')
         .eq('project_id', projectId)
-        .eq('participant_id', participant.id)
+        .eq('participants.user_id', user.id)
+        .eq('participants.workspace_id', workspaceId)
+        .eq('participants.is_deleted', false)
         .maybeSingle()
 
       if (error) {
         logger.warn('useProjectPermissions: ошибка загрузки project_participants', error)
         return null
       }
-      return data
+      return data ? { project_roles: data.project_roles } : null
     },
     enabled: !!projectId && !!user?.id && !!workspaceId,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   })
 
   // Загружаем все роли проекта с их разрешениями
@@ -213,6 +206,9 @@ export function useProjectPermissions(
       return data
     },
     enabled: !!workspaceId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 
   const userProjectRoles = useMemo(

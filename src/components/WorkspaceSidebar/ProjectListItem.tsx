@@ -3,6 +3,7 @@
 import { memo } from 'react'
 import Link from 'next/link'
 import { FolderOpen, ChevronRight, ChevronDown, Pin, PinOff } from 'lucide-react'
+import * as CollapsiblePrimitive from '@radix-ui/react-collapsible'
 import type { Database } from '@/types/database'
 import type { ModuleDefinition } from '@/page-components/ProjectPage/moduleRegistry'
 import { getBadgeClasses, getStatusIconColor, FOLDER_ICON_COLOR } from './projectListConstants'
@@ -55,17 +56,29 @@ export const ProjectListItem = memo(function ProjectListItem({
     !hasClientUnread && internalUnread ? 'internal' : 'client'
   const badgeColor = badgeColors?.get(project.id)
   const isActive = project.id === activeProjectId
-  const showTabs = isClientOnly && isActive && clientTabs && clientTabs.length > 0
+  // В клиентском режиме обёртка вкладок рендерится всегда (у всех проектов),
+  // чтобы работала CSS-анимация сворачивания/разворачивания через grid-rows.
+  const hasTabsWrapper = Boolean(isClientOnly && clientTabs && clientTabs.length > 0)
+  const showTabs = hasTabsWrapper && isActive
   const visibleTabs = clientTabs?.filter((m) => m.showTab !== false)
 
   return (
-    <div data-project-id={project.id} className="group/item relative">
+    <div
+      data-project-id={project.id}
+      className={`group/item relative border rounded-md p-1 transition-colors ${
+        showTabs
+          ? 'border-gray-200 bg-gray-50/40'
+          : 'border-transparent bg-transparent'
+      }`}
+    >
       <Link
         href={getProjectHref ? getProjectHref(project.id) : '#'}
         onClick={() => onProjectClick(project.id)}
         className={`w-full flex items-center gap-3 px-2 py-2 text-sm rounded-md transition-colors ${
           isActive
-            ? 'bg-gray-200 text-gray-900 font-semibold'
+            ? showTabs
+              ? 'text-gray-900 font-semibold'
+              : 'bg-gray-200 text-gray-900 font-semibold'
             : 'text-gray-700 hover:bg-gray-100/50'
         }`}
       >
@@ -161,29 +174,34 @@ export const ProjectListItem = memo(function ProjectListItem({
           <ChevronRight className="h-3 w-3 text-gray-400" />
         )}
       </Link>
-      {/* Вкладки проекта для клиента */}
-      {showTabs && visibleTabs && (
-        <nav className="ml-6 mt-1 mb-1 space-y-0.5">
-          {visibleTabs.map((tab) => {
-            const Icon = tab.icon
-            const isTabActive = activeTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => onTabClick?.(project.id, tab.id)}
-                className={`w-full flex items-center gap-2.5 px-2 py-1.5 text-sm rounded-md transition-colors ${
-                  isTabActive
-                    ? 'bg-gray-200 text-gray-900 font-semibold'
-                    : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{tab.label}</span>
-              </button>
-            )
-          })}
-        </nav>
+      {/* Вкладки проекта для клиента — анимированное раскрытие через Radix Collapsible. */}
+      {hasTabsWrapper && visibleTabs && (
+        <CollapsiblePrimitive.Root open={showTabs}>
+          <CollapsiblePrimitive.Content data-slot="sidebar-tabs-collapsible">
+            <nav className="ml-4 mt-1 mb-0.5 space-y-0.5">
+              {visibleTabs.map((tab) => {
+                const Icon = tab.icon
+                const isTabActive = showTabs && activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    tabIndex={showTabs ? 0 : -1}
+                    onClick={() => onTabClick?.(project.id, tab.id)}
+                    className={`w-full flex items-center gap-2.5 px-2 py-1.5 text-sm rounded-md transition-colors ${
+                      isTabActive
+                        ? 'bg-gray-200 text-gray-900 font-semibold'
+                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{tab.label}</span>
+                  </button>
+                )
+              })}
+            </nav>
+          </CollapsiblePrimitive.Content>
+        </CollapsiblePrimitive.Root>
       )}
     </div>
   )

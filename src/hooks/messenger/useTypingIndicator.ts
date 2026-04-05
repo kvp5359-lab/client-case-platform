@@ -33,7 +33,10 @@ export function useTypingIndicator(
       : `typing:${projectId}:${channel}`
 
     // Удаляем старый канал с таким именем, если он ещё висит в Supabase
-    const existingChannel = supabase.getChannels().find(ch => ch.topic === presenceChannelName)
+    // Supabase добавляет префикс "realtime:" к topic канала
+    const existingChannel = supabase.getChannels().find(
+      ch => ch.topic === presenceChannelName || ch.topic === `realtime:${presenceChannelName}`
+    )
     if (existingChannel) {
       supabase.removeChannel(existingChannel)
     }

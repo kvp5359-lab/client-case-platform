@@ -5,8 +5,8 @@
  * Мигрирован из WorkspaceSidebar.tsx оригинального ClientCase.
  */
 
-import { useEffect, useRef } from 'react'
-import { useParams, useRouter, usePathname } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
+import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Home, Inbox, CheckSquare, Users, Layout, Settings, BookOpen } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -26,7 +26,7 @@ import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
-import { useProjectData, useProjectModules } from '@/page-components/ProjectPage/hooks'
+import { useProjectTemplate, useProjectModules } from '@/page-components/ProjectPage/hooks'
 import type { WorkspacePermission } from '@/types/permissions'
 
 /** Количество «моих» просроченных + сегодняшних задач */
@@ -53,6 +53,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   const router = useRouter()
   const params = useParams<{ workspaceId?: string; projectId?: string }>()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const workspaceId = propsWorkspaceId || params.workspaceId
 
   // Extract projectId from URL
@@ -90,13 +91,20 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
     }
   }, [workspaceId])
 
-  // Вкладки активного проекта для клиентского режима
-  const { projectTemplate } = useProjectData(activeProjectId)
+  // Вкладки активного проекта для клиентского режима.
+  // template_id берём из уже загруженного списка projects — без лишнего запроса за проектом.
+  const activeProjectTemplateId = projects.find((p) => p.id === activeProjectId)?.template_id
+  const { data: projectTemplate } = useProjectTemplate(activeProjectTemplateId)
   const { availableModules } = useProjectModules(activeProjectId, workspaceId, projectTemplate)
+
+  // Показываем предыдущий список вкладок, пока загружаются реальные —
+  // у клиента набор вкладок обычно одинаковый во всех проектах.
+  const [lastModules, setLastModules] = useState(availableModules)
+  useEffect(() => {
+    if (availableModules.length > 0) setLastModules(availableModules)
+  }, [availableModules])
+  const displayModules = availableModules.length > 0 ? availableModules : lastModules
   // Активная вкладка из URL
-  const searchParams = typeof window !== 'undefined'
-    ? new URLSearchParams(window.location.search)
-    : new URLSearchParams()
   const activeTab = isClientOnly ? (searchParams.get('tab') || 'documents') : undefined
 
   const createProjectDialog = useDialog()
@@ -296,7 +304,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
           onCreateProject={isClientOnly ? undefined : createProjectDialog.open}
           onTitleClick={() => handleNavigate('projects')}
           isClientOnly={isClientOnly}
-          clientTabs={isClientOnly ? availableModules : undefined}
+          clientTabs={isClientOnly ? displayModules : undefined}
           activeTab={activeTab}
           onTabClick={(projectId, tabId) => handleNavigate(`projects/${projectId}?tab=${tabId}`)}
           workspaceId={workspaceId}

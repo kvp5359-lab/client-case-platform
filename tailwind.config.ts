@@ -93,11 +93,21 @@ const config: Config = {
           '50%': { width: '60%', marginLeft: '20%' },
           '100%': { width: '0%', marginLeft: '100%' },
         },
+        'collapsible-down': {
+          from: { height: '0' },
+          to: { height: 'var(--radix-collapsible-content-height)' },
+        },
+        'collapsible-up': {
+          from: { height: 'var(--radix-collapsible-content-height)' },
+          to: { height: '0' },
+        },
       },
       animation: {
         slideDown: 'slideDown 0.25s ease-out',
         slideUp: 'slideUp 0.2s ease-in',
         'progress-indeterminate': 'progress-indeterminate 1.5s ease-in-out infinite',
+        'collapsible-down': 'collapsible-down 0.22s ease-out',
+        'collapsible-up': 'collapsible-up 0.2s ease-in',
       },
     },
   },

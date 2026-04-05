@@ -4,7 +4,7 @@
  * Хук для проверки доступа к проекту
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspacePermissions } from '@/hooks/permissions'
@@ -38,6 +38,10 @@ export function useProjectAccess(projectId: string | undefined, workspaceId: str
       return !!projectParticipant
     },
     enabled: !!projectId && !!user?.id && !!workspaceId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   })
 
   return {

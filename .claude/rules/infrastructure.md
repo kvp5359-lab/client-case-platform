@@ -61,7 +61,7 @@
 
 ```bash
 npm install
-npm run dev        # http://localhost:8081
+npm run dev        # http://localhost:8080
 npm run build      # production build
 npm run lint       # ESLint
 npm test           # Vitest (26 тестов)

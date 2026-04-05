@@ -72,10 +72,20 @@ export function useMessengerAi(
   const [aiMessages, setAiMessagesRaw] = useState<AiMessage[]>(
     () => options?.initialAiMessages ?? [],
   )
+
+  // Notify parent about aiMessages changes outside of render
+  const isAiMsgInitialMount = useRef(true)
+  useEffect(() => {
+    if (isAiMsgInitialMount.current) {
+      isAiMsgInitialMount.current = false
+      return
+    }
+    onAiMessagesChangeRef.current?.(aiMessages)
+  }, [aiMessages])
+
   const setAiMessages = useCallback((msgs: AiMessage[] | ((prev: AiMessage[]) => AiMessage[])) => {
     setAiMessagesRaw((prev) => {
       const next = typeof msgs === 'function' ? msgs(prev) : msgs
-      onAiMessagesChangeRef.current?.(next)
       return next
     })
   }, [])

@@ -119,32 +119,60 @@ export function MessageList({
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const prevFirstIdRef = useRef<string | null>(null)
+  const prevLastIdRef = useRef<string | null>(null)
   const prevMessageCountRef = useRef(0)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  // Высота viewport ДО добавления старых сообщений — нужна для компенсации scrollTop
+  const preLoadScrollHeightRef = useRef<number | null>(null)
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    // ScrollArea (Radix) рендерит viewport как [data-radix-scroll-area-viewport]
-    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]')
-    if (viewport) {
-      viewport.scrollTo({ top: viewport.scrollHeight, behavior })
-    }
+  const getViewport = useCallback((): HTMLElement | null => {
+    return (
+      scrollAreaRef.current?.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]') ?? null
+    )
   }, [])
 
-  // Автоскролл при новых сообщениях
+  const scrollToBottom = useCallback(
+    (behavior: ScrollBehavior = 'smooth') => {
+      const viewport = getViewport()
+      if (viewport) {
+        viewport.scrollTo({ top: viewport.scrollHeight, behavior })
+      }
+    },
+    [getViewport],
+  )
+
+  // Автоскролл/сохранение позиции — отличаем добавление снизу (новые) от добавления сверху (старые)
   useEffect(() => {
-    const isNewMessages = messages.length > prevMessageCountRef.current
+    const firstId = messages[0]?.id ?? null
+    const lastId = messages[messages.length - 1]?.id ?? null
+    const prevFirstId = prevFirstIdRef.current
+    const prevLastId = prevLastIdRef.current
     const isFirstLoad = prevMessageCountRef.current === 0 && messages.length > 0
 
     if (isFirstLoad) {
-      // Первая загрузка — мгновенно после рендера
+      // Первая загрузка — мгновенно вниз
       requestAnimationFrame(() => scrollToBottom('instant'))
-    } else if (isNewMessages) {
-      // Новые сообщения — после рендера DOM
+    } else if (prevFirstId && firstId !== prevFirstId && prevLastId === lastId) {
+      // Добавлены старые сверху (first изменился, last тот же) — компенсируем scrollTop
+      const viewport = getViewport()
+      const prevHeight = preLoadScrollHeightRef.current
+      if (viewport && prevHeight != null) {
+        const delta = viewport.scrollHeight - prevHeight
+        if (delta > 0) {
+          viewport.scrollTop = viewport.scrollTop + delta
+        }
+      }
+      preLoadScrollHeightRef.current = null
+    } else if (prevLastId && lastId !== prevLastId) {
+      // Добавлены новые снизу (last изменился) — плавный скролл вниз
       requestAnimationFrame(() => scrollToBottom('smooth'))
     }
 
+    prevFirstIdRef.current = firstId
+    prevLastIdRef.current = lastId
     prevMessageCountRef.current = messages.length
-  }, [messages.length, currentParticipantId, scrollToBottom])
+  }, [messages, currentParticipantId, scrollToBottom, getViewport])
 
   // Принудительный скролл вниз при отправке сообщения
   useEffect(() => {
@@ -164,10 +192,15 @@ export function MessageList({
   const observerCallback = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       if (entries[0]?.isIntersecting && hasMoreOlder && !isFetchingOlder) {
+        // Зафиксировать высоту ДО подгрузки — чтобы компенсировать scrollTop после рендера
+        const viewport = getViewport()
+        if (viewport) {
+          preLoadScrollHeightRef.current = viewport.scrollHeight
+        }
         onFetchOlder()
       }
     },
-    [hasMoreOlder, isFetchingOlder, onFetchOlder],
+    [hasMoreOlder, isFetchingOlder, onFetchOlder, getViewport],
   )
 
   useEffect(() => {

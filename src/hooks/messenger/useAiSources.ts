@@ -25,10 +25,19 @@ export function useAiSources(options?: UseAiSourcesOptions) {
       },
   )
 
+  // Notify parent about sources changes outside of render
+  const isInitialMount = useRef(true)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+    onSourcesChangeRef.current?.(sources)
+  }, [sources])
+
   const setSources = useCallback((updater: AiSources | ((prev: AiSources) => AiSources)) => {
     setSourcesRaw((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater
-      onSourcesChangeRef.current?.(next)
       return next
     })
   }, [])
