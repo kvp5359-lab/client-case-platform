@@ -3,19 +3,41 @@
 /**
  * Динамический favicon с бейджем непрочитанных сообщений.
  *
- * Рисует красный кружок с числом поверх SVG-favicon через canvas.
+ * Рисует жёлтый квадрат с числом через canvas и подменяет им favicon вкладки.
+ * Управляет собственным <link>-тегом с id=dynamic-favicon, чтобы не конфликтовать
+ * с тегами, которые генерит Next.js из src/app/favicon.ico.
  * Использует useTotalUnreadCount — тот же queryKey, что и бейдж в сайдбаре.
  */
 
 import { useEffect, useRef } from 'react'
 import { useTotalFilteredUnreadCount } from './useFilteredInbox'
 
-const ORIGINAL_FAVICON = '/favicon.svg'
+const DYNAMIC_FAVICON_ID = 'dynamic-favicon'
+
+function removeNextFavicons() {
+  // Next.js генерит <link rel="icon" href="/favicon.ico"> — отключаем, чтобы
+  // наш динамический тег гарантированно показывался вкладкой.
+  const existing = document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]')
+  existing.forEach((el) => {
+    if (el.id !== DYNAMIC_FAVICON_ID) el.remove()
+  })
+}
+
+function ensureDynamicLink(): HTMLLinkElement {
+  let link = document.getElementById(DYNAMIC_FAVICON_ID) as HTMLLinkElement | null
+  if (!link) {
+    link = document.createElement('link')
+    link.id = DYNAMIC_FAVICON_ID
+    link.rel = 'icon'
+    link.type = 'image/png'
+    document.head.appendChild(link)
+  }
+  return link
+}
 
 export function useFaviconBadge(workspaceId: string | undefined) {
   const { data: totalUnread } = useTotalFilteredUnreadCount(workspaceId ?? '')
-  const linkRef = useRef<HTMLLinkElement | null>(null)
-  const prevCountRef = useRef<number>(0)
+  const prevCountRef = useRef<number>(-1)
 
   useEffect(() => {
     const count = totalUnread ?? 0
@@ -24,16 +46,16 @@ export function useFaviconBadge(workspaceId: string | undefined) {
     if (count === prevCountRef.current) return
     prevCountRef.current = count
 
-    const link =
-      linkRef.current ?? (document.querySelector('link[rel="icon"]') as HTMLLinkElement | null)
-    if (!link) return
-    linkRef.current = link
+    removeNextFavicons()
+    const link = ensureDynamicLink()
 
-    // Без непрочитанных — вернуть оригинальный favicon
+    // Без непрочитанных — показать оригинальный favicon.ico
     if (count === 0) {
-      link.href = ORIGINAL_FAVICON
+      link.type = 'image/x-icon'
+      link.href = '/favicon.ico'
       return
     }
+    link.type = 'image/png'
 
     // Жёлтый квадрат с числом — полностью заменяет favicon
     const size = 64
@@ -74,8 +96,11 @@ export function useFaviconBadge(workspaceId: string | undefined) {
   // Восстановить оригинальный favicon при размонтировании
   useEffect(() => {
     return () => {
-      const link = linkRef.current
-      if (link) link.href = ORIGINAL_FAVICON
+      const link = document.getElementById(DYNAMIC_FAVICON_ID) as HTMLLinkElement | null
+      if (link) {
+        link.type = 'image/x-icon'
+        link.href = '/favicon.ico'
+      }
     }
   }, [])
 }

@@ -221,7 +221,7 @@ export const ProjectsList = memo(function ProjectsList({
       {/* Список проектов */}
       <nav
         ref={listRef}
-        className="flex-1 overflow-y-auto space-y-0.5 scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex-1 overflow-y-auto px-1 -mx-1 space-y-0.5 scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {loading ? (
           <div className="px-2 py-2 text-sm text-muted-foreground">Загрузка...</div>

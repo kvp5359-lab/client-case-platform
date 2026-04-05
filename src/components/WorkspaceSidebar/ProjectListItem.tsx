@@ -65,10 +65,10 @@ export const ProjectListItem = memo(function ProjectListItem({
   return (
     <div
       data-project-id={project.id}
-      className={`group/item relative border rounded-md px-1 py-0 transition-colors duration-150 ease-out ${
+      className={`group/item relative border rounded-md px-1 py-0 transition-all duration-150 ease-out ${
         showTabs
-          ? 'border-gray-200 bg-gray-50/40'
-          : 'border-transparent bg-transparent'
+          ? 'border-gray-200 bg-gray-50/40 shadow-[0_0_8px_rgba(0,0,0,0.12)]'
+          : 'border-transparent bg-transparent shadow-none'
       }`}
     >
       <Link
