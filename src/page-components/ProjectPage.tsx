@@ -58,8 +58,6 @@ export default function ProjectPage() {
   const pathname = usePathname()
   const currentSearchParams = useSearchParams()
   const { user } = useAuth()
-  const { data: documentKits = [] } = useDocumentKitsQuery(projectId)
-  const { data: formKits = [] } = useFormKitsQuery(projectId)
 
   // Состояния UI
   const addKitDialog = useDialog()
@@ -138,6 +136,12 @@ export default function ProjectPage() {
 
   const isTabAccessible = (tab: string) => availableModules.some((m) => m.id === tab)
   const activeTab = isTabAccessible(urlTab) ? urlTab : getFirstAvailableTab()
+
+  // Запросы зависят от активной вкладки — грузим только то, что видим.
+  // documentKits нужны в Документах, formKits — в Анкетах. Если юзер сразу идёт
+  // в Задачи/Историю/БЗ — эти данные не подгружаются.
+  const { data: documentKits = [] } = useDocumentKitsQuery(projectId, activeTab === 'documents')
+  const { data: formKits = [] } = useFormKitsQuery(projectId, activeTab === 'forms')
 
   const handleTabChange = (tab: string) => {
     router.replace(`/workspaces/${workspaceId}/projects/${projectId}?tab=${tab}`)

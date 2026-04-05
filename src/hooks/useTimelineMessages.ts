@@ -55,41 +55,46 @@ export function useTimelineMessages(
       const rows = (data ?? []) as unknown as ProjectMessage[]
       const threadMap = new Map(threads.map((t) => [t.id, t]))
 
-      // Hydrate reply_to_message
+      // Собираем id для hydrate — параллельно запрашиваем replies и participants.
+      // Раньше эти два запроса выполнялись последовательно, добавляя ~100-200мс к загрузке.
       const replyIds = [
         ...new Set(rows.map((m) => m.reply_to_message_id).filter(Boolean) as string[]),
       ]
-      if (replyIds.length > 0) {
-        const { data: replies } = await supabase
-          .from('project_messages')
-          .select('id, content, sender_name')
-          .in('id', replyIds)
-        if (replies) {
-          const replyMap = new Map(
-            replies.map((r) => [
-              r.id,
-              { id: r.id, content: r.content, sender_name: r.sender_name },
-            ]),
-          )
-          for (const msg of rows) {
-            msg.reply_to_message = msg.reply_to_message_id
-              ? (replyMap.get(msg.reply_to_message_id) ?? null)
-              : null
-          }
+      const participantIds = [
+        ...new Set(rows.map((m) => m.sender_participant_id).filter(Boolean) as string[]),
+      ]
+
+      const [repliesResult, participantsResult] = await Promise.all([
+        replyIds.length > 0
+          ? supabase
+              .from('project_messages')
+              .select('id, content, sender_name')
+              .in('id', replyIds)
+          : Promise.resolve({ data: null }),
+        participantIds.length > 0
+          ? supabase.from('participants').select('id, user_id').in('id', participantIds)
+          : Promise.resolve({ data: null }),
+      ])
+
+      // Hydrate reply_to_message
+      if (repliesResult.data) {
+        const replyMap = new Map(
+          repliesResult.data.map((r) => [
+            r.id,
+            { id: r.id, content: r.content, sender_name: r.sender_name },
+          ]),
+        )
+        for (const msg of rows) {
+          msg.reply_to_message = msg.reply_to_message_id
+            ? (replyMap.get(msg.reply_to_message_id) ?? null)
+            : null
         }
       }
 
       // Resolve sender user_id for isOwn detection
-      const participantIds = [
-        ...new Set(rows.map((m) => m.sender_participant_id).filter(Boolean) as string[]),
-      ]
       const userIdMap = new Map<string, string>()
-      if (participantIds.length > 0) {
-        const { data: participants } = await supabase
-          .from('participants')
-          .select('id, user_id')
-          .in('id', participantIds)
-        for (const p of participants ?? []) {
+      if (participantsResult.data) {
+        for (const p of participantsResult.data) {
           if (p.user_id) userIdMap.set(p.id, p.user_id)
         }
       }

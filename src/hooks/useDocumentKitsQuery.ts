@@ -21,13 +21,17 @@ import {
 import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
 
 /**
- * Загрузка наборов документов для проекта
+ * Загрузка наборов документов для проекта.
+ *
+ * Параметр `enabled` — опциональный флаг. Позволяет родителю отложить запрос
+ * до тех пор, пока он реально нужен (например, активна вкладка "Документы").
+ * Иначе данные грузятся при открытии проекта, даже если юзер сразу идёт в другую вкладку.
  */
-export function useDocumentKitsQuery(projectId: string | undefined) {
+export function useDocumentKitsQuery(projectId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: documentKitKeys.byProject(projectId ?? ''),
     queryFn: () => getDocumentKitsWithContents(projectId ?? ''),
-    enabled: !!projectId,
+    enabled: !!projectId && enabled,
   })
 }
 

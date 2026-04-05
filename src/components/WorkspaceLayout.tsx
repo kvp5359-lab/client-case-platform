@@ -18,10 +18,7 @@ import { FloatingPanelButtons } from './FloatingPanelButtons'
 import { MessengerPanelContent } from './MessengerPanelContent'
 import { useProjectPermissions, useWorkspacePermissions } from '@/hooks/permissions'
 import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
-import {
-  ChatSettingsDialog,
-  type ChatSettingsResult,
-} from '@/components/messenger/ChatSettingsDialog'
+import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
 import { useCreateThread, useUpdateThread } from '@/hooks/messenger/useProjectThreads'
 import type { ProjectThread, ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { ThreadTemplate } from '@/types/threadTemplate'
@@ -32,6 +29,14 @@ import { useFaviconBadge } from '@/hooks/messenger/useFaviconBadge'
 const ExtraPanelContent = lazy(() =>
   import('@/components/extra-panel/ExtraPanelContent').then((m) => ({
     default: m.ExtraPanelContent,
+  })),
+)
+
+// Lazy-load ChatSettingsDialog: он тянет Tiptap через ComposeField (~200 KB).
+// Диалог нужен только при создании/редактировании чата — грузим по требованию.
+const ChatSettingsDialog = lazy(() =>
+  import('@/components/messenger/ChatSettingsDialog').then((m) => ({
+    default: m.ChatSettingsDialog,
   })),
 )
 
@@ -265,24 +270,27 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
       {/* Плавающие кнопки */}
       <FloatingPanelButtons />
 
-      {/* Диалог создания/редактирования чата */}
-      {pageContext.projectId && (
-        <ChatSettingsSection
-          projectId={pageContext.projectId}
-          workspaceId={pageContext.workspaceId ?? workspaceId}
-          settingsChat={settingsChat}
-          settingsOpen={settingsOpen}
-          defaultTab={defaultTab}
-          initialTemplate={initialTemplate}
-          onClose={() => {
-            setSettingsChat(null)
-            setInitialTemplate(null)
-          }}
-          onCreated={(newChat) => {
-            setSettingsChat(null)
-            openChat(newChat.id)
-          }}
-        />
+      {/* Диалог создания/редактирования чата. Монтируется только когда открыт —
+          тогда и грузится chunk с Tiptap и остальной обвязкой. */}
+      {pageContext.projectId && settingsOpen && (
+        <Suspense fallback={null}>
+          <ChatSettingsSection
+            projectId={pageContext.projectId}
+            workspaceId={pageContext.workspaceId ?? workspaceId}
+            settingsChat={settingsChat}
+            settingsOpen={settingsOpen}
+            defaultTab={defaultTab}
+            initialTemplate={initialTemplate}
+            onClose={() => {
+              setSettingsChat(null)
+              setInitialTemplate(null)
+            }}
+            onCreated={(newChat) => {
+              setSettingsChat(null)
+              openChat(newChat.id)
+            }}
+          />
+        </Suspense>
       )}
     </div>
   )

@@ -29,7 +29,9 @@ import { useTimelineMessages } from '@/hooks/useTimelineMessages'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { useAuth } from '@/contexts/AuthContext'
-import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
+import { useQuery } from '@tanstack/react-query'
+import { inboxKeys } from '@/hooks/queryKeys'
+import type { InboxThreadEntry } from '@/services/api/inboxService'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 import { InboxChatItem } from '@/page-components/InboxPage/InboxChatItem'
 import type { AuditLogEntry } from '@/types/history'
@@ -67,12 +69,17 @@ export function HistoryTabContent({ projectId, workspaceId }: HistoryTabContentP
 
   const { data: threads = [] } = useProjectThreads(projectId)
 
-  // Inbox data for rich chat list (avatars, last message, badges)
-  const { data: inboxChats = [] } = useInboxThreadsV2(workspaceId)
-  const projectInboxChats = useMemo(
-    () => inboxChats.filter((c) => c.project_id === projectId && c.last_message_at),
-    [inboxChats, projectId],
-  )
+  // Inbox-данные для rich chat list (avatars, last message, badges).
+  // Читаем из кэша, который уже заполнен сайдбаром/inbox — не создаём дублирующую
+  // realtime-подписку на project_messages. enabled: false отключает свой fetcher.
+  // Если юзер зашёл в историю напрямую, сайдбар (который загружается параллельно)
+  // заполнит кэш за несколько сотен мс, и чат-лист обновится автоматически.
+  const { data: projectInboxChats = [] } = useQuery({
+    queryKey: inboxKeys.threadsV2(workspaceId),
+    enabled: false,
+    select: (chats: InboxThreadEntry[] | undefined) =>
+      chats?.filter((c) => c.project_id === projectId && c.last_message_at) ?? [],
+  })
 
   // Determine what to render in content area
   const selectedResource = selected.kind === 'resource' ? selected.value : undefined

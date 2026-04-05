@@ -5,11 +5,17 @@
  * Переиспользуется в TasksTabContent и TasksPage.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react'
 import { CheckSquare, Pencil, Check, Settings, ExternalLink } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
-import { ChatSettingsDialog } from '@/components/messenger/ChatSettingsDialog'
+
+// Lazy-load: ChatSettingsDialog тянет Tiptap через ComposeField.
+const ChatSettingsDialog = lazy(() =>
+  import('@/components/messenger/ChatSettingsDialog').then((m) => ({
+    default: m.ChatSettingsDialog,
+  })),
+)
 import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { cn } from '@/lib/utils'
@@ -203,19 +209,23 @@ export function TaskDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Настройки задачи */}
-      <ChatSettingsDialog
-        chat={task as unknown as import('@/hooks/messenger/useProjectThreads').ProjectThread}
-        workspaceId={workspaceId}
-        projectId={task?.project_id ?? undefined}
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        onUpdate={(params) => {
-          onSettingsSave(params)
-          setSettingsOpen(false)
-        }}
-        isPending={settingsPending}
-      />
+      {/* Настройки задачи — монтируется только когда открыт */}
+      {settingsOpen && (
+        <Suspense fallback={null}>
+          <ChatSettingsDialog
+            chat={task as unknown as import('@/hooks/messenger/useProjectThreads').ProjectThread}
+            workspaceId={workspaceId}
+            projectId={task?.project_id ?? undefined}
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            onUpdate={(params) => {
+              onSettingsSave(params)
+              setSettingsOpen(false)
+            }}
+            isPending={settingsPending}
+          />
+        </Suspense>
+      )}
     </>
   )
 }

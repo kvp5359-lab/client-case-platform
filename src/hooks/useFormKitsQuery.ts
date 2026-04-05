@@ -19,11 +19,14 @@ import type { Tables } from '@/types/database'
 
 export type FormKit = Tables<'form_kits'>
 
-export function useFormKitsQuery(projectId: string | undefined) {
+/**
+ * Параметр `enabled` позволяет родителю отложить запрос до активации вкладки "Анкеты".
+ */
+export function useFormKitsQuery(projectId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: formKitKeys.byProject(projectId ?? ''),
     queryFn: () => getFormKitsByProject(projectId!),
-    enabled: !!projectId,
+    enabled: !!projectId && enabled,
   })
 }
 

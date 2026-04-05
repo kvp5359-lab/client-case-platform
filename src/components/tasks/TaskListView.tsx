@@ -10,7 +10,7 @@
  * Когда передан projectId — автоматически фильтрует по проекту, скрывает фильтр «Проект».
  */
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, lazy, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckSquare, Loader2, Search, X, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -20,7 +20,14 @@ import { useTaskStatuses } from '@/hooks/useStatuses'
 import { messengerKeys, taskKeys } from '@/hooks/queryKeys'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { useAccessibleThreadIds } from '@/hooks/messenger/useAccessibleThreadIds'
-import { ChatSettingsDialog } from '@/components/messenger/ChatSettingsDialog'
+
+// Lazy-load: ChatSettingsDialog тянет Tiptap (~200 KB) через ComposeField.
+// Грузим только когда юзер нажал "Создать задачу".
+const ChatSettingsDialog = lazy(() =>
+  import('@/components/messenger/ChatSettingsDialog').then((m) => ({
+    default: m.ChatSettingsDialog,
+  })),
+)
 
 import { TaskDialog } from './TaskDialog'
 import { useTaskAssigneesMap } from './useTaskAssignees'
@@ -337,17 +344,21 @@ export function TaskListView({
         }}
       />
 
-      {/* Диалог создания задачи */}
-      <ChatSettingsDialog
-        chat={null}
-        workspaceId={workspaceId}
-        projectId={projectId}
-        defaultThreadType="task"
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onCreate={handleCreate}
-        isPending={createPending}
-      />
+      {/* Диалог создания задачи — монтируется только когда открыт */}
+      {createOpen && (
+        <Suspense fallback={null}>
+          <ChatSettingsDialog
+            chat={null}
+            workspaceId={workspaceId}
+            projectId={projectId}
+            defaultThreadType="task"
+            open={createOpen}
+            onOpenChange={setCreateOpen}
+            onCreate={handleCreate}
+            isPending={createPending}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }
