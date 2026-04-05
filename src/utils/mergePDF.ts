@@ -1,5 +1,9 @@
-import { PDFDocument } from 'pdf-lib'
+import type { PDFDocument, PDFDocument as PDFDocumentClass } from 'pdf-lib'
 import { logger } from '@/utils/logger'
+
+// Класс PDFDocument загружается через dynamic import в mergeFilesToPDF и прокидывается
+// во внутренние функции через параметр PDFDocCtor. Type-only import выше нужен для типизации.
+type PDFDocumentCtor = typeof PDFDocumentClass
 
 export interface MergeOptions {
   onProgress?: (current: number, total: number) => void
@@ -17,6 +21,9 @@ export interface MergeResult {
  * @returns Результат объединения с Blob и списком ошибочных файлов
  */
 export async function mergeFilesToPDF(files: File[], options?: MergeOptions): Promise<MergeResult> {
+  // Lazy-load pdf-lib — модуль тяжёлый (~300 KB), загружаем только когда реально нужно
+  // объединить файлы, а не при загрузке страницы.
+  const { PDFDocument } = await import('pdf-lib')
   const mergedPdf = await PDFDocument.create()
   const failedFiles: Array<{ name: string; error: string }> = []
 
@@ -32,7 +39,7 @@ export async function mergeFilesToPDF(files: File[], options?: MergeOptions): Pr
 
       if (fileType === 'application/pdf') {
         // Обрабатываем PDF файл
-        await mergePDFFile(file, mergedPdf)
+        await mergePDFFile(file, mergedPdf, PDFDocument)
       } else if (fileType.startsWith('image/')) {
         // Обрабатываем изображение
         await mergeImageFile(file, mergedPdf)
@@ -69,11 +76,15 @@ export async function mergeFilesToPDF(files: File[], options?: MergeOptions): Pr
 /**
  * Добавляет все страницы из PDF файла в целевой PDF документ
  */
-async function mergePDFFile(file: File, targetPdf: PDFDocument): Promise<void> {
+async function mergePDFFile(
+  file: File,
+  targetPdf: PDFDocument,
+  PDFDocCtor: PDFDocumentCtor,
+): Promise<void> {
   const arrayBuffer = await file.arrayBuffer()
 
   // Пытаемся загрузить PDF с опцией ignoreEncryption для обработки защищённых файлов
-  const pdf = await PDFDocument.load(arrayBuffer, {
+  const pdf = await PDFDocCtor.load(arrayBuffer, {
     ignoreEncryption: true,
     updateMetadata: false,
   })

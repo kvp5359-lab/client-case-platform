@@ -2,9 +2,12 @@
 
 /**
  * UnreadBadge — бейдж непрочитанных сообщений задачи (из inbox-кэша).
+ *
+ * Подписывается на inbox-кэш через useQuery({ select }) — бейдж обновляется
+ * автоматически при любом изменении inbox-данных (новое сообщение, mark as read, realtime).
  */
 
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { inboxKeys } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import { calcThreadUnread } from '@/utils/inboxUnread'
@@ -15,13 +18,16 @@ interface UnreadBadgeProps {
 }
 
 export function UnreadBadge({ threadId, workspaceId }: UnreadBadgeProps) {
-  const queryClient = useQueryClient()
-  const inboxEntries = queryClient.getQueryData<InboxThreadEntry[]>(
-    inboxKeys.threadsV2(workspaceId),
-  )
-
-  const entry = inboxEntries?.find((e) => e.thread_id === threadId)
-  const count = entry ? calcThreadUnread(entry) : 0
+  // Подписываемся на тот же ключ, что и useInboxThreadsV2. enabled: false — сам запрос
+  // не делаем, только читаем кэш, который заполняет useInboxThreadsV2 в сайдбаре/inbox.
+  const { data: count = 0 } = useQuery({
+    queryKey: inboxKeys.threadsV2(workspaceId),
+    enabled: false,
+    select: (threads: InboxThreadEntry[] | undefined) => {
+      const entry = threads?.find((e) => e.thread_id === threadId)
+      return entry ? calcThreadUnread(entry) : 0
+    },
+  })
 
   if (count <= 0) return null
 

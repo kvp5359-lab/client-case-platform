@@ -16,10 +16,7 @@ import { UserProfile } from './WorkspaceSidebar/UserProfile'
 import { WorkspacePicker } from './WorkspaceSidebar/WorkspacePicker'
 import { useSidebarData } from './WorkspaceSidebar/useSidebarData'
 import { useSidebarResize } from './WorkspaceSidebar/useSidebarResize'
-import {
-  useTotalFilteredUnreadCount,
-  useProjectFilteredUnreadCounts,
-} from '@/hooks/messenger/useFilteredInbox'
+import { useSidebarInboxCounts } from '@/hooks/messenger/useFilteredInbox'
 import { inboxKeys, sidebarKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
@@ -114,15 +111,17 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   const activeTab = isClientOnly ? (searchParams.get('tab') || 'documents') : undefined
 
   const createProjectDialog = useDialog()
-  const { data: totalUnread } = useTotalFilteredUnreadCount(workspaceId ?? '')
-  const { data: projectUnreadData } = useProjectFilteredUnreadCounts(workspaceId ?? '')
-  const projectUnreadCounts = projectUnreadData?.unreadCounts
-  const clientUnreadCounts = projectUnreadData?.clientUnreadCounts
-  const internalUnreadCounts = projectUnreadData?.internalUnreadCounts
-  const reactionEmojis = projectUnreadData?.reactionEmojis
-  const reactionOnlyProjects = projectUnreadData?.reactionOnlyProjects
-  const projectThreadIds = projectUnreadData?.threadIds
-  const badgeColors = projectUnreadData?.badgeColors
+  // Один вызов useSidebarInboxCounts вместо двух отдельных useTotalFilteredUnreadCount +
+  // useProjectFilteredUnreadCounts — раньше useFilteredInbox (с useMemo-фильтрацией) вычислялся
+  // дважды на каждый рендер сайдбара.
+  const { totalUnread, projectData: projectUnreadData } = useSidebarInboxCounts(workspaceId ?? '')
+  const projectUnreadCounts = projectUnreadData.unreadCounts
+  const clientUnreadCounts = projectUnreadData.clientUnreadCounts
+  const internalUnreadCounts = projectUnreadData.internalUnreadCounts
+  const reactionEmojis = projectUnreadData.reactionEmojis
+  const reactionOnlyProjects = projectUnreadData.reactionOnlyProjects
+  const projectThreadIds = projectUnreadData.threadIds
+  const badgeColors = projectUnreadData.badgeColors
 
   const inboxBadge =
     totalUnread && totalUnread > 0 ? (totalUnread > 99 ? '99+' : String(totalUnread)) : undefined

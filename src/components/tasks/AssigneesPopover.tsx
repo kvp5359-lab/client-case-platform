@@ -16,7 +16,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
-import { useTaskAssigneeIds, useToggleAssignee } from './useTaskAssignees'
+import { useToggleAssignee } from './useTaskAssignees'
 import {
   useWorkspaceParticipants,
   type WorkspaceParticipant,
@@ -81,10 +81,11 @@ export function AssigneesPopover({
     [workspaceMembers],
   )
   const participants = projectId ? projectParticipants : loginableWorkspace
-  const { data: assigneeIds = [] } = useTaskAssigneeIds(threadId)
   const toggleAssignee = useToggleAssignee(threadId)
 
-  const assigneeSet = new Set(assigneeIds)
+  // Используем assignees из props (они уже загружены батчем через useTaskAssigneesMap
+  // в родительском компоненте) — вместо отдельного запроса на каждую строку задачи.
+  const assigneeSet = useMemo(() => new Set(assignees.map((a) => a.id)), [assignees])
 
   const filtered = participants
     .filter((p) => {

@@ -9,7 +9,7 @@
  * - useToggleAssignee — добавить/убрать исполнителя
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { buildParticipantMap } from '@/utils/buildParticipantMap'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
@@ -19,7 +19,9 @@ export const assigneeKeys = {
   single: (threadId: string) => ['task-assignees', threadId] as const,
 }
 
-/** Batch-загрузка исполнителей для списка задач */
+/** Batch-загрузка исполнителей для списка задач.
+ *  keepPreviousData — при добавлении/удалении задачи показываем старую карту исполнителей,
+ *  пока грузится новая. Иначе UI мигает (все аватарки пропадают на момент загрузки). */
 export function useTaskAssigneesMap(threadIds: string[]) {
   const key = [...threadIds].sort().join(',')
   return useQuery({
@@ -38,6 +40,7 @@ export function useTaskAssigneesMap(threadIds: string[]) {
     },
     enabled: threadIds.length > 0,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   })
 }
 

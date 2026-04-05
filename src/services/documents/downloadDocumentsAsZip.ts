@@ -3,7 +3,6 @@
  * Используется как из пакетных действий, так и при скачивании набора целиком
  */
 
-import JSZip from 'jszip'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { downloadDocumentBlob } from './documentService'
@@ -42,6 +41,9 @@ export async function downloadDocumentsAsZip({
   archiveName,
   mode,
 }: DownloadDocumentsOptions): Promise<void> {
+  // Lazy-load jszip — модуль ~100 KB, загружаем только при скачивании архива,
+  // а не при загрузке страницы документов.
+  const { default: JSZip } = await import('jszip')
   const folderMap = new Map(folders.map((f) => [f.id, f]))
   const zip = new JSZip()
   let successCount = 0

@@ -186,25 +186,17 @@ export function useFilteredInbox(workspaceId: string) {
 }
 
 /**
- * useTotalFilteredUnreadCount — общий счётчик непрочитанных с учётом доступа.
- * Замена для useTotalUnreadCount.
+ * useSidebarInboxCounts — единый расчёт счётчиков непрочитанных для сайдбара.
+ * Заменяет связку useTotalFilteredUnreadCount + useProjectFilteredUnreadCounts:
+ * раньше useFilteredInbox вычислялся дважды (useMemo-фильтрация гоняется дважды),
+ * теперь всё делается в одном проходе.
  */
-export function useTotalFilteredUnreadCount(workspaceId: string) {
-  const { data: threads } = useFilteredInbox(workspaceId)
-
-  const totalUnread = useMemo(() => calcTotalUnread(threads), [threads])
-
-  return { data: totalUnread }
-}
-
-/**
- * useProjectFilteredUnreadCounts — счётчики непрочитанных по проектам с учётом доступа.
- * Замена для useProjectUnreadCounts.
- */
-export function useProjectFilteredUnreadCounts(workspaceId: string) {
+export function useSidebarInboxCounts(workspaceId: string) {
   const { data: threads } = useFilteredInbox(workspaceId)
 
   return useMemo(() => {
+    const totalUnread = calcTotalUnread(threads)
+
     // Значение > 0 — реальные непрочитанные (показать число)
     // Значение -1 — manually_unread без сообщений (показать точку без числа)
     // Реакция = +1 к числу непрочитанных
@@ -269,7 +261,8 @@ export function useProjectFilteredUnreadCounts(workspaceId: string) {
     }
 
     return {
-      data: {
+      totalUnread,
+      projectData: {
         unreadCounts,
         clientUnreadCounts,
         internalUnreadCounts,
@@ -280,4 +273,13 @@ export function useProjectFilteredUnreadCounts(workspaceId: string) {
       },
     }
   }, [threads])
+}
+
+/**
+ * useTotalFilteredUnreadCount — общий счётчик непрочитанных с учётом доступа.
+ * Тонкая обёртка над useSidebarInboxCounts для useFaviconBadge.
+ */
+export function useTotalFilteredUnreadCount(workspaceId: string) {
+  const { totalUnread } = useSidebarInboxCounts(workspaceId)
+  return { data: totalUnread }
 }
