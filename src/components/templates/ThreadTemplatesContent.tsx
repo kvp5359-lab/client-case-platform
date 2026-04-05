@@ -242,6 +242,7 @@ export function ThreadTemplatesContent() {
                   className="h-7 w-7"
                   onClick={() => handleEdit(t)}
                   title="Редактировать"
+                  aria-label="Редактировать шаблон"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                 </Button>
@@ -251,6 +252,7 @@ export function ThreadTemplatesContent() {
                   className="h-7 w-7"
                   onClick={() => copyMutation.mutate(t)}
                   title="Копировать"
+                  aria-label="Копировать шаблон"
                 >
                   <Copy className="w-3.5 h-3.5" />
                 </Button>
@@ -260,6 +262,7 @@ export function ThreadTemplatesContent() {
                   className="h-7 w-7 text-destructive hover:text-destructive"
                   onClick={() => handleDelete(t.id)}
                   title="Удалить"
+                  aria-label="Удалить шаблон"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>

@@ -107,6 +107,7 @@ export function MergeDocumentsDialog({
             size="icon"
             className="absolute right-1 top-[calc(50%+0.5rem)] -translate-y-1/2 h-7 w-7"
             title="Сгенерировать название с помощью AI"
+            aria-label="Сгенерировать название с помощью AI"
             disabled={isGeneratingName}
             onClick={onGenerateName}
           >
@@ -159,6 +160,7 @@ export function MergeDocumentsDialog({
                   size="icon"
                   className="h-6 w-6 flex-shrink-0"
                   onClick={() => onRemoveDoc(doc.id)}
+                  aria-label="Убрать документ из списка"
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>

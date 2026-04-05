@@ -331,6 +331,7 @@ export function AiChatInput({
               variant="outline"
               className="h-8 w-8 shrink-0 mt-0.5"
               title="Остановить"
+              aria-label="Остановить генерацию"
             >
               <Square className="h-4 w-4" />
             </Button>
@@ -339,6 +340,7 @@ export function AiChatInput({
               onClick={handleSend}
               size="icon"
               className="h-8 w-8 shrink-0 mt-0.5 bg-purple-600 hover:bg-purple-700 text-white"
+              aria-label="Отправить вопрос"
             >
               <Send className="h-4 w-4" />
             </Button>

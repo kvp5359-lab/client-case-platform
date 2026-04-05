@@ -65,6 +65,7 @@ export function KnowledgeChatInput({
         disabled={!input.trim() || isLoading}
         size="icon"
         className={cn(sendButtonStyles[accent])}
+        aria-label={isLoading ? 'Отправка...' : 'Отправить вопрос'}
       >
         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
       </Button>
