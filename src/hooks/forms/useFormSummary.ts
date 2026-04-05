@@ -72,16 +72,16 @@ export function useFormSummary({ workspaceId }: UseFormSummaryParams) {
           )
           .order('order_index', { ascending: true })
 
-        const compositeItems: CompositeFieldItem[] = (compositeRaw || []).map((ci) => ({
+        const compositeItems = (compositeRaw || []).map((ci) => ({
           id: ci.id,
           composite_field_id: ci.composite_field_id,
           nested_field_id: ci.nested_field_id,
           order_index: ci.order_index,
           nested_field: ci.nested_field,
-        }))
+        })) as unknown as CompositeFieldItem[]
 
         // Маппинг секций
-        const sections: FormSectionWithFields[] = (sectionsRaw || []).map((s) => ({
+        const sections = (sectionsRaw || []).map((s) => ({
           id: s.id,
           name: s.name,
           description: s.description,
@@ -112,7 +112,7 @@ export function useFormSummary({ workspaceId }: UseFormSummaryParams) {
         const lines: string[] = [`По анкете "${formKitName}":`]
 
         sections.forEach((section, idx) => {
-          const progress = getSectionProgress(section, formData, compositeItems)
+          const progress = getSectionProgress(section as unknown as FormSectionWithFields, formData, compositeItems)
           const statusData = section.status_data as {
             is_final?: boolean
             color?: string

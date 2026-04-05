@@ -65,7 +65,7 @@ export function DirectoryFieldsEditor({ directoryId }: DirectoryFieldsEditorProp
           is_required: data.is_required,
           is_unique: data.is_unique,
           is_visible_in_list: data.is_visible_in_list,
-          options: data.options as Record<string, unknown>,
+          options: data.options as import('@/types/database').Json,
         },
       })
     } else {

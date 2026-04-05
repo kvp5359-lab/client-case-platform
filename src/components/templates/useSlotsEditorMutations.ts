@@ -39,7 +39,7 @@ export function useSlotsEditorMutations(config: SlotTableConfig, slots: Slot[]) 
         ...config.extraInsertFields,
         name,
         sort_order: maxOrder + 1,
-      })
+      } as never)
 
       if (error) throw error
     },

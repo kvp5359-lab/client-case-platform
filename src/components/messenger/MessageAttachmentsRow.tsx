@@ -5,7 +5,7 @@ interface ExistingAttachment {
   id: string
   file_name: string
   storage_path: string
-  file_id: string
+  file_id: string | null
 }
 
 interface MessageAttachmentsRowProps {

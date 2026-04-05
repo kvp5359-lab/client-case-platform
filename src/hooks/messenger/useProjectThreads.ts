@@ -188,7 +188,7 @@ export function useDeleteThread() {
       return thread
     },
     onSuccess: (thread) => {
-      queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(thread.project_id) })
+      queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(thread.project_id ?? '') })
       queryClient.invalidateQueries({ queryKey: ['my-urgent-tasks-count'] })
     },
   })

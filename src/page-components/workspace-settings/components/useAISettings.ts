@@ -119,7 +119,7 @@ export function useAISettings(workspaceId: string) {
       const thinkingValue = thinkingBudget === 'auto' ? null : Number(thinkingBudget)
       const { error: modelError } = await supabase
         .from('workspaces')
-        .update({ ai_model: aiModel as string, gemini_thinking_budget: thinkingValue })
+        .update({ ai_model: aiModel as never, gemini_thinking_budget: thinkingValue })
         .eq('id', workspaceId)
       if (modelError) throw modelError
 

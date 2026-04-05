@@ -72,5 +72,5 @@ export async function getInboxThreadsV2(
   })
 
   if (error) throw new ApiError(`Ошибка загрузки входящих: ${error.message}`)
-  return (data ?? []) as InboxThreadEntry[]
+  return (data ?? []) as unknown as InboxThreadEntry[]
 }

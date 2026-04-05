@@ -69,7 +69,7 @@ interface UseSlotHandlersReturn {
   targetSlotFolderId: string | null
   editingSlotId: string | null
   setEditingSlotId: (id: string | null) => void
-  slotFileInputRef: React.RefObject<HTMLInputElement>
+  slotFileInputRef: React.RefObject<HTMLInputElement | null>
   slotHandlers: SlotHandlers
   handleSlotFileChange: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>
 }

@@ -15,7 +15,7 @@ interface UnassignedSectionProps {
   isCollapsed: boolean
   draggedDocId: string | null
   dragOverFolderId: string | null
-  draggedSourceDoc: DocumentWithFiles | null
+  draggedSourceDoc: { id: string } | null
 
   // Drag & drop
   onFolderDragOver: (e: React.DragEvent, folderId: string | null) => void

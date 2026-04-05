@@ -72,7 +72,7 @@ export interface AppliedTemplate {
   taskDeadline: Date | undefined
   taskAssigneeIds: string[]
   channelType: 'none' | 'email'
-  contactEmail: string
+  contactEmails: string[]
   emailSubject: string
   initialMessageHtml: string | null
   /** Имена участников, которых не нашли в проекте */

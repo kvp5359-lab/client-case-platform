@@ -196,7 +196,7 @@ export function TaskDialog({
               projectId={task.project_id ?? undefined}
               workspaceId={workspaceId}
               threadId={task.id}
-              accent={task.accent_color}
+              accent={task.accent_color as never}
               toolbarPortalContainer={toolbarContainer}
             />
           </div>

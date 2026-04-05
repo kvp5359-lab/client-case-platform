@@ -14,7 +14,7 @@ interface UseFormKitAutoFillProps {
   structure: FormStructure | null | undefined
   formData: Record<string, string>
   compositeItems: CompositeFieldItem[]
-  saveFieldAsync: (fieldId: string, value: string) => Promise<{ serverValue: string }>
+  saveFieldAsync: (fieldId: string, value: string) => Promise<{ serverValue: string | null }>
   setFormData: React.Dispatch<React.SetStateAction<Record<string, string>>>
   setOriginalValues: React.Dispatch<React.SetStateAction<Record<string, string>>>
 }

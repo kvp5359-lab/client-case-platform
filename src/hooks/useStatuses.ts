@@ -3,10 +3,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { statusKeys } from '@/hooks/queryKeys'
+import type { Tables } from '@/types/database'
 
 const STATUS_STALE_TIME = 5 * 60_000
 
 type EntityType = 'document' | 'task' | 'document_kit'
+export type TaskStatus = Tables<'statuses'>
 
 /**
  * Приватный базовый хук — загружает статусы по entity_type

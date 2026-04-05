@@ -74,7 +74,7 @@ interface OptionItemProps {
   editingLabel: string
   isDragged: boolean
   isDragOver: boolean
-  inputRef: React.RefObject<HTMLInputElement>
+  inputRef: React.RefObject<HTMLInputElement | null>
   onLabelChange: (val: string) => void
   onStartEdit: (option: SelectOption) => void
   onSaveEdit: (optionId: string) => void

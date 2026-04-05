@@ -370,7 +370,7 @@ export function useChatSettingsActions({
         accessType: form.accessType,
         accentColor: 'slate',
         icon: 'check-square',
-        channelType: 'chat',
+        channelType: 'none',
         memberIds: form.accessType === 'custom' ? Array.from(form.selectedMemberIds) : undefined,
         accessRoles: form.accessType === 'roles' ? Array.from(form.selectedRoles) : undefined,
         deadline: form.taskDeadline ? formatDateToString(form.taskDeadline) : null,

@@ -131,7 +131,7 @@ export function useFormKitSave({ formKitId }: UseFormKitSaveParams) {
       type FieldValueRow = {
         field_definition_id: string
         composite_field_id: string | null
-        value: string
+        value: string | null
       }
       queryClient.setQueryData<FieldValueRow[]>(formKitKeys.fieldValues(formKitId), (old) => {
         if (!old) return old

@@ -12,7 +12,7 @@ interface TaskStatus {
   id: string
   name: string
   color: string
-  icon: string
+  icon: string | null
   is_default: boolean
 }
 

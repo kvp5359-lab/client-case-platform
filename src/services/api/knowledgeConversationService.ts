@@ -35,7 +35,8 @@ export async function getConversations(
     query = query.is('project_id', null)
   }
 
-  return (await safeFetchOrThrow(query, 'Не удалось загрузить диалоги', KnowledgeBaseError)) ?? []
+  const rows = await safeFetchOrThrow(query, 'Не удалось загрузить диалоги', KnowledgeBaseError)
+  return (rows ?? []) as unknown as KnowledgeConversation[]
 }
 
 export async function createConversation(params: {
@@ -46,27 +47,29 @@ export async function createConversation(params: {
   type?: ConversationType
   sources?: ConversationSources
 }): Promise<KnowledgeConversation> {
-  return safeFetchOrThrow(
-    supabase.from('knowledge_conversations').insert(params).select().single(),
+  const row = await safeFetchOrThrow(
+    supabase.from('knowledge_conversations').insert(params as never).select().single(),
     'Не удалось создать диалог',
     KnowledgeBaseError,
   )
+  return row as unknown as KnowledgeConversation
 }
 
 export async function updateConversation(
   conversationId: string,
   updates: Partial<Pick<KnowledgeConversation, 'title' | 'sources'>>,
 ): Promise<KnowledgeConversation> {
-  return safeFetchOrThrow(
+  const row = await safeFetchOrThrow(
     supabase
       .from('knowledge_conversations')
-      .update(updates)
+      .update(updates as never)
       .eq('id', conversationId)
       .select()
       .single(),
     'Не удалось обновить диалог',
     KnowledgeBaseError,
   )
+  return row as unknown as KnowledgeConversation
 }
 
 export async function deleteConversation(conversationId: string): Promise<void> {
@@ -82,17 +85,16 @@ export async function deleteConversation(conversationId: string): Promise<void> 
 // =====================================================
 
 export async function getMessages(conversationId: string): Promise<KnowledgeMessage[]> {
-  return (
-    (await safeFetchOrThrow(
-      supabase
-        .from('knowledge_messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true }),
-      'Не удалось загрузить сообщения',
-      KnowledgeBaseError,
-    )) ?? []
+  const rows = await safeFetchOrThrow(
+    supabase
+      .from('knowledge_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true }),
+    'Не удалось загрузить сообщения',
+    KnowledgeBaseError,
   )
+  return (rows ?? []) as unknown as KnowledgeMessage[]
 }
 
 export async function addMessage(params: {
@@ -101,13 +103,14 @@ export async function addMessage(params: {
   content: string
   sources?: SearchSource[]
 }): Promise<KnowledgeMessage> {
-  return safeFetchOrThrow(
+  const row = await safeFetchOrThrow(
     supabase
       .from('knowledge_messages')
-      .insert({ ...params, sources: params.sources ?? null })
+      .insert({ ...params, sources: params.sources ?? null } as never)
       .select()
       .single(),
     'Не удалось сохранить сообщение',
     KnowledgeBaseError,
   )
+  return row as unknown as KnowledgeMessage
 }

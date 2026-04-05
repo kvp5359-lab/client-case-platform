@@ -38,5 +38,5 @@ export async function getParticipantName(userId: string): Promise<string | null>
     'Не удалось получить имя участника',
     ParticipantError,
   )
-  return data?.name ?? null
+  return (data as { name: string } | null)?.name ?? null
 }

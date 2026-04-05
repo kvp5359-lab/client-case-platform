@@ -14,6 +14,24 @@
 import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+
+type SupabaseDynamic = {
+  from: (table: string) => {
+    select: (cols: string) => {
+      eq: (col: string, val: unknown) => {
+        order: (col: string, opts: unknown) => Promise<{ data: unknown[] | null; error: { message: string } | null }>
+      }
+    }
+    insert: (values: unknown) => Promise<{ error: { message: string } | null }>
+    update: (values: unknown) => {
+      eq: (col: string, val: unknown) => Promise<{ error: { message: string } | null }>
+    }
+    delete: () => {
+      eq: (col: string, val: unknown) => Promise<{ error: { message: string } | null }>
+    }
+  }
+}
+const supabaseDyn = supabase as unknown as SupabaseDynamic
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
@@ -73,7 +91,7 @@ export function useTemplateList<
       customQueryFn ??
       (async () => {
         if (!workspaceId) return []
-        const { data, error } = await supabase
+        const { data, error } = await supabaseDyn
           .from(tableName)
           .select('*')
           .eq('workspace_id', workspaceId)
@@ -93,13 +111,13 @@ export function useTemplateList<
         return
       }
       if (itemId) {
-        const { error } = await supabase
+        const { error } = await supabaseDyn
           .from(tableName)
           .update(data as AnyRecord)
           .eq('id', itemId)
         if (error) throw error
       } else {
-        const { error } = await supabase
+        const { error } = await supabaseDyn
           .from(tableName)
           .insert({ ...(data as AnyRecord), workspace_id: workspaceId ?? '' })
         if (error) throw error
@@ -117,7 +135,7 @@ export function useTemplateList<
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from(tableName).delete().eq('id', id)
+      const { error } = await supabaseDyn.from(tableName).delete().eq('id', id)
       if (error) throw error
     },
     onSuccess: () => {
@@ -133,7 +151,7 @@ export function useTemplateList<
     mutationFn:
       customCopyFn ??
       (async (item: T) => {
-        const { error } = await supabase.from(tableName).insert({
+        const { error } = await supabaseDyn.from(tableName).insert({
           workspace_id: workspaceId ?? '',
           name: `${item.name} (копия)`,
           description: item.description || null,

@@ -14,7 +14,7 @@ import {
   getConversations,
   createConversation,
   addMessage,
-  getMessages as getConversationMessages,
+  getKnowledgeMessages as getConversationMessages,
   type KnowledgeConversation,
   type ConversationSources,
   type SearchSource,
@@ -104,15 +104,18 @@ export function useProjectAiConversations({
       const mapped: AiMessage[] = msgs.map((m) => {
         let sourceTags: string[] | undefined
         if (m.role === 'user' && m.sources && Array.isArray(m.sources)) {
-          const tags = m.sources
+          const tags = (m.sources as unknown[])
             .filter(
               (s): s is { tag: string } =>
-                'tag' in s && typeof (s as { tag?: unknown }).tag === 'string',
+                typeof s === 'object' &&
+                s !== null &&
+                'tag' in s &&
+                typeof (s as { tag?: unknown }).tag === 'string',
             )
             .map((s) => s.tag)
           if (tags.length > 0) sourceTags = tags
         }
-        return { id: m.id, role: m.role, content: m.content, sourceTags }
+        return { id: m.id, role: m.role, content: m.content, sourceTags, created_at: m.created_at }
       })
       setAiMessagesRef.current(mapped)
       setActiveConversationId(conv.id)

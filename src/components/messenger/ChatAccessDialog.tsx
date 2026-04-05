@@ -96,7 +96,7 @@ export function ChatAccessDialog({ chat, open, onOpenChange }: ChatAccessDialogP
     setLocalAccessType(null)
   }
 
-  const { data: participants = [] } = useProjectParticipants(chat?.project_id)
+  const { data: participants = [] } = useProjectParticipants(chat?.project_id ?? undefined)
   const { data: memberIds = new Set<string>() } = useThreadMembers(
     accessType === 'custom' ? chat?.id : undefined,
   )
@@ -113,7 +113,7 @@ export function ChatAccessDialog({ chat, open, onOpenChange }: ChatAccessDialogP
     },
     onSuccess: () => {
       if (chat)
-        queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(chat.project_id) })
+        queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(chat.project_id ?? '') })
     },
   })
 

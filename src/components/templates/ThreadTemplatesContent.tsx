@@ -70,11 +70,11 @@ export function ThreadTemplatesContent() {
 
       if (templateId) {
         // Update template + replace assignees atomically via RPC
-        const { error } = await supabase.rpc('update_thread_template_with_assignees', {
+        const { error } = await supabase.rpc('update_thread_template_with_assignees' as never, {
           p_template_id: templateId,
           p_updates: templateData,
           p_assignee_ids: assignee_ids,
-        })
+        } as never)
         if (error) throw error
       } else {
         // Create
@@ -124,9 +124,9 @@ export function ThreadTemplatesContent() {
   const copyMutation = useMutation({
     mutationFn: async (item: ThreadTemplate) => {
       // Copy template + assignees atomically via RPC
-      const { error } = await supabase.rpc('copy_thread_template', {
+      const { error } = await supabase.rpc('copy_thread_template' as never, {
         p_template_id: item.id,
-      })
+      } as never)
       if (error) throw error
     },
     onSuccess: () => {

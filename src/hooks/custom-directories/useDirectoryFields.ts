@@ -56,7 +56,7 @@ export function useDirectoryFields(directoryId: string | undefined) {
         is_required: input.is_required ?? false,
         is_unique: input.is_unique ?? false,
         is_visible_in_list: input.is_visible_in_list ?? true,
-        options: (input.options ?? {}) as Record<string, unknown>,
+        options: (input.options ?? {}) as import('@/types/database').Json,
         order_index: fields.length,
       }
       const { data, error } = await supabase

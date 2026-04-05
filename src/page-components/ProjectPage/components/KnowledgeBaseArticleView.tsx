@@ -17,8 +17,8 @@ interface KnowledgeBaseArticleViewProps {
   article: {
     id: string
     title: string
-    content: string
-    access_mode: string
+    content?: string | null
+    access_mode?: string
   } | null
   open: boolean
   onClose: () => void
@@ -65,7 +65,7 @@ export function KnowledgeBaseArticleView({
           <div className="flex items-center gap-3">
             <DialogTitle className="flex-1">{article.title}</DialogTitle>
             <Badge variant="secondary" className="shrink-0">
-              {ACCESS_MODE_LABELS[article.access_mode] ?? article.access_mode}
+              {ACCESS_MODE_LABELS[article.access_mode ?? ''] ?? article.access_mode}
             </Badge>
           </div>
         </DialogHeader>
@@ -99,7 +99,7 @@ export function KnowledgeBaseArticleView({
             '[&_hr]:my-6 [&_hr]:border-border',
             isReadOnly && 'select-none',
           )}
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.content) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.content ?? '') }}
         />
       </DialogContent>
     </Dialog>

@@ -60,7 +60,7 @@ export async function getDocumentKitsWithContents(
 
     return (data || []) as DocumentKitWithDocuments[]
   } catch (error) {
-    handleServiceError('Не удалось загрузить наборы документов', error)
+    throw handleServiceError('Не удалось загрузить наборы документов', error)
   }
 }
 

@@ -41,16 +41,13 @@ export interface DocumentTemplate {
 // =====================================================
 
 export async function getDocumentTemplates(workspaceId: string): Promise<DocumentTemplate[]> {
-  const data = await safeFetchOrThrow<DocumentTemplate[] | null>(
-    supabase
-      .from('document_templates')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .order('name', { ascending: true }),
-    'Не удалось загрузить шаблоны документов',
-    DocumentTemplateError,
-  )
-  return data ?? []
+  const { data, error } = await supabase
+    .from('document_templates')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .order('name', { ascending: true })
+  if (error) throw new DocumentTemplateError('Не удалось загрузить шаблоны документов', error)
+  return (data ?? []) as unknown as DocumentTemplate[]
 }
 
 export async function getDocumentTemplateById(id: string): Promise<DocumentTemplate> {
@@ -134,7 +131,7 @@ export async function updateDocumentTemplate(
   },
 ): Promise<void> {
   await safeUpdateOrThrow(
-    supabase.from('document_templates').update(updates).eq('id', id).select().single(),
+    supabase.from('document_templates').update(updates as never).eq('id', id).select().single(),
     'Не удалось обновить шаблон документа',
     DocumentTemplateError,
   )
@@ -219,7 +216,7 @@ export async function replaceDocumentTemplateFile(params: {
           file_path: filePath,
           file_name: file.name,
           file_size: file.size,
-          placeholders: mergedPlaceholders,
+          placeholders: mergedPlaceholders as never,
           updated_at: new Date().toISOString(),
         })
         .eq('id', templateId)

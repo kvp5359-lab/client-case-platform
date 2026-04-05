@@ -63,8 +63,11 @@ export interface Participant {
   last_name: string | null
   avatar_url: string | null
   user_id?: string | null
-  workspace_roles?: string[]
+  workspace_roles?: string[] | null
   project_roles?: string[]
+  is_deleted?: boolean
+  email?: string | null
+  can_login?: boolean
 }
 
 // ── Constants ──
@@ -93,7 +96,7 @@ export const PROJECT_ROLE_OPTIONS = [
 
 // ── Utilities ──
 
-export function getRoleGroup(roles?: string[]): 'staff' | 'external' | 'client' | 'other' {
+export function getRoleGroup(roles?: string[] | null): 'staff' | 'external' | 'client' | 'other' {
   if (!roles) return 'other'
   if (roles.some((r) => STAFF_ROLES.includes(r))) return 'staff'
   if (roles.some((r) => EXTERNAL_ROLES.includes(r))) return 'external'

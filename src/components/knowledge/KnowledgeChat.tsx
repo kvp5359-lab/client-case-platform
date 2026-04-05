@@ -67,8 +67,8 @@ export function KnowledgeChat({
 
   const handleSelectConversation = useCallback(
     async (conv: KnowledgeConversation) => {
-      const { getMessages } = await import('@/services/api/knowledgeSearchService')
-      const msgs = await getMessages(conv.id)
+      const { getKnowledgeMessages } = await import('@/services/api/knowledgeSearchService')
+      const msgs = await getKnowledgeMessages(conv.id)
       loadConversation(conv, msgs)
     },
     [loadConversation],

@@ -33,7 +33,7 @@ export async function parseSSEStream(
       buffer = parts.pop()!
 
       for (const part of parts) {
-        const eventMatch = part.match(/^event: (\w+)\ndata: (.+)$/s)
+        const eventMatch = part.match(/^event: (\w+)\ndata: ([\s\S]+)$/)
         if (!eventMatch) continue
 
         const [, eventType, data] = eventMatch

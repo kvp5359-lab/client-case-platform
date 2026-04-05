@@ -141,7 +141,7 @@ export function useFolderOperations(
             knowledge_article_id: template.knowledge_article_id || null,
           }
         })
-        .filter(Boolean)
+        .filter((f): f is NonNullable<typeof f> => f !== null)
 
       if (foldersToCreate.length === 0) return
 

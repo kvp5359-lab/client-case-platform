@@ -225,20 +225,22 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
       const selectedTasks = linkedTemplateTasks.filter((t) => selectedTaskIds.has(t.id))
       for (const task of selectedTasks) {
         promises.push(
-          supabase
-            .from('project_threads')
-            .insert({
-              project_id: project.id,
-              workspace_id: currentWorkspaceId,
-              name: task.name,
-              type: 'task',
-              access_type: 'roles',
-              access_roles: ['Администратор', 'Исполнитель'],
-              sort_order: task.sort_order + 100,
-            })
-            .then(({ error }) => {
-              if (error) throw error
-            }),
+          Promise.resolve(
+            supabase
+              .from('project_threads')
+              .insert({
+                project_id: project.id,
+                workspace_id: currentWorkspaceId,
+                name: task.name,
+                type: 'task',
+                access_type: 'roles',
+                access_roles: ['Администратор', 'Исполнитель'],
+                sort_order: task.sort_order + 100,
+              })
+              .then(({ error }) => {
+                if (error) throw error
+              }),
+          ),
         )
       }
 

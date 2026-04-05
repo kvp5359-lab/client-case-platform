@@ -31,17 +31,14 @@ export interface DocumentGeneration {
 // =====================================================
 
 export async function getDocumentGenerations(projectId: string): Promise<DocumentGeneration[]> {
-  const data = await safeFetchOrThrow<DocumentGeneration[] | null>(
-    supabase
-      .from('document_generations')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true }),
-    'Не удалось загрузить блоки генерации',
-    DocumentGenerationError,
-  )
-  return data ?? []
+  const { data, error } = await supabase
+    .from('document_generations')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  if (error) throw new DocumentGenerationError('Не удалось загрузить блоки генерации', error)
+  return (data ?? []) as unknown as DocumentGeneration[]
 }
 
 export async function createDocumentGeneration(params: {

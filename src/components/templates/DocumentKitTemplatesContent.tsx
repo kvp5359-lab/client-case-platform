@@ -132,6 +132,7 @@ export function DocumentKitTemplatesContent() {
             kit_template_id: newKit.id,
             folder_template_id: f.folder_template_id,
             order_index: f.order_index,
+            name: f.name,
           })),
         )
         if (foldersError) throw foldersError

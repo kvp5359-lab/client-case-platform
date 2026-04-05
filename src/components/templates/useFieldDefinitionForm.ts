@@ -123,11 +123,11 @@ export function useFieldDefinitionForm({
       if (existingField) {
         const { error } = await supabase
           .from('field_definitions')
-          .update(payload)
+          .update(payload as never)
           .eq('id', existingField.id)
         if (error) throw error
       } else {
-        const { error } = await supabase.from('field_definitions').insert(payload)
+        const { error } = await supabase.from('field_definitions').insert(payload as never)
         if (error) throw error
       }
     },
@@ -183,12 +183,12 @@ export function useFieldDefinitionForm({
       if (existingField) {
         const { error } = await supabase
           .from('field_definitions')
-          .update(payload)
+          .update(payload as never)
           .eq('id', existingField.id)
         if (error) throw error
         await queryClient.invalidateQueries({ queryKey: ['field-definitions'] })
       } else {
-        const { data, error } = await supabase.from('field_definitions').insert(payload).select()
+        const { data, error } = await supabase.from('field_definitions').insert(payload as never).select()
         if (error) throw error
         if (data && data.length > 0) {
           setSavedField(data[0] as FieldDefinition)

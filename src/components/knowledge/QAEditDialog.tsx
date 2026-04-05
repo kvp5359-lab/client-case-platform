@@ -78,28 +78,30 @@ function QAEditForm({
     qa?.knowledge_qa_groups?.map((g) => g.group_id) ?? [],
   )
 
-  const { data: tags } = useQuery({
+  const { data: tags } = useQuery<Array<{ id: string; name: string; color: string | null }>>({
     queryKey: knowledgeBaseKeys.tags(workspaceId),
-    queryFn: () =>
-      supabase
+    queryFn: async () => {
+      const r = await supabase
         .from('knowledge_tags')
         .select('*')
         .eq('workspace_id', workspaceId)
         .order('sort_order')
         .order('name')
-        .then((r) => r.data ?? []),
+      return (r.data ?? []) as Array<{ id: string; name: string; color: string | null }>
+    },
   })
 
-  const { data: groups } = useQuery({
+  const { data: groups } = useQuery<Array<{ id: string; name: string; color: string | null }>>({
     queryKey: knowledgeBaseKeys.groups(workspaceId),
-    queryFn: () =>
-      supabase
+    queryFn: async () => {
+      const r = await supabase
         .from('knowledge_groups')
         .select('*')
         .eq('workspace_id', workspaceId)
         .order('sort_order')
         .order('name')
-        .then((r) => r.data ?? []),
+      return (r.data ?? []) as Array<{ id: string; name: string; color: string | null }>
+    },
   })
 
   const saveMutation = useMutation({

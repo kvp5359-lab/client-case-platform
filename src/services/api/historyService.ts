@@ -17,11 +17,11 @@ export async function getProjectHistory(
 ): Promise<AuditLogEntry[]> {
   const { data, error } = await supabase.rpc('get_project_history', {
     p_project_id: projectId,
-    p_cursor: cursor ?? null,
+    p_cursor: cursor ?? undefined,
     p_limit: limit,
-    p_resource_types: filters?.resourceTypes ?? null,
-    p_actions: filters?.actions ?? null,
-    p_user_id: filters?.userId ?? null,
+    p_resource_types: filters?.resourceTypes ?? undefined,
+    p_actions: filters?.actions ?? undefined,
+    p_user_id: filters?.userId ?? undefined,
   })
 
   if (error) throw new ApiError(`Ошибка загрузки истории: ${error.message}`)

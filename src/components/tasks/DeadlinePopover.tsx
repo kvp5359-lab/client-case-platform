@@ -59,7 +59,6 @@ export function DeadlinePopover({ deadline, onSet, onClear, isPending }: Deadlin
             }
           }}
           locale={ru}
-          modal={false}
         />
         {d && (
           <div className="border-t px-3 pb-3 pt-2">

@@ -104,7 +104,7 @@ export async function getArticleVersion(versionId: string): Promise<KnowledgeArt
 export async function createArticleVersion(articleId: string, comment?: string): Promise<string> {
   const { data, error } = await supabase.rpc('create_article_version', {
     p_article_id: articleId,
-    p_comment: comment ?? null,
+    p_comment: comment ?? undefined,
   })
   if (error) throw new KnowledgeBaseError('Не удалось создать версию', error)
   return data as string

@@ -21,7 +21,7 @@ import { PermissionError } from '../../services/errors'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 
 /** Мёрж объектов boolean-полей по принципу ИЛИ */
-function mergeByOr<T extends Record<string, boolean>>(target: T, source: Partial<T>): void {
+function mergeByOr<T extends object>(target: T, source: Partial<T> | null | undefined): void {
   if (!source || typeof source !== 'object') return
   for (const key of Object.keys(target) as (keyof T)[]) {
     if (source[key]) {
@@ -335,7 +335,7 @@ export function useProjectPermissions(
       const modulePerms = permissions[module]
       if (!modulePerms) return false
       if (!(permission in modulePerms)) return false
-      return (modulePerms as Record<string, boolean>)[permission] === true
+      return (modulePerms as unknown as Record<string, boolean>)[permission] === true
     },
     [permissions],
   )

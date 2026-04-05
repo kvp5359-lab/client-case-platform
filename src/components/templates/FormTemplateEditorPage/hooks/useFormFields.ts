@@ -254,7 +254,7 @@ export function useFormFields(templateId: string | undefined) {
               const formKitIds = formKits.map((fk) => fk.id)
               await supabase
                 .from('form_kit_fields')
-                .update({ options: mergedOptions })
+                .update({ options: mergedOptions as never })
                 .in('form_kit_id', formKitIds)
                 .eq('field_definition_id', templateField.field_definition_id)
             }

@@ -158,7 +158,7 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
   })
 
   if (params.attachments && params.attachments.length > 0) {
-    await uploadAttachments(params.attachments, message.id, params.workspaceId, params.projectId)
+    await uploadAttachments(params.attachments, message.id, params.workspaceId, params.projectId ?? '')
   }
 
   // Пересылаемые вложения — создаём ссылки на существующие файлы без загрузки
@@ -202,7 +202,7 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     if (params.threadId) {
       tgQuery = tgQuery.eq('thread_id', params.threadId)
     } else {
-      tgQuery = tgQuery.eq('project_id', params.projectId).eq('channel', channel)
+      tgQuery = tgQuery.eq('project_id', params.projectId ?? '').eq('channel', channel)
     }
     const { data: tgLink } = await tgQuery.maybeSingle()
 

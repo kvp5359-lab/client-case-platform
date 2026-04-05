@@ -17,7 +17,7 @@ interface EmailChip {
 interface EmailSuggestion {
   email: string
   label: string
-  freq: number
+  freq?: number
 }
 
 interface TelegramLinkInfo {

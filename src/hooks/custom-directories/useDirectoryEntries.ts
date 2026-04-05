@@ -30,7 +30,7 @@ function buildValueRow(
     value_number: null as number | null,
     value_date: null as string | null,
     value_bool: null as boolean | null,
-    value_json: null as unknown,
+    value_json: null as unknown as import('@/types/database').Json,
     value_ref: null as string | null,
   }
 
@@ -53,7 +53,7 @@ function buildValueRow(
       break
     case 'select':
     case 'multi_select':
-      base.value_json = value
+      base.value_json = value as import('@/types/database').Json
       break
     case 'directory_ref':
       base.value_ref = value as string

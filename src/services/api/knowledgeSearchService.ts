@@ -5,6 +5,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { KnowledgeBaseError } from '../errors'
+import type { SearchSourcesResult } from './knowledgeSearchService.types'
 
 // =====================================================
 // Типы (перенесены в knowledgeSearchService.types.ts —
@@ -59,7 +60,7 @@ export {
   createConversation,
   updateConversation,
   deleteConversation,
-  getMessages,
+  getMessages as getKnowledgeMessages,
   addMessage,
 } from './knowledgeConversationService'
 

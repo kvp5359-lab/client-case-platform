@@ -230,7 +230,7 @@ export async function streamMessengerAiChat(
   let body: FormData | string
   const headers: Record<string, string> = {
     Authorization: `Bearer ${session.access_token}`,
-    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
   }
 
   if (file) {

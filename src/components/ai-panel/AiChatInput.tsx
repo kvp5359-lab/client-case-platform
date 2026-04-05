@@ -87,7 +87,7 @@ export function AiChatInput({
   }, [])
 
   const handleFilesSelected = useCallback(
-    (fileList: FileList) => {
+    (fileList: File[] | FileList) => {
       const file = fileList[0]
       if (!file) return
 

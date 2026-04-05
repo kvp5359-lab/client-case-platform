@@ -90,7 +90,7 @@ export async function createFormKitFromTemplate(
 
     return data as string
   } catch (error) {
-    handleServiceError('Не удалось создать анкету из шаблона', error)
+    throw handleServiceError('Не удалось создать анкету из шаблона', error)
   }
 }
 

@@ -20,5 +20,5 @@ export interface TaskItem {
   /** Статус помечен «показывать постановщику» */
   status_show_to_creator?: boolean
   /** Название проекта — заполняется только на странице «Все задачи» */
-  project_name?: string
+  project_name?: string | null
 }

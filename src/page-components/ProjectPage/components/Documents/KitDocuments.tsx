@@ -226,7 +226,7 @@ export const KitDocuments = memo(function KitDocuments({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => onAddFolder(kit.id)}>
+              <DropdownMenuItem onClick={() => onAddFolder?.(kit.id)}>
                 <FolderPlus className="h-4 w-4 mr-2" />
                 Добавить отдельную папку
               </DropdownMenuItem>

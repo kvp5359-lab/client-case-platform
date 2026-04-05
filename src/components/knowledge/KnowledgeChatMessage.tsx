@@ -157,7 +157,7 @@ export function KnowledgeChatMessage({
               </div>
             ) : (
               <div className="prose prose-sm dark:prose-invert max-w-none break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:mb-1 [&_p]:mt-2.5 [&_p:first-child]:mt-0 [&_ul]:my-0.5 [&_ol]:my-0.5 [&_li]:my-0 [&_li>p]:my-0">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents as never}>
                   {displayContent}
                 </ReactMarkdown>
               </div>

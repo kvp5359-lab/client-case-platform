@@ -103,7 +103,7 @@ async function callEdgeFunctionWithToken<T>(
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
-      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
     },
     body: JSON.stringify(body),
   })

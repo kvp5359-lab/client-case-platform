@@ -22,7 +22,7 @@ export interface FormField extends FieldDefinition {
   is_required: boolean
   sort_order: number
   section_id: string | null
-  field_definition_id?: string // ID определения поля (для совместимости)
+  field_definition_id: string // ID определения поля
 }
 
 /**

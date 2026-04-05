@@ -150,7 +150,7 @@ export async function createDocumentKitFromTemplate(
 
     return kitId as string
   } catch (error) {
-    handleServiceError('Не удалось создать набор документов из шаблона', error)
+    throw handleServiceError('Не удалось создать набор документов из шаблона', error)
   }
 }
 

@@ -7,7 +7,8 @@ export interface CalloutOptions {
 }
 
 // Типы вынесены в callout-types.ts, чтобы callout-view.tsx не образовывал цикл
-export type { CalloutIcon, CalloutColor } from './callout-types'
+import type { CalloutIcon, CalloutColor } from './callout-types'
+export type { CalloutIcon, CalloutColor }
 
 // Обратная совместимость со старыми каллаутами
 export const iconEmojis: Record<string, string> = {

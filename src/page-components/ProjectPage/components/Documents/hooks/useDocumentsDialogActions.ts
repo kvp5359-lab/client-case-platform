@@ -16,7 +16,7 @@ import { useDocumentMerge } from '@/components/projects/DocumentKitsTab/hooks/us
 import { useDocumentSummary } from '@/hooks/documents/useDocumentSummary'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import type { SourceDocument } from '@/components/documents'
-import type { FolderSlot } from '@/hooks/useFolderSlots'
+import type { FolderSlotWithDocument as FolderSlot } from '@/components/documents/types'
 
 interface UseDocumentsDialogActionsProps {
   projectId: string
@@ -209,7 +209,11 @@ export function useDocumentsDialogActions({
   )
 
   // Summary
-  const summary = useDocumentSummary({ folderSlots, folderStatuses, workspaceId })
+  const summary = useDocumentSummary({
+    folderSlots,
+    folderStatuses: folderStatuses as unknown as import('@/types/entities').DocumentStatus[],
+    workspaceId,
+  })
 
   return {
     // Move

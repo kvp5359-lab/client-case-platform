@@ -4,7 +4,7 @@
  */
 
 import { useSidePanelStore } from '@/store/sidePanelStore'
-import type { DocumentWithFiles, SourceDocument, Folder } from '@/components/documents/types'
+import type { DocumentWithFiles, SourceDocument, Folder, DocumentStatus } from '@/components/documents/types'
 import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
 import type { DocumentKitHandlers } from './documentKitHandlerTypes'
 
@@ -66,7 +66,7 @@ interface BatchActionsParams {
   systemSectionTab: string
   sourceDocuments: SourceDocument[]
   allFolders: Folder[]
-  statuses: { id: string; name: string }[]
+  statuses: DocumentStatus[]
   operations: {
     isMerging: boolean
     isCompressing: boolean
@@ -138,7 +138,12 @@ export function buildBatchActionsConfig(p: BatchActionsParams) {
 }
 
 // Confirm dialog props — прокидываются as-is, не инспектируются
-type ConfirmDialogLike = unknown
+import type { ConfirmDialogState } from '@/hooks/dialogs/useConfirmDialog'
+interface ConfirmDialogLike {
+  state: ConfirmDialogState
+  onConfirm: () => void
+  onCancel: () => void
+}
 
 interface DialogsParams {
   documentOps: { confirmDialogProps: ConfirmDialogLike; handleOpen: (documentId: string) => void }
@@ -171,7 +176,7 @@ interface DialogsParams {
   batchCheckDialogOpen: boolean
   batchCheckDocumentIds: string[]
   documentNamesMap: Map<string, string>
-  statuses: { id: string; name: string }[]
+  statuses: DocumentStatus[]
   closeBatchCheckDialog: () => void
   fetchDocumentKits: (projectId: string) => Promise<void>
   clearSelection: () => void

@@ -52,7 +52,7 @@ export function useTimelineMessages(
 
       if (error) throw error
 
-      const rows = (data ?? []) as ProjectMessage[]
+      const rows = (data ?? []) as unknown as ProjectMessage[]
       const threadMap = new Map(threads.map((t) => [t.id, t]))
 
       // Hydrate reply_to_message

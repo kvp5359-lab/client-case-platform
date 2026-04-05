@@ -78,7 +78,7 @@ export function useUpdateDraft(
         params.messageId,
         params.content,
         workspaceId,
-        projectId,
+        projectId ?? '',
         params.keepAttachmentIds,
         params.newFiles,
       ),

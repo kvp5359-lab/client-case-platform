@@ -14,10 +14,10 @@ interface BubbleTextContentProps {
   hasAttachments: boolean
   deliveryStatus: DeliveryStatus
   tgFailed: boolean
-  textRef: React.RefObject<HTMLDivElement>
+  textRef: React.RefObject<HTMLDivElement | null>
   isCollapsed: boolean
   isOverflowing: boolean
-  maxCollapsedHeight: string
+  maxCollapsedHeight: number
   toggleCollapsed: () => void
   onPublishDraft?: (msg: ProjectMessage) => void
 }

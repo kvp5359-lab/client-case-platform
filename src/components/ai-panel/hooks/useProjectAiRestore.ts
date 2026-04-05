@@ -7,7 +7,7 @@ import { useRef, useEffect, useState } from 'react'
 import type { AiMessage } from '@/store/sidePanelStore'
 import { logger } from '@/utils/logger'
 import {
-  getMessages as getConversationMessages,
+  getKnowledgeMessages as getConversationMessages,
   type KnowledgeConversation,
   type ConversationSources,
 } from '@/services/api/knowledgeSearchService'
@@ -45,10 +45,13 @@ export function useProjectAiRestore({
         const mapped: AiMessage[] = msgs.map((m) => {
           let sourceTags: string[] | undefined
           if (m.role === 'user' && m.sources && Array.isArray(m.sources)) {
-            const tags = m.sources
+            const tags = (m.sources as unknown[])
               .filter(
                 (s): s is { tag: string } =>
-                  'tag' in s && typeof (s as { tag?: unknown }).tag === 'string',
+                  typeof s === 'object' &&
+                  s !== null &&
+                  'tag' in s &&
+                  typeof (s as { tag?: unknown }).tag === 'string',
               )
               .map((s) => s.tag)
             if (tags.length > 0) sourceTags = tags

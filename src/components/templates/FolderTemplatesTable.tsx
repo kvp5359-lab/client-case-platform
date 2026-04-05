@@ -70,15 +70,17 @@ export function FolderTemplatesTable({
                 <div className="flex items-center gap-1.5 flex-1 min-w-0">
                   <span className="font-medium truncate">{template.name}</span>
                   {template.knowledge_article_id ? (
-                    <BookOpen
-                      className="h-3.5 w-3.5 text-blue-500 flex-shrink-0"
-                      title="Привязана статья базы знаний"
-                    />
+                    <span title="Привязана статья базы знаний" className="flex-shrink-0">
+                      <BookOpen
+                        className="h-3.5 w-3.5 text-blue-500"
+                      />
+                    </span>
                   ) : template.description ? (
-                    <HelpCircle
-                      className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0"
-                      title={template.description}
-                    />
+                    <span title={template.description} className="flex-shrink-0">
+                      <HelpCircle
+                        className="h-3.5 w-3.5 text-muted-foreground/50"
+                      />
+                    </span>
                   ) : null}
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

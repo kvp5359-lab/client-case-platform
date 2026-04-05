@@ -17,7 +17,7 @@ import {
 import { Paperclip, Upload, FolderOpen } from 'lucide-react'
 
 interface AttachmentButtonProps {
-  onFilesSelected: (files: FileList) => void
+  onFilesSelected: (files: File[]) => void
   onOpenDocPicker?: () => void
   projectDocumentsCount?: number
   disabled?: boolean
@@ -50,7 +50,7 @@ export function AttachmentButton({
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files.length > 0) {
-        onFilesSelected(e.target.files)
+        onFilesSelected(Array.from(e.target.files))
         e.target.value = ''
       }
     },

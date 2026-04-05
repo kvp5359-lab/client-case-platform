@@ -16,7 +16,7 @@ import type { UseMutationResult } from '@tanstack/react-query'
 interface ProjectHeaderProps {
   projectName: string
   canEdit: boolean
-  updateProjectName: UseMutationResult<void, Error, string>
+  updateProjectName: UseMutationResult<unknown, Error, string>
   templateName?: string | null
   participantGroups?: RoleGroup[]
 }

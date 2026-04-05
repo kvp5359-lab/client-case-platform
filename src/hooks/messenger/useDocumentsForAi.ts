@@ -18,7 +18,7 @@ export async function fetchDocumentsForAi(projectId: string): Promise<DocumentFo
 
   if (!docs || docs.length === 0) return []
 
-  const kitIds = [...new Set(docs.map((d) => d.document_kit_id))]
+  const kitIds = [...new Set(docs.map((d) => d.document_kit_id).filter(Boolean))] as string[]
   const folderIds = [...new Set(docs.map((d) => d.folder_id).filter(Boolean))] as string[]
 
   const [{ data: kits }, { data: folders }] = await Promise.all([
@@ -37,7 +37,7 @@ export async function fetchDocumentsForAi(projectId: string): Promise<DocumentFo
     id: d.id,
     name: d.name,
     textContent: d.text_content,
-    kitName: kitMap.get(d.document_kit_id) ?? null,
+    kitName: d.document_kit_id ? (kitMap.get(d.document_kit_id) ?? null) : null,
     folderName: d.folder_id ? (folderMap.get(d.folder_id)?.name ?? null) : null,
     folderSortOrder: d.folder_id ? (folderMap.get(d.folder_id)?.sortOrder ?? null) : null,
     sortOrder: d.sort_order ?? 0,

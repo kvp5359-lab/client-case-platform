@@ -155,7 +155,7 @@ export function ChatSettingsDialog({
               <div className="flex items-center rounded-md border border-input bg-background">
                 <ChatSettingsStatusPopover
                   taskStatuses={actions.taskStatuses}
-                  currentStatusId={actions.currentStatusId}
+                  currentStatusId={form.currentStatusId}
                   currentStatus={actions.currentStatus}
                   statusPopoverOpen={form.statusPopoverOpen}
                   onOpenChange={form.setStatusPopoverOpen}

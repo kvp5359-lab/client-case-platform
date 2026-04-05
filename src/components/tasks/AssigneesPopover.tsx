@@ -104,7 +104,7 @@ export function AssigneesPopover({
   const external = filtered.filter((p) => getRoleGroup(p.workspace_roles) === 'external')
   const clients = filtered.filter((p) => getRoleGroup(p.workspace_roles) === 'client')
 
-  const renderItem = (p: ParticipantWithMeta) => {
+  const renderItem = (p: WorkspaceParticipant) => {
     const isAssigned = assigneeSet.has(p.id)
     const isMe = p.user_id === user?.id
     return (

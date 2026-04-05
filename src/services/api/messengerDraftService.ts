@@ -59,7 +59,7 @@ export async function saveDraftMessage(params: SaveDraftParams): Promise<Project
   })
 
   if (params.attachments && params.attachments.length > 0) {
-    await uploadAttachments(params.attachments, message.id, params.workspaceId, params.projectId)
+    await uploadAttachments(params.attachments, message.id, params.workspaceId, params.projectId ?? '')
     const { data: fullMessage } = await supabase
       .from('project_messages')
       .select(MESSAGE_SELECT)
@@ -199,7 +199,7 @@ export async function publishDraftMessage(
     tgQuery = tgQuery.eq('thread_id', message.thread_id)
   } else {
     tgQuery = tgQuery
-      .eq('project_id', message.project_id)
+      .eq('project_id', message.project_id ?? '')
       .eq('channel', message.channel ?? 'client')
   }
   const { data: tgLink } = await tgQuery.maybeSingle()

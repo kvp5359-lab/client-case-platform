@@ -36,17 +36,16 @@ const QA_SELECT =
   '*, knowledge_qa_tags(tag_id, knowledge_tags(*)), knowledge_qa_groups(group_id, knowledge_groups(*))'
 
 export async function getQAItems(workspaceId: string): Promise<KnowledgeQA[]> {
-  return (
-    (await safeFetchOrThrow(
-      supabase
-        .from('knowledge_qa')
-        .select(QA_SELECT)
-        .eq('workspace_id', workspaceId)
-        .order('created_at', { ascending: false }),
-      'Не удалось загрузить Q&A',
-      KnowledgeBaseError,
-    )) ?? []
+  const rows = await safeFetchOrThrow(
+    supabase
+      .from('knowledge_qa')
+      .select(QA_SELECT)
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false }),
+    'Не удалось загрузить Q&A',
+    KnowledgeBaseError,
   )
+  return (rows ?? []) as unknown as KnowledgeQA[]
 }
 
 export async function createQA(

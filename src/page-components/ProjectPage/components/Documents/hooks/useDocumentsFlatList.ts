@@ -10,18 +10,11 @@
  */
 
 import { useMemo } from 'react'
-import type { DocumentKitWithDocuments, FolderSlotWithDocument } from '@/components/documents/types'
-
-interface KitlessDocument {
-  id: string
-  folder_id: string | null
-  is_deleted: boolean
-  sort_order: number | null
-}
+import type { DocumentKitWithDocuments, FolderSlotWithDocument, DocumentWithFiles } from '@/components/documents/types'
 
 export function useDocumentsFlatList(
   documentKits: DocumentKitWithDocuments[],
-  kitlessDocuments: KitlessDocument[],
+  kitlessDocuments: DocumentWithFiles[],
   folderSlots: FolderSlotWithDocument[],
 ) {
   // Все документы без папки (для ungrouped секции), с дедупликацией

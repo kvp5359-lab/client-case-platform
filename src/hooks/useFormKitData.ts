@@ -127,6 +127,7 @@ export function useFormKitData({ formKitId, enabled: enabledProp = true }: UseFo
           description: formKit.description,
           slug: null,
           order_index: 0,
+          ai_extraction_prompt: null,
           created_at: formKit.created_at || new Date().toISOString(),
           updated_at: formKit.updated_at || new Date().toISOString(),
         }
@@ -263,8 +264,8 @@ export function useFormKitData({ formKitId, enabled: enabledProp = true }: UseFo
         }
 
       // Собираем все field_definition_id
-      const allFieldDefinitionIds = structure.sections.flatMap((s) =>
-        s.fields.map((f) => f.field_definition_id).filter(Boolean),
+      const allFieldDefinitionIds: string[] = structure.sections.flatMap((s) =>
+        s.fields.map((f) => f.field_definition_id),
       )
 
       if (allFieldDefinitionIds.length === 0) {
@@ -294,7 +295,7 @@ export function useFormKitData({ formKitId, enabled: enabledProp = true }: UseFo
       ])
 
       if (compositeResult.error) throw compositeResult.error
-      const compositeItems = (compositeResult.data || []) as CompositeFieldItem[]
+      const compositeItems = (compositeResult.data || []) as unknown as CompositeFieldItem[]
 
       // Если есть nested fields, нужно дозагрузить select options для них
       const nestedFieldIds = compositeItems.map((item) => item.nested_field_id)

@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { taskKeys } from '@/hooks/queryKeys'
 
-export function useUpdateTaskStatus(invalidateKeys: readonly unknown[][]) {
+export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ threadId, statusId }: { threadId: string; statusId: string | null }) => {
@@ -28,7 +28,7 @@ export function useUpdateTaskStatus(invalidateKeys: readonly unknown[][]) {
   })
 }
 
-export function useUpdateTaskDeadline(invalidateKeys: readonly unknown[][]) {
+export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ threadId, deadline }: { threadId: string; deadline: string | null }) => {
@@ -46,7 +46,7 @@ export function useUpdateTaskDeadline(invalidateKeys: readonly unknown[][]) {
   })
 }
 
-export function useRenameTask(invalidateKeys: readonly unknown[][]) {
+export function useRenameTask(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ threadId, name }: { threadId: string; name: string }) => {
@@ -60,7 +60,7 @@ export function useRenameTask(invalidateKeys: readonly unknown[][]) {
   })
 }
 
-export function useUpdateTaskSettings(invalidateKeys: readonly unknown[][]) {
+export function useUpdateTaskSettings(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({

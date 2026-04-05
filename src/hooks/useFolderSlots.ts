@@ -121,11 +121,11 @@ export function useFolderSlots(projectId: string) {
   //   4. Обновление document_kit_id и folder_id документа
   const fillSlotMutation = useMutation({
     mutationFn: async ({ slotId, documentId }: { slotId: string; documentId: string }) => {
-      const { error } = await supabase.rpc('fill_slot_atomic', {
+      const { error } = await supabase.rpc('fill_slot_atomic' as never, {
         p_slot_id: slotId,
         p_document_id: documentId,
         p_project_id: projectId,
-      })
+      } as never)
       if (error) throw error
     },
     onSuccess: () => {

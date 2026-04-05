@@ -140,7 +140,7 @@ export default function ProjectPage() {
   const activeTab = isTabAccessible(urlTab) ? urlTab : getFirstAvailableTab()
 
   const handleTabChange = (tab: string) => {
-    router.push(`/workspaces/${workspaceId}/projects/${projectId}?tab=${tab}`, { replace: true })
+    router.replace(`/workspaces/${workspaceId}/projects/${projectId}?tab=${tab}`)
   }
 
   // === ЭФФЕКТЫ ===

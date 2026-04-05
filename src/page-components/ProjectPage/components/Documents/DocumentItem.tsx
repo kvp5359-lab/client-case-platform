@@ -123,7 +123,6 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
     canMove: !!onMoveDocument,
     canDuplicate: !!onDuplicateDocument,
     canDelete: !!onDeleteDocument,
-    canCreateTask: false,
   }
 
   const docHandlers: DocumentActionHandlers = {
@@ -211,7 +210,9 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
             <span className="shrink-0 inline-flex items-center gap-0.5 text-[13px] leading-tight text-gray-300">
               {formatSize(currentFile.file_size || 0)}
               {currentFile.is_compressed && (
-                <Minimize2 className="h-3 w-3 text-green-600" title="Документ сжат" />
+                <span title="Документ сжат" className="inline-flex">
+                  <Minimize2 className="h-3 w-3 text-green-600" />
+                </span>
               )}
             </span>
           )}

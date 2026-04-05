@@ -224,7 +224,7 @@ export default function ProjectsPage() {
                     <TableRow key={project.id}>
                       <TableCell className="font-medium pl-6">
                         <Link
-                          to={`/workspaces/${activeWorkspaceId}/projects/${project.id}?tab=settings`}
+                          href={`/workspaces/${activeWorkspaceId}/projects/${project.id}?tab=settings`}
                           className="text-foreground hover:underline"
                         >
                           {project.name}

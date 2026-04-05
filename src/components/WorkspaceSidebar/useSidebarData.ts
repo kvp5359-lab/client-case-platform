@@ -80,7 +80,7 @@ export function useSidebarData({ workspaceId }: UseSidebarDataOptions) {
         .from('participants')
         .select('id')
         .eq('workspace_id', workspaceId!)
-        .eq('user_id', user?.id)
+        .eq('user_id', user?.id ?? '')
         .eq('is_deleted', false)
         .maybeSingle()
 
