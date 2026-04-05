@@ -25,6 +25,7 @@ import type { ThreadTemplate } from '@/types/threadTemplate'
 import { getCurrentWorkspaceParticipant } from '@/services/api/messengerService'
 import { useNewMessageToast } from '@/hooks/messenger/useNewMessageToast'
 import { useFaviconBadge } from '@/hooks/messenger/useFaviconBadge'
+import { useWorkspaceMessagesRealtime } from '@/hooks/messenger/useWorkspaceMessagesRealtime'
 
 const ExtraPanelContent = lazy(() =>
   import('@/components/extra-panel/ExtraPanelContent').then((m) => ({
@@ -140,6 +141,10 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   const isClientOnly =
     userRoles.length > 0 && userRoles.every((r) => r === SYSTEM_WORKSPACE_ROLES.CLIENT)
   const showExtra = hasProject && !isClientOnly
+
+  // Единая workspace-level Realtime-подписка на project_messages/message_reactions.
+  // Один WebSocket-канал вместо 4+ дублей в сайдбаре/useInbox/useNewMessageToast.
+  useWorkspaceMessagesRealtime(workspaceId)
 
   // Toast уведомления и favicon badge
   useNewMessageToast(workspaceId)

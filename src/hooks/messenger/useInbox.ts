@@ -7,172 +7,41 @@
  * v2 хуки (useInboxThreadsV2) — новый формат: каждый тред = отдельная строка.
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
 import { getInboxThreads, getInboxThreadsV2 } from '@/services/api/inboxService'
 import { inboxKeys } from '@/hooks/queryKeys'
 import { calcThreadUnread, calcTotalUnread } from '@/utils/inboxUnread'
 
 // ─── v2: тред-ориентированные хуки ───────────────────────────────
 
-/** Список тредов v2 — каждый тред отдельной строкой, с channel_type и email-данными */
+/** Список тредов v2 — каждый тред отдельной строкой, с channel_type и email-данными.
+ *  Realtime-инвалидация ключа выполняется в useWorkspaceMessagesRealtime (WorkspaceLayoutImpl) —
+ *  единая workspace-level подписка на project_messages/message_reactions. */
 export function useInboxThreadsV2(workspaceId: string) {
   const { user } = useAuth()
-  const queryClient = useQueryClient()
-  const instanceId = useRef(Math.random().toString(36).slice(2))
 
-  const query = useQuery({
+  return useQuery({
     queryKey: inboxKeys.threadsV2(workspaceId),
     queryFn: () => getInboxThreadsV2(workspaceId, user!.id),
     enabled: !!workspaceId && !!user,
     staleTime: 30_000,
   })
-
-  // Realtime: новое сообщение или реакция → обновить список чатов
-  useEffect(() => {
-    if (!workspaceId) return
-
-    // Уникальное имя канала для каждого монтирования (защита от React StrictMode)
-    const channelName = `inbox-v2:${workspaceId}:${instanceId.current}`
-
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'project_messages',
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'project_messages',
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'message_reactions',
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'message_reactions',
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
-        },
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [workspaceId, queryClient])
-
-  return query
 }
 
 // ─── v1: project-ориентированные хуки (для сайдбара, favicon) ───
 
-/** Список тредов-проектов с последним сообщением и непрочитанными */
+/** Список тредов-проектов с последним сообщением и непрочитанными (legacy v1).
+ *  Realtime-инвалидация ключа выполняется в useWorkspaceMessagesRealtime. */
 export function useInboxThreads(workspaceId: string) {
   const { user } = useAuth()
-  const queryClient = useQueryClient()
-  const instanceId = useRef(Math.random().toString(36).slice(2))
 
-  const query = useQuery({
+  return useQuery({
     queryKey: inboxKeys.threads(workspaceId),
     queryFn: () => getInboxThreads(workspaceId, user!.id),
     enabled: !!workspaceId && !!user,
     staleTime: 30_000,
   })
-
-  // Realtime: новое сообщение или реакция → обновить список чатов
-  useEffect(() => {
-    if (!workspaceId) return
-
-    // Уникальное имя канала для каждого монтирования (защита от React StrictMode)
-    const channelName = `inbox:${workspaceId}:${instanceId.current}`
-
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'project_messages',
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'project_messages',
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'message_reactions',
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'message_reactions',
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-        },
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [workspaceId, queryClient])
-
-  return query
 }
 
 /** Суммарный счётчик непрочитанных сообщений для бейджа favicon и сайдбара (v2: по тредам) */

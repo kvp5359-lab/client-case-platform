@@ -5,9 +5,9 @@
  * Мигрирован из WorkspaceSidebar.tsx оригинального ClientCase.
  */
 
-import { useEffect, useRef, useState, startTransition } from 'react'
+import { useEffect, useState, startTransition } from 'react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Home, Inbox, CheckSquare, Users, Layout, Settings, BookOpen } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { SidebarNavButton } from './WorkspaceSidebar/SidebarNavButton'
@@ -17,7 +17,6 @@ import { WorkspacePicker } from './WorkspaceSidebar/WorkspacePicker'
 import { useSidebarData } from './WorkspaceSidebar/useSidebarData'
 import { useSidebarResize } from './WorkspaceSidebar/useSidebarResize'
 import { useSidebarInboxCounts } from '@/hooks/messenger/useFilteredInbox'
-import { inboxKeys, sidebarKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
 import { useDialog } from '@/hooks/shared/useDialog'
@@ -131,33 +130,8 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
       ? urgentTasksCount > 99 ? '99+' : String(urgentTasksCount)
       : undefined
 
-  // Realtime: обновлять счётчики при новом сообщении
-  const queryClient = useQueryClient()
-  const instanceId = useRef(Math.random().toString(36).slice(2))
-  useEffect(() => {
-    if (!workspaceId) return
-    const channelName = `sidebar-unread:${workspaceId}:${instanceId.current}`
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'project_messages',
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-          queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
-          queryClient.invalidateQueries({ queryKey: sidebarKeys.projectsBase(workspaceId) })
-        },
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [workspaceId, queryClient])
+  // Realtime-подписка на project_messages вынесена в useWorkspaceMessagesRealtime
+  // (WorkspaceLayoutImpl) — один канал на весь workspace вместо дубля здесь.
 
   const buildHref = (path: string) => {
     // Защита от open-redirect: блокируем protocol-relative URL (//evil.com) и /\evil.com
