@@ -7,7 +7,7 @@
  *   useKnowledgeArticleMutations — CRUD мутации статей
  */
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { knowledgeBaseKeys, statusKeys } from '@/hooks/queryKeys'
@@ -64,6 +64,12 @@ export function useKnowledgeBasePage() {
 
   // --- Queries ---
 
+  // Safety cap: Tree view должен видеть все статьи для группировки, но при 1000+
+  // статьях это станет неподъёмным. limit(500) защищает от катастрофы — при его
+  // достижении в консоль выводится предупреждение, чтобы мы вовремя перешли на
+  // пагинацию/серверный поиск для table view.
+  const ARTICLES_LIMIT = 500
+
   const articlesQuery = useQuery({
     queryKey: knowledgeBaseKeys.articles(workspaceId!),
     queryFn: async () => {
@@ -86,8 +92,17 @@ export function useKnowledgeBasePage() {
         )
         .eq('workspace_id', workspaceId!)
         .order('title')
+        .limit(ARTICLES_LIMIT)
       if (error) throw error
-      return (data || []) as KnowledgeArticle[]
+      const rows = (data || []) as KnowledgeArticle[]
+      if (rows.length >= ARTICLES_LIMIT) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[KnowledgeBase] Достигнут лимит загрузки статей (${ARTICLES_LIMIT}). ` +
+            'Некоторые статьи не отображаются. Нужна пагинация/серверный поиск.',
+        )
+      }
+      return rows
     },
     enabled: !!workspaceId,
   })
@@ -143,20 +158,27 @@ export function useKnowledgeBasePage() {
   const articles = articlesQuery.data || []
   const statuses = statusesQuery.data || []
 
-  const filteredArticles = articles.filter((article) => {
-    const matchesSearch =
-      !searchQuery || article.title.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesTag =
-      filterTagIds.length === 0 ||
-      article.knowledge_article_tags?.some((at) => filterTagIds.includes(at.tag_id))
-    const matchesGroup =
-      filterGroupIds.length === 0 ||
-      article.knowledge_article_groups.some((ag) => filterGroupIds.includes(ag.group_id))
-    const matchesStatus =
-      filterStatusIds.length === 0 ||
-      (article.status_id != null && filterStatusIds.includes(article.status_id))
-    return matchesSearch && matchesTag && matchesGroup && matchesStatus
-  })
+  // Мемоизация: фильтрация перестаёт пересчитываться при рендерах, где выборки
+  // не изменились. searchQuery.toLowerCase() теперь вычисляется один раз, а не на
+  // каждую статью. filterTagIds/filterGroupIds/filterStatusIds конвертируем в Set
+  // для O(1) поиска вместо O(n) includes.
+  const filteredArticles = useMemo(() => {
+    const searchLower = searchQuery.trim().toLowerCase()
+    const tagSet = filterTagIds.length > 0 ? new Set(filterTagIds) : null
+    const groupSet = filterGroupIds.length > 0 ? new Set(filterGroupIds) : null
+    const statusSet = filterStatusIds.length > 0 ? new Set(filterStatusIds) : null
+
+    return articles.filter((article) => {
+      if (searchLower && !article.title.toLowerCase().includes(searchLower)) return false
+      if (tagSet && !article.knowledge_article_tags?.some((at) => tagSet.has(at.tag_id)))
+        return false
+      if (groupSet && !article.knowledge_article_groups.some((ag) => groupSet.has(ag.group_id)))
+        return false
+      if (statusSet && (article.status_id == null || !statusSet.has(article.status_id)))
+        return false
+      return true
+    })
+  }, [articles, searchQuery, filterTagIds, filterGroupIds, filterStatusIds])
 
   const getArticlesForGroup = (groupId: string) =>
     filteredArticles
@@ -169,7 +191,10 @@ export function useKnowledgeBasePage() {
         return aOrder - bOrder
       })
 
-  const ungroupedArticles = filteredArticles.filter((a) => a.knowledge_article_groups.length === 0)
+  const ungroupedArticles = useMemo(
+    () => filteredArticles.filter((a) => a.knowledge_article_groups.length === 0),
+    [filteredArticles],
+  )
 
   return {
     workspaceId,
