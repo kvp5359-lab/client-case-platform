@@ -18,6 +18,11 @@ jobs:
           node-version: 20
           cache: npm
 
-      - run: npm ci
+      - run: npm install --legacy-peer-deps
       - run: npm run lint
       - run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_APP_NAME: ClientCase
+          NEXT_PUBLIC_TECHNICAL_ADMIN_EMAILS: placeholder@example.com
