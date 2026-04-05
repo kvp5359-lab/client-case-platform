@@ -8,7 +8,7 @@ import { createServerClient } from '@supabase/ssr'
  * Приватные — проверяют наличие сессии, редиректят на /login.
  */
 
-const publicPaths = ['/login', '/register', '/auth/callback', '/lawyers', '/blog', '/about', '/privacy', '/terms']
+const publicPaths = ['/', '/login', '/register', '/auth/callback', '/lawyers', '/blog', '/about', '/privacy', '/terms']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
