@@ -5,11 +5,12 @@
  */
 
 import { Loader2 } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { projectKeys, documentKitKeys } from '@/hooks/queryKeys'
 import { getProjectById } from '@/services/api/projectService'
 import { supabase } from '@/lib/supabase'
 import { DocumentKitsTab } from '@/components/projects/DocumentKitsTab'
+import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
 
 interface ExtraPanelContentProps {
   projectId: string
@@ -17,6 +18,8 @@ interface ExtraPanelContentProps {
 }
 
 export function ExtraPanelContent({ projectId, workspaceId }: ExtraPanelContentProps) {
+  const queryClient = useQueryClient()
+
   // Загружаем проект для source_folder_id и export_folder_id
   const { data: project, isLoading: isProjectLoading } = useQuery({
     queryKey: projectKeys.detail(projectId),
@@ -25,7 +28,9 @@ export function ExtraPanelContent({ projectId, workspaceId }: ExtraPanelContentP
   })
 
   // Загружаем первый kitId для правой панели — отдельный ключ, чтобы не перезаписывать
-  // основной кэш documentKitKeys.byProject (который хранит полные данные с документами)
+  // основной кэш documentKitKeys.byProject (который хранит полные данные с документами).
+  // initialData: если юзер уже был на вкладке Документы, берём первый kitId из кэша —
+  // запрос не нужен вовсе.
   const { data: documentKits = [], isLoading: isKitsLoading } = useQuery({
     queryKey: [...documentKitKeys.byProject(projectId), 'firstKitId'],
     queryFn: async () => {
@@ -39,6 +44,14 @@ export function ExtraPanelContent({ projectId, workspaceId }: ExtraPanelContentP
       return data || []
     },
     staleTime: 60_000,
+    initialData: () => {
+      const fullKits = queryClient.getQueryData<DocumentKitWithDocuments[]>(
+        documentKitKeys.byProject(projectId),
+      )
+      if (!fullKits || fullKits.length === 0) return undefined
+      // Берём первый kit (они уже отсортированы по sort_order на сервере)
+      return [{ id: fullKits[0].id }]
+    },
   })
 
   const isLoading = isProjectLoading || isKitsLoading
