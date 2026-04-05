@@ -32,6 +32,7 @@ import { useDocumentKitOps } from './useDocumentKitOps'
 import { useDocumentKitEffects } from './useDocumentKitEffects'
 import { useDocumentKitPermissions } from './useDocumentKitPermissions'
 import { useDocumentKitStoreState } from './useDocumentKitStoreState'
+import { useDocumentKitMemos } from './useDocumentKitMemos'
 import type { DocumentKitContextValue } from '../context/DocumentKitContext'
 
 interface UseDocumentKitSetupParams {
@@ -167,27 +168,13 @@ export function useDocumentKitSetup({
     [deleteMutation, projectId],
   )
 
-  // Находим конкретный набор по ID
-  const kit = documentKits.find((k) => k.id === kitId)
-  // Z3-14: мемоизируем folders чтобы не триггерить useEffect при каждом рендере
-  const folders = useMemo(() => kit?.folders || [], [kit?.folders])
-
-  // Все папки из всех наборов — для batch move (перемещение из источника)
-  const allFolders = useMemo(() => documentKits.flatMap((k) => k.folders || []), [documentKits])
-
-  // Мемоизированная карта имён документов (для BatchCheckDialog)
-  const documentNamesMap = useMemo(
-    () => new Map(kit?.documents?.map((doc) => [doc.id, doc.name]) || []),
-    [kit?.documents],
+  // Мемоизированные производные данные — вынесены в useDocumentKitMemos.
+  // Z3-14: folders мемоизируется, чтобы не триггерить useEffect при каждом рендере.
+  const { kit, folders, allFolders, documentNamesMap, allFilteredDocuments } = useDocumentKitMemos(
+    documentKits,
+    kitId,
+    showOnlyUnverified,
   )
-
-  // Вычисляем список документов для выбора (с учётом фильтра)
-  const allFilteredDocuments = useMemo(() => {
-    const allVisibleDocuments = kit?.documents?.filter((d) => !d.is_deleted) || []
-    return showOnlyUnverified
-      ? allVisibleDocuments.filter((d) => d.ai_check_result === null)
-      : allVisibleDocuments
-  }, [kit?.documents, showOnlyUnverified])
 
   // Хуки для выбора документов и drag & drop
   const {

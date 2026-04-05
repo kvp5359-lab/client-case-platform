@@ -7,7 +7,8 @@
  * - Нет выбора проекта и Telegram
  */
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
+import { useThreadTemplateForm } from './useThreadTemplateForm'
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,6 @@ import { Users, UserCheck } from 'lucide-react'
 import { SegmentedToggle } from '@/components/ui/segmented-toggle'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
-import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTemplate'
 import { IconColorPicker } from './IconColorPicker'
 import { StatusPicker } from './StatusPicker'
@@ -39,8 +39,6 @@ const PROJECT_ROLE_OPTIONS = [
   { value: 'Клиент', label: 'Клиенты' },
   { value: 'Участник', label: 'Наблюдатели' },
 ] as const
-
-type TabMode = 'task' | 'chat' | 'email'
 
 // ── Props ──
 
@@ -98,38 +96,7 @@ function ThreadTemplateDialogBody({
   const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
 
-  // ── Form state (initialized from template) ──
-  const [templateName, setTemplateName] = useState(template?.name ?? '')
-  const [description, setDescription] = useState(template?.description ?? '')
-  const [tabMode, setTabMode] = useState<TabMode>(
-    template
-      ? template.is_email
-        ? 'email'
-        : template.thread_type === 'task'
-          ? 'task'
-          : 'chat'
-      : 'chat',
-  )
-  const [threadNameTemplate, setThreadNameTemplate] = useState(template?.thread_name_template ?? '')
-  const [accentColor, setAccentColor] = useState<ThreadAccentColor>(
-    template?.accent_color ?? 'blue',
-  )
-  const [icon, setIcon] = useState(template?.icon ?? 'message-square')
-  const [accessType, setAccessType] = useState<'all' | 'roles'>(template?.access_type ?? 'all')
-  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(
-    new Set(template?.access_roles ?? []),
-  )
-  const [statusId, setStatusId] = useState<string | null>(template?.default_status_id ?? null)
-  const [deadlineDays, setDeadlineDays] = useState<string>(
-    template?.deadline_days != null ? String(template.deadline_days) : '',
-  )
-  const [assigneeIds, setAssigneeIds] = useState<Set<string>>(
-    new Set((template?.thread_template_assignees ?? []).map((a) => a.participant_id)),
-  )
-  const [emailSubject, setEmailSubject] = useState(template?.email_subject_template ?? '')
-  const [initialMessageHtml, setInitialMessageHtml] = useState(template?.initial_message_html ?? '')
-
-  // UI state
+  // UI state (поповеры)
   const [iconColorOpen, setIconColorOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [assigneeOpen, setAssigneeOpen] = useState(false)
@@ -154,88 +121,39 @@ function ThreadTemplateDialogBody({
     removeLast,
   } = useEmailChips(initialEmails, participants)
 
-  // ── Tab change side effects ──
-  const handleTabChange = useCallback(
-    (t: TabMode) => {
-      setTabMode(t)
-      if (t === 'task') {
-        setAccentColor('slate')
-        setIcon('check-square')
-        const def = taskStatuses.find((s) => s.is_default)
-        if (def && !statusId) setStatusId(def.id)
-      } else if (t === 'email') {
-        setAccentColor('blue')
-        setIcon('mail')
-      } else {
-        setAccentColor('blue')
-        setIcon('message-square')
-      }
-    },
-    [taskStatuses, statusId],
-  )
-
-  const isTask = tabMode === 'task'
-  const isEmail = tabMode === 'email'
-  const canSave = templateName.trim().length > 0
-
-  // ── Submit ──
-  const handleSave = useCallback(() => {
-    if (!canSave) return
-    const days = deadlineDays.trim() ? parseInt(deadlineDays, 10) : null
-    onSave({
-      name: templateName.trim(),
-      description: description.trim() || '',
-      thread_type: isTask ? 'task' : 'chat',
-      is_email: isEmail,
-      thread_name_template: threadNameTemplate.trim() || '',
-      accent_color: accentColor,
-      icon,
-      access_type: accessType,
-      access_roles: accessType === 'roles' ? Array.from(selectedRoles) : [],
-      default_status_id: isTask ? statusId : null,
-      deadline_days: isTask && days != null && !isNaN(days) ? days : null,
-      assignee_ids: isTask ? Array.from(assigneeIds) : [],
-      default_contact_email: isEmail ? enrichedEmails.map((e) => e.email).join(', ') : '',
-      email_subject_template: isEmail ? emailSubject.trim() : '',
-      initial_message_html: initialMessageHtml.trim() || '',
-    })
-  }, [
-    canSave,
+  // Form state + derived + actions — вынесены в useThreadTemplateForm
+  const {
     templateName,
+    setTemplateName,
     description,
-    isTask,
-    isEmail,
+    setDescription,
+    tabMode,
     threadNameTemplate,
+    setThreadNameTemplate,
     accentColor,
+    setAccentColor,
     icon,
+    setIcon,
     accessType,
+    setAccessType,
     selectedRoles,
     statusId,
+    setStatusId,
     deadlineDays,
+    setDeadlineDays,
     assigneeIds,
-    enrichedEmails,
     emailSubject,
+    setEmailSubject,
     initialMessageHtml,
-    onSave,
-  ])
-
-  const toggleAssignee = useCallback((id: string) => {
-    setAssigneeIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
-
-  const toggleRole = useCallback((role: string) => {
-    setSelectedRoles((prev) => {
-      const next = new Set(prev)
-      if (next.has(role)) next.delete(role)
-      else next.add(role)
-      return next
-    })
-  }, [])
+    setInitialMessageHtml,
+    isTask,
+    isEmail,
+    canSave,
+    handleTabChange,
+    handleSave,
+    toggleAssignee,
+    toggleRole,
+  } = useThreadTemplateForm({ template, onSave, taskStatuses, enrichedEmails })
 
   return (
     <>
