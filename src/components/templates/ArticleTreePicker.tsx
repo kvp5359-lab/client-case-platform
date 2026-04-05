@@ -20,18 +20,15 @@ import { cn } from '@/lib/utils'
 import { useArticleTreePicker } from './article-tree-picker/useArticleTreePicker'
 import { TreeGroup } from './article-tree-picker/TreeGroup'
 
-export interface ArticleTreePickerGroup {
-  id: string
-  name: string
-  color: string | null
-  parent_id: string | null
-  sort_order: number
-}
-
-export interface ArticleTreePickerLink {
-  article_id: string
-  group_id: string
-}
+// Типы вынесены в ./article-tree-picker/types.ts — чтобы sub-модули не образовывали цикл
+export type {
+  ArticleTreePickerGroup,
+  ArticleTreePickerLink,
+} from './article-tree-picker/types'
+import type {
+  ArticleTreePickerGroup,
+  ArticleTreePickerLink,
+} from './article-tree-picker/types'
 
 // --- Single article mode (original) ---
 interface SingleArticleProps {

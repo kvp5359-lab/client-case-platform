@@ -7,7 +7,7 @@ import type {
   KnowledgeArticle,
   useKnowledgeBasePage,
 } from '../useKnowledgeBasePage'
-import type { DropIndicatorState } from '../KnowledgeTreeView'
+import type { DropIndicatorState } from '../useKnowledgeTreeDnd'
 import { INDENT, BASE_PAD, getLineX } from '@/components/shared/tree/TreeConstants'
 import { TreeConnector } from '@/components/shared/tree/TreeConnector'
 import { AddSubgroupInput } from '@/components/shared/tree/AddSubgroupInput'
@@ -20,28 +20,10 @@ export { ArticleTags, StatusDot, IndexingStatusIcon } from './ArticleStatusIndic
 type PageReturn = ReturnType<typeof useKnowledgeBasePage>
 
 // ---------- Shared types for readOnly mode ----------
-
-export interface TreeArticle {
-  id: string
-  title: string
-  content?: string | null
-  access_mode?: string
-  status_id?: string | null
-  statuses?: { id: string; name: string; color: string } | null
-  knowledge_article_groups: { group_id: string; sort_order: number }[]
-  knowledge_article_tags?: {
-    tag_id: string
-    knowledge_tags: { id: string; name: string; color: string } | null
-  }[]
-}
-
-export interface TreeGroup {
-  id: string
-  name: string
-  parent_id: string | null
-  sort_order?: number
-  color?: string | null
-}
+// Вынесены в TreeTypes.ts — чтобы sibling-компоненты (ArticleRows,
+// ArticleStatusIndicators) могли импортировать их без циклов.
+export type { TreeArticle, TreeGroup } from './TreeTypes'
+import type { TreeArticle, TreeGroup } from './TreeTypes'
 
 // ---------- Group tree item ----------
 

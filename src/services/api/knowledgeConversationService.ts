@@ -11,7 +11,7 @@ import type {
   KnowledgeMessage,
   SearchSource,
   ConversationSources,
-} from './knowledgeSearchService'
+} from './knowledgeSearchService.types'
 
 // =====================================================
 // Диалоги

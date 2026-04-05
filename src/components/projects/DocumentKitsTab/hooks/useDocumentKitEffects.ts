@@ -11,7 +11,8 @@ import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { getArticleById } from '@/services/api/knowledgeBaseService'
-import { useFolderNamesCache, useDocumentMemos } from './index'
+import { useFolderNamesCache } from './useFolderNamesCache'
+import { useDocumentMemos } from './useDocumentMemos'
 import type {
   DocumentKitWithDocuments,
   DocumentWithFiles,

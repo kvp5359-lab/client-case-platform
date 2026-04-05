@@ -9,41 +9,22 @@ import { useArticleEditorMutations } from './useArticleEditorMutations'
 import { logger } from '@/utils/logger'
 
 // ---------- Types ----------
-
-export interface EditorKnowledgeArticle {
-  id: string
-  workspace_id: string
-  title: string
-  content: string | null
-  summary: string | null
-  access_mode: 'read_only' | 'read_copy'
-  is_published: boolean
-  status_id: string | null
-  statuses: { id: string; name: string; color: string } | null
-  created_at: string
-  updated_at: string
-  indexing_status: string | null
-  indexed_at: string | null
-}
-
-export interface EditorKnowledgeGroup {
-  id: string
-  name: string
-  color: string | null
-  workspace_id: string
-  parent_id: string | null
-  sort_order: number
-}
+// Публичные типы вынесены в useArticleEditor.types.ts — чтобы useArticleEditorMutations
+// мог их импортировать без циклической зависимости.
+export type {
+  EditorKnowledgeArticle,
+  EditorKnowledgeGroup,
+  EditorKnowledgeTag,
+} from './useArticleEditor.types'
+import type {
+  EditorKnowledgeArticle,
+  EditorKnowledgeGroup,
+  EditorKnowledgeTag,
+} from './useArticleEditor.types'
 
 interface ArticleGroupRow {
   article_id: string
   group_id: string
-}
-
-export interface EditorKnowledgeTag {
-  id: string
-  name: string
-  color: string
 }
 
 interface ArticleTagRow {

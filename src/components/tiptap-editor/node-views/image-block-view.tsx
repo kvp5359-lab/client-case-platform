@@ -15,7 +15,7 @@ import type {
   ImageBorderWidth,
   ImageShadow,
   ImageWidth,
-} from '../extensions/image-block'
+} from '../extensions/image-block-types'
 
 const sizeConfig: Record<Exclude<ImageSize, 'original'>, { height: number }> = {
   small: { height: 200 },

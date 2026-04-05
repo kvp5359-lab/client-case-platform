@@ -6,8 +6,8 @@ export interface CalloutOptions {
   HTMLAttributes: Record<string, string>
 }
 
-export type CalloutIcon = string
-export type CalloutColor = 'gray' | 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'pink'
+// Типы вынесены в callout-types.ts, чтобы callout-view.tsx не образовывал цикл
+export type { CalloutIcon, CalloutColor } from './callout-types'
 
 // Обратная совместимость со старыми каллаутами
 export const iconEmojis: Record<string, string> = {

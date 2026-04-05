@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { knowledgeBaseKeys, statusKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
 import { TAG_COLOR_PALETTE } from '@/utils/notionPill'
-import type { EditorKnowledgeArticle } from './useArticleEditor'
+import type { EditorKnowledgeArticle } from './useArticleEditor.types'
 
 interface UseArticleEditorMutationsParams {
   articleId: string | undefined

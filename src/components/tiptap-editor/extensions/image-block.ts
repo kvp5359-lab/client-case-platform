@@ -6,11 +6,21 @@ export interface ImageBlockOptions {
   HTMLAttributes: Record<string, string>
 }
 
-export type ImageSize = 'small' | 'medium' | 'large' | 'original'
-export type ImageRounded = 'none' | 'sm' | 'md' | 'lg' | 'xl'
-export type ImageBorderWidth = 'none' | 'thin' | 'medium' | 'thick'
-export type ImageShadow = 'none' | 'sm' | 'md' | 'lg' | 'xl'
-export type ImageWidth = 'auto' | '20' | '40' | '60' | '80' | '100'
+// Типы вынесены в image-block-types.ts — чтобы node-view не образовывал цикл
+export type {
+  ImageSize,
+  ImageRounded,
+  ImageBorderWidth,
+  ImageShadow,
+  ImageWidth,
+} from './image-block-types'
+import type {
+  ImageSize,
+  ImageRounded,
+  ImageBorderWidth,
+  ImageShadow,
+  ImageWidth,
+} from './image-block-types'
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {

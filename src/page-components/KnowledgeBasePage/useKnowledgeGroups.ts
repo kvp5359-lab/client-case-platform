@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
-import type { KnowledgeGroup } from './useKnowledgeBasePage'
+import type { KnowledgeGroup } from './useKnowledgeBasePage.types'
 
 export function useKnowledgeGroups(workspaceId: string | undefined) {
   const queryClient = useQueryClient()

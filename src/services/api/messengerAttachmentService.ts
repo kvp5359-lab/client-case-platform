@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
-import type { MessageAttachment } from './messengerService'
+import type { MessageAttachment } from './messengerService.types'
 
 /** Signed URL lifetime for attachments (1 hour) */
 const SIGNED_URL_EXPIRY_SEC = 3600

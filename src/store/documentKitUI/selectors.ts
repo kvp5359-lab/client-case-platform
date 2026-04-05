@@ -8,13 +8,13 @@
  */
 
 import { useShallow } from 'zustand/shallow'
+import { useDocumentKitUIStore } from './store'
 import {
-  useDocumentKitUIStore,
   selectUI,
   selectDialogs,
   selectOperations,
   selectGoogleDrive,
-} from './index'
+} from './selectFunctions'
 
 /**
  * UI состояние: collapse, hover, tabs, фильтры

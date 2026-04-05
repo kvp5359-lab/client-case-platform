@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Settings, Trash2 } from 'lucide-react'
-import { type BorderRadius, COLUMN_BG_COLORS } from '../extensions/columns'
+import { type BorderRadius, COLUMN_BG_COLORS } from '../extensions/columns-types'
 import { cn } from '@/lib/utils'
 
 const radiusOptions: { value: BorderRadius; label: string }[] = [

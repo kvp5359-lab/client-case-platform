@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { safeCssColor } from '@/utils/isValidCssColor'
-import type { TreeArticle } from './GroupTreeItem'
+import type { TreeArticle } from './TreeTypes'
 import { IndexingStatusBadge } from './IndexingStatusBadge'
 
 // ---------- Article tags (shared) ----------

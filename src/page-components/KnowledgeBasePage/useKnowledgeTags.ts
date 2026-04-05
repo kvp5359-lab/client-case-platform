@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
-import type { KnowledgeTag } from './useKnowledgeBasePage'
+import type { KnowledgeTag } from './useKnowledgeBasePage.types'
 
 export function useKnowledgeTags(
   workspaceId: string | undefined,

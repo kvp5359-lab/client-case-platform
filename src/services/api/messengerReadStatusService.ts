@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { ConversationError } from '@/services/errors/AppError'
-import type { MessageChannel } from './messengerService'
+import type { MessageChannel } from './messengerService.types'
 
 /**
  * Mark messages as read (UPSERT) + reset manually_unread

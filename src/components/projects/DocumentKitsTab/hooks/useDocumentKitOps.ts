@@ -8,20 +8,18 @@
  */
 
 import { useQueryClient } from '@tanstack/react-query'
-import {
-  useDocumentEdit,
-  useDocumentVerify,
-  useFolderOperations,
-  useDocumentMerge,
-  useBatchOperations,
-  useDocumentCompress,
-  useGoogleDriveExport,
-  useDocumentOperations,
-  useSourceDocumentUpload,
-  useBatchMoveOperations,
-  useDocumentKitHandlers,
-  useSlotHandlers,
-} from './index'
+import { useDocumentEdit } from './useDocumentEdit'
+import { useDocumentVerify } from './useDocumentVerify'
+import { useFolderOperations } from './useFolderOperations'
+import { useDocumentMerge } from './useDocumentMerge'
+import { useBatchOperations } from './useBatchOperations'
+import { useDocumentCompress } from './useDocumentCompress'
+import { useGoogleDriveExport } from './useGoogleDriveExport'
+import { useDocumentOperations } from './useDocumentOperations'
+import { useSourceDocumentUpload } from './useSourceDocumentUpload'
+import { useBatchMoveOperations } from './useBatchMoveOperations'
+import { useDocumentKitHandlers } from './useDocumentKitHandlers'
+import { useSlotHandlers } from './useSlotHandlers'
 import { useProjectSourceDocuments } from '@/hooks/documents/useProjectSourceDocuments'
 import { useProjectSourceConnection } from '@/hooks/documents/useProjectSourceConnection'
 import { useProjectDestinationFolder } from '@/hooks/documents/useProjectDestinationFolder'

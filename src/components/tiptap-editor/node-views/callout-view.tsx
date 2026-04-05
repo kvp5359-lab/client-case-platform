@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Trash2 } from 'lucide-react'
-import { type CalloutColor } from '../extensions/callout'
+import { type CalloutColor } from '../extensions/callout-types'
 
 const LAST_EMOJI_KEY = 'callout_last_emoji'
 const LAST_COLOR_KEY = 'callout_last_color'

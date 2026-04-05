@@ -1,7 +1,7 @@
 import { BookOpen, Check, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
-import type { ArticleTreePickerGroup } from '../ArticleTreePicker'
+import type { ArticleTreePickerGroup } from './types'
 
 interface TreeGroupProps {
   group: ArticleTreePickerGroup

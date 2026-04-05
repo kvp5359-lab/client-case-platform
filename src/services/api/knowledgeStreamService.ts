@@ -5,7 +5,7 @@
 import { KnowledgeBaseError } from '../errors'
 import { callEdgeFunctionRaw } from '../supabase/edgeFunctionClient'
 import { parseSSEStream } from '@/utils/sseParser'
-import type { SearchSource } from './knowledgeSearchService'
+import type { SearchSource } from './knowledgeSearchService.types'
 
 export interface StreamCallbacks {
   onSources: (sources: SearchSource[], chunksUsed: number) => void

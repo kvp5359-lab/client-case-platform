@@ -8,7 +8,7 @@ import type { KnowledgeArticle, useKnowledgeBasePage } from '../useKnowledgeBase
 import { INDENT, BASE_PAD, ARTICLE_EXTRA } from '@/components/shared/tree/TreeConstants'
 import { TreeConnector } from '@/components/shared/tree/TreeConnector'
 import { ArticleTags, IndexingStatusIcon, StatusDot } from './ArticleStatusIndicators'
-import type { TreeArticle } from './GroupTreeItem'
+import type { TreeArticle } from './TreeTypes'
 
 type PageReturn = ReturnType<typeof useKnowledgeBasePage>
 

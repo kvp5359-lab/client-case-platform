@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Zap, Search, MessageSquare, CheckSquare, Mail } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
-import { getChatIconComponent } from './ChatSettingsDialog'
+import { getChatIconComponent } from './EditChatDialog'
 import { COLOR_BG } from './threadConstants'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 

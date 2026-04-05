@@ -2,19 +2,10 @@ import { Node, mergeAttributes } from '@tiptap/core'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 import { ColumnView } from '../node-views/column-view'
 
-export type ColumnCount = 2 | 3
-export type BorderRadius = 'none' | 'sm' | 'md' | 'lg' | 'xl'
-
-export const COLUMN_BG_COLORS = [
-  { name: 'Без фона', value: null },
-  { name: 'Серый', value: '#F3F4F6' },
-  { name: 'Голубой', value: '#EFF6FF' },
-  { name: 'Зелёный', value: '#F0FDF4' },
-  { name: 'Жёлтый', value: '#FEFCE8' },
-  { name: 'Розовый', value: '#FDF2F8' },
-  { name: 'Фиолетовый', value: '#FAF5FF' },
-  { name: 'Оранжевый', value: '#FFF7ED' },
-]
+// Типы и константы вынесены в columns-types.ts — чтобы node-view не создавал цикл
+export type { ColumnCount, BorderRadius } from './columns-types'
+export { COLUMN_BG_COLORS } from './columns-types'
+import type { ColumnCount } from './columns-types'
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {

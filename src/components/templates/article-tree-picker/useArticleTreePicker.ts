@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import type { ArticleTreePickerGroup, ArticleTreePickerLink } from '../ArticleTreePicker'
+import type { ArticleTreePickerGroup, ArticleTreePickerLink } from './types'
 
 interface UseArticleTreePickerOptions {
   mode: 'single-article' | 'single-group' | 'multiple-groups'
