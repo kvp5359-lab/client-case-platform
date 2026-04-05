@@ -188,30 +188,38 @@ export function MessageList({
     }
   }, [scrollToBottomTrigger, scrollToBottom])
 
-  // IntersectionObserver для подгрузки старых сообщений
-  const observerCallback = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      if (entries[0]?.isIntersecting && hasMoreOlder && !isFetchingOlder) {
-        // Зафиксировать высоту ДО подгрузки — чтобы компенсировать scrollTop после рендера
-        const viewport = getViewport()
-        if (viewport) {
-          preLoadScrollHeightRef.current = viewport.scrollHeight
-        }
-        onFetchOlder()
-      }
-    },
-    [hasMoreOlder, isFetchingOlder, onFetchOlder, getViewport],
-  )
+  // IntersectionObserver для подгрузки старых сообщений.
+  // Состояние читаем через refs, чтобы observer создавался один раз и не пересоздавался
+  // при каждом изменении hasMoreOlder/isFetchingOlder — иначе в момент пересоздания новый
+  // observer мгновенно вызывает callback (sentinel всё ещё видим) и возникает цикл,
+  // вызывающий ре-рендеры и визуальное дрожание чата.
+  const stateRef = useRef({ hasMoreOlder, isFetchingOlder, onFetchOlder })
+  useEffect(() => {
+    stateRef.current = { hasMoreOlder, isFetchingOlder, onFetchOlder }
+  }, [hasMoreOlder, isFetchingOlder, onFetchOlder])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
     if (!sentinel) return
 
-    const observer = new IntersectionObserver(observerCallback, { threshold: 0.1 })
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const s = stateRef.current
+        if (entries[0]?.isIntersecting && s.hasMoreOlder && !s.isFetchingOlder) {
+          // Зафиксировать высоту ДО подгрузки — чтобы компенсировать scrollTop после рендера
+          const viewport = getViewport()
+          if (viewport) {
+            preLoadScrollHeightRef.current = viewport.scrollHeight
+          }
+          s.onFetchOlder()
+        }
+      },
+      { threshold: 0.1, rootMargin: '200px 0px 0px 0px' },
+    )
     observer.observe(sentinel)
 
     return () => observer.disconnect()
-  }, [observerCallback])
+  }, [getViewport])
 
   // Strip background-color from copied HTML so bubble colors don't leak into paste
   const handleCopy = useCallback((e: React.ClipboardEvent) => {
@@ -258,16 +266,18 @@ export function MessageList({
   }
 
   return (
-    <ScrollArea className="flex-1 messenger-scroll-area" ref={scrollAreaRef}>
+    <ScrollArea className="flex-1 messenger-scroll-area relative" ref={scrollAreaRef}>
+      {/* Loader подгрузки — абсолютное позиционирование, чтобы не влиять на scrollHeight */}
+      {isFetchingOlder && (
+        <div className="absolute top-2 left-0 right-0 z-10 flex justify-center pointer-events-none">
+          <div className="bg-background/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        </div>
+      )}
       <div className="p-4 space-y-2" onCopy={handleCopy}>
         {/* Sentinel для подгрузки старых */}
         <div ref={sentinelRef} className="h-1" />
-
-        {isFetchingOlder && (
-          <div className="flex justify-center py-2">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        )}
 
         {messages.map((msg, i) => {
           const showDate = i === 0 || !isSameDay(messages[i - 1].created_at, msg.created_at)
