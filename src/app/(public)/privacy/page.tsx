@@ -1,3 +1,9 @@
+export const dynamic = 'force-static'
+
+export const metadata = {
+  title: 'Политика конфиденциальности — ClientCase',
+}
+
 export default function PrivacyPage() {
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">

@@ -1,5 +1,10 @@
 import Link from 'next/link'
 
+export const metadata = {
+  title: 'ClientCase — Управление клиентскими делами',
+  description: 'Платформа для управления клиентскими делами, проектами и документами.',
+}
+
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
