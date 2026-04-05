@@ -212,7 +212,9 @@ export function useProjectMessages(
       )
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR') {
-          logger.error('Realtime channel error:', err)
+          // warn вместо error: некритично (часто бывает в dev при быстром HMR),
+          // error-лог триггерит Next.js overlay и отвлекает.
+          logger.warn('Realtime channel error:', err)
         }
         if (status === 'TIMED_OUT') {
           logger.warn('Realtime channel timed out, retrying...')

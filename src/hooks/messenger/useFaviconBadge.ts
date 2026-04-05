@@ -8,8 +8,8 @@
  * с тегами, которые генерит Next.js из src/app/favicon.ico.
  * Использует useTotalUnreadCount — тот же queryKey, что и бейдж в сайдбаре.
  *
- * MutationObserver следит за <head> и удаляет любые <link rel=icon>, которые
- * Next.js может вставить при клиентской навигации между страницами.
+ * Стратегия: не удаляем чужие favicon-теги (это ломает React при переходах),
+ * а держим свой тег последним в <head> — браузер использует последний rel=icon.
  */
 
 import { useEffect } from 'react'
@@ -17,39 +17,39 @@ import { useTotalFilteredUnreadCount } from './useFilteredInbox'
 
 const DYNAMIC_FAVICON_ID = 'dynamic-favicon'
 
-function removeConflictingFavicons() {
-  // Next.js генерит <link rel="icon" href="/favicon.ico"> — отключаем, чтобы
-  // наш динамический тег гарантированно показывался вкладкой.
-  const existing = document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]')
-  existing.forEach((el) => {
-    if (el.id !== DYNAMIC_FAVICON_ID) el.remove()
-  })
-}
-
-function ensureDynamicLink(): HTMLLinkElement {
+function ensureDynamicLinkLast(): HTMLLinkElement {
   let link = document.getElementById(DYNAMIC_FAVICON_ID) as HTMLLinkElement | null
   if (!link) {
     link = document.createElement('link')
     link.id = DYNAMIC_FAVICON_ID
     link.rel = 'icon'
     link.type = 'image/png'
-    document.head.appendChild(link)
   }
+  // Перекладываем в конец <head>, чтобы быть после всех других <link rel=icon>.
+  // appendChild на существующем узле просто перемещает его — без remove/re-add,
+  // React не видит удаления.
+  document.head.appendChild(link)
   return link
 }
 
 export function useFaviconBadge(workspaceId: string | undefined) {
   const { data: totalUnread } = useTotalFilteredUnreadCount(workspaceId ?? '')
 
-  // Следим за <head>: если Next.js вставит новый <link rel=icon> — убираем его.
+  // Следим за <head>: если Next.js вставит новый <link rel=icon> — перекладываем
+  // наш тег в конец, чтобы он оставался приоритетным.
   useEffect(() => {
-    removeConflictingFavicons()
     const observer = new MutationObserver((mutations) => {
       for (const m of mutations) {
         for (const node of m.addedNodes) {
           if (!(node instanceof HTMLLinkElement)) continue
           if (node.id === DYNAMIC_FAVICON_ID) continue
-          if (node.rel && node.rel.includes('icon')) node.remove()
+          if (node.rel && node.rel.includes('icon')) {
+            const link = document.getElementById(DYNAMIC_FAVICON_ID)
+            if (link && link !== document.head.lastChild) {
+              document.head.appendChild(link)
+            }
+            return
+          }
         }
       }
     })
@@ -59,7 +59,7 @@ export function useFaviconBadge(workspaceId: string | undefined) {
 
   useEffect(() => {
     const count = totalUnread ?? 0
-    const link = ensureDynamicLink()
+    const link = ensureDynamicLinkLast()
 
     // Без непрочитанных — показать оригинальный favicon.ico
     if (count === 0) {

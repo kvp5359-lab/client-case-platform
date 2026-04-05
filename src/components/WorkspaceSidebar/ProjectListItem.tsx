@@ -74,7 +74,7 @@ export const ProjectListItem = memo(function ProjectListItem({
       <Link
         href={getProjectHref ? getProjectHref(project.id) : '#'}
         onClick={() => onProjectClick(project.id)}
-        className={`w-full flex items-center gap-3 px-2 py-2 text-sm rounded-md transition-colors ${
+        className={`w-full flex items-center gap-3 px-2 py-1.5 text-sm rounded-md transition-colors ${
           isActive
             ? showTabs
               ? 'text-gray-900 font-semibold'
