@@ -49,8 +49,8 @@ import {
 } from './ProjectPage/hooks'
 import { useProjectMutations } from './ProjectPage/hooks/useProjectMutations'
 import { useProjectGoogleDrive } from './ProjectPage/hooks/useProjectGoogleDrive'
+import { useProjectGoogleDriveActions } from './ProjectPage/hooks/useProjectGoogleDriveActions'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { logger } from '@/utils/logger'
 
 export default function ProjectPage() {
   const { workspaceId, projectId } = useParams<{ workspaceId: string; projectId: string }>()
@@ -262,63 +262,17 @@ export default function ProjectPage() {
     updateProjectFields.mutate({ template_id: templateId })
   }
 
-  const handleSaveGoogleDriveLink = async () => {
-    try {
-      await updateProjectGoogleDrive.mutateAsync(googleDrive.folderLink || null)
-      googleDrive.closeDialog()
-      toast.success('Папка Google Drive подключена')
-    } catch (error) {
-      logger.error('Ошибка подключения Google Drive:', error)
-      toast.error('Не удалось сохранить ссылку Google Drive', {
-        description: error instanceof Error ? error.message : undefined,
-      })
-    }
-  }
-
-  const handleDisconnectGoogleDrive = async () => {
-    try {
-      await updateProjectGoogleDrive.mutateAsync(null)
-      toast.success('Папка Google Drive отключена')
-    } catch (error) {
-      logger.error('Ошибка отключения Google Drive:', error)
-      toast.error('Не удалось отключить Google Drive', {
-        description: error instanceof Error ? error.message : undefined,
-      })
-    }
-  }
-
-  const handleCreateGoogleDriveFolder = async (folderName: string) => {
-    try {
-      const rootFolderId = projectTemplate?.root_folder_id
-      if (!rootFolderId) {
-        toast.error('Корневая папка не настроена в типе проекта')
-        return
-      }
-
-      const { data, error } = await supabase.functions.invoke('google-drive-create-folder', {
-        body: { workspaceId, parentFolderId: rootFolderId, folderName },
-      })
-
-      if (error) throw error
-      if (data?.error) {
-        if (data.error === 'Google Drive not connected') {
-          toast.error('Google Drive не подключён')
-        } else {
-          toast.error(data.error)
-        }
-        return
-      }
-
-      if (data?.folderLink) {
-        await updateProjectGoogleDrive.mutateAsync(data.folderLink)
-        googleDrive.closeDialog()
-        toast.success('Папка создана и подключена')
-      }
-    } catch (error) {
-      logger.error('Ошибка создания папки Google Drive:', error)
-      toast.error('Не удалось создать папку')
-    }
-  }
+  const {
+    handleSaveGoogleDriveLink,
+    handleDisconnectGoogleDrive,
+    handleCreateGoogleDriveFolder,
+  } = useProjectGoogleDriveActions({
+    workspaceId,
+    rootFolderId: projectTemplate?.root_folder_id,
+    updateProjectGoogleDrive,
+    closeDialog: googleDrive.closeDialog,
+    folderLink: googleDrive.folderLink,
+  })
 
   // === РЕНДЕРИНГ ===
 
