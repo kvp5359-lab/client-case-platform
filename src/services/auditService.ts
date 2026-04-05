@@ -42,12 +42,15 @@ export async function logAuditAction(
   projectId?: string,
 ): Promise<void> {
   try {
+    // `as never` здесь вынужденно: автоген типов Supabase строже, чем runtime
+    // (поля p_resource_id/p_project_id/p_details помечены non-null в схеме,
+    // но RPC корректно обрабатывает undefined/null как NULL в Postgres).
     await supabase.rpc('log_audit_action', {
       p_action: action,
       p_resource_type: resourceType,
-      p_resource_id: resourceId ?? null,
-      p_details: details ?? {},
-      p_project_id: projectId ?? null,
+      p_resource_id: resourceId ?? undefined,
+      p_details: (details ?? {}) as never,
+      p_project_id: projectId ?? undefined,
     })
   } catch (error) {
     // Логируем ошибку, но не блокируем основную операцию

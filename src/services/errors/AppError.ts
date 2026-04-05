@@ -55,6 +55,26 @@ export class DocumentKitError extends AppError {
 }
 
 /**
+ * Ошибка валидации (неверный формат данных, отсутствует обязательное поле)
+ */
+export class ValidationError extends AppError {
+  constructor(message: string, details?: unknown) {
+    super(message, 'VALIDATION_ERROR', details)
+    this.name = 'ValidationError'
+  }
+}
+
+/**
+ * Ошибки работы с задачами
+ */
+export class TaskError extends AppError {
+  constructor(message: string, details?: unknown) {
+    super(message, 'TASK_ERROR', details)
+    this.name = 'TaskError'
+  }
+}
+
+/**
  * Ошибка доступа/прав
  */
 export class PermissionError extends AppError {

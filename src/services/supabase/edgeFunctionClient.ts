@@ -32,13 +32,16 @@ export async function callEdgeFunctionRaw({
 
   const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/${functionName}`
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${session.access_token}`,
+  }
+  const apikey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (apikey) headers.apikey = apikey
+
   return fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
-      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    },
+    headers,
     body: JSON.stringify(body),
     signal,
   })

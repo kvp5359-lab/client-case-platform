@@ -7,7 +7,7 @@
  * - Лого/название приложения слева
  */
 
-import { useNavigate, useParams } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 
 interface HeaderProps {
   /** ID текущего workspace (опционально, берётся из URL если не указан) */

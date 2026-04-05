@@ -36,7 +36,9 @@ export function base64ToBlob(base64: string, mimeType: string): Blob {
     byteArrays.push(new Uint8Array(byteNumbers))
   }
 
-  return new Blob(byteArrays, { type: mimeType })
+  // Cast to BlobPart[]: TS 5.7+ narrowed Uint8Array generic; Blob ctor
+  // accepts it at runtime. Safe because Uint8Array implements ArrayBufferView.
+  return new Blob(byteArrays as BlobPart[], { type: mimeType })
 }
 
 /** Конвертация base64 → File */

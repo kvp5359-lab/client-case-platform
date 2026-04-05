@@ -43,6 +43,15 @@ export function buildGoogleDriveFolderUrl(folderId: string): string {
 }
 
 /**
+ * Проверяет, является ли строка валидным Google Drive URL или прямым ID.
+ * Используется при валидации ввода пользователя.
+ */
+export function isValidGoogleDriveUrl(input: string): boolean {
+  if (!input || !input.trim()) return false
+  return extractGoogleDriveFolderId(input.trim()) !== null
+}
+
+/**
  * Извлекает ID таблицы из URL Google Sheets
  * Поддерживает форматы:
  * - /spreadsheets/d/SPREADSHEET_ID/edit
