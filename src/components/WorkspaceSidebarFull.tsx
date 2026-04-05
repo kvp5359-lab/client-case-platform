@@ -208,7 +208,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
       )}
 
       <div className="px-2 py-2">
-        <nav className="flex items-center gap-0.5">
+        <nav className="flex items-center justify-between">
           <SidebarNavButton
             icon={Home}
             label="Главная"
