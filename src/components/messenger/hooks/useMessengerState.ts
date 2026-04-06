@@ -33,7 +33,7 @@ import { useIsManuallyUnread, useHasUnreadReaction } from '@/hooks/messenger/use
 import { useDelayedSend } from '@/hooks/messenger/useDelayedSend'
 import { useEmailLink } from '@/hooks/email/useEmailLink'
 import { useSendEmail } from '@/hooks/email/useSendEmail'
-import { useChatState } from '@/hooks/messenger/useChatState'
+// import { useChatState } from '@/hooks/messenger/useChatState'
 import { useDocumentPickerLogic } from './useDocumentPickerLogic'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { stripHtmlKeepNewlines } from '@/utils/format/messengerHtml'
@@ -62,8 +62,8 @@ export function useMessengerState({
   const [forwardedAttachments, setForwardedAttachments] = useState<ForwardedAttachment[]>([])
   const [sendTrigger, setSendTrigger] = useState(0)
 
-  // Предзагрузка состояния чата одним RPC — заполняет кэши для хуков ниже
-  useChatState(threadId, projectId, workspaceId, channel)
+  // TODO: включить когда RPC get_chat_state будет создан в Supabase
+  // useChatState(threadId, projectId, workspaceId, channel)
 
   const { isLinked, telegramLink, linkCode, isLoadingCode, unlink, isUnlinking } = useTelegramLink(
     projectId,
