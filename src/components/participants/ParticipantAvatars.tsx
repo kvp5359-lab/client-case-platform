@@ -3,6 +3,8 @@
  * Переиспользуется в InboxPage и может быть использован в других местах.
  */
 
+import Image from 'next/image'
+
 export interface AvatarParticipant {
   id: string
   name: string
@@ -32,9 +34,11 @@ export function ParticipantAvatars({
       {visible.map((p) => (
         <div key={p.id} className="relative">
           {p.avatar_url ? (
-            <img
+            <Image
               src={p.avatar_url}
               alt={p.name}
+              width={24}
+              height={24}
               className="w-6 h-6 rounded-full object-cover ring-[1.5px] ring-white"
             />
           ) : (

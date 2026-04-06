@@ -5,7 +5,7 @@
  * Отображается поверх контента при выборе документов
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -85,7 +85,7 @@ export interface FloatingBatchActionsProps {
   handlers: BatchHandlers
 }
 
-export function FloatingBatchActions({
+export const FloatingBatchActions = memo(function FloatingBatchActions({
   hasSelection,
   selectedCount,
   hasTrashDocumentsSelected = false,
@@ -376,4 +376,4 @@ export function FloatingBatchActions({
       </div>
     </div>
   )
-}
+})

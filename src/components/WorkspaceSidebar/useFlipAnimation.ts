@@ -14,7 +14,6 @@ export function useFlipAnimation(
   const positionsRef = useRef<Map<string, number>>(new Map())
 
   // Перед рендером — запомнить позиции (First)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -23,7 +22,8 @@ export function useFlipAnimation(
       const id = el.dataset.projectId!
       positionsRef.current.set(id, el.getBoundingClientRect().top)
     })
-  }, deps)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, containerRef])
 
   // После рендера — вычислить сдвиг и анимировать (Last, Invert, Play)
   useEffect(() => {
@@ -55,5 +55,5 @@ export function useFlipAnimation(
       })
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
+  }, [...deps, containerRef])
 }

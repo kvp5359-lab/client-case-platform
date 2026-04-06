@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import { Loader2, ImageOff } from 'lucide-react'
 import {
   downloadAttachmentBlob,
@@ -175,10 +176,13 @@ function ImageAttachment({
             onClick={() => setLightboxOpen(true)}
             className="block w-full"
           >
-            <img
+            <Image
               src={previewUrl}
               alt={attachment.file_name}
+              width={300}
+              height={100}
               draggable={false}
+              unoptimized
               className={`w-full ${heightClass} rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity`}
             />
           </button>

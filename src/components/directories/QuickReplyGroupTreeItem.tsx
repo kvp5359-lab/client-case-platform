@@ -9,7 +9,7 @@ import { Plus, Folder, FolderOpen, FolderPlus, Pencil, Trash2, LayoutTemplate } 
 import {
   TemplateAccessPopover,
   TemplateAccessBadge,
-} from '@/page-components/KnowledgeBasePage/components/TemplateAccessPopover'
+} from '@/components/knowledge/TemplateAccessPopover'
 import {
   DndContext,
   closestCenter,

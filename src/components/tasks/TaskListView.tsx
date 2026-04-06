@@ -10,7 +10,7 @@
  * Когда передан projectId — автоматически фильтрует по проекту, скрывает фильтр «Проект».
  */
 
-import { useState, useMemo, useCallback, lazy, Suspense } from 'react'
+import { useState, useMemo, useCallback, lazy, Suspense, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckSquare, Loader2, Search, X, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -60,7 +60,7 @@ interface TaskListViewProps {
   showProjectLink?: boolean
 }
 
-export function TaskListView({
+export const TaskListView = memo(function TaskListView({
   workspaceId,
   projectId,
   showProject: showProjectProp,
@@ -361,4 +361,4 @@ export function TaskListView({
       )}
     </div>
   )
-}
+})

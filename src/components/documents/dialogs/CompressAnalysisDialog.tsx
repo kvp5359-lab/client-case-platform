@@ -17,7 +17,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { formatSize } from '@/utils/formatSize'
-import type { DocumentWithFiles } from '@/components/documents/types'
 
 export interface CompressAnalysisItem {
   docId: string

@@ -3,6 +3,7 @@
  */
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Users, Search, X, Check } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
@@ -89,9 +90,11 @@ export function ChatSettingsAssignees({
                       className="inline-flex items-center gap-1.5 px-1.5 py-1 rounded-md bg-brand-100 text-xs font-medium"
                     >
                       {pp.avatar_url ? (
-                        <img
+                        <Image
                           src={pp.avatar_url}
                           alt=""
+                          width={16}
+                          height={16}
                           className="w-4 h-4 rounded-full object-cover"
                         />
                       ) : (
@@ -160,9 +163,11 @@ export function ChatSettingsAssignees({
                       )}
                     >
                       {p.avatar_url ? (
-                        <img
+                        <Image
                           src={p.avatar_url}
                           alt=""
+                          width={24}
+                          height={24}
                           className="w-6 h-6 rounded-full object-cover shrink-0"
                         />
                       ) : (

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ColorPicker } from '@/components/ui/color-picker'
-import { STATUS_ICONS, getStatusIcon } from '@/components/ui/status-icons'
+import { STATUS_ICONS } from '@/components/ui/status-icons'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import {

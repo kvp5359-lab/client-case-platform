@@ -23,7 +23,6 @@ import { useDialog } from '@/hooks/shared/useDialog'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
 import { useProjectTemplate, useProjectModules } from '@/page-components/ProjectPage/hooks'
-import type { WorkspacePermission } from '@/types/permissions'
 
 /** Количество «моих» просроченных + сегодняшних задач */
 function useMyUrgentTasksCount(workspaceId: string | undefined) {

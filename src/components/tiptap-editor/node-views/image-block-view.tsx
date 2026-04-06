@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable @next/next/no-img-element -- Tiptap NodeView: next/image не совместим с кастомными node views */
 
 import { NodeViewWrapper, NodeViewProps } from '@tiptap/react'
 import { useState } from 'react'

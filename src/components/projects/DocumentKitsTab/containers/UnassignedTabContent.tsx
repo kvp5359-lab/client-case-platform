@@ -20,7 +20,7 @@ import { UnassignedSection, SourceSection } from '@/components/documents/section
 import { useDocumentKitContext } from '../context'
 import { useDocumentKitGoogleDrive } from '@/store/documentKitUI'
 import { useDocumentGenerations } from '@/hooks/documents/useDocumentGenerations'
-import { GenerationCard } from '@/page-components/ProjectPage/components/Documents/GenerationCard'
+import { GenerationCard } from '../components/GenerationCard'
 import { CreateGenerationDialog } from '@/components/documents/dialogs/CreateGenerationDialog'
 
 export const UnassignedTabContent = memo(function UnassignedTabContent() {

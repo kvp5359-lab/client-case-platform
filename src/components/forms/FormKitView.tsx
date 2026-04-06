@@ -14,7 +14,6 @@ import { AutoFillFormDialog } from './dialogs/AutoFillFormDialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useFormKitData } from '@/hooks/useFormKitData'
 import { useFormKitSave } from '@/hooks/useFormKitSave'
-import { useFormKitProgress } from '@/hooks/useFormKitProgress'
 import { useFormKitAutoFill } from '@/hooks/useFormKitAutoFill'
 import { useFormKitFilter } from '@/hooks/useFormKitFilter'
 import { useFormFieldSaveHandlers } from '@/hooks/useFormFieldSaveHandlers'
@@ -57,8 +56,6 @@ export function FormKitView({
   const { saveField, saveFieldAsync, saveError } = useFormKitSave({
     formKitId,
   })
-
-  const progress = useFormKitProgress({ structure, formData, compositeItems })
 
   const { setOriginalValues, updateField, handleSaveField, handleSaveFieldWithValue } =
     useFormFieldSaveHandlers({

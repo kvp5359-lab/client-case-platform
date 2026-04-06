@@ -8,7 +8,7 @@ import { Pencil, Trash2, GripVertical, LayoutTemplate, FileText } from 'lucide-r
 import {
   TemplateAccessPopover,
   TemplateAccessBadge,
-} from '@/page-components/KnowledgeBasePage/components/TemplateAccessPopover'
+} from '@/components/knowledge/TemplateAccessPopover'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { QuickReply } from '@/hooks/useQuickReplies'

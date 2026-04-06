@@ -66,11 +66,11 @@ export function AutoFillResults({
     staleTime: 5 * 60 * 1000,
   })
 
-  const fields = fieldsData?.fields ?? []
   const sections = fieldsData?.sections ?? {}
 
   // Группировка и фильтрация — мемоизировано
   const filledFieldsBySection = useMemo(() => {
+    const fields = fieldsData?.fields ?? []
     const fieldsBySection: Record<string, FieldRow[]> = {}
     fields.forEach((field) => {
       const sectionId = field.form_kit_section_id || 'no-section'
@@ -94,7 +94,7 @@ export function AutoFillResults({
     })
 
     return filled
-  }, [fields, result.extracted_data])
+  }, [fieldsData?.fields, result.extracted_data])
 
   if (fieldsLoading) {
     return (

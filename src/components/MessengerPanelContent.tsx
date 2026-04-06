@@ -53,7 +53,7 @@ export function MessengerPanelContent({
     chatsLoading,
     visibleChats,
     clientChatId,
-    internalChatId,
+    // internalChatId не используется напрямую — данные берутся через visibleChats
     clientUnread,
     internalUnread,
     hasClientReaction,

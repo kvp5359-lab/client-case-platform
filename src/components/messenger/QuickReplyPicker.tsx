@@ -122,9 +122,8 @@ export function QuickReplyPicker({
   }, [replies, search])
 
   const stripHtml = useCallback((html: string) => {
-    const tmp = document.createElement('div')
-    tmp.innerHTML = html
-    return (tmp.textContent || tmp.innerText || '').trim()
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    return (doc.body.textContent || '').trim()
   }, [])
 
   const handleSelect = (content: string) => {

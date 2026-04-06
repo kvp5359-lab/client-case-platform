@@ -23,7 +23,7 @@ import {
 import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { MessengerAccent } from '@/components/messenger/utils/messageStyles'
-import { InboxChatItem } from './InboxChatItem'
+import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import { InboxChatHeader, useProjectChatParticipants } from './InboxChatHeader'
 
 type InboxFilter = 'all' | 'unread'

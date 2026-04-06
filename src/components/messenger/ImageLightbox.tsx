@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import Image from 'next/image'
 import { X } from 'lucide-react'
 
 interface ImageLightboxProps {
@@ -31,9 +32,13 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
       >
         <X className="h-6 w-6" />
       </button>
-      <img
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
+      <Image
         src={src}
         alt={alt}
+        width={800}
+        height={600}
+        unoptimized
         className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
         onClick={(e) => e.stopPropagation()}
       />

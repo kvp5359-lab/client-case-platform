@@ -5,6 +5,7 @@
  * Uses createElement directly to avoid React component dependency in module scope.
  */
 import { createElement } from 'react'
+import Image from 'next/image'
 import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
 
 // SVG icons (inline, no lucide dependency in module scope)
@@ -39,13 +40,15 @@ const iconCheck = createElement(
   createElement('polyline', { points: '20 6 9 17 4 12' }),
 )
 
-/** Avatar: <img> if URL available, otherwise colored circle with initials */
+/** Avatar: Image if URL available, otherwise colored circle with initials */
 function buildAvatar(senderName: string, avatarUrl: string | null) {
   const size = 'w-8 h-8 rounded-full shrink-0'
   if (avatarUrl) {
-    return createElement('img', {
+    return createElement(Image, {
       src: avatarUrl,
       alt: senderName,
+      width: 32,
+      height: 32,
       className: `${size} object-cover`,
     })
   }

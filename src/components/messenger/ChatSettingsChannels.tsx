@@ -3,7 +3,7 @@
  * Handles both create and edit modes.
  */
 
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, memo } from 'react'
 import { Mail, Unlink, Loader2, Send, Copy, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -68,7 +68,7 @@ interface ChatSettingsChannelsProps {
   onSetEmailDropdownOpen: (v: boolean) => void
 }
 
-export function ChatSettingsChannels({
+export const ChatSettingsChannels = memo(function ChatSettingsChannels({
   tabMode,
   channelType,
   isEditMode,
@@ -360,4 +360,4 @@ export function ChatSettingsChannels({
       )}
     </div>
   )
-}
+})

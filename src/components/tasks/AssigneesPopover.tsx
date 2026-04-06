@@ -6,6 +6,7 @@
  */
 
 import { useState, useMemo } from 'react'
+import Image from 'next/image'
 import { Check, UserPlus, Search, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
@@ -120,7 +121,7 @@ export function AssigneesPopover({
         )}
       >
         {p.avatar_url ? (
-          <img src={p.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+          <Image src={p.avatar_url} alt="" width={24} height={24} className="w-6 h-6 rounded-full object-cover shrink-0" />
         ) : (
           <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground shrink-0">
             {(p.name ?? '?').charAt(0).toUpperCase()}

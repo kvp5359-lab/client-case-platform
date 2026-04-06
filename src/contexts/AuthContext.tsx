@@ -21,6 +21,7 @@ import {
 import { User, AuthError, Session } from '@supabase/supabase-js'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { safeInternalPath } from '@/hooks/shared/useAuthRedirect'
 
 // Типы для контекста
 interface AuthContextType {
@@ -87,8 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = useCallback(async (nextPath?: string) => {
     const callbackUrl = `${window.location.origin}/auth/callback`
-    const redirectTo = nextPath
-      ? `${callbackUrl}?next=${encodeURIComponent(nextPath)}`
+    const safePath = nextPath ? safeInternalPath(nextPath) : null
+    const redirectTo = safePath && safePath !== '/profile'
+      ? `${callbackUrl}?next=${encodeURIComponent(safePath)}`
       : callbackUrl
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',

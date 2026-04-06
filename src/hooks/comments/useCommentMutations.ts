@@ -48,14 +48,18 @@ export function useCreateComment() {
 /**
  * Обновление комментария
  */
-export function useUpdateComment() {
+export function useUpdateComment(entityType?: string, entityId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ commentId, input }: { commentId: string; input: UpdateCommentInput }) =>
       updateComment(commentId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: commentKeys.all })
+      if (entityType && entityId) {
+        queryClient.invalidateQueries({ queryKey: commentKeys.byEntity(entityType, entityId) })
+      } else {
+        queryClient.invalidateQueries({ queryKey: commentKeys.all })
+      }
     },
     onError: (error) => {
       logger.error('Ошибка обновления комментария:', error)
@@ -67,13 +71,17 @@ export function useUpdateComment() {
 /**
  * Удаление комментария
  */
-export function useDeleteComment() {
+export function useDeleteComment(entityType?: string, entityId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (commentId: string) => deleteComment(commentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: commentKeys.all })
+      if (entityType && entityId) {
+        queryClient.invalidateQueries({ queryKey: commentKeys.byEntity(entityType, entityId) })
+      } else {
+        queryClient.invalidateQueries({ queryKey: commentKeys.all })
+      }
       queryClient.invalidateQueries({ queryKey: ['comments', 'counts'] })
     },
     onError: (error) => {
@@ -86,7 +94,7 @@ export function useDeleteComment() {
 /**
  * Отметка треда как выполненного
  */
-export function useResolveComment() {
+export function useResolveComment(entityType?: string, entityId?: string) {
   const queryClient = useQueryClient()
   const { user } = useAuth()
 
@@ -96,7 +104,11 @@ export function useResolveComment() {
       return resolveComment(commentId, user.id)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: commentKeys.all })
+      if (entityType && entityId) {
+        queryClient.invalidateQueries({ queryKey: commentKeys.byEntity(entityType, entityId) })
+      } else {
+        queryClient.invalidateQueries({ queryKey: commentKeys.all })
+      }
     },
     onError: (error) => {
       logger.error('Ошибка завершения треда:', error)
@@ -108,13 +120,17 @@ export function useResolveComment() {
 /**
  * Снятие отметки выполнения
  */
-export function useUnresolveComment() {
+export function useUnresolveComment(entityType?: string, entityId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (commentId: string) => unresolveComment(commentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: commentKeys.all })
+      if (entityType && entityId) {
+        queryClient.invalidateQueries({ queryKey: commentKeys.byEntity(entityType, entityId) })
+      } else {
+        queryClient.invalidateQueries({ queryKey: commentKeys.all })
+      }
     },
     onError: (error) => {
       logger.error('Ошибка возобновления треда:', error)

@@ -33,7 +33,7 @@ import { useQuery } from '@tanstack/react-query'
 import { inboxKeys } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
-import { InboxChatItem } from '@/page-components/InboxPage/InboxChatItem'
+import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import type { AuditLogEntry } from '@/types/history'
 
 interface HistoryTabContentProps {
@@ -59,13 +59,13 @@ export function HistoryTabContent({ projectId, workspaceId }: HistoryTabContentP
   const { user } = useAuth()
   const [selected, setSelected] = useState<SidebarItem>({ kind: 'all' })
 
-  const markAsRead = useMarkHistoryAsRead(projectId)
-  const [lastReadAt, setLastReadAt] = useState<string | undefined>()
+  const { mutate: markHistoryRead } = useMarkHistoryAsRead(projectId)
+  // Мемоизируем timestamp «прочитано до» при смене projectId — не вызываем setState в effect
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const lastReadAt = useMemo(() => new Date().toISOString(), [projectId])
   useEffect(() => {
-    setLastReadAt(new Date().toISOString())
-    markAsRead.mutate()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId])
+    markHistoryRead()
+  }, [projectId, markHistoryRead])
 
   const { data: threads = [] } = useProjectThreads(projectId)
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Loader2, Search, Zap } from 'lucide-react'
 import { useKnowledgeSearch } from '@/hooks/knowledge/useKnowledgeSearch'

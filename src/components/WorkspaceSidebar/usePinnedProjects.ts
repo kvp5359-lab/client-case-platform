@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -12,7 +12,10 @@ const PINNED_KEY = (userId: string, workspaceId: string) =>
 export function usePinnedProjects(workspaceId: string | undefined) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const qk = user && workspaceId ? PINNED_KEY(user.id, workspaceId) : ['pinned-projects', 'none']
+  const qk = useMemo(
+    () => (user && workspaceId ? PINNED_KEY(user.id, workspaceId) : ['pinned-projects', 'none']),
+    [user, workspaceId],
+  )
 
   const { data: pinnedIds = [] } = useQuery({
     queryKey: qk,

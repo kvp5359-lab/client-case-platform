@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import Image from 'next/image'
 import { MessageSquare, Send, Mail, EyeOff, CheckCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { stripHtml } from '@/utils/messengerHtml'
@@ -123,9 +124,11 @@ export const InboxChatItem = memo(function InboxChatItem({
       {/* Аватар последнего отправителя с цветной обводкой */}
       <div className="relative shrink-0 mt-0.5">
         {chat.last_sender_avatar_url ? (
-          <img
+          <Image
             src={chat.last_sender_avatar_url}
             alt={chat.last_sender_name ?? ''}
+            width={40}
+            height={40}
             className={cn('w-10 h-10 rounded-full object-cover ring-2', accent.ring)}
           />
         ) : (

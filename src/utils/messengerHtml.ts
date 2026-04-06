@@ -53,6 +53,8 @@ export function sanitizeMessengerHtml(dirty: string): string {
       'a',
     ],
     ALLOWED_ATTR: ['href', 'target', 'rel'],
+    FORBID_ATTR: [],
+    ALLOW_UNKNOWN_PROTOCOLS: false,
   })
 }
 
@@ -64,7 +66,7 @@ export function linkifyText(text: string): string {
   const escaped = escapeHtml(text)
   return escaped.replace(URL_REGEX, (url) => {
     const href = url.startsWith('www.') ? `https://${url}` : url
-    return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`
+    return `<a href="${href.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer">${url}</a>`
   })
 }
 

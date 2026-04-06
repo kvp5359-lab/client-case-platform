@@ -12,10 +12,14 @@ import { useRouter } from 'next/navigation'
  * Защита от open-redirect: принимаем только относительные пути,
  * начинающиеся с одного `/` (но не `//`, не `/\`, не `javascript:`).
  */
-function safeInternalPath(path: string | null | undefined): string {
-  if (!path) return '/profile'
+export function safeInternalPath(path: string | null | undefined): string {
+  if (!path || typeof path !== 'string') return '/profile'
   if (!path.startsWith('/')) return '/profile'
   if (path.startsWith('//') || path.startsWith('/\\')) return '/profile'
+  // Блокируем URL-encoded обходы и опасные протоколы
+  const decoded = decodeURIComponent(path)
+  if (decoded.startsWith('//') || decoded.startsWith('/\\')) return '/profile'
+  if (decoded.toLowerCase().includes('javascript:')) return '/profile'
   return path
 }
 

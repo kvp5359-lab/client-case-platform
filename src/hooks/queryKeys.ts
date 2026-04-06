@@ -217,6 +217,10 @@ export const permissionKeys = {
 
 export const participantKeys = {
   authorName: (userId: string) => ['author-name', userId] as const,
+  projectParticipant: (projectId: string, userId: string) =>
+    ['participant', 'project', projectId, userId] as const,
+  workspaceParticipant: (workspaceId: string, userId: string) =>
+    ['participant', 'workspace', workspaceId, userId] as const,
 }
 
 export const statusKeys = {

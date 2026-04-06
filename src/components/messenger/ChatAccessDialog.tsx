@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback } from 'react'
+import Image from 'next/image'
 import { MessageSquare, Users, UserCheck } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -214,7 +215,7 @@ export function ChatAccessDialog({ chat, open, onOpenChange }: ChatAccessDialogP
                   )}
                 >
                   {p.avatar_url ? (
-                    <img src={p.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover" />
+                    <Image src={p.avatar_url} alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
                   ) : (
                     <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium">
                       {(p.name?.[0] ?? '?').toUpperCase()}

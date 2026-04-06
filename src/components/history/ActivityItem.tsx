@@ -10,8 +10,6 @@ import {
   UserMinus,
   Shield,
   FilePlus,
-  FolderPlus,
-  PackagePlus,
   Archive,
   Merge,
   Bot,
@@ -21,7 +19,6 @@ import {
   Pencil,
   Calendar,
   ClipboardEdit,
-  CheckSquare,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'

@@ -5,11 +5,10 @@
  */
 
 import { useState, useEffect, useCallback, lazy, Suspense, createContext, useContext } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { Menu, X, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
 import { WorkspaceSidebarFull } from './WorkspaceSidebarFull'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { AiPanelContent } from '@/components/ai-panel'
@@ -82,8 +81,6 @@ export function WorkspaceLayoutShell({ children, workspaceId: propWorkspaceId }:
 
 function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: WorkspaceLayoutProps) {
   const params = useParams<{ workspaceId?: string }>()
-  const router = useRouter()
-  const { user } = useAuth()
   const workspaceId = propWorkspaceId || params.workspaceId || ''
 
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -92,7 +89,6 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   const panelTab = useSidePanelStore((s) => s.panelTab)
   const pageContext = useSidePanelStore((s) => s.pageContext)
   const openPanel = useSidePanelStore((s) => s.openPanel)
-  const closePanel = useSidePanelStore((s) => s.closePanel)
   const setContext = useSidePanelStore((s) => s.setContext)
   const messengerEnabled = useSidePanelStore((s) => s.messengerEnabled)
   const panelOpen = panelTab !== null
@@ -152,7 +148,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
 
   // Чат-диалог (создание/редактирование)
   const activeChatId = useSidePanelStore((s) => s.activeChatId)
-  const openChat = useSidePanelStore((s) => s.openChat)
+  const openChatFromStore = useSidePanelStore((s) => s.openChat)
   const [settingsChat, setSettingsChat] = useState<ProjectThread | null | undefined>(null)
   const [defaultTab, setDefaultTab] = useState<'task' | 'chat' | 'email'>('chat')
   const [initialTemplate, setInitialTemplate] = useState<ThreadTemplate | null>(null)
@@ -161,9 +157,9 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   const handleSelectChat = useCallback(
     (chat: ProjectThread) => {
       const channel = chat.legacy_channel ?? 'client'
-      openChat(chat.id, channel as 'client' | 'internal')
+      openChatFromStore(chat.id, channel as 'client' | 'internal')
     },
-    [openChat],
+    [openChatFromStore],
   )
 
   return (
@@ -292,7 +288,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
             }}
             onCreated={(newChat) => {
               setSettingsChat(null)
-              openChat(newChat.id)
+              openChatFromStore(newChat.id)
             }}
           />
         </Suspense>
@@ -324,7 +320,6 @@ function ChatSettingsSection({
   const createChatMutation = useCreateThread(projectId, workspaceId)
   const updateChatMutation = useUpdateThread()
   const setPendingInitialMessage = useSidePanelStore((s) => s.setPendingInitialMessage)
-  const openChat = useSidePanelStore((s) => s.openChat)
 
   const handleCreateChat = useCallback(
     async (result: ChatSettingsResult) => {

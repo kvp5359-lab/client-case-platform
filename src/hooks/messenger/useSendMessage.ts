@@ -85,9 +85,10 @@ export function useSendMessage(
       }
 
       const now = new Date().toISOString()
+      const optimisticId = `optimistic-${crypto.randomUUID()}`
       const optimisticAttachments = (attachments ?? []).map((file, i) => ({
-        id: `optimistic-att-${Date.now()}-${i}`,
-        message_id: `optimistic-${Date.now()}`,
+        id: `optimistic-att-${optimisticId}-${i}`,
+        message_id: optimisticId,
         file_name: file.name,
         file_size: file.size,
         mime_type: file.type || null,
@@ -99,7 +100,7 @@ export function useSendMessage(
       }))
 
       const optimistic: ProjectMessage = {
-        id: `optimistic-${Date.now()}`,
+        id: optimisticId,
         project_id: projectId ?? null,
         workspace_id: workspaceId,
         sender_participant_id: currentParticipant?.participantId ?? null,

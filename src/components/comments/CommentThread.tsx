@@ -34,8 +34,8 @@ export function CommentThread({
   const [isExpanded, setIsExpanded] = useState(!thread.root.is_resolved)
 
   const createComment = useCreateComment()
-  const resolveComment = useResolveComment()
-  const unresolveComment = useUnresolveComment()
+  const resolveComment = useResolveComment(entityType, entityId)
+  const unresolveComment = useUnresolveComment(entityType, entityId)
 
   const handleReply = useCallback(
     (content: string) => {
@@ -111,6 +111,8 @@ export function CommentThread({
       {/* Корневой комментарий */}
       <CommentItem
         comment={thread.root}
+        entityType={entityType}
+        entityId={entityId}
         canEdit={canEdit}
         canManage={canManage}
         isRoot
@@ -122,7 +124,7 @@ export function CommentThread({
       {thread.replies.length > 0 && (
         <div className="pl-4 border-l-2 border-muted ml-1">
           {thread.replies.map((reply) => (
-            <CommentItem key={reply.id} comment={reply} canEdit={canEdit} canManage={canManage} />
+            <CommentItem key={reply.id} comment={reply} entityType={entityType} entityId={entityId} canEdit={canEdit} canManage={canManage} />
           ))}
         </div>
       )}

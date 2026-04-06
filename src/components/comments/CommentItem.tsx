@@ -25,6 +25,8 @@ import type { CommentWithAuthor } from '@/types/comments'
 
 interface CommentItemProps {
   comment: CommentWithAuthor
+  entityType?: string
+  entityId?: string
   canEdit: boolean
   canManage: boolean
   isRoot?: boolean
@@ -34,6 +36,8 @@ interface CommentItemProps {
 
 export function CommentItem({
   comment,
+  entityType,
+  entityId,
   canEdit,
   canManage,
   isRoot = false,
@@ -43,8 +47,8 @@ export function CommentItem({
   const { user } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const updateComment = useUpdateComment()
-  const deleteComment = useDeleteComment()
+  const updateComment = useUpdateComment(entityType, entityId)
+  const deleteComment = useDeleteComment(entityType, entityId)
 
   const isOwn = user?.id === comment.created_by
 

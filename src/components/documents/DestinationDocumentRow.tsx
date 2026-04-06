@@ -2,6 +2,7 @@
  * Компонент строки документа из папки назначения (Google Drive)
  */
 
+import Image from 'next/image'
 import { DestinationDocument } from './types'
 import { formatSize } from '@/utils/formatSize'
 import { formatShortDate } from '@/utils/dateFormat'
@@ -16,7 +17,7 @@ export function DestinationDocumentRow({ file }: DestinationDocumentRowProps) {
       {/* Колонка: Название */}
       <td className="py-1 pl-1.5 pr-3 border-b border-gray-100">
         <div className="flex items-center gap-2 min-w-0">
-          {file.iconLink && <img src={file.iconLink} alt="" className="w-4 h-4 flex-shrink-0" />}
+          {file.iconLink && <Image src={file.iconLink} alt="" width={16} height={16} className="w-4 h-4 flex-shrink-0" />}
           <span className="text-sm truncate flex-1 min-w-0 text-green-700">{file.name}</span>
         </div>
       </td>

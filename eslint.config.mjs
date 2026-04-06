@@ -15,15 +15,14 @@ const eslintConfig = defineConfig([
   ]),
   {
     rules: {
-      "prefer-const": "warn",
+      "prefer-const": "error",
       "react/no-unescaped-entities": "warn",
-      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-unused-vars": "error",
       "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-require-imports": "warn",
-      "react-hooks/exhaustive-deps": "warn",
-      "@next/next/no-img-element": "warn",
-      "@next/next/no-assign-module-variable": "warn",
-      "react-refresh/only-export-components": "off",
+      "@typescript-eslint/no-require-imports": "error",
+      "react-hooks/exhaustive-deps": "error",
+      "@next/next/no-img-element": "error",
+      "@next/next/no-assign-module-variable": "error",
     },
   },
 ]);
