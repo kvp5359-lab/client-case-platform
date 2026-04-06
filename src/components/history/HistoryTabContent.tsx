@@ -76,6 +76,7 @@ export function HistoryTabContent({ projectId, workspaceId }: HistoryTabContentP
   // заполнит кэш за несколько сотен мс, и чат-лист обновится автоматически.
   const { data: projectInboxChats = [] } = useQuery({
     queryKey: inboxKeys.threadsV2(workspaceId),
+    queryFn: () => [] as InboxThreadEntry[],
     enabled: false,
     select: (chats: InboxThreadEntry[] | undefined) =>
       chats?.filter((c) => c.project_id === projectId && c.last_message_at) ?? [],

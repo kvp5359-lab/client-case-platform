@@ -22,6 +22,7 @@ export function UnreadBadge({ threadId, workspaceId }: UnreadBadgeProps) {
   // не делаем, только читаем кэш, который заполняет useInboxThreadsV2 в сайдбаре/inbox.
   const { data: count = 0 } = useQuery({
     queryKey: inboxKeys.threadsV2(workspaceId),
+    queryFn: () => [] as InboxThreadEntry[],
     enabled: false,
     select: (threads: InboxThreadEntry[] | undefined) => {
       const entry = threads?.find((e) => e.thread_id === threadId)
