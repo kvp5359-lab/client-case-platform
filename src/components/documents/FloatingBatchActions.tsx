@@ -3,6 +3,9 @@
 /**
  * Плавающая панель пакетных операций
  * Отображается поверх контента при выборе документов
+ *
+ * Тонкая обёртка: управляет видимостью и позиционированием,
+ * рендерит подкомпоненты из batch-actions/
  */
 
 import { useState, useEffect, memo } from 'react'
@@ -10,67 +13,29 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Loader2,
-  Sparkles,
-  Merge,
-  FileArchive,
-  Folder as FolderIcon,
-  FolderInput,
-  Download,
-  Trash2,
-  X,
-  Eye,
-  EyeOff,
-  CircleDot,
-  CircleOff,
-} from 'lucide-react'
-import { safeCssColor } from '@/utils/isValidCssColor'
-import { Folder } from './types'
-import type { DocumentStatus } from '@/types/entities'
+import { Loader2, X } from 'lucide-react'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { SendToChatButton } from './SendToChatButton'
+import {
+  BatchActionsAI,
+  BatchActionsMerge,
+  BatchActionsMove,
+  BatchActionsStatus,
+  BatchActionsDelete,
+  BatchActionsVisibility,
+  BatchActionsDownload,
+} from './batch-actions'
+import type {
+  BatchOperations,
+  BatchPermissions,
+  BatchHandlers,
+} from './batch-actions'
+import type { Folder } from './types'
+import type { DocumentStatus } from '@/types/entities'
 
-type OperationProgress = { current: number; total: number } | null
-
-interface BatchOperations {
-  isMerging: boolean
-  isCompressing: boolean
-  isCheckingBatch: boolean
-  isExportingToDisk: boolean
-  mergeProgress: OperationProgress
-  compressProgress: OperationProgress
-  exportProgress: OperationProgress
-}
-
-interface BatchPermissions {
-  canBatchCheck?: boolean
-  canCompress?: boolean
-  canMove?: boolean
-  canDelete?: boolean
-  canDownload?: boolean
-}
-
-interface BatchHandlers {
-  onClearSelection: () => void
-  onBatchCheck: () => void
-  onMerge: () => void
-  onBatchCompress: () => void
-  onBatchMove: (folderId: string | null) => void
-  onBatchDelete: () => void
-  onBatchHardDelete?: () => void
-  onBatchDownload: () => void
-  onBatchToggleHidden?: (hide: boolean) => void
-  onBatchSetStatus?: (statusId: string | null) => void
-  onSendToChat?: (target: 'client' | 'internal' | 'assistant') => void
-}
+export type { BatchOperations, BatchPermissions, BatchHandlers }
 
 export interface FloatingBatchActionsProps {
   hasSelection: boolean
@@ -202,155 +167,53 @@ export const FloatingBatchActions = memo(function FloatingBatchActions({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {/* Проверка документов — только с правом canBatchCheck */}
-              {canBatchCheck && (
-                <>
-                  <DropdownMenuItem
-                    onClick={onBatchCheck}
-                    disabled={selectedCount === 0 || isProcessing}
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Проверить документы
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <DropdownMenuItem onClick={onMerge} disabled={selectedCount < 2 || isProcessing}>
-                <Merge className="h-4 w-4 mr-2" />
-                Объединить файлы
-                {selectedCount < 2 && (
-                  <span className="ml-2 text-xs text-muted-foreground">(мин. 2)</span>
-                )}
-              </DropdownMenuItem>
-
-              {/* Сжатие PDF — только с правом canCompress */}
-              {canCompress && (
-                <DropdownMenuItem
-                  onClick={onBatchCompress}
-                  disabled={selectedCount === 0 || isProcessing}
-                >
-                  <FileArchive className="h-4 w-4 mr-2" />
-                  Сжать PDF
-                </DropdownMenuItem>
-              )}
-
-              {/* Перемещение в папку — только с правом canMove */}
-              {canMove && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger disabled={selectedCount === 0 || isProcessing}>
-                    <FolderInput className="h-4 w-4 mr-2" />
-                    Переместить в папку
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    {/* Опция "Нераспределённые" */}
-                    <DropdownMenuItem onClick={() => onBatchMove(null)}>
-                      <FolderIcon className="h-4 w-4 mr-2 text-muted-foreground" />
-                      Нераспределённые
-                    </DropdownMenuItem>
-
-                    {folders.length > 0 && <DropdownMenuSeparator />}
-
-                    {/* Список папок */}
-                    {folders.map((folder) => (
-                      <DropdownMenuItem key={folder.id} onClick={() => onBatchMove(folder.id)}>
-                        <FolderIcon className="h-4 w-4 mr-2 text-blue-600" />
-                        {folder.name}
-                      </DropdownMenuItem>
-                    ))}
-
-                    {folders.length === 0 && (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                        Нет доступных папок
-                      </div>
-                    )}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              )}
-
-              {/* Установка статуса */}
-              {onBatchSetStatus && statuses.length > 0 && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger disabled={selectedCount === 0 || isProcessing}>
-                    <CircleDot className="h-4 w-4 mr-2" />
-                    Установить статус
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    {statuses.map((status) => (
-                      <DropdownMenuItem key={status.id} onClick={() => onBatchSetStatus(status.id)}>
-                        <div
-                          className="w-3 h-3 rounded-full flex-shrink-0 mr-2"
-                          style={{ backgroundColor: safeCssColor(status.color) }}
-                        />
-                        {status.name}
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onBatchSetStatus(null)}>
-                      <CircleOff className="h-4 w-4 mr-2 text-muted-foreground" />
-                      Без статуса
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              )}
-
-              {/* Удаление — только с правом canDelete */}
-              {canDelete && (
-                <>
-                  <DropdownMenuItem
-                    onClick={onBatchDelete}
-                    disabled={selectedCount === 0 || isProcessing}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Удалить файлы
-                  </DropdownMenuItem>
-                  {hasTrashDocumentsSelected && onBatchHardDelete && (
-                    <DropdownMenuItem
-                      onClick={onBatchHardDelete}
-                      disabled={selectedCount === 0 || isProcessing}
-                      className="text-destructive focus:text-destructive font-bold"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Удалить файлы навсегда
-                    </DropdownMenuItem>
-                  )}
-                </>
-              )}
-              {/* Скрыть/показать — только в источнике */}
-              {isSourceTab && onBatchToggleHidden && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => onBatchToggleHidden(!selectedSourceDocsAllHidden)}
-                    disabled={selectedCount === 0 || isProcessing}
-                  >
-                    {selectedSourceDocsAllHidden ? (
-                      <>
-                        <Eye className="h-4 w-4 mr-2" />
-                        Показать документы
-                      </>
-                    ) : (
-                      <>
-                        <EyeOff className="h-4 w-4 mr-2" />
-                        Скрыть документы
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                </>
-              )}
-
-              <DropdownMenuSeparator />
-
-              {/* Скачивание — только с правом canDownload */}
-              {canDownload && (
-                <DropdownMenuItem
-                  onClick={onBatchDownload}
-                  disabled={selectedCount === 0 || isProcessing}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Скачать документы
-                </DropdownMenuItem>
-              )}
+              <BatchActionsAI
+                canBatchCheck={canBatchCheck}
+                selectedCount={selectedCount}
+                isProcessing={isProcessing}
+                onBatchCheck={onBatchCheck}
+              />
+              <BatchActionsMerge
+                selectedCount={selectedCount}
+                isProcessing={isProcessing}
+                canCompress={canCompress}
+                onMerge={onMerge}
+                onBatchCompress={onBatchCompress}
+              />
+              <BatchActionsMove
+                canMove={canMove}
+                selectedCount={selectedCount}
+                isProcessing={isProcessing}
+                folders={folders}
+                onBatchMove={onBatchMove}
+              />
+              <BatchActionsStatus
+                statuses={statuses}
+                selectedCount={selectedCount}
+                isProcessing={isProcessing}
+                onBatchSetStatus={onBatchSetStatus}
+              />
+              <BatchActionsDelete
+                canDelete={canDelete}
+                selectedCount={selectedCount}
+                isProcessing={isProcessing}
+                hasTrashDocumentsSelected={hasTrashDocumentsSelected}
+                onBatchDelete={onBatchDelete}
+                onBatchHardDelete={onBatchHardDelete}
+              />
+              <BatchActionsVisibility
+                isSourceTab={isSourceTab}
+                selectedSourceDocsAllHidden={selectedSourceDocsAllHidden}
+                selectedCount={selectedCount}
+                isProcessing={isProcessing}
+                onBatchToggleHidden={onBatchToggleHidden}
+              />
+              <BatchActionsDownload
+                canDownload={canDownload}
+                selectedCount={selectedCount}
+                isProcessing={isProcessing}
+                onBatchDownload={onBatchDownload}
+              />
             </DropdownMenuContent>
           </DropdownMenu>
 

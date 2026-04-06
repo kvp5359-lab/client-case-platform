@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageAttachments } from './MessageAttachment'
 import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
-import type { ProjectMessage, MessageChannel } from '@/services/api/messenger/messengerService'
+import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { bubbleStyles } from './utils/messageStyles'
 import { useCollapsibleText } from './hooks/useCollapsibleText'
 import { TelegramFailedBadge, useTelegramDeliveryStatus } from './TelegramDeliveryIndicator'
@@ -16,29 +16,15 @@ import { BubbleHeader } from './BubbleHeader'
 import { BubbleTimestamp } from './BubbleTimestamp'
 import { BubbleTextContent, DraftPublishButton } from './BubbleTextContent'
 import { DeleteMessageDialog } from './DeleteMessageDialog'
+import { useMessengerContext } from './MessengerContext'
 
 export type { MessengerAccent } from './utils/messageStyles'
 
 interface MessageBubbleProps {
   message: ProjectMessage
   isOwn: boolean
-  currentParticipantId: string | null
-  accent?: import('./utils/messageStyles').MessengerAccent
   showAvatar?: boolean
-  viewerRole?: string | null
-  projectId?: string
-  workspaceId?: string
-  onReply: (msg: ProjectMessage) => void
-  onReact: (messageId: string, emoji: string) => void
-  onEdit?: (msg: ProjectMessage) => void
-  onDelete?: (messageId: string) => void
   canDelete?: boolean
-  onQuote?: (text: string) => void
-  onForward?: (msg: ProjectMessage) => void
-  onPublishDraft?: (msg: ProjectMessage) => void
-  onEditDraft?: (msg: ProjectMessage) => void
-  channel?: MessageChannel
-  isTelegramLinked?: boolean
   isDelayedPending?: boolean
   delayedExpiresAt?: number
   onCancelDelayed?: () => void
@@ -47,26 +33,28 @@ interface MessageBubbleProps {
 function MessageBubbleImpl({
   message,
   isOwn,
-  currentParticipantId,
-  accent = 'blue',
   showAvatar = true,
-  projectId,
-  workspaceId,
-  onReply,
-  onReact,
-  onEdit,
-  onDelete,
   canDelete,
-  onQuote,
-  onForward,
-  onPublishDraft,
-  onEditDraft,
-  channel,
-  isTelegramLinked,
   isDelayedPending,
   delayedExpiresAt,
   onCancelDelayed,
 }: MessageBubbleProps) {
+  const {
+    currentParticipantId,
+    accent = 'blue',
+    projectId,
+    workspaceId,
+    channel,
+    isTelegramLinked,
+    onReply,
+    onReact,
+    onEdit,
+    onDelete,
+    onQuote,
+    onForward,
+    onPublishDraft,
+    onEditDraft,
+  } = useMessengerContext()
   const colors = bubbleStyles[accent]
   const tgDeliveryStatus = useTelegramDeliveryStatus(message, isOwn, isTelegramLinked)
   const deliveryStatus = getDeliveryStatus(message, isOwn, tgDeliveryStatus)

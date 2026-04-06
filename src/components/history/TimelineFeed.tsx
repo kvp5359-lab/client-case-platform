@@ -10,6 +10,7 @@ import { useMemo, useCallback, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { getChatIconComponent } from '@/components/messenger/ChatSettingsDialog'
 import { MessageBubble } from '@/components/messenger/MessageBubble'
+import { MessengerProvider } from '@/components/messenger/MessengerContext'
 import { ActivityItem } from './ActivityItem'
 import type { AuditLogEntry } from '@/types/history'
 import type { TimelineMessageEntry } from '@/hooks/useTimelineMessages'
@@ -152,27 +153,30 @@ export function TimelineFeed({
                     />
                   ) : (
                     <div className="px-2">
-                      <MessageBubble
-                        message={entry.entry.message}
-                        isOwn={!!currentUserId && entry.entry.senderUserId === currentUserId}
+                      <MessengerProvider
                         currentParticipantId={null}
                         accent={entry.entry.thread.accent_color as MessengerAccent}
-                        showAvatar={
-                          // Show avatar if previous entry is not a message from same sender
-                          idx === 0 ||
-                          dayEntries[idx - 1].kind !== 'message' ||
-                          (dayEntries[idx - 1].kind === 'message' &&
-                            (
-                              dayEntries[idx - 1] as {
-                                kind: 'message'
-                                entry: TimelineMessageEntry
-                              }
-                            ).entry.message.sender_participant_id !==
-                              entry.entry.message.sender_participant_id)
-                        }
                         onReply={noop}
                         onReact={noop}
-                      />
+                      >
+                        <MessageBubble
+                          message={entry.entry.message}
+                          isOwn={!!currentUserId && entry.entry.senderUserId === currentUserId}
+                          showAvatar={
+                            // Show avatar if previous entry is not a message from same sender
+                            idx === 0 ||
+                            dayEntries[idx - 1].kind !== 'message' ||
+                            (dayEntries[idx - 1].kind === 'message' &&
+                              (
+                                dayEntries[idx - 1] as {
+                                  kind: 'message'
+                                  entry: TimelineMessageEntry
+                                }
+                              ).entry.message.sender_participant_id !==
+                                entry.entry.message.sender_participant_id)
+                          }
+                        />
+                      </MessengerProvider>
                     </div>
                   )}
                 </div>

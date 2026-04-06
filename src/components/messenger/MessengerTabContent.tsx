@@ -9,6 +9,7 @@ import type { MessageChannel, ProjectMessage } from '@/services/api/messenger/me
 import { messengerKeys } from '@/hooks/queryKeys'
 import { MessageList } from './MessageList'
 import type { MessengerAccent } from './MessageBubble'
+import { MessengerProvider } from './MessengerContext'
 import { MessageInput } from './MessageInput'
 import { TelegramLinkDialog } from './TelegramLinkDialog'
 import { EmailLinkDialog } from './EmailLinkDialog'
@@ -89,6 +90,16 @@ export function MessengerTabContent({
     editingMessage: state.editingMessage,
   })
 
+  const handleReact = useCallback(
+    (msgId: string, emoji: string) => state.toggleReaction.mutate({ messageId: msgId, emoji }),
+    [state.toggleReaction],
+  )
+
+  const handleDelete = useCallback(
+    (messageId: string) => state.deleteMessageMutation.mutate(messageId),
+    [state.deleteMessageMutation],
+  )
+
   const displayMessages = useOptimisticEmail({
     messages: state.messages,
     searchResults: state.searchResults,
@@ -131,6 +142,27 @@ export function MessengerTabContent({
         </div>
       )}
 
+      <MessengerProvider
+        currentParticipantId={state.currentParticipant?.participantId ?? null}
+        viewerRole={state.currentParticipant?.role}
+        projectId={projectId}
+        workspaceId={workspaceId}
+        accent={accent}
+        channel={channel}
+        isAdmin={state.isAdmin}
+        isTelegramLinked={state.isLinked}
+        onReply={state.setReplyTo}
+        onReact={handleReact}
+        onEdit={handlers.handleStartEdit}
+        onDelete={handleDelete}
+        onQuote={state.setQuoteText}
+        onForward={handlers.handleForward}
+        onPublishDraft={handlers.handlePublishDraft}
+        onEditDraft={handlers.handleEditDraft}
+        isDelayedPending={state.isDelayedPending}
+        getDelayedExpiresAt={state.getExpiresAt}
+        onCancelDelayed={handlers.handleCancelDelayed}
+      >
       <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
         {state.isEmailChat && (
           <EmailSubjectBar
@@ -144,27 +176,8 @@ export function MessengerTabContent({
           isLoading={state.isLoading}
           hasMoreOlder={state.isSearchActive ? false : state.hasMoreOlder}
           isFetchingOlder={state.isFetchingOlder}
-          currentParticipantId={state.currentParticipant?.participantId ?? null}
-          viewerRole={state.currentParticipant?.role}
-          accent={accent}
           lastReadAt={state.lastReadAt ?? undefined}
           onFetchOlder={state.fetchOlderMessages}
-          onReply={state.setReplyTo}
-          onReact={(msgId, emoji) => state.toggleReaction.mutate({ messageId: msgId, emoji })}
-          onEdit={handlers.handleStartEdit}
-          onDelete={(messageId) => state.deleteMessageMutation.mutate(messageId)}
-          isAdmin={state.isAdmin}
-          onQuote={state.setQuoteText}
-          onForward={handlers.handleForward}
-          onPublishDraft={handlers.handlePublishDraft}
-          onEditDraft={handlers.handleEditDraft}
-          channel={channel}
-          projectId={projectId}
-          workspaceId={workspaceId}
-          isTelegramLinked={state.isLinked}
-          isDelayedPending={state.isDelayedPending}
-          getDelayedExpiresAt={state.getExpiresAt}
-          onCancelDelayed={handlers.handleCancelDelayed}
           scrollToBottomTrigger={state.sendTrigger}
         />
 
@@ -261,6 +274,7 @@ export function MessengerTabContent({
           }
         }}
       />
+      </MessengerProvider>
     </div>
   )
 }

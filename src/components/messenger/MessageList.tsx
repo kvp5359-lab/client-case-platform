@@ -2,36 +2,18 @@ import { useRef, useEffect, useCallback, useMemo } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
-import { MessageBubble, type MessengerAccent } from './MessageBubble'
+import { MessageBubble } from './MessageBubble'
 import { ChatEmptyState } from './ChatEmptyState'
-import type { ProjectMessage, MessageChannel } from '@/services/api/messenger/messengerService'
+import { useMessengerContext } from './MessengerContext'
+import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
 interface MessageListProps {
   messages: ProjectMessage[]
   isLoading: boolean
   hasMoreOlder: boolean
   isFetchingOlder: boolean
-  currentParticipantId: string | null
-  viewerRole?: string | null
-  accent?: MessengerAccent
   lastReadAt?: string
-  projectId?: string
-  workspaceId?: string
   onFetchOlder: () => void
-  onReply: (msg: ProjectMessage) => void
-  onReact: (messageId: string, emoji: string) => void
-  onEdit?: (msg: ProjectMessage) => void
-  onDelete?: (messageId: string) => void
-  isAdmin?: boolean
-  onQuote?: (text: string) => void
-  onForward?: (msg: ProjectMessage) => void
-  onPublishDraft?: (msg: ProjectMessage) => void
-  onEditDraft?: (msg: ProjectMessage) => void
-  channel?: MessageChannel
-  isTelegramLinked?: boolean
-  isDelayedPending?: (messageId: string) => boolean
-  getDelayedExpiresAt?: (messageId: string) => number | null
-  onCancelDelayed?: (messageId: string) => void
   /** Инкрементируется при отправке сообщения — принудительный скролл вниз */
   scrollToBottomTrigger?: number
 }
@@ -94,29 +76,18 @@ export function MessageList({
   isLoading,
   hasMoreOlder,
   isFetchingOlder,
-  currentParticipantId,
-  viewerRole,
-  accent,
   lastReadAt,
   onFetchOlder,
-  onReply,
-  onReact,
-  onEdit,
-  onDelete,
-  isAdmin,
-  onQuote,
-  onForward,
-  onPublishDraft,
-  onEditDraft,
-  channel,
-  projectId,
-  workspaceId,
-  isTelegramLinked,
-  isDelayedPending,
-  getDelayedExpiresAt,
-  onCancelDelayed,
   scrollToBottomTrigger,
 }: MessageListProps) {
+  const {
+    currentParticipantId,
+    accent = 'blue',
+    isAdmin,
+    isDelayedPending,
+    getDelayedExpiresAt,
+    onCancelDelayed,
+  } = useMessengerContext()
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const prevFirstIdRef = useRef<string | null>(null)
@@ -324,23 +295,8 @@ export function MessageList({
                 <MessageBubble
                   message={msg}
                   isOwn={isOwn}
-                  currentParticipantId={currentParticipantId}
-                  accent={accent}
                   showAvatar={isFirstInGroup}
-                  viewerRole={viewerRole}
-                  onReply={onReply}
-                  onReact={onReact}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
                   canDelete={isOwn || isAdmin}
-                  onQuote={onQuote}
-                  onForward={onForward}
-                  onPublishDraft={onPublishDraft}
-                  onEditDraft={onEditDraft}
-                  channel={channel}
-                  projectId={projectId}
-                  workspaceId={workspaceId}
-                  isTelegramLinked={isTelegramLinked}
                   isDelayedPending={isDelayedPending?.(msg.id)}
                   delayedExpiresAt={getDelayedExpiresAt?.(msg.id) ?? undefined}
                   onCancelDelayed={onCancelDelayed ? () => onCancelDelayed(msg.id) : undefined}

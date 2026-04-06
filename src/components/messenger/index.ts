@@ -1,4 +1,5 @@
 export { MessengerTabContent } from './MessengerTabContent'
+export { MessengerProvider, useMessengerContext } from './MessengerContext'
 export { MessageList } from './MessageList'
 export { MessageBubble } from './MessageBubble'
 export { MessageInput } from './MessageInput'
