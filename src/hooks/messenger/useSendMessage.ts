@@ -17,7 +17,7 @@ import {
   type MessageChannel,
   type ForwardedAttachment,
 } from '@/services/api/messenger/messengerService'
-import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
+import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
 import { dismissProjectToasts } from './useMessageToastPayload'
 
 export function useSendMessage(
@@ -188,7 +188,7 @@ export function useSendMessage(
             queryClient.invalidateQueries({
               queryKey: lastReadKey,
             })
-            queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+            invalidateMessengerCaches(queryClient, workspaceId)
           })
           .catch(() => {
             // Не критично — сообщение отправлено, просто markAsRead не удался
