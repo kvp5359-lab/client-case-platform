@@ -6,7 +6,7 @@
 
 import React from 'react'
 import type { DocumentWithFiles, SourceDocument, SourceDocumentInfo, Folder } from '@/components/documents/types'
-import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
+import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 import type { Tables } from '@/types/database'
 import type { ConfirmDialogState } from '@/hooks/dialogs/useConfirmDialog'
 

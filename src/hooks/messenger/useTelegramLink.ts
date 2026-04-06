@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { messengerKeys } from '@/hooks/queryKeys'
-import type { MessageChannel } from '@/services/api/messengerService'
+import type { MessageChannel } from '@/services/api/messenger/messengerService'
 
 interface TelegramLink {
   id: string

@@ -16,7 +16,7 @@ import {
   type ReplyMessage,
   type MessageChannel,
   type ForwardedAttachment,
-} from '@/services/api/messengerService'
+} from '@/services/api/messenger/messengerService'
 import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 import { dismissProjectToasts } from './useMessageToastPayload'
 

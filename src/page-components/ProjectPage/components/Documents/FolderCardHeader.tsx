@@ -17,8 +17,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
-import { getArticleById } from '@/services/api/knowledgeBaseService'
-import { sanitizeHtml } from '@/utils/sanitizeHtml'
+import { getArticleById } from '@/services/api/knowledge/knowledgeBaseService'
+import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 import type { Folder } from '@/components/documents/types'
 
 export interface FolderCardHeaderProps {

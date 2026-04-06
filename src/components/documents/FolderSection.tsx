@@ -9,7 +9,7 @@
 
 import { memo, useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { sanitizeHtml } from '@/utils/sanitizeHtml'
+import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -26,7 +26,7 @@ import {
   useDocumentKitIds,
 } from '@/components/projects/DocumentKitsTab/context'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
-import { getArticleById } from '@/services/api/knowledgeBaseService'
+import { getArticleById } from '@/services/api/knowledge/knowledgeBaseService'
 
 interface FolderSectionProps {
   folder: FolderType

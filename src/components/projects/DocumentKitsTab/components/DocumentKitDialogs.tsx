@@ -18,9 +18,15 @@ import {
 } from '../dialogs'
 import { ExportProgressDialog } from '../dialogs/ExportProgressDialog'
 import {
-  useDocumentKitDialogs,
-  useDocumentKitOperations,
-  useDocumentKitGoogleDrive,
+  useMoveDialogState,
+  useEditDialogState,
+  useContentViewState,
+  useFolderDialogsState,
+  useMergeDialogState,
+  useExportDialogState,
+  useConnectSourceState,
+  useSourceSettingsState,
+  useKitSettingsState,
   useDocumentKitUIStore,
 } from '@/store/documentKitUI'
 import { useDocumentKitData, useDocumentKitUIState, useDocumentKitIds } from '../context'
@@ -63,18 +69,11 @@ export interface DocumentKitDialogsProps {
 }
 
 export function DocumentKitDialogs({ handlers }: DocumentKitDialogsProps) {
-  // --- Zustand state ---
+  // --- Zustand state (granular selectors) ---
+  const { moveDialogOpen, sourceDocToMove, isMovingSourceDoc } = useMoveDialogState()
+  const { editDialogOpen, documentToEdit, editName, editDescription, editStatus, suggestedNames, isCheckingDocument } = useEditDialogState()
+  const { contentViewDialogOpen, documentContent, isLoadingContent } = useContentViewState()
   const {
-    moveDialogOpen,
-    sourceDocToMove,
-    isMovingSourceDoc,
-    editDialogOpen,
-    documentToEdit,
-    editName,
-    editDescription,
-    editStatus,
-    contentViewDialogOpen,
-    documentContent,
     addFolderDialogOpen,
     templateSelectDialogOpen,
     editingFolder,
@@ -82,39 +81,12 @@ export function DocumentKitDialogs({ handlers }: DocumentKitDialogsProps) {
     folderTemplates,
     loadingTemplates,
     selectedTemplateIds,
-    kitSettingsDialogOpen,
-  } = useDocumentKitDialogs()
-
-  const {
-    isCheckingDocument,
-    suggestedNames,
-    isLoadingContent,
-    isMerging,
-    mergeDialogOpen,
-    mergeName,
-    mergeFolderId,
-    isGeneratingMergeName,
-    mergeDocsList,
-    draggedIndex,
-    isExportingToDisk,
-    exportToDiskDialogOpen,
-    googleDriveFolderLink,
-    exportSyncMode,
-    exportPhase,
-    exportDocuments,
-    exportCleaningProgress,
-    exportProgressDialogOpen,
-  } = useDocumentKitOperations()
-
-  const {
-    connectSourceDialogOpen,
-    sourceFolderLink,
-    sourceSettingsDialogOpen,
-    sourceFolderName,
-    isSourceConnected,
-    exportFolderName,
-    isExportFolderConnected,
-  } = useDocumentKitGoogleDrive()
+  } = useFolderDialogsState()
+  const { mergeDialogOpen, mergeDocsList, mergeName, mergeFolderId, isMerging, isGeneratingMergeName, draggedIndex } = useMergeDialogState()
+  const { exportToDiskDialogOpen, isExportingToDisk, googleDriveFolderLink, exportSyncMode, exportPhase, exportDocuments, exportCleaningProgress, exportProgressDialogOpen } = useExportDialogState()
+  const { connectSourceDialogOpen, sourceFolderLink } = useConnectSourceState()
+  const { sourceSettingsDialogOpen, sourceFolderName, isSourceConnected } = useSourceSettingsState()
+  const { isExportFolderConnected, exportFolderName, kitSettingsDialogOpen, googleDriveFolderLink: kitSettingsExportLink } = useKitSettingsState()
 
   // --- Zustand actions ---
   const {
@@ -309,7 +281,7 @@ export function DocumentKitDialogs({ handlers }: DocumentKitDialogsProps) {
         onSaveSourceSettings={handlers.onSaveSourceSettings}
         isExportFolderConnected={isExportFolderConnected}
         exportFolderName={exportFolderName}
-        exportFolderLink={googleDriveFolderLink}
+        exportFolderLink={kitSettingsExportLink}
         onExportLinkChange={setGoogleDriveFolderLink}
         onSaveExportSettings={handlers.onSaveExportSettings}
       />

@@ -25,7 +25,7 @@ export type { DocumentKitUIStore } from './types-store'
 // Общие типы
 export * from './types'
 
-// Хуки-селекторы
+// Хуки-селекторы (coarse-grained — legacy)
 export {
   useDocumentKitUI,
   useDocumentKitDialogs,
@@ -33,5 +33,37 @@ export {
   useDocumentKitGoogleDrive,
 } from './selectors'
 
-// Select-функции
+// Хуки-селекторы (granular — prefer these to reduce re-renders)
+export {
+  useEditDialogState,
+  useContentViewState,
+  useMoveDialogState,
+  useMergeDialogState,
+  useExportDialogState,
+  useFolderDialogsState,
+  useBatchCheckState,
+  useCompressState,
+  useSourceConnectionState,
+  useSourceSettingsState,
+  useConnectSourceState,
+  useKitSettingsState,
+} from './selectors'
+
+// Select-функции (coarse-grained)
 export { selectUI, selectDialogs, selectOperations, selectGoogleDrive } from './selectFunctions'
+
+// Select-функции (granular)
+export {
+  selectEditDialog,
+  selectContentView,
+  selectMoveDialog,
+  selectMergeDialog,
+  selectExportDialog,
+  selectFolderDialogs,
+  selectBatchCheck,
+  selectCompress,
+  selectSourceConnection,
+  selectSourceSettings,
+  selectConnectSource,
+  selectKitSettings,
+} from './selectFunctions'

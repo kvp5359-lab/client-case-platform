@@ -190,4 +190,4 @@ async function convertAndEmbedImage(
 }
 
 // Re-export для обратной совместимости
-export { downloadBlob } from '@/utils/downloadBlob'
+export { downloadBlob } from '@/utils/files/downloadBlob'

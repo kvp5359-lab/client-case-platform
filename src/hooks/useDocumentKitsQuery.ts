@@ -17,8 +17,8 @@ import {
   createDocumentKitFromTemplate,
   syncDocumentKitStructure,
   deleteDocumentKit,
-} from '@/services/api/documentKitService'
-import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
+} from '@/services/api/documents/documentKitService'
+import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 
 /**
  * Загрузка наборов документов для проекта.

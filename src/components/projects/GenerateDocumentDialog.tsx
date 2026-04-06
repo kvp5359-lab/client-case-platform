@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/select'
 import { FileDown, Loader2 } from 'lucide-react'
 import { useDocumentTemplates, useGenerateDocument } from '@/hooks/documents/useDocumentTemplates'
-import type { DocumentTemplatePlaceholder } from '@/services/api/documentTemplateService'
+import type { DocumentTemplatePlaceholder } from '@/services/api/documents/documentTemplateService'
 
 interface GenerateDocumentDialogProps {
   projectId: string

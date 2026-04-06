@@ -7,7 +7,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { ProjectMessage } from '@/services/api/messengerService'
+import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 
 /** Тот же SELECT что и в messengerService — полные данные сообщения */

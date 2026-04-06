@@ -10,7 +10,7 @@ import { projectKeys, documentKitKeys } from '@/hooks/queryKeys'
 import { getProjectById } from '@/services/api/projectService'
 import { supabase } from '@/lib/supabase'
 import { DocumentKitsTab } from '@/components/projects/DocumentKitsTab'
-import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
+import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 
 interface ExtraPanelContentProps {
   projectId: string

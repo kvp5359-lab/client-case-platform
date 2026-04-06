@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { X, Pencil } from 'lucide-react'
-import type { ProjectMessage } from '@/services/api/messengerService'
-import { stripHtml } from '@/utils/messengerHtml'
+import type { ProjectMessage } from '@/services/api/messenger/messengerService'
+import { stripHtml } from '@/utils/format/messengerHtml'
 
 interface EditingBannerProps {
   editingMessage: ProjectMessage

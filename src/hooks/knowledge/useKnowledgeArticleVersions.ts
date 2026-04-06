@@ -12,7 +12,7 @@ import {
   getArticleVersion,
   createArticleVersion,
   restoreArticleVersion,
-} from '@/services/api/knowledgeBaseService'
+} from '@/services/api/knowledge/knowledgeBaseService'
 
 export function useArticleVersions(articleId: string | undefined, enabled = false) {
   const queryClient = useQueryClient()

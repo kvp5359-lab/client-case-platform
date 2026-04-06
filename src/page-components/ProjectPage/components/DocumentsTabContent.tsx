@@ -17,8 +17,10 @@ import { useDocumentEdit } from '@/components/projects/DocumentKitsTab/hooks/use
 import { useDocumentVerify } from '@/components/projects/DocumentKitsTab/hooks/useDocumentVerify'
 import {
   useDocumentKitUIStore,
-  useDocumentKitDialogs,
-  useDocumentKitOperations,
+  useEditDialogState,
+  useContentViewState,
+  useMergeDialogState,
+  useCompressState,
 } from '@/store/documentKitUI'
 import { UngroupedCard } from './Documents'
 import { DocumentsProvider } from './Documents/DocumentsContext'
@@ -275,11 +277,11 @@ export function DocumentsTabContent({
     editName,
     editDescription,
     editStatus,
-    contentViewDialogOpen,
-    documentContent,
-  } = useDocumentKitDialogs()
-  const { suggestedNames, isCheckingDocument, isLoadingContent, compressingDocIds } =
-    useDocumentKitOperations()
+    suggestedNames,
+    isCheckingDocument,
+  } = useEditDialogState()
+  const { contentViewDialogOpen, documentContent, isLoadingContent } = useContentViewState()
+  const { compressingDocIds } = useCompressState()
   const { closeEditDialog, updateEditForm, closeContentViewDialog } = useDocumentKitUIStore()
   const {
     mergeDialogOpen,
@@ -289,7 +291,7 @@ export function DocumentsTabContent({
     isMerging,
     isGeneratingMergeName,
     draggedIndex,
-  } = useDocumentKitOperations()
+  } = useMergeDialogState()
   const { openMergeDialog, closeMergeDialog, updateMergeName, setMergeFolder } =
     useDocumentKitUIStore()
 

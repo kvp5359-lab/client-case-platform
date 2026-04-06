@@ -21,8 +21,8 @@ import {
   SquareArrowOutUpRight,
 } from 'lucide-react'
 import { SourceDocumentRowProps } from './types'
-import { formatSize } from '@/utils/formatSize'
-import { formatShortDate } from '@/utils/dateFormat'
+import { formatSize } from '@/utils/files/formatSize'
+import { formatShortDate } from '@/utils/format/dateFormat'
 
 export function SourceDocumentRow({
   file,

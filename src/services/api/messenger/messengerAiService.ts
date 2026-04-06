@@ -6,7 +6,7 @@
 import { supabase } from '@/lib/supabase'
 import type { ProjectMessage } from './messengerService'
 import { parseSSEStream } from '@/utils/sseParser'
-import type { SearchSource } from './knowledgeSearchService'
+import type { SearchSource } from '../knowledge/knowledgeSearchService'
 
 // =====================================================
 // Типы

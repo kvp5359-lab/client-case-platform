@@ -1,4 +1,4 @@
-import type { MessageReaction } from '@/services/api/messengerService'
+import type { MessageReaction } from '@/services/api/messenger/messengerService'
 
 /** Get display name from reaction author */
 export function getReactionAuthorName(r: MessageReaction): string {

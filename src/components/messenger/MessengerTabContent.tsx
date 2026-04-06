@@ -5,7 +5,7 @@
 import { useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import type { MessageChannel, ProjectMessage } from '@/services/api/messengerService'
+import type { MessageChannel, ProjectMessage } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
 import { MessageList } from './MessageList'
 import type { MessengerAccent } from './MessageBubble'

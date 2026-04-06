@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { DialogBaseProps } from '@/types'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
-import { getArticlesByWorkspace } from '@/services/api/knowledgeBaseService'
+import { getArticlesByWorkspace } from '@/services/api/knowledge/knowledgeBaseService'
 import { supabase } from '@/lib/supabase'
 import { ArticleTreePicker } from '@/components/templates/ArticleTreePicker'
 

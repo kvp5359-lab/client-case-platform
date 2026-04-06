@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, type DragEvent } from 'react'
 import { toast } from 'sonner'
 import { loadDraftFiles, saveDraftFiles, clearDraftFiles } from './useDraftFiles'
-import type { MessageAttachment } from '@/services/api/messengerService'
+import type { MessageAttachment } from '@/services/api/messenger/messengerService'
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
 

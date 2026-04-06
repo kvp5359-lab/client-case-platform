@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { supabase } from '@/lib/supabase'
-import { useWorkspaceStore } from '@/store/workspaceStore'
+import { useWorkspace } from '@/hooks/useWorkspace'
+import { workspaceKeys } from '@/hooks/queryKeys'
 
 interface WorkspaceInfoSectionProps {
   workspaceId: string
@@ -26,7 +27,7 @@ function WorkspaceInfoForm({
   initialName: string
   initialDescription: string
 }) {
-  const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace)
+  const queryClient = useQueryClient()
   const [name, setName] = useState(initialName)
   const [description, setDescription] = useState(initialDescription)
 
@@ -43,7 +44,7 @@ function WorkspaceInfoForm({
       if (error) throw error
     },
     onSuccess: () => {
-      refreshWorkspace()
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.detail(workspaceId) })
       toast.success('Сохранено')
     },
     onError: (err) => {
@@ -83,7 +84,7 @@ function WorkspaceInfoForm({
 }
 
 export function WorkspaceInfoSection({ workspaceId }: WorkspaceInfoSectionProps) {
-  const workspace = useWorkspaceStore((s) => s.workspace)
+  const { data: workspace } = useWorkspace(workspaceId)
 
   return (
     <Card>

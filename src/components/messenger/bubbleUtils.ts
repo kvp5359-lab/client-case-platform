@@ -1,7 +1,7 @@
 import { Check, CheckCheck, Clock } from 'lucide-react'
 import { createElement } from 'react'
 import { cn } from '@/lib/utils'
-import type { ProjectMessage } from '@/services/api/messengerService'
+import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import type { TgDeliveryStatus } from './TelegramDeliveryIndicator'
 
 export type DeliveryStatus = 'pending' | 'sent' | 'read' | null

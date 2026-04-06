@@ -10,7 +10,7 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
-import { getArticleById } from '@/services/api/knowledgeBaseService'
+import { getArticleById } from '@/services/api/knowledge/knowledgeBaseService'
 import { useFolderNamesCache } from './useFolderNamesCache'
 import { useDocumentMemos } from './useDocumentMemos'
 import type {

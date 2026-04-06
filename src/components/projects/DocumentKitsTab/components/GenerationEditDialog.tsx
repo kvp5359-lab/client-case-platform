@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Trash2, FileDown, ClipboardPaste, Loader2 } from 'lucide-react'
-import type { DocumentTemplatePlaceholder } from '@/services/api/documentTemplateService'
+import type { DocumentTemplatePlaceholder } from '@/services/api/documents/documentTemplateService'
 
 interface GenerationEditDialogProps {
   open: boolean

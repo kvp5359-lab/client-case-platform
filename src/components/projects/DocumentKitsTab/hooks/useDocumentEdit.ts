@@ -4,7 +4,7 @@ import { Tables } from '@/types/database'
 import { logger } from '@/utils/logger'
 import { updateDocument } from '@/services/documents'
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
-import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
+import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 
 export function useDocumentEdit(
   projectId: string,

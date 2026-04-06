@@ -1,5 +1,5 @@
 import { FileChipRow, getFileIcon } from './ComposeField'
-import type { ForwardedAttachment } from '@/services/api/messengerService'
+import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 
 interface ExistingAttachment {
   id: string

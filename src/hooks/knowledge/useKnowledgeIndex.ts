@@ -8,7 +8,7 @@
 import { useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { indexArticle } from '@/services/api/knowledgeSearchService'
+import { indexArticle } from '@/services/api/knowledge/knowledgeSearchService'
 import { knowledgeBaseKeys } from '../queryKeys'
 import { logger } from '@/utils/logger'
 

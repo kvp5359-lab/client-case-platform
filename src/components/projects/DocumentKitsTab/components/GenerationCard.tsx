@@ -13,7 +13,7 @@ import { useGenerationCardHandlers } from './hooks/useGenerationCardHandlers'
 import { GenerationEditDialog } from './GenerationEditDialog'
 import { GenerationSaveDialog } from './GenerationSaveDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import type { DocumentGeneration } from '@/services/api/documentGenerationService'
+import type { DocumentGeneration } from '@/services/api/documents/documentGenerationService'
 
 interface FolderInfo {
   id: string

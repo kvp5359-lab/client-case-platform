@@ -4,12 +4,12 @@ import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { useWorkspaceStore } from '@/store/workspaceStore'
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert } from '@/components/ui/alert'
-import { createDocumentKitFromTemplate } from '@/services/api/documentKitService'
-import { createFormKitFromTemplate } from '@/services/api/formKitService'
+import { createDocumentKitFromTemplate } from '@/services/api/documents/documentKitService'
+import { createFormKitFromTemplate } from '@/services/api/forms/formKitService'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { Loader2 } from 'lucide-react'
@@ -31,7 +31,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
   const [selectedDocKitIds, setSelectedDocKitIds] = useState<Set<string>>(new Set())
   const [selectedFormIds, setSelectedFormIds] = useState<Set<string>>(new Set())
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
-  const { currentWorkspaceId } = useWorkspaceStore()
+  const { workspaceId: currentWorkspaceId } = useWorkspaceContext()
 
   const activeTemplateId = templateId && templateId !== 'none' ? templateId : undefined
 

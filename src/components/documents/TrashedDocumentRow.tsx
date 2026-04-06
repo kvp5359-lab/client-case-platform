@@ -15,9 +15,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { MoreVertical } from 'lucide-react'
 import { TrashedDocumentRowProps } from './types'
-import { formatSize } from '@/utils/formatSize'
+import { formatSize } from '@/utils/files/formatSize'
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
-import { formatShortDate } from '@/utils/dateFormat'
+import { formatShortDate } from '@/utils/format/dateFormat'
 
 export function TrashedDocumentRow({
   document: doc,

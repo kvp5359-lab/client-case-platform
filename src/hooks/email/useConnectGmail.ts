@@ -9,20 +9,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
-import { useWorkspaceStore } from '@/store/workspaceStore'
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext'
 import { supabase } from '@/lib/supabase'
 import { emailAccountKeys } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
 
 /**
  * @param workspaceIdOverride — explicit workspaceId (e.g. from settings.last_workspace_id).
- * Falls back to workspaceStore.currentWorkspaceId.
+ * Falls back to WorkspaceContext workspaceId.
  */
 export function useConnectGmail(workspaceIdOverride?: string | null) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const storeWorkspaceId = useWorkspaceStore((s) => s.currentWorkspaceId)
-  const currentWorkspaceId = workspaceIdOverride || storeWorkspaceId
+  const { workspaceId: ctxWorkspaceId } = useWorkspaceContext()
+  const currentWorkspaceId = workspaceIdOverride || ctxWorkspaceId
 
   const [loading, setLoading] = useState(false)
   const popupCheckRef = useRef<ReturnType<typeof setInterval> | null>(null)

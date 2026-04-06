@@ -13,7 +13,7 @@ import {
   getCurrentWorkspaceParticipant,
   markAsRead,
   type MessageChannel,
-} from '@/services/api/messengerService'
+} from '@/services/api/messenger/messengerService'
 import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 
 export function useToggleReaction(

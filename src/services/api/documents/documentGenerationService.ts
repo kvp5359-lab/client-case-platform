@@ -3,11 +3,11 @@ import {
   safeFetchOrThrow,
   safeDeleteOrThrow,
   safeUpdateVoidOrThrow,
-} from '../supabase/queryHelpers'
-import { DocumentGenerationError } from '../errors'
+} from '../../supabase/queryHelpers'
+import { DocumentGenerationError } from '../../errors'
 import type { DocumentTemplatePlaceholder } from './documentTemplateService'
-import { base64ToBlob } from '@/utils/fileConversion'
-import { downloadBlob } from '@/utils/downloadBlob'
+import { base64ToBlob } from '@/utils/files/fileConversion'
+import { downloadBlob } from '@/utils/files/downloadBlob'
 
 // =====================================================
 // Типы
@@ -199,5 +199,5 @@ export function downloadGeneratedFile(
   downloadBlob(blob, fileName)
 }
 
-// base64ToFile — реэкспорт из @/utils/fileConversion
-export { base64ToFile } from '@/utils/fileConversion'
+// base64ToFile — реэкспорт из @/utils/files/fileConversion
+export { base64ToFile } from '@/utils/files/fileConversion'

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useDocumentKitsQuery } from '@/hooks/useDocumentKitsQuery'
 import { supabase } from '@/lib/supabase'
-import type { MessageAttachment } from '@/services/api/messengerService'
+import type { MessageAttachment } from '@/services/api/messenger/messengerService'
 import { useQueryClient } from '@tanstack/react-query'
 import { documentKitKeys } from '@/hooks/queryKeys'
 import { toast } from 'sonner'

@@ -2,10 +2,10 @@ import { memo } from 'react'
 import Image from 'next/image'
 import { MessageSquare, Send, Mail, EyeOff, CheckCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { stripHtml } from '@/utils/messengerHtml'
+import { stripHtml } from '@/utils/format/messengerHtml'
 import type { InboxThreadEntry, InboxChannelType } from '@/services/api/inboxService'
 import { calcThreadUnread } from '@/utils/inboxUnread'
-import { formatShortDate } from '@/utils/dateFormat'
+import { formatShortDate } from '@/utils/format/dateFormat'
 
 function formatTime(isoString: string | null): string {
   if (!isoString) return ''

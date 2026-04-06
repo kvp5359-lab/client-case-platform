@@ -12,7 +12,7 @@ import { FileUp, Pencil, Trash2, Loader2, HelpCircle } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { DocumentItem } from './DocumentItem'
 import { useDocumentsContext } from './DocumentsContext'
-import { sanitizeHtml } from '@/utils/sanitizeHtml'
+import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 import type { FolderSlotWithDocument } from '@/components/documents/types'
 
 export interface SlotItemProps {

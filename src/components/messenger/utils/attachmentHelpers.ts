@@ -1,4 +1,4 @@
-import type { MessageAttachment as AttachmentType } from '@/services/api/messengerService'
+import type { MessageAttachment as AttachmentType } from '@/services/api/messenger/messengerService'
 
 export function isImage(mimeType: string | null): boolean {
   return !!mimeType && mimeType.startsWith('image/')

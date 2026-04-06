@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
-import type { DocumentForAi } from '@/services/api/messengerAiService'
+import type { DocumentForAi } from '@/services/api/messenger/messengerAiService'
 
 interface DocumentPickerDialogProps {
   open: boolean

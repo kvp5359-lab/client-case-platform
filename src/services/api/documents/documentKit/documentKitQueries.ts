@@ -3,8 +3,8 @@
  */
 
 import { supabase } from '@/lib/supabase'
-import { DocumentKitError, createServiceErrorHandler } from '../../errors'
-import { safeDeleteOrThrow } from '../../supabase/queryHelpers'
+import { DocumentKitError, createServiceErrorHandler } from '../../../errors'
+import { safeDeleteOrThrow } from '../../../supabase/queryHelpers'
 import { logger } from '@/utils/logger'
 
 import type { DocumentKitWithDocuments } from './types'

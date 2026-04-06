@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/native-table'
 import { StatusDropdown } from '@/components/ui/status-dropdown'
 import { Plus, Search, FolderPlus, Tags, BookOpen, Trash2, Filter } from 'lucide-react'
-import { formatSmartDate } from '@/utils/dateFormat'
+import { formatSmartDate } from '@/utils/format/dateFormat'
 import { NotionFilterRow } from './components/NotionFilterRow'
 import { InlineGroupsCell, InlineTagsCell } from './components/InlineCells'
 import { ManageGroupsDialog } from './components/ManageGroupsDialog'

@@ -22,21 +22,22 @@ import {
   useUpdateDraft,
   usePublishDraft,
 } from '@/hooks/messenger'
-import type { MessageChannel } from '@/services/api/messengerService'
+import type { MessageChannel } from '@/services/api/messenger/messengerService'
 import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import {
   getCurrentProjectParticipant,
   getCurrentWorkspaceParticipant,
   type ProjectMessage,
-} from '@/services/api/messengerService'
+} from '@/services/api/messenger/messengerService'
 import { useIsManuallyUnread, useHasUnreadReaction } from '@/hooks/messenger/useInbox'
 import { useDelayedSend } from '@/hooks/messenger/useDelayedSend'
 import { useEmailLink } from '@/hooks/email/useEmailLink'
 import { useSendEmail } from '@/hooks/email/useSendEmail'
+import { useChatState } from '@/hooks/messenger/useChatState'
 import { useDocumentPickerLogic } from './useDocumentPickerLogic'
 import { useSidePanelStore } from '@/store/sidePanelStore'
-import { stripHtmlKeepNewlines } from '@/utils/messengerHtml'
-import type { ForwardedAttachment } from '@/services/api/messengerService'
+import { stripHtmlKeepNewlines } from '@/utils/format/messengerHtml'
+import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 
 interface UseMessengerStateParams {
   projectId?: string
@@ -60,6 +61,9 @@ export function useMessengerState({
   const [quoteText, setQuoteText] = useState<string | null>(null)
   const [forwardedAttachments, setForwardedAttachments] = useState<ForwardedAttachment[]>([])
   const [sendTrigger, setSendTrigger] = useState(0)
+
+  // Предзагрузка состояния чата одним RPC — заполняет кэши для хуков ниже
+  useChatState(threadId, projectId, workspaceId, channel)
 
   const { isLinked, telegramLink, linkCode, isLoadingCode, unlink, isUnlinking } = useTelegramLink(
     projectId,

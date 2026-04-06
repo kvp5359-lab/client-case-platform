@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { Download, Folder, FileText } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { formatSize } from '@/utils/formatSize'
+import { formatSize } from '@/utils/files/formatSize'
 import type { DownloadGroupMode } from '@/services/documents/downloadDocumentsAsZip'
 
 interface DownloadDocumentsDialogProps {

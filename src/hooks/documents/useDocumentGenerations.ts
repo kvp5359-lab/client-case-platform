@@ -11,8 +11,8 @@ import {
   generateDocumentWithValues,
   downloadGeneratedFile,
   base64ToFile,
-} from '@/services/api/documentGenerationService'
-import type { DocumentTemplatePlaceholder } from '@/services/api/documentTemplateService'
+} from '@/services/api/documents/documentGenerationService'
+import type { DocumentTemplatePlaceholder } from '@/services/api/documents/documentTemplateService'
 import { toast } from 'sonner'
 
 export function useDocumentGenerations(projectId: string | undefined) {

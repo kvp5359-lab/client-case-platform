@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
 import { MessageBubble, type MessengerAccent } from './MessageBubble'
 import { ChatEmptyState } from './ChatEmptyState'
-import type { ProjectMessage, MessageChannel } from '@/services/api/messengerService'
+import type { ProjectMessage, MessageChannel } from '@/services/api/messenger/messengerService'
 
 interface MessageListProps {
   messages: ProjectMessage[]

@@ -1,4 +1,4 @@
-import type { AiSources } from '@/services/api/messengerAiService'
+import type { AiSources } from '@/services/api/messenger/messengerAiService'
 
 export type PanelTab = 'client' | 'internal' | 'assistant' | 'extra'
 export type PanelType = 'ai' | 'messenger'

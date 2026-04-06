@@ -16,7 +16,7 @@ import { ProjectSettingsSection } from './ProjectSettingsSection'
 import type { Project } from '../types'
 import type { UseDialogReturn } from '@/hooks/shared/useDialog'
 import type { FormKit } from '@/hooks/useFormKitsQuery'
-import type { DocumentKit } from '@/services/api/documentKitService'
+import type { DocumentKit } from '@/services/api/documents/documentKitService'
 
 // Lazy-loaded tab contents (code splitting)
 const FormsTabContent = lazy(() =>

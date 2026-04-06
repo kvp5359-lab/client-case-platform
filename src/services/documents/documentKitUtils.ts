@@ -1,4 +1,4 @@
-import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
+import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 
 /**
  * Определяет document_kit_id по папке назначения.

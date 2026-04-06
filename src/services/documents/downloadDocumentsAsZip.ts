@@ -6,7 +6,7 @@
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { downloadDocumentBlob } from './documentService'
-import { downloadBlob } from '@/utils/downloadBlob'
+import { downloadBlob } from '@/utils/files/downloadBlob'
 
 export type DownloadGroupMode = 'folders' | 'flat'
 

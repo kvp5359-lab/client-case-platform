@@ -16,7 +16,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { formatSize } from '@/utils/formatSize'
+import { formatSize } from '@/utils/files/formatSize'
 
 export interface CompressAnalysisItem {
   docId: string

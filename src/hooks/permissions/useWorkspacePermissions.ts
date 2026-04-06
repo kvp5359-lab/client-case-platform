@@ -8,7 +8,7 @@ import { useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import { useWorkspaceStore } from '../../store/workspaceStore'
+import { useWorkspaceContext } from '../../contexts/WorkspaceContext'
 import { permissionKeys } from '../queryKeys'
 import type { WorkspacePermission, WorkspacePermissions } from '../../types/permissions'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
@@ -43,8 +43,8 @@ export function useWorkspacePermissions(
   options: UseWorkspacePermissionsOptions = {},
 ): WorkspacePermissionsResult {
   const { user } = useAuth()
-  const { currentWorkspaceId } = useWorkspaceStore()
-  const workspaceId = options.workspaceId || currentWorkspaceId
+  const { workspaceId: ctxWorkspaceId } = useWorkspaceContext()
+  const workspaceId = options.workspaceId || ctxWorkspaceId
 
   // Загружаем роли пользователя в workspace
   const {

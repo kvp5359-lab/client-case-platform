@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
 import { triggerTextExtraction } from '@/services/documents/textExtractionService'
 import { getKitIdForFolder } from '@/services/documents/documentKitUtils'
-import type { DocumentKit, DocumentKitWithDocuments } from '@/services/api/documentKitService'
+import type { DocumentKit, DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 import type { SourceDocumentInfo } from '@/components/documents/types'
 
 interface UseSourceDocumentUploadProps {

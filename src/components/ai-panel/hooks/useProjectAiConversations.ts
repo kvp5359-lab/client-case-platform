@@ -18,7 +18,7 @@ import {
   type KnowledgeConversation,
   type ConversationSources,
   type SearchSource,
-} from '@/services/api/knowledgeSearchService'
+} from '@/services/api/knowledge/knowledgeSearchService'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 
 interface UseProjectAiConversationsOptions {

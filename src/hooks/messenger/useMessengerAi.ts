@@ -8,12 +8,12 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
-import { streamMessengerAiChat, buildProjectContext } from '@/services/api/messengerAiService'
-import type { ProjectMessage } from '@/services/api/messengerService'
+import { streamMessengerAiChat, buildProjectContext } from '@/services/api/messenger/messengerAiService'
+import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { useFormKitsForAi } from './useFormKitsForAi'
 import { useDocumentsForAi } from './useDocumentsForAi'
 import { useAiSources } from './useAiSources'
-import type { AiSources } from '@/services/api/messengerAiService'
+import type { AiSources } from '@/services/api/messenger/messengerAiService'
 
 import type { AiMessage } from '@/store/sidePanelStore'
 export type { AiMessage }

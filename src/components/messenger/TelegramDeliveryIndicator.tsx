@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { AlertCircle } from 'lucide-react'
-import type { ProjectMessage } from '@/services/api/messengerService'
+import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
 export type TgDeliveryStatus = 'pending' | 'delivered' | 'failed' | null
 

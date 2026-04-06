@@ -12,7 +12,7 @@ import { Send, Square, FileText, X, BookOpen, MessageSquare } from 'lucide-react
 import { toast } from 'sonner'
 import { MinimalTiptapEditor } from '@/components/messenger/MinimalTiptapEditor'
 import { AttachmentButton } from '@/components/messenger/AttachmentButton'
-import type { AiSources } from '@/services/api/messengerAiService'
+import type { AiSources } from '@/services/api/messenger/messengerAiService'
 import type { AttachedDocument } from '@/hooks/messenger/useMessengerAi'
 
 const MAX_CHAT_FILE_SIZE = 20 * 1024 * 1024 // 20 MB

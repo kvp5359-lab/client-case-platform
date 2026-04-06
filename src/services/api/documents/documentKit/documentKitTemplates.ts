@@ -3,7 +3,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
-import { DocumentKitError, createServiceErrorHandler } from '../../errors'
+import { DocumentKitError, createServiceErrorHandler } from '../../../errors'
 import { logger } from '@/utils/logger'
 
 const handleServiceError = createServiceErrorHandler(DocumentKitError)

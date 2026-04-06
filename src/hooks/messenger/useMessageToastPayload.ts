@@ -3,7 +3,7 @@
  */
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { stripHtml } from '@/utils/messengerHtml'
+import { stripHtml } from '@/utils/format/messengerHtml'
 
 export interface RealtimeMessagePayload {
   project_id: string

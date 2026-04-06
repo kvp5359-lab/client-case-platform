@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import type { AiSources } from '@/services/api/messengerAiService'
+import type { AiSources } from '@/services/api/messenger/messengerAiService'
 
 export interface UseAiSourcesOptions {
   initialSources?: AiSources

@@ -26,7 +26,7 @@ import { toast } from 'sonner'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
 import { QAEditDialog } from '@/components/knowledge/QAEditDialog'
-import type { KnowledgeQA } from '@/services/api/knowledgeSearchService'
+import type { KnowledgeQA } from '@/services/api/knowledge/knowledgeSearchService'
 import { getTagColors } from '@/utils/notionPill'
 import { safeCssColor } from '@/utils/isValidCssColor'
 

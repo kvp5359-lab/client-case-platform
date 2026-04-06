@@ -14,7 +14,7 @@ import {
   getCurrentProjectParticipant,
   getCurrentWorkspaceParticipant,
   type MessageChannel,
-} from '@/services/api/messengerService'
+} from '@/services/api/messenger/messengerService'
 import { supabase } from '@/lib/supabase'
 import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
 import { dismissProjectToasts } from './useMessageToastPayload'

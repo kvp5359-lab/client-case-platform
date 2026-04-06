@@ -4,10 +4,10 @@
 
 import { useCallback } from 'react'
 import { playSendSound } from '@/hooks/messenger'
-import type { MessageChannel } from '@/services/api/messengerService'
-import { type ProjectMessage } from '@/services/api/messengerService'
+import type { MessageChannel } from '@/services/api/messenger/messengerService'
+import { type ProjectMessage } from '@/services/api/messenger/messengerService'
 import { useSidePanelStore } from '@/store/sidePanelStore'
-import type { ForwardedAttachment } from '@/services/api/messengerService'
+import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 
 interface UseMessengerHandlersParams {
   channel: MessageChannel

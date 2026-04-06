@@ -8,14 +8,14 @@ import { Tables } from '@/types/database'
 import { useErrorHandler } from '@/hooks/shared/useErrorHandler'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
-import type { DocumentKit } from '@/services/api/documentKitService'
+import type { DocumentKit } from '@/services/api/documents/documentKitService'
 import { deleteFolder } from '@/services/documents/folderService'
-import { getTemplateFolders } from '@/services/api/documentKitService'
+import { getTemplateFolders } from '@/services/api/documents/documentKitService'
 import {
   MAX_UPLOAD_SIZE,
   ALLOWED_UPLOAD_MIME_TYPES,
   ALLOWED_UPLOAD_EXTENSIONS,
-} from '@/utils/fileValidation'
+} from '@/utils/files/fileValidation'
 
 // Тип для upload функции
 interface UploadDocumentParams {

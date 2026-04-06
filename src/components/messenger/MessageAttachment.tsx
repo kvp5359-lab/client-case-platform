@@ -4,8 +4,8 @@ import { Loader2, ImageOff } from 'lucide-react'
 import {
   downloadAttachmentBlob,
   type MessageAttachment as AttachmentType,
-} from '@/services/api/messengerService'
-import { formatSize } from '@/utils/formatSize'
+} from '@/services/api/messenger/messengerService'
+import { formatSize } from '@/utils/files/formatSize'
 import { isImage, isAudio } from './utils/attachmentHelpers'
 import { ImageLightbox } from './ImageLightbox'
 import { AttachmentMenuButton } from './AttachmentMenuButton'

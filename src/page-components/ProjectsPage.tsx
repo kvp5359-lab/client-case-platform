@@ -32,7 +32,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Plus, Search, MoreHorizontal, Trash2, Filter } from 'lucide-react'
-import { useWorkspaceStore } from '@/store/workspaceStore'
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext'
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { useAuth } from '@/contexts/AuthContext'
@@ -47,7 +47,7 @@ export default function ProjectsPage() {
   const createDialog = useDialog()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<Set<string>>(() => new Set(['active', 'paused']))
-  const { currentWorkspaceId } = useWorkspaceStore()
+  const { workspaceId: currentWorkspaceId } = useWorkspaceContext()
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const permissionsResult = useWorkspacePermissions({ workspaceId: workspaceId || '' })

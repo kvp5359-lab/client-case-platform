@@ -14,7 +14,7 @@ import type {
   DocumentActionPermissions,
   DocumentActionHandlers,
 } from '@/components/documents/DocumentActionsMenu'
-import { formatSize } from '@/utils/formatSize'
+import { formatSize } from '@/utils/files/formatSize'
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { useDocumentsContext } from './DocumentsContext'

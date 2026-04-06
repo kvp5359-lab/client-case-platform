@@ -4,8 +4,8 @@ import { FileText, Loader2 } from 'lucide-react'
 import {
   getAttachmentUrl,
   type MessageAttachment as AttachmentType,
-} from '@/services/api/messengerService'
-import { formatSize } from '@/utils/formatSize'
+} from '@/services/api/messenger/messengerService'
+import { formatSize } from '@/utils/files/formatSize'
 import { toast } from 'sonner'
 import { AttachmentMenuButton } from './AttachmentMenuButton'
 

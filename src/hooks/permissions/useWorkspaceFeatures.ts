@@ -7,7 +7,7 @@
 import { useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { useWorkspaceStore } from '../../store/workspaceStore'
+import { useWorkspaceContext } from '../../contexts/WorkspaceContext'
 import { permissionKeys } from '../queryKeys'
 import type { WorkspaceFeature, WorkspaceFeatures } from '../../types/permissions'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
@@ -35,8 +35,8 @@ export interface WorkspaceFeaturesResult {
 export function useWorkspaceFeatures(
   options: UseWorkspaceFeaturesOptions = {},
 ): WorkspaceFeaturesResult {
-  const { currentWorkspaceId } = useWorkspaceStore()
-  const workspaceId = options.workspaceId || currentWorkspaceId
+  const { workspaceId: ctxWorkspaceId } = useWorkspaceContext()
+  const workspaceId = options.workspaceId || ctxWorkspaceId
 
   const {
     data: featuresData,

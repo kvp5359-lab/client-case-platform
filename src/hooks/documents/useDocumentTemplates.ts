@@ -9,9 +9,9 @@ import {
   deleteDocumentTemplate,
   replaceDocumentTemplateFile,
   generateDocument,
-} from '@/services/api/documentTemplateService'
-import { downloadGeneratedFile } from '@/services/api/documentGenerationService'
-import type { DocumentTemplatePlaceholder } from '@/services/api/documentTemplateService'
+} from '@/services/api/documents/documentTemplateService'
+import { downloadGeneratedFile } from '@/services/api/documents/documentGenerationService'
+import type { DocumentTemplatePlaceholder } from '@/services/api/documents/documentTemplateService'
 import { toast } from 'sonner'
 
 export function useDocumentTemplates(workspaceId: string | undefined) {

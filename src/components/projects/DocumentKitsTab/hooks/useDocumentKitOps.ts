@@ -25,7 +25,7 @@ import { useProjectSourceConnection } from '@/hooks/documents/useProjectSourceCo
 import { useProjectDestinationFolder } from '@/hooks/documents/useProjectDestinationFolder'
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import { projectKeys } from '@/hooks/queryKeys'
-import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
+import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 import type { DocumentWithFiles, Folder, SourceDocument, DestinationDocument } from '@/components/documents/types'
 import type { ProjectPermissionCode } from '@/types/permissions'
 import type { Tables } from '@/types/database'

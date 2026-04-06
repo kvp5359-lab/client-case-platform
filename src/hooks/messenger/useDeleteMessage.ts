@@ -10,7 +10,7 @@ import {
   deleteMessage,
   type ProjectMessage,
   type MessageChannel,
-} from '@/services/api/messengerService'
+} from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
 
 export function useDeleteMessage(

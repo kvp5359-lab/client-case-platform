@@ -7,7 +7,7 @@
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
-import { getMessages, type MessageChannel } from '@/services/api/messengerService'
+import { getMessages, type MessageChannel } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
 import { logger } from '@/utils/logger'
 

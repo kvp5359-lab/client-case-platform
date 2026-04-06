@@ -3,7 +3,7 @@
  */
 
 import { useMemo } from 'react'
-import type { ProjectMessage } from '@/services/api/messengerService'
+import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
 interface UseOptimisticEmailParams {
   messages: ProjectMessage[]

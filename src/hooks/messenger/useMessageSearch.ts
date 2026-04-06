@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useDebounce } from '@/hooks/shared/useDebounce'
 import { messengerKeys } from '@/hooks/queryKeys'
-import type { ProjectMessage, MessageChannel } from '@/services/api/messengerService'
+import type { ProjectMessage, MessageChannel } from '@/services/api/messenger/messengerService'
 
 /** Escape special ilike characters to prevent SQL injection via pattern matching */
 function escapeIlike(str: string): string {

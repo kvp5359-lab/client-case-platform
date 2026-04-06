@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CommentBadge } from '@/components/comments'
-import { sanitizeHtml } from '@/utils/sanitizeHtml'
+import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 import type { FolderSlotWithDocument, SourceDocumentInfo } from './types'
 import {
   useDocumentKitHandlers,

@@ -1,6 +1,6 @@
 import { Mail, MessageSquareText } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { ProjectMessage } from '@/services/api/messengerService'
+import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import type { DeliveryStatus } from './bubbleUtils'
 import { DeliveryIcon, formatTime } from './bubbleUtils'
 

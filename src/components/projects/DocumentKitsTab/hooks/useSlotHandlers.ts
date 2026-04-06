@@ -8,7 +8,7 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
-import { MAX_UPLOAD_SIZE } from '@/utils/fileValidation'
+import { MAX_UPLOAD_SIZE } from '@/utils/files/fileValidation'
 import type {
   DocumentKitWithDocuments,
   Folder,

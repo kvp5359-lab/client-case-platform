@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Bot, FileText, MessageCircleQuestion, Sparkles, X } from 'lucide-react'
-import type { ArticleSource } from '@/services/api/knowledgeSearchService'
+import type { ArticleSource } from '@/services/api/knowledge/knowledgeSearchService'
 import type { AccentColor } from './KnowledgeChatMessage'
 
 const accentStyles: Record<AccentColor, { avatar: string; icon: string; button: string }> = {

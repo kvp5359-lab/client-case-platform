@@ -6,9 +6,9 @@ import { autofillKeys } from '@/hooks/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FileText, Image, ArrowLeft, Loader2 } from 'lucide-react'
-import { formatSize } from '@/utils/formatSize'
+import { formatSize } from '@/utils/files/formatSize'
 import { Tables } from '@/types/database'
-import { AUTOFILL_SUPPORTED_MIME_TYPES } from '@/utils/fileValidation'
+import { AUTOFILL_SUPPORTED_MIME_TYPES } from '@/utils/files/fileValidation'
 import { AUTOFILL_AI_WARNING } from './types'
 
 type Document = Tables<'documents'> & {

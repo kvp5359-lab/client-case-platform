@@ -4,8 +4,8 @@
 
 import Image from 'next/image'
 import { DestinationDocument } from './types'
-import { formatSize } from '@/utils/formatSize'
-import { formatShortDate } from '@/utils/dateFormat'
+import { formatSize } from '@/utils/files/formatSize'
+import { formatShortDate } from '@/utils/format/dateFormat'
 
 interface DestinationDocumentRowProps {
   file: DestinationDocument

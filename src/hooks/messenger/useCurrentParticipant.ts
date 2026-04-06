@@ -12,7 +12,7 @@ import { participantKeys } from '@/hooks/queryKeys'
 import {
   getCurrentProjectParticipant,
   getCurrentWorkspaceParticipant,
-} from '@/services/api/messengerParticipantService'
+} from '@/services/api/messenger/messengerParticipantService'
 
 export function useCurrentProjectParticipant(projectId: string | undefined) {
   const { user } = useAuth()

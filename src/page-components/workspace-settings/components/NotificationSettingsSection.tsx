@@ -11,15 +11,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabase'
-import { useWorkspaceStore } from '@/store/workspaceStore'
+import { useWorkspace } from '@/hooks/useWorkspace'
+import { workspaceKeys } from '@/hooks/queryKeys'
 
 interface NotificationSettingsSectionProps {
   workspaceId: string
 }
 
 export function NotificationSettingsSection({ workspaceId }: NotificationSettingsSectionProps) {
-  const workspace = useWorkspaceStore((s) => s.workspace)
-  const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace)
+  const { data: workspace } = useWorkspace(workspaceId)
   const queryClient = useQueryClient()
 
   const currentDuration = workspace?.notification_toast_duration ?? 5
@@ -54,7 +54,7 @@ export function NotificationSettingsSection({ workspaceId }: NotificationSetting
       if (error) throw error
     },
     onSuccess: () => {
-      refreshWorkspace()
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.detail(workspaceId) })
       queryClient.invalidateQueries({ queryKey: ['workspace-notification-settings', workspaceId] })
       toast.success('Настройки уведомлений сохранены')
     },

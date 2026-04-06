@@ -25,7 +25,7 @@ import {
   clearAllSelections,
 } from './useDocumentSelection'
 import { useSidePanelStore } from '@/store/sidePanelStore'
-import { useDocumentKitUIStore, useDocumentKitOperations } from '@/store/documentKitUI'
+import { useDocumentKitUIStore, useCompressState } from '@/store/documentKitUI'
 import { useDocumentCompress } from '@/components/projects/DocumentKitsTab/hooks/useDocumentCompress'
 import {
   useBatchDelete,
@@ -87,7 +87,7 @@ export function useGlobalBatchActions({
     removeCompressingDoc,
     setCompressProgress,
   })
-  const { isCompressing, compressProgress } = useDocumentKitOperations()
+  const { isCompressing, compressProgress } = useCompressState()
 
   // Batch delete / hard delete — переиспользуем хуки из batch/
   const { handleBatchDelete: doBatchDelete, confirmDialogProps: batchDeleteConfirmProps } =

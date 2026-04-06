@@ -32,81 +32,43 @@ interface MyProjectRole {
 }
 
 /**
- * Загружает данные о доступе для workspace-level фильтрации:
- * - Все project_threads с access_type/access_roles
- * - Мои роли во всех проектах
- * - Мои memberships в custom тредах
- * - Мои assignees в задачах
+ * Загружает данные о доступе для workspace-level фильтрации через единый RPC get_sidebar_data.
+ * Один HTTP-запрос вместо 4 отдельных.
  */
 function useWorkspaceAccessData(workspaceId: string) {
   const { user } = useAuth()
 
-  // Все треды workspace с данными доступа
-  const { data: threads = [] } = useQuery({
-    queryKey: ['workspace-threads-access', workspaceId],
+  const { data } = useQuery({
+    queryKey: ['sidebar-data', workspaceId, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('project_threads')
-        .select('id, project_id, access_type, access_roles, created_by')
-        .eq('workspace_id', workspaceId)
-        .eq('is_deleted', false)
+      const { data, error } = await supabase.rpc('get_sidebar_data' as never, {
+        p_workspace_id: workspaceId,
+        p_user_id: user!.id,
+      } as never)
       if (error) throw error
-      return (data ?? []) as ThreadAccessInfo[]
-    },
-    enabled: !!workspaceId,
-    staleTime: 60_000,
-  })
-
-  // Мои роли во всех проектах workspace
-  const { data: myProjectRoles = [] } = useQuery({
-    queryKey: ['my-all-project-roles', workspaceId, user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('project_participants')
-        .select('project_id, participant_id, project_roles, participants!inner(user_id)')
-        .eq('participants.user_id', user!.id)
-      if (error) throw error
-      return (data ?? []).map((pp) => ({
-        project_id: pp.project_id as string,
-        participant_id: pp.participant_id as string,
-        project_roles: (pp.project_roles ?? []) as string[],
-      })) as MyProjectRole[]
+      const result = data as unknown as {
+        threads: ThreadAccessInfo[]
+        myProjectRoles: MyProjectRole[]
+        myMemberThreadIds: string[]
+        myAssigneeThreadIds: string[]
+      }
+      return {
+        threads: result.threads ?? [],
+        myProjectRoles: result.myProjectRoles ?? [],
+        myMemberThreadIds: new Set<string>(result.myMemberThreadIds ?? []),
+        myAssigneeThreadIds: new Set<string>(result.myAssigneeThreadIds ?? []),
+      }
     },
     enabled: !!workspaceId && !!user?.id,
     staleTime: 60_000,
   })
 
-  // Мои memberships в custom тредах
-  const { data: myMemberThreadIds = new Set<string>() } = useQuery({
-    queryKey: ['my-thread-memberships', workspaceId, user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('project_thread_members')
-        .select('thread_id, participants!inner(user_id)')
-        .eq('participants.user_id', user!.id)
-      if (error) throw error
-      return new Set((data ?? []).map((r) => r.thread_id as string))
-    },
-    enabled: !!workspaceId && !!user?.id,
-    staleTime: 60_000,
-  })
-
-  // Мои assignees в задачах
-  const { data: myAssigneeThreadIds = new Set<string>() } = useQuery({
-    queryKey: ['my-task-assignments', workspaceId, user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('task_assignees')
-        .select('thread_id, participants!inner(user_id)')
-        .eq('participants.user_id', user!.id)
-      if (error) throw error
-      return new Set((data ?? []).map((r) => r.thread_id as string))
-    },
-    enabled: !!workspaceId && !!user?.id,
-    staleTime: 60_000,
-  })
-
-  return { threads, myProjectRoles, myMemberThreadIds, myAssigneeThreadIds }
+  return {
+    threads: data?.threads ?? [],
+    myProjectRoles: data?.myProjectRoles ?? [],
+    myMemberThreadIds: data?.myMemberThreadIds ?? new Set<string>(),
+    myAssigneeThreadIds: data?.myAssigneeThreadIds ?? new Set<string>(),
+  }
 }
 
 /**

@@ -9,7 +9,7 @@ import { KnowledgeChatInput } from './KnowledgeChatInput'
 import { KnowledgeChatMessage, type AccentColor } from './KnowledgeChatMessage'
 import { StreamingKnowledgeMessage } from './StreamingKnowledgeMessage'
 import { SourceSelectionList } from './SourceSelectionList'
-import type { KnowledgeConversation } from '@/services/api/knowledgeSearchService'
+import type { KnowledgeConversation } from '@/services/api/knowledge/knowledgeSearchService'
 import { cn } from '@/lib/utils'
 import { ConversationTabsBar } from '@/components/shared/ConversationTabsBar'
 import { ChatDateSeparator } from '@/components/shared/ChatDateSeparator'
@@ -67,7 +67,7 @@ export function KnowledgeChat({
 
   const handleSelectConversation = useCallback(
     async (conv: KnowledgeConversation) => {
-      const { getKnowledgeMessages } = await import('@/services/api/knowledgeSearchService')
+      const { getKnowledgeMessages } = await import('@/services/api/knowledge/knowledgeSearchService')
       const msgs = await getKnowledgeMessages(conv.id)
       loadConversation(conv, msgs)
     },

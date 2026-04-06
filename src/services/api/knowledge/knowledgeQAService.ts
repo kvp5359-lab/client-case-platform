@@ -3,8 +3,8 @@
  */
 
 import { supabase } from '@/lib/supabase'
-import { KnowledgeBaseError } from '../errors'
-import { safeFetchOrThrow, safeDeleteOrThrow } from '../supabase/queryHelpers'
+import { KnowledgeBaseError } from '../../errors'
+import { safeFetchOrThrow, safeDeleteOrThrow } from '../../supabase/queryHelpers'
 
 export interface KnowledgeQA {
   id: string

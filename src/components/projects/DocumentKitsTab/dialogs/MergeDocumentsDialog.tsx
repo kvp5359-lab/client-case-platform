@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Loader2, GripVertical, X, Sparkles } from 'lucide-react'
 import { NameInput } from '@/components/ui/name-input'
-import { formatSize } from '@/utils/formatSize'
+import { formatSize } from '@/utils/files/formatSize'
 import {
   Dialog,
   DialogContent,

@@ -3,7 +3,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
-import { KnowledgeBaseError } from '../errors'
+import { KnowledgeBaseError } from '../../errors'
 
 export async function indexArticle(articleId: string, workspaceId: string): Promise<void> {
   const { error } = await supabase.functions.invoke('knowledge-index', {

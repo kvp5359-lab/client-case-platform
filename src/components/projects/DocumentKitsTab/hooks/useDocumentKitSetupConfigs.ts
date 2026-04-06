@@ -5,7 +5,7 @@
 
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import type { DocumentWithFiles, SourceDocument, Folder, DocumentStatus } from '@/components/documents/types'
-import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
+import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 import type { DocumentKitHandlers } from './documentKitHandlerTypes'
 
 interface ToolbarParams {

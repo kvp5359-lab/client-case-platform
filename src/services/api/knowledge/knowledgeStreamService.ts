@@ -2,8 +2,8 @@
  * Стриминг AI-поиска по базе знаний (SSE)
  */
 
-import { KnowledgeBaseError } from '../errors'
-import { callEdgeFunctionRaw } from '../supabase/edgeFunctionClient'
+import { KnowledgeBaseError } from '../../errors'
+import { callEdgeFunctionRaw } from '../../supabase/edgeFunctionClient'
 import { parseSSEStream } from '@/utils/sseParser'
 import type { SearchSource } from './knowledgeSearchService.types'
 

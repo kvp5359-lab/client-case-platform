@@ -10,7 +10,7 @@ import { logger } from '@/utils/logger'
 import { DocumentError } from '../errors'
 import { safeFetchOrThrow, safeDeleteOrThrow, safeUpdateOrThrow } from '../supabase/queryHelpers'
 import { logAuditAction } from '../auditService'
-import { downloadBlob } from '@/utils/downloadBlob'
+import { downloadBlob } from '@/utils/files/downloadBlob'
 import {
   DocumentUploadParams,
   DocumentMoveParams,

@@ -24,7 +24,7 @@ import { useUpdateDocumentTemplate } from '@/hooks/documents/useDocumentTemplate
 import type {
   DocumentTemplate,
   DocumentTemplatePlaceholder,
-} from '@/services/api/documentTemplateService'
+} from '@/services/api/documents/documentTemplateService'
 import { FIELD_TYPE_LABELS } from './field-definition/constants'
 import { cn } from '@/lib/utils'
 

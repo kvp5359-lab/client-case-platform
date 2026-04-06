@@ -15,7 +15,7 @@ import {
   syncFormKitStructure,
 } from './formKitService'
 import { supabase } from '@/lib/supabase'
-import { FormKitError } from '../errors/AppError'
+import { FormKitError } from '../../errors/AppError'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const getFormKitById: any = () => {}

@@ -8,20 +8,18 @@
  */
 
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
-import { useWorkspaceStore } from '@/store/workspaceStore'
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext'
 
 export function WorkspacePage() {
-  const workspace = useWorkspaceStore((s) => s.workspace)
-  const loading = useWorkspaceStore((s) => s.loading)
-  const error = useWorkspaceStore((s) => s.error)
+  const { workspace, isLoading, error } = useWorkspaceContext()
 
   return (
     <WorkspaceLayout>
       <main className="flex-1 p-8 overflow-auto">
-        {loading ? (
+        {isLoading ? (
           <p className="text-gray-500 text-lg">Загрузка...</p>
         ) : error ? (
-          <p className="text-red-500 text-lg">{error}</p>
+          <p className="text-red-500 text-lg">{error.message}</p>
         ) : workspace ? (
           <div>
             <h1 className="text-4xl font-bold text-gray-900 mb-4">{workspace.name}</h1>

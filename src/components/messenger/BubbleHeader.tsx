@@ -1,7 +1,7 @@
 import { Forward, Mail, MessageSquareText } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { stripHtml } from '@/utils/messengerHtml'
-import type { ProjectMessage } from '@/services/api/messengerService'
+import { stripHtml } from '@/utils/format/messengerHtml'
+import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import type { MessengerAccent } from './utils/messageStyles'
 import { bubbleStyles } from './utils/messageStyles'
 

@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
-import { KnowledgeBaseError } from '../errors'
+import { KnowledgeBaseError } from '../../errors'
 import type { SearchSourcesResult } from './knowledgeSearchService.types'
 
 // =====================================================

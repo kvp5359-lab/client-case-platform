@@ -1,4 +1,4 @@
-import { formatSmartDate } from '@/utils/dateFormat'
+import { formatSmartDate } from '@/utils/format/dateFormat'
 
 export function ChatDateSeparator({ date }: { date: string }) {
   return (

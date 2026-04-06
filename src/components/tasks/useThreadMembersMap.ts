@@ -6,7 +6,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { buildParticipantMap } from '@/utils/buildParticipantMap'
+import { buildParticipantMap } from '@/utils/format/buildParticipantMap'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
 export function useThreadMembersMap(threadIds: string[]) {

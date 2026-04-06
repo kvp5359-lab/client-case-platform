@@ -21,7 +21,7 @@ import {
   type KnowledgeConversation,
   type SearchSource,
   type ArticleSource,
-} from '@/services/api/knowledgeSearchService'
+} from '@/services/api/knowledge/knowledgeSearchService'
 import { knowledgeBaseKeys } from '../queryKeys'
 import { logger } from '@/utils/logger'
 

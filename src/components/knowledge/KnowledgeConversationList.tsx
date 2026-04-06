@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Plus, MessageSquare, Trash2, Loader2 } from 'lucide-react'
-import type { KnowledgeConversation } from '@/services/api/knowledgeSearchService'
+import type { KnowledgeConversation } from '@/services/api/knowledge/knowledgeSearchService'
 
 interface KnowledgeConversationListProps {
   conversations: KnowledgeConversation[]

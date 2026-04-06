@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
-import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
+import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 
 interface UseGlobalBatchMergeParams {
   workspaceId: string

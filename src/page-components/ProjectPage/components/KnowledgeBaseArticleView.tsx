@@ -11,7 +11,7 @@ import { useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { sanitizeHtml } from '@/utils/sanitizeHtml'
+import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 
 interface KnowledgeBaseArticleViewProps {
   article: {

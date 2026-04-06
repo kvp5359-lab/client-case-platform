@@ -12,7 +12,7 @@ import {
   getAttachmentUrl,
   downloadAttachmentBlob,
   type MessageAttachment as AttachmentType,
-} from '@/services/api/messengerService'
+} from '@/services/api/messenger/messengerService'
 import { toast } from 'sonner'
 import { AddToProjectDialog } from './AddToProjectDialog'
 

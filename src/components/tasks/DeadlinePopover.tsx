@@ -10,7 +10,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Calendar as CalendarUI } from '@/components/ui/calendar'
 import { ru } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
-import { formatShortDate, formatDateToString } from '@/utils/dateFormat'
+import { formatShortDate, formatDateToString } from '@/utils/format/dateFormat'
 
 interface DeadlinePopoverProps {
   deadline: string | null

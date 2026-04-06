@@ -21,7 +21,7 @@ import type { ChatSettingsResult } from '@/components/messenger/chatSettingsType
 import { useCreateThread, useUpdateThread } from '@/hooks/messenger/useProjectThreads'
 import type { ProjectThread, ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { ThreadTemplate } from '@/types/threadTemplate'
-import { getCurrentWorkspaceParticipant } from '@/services/api/messengerService'
+import { getCurrentWorkspaceParticipant } from '@/services/api/messenger/messengerService'
 import { useNewMessageToast } from '@/hooks/messenger/useNewMessageToast'
 import { useFaviconBadge } from '@/hooks/messenger/useFaviconBadge'
 import { useWorkspaceMessagesRealtime } from '@/hooks/messenger/useWorkspaceMessagesRealtime'

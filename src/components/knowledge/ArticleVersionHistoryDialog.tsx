@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useArticleVersions, useArticleVersion } from '@/hooks/knowledge'
-import { sanitizeHtml } from '@/utils/sanitizeHtml'
+import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 
 interface ArticleVersionHistoryDialogProps {
   open: boolean

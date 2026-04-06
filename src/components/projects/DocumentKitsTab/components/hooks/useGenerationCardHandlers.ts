@@ -17,8 +17,8 @@ import { useDocumentTemplates } from '@/hooks/documents/useDocumentTemplates'
 import { useDocuments } from '@/hooks/useDocuments'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { toast } from 'sonner'
-import type { DocumentGeneration } from '@/services/api/documentGenerationService'
-import type { DocumentTemplatePlaceholder } from '@/services/api/documentTemplateService'
+import type { DocumentGeneration } from '@/services/api/documents/documentGenerationService'
+import type { DocumentTemplatePlaceholder } from '@/services/api/documents/documentTemplateService'
 
 interface FolderInfo {
   id: string

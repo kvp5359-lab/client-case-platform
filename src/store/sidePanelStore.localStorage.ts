@@ -1,4 +1,4 @@
-import type { AiSources } from '@/services/api/messengerAiService'
+import type { AiSources } from '@/services/api/messenger/messengerAiService'
 import type { PanelTab, AiSessionState } from './sidePanelStore.types'
 import { DEFAULT_AI_SOURCES } from './sidePanelStore.types'
 

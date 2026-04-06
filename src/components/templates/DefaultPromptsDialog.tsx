@@ -16,7 +16,9 @@ import {
 } from '@/components/ui/dialog'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { useWorkspaceStore } from '@/store/workspaceStore'
+import { useWorkspace } from '@/hooks/useWorkspace'
+import { workspaceKeys } from '@/hooks/queryKeys'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface DefaultPromptsDialogProps {
   open: boolean
@@ -29,8 +31,8 @@ export function DefaultPromptsDialog({
   onOpenChange,
   workspaceId,
 }: DefaultPromptsDialogProps) {
-  const workspace = useWorkspaceStore((s) => s.workspace)
-  const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace)
+  const { data: workspace } = useWorkspace(workspaceId)
+  const queryClient = useQueryClient()
   const [defaultNamingPrompt, setDefaultNamingPrompt] = useState('')
   const [defaultCheckPrompt, setDefaultCheckPrompt] = useState('')
   const [savingDefaults, setSavingDefaults] = useState(false)
@@ -55,7 +57,7 @@ export function DefaultPromptsDialog({
         })
         .eq('id', workspaceId)
       if (error) throw error
-      await refreshWorkspace()
+      await queryClient.invalidateQueries({ queryKey: workspaceKeys.detail(workspaceId!) })
       onOpenChange(false)
       toast.success('Промпты по умолчанию сохранены')
     } catch {

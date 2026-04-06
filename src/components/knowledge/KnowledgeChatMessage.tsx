@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { Bot, User, FileText, MessageCircleQuestion, Quote } from 'lucide-react'
-import type { KnowledgeMessage, SearchSource } from '@/services/api/knowledgeSearchService'
+import type { KnowledgeMessage, SearchSource } from '@/services/api/knowledge/knowledgeSearchService'
 
 export type AccentColor = 'green' | 'orange' | 'blue' | 'purple'
 

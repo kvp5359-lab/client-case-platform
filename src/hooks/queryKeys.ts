@@ -45,6 +45,7 @@ export const folderTemplateSlotKeys = {
 
 export const workspaceKeys = {
   all: ['workspaces'] as const,
+  detail: (workspaceId: string) => ['workspaces', workspaceId] as const,
   userWorkspaces: (userEmail: string) => ['workspaces', 'user', userEmail] as const,
 }
 

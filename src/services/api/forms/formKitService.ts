@@ -5,8 +5,8 @@
 
 import { supabase } from '@/lib/supabase'
 import { Tables } from '@/types/database'
-import { FormKitError, createServiceErrorHandler } from '../errors'
-import { safeFetchOrThrow, safeDeleteOrThrow } from '../supabase/queryHelpers'
+import { FormKitError, createServiceErrorHandler } from '../../errors'
+import { safeFetchOrThrow, safeDeleteOrThrow } from '../../supabase/queryHelpers'
 
 export type FormKit = Tables<'form_kits'>
 export type FormKitInsert = Omit<FormKit, 'id' | 'created_at' | 'updated_at'>

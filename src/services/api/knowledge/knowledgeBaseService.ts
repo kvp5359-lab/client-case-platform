@@ -4,8 +4,8 @@
 
 import { supabase } from '@/lib/supabase'
 import { Tables } from '@/types/database'
-import { KnowledgeBaseError } from '../errors'
-import { safeFetchOrThrow, safeDeleteOrThrow } from '../supabase/queryHelpers'
+import { KnowledgeBaseError } from '../../errors'
+import { safeFetchOrThrow, safeDeleteOrThrow } from '../../supabase/queryHelpers'
 
 export type KnowledgeArticle = Tables<'knowledge_articles'>
 export type KnowledgeArticleVersion = Tables<'knowledge_article_versions'>

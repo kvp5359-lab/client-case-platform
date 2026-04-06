@@ -18,14 +18,14 @@ import {
 } from 'lucide-react'
 import { UnassignedSection, SourceSection } from '@/components/documents/sections'
 import { useDocumentKitContext } from '../context'
-import { useDocumentKitGoogleDrive } from '@/store/documentKitUI'
+import { useSourceConnectionState } from '@/store/documentKitUI'
 import { useDocumentGenerations } from '@/hooks/documents/useDocumentGenerations'
 import { GenerationCard } from '../components/GenerationCard'
 import { CreateGenerationDialog } from '@/components/documents/dialogs/CreateGenerationDialog'
 
 export const UnassignedTabContent = memo(function UnassignedTabContent() {
   const { data, uiState, handlers, projectId, workspaceId } = useDocumentKitContext()
-  const { sourceFolderName, isSourceConnected } = useDocumentKitGoogleDrive()
+  const { sourceFolderName, isSourceConnected } = useSourceConnectionState()
   const { data: generations = [] } = useDocumentGenerations(projectId)
   const [generationsCollapsed, setGenerationsCollapsed] = useState(false)
   const [createGenOpen, setCreateGenOpen] = useState(false)

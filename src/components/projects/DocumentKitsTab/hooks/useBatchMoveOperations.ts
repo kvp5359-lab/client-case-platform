@@ -4,7 +4,7 @@ import { useRef } from 'react'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { getKitIdForFolder } from '@/services/documents/documentKitUtils'
-import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
+import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 import type { DocumentWithFiles, SourceDocument, SourceDocumentInfo } from '@/components/documents'
 
 interface UseBatchMoveOperationsProps {

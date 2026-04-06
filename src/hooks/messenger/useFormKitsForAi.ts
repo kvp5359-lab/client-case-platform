@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { FormKitForAi } from '@/services/api/messengerAiService'
+import type { FormKitForAi } from '@/services/api/messenger/messengerAiService'
 
 /**
  * Load form kits data for AI context.

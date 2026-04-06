@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AuditLogEntry } from '@/types/history'
-import { formatShortDate } from '@/utils/dateFormat'
+import { formatShortDate } from '@/utils/format/dateFormat'
 
 interface ActivityItemProps {
   entry: AuditLogEntry

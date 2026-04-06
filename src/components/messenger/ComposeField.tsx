@@ -14,8 +14,8 @@ import { MinimalTiptapEditor, MessengerToolbar } from './MinimalTiptapEditor'
 import { AttachmentButton } from './AttachmentButton'
 import { QuickReplyPicker } from './QuickReplyPicker'
 import { ImageLightbox } from './ImageLightbox'
-import { getAttachmentUrl, downloadAttachmentBlob } from '@/services/api/messengerService'
-import { getFileIcon, middleTruncate } from '@/utils/fileIcons'
+import { getAttachmentUrl, downloadAttachmentBlob } from '@/services/api/messenger/messengerService'
+import { getFileIcon, middleTruncate } from '@/utils/files/fileIcons'
 import { toast } from 'sonner'
 
 // Реэкспорт — для обратной совместимости с другими модулями, импортирующими из ComposeField

@@ -7,7 +7,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { useWorkspacePermissions } from './useWorkspacePermissions'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { useWorkspaceStore } from '@/store/workspaceStore'
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext'
 import { createQueryWrapper } from '@/test/testUtils'
 import type { WorkspacePermissions } from '@/types/permissions'
 
@@ -18,8 +18,8 @@ vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn(),
 }))
 
-vi.mock('@/store/workspaceStore', () => ({
-  useWorkspaceStore: vi.fn(),
+vi.mock('@/contexts/WorkspaceContext', () => ({
+  useWorkspaceContext: vi.fn(),
 }))
 
 // Хелперы для создания мок-данных
@@ -89,9 +89,12 @@ describe('useWorkspacePermissions', () => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: 'user-1' },
     } as unknown as ReturnType<typeof useAuth>)
-    vi.mocked(useWorkspaceStore).mockReturnValue({
-      currentWorkspaceId: 'ws-1',
-    } as unknown as ReturnType<typeof useWorkspaceStore>)
+    vi.mocked(useWorkspaceContext).mockReturnValue({
+      workspaceId: 'ws-1',
+      workspace: undefined,
+      isLoading: false,
+      error: null,
+    })
   })
 
   it('должен вернуть isLoading=true при начальной загрузке', () => {
@@ -142,9 +145,12 @@ describe('useWorkspacePermissions', () => {
   })
 
   it('должен вернуть permissions=null когда нет workspaceId', async () => {
-    vi.mocked(useWorkspaceStore).mockReturnValue({
-      currentWorkspaceId: null,
-    } as unknown as ReturnType<typeof useWorkspaceStore>)
+    vi.mocked(useWorkspaceContext).mockReturnValue({
+      workspaceId: undefined,
+      workspace: undefined,
+      isLoading: false,
+      error: null,
+    })
 
     setupSupabaseMock({ data: null, error: null }, { data: [], error: null })
 

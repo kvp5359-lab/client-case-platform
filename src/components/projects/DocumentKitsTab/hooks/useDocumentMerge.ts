@@ -6,11 +6,11 @@ import { supabase } from '@/lib/supabase'
 import { useErrorHandler } from '@/hooks/shared/useErrorHandler'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { Tables } from '@/types/database'
-import { mergeFilesToPDF } from '@/utils/mergePDF'
+import { mergeFilesToPDF } from '@/utils/files/mergePDF'
 import { downloadDocumentBlob } from '@/services/documents/documentService'
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import type { DocumentWithFiles } from '@/components/documents/types'
-import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
+import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 
 // Тип для upload функции
 interface UploadDocumentParams {

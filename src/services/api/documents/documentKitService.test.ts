@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { deleteDocumentKit, getDocumentKitsWithContents, createDocumentKitFromTemplate } from './documentKitService'
 import { supabase } from '@/lib/supabase'
-import { DocumentKitError } from '../errors'
+import { DocumentKitError } from '../../errors'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const getDocumentKitById: any = () => {}

@@ -11,10 +11,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { useWorkspaceStore } from '@/store/workspaceStore'
-import { inboxKeys, messengerKeys, sidebarKeys } from '@/hooks/queryKeys'
-import { getCurrentProjectParticipant, markAsRead } from '@/services/api/messengerService'
+import { inboxKeys, messengerKeys, sidebarKeys, workspaceKeys } from '@/hooks/queryKeys'
+import { getCurrentProjectParticipant, markAsRead } from '@/services/api/messenger/messengerService'
 import type { InboxThread, InboxThreadEntry } from '@/services/api/inboxService'
+import type { Workspace } from '@/types/entities'
 import { buildToastContent } from './MessageToastContent'
 import {
   type RealtimeMessagePayload,
@@ -85,7 +85,7 @@ export function useNewMessageToast(workspaceId: string | undefined) {
           )
             return
 
-          const ws = useWorkspaceStore.getState().workspace
+          const ws = queryClient.getQueryData<Workspace>(workspaceKeys.detail(workspaceId))
           const durationSec = ws?.notification_toast_duration ?? 5
           const duration = durationSec === 0 ? Infinity : durationSec * 1000
 

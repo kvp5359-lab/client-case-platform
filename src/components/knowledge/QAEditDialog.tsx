@@ -25,7 +25,7 @@ import {
   setQATags,
   setQAGroups,
   type KnowledgeQA,
-} from '@/services/api/knowledgeSearchService'
+} from '@/services/api/knowledge/knowledgeSearchService'
 import { cn } from '@/lib/utils'
 
 interface QAEditDialogProps {

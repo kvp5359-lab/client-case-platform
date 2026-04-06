@@ -6,7 +6,7 @@
  */
 
 import { useMemo } from 'react'
-import type { DocumentKitWithDocuments } from '@/services/api/documentKitService'
+import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 
 export function useDocumentKitMemos(
   documentKits: DocumentKitWithDocuments[],

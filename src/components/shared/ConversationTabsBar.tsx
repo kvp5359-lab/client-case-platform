@@ -25,8 +25,8 @@ import {
   History,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatSmartDateTime } from '@/utils/dateFormat'
-import type { KnowledgeConversation } from '@/services/api/knowledgeSearchService'
+import { formatSmartDateTime } from '@/utils/format/dateFormat'
+import type { KnowledgeConversation } from '@/services/api/knowledge/knowledgeSearchService'
 
 export type AccentColor = 'purple' | 'orange' | 'blue' | 'green'
 

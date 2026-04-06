@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import type { MessageReaction } from '@/services/api/messengerService'
+import type { MessageReaction } from '@/services/api/messenger/messengerService'
 import { groupReactions } from './utils/reactionHelpers'
 import type { MessengerAccent } from './utils/messageStyles'
 

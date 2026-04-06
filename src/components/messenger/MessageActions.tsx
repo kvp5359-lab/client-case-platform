@@ -22,8 +22,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ReactionPicker, REACTIONS } from './ReactionPicker'
-import type { ProjectMessage, MessageChannel } from '@/services/api/messengerService'
-import { stripHtml } from '@/utils/messengerHtml'
+import type { ProjectMessage, MessageChannel } from '@/services/api/messenger/messengerService'
+import { stripHtml } from '@/utils/format/messengerHtml'
 import { toast } from 'sonner'
 
 /** First 6 reactions for quick access */

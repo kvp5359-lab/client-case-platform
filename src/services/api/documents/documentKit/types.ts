@@ -3,7 +3,7 @@
  */
 
 import { Tables } from '@/types/database'
-import type { DocumentWithFiles } from '../../documents/types'
+import type { DocumentWithFiles } from '../../../documents/types'
 
 export type DocumentKit = Tables<'document_kits'>
 export type DocumentKitInsert = Omit<DocumentKit, 'id' | 'created_at' | 'updated_at'>

@@ -25,7 +25,7 @@ import { Upload, Loader2, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
-import { bulkCreateQA, reindexAllArticles } from '@/services/api/knowledgeSearchService'
+import { bulkCreateQA, reindexAllArticles } from '@/services/api/knowledge/knowledgeSearchService'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   parseCSV,
@@ -34,7 +34,7 @@ import {
   type ParsedCSV,
   type ColumnMapping,
   type MappableField,
-} from '@/utils/csvParser'
+} from '@/utils/files/csvParser'
 
 interface QAImportDialogProps {
   workspaceId: string

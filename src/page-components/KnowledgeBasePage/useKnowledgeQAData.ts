@@ -14,7 +14,7 @@ import {
   reindexAllArticles,
   deleteQA,
   type KnowledgeQA,
-} from '@/services/api/knowledgeSearchService'
+} from '@/services/api/knowledge/knowledgeSearchService'
 
 export function useKnowledgeQAData(workspaceId: string) {
   const queryClient = useQueryClient()

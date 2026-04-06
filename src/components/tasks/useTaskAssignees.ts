@@ -11,7 +11,7 @@
 
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { buildParticipantMap } from '@/utils/buildParticipantMap'
+import { buildParticipantMap } from '@/utils/format/buildParticipantMap'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
 export const assigneeKeys = {

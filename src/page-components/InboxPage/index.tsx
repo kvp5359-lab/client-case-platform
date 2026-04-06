@@ -19,7 +19,7 @@ import {
   markAsRead,
   markAsUnread,
   type MessageChannel,
-} from '@/services/api/messengerService'
+} from '@/services/api/messenger/messengerService'
 import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { MessengerAccent } from '@/components/messenger/utils/messageStyles'

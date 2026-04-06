@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useErrorHandler } from '@/hooks/shared/useErrorHandler'
 import type { DocumentWithFiles } from '@/components/documents'
-import { formatSize } from '@/utils/formatSize'
+import { formatSize } from '@/utils/files/formatSize'
 
 interface UseDocumentCompressProps {
   projectId: string

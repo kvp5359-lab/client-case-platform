@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
-import { safeFetchOrThrow, safeDeleteOrThrow, safeUpdateOrThrow } from '../supabase/queryHelpers'
-import { DocumentTemplateError } from '../errors'
-import { fileToBase64 } from '@/utils/fileConversion'
+import { safeFetchOrThrow, safeDeleteOrThrow, safeUpdateOrThrow } from '../../supabase/queryHelpers'
+import { DocumentTemplateError } from '../../errors'
+import { fileToBase64 } from '@/utils/files/fileConversion'
 import { logger } from '@/utils/logger'
 
 // =====================================================

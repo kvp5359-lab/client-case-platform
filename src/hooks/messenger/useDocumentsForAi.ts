@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { DocumentForAi } from '@/services/api/messengerAiService'
+import type { DocumentForAi } from '@/services/api/messenger/messengerAiService'
 
 /**
  * Load project documents for AI context

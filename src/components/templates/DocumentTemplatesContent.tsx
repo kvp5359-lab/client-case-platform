@@ -27,8 +27,8 @@ import {
   useReplaceDocumentTemplateFile,
   useDeleteDocumentTemplate,
 } from '@/hooks/documents/useDocumentTemplates'
-import type { DocumentTemplate } from '@/services/api/documentTemplateService'
-import { formatSize } from '@/utils/formatSize'
+import type { DocumentTemplate } from '@/services/api/documents/documentTemplateService'
+import { formatSize } from '@/utils/files/formatSize'
 import { PlaceholderMappingDialog } from './PlaceholderMappingDialog'
 import { UploadTemplateDialog } from './UploadTemplateDialog'
 

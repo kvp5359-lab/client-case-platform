@@ -17,7 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { supabase } from '@/lib/supabase'
-import { useWorkspaceStore } from '@/store/workspaceStore'
+import { useWorkspace } from '@/hooks/useWorkspace'
+import { workspaceKeys } from '@/hooks/queryKeys'
 
 interface SendDelaySettingsSectionProps {
   workspaceId: string
@@ -32,8 +33,7 @@ const DELAY_OPTIONS = [
 ]
 
 export function SendDelaySettingsSection({ workspaceId }: SendDelaySettingsSectionProps) {
-  const workspace = useWorkspaceStore((s) => s.workspace)
-  const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace)
+  const { data: workspace } = useWorkspace(workspaceId)
   const queryClient = useQueryClient()
 
   const currentDelay = ((workspace as Record<string, unknown>)?.send_delay_seconds as number) ?? 0
@@ -55,7 +55,7 @@ export function SendDelaySettingsSection({ workspaceId }: SendDelaySettingsSecti
       if (error) throw error
     },
     onSuccess: () => {
-      refreshWorkspace()
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.detail(workspaceId) })
       queryClient.invalidateQueries({ queryKey: ['workspace-settings', workspaceId] })
       toast.success('Настройки задержки сохранены')
     },

@@ -5,8 +5,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Upload, FileText, ArrowLeft, X } from 'lucide-react'
-import { formatSize } from '@/utils/formatSize'
-import { AUTOFILL_SUPPORTED_MIME_TYPES } from '@/utils/fileValidation'
+import { formatSize } from '@/utils/files/formatSize'
+import { AUTOFILL_SUPPORTED_MIME_TYPES } from '@/utils/files/fileValidation'
 import { AUTOFILL_AI_WARNING } from './types'
 
 interface FileUploadZoneProps {

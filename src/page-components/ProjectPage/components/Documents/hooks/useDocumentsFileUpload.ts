@@ -10,7 +10,7 @@
 import React, { useRef, useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
-import { validateUploadFile } from '@/utils/fileValidation'
+import { validateUploadFile } from '@/utils/files/fileValidation'
 
 interface UseDocumentsFileUploadParams {
   documentKits: { id: string; folders?: { id: string }[] }[]

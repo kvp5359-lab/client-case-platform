@@ -9,14 +9,14 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useWorkspaceStore } from '@/store/workspaceStore'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import {
   saveDraftMessage,
   publishDraftMessage,
   markAsRead,
   type ProjectMessage,
   type MessageChannel,
-} from '@/services/api/messengerService'
+} from '@/services/api/messenger/messengerService'
 import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -41,7 +41,7 @@ export function useDelayedSend(
     ? messengerKeys.messagesByThreadId(threadId)
     : messengerKeys.messages(projectId ?? '', channel)
 
-  const workspace = useWorkspaceStore((s) => s.workspace)
+  const { data: workspace } = useWorkspace(workspaceId)
   const sendDelay = ((workspace as Record<string, unknown>)?.send_delay_seconds as number) ?? 0
 
   // Cleanup timers on unmount

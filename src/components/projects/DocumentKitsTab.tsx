@@ -17,9 +17,9 @@ import { GenerateDocumentDialog } from '@/components/projects/GenerateDocumentDi
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { MoveDocumentDialog } from '@/components/documents'
 import {
-  useDocumentKitDialogs,
+  useMoveDialogState,
+  useSourceSettingsState,
   useDocumentKitUIStore,
-  useDocumentKitGoogleDrive,
 } from '@/store/documentKitUI'
 import { SourceSettingsDialog } from './DocumentKitsTab/dialogs/SourceSettingsDialog'
 
@@ -44,7 +44,7 @@ function SourceSettingsStandaloneDialog({
   handlers: { onSaveSourceSettings: () => void | Promise<void> }
 }) {
   const { sourceSettingsDialogOpen, isSourceConnected, sourceFolderName, sourceFolderLink } =
-    useDocumentKitGoogleDrive()
+    useSourceSettingsState()
   const { openSourceSettingsDialog, closeSourceSettingsDialog, setSourceFolderLink } =
     useDocumentKitUIStore()
 
@@ -69,7 +69,7 @@ function SourceMoveDialog({
   folders: { id: string; name: string }[]
   handlers: { onMoveSourceDocument: (folderId: string | null) => void }
 }) {
-  const { moveDialogOpen, sourceDocToMove, isMovingSourceDoc } = useDocumentKitDialogs()
+  const { moveDialogOpen, sourceDocToMove, isMovingSourceDoc } = useMoveDialogState()
   const { closeMoveDialog } = useDocumentKitUIStore()
 
   if (!sourceDocToMove) return null

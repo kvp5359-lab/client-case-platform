@@ -14,8 +14,8 @@ import type { AiMessage } from '@/store/sidePanelStore'
 import { useDocumentStatuses } from '@/hooks/useStatuses'
 import { useAuth } from '@/contexts/AuthContext'
 import { DocumentPickerDialog } from '@/components/messenger/DocumentPickerDialog'
-import { getMessages as getMessengerMessages } from '@/services/api/messengerService'
-import { updateConversation, type ConversationSources } from '@/services/api/knowledgeSearchService'
+import { getMessages as getMessengerMessages } from '@/services/api/messenger/messengerService'
+import { updateConversation, type ConversationSources } from '@/services/api/knowledge/knowledgeSearchService'
 import { AiChatInput } from './AiChatInput'
 import { AiMessageBubble } from './AiMessageBubble'
 import { AiStreamingBubble } from './AiStreamingBubble'
@@ -150,7 +150,7 @@ export function ProjectAiChat({
       initialAiMessages: session.aiMessages,
       initialSessionDocs: session.sessionDocs,
       onSourcesChange: useCallback(
-        (s: import('@/services/api/messengerAiService').AiSources) => {
+        (s: import('@/services/api/messenger/messengerAiService').AiSources) => {
           sourcesRef.current = s as ConversationSources
           updateAiSession(sessionKey, { sources: s })
           // Сохраняем sources в БД для текущего диалога

@@ -14,7 +14,7 @@ import {
   createFormKitFromTemplate,
   syncFormKitStructure,
   deleteFormKit,
-} from '@/services/api/formKitService'
+} from '@/services/api/forms/formKitService'
 import type { Tables } from '@/types/database'
 
 export type FormKit = Tables<'form_kits'>

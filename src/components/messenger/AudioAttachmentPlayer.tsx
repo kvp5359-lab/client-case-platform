@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button'
 import {
   getAttachmentUrl,
   type MessageAttachment as AttachmentType,
-} from '@/services/api/messengerService'
+} from '@/services/api/messenger/messengerService'
 import { supabase } from '@/lib/supabase'
-import { formatSize } from '@/utils/formatSize'
+import { formatSize } from '@/utils/files/formatSize'
 import { toast } from 'sonner'
 import { isVoice } from './utils/attachmentHelpers'
 

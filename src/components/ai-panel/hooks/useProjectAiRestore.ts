@@ -10,7 +10,7 @@ import {
   getKnowledgeMessages as getConversationMessages,
   type KnowledgeConversation,
   type ConversationSources,
-} from '@/services/api/knowledgeSearchService'
+} from '@/services/api/knowledge/knowledgeSearchService'
 
 interface UseProjectAiRestoreOptions {
   activeConversationId: string | null

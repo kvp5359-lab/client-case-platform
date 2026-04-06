@@ -9,7 +9,7 @@ import {
   getConversations,
   deleteConversation,
   updateConversation,
-} from '@/services/api/knowledgeSearchService'
+} from '@/services/api/knowledge/knowledgeSearchService'
 import { knowledgeBaseKeys } from '../queryKeys'
 
 interface UseKnowledgeConversationsOptions {
