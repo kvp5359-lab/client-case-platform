@@ -182,8 +182,9 @@ function MessageBubbleImpl({
           {/* Quote popup рендерится императивно через DOM — см. handleMouseUp */}
 
           <div
+            id={`msg-${message.id}`}
             className={cn(
-              'relative rounded-2xl px-4 py-2.5 min-w-[10rem] overflow-hidden',
+              'relative rounded-2xl px-4 py-2.5 min-w-[10rem] overflow-hidden transition-all duration-500',
               message.reactions?.length && 'pb-5',
               message.is_draft
                 ? accent === 'dark'

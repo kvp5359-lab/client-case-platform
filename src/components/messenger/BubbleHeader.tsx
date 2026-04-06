@@ -47,15 +47,30 @@ export function BubbleHeader({ message, isOwn, showAvatar, accent }: BubbleHeade
 
       {/* Reply quote */}
       {message.reply_to_message && (
-        <div
+        <button
+          type="button"
           className={cn(
-            'border-l-2 pl-2 mb-2 text-xs opacity-75',
+            'border-l-2 pl-2 mb-2 text-xs opacity-75 text-left w-full cursor-pointer hover:opacity-100 transition-opacity',
             isOwn ? colors.replyBorder : 'border-foreground/30',
           )}
+          onClick={(e) => {
+            e.stopPropagation()
+            const el = document.getElementById(`msg-${message.reply_to_message!.id}`)
+            if (!el) return
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            el.style.backgroundColor = 'rgb(254 243 199)' // amber-100
+            el.style.color = 'rgb(180 83 9)' // amber-700
+            el.style.boxShadow = 'inset 0 0 0 2px rgb(180 83 9)' // amber-700 inner border
+            setTimeout(() => {
+              el.style.backgroundColor = ''
+              el.style.color = ''
+              el.style.boxShadow = ''
+            }, 2000)
+          }}
         >
           <span className="font-medium">{message.reply_to_message.sender_name}</span>
           <p className="line-clamp-1">{stripHtml(message.reply_to_message.content)}</p>
-        </div>
+        </button>
       )}
     </>
   )
