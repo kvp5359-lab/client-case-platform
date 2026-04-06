@@ -15,7 +15,8 @@ import { useDocumentStatuses } from '@/hooks/useStatuses'
 import { useAuth } from '@/contexts/AuthContext'
 import { DocumentPickerDialog } from '@/components/messenger/DocumentPickerDialog'
 import { getMessages as getMessengerMessages } from '@/services/api/messenger/messengerService'
-import { updateConversation, type ConversationSources } from '@/services/api/knowledge/knowledgeSearchService'
+import { type ConversationSources } from '@/services/api/knowledge/knowledgeSearchService'
+import { supabase } from '@/lib/supabase'
 import { AiChatInput } from './AiChatInput'
 import { AiMessageBubble } from './AiMessageBubble'
 import { AiStreamingBubble } from './AiStreamingBubble'
@@ -153,12 +154,16 @@ export function ProjectAiChat({
         (s: import('@/services/api/messenger/messengerAiService').AiSources) => {
           sourcesRef.current = s as ConversationSources
           updateAiSession(sessionKey, { sources: s })
-          // Сохраняем sources в БД для текущего диалога
+          // Сохраняем sources в БД (fire-and-forget, не кидаем ошибку — у клиентов нет RLS-доступа)
           const convId = conversationIdRef.current
           if (convId) {
-            updateConversation(convId, { sources: s as ConversationSources }).catch((err) => {
-              logger.warn('Не удалось сохранить sources диалога:', err)
-            })
+            supabase
+              .from('knowledge_conversations')
+              .update({ sources: s } as never)
+              .eq('id', convId)
+              .then(({ error }) => {
+                if (error) logger.debug('Не удалось сохранить sources диалога:', error)
+              })
           }
         },
         [sessionKey, updateAiSession],
