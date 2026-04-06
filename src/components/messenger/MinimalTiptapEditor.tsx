@@ -5,13 +5,7 @@
  * Поддерживает: Bold, Italic, Underline, Strikethrough, Blockquote, OrderedList, BulletList
  */
 
-import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  type ClipboardEvent as ReactClipboardEvent,
-} from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useEditor, EditorContent, type Editor, Extension } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -139,6 +133,39 @@ export function MinimalTiptapEditor({
   // Стабильная обёртка для передачи в extension (не читает ref при рендере)
   const stableSend = useCallback(() => onSendRef.current(), [])
 
+  // Ref для onPasteFiles — чтобы editorProps.handlePaste всегда видел актуальный callback
+  const onPasteFilesRef = useRef(onPasteFiles)
+  useEffect(() => {
+    onPasteFilesRef.current = onPasteFiles
+  }, [onPasteFiles])
+
+  /** Извлекает изображения из clipboardData и передаёт в onPasteFiles */
+  const handlePasteImages = useCallback(
+    (_view: unknown, event: ClipboardEvent) => {
+      const handler = onPasteFilesRef.current
+      if (!handler) return false
+      const items = event.clipboardData?.items
+      if (!items) return false
+      const imageFiles: File[] = []
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (!file) continue
+          const ext = file.type.split('/')[1] || 'png'
+          const uniqueName = `screenshot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`
+          const renamed = new File([file], uniqueName, { type: file.type })
+          imageFiles.push(renamed)
+        }
+      }
+      if (imageFiles.length > 0) {
+        handler(imageFiles)
+        return true
+      }
+      return false
+    },
+    [],
+  )
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -159,6 +186,7 @@ export function MinimalTiptapEditor({
           'prose prose-sm max-w-none focus:outline-none min-h-[36px] overflow-y-auto py-2 text-sm leading-snug',
         style: `max-height: ${editorMaxHeight ?? 255}px`,
       },
+      handlePaste: handlePasteImages,
     },
     onUpdate: () => {
       onTyping?.()
@@ -185,43 +213,17 @@ export function MinimalTiptapEditor({
             'prose prose-sm max-w-none focus:outline-none min-h-[36px] overflow-y-auto py-2 text-sm leading-snug',
           style: `max-height: ${editorMaxHeight ?? 255}px`,
         },
+        handlePaste: handlePasteImages,
       },
     })
-  }, [editor, editorMaxHeight])
-
-  // Обработка paste изображений
-  const handlePaste = useCallback(
-    (e: ReactClipboardEvent) => {
-      if (!onPasteFiles) return
-      const items = e.clipboardData?.items
-      if (!items) return
-      const imageFiles: File[] = []
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          const file = item.getAsFile()
-          if (!file) continue
-          const ext = file.type.split('/')[1] || 'png'
-          const uniqueName = `screenshot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`
-          const renamed = new File([file], uniqueName, { type: file.type })
-          imageFiles.push(renamed)
-        }
-      }
-      if (imageFiles.length > 0) {
-        e.preventDefault()
-        onPasteFiles(imageFiles)
-      }
-    },
-    [onPasteFiles],
-  )
+  }, [editor, editorMaxHeight, handlePasteImages])
 
   if (!editor) return null
 
   return (
-    <div onPaste={handlePaste}>
-      <EditorContent
-        editor={editor}
-        className={cn('messenger-editor', disabled && 'opacity-50 pointer-events-none')}
-      />
-    </div>
+    <EditorContent
+      editor={editor}
+      className={cn('messenger-editor', disabled && 'opacity-50 pointer-events-none')}
+    />
   )
 }
