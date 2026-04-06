@@ -3,7 +3,7 @@
  * Каждый чат — отдельная строка, сортировка по времени последнего сообщения.
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import { Inbox, MessageSquare, Search, X } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -16,15 +16,26 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import {
   getCurrentProjectParticipant,
+  getCurrentWorkspaceParticipant,
   markAsRead,
   markAsUnread,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
+import { useThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
+import { useCreateThread } from '@/hooks/messenger/useProjectThreads'
+import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { MessengerAccent } from '@/components/messenger/utils/messageStyles'
+import type { ThreadTemplate } from '@/types/threadTemplate'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import { InboxChatHeader, useProjectChatParticipants } from './InboxChatHeader'
+
+const ChatSettingsDialog = lazy(() =>
+  import('@/components/messenger/ChatSettingsDialog').then((m) => ({
+    default: m.ChatSettingsDialog,
+  })),
+)
 
 type InboxFilter = 'all' | 'unread'
 
@@ -38,6 +49,14 @@ export default function InboxPage() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
   const closePanel = useSidePanelStore((s) => s.closePanel)
+  const setPendingInitialMessage = useSidePanelStore((s) => s.setPendingInitialMessage)
+
+  // Стейт диалога создания треда
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [createDefaultTab, setCreateDefaultTab] = useState<'task' | 'chat' | 'email'>('task')
+  const [createTemplate, setCreateTemplate] = useState<ThreadTemplate | null>(null)
+
+  const { data: threadTemplates = [] } = useThreadTemplates(workspaceId)
 
   useEffect(() => {
     closePanel()
@@ -100,10 +119,77 @@ export default function InboxPage() {
   // Участники проекта для хедера
   const { data: participants = [] } = useProjectChatParticipants(activeChat?.project_id)
 
+  // Создание треда — projectId из активного чата
+  const createProjectId = activeChat?.project_id ?? ''
+  const createChatMutation = useCreateThread(createProjectId, workspaceId ?? '')
+
+  const handleOpenCreateDialog = useCallback(
+    (defaultTab?: 'task' | 'chat' | 'email', template?: ThreadTemplate) => {
+      setCreateDefaultTab(defaultTab ?? 'task')
+      setCreateTemplate(template ?? null)
+      setCreateDialogOpen(true)
+    },
+    [],
+  )
+
   const invalidateInbox = useCallback(() => {
     if (!workspaceId) return
     invalidateMessengerCaches(queryClient, workspaceId)
   }, [workspaceId, queryClient])
+
+  const handleCreateChat = useCallback(
+    async (result: ChatSettingsResult) => {
+      let senderName = 'Вы'
+      if (result.initialMessage && user && workspaceId) {
+        try {
+          const p = await getCurrentWorkspaceParticipant(workspaceId, user.id)
+          if (p) senderName = p.name
+        } catch {
+          /* fallback */
+        }
+      }
+
+      createChatMutation.mutate(
+        {
+          name: result.name,
+          accessType: result.accessType,
+          accentColor: result.accentColor,
+          icon: result.icon,
+          type: result.threadType,
+          emailData:
+            result.channelType === 'email' && result.contactEmails?.length
+              ? {
+                  contactEmails: result.contactEmails.map((e) => e.email),
+                  subject: result.emailSubject,
+                }
+              : undefined,
+          memberIds: result.memberIds,
+          accessRoles: result.accessRoles,
+          deadline: result.deadline,
+          statusId: result.statusId,
+          assigneeIds: result.assigneeIds,
+          projectIdOverride: result.projectId !== undefined ? result.projectId : undefined,
+        },
+        {
+          onSuccess: (newChat) => {
+            if (result.initialMessage) {
+              setPendingInitialMessage({
+                threadId: newChat.id,
+                html: result.initialMessage.html,
+                files: result.initialMessage.files,
+                isEmail: result.channelType === 'email',
+                senderName,
+              })
+            }
+            setCreateDialogOpen(false)
+            setCreateTemplate(null)
+            invalidateInbox()
+          },
+        },
+      )
+    },
+    [createChatMutation, user, workspaceId, setPendingInitialMessage, invalidateInbox],
+  )
 
   const getChannel = (chat: InboxThreadEntry): MessageChannel =>
     (chat.legacy_channel as MessageChannel) ?? 'client'
@@ -285,6 +371,8 @@ export default function InboxPage() {
                   workspaceId={workspaceId}
                   participants={participants}
                   toolbarRef={setToolbarContainer}
+                  threadTemplates={threadTemplates}
+                  onCreateThread={handleOpenCreateDialog}
                 />
                 <div className="flex-1 min-h-0">
                   <MessengerTabContent
@@ -307,6 +395,30 @@ export default function InboxPage() {
           </div>
         </div>
       </div>
+
+      {/* Диалог создания треда */}
+      {createDialogOpen && createProjectId && (
+        <Suspense fallback={null}>
+          <ChatSettingsDialog
+            chat={null}
+            projectId={createProjectId}
+            workspaceId={workspaceId ?? ''}
+            defaultThreadType={createDefaultTab === 'task' ? 'task' : 'chat'}
+            defaultTabMode={createDefaultTab}
+            initialTemplate={createTemplate}
+            open={createDialogOpen}
+            onOpenChange={(v) => {
+              if (!v) {
+                setCreateDialogOpen(false)
+                setCreateTemplate(null)
+              }
+            }}
+            onCreate={handleCreateChat}
+            onUpdate={() => {}}
+            isPending={createChatMutation.isPending}
+          />
+        </Suspense>
+      )}
     </WorkspaceLayout>
   )
 }
