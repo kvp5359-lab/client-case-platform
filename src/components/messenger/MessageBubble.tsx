@@ -7,7 +7,7 @@ import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { bubbleStyles } from './utils/messageStyles'
 import { useCollapsibleText } from './hooks/useCollapsibleText'
 import { TelegramFailedBadge, useTelegramDeliveryStatus } from './TelegramDeliveryIndicator'
-import { QuotePopup } from './QuotePopup'
+// QuotePopup рендерится императивно (DOM) — см. handleMouseUp в MessageBubble
 import { ReactionBadges } from './ReactionBadges'
 import { MessageActions } from './MessageActions'
 import { SendCountdown } from './SendCountdown'
@@ -67,39 +67,86 @@ function MessageBubbleImpl({
   const { textRef, isCollapsed, isOverflowing, maxCollapsedHeight, toggleCollapsed } =
     useCollapsibleText(message.content)
 
-  // Quote popup on text selection
+  // Quote popup on text selection — императивный DOM, чтобы не вызывать re-render бабла
+  // и не терять браузерное выделение текста
   const contentRef = useRef<HTMLDivElement>(null)
-  const [quotePopup, setQuotePopup] = useState<{ x: number; y: number; text: string } | null>(null)
+  const quotePopupRef = useRef<HTMLDivElement | null>(null)
+  const quoteTextRef = useRef<string>('')
 
-  const handleMouseUp = useCallback(() => {
-    if (!onQuote) return
-    const selection = window.getSelection()
-    if (!selection || selection.isCollapsed || !selection.toString().trim()) {
-      setQuotePopup(null)
-      return
+  const destroyQuotePopup = useCallback(() => {
+    if (quotePopupRef.current) {
+      quotePopupRef.current.remove()
+      quotePopupRef.current = null
+      quoteTextRef.current = ''
     }
-    const container = contentRef.current
-    if (!container) return
-    const range = selection.getRangeAt(0)
-    if (!container.contains(range.commonAncestorContainer)) {
-      setQuotePopup(null)
-      return
-    }
-    const rect = range.getBoundingClientRect()
-    const containerRect = container.getBoundingClientRect()
-    setQuotePopup({
-      x: rect.left + rect.width / 2 - containerRect.left,
-      y: rect.top - containerRect.top - 4,
-      text: selection.toString().trim(),
-    })
-  }, [onQuote])
+  }, [])
 
+  const handleMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      if (!onQuote) return
+      if ((e.target as HTMLElement).closest('[data-quote-popup]')) return
+      const selection = window.getSelection()
+      if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+        destroyQuotePopup()
+        return
+      }
+      const container = contentRef.current
+      if (!container) return
+      const range = selection.getRangeAt(0)
+      if (!container.contains(range.commonAncestorContainer)) {
+        destroyQuotePopup()
+        return
+      }
+      const text = selection.toString().trim()
+      quoteTextRef.current = text
+      const rect = range.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect()
+      const x = rect.left + rect.width / 2 - containerRect.left
+      const y = rect.top - containerRect.top - 4
+
+      // Удаляем старый popup если есть
+      destroyQuotePopup()
+
+      // Создаём popup императивно — без setState, без re-render
+      const popup = document.createElement('div')
+      popup.setAttribute('data-quote-popup', '')
+      popup.className = 'absolute z-20 -translate-x-1/2 -translate-y-full'
+      popup.style.left = `${x}px`
+      popup.style.top = `${y}px`
+      popup.innerHTML = `<button type="button" class="flex items-center gap-1.5 bg-popover text-popover-foreground border shadow-md rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>
+        Цитировать
+      </button>`
+
+      popup.addEventListener('mousedown', (evt) => {
+        evt.preventDefault()
+        evt.stopPropagation()
+      })
+      popup.querySelector('button')!.addEventListener('click', () => {
+        onQuote!(quoteTextRef.current)
+        window.getSelection()?.removeAllRanges()
+        destroyQuotePopup()
+      })
+
+      container.appendChild(popup)
+      quotePopupRef.current = popup
+    },
+    [onQuote, destroyQuotePopup],
+  )
+
+  // Скрываем popup при клике вне бабла
   useEffect(() => {
-    if (!quotePopup) return
-    const hide = () => setQuotePopup(null)
+    const hide = (e: MouseEvent) => {
+      if (!quotePopupRef.current) return
+      if (contentRef.current?.contains(e.target as Node)) return
+      destroyQuotePopup()
+    }
     document.addEventListener('mousedown', hide)
     return () => document.removeEventListener('mousedown', hide)
-  }, [quotePopup])
+  }, [destroyQuotePopup])
+
+  // Cleanup при unmount
+  useEffect(() => destroyQuotePopup, [destroyQuotePopup])
 
   const hasAttachments = !!message.attachments?.length
   const hasAttachmentsOnly = !!(
@@ -132,18 +179,7 @@ function MessageBubbleImpl({
       <div className={cn('max-w-[75%] min-w-0 flex flex-col', isOwn ? 'items-end' : 'items-start')}>
         {/* Bubble + reactions */}
         <div className="relative pb-2 max-w-full" ref={contentRef} onMouseUp={handleMouseUp}>
-          {/* Quote popup */}
-          {quotePopup && (
-            <QuotePopup
-              x={quotePopup.x}
-              y={quotePopup.y}
-              text={quotePopup.text}
-              onQuote={(text) => {
-                onQuote?.(text)
-                setQuotePopup(null)
-              }}
-            />
-          )}
+          {/* Quote popup рендерится императивно через DOM — см. handleMouseUp */}
 
           <div
             className={cn(

@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { DismissAllToasts } from '@/components/DismissAllToasts'
 
 const makeQueryClient = () =>
   new QueryClient({
@@ -36,6 +37,7 @@ export function Providers({ children }: { children: ReactNode }) {
         offset={16}
         style={{ '--width': '356px' } as React.CSSProperties}
       />
+      <DismissAllToasts />
       <ErrorBoundary title="Ошибка приложения" fullPageReload>
         <AuthProvider>{children}</AuthProvider>
       </ErrorBoundary>

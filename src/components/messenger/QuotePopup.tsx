@@ -10,9 +10,13 @@ interface QuotePopupProps {
 export function QuotePopup({ x, y, text, onQuote }: QuotePopupProps) {
   return (
     <div
+      data-quote-popup
       className="absolute z-20 -translate-x-1/2 -translate-y-full"
       style={{ left: x, top: y }}
-      onMouseDown={(e) => e.stopPropagation()}
+      onMouseDownCapture={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
     >
       <button
         type="button"
