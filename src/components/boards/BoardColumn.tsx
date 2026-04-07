@@ -5,10 +5,12 @@ import type { BoardList, FilterContext } from './types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceTasks'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/ui/status-dropdown'
+import type { BoardProject } from './hooks/useWorkspaceProjects'
 
 interface BoardColumnProps {
   lists: BoardList[]
   tasks: WorkspaceTask[]
+  projects: BoardProject[]
   assigneesMap: Record<string, AvatarParticipant[]>
   filterCtx: FilterContext
   workspaceId: string
@@ -20,6 +22,7 @@ interface BoardColumnProps {
 export function BoardColumn({
   lists,
   tasks,
+  projects,
   assigneesMap,
   filterCtx,
   workspaceId,
@@ -34,6 +37,7 @@ export function BoardColumn({
           key={list.id}
           list={list}
           tasks={tasks}
+          projects={projects}
           assigneesMap={assigneesMap}
           filterCtx={filterCtx}
           workspaceId={workspaceId}

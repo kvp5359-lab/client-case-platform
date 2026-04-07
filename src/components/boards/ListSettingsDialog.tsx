@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from 'react'
-import { ArrowUpDown, Filter, Eye, LayoutList, LayoutGrid, Group } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { ArrowUpDown, Filter, Eye, LayoutList, LayoutGrid, Group, ListChecks, FolderOpen } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,14 @@ import { FilterGroupEditor } from './filters/FilterGroupEditor'
 import { useUpdateList } from './hooks/useListMutations'
 import type { BoardList, FilterGroup, SortField, SortDir, DisplayMode, VisibleField, GroupByField } from './types'
 
-const SORT_FIELDS: { value: SortField; label: string }[] = [
+const SORT_DIRS: { value: SortDir; label: string }[] = [
+  { value: 'asc', label: 'По возрастанию' },
+  { value: 'desc', label: 'По убыванию' },
+]
+
+// ── Конфигурации по entity_type ──────────────────────────
+
+const TASK_SORT_FIELDS: { value: SortField; label: string }[] = [
   { value: 'created_at', label: 'Дата создания' },
   { value: 'updated_at', label: 'Дата обновления' },
   { value: 'deadline', label: 'Дедлайн' },
@@ -32,12 +39,13 @@ const SORT_FIELDS: { value: SortField; label: string }[] = [
   { value: 'name', label: 'Название' },
 ]
 
-const SORT_DIRS: { value: SortDir; label: string }[] = [
-  { value: 'asc', label: 'По возрастанию' },
-  { value: 'desc', label: 'По убыванию' },
+const PROJECT_SORT_FIELDS: { value: SortField; label: string }[] = [
+  { value: 'created_at', label: 'Дата создания' },
+  { value: 'updated_at', label: 'Дата обновления' },
+  { value: 'name', label: 'Название' },
 ]
 
-const GROUP_BY_OPTIONS: { value: GroupByField; label: string }[] = [
+const TASK_GROUP_BY_OPTIONS: { value: GroupByField; label: string }[] = [
   { value: 'none', label: 'Без группировки' },
   { value: 'status', label: 'Статус' },
   { value: 'project', label: 'Проект' },
@@ -45,11 +53,21 @@ const GROUP_BY_OPTIONS: { value: GroupByField; label: string }[] = [
   { value: 'deadline', label: 'Дедлайн' },
 ]
 
-const VISIBLE_FIELD_OPTIONS: { value: VisibleField; label: string }[] = [
+const PROJECT_GROUP_BY_OPTIONS: { value: GroupByField; label: string }[] = [
+  { value: 'none', label: 'Без группировки' },
+  { value: 'status', label: 'Статус' },
+]
+
+const TASK_VISIBLE_FIELDS: { value: VisibleField; label: string }[] = [
   { value: 'status', label: 'Статус' },
   { value: 'deadline', label: 'Дедлайн' },
   { value: 'assignees', label: 'Исполнители' },
   { value: 'project', label: 'Проект' },
+]
+
+const PROJECT_VISIBLE_FIELDS: { value: VisibleField; label: string }[] = [
+  { value: 'status', label: 'Статус' },
+  { value: 'template', label: 'Шаблон' },
 ]
 
 interface ListSettingsDialogProps {
@@ -59,26 +77,53 @@ interface ListSettingsDialogProps {
   workspaceId: string
 }
 
+function defaultVisibleFields(entityType: 'task' | 'project'): VisibleField[] {
+  return entityType === 'project' ? ['status', 'template'] : ['status', 'deadline', 'assignees', 'project']
+}
+
 export function ListSettingsDialog({ open, onClose, list, workspaceId }: ListSettingsDialogProps) {
   const updateList = useUpdateList()
   const [name, setName] = useState(list.name)
+  const [entityType, setEntityType] = useState<'task' | 'project'>(list.entity_type)
   const [filters, setFilters] = useState<FilterGroup>(list.filters)
   const [sortBy, setSortBy] = useState<SortField>(list.sort_by ?? 'created_at')
   const [sortDir, setSortDir] = useState<SortDir>(list.sort_dir ?? 'desc')
   const [displayMode, setDisplayMode] = useState<DisplayMode>(list.display_mode ?? 'list')
   const [visibleFields, setVisibleFields] = useState<VisibleField[]>(
-    list.visible_fields ?? ['status', 'deadline', 'assignees', 'project'],
+    list.visible_fields ?? defaultVisibleFields(list.entity_type),
   )
   const [groupBy, setGroupBy] = useState<GroupByField>(list.group_by ?? 'none')
+
+  const sortFields = useMemo(
+    () => (entityType === 'project' ? PROJECT_SORT_FIELDS : TASK_SORT_FIELDS),
+    [entityType],
+  )
+  const groupByOptions = useMemo(
+    () => (entityType === 'project' ? PROJECT_GROUP_BY_OPTIONS : TASK_GROUP_BY_OPTIONS),
+    [entityType],
+  )
+  const visibleFieldOptions = useMemo(
+    () => (entityType === 'project' ? PROJECT_VISIBLE_FIELDS : TASK_VISIBLE_FIELDS),
+    [entityType],
+  )
+
+  const handleEntityTypeChange = (type: 'task' | 'project') => {
+    setEntityType(type)
+    setFilters({ logic: 'and', rules: [] })
+    setVisibleFields(defaultVisibleFields(type))
+    setSortBy('created_at')
+    setGroupBy('none')
+  }
 
   const handleOpenChange = (v: boolean) => {
     if (v) {
       setName(list.name)
+      setEntityType(list.entity_type)
       setFilters(list.filters)
       setSortBy(list.sort_by ?? 'created_at')
       setSortDir(list.sort_dir ?? 'desc')
       setDisplayMode(list.display_mode ?? 'list')
-      setVisibleFields(list.visible_fields ?? ['status', 'deadline', 'assignees', 'project'])
+      setVisibleFields(list.visible_fields ?? defaultVisibleFields(list.entity_type))
       setGroupBy(list.group_by ?? 'none')
     } else {
       onClose()
@@ -91,6 +136,7 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId }: ListSet
         id: list.id,
         board_id: list.board_id,
         name: name.trim() || list.name,
+        entity_type: entityType,
         filters,
         sort_by: sortBy,
         sort_dir: sortDir,
@@ -125,6 +171,39 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId }: ListSet
               className="h-8 text-sm"
               placeholder="Название списка"
             />
+          </div>
+
+          {/* Тип: задачи / проекты */}
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Тип данных</Label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleEntityTypeChange('task')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
+                  entityType === 'task'
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-border text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <ListChecks className="h-3.5 w-3.5" />
+                Задачи
+              </button>
+              <button
+                type="button"
+                onClick={() => handleEntityTypeChange('project')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
+                  entityType === 'project'
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-border text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                Проекты
+              </button>
+            </div>
           </div>
 
           {/* Отображение */}
@@ -170,7 +249,7 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId }: ListSet
               Что отображать
             </Label>
             <div className="flex flex-wrap gap-2">
-              {VISIBLE_FIELD_OPTIONS.map((opt) => {
+              {visibleFieldOptions.map((opt) => {
                 const active = visibleFields.includes(opt.value)
                 return (
                   <button
@@ -200,7 +279,7 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId }: ListSet
             <FilterGroupEditor
               group={filters}
               onChange={setFilters}
-              entityType={list.entity_type}
+              entityType={entityType}
               depth={0}
               workspaceId={workspaceId}
             />
@@ -220,7 +299,7 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId }: ListSet
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {SORT_FIELDS.map((f) => (
+                    {sortFields.map((f) => (
                       <SelectItem key={f.value} value={f.value}>
                         {f.label}
                       </SelectItem>
@@ -253,7 +332,7 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId }: ListSet
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {GROUP_BY_OPTIONS.map((g) => (
+                  {groupByOptions.map((g) => (
                     <SelectItem key={g.value} value={g.value}>
                       {g.label}
                     </SelectItem>
@@ -274,7 +353,7 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId }: ListSet
               setSortBy('created_at')
               setSortDir('desc')
               setDisplayMode('list')
-              setVisibleFields(['status', 'deadline', 'assignees', 'project'])
+              setVisibleFields(defaultVisibleFields(entityType))
               setGroupBy('none')
             }}
           >

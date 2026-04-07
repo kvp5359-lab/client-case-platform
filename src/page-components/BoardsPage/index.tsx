@@ -16,6 +16,7 @@ import { useDialog } from '@/hooks/shared/useDialog'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useBoardLists } from '@/components/boards/hooks/useBoardQuery'
 import { useWorkspaceThreads } from '@/hooks/tasks/useWorkspaceThreads'
+import { useWorkspaceProjects } from '@/components/boards/hooks/useWorkspaceProjects'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
 import { useCurrentParticipantId } from '@/hooks/shared/useCurrentParticipantId'
 import { useDeleteBoard } from '@/components/boards/hooks/useBoardMutations'
@@ -51,7 +52,9 @@ function BoardTabContent({
   const { data: lists } = useBoardLists(board.id)
 
   const hasTaskLists = lists?.some((l) => l.entity_type === 'task')
+  const hasProjectLists = lists?.some((l) => l.entity_type === 'project')
   const { data: tasks } = useWorkspaceThreads(hasTaskLists ? workspaceId : undefined)
+  const { data: projects } = useWorkspaceProjects(hasProjectLists ? workspaceId : undefined)
 
   const taskIds = (tasks ?? []).map((t) => t.id)
   const { data: assigneesMap } = useTaskAssigneesMap(taskIds)
@@ -120,6 +123,7 @@ function BoardTabContent({
         <BoardView
           lists={lists ?? []}
           tasks={tasks ?? []}
+          projects={projects ?? []}
           assigneesMap={assigneesMap ?? {}}
           workspaceId={workspaceId}
           currentParticipantId={currentParticipantId ?? null}

@@ -52,8 +52,8 @@ export type SortField = 'created_at' | 'updated_at' | 'deadline' | 'status_order
 export type SortDir = 'asc' | 'desc'
 export type DisplayMode = 'list' | 'cards'
 
-/** Поля, которые можно показывать/скрывать в строке задачи */
-export type VisibleField = 'status' | 'deadline' | 'assignees' | 'project'
+/** Поля, которые можно показывать/скрывать в строке */
+export type VisibleField = 'status' | 'deadline' | 'assignees' | 'project' | 'template'
 
 /** Поле для группировки (none = без группировки) */
 export type GroupByField = 'none' | 'status' | 'project' | 'assignee' | 'deadline'

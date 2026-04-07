@@ -72,7 +72,7 @@ export const SidebarNavButton = memo(function SidebarNavButton({
       </span>
       <span className="flex-1 truncate">{label}</span>
       {badge && (
-        <span className="min-w-[16px] h-4 px-[3px] rounded-[4px] bg-red-500 text-white text-[10px] font-semibold leading-none flex items-center justify-center">
+        <span className="min-w-[16px] h-4 px-[3px] rounded-[4px] bg-red-100 text-red-600 text-[10px] font-semibold leading-none flex items-center justify-center">
           {badge}
         </span>
       )}

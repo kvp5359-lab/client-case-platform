@@ -15,11 +15,13 @@ import { useDialog } from '@/hooks/shared/useDialog'
 import { useDeleteList } from './hooks/useListMutations'
 import { useFilteredTasks } from './hooks/useFilteredListData'
 import { BoardTaskRow } from './BoardTaskRow'
+import { BoardProjectRow } from './BoardProjectRow'
 import { ListSettingsDialog } from './ListSettingsDialog'
 import type { BoardList, FilterContext, GroupByField } from './types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceTasks'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/ui/status-dropdown'
+import type { BoardProject } from './hooks/useWorkspaceProjects'
 
 // ── Группировка ─────────────────────────────────────────
 
@@ -113,6 +115,7 @@ function groupTasks(
 interface BoardListCardProps {
   list: BoardList
   tasks: WorkspaceTask[]
+  projects: BoardProject[]
   assigneesMap: Record<string, AvatarParticipant[]>
   filterCtx: FilterContext
   workspaceId: string
@@ -124,6 +127,7 @@ interface BoardListCardProps {
 export function BoardListCard({
   list,
   tasks,
+  projects,
   assigneesMap,
   filterCtx,
   workspaceId,
@@ -153,8 +157,9 @@ export function BoardListCard({
     list.sort_dir ?? 'desc',
   )
 
+  const isProject = list.entity_type === 'project'
   const hasFilters = list.filters.rules.length > 0
-  const count = filteredTasks.length
+  const count = isProject ? projects.length : filteredTasks.length
   const CollapseIcon = collapsed ? ChevronRight : ChevronDown
   const isCards = (list.display_mode ?? 'list') === 'cards'
   const groupByField = (list.group_by ?? 'none') as GroupByField
@@ -218,7 +223,23 @@ export function BoardListCard({
       {/* Content */}
       {!collapsed && (
         <div className={cn('max-h-[400px] overflow-y-auto', !isCards && 'rounded-lg border')}>
-          {list.entity_type === 'task' && filteredTasks.length > 0 ? (
+          {isProject ? (
+            projects.length > 0 ? (
+              <div className={cn(isCards ? 'grid gap-1' : 'divide-y')}>
+                {projects.map((project) => (
+                  <BoardProjectRow
+                    key={project.id}
+                    project={project}
+                    workspaceId={workspaceId}
+                    displayMode={list.display_mode ?? 'list'}
+                    visibleFields={list.visible_fields ?? ['status', 'template']}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="px-3 py-4 text-xs text-muted-foreground text-center">Пусто</div>
+            )
+          ) : filteredTasks.length > 0 ? (
             <div className={cn(isCards ? 'grid gap-1' : 'divide-y')}>
               {groups.map((group) => (
                 <div key={group.key}>

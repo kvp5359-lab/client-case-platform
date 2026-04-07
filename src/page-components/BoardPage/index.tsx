@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useBoardDetail, useBoardLists } from '@/components/boards/hooks/useBoardQuery'
 import { useWorkspaceTasks } from '@/hooks/tasks/useWorkspaceTasks'
+import { useWorkspaceProjects } from '@/components/boards/hooks/useWorkspaceProjects'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
 import { useCurrentParticipantId } from '@/hooks/shared/useCurrentParticipantId'
 import { useAuth } from '@/contexts/AuthContext'
@@ -24,9 +25,11 @@ export default function BoardPage() {
   const { data: board, isLoading: boardLoading } = useBoardDetail(boardId)
   const { data: lists } = useBoardLists(boardId)
 
-  // Пул данных: задачи
+  // Пул данных: задачи + проекты
   const hasTaskLists = lists?.some((l) => l.entity_type === 'task')
+  const hasProjectLists = lists?.some((l) => l.entity_type === 'project')
   const { data: tasks } = useWorkspaceTasks(hasTaskLists ? workspaceId : undefined)
+  const { data: projects } = useWorkspaceProjects(hasProjectLists ? workspaceId : undefined)
 
   // Исполнители задач
   const taskIds = (tasks ?? []).map((t) => t.id)
@@ -67,6 +70,7 @@ export default function BoardPage() {
           <BoardView
             lists={lists ?? []}
             tasks={tasks ?? []}
+            projects={projects ?? []}
             assigneesMap={assigneesMap ?? {}}
             workspaceId={workspaceId}
             currentParticipantId={currentParticipantId ?? null}

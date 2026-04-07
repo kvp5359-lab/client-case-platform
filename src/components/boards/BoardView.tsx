@@ -6,10 +6,12 @@ import type { BoardList, FilterContext } from './types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceTasks'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/ui/status-dropdown'
+import type { BoardProject } from './hooks/useWorkspaceProjects'
 
 interface BoardViewProps {
   lists: BoardList[]
   tasks: WorkspaceTask[]
+  projects: BoardProject[]
   assigneesMap: Record<string, AvatarParticipant[]>
   workspaceId: string
   currentParticipantId: string | null
@@ -23,6 +25,7 @@ interface BoardViewProps {
 export function BoardView({
   lists,
   tasks,
+  projects,
   assigneesMap,
   workspaceId,
   currentParticipantId,
@@ -72,6 +75,7 @@ export function BoardView({
           key={col.index}
           lists={col.lists}
           tasks={tasks}
+          projects={projects}
           assigneesMap={assigneesMap}
           filterCtx={filterCtx}
           workspaceId={workspaceId}

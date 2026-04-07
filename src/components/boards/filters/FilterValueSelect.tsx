@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/popover'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { PROJECT_STATUSES } from '@/page-components/ProjectPage/constants'
 import type { FilterFieldDef } from '../types'
 
 export interface FilterValueOption {
@@ -36,14 +37,14 @@ interface FilterValueSelectProps {
 function useFieldOptions(
   fieldKey: string,
   workspaceId: string,
+  entityType: 'task' | 'project',
 ): FilterValueOption[] {
   const { data: statuses } = useTaskStatuses(workspaceId)
   const { data: participants } = useWorkspaceParticipants(workspaceId)
 
   return useMemo(() => {
     switch (fieldKey) {
-      case 'status_id':
-      case 'status': {
+      case 'status_id': {
         const items: FilterValueOption[] = (statuses ?? []).map((s) => ({
           id: s.id,
           label: s.name,
@@ -51,6 +52,12 @@ function useFieldOptions(
         }))
         items.push({ id: '__no_status__', label: 'Без статуса', color: '#9CA3AF' })
         return items
+      }
+      case 'status': {
+        return PROJECT_STATUSES.map((s) => ({
+          id: s.value,
+          label: s.label,
+        }))
       }
 
       case 'type': {
@@ -81,7 +88,7 @@ function useFieldOptions(
       default:
         return []
     }
-  }, [fieldKey, statuses, participants])
+  }, [fieldKey, entityType, statuses, participants])
 }
 
 /** Нормализует value в массив строк */
@@ -96,10 +103,11 @@ export function FilterValueSelect({
   value,
   onChange,
   workspaceId,
+  entityType,
 }: FilterValueSelectProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const options = useFieldOptions(fieldDef.key, workspaceId)
+  const options = useFieldOptions(fieldDef.key, workspaceId, entityType)
   const selectedIds = normalizeValue(value)
 
   const filteredOptions = useMemo(() => {
