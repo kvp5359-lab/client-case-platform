@@ -41,14 +41,14 @@ export const SidebarNavButton = memo(function SidebarNavButton({
         onClick={onClick}
         title={label}
         className={cn(
-          'relative flex items-center gap-1.5 px-2 py-1.5 text-sm rounded-md transition-colors',
+          'relative flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] transition-colors',
           isActive
-            ? 'bg-gray-200 text-gray-900 font-semibold'
+            ? 'bg-gray-200 text-gray-900 font-medium'
             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50',
         )}
       >
-        <Icon className="h-4 w-4 shrink-0" />
-        {showLabel && <span className="text-sm">{label}</span>}
+        <Icon className="h-[18px] w-[18px] shrink-0" />
+        {showLabel && <span>{label}</span>}
         {badge && (
           <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none flex items-center justify-center">
             {badge}
@@ -58,19 +58,22 @@ export const SidebarNavButton = memo(function SidebarNavButton({
     )
   }
 
-  const className = `w-full flex items-center gap-3 px-2 py-2 text-sm rounded-md transition-colors ${
-    isActive ? 'bg-gray-200 text-gray-900 font-semibold' : 'text-gray-700 hover:bg-gray-100/50'
-  }`
-  const content = (
-    <>
-      <Icon className="h-4 w-4" />
-      <span>{label}</span>
-      {badge && <span className="ml-auto text-xs font-bold text-red-600">{badge}</span>}
-    </>
-  )
   return (
-    <Link href={href} onClick={onClick} className={className}>
-      {content}
+    <Link
+      href={href}
+      onClick={onClick}
+      className={cn(
+        'w-full flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] transition-colors font-medium',
+        isActive ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100/50',
+      )}
+    >
+      <Icon className="h-[18px] w-[18px] shrink-0" />
+      <span className="flex-1 truncate">{label}</span>
+      {badge && (
+        <span className="min-w-[16px] h-4 px-[3px] rounded-[4px] bg-red-500 text-white text-[10px] font-semibold leading-none flex items-center justify-center">
+          {badge}
+        </span>
+      )}
     </Link>
   )
 })

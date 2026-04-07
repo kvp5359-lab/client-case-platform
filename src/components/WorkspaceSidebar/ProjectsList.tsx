@@ -10,6 +10,7 @@ import { memo, useState, useRef, useEffect, useMemo } from 'react'
 import { Search, X, Plus } from 'lucide-react'
 import type { Database } from '@/types/database'
 import type { ModuleDefinition } from '@/page-components/ProjectPage/moduleRegistry'
+import type { BadgeDisplay } from '@/utils/inboxUnread'
 import { usePinnedProjects } from './usePinnedProjects'
 import { useFlipAnimation } from './useFlipAnimation'
 import { ProjectListItem } from './ProjectListItem'
@@ -20,11 +21,9 @@ export interface ProjectsListProps {
   projects: Project[]
   loading: boolean
   searchQuery?: string
-  unreadCounts?: Map<string, number>
+  badgeDisplays?: Map<string, BadgeDisplay>
   clientUnreadCounts?: Map<string, number>
   internalUnreadCounts?: Map<string, number>
-  reactionEmojis?: Map<string, string>
-  reactionOnlyProjects?: Set<string>
   badgeColors?: Map<string, string>
   activeProjectId?: string
   onProjectClick: (projectId: string) => void
@@ -33,15 +32,10 @@ export interface ProjectsListProps {
   onCreateProject?: () => void
   onTitleClick?: () => void
   onShowAll?: () => void
-  /** Клиентский режим: показывать вкладки под активным проектом */
   isClientOnly?: boolean
-  /** Доступные вкладки активного проекта (только для клиента) */
   clientTabs?: ModuleDefinition[]
-  /** Активная вкладка (из URL) */
   activeTab?: string
-  /** Клик по вкладке проекта */
   onTabClick?: (projectId: string, tabId: string) => void
-  /** ID воркспейса (для pinned projects) */
   workspaceId?: string
 }
 
@@ -49,11 +43,9 @@ export const ProjectsList = memo(function ProjectsList({
   projects,
   loading,
   searchQuery: externalSearchQuery,
-  unreadCounts,
+  badgeDisplays,
   clientUnreadCounts,
   internalUnreadCounts,
-  reactionEmojis,
-  reactionOnlyProjects,
   badgeColors,
   activeProjectId,
   onProjectClick,
@@ -126,11 +118,9 @@ export const ProjectsList = memo(function ProjectsList({
   // при любом realtime-событии.
   const sharedItemProps = useMemo(
     () => ({
-      unreadCounts,
+      badgeDisplays,
       clientUnreadCounts,
       internalUnreadCounts,
-      reactionEmojis,
-      reactionOnlyProjects,
       badgeColors,
       activeProjectId,
       onProjectClick,
@@ -143,11 +133,9 @@ export const ProjectsList = memo(function ProjectsList({
       togglePin,
     }),
     [
-      unreadCounts,
+      badgeDisplays,
       clientUnreadCounts,
       internalUnreadCounts,
-      reactionEmojis,
-      reactionOnlyProjects,
       badgeColors,
       activeProjectId,
       onProjectClick,
@@ -164,7 +152,7 @@ export const ProjectsList = memo(function ProjectsList({
   return (
     <div className="group/projects flex flex-col h-full min-h-0">
       {/* Заголовок «Проекты» с поиском и кнопкой добавления */}
-      <div className="flex items-center justify-between px-2 mt-2 mb-1 shrink-0">
+      <div className="flex items-center justify-between px-2 h-[30px] shrink-0">
         {isSearchOpen ? (
           <div className="flex items-center gap-1 flex-1 min-w-0">
             <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
@@ -194,12 +182,12 @@ export const ProjectsList = memo(function ProjectsList({
               <button
                 type="button"
                 onClick={onTitleClick}
-                className="text-xs uppercase text-gray-500 font-normal hover:text-gray-800 transition-colors"
+                className="text-[12px] text-gray-500 font-medium hover:text-gray-800 transition-colors"
               >
                 Проекты
               </button>
             ) : (
-              <p className="text-xs uppercase text-gray-500 font-normal">Проекты</p>
+              <p className="text-[12px] text-gray-500 font-medium">Проекты</p>
             )}
             <div className="flex items-center gap-0.5 opacity-0 group-hover/projects:opacity-100 transition-opacity">
               <button
@@ -230,7 +218,7 @@ export const ProjectsList = memo(function ProjectsList({
       {/* Закреплённые проекты */}
       {pinnedProjects.length > 0 && (
         <>
-          <div className="space-y-0.5 px-0 shrink-0">
+          <div className="px-0 shrink-0" style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
             {pinnedProjects.map((project) => (
               <ProjectListItem
                 key={project.id}
@@ -247,7 +235,8 @@ export const ProjectsList = memo(function ProjectsList({
       {/* Список проектов */}
       <nav
         ref={listRef}
-        className="flex-1 overflow-y-auto px-1 -mx-1 space-y-0.5 scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex-1 overflow-y-auto px-1 -mx-1 scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}
       >
         {loading ? (
           <div className="px-2 py-2 text-sm text-muted-foreground">Загрузка...</div>

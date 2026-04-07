@@ -21,4 +21,6 @@ export interface TaskItem {
   status_show_to_creator?: boolean
   /** Название проекта — заполняется только на странице «Все задачи» */
   project_name?: string | null
+  /** Порядок сортировки внутри группы */
+  sort_order: number
 }

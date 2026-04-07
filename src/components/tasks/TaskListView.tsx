@@ -29,7 +29,7 @@ const ChatSettingsDialog = lazy(() =>
   })),
 )
 
-import { TaskDialog } from './TaskDialog'
+import { TaskPanel } from './TaskPanel'
 import { useTaskAssigneesMap } from './useTaskAssignees'
 import { useCurrentParticipantId } from '@/hooks/shared/useCurrentParticipantId'
 import {
@@ -37,6 +37,7 @@ import {
   useUpdateTaskDeadline,
   useRenameTask,
   useUpdateTaskSettings,
+  useReorderTasks,
 } from './useTaskMutations'
 
 import { AssigneeFilter, DeadlineFilter, StatusFilter, ProjectFilter } from './filters'
@@ -136,6 +137,7 @@ export const TaskListView = memo(function TaskListView({
   const updateDeadline = useUpdateTaskDeadline(invalidateKeys)
   const renameTask = useRenameTask(invalidateKeys)
   const updateSettings = useUpdateTaskSettings(invalidateKeys)
+  const reorderTasks = useReorderTasks(invalidateKeys)
 
   // ── Вспомогательные данные ──
 
@@ -306,17 +308,16 @@ export const TaskListView = memo(function TaskListView({
             updateDeadline.mutate({ threadId: taskId, deadline: date.toISOString() })
           }
           onDeadlineClear={(taskId) => updateDeadline.mutate({ threadId: taskId, deadline: null })}
+          onReorder={(updates) => reorderTasks.mutate(updates)}
           deadlinePending={updateDeadline.isPending}
         />
       )}
 
-      {/* Диалог задачи */}
-      <TaskDialog
+      {/* Панель задачи (правая боковая) */}
+      <TaskPanel
         task={openTask}
         open={!!openTaskId}
-        onOpenChange={(open) => {
-          if (!open) setOpenTaskId(null)
-        }}
+        onClose={() => setOpenTaskId(null)}
         workspaceId={workspaceId}
         statuses={taskStatuses}
         members={membersMap[openTask?.id ?? ''] ?? []}

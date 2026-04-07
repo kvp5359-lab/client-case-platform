@@ -12,6 +12,7 @@ import { taskKeys } from '@/hooks/queryKeys'
 export interface WorkspaceTask {
   id: string
   name: string
+  type?: 'chat' | 'task'
   project_id: string | null
   project_name: string | null
   workspace_id: string
@@ -27,6 +28,7 @@ export interface WorkspaceTask {
   created_at: string
   updated_at: string
   created_by: string | null
+  sort_order: number
 }
 
 export function useWorkspaceTasks(workspaceId: string | undefined) {

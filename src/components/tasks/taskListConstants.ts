@@ -74,6 +74,7 @@ export function workspaceTaskToItem(t: WorkspaceTask): TaskItem {
     created_by: t.created_by,
     status_show_to_creator: t.status_show_to_creator,
     project_name: t.project_name,
+    sort_order: t.sort_order ?? 0,
   }
 }
 
@@ -91,5 +92,6 @@ export function threadToItem(t: ProjectThread): TaskItem {
     is_pinned: t.is_pinned,
     created_at: t.created_at,
     created_by: t.created_by,
+    sort_order: t.sort_order ?? 0,
   }
 }

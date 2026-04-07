@@ -60,6 +60,41 @@ export function useRenameTask(invalidateKeys: ReadonlyArray<readonly unknown[]>)
   })
 }
 
+export function useReorderTasks(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      const promises = updates.map(({ id, sort_order }) =>
+        supabase.from('project_threads').update({ sort_order }).eq('id', id),
+      )
+      const results = await Promise.all(promises)
+      const error = results.find((r) => r.error)?.error
+      if (error) throw error
+    },
+    onMutate: async (updates) => {
+      // Optimistic update: сразу обновляем sort_order в кэше
+      const orderMap = new Map(updates.map((u) => [u.id, u.sort_order]))
+
+      for (const key of invalidateKeys) {
+        await queryClient.cancelQueries({ queryKey: key })
+        queryClient.setQueryData(key, (old: unknown) => {
+          if (!Array.isArray(old)) return old
+          return old.map((item: { id: string; sort_order?: number }) =>
+            orderMap.has(item.id)
+              ? { ...item, sort_order: orderMap.get(item.id) }
+              : item,
+          )
+        })
+      }
+    },
+    onError: () => {
+      // При ошибке — рефетч актуальных данных
+      for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
+      toast.error('Не удалось сохранить порядок')
+    },
+  })
+}
+
 export function useUpdateTaskSettings(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
   const queryClient = useQueryClient()
   return useMutation({

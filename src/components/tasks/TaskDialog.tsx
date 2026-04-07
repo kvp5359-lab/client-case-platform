@@ -103,96 +103,95 @@ export function TaskDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0 gap-0">
-          <div className="flex items-center gap-2 px-5 py-2.5 border-b shrink-0 pr-12">
-            {/* Статус */}
-            {statuses.length > 0 ? (
-              <StatusDropdown
-                currentStatus={statuses.find((s) => s.id === task.status_id) ?? null}
-                statuses={statuses}
-                onStatusChange={onStatusChange}
-                size="md"
-              />
-            ) : (
-              <CheckSquare className="w-4 h-4 shrink-0 text-muted-foreground" />
-            )}
-
-            {/* Название */}
-            {editingName ? (
-              <form
-                className="flex items-center gap-1 min-w-0 flex-1"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  commitEditName()
-                }}
-              >
-                <input
-                  ref={editNameRef}
-                  value={editNameValue}
-                  onChange={(e) => setEditNameValue(e.target.value)}
-                  onBlur={commitEditName}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') setEditingName(false)
-                  }}
-                  className="flex-1 min-w-0 text-base font-semibold bg-transparent border-b-2 border-primary outline-none py-0"
+          <div className="border-b shrink-0 pr-12">
+            {/* Строка 1: статус + название */}
+            <div className="flex items-center gap-2 px-5 pt-2.5 pb-1">
+              {statuses.length > 0 ? (
+                <StatusDropdown
+                  currentStatus={statuses.find((s) => s.id === task.status_id) ?? null}
+                  statuses={statuses}
+                  onStatusChange={onStatusChange}
+                  size="md"
                 />
-                <button
-                  type="submit"
-                  className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground"
-                >
-                  <Check className="w-4 h-4" />
-                </button>
-              </form>
-            ) : (
-              <DialogTitle
-                className="text-base font-semibold truncate min-w-0 cursor-pointer hover:text-primary transition-colors group/title"
-                onClick={startEditName}
-              >
-                {task.name}
-                <Pencil className="w-3 h-3 ml-1.5 inline-block opacity-0 group-hover/title:opacity-50 transition-opacity" />
-              </DialogTitle>
-            )}
+              ) : (
+                <CheckSquare className="w-4 h-4 shrink-0 text-muted-foreground" />
+              )}
 
-            {/* Ссылка на проект (только «Все задачи») */}
-            {showProjectLink && task.project_name && (
+              {editingName ? (
+                <form
+                  className="flex items-center gap-1 min-w-0 flex-1"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    commitEditName()
+                  }}
+                >
+                  <input
+                    ref={editNameRef}
+                    value={editNameValue}
+                    onChange={(e) => setEditNameValue(e.target.value)}
+                    onBlur={commitEditName}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setEditingName(false)
+                    }}
+                    className="flex-1 min-w-0 text-base font-semibold bg-transparent border-b-2 border-primary outline-none py-0"
+                  />
+                  <button
+                    type="submit"
+                    className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                </form>
+              ) : (
+                <DialogTitle
+                  className="text-base font-semibold truncate min-w-0 cursor-pointer hover:text-primary transition-colors group/title"
+                  onClick={startEditName}
+                >
+                  {task.name}
+                  <Pencil className="w-3 h-3 ml-1.5 inline-block opacity-0 group-hover/title:opacity-50 transition-opacity" />
+                </DialogTitle>
+              )}
+            </div>
+
+            {/* Строка 2: проект, срок, исполнители, тулбар, настройки */}
+            <div className="flex items-center gap-2 px-5 pb-2 pl-12">
+              {showProjectLink && task.project_name && (
+                <button
+                  type="button"
+                  onClick={onProjectClick}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
+                  title="Открыть проект"
+                >
+                  <span className="truncate max-w-[120px]">{task.project_name}</span>
+                  <ExternalLink className="h-3 w-3 opacity-50" />
+                </button>
+              )}
+
+              <DeadlinePopover
+                deadline={task.deadline}
+                onSet={onDeadlineSet}
+                onClear={onDeadlineClear}
+                isPending={deadlinePending}
+              />
+
+              <AssigneesPopover
+                threadId={task.id}
+                projectId={task.project_id}
+                workspaceId={workspaceId}
+                assignees={members}
+              />
+
+              <div ref={toolbarRef} className="flex items-center gap-1 ml-auto shrink-0" />
+
               <button
                 type="button"
-                onClick={onProjectClick}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
-                title="Открыть проект"
+                onClick={() => setSettingsOpen(true)}
+                className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                title="Настройки задачи"
               >
-                <span className="truncate max-w-[120px]">{task.project_name}</span>
-                <ExternalLink className="h-3 w-3 opacity-50" />
+                <Settings className="w-4 h-4" />
               </button>
-            )}
-
-            {/* Срок */}
-            <DeadlinePopover
-              deadline={task.deadline}
-              onSet={onDeadlineSet}
-              onClear={onDeadlineClear}
-              isPending={deadlinePending}
-            />
-
-            {/* Исполнители */}
-            <AssigneesPopover
-              threadId={task.id}
-              projectId={task.project_id}
-              workspaceId={workspaceId}
-              assignees={members}
-            />
-
-            {/* Toolbar portal (для поиска и Telegram из мессенджера) */}
-            <div ref={toolbarRef} className="flex items-center gap-1 ml-auto shrink-0" />
-
-            {/* Настройки */}
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              title="Настройки задачи"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
+            </div>
           </div>
 
           <DialogDescription className="sr-only">Переписка по задаче {task.name}</DialogDescription>

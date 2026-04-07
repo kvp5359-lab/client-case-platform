@@ -1,0 +1,99 @@
+"use client"
+
+import { useMemo } from 'react'
+import { applyFilters } from '../filters/filterEngine'
+import type { FilterGroup, FilterContext, SortField, SortDir } from '../types'
+import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceTasks'
+
+function compareTasks(a: WorkspaceTask, b: WorkspaceTask, sortBy: SortField, sortDir: SortDir): number {
+  let cmp = 0
+  switch (sortBy) {
+    case 'name':
+      cmp = (a.name ?? '').localeCompare(b.name ?? '')
+      break
+    case 'deadline': {
+      const da = a.deadline ? new Date(a.deadline).getTime() : Infinity
+      const db = b.deadline ? new Date(b.deadline).getTime() : Infinity
+      cmp = da - db
+      break
+    }
+    case 'status_order':
+      cmp = (a.status_order ?? Infinity) - (b.status_order ?? Infinity)
+      break
+    case 'updated_at': {
+      const ua = new Date(a.updated_at).getTime()
+      const ub = new Date(b.updated_at).getTime()
+      cmp = ua - ub
+      break
+    }
+    case 'created_at':
+    default: {
+      const ca = new Date(a.created_at).getTime()
+      const cb = new Date(b.created_at).getTime()
+      cmp = ca - cb
+      break
+    }
+  }
+  return sortDir === 'desc' ? -cmp : cmp
+}
+
+/**
+ * Фильтрует и сортирует задачи по конфигу списка.
+ */
+export function useFilteredTasks(
+  tasks: WorkspaceTask[],
+  filters: FilterGroup,
+  ctx: FilterContext,
+  assigneesMap: Record<string, { id: string }[]>,
+  sortBy: SortField = 'created_at',
+  sortDir: SortDir = 'desc',
+) {
+  return useMemo(() => {
+    const fieldAccessors: Record<string, (item: unknown) => unknown> = {
+      type: (item) => (item as WorkspaceTask).type,
+      status_id: (item) => (item as WorkspaceTask).status_id,
+      project_id: (item) => (item as WorkspaceTask).project_id,
+      deadline: (item) => (item as WorkspaceTask).deadline,
+      accent_color: (item) => (item as WorkspaceTask).accent_color,
+      is_pinned: (item) => (item as WorkspaceTask).is_pinned,
+      created_by: (item) => (item as WorkspaceTask).created_by,
+      created_at: (item) => (item as WorkspaceTask).created_at,
+      updated_at: (item) => (item as WorkspaceTask).updated_at,
+    }
+
+    const junctionAccessors: Record<string, (id: string) => string[]> = {
+      assignees: (id) =>
+        (assigneesMap[id] ?? []).map((a) => a.id),
+    }
+
+    const filtered = applyFilters(tasks, filters, ctx, fieldAccessors, junctionAccessors)
+    return [...filtered].sort((a, b) => compareTasks(a, b, sortBy, sortDir))
+  }, [tasks, filters, ctx, assigneesMap, sortBy, sortDir])
+}
+
+/**
+ * Фильтрует проекты по конфигу фильтров списка.
+ */
+export function useFilteredProjects<T extends Record<string, unknown>>(
+  projects: T[],
+  filters: FilterGroup,
+  ctx: FilterContext,
+  participantsMap: Record<string, { id: string }[]>,
+) {
+  return useMemo(() => {
+    const fieldAccessors: Record<string, (item: unknown) => unknown> = {
+      status: (item) => (item as T).status,
+      deadline: (item) => (item as T).deadline,
+      created_by: (item) => (item as T).created_by,
+      created_at: (item) => (item as T).created_at,
+      updated_at: (item) => (item as T).updated_at,
+    }
+
+    const junctionAccessors: Record<string, (id: string) => string[]> = {
+      participants: (id) =>
+        (participantsMap[id] ?? []).map((p) => p.id),
+    }
+
+    return applyFilters(projects, filters, ctx, fieldAccessors, junctionAccessors)
+  }, [projects, filters, ctx, participantsMap])
+}

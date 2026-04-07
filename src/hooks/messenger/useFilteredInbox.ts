@@ -13,7 +13,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { calcThreadUnread, calcTotalUnread } from '@/utils/inboxUnread'
+import { calcThreadUnread, calcTotalUnread, getAggregateBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import { useInboxThreadsV2 } from './useInbox'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 
@@ -159,14 +159,10 @@ export function useSidebarInboxCounts(workspaceId: string) {
   return useMemo(() => {
     const totalUnread = calcTotalUnread(threads)
 
-    // Значение > 0 — реальные непрочитанные (показать число)
-    // Значение -1 — manually_unread без сообщений (показать точку без числа)
-    // Реакция = +1 к числу непрочитанных
-    const unreadCounts = new Map<string, number>()
+    // Группируем треды по project_id
+    const threadsByProject = new Map<string, typeof threads>()
     const clientUnreadCounts = new Map<string, number>()
     const internalUnreadCounts = new Map<string, number>()
-    const reactionEmojis = new Map<string, string>()
-    const reactionOnlyProjects = new Set<string>()
     const threadIds = new Map<string, { client: string | null; internal: string | null }>()
     const badgeColors = new Map<string, string>()
 
@@ -178,12 +174,9 @@ export function useSidebarInboxCounts(workspaceId: string) {
       const count = calcThreadUnread(t)
       const hasAny = count !== 0
 
-      // Суммарные непрочитанные по проекту
-      if (count > 0) {
-        unreadCounts.set(pid, (unreadCounts.get(pid) ?? 0) + count)
-      } else if (count === -1 && !unreadCounts.has(pid)) {
-        unreadCounts.set(pid, -1)
-      }
+      // Группируем для getAggregateBadgeDisplay
+      if (!threadsByProject.has(pid)) threadsByProject.set(pid, [])
+      threadsByProject.get(pid)!.push(t)
 
       // По каналам (client/internal) — для навигации при клике
       if (isClient) {
@@ -193,14 +186,6 @@ export function useSidebarInboxCounts(workspaceId: string) {
         if (count > 0) internalUnreadCounts.set(pid, (internalUnreadCounts.get(pid) ?? 0) + count)
         else if (count === -1 && !internalUnreadCounts.has(pid))
           internalUnreadCounts.set(pid, -1)
-      }
-
-      // Реакции
-      if (t.has_unread_reaction && t.last_reaction_emoji && isClient) {
-        reactionEmojis.set(pid, t.last_reaction_emoji)
-        if (t.unread_count === 0) {
-          reactionOnlyProjects.add(pid)
-        }
       }
 
       // ThreadId маппинг (legacy каналы)
@@ -222,14 +207,18 @@ export function useSidebarInboxCounts(workspaceId: string) {
       }
     }
 
+    // Единый BadgeDisplay по проекту через центральную функцию
+    const badgeDisplays = new Map<string, BadgeDisplay>()
+    for (const [pid, projectThreads] of threadsByProject) {
+      badgeDisplays.set(pid, getAggregateBadgeDisplay(projectThreads))
+    }
+
     return {
       totalUnread,
       projectData: {
-        unreadCounts,
+        badgeDisplays,
         clientUnreadCounts,
         internalUnreadCounts,
-        reactionEmojis,
-        reactionOnlyProjects,
         threadIds,
         badgeColors,
       },

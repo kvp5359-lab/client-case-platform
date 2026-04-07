@@ -155,7 +155,7 @@ function MessageBubbleImpl({
   )
 
   return (
-    <div className={cn('flex group overflow-hidden', isOwn ? 'justify-end' : 'justify-start')}>
+    <div className={cn('flex group', isOwn ? 'justify-end' : 'justify-start')}>
       {/* Avatar (other messages only) */}
       {!isOwn && (
         <div className="w-8 flex-shrink-0 self-start mr-2 mt-1">

@@ -12,15 +12,25 @@ export interface AvatarParticipant {
   avatar_url: string | null
 }
 
+const SIZES = {
+  sm: { px: 18, cls: 'w-[18px] h-[18px]', text: 'text-[7px]', overlap: '-space-x-1' },
+  md: { px: 24, cls: 'w-6 h-6', text: 'text-[9px]', overlap: '-space-x-1.5' },
+} as const
+
+export type AvatarSize = keyof typeof SIZES
+
 export function ParticipantAvatars({
   participants,
   maxVisible = 5,
+  size = 'md',
 }: {
   participants: AvatarParticipant[]
   maxVisible?: number
+  size?: AvatarSize
 }) {
   const visible = participants.slice(0, maxVisible)
   const overflow = participants.length - maxVisible
+  const s = SIZES[size]
 
   const names = participants
     .map((p) => `${p.name}${p.last_name ? ` ${p.last_name}` : ''}`)
@@ -28,7 +38,7 @@ export function ParticipantAvatars({
 
   return (
     <div
-      className="group/avatars relative flex items-center -space-x-1.5 shrink-0"
+      className={`group/avatars relative flex items-center ${s.overlap} shrink-0`}
       aria-label={`Участники: ${names}`}
     >
       {visible.map((p) => (
@@ -37,19 +47,19 @@ export function ParticipantAvatars({
             <Image
               src={p.avatar_url}
               alt={p.name}
-              width={24}
-              height={24}
-              className="w-6 h-6 rounded-full object-cover ring-[1.5px] ring-white"
+              width={s.px}
+              height={s.px}
+              className={`${s.cls} rounded-full object-cover ring-[1.5px] ring-white`}
             />
           ) : (
-            <div className="w-6 h-6 rounded-full bg-gray-200 ring-[1.5px] ring-white flex items-center justify-center text-[9px] font-medium text-gray-600">
+            <div className={`${s.cls} rounded-full bg-gray-200 ring-[1.5px] ring-white flex items-center justify-center ${s.text} font-medium text-gray-600`}>
               {p.name.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
       ))}
       {overflow > 0 && (
-        <div className="w-6 h-6 rounded-full bg-gray-100 ring-[1.5px] ring-white flex items-center justify-center text-[9px] font-medium text-gray-500">
+        <div className={`${s.cls} rounded-full bg-gray-100 ring-[1.5px] ring-white flex items-center justify-center ${s.text} font-medium text-gray-500`}>
           +{overflow}
         </div>
       )}

@@ -62,6 +62,133 @@ export type Database = {
           },
         ]
       }
+      board_lists: {
+        Row: {
+          id: string
+          board_id: string
+          name: string
+          entity_type: string
+          column_index: number
+          sort_order: number
+          filters: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          board_id: string
+          name: string
+          entity_type: string
+          column_index?: number
+          sort_order?: number
+          filters?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          board_id?: string
+          name?: string
+          entity_type?: string
+          column_index?: number
+          sort_order?: number
+          filters?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'board_lists_board_id_fkey'
+            columns: ['board_id']
+            isOneToOne: false
+            referencedRelation: 'boards'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      board_members: {
+        Row: {
+          id: string
+          board_id: string
+          participant_id: string
+          added_at: string
+        }
+        Insert: {
+          id?: string
+          board_id: string
+          participant_id: string
+          added_at?: string
+        }
+        Update: {
+          id?: string
+          board_id?: string
+          participant_id?: string
+          added_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'board_members_board_id_fkey'
+            columns: ['board_id']
+            isOneToOne: false
+            referencedRelation: 'boards'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'board_members_participant_id_fkey'
+            columns: ['participant_id']
+            isOneToOne: false
+            referencedRelation: 'participants'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      boards: {
+        Row: {
+          id: string
+          workspace_id: string
+          name: string
+          description: string | null
+          access_type: string
+          access_roles: string[]
+          created_by: string | null
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          name: string
+          description?: string | null
+          access_type?: string
+          access_roles?: string[]
+          created_by?: string | null
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          name?: string
+          description?: string | null
+          access_type?: string
+          access_roles?: string[]
+          created_by?: string | null
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'boards_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       comments: {
         Row: {
           content: string
@@ -5367,6 +5494,35 @@ export type Database = {
       generate_chat_link_code: { Args: never; Returns: string }
       generate_messenger_link_code: { Args: never; Returns: string }
       generate_thread_link_code: { Args: never; Returns: string }
+      get_board_lists: {
+        Args: { p_board_id: string }
+        Returns: {
+          id: string
+          board_id: string
+          name: string
+          entity_type: string
+          column_index: number
+          sort_order: number
+          filters: Json
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      get_workspace_boards: {
+        Args: { p_workspace_id: string; p_user_id: string }
+        Returns: {
+          id: string
+          workspace_id: string
+          name: string
+          description: string | null
+          access_type: string
+          access_roles: string[]
+          created_by: string | null
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }[]
+      }
       get_admin_permissions: { Args: never; Returns: Json }
       get_article_version_history: {
         Args: { p_article_id: string }

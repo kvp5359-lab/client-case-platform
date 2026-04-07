@@ -97,14 +97,25 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
     [inboxThreads],
   )
 
-  // Unread map by thread_id (for badges on non-legacy tabs)
+  // Raw unread data by thread_id (for getBadgeDisplay in MessengerPanelContent)
   const unreadByThreadId = useMemo(() => {
-    const map: Record<string, { count: number; manuallyUnread: boolean; hasReaction: boolean }> = {}
+    const map: Record<
+      string,
+      {
+        count: number
+        unreadCount: number
+        manuallyUnread: boolean
+        hasReaction: boolean
+        reactionEmoji: string | null
+      }
+    > = {}
     for (const t of inboxThreads) {
       map[t.thread_id] = {
         count: calcThreadUnread(t),
+        unreadCount: t.unread_count,
         manuallyUnread: !!t.manually_unread,
         hasReaction: !!t.has_unread_reaction,
+        reactionEmoji: t.last_reaction_emoji ?? null,
       }
     }
     return map

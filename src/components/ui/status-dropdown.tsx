@@ -34,7 +34,7 @@ export interface StatusDropdownProps {
 }
 
 const sizeClasses = {
-  sm: 'w-[19px] h-[19px]',
+  sm: 'w-[18px] h-[18px]',
   md: 'w-4.5 h-4.5',
   lg: 'w-5 h-5',
 }

@@ -4,7 +4,7 @@ import { MessageSquare, Send, Mail, EyeOff, CheckCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { stripHtml } from '@/utils/format/messengerHtml'
 import type { InboxThreadEntry, InboxChannelType } from '@/services/api/inboxService'
-import { calcThreadUnread } from '@/utils/inboxUnread'
+import { getBadgeDisplay, formatBadgeCount } from '@/utils/inboxUnread'
 import { formatShortDate } from '@/utils/format/dateFormat'
 
 function formatTime(isoString: string | null): string {
@@ -103,8 +103,8 @@ export const InboxChatItem = memo(function InboxChatItem({
   const draftHtml = localStorage.getItem(`msg_draft:${chat.project_id}:${chat.thread_id}`)
   const draftText = draftHtml ? stripHtml(draftHtml).trim() || null : null
 
-  const hasUnread = chat.unread_count > 0 || chat.has_unread_reaction
-  const hasUnreadIndicator = hasUnread || chat.manually_unread
+  const badge = getBadgeDisplay(chat)
+  const hasUnreadIndicator = badge.type !== 'none'
 
   const accent = accentStyles[chat.thread_accent_color] ?? defaultAccent
   const ChannelIcon = channelIcons[chat.channel_type]
@@ -190,8 +190,8 @@ export const InboxChatItem = memo(function InboxChatItem({
               <span className="text-gray-400">Нет сообщений</span>
             )}
           </p>
-          {/* Индикатор непрочитанности */}
-          {hasUnread ? (
+          {/* Индикатор непрочитанности — единая логика из getBadgeDisplay */}
+          {badge.type !== 'none' ? (
             <div
               role="button"
               tabIndex={0}
@@ -209,50 +209,31 @@ export const InboxChatItem = memo(function InboxChatItem({
                 }
               }}
             >
-              {chat.has_unread_reaction && chat.unread_count === 0 ? (
-                <span
-                  className={cn(
-                    'h-5 w-5 rounded-full flex items-center justify-center text-[11px] leading-none group-hover/badge:hidden',
-                    accent.badge,
-                  )}
-                >
-                  {chat.last_reaction_emoji}
-                </span>
-              ) : (
+              {badge.type === 'number' && (
                 <span
                   className={cn(
                     'h-5 min-w-5 text-[10px] px-1.5 rounded-full group-hover/badge:hidden text-white font-medium flex items-center justify-center leading-none',
                     accent.badge,
                   )}
                 >
-                  {calcThreadUnread(chat) > 99 ? '99+' : calcThreadUnread(chat)}
+                  {formatBadgeCount(badge.value)}
                 </span>
               )}
-              <span className="hidden group-hover/badge:flex w-5 h-5 items-center justify-center rounded-full bg-blue-100">
-                <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
-              </span>
-            </div>
-          ) : chat.manually_unread ? (
-            <div
-              role="button"
-              tabIndex={0}
-              title="Прочитано"
-              className="group/badge ml-2 shrink-0 flex items-center justify-center w-5 h-5 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation()
-                onMarkAsRead?.()
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  onMarkAsRead?.()
-                }
-              }}
-            >
-              <span
-                className={cn('h-5 min-w-5 rounded-full group-hover/badge:hidden', accent.badge)}
-              />
+              {badge.type === 'emoji' && (
+                <span
+                  className={cn(
+                    'h-5 w-5 rounded-full flex items-center justify-center text-[11px] leading-none group-hover/badge:hidden',
+                    accent.badge,
+                  )}
+                >
+                  {badge.value}
+                </span>
+              )}
+              {badge.type === 'dot' && (
+                <span
+                  className={cn('h-5 min-w-5 rounded-full group-hover/badge:hidden', accent.badge)}
+                />
+              )}
               <span className="hidden group-hover/badge:flex w-5 h-5 items-center justify-center rounded-full bg-blue-100">
                 <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
               </span>

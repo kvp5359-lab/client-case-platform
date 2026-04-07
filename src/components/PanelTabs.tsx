@@ -8,7 +8,7 @@ import { MessageSquare, Sparkles, FolderCog, type LucideIcon } from 'lucide-reac
 import { cn } from '@/lib/utils'
 import type { PanelTab } from '@/store/sidePanelStore'
 import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
-import { calcTotalUnread } from '@/utils/inboxUnread'
+import { getAggregateBadgeDisplay, formatBadgeCount } from '@/utils/inboxUnread'
 
 interface PanelTabsProps {
   activeTab: PanelTab
@@ -69,8 +69,10 @@ export function PanelTabs({
 }: PanelTabsProps) {
   const { data: inboxThreads = [] } = useFilteredInbox(workspaceId ?? '')
 
-  // Count unread only for this project (already access-filtered)
-  const totalUnread = calcTotalUnread(inboxThreads.filter((t) => t.project_id === projectId))
+  // Единая логика бейджа для проекта через центральную функцию
+  const chatsBadge = getAggregateBadgeDisplay(
+    inboxThreads.filter((t) => t.project_id === projectId),
+  )
   const isChatsActive = activeTab === 'client' || activeTab === 'internal'
 
   return (
@@ -83,10 +85,16 @@ export function PanelTabs({
           activeClassName="bg-blue-50 text-blue-700"
           onClick={() => onTabChange('client')}
           badge={
-            totalUnread > 0 ? (
+            chatsBadge.type === 'number' ? (
               <span className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-blue-500 text-white text-[11px] font-medium flex items-center justify-center">
-                {totalUnread}
+                {formatBadgeCount(chatsBadge.value)}
               </span>
+            ) : chatsBadge.type === 'emoji' ? (
+              <span className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-blue-100 text-[11px] flex items-center justify-center">
+                {chatsBadge.value}
+              </span>
+            ) : chatsBadge.type === 'dot' ? (
+              <span className="ml-0.5 w-2.5 h-2.5 rounded-full bg-blue-500" />
             ) : undefined
           }
         />

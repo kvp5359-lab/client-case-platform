@@ -13,6 +13,8 @@ import type { ThreadTemplate } from '@/types/threadTemplate'
 interface CreateThreadPopoverProps {
   threadTemplates: ThreadTemplate[]
   onCreateChat: (defaultTab?: 'task' | 'chat' | 'email', template?: ThreadTemplate) => void
+  /** "empty" — показывает текстовую кнопку «Добавить чат» вместо иконки «+» */
+  variant?: 'icon' | 'empty'
 }
 
 const THREAD_TYPES = [
@@ -34,19 +36,29 @@ const ACCENT_BG: Record<string, string> = {
   indigo: 'bg-indigo-600',
 }
 
-export function CreateThreadPopover({ threadTemplates, onCreateChat }: CreateThreadPopoverProps) {
+export function CreateThreadPopover({ threadTemplates, onCreateChat, variant = 'icon' }: CreateThreadPopoverProps) {
   const [open, setOpen] = useState(false)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="text-sm px-1.5 py-1 rounded-full transition-all text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
-          title="Создать"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
+        {variant === 'empty' ? (
+          <button
+            type="button"
+            className="flex items-center gap-1.5 text-sm px-3 py-1 rounded-full bg-muted text-muted-foreground hover:text-foreground transition-all"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Добавить чат
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="text-sm px-1.5 py-1 rounded-full transition-all text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
+            title="Создать"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-48 p-1" align="end" sideOffset={6}>
         {/* Типы тредов */}

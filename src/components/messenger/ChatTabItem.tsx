@@ -15,15 +15,14 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import { getChatIconComponent, getChatTabAccent } from '@/components/messenger/ChatSettingsDialog'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
+import type { BadgeDisplay } from '@/utils/inboxUnread'
+import { formatBadgeCount } from '@/utils/inboxUnread'
 
 interface ChatTabItemProps {
   chat: ProjectThread
   isActive: boolean
   threadId: string | undefined
-  unread: number
-  hasReaction: boolean
-  reactionEmoji: string | null
-  isManuallyUnread: boolean
+  badge: BadgeDisplay
   accessTooltip: string | undefined
   onSelect: (chat: ProjectThread) => void
   onEdit: (chat: ProjectThread) => void
@@ -35,10 +34,7 @@ interface ChatTabItemProps {
 export function ChatTabItem({
   chat,
   isActive,
-  unread,
-  hasReaction,
-  reactionEmoji,
-  isManuallyUnread,
+  badge,
   accessTooltip,
   onSelect,
   onEdit,
@@ -46,7 +42,6 @@ export function ChatTabItem({
   onPin,
   projectId,
 }: ChatTabItemProps) {
-  const isClient = chat.legacy_channel === 'client'
   const chatIconComponent = getChatIconComponent(chat.icon)
   const tabAccent = getChatTabAccent(chat.accent_color)
 
@@ -79,32 +74,28 @@ export function ChatTabItem({
                 {chat.name}
               </span>
 
-              {/* Бейдж непрочитанных */}
-              {unread > 0 && (
+              {/* Бейдж непрочитанных — единая логика из getBadgeDisplay */}
+              {badge.type === 'number' && (
                 <span
                   className={cn(
                     'ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-white text-[11px] font-medium flex items-center justify-center',
                     tabAccent.badge,
                   )}
                 >
-                  {unread}
+                  {formatBadgeCount(badge.value)}
                 </span>
               )}
-
-              {/* Emoji-реакция (только для client, когда нет числового unread) */}
-              {isClient && unread === 0 && hasReaction && reactionEmoji && (
+              {badge.type === 'emoji' && (
                 <span
                   className={cn(
                     'ml-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full',
                     tabAccent.badge,
                   )}
                 >
-                  <span className="text-[11px] leading-none">{reactionEmoji}</span>
+                  <span className="text-[11px] leading-none">{badge.value}</span>
                 </span>
               )}
-
-              {/* Точка «вручную непрочитано» */}
-              {unread === 0 && isManuallyUnread && !(isClient && hasReaction) && (
+              {badge.type === 'dot' && (
                 <span
                   className={cn(
                     'ml-0.5 min-w-[18px] h-[18px] rounded-full shrink-0',

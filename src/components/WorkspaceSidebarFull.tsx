@@ -8,7 +8,7 @@
 import { useEffect, useState, startTransition } from 'react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Home, Inbox, CheckSquare, Users, Layout, Settings, BookOpen } from 'lucide-react'
+import { Home, Inbox, CheckSquare, Users, Layout, Settings, BookOpen, Kanban } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { SidebarNavButton } from './WorkspaceSidebar/SidebarNavButton'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
@@ -113,11 +113,9 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   // useProjectFilteredUnreadCounts — раньше useFilteredInbox (с useMemo-фильтрацией) вычислялся
   // дважды на каждый рендер сайдбара.
   const { totalUnread, projectData: projectUnreadData } = useSidebarInboxCounts(workspaceId ?? '')
-  const projectUnreadCounts = projectUnreadData.unreadCounts
+  const badgeDisplays = projectUnreadData.badgeDisplays
   const clientUnreadCounts = projectUnreadData.clientUnreadCounts
   const internalUnreadCounts = projectUnreadData.internalUnreadCounts
-  const reactionEmojis = projectUnreadData.reactionEmojis
-  const reactionOnlyProjects = projectUnreadData.reactionOnlyProjects
   const projectThreadIds = projectUnreadData.threadIds
   const badgeColors = projectUnreadData.badgeColors
 
@@ -199,8 +197,8 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
         />
       )}
 
-      <div className="px-2 py-2">
-        <nav className="flex items-center justify-between">
+      <div className="px-2 pb-2">
+        <nav className="flex items-center justify-between gap-[1px]">
           <SidebarNavButton
             icon={Home}
             label="Главная"
@@ -252,7 +250,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
         </nav>
 
         {!isClientOnly && (
-          <nav className="mt-1.5 space-y-0.5">
+          <nav className="mt-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
             <SidebarNavButton
               icon={Inbox}
               label="Входящие"
@@ -267,6 +265,12 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
               badge={tasksBadge}
               isActive={isNavActive('tasks')}
             />
+            <SidebarNavButton
+              icon={Kanban}
+              label="Доски"
+              href={buildHref('boards')}
+              isActive={isNavActive('boards')}
+            />
           </nav>
         )}
       </div>
@@ -275,11 +279,9 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
         <ProjectsList
           projects={projects}
           loading={loadingProjects}
-          unreadCounts={projectUnreadCounts}
+          badgeDisplays={badgeDisplays}
           clientUnreadCounts={clientUnreadCounts}
           internalUnreadCounts={internalUnreadCounts}
-          reactionEmojis={reactionEmojis}
-          reactionOnlyProjects={reactionOnlyProjects}
           badgeColors={badgeColors}
           activeProjectId={activeProjectId}
           onProjectClick={(projectId) => {

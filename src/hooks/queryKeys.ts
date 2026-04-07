@@ -224,6 +224,14 @@ export const participantKeys = {
     ['participant', 'workspace', workspaceId, userId] as const,
 }
 
+export const boardKeys = {
+  all: ['boards'] as const,
+  byWorkspace: (workspaceId: string) => ['boards', 'workspace', workspaceId] as const,
+  detail: (boardId: string) => ['boards', boardId] as const,
+  lists: (boardId: string) => ['boards', boardId, 'lists'] as const,
+  members: (boardId: string) => ['boards', boardId, 'members'] as const,
+}
+
 export const statusKeys = {
   document: (workspaceId: string) => ['statuses', 'document', workspaceId] as const,
   documentKit: (workspaceId: string) => ['statuses', 'document_kit', workspaceId] as const,

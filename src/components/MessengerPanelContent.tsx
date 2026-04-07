@@ -15,6 +15,7 @@ import { CreateThreadPopover } from '@/components/messenger/CreateThreadPopover'
 import { DeleteThreadDialog } from '@/components/messenger/DeleteThreadDialog'
 import { useMessengerPanelData } from '@/hooks/messenger/useMessengerPanelData'
 import { useSidePanelStore } from '@/store/sidePanelStore'
+import { getBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
@@ -97,8 +98,17 @@ export function MessengerPanelContent({
 
   if (!chatsLoading && visibleChats.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-center px-6">
-        <p className="text-sm text-muted-foreground">Нет доступных чатов в этом проекте</p>
+      <div className="flex flex-col h-full min-w-0">
+        <div className="flex items-center px-3 py-1.5 border-b shrink-0">
+          <CreateThreadPopover
+            threadTemplates={threadTemplates}
+            onCreateChat={onCreateChat}
+            variant="empty"
+          />
+        </div>
+        <div className="flex items-center justify-center flex-1 text-center px-6">
+          <p className="text-sm text-muted-foreground">Нет доступных чатов в этом проекте</p>
+        </div>
       </div>
     )
   }
@@ -113,20 +123,30 @@ export function MessengerPanelContent({
               const isClient = chat.legacy_channel === 'client'
               const isInternal = chat.legacy_channel === 'internal'
               const threadUnread = unreadByThreadId[chat.id]
-              const hasReaction = isClient
-                ? hasClientReaction
-                : (threadUnread?.hasReaction ?? false)
-              const unread =
-                (isClient
-                  ? clientUnread
-                  : isInternal
-                    ? internalUnread
-                    : (threadUnread?.count ?? 0)) + (hasReaction ? 1 : 0)
-              const isManuallyUnread = isClient
-                ? isClientManuallyUnread
-                : isInternal
-                  ? isInternalManuallyUnread
-                  : (threadUnread?.manuallyUnread ?? false)
+
+              // Единая логика бейджа через центральную функцию
+              let badge: BadgeDisplay
+              if (isClient) {
+                badge = getBadgeDisplay({
+                  unread_count: clientUnread,
+                  has_unread_reaction: hasClientReaction,
+                  manually_unread: isClientManuallyUnread,
+                  last_reaction_emoji: reactionEmoji,
+                })
+              } else if (isInternal) {
+                badge = getBadgeDisplay({
+                  unread_count: internalUnread,
+                  has_unread_reaction: false,
+                  manually_unread: isInternalManuallyUnread,
+                })
+              } else {
+                badge = getBadgeDisplay({
+                  unread_count: threadUnread?.unreadCount ?? 0,
+                  has_unread_reaction: threadUnread?.hasReaction ?? false,
+                  manually_unread: threadUnread?.manuallyUnread ?? false,
+                  last_reaction_emoji: threadUnread?.reactionEmoji ?? null,
+                })
+              }
 
               return (
                 <ChatTabItem
@@ -134,10 +154,7 @@ export function MessengerPanelContent({
                   chat={chat}
                   isActive={threadId === chat.id}
                   threadId={threadId}
-                  unread={unread}
-                  hasReaction={hasReaction}
-                  reactionEmoji={reactionEmoji}
-                  isManuallyUnread={isManuallyUnread}
+                  badge={badge}
                   accessTooltip={chatAccessTooltips[chat.id]}
                   onSelect={onSelectChat}
                   onEdit={onEditChat}

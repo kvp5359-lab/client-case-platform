@@ -211,18 +211,16 @@ export function ChatSettingsDialog({
             onSelect={actions.handleProjectSelect}
           />
 
-          {/* Task-specific: Исполнители */}
-          {form.isTask && (
-            <ChatSettingsAssignees
-              participants={actions.effectiveParticipants}
-              userId={user?.id}
-              isEditMode={form.isEditMode}
-              editAssigneeSet={actions.editAssigneeSet}
-              taskAssignees={form.taskAssignees}
-              onToggleEditAssignee={actions.toggleAssignee.mutate}
-              onSetTaskAssignees={form.setTaskAssignees}
-            />
-          )}
+          {/* Исполнители (для задач, чатов, email) */}
+          <ChatSettingsAssignees
+            participants={actions.effectiveParticipants}
+            userId={user?.id}
+            isEditMode={form.isEditMode}
+            editAssigneeSet={actions.editAssigneeSet}
+            taskAssignees={form.taskAssignees}
+            onToggleEditAssignee={actions.toggleAssignee.mutate}
+            onSetTaskAssignees={form.setTaskAssignees}
+          />
 
           {/* Доступ */}
           <ChatSettingsAccess

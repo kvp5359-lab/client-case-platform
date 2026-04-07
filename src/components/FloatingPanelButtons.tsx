@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { useMemo } from 'react'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
+import { getAggregateBadgeDisplay, formatBadgeCount } from '@/utils/inboxUnread'
 import { useWorkspacePermissions, useProjectPermissions } from '@/hooks/permissions'
 import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
 import { cn } from '@/lib/utils'
@@ -36,18 +37,11 @@ export function FloatingPanelButtons() {
   const hasProject = !!pageContext.projectId
   const showMessenger = hasProject && messengerEnabled
   const { data: inboxThreads = [] } = useFilteredInbox(pageContext.workspaceId ?? '')
-  const unreadCount = useMemo(() => {
-    if (!pageContext.projectId) return 0
-    return inboxThreads
-      .filter((t) => t.project_id === pageContext.projectId)
-      .reduce(
-        (sum, t) =>
-          sum +
-          t.unread_count +
-          (t.has_unread_reaction ? 1 : 0) +
-          (t.manually_unread && t.unread_count === 0 ? 1 : 0),
-        0,
-      )
+  const projectBadge = useMemo(() => {
+    if (!pageContext.projectId) return { type: 'none' as const }
+    return getAggregateBadgeDisplay(
+      inboxThreads.filter((t) => t.project_id === pageContext.projectId),
+    )
   }, [inboxThreads, pageContext.projectId])
 
   const { hasModuleAccess } = useProjectPermissions({ projectId: pageContext.projectId ?? '' })
@@ -130,10 +124,18 @@ export function FloatingPanelButtons() {
                 )}
               >
                 <MessageSquare className="h-3.5 w-3.5" />
-                {!!unreadCount && unreadCount > 0 && (
+                {projectBadge.type === 'number' && (
                   <span className="absolute -left-1 -top-1 h-4 min-w-4 px-1 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">
-                    {unreadCount > 99 ? '99+' : unreadCount}
+                    {formatBadgeCount(projectBadge.value)}
                   </span>
+                )}
+                {projectBadge.type === 'emoji' && (
+                  <span className="absolute -left-1 -top-1 h-4 min-w-4 px-1 rounded-full bg-blue-100 text-[10px] flex items-center justify-center">
+                    {projectBadge.value}
+                  </span>
+                )}
+                {projectBadge.type === 'dot' && (
+                  <span className="absolute -left-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-blue-500" />
                 )}
               </button>
             </TooltipTrigger>

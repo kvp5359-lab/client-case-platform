@@ -191,19 +191,12 @@ export function useTaskFilters({
     }
 
     const groups = groupTasks(active)
-    // Внутри каждой группы: сначала задачи где я исполнитель, потом остальные
-    if (currentParticipantId) {
-      for (const items of groups.values()) {
-        items.sort((a, b) => {
-          const aIsAssignee = (membersMap[a.id] ?? []).some((m) => m.id === currentParticipantId)
-          const bIsAssignee = (membersMap[b.id] ?? []).some((m) => m.id === currentParticipantId)
-          if (aIsAssignee === bIsAssignee) return 0
-          return aIsAssignee ? -1 : 1
-        })
-      }
+    // Внутри каждой группы: сортировка по sort_order (пользовательский порядок)
+    for (const items of groups.values()) {
+      items.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     }
     return { grouped: groups, completedTasks: completed }
-  }, [filteredTasks, currentParticipantId, membersMap, closedStatusIds])
+  }, [filteredTasks, closedStatusIds])
 
   return {
     // State
