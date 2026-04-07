@@ -67,7 +67,9 @@ export const SidebarNavButton = memo(function SidebarNavButton({
         isActive ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100/50',
       )}
     >
-      <Icon className="h-[18px] w-[18px] shrink-0" />
+      <span className="shrink-0 w-[22px] h-[22px] flex items-center justify-center">
+        <Icon className="h-[18px] w-[18px]" />
+      </span>
       <span className="flex-1 truncate">{label}</span>
       {badge && (
         <span className="min-w-[16px] h-4 px-[3px] rounded-[4px] bg-red-500 text-white text-[10px] font-semibold leading-none flex items-center justify-center">

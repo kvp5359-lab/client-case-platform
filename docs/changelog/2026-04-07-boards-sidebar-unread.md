@@ -37,6 +37,7 @@
 - Gap иконка-текст: 8px (было 12px)
 - Заголовок секции «Проекты»: 12px font-medium (без uppercase)
 - Бейджи в навигации: Notion-стиль (rounded-4px)
+- Выравнивание: иконки nav, inbox/tasks/boards и проектов на одном уровне (контейнер 22x22, px-0 на обёртке проектов)
 
 ### 6. Мессенджер — рефакторинг inbox
 - `InboxChatItem.tsx`, `ChatTabItem.tsx` — рефакторинг бейджей на `getBadgeDisplay`

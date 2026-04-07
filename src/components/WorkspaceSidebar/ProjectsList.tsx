@@ -152,7 +152,7 @@ export const ProjectsList = memo(function ProjectsList({
   return (
     <div className="group/projects flex flex-col h-full min-h-0">
       {/* Заголовок «Проекты» с поиском и кнопкой добавления */}
-      <div className="flex items-center justify-between px-2 h-[30px] shrink-0">
+      <div className="flex items-center justify-between px-2 h-[30px] shrink-0 mt-1">
         {isSearchOpen ? (
           <div className="flex items-center gap-1 flex-1 min-w-0">
             <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
