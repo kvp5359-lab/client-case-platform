@@ -91,9 +91,9 @@ export function MessageInput({
   } = useMessageFiles(draftKey, addFilesRef, onDocumentDrop)
 
   const { saveDraft, clearDraft, skipDraftRestoreRef } = useDraftMessage(
-    projectId,
-    channel,
+    draftKey,
     editorRef,
+    !!editor,
     editingMessage,
     setHasText,
   )
