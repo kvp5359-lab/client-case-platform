@@ -16,6 +16,7 @@ export interface EmailAccount {
   workspace_id: string
   email: string
   is_active: boolean
+  token_expires_at: string | null
   watch_expires_at: string | null
   created_at: string
 }
@@ -28,7 +29,7 @@ export function useEmailAccounts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('email_accounts')
-        .select('id, user_id, workspace_id, email, is_active, watch_expires_at, created_at')
+        .select('id, user_id, workspace_id, email, is_active, token_expires_at, watch_expires_at, created_at')
         .eq('user_id', user!.id)
         .eq('is_active', true)
 

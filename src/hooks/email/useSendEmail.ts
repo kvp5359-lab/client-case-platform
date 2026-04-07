@@ -25,6 +25,32 @@ interface SendEmailParams {
   files?: File[]
 }
 
+/** Map server error strings to user-friendly Russian messages */
+function translateEmailError(raw: string): string {
+  const lower = raw.toLowerCase()
+
+  if (lower.includes('gmail not connected') || lower.includes('gmail token expired') || lower.includes('invalid_grant') || lower.includes('needs to reconnect')) {
+    return 'Gmail-подключение истекло. Переподключите Gmail в настройках профиля.'
+  }
+  if (lower.includes('no email link') || lower.includes('has no email link')) {
+    return 'У этого чата нет привязки к email. Привяжите email-адрес получателя.'
+  }
+  if (lower.includes('failed to send email')) {
+    return 'Gmail не смог отправить письмо. Попробуйте ещё раз или переподключите Gmail.'
+  }
+  if (lower.includes('thread not found')) {
+    return 'Чат не найден. Попробуйте обновить страницу.'
+  }
+  if (lower.includes('access denied')) {
+    return 'Нет доступа для отправки email в этом проекте.'
+  }
+  if (lower.includes('non-2xx status code')) {
+    return 'Ошибка сервера при отправке email. Попробуйте ещё раз.'
+  }
+
+  return raw || 'Не удалось отправить email. Попробуйте ещё раз.'
+}
+
 export function useSendEmail(projectId: string, workspaceId: string, threadId?: string) {
   const queryClient = useQueryClient()
   const messagesKey = threadId
@@ -77,7 +103,16 @@ export function useSendEmail(projectId: string, workspaceId: string, threadId?: 
         },
       })
 
-      if (error) throw error
+      if (error) {
+        // supabase.functions.invoke returns generic message for non-2xx.
+        // The real error text is in the response body (data) or error context.
+        const serverMessage =
+          data?.error ||
+          (error.context instanceof Response
+            ? await error.context.json().then((j: { error?: string }) => j.error).catch(() => null)
+            : null)
+        throw new Error(serverMessage || error.message)
+      }
       if (data?.error) throw new Error(data.error)
 
       // Type assertion safe: response format is controlled by gmail-send Edge Function
@@ -124,12 +159,9 @@ export function useSendEmail(projectId: string, workspaceId: string, threadId?: 
       return result
     },
     onError: (_err) => {
-      const msg = _err instanceof Error ? _err.message : 'Не удалось отправить email'
-      if (msg.includes('Gmail not connected')) {
-        toast.error('Gmail не подключён. Подключите в настройках профиля.')
-      } else {
-        toast.error(msg)
-      }
+      const raw = _err instanceof Error ? _err.message : ''
+      const msg = translateEmailError(raw)
+      toast.error(msg, { duration: 6000 })
     },
     onSuccess: () => {
       // Refetch messages to pick up the real message from DB
