@@ -4,7 +4,7 @@
  * WorkspaceLayout — layout с sidebar и правой панелью
  */
 
-import { useState, useEffect, useCallback, useMemo, lazy, Suspense, createContext, useContext } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense, createContext, useContext } from 'react'
 import { useParams } from 'next/navigation'
 import { Menu, X, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
