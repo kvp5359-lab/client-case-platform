@@ -68,6 +68,7 @@ export function ProjectTemplateEditorPage() {
     addKnowledgeGroupsMutation,
     removeKnowledgeGroupMutation,
     addTaskMutation,
+    updateTaskMutation,
     removeTaskMutation,
   } = useProjectTemplateMutations({
     templateId,
@@ -227,6 +228,7 @@ export function ProjectTemplateEditorPage() {
           onAddDocKits={dialogs.docKits.open}
           onAddKnowledge={dialogs.knowledge.open}
           onAddTask={(name, sortOrder) => addTaskMutation.mutate({ name, sortOrder })}
+          onUpdateTask={(taskId, name) => updateTaskMutation.mutate({ taskId, name })}
           onRemoveTask={(id) => removeTaskMutation.mutate(id)}
           onRemoveForm={(id) =>
             handleRemoveWithConfirm(

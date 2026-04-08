@@ -268,6 +268,23 @@ export function useProjectTemplateMutations({
     },
   })
 
+  // Обновление задачи
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({ taskId, name }: { taskId: string; name: string }) => {
+      const { error } = await supabase
+        .from('project_template_tasks')
+        .update({ name })
+        .eq('id', taskId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-template-tasks', templateId] })
+    },
+    onError: () => {
+      toast.error('Не удалось обновить задачу')
+    },
+  })
+
   // Удаление задачи
   const removeTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
@@ -294,6 +311,7 @@ export function useProjectTemplateMutations({
     addKnowledgeGroupsMutation,
     removeKnowledgeGroupMutation,
     addTaskMutation,
+    updateTaskMutation,
     removeTaskMutation,
   }
 }

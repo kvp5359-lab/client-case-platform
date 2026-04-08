@@ -40,6 +40,7 @@ interface ModulesSectionProps {
   onRemoveKnowledgeArticle: (relationId: string) => void
   onRemoveKnowledgeGroup: (relationId: string) => void
   onAddTask: (name: string, sortOrder: number) => void
+  onUpdateTask: (taskId: string, name: string) => void
   onRemoveTask: (taskId: string) => void
   isRemovingForm: boolean
   isRemovingDocKit: boolean
@@ -63,6 +64,7 @@ export function ModulesSection({
   onRemoveKnowledgeArticle,
   onRemoveKnowledgeGroup,
   onAddTask,
+  onUpdateTask,
   onRemoveTask,
   isRemovingForm,
   isRemovingDocKit,
@@ -71,7 +73,10 @@ export function ModulesSection({
 }: ModulesSectionProps) {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
   const [newTaskName, setNewTaskName] = useState('')
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [editingTaskName, setEditingTaskName] = useState('')
   const taskInputRef = useRef<HTMLInputElement>(null)
+  const editInputRef = useRef<HTMLInputElement>(null)
 
   const toggleExpanded = useCallback((moduleId: string) => {
     setExpandedModules((prev) => {
@@ -88,6 +93,26 @@ export function ModulesSection({
     onAddTask(name, linkedTasks.length)
     setNewTaskName('')
     taskInputRef.current?.focus()
+  }
+
+  const handleStartEditTask = (task: TemplateTask) => {
+    setEditingTaskId(task.id)
+    setEditingTaskName(task.name)
+    setTimeout(() => editInputRef.current?.focus(), 0)
+  }
+
+  const handleSaveEditTask = () => {
+    const name = editingTaskName.trim()
+    if (name && editingTaskId) {
+      onUpdateTask(editingTaskId, name)
+    }
+    setEditingTaskId(null)
+    setEditingTaskName('')
+  }
+
+  const handleCancelEditTask = () => {
+    setEditingTaskId(null)
+    setEditingTaskName('')
   }
 
   return (
@@ -205,14 +230,39 @@ export function ModulesSection({
                             key={task.id}
                             className="flex items-center justify-between px-2 rounded group hover:bg-background/60 transition-colors"
                           >
-                            <div className="flex items-center gap-2 min-w-0 py-1">
-                              <CheckSquare className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                              <span className="text-sm truncate">{task.name}</span>
-                            </div>
+                            {editingTaskId === task.id ? (
+                              <div className="flex items-center gap-2 min-w-0 py-0.5 flex-1">
+                                <CheckSquare className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                <Input
+                                  ref={editInputRef}
+                                  value={editingTaskName}
+                                  onChange={(e) => setEditingTaskName(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault()
+                                      handleSaveEditTask()
+                                    }
+                                    if (e.key === 'Escape') {
+                                      handleCancelEditTask()
+                                    }
+                                  }}
+                                  onBlur={handleSaveEditTask}
+                                  className="h-6 text-sm flex-1"
+                                />
+                              </div>
+                            ) : (
+                              <div
+                                className="flex items-center gap-2 min-w-0 py-1 flex-1 cursor-pointer"
+                                onClick={() => handleStartEditTask(task)}
+                              >
+                                <CheckSquare className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                <span className="text-sm truncate">{task.name}</span>
+                              </div>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                               onClick={() => onRemoveTask(task.id)}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
