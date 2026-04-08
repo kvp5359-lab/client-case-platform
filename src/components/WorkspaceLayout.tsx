@@ -4,7 +4,7 @@
  * WorkspaceLayout — layout с sidebar и правой панелью
  */
 
-import { useState, useEffect, useCallback, lazy, Suspense, createContext, useContext } from 'react'
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense, createContext, useContext } from 'react'
 import { useParams } from 'next/navigation'
 import { Menu, X, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -25,6 +25,9 @@ import { getCurrentWorkspaceParticipant } from '@/services/api/messenger/messeng
 import { useNewMessageToast } from '@/hooks/messenger/useNewMessageToast'
 import { useFaviconBadge } from '@/hooks/messenger/useFaviconBadge'
 import { useWorkspaceMessagesRealtime } from '@/hooks/messenger/useWorkspaceMessagesRealtime'
+import { TaskPanel } from '@/components/tasks/TaskPanel'
+import { useTaskPanelSetup } from '@/components/tasks/useTaskPanelSetup'
+import { newThreadToTaskItem } from '@/components/tasks/taskListConstants'
 
 const ExtraPanelContent = lazy(() =>
   import('@/components/extra-panel/ExtraPanelContent').then((m) => ({
@@ -154,6 +157,9 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   const [initialTemplate, setInitialTemplate] = useState<ThreadTemplate | null>(null)
   const settingsOpen = settingsChat !== null
 
+  // TaskPanel
+  const tp = useTaskPanelSetup({ workspaceId })
+
   const handleSelectChat = useCallback(
     (chat: ProjectThread) => {
       const channel = chat.legacy_channel ?? 'client'
@@ -192,7 +198,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
       )}
 
       {/* Main content + right panel */}
-      <div className="flex-1 flex min-w-0 relative overflow-hidden">
+      <div id="workspace-panel-root" className="flex-1 flex min-w-0 relative overflow-hidden">
         {/* Main content */}
         <main
           className="flex-1 overflow-auto"
@@ -204,7 +210,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
         {/* Правая панель */}
         <div
           className={cn(
-            'absolute top-0 right-0 h-full w-[45%] min-w-[360px] border-l border-gray-200 bg-white flex flex-col overflow-hidden shadow-[-2px_0_8px_rgba(0,0,0,0.08)] z-20',
+            'side-panel flex flex-col z-20',
             !panelOpen && 'hidden',
           )}
         >
@@ -271,6 +277,9 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
       {/* Плавающие кнопки */}
       <FloatingPanelButtons />
 
+      {/* TaskPanel — боковая панель треда после создания */}
+      <TaskPanel {...tp.taskPanelProps} showProjectLink />
+
       {/* Диалог создания/редактирования чата. Монтируется только когда открыт —
           тогда и грузится chunk с Tiptap и остальной обвязкой. */}
       {pageContext.projectId && settingsOpen && (
@@ -286,9 +295,9 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
               setSettingsChat(null)
               setInitialTemplate(null)
             }}
-            onCreated={(newChat) => {
+            onCreated={(newChat, result) => {
               setSettingsChat(null)
-              openChatFromStore(newChat.id)
+              tp.setOpenThread(newThreadToTaskItem(newChat, result))
             }}
           />
         </Suspense>
@@ -314,7 +323,7 @@ function ChatSettingsSection({
   defaultTab?: 'task' | 'chat' | 'email'
   initialTemplate?: ThreadTemplate | null
   onClose: () => void
-  onCreated: (chat: ProjectThread) => void
+  onCreated: (chat: ProjectThread, result?: ChatSettingsResult) => void
 }) {
   const { user } = useAuth()
   const createChatMutation = useCreateThread(projectId, workspaceId)
@@ -365,7 +374,7 @@ function ChatSettingsSection({
                 senderName,
               })
             }
-            onCreated(newChat)
+            onCreated(newChat, result)
           },
         },
       )

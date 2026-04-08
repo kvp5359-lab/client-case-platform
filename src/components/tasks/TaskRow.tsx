@@ -4,7 +4,7 @@
  * TaskRow — единая строка задачи. Используется в TasksTabContent и TasksPage.
  */
 
-import { useMemo, forwardRef } from 'react'
+import { useMemo, createElement, forwardRef } from 'react'
 import { CheckSquare, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
@@ -12,6 +12,8 @@ import { type AvatarParticipant } from '@/components/participants/ParticipantAva
 import type { DraggableAttributes } from '@dnd-kit/core'
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities'
 import { safeCssColor } from '@/utils/isValidCssColor'
+import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
+import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'
 import { UnreadBadge } from './UnreadBadge'
@@ -111,12 +113,19 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
       >
         <span className="text-sm font-medium truncate" style={nameStyle}>
           {task.name}
-          {showProject && task.project_name && (
-            <span className="font-normal text-muted-foreground/60 ml-1.5">
-              · {task.project_name}
-            </span>
-          )}
         </span>
+        {task.type && task.type !== 'task' && (
+          <span className="shrink-0">
+            {createElement(getChatIconComponent(task.icon), {
+              className: cn('w-3.5 h-3.5', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
+            })}
+          </span>
+        )}
+        {showProject && task.project_name && (
+          <span className="text-sm text-muted-foreground/60 truncate shrink-0">
+            · {task.project_name}
+          </span>
+        )}
         {/* Исполнители — сразу после названия */}
         <span className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <AssigneesPopover

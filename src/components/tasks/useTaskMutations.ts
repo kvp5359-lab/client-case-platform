@@ -56,7 +56,7 @@ export function useRenameTask(invalidateKeys: ReadonlyArray<readonly unknown[]>)
     onSuccess: () => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
     },
-    onError: () => toast.error('Не удалось переименовать задачу'),
+    onError: () => toast.error('Не удалось переименовать'),
   })
 }
 

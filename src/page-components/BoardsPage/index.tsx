@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Plus, Kanban, MoreVertical, Trash2, Pencil, ListPlus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
@@ -23,8 +23,9 @@ import { useDeleteBoard } from '@/components/boards/hooks/useBoardMutations'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTaskStatuses } from '@/hooks/useStatuses'
-import { useUpdateTaskStatus, useUpdateTaskDeadline, useRenameTask, useUpdateTaskSettings } from '@/components/tasks/useTaskMutations'
+import { useUpdateTaskStatus } from '@/components/tasks/useTaskMutations'
 import { TaskPanel } from '@/components/tasks/TaskPanel'
+import { useTaskPanelSetup } from '@/components/tasks/useTaskPanelSetup'
 import { BoardView } from '@/components/boards/BoardView'
 import { CreateBoardDialog } from '@/components/boards/CreateBoardDialog'
 import { CreateListDialog } from '@/components/boards/CreateListDialog'
@@ -84,25 +85,26 @@ function BoardTabContent({
     [participants],
   )
 
-  // Мутации задач
-  const invalidateKeys = useMemo(
+  // Мутации задач (статус — отдельно для BoardView inline-change)
+  const boardInvalidateKeys = useMemo(
     () => [taskKeys.workspace(workspaceId), ['workspace-threads', workspaceId] as const],
     [workspaceId],
   )
-  const updateStatus = useUpdateTaskStatus(invalidateKeys)
-  const updateDeadline = useUpdateTaskDeadline(invalidateKeys)
-  const renameTask = useRenameTask(invalidateKeys)
-  const updateSettings = useUpdateTaskSettings(invalidateKeys)
+  const updateStatus = useUpdateTaskStatus(boardInvalidateKeys)
 
-  // Диалог задачи
-  const [openTaskId, setOpenTaskId] = useState<string | null>(null)
-  const openTask = useMemo<TaskItem | null>(() => {
-    if (!openTaskId) return null
-    const t = (tasks ?? []).find((x) => x.id === openTaskId)
-    if (!t) return null
-    return {
+  // TaskPanel
+  const tp = useTaskPanelSetup({
+    workspaceId,
+    extraInvalidateKeys: [['workspace-threads', workspaceId] as const],
+  })
+
+  const handleOpenTask = useCallback((taskId: string) => {
+    const t = (tasks ?? []).find((x) => x.id === taskId)
+    if (!t) return
+    tp.setOpenThread({
       id: t.id,
       name: t.name,
+      type: (t.type as 'chat' | 'task') ?? 'task',
       project_id: t.project_id,
       workspace_id: t.workspace_id,
       status_id: t.status_id,
@@ -114,8 +116,8 @@ function BoardTabContent({
       created_by: t.created_by,
       sort_order: t.sort_order,
       project_name: t.project_name,
-    }
-  }, [openTaskId, tasks])
+    })
+  }, [tasks, tp])
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -130,38 +132,16 @@ function BoardTabContent({
           currentUserId={user?.id ?? null}
           userToParticipantMap={userToParticipantMap}
           statuses={statuses}
-          onOpenTask={setOpenTaskId}
+          onOpenTask={handleOpenTask}
           onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}
         />
       </div>
 
       {/* Панель задачи (правая боковая) */}
       <TaskPanel
-        task={openTask}
-        open={!!openTaskId}
-        onClose={() => setOpenTaskId(null)}
-        workspaceId={workspaceId}
-        statuses={statuses}
-        members={assigneesMap?.[openTaskId ?? ''] ?? []}
-        onStatusChange={(statusId) => {
-          if (openTaskId) updateStatus.mutate({ threadId: openTaskId, statusId })
-        }}
-        onDeadlineSet={(date) => {
-          if (openTaskId) updateDeadline.mutate({ threadId: openTaskId, deadline: date.toISOString() })
-        }}
-        onDeadlineClear={() => {
-          if (openTaskId) updateDeadline.mutate({ threadId: openTaskId, deadline: null })
-        }}
-        onRename={(name) => {
-          if (openTaskId) renameTask.mutate({ threadId: openTaskId, name })
-        }}
-        onSettingsSave={(params) => {
-          if (openTaskId) updateSettings.mutate({ threadId: openTaskId, ...params })
-        }}
-        deadlinePending={updateDeadline.isPending}
-        settingsPending={updateSettings.isPending}
+        {...tp.taskPanelProps}
         showProjectLink
-        onProjectClick={() => setOpenTaskId(null)}
+        onProjectClick={() => tp.setOpenThread(null)}
       />
 
       <CreateListDialog

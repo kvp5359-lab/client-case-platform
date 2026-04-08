@@ -193,6 +193,13 @@ export function MinimalTiptapEditor({
     },
   })
 
+  // Синхронизация editable с disabled
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) {
+      editor.setEditable(!disabled)
+    }
+  }, [editor, disabled])
+
   // Привязка editorRef + уведомление родителя
   useEffect(() => {
     editorRef.current = editor

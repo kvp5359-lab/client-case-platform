@@ -6,7 +6,7 @@
 export interface TaskItem {
   id: string
   name: string
-  type?: 'chat' | 'task'
+  type: 'chat' | 'task'
   project_id: string | null
   workspace_id: string
   status_id: string | null
@@ -23,4 +23,8 @@ export interface TaskItem {
   project_name?: string | null
   /** Порядок сортировки внутри группы */
   sort_order: number
+  /** Email-связи (если это email-тред) */
+  contact_emails?: string[]
+  /** Тема письма */
+  email_subject?: string | null
 }

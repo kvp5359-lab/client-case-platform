@@ -65,3 +65,17 @@ export const THREAD_ICONS: { value: string; icon: typeof MessageSquare; label: s
 export const COLOR_BG: Record<string, string> = Object.fromEntries(
   ACCENT_COLORS.map((c) => [c.value, c.bg]),
 )
+
+/** Маппинг accent_color → Tailwind text class */
+export const COLOR_TEXT: Record<string, string> = {
+  blue: 'text-blue-500',
+  slate: 'text-stone-600',
+  emerald: 'text-emerald-600',
+  amber: 'text-amber-500',
+  rose: 'text-red-500',
+  violet: 'text-violet-600',
+  orange: 'text-orange-500',
+  cyan: 'text-cyan-600',
+  pink: 'text-pink-500',
+  indigo: 'text-indigo-600',
+}

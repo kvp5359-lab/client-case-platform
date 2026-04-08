@@ -21,15 +21,19 @@ import {
   markAsUnread,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
-import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
+import { messengerKeys, invalidateMessengerCaches, taskKeys } from '@/hooks/queryKeys'
 import { useThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
 import { useCreateThread } from '@/hooks/messenger/useProjectThreads'
+import { TaskPanel } from '@/components/tasks/TaskPanel'
+import { useTaskPanelSetup } from '@/components/tasks/useTaskPanelSetup'
+import { newThreadToTaskItem } from '@/components/tasks/taskListConstants'
 import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { MessengerAccent } from '@/components/messenger/utils/messageStyles'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import { InboxChatHeader, useProjectChatParticipants } from './InboxChatHeader'
+import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 
 const ChatSettingsDialog = lazy(() =>
   import('@/components/messenger/ChatSettingsDialog').then((m) => ({
@@ -57,6 +61,9 @@ export default function InboxPage() {
   const [createTemplate, setCreateTemplate] = useState<ThreadTemplate | null>(null)
 
   const { data: threadTemplates = [] } = useThreadTemplates(workspaceId)
+
+  // TaskPanel
+  const tp = useTaskPanelSetup({ workspaceId: workspaceId ?? '' })
 
   useEffect(() => {
     closePanel()
@@ -184,6 +191,7 @@ export default function InboxPage() {
             setCreateDialogOpen(false)
             setCreateTemplate(null)
             invalidateInbox()
+            tp.setOpenThread(newThreadToTaskItem(newChat as ProjectThread, result))
           },
         },
       )
@@ -419,6 +427,9 @@ export default function InboxPage() {
           />
         </Suspense>
       )}
+
+      {/* TaskPanel — боковая панель треда после создания */}
+      <TaskPanel {...tp.taskPanelProps} showProjectLink />
     </WorkspaceLayout>
   )
 }

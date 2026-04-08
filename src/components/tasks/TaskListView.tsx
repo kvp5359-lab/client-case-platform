@@ -19,7 +19,13 @@ import { useWorkspaceTasks } from '@/hooks/tasks/useWorkspaceTasks'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { messengerKeys, taskKeys } from '@/hooks/queryKeys'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
+import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { useAccessibleThreadIds } from '@/hooks/messenger/useAccessibleThreadIds'
+import { useAuth } from '@/contexts/AuthContext'
+import { useSidePanelStore } from '@/store/sidePanelStore'
+import { getCurrentWorkspaceParticipant } from '@/services/api/messenger/messengerService'
+import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
+import type { TaskItem } from './types'
 
 // Lazy-load: ChatSettingsDialog тянет Tiptap (~200 KB) через ComposeField.
 // Грузим только когда юзер нажал "Создать задачу".
@@ -42,7 +48,7 @@ import {
 
 import { AssigneeFilter, DeadlineFilter, StatusFilter, ProjectFilter } from './filters'
 
-import { workspaceTaskToItem, threadToItem } from './taskListConstants'
+import { workspaceTaskToItem, threadToItem, newThreadToTaskItem } from './taskListConstants'
 import { useTaskFilters } from './useTaskFilters'
 import { useCreateTaskHandler } from './useCreateTaskMutation'
 import { TaskGroupList } from './TaskGroupList'
@@ -74,6 +80,8 @@ export const TaskListView = memo(function TaskListView({
   const showProjectLink = showProjectLinkProp ?? !isProjectMode
 
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
+  // Свежесозданный тред — используется пока он не появится в кеше
+  const [createdThread, setCreatedThread] = useState<TaskItem | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [presetPopoverOpen, setPresetPopoverOpen] = useState(false)
@@ -93,7 +101,7 @@ export const TaskListView = memo(function TaskListView({
   const allTasks = useMemo(() => {
     if (isProjectMode) {
       return rawThreads
-        .filter((t) => t.type === 'task' && !t.is_deleted && accessibleThreadIds.has(t.id))
+        .filter((t) => !t.is_deleted && accessibleThreadIds.has(t.id))
         .map(threadToItem)
     }
     return rawWorkspaceTasks.map(workspaceTaskToItem)
@@ -116,11 +124,39 @@ export const TaskListView = memo(function TaskListView({
 
   // ── Создание задачи ──
 
+  const { user } = useAuth()
+  const setPendingInitialMessage = useSidePanelStore((s) => s.setPendingInitialMessage)
+
+  const handleCreateSuccess = useCallback(
+    async (newThread: ProjectThread, result: ChatSettingsResult) => {
+      // Обработка первого сообщения / email
+      if (result.initialMessage && user) {
+        let senderName = 'Вы'
+        try {
+          const p = await getCurrentWorkspaceParticipant(workspaceId, user.id)
+          if (p) senderName = p.name
+        } catch { /* fallback */ }
+
+        setPendingInitialMessage({
+          threadId: newThread.id,
+          html: result.initialMessage.html,
+          files: result.initialMessage.files,
+          isEmail: result.channelType === 'email',
+          senderName,
+        })
+      }
+
+      setCreateOpen(false)
+      setCreatedThread(newThreadToTaskItem(newThread, result))
+      setOpenTaskId(newThread.id)
+    },
+    [workspaceId, user, setPendingInitialMessage],
+  )
+
   const { handleCreate, isPending: createPending } = useCreateTaskHandler({
     workspaceId,
     projectId,
-    isProjectMode,
-    onSuccess: useCallback(() => setCreateOpen(false), []),
+    onSuccess: handleCreateSuccess,
   })
 
   // ── Мутации ──
@@ -151,7 +187,8 @@ export const TaskListView = memo(function TaskListView({
     return Array.from(map.values())
   }, [membersMap])
 
-  const openTask = allTasks.find((t) => t.id === openTaskId) ?? null
+  const openTask = allTasks.find((t) => t.id === openTaskId)
+    ?? (createdThread?.id === openTaskId ? createdThread : null)
 
   // ── Рендер ──
 
@@ -172,7 +209,7 @@ export const TaskListView = memo(function TaskListView({
           <Search className="h-4 w-4 text-gray-400 shrink-0" />
           <input
             type="text"
-            placeholder="Поиск задач..."
+            placeholder="Поиск..."
             value={filters.searchQuery}
             onChange={(e) => filters.setSearchQuery(e.target.value)}
             className="text-sm bg-transparent focus:outline-none w-full"
@@ -280,10 +317,10 @@ export const TaskListView = memo(function TaskListView({
       ) : allTasks.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <CheckSquare className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Задач пока нет</p>
+          <p className="text-sm text-muted-foreground">Пока ничего нет</p>
           <Button size="sm" variant="outline" className="mt-3" onClick={() => setCreateOpen(true)}>
             <Plus className="w-4 h-4 mr-1.5" />
-            Создать первую задачу
+            Создать
           </Button>
         </div>
       ) : filters.filteredTasks.length === 0 ? (
@@ -291,7 +328,7 @@ export const TaskListView = memo(function TaskListView({
           {filters.effectiveAssigneeFilter.size > 0 ||
           filters.deadlineFilter.size > 0 ||
           filters.projectFilterIds.size > 0
-            ? 'Нет задач по выбранным фильтрам'
+            ? 'Ничего не найдено по выбранным фильтрам'
             : 'Ничего не найдено'}
         </div>
       ) : (
@@ -317,7 +354,7 @@ export const TaskListView = memo(function TaskListView({
       <TaskPanel
         task={openTask}
         open={!!openTaskId}
-        onClose={() => setOpenTaskId(null)}
+        onClose={() => { setOpenTaskId(null); setCreatedThread(null) }}
         workspaceId={workspaceId}
         statuses={taskStatuses}
         members={membersMap[openTask?.id ?? ''] ?? []}

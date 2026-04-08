@@ -395,6 +395,11 @@
   margin: 0;
 }
 
+/* Общий стиль для правых боковых панелей (без display — чтобы не конфликтовать с hidden) */
+.side-panel {
+  @apply absolute top-0 right-0 h-full w-[45%] min-w-[360px] border-l border-gray-200 bg-white overflow-hidden shadow-[-2px_0_8px_rgba(0,0,0,0.08)];
+}
+
 /* Sonner toast: кликабельность поверх Radix Dialog */
 [data-sonner-toaster] {
   pointer-events: auto !important;
@@ -402,7 +407,8 @@
 }
 
 /* Когда боковая панель открыта — сдвигаем тосты */
-body[data-panel-open] [data-sonner-toaster][data-x-position='right'] {
+body[data-panel-open] [data-sonner-toaster][data-x-position='right'],
+body[data-task-panel-open] [data-sonner-toaster][data-x-position='right'] {
   right: 46% !important;
 }
 

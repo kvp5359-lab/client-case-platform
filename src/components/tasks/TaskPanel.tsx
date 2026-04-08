@@ -1,13 +1,19 @@
 "use client"
 
 /**
- * TaskPanel — правая боковая панель для просмотра задачи.
+ * TaskPanel — правая боковая панель для просмотра треда (задачи, чата, email).
  * Открывается поверх основной правой панели (sidebar) с тем же размером.
- * Заменяет TaskDialog (модальное окно) для более удобного UX.
+ * Адаптирует шапку под тип треда:
+ * - Задача: статус, дедлайн, исполнители
+ * - Чат: только название + настройки
+ * - Email: получатели, тема
  */
 
-import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react'
-import { CheckSquare, Pencil, Check, Settings, ExternalLink, X } from 'lucide-react'
+import { useState, useCallback, useRef, useEffect, createElement, lazy, Suspense } from 'react'
+import { createPortal } from 'react-dom'
+import { Pencil, Check, Settings, ExternalLink, X, Mail } from 'lucide-react'
+import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
+import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 
 const ChatSettingsDialog = lazy(() =>
@@ -23,19 +29,19 @@ import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'
 import type { TaskItem } from './types'
 
-interface TaskPanelProps {
+export interface TaskPanelProps {
   task: TaskItem | null
   open: boolean
   onClose: () => void
   workspaceId: string
-  statuses: StatusOption[]
-  members: AvatarParticipant[]
-  onStatusChange: (statusId: string | null) => void
-  onDeadlineSet: (date: Date) => void
-  onDeadlineClear: () => void
+  statuses?: StatusOption[]
+  members?: AvatarParticipant[]
+  onStatusChange?: (statusId: string | null) => void
+  onDeadlineSet?: (date: Date) => void
+  onDeadlineClear?: () => void
   onRename: (name: string) => void
   onSettingsSave: (params: { name: string; accent_color: string; icon: string }) => void
-  deadlinePending: boolean
+  deadlinePending?: boolean
   settingsPending: boolean
   /** Показывать ссылку на проект (на странице «Все задачи») */
   showProjectLink?: boolean
@@ -48,14 +54,14 @@ export function TaskPanel({
   open,
   onClose,
   workspaceId,
-  statuses,
-  members,
+  statuses = [],
+  members = [],
   onStatusChange,
   onDeadlineSet,
   onDeadlineClear,
   onRename,
   onSettingsSave,
-  deadlinePending,
+  deadlinePending = false,
   settingsPending,
   showProjectLink,
   onProjectClick,
@@ -74,13 +80,18 @@ export function TaskPanel({
   // Анимация
   const [visible, setVisible] = useState(false)
 
+  const isTask = task?.type === 'task'
+  const isEmail = !isTask && (task?.contact_emails?.length ?? 0) > 0
+
   useEffect(() => {
     if (open) {
-      // Форсим reflow для анимации
       requestAnimationFrame(() => setVisible(true))
+      document.body.setAttribute('data-task-panel-open', '')
     } else {
       setVisible(false)
+      document.body.removeAttribute('data-task-panel-open')
     }
+    return () => document.body.removeAttribute('data-task-panel-open')
   }, [open])
 
   // Закрытие по Escape
@@ -88,7 +99,6 @@ export function TaskPanel({
     if (!open) return
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        // Не закрываем если открыт settings dialog или какой-то popover
         if (settingsOpen) return
         e.preventDefault()
         onClose()
@@ -97,6 +107,18 @@ export function TaskPanel({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [open, onClose, settingsOpen])
+
+  // Закрытие по клику вне панели
+  useEffect(() => {
+    if (!open) return
+    const handleMouseDown = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [open, onClose])
 
   const startEditName = () => {
     if (!task) return
@@ -127,29 +149,25 @@ export function TaskPanel({
 
   if (!open || !task) return null
 
+  const ThreadIcon = getChatIconComponent(task.icon)
+
   const panel = (
     <>
-      {/* Backdrop — невидимый кликабельный слой для закрытия */}
-      <div
-        className="absolute inset-0 z-40"
-        onClick={onClose}
-      />
-
-      {/* Панель — позиционируется как основная правая панель в WorkspaceLayout */}
+      {/* Панель */}
       <div
         ref={panelRef}
         className={cn(
-          'absolute top-0 right-0 h-full w-[45%] min-w-[360px] border-l border-gray-200',
-          'bg-white flex flex-col overflow-hidden shadow-[-2px_0_8px_rgba(0,0,0,0.08)] z-50',
+          'side-panel flex flex-col z-50',
           'transition-transform duration-200 ease-out',
           visible ? 'translate-x-0' : 'translate-x-full',
         )}
       >
         {/* Шапка */}
         <div className="border-b shrink-0 py-1.5">
-          {/* Строка 1: статус + название + закрыть */}
+          {/* Строка 1: статус/иконка + название + действия */}
           <div className="flex items-center gap-2 px-4">
-            {statuses.length > 0 ? (
+            {/* Статус-дропдаун (только задачи) или иконка треда */}
+            {isTask && statuses.length > 0 && onStatusChange ? (
               <StatusDropdown
                 currentStatus={statuses.find((s) => s.id === task.status_id) ?? null}
                 statuses={statuses}
@@ -157,7 +175,11 @@ export function TaskPanel({
                 size="md"
               />
             ) : (
-              <CheckSquare className="w-4 h-4 shrink-0 text-muted-foreground" />
+              <span className="shrink-0">
+                {createElement(ThreadIcon, {
+                  className: cn('w-4 h-4', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
+                })}
+              </span>
             )}
 
             {editingName ? (
@@ -195,14 +217,17 @@ export function TaskPanel({
               </h2>
             )}
 
-            <div className="shrink-0">
-              <AssigneesPopover
-                threadId={task.id}
-                projectId={task.project_id}
-                workspaceId={workspaceId}
-                assignees={members}
-              />
-            </div>
+            {/* Исполнители — только для задач */}
+            {isTask && (
+              <div className="shrink-0">
+                <AssigneesPopover
+                  threadId={task.id}
+                  projectId={task.project_id}
+                  workspaceId={workspaceId}
+                  assignees={members}
+                />
+              </div>
+            )}
 
             <div ref={toolbarRef} className="flex items-center gap-1 ml-auto shrink-0" />
 
@@ -210,7 +235,7 @@ export function TaskPanel({
               type="button"
               onClick={() => setSettingsOpen(true)}
               className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              title="Настройки задачи"
+              title="Настройки"
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -225,10 +250,11 @@ export function TaskPanel({
             </button>
           </div>
 
-          {/* Строка 2: проект, срок */}
+          {/* Строка 2: зависит от типа */}
           <div className="flex items-center gap-2 px-4 -mt-1">
-            {/* Спейсер — ширина иконки статуса, чтобы выровнять под название */}
+            {/* Спейсер — ширина иконки статуса */}
             <div className="w-[26px] shrink-0" />
+
             {showProjectLink && task.project_name && (
               <button
                 type="button"
@@ -241,12 +267,32 @@ export function TaskPanel({
               </button>
             )}
 
-            <DeadlinePopover
-              deadline={task.deadline}
-              onSet={onDeadlineSet}
-              onClear={onDeadlineClear}
-              isPending={deadlinePending}
-            />
+            {/* Дедлайн — только для задач */}
+            {isTask && onDeadlineSet && onDeadlineClear && (
+              <DeadlinePopover
+                deadline={task.deadline}
+                onSet={onDeadlineSet}
+                onClear={onDeadlineClear}
+                isPending={deadlinePending}
+              />
+            )}
+
+            {/* Email-получатели */}
+            {isEmail && task.contact_emails && task.contact_emails.length > 0 && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Mail className="w-3 h-3 shrink-0" />
+                <span className="truncate max-w-[300px]">
+                  {task.contact_emails.join(', ')}
+                </span>
+              </div>
+            )}
+
+            {/* Тема письма */}
+            {isEmail && task.email_subject && (
+              <div className="text-xs text-muted-foreground truncate max-w-[200px]" title={task.email_subject}>
+                — {task.email_subject}
+              </div>
+            )}
           </div>
         </div>
 
@@ -262,11 +308,11 @@ export function TaskPanel({
         </div>
       </div>
 
-      {/* Настройки задачи */}
+      {/* Настройки */}
       {settingsOpen && (
         <Suspense fallback={null}>
           <ChatSettingsDialog
-            chat={task as unknown as import('@/hooks/messenger/useProjectThreads').ProjectThread}
+            chat={task as never}
             workspaceId={workspaceId}
             projectId={task?.project_id ?? undefined}
             open={settingsOpen}
@@ -282,5 +328,7 @@ export function TaskPanel({
     </>
   )
 
-  return panel
+  const portalRoot = document.getElementById('workspace-panel-root')
+  if (!portalRoot) return panel
+  return createPortal(panel, portalRoot)
 }
