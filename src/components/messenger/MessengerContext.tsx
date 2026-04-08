@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo } from 'react'
 import type { ProjectMessage, MessageChannel } from '@/services/api/messenger/messengerService'
 import type { MessengerAccent } from './utils/messageStyles'
+import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 
 export interface MessengerContextValue {
   // Static per chat session
@@ -19,7 +20,9 @@ export interface MessengerContextValue {
   onEdit?: (msg: ProjectMessage) => void
   onDelete?: (messageId: string) => void
   onQuote?: (text: string) => void
-  onForward?: (msg: ProjectMessage) => void
+  onForwardToChat?: (msg: ProjectMessage, targetChatId: string) => void
+  forwardChats?: ProjectThread[]
+  currentThreadId?: string
   onPublishDraft?: (msg: ProjectMessage) => void
   onEditDraft?: (msg: ProjectMessage) => void
 
@@ -59,7 +62,9 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       onEdit: value.onEdit,
       onDelete: value.onDelete,
       onQuote: value.onQuote,
-      onForward: value.onForward,
+      onForwardToChat: value.onForwardToChat,
+      forwardChats: value.forwardChats,
+      currentThreadId: value.currentThreadId,
       onPublishDraft: value.onPublishDraft,
       onEditDraft: value.onEditDraft,
       isDelayedPending: value.isDelayedPending,
@@ -81,7 +86,9 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       value.onEdit,
       value.onDelete,
       value.onQuote,
-      value.onForward,
+      value.onForwardToChat,
+      value.forwardChats,
+      value.currentThreadId,
       value.onPublishDraft,
       value.onEditDraft,
       value.isDelayedPending,

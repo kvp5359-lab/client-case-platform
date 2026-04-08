@@ -5,7 +5,7 @@
 import { useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import type { MessageChannel, ProjectMessage } from '@/services/api/messenger/messengerService'
+import type { MessageChannel } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
 import { MessageList } from './MessageList'
 import type { MessengerAccent } from './MessageBubble'
@@ -18,7 +18,6 @@ import { DocumentPickerDialog } from './DocumentPickerDialog'
 import { ChatToolbar } from './ChatToolbar'
 import { ReadUnreadButton } from './ReadUnreadButton'
 import { EmailSubjectBar } from './EmailSubjectBar'
-import { ForwardMessageDialog } from './ForwardMessageDialog'
 import { useMessengerState } from './hooks/useMessengerState'
 import { useMessengerHandlers } from './hooks/useMessengerHandlers'
 import { useOptimisticEmail } from './hooks/useOptimisticEmail'
@@ -45,15 +44,7 @@ export function MessengerTabContent({
   const [telegramDialogOpen, setTelegramDialogOpen] = useState(false)
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [forwardDialogOpen, setForwardDialogOpen] = useState(false)
-  const [forwardingMessage, setForwardingMessage] = useState<ProjectMessage | null>(null)
-
   const { data: allThreads = [] } = useProjectThreads(projectId)
-
-  const handleOpenForwardDialog = useCallback((msg: ProjectMessage) => {
-    setForwardingMessage(msg)
-    setForwardDialogOpen(true)
-  }, [])
 
   const state = useMessengerState({
     projectId,
@@ -67,7 +58,6 @@ export function MessengerTabContent({
     channel,
     threadId,
     projectId,
-    onOpenForwardDialog: handleOpenForwardDialog,
     isEmailChat: state.isEmailChat,
     currentParticipant: state.currentParticipant,
     sendMessage: state.sendMessage,
@@ -156,7 +146,9 @@ export function MessengerTabContent({
         onEdit={handlers.handleStartEdit}
         onDelete={handleDelete}
         onQuote={state.setQuoteText}
-        onForward={handlers.handleForward}
+        onForwardToChat={handlers.handleForwardToChat}
+        forwardChats={allThreads}
+        currentThreadId={threadId}
         onPublishDraft={handlers.handlePublishDraft}
         onEditDraft={handlers.handleEditDraft}
         isDelayedPending={state.isDelayedPending}
@@ -262,18 +254,6 @@ export function MessengerTabContent({
         isLoading={state.documentPickerLogic.isDownloading}
       />
 
-      <ForwardMessageDialog
-        open={forwardDialogOpen}
-        onOpenChange={setForwardDialogOpen}
-        chats={allThreads}
-        currentThreadId={threadId}
-        onSelect={(chat) => {
-          if (forwardingMessage) {
-            handlers.handleForwardToChat(forwardingMessage, chat.id)
-            setForwardingMessage(null)
-          }
-        }}
-      />
       </MessengerProvider>
     </div>
   )

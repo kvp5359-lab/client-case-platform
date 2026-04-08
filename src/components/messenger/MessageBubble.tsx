@@ -51,7 +51,9 @@ function MessageBubbleImpl({
     onEdit,
     onDelete,
     onQuote,
-    onForward,
+    onForwardToChat,
+    forwardChats,
+    currentThreadId,
     onPublishDraft,
     onEditDraft,
   } = useMessengerContext()
@@ -287,7 +289,9 @@ function MessageBubbleImpl({
               onDelete={onDelete}
               canDelete={canDelete}
               onQuote={onQuote}
-              onForward={onForward}
+              onForwardToChat={onForwardToChat}
+              forwardChats={forwardChats}
+              currentThreadId={currentThreadId}
               onPublishDraft={onPublishDraft}
               onEditDraft={onEditDraft}
               channel={channel}

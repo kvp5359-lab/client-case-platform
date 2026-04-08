@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { createElement } from 'react'
 import { cn } from '@/lib/utils'
 import {
   Reply,
@@ -18,11 +18,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ReactionPicker, REACTIONS } from './ReactionPicker'
 import type { ProjectMessage, MessageChannel } from '@/services/api/messenger/messengerService'
+import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
+import { getChatIconComponent, getChatTabAccent } from './EditChatDialog'
 import { stripHtml } from '@/utils/format/messengerHtml'
 import { toast } from 'sonner'
 
@@ -38,7 +43,9 @@ interface MessageActionsProps {
   onDelete?: (messageId: string) => void
   canDelete?: boolean
   onQuote?: (text: string) => void
-  onForward?: (msg: ProjectMessage) => void
+  onForwardToChat?: (msg: ProjectMessage, targetChatId: string) => void
+  forwardChats?: ProjectThread[]
+  currentThreadId?: string
   onPublishDraft?: (msg: ProjectMessage) => void
   onEditDraft?: (msg: ProjectMessage) => void
   channel?: MessageChannel
@@ -58,7 +65,9 @@ export function MessageActions({
   onDelete,
   canDelete,
   onQuote,
-  onForward,
+  onForwardToChat,
+  forwardChats,
+  currentThreadId,
   onPublishDraft,
   onEditDraft,
   channel,
@@ -228,12 +237,42 @@ export function MessageActions({
                 Копировать текст
               </DropdownMenuItem>
 
-              {onForward && (
-                <DropdownMenuItem onClick={() => onForward(message)}>
-                  <Forward className="h-4 w-4 mr-2" />
-                  Переслать в чат
-                </DropdownMenuItem>
-              )}
+              {onForwardToChat && (() => {
+                const available = (forwardChats ?? []).filter(
+                  (c) => c.id !== currentThreadId && c.type === 'chat',
+                )
+                if (available.length === 0) return null
+                return (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Forward className="h-4 w-4 mr-2" />
+                      Переслать в чат
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="min-w-[180px]">
+                      {available.map((chat) => {
+                        const IconComponent = getChatIconComponent(chat.icon)
+                        const accent = getChatTabAccent(chat.accent_color)
+                        return (
+                          <DropdownMenuItem
+                            key={chat.id}
+                            onClick={() => onForwardToChat(message, chat.id)}
+                          >
+                            <span
+                              className={cn(
+                                'flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] mr-2',
+                                accent.active,
+                              )}
+                            >
+                              {createElement(IconComponent, { className: 'h-3 w-3' })}
+                            </span>
+                            <span className="truncate">{chat.name}</span>
+                          </DropdownMenuItem>
+                        )
+                      })}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )
+              })()}
 
               {canDelete && onDelete && (
                 <>
