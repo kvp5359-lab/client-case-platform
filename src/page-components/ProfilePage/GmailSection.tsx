@@ -9,17 +9,9 @@ import { memo } from 'react'
 import { Link2, Unlink, Mail, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useEmailAccounts, type EmailAccount } from '@/hooks/email/useEmailAccounts'
+import { useEmailAccounts } from '@/hooks/email/useEmailAccounts'
 import { useConnectGmail } from '@/hooks/email/useConnectGmail'
 import { useDisconnectGmail } from '@/hooks/email/useDisconnectGmail'
-
-/** Token is considered expired if it expires within 5 minutes (same buffer as backend) */
-function isTokenExpired(account: EmailAccount): boolean {
-  if (!account.token_expires_at) return false
-  const expiresAt = new Date(account.token_expires_at).getTime()
-  const bufferMs = 5 * 60 * 1000
-  return expiresAt < Date.now() + bufferMs
-}
 
 interface GmailSectionProps {
   workspaceId?: string | null
@@ -44,19 +36,19 @@ export const GmailSection = memo(function GmailSection({ workspaceId }: GmailSec
       <CardContent className="space-y-4">
         {/* Connected accounts */}
         {accounts.map((account) => {
-          const expired = isTokenExpired(account)
+          const inactive = !account.is_active
           return (
             <div key={account.id} className="space-y-2">
               <div
-                className={`flex items-center justify-between p-4 border rounded-lg ${expired ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}
+                className={`flex items-center justify-between p-4 border rounded-lg ${inactive ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-white rounded-lg shadow-sm flex items-center justify-center">
-                    <Mail className={`h-6 w-6 ${expired ? 'text-amber-500' : 'text-red-500'}`} />
+                    <Mail className={`h-6 w-6 ${inactive ? 'text-amber-500' : 'text-red-500'}`} />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">{account.email}</h3>
-                    {expired ? (
+                    {inactive ? (
                       <span className="text-sm text-amber-600 flex items-center gap-1">
                         <AlertTriangle className="h-3 w-3" />
                         Требуется переподключение
@@ -92,9 +84,9 @@ export const GmailSection = memo(function GmailSection({ workspaceId }: GmailSec
                   </Button>
                 </div>
               </div>
-              {expired && (
+              {inactive && (
                 <p className="text-sm text-amber-700 px-4">
-                  Доступ к Gmail истёк. Нажмите «Переподключить», чтобы восстановить отправку и получение писем.
+                  Доступ к Gmail отозван. Нажмите «Переподключить», чтобы восстановить отправку и получение писем.
                 </p>
               )}
             </div>
