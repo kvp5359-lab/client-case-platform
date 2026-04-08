@@ -124,7 +124,7 @@ export const ProjectListItem = memo(function ProjectListItem({
                   }
                 : undefined
             }
-            className={`ml-auto min-w-5 h-5 flex items-center justify-center rounded-full text-white text-[10px] font-bold px-1.5 ${getBadgeClasses(badgeColor, !!onBadgeClick)}`}
+            className={`ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-white text-[11px] font-bold px-1 ${getBadgeClasses(badgeColor, !!onBadgeClick)}`}
           >
             {formatBadgeCount(badge.value)}
           </span>
@@ -142,7 +142,7 @@ export const ProjectListItem = memo(function ProjectListItem({
                   }
                 : undefined
             }
-            className={`ml-auto min-w-5 h-5 flex items-center justify-center rounded-full text-[11px] leading-none ${getBadgeClasses(badgeColor, !!onBadgeClick)}`}
+            className={`ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[11px] leading-none ${getBadgeClasses(badgeColor, !!onBadgeClick)}`}
           >
             {badge.value}
           </span>
@@ -160,7 +160,7 @@ export const ProjectListItem = memo(function ProjectListItem({
                   }
                 : undefined
             }
-            className={`ml-auto min-w-5 h-5 flex items-center justify-center rounded-full ${getBadgeClasses(badgeColor, !!onBadgeClick)}`}
+            className={`ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full ${getBadgeClasses(badgeColor, !!onBadgeClick)}`}
           />
         ) : isActive && isClientOnly ? (
           <ChevronDown className="h-3 w-3 text-gray-400" />
