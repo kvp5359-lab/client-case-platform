@@ -35,16 +35,48 @@ export function useTelegramDeliveryStatus(
 
   const [tgFailed, setTgFailed] = useState(false)
 
+  const hasAttachments = message.attachments && message.attachments.length > 0
+
   useEffect(() => {
-    if (!showTgIndicator || message.telegram_message_id) return
-    const ageMs = Date.now() - new Date(message.created_at).getTime()
-    const remaining = ageMs > 30_000 ? 0 : 30_000 - ageMs + 500
-    const timer = setTimeout(() => setTgFailed(true), remaining)
-    return () => clearTimeout(timer)
-  }, [showTgIndicator, message.telegram_message_id, message.created_at])
+    if (!showTgIndicator) return
+
+    // Текст ещё не доставлен — ждём
+    if (!message.telegram_message_id) {
+      const ageMs = Date.now() - new Date(message.created_at).getTime()
+      const remaining = ageMs > 30_000 ? 0 : 30_000 - ageMs + 500
+      const timer = setTimeout(() => setTgFailed(true), remaining)
+      return () => clearTimeout(timer)
+    }
+
+    // Текст доставлен, но вложения явно не доставлены
+    if (hasAttachments && message.telegram_attachments_delivered === false) {
+      setTgFailed(true)
+      return
+    }
+
+    // Текст доставлен, вложения ещё в процессе (null = не записано)
+    if (hasAttachments && message.telegram_attachments_delivered === null) {
+      const ageMs = Date.now() - new Date(message.created_at).getTime()
+      const remaining = ageMs > 30_000 ? 0 : 30_000 - ageMs + 500
+      const timer = setTimeout(() => setTgFailed(true), remaining)
+      return () => clearTimeout(timer)
+    }
+  }, [showTgIndicator, message.telegram_message_id, message.telegram_attachments_delivered, message.created_at, hasAttachments])
 
   if (!showTgIndicator) return null
-  if (message.telegram_message_id) return 'delivered'
-  if (tgFailed) return 'failed'
-  return 'pending'
+
+  // Вложения явно не доставлены
+  if (hasAttachments && message.telegram_attachments_delivered === false) return 'failed'
+
+  // Текст ещё не доставлен
+  if (!message.telegram_message_id) {
+    return tgFailed ? 'failed' : 'pending'
+  }
+
+  // Текст доставлен, но вложения ещё ожидаются
+  if (hasAttachments && message.telegram_attachments_delivered === null) {
+    return tgFailed ? 'failed' : 'pending'
+  }
+
+  return 'delivered'
 }

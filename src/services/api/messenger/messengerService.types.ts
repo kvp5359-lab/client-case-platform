@@ -61,6 +61,7 @@ export interface ProjectMessage {
   reply_to_message: ReplyMessage | null
   telegram_message_id: number | null
   telegram_chat_id: number | null
+  telegram_attachments_delivered: boolean | null
   is_edited: boolean
   is_draft: boolean
   forwarded_from_name: string | null

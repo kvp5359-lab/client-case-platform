@@ -79,6 +79,7 @@ export function useOptimisticEmail({
         reply_to_message: null,
         telegram_message_id: null,
         telegram_chat_id: null,
+        telegram_attachments_delivered: null,
         is_edited: false,
         is_draft: false,
         forwarded_from_name: null,
