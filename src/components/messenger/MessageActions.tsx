@@ -10,6 +10,7 @@ import {
   SmilePlus,
   Forward,
   Send,
+  ExternalLink,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -48,6 +49,7 @@ interface MessageActionsProps {
   currentThreadId?: string
   onPublishDraft?: (msg: ProjectMessage) => void
   onEditDraft?: (msg: ProjectMessage) => void
+  onViewEmail?: () => void
   channel?: MessageChannel
   onDeleteDialogOpen: () => void
   moreMenuOpen: boolean
@@ -70,6 +72,7 @@ export function MessageActions({
   currentThreadId,
   onPublishDraft,
   onEditDraft,
+  onViewEmail,
   channel,
   onDeleteDialogOpen,
   moreMenuOpen,
@@ -236,6 +239,13 @@ export function MessageActions({
                 <Copy className="h-4 w-4 mr-2" />
                 Копировать текст
               </DropdownMenuItem>
+
+              {onViewEmail && message.source === 'email' && message.email_metadata?.body_html && (
+                <DropdownMenuItem onClick={onViewEmail}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Открыть письмо
+                </DropdownMenuItem>
+              )}
 
               {onForwardToChat && (() => {
                 const available = (forwardChats ?? []).filter(

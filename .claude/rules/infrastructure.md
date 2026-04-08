@@ -48,8 +48,39 @@
 ## Деплой
 
 - Репозиторий: https://github.com/kvp5359-lab/client-case-platform
-- CI/CD: GitHub Actions (build + lint на PR)
-- Хостинг: Vercel (планируется)
+- CI/CD: GitHub Actions — build Docker image → push to GHCR → deploy to VPS via SSH
+- Workflow: `.github/workflows/deploy.yml` (триггер: push в main или manual dispatch)
+
+### VPS (продакшен)
+
+- **IP**: `72.61.82.244` (hostname: `srv1255608`)
+- **SSH**: `ssh vps` (конфиг в `~/.ssh/config`, ключ `~/.ssh/id_ed25519`)
+- **Путь проекта**: `/opt/clientcase/`
+- **Docker-контейнер**: `clientcase-app` — Next.js standalone, порт 3000 внутри → **3005** на хосте
+- **Docker-образ**: `ghcr.io/kvp5359-lab/client-case-platform:latest`
+- **Docker-сеть**: `relostart_web` (общая с nginx и другими сервисами)
+
+### Nginx (reverse proxy)
+
+- **Контейнер**: `relostart-nginx` (из `/opt/relostart/`)
+- **Конфиг ClientCase**: `/opt/relostart/nginx/conf.d/app-relostart.conf`
+- **Upstream**: `clientcase-app:3000` (по имени контейнера через Docker-сеть)
+- **Домены**: `app.relostart.com`, `clientcase.kvp-projects.com`
+- **SSL**: Let's Encrypt (certbot контейнер `relostart-certbot`)
+- **Буферы прокси**: увеличены до 128k/256k (Supabase auth куки большие)
+
+### Другие контейнеры на VPS
+
+| Контейнер | Порт | Назначение |
+|-----------|------|-----------|
+| `relostart-app` | 3000 | Основной Relostart |
+| `relostart-app-dev` | 3001 | Relostart dev |
+| `migcases-app-dev` | 3002 | MigCases dev |
+| `kb-frontend` | 3003 | Knowledge Base frontend |
+| `migcases-app-prod` | 3004 | MigCases prod |
+| `clientcase-app` | 3005 | **ClientCase** |
+| `kb-backend` | 8000 | Knowledge Base API |
+| `kb-qdrant` | 6333 | Qdrant vector DB |
 
 ## Маркетплейс (фундамент)
 

@@ -16,6 +16,7 @@ import { BubbleHeader } from './BubbleHeader'
 import { BubbleTimestamp } from './BubbleTimestamp'
 import { BubbleTextContent, DraftPublishButton } from './BubbleTextContent'
 import { DeleteMessageDialog } from './DeleteMessageDialog'
+import { EmailFullViewDialog } from './EmailFullViewDialog'
 import { useMessengerContext } from './MessengerContext'
 
 export type { MessengerAccent } from './utils/messageStyles'
@@ -63,6 +64,7 @@ function MessageBubbleImpl({
   const tgFailed = tgDeliveryStatus === 'failed'
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [emailViewOpen, setEmailViewOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [reactionPopoverOpen, setReactionPopoverOpen] = useState(false)
 
@@ -294,6 +296,7 @@ function MessageBubbleImpl({
               currentThreadId={currentThreadId}
               onPublishDraft={onPublishDraft}
               onEditDraft={onEditDraft}
+              onViewEmail={message.source === 'email' ? () => setEmailViewOpen(true) : undefined}
               channel={channel}
               onDeleteDialogOpen={() => setDeleteDialogOpen(true)}
               moreMenuOpen={moreMenuOpen}
@@ -315,6 +318,12 @@ function MessageBubbleImpl({
         onOpenChange={setDeleteDialogOpen}
         telegramMessageId={message.telegram_message_id}
         onConfirm={() => onDelete?.(message.id)}
+      />
+
+      <EmailFullViewDialog
+        message={message}
+        open={emailViewOpen}
+        onOpenChange={setEmailViewOpen}
       />
     </div>
   )
