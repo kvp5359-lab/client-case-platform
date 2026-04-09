@@ -52,8 +52,11 @@ export function useTaskPanelSetup({ workspaceId, extraInvalidateKeys = [] }: Use
     workspaceId,
     statuses: taskStatuses,
     members: membersMap[openThread?.id ?? ''] ?? [],
-    onStatusChange: (statusId) =>
-      openThread && updateStatus.mutate({ threadId: openThread.id, statusId }),
+    onStatusChange: (statusId) => {
+      if (!openThread) return
+      updateStatus.mutate({ threadId: openThread.id, statusId })
+      setOpenThread({ ...openThread, status_id: statusId })
+    },
     onDeadlineSet: (date) =>
       openThread && updateDeadline.mutate({ threadId: openThread.id, deadline: date.toISOString() }),
     onDeadlineClear: () =>

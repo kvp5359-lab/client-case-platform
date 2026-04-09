@@ -27,7 +27,7 @@ export const TASK_FILTER_FIELDS: FilterFieldDef[] = [
     key: 'deadline',
     label: 'Дедлайн',
     type: 'date',
-    operators: ['before', 'before_eq', 'after', 'after_eq', 'date_eq', 'between', 'is_null', 'today', 'this_week', 'overdue'],
+    operators: ['before', 'before_eq', 'after', 'after_eq', 'date_eq', 'between', 'is_null', 'is_not_null', 'today', 'this_week', 'overdue'],
   },
   {
     key: 'is_pinned',
@@ -75,7 +75,7 @@ export const PROJECT_FILTER_FIELDS: FilterFieldDef[] = [
     key: 'deadline',
     label: 'Дедлайн',
     type: 'date',
-    operators: ['before', 'before_eq', 'after', 'after_eq', 'date_eq', 'between', 'is_null', 'today', 'this_week', 'overdue'],
+    operators: ['before', 'before_eq', 'after', 'after_eq', 'date_eq', 'between', 'is_null', 'is_not_null', 'today', 'this_week', 'overdue'],
   },
   {
     key: 'created_by',

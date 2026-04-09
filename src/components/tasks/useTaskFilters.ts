@@ -41,7 +41,7 @@ export function useTaskFilters({
   const [deadlineFilter, setDeadlineFilter] = useState<Set<DeadlineFilterValue>>(new Set())
   const [projectFilterIds, setProjectFilterIds] = useState<Set<string>>(new Set())
   const [statusFilterIds, setStatusFilterIds] = useState<Set<string> | null>(null)
-  const [groupByDeadline, setGroupByDeadline] = useState(false)
+  const [groupByDeadline, setGroupByDeadline] = useState(!isProjectMode)
 
   // Применить пресет: сбрасывает все ручные фильтры
   const applyPreset = (p: TaskPreset) => {

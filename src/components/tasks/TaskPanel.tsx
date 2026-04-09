@@ -11,6 +11,7 @@
 
 import { useState, useCallback, useRef, useEffect, createElement, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
+import { useRouter } from 'next/navigation'
 import { Pencil, Check, Settings, ExternalLink, X, Mail } from 'lucide-react'
 import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
@@ -25,6 +26,7 @@ const ChatSettingsDialog = lazy(() =>
 import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { cn } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
 import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'
 import type { TaskItem } from './types'
@@ -66,6 +68,7 @@ export function TaskPanel({
   showProjectLink,
   onProjectClick,
 }: TaskPanelProps) {
+  const router = useRouter()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
   const toolbarRef = useCallback((node: HTMLDivElement | null) => setToolbarContainer(node), [])
@@ -76,6 +79,19 @@ export function TaskPanel({
   const [prevTaskId, setPrevTaskId] = useState(task?.id)
   const editNameRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+
+  // Загрузка project_name, если не передан
+  const [resolvedProjectName, setResolvedProjectName] = useState<string | null>(null)
+  useEffect(() => {
+    if (!task?.project_id) { setResolvedProjectName(null); return }
+    if (task.project_name) { setResolvedProjectName(task.project_name); return }
+    supabase
+      .from('projects')
+      .select('name')
+      .eq('id', task.project_id)
+      .single()
+      .then(({ data }) => setResolvedProjectName(data?.name ?? null))
+  }, [task?.project_id, task?.project_name])
 
   // Анимация
   const [visible, setVisible] = useState(false)
@@ -206,6 +222,25 @@ export function TaskPanel({
               </h2>
             )}
 
+            {/* Ссылка на проект */}
+            {task.project_id && resolvedProjectName && (
+              <a
+                href={`/workspaces/${workspaceId}/projects/${task.project_id}`}
+                onClick={(e) => {
+                  if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault()
+                    onProjectClick?.()
+                    router.push(`/workspaces/${workspaceId}/projects/${task.project_id}`)
+                  }
+                }}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
+                title="Открыть проект"
+              >
+                <span className="truncate max-w-[120px]">{resolvedProjectName}</span>
+                <ExternalLink className="h-3 w-3 opacity-50" />
+              </a>
+            )}
+
             {/* Исполнители — только для задач */}
             {isTask && (
               <div className="shrink-0">
@@ -216,19 +251,6 @@ export function TaskPanel({
                   assignees={members}
                 />
               </div>
-            )}
-
-            {/* Проект + Дедлайн — в той же строке */}
-            {showProjectLink && task.project_name && (
-              <button
-                type="button"
-                onClick={onProjectClick}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
-                title="Открыть проект"
-              >
-                <span className="truncate max-w-[120px]">{task.project_name}</span>
-                <ExternalLink className="h-3 w-3 opacity-50" />
-              </button>
             )}
 
             {isTask && onDeadlineSet && onDeadlineClear && (

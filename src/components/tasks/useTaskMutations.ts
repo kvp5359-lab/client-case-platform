@@ -28,7 +28,7 @@ export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unkno
         .eq('id', threadId)
       if (error) throw error
 
-      logAuditAction('change_status', 'task', threadId, {
+      await logAuditAction('change_status', 'task', threadId, {
         name: old?.name,
         old_status: old?.status_id,
         new_status: statusId,
@@ -59,7 +59,7 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
         .eq('id', threadId)
       if (error) throw error
 
-      logAuditAction('change_deadline', 'task', threadId, {
+      await logAuditAction('change_deadline', 'task', threadId, {
         name: old?.name,
         old_deadline: old?.deadline,
         new_deadline: deadline,
@@ -87,7 +87,7 @@ export function useRenameTask(invalidateKeys: ReadonlyArray<readonly unknown[]>)
       const { error } = await supabase.from('project_threads').update({ name }).eq('id', threadId)
       if (error) throw error
 
-      logAuditAction('rename', 'task', threadId, {
+      await logAuditAction('rename', 'task', threadId, {
         old_name: old?.name,
         new_name: name,
       }, old?.project_id ?? undefined)
@@ -161,7 +161,7 @@ export function useUpdateTaskSettings(invalidateKeys: ReadonlyArray<readonly unk
         .eq('id', threadId)
       if (error) throw error
 
-      logAuditAction('change_settings', 'task', threadId, {
+      await logAuditAction('change_settings', 'task', threadId, {
         old_name: old?.name,
         new_name: name,
         old_accent_color: old?.accent_color,

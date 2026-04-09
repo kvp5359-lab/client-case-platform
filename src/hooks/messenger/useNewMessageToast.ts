@@ -6,7 +6,6 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -24,18 +23,12 @@ import {
   parseTextLine,
 } from './useMessageToastPayload'
 import { playIncomingSound } from './useMessageSound'
-import { useSidePanelStore } from '@/store/sidePanelStore'
-import { lsSet, LS_KEY_ACTIVE_THREAD_PREFIX } from '@/store/sidePanelStore.localStorage'
+import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
+import type { TaskItem } from '@/components/tasks/types'
 
 export function useNewMessageToast(workspaceId: string | undefined) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const router = useRouter()
-
-  const routerRef = useRef(router)
-  useEffect(() => {
-    routerRef.current = router
-  }, [router])
 
   const userRef = useRef(user)
   useEffect(() => {
@@ -138,21 +131,36 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             toast.dismiss(groupKey)
           }
 
-          const goToChat = () => {
+          const goToChat = async () => {
             dismissGroup()
-            // Save chatId for target project in localStorage so it persists across navigation
-            if (msg.thread_id) {
-              lsSet(LS_KEY_ACTIVE_THREAD_PREFIX + msg.project_id, msg.thread_id)
-              useSidePanelStore
-                .getState()
-                .openChat(msg.thread_id, msgChannel as 'client' | 'internal')
+            if (!msg.thread_id) return
+
+            // Загружаем данные треда для открытия боковой панели
+            const { data: thread } = await supabase
+              .from('project_threads')
+              .select('id, name, type, project_id, workspace_id, status_id, deadline, accent_color, icon, is_pinned, created_at, created_by, sort_order')
+              .eq('id', msg.thread_id)
+              .single()
+
+            if (thread) {
+              const taskItem: TaskItem = {
+                id: thread.id,
+                name: thread.name,
+                type: thread.type as 'chat' | 'task',
+                project_id: thread.project_id,
+                workspace_id: thread.workspace_id,
+                status_id: thread.status_id,
+                deadline: thread.deadline,
+                accent_color: thread.accent_color,
+                icon: thread.icon,
+                is_pinned: thread.is_pinned,
+                created_at: thread.created_at,
+                created_by: thread.created_by,
+                sort_order: thread.sort_order ?? 0,
+                project_name: projectName,
+              }
+              globalOpenThread(taskItem)
             }
-            const chatParam = msg.thread_id ? `&chatId=${msg.thread_id}` : ''
-            const messengerUrl =
-              msgChannel === 'internal'
-                ? `/workspaces/${workspaceId}/projects/${msg.project_id}?panel=messenger&channel=internal${chatParam}`
-                : `/workspaces/${workspaceId}/projects/${msg.project_id}?panel=messenger${chatParam}`
-            routerRef.current.push(messengerUrl)
           }
 
           const doMarkAsRead = async () => {

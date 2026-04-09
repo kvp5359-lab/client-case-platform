@@ -263,7 +263,7 @@ export function MessageList({
     )
   }
 
-  if (messages.length === 0) {
+  if (messages.length === 0 && auditEvents.length === 0) {
     return <ChatEmptyState />
   }
 

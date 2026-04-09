@@ -112,6 +112,17 @@ function groupTasks(
   for (const [key, groupTasks] of map) {
     groups.push({ key, label: labelMap.get(key) ?? key, tasks: groupTasks })
   }
+
+  // Фиксированный порядок групп для дедлайнов
+  if (groupBy === 'deadline') {
+    const DEADLINE_ORDER = ['Просрочено', 'Сегодня', 'Завтра', 'На этой неделе', 'Позже', 'Без дедлайна']
+    groups.sort((a, b) => {
+      const ai = DEADLINE_ORDER.indexOf(a.label)
+      const bi = DEADLINE_ORDER.indexOf(b.label)
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+    })
+  }
+
   return groups
 }
 
@@ -246,13 +257,14 @@ export function BoardListCard({
 
       {/* Content */}
       {!collapsed && (
-        <div className={cn(heightClass, 'overflow-y-auto', !isCards && 'rounded-lg border')}>
+        <div className={cn(heightClass, 'overflow-y-auto', !isCards && 'rounded-lg border bg-white')}>
           {isInbox ? (
             <BoardInboxList
               threads={inboxThreads}
               onOpenThread={onOpenThread}
               selectedThreadId={selectedThreadId}
               defaultFilter={(list.filters as unknown as { default_filter?: string })?.default_filter === 'unread' ? 'unread' : 'all'}
+              workspaceId={workspaceId}
             />
           ) : isProject ? (
             projects.length > 0 ? (

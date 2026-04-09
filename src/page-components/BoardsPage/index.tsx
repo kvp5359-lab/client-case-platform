@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Plus, Kanban, MoreVertical, Trash2, Pencil, ListPlus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
@@ -31,6 +31,7 @@ import { CreateBoardDialog } from '@/components/boards/CreateBoardDialog'
 import { CreateListDialog } from '@/components/boards/CreateListDialog'
 import { EditBoardDialog } from '@/components/boards/EditBoardDialog'
 import { cn } from '@/lib/utils'
+import { useSidePanelStore } from '@/store/sidePanelStore'
 import { taskKeys } from '@/hooks/queryKeys'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
 import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
@@ -257,11 +258,17 @@ function BoardTab({ board, isActive, onSelect, onEdit, onDelete, onAddList }: Bo
 
 export default function BoardsPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
+  const closePanel = useSidePanelStore((s) => s.closePanel)
   const createDialog = useDialog()
   const editDialog = useDialog()
   const createListDialog = useDialog()
   const { data: boards, isLoading } = useBoardsQuery(workspaceId)
   const deleteBoard = useDeleteBoard()
+
+  // Закрываем боковую панель при входе на страницу досок
+  useEffect(() => {
+    closePanel()
+  }, [closePanel])
 
   const [activeBoardId, setActiveBoardId] = useState<string | null>(null)
 
@@ -287,7 +294,7 @@ export default function BoardsPage() {
 
   return (
     <WorkspaceLayout>
-      <div className="h-full flex flex-col bg-white">
+      <div className="h-full flex flex-col bg-gray-100/60">
         {/* Строка вкладок */}
         <div className="flex items-center px-3 py-2 shrink-0">
           <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">

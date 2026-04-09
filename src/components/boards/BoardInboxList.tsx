@@ -2,8 +2,18 @@
 
 import { useMemo, useState } from 'react'
 import { Search, X } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
+import { useAuth } from '@/contexts/AuthContext'
+import {
+  getCurrentProjectParticipant,
+  markAsRead,
+  markAsUnread,
+  type MessageChannel,
+} from '@/services/api/messenger/messengerService'
+import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
 
@@ -33,6 +43,7 @@ interface BoardInboxListProps {
   onOpenThread: (task: TaskItem) => void
   selectedThreadId?: string | null
   defaultFilter?: InboxFilter
+  workspaceId: string
 }
 
 export function BoardInboxList({
@@ -40,10 +51,75 @@ export function BoardInboxList({
   onOpenThread,
   selectedThreadId,
   defaultFilter = 'all',
+  workspaceId,
 }: BoardInboxListProps) {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
   const [filter, setFilter] = useState<InboxFilter>(defaultFilter)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+
+  /** Оптимистично обновить поля треда в кэше threadsV2 (без рефетча всего списка) */
+  const patchThreadInCache = (threadId: string, patch: Partial<InboxThreadEntry>) => {
+    const key = inboxKeys.threadsV2(workspaceId)
+    queryClient.setQueryData<InboxThreadEntry[]>(key, (old) =>
+      old?.map((t) => (t.thread_id === threadId ? { ...t, ...patch } : t)),
+    )
+  }
+
+  const getChannel = (chat: InboxThreadEntry): MessageChannel =>
+    (chat.legacy_channel as MessageChannel) ?? 'client'
+
+  const markReadMutation = useMutation({
+    mutationFn: async (chat: InboxThreadEntry) => {
+      if (!user) throw new Error('Не авторизован')
+      const participant = await getCurrentProjectParticipant(chat.project_id, user.id)
+      if (!participant) throw new Error('Участник не найден')
+      return markAsRead(
+        participant.participantId,
+        chat.project_id,
+        getChannel(chat),
+        chat.thread_id,
+      )
+    },
+    onMutate: (chat) => {
+      // Оптимистичное обновление — мгновенно убираем непрочитанность
+      patchThreadInCache(chat.thread_id, {
+        unread_count: 0,
+        manually_unread: false,
+        has_unread_reaction: false,
+        unread_event_count: 0,
+      })
+      queryClient.setQueryData(messengerKeys.unreadCountByThreadId(chat.thread_id), 0)
+    },
+    onError: () => {
+      // При ошибке — рефетч для восстановления актуальных данных
+      queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
+      toast.error('Не удалось отметить как прочитанное')
+    },
+  })
+
+  const markUnreadMutation = useMutation({
+    mutationFn: async (chat: InboxThreadEntry) => {
+      if (!user) throw new Error('Не авторизован')
+      const participant = await getCurrentProjectParticipant(chat.project_id, user.id)
+      if (!participant) throw new Error('Участник не найден')
+      return markAsUnread(
+        participant.participantId,
+        chat.project_id,
+        getChannel(chat),
+        chat.thread_id,
+      )
+    },
+    onMutate: (chat) => {
+      // Оптимистичное обновление — мгновенно помечаем как непрочитанный
+      patchThreadInCache(chat.thread_id, { manually_unread: true })
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
+      toast.error('Не удалось отметить как непрочитанное')
+    },
+  })
 
   const unreadCount = useMemo(
     () => threads.filter((c) => c.unread_count > 0 || c.has_unread_reaction || c.manually_unread || (c.unread_event_count ?? 0) > 0).length,
@@ -147,6 +223,8 @@ export function BoardInboxList({
               chat={chat}
               isSelected={selectedThreadId === chat.thread_id}
               onClick={() => onOpenThread(threadToTaskItem(chat))}
+              onMarkAsRead={() => markReadMutation.mutate(chat)}
+              onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
             />
           ))
         )}

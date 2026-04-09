@@ -98,6 +98,15 @@ export function MessageInput({
     setHasText,
   )
 
+  // Auto-focus editor when thread changes or component mounts
+  useEffect(() => {
+    if (editorRef.current) {
+      // Небольшая задержка, чтобы панель успела анимироваться
+      const timer = setTimeout(() => editorRef.current?.commands.focus('end'), 150)
+      return () => clearTimeout(timer)
+    }
+  }, [threadId, editor])
+
   // Focus editor on reply
   useEffect(() => {
     if (replyTo && editorRef.current) {

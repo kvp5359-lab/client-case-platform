@@ -20,3 +20,18 @@ export const TaskPanelContext = createContext<TaskPanelContextValue | null>(null
 export function useLayoutTaskPanel() {
   return useContext(TaskPanelContext)
 }
+
+/**
+ * Глобальный ref для открытия TaskPanel из хуков вне React-дерева
+ * (например, из useNewMessageToast).
+ * WorkspaceLayout устанавливает его при монтировании.
+ */
+let _globalOpenThread: ((task: TaskItem) => void) | null = null
+
+export function setGlobalOpenThread(fn: ((task: TaskItem) => void) | null) {
+  _globalOpenThread = fn
+}
+
+export function globalOpenThread(task: TaskItem) {
+  _globalOpenThread?.(task)
+}

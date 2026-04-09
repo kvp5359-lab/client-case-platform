@@ -27,7 +27,7 @@ import { useFaviconBadge } from '@/hooks/messenger/useFaviconBadge'
 import { useWorkspaceMessagesRealtime } from '@/hooks/messenger/useWorkspaceMessagesRealtime'
 import { TaskPanel } from '@/components/tasks/TaskPanel'
 import { useTaskPanelSetup } from '@/components/tasks/useTaskPanelSetup'
-import { TaskPanelContext } from '@/components/tasks/TaskPanelContext'
+import { TaskPanelContext, setGlobalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { newThreadToTaskItem } from '@/components/tasks/taskListConstants'
 
 const ExtraPanelContent = lazy(() =>
@@ -164,6 +164,12 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
     () => ({ openThread: tp.setOpenThread, closeThread: () => tp.setOpenThread(null) }),
     [tp.setOpenThread],
   )
+
+  // Глобальный ref для открытия TaskPanel из хуков вне React-дерева
+  useEffect(() => {
+    setGlobalOpenThread(tp.setOpenThread)
+    return () => setGlobalOpenThread(null)
+  }, [tp.setOpenThread])
 
   const handleSelectChat = useCallback(
     (chat: ProjectThread) => {

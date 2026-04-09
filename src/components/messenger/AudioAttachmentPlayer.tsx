@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Loader2, Mic, Music, Play, Pause, Languages, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, Mic, Music, Play, Pause, Languages, ChevronDown, ChevronUp, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   getAttachmentUrl,
@@ -30,6 +30,7 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
   const [transcriptionOpen, setTranscriptionOpen] = useState(false)
   const autoTranscribeTriggered = useRef(false)
   const [playbackRate, setPlaybackRate] = useState(1)
+  const [sourceError, setSourceError] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
 
   // Load signed URL
@@ -68,13 +69,17 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
       setProgress(0)
     }
 
+    const onError = () => setSourceError(true)
+
     audio.addEventListener('timeupdate', onTimeUpdate)
     audio.addEventListener('loadedmetadata', onLoadedMetadata)
     audio.addEventListener('ended', onEnded)
+    audio.addEventListener('error', onError)
     return () => {
       audio.removeEventListener('timeupdate', onTimeUpdate)
       audio.removeEventListener('loadedmetadata', onLoadedMetadata)
       audio.removeEventListener('ended', onEnded)
+      audio.removeEventListener('error', onError)
     }
   }, [audioUrl])
 
@@ -154,62 +159,90 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
       {audioUrl && <audio ref={audioRef} src={audioUrl} preload="metadata" />}
 
       <div className="flex items-center gap-2">
-        {/* Play/Pause */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 shrink-0"
-          onClick={togglePlay}
-          disabled={loading || !audioUrl}
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : playing ? (
-            <Pause className="h-4 w-4" />
-          ) : (
-            <Play className="h-4 w-4" />
-          )}
-        </Button>
-
-        {/* Progress + info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <span className="text-xs font-medium truncate">
-              {voice ? 'Голосовое сообщение' : attachment.file_name}
-            </span>
-          </div>
-
-          {/* Progress bar */}
-          <div className="h-1.5 rounded-full bg-muted cursor-pointer" onClick={handleSeek}>
-            <div
-              className="h-full rounded-full bg-primary transition-[width] duration-100"
-              style={{ width: `${progress * 100}%` }}
-            />
-          </div>
-
-          <div className="flex items-center justify-between mt-0.5">
-            <span className="text-[10px] text-muted-foreground">
-              {formatTime(audioRef.current?.currentTime ?? 0)}
-              {duration ? ` / ${formatTime(duration)}` : ''}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors leading-none"
-                onClick={cycleSpeed}
-                title="Скорость воспроизведения"
-              >
-                {playbackRate}x
-              </button>
-              {attachment.file_size && (
-                <span className="text-[10px] text-muted-foreground">
-                  {formatSize(attachment.file_size)}
+        {sourceError ? (
+          /* Fallback: браузер не поддерживает формат (VS Code Simple Browser и т.п.) */
+          <>
+            <a
+              href={audioUrl ?? '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-8 w-8 shrink-0 flex items-center justify-center rounded-md hover:bg-muted/50 transition-colors"
+              title="Открыть в браузере"
+            >
+              <Download className="h-4 w-4 text-muted-foreground" />
+            </a>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="text-xs font-medium truncate">
+                  {voice ? 'Голосовое сообщение' : attachment.file_name}
                 </span>
-              )}
+              </div>
+              <span className="text-[10px] text-muted-foreground">
+                Формат не поддерживается — откройте в браузере
+              </span>
             </div>
-          </div>
-        </div>
+          </>
+        ) : (
+          <>
+            {/* Play/Pause */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={togglePlay}
+              disabled={loading || !audioUrl}
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : playing ? (
+                <Pause className="h-4 w-4" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+            </Button>
+
+            {/* Progress + info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="text-xs font-medium truncate">
+                  {voice ? 'Голосовое сообщение' : attachment.file_name}
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="h-1.5 rounded-full bg-muted cursor-pointer" onClick={handleSeek}>
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-100"
+                  style={{ width: `${progress * 100}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between mt-0.5">
+                <span className="text-[10px] text-muted-foreground">
+                  {formatTime(audioRef.current?.currentTime ?? 0)}
+                  {duration ? ` / ${formatTime(duration)}` : ''}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors leading-none"
+                    onClick={cycleSpeed}
+                    title="Скорость воспроизведения"
+                  >
+                    {playbackRate}x
+                  </button>
+                  {attachment.file_size && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {formatSize(attachment.file_size)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Transcription toggle */}
         {!transcription ? (
