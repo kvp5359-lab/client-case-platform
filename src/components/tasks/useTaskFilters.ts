@@ -41,6 +41,7 @@ export function useTaskFilters({
   const [deadlineFilter, setDeadlineFilter] = useState<Set<DeadlineFilterValue>>(new Set())
   const [projectFilterIds, setProjectFilterIds] = useState<Set<string>>(new Set())
   const [statusFilterIds, setStatusFilterIds] = useState<Set<string> | null>(null)
+  const [groupByDeadline, setGroupByDeadline] = useState(false)
 
   // Применить пресет: сбрасывает все ручные фильтры
   const applyPreset = (p: TaskPreset) => {
@@ -190,13 +191,20 @@ export function useTaskFilters({
       }
     }
 
-    const groups = groupTasks(active)
-    // Внутри каждой группы: сортировка по sort_order (пользовательский порядок)
-    for (const items of groups.values()) {
-      items.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    let groups: Map<string, TaskItem[]>
+    if (groupByDeadline) {
+      groups = groupTasks(active)
+      for (const items of groups.values()) {
+        items.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      }
+    } else {
+      // Flat list — all tasks together (including completed), sorted by sort_order
+      const sorted = [...filteredTasks].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      groups = new Map([['all', sorted]])
+      return { grouped: groups, completedTasks: [] }
     }
     return { grouped: groups, completedTasks: completed }
-  }, [filteredTasks, closedStatusIds])
+  }, [filteredTasks, closedStatusIds, groupByDeadline])
 
   return {
     // State
@@ -222,5 +230,7 @@ export function useTaskFilters({
     filteredTasks,
     grouped,
     completedTasks,
+    groupByDeadline,
+    setGroupByDeadline,
   }
 }

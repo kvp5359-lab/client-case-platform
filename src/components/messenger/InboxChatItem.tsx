@@ -106,6 +106,10 @@ export const InboxChatItem = memo(function InboxChatItem({
   const badge = getBadgeDisplay(chat)
   const hasUnreadIndicator = badge.type !== 'none'
 
+  // Determine if the latest activity is an event (audit) or a message
+  const eventIsNewer = chat.last_event_at && (!chat.last_message_at || chat.last_event_at > chat.last_message_at)
+  const displayTime = eventIsNewer ? chat.last_event_at : chat.last_message_at
+
   const accent = accentStyles[chat.thread_accent_color] ?? defaultAccent
   const ChannelIcon = channelIcons[chat.channel_type]
 
@@ -168,7 +172,7 @@ export const InboxChatItem = memo(function InboxChatItem({
             )}
           </span>
           <span className="text-[11px] text-gray-400 shrink-0 ml-2">
-            {formatTime(chat.last_message_at)}
+            {formatTime(displayTime)}
           </span>
         </div>
         {/* Строка 2: проект · последнее сообщение + бейдж */}
@@ -179,6 +183,8 @@ export const InboxChatItem = memo(function InboxChatItem({
                 <span className="text-red-500 font-medium">Черновик: </span>
                 <span className="text-gray-500">{truncateText(draftText, 40)}</span>
               </>
+            ) : eventIsNewer && chat.last_event_text ? (
+              <span className="text-amber-600 italic">{chat.last_event_text}</span>
             ) : chat.last_message_text ? (
               <>
                 {chat.last_sender_name && (

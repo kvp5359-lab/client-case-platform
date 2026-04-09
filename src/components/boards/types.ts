@@ -57,12 +57,13 @@ export type VisibleField = 'status' | 'deadline' | 'assignees' | 'project' | 'te
 
 /** Поле для группировки (none = без группировки) */
 export type GroupByField = 'none' | 'status' | 'project' | 'assignee' | 'deadline'
+export type ListHeight = 'auto' | 'medium' | 'full'
 
 export interface BoardList {
   id: string
   board_id: string
   name: string
-  entity_type: 'task' | 'project'
+  entity_type: 'task' | 'project' | 'inbox'
   column_index: number
   sort_order: number
   filters: FilterGroup
@@ -71,6 +72,7 @@ export interface BoardList {
   display_mode: DisplayMode
   visible_fields: VisibleField[]
   group_by: GroupByField
+  list_height: ListHeight
   created_at: string
   updated_at: string
 }

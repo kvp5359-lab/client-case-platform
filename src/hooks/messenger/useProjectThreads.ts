@@ -7,6 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { messengerKeys } from '@/hooks/queryKeys'
+import { logAuditAction } from '@/services/auditService'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
 
 export type ThreadAccentColor =
@@ -156,6 +157,12 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
           .insert(params.assigneeIds.map((pid) => ({ thread_id: thread.id, participant_id: pid })))
       }
 
+      const resourceType = thread.type === 'task' ? 'task' as const : 'thread' as const
+      logAuditAction('create', resourceType, thread.id, {
+        name: thread.name,
+        type: thread.type,
+      }, effectiveProjectId ?? undefined)
+
       return thread
     },
     onSuccess: (_data, params) => {
@@ -185,6 +192,13 @@ export function useDeleteThread() {
       if (thread.is_default) throw new Error('Нельзя удалить дефолтный тред')
       const { error } = await supabase.from('project_threads').delete().eq('id', thread.id)
       if (error) throw error
+
+      const resourceType = thread.type === 'task' ? 'task' as const : 'thread' as const
+      logAuditAction('delete', resourceType, thread.id, {
+        name: thread.name,
+        type: thread.type,
+      }, thread.project_id ?? undefined)
+
       return thread
     },
     onSuccess: (thread) => {
@@ -202,11 +216,23 @@ export function useRenameThread() {
 
   return useMutation({
     mutationFn: async (params: { threadId: string; projectId: string; name: string }) => {
+      const { data: old } = await supabase
+        .from('project_threads')
+        .select('name')
+        .eq('id', params.threadId)
+        .single()
+
       const { error } = await supabase
         .from('project_threads')
         .update({ name: params.name })
         .eq('id', params.threadId)
       if (error) throw error
+
+      logAuditAction('rename', 'thread', params.threadId, {
+        old_name: old?.name,
+        new_name: params.name,
+      }, params.projectId)
+
       return params
     },
     onSuccess: (params) => {
@@ -228,6 +254,15 @@ export function usePinThread() {
         .update({ is_pinned: params.isPinned })
         .eq('id', params.threadId)
       if (error) throw error
+
+      logAuditAction(
+        params.isPinned ? 'pin' : 'unpin',
+        'thread',
+        params.threadId,
+        {},
+        params.projectId,
+      )
+
       return params
     },
     onSuccess: (params) => {
@@ -259,11 +294,25 @@ export function useUpdateThread() {
       if (params.type !== undefined) update.type = params.type
       if (params.project_id !== undefined) update.project_id = params.project_id
 
+      const { data: old } = await supabase
+        .from('project_threads')
+        .select('name, accent_color, icon, type')
+        .eq('id', params.threadId)
+        .single()
+
       const { error } = await supabase
         .from('project_threads')
         .update(update)
         .eq('id', params.threadId)
       if (error) throw error
+
+      logAuditAction('change_settings', 'thread', params.threadId, {
+        ...update,
+        old_name: old?.name,
+        old_accent_color: old?.accent_color,
+        old_icon: old?.icon,
+      }, params.projectId)
+
       return params
     },
     onSuccess: (params) => {

@@ -33,6 +33,7 @@ import { EditBoardDialog } from '@/components/boards/EditBoardDialog'
 import { cn } from '@/lib/utils'
 import { taskKeys } from '@/hooks/queryKeys'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
+import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
 import type { Board } from '@/components/boards/types'
 import type { TaskItem } from '@/components/tasks/types'
 
@@ -54,8 +55,10 @@ function BoardTabContent({
 
   const hasTaskLists = lists?.some((l) => l.entity_type === 'task')
   const hasProjectLists = lists?.some((l) => l.entity_type === 'project')
+  const hasInboxLists = lists?.some((l) => l.entity_type === 'inbox')
   const { data: tasks } = useWorkspaceThreads(hasTaskLists ? workspaceId : undefined)
   const { data: projects } = useWorkspaceProjects(hasProjectLists ? workspaceId : undefined)
+  const { data: inboxThreads = [] } = useFilteredInbox(hasInboxLists ? workspaceId : '')
 
   const taskIds = (tasks ?? []).map((t) => t.id)
   const { data: assigneesMap } = useTaskAssigneesMap(taskIds)
@@ -119,6 +122,10 @@ function BoardTabContent({
     })
   }, [tasks, tp])
 
+  const handleOpenThread = useCallback((task: TaskItem) => {
+    tp.setOpenThread({ ...task, workspace_id: workspaceId })
+  }, [tp, workspaceId])
+
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <div className="flex-1 overflow-x-auto overflow-y-hidden">
@@ -126,6 +133,7 @@ function BoardTabContent({
           lists={lists ?? []}
           tasks={tasks ?? []}
           projects={projects ?? []}
+          inboxThreads={inboxThreads}
           assigneesMap={assigneesMap ?? {}}
           workspaceId={workspaceId}
           currentParticipantId={currentParticipantId ?? null}
@@ -133,7 +141,9 @@ function BoardTabContent({
           userToParticipantMap={userToParticipantMap}
           statuses={statuses}
           onOpenTask={handleOpenTask}
+          onOpenThread={handleOpenThread}
           onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}
+          selectedThreadId={tp.openThread?.id}
         />
       </div>
 

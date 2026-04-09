@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react'
 import { MessageBubble } from './MessageBubble'
 import { ChatEmptyState } from './ChatEmptyState'
 import { useMessengerContext } from './MessengerContext'
+import { formatAuditEvent, type ThreadAuditEvent } from '@/hooks/messenger/useThreadAuditEvents'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
 interface MessageListProps {
@@ -16,6 +17,8 @@ interface MessageListProps {
   onFetchOlder: () => void
   /** Инкрементируется при отправке сообщения — принудительный скролл вниз */
   scrollToBottomTrigger?: number
+  /** Audit events to display inline between messages */
+  auditEvents?: ThreadAuditEvent[]
 }
 
 /** Разделитель дат */
@@ -79,6 +82,7 @@ export function MessageList({
   lastReadAt,
   onFetchOlder,
   scrollToBottomTrigger,
+  auditEvents = [],
 }: MessageListProps) {
   const {
     currentParticipantId,
@@ -220,6 +224,33 @@ export function MessageList({
     )
   }, [messages, lastReadAt, currentParticipantId])
 
+  // Build a set of audit event timestamps to insert between messages
+  // Each event maps to: insert AFTER the last message with created_at <= event.created_at
+  type TimelineItem =
+    | { kind: 'message'; msg: ProjectMessage; idx: number }
+    | { kind: 'event'; event: ThreadAuditEvent }
+
+  const timeline = useMemo<TimelineItem[]>(() => {
+    if (auditEvents.length === 0) return messages.map((msg, idx) => ({ kind: 'message' as const, msg, idx }))
+
+    const items: TimelineItem[] = []
+    let ei = 0
+    for (let mi = 0; mi < messages.length; mi++) {
+      // Insert events that happened before this message
+      while (ei < auditEvents.length && auditEvents[ei].created_at <= messages[mi].created_at) {
+        items.push({ kind: 'event', event: auditEvents[ei] })
+        ei++
+      }
+      items.push({ kind: 'message', msg: messages[mi], idx: mi })
+    }
+    // Remaining events after last message
+    while (ei < auditEvents.length) {
+      items.push({ kind: 'event', event: auditEvents[ei] })
+      ei++
+    }
+    return items
+  }, [messages, auditEvents])
+
   if (isLoading) {
     return (
       <div className="flex-1 p-4 space-y-4">
@@ -250,7 +281,18 @@ export function MessageList({
         {/* Sentinel для подгрузки старых */}
         <div ref={sentinelRef} className="h-1" />
 
-        {messages.map((msg, i) => {
+        {timeline.map((item, ti) => {
+          if (item.kind === 'event') {
+            return (
+              <ServiceMessage
+                key={`event-${item.event.id}`}
+                text={formatAuditEvent(item.event)}
+                time={item.event.created_at}
+              />
+            )
+          }
+
+          const { msg, idx: i } = item
           const showDate = i === 0 || !isSameDay(messages[i - 1].created_at, msg.created_at)
           const isOwn = currentParticipantId
             ? msg.sender_participant_id === currentParticipantId
@@ -271,13 +313,6 @@ export function MessageList({
           return (
             <div
               key={msg.id}
-              // Браузерная виртуализация: для сообщений вне viewport'а браузер
-              // пропускает рендеринг (layout/paint), сохраняя при этом структуру
-              // DOM и scroll-логику. При >100 сообщениях это заметно снижает
-              // нагрузку без переписывания scroll-инвариантов.
-              // contain-intrinsic-size — плейсхолдер-высота до реального рендера.
-              // Для первых 20 и последних 20 сообщений отключаем, чтобы не мешать
-              // авто-скроллу и плавности у краёв.
               style={
                 messages.length > 100 && i >= 20 && i < messages.length - 20
                   ? {

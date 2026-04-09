@@ -16,12 +16,15 @@ import { useDeleteList } from './hooks/useListMutations'
 import { useFilteredTasks } from './hooks/useFilteredListData'
 import { BoardTaskRow } from './BoardTaskRow'
 import { BoardProjectRow } from './BoardProjectRow'
+import { BoardInboxList } from './BoardInboxList'
 import { ListSettingsDialog } from './ListSettingsDialog'
 import type { BoardList, FilterContext, GroupByField } from './types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceTasks'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/ui/status-dropdown'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
+import type { InboxThreadEntry } from '@/services/api/inboxService'
+import type { TaskItem } from '@/components/tasks/types'
 
 // ── Группировка ─────────────────────────────────────────
 
@@ -116,24 +119,32 @@ interface BoardListCardProps {
   list: BoardList
   tasks: WorkspaceTask[]
   projects: BoardProject[]
+  inboxThreads: InboxThreadEntry[]
   assigneesMap: Record<string, AvatarParticipant[]>
   filterCtx: FilterContext
   workspaceId: string
   statuses: StatusOption[]
   onOpenTask: (taskId: string) => void
+  onOpenThread: (task: TaskItem) => void
   onStatusChange: (taskId: string, statusId: string | null) => void
+  selectedThreadId?: string | null
+  existingColumns?: number
 }
 
 export function BoardListCard({
   list,
   tasks,
   projects,
+  inboxThreads,
   assigneesMap,
   filterCtx,
   workspaceId,
   statuses,
   onOpenTask,
+  onOpenThread,
   onStatusChange,
+  selectedThreadId,
+  existingColumns,
 }: BoardListCardProps) {
   const [collapsed, setCollapsed] = useState(false)
   const filterDialog = useDialog()
@@ -148,9 +159,13 @@ export function BoardListCard({
     return result
   }, [assigneesMap])
 
+  const safeFilters = list.entity_type === 'inbox'
+    ? { logic: 'and' as const, rules: [] }
+    : list.filters
+
   const filteredTasks = useFilteredTasks(
     list.entity_type === 'task' ? tasks : [],
-    list.filters,
+    safeFilters,
     filterCtx,
     simpleAssigneesMap,
     list.sort_by ?? 'created_at',
@@ -158,11 +173,18 @@ export function BoardListCard({
   )
 
   const isProject = list.entity_type === 'project'
-  const hasFilters = list.filters.rules.length > 0
-  const count = isProject ? projects.length : filteredTasks.length
+  const isInbox = list.entity_type === 'inbox'
+  const hasFilters = safeFilters.rules.length > 0
+  const count = isInbox ? inboxThreads.length : isProject ? projects.length : filteredTasks.length
   const CollapseIcon = collapsed ? ChevronRight : ChevronDown
   const isCards = (list.display_mode ?? 'list') === 'cards'
   const groupByField = (list.group_by ?? 'none') as GroupByField
+  const listHeight = list.list_height ?? 'auto'
+
+  const heightClass =
+    listHeight === 'full' ? 'flex-1 min-h-0' :
+    listHeight === 'medium' ? 'max-h-[600px]' :
+    'max-h-[400px]'
 
   const groups = useMemo(
     () => groupTasks(filteredTasks, groupByField, assigneesMap, statuses),
@@ -171,7 +193,7 @@ export function BoardListCard({
   const hasGrouping = groupByField !== 'none'
 
   return (
-    <div className="rounded-lg">
+    <div className={cn('rounded-lg', listHeight === 'full' && 'flex flex-col flex-1 min-h-0')}>
       {/* Header */}
       <div className="flex items-center gap-1.5 py-2">
         <button
@@ -183,19 +205,21 @@ export function BoardListCard({
         </button>
         <span className="text-sm font-medium flex-1 truncate">{list.name}</span>
         <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-          {list.entity_type === 'task' ? 'Задачи' : 'Проекты'}
+          {list.entity_type === 'task' ? 'Задачи' : list.entity_type === 'project' ? 'Проекты' : 'Входящие'}
         </Badge>
         {count > 0 && (
           <span className="text-xs text-muted-foreground">{count}</span>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn('h-6 w-6', hasFilters && 'text-primary')}
-          onClick={filterDialog.open}
-        >
-          <Filter className="h-3 w-3" />
-        </Button>
+        {!isInbox && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn('h-6 w-6', hasFilters && 'text-primary')}
+            onClick={filterDialog.open}
+          >
+            <Filter className="h-3 w-3" />
+          </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -222,8 +246,15 @@ export function BoardListCard({
 
       {/* Content */}
       {!collapsed && (
-        <div className={cn('max-h-[400px] overflow-y-auto', !isCards && 'rounded-lg border')}>
-          {isProject ? (
+        <div className={cn(heightClass, 'overflow-y-auto', !isCards && 'rounded-lg border')}>
+          {isInbox ? (
+            <BoardInboxList
+              threads={inboxThreads}
+              onOpenThread={onOpenThread}
+              selectedThreadId={selectedThreadId}
+              defaultFilter={(list.filters as unknown as { default_filter?: string })?.default_filter === 'unread' ? 'unread' : 'all'}
+            />
+          ) : isProject ? (
             projects.length > 0 ? (
               <div className={cn(isCards ? 'grid gap-1' : 'divide-y')}>
                 {projects.map((project) => (
@@ -284,6 +315,7 @@ export function BoardListCard({
         onClose={filterDialog.close}
         list={list}
         workspaceId={workspaceId}
+        existingColumns={existingColumns}
       />
     </div>
   )

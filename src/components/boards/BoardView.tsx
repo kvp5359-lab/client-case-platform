@@ -7,11 +7,14 @@ import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceTasks'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/ui/status-dropdown'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
+import type { InboxThreadEntry } from '@/services/api/inboxService'
+import type { TaskItem } from '@/components/tasks/types'
 
 interface BoardViewProps {
   lists: BoardList[]
   tasks: WorkspaceTask[]
   projects: BoardProject[]
+  inboxThreads: InboxThreadEntry[]
   assigneesMap: Record<string, AvatarParticipant[]>
   workspaceId: string
   currentParticipantId: string | null
@@ -19,13 +22,16 @@ interface BoardViewProps {
   userToParticipantMap?: Record<string, string>
   statuses?: StatusOption[]
   onOpenTask?: (taskId: string) => void
+  onOpenThread?: (task: TaskItem) => void
   onStatusChange?: (taskId: string, statusId: string | null) => void
+  selectedThreadId?: string | null
 }
 
 export function BoardView({
   lists,
   tasks,
   projects,
+  inboxThreads,
   assigneesMap,
   workspaceId,
   currentParticipantId,
@@ -33,7 +39,9 @@ export function BoardView({
   userToParticipantMap,
   statuses,
   onOpenTask,
+  onOpenThread,
   onStatusChange,
+  selectedThreadId,
 }: BoardViewProps) {
   const columns = useMemo(() => {
     const map = new Map<number, BoardList[]>()
@@ -76,12 +84,16 @@ export function BoardView({
           lists={col.lists}
           tasks={tasks}
           projects={projects}
+          inboxThreads={inboxThreads}
           assigneesMap={assigneesMap}
           filterCtx={filterCtx}
           workspaceId={workspaceId}
           statuses={statuses ?? []}
           onOpenTask={onOpenTask ?? (() => {})}
+          onOpenThread={onOpenThread ?? (() => {})}
           onStatusChange={onStatusChange ?? (() => {})}
+          selectedThreadId={selectedThreadId}
+          existingColumns={columns.length}
         />
       ))}
     </div>

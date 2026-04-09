@@ -49,6 +49,12 @@ export interface InboxThreadEntry {
   last_reaction_emoji: string | null
   contact_email: string | null
   email_subject: string | null
+  /** Audit: timestamp of last event (status change, rename, etc.) */
+  last_event_at: string | null
+  /** Audit: human-readable event description */
+  last_event_text: string | null
+  /** Audit: count of unread events */
+  unread_event_count: number
 }
 
 /** @deprecated Используй getInboxThreadsV2 */

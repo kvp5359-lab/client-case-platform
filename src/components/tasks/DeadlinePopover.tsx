@@ -17,12 +17,15 @@ interface DeadlinePopoverProps {
   onSet: (date: Date) => void
   onClear: () => void
   isPending: boolean
+  /** Задача завершена/отменена — не подсвечивать просрочку */
+  isFinal?: boolean
 }
 
-export function DeadlinePopover({ deadline, onSet, onClear, isPending }: DeadlinePopoverProps) {
+export function DeadlinePopover({ deadline, onSet, onClear, isPending, isFinal }: DeadlinePopoverProps) {
   const [open, setOpen] = useState(false)
   const d = deadline ? new Date(deadline) : undefined
   const isOverdue =
+    !isFinal &&
     d != null &&
     new Date(d.getFullYear(), d.getMonth(), d.getDate()) <
       new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())

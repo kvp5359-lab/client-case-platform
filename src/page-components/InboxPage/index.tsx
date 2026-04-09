@@ -81,7 +81,7 @@ export default function InboxPage() {
       if (f === 'unread') {
         const ids = new Set(
           chats
-            .filter((c) => c.unread_count > 0 || c.has_unread_reaction || c.manually_unread)
+            .filter((c) => c.unread_count > 0 || c.has_unread_reaction || c.manually_unread || (c.unread_event_count ?? 0) > 0)
             .map((c) => c.thread_id),
         )
         setUnreadSnapshot(ids)
@@ -248,7 +248,7 @@ export default function InboxPage() {
 
   const unreadCount = useMemo(
     () =>
-      chats.filter((c) => c.unread_count > 0 || c.has_unread_reaction || c.manually_unread).length,
+      chats.filter((c) => c.unread_count > 0 || c.has_unread_reaction || c.manually_unread || (c.unread_event_count ?? 0) > 0).length,
     [chats],
   )
 

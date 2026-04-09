@@ -35,7 +35,7 @@ export function CreateListDialog({
 }: CreateListDialogProps) {
   const createList = useCreateList()
   const [name, setName] = useState('')
-  const [entityType, setEntityType] = useState<'task' | 'project'>('task')
+  const [entityType, setEntityType] = useState<'task' | 'project' | 'inbox'>('task')
   const [columnIndex, setColumnIndex] = useState('0')
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -83,13 +83,14 @@ export function CreateListDialog({
             </div>
             <div className="space-y-2">
               <Label>Что показывать</Label>
-              <Select value={entityType} onValueChange={(v) => setEntityType(v as 'task' | 'project')}>
+              <Select value={entityType} onValueChange={(v) => setEntityType(v as 'task' | 'project' | 'inbox')}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="task">Задачи</SelectItem>
                   <SelectItem value="project">Проекты</SelectItem>
+                  <SelectItem value="inbox">Входящие</SelectItem>
                 </SelectContent>
               </Select>
             </div>

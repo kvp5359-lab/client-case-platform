@@ -91,7 +91,7 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
     () =>
       new Set(
         inboxThreads
-          .filter((t) => t.unread_count > 0 || t.has_unread_reaction || t.manually_unread)
+          .filter((t) => t.unread_count > 0 || t.has_unread_reaction || t.manually_unread || (t.unread_event_count ?? 0) > 0)
           .map((t) => t.thread_id),
       ),
     [inboxThreads],
@@ -172,9 +172,13 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
           return true
         })
         .sort((a, b) => {
-          if (a.type === 'chat' && b.type === 'task') return -1
-          if (a.type === 'task' && b.type === 'chat') return 1
-          return 0
+          // Pinned threads always first
+          if (a.is_pinned && !b.is_pinned) return -1
+          if (!a.is_pinned && b.is_pinned) return 1
+          // Sort order: chats → emails → tasks
+          const order = (t: typeof a) =>
+            t.type === 'task' ? 2 : t.icon === 'mail' ? 1 : 0
+          return order(a) - order(b)
         }),
     [accessibleChats, finalStatusIds, unreadThreadIds],
   )

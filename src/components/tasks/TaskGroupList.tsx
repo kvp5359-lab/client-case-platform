@@ -48,6 +48,7 @@ function DraggableTaskRow({
   onDeadlineSet,
   onDeadlineClear,
   deadlinePending,
+  finalStatusIds,
   showProject,
   dropIndicator,
 }: {
@@ -60,6 +61,7 @@ function DraggableTaskRow({
   onDeadlineSet: (date: Date) => void
   onDeadlineClear: () => void
   deadlinePending: boolean
+  finalStatusIds: Set<string>
   showProject: boolean
   dropIndicator: 'top' | 'bottom' | null
 }) {
@@ -93,6 +95,7 @@ function DraggableTaskRow({
         onDeadlineSet={onDeadlineSet}
         onDeadlineClear={onDeadlineClear}
         deadlinePending={deadlinePending}
+        finalStatusIds={finalStatusIds}
         showProject={showProject}
         dragHandleProps={{ attributes, listeners }}
         isDragging={isDragging}
@@ -140,7 +143,7 @@ function getDeadlineDateForGroup(group: DeadlineGroup): Date | null {
 // ── Основной компонент ──
 
 interface TaskGroupListProps {
-  grouped: Map<DeadlineGroup, TaskItem[]>
+  grouped: Map<DeadlineGroup | string, TaskItem[]>
   completedTasks: TaskItem[]
   workspaceId: string
   taskStatuses: TaskStatus[]
@@ -152,6 +155,10 @@ interface TaskGroupListProps {
   onDeadlineClear: (taskId: string) => void
   onReorder: (updates: { id: string; sort_order: number }[]) => void
   deadlinePending: boolean
+  /** false = flat list without deadline groups */
+  groupByDeadline?: boolean
+  /** ID финальных статусов — для отключения подсветки просрочки */
+  finalStatusIds?: Set<string>
 }
 
 export function TaskGroupList({
@@ -167,6 +174,8 @@ export function TaskGroupList({
   onDeadlineClear,
   onReorder,
   deadlinePending,
+  groupByDeadline = true,
+  finalStatusIds = new Set(),
 }: TaskGroupListProps) {
   const [completedExpanded, setCompletedExpanded] = useState(false)
   const [activeTask, setActiveTask] = useState<TaskItem | null>(null)
@@ -179,14 +188,22 @@ export function TaskGroupList({
   // Быстрый поиск: task id → группа
   const taskToGroup = useMemo(() => {
     const map = new Map<string, DeadlineGroup>()
-    for (const group of GROUP_ORDER) {
-      const items = grouped.get(group)
+    if (!groupByDeadline) {
+      // Flat mode — all tasks in one group
+      const items = grouped.get('all' as DeadlineGroup)
       if (items) {
-        for (const item of items) map.set(item.id, group)
+        for (const item of items) map.set(item.id, 'all' as DeadlineGroup)
+      }
+    } else {
+      for (const group of GROUP_ORDER) {
+        const items = grouped.get(group)
+        if (items) {
+          for (const item of items) map.set(item.id, group)
+        }
       }
     }
     return map
-  }, [grouped])
+  }, [grouped, groupByDeadline])
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const task = event.active.data.current?.task as TaskItem | undefined
@@ -296,47 +313,72 @@ export function TaskGroupList({
       onDragCancel={handleDragCancel}
     >
       <div className="space-y-6">
-        {GROUP_ORDER.map((group) => {
-          const items = grouped.get(group)
-          if (!items || items.length === 0) return null
+        {groupByDeadline ? (
+          GROUP_ORDER.map((group) => {
+            const items = grouped.get(group)
+            if (!items || items.length === 0) return null
 
-          return (
-            <div key={group}>
-              <div className="flex items-center gap-2 mb-2">
-                <h2
-                  className={cn(
-                    'text-xs font-semibold uppercase tracking-wider',
-                    GROUP_COLORS[group],
-                  )}
-                >
-                  {GROUP_LABELS[group]}
-                </h2>
-                <span className="text-xs text-muted-foreground">{items.length}</span>
-              </div>
+            return (
+              <div key={group}>
+                <div className="flex items-center gap-2 mb-2">
+                  <h2
+                    className={cn(
+                      'text-xs font-semibold uppercase tracking-wider',
+                      GROUP_COLORS[group],
+                    )}
+                  >
+                    {GROUP_LABELS[group]}
+                  </h2>
+                  <span className="text-xs text-muted-foreground">{items.length}</span>
+                </div>
 
-              <div>
-                {items.map((task) => (
-                  <DraggableTaskRow
-                    key={task.id}
-                    task={task}
-                    workspaceId={workspaceId}
-                    statuses={taskStatuses}
-                    members={membersMap[task.id] ?? []}
-                    onOpen={() => onOpenTask(task.id)}
-                    onStatusChange={(statusId) => onStatusChange(task.id, statusId)}
-                    onDeadlineSet={(date) => onDeadlineSet(task.id, date)}
-                    onDeadlineClear={() => onDeadlineClear(task.id)}
-                    deadlinePending={deadlinePending}
-                    showProject={showProject}
-                    dropIndicator={
-                      dropIndicator?.taskId === task.id ? dropIndicator.position : null
-                    }
-                  />
-                ))}
+                <div>
+                  {items.map((task) => (
+                    <DraggableTaskRow
+                      key={task.id}
+                      task={task}
+                      workspaceId={workspaceId}
+                      statuses={taskStatuses}
+                      members={membersMap[task.id] ?? []}
+                      onOpen={() => onOpenTask(task.id)}
+                      onStatusChange={(statusId) => onStatusChange(task.id, statusId)}
+                      onDeadlineSet={(date) => onDeadlineSet(task.id, date)}
+                      onDeadlineClear={() => onDeadlineClear(task.id)}
+                      deadlinePending={deadlinePending}
+                      finalStatusIds={finalStatusIds}
+                      showProject={showProject}
+                      dropIndicator={
+                        dropIndicator?.taskId === task.id ? dropIndicator.position : null
+                      }
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })
+        ) : (
+          <div>
+            {(grouped.get('all' as DeadlineGroup) ?? []).map((task) => (
+              <DraggableTaskRow
+                key={task.id}
+                task={task}
+                workspaceId={workspaceId}
+                statuses={taskStatuses}
+                members={membersMap[task.id] ?? []}
+                onOpen={() => onOpenTask(task.id)}
+                onStatusChange={(statusId) => onStatusChange(task.id, statusId)}
+                onDeadlineSet={(date) => onDeadlineSet(task.id, date)}
+                onDeadlineClear={() => onDeadlineClear(task.id)}
+                deadlinePending={deadlinePending}
+                finalStatusIds={finalStatusIds}
+                showProject={showProject}
+                dropIndicator={
+                  dropIndicator?.taskId === task.id ? dropIndicator.position : null
+                }
+              />
+            ))}
+          </div>
+        )}
 
         {/* Секция «Завершены» — без drag & drop */}
         {completedTasks.length > 0 && (

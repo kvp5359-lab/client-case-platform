@@ -9,20 +9,35 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { taskKeys } from '@/hooks/queryKeys'
+import { logAuditAction } from '@/services/auditService'
 
 export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ threadId, statusId }: { threadId: string; statusId: string | null }) => {
+      // Read old value for audit
+      const { data: old } = await supabase
+        .from('project_threads')
+        .select('status_id, name, project_id')
+        .eq('id', threadId)
+        .single()
+
       const { error } = await supabase
         .from('project_threads')
         .update({ status_id: statusId })
         .eq('id', threadId)
       if (error) throw error
+
+      logAuditAction('change_status', 'task', threadId, {
+        name: old?.name,
+        old_status: old?.status_id,
+        new_status: statusId,
+      }, old?.project_id ?? undefined)
     },
-    onSuccess: () => {
+    onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount })
+      queryClient.invalidateQueries({ queryKey: ['thread-audit-events', threadId] })
     },
     onError: () => toast.error('Не удалось обновить статус'),
   })
@@ -32,15 +47,28 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ threadId, deadline }: { threadId: string; deadline: string | null }) => {
+      const { data: old } = await supabase
+        .from('project_threads')
+        .select('deadline, name, project_id')
+        .eq('id', threadId)
+        .single()
+
       const { error } = await supabase
         .from('project_threads')
         .update({ deadline })
         .eq('id', threadId)
       if (error) throw error
+
+      logAuditAction('change_deadline', 'task', threadId, {
+        name: old?.name,
+        old_deadline: old?.deadline,
+        new_deadline: deadline,
+      }, old?.project_id ?? undefined)
     },
-    onSuccess: () => {
+    onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount })
+      queryClient.invalidateQueries({ queryKey: ['thread-audit-events', threadId] })
     },
     onError: () => toast.error('Не удалось обновить срок'),
   })
@@ -50,11 +78,23 @@ export function useRenameTask(invalidateKeys: ReadonlyArray<readonly unknown[]>)
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ threadId, name }: { threadId: string; name: string }) => {
+      const { data: old } = await supabase
+        .from('project_threads')
+        .select('name, project_id')
+        .eq('id', threadId)
+        .single()
+
       const { error } = await supabase.from('project_threads').update({ name }).eq('id', threadId)
       if (error) throw error
+
+      logAuditAction('rename', 'task', threadId, {
+        old_name: old?.name,
+        new_name: name,
+      }, old?.project_id ?? undefined)
     },
-    onSuccess: () => {
+    onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
+      queryClient.invalidateQueries({ queryKey: ['thread-audit-events', threadId] })
     },
     onError: () => toast.error('Не удалось переименовать'),
   })
@@ -109,14 +149,30 @@ export function useUpdateTaskSettings(invalidateKeys: ReadonlyArray<readonly unk
       accent_color: string
       icon: string
     }) => {
+      const { data: old } = await supabase
+        .from('project_threads')
+        .select('name, accent_color, icon, project_id')
+        .eq('id', threadId)
+        .single()
+
       const { error } = await supabase
         .from('project_threads')
         .update({ name, accent_color, icon })
         .eq('id', threadId)
       if (error) throw error
+
+      logAuditAction('change_settings', 'task', threadId, {
+        old_name: old?.name,
+        new_name: name,
+        old_accent_color: old?.accent_color,
+        new_accent_color: accent_color,
+        old_icon: old?.icon,
+        new_icon: icon,
+      }, old?.project_id ?? undefined)
     },
-    onSuccess: () => {
+    onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
+      queryClient.invalidateQueries({ queryKey: ['thread-audit-events', threadId] })
     },
     onError: () => toast.error('Не удалось сохранить настройки'),
   })

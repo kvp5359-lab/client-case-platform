@@ -3,12 +3,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { boardKeys } from '@/hooks/queryKeys'
-import type { BoardList, FilterGroup, SortField, SortDir, DisplayMode, VisibleField, GroupByField } from '../types'
+import type { BoardList, FilterGroup, SortField, SortDir, DisplayMode, VisibleField, GroupByField, ListHeight } from '../types'
 
 interface CreateListParams {
   board_id: string
   name: string
-  entity_type: 'task' | 'project'
+  entity_type: 'task' | 'project' | 'inbox'
   column_index?: number
   sort_order?: number
 }
@@ -17,7 +17,7 @@ interface UpdateListParams {
   id: string
   board_id: string
   name?: string
-  entity_type?: 'task' | 'project'
+  entity_type?: 'task' | 'project' | 'inbox'
   column_index?: number
   sort_order?: number
   filters?: FilterGroup
@@ -26,6 +26,7 @@ interface UpdateListParams {
   display_mode?: DisplayMode
   visible_fields?: VisibleField[]
   group_by?: GroupByField
+  list_height?: ListHeight
 }
 
 export function useCreateList() {

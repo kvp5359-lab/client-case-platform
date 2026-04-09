@@ -10,6 +10,8 @@ export interface ThreadUnreadFields {
   has_unread_reaction: boolean
   manually_unread: boolean
   last_reaction_emoji?: string | null
+  /** Audit: count of unread events (status change, etc.) */
+  unread_event_count?: number
 }
 
 /** Результат: что рендерить в бейдже */
@@ -29,8 +31,9 @@ export type BadgeDisplay =
  * 4. Иначе → ничего
  */
 export function getBadgeDisplay(thread: ThreadUnreadFields): BadgeDisplay {
-  if (thread.unread_count > 0) {
-    return { type: 'number', value: thread.unread_count + (thread.has_unread_reaction ? 1 : 0) }
+  const eventCount = thread.unread_event_count ?? 0
+  if (thread.unread_count > 0 || eventCount > 0) {
+    return { type: 'number', value: thread.unread_count + eventCount + (thread.has_unread_reaction ? 1 : 0) }
   }
   if (thread.has_unread_reaction && thread.last_reaction_emoji) {
     return { type: 'emoji', value: thread.last_reaction_emoji }
@@ -89,7 +92,7 @@ export function getAggregateBadgeDisplay(threads: ThreadUnreadFields[]): BadgeDi
  * @deprecated Используй getBadgeDisplay для визуала. Эта функция — для подсчёта числа.
  */
 export function calcThreadUnread(thread: ThreadUnreadFields): number {
-  const count = thread.unread_count + (thread.has_unread_reaction ? 1 : 0)
+  const count = thread.unread_count + (thread.unread_event_count ?? 0) + (thread.has_unread_reaction ? 1 : 0)
   if (count > 0) return count
   if (thread.manually_unread) return -1
   return 0
@@ -102,7 +105,7 @@ export function calcThreadUnread(thread: ThreadUnreadFields): number {
 export function calcTotalUnread(threads: ThreadUnreadFields[]): number {
   let total = 0
   for (const t of threads) {
-    const count = t.unread_count + (t.has_unread_reaction ? 1 : 0)
+    const count = t.unread_count + (t.unread_event_count ?? 0) + (t.has_unread_reaction ? 1 : 0)
     if (count > 0) total += count
     else if (t.manually_unread) total += 1
   }

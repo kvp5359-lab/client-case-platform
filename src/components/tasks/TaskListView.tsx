@@ -12,7 +12,7 @@
 
 import { useState, useMemo, useCallback, lazy, Suspense, memo } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckSquare, Loader2, Search, X, Plus } from 'lucide-react'
+import { CheckSquare, Loader2, Search, X, Plus, List, CalendarDays } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useWorkspaceTasks } from '@/hooks/tasks/useWorkspaceTasks'
@@ -224,6 +224,34 @@ export const TaskListView = memo(function TaskListView({
             </button>
           )}
         </div>
+        <div className="flex items-center border rounded-md h-9 shrink-0">
+          <button
+            type="button"
+            onClick={() => filters.setGroupByDeadline(true)}
+            className={cn(
+              'h-full px-2 flex items-center transition-colors rounded-l-md',
+              filters.groupByDeadline
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+            )}
+            title="По срокам"
+          >
+            <CalendarDays className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => filters.setGroupByDeadline(false)}
+            className={cn(
+              'h-full px-2 flex items-center transition-colors rounded-r-md',
+              !filters.groupByDeadline
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+            )}
+            title="Без группировки"
+          >
+            <List className="w-3.5 h-3.5" />
+          </button>
+        </div>
         <Button
           size="sm"
           variant="outline"
@@ -335,6 +363,7 @@ export const TaskListView = memo(function TaskListView({
         <TaskGroupList
           grouped={filters.grouped}
           completedTasks={filters.completedTasks}
+          groupByDeadline={filters.groupByDeadline}
           workspaceId={workspaceId}
           taskStatuses={taskStatuses}
           membersMap={membersMap}
@@ -347,6 +376,7 @@ export const TaskListView = memo(function TaskListView({
           onDeadlineClear={(taskId) => updateDeadline.mutate({ threadId: taskId, deadline: null })}
           onReorder={(updates) => reorderTasks.mutate(updates)}
           deadlinePending={updateDeadline.isPending}
+          finalStatusIds={new Set(taskStatuses.filter((s) => s.is_final).map((s) => s.id))}
         />
       )}
 

@@ -89,7 +89,7 @@ export function ListFilterEditor({ open, onClose, list, workspaceId }: ListFilte
           <FilterGroupEditor
             group={filters}
             onChange={setFilters}
-            entityType={list.entity_type}
+            entityType={list.entity_type === 'inbox' ? 'task' : list.entity_type}
             depth={0}
             workspaceId={workspaceId}
           />

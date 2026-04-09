@@ -31,6 +31,7 @@ import {
 } from '@/services/api/messenger/messengerService'
 import { useIsManuallyUnread, useHasUnreadReaction } from '@/hooks/messenger/useInbox'
 import { useDelayedSend } from '@/hooks/messenger/useDelayedSend'
+import { useThreadAuditEvents } from '@/hooks/messenger/useThreadAuditEvents'
 import { useEmailLink } from '@/hooks/email/useEmailLink'
 import { useSendEmail } from '@/hooks/email/useSendEmail'
 // import { useChatState } from '@/hooks/messenger/useChatState'
@@ -93,6 +94,8 @@ export function useMessengerState({
     isFetchingOlder,
     latestPageMessageCount,
   } = useProjectMessages(projectId, channel, threadId)
+
+  const { data: auditEvents = [] } = useThreadAuditEvents(threadId)
 
   const sendMessage = useSendMessage(
     projectId,
@@ -240,6 +243,7 @@ export function useMessengerState({
     isAdmin,
     // Messages
     messages,
+    auditEvents,
     isLoading,
     fetchOlderMessages,
     hasMoreOlder,

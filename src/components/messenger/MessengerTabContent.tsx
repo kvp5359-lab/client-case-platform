@@ -171,6 +171,7 @@ export function MessengerTabContent({
           lastReadAt={state.lastReadAt ?? undefined}
           onFetchOlder={state.fetchOlderMessages}
           scrollToBottomTrigger={state.sendTrigger}
+          auditEvents={state.auditEvents}
         />
 
         {/* Кнопка Прочитано/Непрочитано — наезжает на список через negative margin */}

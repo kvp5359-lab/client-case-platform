@@ -29,6 +29,8 @@ interface TaskRowProps {
   onDeadlineSet: (date: Date) => void
   onDeadlineClear: () => void
   deadlinePending: boolean
+  /** ID статусов с is_final — для отключения подсветки просрочки */
+  finalStatusIds?: Set<string>
   /** Показывать название проекта (на странице «Все задачи») */
   showProject?: boolean
   /** Drag handle props (от useSortable) */
@@ -52,6 +54,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
   onDeadlineSet,
   onDeadlineClear,
   deadlinePending,
+  finalStatusIds,
   showProject,
   dragHandleProps,
   style,
@@ -145,6 +148,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
         onSet={onDeadlineSet}
         onClear={onDeadlineClear}
         isPending={deadlinePending}
+        isFinal={!!task.status_id && !!finalStatusIds?.has(task.status_id)}
       />
     </div>
   )

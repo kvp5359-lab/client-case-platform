@@ -61,10 +61,18 @@ export interface ModuleDefinition {
 export const PROJECT_MODULES: ModuleDefinition[] = [
   // === Основные вкладки ===
   {
+    id: 'tasks',
+    label: 'Задачи',
+    icon: CheckSquare,
+    order: 1,
+    templateKey: 'tasks',
+    permissionKey: 'tasks',
+  },
+  {
     id: 'documents',
     label: 'Документы',
     icon: FolderOpen,
-    order: 1,
+    order: 2,
     templateKey: null,
     permissionKey: 'card_view',
   },
@@ -72,17 +80,9 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     id: 'forms',
     label: 'Анкеты',
     icon: FileText,
-    order: 2,
+    order: 3,
     templateKey: 'forms',
     permissionKey: 'forms',
-  },
-  {
-    id: 'tasks',
-    label: 'Задачи',
-    icon: CheckSquare,
-    order: 3,
-    templateKey: 'tasks',
-    permissionKey: 'tasks',
   },
   {
     id: 'knowledge-base',

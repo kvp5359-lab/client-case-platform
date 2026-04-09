@@ -132,10 +132,11 @@ export default function ProjectPage() {
   // === URL И НАВИГАЦИЯ ===
 
   const searchParams = new URLSearchParams(currentSearchParams.toString())
-  const urlTab = searchParams.get('tab') || 'documents'
+  const firstTab = getFirstAvailableTab()
+  const urlTab = searchParams.get('tab') || firstTab
 
   const isTabAccessible = (tab: string) => availableModules.some((m) => m.id === tab)
-  const activeTab = isTabAccessible(urlTab) ? urlTab : getFirstAvailableTab()
+  const activeTab = isTabAccessible(urlTab) ? urlTab : firstTab
 
   // Запросы зависят от активной вкладки — грузим только то, что видим.
   // documentKits нужны в Документах, formKits — в Анкетах. Если юзер сразу идёт

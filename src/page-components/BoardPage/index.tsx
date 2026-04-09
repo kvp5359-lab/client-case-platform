@@ -71,6 +71,7 @@ export default function BoardPage() {
             lists={lists ?? []}
             tasks={tasks ?? []}
             projects={projects ?? []}
+            inboxThreads={[]}
             assigneesMap={assigneesMap ?? {}}
             workspaceId={workspaceId}
             currentParticipantId={currentParticipantId ?? null}

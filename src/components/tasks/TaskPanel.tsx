@@ -112,9 +112,14 @@ export function TaskPanel({
   useEffect(() => {
     if (!open) return
     const handleMouseDown = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        onClose()
-      }
+      const target = e.target as HTMLElement
+      // Don't close if click is inside the panel
+      if (panelRef.current && panelRef.current.contains(target)) return
+      // Don't close if click is inside a Radix portal (popover, dropdown, dialog)
+      if (target.closest('[data-radix-popper-content-wrapper]') || target.closest('[role="dialog"]')) return
+      // Don't close if click is on a file input overlay
+      if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'file') return
+      onClose()
     }
     document.addEventListener('mousedown', handleMouseDown)
     return () => document.removeEventListener('mousedown', handleMouseDown)
@@ -163,7 +168,7 @@ export function TaskPanel({
         )}
       >
         {/* Шапка */}
-        <div className="border-b shrink-0 py-1.5">
+        <div className="border-b shrink-0 min-h-[48px] flex flex-col justify-center py-2">
           {/* Строка 1: статус/иконка + название + действия */}
           <div className="flex items-center gap-2 px-4">
             {/* Статус-дропдаун (только задачи) или иконка треда */}
@@ -229,6 +234,28 @@ export function TaskPanel({
               </div>
             )}
 
+            {/* Проект + Дедлайн — в той же строке */}
+            {showProjectLink && task.project_name && (
+              <button
+                type="button"
+                onClick={onProjectClick}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
+                title="Открыть проект"
+              >
+                <span className="truncate max-w-[120px]">{task.project_name}</span>
+                <ExternalLink className="h-3 w-3 opacity-50" />
+              </button>
+            )}
+
+            {isTask && onDeadlineSet && onDeadlineClear && (
+              <DeadlinePopover
+                deadline={task.deadline}
+                onSet={onDeadlineSet}
+                onClear={onDeadlineClear}
+                isPending={deadlinePending}
+              />
+            )}
+
             <div ref={toolbarRef} className="flex items-center gap-1 ml-auto shrink-0" />
 
             <button
@@ -250,50 +277,25 @@ export function TaskPanel({
             </button>
           </div>
 
-          {/* Строка 2: зависит от типа */}
-          <div className="flex items-center gap-2 px-4 -mt-1">
-            {/* Спейсер — ширина иконки статуса */}
-            <div className="w-[26px] shrink-0" />
-
-            {showProjectLink && task.project_name && (
-              <button
-                type="button"
-                onClick={onProjectClick}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
-                title="Открыть проект"
-              >
-                <span className="truncate max-w-[120px]">{task.project_name}</span>
-                <ExternalLink className="h-3 w-3 opacity-50" />
-              </button>
-            )}
-
-            {/* Дедлайн — только для задач */}
-            {isTask && onDeadlineSet && onDeadlineClear && (
-              <DeadlinePopover
-                deadline={task.deadline}
-                onSet={onDeadlineSet}
-                onClear={onDeadlineClear}
-                isPending={deadlinePending}
-              />
-            )}
-
-            {/* Email-получатели */}
-            {isEmail && task.contact_emails && task.contact_emails.length > 0 && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Mail className="w-3 h-3 shrink-0" />
-                <span className="truncate max-w-[300px]">
-                  {task.contact_emails.join(', ')}
-                </span>
-              </div>
-            )}
-
-            {/* Тема письма */}
-            {isEmail && task.email_subject && (
-              <div className="text-xs text-muted-foreground truncate max-w-[200px]" title={task.email_subject}>
-                — {task.email_subject}
-              </div>
-            )}
-          </div>
+          {/* Строка 2: email получатели (только для email-тредов) */}
+          {isEmail && (
+            <div className="flex items-center gap-2 px-4 -mt-1">
+              <div className="w-[26px] shrink-0" />
+              {task.contact_emails && task.contact_emails.length > 0 && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Mail className="w-3 h-3 shrink-0" />
+                  <span className="truncate max-w-[300px]">
+                    {task.contact_emails.join(', ')}
+                  </span>
+                </div>
+              )}
+              {task.email_subject && (
+                <div className="text-xs text-muted-foreground truncate max-w-[200px]" title={task.email_subject}>
+                  — {task.email_subject}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Контент — мессенджер */}
