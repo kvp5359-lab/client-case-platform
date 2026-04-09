@@ -27,6 +27,7 @@ interface UpdateListParams {
   visible_fields?: VisibleField[]
   group_by?: GroupByField
   list_height?: ListHeight
+  header_color?: string | null
 }
 
 export function useCreateList() {

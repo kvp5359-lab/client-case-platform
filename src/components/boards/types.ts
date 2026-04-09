@@ -73,8 +73,40 @@ export interface BoardList {
   visible_fields: VisibleField[]
   group_by: GroupByField
   list_height: ListHeight
+  header_color: string | null
   created_at: string
   updated_at: string
+}
+
+/** Предустановленные цвета для шапки списка (как в Notion) */
+export const HEADER_COLORS = [
+  { value: 'gray', label: 'Серый', bg: 'bg-gray-100', text: 'text-gray-700', dot: '#6B7280' },
+  { value: 'brown', label: 'Коричневый', bg: 'bg-amber-50', text: 'text-amber-800', dot: '#92400E' },
+  { value: 'orange', label: 'Оранжевый', bg: 'bg-orange-100', text: 'text-orange-700', dot: '#C2410C' },
+  { value: 'yellow', label: 'Жёлтый', bg: 'bg-yellow-100', text: 'text-yellow-700', dot: '#A16207' },
+  { value: 'green', label: 'Зелёный', bg: 'bg-green-100', text: 'text-green-700', dot: '#15803D' },
+  { value: 'blue', label: 'Синий', bg: 'bg-blue-100', text: 'text-blue-700', dot: '#1D4ED8' },
+  { value: 'purple', label: 'Фиолетовый', bg: 'bg-purple-100', text: 'text-purple-700', dot: '#7E22CE' },
+  { value: 'pink', label: 'Розовый', bg: 'bg-pink-100', text: 'text-pink-700', dot: '#BE185D' },
+  { value: 'red', label: 'Красный', bg: 'bg-red-100', text: 'text-red-700', dot: '#B91C1C' },
+] as const
+
+export type HeaderColorValue = (typeof HEADER_COLORS)[number]['value']
+
+export function getHeaderColor(value: string | null) {
+  return HEADER_COLORS.find((c) => c.value === value) ?? HEADER_COLORS[0]
+}
+
+/** Преобразует hex-цвет в светлый фон + тёмный текст для шапки */
+export function hexToHeaderStyle(color: string | null): { bg: string; text: string } {
+  if (!color) return { bg: '#F3F4F6', text: '#374151' }
+
+  // Если это preset-значение (gray, blue, ...) — используем маппинг
+  const preset = HEADER_COLORS.find((c) => c.value === color)
+  if (preset) return { bg: preset.dot + '20', text: preset.dot }
+
+  // Произвольный hex — светлый фон (20% opacity), тёмный текст
+  return { bg: color + '20', text: color }
 }
 
 // ── Определения полей для фильтров ──────────────────────

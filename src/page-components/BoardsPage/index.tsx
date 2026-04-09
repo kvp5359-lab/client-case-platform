@@ -16,7 +16,7 @@ import { useDialog } from '@/hooks/shared/useDialog'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useBoardLists } from '@/components/boards/hooks/useBoardQuery'
 import { useWorkspaceThreads } from '@/hooks/tasks/useWorkspaceThreads'
-import { useWorkspaceProjects } from '@/components/boards/hooks/useWorkspaceProjects'
+import { useAccessibleProjects } from '@/hooks/shared/useAccessibleProjects'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
 import { useCurrentParticipantId } from '@/hooks/shared/useCurrentParticipantId'
 import { useDeleteBoard } from '@/components/boards/hooks/useBoardMutations'
@@ -59,7 +59,7 @@ function BoardTabContent({
   const hasProjectLists = lists?.some((l) => l.entity_type === 'project')
   const hasInboxLists = lists?.some((l) => l.entity_type === 'inbox')
   const { data: tasks } = useWorkspaceThreads(hasTaskLists ? workspaceId : undefined)
-  const { data: projects } = useWorkspaceProjects(hasProjectLists ? workspaceId : undefined)
+  const { data: projects } = useAccessibleProjects(hasProjectLists ? workspaceId : undefined)
   const { data: inboxThreads = [] } = useFilteredInbox(hasInboxLists ? workspaceId : '')
 
   const taskIds = (tasks ?? []).map((t) => t.id)

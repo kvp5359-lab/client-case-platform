@@ -41,8 +41,8 @@ export function BoardColumn({
   existingColumns,
 }: BoardColumnProps) {
   return (
-    <div className="flex flex-col gap-3 w-[340px] shrink-0 h-full">
-      {lists.map((list) => (
+    <div className="flex flex-col gap-5 w-[340px] shrink-0 h-full">
+      {lists.map((list, index) => (
         <BoardListCard
           key={list.id}
           list={list}
@@ -58,6 +58,9 @@ export function BoardColumn({
           onStatusChange={onStatusChange}
           selectedThreadId={selectedThreadId}
           existingColumns={existingColumns}
+          isFirst={index === 0}
+          isLast={index === lists.length - 1}
+          siblingLists={lists}
         />
       ))}
     </div>

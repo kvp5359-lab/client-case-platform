@@ -1,9 +1,8 @@
 "use client"
 
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Filter, MoreHorizontal, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Filter, MoreVertical, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -12,13 +11,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useDialog } from '@/hooks/shared/useDialog'
-import { useDeleteList } from './hooks/useListMutations'
+import { useDeleteList, useUpdateList } from './hooks/useListMutations'
 import { useFilteredTasks } from './hooks/useFilteredListData'
 import { BoardTaskRow } from './BoardTaskRow'
 import { BoardProjectRow } from './BoardProjectRow'
 import { BoardInboxList } from './BoardInboxList'
 import { ListSettingsDialog } from './ListSettingsDialog'
 import type { BoardList, FilterContext, GroupByField } from './types'
+import { hexToHeaderStyle } from './types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceTasks'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/ui/status-dropdown'
@@ -140,6 +140,12 @@ interface BoardListCardProps {
   onStatusChange: (taskId: string, statusId: string | null) => void
   selectedThreadId?: string | null
   existingColumns?: number
+  /** Первый ли список в колонке */
+  isFirst?: boolean
+  /** Последний ли список в колонке */
+  isLast?: boolean
+  /** Все списки в колонке (для swap sort_order) */
+  siblingLists?: BoardList[]
 }
 
 export function BoardListCard({
@@ -156,9 +162,13 @@ export function BoardListCard({
   onStatusChange,
   selectedThreadId,
   existingColumns,
+  isFirst,
+  isLast,
+  siblingLists,
 }: BoardListCardProps) {
   const [collapsed, setCollapsed] = useState(false)
   const filterDialog = useDialog()
+  const updateList = useUpdateList()
   const deleteList = useDeleteList()
 
   // Приводим assigneesMap к формату { id: string }[] для движка
@@ -205,59 +215,93 @@ export function BoardListCard({
 
   return (
     <div className={cn('rounded-lg', listHeight === 'full' && 'flex flex-col flex-1 min-h-0')}>
-      {/* Header */}
-      <div className="flex items-center gap-1.5 py-2">
-        <button
-          type="button"
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-0.5 hover:bg-accent rounded"
-        >
-          <CollapseIcon className="h-3.5 w-3.5 text-muted-foreground" />
-        </button>
-        <span className="text-sm font-medium flex-1 truncate">{list.name}</span>
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-          {list.entity_type === 'task' ? 'Задачи' : list.entity_type === 'project' ? 'Проекты' : 'Входящие'}
-        </Badge>
-        {count > 0 && (
-          <span className="text-xs text-muted-foreground">{count}</span>
-        )}
-        {!isInbox && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn('h-6 w-6', hasFilters && 'text-primary')}
-            onClick={filterDialog.open}
-          >
-            <Filter className="h-3 w-3" />
-          </Button>
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6">
-              <MoreHorizontal className="h-3.5 w-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={filterDialog.open}>
-              <Filter className="h-3.5 w-3.5 mr-2" />
-              Фильтры
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() =>
-                deleteList.mutate({ id: list.id, board_id: list.board_id })
-              }
+      {/* Header — тег в стиле Notion */}
+      {(() => {
+        const hs = hexToHeaderStyle(list.header_color)
+        return (
+          <div className="group/header flex items-center gap-2 mb-0">
+            <button
+              type="button"
+              onClick={() => setCollapsed(!collapsed)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full transition-colors"
+              style={{ backgroundColor: hs.bg, color: hs.text }}
             >
-              <Trash2 className="h-3.5 w-3.5 mr-2" />
-              Удалить список
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+              <CollapseIcon className="h-3.5 w-3.5 shrink-0" />
+              <span className="text-sm font-medium truncate">{list.name}</span>
+              {count > 0 && (
+                <span className="text-sm opacity-60">{count}</span>
+              )}
+            </button>
+            <div className="flex-1" />
+            <div className="flex items-center gap-0.5 opacity-0 group-hover/header:opacity-100 transition-opacity">
+              {!isInbox && hasFilters && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-primary"
+                  onClick={filterDialog.open}
+                >
+                  <Filter className="h-3 w-3" />
+                </Button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <MoreVertical className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={filterDialog.open}>
+                    <Filter className="h-3.5 w-3.5 mr-2" />
+                    Настройки
+                  </DropdownMenuItem>
+                  {siblingLists && siblingLists.length > 1 && !isFirst && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const idx = siblingLists.findIndex((l) => l.id === list.id)
+                        if (idx <= 0) return
+                        const prev = siblingLists[idx - 1]
+                        updateList.mutate({ id: list.id, board_id: list.board_id, sort_order: prev.sort_order })
+                        updateList.mutate({ id: prev.id, board_id: prev.board_id, sort_order: list.sort_order })
+                      }}
+                    >
+                      <ArrowUp className="h-3.5 w-3.5 mr-2" />
+                      Выше
+                    </DropdownMenuItem>
+                  )}
+                  {siblingLists && siblingLists.length > 1 && !isLast && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const idx = siblingLists.findIndex((l) => l.id === list.id)
+                        if (idx === -1 || idx >= siblingLists.length - 1) return
+                        const next = siblingLists[idx + 1]
+                        updateList.mutate({ id: list.id, board_id: list.board_id, sort_order: next.sort_order })
+                        updateList.mutate({ id: next.id, board_id: next.board_id, sort_order: list.sort_order })
+                      }}
+                    >
+                      <ArrowDown className="h-3.5 w-3.5 mr-2" />
+                      Ниже
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() =>
+                      deleteList.mutate({ id: list.id, board_id: list.board_id })
+                    }
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                    Удалить список
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Content */}
       {!collapsed && (
-        <div className={cn(heightClass, 'overflow-y-auto', !isCards && 'rounded-lg border bg-white')}>
+        <div className={cn(heightClass, 'mt-1 overflow-y-auto', !isCards && 'rounded-lg border bg-white')}>
           {isInbox ? (
             <BoardInboxList
               threads={inboxThreads}
@@ -287,12 +331,11 @@ export function BoardListCard({
               {groups.map((group) => (
                 <div key={group.key}>
                   {hasGrouping && (
-                    <div className={cn(
-                      'px-3 py-1.5 text-[11px] font-medium text-muted-foreground bg-muted/50',
-                      isCards && 'px-0 pt-2 pb-1',
-                    )}>
-                      {group.label}
-                      <span className="ml-1.5 text-[10px] opacity-60">{group.tasks.length}</span>
+                    <div className={cn('px-2 pb-1', isCards && 'px-0 pb-1')}>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted-foreground/10 text-[11px] font-medium text-muted-foreground">
+                        {group.label}
+                        <span className="opacity-50">{group.tasks.length}</span>
+                      </span>
                     </div>
                   )}
                   <div className={cn(isCards ? 'grid gap-1' : 'divide-y')}>

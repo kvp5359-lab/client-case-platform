@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from 'react'
-import { ArrowUpDown, Filter, Eye, Inbox, LayoutList, LayoutGrid, Group, ListChecks, FolderOpen } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { ArrowUpDown, Filter, Eye, Inbox, LayoutList, LayoutGrid, Group, ListChecks, FolderOpen, Settings2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -89,7 +90,9 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId, existingC
   const [name, setName] = useState(list.name)
   const [entityType, setEntityType] = useState<'task' | 'project' | 'inbox'>(list.entity_type)
   const [columnIndex, setColumnIndex] = useState(String(list.column_index))
-  const [filters, setFilters] = useState<FilterGroup>(list.filters)
+  const [filters, setFilters] = useState<FilterGroup>(
+    list.filters?.rules ? list.filters : { logic: 'and', rules: [] },
+  )
   const [sortBy, setSortBy] = useState<SortField>(list.sort_by ?? 'created_at')
   const [sortDir, setSortDir] = useState<SortDir>(list.sort_dir ?? 'desc')
   const [displayMode, setDisplayMode] = useState<DisplayMode>(list.display_mode ?? 'list')
@@ -98,6 +101,7 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId, existingC
   )
   const [groupBy, setGroupBy] = useState<GroupByField>(list.group_by ?? 'none')
   const [listHeight, setListHeight] = useState<ListHeight>(list.list_height ?? 'auto')
+  const [headerColor, setHeaderColor] = useState<string>(list.header_color ?? '#6B7280')
   const [inboxDefaultFilter, setInboxDefaultFilter] = useState<'all' | 'unread'>(
     (list.filters as unknown as { default_filter?: string })?.default_filter === 'unread' ? 'unread' : 'all',
   )
@@ -125,24 +129,29 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId, existingC
     setGroupBy('none')
   }
 
-  const handleOpenChange = (v: boolean) => {
-    if (v) {
+  // Ресетим state при каждом открытии диалога
+  useEffect(() => {
+    if (open) {
       setName(list.name)
       setEntityType(list.entity_type as 'task' | 'project' | 'inbox')
       setColumnIndex(String(list.column_index))
-      setFilters(list.filters)
+      setFilters(list.filters?.rules ? list.filters : { logic: 'and', rules: [] })
       setSortBy(list.sort_by ?? 'created_at')
       setSortDir(list.sort_dir ?? 'desc')
       setDisplayMode(list.display_mode ?? 'list')
       setVisibleFields(list.visible_fields ?? defaultVisibleFields(list.entity_type))
       setGroupBy(list.group_by ?? 'none')
       setListHeight(list.list_height ?? 'auto')
+      setHeaderColor(list.header_color ?? '#6B7280')
       setInboxDefaultFilter(
         (list.filters as unknown as { default_filter?: string })?.default_filter === 'unread' ? 'unread' : 'all',
       )
-    } else {
-      onClose()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  const handleOpenChange = (v: boolean) => {
+    if (!v) onClose()
   }
 
   const handleSave = () => {
@@ -160,6 +169,7 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId, existingC
         visible_fields: visibleFields,
         group_by: groupBy,
         list_height: listHeight,
+        header_color: headerColor,
       },
       { onSuccess: onClose },
     )
@@ -171,207 +181,302 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId, existingC
     )
   }
 
+  const filterCount = filters?.rules?.length ?? 0
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[680px] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Настройки списка</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5">
-          {/* Название + Колонка + Высота */}
-          <div className="flex gap-3">
-            <div className="space-y-1.5 flex-1">
-              <Label className="text-xs text-muted-foreground">Название</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-8 text-sm"
-                placeholder="Название списка"
-              />
-            </div>
-            <div className="space-y-1.5 w-[120px] shrink-0">
-              <Label className="text-xs text-muted-foreground">Колонка</Label>
-              <Select value={columnIndex} onValueChange={setColumnIndex}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: existingColumns + 1 }, (_, i) => (
-                    <SelectItem key={i} value={String(i)}>
-                      {i < existingColumns ? `Колонка ${i + 1}` : `Новая (${i + 1})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5 w-[120px] shrink-0">
-              <Label className="text-xs text-muted-foreground">Высота</Label>
-              <Select value={listHeight} onValueChange={(v) => setListHeight(v as ListHeight)}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">Авто</SelectItem>
-                  <SelectItem value="medium">Средняя</SelectItem>
-                  <SelectItem value="full">Вся страница</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+        <Tabs defaultValue="general" className="flex-1 min-h-0 flex flex-col">
+          <TabsList className="shrink-0">
+            <TabsTrigger value="general" className="gap-1.5 text-xs">
+              <Settings2 className="h-3.5 w-3.5" />
+              Основное
+            </TabsTrigger>
+            {!isInbox && (
+              <TabsTrigger value="filters" className="gap-1.5 text-xs">
+                <Filter className="h-3.5 w-3.5" />
+                Фильтры
+                {filterCount > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium">
+                    {filterCount}
+                  </span>
+                )}
+              </TabsTrigger>
+            )}
+          </TabsList>
 
-          {/* Тип: задачи / проекты */}
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Тип данных</Label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleEntityTypeChange('task')}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
-                  entityType === 'task'
-                    ? 'border-primary bg-primary/5 text-primary'
-                    : 'border-border text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <ListChecks className="h-3.5 w-3.5" />
-                Задачи
-              </button>
-              <button
-                type="button"
-                onClick={() => handleEntityTypeChange('project')}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
-                  entityType === 'project'
-                    ? 'border-primary bg-primary/5 text-primary'
-                    : 'border-border text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <FolderOpen className="h-3.5 w-3.5" />
-                Проекты
-              </button>
-              <button
-                type="button"
-                onClick={() => handleEntityTypeChange('inbox')}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
-                  entityType === 'inbox'
-                    ? 'border-primary bg-primary/5 text-primary'
-                    : 'border-border text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <Inbox className="h-3.5 w-3.5" />
-                Входящие
-              </button>
-            </div>
-          </div>
-
-          {/* Настройки для Входящих */}
-          {isInbox && (
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Показывать по умолчанию</Label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setInboxDefaultFilter('all')}
-                  className={cn(
-                    'px-3 py-1.5 rounded-md text-xs border transition-colors',
-                    inboxDefaultFilter === 'all'
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-border text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  Все
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInboxDefaultFilter('unread')}
-                  className={cn(
-                    'px-3 py-1.5 rounded-md text-xs border transition-colors',
-                    inboxDefaultFilter === 'unread'
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-border text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  Непрочитанные
-                </button>
+          {/* ── Вкладка: Основное ── */}
+          <TabsContent value="general" className="flex-1 overflow-y-auto pr-1">
+            <div className="space-y-5">
+              {/* Название + Цвет + Колонка + Высота */}
+              <div className="flex gap-3">
+                <div className="space-y-1.5 flex-1">
+                  <Label className="text-xs text-muted-foreground">Название</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="h-8 text-sm"
+                      placeholder="Название списка"
+                    />
+                    <label className="h-8 w-8 rounded-md border shrink-0 cursor-pointer transition-all hover:scale-105 relative overflow-hidden" style={{ backgroundColor: headerColor }}>
+                      <input
+                        type="color"
+                        value={headerColor.startsWith('#') ? headerColor : '#6B7280'}
+                        onChange={(e) => setHeaderColor(e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div className="space-y-1.5 w-[120px] shrink-0">
+                  <Label className="text-xs text-muted-foreground">Колонка</Label>
+                  <Select value={columnIndex} onValueChange={setColumnIndex}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: existingColumns + 1 }, (_, i) => (
+                        <SelectItem key={i} value={String(i)}>
+                          {i < existingColumns ? `Колонка ${i + 1}` : `Новая (${i + 1})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 w-[120px] shrink-0">
+                  <Label className="text-xs text-muted-foreground">Высота</Label>
+                  <Select value={listHeight} onValueChange={(v) => setListHeight(v as ListHeight)}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Авто</SelectItem>
+                      <SelectItem value="medium">Средняя</SelectItem>
+                      <SelectItem value="full">Вся страница</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
-          )}
 
-          {/* Настройки ниже скрыты для типа «Входящие» */}
-          {!isInbox && (
-            <>
-              {/* Отображение */}
+              {/* Тип: задачи / проекты */}
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <LayoutList className="h-3.5 w-3.5" />
-                  Отображение
-                </Label>
+                <Label className="text-xs text-muted-foreground">Тип данных</Label>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setDisplayMode('list')}
+                    onClick={() => handleEntityTypeChange('task')}
                     className={cn(
                       'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
-                      displayMode === 'list'
+                      entityType === 'task'
                         ? 'border-primary bg-primary/5 text-primary'
                         : 'border-border text-muted-foreground hover:text-foreground',
                     )}
                   >
-                    <LayoutList className="h-3.5 w-3.5" />
-                    Список
+                    <ListChecks className="h-3.5 w-3.5" />
+                    Задачи
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDisplayMode('cards')}
+                    onClick={() => handleEntityTypeChange('project')}
                     className={cn(
                       'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
-                      displayMode === 'cards'
+                      entityType === 'project'
                         ? 'border-primary bg-primary/5 text-primary'
                         : 'border-border text-muted-foreground hover:text-foreground',
                     )}
                   >
-                    <LayoutGrid className="h-3.5 w-3.5" />
-                    Карточки
+                    <FolderOpen className="h-3.5 w-3.5" />
+                    Проекты
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEntityTypeChange('inbox')}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
+                      entityType === 'inbox'
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-border text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    <Inbox className="h-3.5 w-3.5" />
+                    Входящие
                   </button>
                 </div>
               </div>
 
-              {/* Видимые поля */}
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <Eye className="h-3.5 w-3.5" />
-                  Что отображать
-                </Label>
-                <div className="flex flex-wrap gap-2">
-                  {visibleFieldOptions.map((opt) => {
-                    const active = visibleFields.includes(opt.value)
-                    return (
+              {/* Настройки для Входящих */}
+              {isInbox && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Показывать по умолчанию</Label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setInboxDefaultFilter('all')}
+                      className={cn(
+                        'px-3 py-1.5 rounded-md text-xs border transition-colors',
+                        inboxDefaultFilter === 'all'
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-border text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      Все
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInboxDefaultFilter('unread')}
+                      className={cn(
+                        'px-3 py-1.5 rounded-md text-xs border transition-colors',
+                        inboxDefaultFilter === 'unread'
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-border text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      Непрочитанные
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Настройки ниже скрыты для типа «Входящие» */}
+              {!isInbox && (
+                <>
+                  {/* Отображение */}
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <LayoutList className="h-3.5 w-3.5" />
+                      Отображение
+                    </Label>
+                    <div className="flex gap-2">
                       <button
-                        key={opt.value}
                         type="button"
-                        onClick={() => toggleField(opt.value)}
+                        onClick={() => setDisplayMode('list')}
                         className={cn(
-                          'px-2.5 py-1 rounded-full text-xs border transition-colors',
-                          active
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
+                          displayMode === 'list'
                             ? 'border-primary bg-primary/5 text-primary'
                             : 'border-border text-muted-foreground hover:text-foreground',
                         )}
                       >
-                        {opt.label}
+                        <LayoutList className="h-3.5 w-3.5" />
+                        Список
                       </button>
-                    )
-                  })}
-                </div>
-              </div>
+                      <button
+                        type="button"
+                        onClick={() => setDisplayMode('cards')}
+                        className={cn(
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
+                          displayMode === 'cards'
+                            ? 'border-primary bg-primary/5 text-primary'
+                            : 'border-border text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        <LayoutGrid className="h-3.5 w-3.5" />
+                        Карточки
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Фильтры */}
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <Filter className="h-3.5 w-3.5" />
-                  Фильтры
-                </Label>
+                  {/* Видимые поля */}
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Eye className="h-3.5 w-3.5" />
+                      Что отображать
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {visibleFieldOptions.map((opt) => {
+                        const active = visibleFields.includes(opt.value)
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => toggleField(opt.value)}
+                            className={cn(
+                              'px-2.5 py-1 rounded-full text-xs border transition-colors',
+                              active
+                                ? 'border-primary bg-primary/5 text-primary'
+                                : 'border-border text-muted-foreground hover:text-foreground',
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Сортировка и группировка */}
+                  <div className="flex gap-4">
+                    {/* Сортировка */}
+                    <div className="space-y-2 flex-1">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <ArrowUpDown className="h-3.5 w-3.5" />
+                        Сортировка
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortField)}>
+                          <SelectTrigger className="h-8 text-xs flex-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {sortFields.map((f) => (
+                              <SelectItem key={f.value} value={f.value}>
+                                {f.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
+                          <SelectTrigger className="h-8 text-xs w-[120px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SORT_DIRS.map((d) => (
+                              <SelectItem key={d.value} value={d.value}>
+                                {d.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Группировка */}
+                    <div className="space-y-2 flex-1">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <Group className="h-3.5 w-3.5" />
+                        Группировка
+                      </Label>
+                      <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupByField)}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {groupByOptions.map((g) => (
+                            <SelectItem key={g.value} value={g.value}>
+                              {g.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* ── Вкладка: Фильтры ── */}
+          {!isInbox && (
+            <TabsContent value="filters" className="flex-1 overflow-y-auto pr-1">
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  Настройте условия фильтрации. Условия внутри группы объединяются логикой И или ИЛИ. Вы можете создавать вложенные группы и перетаскивать условия между группами.
+                </p>
                 <FilterGroupEditor
                   group={filters}
                   onChange={setFilters}
@@ -379,69 +484,26 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId, existingC
                   depth={0}
                   workspaceId={workspaceId}
                 />
-              </div>
 
-              {/* Сортировка и группировка */}
-              <div className="flex gap-4">
-                {/* Сортировка */}
-                <div className="space-y-2 flex-1">
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <ArrowUpDown className="h-3.5 w-3.5" />
-                    Сортировка
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortField)}>
-                      <SelectTrigger className="h-8 text-xs flex-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sortFields.map((f) => (
-                          <SelectItem key={f.value} value={f.value}>
-                            {f.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
-                      <SelectTrigger className="h-8 text-xs w-[120px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SORT_DIRS.map((d) => (
-                          <SelectItem key={d.value} value={d.value}>
-                            {d.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                {filters.rules.length > 0 && (
+                  <div className="pt-2 border-t">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground"
+                      onClick={() => setFilters({ logic: 'and', rules: [] })}
+                    >
+                      Очистить все фильтры
+                    </Button>
                   </div>
-                </div>
-
-                {/* Группировка */}
-                <div className="space-y-2 flex-1">
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <Group className="h-3.5 w-3.5" />
-                    Группировка
-                  </Label>
-                  <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupByField)}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {groupByOptions.map((g) => (
-                        <SelectItem key={g.value} value={g.value}>
-                          {g.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                )}
               </div>
-            </>
+            </TabsContent>
           )}
-        </div>
+        </Tabs>
 
-        <DialogFooter className="flex justify-between pt-4">
+        <DialogFooter className="flex justify-between pt-4 shrink-0">
           <Button
             type="button"
             variant="ghost"
@@ -454,9 +516,10 @@ export function ListSettingsDialog({ open, onClose, list, workspaceId, existingC
               setVisibleFields(defaultVisibleFields(entityType))
               setGroupBy('none')
               setListHeight('auto')
+              setHeaderColor('gray')
             }}
           >
-            Сбросить
+            Сбросить всё
           </Button>
           <div className="flex gap-2">
             <Button type="button" variant="ghost" onClick={onClose}>

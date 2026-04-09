@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useBoardDetail, useBoardLists } from '@/components/boards/hooks/useBoardQuery'
 import { useWorkspaceTasks } from '@/hooks/tasks/useWorkspaceTasks'
-import { useWorkspaceProjects } from '@/components/boards/hooks/useWorkspaceProjects'
+import { useAccessibleProjects } from '@/hooks/shared/useAccessibleProjects'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
 import { useCurrentParticipantId } from '@/hooks/shared/useCurrentParticipantId'
 import { useAuth } from '@/contexts/AuthContext'
@@ -29,7 +29,7 @@ export default function BoardPage() {
   const hasTaskLists = lists?.some((l) => l.entity_type === 'task')
   const hasProjectLists = lists?.some((l) => l.entity_type === 'project')
   const { data: tasks } = useWorkspaceTasks(hasTaskLists ? workspaceId : undefined)
-  const { data: projects } = useWorkspaceProjects(hasProjectLists ? workspaceId : undefined)
+  const { data: projects } = useAccessibleProjects(hasProjectLists ? workspaceId : undefined)
 
   // Исполнители задач
   const taskIds = (tasks ?? []).map((t) => t.id)

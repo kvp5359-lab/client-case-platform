@@ -3,18 +3,15 @@
 /**
  * useAccessibleThreadIds — единая логика определения доступа к тредам (чаты + задачи).
  *
- * Пользователь видит тред если:
- * 1. Он Администратор проекта → видит ВСЁ
- * 2. Он исполнитель задачи (task_assignees)
- * 3. Он указан в "Кто видит" — через роли (access_roles) или напрямую (project_thread_members)
- * 4. Он создатель треда (created_by)
+ * Использует canAccessThread из utils/threadAccess.ts — единый источник правды.
  */
 
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { useProjectThreads, type ProjectThread } from './useProjectThreads'
+import { canAccessThread } from '@/utils/threadAccess'
+import { useProjectThreads } from './useProjectThreads'
 import { useThreadMembersMap } from '@/components/tasks/useThreadMembersMap'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
 
@@ -50,41 +47,6 @@ function useMyProjectData(projectId: string | undefined): MyProjectData | null {
   return data ?? null
 }
 
-function canAccessThread(
-  thread: ProjectThread,
-  myData: MyProjectData | null,
-  userId: string | undefined,
-  threadMembersMap: Record<string, { id: string }[]>,
-  taskAssigneesMap: Record<string, { id: string }[]>,
-): boolean {
-  if (!myData || !userId) return false
-
-  // 1. Администратор видит всё
-  if (myData.projectRoles.includes('Администратор')) return true
-
-  // 2. Создатель всегда видит свой тред
-  if (thread.created_by === userId) return true
-
-  // 3. Исполнитель задачи (task_assignees)
-  const assignees = taskAssigneesMap[thread.id] ?? []
-  if (assignees.some((a) => a.id === myData.participantId)) return true
-
-  // 4. "Кто видит" — по access_type
-  if (thread.access_type === 'all') return true
-
-  if (thread.access_type === 'roles') {
-    const accessRoles = thread.access_roles ?? []
-    if (myData.projectRoles.some((r) => accessRoles.includes(r))) return true
-  }
-
-  if (thread.access_type === 'custom') {
-    const members = threadMembersMap[thread.id] ?? []
-    if (members.some((m) => m.id === myData.participantId)) return true
-  }
-
-  return false
-}
-
 export function useAccessibleThreadIds(projectId: string | undefined) {
   const { user } = useAuth()
   const myData = useMyProjectData(projectId)
@@ -109,9 +71,27 @@ export function useAccessibleThreadIds(projectId: string | undefined) {
     const ids = new Set<string>()
     for (const t of allThreads) {
       if (t.is_deleted) continue
-      if (canAccessThread(t, myData, user?.id, threadMembersMap, taskAssigneesMap)) {
-        ids.add(t.id)
-      }
+
+      const assignees = taskAssigneesMap[t.id] ?? []
+      const members = threadMembersMap[t.id] ?? []
+
+      const hasAccess = canAccessThread({
+        thread: {
+          id: t.id,
+          project_id: t.project_id,
+          access_type: t.access_type,
+          access_roles: t.access_roles,
+          created_by: t.created_by,
+        },
+        userId: user?.id ?? '',
+        participantId: myData?.participantId ?? null,
+        projectRoles: myData?.projectRoles ?? null,
+        isAssignee: assignees.some((a) => a.id === myData?.participantId),
+        isMember: members.some((m) => m.id === myData?.participantId),
+        hasViewAllProjects: false, // В контексте проекта view_all не проверяем — это workspace-level
+      })
+
+      if (hasAccess) ids.add(t.id)
     }
     return ids
   }, [allThreads, myData, user?.id, threadMembersMap, taskAssigneesMap])

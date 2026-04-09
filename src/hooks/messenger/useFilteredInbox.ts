@@ -14,16 +14,8 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { calcThreadUnread, calcTotalUnread, getAggregateBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
+import { canAccessThread, type ThreadAccessInfo } from '@/utils/threadAccess'
 import { useInboxThreadsV2 } from './useInbox'
-import type { InboxThreadEntry } from '@/services/api/inboxService'
-
-interface ThreadAccessInfo {
-  id: string
-  project_id: string | null
-  access_type: string
-  access_roles: string[]
-  created_by: string | null
-}
 
 interface MyProjectRole {
   project_id: string
@@ -99,7 +91,7 @@ export function useFilteredInbox(workspaceId: string) {
     return map
   }, [threads])
 
-  // Фильтрованные inbox треды
+  // Фильтрованные inbox треды — используем единую canAccessThread из utils
   const data = useMemo(() => {
     if (!user) return rawInboxThreads
 
@@ -109,31 +101,15 @@ export function useFilteredInbox(workspaceId: string) {
 
       const myRole = access.project_id ? rolesByProject.get(access.project_id) : null
 
-      // 1. Администратор видит всё
-      if (myRole?.project_roles.includes('Администратор')) return true
-
-      // 2. Создатель видит свой тред
-      if (access.created_by === user.id) return true
-
-      // 3. Исполнитель задачи
-      if (myAssigneeThreadIds.has(entry.thread_id)) return true
-
-      // 4. Проверка access_type
-      if (access.access_type === 'all') return true
-
-      if (access.access_type === 'roles' && myRole) {
-        const accessRoles = access.access_roles ?? []
-        if (myRole.project_roles.some((r) => accessRoles.includes(r))) return true
-      }
-
-      if (access.access_type === 'custom') {
-        if (myMemberThreadIds.has(entry.thread_id)) return true
-      }
-
-      // Без проекта (workspace-level) — показываем
-      if (!access.project_id) return true
-
-      return false
+      return canAccessThread({
+        thread: access,
+        userId: user.id,
+        participantId: myRole?.participant_id ?? null,
+        projectRoles: myRole?.project_roles ?? null,
+        isAssignee: myAssigneeThreadIds.has(entry.thread_id),
+        isMember: myMemberThreadIds.has(entry.thread_id),
+        hasViewAllProjects: false, // inbox фильтрация — view_all_projects не проверяем (данные уже загружены)
+      })
     })
   }, [
     rawInboxThreads,
