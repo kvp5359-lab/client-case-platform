@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { useParams } from 'next/navigation'
-import { Plus, Kanban, MoreVertical, Trash2, Pencil, ListPlus } from 'lucide-react'
+import { useParams, useSearchParams } from 'next/navigation'
+import { Plus, Kanban, MoreVertical, Trash2, Pencil, ListPlus, Pin, PinOff } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,6 +36,7 @@ import { taskKeys } from '@/hooks/queryKeys'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
 import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
 import type { Board } from '@/components/boards/types'
+import { usePinnedBoards } from '@/components/WorkspaceSidebar/usePinnedBoards'
 import type { TaskItem } from '@/components/tasks/types'
 
 // ── Контент одной доски ────────────────────────────────────
@@ -170,13 +171,15 @@ function BoardTabContent({
 interface BoardTabProps {
   board: Board
   isActive: boolean
+  isPinned: boolean
   onSelect: () => void
   onEdit: () => void
   onDelete: () => void
   onAddList: () => void
+  onTogglePin: () => void
 }
 
-function BoardTab({ board, isActive, onSelect, onEdit, onDelete, onAddList }: BoardTabProps) {
+function BoardTab({ board, isActive, isPinned, onSelect, onEdit, onDelete, onAddList, onTogglePin }: BoardTabProps) {
   return (
     <div className="flex items-center shrink-0">
       <div
@@ -226,6 +229,24 @@ function BoardTab({ board, isActive, onSelect, onEdit, onDelete, onAddList }: Bo
                 <ListPlus className="h-3.5 w-3.5 mr-2" />
                 Добавить список
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onTogglePin()
+                }}
+              >
+                {isPinned ? (
+                  <>
+                    <PinOff className="h-3.5 w-3.5 mr-2" />
+                    Открепить из сайдбара
+                  </>
+                ) : (
+                  <>
+                    <Pin className="h-3.5 w-3.5 mr-2" />
+                    Закрепить в сайдбаре
+                  </>
+                )}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={(e) => {
@@ -258,19 +279,27 @@ function BoardTab({ board, isActive, onSelect, onEdit, onDelete, onAddList }: Bo
 
 export default function BoardsPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
+  const searchParams = useSearchParams()
   const closePanel = useSidePanelStore((s) => s.closePanel)
   const createDialog = useDialog()
   const editDialog = useDialog()
   const createListDialog = useDialog()
   const { data: boards, isLoading } = useBoardsQuery(workspaceId)
   const deleteBoard = useDeleteBoard()
+  const { isPinned: isBoardPinned, togglePin: toggleBoardPin } = usePinnedBoards(workspaceId)
 
   // Закрываем боковую панель при входе на страницу досок
   useEffect(() => {
     closePanel()
   }, [closePanel])
 
-  const [activeBoardId, setActiveBoardId] = useState<string | null>(null)
+  // Инициализация из query-параметра ?board=<id> (клик из сайдбара)
+  const boardFromUrl = searchParams.get('board')
+  const [activeBoardId, setActiveBoardId] = useState<string | null>(boardFromUrl)
+
+  useEffect(() => {
+    if (boardFromUrl) setActiveBoardId(boardFromUrl)
+  }, [boardFromUrl])
 
   const resolvedBoardId = activeBoardId && boards?.some((b) => b.id === activeBoardId)
     ? activeBoardId
@@ -308,6 +337,7 @@ export default function BoardsPage() {
                       key={board.id}
                       board={board}
                       isActive={resolvedBoardId === board.id}
+                      isPinned={isBoardPinned(board.id)}
                       onSelect={() => setActiveBoardId(board.id)}
                       onEdit={() => {
                         setActiveBoardId(board.id)
@@ -318,6 +348,7 @@ export default function BoardsPage() {
                         setActiveBoardId(board.id)
                         createListDialog.open()
                       }}
+                      onTogglePin={() => toggleBoardPin(board.id)}
                     />
                   ))}
                   <button

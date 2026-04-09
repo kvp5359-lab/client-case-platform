@@ -3516,6 +3516,45 @@ export type Database = {
           },
         ]
       }
+      pinned_boards: {
+        Row: {
+          board_id: string
+          created_at: string
+          position: number
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          position?: number
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          position?: number
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'pinned_boards_board_id_fkey'
+            columns: ['board_id']
+            isOneToOne: false
+            referencedRelation: 'boards'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'pinned_boards_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       pinned_projects: {
         Row: {
           created_at: string

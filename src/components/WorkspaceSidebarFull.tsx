@@ -5,10 +5,10 @@
  * Мигрирован из WorkspaceSidebar.tsx оригинального ClientCase.
  */
 
-import { useEffect, useState, startTransition } from 'react'
+import { useEffect, useState, useMemo, startTransition } from 'react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Home, Inbox, CheckSquare, Users, Layout, Settings, BookOpen, Kanban } from 'lucide-react'
+import { Home, Inbox, CheckSquare, Users, Layout, Settings, BookOpen, Kanban, PinOff } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { SidebarNavButton } from './WorkspaceSidebar/SidebarNavButton'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
@@ -22,6 +22,8 @@ import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
+import { usePinnedBoards } from './WorkspaceSidebar/usePinnedBoards'
+import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useProjectTemplate, useProjectModules } from '@/page-components/ProjectPage/hooks'
 
 /** Количество «моих» просроченных + сегодняшних задач */
@@ -126,6 +128,16 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
     urgentTasksCount && urgentTasksCount > 0
       ? urgentTasksCount > 99 ? '99+' : String(urgentTasksCount)
       : undefined
+
+  // Закреплённые доски в сайдбаре
+  const { pinnedIds: pinnedBoardIds, togglePin: toggleBoardPin } = usePinnedBoards(workspaceId)
+  const { data: allBoards } = useBoardsQuery(workspaceId)
+  const pinnedBoards = useMemo(
+    () => pinnedBoardIds
+      .map((id) => allBoards?.find((b) => b.id === id))
+      .filter(Boolean) as NonNullable<typeof allBoards>[number][],
+    [pinnedBoardIds, allBoards],
+  )
 
   // Realtime-подписка на project_messages вынесена в useWorkspaceMessagesRealtime
   // (WorkspaceLayoutImpl) — один канал на весь workspace вместо дубля здесь.
@@ -269,8 +281,31 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
               icon={Kanban}
               label="Доски"
               href={buildHref('boards')}
-              isActive={isNavActive('boards')}
+              isActive={isNavActive('boards') && !searchParams.get('board')}
             />
+            {/* Закреплённые доски */}
+            {pinnedBoards.map((board) => (
+              <div key={board.id} className="group/pin flex items-center">
+                <SidebarNavButton
+                  icon={Kanban}
+                  label={board.name}
+                  href={buildHref(`boards?board=${board.id}`)}
+                  isActive={isNavActive('boards') && searchParams.get('board') === board.id}
+                />
+                <button
+                  type="button"
+                  className="p-0.5 rounded opacity-0 group-hover/pin:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 -ml-6 mr-1 shrink-0"
+                  title="Открепить"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    toggleBoardPin(board.id)
+                  }}
+                >
+                  <PinOff className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
           </nav>
         )}
       </div>
