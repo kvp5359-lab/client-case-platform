@@ -400,6 +400,11 @@
   @apply absolute top-0 right-0 h-full w-[45%] min-w-[360px] border-l border-gray-200 bg-white overflow-hidden shadow-[-2px_0_8px_rgba(0,0,0,0.08)];
 }
 
+/* AI-ассистент: запрет горизонтального скролла в Radix ScrollArea viewport */
+.side-panel [data-radix-scroll-area-viewport] {
+  overflow-x: hidden !important;
+}
+
 /* Sonner toast: кликабельность поверх Radix Dialog */
 [data-sonner-toaster] {
   pointer-events: auto !important;

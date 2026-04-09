@@ -36,6 +36,7 @@ const ChatSettingsDialog = lazy(() =>
 )
 
 import { TaskPanel } from './TaskPanel'
+import { useLayoutTaskPanel } from './TaskPanelContext'
 import { useTaskAssigneesMap } from './useTaskAssignees'
 import { useCurrentParticipantId } from '@/hooks/shared/useCurrentParticipantId'
 import {
@@ -78,6 +79,10 @@ export const TaskListView = memo(function TaskListView({
   const isProjectMode = !!projectId
   const showProject = showProjectProp ?? !isProjectMode
   const showProjectLink = showProjectLinkProp ?? !isProjectMode
+
+  // Layout-level TaskPanel: если контекст доступен, используем его
+  // и не рендерим свой TaskPanel (панель живёт в WorkspaceLayout и не закрывается при смене вкладки).
+  const layoutPanel = useLayoutTaskPanel()
 
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   // Свежесозданный тред — используется пока он не появится в кеше
@@ -147,10 +152,15 @@ export const TaskListView = memo(function TaskListView({
       }
 
       setCreateOpen(false)
-      setCreatedThread(newThreadToTaskItem(newThread, result))
-      setOpenTaskId(newThread.id)
+      const taskItem = newThreadToTaskItem(newThread, result)
+      setCreatedThread(taskItem)
+      if (layoutPanel) {
+        layoutPanel.openThread(taskItem)
+      } else {
+        setOpenTaskId(newThread.id)
+      }
     },
-    [workspaceId, user, setPendingInitialMessage],
+    [workspaceId, user, setPendingInitialMessage, layoutPanel],
   )
 
   const { handleCreate, isPending: createPending } = useCreateTaskHandler({
@@ -189,6 +199,22 @@ export const TaskListView = memo(function TaskListView({
 
   const openTask = allTasks.find((t) => t.id === openTaskId)
     ?? (createdThread?.id === openTaskId ? createdThread : null)
+
+  const hasLayoutPanel = !!layoutPanel
+
+  // Открытие задачи: через layout TaskPanel (если доступен) или через локальный
+  const handleOpenTask = useCallback(
+    (taskId: string) => {
+      if (layoutPanel) {
+        const task = allTasks.find((t) => t.id === taskId)
+          ?? (createdThread?.id === taskId ? createdThread : null)
+        if (task) layoutPanel.openThread(task)
+      } else {
+        setOpenTaskId(taskId)
+      }
+    },
+    [layoutPanel, allTasks, createdThread],
+  )
 
   // ── Рендер ──
 
@@ -368,7 +394,7 @@ export const TaskListView = memo(function TaskListView({
           taskStatuses={taskStatuses}
           membersMap={membersMap}
           showProject={showProject}
-          onOpenTask={setOpenTaskId}
+          onOpenTask={handleOpenTask}
           onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}
           onDeadlineSet={(taskId, date) =>
             updateDeadline.mutate({ threadId: taskId, deadline: date.toISOString() })
@@ -380,37 +406,39 @@ export const TaskListView = memo(function TaskListView({
         />
       )}
 
-      {/* Панель задачи (правая боковая) */}
-      <TaskPanel
-        task={openTask}
-        open={!!openTaskId}
-        onClose={() => { setOpenTaskId(null); setCreatedThread(null) }}
-        workspaceId={workspaceId}
-        statuses={taskStatuses}
-        members={membersMap[openTask?.id ?? ''] ?? []}
-        onStatusChange={(statusId) =>
-          openTask && updateStatus.mutate({ threadId: openTask.id, statusId })
-        }
-        onDeadlineSet={(date) =>
-          openTask && updateDeadline.mutate({ threadId: openTask.id, deadline: date.toISOString() })
-        }
-        onDeadlineClear={() =>
-          openTask && updateDeadline.mutate({ threadId: openTask.id, deadline: null })
-        }
-        onRename={(name) => openTask && renameTask.mutate({ threadId: openTask.id, name })}
-        onSettingsSave={(params) =>
-          openTask && updateSettings.mutate({ threadId: openTask.id, ...params })
-        }
-        deadlinePending={updateDeadline.isPending}
-        settingsPending={updateSettings.isPending}
-        showProjectLink={showProjectLink && !!openTask?.project_id}
-        onProjectClick={() => {
-          if (openTask?.project_id) {
-            setOpenTaskId(null)
-            router.push(`/workspaces/${workspaceId}/projects/${openTask.project_id}`)
+      {/* Панель задачи (правая боковая) — только если нет layout-level панели */}
+      {!hasLayoutPanel && (
+        <TaskPanel
+          task={openTask}
+          open={!!openTaskId}
+          onClose={() => { setOpenTaskId(null); setCreatedThread(null) }}
+          workspaceId={workspaceId}
+          statuses={taskStatuses}
+          members={membersMap[openTask?.id ?? ''] ?? []}
+          onStatusChange={(statusId) =>
+            openTask && updateStatus.mutate({ threadId: openTask.id, statusId })
           }
-        }}
-      />
+          onDeadlineSet={(date) =>
+            openTask && updateDeadline.mutate({ threadId: openTask.id, deadline: date.toISOString() })
+          }
+          onDeadlineClear={() =>
+            openTask && updateDeadline.mutate({ threadId: openTask.id, deadline: null })
+          }
+          onRename={(name) => openTask && renameTask.mutate({ threadId: openTask.id, name })}
+          onSettingsSave={(params) =>
+            openTask && updateSettings.mutate({ threadId: openTask.id, ...params })
+          }
+          deadlinePending={updateDeadline.isPending}
+          settingsPending={updateSettings.isPending}
+          showProjectLink={showProjectLink && !!openTask?.project_id}
+          onProjectClick={() => {
+            if (openTask?.project_id) {
+              setOpenTaskId(null)
+              router.push(`/workspaces/${workspaceId}/projects/${openTask.project_id}`)
+            }
+          }}
+        />
+      )}
 
       {/* Диалог создания задачи — монтируется только когда открыт */}
       {createOpen && (

@@ -4,7 +4,7 @@
  * WorkspaceLayout — layout с sidebar и правой панелью
  */
 
-import { useState, useEffect, useCallback, lazy, Suspense, createContext, useContext } from 'react'
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense, createContext, useContext } from 'react'
 import { useParams } from 'next/navigation'
 import { Menu, X, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -27,6 +27,7 @@ import { useFaviconBadge } from '@/hooks/messenger/useFaviconBadge'
 import { useWorkspaceMessagesRealtime } from '@/hooks/messenger/useWorkspaceMessagesRealtime'
 import { TaskPanel } from '@/components/tasks/TaskPanel'
 import { useTaskPanelSetup } from '@/components/tasks/useTaskPanelSetup'
+import { TaskPanelContext } from '@/components/tasks/TaskPanelContext'
 import { newThreadToTaskItem } from '@/components/tasks/taskListConstants'
 
 const ExtraPanelContent = lazy(() =>
@@ -159,6 +160,10 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
 
   // TaskPanel
   const tp = useTaskPanelSetup({ workspaceId })
+  const taskPanelCtx = useMemo(
+    () => ({ openThread: tp.setOpenThread, closeThread: () => tp.setOpenThread(null) }),
+    [tp.setOpenThread],
+  )
 
   const handleSelectChat = useCallback(
     (chat: ProjectThread) => {
@@ -169,6 +174,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   )
 
   return (
+    <TaskPanelContext.Provider value={taskPanelCtx}>
     <div className="flex h-screen bg-background relative">
       {/* Мобильная кнопка меню */}
       <button
@@ -303,6 +309,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
         </Suspense>
       )}
     </div>
+    </TaskPanelContext.Provider>
   )
 }
 

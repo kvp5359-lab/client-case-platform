@@ -266,7 +266,7 @@ export function ProjectAiChat({
           />
         ) : (
           <ScrollArea className="flex-1">
-            <div className="max-w-3xl mx-auto px-4 py-4">
+            <div className="px-4 py-4 overflow-hidden">
               {aiMessages.map((msg, idx) => {
                 const prevMsg = idx > 0 ? aiMessages[idx - 1] : null
                 const showDate =

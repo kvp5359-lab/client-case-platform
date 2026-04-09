@@ -19,8 +19,8 @@ export function AiPanelContent({ workspaceId, projectId, templateId }: AiPanelCo
   const { hasModuleAccess } = useProjectPermissions({ projectId: projectId || '' })
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 min-h-0">
+    <div className="flex flex-col h-full min-w-0">
+      <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         <ProjectAiChat
           projectId={projectId}
           workspaceId={workspaceId}

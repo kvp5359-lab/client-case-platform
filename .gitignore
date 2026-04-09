@@ -44,6 +44,7 @@ next-env.d.ts
 # claude code
 .claude/
 .mcp.json
+.playwright-mcp/
 
 # supabase cli temp
 supabase/.temp/

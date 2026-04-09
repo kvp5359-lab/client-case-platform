@@ -35,14 +35,14 @@ export function AiMessageBubble({ message }: { message: AiMessage }) {
           <Bot className="h-4 w-4 text-purple-600" />
         </div>
       )}
-      <div className="max-w-[85%]">
+      <div className="max-w-[85%] min-w-0">
         <div
-          className={cn('rounded-lg px-4 py-2.5', isUser ? 'bg-purple-600 text-white' : 'bg-muted')}
+          className={cn('rounded-lg px-4 py-2.5 overflow-hidden', isUser ? 'bg-purple-600 text-white' : 'bg-muted')}
         >
           {isUser ? (
             <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
           ) : (
-            <div className="prose prose-sm dark:prose-invert max-w-none break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_hr]:my-3 [&_blockquote]:not-italic [&_blockquote]:font-normal [&_blockquote_p]:text-muted-foreground [&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none">
+            <div className="prose prose-sm dark:prose-invert max-w-full break-words overflow-hidden [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_hr]:my-3 [&_blockquote]:not-italic [&_blockquote]:font-normal [&_blockquote_p]:text-muted-foreground [&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none [&_table]:block [&_table]:overflow-x-auto [&_pre]:overflow-x-auto">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
             </div>
           )}

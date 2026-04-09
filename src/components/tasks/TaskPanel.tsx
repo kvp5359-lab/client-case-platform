@@ -108,22 +108,6 @@ export function TaskPanel({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [open, onClose, settingsOpen])
 
-  // Закрытие по клику вне панели
-  useEffect(() => {
-    if (!open) return
-    const handleMouseDown = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      // Don't close if click is inside the panel
-      if (panelRef.current && panelRef.current.contains(target)) return
-      // Don't close if click is inside a Radix portal (popover, dropdown, dialog)
-      if (target.closest('[data-radix-popper-content-wrapper]') || target.closest('[role="dialog"]')) return
-      // Don't close if click is on a file input overlay
-      if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'file') return
-      onClose()
-    }
-    document.addEventListener('mousedown', handleMouseDown)
-    return () => document.removeEventListener('mousedown', handleMouseDown)
-  }, [open, onClose])
 
   const startEditName = () => {
     if (!task) return
