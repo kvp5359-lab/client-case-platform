@@ -145,7 +145,7 @@ export function BoardInboxList({
   return (
     <div>
       {/* Filter bar */}
-      <div className="px-2 py-1.5 border-b flex items-center gap-1">
+      <div className="px-2 py-1.5 border-b border-border/50 flex items-center gap-1">
         {searchOpen ? (
           <div className="flex items-center gap-1.5 flex-1">
             <Search className="h-3 w-3 text-gray-400 shrink-0" />
@@ -211,7 +211,7 @@ export function BoardInboxList({
       </div>
 
       {/* Thread list */}
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-border/50 border-b border-border/50">
         {filteredThreads.length === 0 ? (
           <div className="px-3 py-4 text-xs text-muted-foreground text-center">
             {filter === 'unread' ? 'Нет непрочитанных' : searchQuery ? 'Ничего не найдено' : 'Пусто'}

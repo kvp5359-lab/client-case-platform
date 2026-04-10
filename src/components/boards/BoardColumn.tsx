@@ -18,6 +18,8 @@ interface BoardColumnProps {
   filterCtx: FilterContext
   workspaceId: string
   statuses: StatusOption[]
+  /** Ширина колонки в px */
+  width: number
   onOpenTask: (taskId: string) => void
   onOpenThread: (task: TaskItem) => void
   onStatusChange: (taskId: string, statusId: string | null) => void
@@ -34,6 +36,7 @@ export function BoardColumn({
   filterCtx,
   workspaceId,
   statuses,
+  width,
   onOpenTask,
   onOpenThread,
   onStatusChange,
@@ -41,7 +44,7 @@ export function BoardColumn({
   existingColumns,
 }: BoardColumnProps) {
   return (
-    <div className="flex flex-col gap-5 w-[340px] shrink-0 h-full">
+    <div className="flex flex-col gap-5 shrink-0 h-full" style={{ width: `${width}px` }}>
       {lists.map((list, index) => (
         <BoardListCard
           key={list.id}

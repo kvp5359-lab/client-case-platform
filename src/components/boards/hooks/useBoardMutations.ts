@@ -21,6 +21,7 @@ interface UpdateBoardParams {
   description?: string
   access_type?: 'workspace' | 'private' | 'custom'
   access_roles?: string[]
+  column_widths?: number[]
 }
 
 export function useCreateBoard() {

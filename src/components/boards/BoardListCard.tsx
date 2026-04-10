@@ -301,7 +301,7 @@ export function BoardListCard({
 
       {/* Content */}
       {!collapsed && (
-        <div className={cn(heightClass, 'mt-1 overflow-y-auto', !isCards && 'rounded-lg border bg-white')}>
+        <div className={cn(heightClass, 'mt-1 overflow-y-auto', !isCards && !hasGrouping && 'rounded-lg border border-border/50 bg-white')}>
           {isInbox ? (
             <BoardInboxList
               threads={inboxThreads}
@@ -312,7 +312,7 @@ export function BoardListCard({
             />
           ) : isProject ? (
             projects.length > 0 ? (
-              <div className={cn(isCards ? 'grid gap-1' : 'divide-y')}>
+              <div className={cn(isCards ? 'grid gap-1' : 'divide-y divide-border/50')}>
                 {projects.map((project) => (
                   <BoardProjectRow
                     key={project.id}
@@ -327,7 +327,7 @@ export function BoardListCard({
               <div className="px-3 py-4 text-xs text-muted-foreground text-center">Пусто</div>
             )
           ) : filteredTasks.length > 0 ? (
-            <div className={cn(isCards ? 'grid gap-1' : 'divide-y')}>
+            <div className={cn(isCards ? 'grid gap-1' : hasGrouping ? 'flex flex-col gap-2' : 'divide-y divide-border/50')}>
               {groups.map((group) => (
                 <div key={group.key}>
                   {hasGrouping && (
@@ -338,7 +338,13 @@ export function BoardListCard({
                       </span>
                     </div>
                   )}
-                  <div className={cn(isCards ? 'grid gap-1' : 'divide-y')}>
+                  <div className={cn(
+                    isCards
+                      ? 'grid gap-1'
+                      : hasGrouping
+                        ? 'divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden'
+                        : 'divide-y divide-border/50'
+                  )}>
                     {group.tasks.map((task) => (
                       <BoardTaskRow
                         key={task.id}

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { BoardColumn } from './BoardColumn'
-import type { BoardList, FilterContext } from './types'
+import { DEFAULT_COLUMN_WIDTH, type BoardList, type FilterContext } from './types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceTasks'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/ui/status-dropdown'
@@ -21,6 +21,8 @@ interface BoardViewProps {
   currentUserId: string | null
   userToParticipantMap?: Record<string, string>
   statuses?: StatusOption[]
+  /** Массив ширин колонок в px по индексу (из board.column_widths) */
+  columnWidths?: number[]
   onOpenTask?: (taskId: string) => void
   onOpenThread?: (task: TaskItem) => void
   onStatusChange?: (taskId: string, statusId: string | null) => void
@@ -38,6 +40,7 @@ export function BoardView({
   currentUserId,
   userToParticipantMap,
   statuses,
+  columnWidths,
   onOpenTask,
   onOpenThread,
   onStatusChange,
@@ -78,7 +81,7 @@ export function BoardView({
 
   return (
     <div className="flex gap-4 p-4 h-full min-w-min">
-      {columns.map((col) => (
+      {columns.map((col, idx) => (
         <BoardColumn
           key={col.index}
           lists={col.lists}
@@ -89,6 +92,7 @@ export function BoardView({
           filterCtx={filterCtx}
           workspaceId={workspaceId}
           statuses={statuses ?? []}
+          width={columnWidths?.[idx] ?? DEFAULT_COLUMN_WIDTH}
           onOpenTask={onOpenTask ?? (() => {})}
           onOpenThread={onOpenThread ?? (() => {})}
           onStatusChange={onStatusChange ?? (() => {})}

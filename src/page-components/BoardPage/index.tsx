@@ -76,6 +76,7 @@ export default function BoardPage() {
             workspaceId={workspaceId}
             currentParticipantId={currentParticipantId ?? null}
             currentUserId={user?.id ?? null}
+            columnWidths={board?.column_widths}
           />
         </div>
       </div>

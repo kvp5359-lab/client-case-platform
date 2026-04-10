@@ -142,6 +142,7 @@ function BoardTabContent({
           currentUserId={user?.id ?? null}
           userToParticipantMap={userToParticipantMap}
           statuses={statuses}
+          columnWidths={board.column_widths}
           onOpenTask={handleOpenTask}
           onOpenThread={handleOpenThread}
           onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}

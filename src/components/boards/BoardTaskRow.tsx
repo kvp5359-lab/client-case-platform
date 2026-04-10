@@ -72,7 +72,7 @@ export function BoardTaskRow({
     const hasBottom = (showDeadline && deadline) || (showProject && task.project_name)
     return (
       <div
-        className="rounded-md border bg-background px-2 py-1 hover:shadow-sm transition-shadow cursor-pointer overflow-hidden"
+        className="rounded-md border border-border/50 bg-background px-2 py-1 hover:bg-accent/50 transition-colors cursor-pointer overflow-hidden"
         role="button"
         tabIndex={0}
         onClick={handleClick}

@@ -102,11 +102,20 @@
 
 ```bash
 npm install
-npm run dev        # http://localhost:8080
+npm run dev        # http://localhost:8080 (Webpack, не Turbopack)
 npm run build      # production build
 npm run lint       # ESLint
 npm test           # Vitest (26 тестов)
 npm run test:watch # Vitest watch mode
+```
+
+### Важно: dev-сервер на Webpack, не Turbopack
+
+В `package.json` у `dev` скрипта стоит флаг `--webpack`. Turbopack (который в Next 16 дефолтный) на этом проекте раздувал кеш `.next/dev/cache/turbopack` до 2.5+ ГБ и зависал при HMR — компиляция доходила до 900+ секунд, CPU упирался в 1200%. Webpack: `Ready in 187ms`, первая компиляция страницы ~8s, кеш стабильно 250-400 МБ. Не меняй обратно без причины.
+
+Если dev-сервер опять начал тормозить — сначала убей процесс и удали `.next`:
+```bash
+pkill -f "next dev"; rm -rf .next tsconfig.tsbuildinfo
 ```
 
 ## Роуты (27)

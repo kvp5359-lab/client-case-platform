@@ -37,9 +37,18 @@ export interface Board {
   access_roles: string[]
   created_by: string | null
   sort_order: number
+  /** Массив ширин колонок в px по индексу. Если длина меньше количества колонок — недостающие = DEFAULT_COLUMN_WIDTH */
+  column_widths: number[]
   created_at: string
   updated_at: string
 }
+
+/** Дефолтная ширина колонки доски, если не задана */
+export const DEFAULT_COLUMN_WIDTH = 340
+/** Минимальная допустимая ширина колонки (чтобы UI не ломался) */
+export const MIN_COLUMN_WIDTH = 200
+/** Максимальная допустимая ширина колонки */
+export const MAX_COLUMN_WIDTH = 800
 
 export interface BoardMember {
   id: string
