@@ -5,8 +5,15 @@
  */
 
 import { useMemo, createElement, forwardRef } from 'react'
-import { CheckSquare, GripVertical } from 'lucide-react'
+import { CheckSquare, GripVertical, MoreVertical, ExternalLink, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { DraggableAttributes } from '@dnd-kit/core'
@@ -42,6 +49,8 @@ interface TaskRowProps {
   style?: React.CSSProperties
   /** Прозрачность при перетаскивании */
   isDragging?: boolean
+  /** Запрос на удаление задачи (если не передан — меню «три точки» не показывается) */
+  onRequestDelete?: () => void
 }
 
 export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow({
@@ -59,6 +68,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
   dragHandleProps,
   style,
   isDragging,
+  onRequestDelete,
 }, ref) {
   const currentStatus = useMemo(
     () => statuses.find((s) => s.id === task.status_id) ?? null,
@@ -67,6 +77,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
   const nameStyle = currentStatus?.text_color
     ? { color: safeCssColor(currentStatus.text_color) }
     : undefined
+  const isFinal = !!task.status_id && !!finalStatusIds?.has(task.status_id)
 
   return (
     <div
@@ -136,8 +147,40 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
             projectId={task.project_id}
             workspaceId={workspaceId}
             assignees={members}
+            dimmed={isFinal}
           />
         </span>
+
+        {/* Меню «три точки» — сразу после исполнителей */}
+        {onRequestDelete && (
+          <span className="shrink-0" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 transition-opacity"
+                  aria-label="Меню задачи"
+                >
+                  <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={onOpen} className="text-xs cursor-pointer">
+                  <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                  Открыть
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={onRequestDelete}
+                  className="text-xs cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-3.5 w-3.5" />
+                  Удалить
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </span>
+        )}
       </div>
 
       <UnreadBadge threadId={task.id} workspaceId={workspaceId} accentColor={task.accent_color} />
@@ -148,7 +191,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
         onSet={onDeadlineSet}
         onClear={onDeadlineClear}
         isPending={deadlinePending}
-        isFinal={!!task.status_id && !!finalStatusIds?.has(task.status_id)}
+        isFinal={isFinal}
       />
     </div>
   )

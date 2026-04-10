@@ -104,6 +104,21 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
     }) => {
       const effectiveProjectId =
         params.projectIdOverride !== undefined ? params.projectIdOverride : projectId
+
+      // Вычисляем sort_order так, чтобы новый тред оказался в конце списка своего проекта.
+      // Дефолт колонки = 0, поэтому без этого новые задачи/чаты встраивались в начало.
+      let nextSortOrder = 10
+      if (effectiveProjectId) {
+        const { data: maxRow } = await supabase
+          .from('project_threads')
+          .select('sort_order')
+          .eq('project_id', effectiveProjectId)
+          .order('sort_order', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        nextSortOrder = (maxRow?.sort_order ?? 0) + 10
+      }
+
       const { data, error } = await supabase
         .from('project_threads')
         .insert({
@@ -114,6 +129,7 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
           access_roles: params.accessType === 'roles' ? (params.accessRoles ?? []) : [],
           is_default: false,
           type: params.type ?? 'chat',
+          sort_order: nextSortOrder,
           ...(params.accentColor && { accent_color: params.accentColor }),
           ...(params.icon && { icon: params.icon }),
           ...(params.deadline !== undefined && { deadline: params.deadline }),
@@ -182,13 +198,21 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
 }
 
 /**
- * Удалить тред (только не-дефолтный)
+ * Удалить тред (только не-дефолтный).
+ * Принимает минимум полей, чтобы можно было вызывать и из мессенджера (ProjectThread),
+ * и со страницы задач (TaskItem).
  */
 export function useDeleteThread() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (thread: ProjectThread) => {
+    mutationFn: async (thread: {
+      id: string
+      name: string
+      type: 'chat' | 'task'
+      project_id: string | null
+      is_default?: boolean
+    }) => {
       if (thread.is_default) throw new Error('Нельзя удалить дефолтный тред')
       const { error } = await supabase.from('project_threads').delete().eq('id', thread.id)
       if (error) throw error
@@ -203,6 +227,7 @@ export function useDeleteThread() {
     },
     onSuccess: (thread) => {
       queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(thread.project_id ?? '') })
+      queryClient.invalidateQueries({ queryKey: ['workspace-tasks'] })
       queryClient.invalidateQueries({ queryKey: ['my-urgent-tasks-count'] })
     },
   })

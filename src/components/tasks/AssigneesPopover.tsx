@@ -60,6 +60,8 @@ interface AssigneesPopoverProps {
   projectId: string | null
   workspaceId: string
   assignees: AvatarParticipant[]
+  /** Задача в финальном статусе — аватарки отображаются тусклыми */
+  dimmed?: boolean
 }
 
 export function AssigneesPopover({
@@ -67,6 +69,7 @@ export function AssigneesPopover({
   projectId,
   workspaceId,
   assignees,
+  dimmed,
 }: AssigneesPopoverProps) {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
@@ -159,7 +162,10 @@ export function AssigneesPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1 shrink-0 rounded-md px-1 py-0.5 hover:bg-muted/50 transition-colors"
+          className={cn(
+            'flex items-center gap-1 shrink-0 rounded-md px-1 py-0.5 hover:bg-muted/50 transition-colors',
+            dimmed && 'opacity-20 hover:opacity-100',
+          )}
           title="Исполнители"
           onClick={(e) => e.stopPropagation()}
         >

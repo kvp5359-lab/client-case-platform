@@ -43,6 +43,7 @@ export function DeadlinePopover({ deadline, onSet, onClear, isPending, isFinal }
               : d
                 ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 : 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50',
+            isFinal && 'opacity-20 hover:opacity-100',
           )}
           disabled={isPending}
           title="Срок выполнения"

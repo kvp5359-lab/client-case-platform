@@ -51,6 +51,7 @@ function DraggableTaskRow({
   finalStatusIds,
   showProject,
   dropIndicator,
+  onRequestDelete,
 }: {
   task: TaskItem
   workspaceId: string
@@ -64,6 +65,7 @@ function DraggableTaskRow({
   finalStatusIds: Set<string>
   showProject: boolean
   dropIndicator: 'top' | 'bottom' | null
+  onRequestDelete?: () => void
 }) {
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
     id: task.id,
@@ -99,6 +101,7 @@ function DraggableTaskRow({
         showProject={showProject}
         dragHandleProps={{ attributes, listeners }}
         isDragging={isDragging}
+        onRequestDelete={onRequestDelete}
       />
       {dropIndicator === 'bottom' && (
         <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-500 rounded-full z-10" />
@@ -154,6 +157,7 @@ interface TaskGroupListProps {
   onDeadlineSet: (taskId: string, date: Date) => void
   onDeadlineClear: (taskId: string) => void
   onReorder: (updates: { id: string; sort_order: number }[]) => void
+  onRequestDeleteTask?: (task: TaskItem) => void
   deadlinePending: boolean
   /** false = flat list without deadline groups */
   groupByDeadline?: boolean
@@ -173,6 +177,7 @@ export function TaskGroupList({
   onDeadlineSet,
   onDeadlineClear,
   onReorder,
+  onRequestDeleteTask,
   deadlinePending,
   groupByDeadline = true,
   finalStatusIds = new Set(),
@@ -350,6 +355,9 @@ export function TaskGroupList({
                       dropIndicator={
                         dropIndicator?.taskId === task.id ? dropIndicator.position : null
                       }
+                      onRequestDelete={
+                        onRequestDeleteTask ? () => onRequestDeleteTask(task) : undefined
+                      }
                     />
                   ))}
                 </div>
@@ -374,6 +382,9 @@ export function TaskGroupList({
                 showProject={showProject}
                 dropIndicator={
                   dropIndicator?.taskId === task.id ? dropIndicator.position : null
+                }
+                onRequestDelete={
+                  onRequestDeleteTask ? () => onRequestDeleteTask(task) : undefined
                 }
               />
             ))}
@@ -413,6 +424,9 @@ export function TaskGroupList({
                     onDeadlineClear={() => onDeadlineClear(task.id)}
                     deadlinePending={deadlinePending}
                     showProject={showProject}
+                    onRequestDelete={
+                      onRequestDeleteTask ? () => onRequestDeleteTask(task) : undefined
+                    }
                   />
                 ))}
               </div>

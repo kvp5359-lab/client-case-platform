@@ -18,8 +18,9 @@ import { Button } from '@/components/ui/button'
 import { useWorkspaceTasks } from '@/hooks/tasks/useWorkspaceTasks'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { messengerKeys, taskKeys } from '@/hooks/queryKeys'
-import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
+import { useProjectThreads, useDeleteThread } from '@/hooks/messenger/useProjectThreads'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
+import { DeleteThreadDialog } from '@/components/messenger/DeleteThreadDialog'
 import { useAccessibleThreadIds } from '@/hooks/messenger/useAccessibleThreadIds'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSidePanelStore } from '@/store/sidePanelStore'
@@ -90,6 +91,7 @@ export const TaskListView = memo(function TaskListView({
   const [createOpen, setCreateOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [presetPopoverOpen, setPresetPopoverOpen] = useState(false)
+  const [deletingTask, setDeletingTask] = useState<TaskItem | null>(null)
 
   // ── Загрузка данных ──
 
@@ -184,6 +186,28 @@ export const TaskListView = memo(function TaskListView({
   const renameTask = useRenameTask(invalidateKeys)
   const updateSettings = useUpdateTaskSettings(invalidateKeys)
   const reorderTasks = useReorderTasks(invalidateKeys)
+  const deleteThread = useDeleteThread()
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!deletingTask) return
+    deleteThread.mutate(
+      {
+        id: deletingTask.id,
+        name: deletingTask.name,
+        type: deletingTask.type,
+        project_id: deletingTask.project_id,
+      },
+      {
+        onSuccess: () => {
+          setDeletingTask(null)
+          if (openTaskId === deletingTask.id) {
+            setOpenTaskId(null)
+            if (layoutPanel) layoutPanel.closeThread()
+          }
+        },
+      },
+    )
+  }, [deletingTask, deleteThread, openTaskId, layoutPanel])
 
   // ── Вспомогательные данные ──
 
@@ -401,6 +425,7 @@ export const TaskListView = memo(function TaskListView({
           }
           onDeadlineClear={(taskId) => updateDeadline.mutate({ threadId: taskId, deadline: null })}
           onReorder={(updates) => reorderTasks.mutate(updates)}
+          onRequestDeleteTask={(task) => setDeletingTask(task)}
           deadlinePending={updateDeadline.isPending}
           finalStatusIds={new Set(taskStatuses.filter((s) => s.is_final).map((s) => s.id))}
         />
@@ -455,6 +480,13 @@ export const TaskListView = memo(function TaskListView({
           />
         </Suspense>
       )}
+
+      {/* Диалог подтверждения удаления задачи */}
+      <DeleteThreadDialog
+        thread={deletingTask ? { name: deletingTask.name, type: deletingTask.type } : null}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeletingTask(null)}
+      />
     </div>
   )
 })

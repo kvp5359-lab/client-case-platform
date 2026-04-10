@@ -1,5 +1,5 @@
 /**
- * DeleteThreadDialog — диалог подтверждения удаления чата/треда.
+ * DeleteThreadDialog — диалог подтверждения удаления чата/задачи.
  */
 
 import {
@@ -12,15 +12,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 
 interface DeleteThreadDialogProps {
-  thread: ProjectThread | null
+  thread: { name: string; type?: 'chat' | 'task' } | null
   onConfirm: () => void
   onClose: () => void
 }
 
 export function DeleteThreadDialog({ thread, onConfirm, onClose }: DeleteThreadDialogProps) {
+  const isTask = thread?.type === 'task'
+  const title = isTask ? `Удалить задачу «${thread?.name}»?` : `Удалить чат «${thread?.name}»?`
+  const description = isTask
+    ? 'Задача и все её сообщения будут удалены. Это действие нельзя отменить.'
+    : 'Все сообщения в этом чате будут удалены. Это действие нельзя отменить.'
+
   return (
     <AlertDialog
       open={!!thread}
@@ -30,10 +35,8 @@ export function DeleteThreadDialog({ thread, onConfirm, onClose }: DeleteThreadD
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Удалить чат «{thread?.name}»?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Все сообщения в этом чате будут удалены. Это действие нельзя отменить.
-          </AlertDialogDescription>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Отмена</AlertDialogCancel>
