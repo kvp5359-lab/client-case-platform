@@ -140,7 +140,8 @@ export function useNewMessageToast(workspaceId: string | undefined) {
               .from('project_threads')
               .select('id, name, type, project_id, workspace_id, status_id, deadline, accent_color, icon, is_pinned, created_at, created_by, sort_order')
               .eq('id', msg.thread_id)
-              .single()
+              .eq('is_deleted', false)
+              .maybeSingle()
 
             if (thread) {
               const taskItem: TaskItem = {

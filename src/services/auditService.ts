@@ -37,6 +37,9 @@ type AuditAction =
   | 'pin'
   | 'unpin'
   | 'change_assignees'
+  // Trash actions
+  | 'restore'
+  | 'hard_delete'
 
 type ResourceType = 'document' | 'document_kit' | 'folder' | 'project' | 'task' | 'form_kit' | 'thread'
 

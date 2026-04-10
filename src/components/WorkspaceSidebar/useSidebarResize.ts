@@ -9,11 +9,25 @@ export function useSidebarResize() {
   })
 
   const [isResizing, setIsResizing] = useState(false)
-  const sidebarRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLElement>(null)
   const widthRef = useRef(sidebarWidth)
+  // Смещение курсора от правого края сайдбара в момент нажатия —
+  // чтобы при перетаскивании граница не "скакала" к позиции курсора,
+  // а двигалась относительно этой исходной точки.
+  const pointerOffsetRef = useRef(0)
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
+    // Вычисляем смещение курсора относительно правого края сайдбара.
+    // sidebarRef указывает на <aside>, его getBoundingClientRect().right
+    // даёт абсолютную координату правого края в viewport — от неё и считаем.
+    const sidebarEl = sidebarRef.current
+    if (sidebarEl) {
+      const rect = sidebarEl.getBoundingClientRect()
+      pointerOffsetRef.current = e.clientX - rect.right
+    } else {
+      pointerOffsetRef.current = 0
+    }
     setIsResizing(true)
   }
 
@@ -21,11 +35,16 @@ export function useSidebarResize() {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return
 
-      const newWidth = e.clientX
-      if (newWidth >= 200 && newWidth <= 480) {
-        widthRef.current = newWidth
-        setSidebarWidth(newWidth)
-      }
+      const sidebarEl = sidebarRef.current
+      if (!sidebarEl) return
+
+      // Ширина = позиция курсора относительно левого края сайдбара,
+      // минус начальное смещение внутри handle (чтобы не было скачка).
+      const rect = sidebarEl.getBoundingClientRect()
+      const newWidth = e.clientX - rect.left - pointerOffsetRef.current
+      const clamped = Math.max(200, Math.min(480, newWidth))
+      widthRef.current = clamped
+      setSidebarWidth(clamped)
     }
 
     const handleMouseUp = () => {

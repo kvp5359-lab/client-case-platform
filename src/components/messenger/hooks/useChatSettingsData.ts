@@ -38,6 +38,7 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
         .from('projects')
         .select('id, name, description, project_templates ( name )')
         .eq('workspace_id', workspaceId!)
+        .eq('is_deleted', false)
         .order('name')
       if (error) throw error
       return (data ?? []) as {
@@ -86,6 +87,7 @@ export function useEmailSuggestions(workspaceId: string | undefined) {
         .from('project_threads')
         .select('id')
         .eq('workspace_id', workspaceId!)
+        .eq('is_deleted', false)
       const threadIds = (threads ?? []).map((t) => t.id)
 
       // 3. Previously used contact emails with frequency count

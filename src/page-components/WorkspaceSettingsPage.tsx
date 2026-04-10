@@ -10,6 +10,7 @@ import { useParams, useRouter, usePathname } from 'next/navigation'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GeneralSettingsTab } from './workspace-settings/GeneralSettingsTab'
+import { useWorkspacePermissions } from '@/hooks/permissions'
 
 const ParticipantsTab = React.lazy(() =>
   import('./workspace-settings/ParticipantsTab').then((m) => ({ default: m.ParticipantsTab })),
@@ -23,11 +24,15 @@ const DirectoriesTab = React.lazy(() =>
 const TemplatesTab = React.lazy(() =>
   import('./workspace-settings/TemplatesTab').then((m) => ({ default: m.TemplatesTab })),
 )
+const TrashTab = React.lazy(() =>
+  import('./workspace-settings/TrashTab').then((m) => ({ default: m.TrashTab })),
+)
 
 export function WorkspaceSettingsPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const router = useRouter()
   const pathname = usePathname()
+  const permissions = useWorkspacePermissions({ workspaceId: workspaceId || '' })
 
   // Определяем активный таб по URL
   const getActiveTab = () => {
@@ -35,6 +40,7 @@ export function WorkspaceSettingsPage() {
     if (pathname.includes('/permissions')) return 'permissions'
     if (pathname.includes('/directories')) return 'directories'
     if (pathname.includes('/templates')) return 'templates'
+    if (pathname.includes('/trash')) return 'trash'
     return 'general'
   }
 
@@ -82,6 +88,11 @@ export function WorkspaceSettingsPage() {
               >
                 Шаблоны
               </TabsTrigger>
+              {permissions.isOwner && (
+                <TabsTrigger value="trash" onClick={() => handleTabChange('trash')}>
+                  Корзина
+                </TabsTrigger>
+              )}
             </TabsList>
           </Tabs>
 
@@ -92,6 +103,7 @@ export function WorkspaceSettingsPage() {
             {activeTab === 'permissions' && <PermissionsTab />}
             {(activeTab === 'directories' || pathname.includes('/directories')) && <DirectoriesTab />}
             {(activeTab === 'templates' || pathname.includes('/templates')) && <TemplatesTab />}
+            {activeTab === 'trash' && <TrashTab />}
           </Suspense>
         </div>
       </main>

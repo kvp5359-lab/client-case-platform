@@ -16,6 +16,7 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
         .from('projects')
         .select('*, project_templates(name)')
         .eq('workspace_id', workspaceId!)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false })
         .limit(200)
 

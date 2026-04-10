@@ -67,24 +67,27 @@ describe('projectService', () => {
   })
 
   describe('getProjectsByWorkspace', () => {
+    // Цепочка: .select → .eq(workspace_id) → .eq(is_deleted, false) → .order → .limit
+    const mockProjectsListChain = (data: unknown) =>
+      ({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({ data, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }) as unknown as SupabaseFrom
+
     it('должен вернуть список проектов workspace', async () => {
       const mockProjects = [
         { id: 'project-1', name: 'Project 1', workspace_id: 'workspace-1' },
         { id: 'project-2', name: 'Project 2', workspace_id: 'workspace-1' },
       ]
 
-      vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue({
-                data: mockProjects,
-                error: null,
-              }),
-            }),
-          }),
-        }),
-      } as unknown as SupabaseFrom)
+      vi.mocked(supabase.from).mockReturnValue(mockProjectsListChain(mockProjects))
 
       const result = await getProjectsByWorkspace('workspace-1')
 
@@ -93,18 +96,7 @@ describe('projectService', () => {
     })
 
     it('должен вернуть пустой массив если нет проектов', async () => {
-      vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue({
-                data: [],
-                error: null,
-              }),
-            }),
-          }),
-        }),
-      } as unknown as SupabaseFrom)
+      vi.mocked(supabase.from).mockReturnValue(mockProjectsListChain([]))
 
       const result = await getProjectsByWorkspace('workspace-1')
 
@@ -197,9 +189,17 @@ describe('projectService', () => {
   })
 
   describe('deleteProject', () => {
-    it('должен удалить проект', async () => {
+    beforeEach(() => {
+      // deleteProject теперь делает мягкое удаление и читает текущего пользователя
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(supabase as any).auth = {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
+      }
+    })
+
+    it('должен пометить проект как удалённый (soft delete)', async () => {
       vi.mocked(supabase.from).mockReturnValue({
-        delete: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
           eq: vi.fn().mockResolvedValue({
             error: null,
           }),
@@ -211,9 +211,9 @@ describe('projectService', () => {
 
     it('должен выбросить ProjectError при ошибке удаления', async () => {
       vi.mocked(supabase.from).mockReturnValue({
-        delete: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
           eq: vi.fn().mockResolvedValue({
-            error: { message: 'Delete failed' },
+            error: { message: 'Update failed' },
           }),
         }),
       } as unknown as SupabaseFrom)

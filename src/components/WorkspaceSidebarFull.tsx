@@ -85,7 +85,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
     userRoles.length > 0 &&
     userRoles.every((role) => role === SYSTEM_WORKSPACE_ROLES.CLIENT)
 
-  const { sidebarWidth, handleMouseDown } = useSidebarResize()
+  const { sidebarWidth, sidebarRef, handleMouseDown } = useSidebarResize()
 
   // Сохраняем последний активный workspaceId для страниц без workspaceId в URL (например /profile)
   useEffect(() => {
@@ -195,6 +195,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
 
   return (
     <aside
+      ref={sidebarRef}
       className="relative bg-[#f7f7f7] flex-shrink-0 flex flex-col h-full overflow-hidden border-r border-gray-200"
       style={{ width: sidebarWidth }}
     >

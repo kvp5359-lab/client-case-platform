@@ -68,6 +68,7 @@ export function useSidebarData({ workspaceId }: UseSidebarDataOptions) {
           .from('projects')
           .select('*')
           .eq('workspace_id', workspaceId!)
+          .eq('is_deleted', false)
           .order('last_activity_at', { ascending: false })
           .limit(25)
 
@@ -100,6 +101,7 @@ export function useSidebarData({ workspaceId }: UseSidebarDataOptions) {
         .from('projects')
         .select('*')
         .eq('workspace_id', workspaceId!)
+        .eq('is_deleted', false)
         .in('id', projectIds)
         .order('last_activity_at', { ascending: false })
         .limit(25)

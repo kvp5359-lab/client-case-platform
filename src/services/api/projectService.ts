@@ -6,7 +6,7 @@
 import { supabase } from '@/lib/supabase'
 import { Tables } from '@/types/database'
 import { ProjectError } from '../errors'
-import { safeFetchOrThrow, safeDeleteOrThrow } from '../supabase/queryHelpers'
+import { safeFetchOrThrow } from '../supabase/queryHelpers'
 
 export type Project = Tables<'projects'>
 export type ProjectInsert = Omit<Project, 'id' | 'created_at' | 'updated_at'>
@@ -24,7 +24,7 @@ export async function getProjectById(projectId: string): Promise<Project> {
 }
 
 /**
- * Получение списка проектов для workspace
+ * Получение списка проектов для workspace (без удалённых — исключает корзину)
  */
 export async function getProjectsByWorkspace(workspaceId: string): Promise<Project[]> {
   return (
@@ -33,6 +33,7 @@ export async function getProjectsByWorkspace(workspaceId: string): Promise<Proje
         .from('projects')
         .select('*')
         .eq('workspace_id', workspaceId)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false })
         .limit(200),
       'Не удалось загрузить проекты',
@@ -64,14 +65,20 @@ export async function updateProject(projectId: string, updates: ProjectUpdate): 
 }
 
 /**
- * Удаление проекта
+ * Мягкое удаление проекта — перемещает в корзину.
+ * Окончательное удаление — только из раздела «Корзина» в настройках воркспейса.
  */
 export async function deleteProject(projectId: string): Promise<void> {
-  return safeDeleteOrThrow(
-    supabase.from('projects').delete().eq('id', projectId),
-    'Не удалось удалить проект',
-    ProjectError,
-  )
+  const { data: userRes } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from('projects')
+    .update({
+      is_deleted: true,
+      deleted_at: new Date().toISOString(),
+      deleted_by: userRes.user?.id ?? null,
+    })
+    .eq('id', projectId)
+  if (error) throw new ProjectError('Не удалось удалить проект', error)
 }
 
 /**

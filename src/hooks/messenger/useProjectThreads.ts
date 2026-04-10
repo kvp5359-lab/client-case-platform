@@ -56,6 +56,7 @@ export function useProjectThreads(projectId: string | undefined) {
         .from('project_threads')
         .select('*')
         .eq('project_id', projectId!)
+        .eq('is_deleted', false)
         .order('is_pinned', { ascending: false })
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true })
@@ -113,6 +114,7 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
           .from('project_threads')
           .select('sort_order')
           .eq('project_id', effectiveProjectId)
+          .eq('is_deleted', false)
           .order('sort_order', { ascending: false })
           .limit(1)
           .maybeSingle()
@@ -198,7 +200,10 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
 }
 
 /**
- * Удалить тред (только не-дефолтный).
+ * Мягко удалить тред (только не-дефолтный) — отправить в корзину.
+ * Запись в БД не удаляется: выставляются is_deleted/deleted_at/deleted_by.
+ * Восстановить или удалить навсегда можно через раздел «Корзина» в настройках воркспейса.
+ *
  * Принимает минимум полей, чтобы можно было вызывать и из мессенджера (ProjectThread),
  * и со страницы задач (TaskItem).
  */
@@ -214,7 +219,18 @@ export function useDeleteThread() {
       is_default?: boolean
     }) => {
       if (thread.is_default) throw new Error('Нельзя удалить дефолтный тред')
-      const { error } = await supabase.from('project_threads').delete().eq('id', thread.id)
+
+      const { data: userRes } = await supabase.auth.getUser()
+      const userId = userRes.user?.id ?? null
+
+      const { error } = await supabase
+        .from('project_threads')
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          deleted_by: userId,
+        })
+        .eq('id', thread.id)
       if (error) throw error
 
       const resourceType = thread.type === 'task' ? 'task' as const : 'thread' as const
@@ -229,6 +245,7 @@ export function useDeleteThread() {
       queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(thread.project_id ?? '') })
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks'] })
       queryClient.invalidateQueries({ queryKey: ['my-urgent-tasks-count'] })
+      queryClient.invalidateQueries({ queryKey: ['trash'] })
     },
   })
 }

@@ -87,28 +87,37 @@ export default function ProjectsPage() {
     enabled: !!activeWorkspaceId && !permissionsResult.isLoading,
   })
 
-  // Мутация для удаления проекта
+  // Мягкое удаление проекта — проект уходит в корзину (раздел «Корзина» в настройках воркспейса).
   const deleteProjectMutation = useMutation({
     mutationFn: async (projectId: string) => {
-      const { error } = await supabase.from('projects').delete().eq('id', projectId)
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id ?? null,
+        })
+        .eq('id', projectId)
 
       if (error) throw error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects', activeWorkspaceId] })
+      queryClient.invalidateQueries({ queryKey: ['trash'] })
     },
   })
 
   const handleDeleteProject = async (projectId: string, projectName: string) => {
     const ok = await confirm({
       title: 'Удалить проект?',
-      description: `Вы уверены, что хотите удалить проект "${projectName}"?`,
+      description: `Проект "${projectName}" будет перемещён в корзину. Восстановить можно из раздела «Корзина» в настройках воркспейса.`,
       variant: 'destructive',
-      confirmText: 'Удалить',
+      confirmText: 'В корзину',
     })
     if (!ok) return
     try {
       await deleteProjectMutation.mutateAsync(projectId)
+      toast.success('Проект перемещён в корзину')
     } catch {
       toast.error('Не удалось удалить проект')
     }
