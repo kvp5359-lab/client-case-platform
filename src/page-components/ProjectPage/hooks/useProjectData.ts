@@ -7,17 +7,20 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { getProjectById } from '@/services/api/projectService'
 import { supabase } from '@/lib/supabase'
-import { projectKeys } from '@/hooks/queryKeys'
+import { projectKeys, projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { ProjectTemplateWithRelations } from '../types'
 
 /**
- * Загрузка шаблона проекта по template_id.
- * Полезно, когда template_id уже известен (например, из кеша списка проектов),
- * и не нужно делать лишний запрос за самим проектом.
+ * Загрузка шаблона проекта с join-ами на document_kits и forms — нужно для
+ * ProjectPage (сайдбар, диалоги AddDocumentKit/AddFormKit, useProjectModules).
+ * Редактор типа проекта использует другой хук с полным набором колонок и
+ * отдельным ключом `projectTemplateKeys.detailFull` — чтобы кеши не конфликтовали
+ * (раньше оба хука писали под один ключ `['project-template', id]` и создавали
+ * гонку форм данных).
  */
 export function useProjectTemplate(templateId: string | null | undefined) {
   return useQuery({
-    queryKey: ['project-template', templateId],
+    queryKey: projectTemplateKeys.detail(templateId),
     queryFn: async () => {
       if (!templateId) return null
 
@@ -40,7 +43,7 @@ export function useProjectTemplate(templateId: string | null | undefined) {
       return data as ProjectTemplateWithRelations
     },
     enabled: !!templateId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
@@ -56,43 +59,15 @@ export function useProjectData(projectId: string | undefined) {
       return await getProjectById(projectId)
     },
     enabled: !!projectId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
   })
 
-  // Загружаем шаблон проекта
-  const templateQuery = useQuery({
-    queryKey: ['project-template', projectQuery.data?.template_id],
-    queryFn: async () => {
-      if (!projectQuery.data?.template_id) return null
-
-      const { data, error } = await supabase
-        .from('project_templates')
-        .select(
-          `
-          id,
-          name,
-          enabled_modules,
-          root_folder_id,
-          project_template_document_kits(document_kit_template_id),
-          project_template_forms(form_template_id)
-`,
-        )
-        .eq('id', projectQuery.data.template_id)
-        .single()
-
-      if (error) throw error
-      // data is guaranteed non-null by .single() — it throws on no rows
-      return data as ProjectTemplateWithRelations
-    },
-    enabled: !!projectQuery.data?.template_id,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
-  })
+  // Переиспользуем useProjectTemplate выше — тот же ключ, тот же кеш,
+  // избавились от двух параллельных запросов к одному templateId.
+  const templateQuery = useProjectTemplate(projectQuery.data?.template_id ?? null)
 
   return {
     project: projectQuery.data,

@@ -251,55 +251,6 @@ export function useProjectTemplateMutations({
     },
   })
 
-  // Добавление задачи
-  const addTaskMutation = useMutation({
-    mutationFn: async ({ name, sortOrder }: { name: string; sortOrder: number }) => {
-      const { error } = await supabase.from('project_template_tasks').insert({
-        project_template_id: templateId ?? '',
-        name,
-        sort_order: sortOrder,
-      })
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.tasks(templateId) })
-    },
-    onError: () => {
-      toast.error('Не удалось добавить задачу')
-    },
-  })
-
-  // Обновление задачи
-  const updateTaskMutation = useMutation({
-    mutationFn: async ({ taskId, name }: { taskId: string; name: string }) => {
-      const { error } = await supabase
-        .from('project_template_tasks')
-        .update({ name })
-        .eq('id', taskId)
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.tasks(templateId) })
-    },
-    onError: () => {
-      toast.error('Не удалось обновить задачу')
-    },
-  })
-
-  // Удаление задачи
-  const removeTaskMutation = useMutation({
-    mutationFn: async (taskId: string) => {
-      const { error } = await supabase.from('project_template_tasks').delete().eq('id', taskId)
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.tasks(templateId) })
-    },
-    onError: () => {
-      toast.error('Не удалось удалить задачу')
-    },
-  })
-
   return {
     updateTemplateMutation,
     updateModulesMutation,
@@ -311,8 +262,5 @@ export function useProjectTemplateMutations({
     removeKnowledgeArticleMutation,
     addKnowledgeGroupsMutation,
     removeKnowledgeGroupMutation,
-    addTaskMutation,
-    updateTaskMutation,
-    removeTaskMutation,
   }
 }

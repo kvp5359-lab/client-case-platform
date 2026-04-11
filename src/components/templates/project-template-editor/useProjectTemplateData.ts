@@ -22,11 +22,14 @@ interface UseProjectTemplateDataParams {
 }
 
 /**
- * Загрузка типа проекта
+ * Полная загрузка типа проекта для редактора — `select('*')`, все колонки
+ * `project_templates`. Отдельный ключ `projectTemplateKeys.detailFull()`, чтобы
+ * не конфликтовать с лёгким `useProjectTemplate` из `@/page-components/ProjectPage/hooks`
+ * (тот кешируется под `projectTemplateKeys.detail()`).
  */
 export function useProjectTemplate(templateId: string | undefined) {
   return useQuery({
-    queryKey: projectTemplateKeys.detail(templateId),
+    queryKey: projectTemplateKeys.detailFull(templateId),
     queryFn: async () => {
       if (!templateId) return null
 
@@ -238,28 +241,6 @@ export function useAvailableDocKits(workspaceId: string | undefined) {
 }
 
 /**
- * Загрузка шаблонных задач
- */
-export function useLinkedTemplateTasks(templateId: string | undefined) {
-  return useQuery({
-    queryKey: projectTemplateKeys.tasks(templateId),
-    queryFn: async () => {
-      if (!templateId) return []
-
-      const { data, error } = await supabase
-        .from('project_template_tasks')
-        .select('*')
-        .eq('project_template_id', templateId)
-        .order('sort_order', { ascending: true })
-
-      if (error) throw error
-      return data || []
-    },
-    enabled: !!templateId,
-  })
-}
-
-/**
  * Комбинированный хук для всех данных редактора
  */
 export function useProjectTemplateData({ workspaceId, templateId }: UseProjectTemplateDataParams) {
@@ -268,7 +249,6 @@ export function useProjectTemplateData({ workspaceId, templateId }: UseProjectTe
   const linkedDocKitsQuery = useLinkedDocKits(templateId)
   const linkedKnowledgeArticlesQuery = useLinkedKnowledgeArticles(templateId)
   const linkedKnowledgeGroupsQuery = useLinkedKnowledgeGroups(templateId)
-  const linkedTasksQuery = useLinkedTemplateTasks(templateId)
   const availableFormsQuery = useAvailableForms(workspaceId)
   const availableDocKitsQuery = useAvailableDocKits(workspaceId)
   const availableKnowledgeArticlesQuery = useAvailableKnowledgeArticles(workspaceId)
@@ -306,7 +286,6 @@ export function useProjectTemplateData({ workspaceId, templateId }: UseProjectTe
     linkedDocKits: linkedDocKitsQuery.data || [],
     linkedKnowledgeArticles: linkedKnowledgeArticlesQuery.data || [],
     linkedKnowledgeGroups: linkedKnowledgeGroupsQuery.data || [],
-    linkedTasks: linkedTasksQuery.data || [],
     availableFormsFiltered,
     availableDocKitsFiltered,
     availableKnowledgeArticlesFiltered,

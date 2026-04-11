@@ -4158,38 +4158,6 @@ export type Database = {
           },
         ]
       }
-      project_template_tasks: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          project_template_id: string
-          sort_order: number
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          project_template_id: string
-          sort_order?: number
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          project_template_id?: string
-          sort_order?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_template_tasks_project_template_id_fkey"
-            columns: ["project_template_id"]
-            isOneToOne: false
-            referencedRelation: "project_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       project_templates: {
         Row: {
           brief_template_sheet_id: string | null

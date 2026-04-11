@@ -327,8 +327,19 @@ export const projectTemplateKeys = {
   /** Список шаблонов в воркспейсе. */
   listByWorkspace: (workspaceId: string | undefined) =>
     ['project-templates', workspaceId] as const,
-  /** Один шаблон по id. */
+  /**
+   * Лёгкий детальный ключ шаблона: `id, name, enabled_modules, root_folder_id`.
+   * Используется в `useProjectData`/`WorkspaceSidebarFull` — там нужен только
+   * `enabled_modules` для `useProjectModules`.
+   */
   detail: (templateId: string | null | undefined) => ['project-template', templateId] as const,
+  /**
+   * Полный шаблон со всеми колонками `project_templates` — используется только
+   * в редакторе типа проекта, где форма редактирует все поля шаблона.
+   * Отдельный ключ от `detail()`, чтобы лёгкий и полный кеши не конфликтовали.
+   */
+  detailFull: (templateId: string | null | undefined) =>
+    ['project-template', templateId, 'full'] as const,
   /** Ссылка «какой templateId у проекта» — используется в мессенджере/QuickReplyPicker. */
   idByProject: (projectId: string | null | undefined) =>
     ['project-template-id', projectId] as const,
@@ -337,8 +348,6 @@ export const projectTemplateKeys = {
   /** Привязанные к шаблону document-kits. */
   documentKits: (templateId: string | undefined) =>
     ['project-template-document-kits', templateId] as const,
-  /** Задачи шаблона проекта (шаблонные чек-листы). */
-  tasks: (templateId: string | undefined) => ['project-template-tasks', templateId] as const,
   /** Привязанные к шаблону knowledge-articles. */
   knowledgeArticles: (templateId: string | undefined) =>
     ['knowledge-article-templates', templateId] as const,
