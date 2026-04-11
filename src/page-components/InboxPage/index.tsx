@@ -112,7 +112,9 @@ export default function InboxPage() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim()
       result = result.filter(
-        (c) => c.thread_name.toLowerCase().includes(q) || c.project_name.toLowerCase().includes(q),
+        (c) =>
+          c.thread_name.toLowerCase().includes(q) ||
+          (c.project_name?.toLowerCase().includes(q) ?? false),
       )
     }
 
@@ -125,8 +127,11 @@ export default function InboxPage() {
     return filteredChats.length > 0 ? filteredChats[0] : null
   }, [selectedThreadId, chats, filteredChats])
 
-  // Участники проекта для хедера
-  const { data: participants = [] } = useProjectChatParticipants(activeChat?.project_id)
+  // Участники проекта для хедера. Для workspace-level тредов (project_id=null)
+  // участников проекта нет — передаём undefined, хук отключает запрос.
+  const { data: participants = [] } = useProjectChatParticipants(
+    activeChat?.project_id ?? undefined,
+  )
 
   // Project template id активного чата — для фильтрации шаблонов тредов.
   const { data: activeProjectTemplateId = null } = useQuery<string | null>({
@@ -248,6 +253,9 @@ export default function InboxPage() {
   const markReadMutation = useMutation({
     mutationFn: async (chat: InboxThreadEntry) => {
       if (!user) throw new Error('Не авторизован')
+      // Workspace-level треды (project_id=null) пока не поддерживаются
+      // mark-as-read из InboxPage — у них нет project-участника.
+      if (!chat.project_id) return
       const participant = await getCurrentProjectParticipant(chat.project_id, user.id)
       if (!participant) throw new Error('Участник не найден')
       return markAsRead(
@@ -269,6 +277,7 @@ export default function InboxPage() {
   const markUnreadMutation = useMutation({
     mutationFn: async (chat: InboxThreadEntry) => {
       if (!user) throw new Error('Не авторизован')
+      if (!chat.project_id) return
       const participant = await getCurrentProjectParticipant(chat.project_id, user.id)
       if (!participant) throw new Error('Участник не найден')
       return markAsUnread(
@@ -428,7 +437,7 @@ export default function InboxPage() {
                 <div className="flex-1 min-h-0">
                   <MessengerTabContent
                     key={activeChat.thread_id}
-                    projectId={activeChat.project_id}
+                    projectId={activeChat.project_id ?? undefined}
                     workspaceId={workspaceId}
                     channel={getChannel(activeChat)}
                     threadId={activeChat.thread_id}

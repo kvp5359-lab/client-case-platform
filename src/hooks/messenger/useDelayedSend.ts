@@ -54,7 +54,7 @@ export function useDelayedSend(
 
   const invalidateMessages = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: messagesKey })
-    queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+    queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
   }, [queryClient, messagesKey, workspaceId])
 
   /**
@@ -100,7 +100,7 @@ export function useDelayedSend(
             queryClient.invalidateQueries({
               queryKey: messengerKeys.lastReadAtByThreadId(threadId),
             })
-            queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+            queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
           })
           .catch(() => {
             /* not critical */

@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { inboxKeys, messengerKeys, sidebarKeys, workspaceKeys } from '@/hooks/queryKeys'
 import { getCurrentProjectParticipant, markAsRead } from '@/services/api/messenger/messengerService'
-import type { InboxThread, InboxThreadEntry } from '@/services/api/inboxService'
+import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { Workspace } from '@/types/entities'
 import { buildToastContent } from './MessageToastContent'
 import {
@@ -83,18 +83,14 @@ export function useNewMessageToast(workspaceId: string | undefined) {
           const durationSec = ws?.notification_toast_duration ?? 5
           const duration = durationSec === 0 ? Infinity : durationSec * 1000
 
-          const cachedThreads = queryClient.getQueryData<InboxThread[]>(
-            inboxKeys.threads(workspaceId),
+          // Единый кеш v2 — читаем один раз, достаём и projectName, и accent_color.
+          const cachedThreads = queryClient.getQueryData<InboxThreadEntry[]>(
+            inboxKeys.threadsV2(workspaceId),
           )
           const projectName =
             cachedThreads?.find((c) => c.project_id === msg.project_id)?.project_name ?? 'Проект'
-
-          // Получаем accent_color треда из v2 кэша
-          const cachedThreadsV2 = queryClient.getQueryData<InboxThreadEntry[]>(
-            inboxKeys.threadsV2(workspaceId),
-          )
           const accentColor =
-            cachedThreadsV2?.find((c) => c.thread_id === msg.thread_id)?.thread_accent_color ?? null
+            cachedThreads?.find((c) => c.thread_id === msg.thread_id)?.thread_accent_color ?? null
 
           const senderName = msg.sender_name ?? 'Участник'
           const messageId = (payload.new as { id: string }).id
@@ -174,7 +170,7 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             if (!msg.thread_id) return
             await markAsRead(participant.participantId, msg.project_id, msgChannel, msg.thread_id)
             queryClient.setQueryData(messengerKeys.unreadCountByThreadId(msg.thread_id), 0)
-            queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+            queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
           }
 
           playIncomingSound()

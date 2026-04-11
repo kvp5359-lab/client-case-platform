@@ -73,6 +73,10 @@ export function BoardInboxList({
   const markReadMutation = useMutation({
     mutationFn: async (chat: InboxThreadEntry) => {
       if (!user) throw new Error('Не авторизован')
+      // Workspace-level треды (project_id === null) пока не поддерживаются
+      // для mark-as-read из BoardInboxList — там нет project-участника.
+      // Пропускаем молча, иначе оптимистичное обновление UI уже сработало.
+      if (!chat.project_id) return
       const participant = await getCurrentProjectParticipant(chat.project_id, user.id)
       if (!participant) throw new Error('Участник не найден')
       return markAsRead(
@@ -102,6 +106,8 @@ export function BoardInboxList({
   const markUnreadMutation = useMutation({
     mutationFn: async (chat: InboxThreadEntry) => {
       if (!user) throw new Error('Не авторизован')
+      // Workspace-level треды — см. markReadMutation выше.
+      if (!chat.project_id) return
       const participant = await getCurrentProjectParticipant(chat.project_id, user.id)
       if (!participant) throw new Error('Участник не найден')
       return markAsUnread(
@@ -136,7 +142,9 @@ export function BoardInboxList({
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim()
       result = result.filter(
-        (c) => c.thread_name.toLowerCase().includes(q) || c.project_name.toLowerCase().includes(q),
+        (c) =>
+          c.thread_name.toLowerCase().includes(q) ||
+          (c.project_name?.toLowerCase().includes(q) ?? false),
       )
     }
     return result

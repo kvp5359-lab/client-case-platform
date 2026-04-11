@@ -3,21 +3,30 @@
 /**
  * Хуки для раздела "Входящие" — список тредов и общий счётчик непрочитанных.
  *
- * v1 хуки (useInboxThreads, useTotalUnreadCount, etc.) — оставлены для сайдбара, favicon и MessengerTabContent.
- * v2 хуки (useInboxThreadsV2) — новый формат: каждый тред = отдельная строка.
+ * Единственный источник данных — v2 RPC `get_inbox_threads_v2` (каждый тред
+ * отдельной строкой, thread-level модель). v1 RPC `get_inbox_threads` больше
+ * не используется ни одним хуком; сам RPC остался в БД как legacy для
+ * потенциального быстрого отката, но TS-код его не вызывает.
+ *
+ * Миграция с v1 на v2 завершена в рамках аудита 2026-04-11, П5.1.
+ *
+ * Realtime-инвалидация ключа `inboxKeys.threadsV2(workspaceId)` выполняется
+ * в `useWorkspaceMessagesRealtime` (WorkspaceLayoutImpl) — единая
+ * workspace-level подписка на `project_messages` / `message_reactions`.
  */
 
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
-import { getInboxThreads, getInboxThreadsV2 } from '@/services/api/inboxService'
+import { getInboxThreadsV2 } from '@/services/api/inboxService'
 import { inboxKeys, STALE_TIME } from '@/hooks/queryKeys'
-import { calcThreadUnread, calcTotalUnread } from '@/utils/inboxUnread'
+import { calcTotalUnread, calcThreadUnread } from '@/utils/inboxUnread'
 
 // ─── v2: тред-ориентированные хуки ───────────────────────────────
 
-/** Список тредов v2 — каждый тред отдельной строкой, с channel_type и email-данными.
- *  Realtime-инвалидация ключа выполняется в useWorkspaceMessagesRealtime (WorkspaceLayoutImpl) —
- *  единая workspace-level подписка на project_messages/message_reactions. */
+/**
+ * Список тредов v2 — каждый тред отдельной строкой, с channel_type и
+ * email-данными. Основа для всех производных хуков ниже.
+ */
 export function useInboxThreadsV2(workspaceId: string) {
   const { user } = useAuth()
 
@@ -29,22 +38,11 @@ export function useInboxThreadsV2(workspaceId: string) {
   })
 }
 
-// ─── v1: project-ориентированные хуки (для сайдбара, favicon) ───
-
-/** Список тредов-проектов с последним сообщением и непрочитанными (legacy v1).
- *  Realtime-инвалидация ключа выполняется в useWorkspaceMessagesRealtime. */
-export function useInboxThreads(workspaceId: string) {
-  const { user } = useAuth()
-
-  return useQuery({
-    queryKey: inboxKeys.threads(workspaceId),
-    queryFn: () => getInboxThreads(workspaceId, user!.id),
-    enabled: !!workspaceId && !!user,
-    staleTime: STALE_TIME.SHORT,
-  })
-}
-
-/** Суммарный счётчик непрочитанных сообщений для бейджа favicon и сайдбара (v2: по тредам) */
+/**
+ * Суммарный счётчик непрочитанных сообщений для бейджа favicon и сайдбара.
+ * Суммируется по всем тредам воркспейса, `calcTotalUnread` учитывает
+ * реакции, manually_unread и events.
+ */
 export function useTotalUnreadCount(workspaceId: string) {
   const { user } = useAuth()
 
@@ -57,8 +55,15 @@ export function useTotalUnreadCount(workspaceId: string) {
   })
 }
 
-/** Проверяет, помечен ли тред/проект как вручную непрочитанный.
- *  Если передан threadId — использует v2 (по тредам), иначе v1 (по проектам). */
+/**
+ * Проверяет, помечен ли тред/проект как вручную непрочитанный.
+ *
+ * Если передан `threadId` — проверяет конкретный тред.
+ * Иначе — проверяет, есть ли в проекте `projectId` хоть один тред с
+ * `legacy_channel === channel`, у которого `manually_unread === true`.
+ * (Нужно для legacy-кода сайдбара, где unread-состояние агрегируется
+ * на уровне проект × канал.)
+ */
 export function useIsManuallyUnread(
   workspaceId: string,
   projectId: string,
@@ -67,34 +72,29 @@ export function useIsManuallyUnread(
 ) {
   const { user } = useAuth()
 
-  // v2 path: filter by threadId directly
-  const v2 = useQuery({
+  return useQuery({
     queryKey: inboxKeys.threadsV2(workspaceId),
     queryFn: () => getInboxThreadsV2(workspaceId, user!.id),
-    enabled: !!workspaceId && !!user && !!threadId,
+    enabled: !!workspaceId && !!user,
     staleTime: STALE_TIME.SHORT,
-    select: (threads) => threads.some((t) => t.thread_id === threadId && t.manually_unread),
+    select: (threads) => {
+      if (threadId) {
+        return threads.some((t) => t.thread_id === threadId && t.manually_unread)
+      }
+      return threads.some(
+        (t) =>
+          t.project_id === projectId &&
+          t.legacy_channel === channel &&
+          t.manually_unread,
+      )
+    },
   })
-
-  // v1 fallback: filter by projectId + channel
-  const v1 = useQuery({
-    queryKey: inboxKeys.threads(workspaceId),
-    queryFn: () => getInboxThreads(workspaceId, user!.id),
-    enabled: !!workspaceId && !!user && !threadId,
-    staleTime: STALE_TIME.SHORT,
-    select: (chats) =>
-      chats.some(
-        (c) =>
-          c.project_id === projectId &&
-          (channel === 'client' ? c.manually_unread : c.internal_manually_unread),
-      ),
-  })
-
-  return threadId ? v2 : v1
 }
 
-/** Есть ли непрочитанная реакция у конкретного треда/проекта.
- *  Если передан threadId — использует v2 (по тредам), иначе v1 (по проектам). */
+/**
+ * Есть ли непрочитанная реакция у конкретного треда/проекта.
+ * Семантика `threadId` / `projectId` — как в `useIsManuallyUnread`.
+ */
 export function useHasUnreadReaction(
   workspaceId: string,
   projectId: string,
@@ -103,48 +103,54 @@ export function useHasUnreadReaction(
 ) {
   const { user } = useAuth()
 
-  // v2 path: filter by threadId directly
-  const v2 = useQuery({
+  return useQuery({
     queryKey: inboxKeys.threadsV2(workspaceId),
     queryFn: () => getInboxThreadsV2(workspaceId, user!.id),
-    enabled: !!workspaceId && !!user && !!threadId,
-    staleTime: STALE_TIME.SHORT,
-    select: (threads) => threads.some((t) => t.thread_id === threadId && t.has_unread_reaction),
-  })
-
-  // v1 fallback: filter by projectId + channel
-  const v1 = useQuery({
-    queryKey: inboxKeys.threads(workspaceId),
-    queryFn: () => getInboxThreads(workspaceId, user!.id),
-    enabled: !!workspaceId && !!user && !threadId,
-    staleTime: STALE_TIME.SHORT,
-    select: (chats) =>
-      chats.some(
-        (c) => c.project_id === projectId && channel === 'client' && c.has_unread_reaction,
-      ),
-  })
-
-  return threadId ? v2 : v1
-}
-
-/** Emoji непрочитанной реакции для конкретного проекта */
-export function useUnreadReactionEmoji(workspaceId: string, projectId: string) {
-  const { user } = useAuth()
-
-  return useQuery({
-    queryKey: inboxKeys.threads(workspaceId),
-    queryFn: () => getInboxThreads(workspaceId, user!.id),
     enabled: !!workspaceId && !!user,
     staleTime: STALE_TIME.SHORT,
-    select: (chats) => {
-      const chat = chats.find((c) => c.project_id === projectId)
-      return chat?.has_unread_reaction && chat.last_reaction_emoji ? chat.last_reaction_emoji : null
+    select: (threads) => {
+      if (threadId) {
+        return threads.some((t) => t.thread_id === threadId && t.has_unread_reaction)
+      }
+      return threads.some(
+        (t) =>
+          t.project_id === projectId &&
+          t.legacy_channel === channel &&
+          t.has_unread_reaction,
+      )
     },
   })
 }
 
-/** Счётчик непрочитанных по каждому проекту (для бейджей в сайдбаре).
- *  Использует v2 (по тредам) — корректно учитывает задачи и accent_color каждого треда. */
+/**
+ * Emoji непрочитанной реакции для конкретного проекта (канал 'client').
+ * Возвращает первый найденный emoji среди client-тредов проекта с реакцией.
+ */
+export function useUnreadReactionEmoji(workspaceId: string, projectId: string) {
+  const { user } = useAuth()
+
+  return useQuery({
+    queryKey: inboxKeys.threadsV2(workspaceId),
+    queryFn: () => getInboxThreadsV2(workspaceId, user!.id),
+    enabled: !!workspaceId && !!user,
+    staleTime: STALE_TIME.SHORT,
+    select: (threads) => {
+      const thread = threads.find(
+        (t) =>
+          t.project_id === projectId &&
+          t.legacy_channel === 'client' &&
+          t.has_unread_reaction &&
+          t.last_reaction_emoji,
+      )
+      return thread?.last_reaction_emoji ?? null
+    },
+  })
+}
+
+/**
+ * Счётчик непрочитанных по каждому проекту (для бейджей в сайдбаре).
+ * Агрегирует thread-level данные v2 в project-level map-ы.
+ */
 export function useProjectUnreadCounts(workspaceId: string) {
   const { user } = useAuth()
 
@@ -229,3 +235,4 @@ export function useProjectUnreadCounts(workspaceId: string) {
     },
   })
 }
+

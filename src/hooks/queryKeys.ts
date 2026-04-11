@@ -158,7 +158,12 @@ export const quickReplyKeys = {
 
 export const inboxKeys = {
   all: ['inbox'] as const,
-  threads: (workspaceId: string) => ['inbox', 'threads', workspaceId] as const,
+  /**
+   * Единственный реальный ключ inbox-кеша — v2 thread-level.
+   * v1 `threads` был удалён в рамках аудита 2026-04-11, П5.1.
+   * Имя `threadsV2` сохранено для обратной совместимости импортов;
+   * в новых местах можно использовать синоним `threads` из этого же объекта.
+   */
   threadsV2: (workspaceId: string) => ['inbox', 'threads-v2', workspaceId] as const,
 }
 
@@ -191,14 +196,13 @@ export const accessibleProjectKeys = {
 }
 
 /**
- * Инвалидировать все кэши мессенджера: inbox (v1 + v2) + sidebar projects.
+ * Инвалидировать все кэши мессенджера: inbox v2 + sidebar projects.
  * Вызывать после markAsRead, markAsUnread, отправки сообщения, реакций и т.д.
  */
 export function invalidateMessengerCaches(
   queryClient: { invalidateQueries: (opts: { queryKey: readonly unknown[] }) => void },
   workspaceId: string,
 ) {
-  queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
   queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, true) })
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, false) })

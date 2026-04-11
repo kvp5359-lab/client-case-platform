@@ -1,31 +1,14 @@
 /**
- * Сервис для раздела "Входящие" — список тредов (v2: по тредам, не по проектам)
+ * Сервис для раздела "Входящие" — список тредов (v2: по тредам, не по проектам).
+ *
+ * Версия v1 (`get_inbox_threads`, `InboxThread`) удалена из TS-кода в рамках
+ * аудита 2026-04-11, П5.1 — все потребители переведены на v2. Сам RPC
+ * `get_inbox_threads` пока остаётся в БД как legacy (см. Зону 2 аудита), но
+ * клиентский код его не вызывает.
  */
 
 import { supabase } from '@/lib/supabase'
 import { ApiError } from '@/services/errors/AppError'
-
-/** @deprecated Используй InboxThreadEntry */
-export interface InboxThread {
-  project_id: string
-  project_name: string
-  project_status: string | null
-  last_message_id: string | null
-  last_message_at: string | null
-  last_message_text: string | null
-  last_sender_name: string | null
-  unread_count: number
-  manually_unread: boolean
-  last_reaction_emoji: string | null
-  last_reaction_at: string | null
-  has_unread_reaction: boolean
-  internal_unread_count: number
-  internal_manually_unread: boolean
-  client_thread_id: string | null
-  internal_thread_id: string | null
-  client_accent_color: string | null
-  internal_accent_color: string | null
-}
 
 export type InboxChannelType = 'web' | 'telegram' | 'email'
 
@@ -34,8 +17,18 @@ export interface InboxThreadEntry {
   thread_name: string
   thread_icon: string
   thread_accent_color: string
-  project_id: string
-  project_name: string
+  /**
+   * `null` для workspace-level тредов (не привязаны к проекту).
+   * v2 RPC реально возвращает null для таких — project_threads_insert policy
+   * разрешает их через workspace_id + access_type='custom'.
+   */
+  project_id: string | null
+  /**
+   * `null` синхронно с `project_id`: у workspace-level тредов нет проекта,
+   * а значит и имени проекта. UI должен показывать fallback вроде
+   * «Рабочая область» / имя воркспейса.
+   */
+  project_name: string | null
   channel_type: InboxChannelType
   /** legacy_channel из project_threads: 'client' | 'internal' | null (для custom тредов) */
   legacy_channel: string | null
@@ -65,27 +58,6 @@ export interface InboxThreadEntry {
   last_event_status_color: string | null
   /** Audit: count of unread events */
   unread_event_count: number
-}
-
-/**
- * v1 inbox RPC — возвращает данные сгруппированные ПО ПРОЕКТАМ (одна строка = один проект,
- * с client_thread_id + internal_thread_id в той же строке).
- *
- * Не `@deprecated`: используется осознанно в `useInboxThreads` (сайдбар, favicon, реакции),
- * где нужна project-level агрегация. v2 — это ТРЕД-ориентированная модель (одна строка = один тред),
- * она параллельно живёт и используется в местах, где нужна thread-level детализация.
- *
- * Полная миграция с v1 на v2 требует переписывания сайдбара/favicon на thread-level
- * агрегацию — отдельная задача (см. docs/audit-2026-04-11-third-pass.md, Зона 2).
- */
-export async function getInboxThreads(workspaceId: string, userId: string): Promise<InboxThread[]> {
-  const { data, error } = await supabase.rpc('get_inbox_threads', {
-    p_workspace_id: workspaceId,
-    p_user_id: userId,
-  })
-
-  if (error) throw new ApiError(`Ошибка загрузки входящих: ${error.message}`)
-  return (data ?? []) as InboxThread[]
 }
 
 export async function getInboxThreadsV2(

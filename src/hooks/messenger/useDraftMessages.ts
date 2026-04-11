@@ -157,7 +157,7 @@ export function usePublishDraft(
 
     onSuccess: (_result, vars) => {
       queryClient.invalidateQueries({ queryKey: messagesKey })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
       toast.success('Сообщение отправлено')
 
       // Mark chat as read
@@ -168,7 +168,7 @@ export function usePublishDraft(
             queryClient.invalidateQueries({
               queryKey: messengerKeys.lastReadAtByThreadId(threadId),
             })
-            queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+            queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
           })
           .catch(() => {
             /* not critical */

@@ -4,10 +4,10 @@
  * useWorkspaceMessagesRealtime — единая Realtime-подписка workspace-уровня
  * на project_messages и message_reactions.
  *
- * До этого каждый из 4+ компонентов (сайдбар, useInboxThreadsV2, useInboxThreads v1,
- * useNewMessageToast) создавал свой WebSocket-канал на одни и те же события — Supabase
- * получал одно сообщение и рассылал его 4+ раза по разным каналам. Теперь один канал —
- * все инвалидации кэшей выполняются здесь.
+ * До этого каждый из 4+ компонентов (сайдбар, useInboxThreadsV2, useNewMessageToast)
+ * создавал свой WebSocket-канал на одни и те же события — Supabase получал одно
+ * сообщение и рассылал его 4+ раза по разным каналам. Теперь один канал — все
+ * инвалидации кэшей выполняются здесь.
  *
  * Подключается в WorkspaceLayoutShell (самый верхний layout workspace), так что активен
  * всегда пока пользователь внутри workspace. Не используй этот хук в дочерних компонентах.
@@ -31,11 +31,9 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
 
     const invalidateAll = () => {
       // Инвалидируем все ключи, которые зависят от project_messages workspace-level:
-      // - threadsV2: список тредов с непрочитанными (сайдбар, inbox)
-      // - threads (v1): legacy ключ, всё ещё используется в useIsManuallyUnread и др.
+      // - threadsV2: единый inbox-кеш (сайдбар, реакции, manually-unread — всё через v2)
       // - projectsBase: сайдбар проектов с last_activity_at
       queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
       queryClient.invalidateQueries({ queryKey: sidebarKeys.projectsBase(workspaceId) })
     }
 

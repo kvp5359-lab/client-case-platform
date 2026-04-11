@@ -164,7 +164,7 @@ export function useSendEmail(projectId: string, workspaceId: string, threadId: s
     onSuccess: () => {
       // Refetch messages to pick up the real message from DB
       queryClient.refetchQueries({ queryKey: messagesKey })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
     },
   })
 }

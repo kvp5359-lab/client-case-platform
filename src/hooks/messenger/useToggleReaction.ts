@@ -53,7 +53,7 @@ export function useToggleReaction(
               queryKey: messengerKeys.lastReadAtByThreadId(threadId),
             })
             if (workspaceId) {
-              queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+              queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
             }
           })
           .catch(() => {
