@@ -6,7 +6,12 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { messengerKeys, taskKeys } from '@/hooks/queryKeys'
+import {
+  messengerKeys,
+  taskKeys,
+  projectThreadKeys,
+  workspaceTaskKeys,
+} from '@/hooks/queryKeys'
 import { logAuditAction } from '@/services/auditService'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
 
@@ -40,6 +45,10 @@ export interface ProjectThread {
   deadline: string | null
   created_by: string | null
   is_deleted: boolean
+  deleted_at: string | null
+  deleted_by: string | null
+  /** Публичный код для шаринга треда по ссылке (nullable — не у всех тредов включён). */
+  link_code: string | null
   is_pinned: boolean
   /**
    * Thread template this thread was instantiated from, if any. Used by the
@@ -82,7 +91,7 @@ export function useProjectThreads(projectId: string | undefined) {
  */
 export function useProjectThreadById(threadId: string | undefined, enabled = true) {
   return useQuery({
-    queryKey: ['project_thread', threadId ?? ''],
+    queryKey: projectThreadKeys.byId(threadId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_threads')
@@ -224,8 +233,8 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
       if (projectId && projectId !== effectivePid) {
         queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(projectId) })
       }
-      queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] })
-      queryClient.invalidateQueries({ queryKey: ['task-assignees-map'] })
+      queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.assigneesMap })
       queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
     },
   })
@@ -279,12 +288,12 @@ export function useDeleteThread(workspaceId?: string) {
     onSuccess: (thread) => {
       queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(thread.project_id ?? '') })
       if (workspaceId) {
-        queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] })
+        queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
         queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
       } else {
         // Fallback: старые вызовы без workspaceId — partial-match инвалидация
         // по префиксу. Работает, но задевает все воркспейсы пользователя.
-        queryClient.invalidateQueries({ queryKey: ['workspace-tasks'] })
+        queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.all })
         queryClient.invalidateQueries({ queryKey: ['my-urgent-tasks-count'] })
       }
       queryClient.invalidateQueries({ queryKey: ['trash'] })

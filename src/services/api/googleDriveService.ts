@@ -92,7 +92,7 @@ async function getAccessToken(functionName: string): Promise<string> {
   throw new GoogleDriveError('Необходима авторизация', { functionName })
 }
 
-async function callEdgeFunctionWithToken<T>(
+async function callEdgeFunctionWithToken<_T = unknown>(
   functionName: string,
   body: Record<string, unknown>,
   accessToken: string,
