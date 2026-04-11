@@ -14,14 +14,20 @@ export const MESSAGE_SELECT = `
   attachments:message_attachments(*)
 `
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase join response is untyped
-export function castToProjectMessage(row: any): ProjectMessage {
-  return row as ProjectMessage
+/**
+ * Кастит "сырой" ряд из `supabase.from('project_messages').select(MESSAGE_SELECT)`
+ * в доменный `ProjectMessage`. Джойны в Supabase не типизируются автоматически,
+ * поэтому мы принимаем любой Record и говорим TS «доверься, shape совпадает».
+ *
+ * Использовать **только** для рядов из MESSAGE_SELECT — у других запросов
+ * shape будет другой и ProjectMessage из такого каста окажется врущим.
+ */
+export function castToProjectMessage(row: Record<string, unknown>): ProjectMessage {
+  return row as unknown as ProjectMessage
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase join response is untyped
-export function castToProjectMessages(rows: any[]): ProjectMessage[] {
-  return rows as ProjectMessage[]
+export function castToProjectMessages(rows: Record<string, unknown>[]): ProjectMessage[] {
+  return rows as unknown as ProjectMessage[]
 }
 
 /** Hydrate reply_to_message for messages with reply_to_message_id */
