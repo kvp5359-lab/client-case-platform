@@ -16,10 +16,40 @@ env:
 
 jobs:
   # ===========================================
-  # 1. Build Docker Image
+  # 1. Quality gate — lint + tests
+  # ===========================================
+  # Шаг защиты от поломок: если линтер или тесты упали,
+  # build и deploy не запускаются. Защищает прод от попадания
+  # коммитов с ошибками типов, нарушением правил безопасности
+  # (фильтры is_deleted/workspace_id) и регрессов в правах.
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+  # ===========================================
+  # 2. Build Docker Image
   # ===========================================
   build:
     runs-on: ubuntu-latest
+    needs: quality
     permissions:
       contents: read
       packages: write
@@ -64,7 +94,7 @@ jobs:
             NEXT_PUBLIC_APP_VERSION=1.0.0
 
   # ===========================================
-  # 2. Deploy to VPS
+  # 3. Deploy to VPS
   # ===========================================
   deploy:
     runs-on: ubuntu-latest
