@@ -174,7 +174,10 @@ export const TaskListView = memo(function TaskListView({
   // ── Мутации ──
 
   const invalidateKeys = useMemo(() => {
-    const keys: Array<readonly unknown[]> = [taskKeys.workspace(workspaceId)]
+    const keys: Array<readonly unknown[]> = [
+      taskKeys.workspace(workspaceId),
+      taskKeys.urgentCount(workspaceId),
+    ]
     if (projectId) {
       keys.push(messengerKeys.projectThreads(projectId))
     }
@@ -186,7 +189,7 @@ export const TaskListView = memo(function TaskListView({
   const renameTask = useRenameTask(invalidateKeys)
   const updateSettings = useUpdateTaskSettings(invalidateKeys)
   const reorderTasks = useReorderTasks(invalidateKeys)
-  const deleteThread = useDeleteThread()
+  const deleteThread = useDeleteThread(workspaceId)
 
   const handleConfirmDelete = useCallback(() => {
     if (!deletingTask) return

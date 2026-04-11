@@ -35,7 +35,7 @@ export function useCreateComment() {
         queryKey: commentKeys.byEntity(variables.entity_type, variables.entity_id),
       })
       queryClient.invalidateQueries({
-        queryKey: ['comments', 'counts'],
+        queryKey: commentKeys.countsAll,
       })
     },
     onError: (error) => {
@@ -82,7 +82,7 @@ export function useDeleteComment(entityType?: string, entityId?: string) {
       } else {
         queryClient.invalidateQueries({ queryKey: commentKeys.all })
       }
-      queryClient.invalidateQueries({ queryKey: ['comments', 'counts'] })
+      queryClient.invalidateQueries({ queryKey: commentKeys.countsAll })
     },
     onError: (error) => {
       logger.error('Ошибка удаления комментария:', error)

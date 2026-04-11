@@ -6,7 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { messengerKeys } from '@/hooks/queryKeys'
+import { messengerKeys, taskKeys } from '@/hooks/queryKeys'
 import { logAuditAction } from '@/services/auditService'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
 
@@ -226,7 +226,7 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
       }
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] })
       queryClient.invalidateQueries({ queryKey: ['task-assignees-map'] })
-      queryClient.invalidateQueries({ queryKey: ['my-urgent-tasks-count'] })
+      queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
     },
   })
 }
@@ -238,8 +238,11 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
  *
  * Принимает минимум полей, чтобы можно было вызывать и из мессенджера (ProjectThread),
  * и со страницы задач (TaskItem).
+ *
+ * workspaceId нужен для targeted инвалидации urgent-tasks-count и workspace-tasks —
+ * без него инвалидация падала бы по префикс-матчу на все воркспейсы сразу.
  */
-export function useDeleteThread() {
+export function useDeleteThread(workspaceId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -275,8 +278,15 @@ export function useDeleteThread() {
     },
     onSuccess: (thread) => {
       queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(thread.project_id ?? '') })
-      queryClient.invalidateQueries({ queryKey: ['workspace-tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['my-urgent-tasks-count'] })
+      if (workspaceId) {
+        queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] })
+        queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
+      } else {
+        // Fallback: старые вызовы без workspaceId — partial-match инвалидация
+        // по префиксу. Работает, но задевает все воркспейсы пользователя.
+        queryClient.invalidateQueries({ queryKey: ['workspace-tasks'] })
+        queryClient.invalidateQueries({ queryKey: ['my-urgent-tasks-count'] })
+      }
       queryClient.invalidateQueries({ queryKey: ['trash'] })
     },
   })

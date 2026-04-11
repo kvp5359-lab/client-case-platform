@@ -8,13 +8,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { workspaceThreadKeys } from '@/hooks/queryKeys'
 import type { WorkspaceTask } from './useWorkspaceTasks'
 
 export function useWorkspaceThreads(workspaceId: string | undefined) {
   const { user } = useAuth()
 
   return useQuery({
-    queryKey: ['workspace-threads', workspaceId, user?.id],
+    queryKey: workspaceThreadKeys.forUser(workspaceId ?? '', user?.id),
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_workspace_threads' as never, {
         p_workspace_id: workspaceId!,

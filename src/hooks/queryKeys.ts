@@ -30,6 +30,23 @@ export const projectKeys = {
   all: ['projects'] as const,
   detail: (projectId: string) => ['projects', projectId] as const,
   folderCheck: (projectId: string) => ['projects', 'folder-check', projectId] as const,
+  /**
+   * Префикс для broad-invalidate: инвалидирует все варианты project-listing'а
+   * в воркспейсе (они используют ['projects', workspaceId, userId, isOwner, canViewAll]).
+   * Partial match захватит все такие кэши разом.
+   */
+  byWorkspace: (workspaceId: string) => ['projects', workspaceId] as const,
+  /**
+   * Полный ключ для чтения списка проектов с учётом прав пользователя.
+   * Права влияют на queryFn (get_user_projects(..., canViewAll)), поэтому
+   * включены в ключ — иначе смена роли не заставит React Query перегрузить данные.
+   */
+  listForUser: (
+    workspaceId: string,
+    userId: string | undefined,
+    isOwner: boolean,
+    canViewAll: boolean,
+  ) => ['projects', workspaceId, userId, isOwner, canViewAll] as const,
 }
 
 export const folderSlotKeys = {
@@ -79,6 +96,11 @@ export const commentKeys = {
   // и путаницу кэшей при разном порядке IDs
   counts: (entityType: string, entityIds: string[]) =>
     ['comments', 'counts', entityType, [...entityIds].sort().join(',')] as const,
+  /**
+   * Префикс для всех «comments counts» кэшей — используется при broad-invalidate,
+   * когда нужно сбросить все counts сразу (на create/delete комментария).
+   */
+  countsAll: ['comments', 'counts'] as const,
 }
 
 export const knowledgeBaseKeys = {
@@ -129,7 +151,29 @@ export const inboxKeys = {
 export const taskKeys = {
   all: ['tasks'] as const,
   workspace: (workspaceId: string) => ['tasks', 'workspace', workspaceId] as const,
-  urgentCount: ['my-urgent-tasks-count'] as const,
+  urgentCount: (workspaceId: string) => ['my-urgent-tasks-count', workspaceId] as const,
+}
+
+export const workspaceThreadKeys = {
+  all: ['workspace-threads'] as const,
+  /** Префикс для broad-invalidate: сбрасывает треды для всех пользователей в воркспейсе */
+  workspace: (workspaceId: string) => ['workspace-threads', workspaceId] as const,
+  /** Полный ключ с user id — используется при чтении, чтобы разные юзеры имели разные кэши */
+  forUser: (workspaceId: string, userId: string | undefined) =>
+    ['workspace-threads', workspaceId, userId] as const,
+}
+
+export const currentParticipantKeys = {
+  all: ['current-participant'] as const,
+  forUser: (workspaceId: string, userId: string | undefined) =>
+    ['current-participant', workspaceId, userId] as const,
+}
+
+export const accessibleProjectKeys = {
+  all: ['accessible-projects'] as const,
+  workspace: (workspaceId: string) => ['accessible-projects', workspaceId] as const,
+  forUser: (workspaceId: string, userId: string | undefined) =>
+    ['accessible-projects', workspaceId, userId] as const,
 }
 
 /**
@@ -239,6 +283,12 @@ export const boardKeys = {
   detail: (boardId: string) => ['boards', boardId] as const,
   lists: (boardId: string) => ['boards', boardId, 'lists'] as const,
   members: (boardId: string) => ['boards', boardId, 'members'] as const,
+  /**
+   * Список «projects для boards-фильтра» в воркспейсе. Отдельный ключ от
+   * projectKeys, потому что BoardsPage показывает проекты сквозь свой API
+   * с другим набором полей (BoardProject vs Project).
+   */
+  projectsByWorkspace: (workspaceId: string) => ['boards', 'projects', workspaceId] as const,
 }
 
 export const statusKeys = {

@@ -8,7 +8,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { taskKeys } from '@/hooks/queryKeys'
 import { logAuditAction } from '@/services/auditService'
 
 export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
@@ -36,7 +35,6 @@ export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unkno
     },
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
-      queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount })
       queryClient.invalidateQueries({ queryKey: ['thread-audit-events', threadId] })
     },
     onError: () => toast.error('Не удалось обновить статус'),
@@ -67,7 +65,6 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
     },
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
-      queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount })
       queryClient.invalidateQueries({ queryKey: ['thread-audit-events', threadId] })
     },
     onError: () => toast.error('Не удалось обновить срок'),

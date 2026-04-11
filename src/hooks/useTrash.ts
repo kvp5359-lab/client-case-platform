@@ -15,7 +15,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { logAuditAction } from '@/services/auditService'
-import { messengerKeys } from '@/hooks/queryKeys'
+import { messengerKeys, taskKeys, projectKeys, sidebarKeys, boardKeys } from '@/hooks/queryKeys'
 
 // ── Типы ──
 
@@ -187,9 +187,9 @@ export function useRestoreProject(workspaceId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: trashKeys.workspace(workspaceId) })
-      queryClient.invalidateQueries({ queryKey: ['projects', workspaceId] })
-      queryClient.invalidateQueries({ queryKey: ['sidebar', 'projects', workspaceId] })
-      queryClient.invalidateQueries({ queryKey: ['boards', 'projects', workspaceId] })
+      queryClient.invalidateQueries({ queryKey: projectKeys.byWorkspace(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: sidebarKeys.projectsBase(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: boardKeys.projectsByWorkspace(workspaceId) })
     },
   })
 }
@@ -227,7 +227,7 @@ export function useRestoreThread(workspaceId: string) {
         queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(thread.project_id) })
       }
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] })
-      queryClient.invalidateQueries({ queryKey: ['my-urgent-tasks-count', workspaceId] })
+      queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
     },
   })
 }

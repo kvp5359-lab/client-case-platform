@@ -33,7 +33,7 @@ import { CreateListDialog } from '@/components/boards/CreateListDialog'
 import { EditBoardDialog } from '@/components/boards/EditBoardDialog'
 import { cn } from '@/lib/utils'
 import { useSidePanelStore } from '@/store/sidePanelStore'
-import { taskKeys } from '@/hooks/queryKeys'
+import { taskKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
 import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
 import type { Board } from '@/components/boards/types'
@@ -93,7 +93,7 @@ function BoardTabContent({
 
   // Мутации задач (статус — отдельно для BoardView inline-change)
   const boardInvalidateKeys = useMemo(
-    () => [taskKeys.workspace(workspaceId), ['workspace-threads', workspaceId] as const],
+    () => [taskKeys.workspace(workspaceId), workspaceThreadKeys.workspace(workspaceId)],
     [workspaceId],
   )
   const updateStatus = useUpdateTaskStatus(boardInvalidateKeys)
@@ -101,7 +101,7 @@ function BoardTabContent({
   // TaskPanel
   const tp = useTaskPanelSetup({
     workspaceId,
-    extraInvalidateKeys: [['workspace-threads', workspaceId] as const],
+    extraInvalidateKeys: [workspaceThreadKeys.workspace(workspaceId)],
   })
 
   const handleOpenTask = useCallback((taskId: string) => {

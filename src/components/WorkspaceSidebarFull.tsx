@@ -25,11 +25,12 @@ import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
 import { usePinnedBoards } from './WorkspaceSidebar/usePinnedBoards'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useProjectTemplate, useProjectModules } from '@/page-components/ProjectPage/hooks'
+import { taskKeys } from '@/hooks/queryKeys'
 
 /** Количество «моих» просроченных + сегодняшних задач */
 function useMyUrgentTasksCount(workspaceId: string | undefined) {
   return useQuery({
-    queryKey: ['my-urgent-tasks-count', workspaceId],
+    queryKey: workspaceId ? taskKeys.urgentCount(workspaceId) : ['my-urgent-tasks-count', 'none'],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_my_urgent_tasks_count', {
         p_workspace_id: workspaceId!,

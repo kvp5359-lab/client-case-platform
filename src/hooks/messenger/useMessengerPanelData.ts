@@ -75,7 +75,7 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
   )
 
   // Mutations
-  const deleteChatMutation = useDeleteThread()
+  const deleteChatMutation = useDeleteThread(workspaceId)
   const pinThreadMutation = usePinThread()
 
   // Task statuses (for hiding completed tasks)

@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { currentParticipantKeys } from '@/hooks/queryKeys'
 
 /**
  * Возвращает participant_id текущего пользователя в указанном workspace.
@@ -10,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext'
 export function useCurrentParticipantId(workspaceId: string | undefined) {
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['current-participant', workspaceId, user?.id],
+    queryKey: currentParticipantKeys.forUser(workspaceId ?? '', user?.id),
     queryFn: async () => {
       const { data } = await supabase
         .from('participants')
