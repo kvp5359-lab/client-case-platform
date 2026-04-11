@@ -14,7 +14,7 @@
  */
 
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback, useId } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getMessages, type MessageChannel } from '@/services/api/messenger/messengerService'
 import { messengerKeys, projectAiKeys } from '@/hooks/queryKeys'
@@ -26,7 +26,8 @@ export function useProjectMessages(
   threadId: string | undefined,
 ) {
   const queryClient = useQueryClient()
-  const instanceId = useRef(Math.random().toString(36).slice(2))
+  // Уникальный ID инстанса — useId() стабилен на инстанс и безопасен на рендере.
+  const instanceId = useId()
 
   const messagesKey = threadId ? messengerKeys.messagesByThreadId(threadId) : undefined
 
@@ -59,7 +60,7 @@ export function useProjectMessages(
     const key = messengerKeys.messagesByThreadId(threadId)
     const unreadKey = messengerKeys.unreadCountByThreadId(threadId)
     // Уникальное имя канала для каждого монтирования (защита от React StrictMode)
-    const channelName = `project-messages:thread:${threadId}:${instanceId.current}`
+    const channelName = `project-messages:thread:${threadId}:${instanceId}`
     const realtimeFilter = `thread_id=eq.${threadId}`
 
     const realtimeChannel = supabase
@@ -202,7 +203,7 @@ export function useProjectMessages(
       pendingTimers.forEach(clearTimeout)
       supabase.removeChannel(realtimeChannel)
     }
-  }, [threadId, projectId, channel, queryClient])
+  }, [threadId, projectId, channel, queryClient, instanceId])
 
   const fetchOlderMessages = useCallback(() => {
     if (query.hasNextPage && !query.isFetchingNextPage) {

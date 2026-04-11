@@ -4,7 +4,7 @@
  * Хук для управления привязкой Telegram-группы к проекту
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useId } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -79,14 +79,15 @@ export function useTelegramLink(
     staleTime: Infinity,
   })
 
-  const instanceId = useRef(Math.random().toString(36).slice(2))
+  // Уникальный ID инстанса — useId() стабилен и безопасен на рендере.
+  const instanceId = useId()
 
   // Realtime-подписка: обновлять статус при привязке/отвязке из Telegram
   // NOTE: фильтр project_id=eq.X НЕ работает с INSERT в Supabase Realtime,
   // поэтому подписываемся на все события таблицы и фильтруем в callback
   useEffect(() => {
     if (!threadId) return
-    const channelName = `telegram-link-thread:${threadId}:${instanceId.current}`
+    const channelName = `telegram-link-thread:${threadId}:${instanceId}`
     const realtimeChannel = supabase
       .channel(channelName)
       .on(
@@ -111,7 +112,7 @@ export function useTelegramLink(
     return () => {
       supabase.removeChannel(realtimeChannel)
     }
-  }, [threadId, queryClient, telegramLinkKey])
+  }, [threadId, queryClient, telegramLinkKey, instanceId])
 
   // Отвязать группу
   const unlinkMutation = useMutation({

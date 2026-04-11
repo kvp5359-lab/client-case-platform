@@ -6,7 +6,7 @@
  * Резолвит имена авторов и названия статусов.
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useId } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { projectThreadKeys, STALE_TIME } from '@/hooks/queryKeys'
@@ -176,12 +176,13 @@ export function useThreadAuditEvents(threadId: string | undefined) {
 
   // Realtime: refetch when new audit_logs appear for this thread
   const queryClient = useQueryClient()
-  const instanceId = useRef(Math.random().toString(36).slice(2))
+  // Уникальный ID инстанса — useId() стабилен и безопасен на рендере.
+  const instanceId = useId()
   useEffect(() => {
     if (!threadId) return
 
     const channel = supabase
-      .channel(`audit-events:${threadId}:${instanceId.current}`)
+      .channel(`audit-events:${threadId}:${instanceId}`)
       .on(
         'postgres_changes',
         {
@@ -199,7 +200,7 @@ export function useThreadAuditEvents(threadId: string | undefined) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [threadId, queryClient])
+  }, [threadId, queryClient, instanceId])
 
   return query
 }

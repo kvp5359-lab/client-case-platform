@@ -5,7 +5,7 @@
  * Workspace-level realtime subscription on project_messages INSERT.
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -49,13 +49,14 @@ export function useNewMessageToast(workspaceId: string | undefined) {
       })
   }, [workspaceId, user])
 
-  const instanceId = useRef(Math.random().toString(36).slice(2))
+  // Уникальный ID инстанса — useId() стабилен и безопасен на рендере.
+  const instanceId = useId()
 
   useEffect(() => {
     if (!workspaceId || !user) return
 
     // Уникальное имя канала для каждого монтирования (защита от React StrictMode)
-    const toastChannelName = `msg-toast:${workspaceId}:${instanceId.current}`
+    const toastChannelName = `msg-toast:${workspaceId}:${instanceId}`
 
     const channel = supabase
       .channel(toastChannelName)
@@ -205,5 +206,5 @@ export function useNewMessageToast(workspaceId: string | undefined) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [workspaceId, user, queryClient])
+  }, [workspaceId, user, queryClient, instanceId])
 }

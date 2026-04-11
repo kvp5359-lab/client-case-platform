@@ -13,20 +13,21 @@
  * всегда пока пользователь внутри workspace. Не используй этот хук в дочерних компонентах.
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useId } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { inboxKeys, sidebarKeys } from '@/hooks/queryKeys'
 
 export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
   const queryClient = useQueryClient()
-  const instanceId = useRef(Math.random().toString(36).slice(2))
+  // Уникальный ID инстанса — useId() стабилен и безопасен на рендере.
+  const instanceId = useId()
 
   useEffect(() => {
     if (!workspaceId) return
 
     // Уникальное имя канала для монтирования (защита от React StrictMode).
-    const channelName = `ws-messages:${workspaceId}:${instanceId.current}`
+    const channelName = `ws-messages:${workspaceId}:${instanceId}`
 
     const invalidateAll = () => {
       // Инвалидируем все ключи, которые зависят от project_messages workspace-level:
@@ -83,5 +84,5 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [workspaceId, queryClient])
+  }, [workspaceId, queryClient, instanceId])
 }
