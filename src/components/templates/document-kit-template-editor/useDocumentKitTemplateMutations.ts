@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
+import { documentKitTemplateKeys } from '@/hooks/queryKeys'
 import { KitFolder } from './types'
 
 interface UseDocumentKitTemplateMutationsProps {
@@ -37,7 +38,7 @@ export function useDocumentKitTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['document-kit-template', kitId] })
+      queryClient.invalidateQueries({ queryKey: documentKitTemplateKeys.detail(kitId) })
     },
     onError: () => {
       toast.error('Не удалось обновить шаблон')
@@ -61,7 +62,7 @@ export function useDocumentKitTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kit-folders', kitId] })
+      queryClient.invalidateQueries({ queryKey: documentKitTemplateKeys.kitFolders(kitId) })
       onAddFoldersSuccess?.()
     },
     onError: () => {
@@ -96,7 +97,7 @@ export function useDocumentKitTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kit-folders', kitId] })
+      queryClient.invalidateQueries({ queryKey: documentKitTemplateKeys.kitFolders(kitId) })
       toast.success('Папка создана')
     },
     onError: () => {
@@ -123,7 +124,7 @@ export function useDocumentKitTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kit-folders', kitId] })
+      queryClient.invalidateQueries({ queryKey: documentKitTemplateKeys.kitFolders(kitId) })
     },
     onError: () => {
       toast.error('Не удалось обновить папку')
@@ -141,7 +142,7 @@ export function useDocumentKitTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kit-folders', kitId] })
+      queryClient.invalidateQueries({ queryKey: documentKitTemplateKeys.kitFolders(kitId) })
     },
     onError: () => {
       toast.error('Не удалось удалить папку')
@@ -163,12 +164,12 @@ export function useDocumentKitTemplateMutations({
       if (failed?.error) throw failed.error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kit-folders', kitId] })
+      queryClient.invalidateQueries({ queryKey: documentKitTemplateKeys.kitFolders(kitId) })
     },
     onError: (error) => {
       logger.error('Failed to reorder folders:', error)
       toast.error('Не удалось обновить порядок папок')
-      queryClient.invalidateQueries({ queryKey: ['kit-folders', kitId] })
+      queryClient.invalidateQueries({ queryKey: documentKitTemplateKeys.kitFolders(kitId) })
     },
   })
 

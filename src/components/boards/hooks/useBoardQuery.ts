@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { boardKeys } from '@/hooks/queryKeys'
+import { boardKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { Board, BoardList } from '../types'
 
 /** Загрузка доски по ID */
@@ -19,7 +19,7 @@ export function useBoardDetail(boardId: string | undefined) {
       return data as Board
     },
     enabled: !!boardId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }
 
@@ -35,6 +35,6 @@ export function useBoardLists(boardId: string | undefined) {
       return (data ?? []) as unknown as BoardList[]
     },
     enabled: !!boardId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }

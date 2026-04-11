@@ -17,6 +17,7 @@ import { addDays } from 'date-fns'
 import { TemplateSelector } from './create-project/TemplateSelector'
 import { TemplateItemsList } from './create-project/TemplateItemsList'
 import { useThreadTemplatesByProjectTemplate } from '@/hooks/messenger/useThreadTemplates'
+import { projectTemplateKeys } from '@/hooks/queryKeys'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
 interface CreateProjectDialogProps {
@@ -39,7 +40,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
   const activeTemplateId = templateId && templateId !== 'none' ? templateId : undefined
 
   const { data: projectTemplates = [] } = useQuery({
-    queryKey: ['project-templates', currentWorkspaceId],
+    queryKey: projectTemplateKeys.listByWorkspace(currentWorkspaceId),
     queryFn: async () => {
       if (!currentWorkspaceId) return []
       const { data, error } = await supabase
@@ -54,7 +55,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
   })
 
   const { data: linkedDocKits = [] } = useQuery({
-    queryKey: ['project-template-document-kits', activeTemplateId],
+    queryKey: projectTemplateKeys.documentKits(activeTemplateId),
     queryFn: async () => {
       if (!activeTemplateId) return []
       const { data, error } = await supabase
@@ -78,7 +79,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
   )
 
   const { data: linkedForms = [] } = useQuery({
-    queryKey: ['project-template-forms', activeTemplateId],
+    queryKey: projectTemplateKeys.forms(activeTemplateId),
     queryFn: async () => {
       if (!activeTemplateId) return []
       const { data, error } = await supabase

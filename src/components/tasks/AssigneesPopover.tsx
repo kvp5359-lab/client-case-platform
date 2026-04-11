@@ -28,6 +28,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
+import { participantKeys } from '@/hooks/queryKeys'
 import { useToggleAssignee } from './useTaskAssignees'
 import {
   useWorkspaceParticipants,
@@ -48,7 +49,7 @@ function getRoleGroup(roles?: string[] | null): 'staff' | 'external' | 'client' 
 
 function useProjectParticipants(projectId: string | undefined) {
   return useQuery({
-    queryKey: ['project-participants-full', projectId],
+    queryKey: participantKeys.projectFull(projectId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_participants')

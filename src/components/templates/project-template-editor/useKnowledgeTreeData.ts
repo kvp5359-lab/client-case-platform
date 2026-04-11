@@ -5,6 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { knowledgeListKeys } from '@/hooks/queryKeys'
 import type { GroupNode } from './GroupTreeNode'
 
 interface TreeData {
@@ -14,7 +15,7 @@ interface TreeData {
 
 export function useKnowledgeTreeData(workspaceId: string | undefined, enabled: boolean) {
   return useQuery<TreeData>({
-    queryKey: ['knowledge-tree', workspaceId],
+    queryKey: knowledgeListKeys.knowledgeTree(workspaceId),
     queryFn: async () => {
       if (!workspaceId) return { roots: [], ungroupedArticles: [] }
 

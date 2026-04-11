@@ -17,7 +17,7 @@ import {
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
 import { supabase } from '@/lib/supabase'
-import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
+import { messengerKeys, invalidateMessengerCaches, STALE_TIME } from '@/hooks/queryKeys'
 import { dismissProjectToasts } from './useMessageToastPayload'
 
 /** Resolve participant: project-level if projectId given, else workspace-level */
@@ -63,7 +63,7 @@ export function useUnreadCount(
       return getUnreadCount(pid, projectId, channel, threadId)
     },
     enabled: !!user && !!threadId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }
 
@@ -87,7 +87,7 @@ export function useLastReadAt(
       return getLastReadAt(pid, projectId, channel, threadId)
     },
     enabled: !!user && !!threadId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }
 

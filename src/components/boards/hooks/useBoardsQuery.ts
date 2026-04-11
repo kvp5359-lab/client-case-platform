@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { boardKeys } from '@/hooks/queryKeys'
+import { boardKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Board } from '../types'
 
@@ -20,6 +20,6 @@ export function useBoardsQuery(workspaceId: string | undefined) {
       return (data ?? []) as Board[]
     },
     enabled: !!workspaceId && !!user,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }

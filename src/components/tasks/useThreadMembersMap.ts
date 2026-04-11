@@ -7,11 +7,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { buildParticipantMap } from '@/utils/format/buildParticipantMap'
+import { projectThreadKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
 export function useThreadMembersMap(threadIds: string[]) {
   return useQuery({
-    queryKey: ['thread-members-map', [...threadIds].sort().join(',')],
+    queryKey: projectThreadKeys.membersMap(threadIds),
     queryFn: async () => {
       if (threadIds.length === 0) return {} as Record<string, AvatarParticipant[]>
 
@@ -25,6 +26,6 @@ export function useThreadMembersMap(threadIds: string[]) {
       return buildParticipantMap(data ?? [])
     },
     enabled: threadIds.length > 0,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }

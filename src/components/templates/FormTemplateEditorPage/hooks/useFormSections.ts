@@ -6,6 +6,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
+import { formTemplateKeys } from '@/hooks/queryKeys'
 import { FormSectionWithDetails } from '../types'
 
 export function useFormSections(templateId: string | undefined) {
@@ -13,7 +14,7 @@ export function useFormSections(templateId: string | undefined) {
 
   // Загрузка секций шаблона (name и description прямо в таблице)
   const sectionsQuery = useQuery({
-    queryKey: ['form-template-sections', templateId],
+    queryKey: formTemplateKeys.sections(templateId),
     queryFn: async () => {
       if (!templateId) return []
 
@@ -70,7 +71,7 @@ export function useFormSections(templateId: string | undefined) {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-template-sections', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.sections(templateId) })
     },
   })
 
@@ -93,7 +94,7 @@ export function useFormSections(templateId: string | undefined) {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-template-sections', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.sections(templateId) })
     },
   })
 
@@ -108,7 +109,7 @@ export function useFormSections(templateId: string | undefined) {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-template-sections', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.sections(templateId) })
     },
   })
 
@@ -145,7 +146,7 @@ export function useFormSections(templateId: string | undefined) {
       if (res2.error) throw res2.error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-template-sections', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.sections(templateId) })
     },
   })
 
@@ -184,7 +185,7 @@ export function useFormSections(templateId: string | undefined) {
       )
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-template-sections', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.sections(templateId) })
     },
   })
 

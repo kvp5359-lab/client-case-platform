@@ -12,6 +12,7 @@ import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { OptionItem, PRESET_COLORS } from './SelectOptionItem'
+import { fieldDefinitionKeys } from '@/hooks/queryKeys'
 
 type SelectOption = Database['public']['Tables']['field_definition_select_options']['Row']
 
@@ -29,7 +30,7 @@ export function SelectOptionsEditor({ fieldId, onChangesDetected }: SelectOption
   const queryClient = useQueryClient()
 
   const { data: options = [], isLoading } = useQuery({
-    queryKey: ['field-definition-select-options', fieldId],
+    queryKey: fieldDefinitionKeys.selectOptions(fieldId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('field_definition_select_options')
@@ -51,7 +52,7 @@ export function SelectOptionsEditor({ fieldId, onChangesDetected }: SelectOption
   }, [editingId])
 
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['field-definition-select-options', fieldId] })
+    queryClient.invalidateQueries({ queryKey: fieldDefinitionKeys.selectOptions(fieldId) })
 
   const addOptionMutation = useMutation({
     mutationFn: async () => {

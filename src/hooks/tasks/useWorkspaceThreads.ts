@@ -8,7 +8,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { workspaceThreadKeys } from '@/hooks/queryKeys'
+import { workspaceThreadKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { WorkspaceTask } from './useWorkspaceTasks'
 
 export function useWorkspaceThreads(workspaceId: string | undefined) {
@@ -25,6 +25,6 @@ export function useWorkspaceThreads(workspaceId: string | undefined) {
       return (data ?? []) as WorkspaceTask[]
     },
     enabled: !!workspaceId && !!user?.id,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }

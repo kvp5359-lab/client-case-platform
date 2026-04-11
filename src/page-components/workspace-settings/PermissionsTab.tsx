@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { Crown, Shield, Users, Edit2, Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react'
 import type { Database } from '@/types/database'
 import { WorkspaceRoleEditDialog, ProjectRoleEditDialog } from './permissions'
+import { permissionKeys } from '@/hooks/queryKeys'
 
 type WorkspaceRole = Database['public']['Tables']['workspace_roles']['Row']
 type ProjectRole = Database['public']['Tables']['project_roles']['Row']
@@ -39,7 +40,7 @@ export function PermissionsTab() {
 
   // Загрузка ролей workspace
   const { data: workspaceRoles, isLoading: loadingWsRoles } = useQuery({
-    queryKey: ['workspace-roles', workspaceId],
+    queryKey: permissionKeys.workspaceRoles(workspaceId),
     queryFn: async () => {
       if (!workspaceId) return []
       const { data, error } = await supabase
@@ -55,7 +56,7 @@ export function PermissionsTab() {
 
   // Загрузка ролей проекта
   const { data: projectRoles, isLoading: loadingProjRoles } = useQuery({
-    queryKey: ['project-roles', workspaceId],
+    queryKey: permissionKeys.projectRoles(workspaceId),
     queryFn: async () => {
       if (!workspaceId) return []
       const { data, error } = await supabase
@@ -76,7 +77,7 @@ export function PermissionsTab() {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workspace-roles', workspaceId] })
+      queryClient.invalidateQueries({ queryKey: permissionKeys.workspaceRoles(workspaceId) })
       setEditingWorkspaceRole(null)
     },
     onError: (error) => {
@@ -92,7 +93,7 @@ export function PermissionsTab() {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-roles', workspaceId] })
+      queryClient.invalidateQueries({ queryKey: permissionKeys.projectRoles(workspaceId) })
       setEditingProjectRole(null)
     },
     onError: (error) => {

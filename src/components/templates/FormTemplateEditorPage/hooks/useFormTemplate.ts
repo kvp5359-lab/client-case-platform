@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
+import { formTemplateKeys } from '@/hooks/queryKeys'
 import { FormTemplate } from '../types'
 
 export function useFormTemplate(templateId: string | undefined) {
@@ -13,7 +14,7 @@ export function useFormTemplate(templateId: string | undefined) {
 
   // Загрузка шаблона
   const templateQuery = useQuery({
-    queryKey: ['form-template', templateId],
+    queryKey: formTemplateKeys.detail(templateId),
     queryFn: async () => {
       if (!templateId) return null
 
@@ -46,7 +47,7 @@ export function useFormTemplate(templateId: string | undefined) {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-template', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.detail(templateId) })
     },
     onError: (error) => {
       logger.error('Failed to update form template:', error)

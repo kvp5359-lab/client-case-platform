@@ -8,7 +8,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { taskKeys } from '@/hooks/queryKeys'
+import { taskKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 export interface WorkspaceTask {
   id: string
@@ -46,6 +46,6 @@ export function useWorkspaceTasks(workspaceId: string | undefined) {
       return (data ?? []) as WorkspaceTask[]
     },
     enabled: !!workspaceId && !!user?.id,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }

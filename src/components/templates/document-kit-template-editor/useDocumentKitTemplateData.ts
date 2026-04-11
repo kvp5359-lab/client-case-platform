@@ -4,12 +4,13 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { documentKitTemplateKeys, folderTemplateKeys } from '@/hooks/queryKeys'
 import { DocumentKitTemplate, FolderTemplate, KitFolder } from './types'
 
 // Загрузка шаблона набора документов
 export function useDocumentKitTemplate(kitId: string | undefined) {
   return useQuery({
-    queryKey: ['document-kit-template', kitId],
+    queryKey: documentKitTemplateKeys.detail(kitId),
     queryFn: async () => {
       if (!kitId) return null
 
@@ -29,7 +30,7 @@ export function useDocumentKitTemplate(kitId: string | undefined) {
 // Загрузка папок набора
 export function useKitFolders(kitId: string | undefined) {
   return useQuery({
-    queryKey: ['kit-folders', kitId],
+    queryKey: documentKitTemplateKeys.kitFolders(kitId),
     queryFn: async () => {
       if (!kitId) return []
 
@@ -49,7 +50,7 @@ export function useKitFolders(kitId: string | undefined) {
 // Загрузка всех слотов для папок набора (одним запросом)
 export function useKitFolderSlots(kitFolderIds: string[]) {
   return useQuery({
-    queryKey: ['kit-folder-slots-all', ...kitFolderIds],
+    queryKey: documentKitTemplateKeys.kitFolderSlotsAll(kitFolderIds),
     queryFn: async () => {
       if (kitFolderIds.length === 0) return {}
 
@@ -75,7 +76,7 @@ export function useKitFolderSlots(kitFolderIds: string[]) {
 // Загрузка доступных шаблонов папок
 export function useAvailableFolderTemplates(workspaceId: string | undefined, enabled: boolean) {
   return useQuery({
-    queryKey: ['folder-templates', workspaceId],
+    queryKey: folderTemplateKeys.listByWorkspace(workspaceId),
     queryFn: async () => {
       if (!workspaceId) return []
 

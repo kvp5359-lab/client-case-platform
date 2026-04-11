@@ -5,6 +5,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { formTemplateKeys } from '@/hooks/queryKeys'
 import { useFormTemplateContext } from '../context/FormTemplateContext'
 import { FormSectionWithDetails } from '../types'
 
@@ -89,7 +90,7 @@ export function useSectionDragDrop(
         ),
       )
 
-      queryClient.invalidateQueries({ queryKey: ['form-template-sections', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.sections(templateId) })
     } catch {
       toast.error('Ошибка при перемещении секции')
     } finally {

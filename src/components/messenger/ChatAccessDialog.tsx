@@ -18,7 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { messengerKeys } from '@/hooks/queryKeys'
+import { messengerKeys, participantKeys, projectThreadKeys } from '@/hooks/queryKeys'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 
 interface Participant {
@@ -44,7 +44,7 @@ const ACCESS_OPTIONS: {
 /** Загрузить всех участников проекта */
 function useProjectParticipants(projectId: string | undefined) {
   return useQuery({
-    queryKey: ['project-participants', projectId],
+    queryKey: participantKeys.projectLight(projectId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_participants')
@@ -64,7 +64,7 @@ function useProjectParticipants(projectId: string | undefined) {
 /** Загрузить участников конкретного треда */
 function useThreadMembers(threadId: string | undefined) {
   return useQuery({
-    queryKey: ['thread-members', threadId],
+    queryKey: projectThreadKeys.members(threadId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_thread_members')
@@ -137,7 +137,7 @@ export function ChatAccessDialog({ chat, open, onOpenChange }: ChatAccessDialogP
       }
     },
     onSuccess: () => {
-      if (chat) queryClient.invalidateQueries({ queryKey: ['thread-members', chat.id] })
+      if (chat) queryClient.invalidateQueries({ queryKey: projectThreadKeys.members(chat.id) })
     },
   })
 

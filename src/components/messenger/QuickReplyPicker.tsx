@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useQuickRepliesForPicker, useUpdateQuickReply } from '@/hooks/useQuickReplies'
 import { QuickReplyFormDialog } from '@/components/directories/QuickReplyFormDialog'
+import { projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { QuickReply } from '@/hooks/useQuickReplies'
 import type { Editor } from '@tiptap/react'
 
@@ -81,7 +82,7 @@ export function QuickReplyPicker({
 
   // Загружаем template_id проекта (prefetch — чтобы попап открывался мгновенно)
   const { data: projectTemplateId } = useQuery({
-    queryKey: ['project-template-id', projectId],
+    queryKey: projectTemplateKeys.idByProject(projectId),
     queryFn: async () => {
       const { data } = await supabase
         .from('projects')
@@ -91,7 +92,7 @@ export function QuickReplyPicker({
       return data?.template_id ?? null
     },
     enabled: !!projectId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   const { data: replies = [], isLoading } = useQuickRepliesForPicker(workspaceId, projectTemplateId)

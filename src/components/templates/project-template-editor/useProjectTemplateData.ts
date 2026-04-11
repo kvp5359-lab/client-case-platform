@@ -4,6 +4,11 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import {
+  projectTemplateKeys,
+  formTemplateKeys,
+  documentKitTemplateKeys,
+} from '@/hooks/queryKeys'
 import type {
   FormTemplateWithRelation,
   DocumentKitTemplateWithRelation,
@@ -21,7 +26,7 @@ interface UseProjectTemplateDataParams {
  */
 export function useProjectTemplate(templateId: string | undefined) {
   return useQuery({
-    queryKey: ['project-template', templateId],
+    queryKey: projectTemplateKeys.detail(templateId),
     queryFn: async () => {
       if (!templateId) return null
 
@@ -43,7 +48,7 @@ export function useProjectTemplate(templateId: string | undefined) {
  */
 export function useLinkedForms(templateId: string | undefined) {
   return useQuery({
-    queryKey: ['project-template-forms', templateId],
+    queryKey: projectTemplateKeys.forms(templateId),
     queryFn: async () => {
       if (!templateId) return []
 
@@ -70,7 +75,7 @@ export function useLinkedForms(templateId: string | undefined) {
  */
 export function useLinkedDocKits(templateId: string | undefined) {
   return useQuery({
-    queryKey: ['project-template-document-kits', templateId],
+    queryKey: projectTemplateKeys.documentKits(templateId),
     queryFn: async () => {
       if (!templateId) return []
 
@@ -97,7 +102,7 @@ export function useLinkedDocKits(templateId: string | undefined) {
  */
 export function useLinkedKnowledgeArticles(templateId: string | undefined) {
   return useQuery({
-    queryKey: ['knowledge-article-templates', templateId],
+    queryKey: projectTemplateKeys.knowledgeArticles(templateId),
     queryFn: async () => {
       if (!templateId) return []
 
@@ -123,7 +128,7 @@ export function useLinkedKnowledgeArticles(templateId: string | undefined) {
  */
 export function useLinkedKnowledgeGroups(templateId: string | undefined) {
   return useQuery({
-    queryKey: ['knowledge-group-templates', templateId],
+    queryKey: projectTemplateKeys.knowledgeGroups(templateId),
     queryFn: async () => {
       if (!templateId) return []
 
@@ -193,7 +198,7 @@ export function useAvailableKnowledgeGroups(workspaceId: string | undefined) {
  */
 export function useAvailableForms(workspaceId: string | undefined) {
   return useQuery({
-    queryKey: ['form-templates', workspaceId],
+    queryKey: formTemplateKeys.listByWorkspace(workspaceId),
     queryFn: async () => {
       if (!workspaceId) return []
 
@@ -215,7 +220,7 @@ export function useAvailableForms(workspaceId: string | undefined) {
  */
 export function useAvailableDocKits(workspaceId: string | undefined) {
   return useQuery({
-    queryKey: ['document-kit-templates', workspaceId],
+    queryKey: documentKitTemplateKeys.listByWorkspace(workspaceId),
     queryFn: async () => {
       if (!workspaceId) return []
 
@@ -237,7 +242,7 @@ export function useAvailableDocKits(workspaceId: string | undefined) {
  */
 export function useLinkedTemplateTasks(templateId: string | undefined) {
   return useQuery({
-    queryKey: ['project-template-tasks', templateId],
+    queryKey: projectTemplateKeys.tasks(templateId),
     queryFn: async () => {
       if (!templateId) return []
 

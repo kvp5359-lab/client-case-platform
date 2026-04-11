@@ -15,7 +15,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { logAuditAction } from '@/services/auditService'
-import { messengerKeys, taskKeys, projectKeys, sidebarKeys, boardKeys } from '@/hooks/queryKeys'
+import {
+  messengerKeys,
+  taskKeys,
+  projectKeys,
+  sidebarKeys,
+  boardKeys,
+  workspaceTaskKeys,
+} from '@/hooks/queryKeys'
 
 // ── Типы ──
 
@@ -226,7 +233,7 @@ export function useRestoreThread(workspaceId: string) {
       if (thread.project_id) {
         queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(thread.project_id) })
       }
-      queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] })
+      queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
       queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
     },
   })

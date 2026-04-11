@@ -25,6 +25,7 @@ import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
 import { useThreadMembersMap } from '@/components/tasks/useThreadMembersMap'
 import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
 import { useAccessibleThreadIds } from '@/hooks/messenger/useAccessibleThreadIds'
+import { participantKeys, projectTemplateKeys } from '@/hooks/queryKeys'
 
 /** Названия ролей проекта для tooltip */
 const PROJECT_ROLE_LABELS: Record<string, string> = {
@@ -45,7 +46,6 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
 
   // All threads + access filtering
   const {
-    accessibleThreadIds,
     accessibleChats,
     allThreads: chats,
     threadsLoading: chatsLoading,
@@ -123,7 +123,7 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
 
   // Project participants (for access tooltips)
   const { data: projectParticipants = [] } = useQuery({
-    queryKey: ['project-participants-with-roles', projectId],
+    queryKey: participantKeys.projectWithRoles(projectId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_participants')
@@ -210,7 +210,7 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
 
   // Project template id (для фильтрации шаблонов тредов по типу проекта)
   const { data: projectTemplateId = null } = useQuery<string | null>({
-    queryKey: ['project-template-id', projectId],
+    queryKey: projectTemplateKeys.idByProject(projectId),
     queryFn: async () => {
       if (!projectId) return null
       const { data, error } = await supabase

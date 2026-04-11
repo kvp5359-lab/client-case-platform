@@ -5,11 +5,12 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { participantKeys, projectThreadKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { Participant } from '../chatSettingsTypes'
 
 export function useProjectParticipants(projectId: string | undefined) {
   return useQuery({
-    queryKey: ['project-participants', projectId],
+    queryKey: participantKeys.projectLight(projectId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_participants')
@@ -55,7 +56,7 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
 
 export function useThreadMembers(threadId: string | undefined) {
   return useQuery({
-    queryKey: ['thread-members', threadId],
+    queryKey: projectThreadKeys.members(threadId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_thread_members')
@@ -65,7 +66,7 @@ export function useThreadMembers(threadId: string | undefined) {
       return new Set((data ?? []).map((m) => m.participant_id))
     },
     enabled: !!threadId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }
 
@@ -130,6 +131,6 @@ export function useEmailSuggestions(workspaceId: string | undefined) {
       })
     },
     enabled: !!workspaceId,
-    staleTime: 120_000,
+    staleTime: STALE_TIME.MEDIUM,
   })
 }

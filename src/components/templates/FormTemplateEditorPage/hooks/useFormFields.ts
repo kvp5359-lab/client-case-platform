@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
+import { formTemplateKeys, fieldDefinitionKeys } from '@/hooks/queryKeys'
 import { FormFieldWithDefinition, FieldDefinition } from '../types'
 
 export function useFormFields(templateId: string | undefined) {
@@ -14,7 +15,7 @@ export function useFormFields(templateId: string | undefined) {
 
   // Загрузка полей шаблона
   const fieldsQuery = useQuery({
-    queryKey: ['form-template-fields', templateId],
+    queryKey: formTemplateKeys.fields(templateId),
     queryFn: async () => {
       if (!templateId) return []
 
@@ -46,7 +47,7 @@ export function useFormFields(templateId: string | undefined) {
 
   // Загрузка всех доступных полей
   const availableFieldsQuery = useQuery({
-    queryKey: ['field-definitions'],
+    queryKey: fieldDefinitionKeys.all,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('field_definitions')
@@ -102,7 +103,7 @@ export function useFormFields(templateId: string | undefined) {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-template-fields', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.fields(templateId) })
     },
     onError: (error) => {
       logger.error('Ошибка добавления полей:', error)
@@ -141,7 +142,7 @@ export function useFormFields(templateId: string | undefined) {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-template-fields', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.fields(templateId) })
       toast.success('Разделитель добавлен')
     },
     onError: (error) => {
@@ -158,7 +159,7 @@ export function useFormFields(templateId: string | undefined) {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-template-fields', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.fields(templateId) })
     },
     onError: (error) => {
       logger.error('Ошибка удаления поля:', error)
@@ -266,7 +267,7 @@ export function useFormFields(templateId: string | undefined) {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-template-fields', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.fields(templateId) })
     },
     onError: (error) => {
       logger.error('Ошибка обновления поля:', error)
@@ -296,7 +297,7 @@ export function useFormFields(templateId: string | undefined) {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['form-template-fields', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.fields(templateId) })
     },
     onError: (error) => {
       logger.error('Ошибка перемещения поля:', error)

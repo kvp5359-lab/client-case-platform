@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { Pencil, Trash2 } from 'lucide-react'
 import { FieldDefinitionDialog } from './FieldDefinitionDialog'
 import { FIELD_TYPE_LABELS } from './field-definition/constants'
+import { fieldDefinitionKeys } from '@/hooks/queryKeys'
 
 // Цветовые схемы для типов полей (бледные оттенки, компактные)
 const FIELD_TYPE_COLORS: Record<string, string> = {
@@ -45,7 +46,7 @@ export function FieldTemplatesContent() {
 
   // Загрузка полей
   const { data: fields = [], isLoading } = useQuery({
-    queryKey: ['field-definitions'],
+    queryKey: fieldDefinitionKeys.all,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('field_definitions')
@@ -65,7 +66,7 @@ export function FieldTemplatesContent() {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['field-definitions'] })
+      queryClient.invalidateQueries({ queryKey: fieldDefinitionKeys.all })
     },
     onError: () => {
       toast.error('Не удалось удалить поле')

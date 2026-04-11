@@ -7,6 +7,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { participantKeys } from '@/hooks/queryKeys'
 
 export interface WorkspaceParticipant {
   id: string
@@ -21,11 +22,11 @@ export interface WorkspaceParticipant {
 
 /**
  * Загружает всех активных (не удалённых) участников workspace.
- * queryKey: ['workspace-participants', workspaceId]
+ * queryKey: participantKeys.workspaceList(workspaceId)
  */
 export function useWorkspaceParticipants(workspaceId: string | undefined) {
   return useQuery({
-    queryKey: ['workspace-participants', workspaceId],
+    queryKey: participantKeys.workspaceList(workspaceId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('participants')

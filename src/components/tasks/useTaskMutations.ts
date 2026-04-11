@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logAuditAction } from '@/services/auditService'
+import { projectThreadKeys } from '@/hooks/queryKeys'
 
 export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
   const queryClient = useQueryClient()
@@ -35,7 +36,7 @@ export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unkno
     },
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
-      queryClient.invalidateQueries({ queryKey: ['thread-audit-events', threadId] })
+      queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
     },
     onError: () => toast.error('Не удалось обновить статус'),
   })
@@ -65,7 +66,7 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
     },
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
-      queryClient.invalidateQueries({ queryKey: ['thread-audit-events', threadId] })
+      queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
     },
     onError: () => toast.error('Не удалось обновить срок'),
   })
@@ -91,7 +92,7 @@ export function useRenameTask(invalidateKeys: ReadonlyArray<readonly unknown[]>)
     },
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
-      queryClient.invalidateQueries({ queryKey: ['thread-audit-events', threadId] })
+      queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
     },
     onError: () => toast.error('Не удалось переименовать'),
   })
@@ -169,7 +170,7 @@ export function useUpdateTaskSettings(invalidateKeys: ReadonlyArray<readonly unk
     },
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
-      queryClient.invalidateQueries({ queryKey: ['thread-audit-events', threadId] })
+      queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
     },
     onError: () => toast.error('Не удалось сохранить настройки'),
   })

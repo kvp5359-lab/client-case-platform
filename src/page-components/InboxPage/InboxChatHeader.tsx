@@ -18,12 +18,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { getChatIconComponent } from '@/components/messenger/ChatSettingsDialog'
+import { participantKeys } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
 export function useProjectChatParticipants(projectId: string | undefined) {
   return useQuery({
-    queryKey: ['project-participants-avatars', projectId],
+    queryKey: participantKeys.projectAvatars(projectId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_participants')

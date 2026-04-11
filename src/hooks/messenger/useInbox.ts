@@ -10,7 +10,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { getInboxThreads, getInboxThreadsV2 } from '@/services/api/inboxService'
-import { inboxKeys } from '@/hooks/queryKeys'
+import { inboxKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { calcThreadUnread, calcTotalUnread } from '@/utils/inboxUnread'
 
 // ─── v2: тред-ориентированные хуки ───────────────────────────────
@@ -25,7 +25,7 @@ export function useInboxThreadsV2(workspaceId: string) {
     queryKey: inboxKeys.threadsV2(workspaceId),
     queryFn: () => getInboxThreadsV2(workspaceId, user!.id),
     enabled: !!workspaceId && !!user,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }
 
@@ -40,7 +40,7 @@ export function useInboxThreads(workspaceId: string) {
     queryKey: inboxKeys.threads(workspaceId),
     queryFn: () => getInboxThreads(workspaceId, user!.id),
     enabled: !!workspaceId && !!user,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }
 
@@ -52,7 +52,7 @@ export function useTotalUnreadCount(workspaceId: string) {
     queryKey: inboxKeys.threadsV2(workspaceId),
     queryFn: () => getInboxThreadsV2(workspaceId, user!.id),
     enabled: !!workspaceId && !!user,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
     select: (threads) => calcTotalUnread(threads),
   })
 }
@@ -72,7 +72,7 @@ export function useIsManuallyUnread(
     queryKey: inboxKeys.threadsV2(workspaceId),
     queryFn: () => getInboxThreadsV2(workspaceId, user!.id),
     enabled: !!workspaceId && !!user && !!threadId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
     select: (threads) => threads.some((t) => t.thread_id === threadId && t.manually_unread),
   })
 
@@ -81,7 +81,7 @@ export function useIsManuallyUnread(
     queryKey: inboxKeys.threads(workspaceId),
     queryFn: () => getInboxThreads(workspaceId, user!.id),
     enabled: !!workspaceId && !!user && !threadId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
     select: (chats) =>
       chats.some(
         (c) =>
@@ -108,7 +108,7 @@ export function useHasUnreadReaction(
     queryKey: inboxKeys.threadsV2(workspaceId),
     queryFn: () => getInboxThreadsV2(workspaceId, user!.id),
     enabled: !!workspaceId && !!user && !!threadId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
     select: (threads) => threads.some((t) => t.thread_id === threadId && t.has_unread_reaction),
   })
 
@@ -117,7 +117,7 @@ export function useHasUnreadReaction(
     queryKey: inboxKeys.threads(workspaceId),
     queryFn: () => getInboxThreads(workspaceId, user!.id),
     enabled: !!workspaceId && !!user && !threadId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
     select: (chats) =>
       chats.some(
         (c) => c.project_id === projectId && channel === 'client' && c.has_unread_reaction,
@@ -135,7 +135,7 @@ export function useUnreadReactionEmoji(workspaceId: string, projectId: string) {
     queryKey: inboxKeys.threads(workspaceId),
     queryFn: () => getInboxThreads(workspaceId, user!.id),
     enabled: !!workspaceId && !!user,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
     select: (chats) => {
       const chat = chats.find((c) => c.project_id === projectId)
       return chat?.has_unread_reaction && chat.last_reaction_emoji ? chat.last_reaction_emoji : null
@@ -152,7 +152,7 @@ export function useProjectUnreadCounts(workspaceId: string) {
     queryKey: inboxKeys.threadsV2(workspaceId),
     queryFn: () => getInboxThreadsV2(workspaceId, user!.id),
     enabled: !!workspaceId && !!user,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
     select: (threads) => {
       // Значение > 0 — реальные непрочитанные (показать число)
       // Значение -1 — manually_unread без сообщений (показать точку без числа)

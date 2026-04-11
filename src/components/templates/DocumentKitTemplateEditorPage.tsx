@@ -12,7 +12,7 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { knowledgeBaseKeys } from '@/hooks/queryKeys'
+import { knowledgeBaseKeys, knowledgeListKeys } from '@/hooks/queryKeys'
 import { getArticlesByWorkspace } from '@/services/api/knowledge/knowledgeBaseService'
 import { supabase } from '@/lib/supabase'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
@@ -56,7 +56,7 @@ export function DocumentKitTemplateEditorPage() {
   )
   const { data: slotsMap = {} } = useKitFolderSlots(kitFolders.map((f) => f.id))
   const { data: articles = [] } = useQuery({
-    queryKey: ['knowledge-articles-list', workspaceId],
+    queryKey: knowledgeListKeys.articlesList(workspaceId),
     queryFn: () => getArticlesByWorkspace(workspaceId!),
     enabled: !!workspaceId,
   })
@@ -79,7 +79,7 @@ export function DocumentKitTemplateEditorPage() {
 
   // Связи статей с группами
   const { data: articleGroups = [] } = useQuery({
-    queryKey: ['knowledge-article-groups', workspaceId],
+    queryKey: knowledgeListKeys.articleGroupLinks(workspaceId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('knowledge_article_groups')

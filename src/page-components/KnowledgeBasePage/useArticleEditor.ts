@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { knowledgeBaseKeys, statusKeys } from '@/hooks/queryKeys'
+import { knowledgeBaseKeys, statusKeys, knowledgeListKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
 import { useKnowledgeIndex, useArticleVersions } from '@/hooks/knowledge'
 import { useArticleEditorMutations } from './useArticleEditorMutations'
@@ -156,7 +156,7 @@ export function useArticleEditor() {
   })
 
   const articleTagsQuery = useQuery({
-    queryKey: ['knowledge-base', 'article-tags', articleId],
+    queryKey: knowledgeListKeys.articleTags(articleId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('knowledge_article_tags')
@@ -174,13 +174,13 @@ export function useArticleEditor() {
     if (articleQuery.data && !initializedRef.current) {
       initializedRef.current = true
       const a = articleQuery.data
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from server data
+       
       setTitle(a.title)
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from server data
+       
       setAccessMode(a.access_mode)
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from server data
+       
       setStatusId(a.status_id)
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from server data
+       
       setContent(a.content || '')
       setIsContentReady(true)
     }
@@ -188,14 +188,14 @@ export function useArticleEditor() {
 
   useEffect(() => {
     if (articleGroupsQuery.data) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from server data
+       
       setSelectedGroupIds(articleGroupsQuery.data.map((ag) => ag.group_id))
     }
   }, [articleGroupsQuery.data])
 
   useEffect(() => {
     if (articleTagsQuery.data) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from server data
+       
       setSelectedTagIds(articleTagsQuery.data.map((at) => at.tag_id))
     }
   }, [articleTagsQuery.data])
@@ -216,7 +216,7 @@ export function useArticleEditor() {
       saveTimeoutRef.current = setTimeout(() => {
         if (isMountedRef.current) updateContentMutation.mutate(newContent)
       }, 1500)
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- updateContentMutation stable (useMutation)
+       
     },
     [articleId],
   )

@@ -13,7 +13,7 @@ import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Search, Plus, Settings2 } from 'lucide-react'
-import { knowledgeBaseKeys } from '@/hooks/queryKeys'
+import { knowledgeBaseKeys, folderTemplateKeys, knowledgeListKeys } from '@/hooks/queryKeys'
 import { getArticlesByWorkspace } from '@/services/api/knowledge/knowledgeBaseService'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { FolderTemplateDialog } from './FolderTemplateDialog'
@@ -129,7 +129,7 @@ export function FolderTemplatesContent() {
 
   // Подсчёт слотов для каждого шаблона
   const { data: slotCounts = {} } = useQuery({
-    queryKey: ['folder-template-slot-counts', workspaceId],
+    queryKey: folderTemplateKeys.slotCounts(workspaceId),
     queryFn: async () => {
       if (!workspaceId) return {}
       const { data, error } = await supabase
@@ -150,7 +150,7 @@ export function FolderTemplatesContent() {
 
   // Статьи базы знаний для привязки к шаблонам папок (отдельный ключ — без join)
   const { data: articles = [] } = useQuery({
-    queryKey: ['knowledge-articles-list', workspaceId],
+    queryKey: knowledgeListKeys.articlesList(workspaceId),
     queryFn: () => getArticlesByWorkspace(workspaceId!),
     enabled: !!workspaceId,
   })
@@ -173,7 +173,7 @@ export function FolderTemplatesContent() {
 
   // Связи статей с группами
   const { data: articleGroups = [] } = useQuery({
-    queryKey: ['knowledge-article-groups', workspaceId],
+    queryKey: knowledgeListKeys.articleGroupLinks(workspaceId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('knowledge_article_groups')

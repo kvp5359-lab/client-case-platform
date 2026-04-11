@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/select'
 import { FileDown, Loader2 } from 'lucide-react'
 import { useDocumentTemplates, useGenerateDocument } from '@/hooks/documents/useDocumentTemplates'
+import { fieldDefinitionKeys } from '@/hooks/queryKeys'
 import type { DocumentTemplatePlaceholder } from '@/services/api/documents/documentTemplateService'
 
 interface GenerateDocumentDialogProps {
@@ -64,7 +65,7 @@ export function GenerateDocumentDialog({
 
   // Load field definitions for mapped placeholders
   const { data: fieldDefs = [] } = useQuery({
-    queryKey: ['field-definitions-by-ids', mappedFieldIds],
+    queryKey: fieldDefinitionKeys.byIds(mappedFieldIds),
     queryFn: async () => {
       if (mappedFieldIds.length === 0) return []
       const { data, error } = await supabase
@@ -79,7 +80,7 @@ export function GenerateDocumentDialog({
 
   // Load current field values for the project
   const { data: projectValues = {} } = useQuery({
-    queryKey: ['project-field-values', projectId, mappedFieldIds],
+    queryKey: fieldDefinitionKeys.projectValues(projectId, mappedFieldIds),
     queryFn: async () => {
       if (mappedFieldIds.length === 0) return {}
 

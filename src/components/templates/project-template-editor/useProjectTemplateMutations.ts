@@ -5,6 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { projectTemplateKeys } from '@/hooks/queryKeys'
 import type {
   FormTemplateWithRelation,
   DocumentKitTemplateWithRelation,
@@ -29,8 +30,8 @@ export function useProjectTemplateMutations({
   templateId,
   linkedForms,
   linkedDocKits,
-  linkedKnowledgeArticles,
-  linkedKnowledgeGroups,
+  linkedKnowledgeArticles: _linkedKnowledgeArticles,
+  linkedKnowledgeGroups: _linkedKnowledgeGroups,
   onNameSaved,
   onFormsAdded,
   onDocKitsAdded,
@@ -53,7 +54,7 @@ export function useProjectTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-template', templateId] })
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
       onNameSaved?.()
     },
     onError: () => {
@@ -74,7 +75,7 @@ export function useProjectTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-template', templateId] })
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
     },
     onError: () => {
       toast.error('Не удалось обновить модули')
@@ -98,7 +99,7 @@ export function useProjectTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-template-forms', templateId] })
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.forms(templateId) })
       onFormsAdded?.()
     },
     onError: () => {
@@ -114,7 +115,7 @@ export function useProjectTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-template-forms', templateId] })
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.forms(templateId) })
     },
     onError: () => {
       toast.error('Не удалось удалить анкету')
@@ -138,7 +139,7 @@ export function useProjectTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-template-document-kits', templateId] })
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.documentKits(templateId) })
       onDocKitsAdded?.()
     },
     onError: () => {
@@ -157,7 +158,7 @@ export function useProjectTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-template-document-kits', templateId] })
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.documentKits(templateId) })
     },
     onError: () => {
       toast.error('Не удалось удалить набор документов')
@@ -178,7 +179,7 @@ export function useProjectTemplateMutations({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['knowledge-article-templates', templateId],
+        queryKey: projectTemplateKeys.knowledgeArticles(templateId),
       })
       onKnowledgeArticlesAdded?.()
     },
@@ -199,7 +200,7 @@ export function useProjectTemplateMutations({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['knowledge-article-templates', templateId],
+        queryKey: projectTemplateKeys.knowledgeArticles(templateId),
       })
     },
     onError: () => {
@@ -221,7 +222,7 @@ export function useProjectTemplateMutations({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['knowledge-group-templates', templateId],
+        queryKey: projectTemplateKeys.knowledgeGroups(templateId),
       })
       onKnowledgeGroupsAdded?.()
     },
@@ -242,7 +243,7 @@ export function useProjectTemplateMutations({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['knowledge-group-templates', templateId],
+        queryKey: projectTemplateKeys.knowledgeGroups(templateId),
       })
     },
     onError: () => {
@@ -261,7 +262,7 @@ export function useProjectTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-template-tasks', templateId] })
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.tasks(templateId) })
     },
     onError: () => {
       toast.error('Не удалось добавить задачу')
@@ -278,7 +279,7 @@ export function useProjectTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-template-tasks', templateId] })
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.tasks(templateId) })
     },
     onError: () => {
       toast.error('Не удалось обновить задачу')
@@ -292,7 +293,7 @@ export function useProjectTemplateMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-template-tasks', templateId] })
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.tasks(templateId) })
     },
     onError: () => {
       toast.error('Не удалось удалить задачу')

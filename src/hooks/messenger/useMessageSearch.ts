@@ -8,7 +8,7 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useDebounce } from '@/hooks/shared/useDebounce'
-import { messengerKeys } from '@/hooks/queryKeys'
+import { messengerKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { ProjectMessage, MessageChannel } from '@/services/api/messenger/messengerService'
 
 /** Escape special ilike characters to prevent SQL injection via pattern matching */
@@ -59,7 +59,7 @@ export function useMessageSearch(
       return (data ?? []) as unknown as ProjectMessage[]
     },
     enabled: !!(projectId || threadId) && debouncedQuery.length >= 2,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 
   const resultCount = useMemo(() => searchResults?.length ?? 0, [searchResults])

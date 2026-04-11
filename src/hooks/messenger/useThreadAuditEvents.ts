@@ -9,6 +9,7 @@
 import { useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { projectThreadKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 /** Structured parts for `change_status` events, used to render coloured names. */
 export interface StatusChangeParts {
@@ -82,7 +83,7 @@ export function formatAuditEvent(event: ThreadAuditEvent): string {
 
 export function useThreadAuditEvents(threadId: string | undefined) {
   const query = useQuery({
-    queryKey: ['thread-audit-events', threadId],
+    queryKey: projectThreadKeys.auditEvents(threadId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('audit_logs')
@@ -170,7 +171,7 @@ export function useThreadAuditEvents(threadId: string | undefined) {
       }) as ThreadAuditEvent[]
     },
     enabled: !!threadId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 
   // Realtime: refetch when new audit_logs appear for this thread
@@ -190,7 +191,7 @@ export function useThreadAuditEvents(threadId: string | undefined) {
           filter: `resource_id=eq.${threadId}`,
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['thread-audit-events', threadId] })
+          queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
         },
       )
       .subscribe()

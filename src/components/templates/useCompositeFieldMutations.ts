@@ -12,6 +12,7 @@ import { Database } from '@/types/database'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { FIELD_TYPE_LABELS } from './field-definition/constants'
+import { fieldDefinitionKeys } from '@/hooks/queryKeys'
 
 export { FIELD_TYPE_LABELS }
 
@@ -56,7 +57,7 @@ export function useCompositeFieldMutations(
   })
 
   const { data: availableFields = [] } = useQuery({
-    queryKey: ['field-definitions-for-composite', fieldId],
+    queryKey: fieldDefinitionKeys.forComposite(fieldId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('field_definitions')

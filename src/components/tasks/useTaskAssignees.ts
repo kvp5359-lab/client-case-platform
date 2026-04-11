@@ -12,6 +12,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { buildParticipantMap } from '@/utils/format/buildParticipantMap'
+import { workspaceTaskKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
 export const assigneeKeys = {
@@ -39,7 +40,7 @@ export function useTaskAssigneesMap(threadIds: string[]) {
       return buildParticipantMap(data ?? [])
     },
     enabled: threadIds.length > 0,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
     placeholderData: keepPreviousData,
   })
 }
@@ -58,7 +59,7 @@ export function useTaskAssigneeIds(threadId: string | undefined) {
       return (data ?? []).map((r) => r.participant_id)
     },
     enabled: !!threadId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }
 
@@ -96,7 +97,7 @@ export function useToggleAssignee(threadId: string | undefined) {
       if (threadId) {
         queryClient.invalidateQueries({ queryKey: assigneeKeys.single(threadId) })
         // Инвалидируем batch-карту тоже
-        queryClient.invalidateQueries({ queryKey: ['task-assignees-map'] })
+        queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.assigneesMap })
       }
     },
   })

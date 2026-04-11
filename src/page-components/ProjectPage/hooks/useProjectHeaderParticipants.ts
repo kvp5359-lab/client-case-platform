@@ -6,6 +6,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { participantKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
 export interface RoleGroup {
@@ -18,7 +19,7 @@ export function useProjectHeaderParticipants(
   workspaceId: string | undefined,
 ) {
   return useQuery({
-    queryKey: ['project-header-participants', projectId],
+    queryKey: participantKeys.projectHeader(projectId),
     queryFn: async (): Promise<RoleGroup[]> => {
       if (!projectId || !workspaceId) return []
 
@@ -57,7 +58,7 @@ export function useProjectHeaderParticipants(
         .map((role) => ({ role, participants: grouped.get(role)! }))
     },
     enabled: !!projectId && !!workspaceId,
-    staleTime: 2 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
+    gcTime: STALE_TIME.LONG,
   })
 }

@@ -5,6 +5,20 @@
  * Использование: import { formKitKeys, documentKitKeys } from '@/hooks/queryKeys'
  */
 
+/**
+ * Константы staleTime. Вместо магических чисел по файлам —
+ * единые «тайминги свежести» по характеру данных.
+ *
+ * SHORT  —  30s: часто меняющиеся списки (inbox, чаты, treds).
+ * MEDIUM — 2min: списки-обзоры (проекты, задачи, документы).
+ * LONG   — 5min: почти статичное (участники, роли, шаблоны).
+ */
+export const STALE_TIME = {
+  SHORT: 30_000,
+  MEDIUM: 2 * 60_000,
+  LONG: 5 * 60_000,
+} as const
+
 export const formKitKeys = {
   all: ['form-kit'] as const,
   byProject: (projectId: string) => ['form-kit', 'project', projectId] as const,
@@ -270,6 +284,142 @@ export const participantKeys = {
     ['participant', 'project', projectId, userId] as const,
   workspaceParticipant: (workspaceId: string, userId: string) =>
     ['participant', 'workspace', workspaceId, userId] as const,
+  /** Список всех активных участников воркспейса (с ролями/именами). */
+  workspaceList: (workspaceId: string | undefined) =>
+    ['workspace-participants', workspaceId] as const,
+  /** Полный список project_participants (с вложенной participants). */
+  projectFull: (projectId: string | undefined) =>
+    ['project-participants-full', projectId] as const,
+  /** Лёгкий список участников проекта (avatars). */
+  projectAvatars: (projectId: string | undefined) =>
+    ['project-participants-avatars', projectId] as const,
+  /** project_participants с ролями — для мессенджера. */
+  projectWithRoles: (projectId: string | undefined) =>
+    ['project-participants-with-roles', projectId] as const,
+  /** Лёгкий project_participants без аватарок — для ChatSettings/Dialog. */
+  projectLight: (projectId: string | undefined) =>
+    ['project-participants', projectId] as const,
+  /** Участники проекта сгруппированные по ролям — для хедера страницы проекта. */
+  projectHeader: (projectId: string | undefined) =>
+    ['project-header-participants', projectId] as const,
+}
+
+/**
+ * Треды как сущности (project_threads). В отличие от messengerKeys (кэши чатов),
+ * здесь хранится сам тред, его участники и аудит-события.
+ */
+export const projectThreadKeys = {
+  all: ['project_thread'] as const,
+  byId: (threadId: string | undefined) => ['project_thread', threadId ?? ''] as const,
+  auditEvents: (threadId: string | undefined) => ['thread-audit-events', threadId] as const,
+  members: (threadId: string | undefined) => ['thread-members', threadId] as const,
+  membersMap: (threadIds: string[]) =>
+    ['thread-members-map', [...threadIds].sort().join(',')] as const,
+}
+
+/**
+ * Шаблоны проектов и их подразделы.
+ * Крупный блок — использовался в 15+ местах через hardcoded ключи.
+ */
+export const projectTemplateKeys = {
+  all: ['project-template'] as const,
+  allList: ['project-templates'] as const,
+  /** Список шаблонов в воркспейсе. */
+  listByWorkspace: (workspaceId: string | undefined) =>
+    ['project-templates', workspaceId] as const,
+  /** Один шаблон по id. */
+  detail: (templateId: string | null | undefined) => ['project-template', templateId] as const,
+  /** Ссылка «какой templateId у проекта» — используется в мессенджере/QuickReplyPicker. */
+  idByProject: (projectId: string | null | undefined) =>
+    ['project-template-id', projectId] as const,
+  /** Привязанные к шаблону form-templates. */
+  forms: (templateId: string | undefined) => ['project-template-forms', templateId] as const,
+  /** Привязанные к шаблону document-kits. */
+  documentKits: (templateId: string | undefined) =>
+    ['project-template-document-kits', templateId] as const,
+  /** Задачи шаблона проекта (шаблонные чек-листы). */
+  tasks: (templateId: string | undefined) => ['project-template-tasks', templateId] as const,
+  /** Привязанные к шаблону knowledge-articles. */
+  knowledgeArticles: (templateId: string | undefined) =>
+    ['knowledge-article-templates', templateId] as const,
+  /** Привязанные к шаблону knowledge-groups. */
+  knowledgeGroups: (templateId: string | undefined) =>
+    ['knowledge-group-templates', templateId] as const,
+}
+
+/**
+ * Form-template editor: секции, поля, сам шаблон.
+ */
+export const formTemplateKeys = {
+  detail: (templateId: string | undefined) => ['form-template', templateId] as const,
+  sections: (templateId: string | undefined) => ['form-template-sections', templateId] as const,
+  fields: (templateId: string | undefined) => ['form-template-fields', templateId] as const,
+  listByWorkspace: (workspaceId: string | undefined) =>
+    ['form-templates', workspaceId] as const,
+}
+
+/**
+ * Document-kit template editor.
+ */
+export const documentKitTemplateKeys = {
+  detail: (kitId: string | undefined) => ['document-kit-template', kitId] as const,
+  kitFolders: (kitId: string | undefined) => ['kit-folders', kitId] as const,
+  kitFolderSlots: (folderId: string | undefined) => ['kit-folder-slots', folderId] as const,
+  kitFolderSlotsAll: (kitFolderIds: string[]) =>
+    ['kit-folder-slots-all', ...kitFolderIds] as const,
+  listByWorkspace: (workspaceId: string | undefined) =>
+    ['document-kit-templates', workspaceId] as const,
+}
+
+/**
+ * Folder-template editor + counts.
+ */
+export const folderTemplateKeys = {
+  listByWorkspace: (workspaceId: string | undefined) =>
+    ['folder-templates', workspaceId] as const,
+  slotCounts: (workspaceId: string | undefined) =>
+    ['folder-template-slot-counts', workspaceId] as const,
+}
+
+/**
+ * Knowledge-article/group cross-лукапы, не покрытые knowledgeBaseKeys.
+ */
+export const knowledgeListKeys = {
+  /** Плоский список статей workspace (без join/group). */
+  articlesList: (workspaceId: string | undefined) =>
+    ['knowledge-articles-list', workspaceId] as const,
+  /** Связи статей с группами: (article_id, group_id). Используется для
+   *  построения дерева и фильтров по группам. */
+  articleGroupLinks: (workspaceId: string | undefined) =>
+    ['knowledge-article-groups', workspaceId] as const,
+  knowledgeTree: (workspaceId: string | undefined) =>
+    ['knowledge-tree', workspaceId] as const,
+  articleTags: (articleId: string | undefined) =>
+    ['knowledge-base', 'article-tags', articleId] as const,
+}
+
+/**
+ * Field definitions (universal form fields).
+ */
+export const fieldDefinitionKeys = {
+  all: ['field-definitions'] as const,
+  byIds: (ids: string[]) => ['field-definitions-by-ids', ids] as const,
+  selectOptions: (fieldId: string | undefined) =>
+    ['field-definition-select-options', fieldId] as const,
+  forComposite: (fieldId: string | undefined) =>
+    ['field-definitions-for-composite', fieldId] as const,
+  projectValues: (projectId: string | undefined, fieldIds: string[]) =>
+    ['project-field-values', projectId, fieldIds] as const,
+}
+
+/**
+ * Workspace-level задачи (список задач, assignees-map).
+ */
+export const workspaceTaskKeys = {
+  all: ['workspace-tasks'] as const,
+  byWorkspace: (workspaceId: string | undefined) =>
+    ['workspace-tasks', workspaceId] as const,
+  assigneesMap: ['task-assignees-map'] as const,
 }
 
 export const boardKeys = {

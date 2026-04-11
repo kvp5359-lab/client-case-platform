@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
+import { formTemplateKeys } from '@/hooks/queryKeys'
 import { useFormTemplateContext } from '../context/FormTemplateContext'
 import { FormFieldWithDefinition } from '../types'
 
@@ -105,7 +106,7 @@ export function useFieldDragDrop(
         )
       }
 
-      queryClient.invalidateQueries({ queryKey: ['form-template-fields', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.fields(templateId) })
     } catch {
       toast.error('Ошибка при перемещении поля')
     } finally {
@@ -165,7 +166,7 @@ export function useFieldDragDrop(
     } catch (err) {
       logger.error('Failed to move field:', err)
     } finally {
-      queryClient.invalidateQueries({ queryKey: ['form-template-fields', templateId] })
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.fields(templateId) })
       dispatch({ type: 'RESET_FIELD_DRAG_STATE' })
     }
   }

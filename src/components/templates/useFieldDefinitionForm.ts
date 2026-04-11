@@ -14,6 +14,7 @@ import type { FieldType } from '@/components/forms/types'
 import type { FieldDefinition, FieldOptions, FieldValidation } from '@/types/formKit'
 import { prepareFieldPayload, DEFAULT_TABLE_COLUMNS, type TableColumn } from './field-definition'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
+import { fieldDefinitionKeys } from '@/hooks/queryKeys'
 
 interface UseFieldDefinitionFormParams {
   open: boolean
@@ -100,7 +101,7 @@ export function useFieldDefinitionForm({
       resetForm()
       setSavedField(null)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- только при открытии или смене field
+     
   }, [field, open])
 
   // Мутация создания/обновления
@@ -132,7 +133,7 @@ export function useFieldDefinitionForm({
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['field-definitions'] })
+      queryClient.invalidateQueries({ queryKey: fieldDefinitionKeys.all })
       onOpenChange(false)
     },
     onError: (error) => {
@@ -186,13 +187,13 @@ export function useFieldDefinitionForm({
           .update(payload as never)
           .eq('id', existingField.id)
         if (error) throw error
-        await queryClient.invalidateQueries({ queryKey: ['field-definitions'] })
+        await queryClient.invalidateQueries({ queryKey: fieldDefinitionKeys.all })
       } else {
         const { data, error } = await supabase.from('field_definitions').insert(payload as never).select()
         if (error) throw error
         if (data && data.length > 0) {
           setSavedField(data[0] as FieldDefinition)
-          await queryClient.invalidateQueries({ queryKey: ['field-definitions'] })
+          await queryClient.invalidateQueries({ queryKey: fieldDefinitionKeys.all })
         }
       }
       setHasUnsavedCompositeChanges(false)

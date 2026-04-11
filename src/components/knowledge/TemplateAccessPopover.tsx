@@ -11,7 +11,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { knowledgeBaseKeys, quickReplyKeys } from '@/hooks/queryKeys'
+import { knowledgeBaseKeys, quickReplyKeys, projectTemplateKeys } from '@/hooks/queryKeys'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, LayoutTemplate } from 'lucide-react'
@@ -81,7 +81,7 @@ export function TemplateAccessPopover({
 
   // Загружаем все шаблоны проектов workspace
   const { data: allTemplates = [] } = useQuery({
-    queryKey: ['project-templates', workspaceId],
+    queryKey: projectTemplateKeys.listByWorkspace(workspaceId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_templates')

@@ -5,7 +5,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { messengerKeys } from '@/hooks/queryKeys'
+import { messengerKeys, projectThreadKeys, workspaceTaskKeys } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
 import type { AccessType } from '../chatSettingsTypes'
 
@@ -44,7 +44,7 @@ export function useChatSettingsMutations({
           queryKey: messengerKeys.projectThreads(selectedProjectId),
         })
       }
-      queryClient.invalidateQueries({ queryKey: ['workspace-tasks', resolvedWorkspaceId] })
+      queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(resolvedWorkspaceId) })
     },
     onError: () => toast.error('Не удалось сменить проект'),
   })
@@ -120,7 +120,7 @@ export function useChatSettingsMutations({
       }
     },
     onSuccess: () => {
-      if (chatId) queryClient.invalidateQueries({ queryKey: ['thread-members', chatId] })
+      if (chatId) queryClient.invalidateQueries({ queryKey: projectThreadKeys.members(chatId) })
     },
   })
 

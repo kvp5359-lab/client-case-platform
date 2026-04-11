@@ -14,7 +14,7 @@ import { NameInput } from '@/components/ui/name-input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { DialogBaseProps } from '@/types'
-import { knowledgeBaseKeys } from '@/hooks/queryKeys'
+import { knowledgeBaseKeys, knowledgeListKeys } from '@/hooks/queryKeys'
 import { getArticlesByWorkspace } from '@/services/api/knowledge/knowledgeBaseService'
 import { supabase } from '@/lib/supabase'
 import { ArticleTreePicker } from '@/components/templates/ArticleTreePicker'
@@ -78,7 +78,7 @@ export function FolderDialog({
   })
 
   const { data: articleGroups = [] } = useQuery({
-    queryKey: ['knowledge-article-groups', workspaceId],
+    queryKey: knowledgeListKeys.articleGroupLinks(workspaceId),
     queryFn: async () => {
       // Фильтруем через join с knowledge_groups для ограничения по workspace
       const { data, error } = await supabase

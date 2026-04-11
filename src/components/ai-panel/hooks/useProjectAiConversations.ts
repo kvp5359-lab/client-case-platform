@@ -19,7 +19,7 @@ import {
   type ConversationSources,
   type SearchSource,
 } from '@/services/api/knowledge/knowledgeSearchService'
-import { knowledgeBaseKeys } from '@/hooks/queryKeys'
+import { knowledgeBaseKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 interface UseProjectAiConversationsOptions {
   workspaceId: string
@@ -56,7 +56,7 @@ export function useProjectAiConversations({
     queryKey: conversationsKey,
     queryFn: () => getConversations(workspaceId, projectId, conversationType),
     enabled: !!workspaceId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 
   // Callback при завершении ответа AI — сохраняем в БД
