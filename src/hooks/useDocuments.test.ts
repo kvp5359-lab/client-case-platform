@@ -110,26 +110,37 @@ describe('useDocuments', () => {
 
     it('должен успешно загрузить документ: создать запись, загрузить файл, вызвать rpc, обновить статус', async () => {
       const mockDoc = { id: 'doc-1', name: 'test.pdf' }
+      const mockFilesRecord = { id: 'files-1' }
       const mockFileId = 'file-record-1'
 
-      // 1. from('documents').insert().select().single() — создание документа
-      // 2. from('documents').update().eq() — обновление статуса на 'in_progress'
+      // Порядок вызовов from() в uploadDocument:
+      //   1. documents.insert().select().single()      — создание документа
+      //   2. files.insert().select('id').single()      — запись в реестре файлов
+      //   3. documents.update().eq()                   — обновление статуса
       const fromCalls: Array<{ table: string }> = []
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         fromCalls.push({ table })
         if (table === 'documents') {
-          // Первый вызов — insert, второй — update (для статуса)
           const callIndex = fromCalls.filter((c) => c.table === 'documents').length
           if (callIndex === 1) {
             return mockInsertChain({ data: mockDoc, error: null }) as unknown as SupabaseFrom
           }
-          // Второй вызов — update статуса
           return mockUpdateChain({ error: null }) as unknown as SupabaseFrom
+        }
+        if (table === 'files') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockFilesRecord, error: null }),
+              }),
+            }),
+          } as unknown as SupabaseFrom
         }
         return {} as unknown as SupabaseFrom
       })
 
-      // storage.from('document-files').upload()
+      // storage.from('files').upload() — после рефакторинга бакет называется 'files',
+      // а не 'document-files'
       vi.mocked(supabase.storage.from).mockReturnValue({
         upload: vi.fn().mockResolvedValue({ error: null }),
       } as unknown as StorageFrom)
@@ -151,19 +162,17 @@ describe('useDocuments', () => {
       expect(uploadResult?.document).toEqual(mockDoc)
       expect(uploadResult?.fileId).toBe(mockFileId)
 
-      // Проверяем, что insert вызвался для documents
       expect(supabase.from).toHaveBeenCalledWith('documents')
+      expect(supabase.from).toHaveBeenCalledWith('files')
+      expect(supabase.storage.from).toHaveBeenCalledWith('files')
 
-      // Проверяем, что storage upload вызвался
-      expect(supabase.storage.from).toHaveBeenCalledWith('document-files')
-
-      // Проверяем, что rpc вызвался с правильными параметрами
       expect(supabase.rpc).toHaveBeenCalledWith(
         'add_document_version',
         expect.objectContaining({
           p_document_id: 'doc-1',
           p_file_name: 'test.pdf',
           p_mime_type: 'application/pdf',
+          p_file_id: 'files-1',
         }),
       )
     })
@@ -208,7 +217,9 @@ describe('useDocuments', () => {
 
     it('должен откатить документ и файл из storage при ошибке rpc', async () => {
       const mockDoc = { id: 'doc-1', name: 'test.pdf' }
-      const mockDeleteEq = vi.fn().mockResolvedValue({ error: null })
+      const mockFilesRecord = { id: 'files-1' }
+      const mockDocDeleteEq = vi.fn().mockResolvedValue({ error: null })
+      const mockFilesDeleteEq = vi.fn().mockResolvedValue({ error: null })
       const mockStorageRemove = vi.fn().mockResolvedValue({ error: null })
 
       vi.mocked(supabase.from).mockImplementation((table: string) => {
@@ -220,7 +231,19 @@ describe('useDocuments', () => {
               }),
             }),
             delete: vi.fn().mockReturnValue({
-              eq: mockDeleteEq,
+              eq: mockDocDeleteEq,
+            }),
+          } as unknown as SupabaseFrom
+        }
+        if (table === 'files') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockFilesRecord, error: null }),
+              }),
+            }),
+            delete: vi.fn().mockReturnValue({
+              eq: mockFilesDeleteEq,
             }),
           } as unknown as SupabaseFrom
         }
@@ -251,12 +274,14 @@ describe('useDocuments', () => {
       // Проверяем откат: файл удалён из storage
       expect(mockStorageRemove).toHaveBeenCalledWith([expect.stringContaining('ws-1/doc-1/')])
 
-      // Проверяем откат: документ удалён из БД
-      expect(mockDeleteEq).toHaveBeenCalledWith('id', 'doc-1')
+      // Проверяем откат: и documents, и files-запись удалены из БД
+      expect(mockDocDeleteEq).toHaveBeenCalledWith('id', 'doc-1')
+      expect(mockFilesDeleteEq).toHaveBeenCalledWith('id', 'files-1')
     })
 
     it('должен определить MIME-тип по расширению файла если file.type пустой', async () => {
       const mockDoc = { id: 'doc-1', name: 'report.docx' }
+      const mockFilesRecord = { id: 'files-1' }
       const mockFileId = 'file-record-1'
 
       // Файл без MIME-типа
@@ -271,6 +296,15 @@ describe('useDocuments', () => {
             return mockInsertChain({ data: mockDoc, error: null }) as unknown as SupabaseFrom
           }
           return mockUpdateChain({ error: null }) as unknown as SupabaseFrom
+        }
+        if (table === 'files') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockFilesRecord, error: null }),
+              }),
+            }),
+          } as unknown as SupabaseFrom
         }
         return {} as unknown as SupabaseFrom
       })
@@ -440,14 +474,31 @@ describe('useDocuments', () => {
   // moveDocument
   // ==============================
   describe('moveDocument', () => {
-    it('должен обновить folder_id документа', async () => {
-      const mockUpdate = vi.fn().mockReturnValue({
+    it('должен обновить folder_id и подтянуть document_kit_id из целевой папки', async () => {
+      // При folderId != null хук сначала делает
+      // folders.select('document_kit_id').eq().single(),
+      // затем documents.update({ folder_id, document_kit_id }).eq()
+      const mockDocUpdate = vi.fn().mockReturnValue({
         eq: vi.fn().mockResolvedValue({ error: null }),
       })
 
-      vi.mocked(supabase.from).mockReturnValue({
-        update: mockUpdate,
-      } as unknown as SupabaseFrom)
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'folders') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi
+                  .fn()
+                  .mockResolvedValue({ data: { document_kit_id: 'kit-42' }, error: null }),
+              }),
+            }),
+          } as unknown as SupabaseFrom
+        }
+        if (table === 'documents') {
+          return { update: mockDocUpdate } as unknown as SupabaseFrom
+        }
+        return {} as unknown as SupabaseFrom
+      })
 
       const { wrapper } = createQueryWrapper()
       const { result } = renderHook(() => useDocuments(), { wrapper })
@@ -459,8 +510,12 @@ describe('useDocuments', () => {
         })
       })
 
+      expect(supabase.from).toHaveBeenCalledWith('folders')
       expect(supabase.from).toHaveBeenCalledWith('documents')
-      expect(mockUpdate).toHaveBeenCalledWith({ folder_id: 'folder-2' })
+      expect(mockDocUpdate).toHaveBeenCalledWith({
+        folder_id: 'folder-2',
+        document_kit_id: 'kit-42',
+      })
     })
   })
 
@@ -468,62 +523,52 @@ describe('useDocuments', () => {
   // reorderDocuments
   // ==============================
   describe('reorderDocuments', () => {
-    it('должен обновить sort_order для нескольких документов', async () => {
-      const mockUpdate = vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      })
-
-      vi.mocked(supabase.from).mockReturnValue({
-        update: mockUpdate,
-      } as unknown as SupabaseFrom)
+    it('должен вызвать rpc reorder_documents с батчем обновлений', async () => {
+      // После рефакторинга хук делает один rpc-вызов вместо N отдельных update'ов
+      vi.mocked(supabase.rpc).mockResolvedValue({
+        data: null,
+        error: null,
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>)
 
       const { wrapper } = createQueryWrapper()
       const { result } = renderHook(() => useDocuments(), { wrapper })
 
+      const updates = [
+        { id: 'doc-1', sort_order: 0 },
+        { id: 'doc-2', sort_order: 1 },
+        { id: 'doc-3', sort_order: 2 },
+      ]
+
       await act(async () => {
-        await result.current.reorderDocuments([
-          { id: 'doc-1', sort_order: 0 },
-          { id: 'doc-2', sort_order: 1 },
-          { id: 'doc-3', sort_order: 2 },
-        ])
+        await result.current.reorderDocuments(updates)
       })
 
-      // from('documents') вызывается для каждого документа
-      expect(supabase.from).toHaveBeenCalledTimes(3)
-
-      // Каждый вызов update содержит sort_order
-      expect(mockUpdate).toHaveBeenCalledWith({ sort_order: 0 })
-      expect(mockUpdate).toHaveBeenCalledWith({ sort_order: 1 })
-      expect(mockUpdate).toHaveBeenCalledWith({ sort_order: 2 })
+      expect(supabase.rpc).toHaveBeenCalledWith('reorder_documents', {
+        p_updates: updates,
+      })
     })
 
-    it('должен включить folder_id в обновление когда он передан', async () => {
-      const mockUpdate = vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      })
-
-      vi.mocked(supabase.from).mockReturnValue({
-        update: mockUpdate,
-      } as unknown as SupabaseFrom)
+    it('должен передать folder_id в rpc когда он есть в обновлении', async () => {
+      vi.mocked(supabase.rpc).mockResolvedValue({
+        data: null,
+        error: null,
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>)
 
       const { wrapper } = createQueryWrapper()
       const { result } = renderHook(() => useDocuments(), { wrapper })
 
+      const updates = [
+        { id: 'doc-1', sort_order: 0, folder_id: 'folder-A' },
+        { id: 'doc-2', sort_order: 1 },
+      ]
+
       await act(async () => {
-        await result.current.reorderDocuments([
-          { id: 'doc-1', sort_order: 0, folder_id: 'folder-A' },
-          { id: 'doc-2', sort_order: 1 },
-        ])
+        await result.current.reorderDocuments(updates)
       })
 
-      // Первый вызов — с folder_id
-      expect(mockUpdate).toHaveBeenCalledWith({
-        sort_order: 0,
-        folder_id: 'folder-A',
+      expect(supabase.rpc).toHaveBeenCalledWith('reorder_documents', {
+        p_updates: updates,
       })
-
-      // Второй вызов — без folder_id
-      expect(mockUpdate).toHaveBeenCalledWith({ sort_order: 1 })
     })
   })
 })

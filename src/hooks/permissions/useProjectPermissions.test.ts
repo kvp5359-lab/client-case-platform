@@ -110,15 +110,22 @@ function makeProjectRole(
   }
 }
 
-// Настройка supabase mock для проектных запросов
+// Настройка supabase mock для проектных запросов.
+//
+// Хук делает три запроса:
+//   1. projects: select('workspace_id').eq('id').single()
+//   2. project_participants: select(...).eq().eq().eq().eq().maybeSingle()
+//      — один JOIN-запрос, четыре eq(): project_id + три eq по participants!inner
+//   3. project_roles: select('*').eq('workspace_id')
+//
+// Отдельный запрос к `participants` был убран при рефакторинге (теперь inner-join
+// прямо внутри project_participants), поэтому мок для `participants` больше не нужен.
 function setupSupabaseMock(opts: {
   projectData?: { data: unknown; error: unknown }
-  participantData?: { data: unknown; error: unknown }
   projectParticipantData?: { data: unknown; error: unknown }
   rolesData?: { data: unknown; error: unknown }
 }) {
   const projectResult = opts.projectData ?? { data: { workspace_id: 'ws-1' }, error: null }
-  const participantResult = opts.participantData ?? { data: { id: 'participant-1' }, error: null }
   const projectParticipantResult = opts.projectParticipantData ?? { data: null, error: null }
   const rolesResult = opts.rolesData ?? { data: [], error: null }
 
@@ -132,25 +139,16 @@ function setupSupabaseMock(opts: {
         }),
       } as unknown as SupabaseFrom
     }
-    if (table === 'participants') {
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue(participantResult),
-              }),
-            }),
-          }),
-        }),
-      } as unknown as SupabaseFrom
-    }
     if (table === 'project_participants') {
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue(projectParticipantResult),
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue(projectParticipantResult),
+                }),
+              }),
             }),
           }),
         }),

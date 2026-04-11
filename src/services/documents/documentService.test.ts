@@ -41,17 +41,31 @@ describe('documentService', () => {
 
     it('должен загрузить документ успешно', async () => {
       const mockDocument = { id: 'doc-1', name: 'test.pdf' }
+      const mockFileRecord = { id: 'files-1' }
       const mockDocFile = { id: 'file-1', file_name: 'test.pdf', file_path: 'path' }
 
       // Mock crypto.randomUUID
       vi.stubGlobal('crypto', { randomUUID: () => 'uuid-123' })
 
+      // uploadDocument теперь делает три .from() вызова:
+      //   1. documents.insert → создание записи документа
+      //   2. files.insert     → запись в реестре файлов (единый file registry)
+      //   3. document_files.insert → запись о версии с file_id
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         if (table === 'documents') {
           return {
             insert: vi.fn().mockReturnValue({
               select: vi.fn().mockReturnValue({
                 single: vi.fn().mockResolvedValue({ data: mockDocument, error: null }),
+              }),
+            }),
+          } as unknown as SupabaseFrom
+        }
+        if (table === 'files') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockFileRecord, error: null }),
               }),
             }),
           } as unknown as SupabaseFrom
@@ -76,6 +90,7 @@ describe('documentService', () => {
 
       expect(result.document).toEqual(mockDocument)
       expect(result.file).toEqual(mockDocFile)
+      expect(supabase.from).toHaveBeenCalledWith('files')
     })
 
     it('должен бросить DocumentError при ошибке создания документа', async () => {
