@@ -4,7 +4,7 @@
  * WorkspaceLayout — layout с sidebar и правой панелью
  */
 
-import { useState, useEffect, useCallback, useMemo, lazy, Suspense, createContext, useContext } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense, createContext, useContext } from 'react'
 import { useParams } from 'next/navigation'
 import { Menu, X, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -170,6 +170,30 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
     setGlobalOpenThread(tp.setOpenThread)
     return () => setGlobalOpenThread(null)
   }, [tp.setOpenThread])
+
+  // При смене проекта закрываем TaskPanel, если открытый тред относится к
+  // другому проекту (или к workspace-level: project_id === null).
+  // Реагируем только на ИЗМЕНЕНИЕ projectId, а не на факт несовпадения:
+  // тост нового сообщения может открыть тред из другого проекта без навигации
+  // — такую панель закрывать нельзя. Основную правую панель при этом не
+  // трогаем: ProjectPage сам откроет её при монтировании на новый проект.
+  const currentProjectId = pageContext.projectId ?? null
+  const prevProjectIdRef = useRef(currentProjectId)
+  const setOpenThread = tp.setOpenThread
+  useEffect(() => {
+    const prev = prevProjectIdRef.current
+    prevProjectIdRef.current = currentProjectId
+    if (prev === currentProjectId) return
+    const openTask = tp.openThread
+    if (!openTask) return
+    const openTaskProjectId = openTask.project_id ?? null
+    if (openTaskProjectId === null || openTaskProjectId !== currentProjectId) {
+      setOpenThread(null)
+    }
+    // tp.openThread читаем без подписки — эффект должен срабатывать только на
+    // смену projectId, иначе открытие панели тут же её и закроет.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProjectId, setOpenThread])
 
   const handleSelectChat = useCallback(
     (chat: ProjectThread) => {

@@ -70,6 +70,29 @@ export function useProjectThreads(projectId: string | undefined) {
 }
 
 /**
+ * Загрузить один тред по id. Используется там, где нужен полный ProjectThread,
+ * а в руках есть только облегчённая форма (например, TaskItem в TaskPanel
+ * перед открытием ChatSettingsDialog).
+ */
+export function useProjectThreadById(threadId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['project_thread', threadId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('project_threads')
+        .select('*')
+        .eq('id', threadId!)
+        .eq('is_deleted', false)
+        .maybeSingle()
+      if (error) throw error
+      return (data as ProjectThread | null) ?? null
+    },
+    enabled: enabled && !!threadId,
+    staleTime: 30_000,
+  })
+}
+
+/**
  * Получить threadId по legacy_channel из кэша project_threads
  */
 export function useThreadIdByChannel(

@@ -26,6 +26,7 @@ import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useUpdateTaskStatus } from '@/components/tasks/useTaskMutations'
 import { TaskPanel } from '@/components/tasks/TaskPanel'
 import { useTaskPanelSetup } from '@/components/tasks/useTaskPanelSetup'
+import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { BoardView } from '@/components/boards/BoardView'
 import { CreateBoardDialog } from '@/components/boards/CreateBoardDialog'
 import { CreateListDialog } from '@/components/boards/CreateListDialog'
@@ -154,7 +155,13 @@ function BoardTabContent({
       <TaskPanel
         {...tp.taskPanelProps}
         showProjectLink
-        onProjectClick={() => tp.setOpenThread(null)}
+        onProjectClick={() => {
+          // Передаём открытый тред в layout-уровневую TaskPanel,
+          // чтобы панель пережила размонтирование BoardsPage при навигации
+          // на страницу проекта. Затем локальную копию закрываем.
+          if (tp.openThread) globalOpenThread(tp.openThread)
+          tp.setOpenThread(null)
+        }}
       />
 
       <CreateListDialog

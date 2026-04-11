@@ -26,6 +26,7 @@ import { useThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
 import { useCreateThread } from '@/hooks/messenger/useProjectThreads'
 import { TaskPanel } from '@/components/tasks/TaskPanel'
 import { useTaskPanelSetup } from '@/components/tasks/useTaskPanelSetup'
+import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { newThreadToTaskItem } from '@/components/tasks/taskListConstants'
 import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
@@ -429,7 +430,17 @@ export default function InboxPage() {
       )}
 
       {/* TaskPanel — боковая панель треда после создания */}
-      <TaskPanel {...tp.taskPanelProps} showProjectLink />
+      <TaskPanel
+        {...tp.taskPanelProps}
+        showProjectLink
+        onProjectClick={() => {
+          // Передаём открытый тред в layout-уровневую TaskPanel,
+          // чтобы панель пережила размонтирование InboxPage при навигации
+          // на страницу проекта. Затем локальную копию закрываем.
+          if (tp.openThread) globalOpenThread(tp.openThread)
+          tp.setOpenThread(null)
+        }}
+      />
     </WorkspaceLayout>
   )
 }

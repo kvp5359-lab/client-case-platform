@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'
+import { useProjectThreadById } from '@/hooks/messenger/useProjectThreads'
 import type { TaskItem } from './types'
 
 export interface TaskPanelProps {
@@ -79,6 +80,12 @@ export function TaskPanel({
   const [prevTaskId, setPrevTaskId] = useState(task?.id)
   const editNameRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+
+  // Полный ProjectThread подгружаем только когда юзер открывает настройки:
+  // TaskItem не содержит access_type / access_roles / legacy_channel и др.
+  // полей, без которых ChatSettingsDialog не может восстановить состояние
+  // «Кто видит чат» и не подгружает участников.
+  const { data: fullThread } = useProjectThreadById(task?.id, settingsOpen)
 
   // Загрузка project_name, если не передан
   const [resolvedProjectName, setResolvedProjectName] = useState<string | null>(null)
@@ -316,13 +323,15 @@ export function TaskPanel({
         </div>
       </div>
 
-      {/* Настройки */}
-      {settingsOpen && (
+      {/* Настройки — открываем только когда полный ProjectThread загружен,
+          иначе ChatSettingsDialog получит TaskItem-каст без access_type и
+          не подгрузит участников / пресет доступа. */}
+      {settingsOpen && fullThread && (
         <Suspense fallback={null}>
           <ChatSettingsDialog
-            chat={task as never}
+            chat={fullThread}
             workspaceId={workspaceId}
-            projectId={task?.project_id ?? undefined}
+            projectId={fullThread.project_id ?? undefined}
             open={settingsOpen}
             onOpenChange={setSettingsOpen}
             onUpdate={(params) => {
