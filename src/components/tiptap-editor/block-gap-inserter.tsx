@@ -177,9 +177,12 @@ export function BlockGapInserter({ editor }: BlockGapInserterProps) {
     ensureListener()
 
     return () => {
-      // Only clean up if this is a real unmount (not StrictMode double-invoke)
-      // We check if the container is still in the DOM
+      // Only clean up if this is a real unmount (not StrictMode double-invoke).
+      // Мы намеренно читаем containerRef.current в cleanup (а не сохраняем
+      // в локал на момент монтирования) — нам нужно именно текущее значение,
+      // чтобы отличить реальный unmount от StrictMode-перемонтажа.
       setTimeout(() => {
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         if (containerRef.current == null && !document.querySelector('[data-gap-inserter]')) {
           removeListener()
           if (globalLineEl) {

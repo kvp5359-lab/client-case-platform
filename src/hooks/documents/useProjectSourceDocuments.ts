@@ -95,11 +95,14 @@ export function useProjectSourceDocuments({
   const cleanupTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
 
   useEffect(() => {
+    // Локальный снимок ref'а — чтобы cleanup работал именно с тем Set таймеров,
+    // что был на момент монтирования (react-hooks/exhaustive-deps требование).
+    const timers = cleanupTimersRef.current
     return () => {
-      for (const timer of cleanupTimersRef.current) {
+      for (const timer of timers) {
         clearTimeout(timer)
       }
-      cleanupTimersRef.current.clear()
+      timers.clear()
     }
   }, [])
 

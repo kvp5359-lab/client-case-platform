@@ -115,7 +115,10 @@ export const TaskListView = memo(function TaskListView({
   }, [isProjectMode, rawWorkspaceTasks, rawThreads, accessibleThreadIds])
 
   const taskIds = useMemo(() => allTasks.map((t) => t.id), [allTasks])
-  const { data: membersMap = {} } = useTaskAssigneesMap(taskIds)
+  const { data: rawMembersMap } = useTaskAssigneesMap(taskIds)
+  // useMemo, чтобы default {} не давал новую ссылку на каждом рендере и
+  // не ломал мемоизацию allAssignees ниже.
+  const membersMap = useMemo(() => rawMembersMap ?? {}, [rawMembersMap])
   const { data: currentParticipantId = null } = useCurrentParticipantId(workspaceId)
   const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)
 

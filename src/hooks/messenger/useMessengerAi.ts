@@ -294,7 +294,6 @@ export function useMessengerAi(
       }
     },
     [
-      isStreaming,
       workspaceId,
       chatMessages,
       aiMessages,

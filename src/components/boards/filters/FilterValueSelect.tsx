@@ -33,11 +33,13 @@ interface FilterValueSelectProps {
   entityType: 'task' | 'project'
 }
 
-/** Хук: возвращает опции в зависимости от поля фильтра */
+/** Хук: возвращает опции в зависимости от поля фильтра.
+ *  entityType зарезервирован для фильтров, специфичных для проектов/задач;
+ *  в текущих опциях не используется, но оставлен в сигнатуре для обратной совместимости. */
 function useFieldOptions(
   fieldKey: string,
   workspaceId: string,
-  entityType: 'task' | 'project',
+  _entityType: 'task' | 'project',
 ): FilterValueOption[] {
   const { data: statuses } = useTaskStatuses(workspaceId)
   const { data: participants } = useWorkspaceParticipants(workspaceId)
@@ -109,7 +111,9 @@ export function FilterValueSelect({
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const options = useFieldOptions(fieldDef.key, workspaceId, entityType)
-  const selectedIds = normalizeValue(value)
+  // useMemo: normalizeValue даёт новый массив на каждом рендере — без мемоизации
+  // зависимости selectedOptions постоянно новые и ломают React Compiler.
+  const selectedIds = useMemo(() => normalizeValue(value), [value])
 
   const filteredOptions = useMemo(() => {
     if (!search) return options

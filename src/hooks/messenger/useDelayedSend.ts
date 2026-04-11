@@ -42,10 +42,13 @@ export function useDelayedSend(
   const { data: workspace } = useWorkspace(workspaceId)
   const sendDelay = ((workspace as Record<string, unknown>)?.send_delay_seconds as number) ?? 0
 
-  // Cleanup timers on unmount
+  // Cleanup timers on unmount. Сохраняем ссылку на map таймеров в локаль
+  // эффекта, чтобы cleanup работал именно с той мапой, что была на момент
+  // монтирования (react-hooks/exhaustive-deps требует этого для refs).
   useEffect(() => {
+    const timers = timersRef.current
     return () => {
-      timersRef.current.forEach((timer) => clearTimeout(timer))
+      timers.forEach((timer) => clearTimeout(timer))
     }
   }, [])
 

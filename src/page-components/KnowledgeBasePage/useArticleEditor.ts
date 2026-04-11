@@ -217,7 +217,7 @@ export function useArticleEditor() {
         if (isMountedRef.current) updateContentMutation.mutate(newContent)
       }, 1500)
     },
-    [articleId, updateContentMutation],
+    [updateContentMutation],
   )
 
   // Flush pending save + cleanup on unmount

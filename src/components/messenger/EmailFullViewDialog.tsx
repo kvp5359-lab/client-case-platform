@@ -18,10 +18,11 @@ interface EmailFullViewDialogProps {
 
 export function EmailFullViewDialog({ message, open, onOpenChange }: EmailFullViewDialogProps) {
   const meta = message?.email_metadata
+  const bodyHtml = meta?.body_html
 
   const safeHtml = useMemo(
-    () => (meta?.body_html ? sanitizeHtml(meta.body_html) : ''),
-    [meta?.body_html],
+    () => (bodyHtml ? sanitizeHtml(bodyHtml) : ''),
+    [bodyHtml],
   )
 
   if (!message || !meta) return null
