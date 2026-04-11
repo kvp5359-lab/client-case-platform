@@ -77,6 +77,7 @@ const FULL_MODULE_ACCESS: ProjectModuleAccess = {
   ai_project_assistant: true,
   comments: true,
   knowledge_base: true,
+  finance: true,
 }
 
 // Полный набор разрешений — для workspace-администраторов
@@ -248,6 +249,7 @@ export function useProjectPermissions(
       ai_project_assistant: false,
       comments: false,
       knowledge_base: false,
+      finance: false,
     }
 
     for (const role of userRolesData) {

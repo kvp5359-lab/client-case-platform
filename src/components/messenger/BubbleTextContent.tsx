@@ -72,7 +72,12 @@ export function BubbleTextContent({
           )}
         </div>
 
-        {/* Gradient fade at collapsed bottom */}
+        {/* Gradient fade at collapsed bottom.
+            Цвет градиента должен совпадать с фоном бабла:
+            - draft → светло-белый
+            - own + tgFailed → нейтральный background (как сам бабл в ошибке)
+            - own → акцентный тёмный (fadeGradient)
+            - incoming → акцентный светлый (fadeGradientIncoming, под bg-{accent}-100/70) */}
         {isOverflowing && isCollapsed && (
           <div
             className={cn(
@@ -83,7 +88,7 @@ export function BubbleTextContent({
                   ? tgFailed
                     ? 'from-background/90'
                     : colors.fadeGradient
-                  : 'from-muted/90',
+                  : colors.fadeGradientIncoming,
             )}
           />
         )}

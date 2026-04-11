@@ -12,7 +12,7 @@
 import { useState, useCallback, useRef, useEffect, createElement, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Pencil, Check, Settings, ExternalLink, X, Mail, ArrowLeft, ListTree } from 'lucide-react'
+import { Check, Settings, ExternalLink, X, Mail, ArrowLeft, ListTree } from 'lucide-react'
 import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
@@ -100,6 +100,12 @@ export function TaskPanel({
   const [prevTaskId, setPrevTaskId] = useState(task?.id)
   const editNameRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  /** Замер левой границы названия для выравнивания второй строки шапки.
+      Ширина статуса + кнопка «назад» + разделители зависят от состояния,
+      поэтому вместо фиксированного w-* отступа вычисляем реальный offset. */
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const headerRowRef = useRef<HTMLDivElement>(null)
+  const [titleOffset, setTitleOffset] = useState(0)
 
   // Полный ProjectThread подгружаем только когда юзер открывает настройки:
   // TaskItem не содержит access_type / access_roles / legacy_channel и др.
@@ -185,6 +191,26 @@ export function TaskPanel({
     }
   }, [editingName])
 
+  // Замер реальной левой границы названия — для выравнивания второй строки шапки.
+  // Слушаем ResizeObserver на строке шапки, чтобы пересчитывать при смене состояния
+  // (появление кнопки «назад», смена названия, открытие редактирования и т.д.).
+  useEffect(() => {
+    if (!open) return
+    const titleEl = titleRef.current
+    const rowEl = headerRowRef.current
+    if (!titleEl || !rowEl) return
+    const measure = () => {
+      const titleRect = titleEl.getBoundingClientRect()
+      const rowRect = rowEl.getBoundingClientRect()
+      setTitleOffset(Math.max(0, titleRect.left - rowRect.left))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(rowEl)
+    ro.observe(titleEl)
+    return () => ro.disconnect()
+  }, [open, task?.id, task?.name, canGoBack, editingName])
+
   const commitEditName = () => {
     const trimmed = editNameValue.trim()
     if (trimmed && task && trimmed !== task.name) {
@@ -219,7 +245,7 @@ export function TaskPanel({
         {/* Шапка */}
         <div className="border-b shrink-0 min-h-[48px] flex flex-col justify-center py-2">
           {/* Строка 1: статус/иконка + название + действия */}
-          <div className="flex items-center gap-2 px-4">
+          <div ref={headerRowRef} className="flex items-center gap-2 px-4">
             {/* Кнопка «назад» — видна только если в стеке тредов больше одного */}
             {canGoBack && onBack && (
               <button
@@ -233,21 +259,17 @@ export function TaskPanel({
               </button>
             )}
 
-            {/* Статус-дропдаун (только задачи) или иконка треда */}
-            {isTask && statuses.length > 0 && onStatusChange ? (
-              <StatusDropdown
-                currentStatus={statuses.find((s) => s.id === task.status_id) ?? null}
-                statuses={statuses}
-                onStatusChange={onStatusChange}
-                size="md"
-              />
-            ) : (
-              <span className="shrink-0">
-                {createElement(ThreadIcon, {
-                  className: cn('w-4 h-4', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
-                })}
-              </span>
-            )}
+            {/* Слева всегда индикатор статуса — унификация шапки для всех типов тредов.
+                - задачи: активный StatusDropdown с реальными статусами.
+                - чаты/email: тот же StatusDropdown в disabled-режиме → рисует CircleDashed
+                  тем же размером, что и у задач. Одинаковый компонент = одинаковые размеры. */}
+            <StatusDropdown
+              currentStatus={isTask ? statuses.find((s) => s.id === task.status_id) ?? null : null}
+              statuses={isTask ? statuses : []}
+              onStatusChange={isTask && onStatusChange ? onStatusChange : () => {}}
+              size="md"
+              disabled={!isTask || !onStatusChange}
+            />
 
             {editingName ? (
               <form
@@ -276,15 +298,27 @@ export function TaskPanel({
               </form>
             ) : (
               <h2
-                className="text-base font-semibold leading-tight truncate min-w-0 cursor-pointer hover:text-primary transition-colors group/title"
+                ref={titleRef}
+                className="text-base font-semibold leading-tight truncate min-w-0 cursor-pointer hover:text-primary transition-colors"
                 onClick={startEditName}
               >
                 {task.name}
-                <Pencil className="w-3 h-3 ml-1.5 inline-block opacity-0 group-hover/title:opacity-50 transition-opacity" />
               </h2>
             )}
 
-            {/* Исполнители — сразу после названия (только для задач) */}
+            {/* Иконка треда из настроек — справа от названия только у чатов/email.
+                У задач роль «индикатора типа» слева играет статус, а справа — исполнители,
+                так что отдельная иконка треда там не нужна.
+                -ml-0.5 чуть сжимает зазор от общего gap-2 (8px → ~6px). */}
+            {!isTask && (
+              <span className="shrink-0 -ml-0.5">
+                {createElement(ThreadIcon, {
+                  className: cn('w-4 h-4', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
+                })}
+              </span>
+            )}
+
+            {/* Исполнители — сразу после иконки (только для задач) */}
             {isTask && (
               <div className="shrink-0">
                 <AssigneesPopover
@@ -318,21 +352,24 @@ export function TaskPanel({
           </div>
 
           {/* Строка 2: «Другие задачи» + проект + дедлайн.
-              Показываем, если доступен хотя бы один из элементов. */}
+              Показываем, если доступен хотя бы один из элементов.
+              paddingLeft = замеренная левая граница заголовка в первой строке
+              (см. useEffect выше), чтобы вторая строка точно выравнивалась под название. */}
           {(task.project_id || (isTask && onDeadlineSet)) && (
-            <div className="flex items-center gap-2 px-4 mt-0.5">
-              {/* Отступ под название треда. База: иконка статуса (w-4 = 16px) + gap-2 (8px) = 24px.
-                  Если в строке 1 есть кнопка «назад» — плюс её ширина (p-1 + w-4 + p-1 = 24px)
-                  и разделитель gap-2 (8px) = ещё 32px. Итого 56px. */}
-              <div className={cn('shrink-0', canGoBack && onBack ? 'w-14' : 'w-6')} />
+            <div
+              className="flex items-center gap-2 pr-4 mt-0.5"
+              style={{ paddingLeft: `${titleOffset}px` }}
+            >
 
-              {/* Другие задачи — показать/скрыть встроенный TaskListView */}
+              {/* Другие задачи — показать/скрыть встроенный TaskListView.
+                  -ml-1.5 компенсирует px-1.5 таблетки: визуальный левый край иконки
+                  попадает на titleOffset, а фон таблетки уходит чуть левее. */}
               {task.project_id && onOpenThreadInStack && (
                 <button
                   type="button"
                   onClick={() => setThreadListOpen((v) => !v)}
                   className={cn(
-                    'shrink-0 inline-flex items-center gap-1 px-1.5 py-[3px] rounded text-xs font-medium transition-colors',
+                    'shrink-0 inline-flex items-center gap-1 px-1.5 py-[3px] -ml-1.5 rounded text-xs font-medium transition-colors',
                     threadListOpen
                       ? 'bg-brand-100 text-brand-600'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',

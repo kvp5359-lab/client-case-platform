@@ -120,13 +120,39 @@ export function useTaskPanelSetup({ workspaceId, extraInvalidateKeys = [] }: Use
         prev.map((t, i) => (i === prev.length - 1 ? { ...t, status_id: statusId } : t)),
       )
     },
-    onDeadlineSet: (date) =>
-      openThread && updateDeadline.mutate({ threadId: openThread.id, deadline: date.toISOString() }),
-    onDeadlineClear: () =>
-      openThread && updateDeadline.mutate({ threadId: openThread.id, deadline: null }),
-    onRename: (name) => openThread && renameTask.mutate({ threadId: openThread.id, name }),
-    onSettingsSave: (params) =>
-      openThread && updateSettings.mutate({ threadId: openThread.id, ...params }),
+    onDeadlineSet: (date) => {
+      if (!openThread) return
+      const iso = date.toISOString()
+      updateDeadline.mutate({ threadId: openThread.id, deadline: iso })
+      setThreadStack((prev) =>
+        prev.map((t, i) => (i === prev.length - 1 ? { ...t, deadline: iso } : t)),
+      )
+    },
+    onDeadlineClear: () => {
+      if (!openThread) return
+      updateDeadline.mutate({ threadId: openThread.id, deadline: null })
+      setThreadStack((prev) =>
+        prev.map((t, i) => (i === prev.length - 1 ? { ...t, deadline: null } : t)),
+      )
+    },
+    onRename: (name) => {
+      if (!openThread) return
+      renameTask.mutate({ threadId: openThread.id, name })
+      setThreadStack((prev) =>
+        prev.map((t, i) => (i === prev.length - 1 ? { ...t, name } : t)),
+      )
+    },
+    onSettingsSave: (params) => {
+      if (!openThread) return
+      updateSettings.mutate({ threadId: openThread.id, ...params })
+      setThreadStack((prev) =>
+        prev.map((t, i) =>
+          i === prev.length - 1
+            ? { ...t, name: params.name, accent_color: params.accent_color, icon: params.icon }
+            : t,
+        ),
+      )
+    },
     deadlinePending: updateDeadline.isPending,
     settingsPending: updateSettings.isPending,
   }
