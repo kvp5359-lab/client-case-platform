@@ -53,8 +53,6 @@ export function FieldDefinitionDialog({ open, onOpenChange, field }: FieldDefini
     setDescription,
     activeTab,
     setActiveTab,
-    selectOptions,
-    setSelectOptions,
     minValue,
     setMinValue,
     maxValue,
@@ -189,7 +187,7 @@ export function FieldDefinitionDialog({ open, onOpenChange, field }: FieldDefini
                   <div className="p-4 bg-muted/30 rounded-md border border-dashed">
                     <p className="text-sm text-muted-foreground">
                       Составное поле объединяет несколько простых полей в одну строку. Сохраните
-                      поле, чтобы добавить вложенные поля на вкладке "Вложенные поля".
+                      поле, чтобы добавить вложенные поля на вкладке «Вложенные поля».
                     </p>
                   </div>
                 )}
@@ -198,7 +196,7 @@ export function FieldDefinitionDialog({ open, onOpenChange, field }: FieldDefini
                   <div className="p-4 bg-muted/30 rounded-md border border-dashed">
                     <p className="text-sm text-muted-foreground">
                       Список значений позволяет выбрать одно значение из предустановленных
-                      вариантов. Сохраните поле, чтобы добавить значения на вкладке "Значения".
+                      вариантов. Сохраните поле, чтобы добавить значения на вкладке «Значения».
                     </p>
                   </div>
                 )}
@@ -207,7 +205,7 @@ export function FieldDefinitionDialog({ open, onOpenChange, field }: FieldDefini
                   <div className="p-4 bg-muted/30 rounded-md border border-dashed">
                     <p className="text-sm text-muted-foreground">
                       Таблица позволяет пользователям добавлять строки с данными по колонкам.
-                      Настройте колонки на вкладке "Настройки таблицы".
+                      Настройте колонки на вкладке «Настройки таблицы».
                     </p>
                   </div>
                 )}

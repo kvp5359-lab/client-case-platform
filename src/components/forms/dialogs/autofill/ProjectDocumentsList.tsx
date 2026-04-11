@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { autofillKeys } from '@/hooks/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { FileText, Image, ArrowLeft, Loader2 } from 'lucide-react'
+import { FileText, Image as ImageIcon, ArrowLeft, Loader2 } from 'lucide-react'
 import { formatSize } from '@/utils/files/formatSize'
 import { Tables } from '@/types/database'
 import { AUTOFILL_SUPPORTED_MIME_TYPES } from '@/utils/files/fileValidation'
@@ -56,7 +56,7 @@ export function ProjectDocumentsList({
 
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith('image/')) {
-      return <Image className="w-5 h-5 text-blue-500" />
+      return <ImageIcon className="w-5 h-5 text-blue-500" />
     }
     return <FileText className="w-5 h-5 text-red-500" />
   }

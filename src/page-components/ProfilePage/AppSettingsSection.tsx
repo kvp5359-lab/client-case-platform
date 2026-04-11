@@ -3,7 +3,7 @@
 /**
  * AppSettingsSection — секция настроек приложения
  * Настройки AI модели, темы оформления и уведомлений
- * TODO (Z5-12): Заменить нативные <select> на shadcn Select для единообразия UI
+ * TODO: Заменить нативные <select> на shadcn Select для единообразия UI
  */
 
 import { memo } from 'react'

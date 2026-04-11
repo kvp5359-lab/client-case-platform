@@ -87,7 +87,7 @@ function WorkspaceRoleEditDialogContent({
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5" style={{ color: safeCssColor(role.color) }} />
-          Настройка роли "{role.name}"
+          Настройка роли «{role.name}»
         </DialogTitle>
         <DialogDescription>Настройте разрешения для этой роли workspace</DialogDescription>
       </DialogHeader>

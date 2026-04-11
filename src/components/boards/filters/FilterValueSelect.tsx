@@ -5,7 +5,7 @@
  * Показывает выбранные значения в виде тегов (badges).
  */
 
-import { useState, useMemo } from 'react'
+import { useId, useState, useMemo } from 'react'
 import { X, Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -105,6 +105,7 @@ export function FilterValueSelect({
   workspaceId,
   entityType,
 }: FilterValueSelectProps) {
+  const listboxId = useId()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const options = useFieldOptions(fieldDef.key, workspaceId, entityType)
@@ -142,6 +143,7 @@ export function FilterValueSelect({
           role="combobox"
           tabIndex={0}
           aria-expanded={open}
+          aria-controls={listboxId}
           className="flex items-center h-auto min-h-[32px] text-xs flex-1 min-w-[140px] justify-between px-2 py-1 border rounded-md bg-background cursor-pointer hover:bg-accent/50 transition-colors"
         >
           <div className="flex flex-wrap gap-1 flex-1">
@@ -181,7 +183,7 @@ export function FilterValueSelect({
           <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-50 ml-1" />
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-[220px] p-0" align="start">
+      <PopoverContent id={listboxId} className="w-[220px] p-0" align="start">
         {/* Поиск */}
         {options.length > 5 && (
           <div className="p-2 border-b">

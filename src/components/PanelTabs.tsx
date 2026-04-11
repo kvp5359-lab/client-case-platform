@@ -56,7 +56,7 @@ function PanelTabButton({
 }
 
 /**
- * TODO (Z1-04/Z1-05): Replace buttons with role="tablist" / role="tab" for tab semantics
+ * TODO a11y: Replace buttons with role="tablist" / role="tab" for tab semantics
  */
 export function PanelTabs({
   activeTab,

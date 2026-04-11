@@ -63,7 +63,7 @@ interface KnowledgeChatMessageProps {
 const CITATION_SEPARATOR = '<!-- CITATIONS -->'
 
 const markdownComponents = {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   a: ({ node: _node, ...props }: Record<string, unknown>) => (
     <a
       {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
@@ -71,7 +71,7 @@ const markdownComponents = {
       rel="noopener noreferrer"
     />
   ),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   table: ({ node: _node, ...props }: Record<string, unknown>) => (
     <div className="overflow-x-auto">
       <table {...(props as React.TableHTMLAttributes<HTMLTableElement>)} className="text-sm" />

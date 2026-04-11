@@ -66,7 +66,7 @@ export function TaskPanel({
   onSettingsSave,
   deadlinePending = false,
   settingsPending,
-  showProjectLink,
+  showProjectLink: _showProjectLink,
   onProjectClick,
 }: TaskPanelProps) {
   const router = useRouter()

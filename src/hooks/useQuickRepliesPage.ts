@@ -7,8 +7,6 @@
 
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
-import { useQueryClient } from '@tanstack/react-query'
-import { quickReplyKeys } from '@/hooks/queryKeys'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { useQuickReplyGroups } from './useQuickReplyGroups'
 import {
@@ -22,7 +20,6 @@ import {
 
 export function useQuickRepliesPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
-  const queryClient = useQueryClient()
 
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 

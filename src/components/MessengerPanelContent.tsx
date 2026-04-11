@@ -73,7 +73,7 @@ export function MessengerPanelContent({
   const threadId = (overrideValid ? overrideChatId : null) ?? clientChatId ?? visibleChats[0]?.id
   const currentChat = chats.find((c) => c.id === threadId)
   const channel: 'client' | 'internal' =
-    // TODO (Z1-10): legacy_channel may contain other values — extend the type
+    // TODO: legacy_channel may contain other values — extend the type
     (currentChat?.legacy_channel as 'client' | 'internal') ?? 'client'
 
   const handleDeleteChat = useCallback(() => {

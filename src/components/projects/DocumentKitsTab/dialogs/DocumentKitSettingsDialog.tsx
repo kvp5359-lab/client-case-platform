@@ -83,7 +83,7 @@ export function DocumentKitSettingsDialog({
               <h3 className="text-sm font-semibold">Папка-источник документов</h3>
 
               <p className="text-xs text-muted-foreground">
-                Откуда загружаются документы в раздел "Источник"
+                Откуда загружаются документы в раздел «Источник»
               </p>
 
               {/* Статус подключения */}
@@ -166,7 +166,7 @@ export function DocumentKitSettingsDialog({
             <DialogTitle>
               {isSourceConnected ? 'Изменить папку-источник' : 'Подключить папку-источник'}
             </DialogTitle>
-            <DialogDescription>Откуда загружаются документы в раздел "Источник"</DialogDescription>
+            <DialogDescription>Откуда загружаются документы в раздел «Источник»</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">

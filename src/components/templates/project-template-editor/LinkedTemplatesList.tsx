@@ -1,5 +1,5 @@
 import { type LucideIcon } from 'lucide-react'
-import { Plus, Trash2, ChevronRight } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface LinkedItem {
@@ -18,8 +18,8 @@ interface LinkedTemplatesListProps {
 }
 
 export function LinkedTemplatesList({
-  title,
-  count,
+  title: _title,
+  count: _count,
   items,
   icon: Icon,
   onAdd,

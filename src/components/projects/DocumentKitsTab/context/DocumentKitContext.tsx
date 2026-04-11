@@ -205,7 +205,6 @@ export function DocumentKitProvider({ children, value }: DocumentKitProviderProp
  * Полный контекст — для обратной совместимости.
  * Ререндерится при любом изменении. Используй селекторы.
  */
-// eslint-disable-next-line react-refresh/only-export-components
 export function useDocumentKitContext(): DocumentKitContextValue {
   const data = useDocumentKitData()
   const uiState = useDocumentKitUIState()
@@ -217,28 +216,24 @@ export function useDocumentKitContext(): DocumentKitContextValue {
   )
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useDocumentKitData(): DocumentKitData {
   const ctx = useContext(DataContext)
   if (!ctx) throw new Error('useDocumentKitData must be used within DocumentKitProvider')
   return ctx
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useDocumentKitUIState(): DocumentKitUIState {
   const ctx = useContext(UIStateContext)
   if (!ctx) throw new Error('useDocumentKitUIState must be used within DocumentKitProvider')
   return ctx
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useDocumentKitHandlers(): DocumentKitHandlers {
   const ctx = useContext(HandlersContext)
   if (!ctx) throw new Error('useDocumentKitHandlers must be used within DocumentKitProvider')
   return ctx
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useDocumentKitIds() {
   const ctx = useContext(IdsContext)
   if (!ctx) throw new Error('useDocumentKitIds must be used within DocumentKitProvider')

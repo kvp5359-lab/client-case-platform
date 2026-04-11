@@ -43,8 +43,8 @@ export interface FolderCardProps {
 export const FolderCard = memo(function FolderCard({
   folder,
   documents,
-  folderStatuses,
-  onFolderStatusChange,
+  folderStatuses: _folderStatuses,
+  onFolderStatusChange: _onFolderStatusChange,
   onAddDocument,
   slots = [],
   onSlotClick,
@@ -83,7 +83,7 @@ export const FolderCard = memo(function FolderCard({
   const [hiddenDocIds, setHiddenDocIds] = useState<Set<string>>(new Set())
   const [hiddenSlotIds, setHiddenSlotIds] = useState<Set<string>>(new Set())
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- снимок фиксируется только при смене filterMode
+   
   useEffect(() => {
     if (filterMode === 'action-required') {
       setHiddenDocIds(

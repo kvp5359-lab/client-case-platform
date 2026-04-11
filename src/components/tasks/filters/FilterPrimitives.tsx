@@ -5,7 +5,6 @@
  * Используются в фильтрах AssigneeFilter, DeadlineFilter, StatusFilter, ProjectFilter.
  */
 
-import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 

@@ -60,7 +60,7 @@ const EmptySlotChip = memo(function EmptySlotChip({ slot }: { slot: FolderSlotWi
   const [isDragOver, setIsDragOver] = useState(false)
   // Z3-07: стандартный React-паттерн "Adjusting state when a prop changes"
   // https://react.dev/reference/react/useState#storing-information-from-previous-renders
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- render-phase setState по документации React
+   
   const [prevIsNewSlot, setPrevIsNewSlot] = useState(isNewSlot)
   if (isNewSlot !== prevIsNewSlot) {
     setPrevIsNewSlot(isNewSlot)

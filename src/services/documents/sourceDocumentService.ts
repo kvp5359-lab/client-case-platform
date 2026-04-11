@@ -355,7 +355,7 @@ export async function downloadGoogleDriveFile(
   // Безопасное имя файла без control-символов и недопустимых символов Windows/Unix
   const unsafeName = metadata.name || 'document'
   // Символы: < > : " / \ | ? * и управляющие символы (код 0-31 в Unicode)
-  // eslint-disable-next-line no-control-regex
+   
   const fileName = unsafeName.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_').trim()
 
   return { blob, fileName }

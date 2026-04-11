@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { knowledgeBaseKeys, statusKeys } from '@/hooks/queryKeys'
+import { knowledgeBaseKeys, knowledgeListKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
 import { TAG_COLOR_PALETTE } from '@/utils/notionPill'
 import type { EditorKnowledgeArticle } from './useArticleEditor.types'
@@ -133,7 +133,7 @@ export function useArticleEditorMutations({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['knowledge-base', 'article-tags', articleId] })
+      queryClient.invalidateQueries({ queryKey: knowledgeListKeys.articleTags(articleId) })
       queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.articles(workspaceId!) })
     },
     onError: () => {

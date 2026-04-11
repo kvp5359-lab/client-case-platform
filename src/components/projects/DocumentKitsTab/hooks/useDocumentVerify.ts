@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
 import { useErrorHandler } from '@/hooks/shared/useErrorHandler'
 import { checkDocument } from '@/services/api/googleDriveService'
-import { Tables } from '@/types/database'
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import { documentKitKeys } from '@/hooks/queryKeys'
 

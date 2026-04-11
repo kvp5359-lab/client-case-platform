@@ -7,9 +7,8 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { cn } from '@/lib/utils'
@@ -23,6 +22,7 @@ import {
 import { MoreVertical, Plus } from 'lucide-react'
 import { useDocumentKitsQuery } from '@/hooks/useDocumentKitsQuery'
 import { useFormKitsQuery } from '@/hooks/useFormKitsQuery'
+import { projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import {
   useProjectPermissions,
@@ -30,7 +30,6 @@ import {
   useWorkspacePermissions,
 } from '@/hooks/permissions'
 import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
-import { useAuth } from '@/contexts/AuthContext'
 import { useDialog } from '@/hooks/shared/useDialog'
 
 // Рефакторенные компоненты и хуки
@@ -55,9 +54,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 export default function ProjectPage() {
   const { workspaceId, projectId } = useParams<{ workspaceId: string; projectId: string }>()
   const router = useRouter()
-  const pathname = usePathname()
   const currentSearchParams = useSearchParams()
-  const { user } = useAuth()
 
   // Состояния UI
   const addKitDialog = useDialog()
@@ -94,7 +91,7 @@ export default function ProjectPage() {
 
   // Загрузка списка шаблонов для workspace
   const { data: projectTemplates = [] } = useQuery({
-    queryKey: ['project-templates', workspaceId],
+    queryKey: projectTemplateKeys.listByWorkspace(workspaceId),
     queryFn: async () => {
       if (!workspaceId) return []
       const { data, error } = await supabase
@@ -106,7 +103,7 @@ export default function ProjectPage() {
       return data || []
     },
     enabled: !!workspaceId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   // Проверка прав доступа

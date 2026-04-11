@@ -19,7 +19,7 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { messengerKeys, emailAccountKeys } from '@/hooks/queryKeys'
+import { messengerKeys, emailAccountKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 interface ChatStateResult {
   participant: {
@@ -56,7 +56,7 @@ export function useChatState(
   threadId: string | undefined,
   projectId: string | undefined,
   workspaceId: string,
-  channel: string = 'client',
+  _channel: string = 'client',
 ) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
@@ -74,7 +74,7 @@ export function useChatState(
       return data as unknown as ChatStateResult
     },
     enabled: !!threadId && !!user?.id,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 
   // Seed React Query caches so existing hooks pick up data without own HTTP calls

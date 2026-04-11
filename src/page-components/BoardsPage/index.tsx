@@ -80,17 +80,6 @@ function BoardTabContent({
 
   const statuses = taskStatuses ?? []
 
-  // Участники для диалога задачи
-  const members = useMemo(
-    () => (participants ?? []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      last_name: p.last_name,
-      avatar_url: p.avatar_url,
-    })),
-    [participants],
-  )
-
   // Мутации задач (статус — отдельно для BoardView inline-change)
   const boardInvalidateKeys = useMemo(
     () => [taskKeys.workspace(workspaceId), workspaceThreadKeys.workspace(workspaceId)],

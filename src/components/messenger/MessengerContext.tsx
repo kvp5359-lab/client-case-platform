@@ -71,7 +71,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       getDelayedExpiresAt: value.getDelayedExpiresAt,
       onCancelDelayed: value.onCancelDelayed,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [
       value.currentParticipantId,
       value.viewerRole,

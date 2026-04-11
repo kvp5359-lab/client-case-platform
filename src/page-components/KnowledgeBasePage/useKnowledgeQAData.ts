@@ -13,7 +13,6 @@ import {
   getQAItems,
   reindexAllArticles,
   deleteQA,
-  type KnowledgeQA,
 } from '@/services/api/knowledge/knowledgeSearchService'
 
 export function useKnowledgeQAData(workspaceId: string) {

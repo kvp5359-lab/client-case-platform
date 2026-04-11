@@ -28,12 +28,7 @@ export type {
   KnowledgeArticleStatus,
   KnowledgeArticle,
 } from './useKnowledgeBasePage.types'
-import type {
-  KnowledgeTag,
-  ArticleGroupJoin,
-  ArticleTagJoin,
-  KnowledgeArticle,
-} from './useKnowledgeBasePage.types'
+import type { KnowledgeArticle } from './useKnowledgeBasePage.types'
 
 // ---------- Hook ----------
 
@@ -96,7 +91,7 @@ export function useKnowledgeBasePage() {
       if (error) throw error
       const rows = (data || []) as KnowledgeArticle[]
       if (rows.length >= ARTICLES_LIMIT) {
-        // eslint-disable-next-line no-console
+         
         console.warn(
           `[KnowledgeBase] Достигнут лимит загрузки статей (${ARTICLES_LIMIT}). ` +
             'Некоторые статьи не отображаются. Нужна пагинация/серверный поиск.',

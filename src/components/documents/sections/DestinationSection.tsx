@@ -2,7 +2,7 @@
 
 /**
  * Секция папки назначения (Google Drive)
- * TODO (Z3-03): Collapsible-обёртка дублируется 4 раза — рефакторинг на BaseSection
+ * TODO: Collapsible-обёртка дублируется 4 раза — рефакторинг на BaseSection
  */
 
 import { memo } from 'react'
@@ -77,7 +77,7 @@ export const DestinationSection = memo(function DestinationSection({
         <div className="text-center text-muted-foreground text-sm py-8">
           <div className="flex flex-col items-center gap-3">
             <Upload className="h-8 w-8 text-muted-foreground/50" />
-            <p>Нажмите ⬆️ "Отправить в Drive" для синхронизации</p>
+            <p>Нажмите ⬆️ «Отправить в Drive» для синхронизации</p>
           </div>
         </div>
       </CollapsedSection>

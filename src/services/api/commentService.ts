@@ -141,9 +141,9 @@ export async function getCommentCounts(
 
   const counts = new Map<string, number>()
 
-  // Z6-03: Один запрос, подсчёт на клиенте. head:true не подходит для группировки по entity_id.
-  // Но минимизируем трафик — select только entity_id.
-  // TODO (Z6-11): Рассмотреть серверный RPC для подсчёта — уменьшит трафик при большом количестве комментариев.
+  // Один запрос, подсчёт на клиенте. head:true не подходит для группировки по entity_id.
+  // Минимизируем трафик — select только entity_id.
+  // TODO: Рассмотреть серверный RPC для подсчёта — уменьшит трафик при большом количестве комментариев.
   const { data, error } = await supabase
     .from('comments')
     .select('entity_id', { count: 'exact', head: false })

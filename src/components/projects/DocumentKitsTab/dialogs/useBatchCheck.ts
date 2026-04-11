@@ -5,7 +5,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
-import type { DocumentStatus } from '@/components/documents/types'
 
 /**
  * Результат проверки одного документа

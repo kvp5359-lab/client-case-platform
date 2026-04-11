@@ -3,7 +3,7 @@
  * Handles both create and edit modes.
  */
 
-import { useRef, useMemo, memo } from 'react'
+import { useRef, memo } from 'react'
 import { Mail, Unlink, Loader2, Send, Copy, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -95,7 +95,7 @@ export const ChatSettingsChannels = memo(function ChatSettingsChannels({
   selectedEmails,
   emailInput,
   emailSubject,
-  subjectTouched,
+  subjectTouched: _subjectTouched,
   emailSuggestions,
   filteredSuggestions,
   emailDropdownOpen,

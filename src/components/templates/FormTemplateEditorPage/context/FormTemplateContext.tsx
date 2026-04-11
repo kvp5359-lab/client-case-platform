@@ -270,7 +270,6 @@ export function FormTemplateProvider({ children }: { children: ReactNode }) {
 }
 
 // Хук для использования контекста
-// eslint-disable-next-line react-refresh/only-export-components
 export function useFormTemplateContext() {
   const context = useContext(FormTemplateContext)
   if (!context) {

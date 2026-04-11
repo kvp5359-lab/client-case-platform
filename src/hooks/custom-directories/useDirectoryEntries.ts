@@ -9,7 +9,6 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { customDirectoryKeys } from '@/hooks/queryKeys'
 import type {
-  CustomDirectoryEntry,
   CustomDirectoryField,
   CustomDirectoryValue,
   CustomDirectoryFieldType,

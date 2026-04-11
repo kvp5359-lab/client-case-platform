@@ -27,6 +27,7 @@ import type {
 } from '@/services/api/documents/documentTemplateService'
 import { FIELD_TYPE_LABELS } from './field-definition/constants'
 import { cn } from '@/lib/utils'
+import { fieldDefinitionKeys } from '@/hooks/queryKeys'
 
 interface FieldDefinition {
   id: string
@@ -147,7 +148,7 @@ function FieldCombobox({
 
 export function PlaceholderMappingDialog({
   template,
-  workspaceId,
+  workspaceId: _workspaceId,
   open,
   onOpenChange,
 }: PlaceholderMappingDialogProps) {
@@ -164,7 +165,7 @@ export function PlaceholderMappingDialog({
 
   // Load field_definitions (глобальная таблица, без workspace_id)
   const { data: fields = [] } = useQuery({
-    queryKey: ['field-definitions'],
+    queryKey: fieldDefinitionKeys.all,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('field_definitions')

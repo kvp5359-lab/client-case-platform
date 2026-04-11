@@ -24,7 +24,7 @@ interface ChatSettingsProjectSelectorProps {
 export function ChatSettingsProjectSelector({
   workspaceProjects,
   selectedProjectId,
-  isEditMode,
+  isEditMode: _isEditMode,
   onSelect,
 }: ChatSettingsProjectSelectorProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)

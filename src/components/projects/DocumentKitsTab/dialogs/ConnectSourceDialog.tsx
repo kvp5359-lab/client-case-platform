@@ -47,7 +47,7 @@ export function ConnectSourceDialog({
               onChange={(e) => onLinkChange(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Документы из этой папки будут отображаться в разделе "Нераспределённые"
+              Документы из этой папки будут отображаться в разделе «Нераспределённые»
             </p>
           </div>
         </div>

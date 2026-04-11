@@ -11,7 +11,7 @@
  * Эффекты и мемоизация — в useDocumentKitEffects.
  */
 
-import { useCallback, useMemo } from 'react'
+import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useDocumentKitsQuery, useDeleteDocumentKitMutation } from '@/hooks/useDocumentKitsQuery'
 import { documentKitKeys, folderSlotKeys } from '@/hooks/queryKeys'
@@ -225,12 +225,7 @@ export function useDocumentKitSetup({
     folderOps,
     documentMerge,
     batchOps,
-    compressOps,
-    exportOps,
     sourceOps,
-    sourceUpload,
-    batchMoveOps,
-    sourceConnection,
     destinationOps,
     handlers,
     editingSlotId,

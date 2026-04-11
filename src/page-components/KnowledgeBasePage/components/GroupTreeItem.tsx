@@ -11,7 +11,7 @@ import type { DropIndicatorState } from '../useKnowledgeTreeDnd'
 import { INDENT, BASE_PAD, getLineX } from '@/components/shared/tree/TreeConstants'
 import { TreeConnector } from '@/components/shared/tree/TreeConnector'
 import { AddSubgroupInput } from '@/components/shared/tree/AddSubgroupInput'
-import { SortableArticleRow, ArticleRow, ReadOnlyArticleRow } from './ArticleRows'
+import { SortableArticleRow, ReadOnlyArticleRow } from './ArticleRows'
 
 // Re-export extracted components so existing imports keep working
 export { SortableArticleRow, ArticleRow, ReadOnlyArticleRow } from './ArticleRows'

@@ -53,7 +53,7 @@ export function useFormFieldSaveHandlers({
 
   // Z2-10: Сброс при смене анкеты — иначе originalValues остаётся от предыдущей
   // Запоминаем исходные значения при первой загрузке formData
-  /* eslint-disable react-hooks/set-state-in-effect -- Z2-10: сброс originalValues при смене formKitId необходим для корректной инициализации */
+   
   useEffect(() => {
     isInitialized.current = false
     setOriginalValues({})
@@ -64,7 +64,7 @@ export function useFormFieldSaveHandlers({
       setOriginalValues({ ...formData })
     }
   }, [formData])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   // Функция сохранения всех изменённых полей (используется в нескольких местах)
   const saveAllDirtyFields = useCallback(() => {
@@ -106,7 +106,7 @@ export function useFormFieldSaveHandlers({
       clearInterval(interval)
       saveAllDirtyFields()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [saveAllDirtyFields, formKitId])
 
   // Z2-01: Сохранение при скрытии/закрытии вкладки

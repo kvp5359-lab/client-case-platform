@@ -73,7 +73,7 @@ export function TagFilterBar({ page }: { page: PageReturn }) {
             >
               {tag.name}
             </button>
-            {/* TODO (Z5-15): hover-only кнопка — недоступна на тач-устройствах, добавить альтернативу */}
+            {/* TODO a11y: hover-only кнопка — недоступна на тач-устройствах, добавить альтернативу */}
             <button
               onClick={() => handleDelete(tag.id, tag.name)}
               className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full items-center justify-center text-[8px] hidden group-hover/tag:flex"

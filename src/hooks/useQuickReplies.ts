@@ -71,7 +71,7 @@ export function useCreateQuickReply(workspaceId: string | undefined) {
   })
 }
 
-export function useUpdateQuickReply(workspaceId: string | undefined) {
+export function useUpdateQuickReply(_workspaceId: string | undefined) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -124,7 +124,7 @@ export function useReorderQuickReplies(workspaceId: string | undefined) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ groupId, replyIds }: { groupId: string; replyIds: string[] }) => {
+    mutationFn: async ({ groupId: _groupId, replyIds }: { groupId: string; replyIds: string[] }) => {
       const updates = replyIds.map((id, index) =>
         supabase.from('quick_replies').update({ order_index: index }).eq('id', id),
       )

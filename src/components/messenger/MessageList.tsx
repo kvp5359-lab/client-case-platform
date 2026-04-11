@@ -123,7 +123,6 @@ export function MessageList({
 }: MessageListProps) {
   const {
     currentParticipantId,
-    accent = 'blue',
     isAdmin,
     isDelayedPending,
     getDelayedExpiresAt,
@@ -318,7 +317,7 @@ export function MessageList({
         {/* Sentinel для подгрузки старых */}
         <div ref={sentinelRef} className="h-1" />
 
-        {timeline.map((item, ti) => {
+        {timeline.map((item, _ti) => {
           if (item.kind === 'event') {
             return (
               <ServiceMessage

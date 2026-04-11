@@ -166,9 +166,9 @@ export function ProjectTemplatesContent() {
                           <span className="text-xs text-muted-foreground">Нет модулей</span>
                         ) : (
                           enabledModules.map((moduleId: string) => {
-                            const module = AVAILABLE_MODULES.find((m) => m.id === moduleId)
-                            if (!module) return null
-                            const Icon = module.icon
+                            const mod = AVAILABLE_MODULES.find((m) => m.id === moduleId)
+                            if (!mod) return null
+                            const Icon = mod.icon
                             return (
                               <Badge
                                 key={moduleId}
@@ -176,7 +176,7 @@ export function ProjectTemplatesContent() {
                                 className="text-xs shrink-0"
                               >
                                 <Icon className="w-3 h-3 mr-1" />
-                                {module.label}
+                                {mod.label}
                               </Badge>
                             )
                           })

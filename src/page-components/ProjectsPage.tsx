@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -26,7 +26,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -38,12 +37,12 @@ import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useDialog } from '@/hooks/shared/useDialog'
+import { projectKeys } from '@/hooks/queryKeys'
 
 type Project = Tables<'projects'>
 
 export default function ProjectsPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
-  const router = useRouter()
   const createDialog = useDialog()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<Set<string>>(() => new Set(['active', 'paused']))
@@ -61,7 +60,10 @@ export default function ProjectsPage() {
     isLoading,
     refetch,
   } = useQuery({
-    // Z5-35: permissionsResult влияет на queryFn (canViewAll) — добавлен в queryKey
+    // Z5-35: permissionsResult влияет на queryFn (canViewAll) — добавлен в queryKey.
+    // TODO queryKeys: сложный ключ, переносить вдумчиво — callsite хранит в ключе
+    // can('view_all_projects') отдельно, а в queryFn canViewAll вычисляется ещё и
+    // с OR isOwner. Т.е. семантика ключа и фабрики projectKeys.listForUser не совпадает.
     queryKey: [
       'projects',
       activeWorkspaceId,
@@ -102,7 +104,7 @@ export default function ProjectsPage() {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', activeWorkspaceId] })
+      queryClient.invalidateQueries({ queryKey: projectKeys.byWorkspace(activeWorkspaceId ?? '') })
       queryClient.invalidateQueries({ queryKey: ['trash'] })
     },
   })

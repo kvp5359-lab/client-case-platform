@@ -73,7 +73,7 @@ export function MessageActions({
   onPublishDraft,
   onEditDraft,
   onViewEmail,
-  channel,
+  channel: _channel,
   onDeleteDialogOpen,
   moreMenuOpen,
   setMoreMenuOpen,

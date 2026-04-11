@@ -111,7 +111,7 @@ function ProjectRoleEditDialogContent({
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" style={{ color: safeCssColor(role.color) }} />
-          Настройка роли "{role.name}"
+          Настройка роли «{role.name}»
         </DialogTitle>
         <DialogDescription>
           Настройте доступ к модулям и разрешения внутри проектов

@@ -4,7 +4,7 @@
  * document picker bridge, deadline/status/project/access handlers, save.
  */
 
-import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useState, type RefObject } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useEmailLink, useCreateEmailLink, useRemoveEmailLink } from '@/hooks/email/useEmailLink'

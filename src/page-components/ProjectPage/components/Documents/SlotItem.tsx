@@ -35,8 +35,6 @@ export const SlotItem = memo(function SlotItem({
   onNewSlotCreated,
 }: SlotItemProps) {
   const {
-    projectId,
-    workspaceId,
     uploadingSlotId,
     onSourceDocSlotDrop,
     onMessengerAttachmentSlotDrop,

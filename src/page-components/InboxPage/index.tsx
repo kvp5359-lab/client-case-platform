@@ -22,7 +22,7 @@ import {
   markAsUnread,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
-import { messengerKeys, invalidateMessengerCaches, taskKeys } from '@/hooks/queryKeys'
+import { messengerKeys, invalidateMessengerCaches, projectTemplateKeys } from '@/hooks/queryKeys'
 import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
 import { useCreateThread, useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { TaskPanel } from '@/components/tasks/TaskPanel'
@@ -128,7 +128,7 @@ export default function InboxPage() {
 
   // Project template id активного чата — для фильтрации шаблонов тредов.
   const { data: activeProjectTemplateId = null } = useQuery<string | null>({
-    queryKey: ['project-template-id', activeChat?.project_id ?? null],
+    queryKey: projectTemplateKeys.idByProject(activeChat?.project_id ?? null),
     queryFn: async () => {
       if (!activeChat?.project_id) return null
       const { data, error } = await supabase

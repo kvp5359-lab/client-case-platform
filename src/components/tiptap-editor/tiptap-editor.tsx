@@ -95,7 +95,7 @@ export function TiptapEditor({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isFullscreen])
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- extensions не должны меняться после монтирования
+   
   const extensions = useMemo(
     () => [
       StarterKit.configure({
@@ -150,7 +150,7 @@ export function TiptapEditor({
           class: 'rounded-lg max-w-full h-auto my-2 shadow-sm',
         },
       }),
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- hasImageUpload не должен меняться после монтирования
+       
     ],
     [],
   )

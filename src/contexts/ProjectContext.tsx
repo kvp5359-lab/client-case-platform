@@ -133,7 +133,6 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
 
 // === ХУК ===
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useProject() {
   const context = useContext(ProjectContext)
   if (!context) {

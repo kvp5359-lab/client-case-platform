@@ -32,7 +32,7 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
       >
         <X className="h-6 w-6" />
       </button>
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
+      { }
       <Image
         src={src}
         alt={alt}

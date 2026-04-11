@@ -55,9 +55,7 @@ export type {
 import type {
   MessageChannel,
   ProjectMessage,
-  MessageAttachment,
   ForwardedAttachment,
-  EmailMetadata,
 } from './messengerService.types'
 
 export interface SendMessageParams {

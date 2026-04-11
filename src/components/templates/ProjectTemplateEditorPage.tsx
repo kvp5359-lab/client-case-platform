@@ -49,8 +49,6 @@ export function ProjectTemplateEditorPage() {
     linkedKnowledgeGroups,
     availableFormsFiltered,
     availableDocKitsFiltered,
-    availableKnowledgeArticlesFiltered,
-    availableKnowledgeGroupsFiltered,
     isLoading,
   } = useProjectTemplateData({ workspaceId, templateId })
 

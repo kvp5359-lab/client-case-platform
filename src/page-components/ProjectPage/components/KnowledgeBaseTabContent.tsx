@@ -32,7 +32,7 @@ interface KnowledgeBaseTabContentProps {
 }
 
 export function KnowledgeBaseTabContent({
-  projectId,
+  projectId: _projectId,
   workspaceId,
   templateId,
 }: KnowledgeBaseTabContentProps) {

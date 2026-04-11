@@ -33,7 +33,7 @@ interface GroupTreeNodeProps {
 export function GroupTreeNode({
   node,
   depth,
-  isLast,
+  isLast: _isLast,
   expandedGroups,
   selectedGroupIds,
   selectedArticleIds,

@@ -80,7 +80,7 @@ export function EditParticipantDialog({
 
   // Обновляем форму при открытии диалога
   // Синхронизация формы с пропсами — необходимо для инициализации полей при редактировании
-  /* eslint-disable react-hooks/set-state-in-effect */
+   
   useEffect(() => {
     if (participant) {
       setName(participant.name || '')
@@ -109,7 +109,7 @@ export function EditParticipantDialog({
       setAvatarPreview(null)
     }
   }, [participant, open, defaultRole])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   // Очищаем Object URL при размонтировании
   useEffect(() => {

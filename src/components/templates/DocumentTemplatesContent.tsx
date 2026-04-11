@@ -19,7 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Label } from '@/components/ui/label'
 import { Search, Plus, FileText, Trash2, Settings2, Upload } from 'lucide-react'
 import {
   useDocumentTemplates,

@@ -1,6 +1,6 @@
 /**
  * Конфигурация ролей workspace
- * TODO (Z5-10): Роли захардкожены — в будущем подтягивать из БД (таблица workspace_roles)
+ * TODO: Роли захардкожены — в будущем подтягивать из БД (таблица workspace_roles)
  */
 
 import { Crown, Users, Link, HandshakeIcon, type LucideIcon } from 'lucide-react'

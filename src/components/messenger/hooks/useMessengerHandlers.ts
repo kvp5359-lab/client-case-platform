@@ -88,7 +88,7 @@ interface UseMessengerHandlersParams {
 }
 
 export function useMessengerHandlers({
-  channel,
+  channel: _channel,
   threadId,
   isEmailChat,
   currentParticipant,

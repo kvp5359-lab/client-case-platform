@@ -89,7 +89,7 @@ export function KeyValueTableField({
       internalChangeRef.current = null
       return
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from external prop
+     
     setRows(parseRows(value))
     // parseRows использует columns через замыкание
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -228,7 +228,7 @@ export function KeyValueTableField({
                     colSpan={columns.length}
                     className="py-4 text-center text-sm text-muted-foreground"
                   >
-                    Нет строк. Нажмите "+" чтобы добавить.
+                    Нет строк. Нажмите «+» чтобы добавить.
                   </td>
                 </tr>
               ) : (
