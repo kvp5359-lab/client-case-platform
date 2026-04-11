@@ -296,4 +296,138 @@ describe('useWorkspacePermissions', () => {
 
     expect(result.current.canViewAllProjects).toBe(true)
   })
+
+  // ─── Критичные дыры безопасности ───
+
+  it('owner получает true для ВСЕХ разрешений через can(), даже не включённых в БД', async () => {
+    // Сценарий: владелец workspace в роли is_owner=true, но в БД у его роли
+    // permissions частично выключены. can() ВСЁ РАВНО должна вернуть true,
+    // потому что владелец не может потерять ни одного права.
+    const ownerRoleWithPartialPerms = makeRole(
+      'Владелец',
+      {
+        manage_workspace_settings: false,
+        delete_workspace: false,
+        manage_participants: false,
+      },
+      { is_owner: true },
+    )
+
+    setupSupabaseMock(
+      { data: { workspace_roles: ['Владелец'] }, error: null },
+      { data: [ownerRoleWithPartialPerms], error: null },
+    )
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useWorkspacePermissions(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.isOwner).toBe(true)
+    // Владелец проходит все проверки независимо от БД
+    expect(result.current.can('manage_workspace_settings')).toBe(true)
+    expect(result.current.can('delete_workspace')).toBe(true)
+    expect(result.current.can('manage_participants')).toBe(true)
+    expect(result.current.can('manage_roles')).toBe(true)
+    expect(result.current.can('manage_templates')).toBe(true)
+    expect(result.current.can('manage_statuses')).toBe(true)
+    expect(result.current.can('view_all_projects')).toBe(true)
+    expect(result.current.can('edit_all_projects')).toBe(true)
+    expect(result.current.can('delete_all_projects')).toBe(true)
+  })
+
+  it('canViewAllProjects=true для owner даже без явного view_all_projects', async () => {
+    const ownerRole = makeRole(
+      'Владелец',
+      { view_all_projects: false }, // явно false
+      { is_owner: true },
+    )
+
+    setupSupabaseMock(
+      { data: { workspace_roles: ['Владелец'] }, error: null },
+      { data: [ownerRole], error: null },
+    )
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useWorkspacePermissions(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.canViewAllProjects).toBe(true)
+  })
+
+  it('объединение трёх ролей по принципу ИЛИ работает корректно', async () => {
+    const roleA = makeRole('Координатор', {
+      create_projects: true,
+    })
+    const roleB = makeRole('Аналитик', {
+      view_all_projects: true,
+    })
+    const roleC = makeRole('Редактор', {
+      edit_all_projects: true,
+    })
+
+    setupSupabaseMock(
+      {
+        data: { workspace_roles: ['Координатор', 'Аналитик', 'Редактор'] },
+        error: null,
+      },
+      { data: [roleA, roleB, roleC], error: null },
+    )
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useWorkspacePermissions(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    // Все три права должны быть true
+    expect(result.current.permissions?.create_projects).toBe(true)
+    expect(result.current.permissions?.view_all_projects).toBe(true)
+    expect(result.current.permissions?.edit_all_projects).toBe(true)
+    // Не было ни у одной — false
+    expect(result.current.permissions?.delete_workspace).toBe(false)
+    expect(result.current.permissions?.delete_all_projects).toBe(false)
+  })
+
+  it('userRoles содержит все роли пользователя', async () => {
+    const roleA = makeRole('Аналитик', {})
+    const roleB = makeRole('Координатор', {})
+
+    setupSupabaseMock(
+      { data: { workspace_roles: ['Аналитик', 'Координатор'] }, error: null },
+      { data: [roleA, roleB], error: null },
+    )
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useWorkspacePermissions(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.userRoles).toEqual(['Аналитик', 'Координатор'])
+  })
+
+  it('refetch вызывает оба refetch без падений', async () => {
+    const role = makeRole('Сотрудник', { create_projects: true })
+    setupSupabaseMock(
+      { data: { workspace_roles: ['Сотрудник'] }, error: null },
+      { data: [role], error: null },
+    )
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useWorkspacePermissions(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(() => result.current.refetch()).not.toThrow()
+  })
 })

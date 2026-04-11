@@ -221,4 +221,133 @@ describe('projectService', () => {
       await expect(deleteProject('invalid-id')).rejects.toThrow(ProjectError)
     })
   })
+
+  // ============================================================
+  // Контрактные проверки фильтров безопасности
+  // ============================================================
+  // Эти тесты гарантируют, что запросы к БД содержат правильные
+  // фильтры — особенно is_deleted=false (защита корзины) и
+  // workspace_id (защита от утечки между воркспейсами).
+
+  describe('фильтры запроса getProjectsByWorkspace', () => {
+    it('фильтрует по workspace_id и исключает is_deleted=true', async () => {
+      const limit = vi.fn().mockResolvedValue({ data: [], error: null })
+      const order = vi.fn().mockReturnValue({ limit })
+      const eq2 = vi.fn().mockReturnValue({ order })
+      const eq1 = vi.fn().mockReturnValue({ eq: eq2 })
+      const select = vi.fn().mockReturnValue({ eq: eq1 })
+      vi.mocked(supabase.from).mockReturnValue({ select } as unknown as SupabaseFrom)
+
+      await getProjectsByWorkspace('workspace-42')
+
+      expect(supabase.from).toHaveBeenCalledWith('projects')
+      expect(eq1).toHaveBeenCalledWith('workspace_id', 'workspace-42')
+      // КРИТИЧНО: исключение проектов в корзине
+      expect(eq2).toHaveBeenCalledWith('is_deleted', false)
+      expect(order).toHaveBeenCalledWith('created_at', { ascending: false })
+      // Лимит 200 — защита от случайной выгрузки гигантских воркспейсов
+      expect(limit).toHaveBeenCalledWith(200)
+    })
+  })
+
+  describe('фильтры запроса getProjectById', () => {
+    it('фильтрует по id и использует single', async () => {
+      const single = vi.fn().mockResolvedValue({
+        data: { id: 'p-1', name: 'X' },
+        error: null,
+      })
+      const eq = vi.fn().mockReturnValue({ single })
+      const select = vi.fn().mockReturnValue({ eq })
+      vi.mocked(supabase.from).mockReturnValue({ select } as unknown as SupabaseFrom)
+
+      await getProjectById('p-1')
+
+      expect(supabase.from).toHaveBeenCalledWith('projects')
+      expect(select).toHaveBeenCalledWith('*')
+      expect(eq).toHaveBeenCalledWith('id', 'p-1')
+    })
+  })
+
+  describe('контракт deleteProject (soft delete)', () => {
+    beforeEach(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(supabase as any).auth = {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-42' } } }),
+      }
+    })
+
+    it('выставляет is_deleted=true, deleted_at и deleted_by, фильтрует по id', async () => {
+      const eq = vi.fn().mockResolvedValue({ error: null })
+      const update = vi.fn().mockReturnValue({ eq })
+      vi.mocked(supabase.from).mockReturnValue({ update } as unknown as SupabaseFrom)
+
+      await deleteProject('p-99')
+
+      expect(supabase.from).toHaveBeenCalledWith('projects')
+      // КРИТИЧНО: проверяем что это именно soft delete, а не DELETE
+      expect(update).toHaveBeenCalledTimes(1)
+      const updatePayload = update.mock.calls[0][0]
+      expect(updatePayload.is_deleted).toBe(true)
+      expect(updatePayload.deleted_at).toBeDefined()
+      expect(typeof updatePayload.deleted_at).toBe('string')
+      // Записан текущий пользователь — для аудита
+      expect(updatePayload.deleted_by).toBe('user-42')
+      // Только конкретный проект, не вся таблица
+      expect(eq).toHaveBeenCalledWith('id', 'p-99')
+    })
+
+    it('записывает deleted_by=null если нет авторизованного пользователя', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(supabase as any).auth = {
+        getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
+      }
+      const eq = vi.fn().mockResolvedValue({ error: null })
+      const update = vi.fn().mockReturnValue({ eq })
+      vi.mocked(supabase.from).mockReturnValue({ update } as unknown as SupabaseFrom)
+
+      await deleteProject('p-99')
+
+      const updatePayload = update.mock.calls[0][0]
+      expect(updatePayload.deleted_by).toBe(null)
+    })
+  })
+
+  describe('контракт createProject', () => {
+    it('передаёт переданные данные в insert и возвращает single result', async () => {
+      const newProject = {
+        name: 'Test',
+        workspace_id: 'ws-1',
+      } as unknown as Parameters<typeof createProject>[0]
+      const single = vi.fn().mockResolvedValue({
+        data: { id: 'new', ...newProject },
+        error: null,
+      })
+      const select = vi.fn().mockReturnValue({ single })
+      const insert = vi.fn().mockReturnValue({ select })
+      vi.mocked(supabase.from).mockReturnValue({ insert } as unknown as SupabaseFrom)
+
+      await createProject(newProject)
+
+      expect(insert).toHaveBeenCalledWith(newProject)
+    })
+  })
+
+  describe('контракт updateProject', () => {
+    it('передаёт обновления в update и фильтрует по id', async () => {
+      const updates = { name: 'New name', status: 'completed' }
+      const single = vi.fn().mockResolvedValue({
+        data: { id: 'p-1', ...updates },
+        error: null,
+      })
+      const select = vi.fn().mockReturnValue({ single })
+      const eq = vi.fn().mockReturnValue({ select })
+      const update = vi.fn().mockReturnValue({ eq })
+      vi.mocked(supabase.from).mockReturnValue({ update } as unknown as SupabaseFrom)
+
+      await updateProject('p-1', updates as unknown as Parameters<typeof updateProject>[1])
+
+      expect(update).toHaveBeenCalledWith(updates)
+      expect(eq).toHaveBeenCalledWith('id', 'p-1')
+    })
+  })
 })

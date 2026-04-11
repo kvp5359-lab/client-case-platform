@@ -482,4 +482,201 @@ describe('useProjectPermissions', () => {
     expect(result.current.permissions).toBeNull()
     expect(result.current.moduleAccess).toBeNull()
   })
+
+  // ─── Критичные дыры безопасности ───
+
+  it('пользователь НЕ участник проекта получает null permissions и moduleAccess', async () => {
+    // project_participants возвращает null — пользователя нет среди участников
+    setupSupabaseMock({
+      projectData: { data: { workspace_id: 'ws-1' }, error: null },
+      projectParticipantData: { data: null, error: null },
+      rolesData: { data: [makeProjectRole('Исполнитель', { documents: true }, {})], error: null },
+    })
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useProjectPermissions({ projectId: 'proj-1' }), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    // Не участник → нет ролей → нет прав
+    expect(result.current.userProjectRoles).toEqual([])
+    expect(result.current.permissions).toBeNull()
+    expect(result.current.moduleAccess).toBeNull()
+    expect(result.current.hasModuleAccess('documents')).toBe(false)
+    expect(result.current.hasModuleAccess('settings')).toBe(false)
+    expect(result.current.can('documents', 'view_documents')).toBe(false)
+  })
+
+  it('require() выбрасывает PermissionError для отсутствующего разрешения', async () => {
+    const role = makeProjectRole(
+      'Просмотр',
+      { documents: true },
+      {
+        documents: { view_documents: true, delete_documents: false },
+      },
+    )
+
+    setupSupabaseMock({
+      projectData: { data: { workspace_id: 'ws-1' }, error: null },
+      projectParticipantData: { data: { project_roles: ['Просмотр'] }, error: null },
+      rolesData: { data: [role], error: null },
+    })
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useProjectPermissions({ projectId: 'proj-1' }), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    // Разрешённое — не падает
+    expect(() => result.current.require('documents', 'view_documents')).not.toThrow()
+    // Запрещённое — выбрасывает PermissionError
+    expect(() => result.current.require('documents', 'delete_documents')).toThrow(
+      /Нет разрешения/,
+    )
+  })
+
+  it('require() для не участника проекта выбрасывает PermissionError', async () => {
+    setupSupabaseMock({
+      projectData: { data: { workspace_id: 'ws-1' }, error: null },
+      projectParticipantData: { data: null, error: null },
+      rolesData: { data: [], error: null },
+    })
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useProjectPermissions({ projectId: 'proj-1' }), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(() => result.current.require('documents', 'view_documents')).toThrow()
+    expect(() => result.current.require('settings', 'edit_project_info')).toThrow()
+  })
+
+  it('can() для модуля без разрешения возвращает false', async () => {
+    const role = makeProjectRole(
+      'Документы',
+      { documents: true, comments: false },
+      {
+        documents: { view_documents: true },
+      },
+    )
+
+    setupSupabaseMock({
+      projectData: { data: { workspace_id: 'ws-1' }, error: null },
+      projectParticipantData: { data: { project_roles: ['Документы'] }, error: null },
+      rolesData: { data: [role], error: null },
+    })
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useProjectPermissions({ projectId: 'proj-1' }), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    // can для модуля без активных разрешений
+    expect(result.current.can('comments', 'view_comments')).toBe(false)
+    expect(result.current.can('settings', 'delete_project')).toBe(false)
+  })
+
+  it('userProjectRoles содержит все роли пользователя в проекте', async () => {
+    const roleA = makeProjectRole('Юрист', { documents: true }, {})
+    const roleB = makeProjectRole('Координатор', { settings: true }, {})
+
+    setupSupabaseMock({
+      projectData: { data: { workspace_id: 'ws-1' }, error: null },
+      projectParticipantData: {
+        data: { project_roles: ['Юрист', 'Координатор'] },
+        error: null,
+      },
+      rolesData: { data: [roleA, roleB], error: null },
+    })
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useProjectPermissions({ projectId: 'proj-1' }), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.userProjectRoles).toEqual(['Юрист', 'Координатор'])
+  })
+
+  it('переименование роли НЕ ломает доступ если имя в project_participants совпадает', async () => {
+    // project_participants хранит имена ролей. Если в project_roles есть роль с тем же именем,
+    // доступ работает. Это документирует архитектурное решение.
+    const role = makeProjectRole('Юрист', { documents: true }, {
+      documents: { view_documents: true },
+    })
+
+    setupSupabaseMock({
+      projectData: { data: { workspace_id: 'ws-1' }, error: null },
+      projectParticipantData: { data: { project_roles: ['Юрист'] }, error: null },
+      rolesData: { data: [role], error: null },
+    })
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useProjectPermissions({ projectId: 'proj-1' }), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.can('documents', 'view_documents')).toBe(true)
+  })
+
+  it('если у пользователя роль, которой нет в project_roles — все права false', async () => {
+    // project_participants ссылается на роль, которой не существует в project_roles
+    // (например, удалили или переименовали). Хук возвращает не null, а merged-объект
+    // со всеми false. Функционально пользователь без прав.
+    setupSupabaseMock({
+      projectData: { data: { workspace_id: 'ws-1' }, error: null },
+      projectParticipantData: { data: { project_roles: ['Юрист'] }, error: null },
+      rolesData: { data: [], error: null }, // Роли нет
+    })
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useProjectPermissions({ projectId: 'proj-1' }), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.userProjectRoles).toEqual(['Юрист'])
+    // permissions/moduleAccess не null, но все значения false
+    expect(result.current.permissions).not.toBeNull()
+    expect(result.current.moduleAccess).not.toBeNull()
+    // Все важные права запрещены
+    expect(result.current.permissions?.documents.view_documents).toBe(false)
+    expect(result.current.permissions?.documents.delete_documents).toBe(false)
+    expect(result.current.permissions?.settings.edit_project_info).toBe(false)
+    expect(result.current.permissions?.settings.delete_project).toBe(false)
+    expect(result.current.moduleAccess?.documents).toBe(false)
+    expect(result.current.moduleAccess?.settings).toBe(false)
+    // hasModuleAccess и can тоже отказывают
+    expect(result.current.hasModuleAccess('documents')).toBe(false)
+    expect(result.current.can('documents', 'view_documents')).toBe(false)
+  })
+
+  it('refetch вызывает оба refetch без падений', async () => {
+    setupSupabaseMock({
+      projectData: { data: { workspace_id: 'ws-1' }, error: null },
+      projectParticipantData: { data: null, error: null },
+      rolesData: { data: [], error: null },
+    })
+
+    const { wrapper } = createQueryWrapper()
+    const { result } = renderHook(() => useProjectPermissions({ projectId: 'proj-1' }), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(() => result.current.refetch()).not.toThrow()
+  })
 })
