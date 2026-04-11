@@ -4,7 +4,7 @@
  * Карточка папки в карточном представлении
  */
 
-import { memo, useMemo, useState, useEffect, Fragment } from 'react'
+import { memo, useMemo, useState, Fragment } from 'react'
 import { cn } from '@/lib/utils'
 import { DocumentItem } from './DocumentItem'
 import { SlotItem } from './SlotItem'
@@ -79,12 +79,16 @@ export const FolderCard = memo(function FolderCard({
 
   const isUploading = sourceUploadFolderId === folder.id
 
-  // Снимок ID скрытых документов — фиксируется при переключении filterMode
+  // Снимок ID скрытых документов — фиксируется ПРИ переключении filterMode.
+  // Реализовано через tracked previous filterMode (derived-update), а не через
+  // useEffect+setState, чтобы не нарушать set-state-in-effect. На момент снимка
+  // используем актуальные documents/slots/statuses — они как раз те, что видит
+  // пользователь в момент клика по фильтру.
   const [hiddenDocIds, setHiddenDocIds] = useState<Set<string>>(new Set())
   const [hiddenSlotIds, setHiddenSlotIds] = useState<Set<string>>(new Set())
-
-   
-  useEffect(() => {
+  const [prevFilterMode, setPrevFilterMode] = useState(filterMode)
+  if (filterMode !== prevFilterMode) {
+    setPrevFilterMode(filterMode)
     if (filterMode === 'action-required') {
       setHiddenDocIds(
         new Set(
@@ -111,7 +115,7 @@ export const FolderCard = memo(function FolderCard({
       setHiddenDocIds(new Set())
       setHiddenSlotIds(new Set())
     }
-  }, [filterMode])
+  }
 
   // Фильтрация документов по зафиксированному снимку
   const filteredDocuments = useMemo(() => {

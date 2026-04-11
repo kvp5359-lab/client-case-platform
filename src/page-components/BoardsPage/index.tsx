@@ -290,13 +290,16 @@ export default function BoardsPage() {
     closePanel()
   }, [closePanel])
 
-  // Инициализация из query-параметра ?board=<id> (клик из сайдбара)
+  // Инициализация из query-параметра ?board=<id> (клик из сайдбара).
+  // Синхронизация при смене URL — через tracked previous (derived-update),
+  // без useEffect+setState: при смене boardFromUrl локальный state подхватывает его.
   const boardFromUrl = searchParams.get('board')
   const [activeBoardId, setActiveBoardId] = useState<string | null>(boardFromUrl)
-
-  useEffect(() => {
+  const [prevBoardFromUrl, setPrevBoardFromUrl] = useState(boardFromUrl)
+  if (boardFromUrl !== prevBoardFromUrl) {
+    setPrevBoardFromUrl(boardFromUrl)
     if (boardFromUrl) setActiveBoardId(boardFromUrl)
-  }, [boardFromUrl])
+  }
 
   const resolvedBoardId = activeBoardId && boards?.some((b) => b.id === activeBoardId)
     ? activeBoardId

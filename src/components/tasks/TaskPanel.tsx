@@ -107,35 +107,51 @@ export function TaskPanel({
   // «Кто видит чат» и не подгружает участников.
   const { data: fullThread } = useProjectThreadById(task?.id, settingsOpen)
 
-  // Загрузка project_name, если не передан
-  const [resolvedProjectName, setResolvedProjectName] = useState<string | null>(null)
+  // Загрузка project_name:
+  // - Если task.project_name уже передан — берём его синхронно (derived).
+  // - Иначе запрашиваем из БД в эффекте и кладём в fetchedProjectName.
+  // Разделение убирает setState-в-эффекте для синхронной ветки.
+  const [fetchedProjectName, setFetchedProjectName] = useState<string | null>(null)
   useEffect(() => {
-    if (!task?.project_id) { setResolvedProjectName(null); return }
-    if (task.project_name) { setResolvedProjectName(task.project_name); return }
+    if (!task?.project_id || task.project_name) return
+    let cancelled = false
     supabase
       .from('projects')
       .select('name')
       .eq('id', task.project_id)
       .single()
-      .then(({ data }) => setResolvedProjectName(data?.name ?? null))
+      .then(({ data }) => {
+        if (!cancelled) setFetchedProjectName(data?.name ?? null)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [task?.project_id, task?.project_name])
+  const resolvedProjectName = task?.project_name ?? (task?.project_id ? fetchedProjectName : null)
 
-  // Анимация
-  const [visible, setVisible] = useState(false)
+  // Анимация «въезда». painted включается через rAF после open=true,
+  // чтобы Tailwind-переход translate-x мог сработать с первого кадра.
+  // Сброс при закрытии — через derived-update по tracked previous `open`,
+  // чтобы не вызывать setState напрямую в useEffect-ветке (set-state-in-effect).
+  const [painted, setPainted] = useState(false)
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (!open) setPainted(false)
+  }
+  useEffect(() => {
+    if (!open) return
+    const id = requestAnimationFrame(() => setPainted(true))
+    document.body.setAttribute('data-task-panel-open', '')
+    return () => {
+      cancelAnimationFrame(id)
+      document.body.removeAttribute('data-task-panel-open')
+    }
+  }, [open])
+  const visible = open && painted
 
   const isTask = task?.type === 'task'
   const isEmail = !isTask && (task?.contact_emails?.length ?? 0) > 0
-
-  useEffect(() => {
-    if (open) {
-      requestAnimationFrame(() => setVisible(true))
-      document.body.setAttribute('data-task-panel-open', '')
-    } else {
-      setVisible(false)
-      document.body.removeAttribute('data-task-panel-open')
-    }
-    return () => document.body.removeAttribute('data-task-panel-open')
-  }, [open])
 
   // Закрытие по Escape (Escape с приоритетом: встроенный список тредов → панель)
   useEffect(() => {

@@ -30,7 +30,7 @@ export function useFormFieldSaveHandlers({
   canFillForms,
 }: UseFormFieldSaveHandlersParams) {
   const [originalValues, setOriginalValues] = useState<Record<string, string>>({})
-  const isInitialized = useRef(false)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // Актуальные значения для cleanup при размонтировании
   const formDataRef = useRef(formData)
@@ -51,20 +51,21 @@ export function useFormFieldSaveHandlers({
     canFillFormsRef.current = canFillForms
   }, [canFillForms])
 
-  // Z2-10: Сброс при смене анкеты — иначе originalValues остаётся от предыдущей
-  // Запоминаем исходные значения при первой загрузке formData
-   
-  useEffect(() => {
-    isInitialized.current = false
+  // Z2-10: Сброс originalValues при смене анкеты + снимок при первой загрузке formData.
+  // Реализовано через tracked previous formKitId (derived-update), без setState-в-эффекте.
+  // Логика ровно та же: новая анкета → сброс originalValues и флага инициализации;
+  // дальше первый непустой formData попадает в снимок.
+  const [prevFormKitId, setPrevFormKitId] = useState(formKitId)
+  if (formKitId !== prevFormKitId) {
+    setPrevFormKitId(formKitId)
+    setIsInitialized(false)
     setOriginalValues({})
-  }, [formKitId])
-  useEffect(() => {
-    if (Object.keys(formData).length > 0 && !isInitialized.current) {
-      isInitialized.current = true
-      setOriginalValues({ ...formData })
-    }
-  }, [formData])
-   
+  }
+  if (Object.keys(formData).length > 0 && !isInitialized) {
+    setIsInitialized(true)
+    setOriginalValues({ ...formData })
+  }
+
 
   // Функция сохранения всех изменённых полей (используется в нескольких местах)
   const saveAllDirtyFields = useCallback(() => {

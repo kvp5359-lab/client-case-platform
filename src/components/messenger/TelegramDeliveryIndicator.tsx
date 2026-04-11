@@ -37,6 +37,9 @@ export function useTelegramDeliveryStatus(
 
   const hasAttachments = message.attachments && message.attachments.length > 0
 
+  // Тikают только таймеры "считать failed по истечении 30с".
+  // Явная отметка "not delivered = false" вычисляется derived на рендере ниже —
+  // setState для этого кейса не нужен (устраняет cascading-рендер).
   useEffect(() => {
     if (!showTgIndicator) return
 
@@ -48,13 +51,7 @@ export function useTelegramDeliveryStatus(
       return () => clearTimeout(timer)
     }
 
-    // Текст доставлен, но вложения явно не доставлены
-    if (hasAttachments && message.telegram_attachments_delivered === false) {
-      setTgFailed(true)
-      return
-    }
-
-    // Текст доставлен, вложения ещё в процессе (null = не записано)
+    // Текст доставлен, вложения ещё в процессе (null = не записано) — таймер
     if (hasAttachments && message.telegram_attachments_delivered === null) {
       const ageMs = Date.now() - new Date(message.created_at).getTime()
       const remaining = ageMs > 30_000 ? 0 : 30_000 - ageMs + 500

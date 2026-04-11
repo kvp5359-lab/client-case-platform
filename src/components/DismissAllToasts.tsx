@@ -9,12 +9,11 @@ export function DismissAllToasts() {
   const { toasts } = useSonner()
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
 
-  // Отслеживаем позицию верхнего тоста чтобы разместить кнопку над ним
+  // Отслеживаем позицию верхнего тоста чтобы разместить кнопку над ним.
+  // Ранний выход при недостаточном числе тостов — без setState в эффекте:
+  // рендер и так вернёт null, а при следующем эффекте pos переписался бы заново.
   useEffect(() => {
-    if (toasts.length < 2) {
-      setPos(null)
-      return
-    }
+    if (toasts.length < 2) return
     const update = () => {
       const items = document.querySelectorAll('[data-sonner-toast]')
       if (!items.length) return
@@ -37,7 +36,9 @@ export function DismissAllToasts() {
     return () => clearInterval(id)
   }, [toasts.length])
 
-  if (toasts.length < 2 || pos === null) return null
+  if (toasts.length < 2 || pos === null) {
+    return null
+  }
 
   return (
     <button
