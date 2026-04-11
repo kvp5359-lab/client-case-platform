@@ -67,7 +67,17 @@ export interface InboxThreadEntry {
   unread_event_count: number
 }
 
-/** @deprecated Используй getInboxThreadsV2 */
+/**
+ * v1 inbox RPC — возвращает данные сгруппированные ПО ПРОЕКТАМ (одна строка = один проект,
+ * с client_thread_id + internal_thread_id в той же строке).
+ *
+ * Не `@deprecated`: используется осознанно в `useInboxThreads` (сайдбар, favicon, реакции),
+ * где нужна project-level агрегация. v2 — это ТРЕД-ориентированная модель (одна строка = один тред),
+ * она параллельно живёт и используется в местах, где нужна thread-level детализация.
+ *
+ * Полная миграция с v1 на v2 требует переписывания сайдбара/favicon на thread-level
+ * агрегацию — отдельная задача (см. docs/audit-2026-04-11-third-pass.md, Зона 2).
+ */
 export async function getInboxThreads(workspaceId: string, userId: string): Promise<InboxThread[]> {
   const { data, error } = await supabase.rpc('get_inbox_threads', {
     p_workspace_id: workspaceId,
