@@ -426,12 +426,15 @@ body[data-task-panel-open] [data-sonner-toaster][data-x-position='right'] {
   transform: none !important;
 }
 
-/* Sonner toast: кнопка «Прочитано» видна только при hover */
+/* Sonner toast: кнопки действий видны только при hover (поверх, не влияют на ширину текста) */
 [data-sonner-toast] .toast-actions {
-  display: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
 }
 [data-sonner-toast]:hover .toast-actions {
-  display: inline-flex;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* Кнопка-полоска боковой панели: выезжает справа налево */

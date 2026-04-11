@@ -95,7 +95,7 @@ export function buildToastContent(
   return createElement(
     'div',
     {
-      className: `flex items-start gap-3 bg-white rounded-lg shadow-lg border-2 ${borderColor} px-4 py-3 text-foreground cursor-pointer`,
+      className: `relative flex items-start gap-3 bg-white rounded-lg shadow-lg border-2 ${borderColor} px-4 py-3 text-foreground cursor-pointer`,
       style: { width: 420 },
       onClick: onOpen,
     },
@@ -127,14 +127,17 @@ export function buildToastContent(
     ),
     createElement(
       'div',
-      { className: 'flex items-center gap-0.5 shrink-0 -mt-0.5 -mr-1' },
+      {
+        className:
+          'toast-actions absolute top-1 right-1 flex items-center gap-0.5 bg-white/90 backdrop-blur-sm rounded',
+      },
       createElement(
         'button',
         {
           type: 'button',
           title: 'Прочитано',
           className:
-            'toast-actions p-0.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors',
+            'p-0.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors',
           onClick: (e: { stopPropagation: () => void }) => {
             e.stopPropagation()
             onMarkRead()
