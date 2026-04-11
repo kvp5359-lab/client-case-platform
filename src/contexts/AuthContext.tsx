@@ -22,6 +22,8 @@ import { User, AuthError, Session } from '@supabase/supabase-js'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { safeInternalPath } from '@/hooks/shared/useAuthRedirect'
+import { useSidePanelStore } from '@/store/sidePanelStore'
+import { useDocumentKitUIStore } from '@/store/documentKitUI/store'
 
 // Типы для контекста
 interface AuthContextType {
@@ -102,6 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
     queryClient.clear()
+    // Чистим клиентские сторы, чтобы не осталось данных предыдущего пользователя
+    // (AI-сессии, контекст страницы, состояние документ-кита, открытые чаты и т.п.)
+    useSidePanelStore.getState().reset()
+    useDocumentKitUIStore.getState().resetState()
   }, [queryClient])
 
   const value = useMemo(

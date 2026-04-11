@@ -141,6 +141,9 @@ export interface SidePanelStore {
   /** Pending first message — shown optimistically when chat is created with initial message */
   pendingInitialMessage: PendingInitialMessage | null
   setPendingInitialMessage: (msg: PendingInitialMessage | null) => void
+
+  /** Полный сброс стора — вызывается при logout, чтобы не осталось данных предыдущего пользователя */
+  reset: () => void
 }
 
 export interface PendingInitialMessage {

@@ -27,6 +27,30 @@ export function lsSet(key: string, value: unknown) {
   }
 }
 
+/**
+ * Полная очистка всех ключей панели из localStorage — вызывается при logout.
+ * Удаляет фиксированные ключи и все ключи по префиксам (per-project).
+ */
+export function lsClearPanelKeys() {
+  try {
+    localStorage.removeItem(LS_KEY_SOURCES)
+    localStorage.removeItem(LS_KEY_CONVERSATIONS)
+    localStorage.removeItem(LS_KEY_AI_TAB)
+    localStorage.removeItem(LS_KEY_PANEL_STATE)
+    const prefixes = [LS_KEY_SOURCES_PREFIX, LS_KEY_PANEL_TAB_PREFIX, LS_KEY_ACTIVE_THREAD_PREFIX]
+    const toRemove: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && prefixes.some((p) => key.startsWith(p))) {
+        toRemove.push(key)
+      }
+    }
+    toRemove.forEach((key) => localStorage.removeItem(key))
+  } catch {
+    // localStorage недоступен — игнорируем
+  }
+}
+
 function buildInitialAiSessions(
   persistedConversations: Record<string, string>,
   persistedSources: AiSources,

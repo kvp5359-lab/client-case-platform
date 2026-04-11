@@ -26,6 +26,7 @@ import { DEFAULT_AI_SOURCES } from './sidePanelStore.types'
 import {
   lsGet,
   lsSet,
+  lsClearPanelKeys,
   loadPersistedState,
   LS_KEY_SOURCES,
   LS_KEY_SOURCES_PREFIX,
@@ -269,6 +270,28 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
 
   pendingInitialMessage: null,
   setPendingInitialMessage: (msg) => set({ pendingInitialMessage: msg }),
+
+  reset: () => {
+    // Чистим ключи localStorage, связанные с панелью (per-project AI-сессии, вкладки и т.п.),
+    // чтобы при входе другого пользователя не осталось следов предыдущего.
+    lsClearPanelKeys()
+    set({
+      panelTab: null,
+      lastPanelTab: 'assistant',
+      messengerOpen: false,
+      aiOpen: false,
+      requestedMessengerChannel: null,
+      pageContext: { workspaceId: null },
+      threadsEnabled: false,
+      activeAiTab: null,
+      aiSessions: {},
+      pendingAiDocuments: [],
+      pendingMessengerDocuments: null,
+      pendingForwardMessage: null,
+      activeChatId: null,
+      pendingInitialMessage: null,
+    })
+  },
 
   openChat: (chatId, channel) => {
     const tab: PanelTab = channel === 'internal' ? 'internal' : 'client'
