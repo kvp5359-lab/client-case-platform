@@ -152,7 +152,7 @@ export function TiptapEditor({
       }),
        
     ],
-    [],
+    [placeholder],
   )
 
   const editor = useEditor({

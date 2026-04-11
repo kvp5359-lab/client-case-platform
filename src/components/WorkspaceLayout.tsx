@@ -158,22 +158,24 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   const [initialTemplate, setInitialTemplate] = useState<ThreadTemplate | null>(null)
   const settingsOpen = settingsChat !== null
 
-  // TaskPanel
+  // TaskPanel. Деструктурируем setOpenThread/pushThread из tp, чтобы
+  // линтер не требовал весь объект tp в deps memo/эффектов (он новый на каждом рендере).
   const tp = useTaskPanelSetup({ workspaceId })
+  const { setOpenThread: tpSetOpenThread, pushThread: tpPushThread } = tp
   const taskPanelCtx = useMemo(
     () => ({
-      openThread: tp.setOpenThread,
-      pushThread: tp.pushThread,
-      closeThread: () => tp.setOpenThread(null),
+      openThread: tpSetOpenThread,
+      pushThread: tpPushThread,
+      closeThread: () => tpSetOpenThread(null),
     }),
-    [tp.setOpenThread, tp.pushThread],
+    [tpSetOpenThread, tpPushThread],
   )
 
   // Глобальный ref для открытия TaskPanel из хуков вне React-дерева
   useEffect(() => {
-    setGlobalOpenThread(tp.setOpenThread)
+    setGlobalOpenThread(tpSetOpenThread)
     return () => setGlobalOpenThread(null)
-  }, [tp.setOpenThread])
+  }, [tpSetOpenThread])
 
   // При смене проекта закрываем TaskPanel, если открытый тред относится к
   // другому проекту (или к workspace-level: project_id === null).

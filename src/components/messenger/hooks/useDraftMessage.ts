@@ -80,7 +80,7 @@ export function useDraftMessage(
       clearTimeout(draftTimerRef.current)
       draftTimerRef.current = null
     }
-  }, [draftKey, editorReady, editingMessage])
+  }, [draftKey, editorReady, editingMessage, editorRef, setHasText])
 
   return { saveDraft, clearDraft, skipDraftRestoreRef }
 }

@@ -4,7 +4,7 @@
  * Хук для управления привязкой Telegram-группы к проекту
  */
 
-import { useEffect, useId } from 'react'
+import { useEffect, useId, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -28,9 +28,13 @@ export function useTelegramLink(
   polling = false,
 ) {
   const queryClient = useQueryClient()
-  const telegramLinkKey = threadId
-    ? messengerKeys.telegramLinkByThreadId(threadId)
-    : ['messenger', 'telegram-link', 'no-thread']
+  const telegramLinkKey = useMemo(
+    () =>
+      threadId
+        ? messengerKeys.telegramLinkByThreadId(threadId)
+        : ['messenger', 'telegram-link', 'no-thread'],
+    [threadId],
+  )
 
   const query = useQuery({
     queryKey: telegramLinkKey,

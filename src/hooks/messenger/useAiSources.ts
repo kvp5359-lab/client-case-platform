@@ -47,12 +47,12 @@ export function useAiSources(options?: UseAiSourcesOptions) {
       if (key === 'knowledge') return prev
       return { ...prev, [key]: !prev[key] }
     })
-  }, [])
+  }, [setSources])
 
   /** Toggle knowledge: project → all → off (null) */
   const setKnowledge = useCallback((value: 'project' | 'all' | null) => {
     setSources((prev) => ({ ...prev, knowledge: value }))
-  }, [])
+  }, [setSources])
 
   const disableAllSources = useCallback(() => {
     setSources({
@@ -62,7 +62,7 @@ export function useAiSources(options?: UseAiSourcesOptions) {
       documents: false,
       knowledge: null,
     })
-  }, [])
+  }, [setSources])
 
   return {
     sources,

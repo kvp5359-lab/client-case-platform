@@ -62,8 +62,10 @@ export default function InboxPage() {
   const [createDefaultTab, setCreateDefaultTab] = useState<'task' | 'chat' | 'email'>('task')
   const [createTemplate, setCreateTemplate] = useState<ThreadTemplate | null>(null)
 
-  // TaskPanel
+  // TaskPanel. Деструктурируем setOpenThread из tp, чтобы линтер не требовал
+  // весь объект tp в deps useCallback (он новый на каждом рендере).
   const tp = useTaskPanelSetup({ workspaceId: workspaceId ?? '' })
+  const { setOpenThread: tpSetOpenThread } = tp
 
   useEffect(() => {
     closePanel()
@@ -232,12 +234,12 @@ export default function InboxPage() {
             setCreateDialogOpen(false)
             setCreateTemplate(null)
             invalidateInbox()
-            tp.setOpenThread(newThreadToTaskItem(newChat as ProjectThread, result))
+            tpSetOpenThread(newThreadToTaskItem(newChat as ProjectThread, result))
           },
         },
       )
     },
-    [createChatMutation, user, workspaceId, setPendingInitialMessage, invalidateInbox],
+    [createChatMutation, user, workspaceId, setPendingInitialMessage, invalidateInbox, tpSetOpenThread],
   )
 
   const getChannel = (chat: InboxThreadEntry): MessageChannel =>

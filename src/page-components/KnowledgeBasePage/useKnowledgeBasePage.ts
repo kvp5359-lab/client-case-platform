@@ -150,8 +150,10 @@ export function useKnowledgeBasePage() {
 
   // --- Filtering ---
 
-  const articles = articlesQuery.data || []
-  const statuses = statusesQuery.data || []
+  // useMemo, чтобы || [] не создавал новый массив на каждом рендере и не
+  // ломал мемоизацию filteredArticles ниже.
+  const articles = useMemo(() => articlesQuery.data ?? [], [articlesQuery.data])
+  const statuses = useMemo(() => statusesQuery.data ?? [], [statusesQuery.data])
 
   // Мемоизация: фильтрация перестаёт пересчитываться при рендерах, где выборки
   // не изменились. searchQuery.toLowerCase() теперь вычисляется один раз, а не на

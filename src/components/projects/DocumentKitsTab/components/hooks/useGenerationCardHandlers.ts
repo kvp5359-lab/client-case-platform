@@ -4,7 +4,7 @@
  * Хук логики GenerationCard — состояние, мутации, хендлеры
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import {
   useUpdateDocumentGeneration,
   useDeleteDocumentGeneration,
@@ -38,8 +38,16 @@ export function useGenerationCardHandlers(
   projectId: string,
 ) {
   const { data: templates = [] } = useDocumentTemplates(workspaceId)
-  const template = templates.find((t) => t.id === generation.document_template_id)
-  const placeholders = (template?.placeholders || []) as DocumentTemplatePlaceholder[]
+  const template = useMemo(
+    () => templates.find((t) => t.id === generation.document_template_id),
+    [templates, generation.document_template_id],
+  )
+  // Мемоизация: иначе (template?.placeholders || []) даёт новую ссылку каждый рендер
+  // и ломает мемоизацию useCallback-ов ниже.
+  const placeholders = useMemo(
+    () => (template?.placeholders || []) as DocumentTemplatePlaceholder[],
+    [template],
+  )
 
   const updateMutation = useUpdateDocumentGeneration()
   const deleteMutation = useDeleteDocumentGeneration()

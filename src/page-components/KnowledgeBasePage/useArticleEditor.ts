@@ -216,9 +216,8 @@ export function useArticleEditor() {
       saveTimeoutRef.current = setTimeout(() => {
         if (isMountedRef.current) updateContentMutation.mutate(newContent)
       }, 1500)
-       
     },
-    [articleId],
+    [articleId, updateContentMutation],
   )
 
   // Flush pending save + cleanup on unmount

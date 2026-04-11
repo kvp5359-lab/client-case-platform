@@ -57,9 +57,11 @@ export function useKnowledgeQAData(workspaceId: string) {
     },
   })
 
-  const qaItems = qaQuery.data ?? []
-  const tags = tagsQuery.data ?? []
-  const groups = groupsQuery.data ?? []
+  // useMemo, чтобы ?? [] не создавал новый массив на каждом рендере и
+  // не ломал мемоизацию filteredItems ниже.
+  const qaItems = useMemo(() => qaQuery.data ?? [], [qaQuery.data])
+  const tags = useMemo(() => tagsQuery.data ?? [], [tagsQuery.data])
+  const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data])
 
   // --- Search & filters ---
 

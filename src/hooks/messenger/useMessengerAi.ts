@@ -303,6 +303,8 @@ export function useMessengerAi(
       documents,
       attachedDocuments,
       clearAttachedDocuments,
+      setAiMessages,
+      setIsStreaming,
     ],
   )
 
@@ -310,7 +312,7 @@ export function useMessengerAi(
     abortRef.current?.abort()
     setIsStreaming(false)
     setStreamingContent(null)
-  }, [])
+  }, [setIsStreaming])
 
   const startNewChat = useCallback(() => {
     stop()
@@ -318,7 +320,7 @@ export function useMessengerAi(
     setError(null)
     sessionDocsRef.current.clear()
     onSessionDocsChangeRef.current?.({})
-  }, [stop])
+  }, [stop, setAiMessages])
 
   return {
     aiMessages,

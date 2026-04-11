@@ -209,11 +209,11 @@ export function useMessengerState({
   const setQuoteTextRef = useRef(setQuoteText)
   useEffect(() => {
     setQuoteTextRef.current = setQuoteText
-  })
+  }, [setQuoteText])
   const setForwardedAttachmentsRef = useRef(setForwardedAttachments)
   useEffect(() => {
     setForwardedAttachmentsRef.current = setForwardedAttachments
-  })
+  }, [setForwardedAttachments])
 
   useEffect(() => {
     if (!pendingForwardMessage) return

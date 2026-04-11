@@ -192,7 +192,7 @@ export function useDocumentKitHandlers({
       logger.error('Ошибка удаления набора документов:', error)
       toast.error('Не удалось удалить набор документов')
     }
-  }, [])
+  }, [router, pathname])
 
   const handleUpdateStatus = useCallback(async (documentId: string, newStatus: string | null) => {
     const r = latestRef.current

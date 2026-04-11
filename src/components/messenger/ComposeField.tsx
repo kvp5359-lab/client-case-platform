@@ -241,7 +241,7 @@ export const ComposeField = forwardRef<ComposeFieldHandle, ComposeFieldProps>(fu
       focus: () => editorRef.current?.commands.focus('end'),
       editor,
     }),
-    [files, hasContent, editor],
+    [files, hasContent, editor, addFiles],
   )
 
   return (

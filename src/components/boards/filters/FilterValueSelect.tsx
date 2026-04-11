@@ -88,7 +88,7 @@ function useFieldOptions(
       default:
         return []
     }
-  }, [fieldKey, entityType, statuses, participants])
+  }, [fieldKey, statuses, participants])
 }
 
 /** Нормализует value в массив строк */
