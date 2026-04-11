@@ -172,12 +172,7 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             if (!participant) return
             if (!msg.thread_id) return
             await markAsRead(participant.participantId, msg.project_id, msgChannel, msg.thread_id)
-            queryClient.setQueryData(
-              msg.thread_id
-                ? messengerKeys.unreadCountByThreadId(msg.thread_id)
-                : messengerKeys.unreadCount(msg.project_id, msgChannel),
-              0,
-            )
+            queryClient.setQueryData(messengerKeys.unreadCountByThreadId(msg.thread_id), 0)
             queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
           }
 

@@ -31,15 +31,13 @@ interface PendingMessage {
 export function useDelayedSend(
   projectId: string | undefined,
   workspaceId: string,
-  channel: MessageChannel = 'client',
-  threadId?: string,
+  channel: MessageChannel,
+  threadId: string,
 ) {
   const queryClient = useQueryClient()
   const [pendingMessages, setPendingMessages] = useState<Map<string, PendingMessage>>(new Map())
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-  const messagesKey = threadId
-    ? messengerKeys.messagesByThreadId(threadId)
-    : messengerKeys.messages(projectId ?? '', channel)
+  const messagesKey = messengerKeys.messagesByThreadId(threadId)
 
   const { data: workspace } = useWorkspace(workspaceId)
   const sendDelay = ((workspace as Record<string, unknown>)?.send_delay_seconds as number) ?? 0
@@ -95,15 +93,9 @@ export function useDelayedSend(
         // Mark chat as read (same as useSendMessage.onSuccess)
         markAsRead(params.senderParticipantId, projectId, channel, threadId)
           .then(() => {
-            const unreadKey = threadId
-              ? messengerKeys.unreadCountByThreadId(threadId)
-              : messengerKeys.unreadCount(projectId ?? '', channel)
-            const lastReadKey = threadId
-              ? messengerKeys.lastReadAtByThreadId(threadId)
-              : messengerKeys.lastReadAt(projectId ?? '', channel)
-            queryClient.setQueryData(unreadKey, 0)
+            queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), 0)
             queryClient.invalidateQueries({
-              queryKey: lastReadKey,
+              queryKey: messengerKeys.lastReadAtByThreadId(threadId),
             })
             queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
           })

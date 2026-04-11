@@ -1,11 +1,20 @@
 "use client"
 
 /**
- * Хук для загрузки сообщений проекта с Realtime подпиской
+ * Хук для загрузки сообщений треда с Realtime подпиской.
+ *
+ * Имя `useProjectMessages` — исторически сложившееся, фактически хук теперь
+ * работает только по thread_id (см. audit S1). Legacy-режим (projectId+channel)
+ * удалён — все callers передают threadId, а в БД 0 сообщений без thread_id.
+ *
+ * projectId и channel всё ещё принимаются, но используются ТОЛЬКО для
+ * invalidate-hook'а AI-кешей мессенджера (ProjectAiChat читает сообщения
+ * проекта по каналу, и его надо обновлять при новых сообщениях). На выбор
+ * основного кеша они не влияют.
  */
 
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getMessages, type MessageChannel } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
@@ -14,59 +23,44 @@ import { logger } from '@/utils/logger'
 export function useProjectMessages(
   projectId: string | undefined,
   channel: MessageChannel = 'client',
-  threadId?: string,
+  threadId: string | undefined,
 ) {
   const queryClient = useQueryClient()
   const instanceId = useRef(Math.random().toString(36).slice(2))
-  // Стабильная ссылка — иначе useEffect ниже срабатывает на каждом рендере и инвалидирует
-  // queries, сбрасывая подгруженные страницы истории.
-  const messagesKey = useMemo(
-    () =>
-      threadId
-        ? messengerKeys.messagesByThreadId(threadId)
-        : messengerKeys.messages(projectId ?? '', channel),
-    [threadId, projectId, channel],
-  )
+
+  const messagesKey = threadId ? messengerKeys.messagesByThreadId(threadId) : undefined
 
   const query = useInfiniteQuery({
-    queryKey: messagesKey,
+    queryKey: messagesKey ?? ['messenger', 'messages', 'no-thread'],
     queryFn: ({ pageParam }) =>
-      getMessages(projectId, { before: pageParam as string | undefined, channel, threadId }),
+      getMessages(threadId!, { before: pageParam as string | undefined }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (firstPage) => {
       if (!firstPage.hasMore || firstPage.messages.length === 0) return undefined
       return firstPage.messages[0]?.created_at
     },
-    enabled: !!(projectId || threadId),
+    enabled: !!threadId,
   })
 
   // Flatten в хронологическом порядке
-  const messages = useMemo(
-    () => [...(query.data?.pages ?? [])].reverse().flatMap((p) => p.messages),
-    [query.data],
-  )
+  const messages = [...(query.data?.pages ?? [])].reverse().flatMap((p) => p.messages)
 
   // При открытии чата — всегда подгружать свежие данные
   useEffect(() => {
-    if (!projectId && !threadId) return
-    queryClient.invalidateQueries({ queryKey: messagesKey })
-  }, [projectId, channel, threadId, queryClient, messagesKey])
+    if (!threadId) return
+    queryClient.invalidateQueries({ queryKey: messengerKeys.messagesByThreadId(threadId) })
+  }, [threadId, queryClient])
 
   // Realtime подписка
   useEffect(() => {
-    if (!projectId && !threadId) return
+    if (!threadId) return
 
     const pendingTimers: ReturnType<typeof setTimeout>[] = []
-    const unreadKey = threadId
-      ? messengerKeys.unreadCountByThreadId(threadId)
-      : messengerKeys.unreadCount(projectId ?? '', channel)
+    const key = messengerKeys.messagesByThreadId(threadId)
+    const unreadKey = messengerKeys.unreadCountByThreadId(threadId)
     // Уникальное имя канала для каждого монтирования (защита от React StrictMode)
-    const channelName = threadId
-      ? `project-messages:thread:${threadId}:${instanceId.current}`
-      : `project-messages:${projectId}:${channel}:${instanceId.current}`
-
-    // Realtime filter: use thread_id if available (works for tasks without project), else project_id
-    const realtimeFilter = threadId ? `thread_id=eq.${threadId}` : `project_id=eq.${projectId}`
+    const channelName = `project-messages:thread:${threadId}:${instanceId.current}`
+    const realtimeFilter = `thread_id=eq.${threadId}`
 
     const realtimeChannel = supabase
       .channel(channelName)
@@ -79,18 +73,13 @@ export function useProjectMessages(
           filter: realtimeFilter,
         },
         (payload) => {
-          // Фильтруем на клиенте (Supabase Realtime не поддерживает AND в filter)
-          if (threadId) {
-            if ((payload.new as { thread_id?: string }).thread_id !== threadId) return
-          } else {
-            if ((payload.new as { channel?: string }).channel !== channel) return
-          }
+          if ((payload.new as { thread_id?: string }).thread_id !== threadId) return
           // Если в кэше есть оптимистичное сообщение — это наш INSERT, не рефетчим:
           // вложения ещё не записаны, рефетч вернёт сообщение без файлов.
           // Рефетч придёт позже через событие message_attachments.
           const cachedData = queryClient.getQueryData<{
             pages: { messages: { id: string }[] }[]
-          }>(messagesKey)
+          }>(key)
           const hasOptimistic = cachedData?.pages?.some((p) =>
             p.messages.some((m) => m.id.startsWith('optimistic-')),
           )
@@ -99,11 +88,9 @@ export function useProjectMessages(
           // (вложения пишутся чуть позже). Пропускаем — событие message_attachments придёт отдельно.
           const newMsg = payload.new as { has_attachments?: boolean }
           if (newMsg.has_attachments) return
-          queryClient.refetchQueries({ queryKey: messagesKey })
-          queryClient.invalidateQueries({
-            queryKey: unreadKey,
-          })
-          if (channel === 'client') {
+          queryClient.refetchQueries({ queryKey: key })
+          queryClient.invalidateQueries({ queryKey: unreadKey })
+          if (channel === 'client' && projectId) {
             queryClient.invalidateQueries({
               queryKey: ['project-ai', 'messenger-messages', projectId],
             })
@@ -119,12 +106,8 @@ export function useProjectMessages(
           filter: realtimeFilter,
         },
         (payload) => {
-          if (threadId) {
-            if ((payload.new as { thread_id?: string }).thread_id !== threadId) return
-          } else {
-            if ((payload.new as { channel?: string }).channel !== channel) return
-          }
-          queryClient.refetchQueries({ queryKey: messagesKey })
+          if ((payload.new as { thread_id?: string }).thread_id !== threadId) return
+          queryClient.refetchQueries({ queryKey: key })
         },
       )
       .on(
@@ -136,10 +119,8 @@ export function useProjectMessages(
           filter: realtimeFilter,
         },
         () => {
-          queryClient.refetchQueries({ queryKey: messagesKey })
-          queryClient.invalidateQueries({
-            queryKey: unreadKey,
-          })
+          queryClient.refetchQueries({ queryKey: key })
+          queryClient.invalidateQueries({ queryKey: unreadKey })
         },
       )
       .on(
@@ -150,23 +131,21 @@ export function useProjectMessages(
           table: 'message_reactions',
         },
         (payload) => {
-          // Filter: only invalidate if the reaction belongs to a message in this project
+          // Filter: only invalidate if the reaction belongs to a message in this thread
           const messageId =
             (payload.new as { message_id?: string })?.message_id ||
             (payload.old as { message_id?: string })?.message_id
           if (!messageId) return
           const cachedData = queryClient.getQueryData<{ pages: { messages: { id: string }[] }[] }>(
-            messagesKey,
+            key,
           )
           const knownIds = new Set(
             cachedData?.pages?.flatMap((p) => p.messages.map((m) => m.id)) ?? [],
           )
           if (!knownIds.has(messageId)) return
 
-          queryClient.refetchQueries({ queryKey: messagesKey })
-          queryClient.invalidateQueries({
-            queryKey: unreadKey,
-          })
+          queryClient.refetchQueries({ queryKey: key })
+          queryClient.invalidateQueries({ queryKey: unreadKey })
         },
       )
       .on(
@@ -183,7 +162,7 @@ export function useProjectMessages(
           if (!messageId) return
 
           const cachedData = queryClient.getQueryData<{ pages: { messages: { id: string }[] }[] }>(
-            messagesKey,
+            key,
           )
           const knownIds = new Set(
             cachedData?.pages?.flatMap((p) => p.messages.map((m) => m.id)) ?? [],
@@ -191,19 +170,17 @@ export function useProjectMessages(
 
           if (knownIds.has(messageId)) {
             // Сообщение уже в кэше — рефетчим сразу
-            queryClient.refetchQueries({ queryKey: messagesKey })
+            queryClient.refetchQueries({ queryKey: key })
           } else {
             // Сообщение ещё не в кэше (Telegram: attachment приходит сразу после message INSERT).
             // Рефетчим с задержкой, чтобы сообщение успело попасть в кэш.
             const timer = setTimeout(() => {
-              queryClient.refetchQueries({
-                queryKey: messagesKey,
-              })
+              queryClient.refetchQueries({ queryKey: key })
             }, 1000)
             pendingTimers.push(timer)
           }
 
-          if (channel === 'client') {
+          if (channel === 'client' && projectId) {
             queryClient.invalidateQueries({
               queryKey: ['project-ai', 'messenger-messages', projectId],
             })
@@ -225,7 +202,7 @@ export function useProjectMessages(
       pendingTimers.forEach(clearTimeout)
       supabase.removeChannel(realtimeChannel)
     }
-  }, [projectId, channel, threadId, queryClient, messagesKey])
+  }, [threadId, projectId, channel, queryClient])
 
   const fetchOlderMessages = useCallback(() => {
     if (query.hasNextPage && !query.isFetchingNextPage) {

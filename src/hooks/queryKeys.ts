@@ -190,18 +190,13 @@ export function invalidateMessengerCaches(
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, false) })
 }
 
+/**
+ * Messenger-кэши привязаны к thread_id.
+ * Legacy-режим (projectId+channel) удалён в рамках audit S1 cleanup:
+ * все callers используют threadId-based ключи, в БД нет сообщений без thread_id.
+ */
 export const messengerKeys = {
   all: ['messenger'] as const,
-  // Project+channel based keys (legacy format, used by project-level hooks)
-  messages: (projectId: string, channel: string = 'client') =>
-    ['messenger', 'messages', projectId, channel] as const,
-  unreadCount: (projectId: string, channel: string = 'client') =>
-    ['messenger', 'unread-count', projectId, channel] as const,
-  telegramLink: (projectId: string, channel: string = 'client') =>
-    ['messenger', 'telegram-link', projectId, channel] as const,
-  lastReadAt: (projectId: string, channel: string = 'client') =>
-    ['messenger', 'last-read-at', projectId, channel] as const,
-  // Thread-based keys (new, preferred)
   messagesByThreadId: (threadId: string) => ['messenger', 'messages', 'chat', threadId] as const,
   unreadCountByThreadId: (threadId: string) =>
     ['messenger', 'unread-count', 'chat', threadId] as const,

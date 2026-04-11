@@ -1,7 +1,8 @@
 "use client"
 
 /**
- * Хуки для работы с серверными черновиками сообщений
+ * Хуки для работы с серверными черновиками сообщений.
+ * После audit S1 cleanup: threadId обязательный, legacy-режим удалён.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -19,13 +20,11 @@ import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 export function useSaveDraft(
   projectId: string | undefined,
   workspaceId: string,
-  channel: MessageChannel = 'client',
-  threadId?: string,
+  channel: MessageChannel,
+  threadId: string,
 ) {
   const queryClient = useQueryClient()
-  const messagesKey = threadId
-    ? messengerKeys.messagesByThreadId(threadId)
-    : messengerKeys.messages(projectId ?? '', channel)
+  const messagesKey = messengerKeys.messagesByThreadId(threadId)
 
   return useMutation({
     mutationFn: (params: {
@@ -59,13 +58,11 @@ export function useSaveDraft(
 export function useUpdateDraft(
   projectId: string | undefined,
   workspaceId: string,
-  channel: MessageChannel = 'client',
-  threadId?: string,
+  _channel: MessageChannel,
+  threadId: string,
 ) {
   const queryClient = useQueryClient()
-  const messagesKey = threadId
-    ? messengerKeys.messagesByThreadId(threadId)
-    : messengerKeys.messages(projectId ?? '', channel)
+  const messagesKey = messengerKeys.messagesByThreadId(threadId)
 
   return useMutation({
     mutationFn: (params: {
@@ -116,13 +113,11 @@ export function useUpdateDraft(
 export function usePublishDraft(
   projectId: string | undefined,
   workspaceId: string,
-  channel: MessageChannel = 'client',
-  threadId?: string,
+  channel: MessageChannel,
+  threadId: string,
 ) {
   const queryClient = useQueryClient()
-  const messagesKey = threadId
-    ? messengerKeys.messagesByThreadId(threadId)
-    : messengerKeys.messages(projectId ?? '', channel)
+  const messagesKey = messengerKeys.messagesByThreadId(threadId)
 
   return useMutation({
     mutationFn: (params: {
@@ -169,15 +164,9 @@ export function usePublishDraft(
       if (vars.participantId) {
         markAsRead(vars.participantId, projectId, channel, threadId)
           .then(() => {
-            const unreadKey = threadId
-              ? messengerKeys.unreadCountByThreadId(threadId)
-              : messengerKeys.unreadCount(projectId ?? '', channel)
-            const lastReadKey = threadId
-              ? messengerKeys.lastReadAtByThreadId(threadId)
-              : messengerKeys.lastReadAt(projectId ?? '', channel)
-            queryClient.setQueryData(unreadKey, 0)
+            queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), 0)
             queryClient.invalidateQueries({
-              queryKey: lastReadKey,
+              queryKey: messengerKeys.lastReadAtByThreadId(threadId),
             })
             queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
           })

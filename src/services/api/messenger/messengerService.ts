@@ -61,6 +61,11 @@ import type {
 } from './messengerService.types'
 
 export interface SendMessageParams {
+  /**
+   * project_id — опционален для standalone-тредов без проекта (задач, созданных
+   * вне проекта). Для обычных чатов проекта проставляется, чтобы RLS-политики
+   * по project_participants работали.
+   */
   projectId?: string
   workspaceId: string
   content: string
@@ -71,8 +76,13 @@ export interface SendMessageParams {
   attachments?: File[]
   /** Пересылаемые вложения — создают ссылки на существующие файлы без повторной загрузки */
   forwardedAttachments?: ForwardedAttachment[]
+  /**
+   * Legacy channel marker — остаётся для обратной совместимости БД и Telegram-bridge,
+   * но не используется для выбора кеша на фронте (см. audit S1).
+   */
   channel?: MessageChannel
-  threadId?: string
+  /** Тред, в который пишется сообщение. Обязателен — legacy-режим без треда удалён. */
+  threadId: string
 }
 
 // Internal helpers (MESSAGE_SELECT, castToProjectMessage, castToProjectMessages,
@@ -83,33 +93,64 @@ export interface SendMessageParams {
 // =====================================================
 
 /**
- * Load a page of messages (cursor pagination, newest first)
+ * Load a page of messages in a thread (cursor pagination, newest first).
+ *
+ * Раньше функция умела работать и в legacy-режиме по (projectId, channel),
+ * но все треды в базе имеют thread_id, и все callers фронта всегда передают
+ * threadId. Legacy-ветка удалена — см. audit S1.
  */
 export async function getMessages(
-  projectId: string | undefined,
-  options: { before?: string; limit?: number; channel?: MessageChannel; threadId?: string } = {},
+  threadId: string,
+  options: { before?: string; limit?: number } = {},
 ): Promise<{ messages: ProjectMessage[]; hasMore: boolean }> {
   const limit = options.limit ?? 50
 
-  let query = supabase.from('project_messages').select(MESSAGE_SELECT)
-
-  // threadId takes priority over project_id+channel
-  if (options.threadId) {
-    query = query.eq('thread_id', options.threadId)
-  } else if (projectId) {
-    query = query.eq('project_id', projectId).eq('channel', options.channel ?? 'client')
-  } else {
-    // No project and no thread — return empty
-    return { messages: [], hasMore: false }
-  }
-
-  query = query.order('created_at', { ascending: false }).limit(limit + 1)
+  let query = supabase
+    .from('project_messages')
+    .select(MESSAGE_SELECT)
+    .eq('thread_id', threadId)
+    .order('created_at', { ascending: false })
+    .limit(limit + 1)
 
   if (options.before) {
     query = query.lt('created_at', options.before)
   }
 
   const { data, error } = await query
+
+  if (error) throw new ConversationError(`Ошибка загрузки сообщений: ${error.message}`)
+
+  const messages = castToProjectMessages(data ?? [])
+  const hasMore = messages.length > limit
+  if (hasMore) messages.pop()
+
+  await hydrateReplyMessages(messages)
+
+  return { messages: messages.reverse(), hasMore }
+}
+
+/**
+ * Загрузить сообщения проекта по каналу (`client` / `internal`) для AI-агрегации.
+ *
+ * Отличается от getMessages: фильтрует по project_id + channel вместо thread_id,
+ * потому что AI-ассистент показывает переписку проекта целиком, через все треды
+ * канала. Используется только в ProjectAiChat — обычный чат/мессенджер грузит
+ * через getMessages(threadId).
+ */
+export async function getProjectMessagesByChannel(
+  projectId: string,
+  channel: MessageChannel,
+  options: { limit?: number } = {},
+): Promise<{ messages: ProjectMessage[]; hasMore: boolean }> {
+  const limit = options.limit ?? 50
+
+  const { data, error } = await supabase
+    .from('project_messages')
+    .select(MESSAGE_SELECT)
+    .eq('project_id', projectId)
+    .eq('channel', channel)
+    .order('created_at', { ascending: false })
+    .limit(limit + 1)
 
   if (error) throw new ConversationError(`Ошибка загрузки сообщений: ${error.message}`)
 
@@ -139,7 +180,7 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
       source: 'web' as const,
       reply_to_message_id: params.replyToMessageId ?? null,
       channel,
-      ...(params.threadId ? { thread_id: params.threadId } : {}),
+      thread_id: params.threadId,
       has_attachments:
         (params.attachments && params.attachments.length > 0) ||
         (params.forwardedAttachments && params.forwardedAttachments.length > 0) ||

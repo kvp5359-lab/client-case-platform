@@ -14,7 +14,7 @@ import type { AiMessage } from '@/store/sidePanelStore'
 import { useDocumentStatuses } from '@/hooks/useStatuses'
 import { useAuth } from '@/contexts/AuthContext'
 import { DocumentPickerDialog } from '@/components/messenger/DocumentPickerDialog'
-import { getMessages as getMessengerMessages } from '@/services/api/messenger/messengerService'
+import { getProjectMessagesByChannel } from '@/services/api/messenger/messengerService'
 import { type ConversationSources } from '@/services/api/knowledge/knowledgeSearchService'
 import { supabase } from '@/lib/supabase'
 import { AiChatInput } from './AiChatInput'
@@ -73,16 +73,16 @@ export function ProjectAiChat({
     [sessionKey, updateAiSession],
   )
 
-  // Загрузка сообщений мессенджера для AI-контекста (два канала)
+  // Загрузка сообщений мессенджера для AI-контекста (два канала проекта)
   const { data: clientMessengerData } = useQuery({
     queryKey: ['project-ai', 'messenger-messages', projectId, 'client'],
-    queryFn: () => getMessengerMessages(projectId!, { limit: 200, channel: 'client' }),
+    queryFn: () => getProjectMessagesByChannel(projectId!, 'client', { limit: 200 }),
     enabled: hasProject,
     staleTime: 2 * 60 * 1000,
   })
   const { data: teamMessengerData } = useQuery({
     queryKey: ['project-ai', 'messenger-messages', projectId, 'internal'],
-    queryFn: () => getMessengerMessages(projectId!, { limit: 200, channel: 'internal' }),
+    queryFn: () => getProjectMessagesByChannel(projectId!, 'internal', { limit: 200 }),
     enabled: hasProject,
     staleTime: 2 * 60 * 1000,
   })

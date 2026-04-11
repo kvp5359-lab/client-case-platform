@@ -1,7 +1,8 @@
 "use client"
 
 /**
- * Хуки для счётчика непрочитанных и пометки прочитанного
+ * Хуки для счётчика непрочитанных и пометки прочитанного.
+ * После audit S1 cleanup: threadId обязательный, legacy-режим удалён.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -34,69 +35,73 @@ async function resolveParticipant(
   return null
 }
 
+/**
+ * useUnreadCount / useLastReadAt — read-only query-хуки.
+ *
+ * threadId опциональный, потому что в нескольких местах (например,
+ * useMessengerPanelData) они вызываются для client/internal-треда проекта,
+ * а тред может ещё не существовать. В этом случае query отключается через
+ * enabled. Мутации (useMarkAsRead, useMarkAsUnread) требуют threadId строго.
+ */
 export function useUnreadCount(
   projectId: string | undefined,
-  channel: MessageChannel = 'client',
-  participantId?: string,
-  threadId?: string,
+  channel: MessageChannel,
+  participantId: string | undefined,
+  threadId: string | undefined,
 ) {
   const { user } = useAuth()
 
   return useQuery({
     queryKey: threadId
       ? messengerKeys.unreadCountByThreadId(threadId)
-      : messengerKeys.unreadCount(projectId ?? '', channel),
+      : ['messenger', 'unread-count', 'no-thread'],
     queryFn: async () => {
-      if (!user) return 0
+      if (!user || !threadId) return 0
       const pid =
         participantId ?? (await getCurrentProjectParticipant(projectId!, user.id))?.participantId
       if (!pid) return 0
       return getUnreadCount(pid, projectId, channel, threadId)
     },
-    enabled: !!(projectId || threadId) && !!user,
+    enabled: !!user && !!threadId,
     staleTime: 30_000,
   })
 }
 
 export function useLastReadAt(
   projectId: string | undefined,
-  channel: MessageChannel = 'client',
-  participantId?: string,
-  threadId?: string,
+  channel: MessageChannel,
+  participantId: string | undefined,
+  threadId: string | undefined,
 ) {
   const { user } = useAuth()
 
   return useQuery({
     queryKey: threadId
       ? messengerKeys.lastReadAtByThreadId(threadId)
-      : messengerKeys.lastReadAt(projectId ?? '', channel),
+      : ['messenger', 'last-read-at', 'no-thread'],
     queryFn: async () => {
-      if (!user) return null
+      if (!user || !threadId) return null
       const pid =
         participantId ?? (await getCurrentProjectParticipant(projectId!, user.id))?.participantId
       if (!pid) return null
       return getLastReadAt(pid, projectId, channel, threadId)
     },
-    enabled: !!(projectId || threadId) && !!user,
+    enabled: !!user && !!threadId,
     staleTime: 30_000,
   })
 }
 
 export function useMarkAsRead(
   projectId: string | undefined,
-  workspaceId?: string,
-  channel: MessageChannel = 'client',
-  participantId?: string,
-  threadId?: string,
+  workspaceId: string | undefined,
+  channel: MessageChannel,
+  participantId: string | undefined,
+  threadId: string,
 ) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const unreadKey = threadId
-    ? messengerKeys.unreadCountByThreadId(threadId)
-    : messengerKeys.unreadCount(projectId ?? '', channel)
-  const lastReadKey = threadId
-    ? messengerKeys.lastReadAtByThreadId(threadId)
-    : messengerKeys.lastReadAt(projectId ?? '', channel)
+  const unreadKey = messengerKeys.unreadCountByThreadId(threadId)
+  const lastReadKey = messengerKeys.lastReadAtByThreadId(threadId)
 
   return useMutation({
     mutationFn: async () => {
@@ -116,19 +121,15 @@ export function useMarkAsRead(
 
 export function useMarkAsUnread(
   projectId: string | undefined,
-  workspaceId?: string,
-  channel: MessageChannel = 'client',
-  participantId?: string,
-  threadId?: string,
+  workspaceId: string | undefined,
+  channel: MessageChannel,
+  participantId: string | undefined,
+  threadId: string,
 ) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const unreadKey = threadId
-    ? messengerKeys.unreadCountByThreadId(threadId)
-    : messengerKeys.unreadCount(projectId ?? '', channel)
-  const lastReadKey = threadId
-    ? messengerKeys.lastReadAtByThreadId(threadId)
-    : messengerKeys.lastReadAt(projectId ?? '', channel)
+  const unreadKey = messengerKeys.unreadCountByThreadId(threadId)
+  const lastReadKey = messengerKeys.lastReadAtByThreadId(threadId)
 
   return useMutation({
     mutationFn: async () => {

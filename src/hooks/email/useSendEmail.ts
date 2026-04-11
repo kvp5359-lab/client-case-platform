@@ -51,11 +51,9 @@ function translateEmailError(raw: string): string {
   return raw || 'Не удалось отправить email. Попробуйте ещё раз.'
 }
 
-export function useSendEmail(projectId: string, workspaceId: string, threadId?: string) {
+export function useSendEmail(projectId: string, workspaceId: string, threadId: string) {
   const queryClient = useQueryClient()
-  const messagesKey = threadId
-    ? messengerKeys.messagesByThreadId(threadId)
-    : messengerKeys.messages(projectId)
+  const messagesKey = messengerKeys.messagesByThreadId(threadId)
 
   return useMutation({
     mutationFn: async (params: SendEmailParams) => {

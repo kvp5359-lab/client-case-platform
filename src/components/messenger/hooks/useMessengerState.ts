@@ -44,7 +44,12 @@ interface UseMessengerStateParams {
   projectId?: string
   workspaceId: string
   channel: MessageChannel
-  threadId?: string
+  /**
+   * Обязательный thread id — хук не поддерживает legacy-режим без треда
+   * после audit S1 cleanup. `MessengerTabContent` должен делать early return
+   * если треда нет, а не звать этот хук.
+   */
+  threadId: string
   telegramDialogOpen: boolean
 }
 
@@ -106,8 +111,8 @@ export function useMessengerState({
   )
   const sendEmail = useSendEmail(projectId ?? '', workspaceId, threadId)
 
-  const editMessageMutation = useEditMessage(projectId, channel, threadId)
-  const deleteMessageMutation = useDeleteMessage(projectId, channel, threadId)
+  const editMessageMutation = useEditMessage(threadId)
+  const deleteMessageMutation = useDeleteMessage(threadId)
   const saveDraftMutation = useSaveDraft(projectId, workspaceId, channel, threadId)
   const updateDraftMutation = useUpdateDraft(projectId, workspaceId, channel, threadId)
   const publishDraftMutation = usePublishDraft(projectId, workspaceId, channel, threadId)

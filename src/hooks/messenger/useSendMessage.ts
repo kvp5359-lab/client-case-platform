@@ -1,7 +1,10 @@
 "use client"
 
 /**
- * Хук для отправки сообщения в чат проекта
+ * Хук для отправки сообщения в чат проекта.
+ *
+ * После audit S1 cleanup-а threadId стал обязательным, legacy-режим
+ * (projectId+channel без thread_id) удалён.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -23,15 +26,13 @@ import { dismissProjectToasts } from './useMessageToastPayload'
 export function useSendMessage(
   projectId: string | undefined,
   workspaceId: string,
-  currentParticipant?: { participantId: string; name: string; role: string | null },
-  channel: MessageChannel = 'client',
-  threadId?: string,
+  currentParticipant: { participantId: string; name: string; role: string | null } | undefined,
+  channel: MessageChannel,
+  threadId: string,
 ) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const messagesKey = threadId
-    ? messengerKeys.messagesByThreadId(threadId)
-    : messengerKeys.messages(projectId ?? '', channel)
+  const messagesKey = messengerKeys.messagesByThreadId(threadId)
 
   return useMutation({
     mutationFn: async ({
@@ -119,7 +120,7 @@ export function useSendMessage(
         forwarded_date: null,
         scheduled_send_at: null,
         channel,
-        thread_id: threadId ?? null,
+        thread_id: threadId,
         email_metadata: null,
         created_at: now,
         updated_at: now,
@@ -179,15 +180,9 @@ export function useSendMessage(
       if (currentParticipant) {
         markAsRead(currentParticipant.participantId, projectId, channel, threadId)
           .then(() => {
-            const unreadKey = threadId
-              ? messengerKeys.unreadCountByThreadId(threadId)
-              : messengerKeys.unreadCount(projectId ?? '', channel)
-            const lastReadKey = threadId
-              ? messengerKeys.lastReadAtByThreadId(threadId)
-              : messengerKeys.lastReadAt(projectId ?? '', channel)
-            queryClient.setQueryData(unreadKey, 0)
+            queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), 0)
             queryClient.invalidateQueries({
-              queryKey: lastReadKey,
+              queryKey: messengerKeys.lastReadAtByThreadId(threadId),
             })
             invalidateMessengerCaches(queryClient, workspaceId)
           })

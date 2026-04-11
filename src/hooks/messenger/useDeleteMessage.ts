@@ -9,22 +9,17 @@ import { toast } from 'sonner'
 import {
   deleteMessage,
   type ProjectMessage,
-  type MessageChannel,
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
 
-export function useDeleteMessage(
-  projectId: string | undefined,
-  channel: MessageChannel = 'client',
-  threadId?: string,
-) {
+/**
+ * Хук для удаления сообщения с optimistic update.
+ * После audit S1 cleanup: threadId обязательный, legacy-режим удалён.
+ */
+export function useDeleteMessage(threadId: string) {
   const queryClient = useQueryClient()
-  const messagesKey = threadId
-    ? messengerKeys.messagesByThreadId(threadId)
-    : messengerKeys.messages(projectId ?? '', channel)
-  const unreadKey = threadId
-    ? messengerKeys.unreadCountByThreadId(threadId)
-    : messengerKeys.unreadCount(projectId ?? '', channel)
+  const messagesKey = messengerKeys.messagesByThreadId(threadId)
+  const unreadKey = messengerKeys.unreadCountByThreadId(threadId)
 
   return useMutation({
     mutationFn: (messageId: string) => deleteMessage(messageId),

@@ -28,7 +28,11 @@ interface MessengerTabContentProps {
   workspaceId: string
   accent?: MessengerAccent
   channel?: MessageChannel
-  threadId?: string
+  /**
+   * Обязательный thread id — компонент работает только с конкретным тредом
+   * после audit S1 cleanup. Родитель обязан скрыть компонент, если треда нет.
+   */
+  threadId: string
   toolbarPortalContainer?: HTMLDivElement | null
 }
 
@@ -225,7 +229,7 @@ export function MessengerTabContent({
         onClose={() => {
           setTelegramDialogOpen(false)
           queryClient.invalidateQueries({
-            queryKey: messengerKeys.telegramLink(projectId ?? '', channel),
+            queryKey: messengerKeys.telegramLinkByThreadId(threadId),
           })
         }}
         isLinked={state.isLinked}

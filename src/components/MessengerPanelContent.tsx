@@ -183,15 +183,17 @@ export function MessengerPanelContent({
       />
 
       <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-        <MessengerTabContent
-          key={threadId ?? 'default'}
-          projectId={projectId}
-          workspaceId={workspaceId}
-          channel={channel}
-          threadId={threadId}
-          accent={currentChat?.accent_color ?? (channel === 'internal' ? 'dark' : 'blue')}
-          toolbarPortalContainer={toolbarPortalContainer}
-        />
+        {threadId ? (
+          <MessengerTabContent
+            key={threadId}
+            projectId={projectId}
+            workspaceId={workspaceId}
+            channel={channel}
+            threadId={threadId}
+            accent={currentChat?.accent_color ?? (channel === 'internal' ? 'dark' : 'blue')}
+            toolbarPortalContainer={toolbarPortalContainer}
+          />
+        ) : null}
       </div>
     </div>
   )

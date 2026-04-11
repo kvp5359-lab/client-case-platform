@@ -9,19 +9,16 @@ import { toast } from 'sonner'
 import {
   editMessage,
   type ProjectMessage,
-  type MessageChannel,
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
 
-export function useEditMessage(
-  projectId: string | undefined,
-  channel: MessageChannel = 'client',
-  threadId?: string,
-) {
+/**
+ * Хук для редактирования сообщения с optimistic update.
+ * После audit S1 cleanup: threadId обязательный, legacy-режим удалён.
+ */
+export function useEditMessage(threadId: string) {
   const queryClient = useQueryClient()
-  const messagesKey = threadId
-    ? messengerKeys.messagesByThreadId(threadId)
-    : messengerKeys.messages(projectId ?? '', channel)
+  const messagesKey = messengerKeys.messagesByThreadId(threadId)
 
   return useMutation({
     mutationFn: ({

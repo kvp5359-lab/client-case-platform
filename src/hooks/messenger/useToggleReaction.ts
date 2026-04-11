@@ -18,16 +18,14 @@ import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 
 export function useToggleReaction(
   projectId: string | undefined,
-  channel: MessageChannel = 'client',
-  participantId?: string,
-  workspaceId?: string,
-  threadId?: string,
+  channel: MessageChannel,
+  participantId: string | undefined,
+  workspaceId: string | undefined,
+  threadId: string,
 ) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const messagesKey = threadId
-    ? messengerKeys.messagesByThreadId(threadId)
-    : messengerKeys.messages(projectId ?? '', channel)
+  const messagesKey = messengerKeys.messagesByThreadId(threadId)
 
   return useMutation({
     mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
@@ -50,15 +48,9 @@ export function useToggleReaction(
       if (pid) {
         markAsRead(pid, projectId, channel, threadId)
           .then(() => {
-            const unreadKey = threadId
-              ? messengerKeys.unreadCountByThreadId(threadId)
-              : messengerKeys.unreadCount(projectId ?? '', channel)
-            const lastReadKey = threadId
-              ? messengerKeys.lastReadAtByThreadId(threadId)
-              : messengerKeys.lastReadAt(projectId ?? '', channel)
-            queryClient.setQueryData(unreadKey, 0)
+            queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), 0)
             queryClient.invalidateQueries({
-              queryKey: lastReadKey,
+              queryKey: messengerKeys.lastReadAtByThreadId(threadId),
             })
             if (workspaceId) {
               queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })

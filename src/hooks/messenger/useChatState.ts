@@ -81,26 +81,10 @@ export function useChatState(
   useEffect(() => {
     if (!data || !threadId) return
 
-    // Telegram link cache
-    const telegramKey = threadId
-      ? messengerKeys.telegramLinkByThreadId(threadId)
-      : messengerKeys.telegramLink(projectId ?? '', channel)
-    queryClient.setQueryData(telegramKey, data.telegramLink)
-
-    // Email link cache
+    queryClient.setQueryData(messengerKeys.telegramLinkByThreadId(threadId), data.telegramLink)
     queryClient.setQueryData(emailAccountKeys.emailLink(threadId), data.emailLink)
-
-    // Unread count cache
-    const unreadKey = threadId
-      ? messengerKeys.unreadCountByThreadId(threadId)
-      : messengerKeys.unreadCount(projectId ?? '', channel)
-    queryClient.setQueryData(unreadKey, data.unreadCount)
-
-    // Last read at cache
-    const lastReadKey = threadId
-      ? messengerKeys.lastReadAtByThreadId(threadId)
-      : messengerKeys.lastReadAt(projectId ?? '', channel)
-    queryClient.setQueryData(lastReadKey, data.lastReadAt)
+    queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), data.unreadCount)
+    queryClient.setQueryData(messengerKeys.lastReadAtByThreadId(threadId), data.lastReadAt)
 
     // Current participant cache
     const participantKey = ['messenger', 'current-participant', projectId ?? workspaceId, user?.id]
@@ -111,7 +95,7 @@ export function useChatState(
         role: data.participant.role,
       })
     }
-  }, [data, threadId, projectId, workspaceId, channel, queryClient, user?.id])
+  }, [data, threadId, projectId, workspaceId, queryClient, user?.id])
 
   return data
 }

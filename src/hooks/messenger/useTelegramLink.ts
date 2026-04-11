@@ -22,88 +22,60 @@ interface TelegramLink {
 
 export function useTelegramLink(
   projectId: string | undefined,
-  channel: MessageChannel = 'client',
-  threadId?: string,
+  channel: MessageChannel,
+  threadId: string | undefined,
   /** Включить polling (например, пока открыт диалог привязки) */
   polling = false,
 ) {
   const queryClient = useQueryClient()
   const telegramLinkKey = threadId
     ? messengerKeys.telegramLinkByThreadId(threadId)
-    : messengerKeys.telegramLink(projectId ?? '', channel)
+    : ['messenger', 'telegram-link', 'no-thread']
 
   const query = useQuery({
     queryKey: telegramLinkKey,
     queryFn: async () => {
-      let q = supabase.from('project_telegram_chats').select('*').eq('is_active', true)
-
-      if (threadId) {
-        q = q.eq('thread_id', threadId)
-      } else if (projectId) {
-        q = q.eq('project_id', projectId).eq('channel', channel)
-      } else {
-        return null
-      }
-
-      const { data, error } = await q.maybeSingle()
+      if (!threadId) return null
+      const { data, error } = await supabase
+        .from('project_telegram_chats')
+        .select('*')
+        .eq('is_active', true)
+        .eq('thread_id', threadId)
+        .maybeSingle()
 
       if (error) throw error
       return data as TelegramLink | null
     },
-    enabled: !!(projectId || threadId),
+    enabled: !!threadId,
     staleTime: 0,
     // Polling пока диалог привязки открыт и ещё не привязано — каждые 2 сек
     refetchInterval: polling ? (query) => (query.state.data ? false : 2000) : false,
   })
 
-  // Получить/сгенерировать код привязки для конкретного чата
+  // Получить/сгенерировать код привязки для конкретного треда
   const linkCodeQuery = useQuery({
-    queryKey: ['messenger', 'link-code', threadId ?? projectId ?? '', channel],
+    queryKey: ['messenger', 'link-code', threadId ?? 'no-thread'],
     queryFn: async () => {
-      // Новый путь: код из project_threads.link_code
-      if (threadId) {
-        const { data, error } = await supabase
-          .from('project_threads')
-          .select('link_code')
-          .eq('id', threadId)
-          .single()
-
-        if (error) throw error
-
-        if (data.link_code) return data.link_code
-
-        // Генерируем код для треда
-        const { data: code } = await supabase.rpc('generate_chat_link_code')
-        if (code) {
-          await supabase.from('project_threads').update({ link_code: code }).eq('id', threadId)
-          return code as string
-        }
-        return null
-      }
-
-      // Fallback: legacy код из projects
-      if (!projectId) return null
-
+      if (!threadId) return null
       const { data, error } = await supabase
-        .from('projects')
-        .select('messenger_link_code')
-        .eq('id', projectId)
+        .from('project_threads')
+        .select('link_code')
+        .eq('id', threadId)
         .single()
 
       if (error) throw error
 
-      if (data.messenger_link_code) {
-        return channel === 'internal' ? data.messenger_link_code + '-I' : data.messenger_link_code
-      }
+      if (data.link_code) return data.link_code
 
-      const { data: code } = await supabase.rpc('generate_messenger_link_code')
+      // Генерируем код для треда
+      const { data: code } = await supabase.rpc('generate_chat_link_code')
       if (code) {
-        await supabase.from('projects').update({ messenger_link_code: code }).eq('id', projectId)
+        await supabase.from('project_threads').update({ link_code: code }).eq('id', threadId)
         return code as string
       }
       return null
     },
-    enabled: !!(projectId || threadId),
+    enabled: !!threadId,
     staleTime: Infinity,
   })
 
@@ -113,9 +85,8 @@ export function useTelegramLink(
   // NOTE: фильтр project_id=eq.X НЕ работает с INSERT в Supabase Realtime,
   // поэтому подписываемся на все события таблицы и фильтруем в callback
   useEffect(() => {
-    const channelName = threadId
-      ? `telegram-link-thread:${threadId}:${instanceId.current}`
-      : `telegram-link-${projectId}:${channel}:${instanceId.current}`
+    if (!threadId) return
+    const channelName = `telegram-link-thread:${threadId}:${instanceId.current}`
     const realtimeChannel = supabase
       .channel(channelName)
       .on(
@@ -128,10 +99,7 @@ export function useTelegramLink(
         (payload) => {
           const record =
             (payload.new as Record<string, unknown>) ?? (payload.old as Record<string, unknown>)
-          if (
-            (threadId && record?.thread_id === threadId) ||
-            (projectId && record?.project_id === projectId)
-          ) {
+          if (record?.thread_id === threadId) {
             queryClient.invalidateQueries({
               queryKey: telegramLinkKey,
             })
@@ -143,7 +111,7 @@ export function useTelegramLink(
     return () => {
       supabase.removeChannel(realtimeChannel)
     }
-  }, [projectId, channel, threadId, queryClient, telegramLinkKey])
+  }, [threadId, queryClient, telegramLinkKey])
 
   // Отвязать группу
   const unlinkMutation = useMutation({
