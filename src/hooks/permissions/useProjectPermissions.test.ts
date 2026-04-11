@@ -41,7 +41,7 @@ function makeProjectRole(
     settings: false,
     forms: false,
     documents: false,
-    tasks: false,
+    threads: false,
     history: false,
     card_view: false,
     ai_document_check: false,
@@ -51,8 +51,6 @@ function makeProjectRole(
     ai_project_assistant: false,
     comments: false,
     knowledge_base: false,
-    messenger: false,
-    internal_messenger: false,
     ...moduleAccess,
   }
 
@@ -242,7 +240,7 @@ describe('useProjectPermissions', () => {
     expect(result.current.moduleAccess?.settings).toBe(true)
     expect(result.current.moduleAccess?.forms).toBe(true)
     expect(result.current.moduleAccess?.documents).toBe(true)
-    expect(result.current.moduleAccess?.tasks).toBe(true)
+    expect(result.current.moduleAccess?.threads).toBe(true)
     expect(result.current.moduleAccess?.history).toBe(true)
     expect(result.current.moduleAccess?.ai_document_check).toBe(true)
     expect(result.current.moduleAccess?.ai_form_autofill).toBe(true)

@@ -1,8 +1,19 @@
 "use client"
 
 /**
- * AssigneesPopover — попап выбора исполнителей задачи с поиском и группировкой по ролям.
- * Используется в TaskDialog и TaskRow.
+ * AssigneesPopover — попап выбора исполнителей с поиском и группировкой по
+ * ролям (Сотрудники / Внешние / Клиенты). Один компонент на два сценария:
+ *
+ * 1. Thread-режим (по умолчанию): работает напрямую с тредом в БД.
+ *    Требует `threadId`, `projectId`, `workspaceId`, `assignees` (превью
+ *    для триггера). Клик по строке вызывает `useToggleAssignee` и сразу
+ *    пишет в БД. Используется в TaskDialog, TaskRow, TaskPanel.
+ *
+ * 2. Controlled-режим: попап полностью контроллируемый. Требует
+ *    `workspaceId`, `assigneeIds` (Set<string>), `onToggle` (коллбэк).
+ *    Изменения хранятся в state родителя и сохраняются им самим при
+ *    submit. Используется в ThreadTemplateDialog, где нет реального
+ *    треда — только форма.
  */
 
 import { useState, useMemo } from 'react'
@@ -55,7 +66,11 @@ function useProjectParticipants(projectId: string | undefined) {
   })
 }
 
-interface AssigneesPopoverProps {
+// ── Props ──
+
+/** Thread-режим: компонент сам пишет в БД через useToggleAssignee. */
+interface ThreadModeProps {
+  mode?: 'thread'
   threadId: string
   projectId: string | null
   workspaceId: string
@@ -64,33 +79,74 @@ interface AssigneesPopoverProps {
   dimmed?: boolean
 }
 
-export function AssigneesPopover({
-  threadId,
-  projectId,
-  workspaceId,
-  assignees,
-  dimmed,
-}: AssigneesPopoverProps) {
+/** Controlled-режим: state в родителе, компонент только рендерит и вызывает onToggle. */
+interface ControlledModeProps {
+  mode: 'controlled'
+  workspaceId: string
+  assigneeIds: Set<string>
+  onToggle: (participantId: string) => void
+  /** Список участников, если родитель грузит их сам. Если не передан —
+   *  грузим через useWorkspaceParticipants(workspaceId). */
+  participantsOverride?: WorkspaceParticipant[]
+}
+
+type AssigneesPopoverProps = ThreadModeProps | ControlledModeProps
+
+export function AssigneesPopover(props: AssigneesPopoverProps) {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+
+  const isControlled = props.mode === 'controlled'
+
+  // ── Загрузка участников ──
+  // Thread-режим: projectId → участники проекта, иначе логинящиеся участники workspace.
+  // Controlled-режим: либо override из props, либо все участники workspace.
+  const threadProjectId = !isControlled ? props.projectId : null
+  const threadWorkspaceId = !isControlled ? props.workspaceId : null
+  const controlledWorkspaceId = isControlled ? props.workspaceId : null
+
   const { data: projectParticipants = [] } = useProjectParticipants(
-    open && projectId ? projectId : undefined,
+    open && threadProjectId ? threadProjectId : undefined,
   )
   const { data: workspaceMembers = [] } = useWorkspaceParticipants(
-    open && !projectId ? workspaceId : undefined,
+    open && !threadProjectId && (threadWorkspaceId || controlledWorkspaceId)
+      ? (threadWorkspaceId ?? controlledWorkspaceId!)
+      : undefined,
   )
   const loginableWorkspace = useMemo(
     () => workspaceMembers.filter((p) => p.can_login),
     [workspaceMembers],
   )
-  const participants = projectId ? projectParticipants : loginableWorkspace
-  const toggleAssignee = useToggleAssignee(threadId)
 
-  // Используем assignees из props (они уже загружены батчем через useTaskAssigneesMap
-  // в родительском компоненте) — вместо отдельного запроса на каждую строку задачи.
-  const assigneeSet = useMemo(() => new Set(assignees.map((a) => a.id)), [assignees])
+  const participants: WorkspaceParticipant[] = isControlled
+    ? (props.participantsOverride ?? workspaceMembers)
+    : threadProjectId
+      ? projectParticipants
+      : loginableWorkspace
 
+  // ── Назначенные (разные источники в двух режимах) ──
+  const assigneeSet = useMemo(() => {
+    if (isControlled) return props.assigneeIds
+    return new Set(props.assignees.map((a) => a.id))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isControlled, isControlled ? props.assigneeIds : props.assignees])
+
+  // ── Мутация (только в thread-режиме) ──
+  // Хуки нельзя вызывать условно, поэтому дергаем всегда — передавая
+  // пустой id в controlled-режиме. Мутация там никогда не вызывается.
+  const toggleAssignee = useToggleAssignee(isControlled ? '' : props.threadId)
+
+  const handleToggle = (participantId: string) => {
+    if (isControlled) {
+      props.onToggle(participantId)
+      return
+    }
+    const assigned = assigneeSet.has(participantId)
+    toggleAssignee.mutate({ participantId, assigned })
+  }
+
+  // ── Фильтрация и сортировка ──
   const filtered = participants
     .filter((p) => {
       if (!search.trim()) return true
@@ -116,15 +172,21 @@ export function AssigneesPopover({
       <button
         key={p.id}
         type="button"
-        onClick={() => toggleAssignee.mutate({ participantId: p.id, assigned: isAssigned })}
-        disabled={toggleAssignee.isPending}
+        onClick={() => handleToggle(p.id)}
+        disabled={!isControlled && toggleAssignee.isPending}
         className={cn(
           'w-full flex items-center gap-2.5 px-3 py-1 text-left transition-colors',
           isAssigned ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-muted/50',
         )}
       >
         {p.avatar_url ? (
-          <Image src={p.avatar_url} alt="" width={24} height={24} className="w-6 h-6 rounded-full object-cover shrink-0" />
+          <Image
+            src={p.avatar_url}
+            alt=""
+            width={24}
+            height={24}
+            className="w-6 h-6 rounded-full object-cover shrink-0"
+          />
         ) : (
           <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground shrink-0">
             {(p.name ?? '?').charAt(0).toUpperCase()}
@@ -151,6 +213,74 @@ export function AssigneesPopover({
     { items: clients, label: 'Клиенты' },
   ].filter((g) => g.items.length > 0)
 
+  // ── Trigger ──
+  // Thread-режим: компактные аватарки задачи или иконка UserPlus.
+  // Controlled-режим: полноценная кнопка с аватарками выбранных + подпись.
+  const selectedList = isControlled
+    ? participants.filter((p) => assigneeSet.has(p.id))
+    : []
+
+  const trigger = isControlled ? (
+    <button
+      type="button"
+      className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background hover:bg-accent transition-colors text-sm font-normal w-full justify-start"
+    >
+      {selectedList.length === 0 ? (
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <UserPlus className="w-4 h-4" />
+          Назначить исполнителей
+        </span>
+      ) : (
+        <>
+          <span className="flex -space-x-1.5">
+            {selectedList.slice(0, 3).map((p) =>
+              p.avatar_url ? (
+                <Image
+                  key={p.id}
+                  src={p.avatar_url}
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="w-5 h-5 rounded-full object-cover ring-2 ring-background"
+                />
+              ) : (
+                <span
+                  key={p.id}
+                  className="w-5 h-5 rounded-full bg-muted text-[10px] font-medium flex items-center justify-center ring-2 ring-background"
+                >
+                  {(p.name ?? '?').charAt(0).toUpperCase()}
+                </span>
+              ),
+            )}
+          </span>
+          <span className="text-foreground truncate">
+            {selectedList.length === 1
+              ? `${selectedList[0].name}${selectedList[0].last_name ? ' ' + selectedList[0].last_name : ''}`
+              : `${selectedList.length} ${pluralizeAssignees(selectedList.length)}`}
+          </span>
+        </>
+      )}
+    </button>
+  ) : (
+    <button
+      type="button"
+      className={cn(
+        'flex items-center gap-1 shrink-0 rounded-md px-1 py-0.5 hover:bg-muted/50 transition-colors',
+        props.dimmed && 'opacity-20 hover:opacity-100',
+      )}
+      title="Исполнители"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {props.assignees.length > 0 ? (
+        <ParticipantAvatars participants={props.assignees} maxVisible={3} />
+      ) : (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground/50 hover:text-muted-foreground">
+          <UserPlus className="w-3.5 h-3.5" />
+        </span>
+      )}
+    </button>
+  )
+
   return (
     <Popover
       open={open}
@@ -159,26 +289,12 @@ export function AssigneesPopover({
         if (!v) setSearch('')
       }}
     >
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            'flex items-center gap-1 shrink-0 rounded-md px-1 py-0.5 hover:bg-muted/50 transition-colors',
-            dimmed && 'opacity-20 hover:opacity-100',
-          )}
-          title="Исполнители"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {assignees.length > 0 ? (
-            <ParticipantAvatars participants={assignees} maxVisible={3} />
-          ) : (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground/50 hover:text-muted-foreground">
-              <UserPlus className="w-3.5 h-3.5" />
-            </span>
-          )}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72 p-0" align="end" onWheel={(e) => e.stopPropagation()}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent
+        className="w-72 p-0"
+        align={isControlled ? 'start' : 'end'}
+        onWheel={(e) => e.stopPropagation()}
+      >
         <div className="px-3 py-2 border-b">
           <div className="flex items-center gap-2 border rounded-md px-2 py-1">
             <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
@@ -216,4 +332,12 @@ export function AssigneesPopover({
       </PopoverContent>
     </Popover>
   )
+}
+
+function pluralizeAssignees(n: number): string {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return 'исполнитель'
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'исполнителя'
+  return 'исполнителей'
 }

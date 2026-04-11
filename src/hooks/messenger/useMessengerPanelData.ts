@@ -23,7 +23,7 @@ import {
 } from '@/hooks/messenger/useInbox'
 import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
 import { useThreadMembersMap } from '@/components/tasks/useThreadMembersMap'
-import { useThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
+import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
 import { useAccessibleThreadIds } from '@/hooks/messenger/useAccessibleThreadIds'
 
 /** Названия ролей проекта для tooltip */
@@ -208,8 +208,42 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
     return map
   }, [visibleChats, projectParticipants, threadMembersMap])
 
-  // Thread templates
-  const { data: threadTemplates = [] } = useThreadTemplates(workspaceId)
+  // Project template id (для фильтрации шаблонов тредов по типу проекта)
+  const { data: projectTemplateId = null } = useQuery<string | null>({
+    queryKey: ['project-template-id', projectId],
+    queryFn: async () => {
+      if (!projectId) return null
+      const { data, error } = await supabase
+        .from('projects')
+        .select('template_id')
+        .eq('id', projectId)
+        .maybeSingle()
+      if (error) throw error
+      return (data?.template_id as string | null) ?? null
+    },
+    enabled: !!projectId,
+    staleTime: 60_000,
+  })
+
+  // Thread templates: глобальные + привязанные к типу этого проекта.
+  // Из них в меню "+" скрываем те, что уже имеют материализованный тред
+  // в этом проекте (по source_template_id) — чтобы пользователь не создавал
+  // дубли по шаблонам, которые уже отработали.
+  const { data: allVisibleTemplates = [] } = useThreadTemplatesForProject(
+    workspaceId,
+    projectTemplateId,
+  )
+  const usedTemplateIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const t of chats) {
+      if (t.source_template_id) set.add(t.source_template_id)
+    }
+    return set
+  }, [chats])
+  const threadTemplates = useMemo(
+    () => allVisibleTemplates.filter((t) => !usedTemplateIds.has(t.id)),
+    [allVisibleTemplates, usedTemplateIds],
+  )
 
   return {
     chats,

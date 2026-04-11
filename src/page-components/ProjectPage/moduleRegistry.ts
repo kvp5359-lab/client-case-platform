@@ -16,7 +16,6 @@ import {
   DollarSign,
   FolderOpen,
   BookOpen,
-  MessageSquare,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ProjectModule as ProjectModuleKey, WorkspaceFeature } from '@/types/permissions'
@@ -60,13 +59,17 @@ export interface ModuleDefinition {
  */
 export const PROJECT_MODULES: ModuleDefinition[] = [
   // === Основные вкладки ===
+  // Таб "Задачи" остаётся в UI проекта как отдельная вкладка, но он, а
+  // также клиентский/командный чаты (которые рендерятся в правой панели,
+  // не как табы), гейтятся одним module id — `threads`. См. миграцию
+  // 20260411_merge_task_chat_modules_into_threads.sql
   {
     id: 'tasks',
     label: 'Задачи',
     icon: CheckSquare,
     order: 1,
-    templateKey: 'tasks',
-    permissionKey: 'tasks',
+    templateKey: 'threads',
+    permissionKey: 'threads',
   },
   {
     id: 'documents',
@@ -117,24 +120,5 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     order: 9,
     templateKey: 'finances',
     permissionKey: 'finance',
-  },
-  // === Скрытые модули (без вкладок) ===
-  {
-    id: 'messenger',
-    label: 'Сообщения',
-    icon: MessageSquare,
-    order: 10,
-    templateKey: 'messenger',
-    permissionKey: 'messenger',
-    showTab: false,
-  },
-  {
-    id: 'internal-messenger',
-    label: 'Командный чат',
-    icon: MessageSquare,
-    order: 11,
-    templateKey: 'internal_messenger',
-    permissionKey: 'internal_messenger',
-    showTab: false,
   },
 ]

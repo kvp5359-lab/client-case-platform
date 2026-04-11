@@ -152,8 +152,7 @@ export default function ProjectPage() {
 
   // Боковая панель: передаём контекст проекта + messenger
   const setContext = useSidePanelStore((s) => s.setContext)
-  const setMessengerEnabled = useSidePanelStore((s) => s.setMessengerEnabled)
-  const setInternalMessengerEnabled = useSidePanelStore((s) => s.setInternalMessengerEnabled)
+  const setThreadsEnabled = useSidePanelStore((s) => s.setThreadsEnabled)
   const sidePanelOpen = useSidePanelStore((s) => s.panelTab !== null)
 
   const panelTab = useSidePanelStore((s) => s.panelTab)
@@ -210,27 +209,21 @@ export default function ProjectPage() {
     }
   }, [projectTemplate, setContext])
 
-  // Messenger enabled — обновляем только когда данные проекта загружены
+  // Threads enabled — обновляем только когда данные проекта загружены.
+  // `threads` включает и таб задач, и клиентскую/командную мессенджер-панели.
   useEffect(() => {
-    // Не сбрасываем в false пока данные грузятся — чтобы кнопка не мигала при переключении проектов
     if (!isLoading) {
-      setMessengerEnabled(!!modules.messenger)
-      setInternalMessengerEnabled(!!modules.internalMessenger)
+      setThreadsEnabled(!!modules.threads)
     }
-  }, [
-    modules.messenger,
-    modules.internalMessenger,
-    isLoading,
-    setMessengerEnabled,
-    setInternalMessengerEnabled,
-  ])
+  }, [modules.threads, isLoading, setThreadsEnabled])
 
-  // Открытие мессенджера по URL-параметру ?panel=messenger&channel=internal (клик на бейдж в сайдбаре)
-  // chatId уже сохранён в localStorage ДО навигации — restoreActiveChatId загрузит его при монтировании
+  // Открытие мессенджера по URL-параметру ?panel=messenger&channel=internal
+  // (клик на бейдж в сайдбаре). chatId уже сохранён в localStorage ДО
+  // навигации — restoreActiveChatId загрузит его при монтировании.
   const openMessenger = useSidePanelStore((s) => s.openMessenger)
   useEffect(() => {
     const params = new URLSearchParams(currentSearchParams.toString())
-    if (params.get('panel') === 'messenger' && modules.messenger) {
+    if (params.get('panel') === 'messenger' && modules.threads) {
       const channel = params.get('channel') === 'internal' ? ('internal' as const) : undefined
       const chatId = params.get('chatId')
       if (chatId) {
@@ -247,7 +240,7 @@ export default function ProjectPage() {
         `/workspaces/${workspaceId}/projects/${projectId}${remaining ? `?${remaining}` : ''}`,
       )
     }
-  }, [projectId, currentSearchParams.toString(), modules.messenger]) // eslint-disable-line react-hooks/exhaustive-deps -- navigate/openMessenger stable refs
+  }, [projectId, currentSearchParams.toString(), modules.threads]) // eslint-disable-line react-hooks/exhaustive-deps -- navigate/openMessenger stable refs
 
   // === ОБРАБОТЧИКИ ===
 

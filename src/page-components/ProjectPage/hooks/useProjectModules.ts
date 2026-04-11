@@ -55,7 +55,8 @@ export function useProjectModules(
     return firstTab?.id || 'settings'
   }, [availableModules])
 
-  // Обратная совместимость: объект modules для кода, который ещё не переведён
+  // Объект modules — флаги для быстрой проверки в UI.
+  // `threads` — объединённый модуль задач + клиентского/командного чатов.
   const modules = useMemo(
     () => {
       const has = (id: string) => availableModules.some((m) => m.id === id)
@@ -64,7 +65,13 @@ export function useProjectModules(
         forms: has('forms'),
         documents: has('documents'),
         finances: has('finances'),
-        tasks: has('tasks'),
+        // Таб "Задачи" появляется в availableModules с id='tasks', но
+        // сам модуль в enabled_modules называется 'threads'. Поэтому
+        // `has('tasks')` здесь — корректная проверка "модуль threads
+        // доступен", а имена `threads` и `tasks` мы продолжаем
+        // различать осознанно: threads — бизнес-флаг (включена ли вся
+        // группа), tasks — id конкретного таба.
+        threads: has('tasks'),
         history: has('history'),
         participants: has('settings'), // участники — вкладка в settings, не отдельный модуль
         // ai-chat не в реестре: доступ = ИЛИ трёх permission keys + feature gate,
@@ -76,8 +83,6 @@ export function useProjectModules(
             hasModuleAccess('ai_project_assistant')) &&
           isFeatureEnabled('ai_chat_assistant'),
         knowledgeBase: has('knowledge-base'),
-        messenger: has('messenger'),
-        internalMessenger: has('internal-messenger'),
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- .join(',') стабилизация массива

@@ -6,13 +6,16 @@ import {
   FileText,
   FolderOpen,
   DollarSign,
-  CheckSquare,
   MessageSquare,
   BookOpen,
+  MessagesSquare,
 } from 'lucide-react'
 import type { Database } from '@/types/database'
 
-// Доступные модули для проекта
+// Доступные модули для проекта.
+// `threads` — объединённый модуль «Задачи и чаты», заменивший
+// три прежних (`tasks`, `messenger`, `internal_messenger`) 2026-04-11.
+// Миграция БД уже прошла, старые id больше нигде не должны встречаться.
 export const AVAILABLE_MODULES = [
   {
     id: 'forms',
@@ -33,10 +36,10 @@ export const AVAILABLE_MODULES = [
     description: 'Модуль для учёта финансов проекта',
   },
   {
-    id: 'tasks',
-    label: 'Задачи',
-    icon: CheckSquare,
-    description: 'Модуль для управления задачами проекта',
+    id: 'threads',
+    label: 'Задачи и чаты',
+    icon: MessagesSquare,
+    description: 'Задачи, клиентские чаты и командный чат проекта',
   },
   {
     id: 'ai_chat',
@@ -49,18 +52,6 @@ export const AVAILABLE_MODULES = [
     label: 'База знаний',
     icon: BookOpen,
     description: 'Полезные материалы для клиентов',
-  },
-  {
-    id: 'messenger',
-    label: 'Мессенджер',
-    icon: MessageSquare,
-    description: 'Чат проекта с интеграцией Telegram',
-  },
-  {
-    id: 'internal_messenger',
-    label: 'Командный чат',
-    icon: MessageSquare,
-    description: 'Внутренний чат для сотрудников (клиенты не видят)',
   },
 ] as const
 

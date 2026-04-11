@@ -47,7 +47,6 @@ export function ProjectTemplateEditorPage() {
     linkedDocKits,
     linkedKnowledgeArticles,
     linkedKnowledgeGroups,
-    linkedTasks,
     availableFormsFiltered,
     availableDocKitsFiltered,
     availableKnowledgeArticlesFiltered,
@@ -67,9 +66,6 @@ export function ProjectTemplateEditorPage() {
     removeKnowledgeArticleMutation,
     addKnowledgeGroupsMutation,
     removeKnowledgeGroupMutation,
-    addTaskMutation,
-    updateTaskMutation,
-    removeTaskMutation,
   } = useProjectTemplateMutations({
     templateId,
     linkedForms,
@@ -142,7 +138,7 @@ export function ProjectTemplateEditorPage() {
 
   return (
     <WorkspaceLayout>
-      <div className="container max-w-5xl py-8 px-6">
+      <div className="container max-w-6xl py-8 px-6">
         {/* Шапка */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" className="mb-4" onClick={handleBack}>
@@ -201,72 +197,77 @@ export function ProjectTemplateEditorPage() {
           </div>
         </div>
 
-        {/* Корневая папка Google Drive */}
-        <RootFolderSection
-          templateId={templateId}
-          rootFolderId={template.root_folder_id}
-          workspaceId={workspaceId}
-        />
+        {/*
+          Двухколоночный layout 50/50: слева — модули проекта, справа —
+          настройки Google (корневая папка Drive, шаблон брифа Sheets).
+          На экранах <lg колонки складываются в одну.
+        */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* Левая колонка — модули */}
+          <ModulesSection
+            workspaceId={workspaceId}
+            projectTemplateId={templateId}
+            enabledModules={template.enabled_modules || []}
+            linkedForms={linkedForms}
+            linkedDocKits={linkedDocKits}
+            linkedKnowledgeArticles={linkedKnowledgeArticles}
+            linkedKnowledgeGroups={linkedKnowledgeGroups}
+            onToggleModule={handleToggleModule}
+            onAddForms={dialogs.forms.open}
+            onAddDocKits={dialogs.docKits.open}
+            onAddKnowledge={dialogs.knowledge.open}
+            onRemoveForm={(id) =>
+              handleRemoveWithConfirm(
+                'Удалить шаблон анкеты?',
+                'Удалить этот шаблон анкеты из типа проекта?',
+                removeFormMutation.mutate,
+                id,
+              )
+            }
+            onRemoveDocKit={(id) =>
+              handleRemoveWithConfirm(
+                'Удалить шаблон набора документов?',
+                'Удалить этот шаблон набора документов из типа проекта?',
+                removeDocKitMutation.mutate,
+                id,
+              )
+            }
+            onRemoveKnowledgeArticle={(id) =>
+              handleRemoveWithConfirm(
+                'Удалить статью?',
+                'Удалить эту статью из типа проекта?',
+                removeKnowledgeArticleMutation.mutate,
+                id,
+              )
+            }
+            onRemoveKnowledgeGroup={(id) =>
+              handleRemoveWithConfirm(
+                'Удалить группу?',
+                'Удалить доступ ко всем статьям этой группы из типа проекта?',
+                removeKnowledgeGroupMutation.mutate,
+                id,
+              )
+            }
+            isRemovingForm={removeFormMutation.isPending}
+            isRemovingDocKit={removeDocKitMutation.isPending}
+            isRemovingKnowledgeArticle={removeKnowledgeArticleMutation.isPending}
+            isRemovingKnowledgeGroup={removeKnowledgeGroupMutation.isPending}
+          />
 
-        {/* Шаблон брифа (Google Sheets) */}
-        <BriefTemplateSection
-          templateId={templateId}
-          briefTemplateSheetId={template.brief_template_sheet_id}
-          workspaceId={workspaceId}
-        />
-
-        {/* Секция модулей */}
-        <ModulesSection
-          enabledModules={template.enabled_modules || []}
-          linkedForms={linkedForms}
-          linkedDocKits={linkedDocKits}
-          linkedKnowledgeArticles={linkedKnowledgeArticles}
-          linkedKnowledgeGroups={linkedKnowledgeGroups}
-          linkedTasks={linkedTasks}
-          onToggleModule={handleToggleModule}
-          onAddForms={dialogs.forms.open}
-          onAddDocKits={dialogs.docKits.open}
-          onAddKnowledge={dialogs.knowledge.open}
-          onAddTask={(name, sortOrder) => addTaskMutation.mutate({ name, sortOrder })}
-          onUpdateTask={(taskId, name) => updateTaskMutation.mutate({ taskId, name })}
-          onRemoveTask={(id) => removeTaskMutation.mutate(id)}
-          onRemoveForm={(id) =>
-            handleRemoveWithConfirm(
-              'Удалить шаблон анкеты?',
-              'Удалить этот шаблон анкеты из типа проекта?',
-              removeFormMutation.mutate,
-              id,
-            )
-          }
-          onRemoveDocKit={(id) =>
-            handleRemoveWithConfirm(
-              'Удалить шаблон набора документов?',
-              'Удалить этот шаблон набора документов из типа проекта?',
-              removeDocKitMutation.mutate,
-              id,
-            )
-          }
-          onRemoveKnowledgeArticle={(id) =>
-            handleRemoveWithConfirm(
-              'Удалить статью?',
-              'Удалить эту статью из типа проекта?',
-              removeKnowledgeArticleMutation.mutate,
-              id,
-            )
-          }
-          onRemoveKnowledgeGroup={(id) =>
-            handleRemoveWithConfirm(
-              'Удалить группу?',
-              'Удалить доступ ко всем статьям этой группы из типа проекта?',
-              removeKnowledgeGroupMutation.mutate,
-              id,
-            )
-          }
-          isRemovingForm={removeFormMutation.isPending}
-          isRemovingDocKit={removeDocKitMutation.isPending}
-          isRemovingKnowledgeArticle={removeKnowledgeArticleMutation.isPending}
-          isRemovingKnowledgeGroup={removeKnowledgeGroupMutation.isPending}
-        />
+          {/* Правая колонка — интеграции с Google */}
+          <div className="space-y-6">
+            <RootFolderSection
+              templateId={templateId}
+              rootFolderId={template.root_folder_id}
+              workspaceId={workspaceId}
+            />
+            <BriefTemplateSection
+              templateId={templateId}
+              briefTemplateSheetId={template.brief_template_sheet_id}
+              workspaceId={workspaceId}
+            />
+          </div>
+        </div>
 
         {/* Диалоги добавления */}
         <AddTemplatesDialog

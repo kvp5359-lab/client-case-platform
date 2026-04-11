@@ -23,7 +23,7 @@ export function FloatingPanelButtons() {
   const panelTab = useSidePanelStore((s) => s.panelTab)
   const lastPanelTab = useSidePanelStore((s) => s.lastPanelTab)
   const pageContext = useSidePanelStore((s) => s.pageContext)
-  const messengerEnabled = useSidePanelStore((s) => s.messengerEnabled)
+  const messengerEnabled = useSidePanelStore((s) => s.threadsEnabled)
   const togglePanel = useSidePanelStore((s) => s.togglePanel)
   const openPanel = useSidePanelStore((s) => s.openPanel)
   const closePanel = useSidePanelStore((s) => s.closePanel)

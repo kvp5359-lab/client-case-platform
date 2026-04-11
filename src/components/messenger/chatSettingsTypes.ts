@@ -32,6 +32,11 @@ export interface ChatSettingsResult {
   projectId?: string | null
   // First message (optional)
   initialMessage?: { html: string; files: File[] }
+  /**
+   * ID шаблона, из которого заполнена форма. Прокидывается в create-mutation,
+   * чтобы в новом треде проставить source_template_id.
+   */
+  sourceTemplateId?: string | null
 }
 
 export interface ChatSettingsDialogProps {

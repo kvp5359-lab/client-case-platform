@@ -195,6 +195,10 @@ export function useChatSettingsActions({
   }
 
   // ── Template apply ──
+  // appliedTemplateId прокидывается в ChatSettingsResult.sourceTemplateId на
+  // submit — так свежесозданный тред запоминает, из какого шаблона он родом.
+  const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null)
+
   const handleApplyTemplate = useCallback(
     (template: ThreadTemplate) => {
       const projectName = workspaceProjects.find((p) => p.id === form.selectedProjectId)?.name ?? ''
@@ -234,6 +238,7 @@ export function useChatSettingsActions({
           duration: 5000,
         })
       }
+      setAppliedTemplateId(template.id)
     },
     [
       workspaceProjects,
@@ -248,11 +253,9 @@ export function useChatSettingsActions({
   )
 
   // Auto-apply initial template
-  const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null)
   useEffect(() => {
     if (open && !form.isEditMode && initialTemplate && initialTemplate.id !== appliedTemplateId) {
       handleApplyTemplate(initialTemplate)
-      setAppliedTemplateId(initialTemplate.id)
     }
     if (!open) setAppliedTemplateId(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -378,6 +381,7 @@ export function useChatSettingsActions({
         assigneeIds: Array.from(form.taskAssignees),
         projectId: form.selectedProjectId,
         initialMessage,
+        sourceTemplateId: appliedTemplateId,
       })
     } else {
       const isEmail = form.channelType === 'email'
@@ -402,9 +406,10 @@ export function useChatSettingsActions({
         accessRoles: form.accessType === 'roles' ? Array.from(form.selectedRoles) : undefined,
         projectId: form.selectedProjectId,
         initialMessage,
+        sourceTemplateId: appliedTemplateId,
       })
     }
-  }, [form, composeRef, onCreate, onUpdate])
+  }, [form, composeRef, onCreate, onUpdate, appliedTemplateId])
 
   const currentStatus = taskStatuses.find((s) => s.id === form.currentStatusId)
 

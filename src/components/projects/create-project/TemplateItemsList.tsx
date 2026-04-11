@@ -1,40 +1,36 @@
 import { Checkbox } from '@/components/ui/checkbox'
-import { FileText, FolderOpen, CheckSquare } from 'lucide-react'
+import { FileText, FolderOpen, MessagesSquare } from 'lucide-react'
+import type { ThreadTemplate } from '@/types/threadTemplate'
 
 interface NamedItem {
   id: string
   name: string
 }
 
-interface TemplateTask {
-  id: string
-  name: string
-  sort_order: number
-}
-
 interface TemplateItemsListProps {
   docKitTemplates: NamedItem[]
   formTemplates: NamedItem[]
-  tasks: TemplateTask[]
+  /** Шаблоны тредов (задач и чатов одним списком), привязанные к типу проекта. */
+  threads: ThreadTemplate[]
   selectedDocKitIds: Set<string>
   selectedFormIds: Set<string>
-  selectedTaskIds: Set<string>
+  selectedThreadIds: Set<string>
   onToggleDocKit: (id: string) => void
   onToggleForm: (id: string) => void
-  onToggleTask: (id: string) => void
+  onToggleThread: (id: string) => void
   disabled?: boolean
 }
 
 export function TemplateItemsList({
   docKitTemplates,
   formTemplates,
-  tasks,
+  threads,
   selectedDocKitIds,
   selectedFormIds,
-  selectedTaskIds,
+  selectedThreadIds,
   onToggleDocKit,
   onToggleForm,
-  onToggleTask,
+  onToggleThread,
   disabled,
 }: TemplateItemsListProps) {
   return (
@@ -85,23 +81,23 @@ export function TemplateItemsList({
         </div>
       )}
 
-      {tasks.length > 0 && (
+      {threads.length > 0 && (
         <div className="space-y-1.5">
           <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-            <CheckSquare className="h-3.5 w-3.5" />
-            Задачи
+            <MessagesSquare className="h-3.5 w-3.5" />
+            Задачи и чаты
           </p>
-          {tasks.map((task) => (
+          {threads.map((t) => (
             <label
-              key={task.id}
+              key={t.id}
               className="flex items-center gap-2 cursor-pointer hover:bg-background/60 rounded px-1.5 py-1 transition-colors"
             >
               <Checkbox
-                checked={selectedTaskIds.has(task.id)}
-                onCheckedChange={() => onToggleTask(task.id)}
+                checked={selectedThreadIds.has(t.id)}
+                onCheckedChange={() => onToggleThread(t.id)}
                 disabled={disabled}
               />
-              <span className="text-sm">{task.name}</span>
+              <span className="text-sm">{t.name}</span>
             </label>
           ))}
         </div>

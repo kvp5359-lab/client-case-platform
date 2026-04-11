@@ -2,14 +2,15 @@
  * Секция модулей проекта в редакторе типа проекта
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Layers, ChevronDown, Plus, Trash2, CheckSquare } from 'lucide-react'
+import { Layers, ChevronDown, Plus, Trash2 } from 'lucide-react'
 import { AVAILABLE_MODULES } from './constants'
 import { LinkedTemplatesList } from './LinkedTemplatesList'
+import { ProjectTemplateThreadList } from './ProjectTemplateThreadList'
+import { useThreadTemplatesByProjectTemplate } from '@/hooks/messenger/useThreadTemplates'
 import { FileText, FolderOpen, BookOpen, Folder } from 'lucide-react'
 import type {
   FormTemplateWithRelation,
@@ -18,19 +19,14 @@ import type {
   KnowledgeGroupWithRelation,
 } from './constants'
 
-interface TemplateTask {
-  id: string
-  name: string
-  sort_order: number
-}
-
 interface ModulesSectionProps {
+  workspaceId: string
+  projectTemplateId: string
   enabledModules: string[]
   linkedForms: FormTemplateWithRelation[]
   linkedDocKits: DocumentKitTemplateWithRelation[]
   linkedKnowledgeArticles: KnowledgeArticleWithRelation[]
   linkedKnowledgeGroups: KnowledgeGroupWithRelation[]
-  linkedTasks: TemplateTask[]
   onToggleModule: (moduleId: string) => void
   onAddForms: () => void
   onAddDocKits: () => void
@@ -39,9 +35,6 @@ interface ModulesSectionProps {
   onRemoveDocKit: (relationId: string) => void
   onRemoveKnowledgeArticle: (relationId: string) => void
   onRemoveKnowledgeGroup: (relationId: string) => void
-  onAddTask: (name: string, sortOrder: number) => void
-  onUpdateTask: (taskId: string, name: string) => void
-  onRemoveTask: (taskId: string) => void
   isRemovingForm: boolean
   isRemovingDocKit: boolean
   isRemovingKnowledgeArticle: boolean
@@ -49,12 +42,13 @@ interface ModulesSectionProps {
 }
 
 export function ModulesSection({
+  workspaceId,
+  projectTemplateId,
   enabledModules,
   linkedForms,
   linkedDocKits,
   linkedKnowledgeArticles,
   linkedKnowledgeGroups,
-  linkedTasks,
   onToggleModule,
   onAddForms,
   onAddDocKits,
@@ -63,20 +57,18 @@ export function ModulesSection({
   onRemoveDocKit,
   onRemoveKnowledgeArticle,
   onRemoveKnowledgeGroup,
-  onAddTask,
-  onUpdateTask,
-  onRemoveTask,
   isRemovingForm,
   isRemovingDocKit,
   isRemovingKnowledgeArticle,
   isRemovingKnowledgeGroup,
 }: ModulesSectionProps) {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
-  const [newTaskName, setNewTaskName] = useState('')
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
-  const [editingTaskName, setEditingTaskName] = useState('')
-  const taskInputRef = useRef<HTMLInputElement>(null)
-  const editInputRef = useRef<HTMLInputElement>(null)
+
+  // Загружаем шаблоны тредов, привязанные к типу проекта, чтобы собрать
+  // превью-список (названия) для свёрнутого заголовка модуля "Задачи и чаты".
+  const { data: scopedThreadTemplates = [] } = useThreadTemplatesByProjectTemplate(
+    projectTemplateId,
+  )
 
   const toggleExpanded = useCallback((moduleId: string) => {
     setExpandedModules((prev) => {
@@ -86,34 +78,6 @@ export function ModulesSection({
       return next
     })
   }, [])
-
-  const handleAddTask = () => {
-    const name = newTaskName.trim()
-    if (!name) return
-    onAddTask(name, linkedTasks.length)
-    setNewTaskName('')
-    taskInputRef.current?.focus()
-  }
-
-  const handleStartEditTask = (task: TemplateTask) => {
-    setEditingTaskId(task.id)
-    setEditingTaskName(task.name)
-    setTimeout(() => editInputRef.current?.focus(), 0)
-  }
-
-  const handleSaveEditTask = () => {
-    const name = editingTaskName.trim()
-    if (name && editingTaskId) {
-      onUpdateTask(editingTaskId, name)
-    }
-    setEditingTaskId(null)
-    setEditingTaskName('')
-  }
-
-  const handleCancelEditTask = () => {
-    setEditingTaskId(null)
-    setEditingTaskName('')
-  }
 
   return (
     <section className="space-y-6">
@@ -134,12 +98,12 @@ export function ModulesSection({
           const isForms = module.id === 'forms'
           const isDocuments = module.id === 'documents'
           const isKnowledgeBase = module.id === 'knowledge_base'
-          const isTasks = module.id === 'tasks'
+          const isThreads = module.id === 'threads'
           const hasContent =
             (isForms && isEnabled) ||
             (isDocuments && isEnabled) ||
             (isKnowledgeBase && isEnabled) ||
-            (isTasks && isEnabled)
+            (isThreads && isEnabled)
           const isExpanded = expandedModules.has(module.id)
           const contentItems = isForms
             ? linkedForms.map((r) => r.form_template.name)
@@ -150,8 +114,8 @@ export function ModulesSection({
                     ...linkedKnowledgeGroups.map((r) => r.knowledge_group.name),
                     ...linkedKnowledgeArticles.map((r) => r.knowledge_article.title),
                   ]
-                : isTasks
-                  ? linkedTasks.map((t) => t.name)
+                : isThreads
+                  ? scopedThreadTemplates.map((t) => t.name)
                   : []
 
           return (
@@ -180,12 +144,16 @@ export function ModulesSection({
                 ) : (
                   <span className="font-medium text-sm">{module.label}</span>
                 )}
-                {isEnabled && contentItems.length > 0 && (
-                  <span className="text-xs text-muted-foreground truncate">
+                {/* Превью контента: flex-1 + min-w-0 нужны, чтобы truncate
+                    реально срабатывал и текст не выталкивал соседей (бейдж,
+                    заголовок модуля) за границы строки. */}
+                {isEnabled && contentItems.length > 0 ? (
+                  <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
                     {contentItems.join(', ')}
                   </span>
+                ) : (
+                  <span className="flex-1" />
                 )}
-                <span className="flex-1" />
                 {isEnabled && (
                   <Badge className="bg-amber-400 text-black hover:bg-amber-400 text-[11px] py-0 px-1.5 shrink-0">
                     Включён
@@ -222,80 +190,13 @@ export function ModulesSection({
                     />
                   )}
 
-                  {isTasks && isEnabled && (
-                    <div className="bg-muted/20 px-4 py-2 border-t">
-                      <div className="space-y-0.5">
-                        {linkedTasks.map((task) => (
-                          <div
-                            key={task.id}
-                            className="flex items-center justify-between px-2 rounded group hover:bg-background/60 transition-colors"
-                          >
-                            {editingTaskId === task.id ? (
-                              <div className="flex items-center gap-2 min-w-0 py-0.5 flex-1">
-                                <CheckSquare className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                <Input
-                                  ref={editInputRef}
-                                  value={editingTaskName}
-                                  onChange={(e) => setEditingTaskName(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault()
-                                      handleSaveEditTask()
-                                    }
-                                    if (e.key === 'Escape') {
-                                      handleCancelEditTask()
-                                    }
-                                  }}
-                                  onBlur={handleSaveEditTask}
-                                  className="h-6 text-sm flex-1"
-                                />
-                              </div>
-                            ) : (
-                              <div
-                                className="flex items-center gap-2 min-w-0 py-1 flex-1 cursor-pointer"
-                                onClick={() => handleStartEditTask(task)}
-                              >
-                                <CheckSquare className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                <span className="text-sm truncate">{task.name}</span>
-                              </div>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0"
-                              onClick={() => onRemoveTask(task.id)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        ))}
-                        <div className="flex items-center gap-2 pt-1">
-                          <Input
-                            ref={taskInputRef}
-                            value={newTaskName}
-                            onChange={(e) => setNewTaskName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault()
-                                handleAddTask()
-                              }
-                            }}
-                            placeholder="Название задачи..."
-                            className="h-7 text-xs"
-                          />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={handleAddTask}
-                            disabled={!newTaskName.trim()}
-                            className="h-7 px-2 text-xs text-muted-foreground shrink-0"
-                          >
-                            <Plus className="w-3 h-3 mr-1" />
-                            Добавить
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+                  {isThreads && isEnabled && (
+                    <ProjectTemplateThreadList
+                      workspaceId={workspaceId}
+                      projectTemplateId={projectTemplateId}
+                      emptyHint="Шаблонов задач и чатов пока нет"
+                      addLabel="Добавить шаблон"
+                    />
                   )}
 
                   {isKnowledgeBase && isEnabled && (

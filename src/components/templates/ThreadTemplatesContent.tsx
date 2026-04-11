@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { threadTemplateKeys } from '@/hooks/queryKeys'
-import { useThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
+import { useGlobalThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ThreadTemplateDialog } from './ThreadTemplateDialog'
 import { getChatIconComponent } from '@/components/messenger/ChatSettingsDialog'
@@ -47,15 +47,20 @@ export function ThreadTemplatesContent() {
   const queryClient = useQueryClient()
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
-  const { data: templates = [], isLoading } = useThreadTemplates(workspaceId)
+  // Показываем только ГЛОБАЛЬНЫЕ шаблоны (owner_project_template_id IS NULL).
+  // Шаблоны, привязанные к конкретному типу проекта, редактируются внутри
+  // соответствующего редактора типа проекта (модули "Задачи" / "Чаты").
+  const { data: templates = [], isLoading } = useGlobalThreadTemplates(workspaceId)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ThreadTemplate | null>(null)
 
   const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: threadTemplateKeys.byWorkspace(workspaceId ?? '') })
-  }, [queryClient, workspaceId])
+    // Инвалидируем все варианты ключей шаблонов для этого workspace, чтобы
+    // глобальные/scoped/context-списки обновились одновременно.
+    queryClient.invalidateQueries({ queryKey: threadTemplateKeys.all })
+  }, [queryClient])
 
   // ── Save mutation ──
   const saveMutation = useMutation({

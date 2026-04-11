@@ -44,6 +44,7 @@ export function useCreateTaskHandler({
           statusId: result.statusId,
           assigneeIds: result.assigneeIds,
           projectIdOverride: result.projectId !== undefined ? result.projectId : undefined,
+          sourceTemplateId: result.sourceTemplateId,
         },
         { onSuccess: (newThread) => onSuccess(newThread, result) },
       )

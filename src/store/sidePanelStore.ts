@@ -60,8 +60,7 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
   requestedMessengerChannel: null,
 
   pageContext: { workspaceId: null },
-  messengerEnabled: false,
-  internalMessengerEnabled: false,
+  threadsEnabled: false,
   activeAiTab: persistedAiTab,
   aiSessions: initialAiSessions,
   pendingAiDocuments: [],
@@ -183,8 +182,7 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
       return next
     }),
 
-  setMessengerEnabled: (enabled) => set({ messengerEnabled: enabled }),
-  setInternalMessengerEnabled: (enabled) => set({ internalMessengerEnabled: enabled }),
+  setThreadsEnabled: (enabled) => set({ threadsEnabled: enabled }),
 
   setActiveAiTab: (tab) => {
     lsSet(LS_KEY_AI_TAB, tab)

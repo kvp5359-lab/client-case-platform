@@ -72,10 +72,12 @@ export interface SidePanelStore {
   /** Контекст текущей страницы (постоянный, пока мы на ProjectPage) */
   pageContext: PanelContext
 
-  /** Доступность модуля messenger на текущей странице */
-  messengerEnabled: boolean
-  /** Доступность внутреннего мессенджера (командный чат) */
-  internalMessengerEnabled: boolean
+  /**
+   * Доступность объединённого модуля `threads` на текущей странице.
+   * Он включает таб задач и обе мессенджер-панели (клиент + команда) —
+   * если флаг false, кнопки открытия мессенджера скрываются.
+   */
+  threadsEnabled: boolean
 
   /** Активная вкладка AI-панели (sub-tab внутри assistant) */
   activeAiTab: string | null
@@ -110,8 +112,7 @@ export interface SidePanelStore {
   toggle: (type: PanelType) => void
   /** Установить контекст страницы (вызывается из ProjectPage/WorkspaceLayout) */
   setContext: (ctx: Partial<PanelContext>) => void
-  setMessengerEnabled: (enabled: boolean) => void
-  setInternalMessengerEnabled: (enabled: boolean) => void
+  setThreadsEnabled: (enabled: boolean) => void
   setActiveAiTab: (tab: string) => void
   /** Получить или создать AI-сессию для проекта */
   getAiSession: (projectId: string) => AiSessionState

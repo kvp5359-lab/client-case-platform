@@ -218,9 +218,10 @@ export function useGlobalBatchActions({
   const canDeleteDocuments = hasPermission('documents', 'delete_documents')
   const canDownloadDocuments = hasPermission('documents', 'download_documents')
   const canUseAi = isEnabled('ai_document_check')
-  // «Отправить в» доступна только если есть internal_messenger или AI
+  // «Отправить в» доступна только если есть объединённый модуль threads
+  // (старый internal_messenger) или любой AI.
   const canSendToChat =
-    hasModuleAccess('internal_messenger') ||
+    hasModuleAccess('threads') ||
     hasModuleAccess('ai_knowledge_all') ||
     hasModuleAccess('ai_knowledge_project') ||
     hasModuleAccess('ai_project_assistant')

@@ -28,7 +28,7 @@ import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipant
 import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTemplate'
 import { IconColorPicker } from './IconColorPicker'
 import { StatusPicker } from './StatusPicker'
-import { AssigneesPicker } from './AssigneesPicker'
+import { AssigneesPopover } from '@/components/tasks/AssigneesPopover'
 import { EmailRecipientInput } from './EmailRecipientInput'
 import type { EmailChip } from './EmailRecipientInput'
 import { useEmailChips } from '@/hooks/messenger/useEmailChips'
@@ -99,8 +99,6 @@ function ThreadTemplateDialogBody({
   // UI state (поповеры)
   const [iconColorOpen, setIconColorOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
-  const [assigneeOpen, setAssigneeOpen] = useState(false)
-  const [assigneeSearch, setAssigneeSearch] = useState('')
 
   // Email chips
   const initialEmails: EmailChip[] = (template?.default_contact_email ?? '')
@@ -257,18 +255,20 @@ function ThreadTemplateDialogBody({
           </div>
         )}
 
-        {/* Исполнители (задачи) */}
+        {/* Исполнители (задачи). Переиспользуем AssigneesPopover из
+            раздела задач в controlled-режиме — чтобы попап выглядел
+            одинаково везде. Родитель хранит выбор в локальном state
+            формы (assigneeIds) и передаёт участников, уже загруженных
+            через useWorkspaceParticipants. */}
         {isTask && (
           <div className="flex flex-col gap-1">
             <Label className="text-sm text-muted-foreground">Исполнители</Label>
-            <AssigneesPicker
-              open={assigneeOpen}
-              onOpenChange={setAssigneeOpen}
-              participants={participants}
+            <AssigneesPopover
+              mode="controlled"
+              workspaceId={workspaceId}
               assigneeIds={assigneeIds}
               onToggle={toggleAssignee}
-              search={assigneeSearch}
-              onSearchChange={setAssigneeSearch}
+              participantsOverride={participants}
             />
           </div>
         )}

@@ -11,6 +11,12 @@ export interface ThreadTemplateAssignee {
 export interface ThreadTemplate {
   id: string
   workspace_id: string
+  /**
+   * When set, the template belongs to a specific project template and is
+   * only visible inside projects of that type. When null, the template is
+   * global (shown in workspace settings and in every project's "+" menu).
+   */
+  owner_project_template_id: string | null
   name: string
   description: string | null
   thread_type: 'chat' | 'task'

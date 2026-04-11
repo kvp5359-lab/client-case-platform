@@ -6,7 +6,8 @@
 import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import { Inbox, MessageSquare, Search, X } from 'lucide-react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
@@ -22,8 +23,8 @@ import {
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys, invalidateMessengerCaches, taskKeys } from '@/hooks/queryKeys'
-import { useThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
-import { useCreateThread } from '@/hooks/messenger/useProjectThreads'
+import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
+import { useCreateThread, useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { TaskPanel } from '@/components/tasks/TaskPanel'
 import { useTaskPanelSetup } from '@/components/tasks/useTaskPanelSetup'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
@@ -60,8 +61,6 @@ export default function InboxPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [createDefaultTab, setCreateDefaultTab] = useState<'task' | 'chat' | 'email'>('task')
   const [createTemplate, setCreateTemplate] = useState<ThreadTemplate | null>(null)
-
-  const { data: threadTemplates = [] } = useThreadTemplates(workspaceId)
 
   // TaskPanel
   const tp = useTaskPanelSetup({ workspaceId: workspaceId ?? '' })
@@ -127,6 +126,46 @@ export default function InboxPage() {
   // Участники проекта для хедера
   const { data: participants = [] } = useProjectChatParticipants(activeChat?.project_id)
 
+  // Project template id активного чата — для фильтрации шаблонов тредов.
+  const { data: activeProjectTemplateId = null } = useQuery<string | null>({
+    queryKey: ['project-template-id', activeChat?.project_id ?? null],
+    queryFn: async () => {
+      if (!activeChat?.project_id) return null
+      const { data, error } = await supabase
+        .from('projects')
+        .select('template_id')
+        .eq('id', activeChat.project_id)
+        .maybeSingle()
+      if (error) throw error
+      return (data?.template_id as string | null) ?? null
+    },
+    enabled: !!activeChat?.project_id,
+    staleTime: 60_000,
+  })
+
+  // Все видимые шаблоны в контексте активного проекта: глобальные + scoped.
+  const { data: allVisibleTemplates = [] } = useThreadTemplatesForProject(
+    workspaceId,
+    activeProjectTemplateId,
+  )
+
+  // Существующие треды активного проекта — чтобы отфильтровать шаблоны,
+  // которые уже материализовались в тред с этим source_template_id.
+  const { data: activeProjectThreads = [] } = useProjectThreads(
+    activeChat?.project_id ?? undefined,
+  )
+  const usedTemplateIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const t of activeProjectThreads) {
+      if (t.source_template_id) set.add(t.source_template_id)
+    }
+    return set
+  }, [activeProjectThreads])
+  const threadTemplates = useMemo(
+    () => allVisibleTemplates.filter((t) => !usedTemplateIds.has(t.id)),
+    [allVisibleTemplates, usedTemplateIds],
+  )
+
   // Создание треда — projectId из активного чата
   const createProjectId = activeChat?.project_id ?? ''
   const createChatMutation = useCreateThread(createProjectId, workspaceId ?? '')
@@ -177,6 +216,7 @@ export default function InboxPage() {
           statusId: result.statusId,
           assigneeIds: result.assigneeIds,
           projectIdOverride: result.projectId !== undefined ? result.projectId : undefined,
+          sourceTemplateId: result.sourceTemplateId,
         },
         {
           onSuccess: (newChat) => {

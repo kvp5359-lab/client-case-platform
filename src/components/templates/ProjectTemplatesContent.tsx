@@ -45,7 +45,7 @@ interface FormData {
   enabled_modules: string[]
 }
 
-const DEFAULT_MODULES = ['forms', 'documents', 'finances', 'tasks']
+const DEFAULT_MODULES = ['forms', 'documents', 'finances', 'threads']
 
 export function ProjectTemplatesContent() {
   const { workspaceId } = useParams<{ workspaceId: string }>()

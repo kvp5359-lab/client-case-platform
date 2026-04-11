@@ -50,12 +50,18 @@ export interface WorkspacePermissions {
 
 /**
  * Объект доступа к модулям
+ *
+ * `threads` — единый модуль, объединяющий задачи, клиентский чат и
+ * командный чат проекта. Он заменил три прежних флага (`tasks`,
+ * `messenger`, `internal_messenger`) с 2026-04-11, так как эти три
+ * раздела всегда конфигурировались вместе и в UI теперь живут в одном
+ * блоке "Задачи и чаты".
  */
 export interface ProjectModuleAccess {
   settings: boolean
   forms: boolean
   documents: boolean
-  tasks: boolean
+  threads: boolean
   history: boolean
   card_view: boolean
   ai_document_check: boolean
@@ -65,11 +71,8 @@ export interface ProjectModuleAccess {
   ai_project_assistant: boolean
   comments: boolean
   knowledge_base: boolean
-  messenger: boolean
-  internal_messenger: boolean
   // Будущие модули — optional т.к. не все workspace имеют эти модули включенными
   finance?: boolean
-  chats?: boolean
 }
 
 /**

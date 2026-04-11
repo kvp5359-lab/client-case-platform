@@ -178,6 +178,15 @@ export const documentGenerationKeys = {
 export const threadTemplateKeys = {
   all: ['thread-templates'] as const,
   byWorkspace: (workspaceId: string) => ['thread-templates', workspaceId] as const,
+  /** Global templates only (owner_project_template_id IS NULL). */
+  globalByWorkspace: (workspaceId: string) =>
+    ['thread-templates', workspaceId, 'global'] as const,
+  /** Templates visible inside a project of given type: global + scoped. */
+  forProjectContext: (workspaceId: string, projectTemplateId: string | null) =>
+    ['thread-templates', workspaceId, 'project-context', projectTemplateId ?? 'none'] as const,
+  /** Only templates scoped to a specific project template (for the editor). */
+  byProjectTemplate: (projectTemplateId: string) =>
+    ['thread-templates', 'by-project-template', projectTemplateId] as const,
 }
 
 export const documentTemplateKeys = {

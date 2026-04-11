@@ -17,6 +17,12 @@ import { addDays } from 'date-fns'
 
 // ── Query ──
 
+/**
+ * Все шаблоны тредов workspace, включая привязанные к типам проекта.
+ * Не использовать в меню "+" — засоряет список. Для меню бери
+ * useThreadTemplatesForProject (внутри проекта) или useGlobalThreadTemplates
+ * (вне контекста проекта).
+ */
 export function useThreadTemplates(workspaceId: string | undefined) {
   return useQuery<ThreadTemplate[]>({
     queryKey: threadTemplateKeys.byWorkspace(workspaceId ?? ''),
@@ -32,6 +38,91 @@ export function useThreadTemplates(workspaceId: string | undefined) {
       return (data ?? []) as ThreadTemplate[]
     },
     enabled: !!workspaceId,
+    staleTime: 60_000,
+  })
+}
+
+/**
+ * Только глобальные шаблоны workspace (owner_project_template_id IS NULL).
+ * Используется в разделе "Шаблоны тредов" настроек workspace и в меню "+"
+ * за пределами контекста проекта.
+ */
+export function useGlobalThreadTemplates(workspaceId: string | undefined) {
+  return useQuery<ThreadTemplate[]>({
+    queryKey: threadTemplateKeys.globalByWorkspace(workspaceId ?? ''),
+    queryFn: async () => {
+      if (!workspaceId) return []
+      const { data, error } = await supabase
+        .from('thread_templates')
+        .select('*, thread_template_assignees(participant_id)')
+        .eq('workspace_id', workspaceId)
+        .is('owner_project_template_id', null)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as ThreadTemplate[]
+    },
+    enabled: !!workspaceId,
+    staleTime: 60_000,
+  })
+}
+
+/**
+ * Шаблоны, видимые внутри проекта: глобальные + привязанные к типу этого
+ * проекта. Если projectTemplateId === null — эквивалент useGlobalThreadTemplates.
+ */
+export function useThreadTemplatesForProject(
+  workspaceId: string | undefined,
+  projectTemplateId: string | null | undefined,
+) {
+  return useQuery<ThreadTemplate[]>({
+    queryKey: threadTemplateKeys.forProjectContext(
+      workspaceId ?? '',
+      projectTemplateId ?? null,
+    ),
+    queryFn: async () => {
+      if (!workspaceId) return []
+      let query = supabase
+        .from('thread_templates')
+        .select('*, thread_template_assignees(participant_id)')
+        .eq('workspace_id', workspaceId)
+      query = projectTemplateId
+        ? query.or(
+            `owner_project_template_id.is.null,owner_project_template_id.eq.${projectTemplateId}`,
+          )
+        : query.is('owner_project_template_id', null)
+      const { data, error } = await query
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as ThreadTemplate[]
+    },
+    enabled: !!workspaceId,
+    staleTime: 60_000,
+  })
+}
+
+/**
+ * Только шаблоны, привязанные к конкретному типу проекта. Для редактора
+ * типа проекта в настройках workspace (модули "Задачи" и "Чаты").
+ */
+export function useThreadTemplatesByProjectTemplate(
+  projectTemplateId: string | undefined,
+) {
+  return useQuery<ThreadTemplate[]>({
+    queryKey: threadTemplateKeys.byProjectTemplate(projectTemplateId ?? ''),
+    queryFn: async () => {
+      if (!projectTemplateId) return []
+      const { data, error } = await supabase
+        .from('thread_templates')
+        .select('*, thread_template_assignees(participant_id)')
+        .eq('owner_project_template_id', projectTemplateId)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as ThreadTemplate[]
+    },
+    enabled: !!projectTemplateId,
     staleTime: 60_000,
   })
 }

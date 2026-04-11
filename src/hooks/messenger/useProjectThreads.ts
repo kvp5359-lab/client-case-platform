@@ -41,6 +41,12 @@ export interface ProjectThread {
   created_by: string | null
   is_deleted: boolean
   is_pinned: boolean
+  /**
+   * Thread template this thread was instantiated from, if any. Used by the
+   * "+" menu to hide templates that already produced a thread in this
+   * project, avoiding accidental duplicates.
+   */
+  source_template_id: string | null
   created_at: string
   updated_at: string
 }
@@ -125,6 +131,8 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
       assigneeIds?: string[]
       // Project override (если пользователь сменил проект в диалоге)
       projectIdOverride?: string | null
+      /** ID шаблона, из которого создаётся тред (если из шаблона). */
+      sourceTemplateId?: string | null
     }) => {
       const effectiveProjectId =
         params.projectIdOverride !== undefined ? params.projectIdOverride : projectId
@@ -159,6 +167,7 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
           ...(params.icon && { icon: params.icon }),
           ...(params.deadline !== undefined && { deadline: params.deadline }),
           ...(params.statusId !== undefined && { status_id: params.statusId }),
+          ...(params.sourceTemplateId && { source_template_id: params.sourceTemplateId }),
         })
         .select('*')
         .single()

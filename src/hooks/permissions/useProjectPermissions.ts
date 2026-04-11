@@ -66,7 +66,7 @@ const FULL_MODULE_ACCESS: ProjectModuleAccess = {
   settings: true,
   forms: true,
   documents: true,
-  tasks: true,
+  threads: true,
   history: true,
   card_view: true,
   ai_document_check: true,
@@ -76,8 +76,6 @@ const FULL_MODULE_ACCESS: ProjectModuleAccess = {
   ai_project_assistant: true,
   comments: true,
   knowledge_base: true,
-  messenger: true,
-  internal_messenger: true,
 }
 
 // Полный набор разрешений — для workspace-администраторов
@@ -239,7 +237,7 @@ export function useProjectPermissions(
       settings: false,
       forms: false,
       documents: false,
-      tasks: false,
+      threads: false,
       history: false,
       card_view: false,
       ai_document_check: false,
@@ -249,8 +247,6 @@ export function useProjectPermissions(
       ai_project_assistant: false,
       comments: false,
       knowledge_base: false,
-      messenger: false,
-      internal_messenger: false,
     }
 
     for (const role of userRolesData) {

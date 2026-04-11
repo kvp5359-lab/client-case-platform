@@ -182,8 +182,8 @@ export function ProjectTabsContent({
         </div>
       )}
 
-      {/* Вкладка "Задачи" */}
-      {activeTab === 'tasks' && modules.tasks && (
+      {/* Вкладка "Задачи" — часть объединённого модуля `threads` */}
+      {activeTab === 'tasks' && modules.threads && (
         <div className="space-y-6 mt-2">
           <TasksTabContent projectId={projectId} workspaceId={workspaceId} />
         </div>

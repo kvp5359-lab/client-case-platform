@@ -9,7 +9,7 @@ import {
   History,
   Sparkles,
   MessageSquare,
-  CheckSquare,
+  MessagesSquare,
   LayoutGrid,
   BookOpen,
 } from 'lucide-react'
@@ -58,19 +58,17 @@ export const WORKSPACE_PERMISSION_LABELS: Record<
   },
 }
 
-// Используем Partial, так как finance и chats опциональны
+// Используем Partial, так как finance опционально
 export const MODULE_LABELS: Partial<
   Record<keyof ProjectModuleAccess, { label: string; icon: typeof Settings }>
 > = {
   settings: { label: 'Настройки', icon: Settings },
   forms: { label: 'Анкеты', icon: FileText },
   documents: { label: 'Документы', icon: FolderOpen },
-  tasks: { label: 'Задачи', icon: CheckSquare },
+  threads: { label: 'Задачи и чаты', icon: MessagesSquare },
   history: { label: 'История', icon: History },
   card_view: { label: 'Карточки', icon: LayoutGrid },
   knowledge_base: { label: 'Материалы', icon: BookOpen },
-  messenger: { label: 'Мессенджер', icon: MessageSquare },
-  internal_messenger: { label: 'Командный чат', icon: MessageSquare },
   ai_document_check: { label: 'AI проверка документов', icon: Sparkles },
   ai_form_autofill: { label: 'AI автозаполнение', icon: Sparkles },
   ai_knowledge_all: { label: 'AI: Вся база знаний', icon: Sparkles },

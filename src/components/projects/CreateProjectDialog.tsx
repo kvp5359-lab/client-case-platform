@@ -13,8 +13,11 @@ import { createFormKitFromTemplate } from '@/services/api/forms/formKitService'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { Loader2 } from 'lucide-react'
+import { addDays } from 'date-fns'
 import { TemplateSelector } from './create-project/TemplateSelector'
 import { TemplateItemsList } from './create-project/TemplateItemsList'
+import { useThreadTemplatesByProjectTemplate } from '@/hooks/messenger/useThreadTemplates'
+import type { ThreadTemplate } from '@/types/threadTemplate'
 
 interface CreateProjectDialogProps {
   open: boolean
@@ -65,20 +68,14 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
     enabled: !!activeTemplateId && open,
   })
 
-  const { data: linkedTemplateTasks = [] } = useQuery({
-    queryKey: ['project-template-tasks', activeTemplateId],
-    queryFn: async () => {
-      if (!activeTemplateId) return []
-      const { data, error } = await supabase
-        .from('project_template_tasks')
-        .select('id, name, sort_order')
-        .eq('project_template_id', activeTemplateId)
-        .order('sort_order', { ascending: true })
-      if (error) throw error
-      return (data || []) as { id: string; name: string; sort_order: number }[]
-    },
-    enabled: !!activeTemplateId && open,
-  })
+  // Шаблоны тредов (задачи и чаты в одной секции), привязанные к типу
+  // проекта. Раньше задачи хранились в project_template_tasks — с
+  // 2026-04-11 переехали в thread_templates.owner_project_template_id,
+  // а чаты появились как новый вид шаблонных тредов. С того же дня UI
+  // показывает их одним списком в секции "Задачи и чаты".
+  const { data: scopedThreadTemplates = [] } = useThreadTemplatesByProjectTemplate(
+    activeTemplateId,
+  )
 
   const { data: linkedForms = [] } = useQuery({
     queryKey: ['project-template-forms', activeTemplateId],
@@ -121,7 +118,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
 
   const docKitKey = docKitTemplates.map((t) => t.id).join(',')
   const formKey = formTemplates.map((t) => t.id).join(',')
-  const taskKey = linkedTemplateTasks.map((t) => t.id).join(',')
+  const threadKey = scopedThreadTemplates.map((t) => t.id).join(',')
 
   useEffect(() => {
     setSelectedDocKitIds(new Set(docKitTemplates.map((t) => t.id)))
@@ -130,9 +127,11 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
   }, [docKitKey, formKey])
 
   useEffect(() => {
-    setSelectedTaskIds(new Set(linkedTemplateTasks.map((t) => t.id)))
+    // По умолчанию — все шаблоны задач и чатов отмечены, пользователь может
+    // снять галочки с тех, что не нужны для конкретного проекта.
+    setSelectedTaskIds(new Set(scopedThreadTemplates.map((t) => t.id)))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taskKey])
+  }, [threadKey])
 
   useEffect(() => {
     if (!open) {
@@ -222,25 +221,58 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
         )
       }
 
-      const selectedTasks = linkedTemplateTasks.filter((t) => selectedTaskIds.has(t.id))
-      for (const task of selectedTasks) {
+      // Инстанциация шаблонов тредов (задач и чатов): создаём project_threads,
+      // копируем assignees из thread_template_assignees, проставляем
+      // source_template_id — так меню "+" внутри проекта будет скрывать
+      // только что созданные шаблоны как "уже использованные".
+      const selectedThreadTemplates: ThreadTemplate[] = scopedThreadTemplates.filter((t) =>
+        selectedTaskIds.has(t.id),
+      )
+
+      for (const tpl of selectedThreadTemplates) {
         promises.push(
-          Promise.resolve(
-            supabase
+          (async () => {
+            const deadline =
+              tpl.thread_type === 'task' && tpl.deadline_days != null
+                ? addDays(new Date(), tpl.deadline_days).toISOString()
+                : null
+            const { data: thread, error: threadErr } = await supabase
               .from('project_threads')
               .insert({
                 project_id: project.id,
                 workspace_id: currentWorkspaceId,
-                name: task.name,
-                type: 'task',
-                access_type: 'roles',
-                access_roles: ['Администратор', 'Исполнитель'],
-                sort_order: task.sort_order + 100,
+                name: tpl.name,
+                type: tpl.thread_type,
+                access_type: tpl.access_type,
+                access_roles: tpl.access_type === 'roles' ? tpl.access_roles : [],
+                accent_color: tpl.accent_color,
+                icon: tpl.icon,
+                status_id: tpl.default_status_id,
+                deadline,
+                sort_order: tpl.sort_order + 100,
+                source_template_id: tpl.id,
               })
-              .then(({ error }) => {
-                if (error) throw error
-              }),
-          ),
+              .select('id')
+              .single()
+            if (threadErr) throw threadErr
+
+            // Copy assignees for tasks.
+            const assigneeIds = (tpl.thread_template_assignees ?? []).map(
+              (a) => a.participant_id,
+            )
+            if (tpl.thread_type === 'task' && assigneeIds.length > 0) {
+              const rows = assigneeIds.map((pid) => ({
+                thread_id: thread.id,
+                participant_id: pid,
+              }))
+              const { error: aErr } = await supabase.from('task_assignees').insert(rows)
+              if (aErr) {
+                logger.warn(
+                  `Не удалось назначить исполнителей в треде ${thread.id}: ${aErr.message}`,
+                )
+              }
+            }
+          })(),
         )
       }
 
@@ -262,7 +294,9 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
   }
 
   const hasLinkedItems =
-    docKitTemplates.length > 0 || formTemplates.length > 0 || linkedTemplateTasks.length > 0
+    docKitTemplates.length > 0 ||
+    formTemplates.length > 0 ||
+    scopedThreadTemplates.length > 0
 
   if (!open) return null
 
@@ -303,13 +337,13 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
             <TemplateItemsList
               docKitTemplates={docKitTemplates}
               formTemplates={formTemplates}
-              tasks={linkedTemplateTasks}
+              threads={scopedThreadTemplates}
               selectedDocKitIds={selectedDocKitIds}
               selectedFormIds={selectedFormIds}
-              selectedTaskIds={selectedTaskIds}
+              selectedThreadIds={selectedTaskIds}
               onToggleDocKit={toggleDocKit}
               onToggleForm={toggleForm}
-              onToggleTask={toggleTask}
+              onToggleThread={toggleTask}
               disabled={isLoading}
             />
           )}

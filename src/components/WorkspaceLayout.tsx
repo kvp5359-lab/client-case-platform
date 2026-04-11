@@ -94,7 +94,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   const pageContext = useSidePanelStore((s) => s.pageContext)
   const openPanel = useSidePanelStore((s) => s.openPanel)
   const setContext = useSidePanelStore((s) => s.setContext)
-  const messengerEnabled = useSidePanelStore((s) => s.messengerEnabled)
+  const messengerEnabled = useSidePanelStore((s) => s.threadsEnabled)
   const panelOpen = panelTab !== null
 
   // Sync workspaceId in store
@@ -399,6 +399,7 @@ function ChatSettingsSection({
           statusId: result.statusId,
           assigneeIds: result.assigneeIds,
           projectIdOverride: result.projectId !== undefined ? result.projectId : undefined,
+          sourceTemplateId: result.sourceTemplateId,
         },
         {
           onSuccess: (newChat) => {

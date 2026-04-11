@@ -4371,6 +4371,7 @@ export type Database = {
           name: string
           project_id: string | null
           sort_order: number
+          source_template_id: string | null
           status_id: string | null
           type: string
           updated_at: string
@@ -4396,6 +4397,7 @@ export type Database = {
           name: string
           project_id?: string | null
           sort_order?: number
+          source_template_id?: string | null
           status_id?: string | null
           type?: string
           updated_at?: string
@@ -4421,6 +4423,7 @@ export type Database = {
           name?: string
           project_id?: string | null
           sort_order?: number
+          source_template_id?: string | null
           status_id?: string | null
           type?: string
           updated_at?: string
@@ -5068,6 +5071,7 @@ export type Database = {
           initial_message_html: string | null
           is_email: boolean
           name: string
+          owner_project_template_id: string | null
           sort_order: number
           thread_name_template: string | null
           thread_type: string
@@ -5090,6 +5094,7 @@ export type Database = {
           initial_message_html?: string | null
           is_email?: boolean
           name: string
+          owner_project_template_id?: string | null
           sort_order?: number
           thread_name_template?: string | null
           thread_type?: string
@@ -5112,6 +5117,7 @@ export type Database = {
           initial_message_html?: string | null
           is_email?: boolean
           name?: string
+          owner_project_template_id?: string | null
           sort_order?: number
           thread_name_template?: string | null
           thread_type?: string
