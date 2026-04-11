@@ -5,7 +5,7 @@
  * Вынесены из useDocumentKitHandlers для декомпозиции.
  */
 
-/* eslint-disable react-hooks/preserve-manual-memoization -- latestRef pattern: ref is stable, empty deps intentional */
+/* eslint-disable react-hooks/preserve-manual-memoization, react-hooks/exhaustive-deps -- latestRef pattern: ref is stable, empty deps intentional */
 
 import React, { useCallback } from 'react'
 import type { DocumentWithFiles } from '@/components/documents/types'
