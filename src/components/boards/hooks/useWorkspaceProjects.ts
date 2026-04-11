@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { boardKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { Tables } from '@/types/database'
 
 export type BoardProject = Tables<'projects'> & {
@@ -10,7 +11,7 @@ export type BoardProject = Tables<'projects'> & {
 
 export function useWorkspaceProjects(workspaceId: string | undefined) {
   return useQuery({
-    queryKey: ['boards', 'projects', workspaceId],
+    queryKey: boardKeys.projectsByWorkspace(workspaceId ?? ''),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
@@ -28,6 +29,6 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
       })) as BoardProject[]
     },
     enabled: !!workspaceId,
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
   })
 }

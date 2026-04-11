@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FolderOpen, ExternalLink, Trash2, Check, X } from 'lucide-react'
 import { extractGoogleDriveFolderId, buildGoogleDriveFolderUrl } from '@/utils/googleDrive'
+import { projectTemplateKeys } from '@/hooks/queryKeys'
 
 interface RootFolderSectionProps {
   templateId: string | undefined
@@ -57,7 +58,9 @@ export function RootFolderSection({
       if (error) throw error
     },
     onSuccess: (_, folderId) => {
-      queryClient.invalidateQueries({ queryKey: ['project-template', templateId] })
+      // Инвалидация по префиксу захватит и detail(), и detailFull() —
+      // обе формы шаблона обновятся в ProjectPage и в редакторе одновременно.
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
       setIsEditing(false)
       setFolderLink('')
       toast.success(folderId ? 'Корневая папка обновлена' : 'Корневая папка удалена')

@@ -89,9 +89,13 @@ export function useDocumentsDialogsProps({
     isGeneratingMergeName,
     draggedIndex,
   } = useMergeDialogState()
-  const { closeEditDialog, updateEditForm, closeContentViewDialog } = useDocumentKitUIStore()
-  const { openMergeDialog, closeMergeDialog, updateMergeName, setMergeFolder } =
-    useDocumentKitUIStore()
+  const closeEditDialog = useDocumentKitUIStore((s) => s.closeEditDialog)
+  const updateEditForm = useDocumentKitUIStore((s) => s.updateEditForm)
+  const closeContentViewDialog = useDocumentKitUIStore((s) => s.closeContentViewDialog)
+  const openMergeDialog = useDocumentKitUIStore((s) => s.openMergeDialog)
+  const closeMergeDialog = useDocumentKitUIStore((s) => s.closeMergeDialog)
+  const updateMergeName = useDocumentKitUIStore((s) => s.updateMergeName)
+  const setMergeFolder = useDocumentKitUIStore((s) => s.setMergeFolder)
 
   const {
     moveDialog,

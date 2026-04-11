@@ -22,7 +22,10 @@ import {
   sidebarKeys,
   boardKeys,
   workspaceTaskKeys,
+  trashKeys,
 } from '@/hooks/queryKeys'
+
+export { trashKeys }
 
 // ── Типы ──
 
@@ -46,15 +49,6 @@ export interface TrashedThread {
   deleted_by: string | null
   deleted_by_name: string | null
   created_at: string
-}
-
-// ── Ключи кэша ──
-
-export const trashKeys = {
-  all: ['trash'] as const,
-  workspace: (workspaceId: string) => [...trashKeys.all, workspaceId] as const,
-  projects: (workspaceId: string) => [...trashKeys.workspace(workspaceId), 'projects'] as const,
-  threads: (workspaceId: string) => [...trashKeys.workspace(workspaceId), 'threads'] as const,
 }
 
 // ── Чтение корзины ──

@@ -23,7 +23,9 @@ export function useGlobalBatchMerge({
   documentKits,
   globalSelectedIds,
 }: UseGlobalBatchMergeParams) {
-  const { openMergeDialog, setGeneratingMergeName, updateMergeName } = useDocumentKitUIStore()
+  const openMergeDialog = useDocumentKitUIStore((s) => s.openMergeDialog)
+  const setGeneratingMergeName = useDocumentKitUIStore((s) => s.setGeneratingMergeName)
+  const updateMergeName = useDocumentKitUIStore((s) => s.updateMergeName)
 
   const handleMerge = useCallback(() => {
     if (globalSelectedIds.size < 2) {

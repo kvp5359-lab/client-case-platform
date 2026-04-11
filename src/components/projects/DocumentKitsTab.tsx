@@ -45,8 +45,9 @@ function SourceSettingsStandaloneDialog({
 }) {
   const { sourceSettingsDialogOpen, isSourceConnected, sourceFolderName, sourceFolderLink } =
     useSourceSettingsState()
-  const { openSourceSettingsDialog, closeSourceSettingsDialog, setSourceFolderLink } =
-    useDocumentKitUIStore()
+  const openSourceSettingsDialog = useDocumentKitUIStore((s) => s.openSourceSettingsDialog)
+  const closeSourceSettingsDialog = useDocumentKitUIStore((s) => s.closeSourceSettingsDialog)
+  const setSourceFolderLink = useDocumentKitUIStore((s) => s.setSourceFolderLink)
 
   return (
     <SourceSettingsDialog
@@ -70,7 +71,7 @@ function SourceMoveDialog({
   handlers: { onMoveSourceDocument: (folderId: string | null) => void }
 }) {
   const { moveDialogOpen, sourceDocToMove, isMovingSourceDoc } = useMoveDialogState()
-  const { closeMoveDialog } = useDocumentKitUIStore()
+  const closeMoveDialog = useDocumentKitUIStore((s) => s.closeMoveDialog)
 
   if (!sourceDocToMove) return null
 

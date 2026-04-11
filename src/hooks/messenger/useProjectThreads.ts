@@ -11,6 +11,7 @@ import {
   taskKeys,
   projectThreadKeys,
   workspaceTaskKeys,
+  trashKeys,
 } from '@/hooks/queryKeys'
 import { logAuditAction } from '@/services/auditService'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
@@ -296,7 +297,7 @@ export function useDeleteThread(workspaceId?: string) {
         queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.all })
         queryClient.invalidateQueries({ queryKey: ['my-urgent-tasks-count'] })
       }
-      queryClient.invalidateQueries({ queryKey: ['trash'] })
+      queryClient.invalidateQueries({ queryKey: trashKeys.all })
     },
   })
 }

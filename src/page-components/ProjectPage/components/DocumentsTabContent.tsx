@@ -122,7 +122,7 @@ export function DocumentsTabContent({
   // Операции с документами
   const {
     updateDocumentStatus,
-    uploadDocument: uploadDocumentMutation,
+    uploadDocument,
     softDeleteDocument,
     hardDeleteDocument,
     moveDocument,
@@ -133,12 +133,6 @@ export function DocumentsTabContent({
   } = useDocuments(projectId)
   const queryClient = useQueryClient()
   const updateFolderStatus = useUpdateFolderStatusMutation()
-
-  // Адаптер: mutation-функции от useDocuments возвращают свой UseMutateAsyncFunction<...>,
-  // но потребители этого TabContent ожидают plain-async-сигнатуры. Оборачиваем в тонкий
-  // враппер, чтобы удовлетворить типы без изменения рантайм-поведения.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const uploadDocument = uploadDocumentMutation as unknown as any
 
   const invalidateDocumentKits = useCallback(
     async (_projectId?: string) => {
@@ -236,12 +230,10 @@ export function DocumentsTabContent({
     moveDocument,
     duplicateDocument,
     uploadDocument,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mutation signature mismatch
-    softDeleteDocument: softDeleteDocument as unknown as any,
+    softDeleteDocument,
     sourceDocuments,
     toggleSourceDocHidden: toggleSourceDocumentHidden,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- shape mismatch with useSourceDocumentDrop return
-    sourceDrop: sourceDrop as unknown as any,
+    sourceDrop,
     invalidateDocumentKits,
     unlinkSlot,
     docActions,

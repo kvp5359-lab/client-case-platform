@@ -37,7 +37,7 @@ import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useDialog } from '@/hooks/shared/useDialog'
-import { projectKeys } from '@/hooks/queryKeys'
+import { projectKeys, trashKeys } from '@/hooks/queryKeys'
 
 type Project = Tables<'projects'>
 
@@ -105,7 +105,7 @@ export default function ProjectsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.byWorkspace(activeWorkspaceId ?? '') })
-      queryClient.invalidateQueries({ queryKey: ['trash'] })
+      queryClient.invalidateQueries({ queryKey: trashKeys.all })
     },
   })
 

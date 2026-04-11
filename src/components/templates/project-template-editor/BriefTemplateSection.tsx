@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table2, ExternalLink, Trash2, Check, X } from 'lucide-react'
 import { extractGoogleSheetsId } from '@/utils/googleDrive'
+import { projectTemplateKeys } from '@/hooks/queryKeys'
 
 interface BriefTemplateSectionProps {
   templateId: string | undefined
@@ -58,7 +59,9 @@ export function BriefTemplateSection({
       if (error) throw error
     },
     onSuccess: (_, sheetId) => {
-      queryClient.invalidateQueries({ queryKey: ['project-template', templateId] })
+      // Инвалидация по префиксу захватит и detail(), и detailFull() —
+      // обе формы шаблона обновятся в ProjectPage и в редакторе одновременно.
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
       setIsEditing(false)
       setSheetLink('')
       toast.success(sheetId ? 'Шаблон брифа обновлён' : 'Шаблон брифа удалён')

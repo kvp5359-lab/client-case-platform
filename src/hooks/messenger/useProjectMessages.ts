@@ -17,7 +17,7 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getMessages, type MessageChannel } from '@/services/api/messenger/messengerService'
-import { messengerKeys } from '@/hooks/queryKeys'
+import { messengerKeys, projectAiKeys } from '@/hooks/queryKeys'
 import { logger } from '@/utils/logger'
 
 export function useProjectMessages(
@@ -92,7 +92,7 @@ export function useProjectMessages(
           queryClient.invalidateQueries({ queryKey: unreadKey })
           if (channel === 'client' && projectId) {
             queryClient.invalidateQueries({
-              queryKey: ['project-ai', 'messenger-messages', projectId],
+              queryKey: projectAiKeys.messengerMessages(projectId),
             })
           }
         },
@@ -182,7 +182,7 @@ export function useProjectMessages(
 
           if (channel === 'client' && projectId) {
             queryClient.invalidateQueries({
-              queryKey: ['project-ai', 'messenger-messages', projectId],
+              queryKey: projectAiKeys.messengerMessages(projectId),
             })
           }
         },

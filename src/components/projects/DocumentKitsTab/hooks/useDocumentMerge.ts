@@ -2,6 +2,7 @@
 
 import { useRef } from 'react'
 import { toast } from 'sonner'
+import { useShallow } from 'zustand/shallow'
 import { supabase } from '@/lib/supabase'
 import { useErrorHandler } from '@/hooks/shared/useErrorHandler'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
@@ -53,7 +54,7 @@ export function useDocumentMerge(
   const mergeFolderId = useDocumentKitUIStore((state) => state.mergeFolderId)
   const draggedIndex = useDocumentKitUIStore((state) => state.draggedIndex)
 
-  // Actions
+  // Actions — useShallow чтобы не подписываться на весь стор целиком.
   const {
     openMergeDialog,
     closeMergeDialog,
@@ -63,7 +64,18 @@ export function useDocumentMerge(
     setMerging,
     reorderMergeDocs,
     setDraggedIndex,
-  } = useDocumentKitUIStore()
+  } = useDocumentKitUIStore(
+    useShallow((s) => ({
+      openMergeDialog: s.openMergeDialog,
+      closeMergeDialog: s.closeMergeDialog,
+      updateMergeName: s.updateMergeName,
+      setMergeFolder: s.setMergeFolder,
+      setGeneratingMergeName: s.setGeneratingMergeName,
+      setMerging: s.setMerging,
+      reorderMergeDocs: s.reorderMergeDocs,
+      setDraggedIndex: s.setDraggedIndex,
+    })),
+  )
 
   const handleOpenMergeDialog = (
     kit: DocumentKitWithDocuments | undefined,

@@ -8,17 +8,12 @@ import { useCallback, useRef, type ChangeEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { kitlessDocumentKeys } from '@/hooks/queryKeys'
+import type { UploadDocumentFn } from '@/hooks/useDocuments.types'
 
 interface UseKitlessUploadParams {
   projectId: string
   workspaceId: string
-  uploadDocument: (params: {
-    file: File
-    documentKitId: string | null
-    projectId: string
-    workspaceId: string
-    folderId: string | null
-  }) => Promise<void>
+  uploadDocument: UploadDocumentFn
 }
 
 export function useKitlessUpload({

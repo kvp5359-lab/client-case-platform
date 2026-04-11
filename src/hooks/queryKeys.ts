@@ -452,3 +452,39 @@ export const statusKeys = {
   knowledgeArticle: (workspaceId: string) =>
     ['statuses', 'knowledge_article', workspaceId] as const,
 }
+
+/**
+ * AI-cache, привязанные к проекту: инвалидируется при новых сообщениях
+ * мессенджера, чтобы AI-panel перечитал контекст разговора.
+ *
+ * `messengerMessages(projectId)` — префикс для broad-invalidate, захватывает
+ * оба канала ('client' и 'internal') сразу.
+ * `messengerMessagesByChannel(projectId, channel)` — точный ключ для чтения.
+ */
+export const projectAiKeys = {
+  all: ['project-ai'] as const,
+  messengerMessages: (projectId: string) =>
+    ['project-ai', 'messenger-messages', projectId] as const,
+  messengerMessagesByChannel: (projectId: string, channel: 'client' | 'internal') =>
+    ['project-ai', 'messenger-messages', projectId, channel] as const,
+}
+
+/**
+ * Настройки воркспейса (send delay, notifications и т.п.).
+ */
+export const workspaceSettingsKeys = {
+  settings: (workspaceId: string) => ['workspace-settings', workspaceId] as const,
+  notifications: (workspaceId: string) =>
+    ['workspace-notification-settings', workspaceId] as const,
+}
+
+/**
+ * Корзина воркспейса — мягко удалённые проекты и треды.
+ * Используется в разделе настроек "Корзина" (только владелец воркспейса).
+ */
+export const trashKeys = {
+  all: ['trash'] as const,
+  workspace: (workspaceId: string) => ['trash', workspaceId] as const,
+  projects: (workspaceId: string) => ['trash', workspaceId, 'projects'] as const,
+  threads: (workspaceId: string) => ['trash', workspaceId, 'threads'] as const,
+}

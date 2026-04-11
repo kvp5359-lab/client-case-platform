@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabase'
 import { useWorkspace } from '@/hooks/useWorkspace'
-import { workspaceKeys } from '@/hooks/queryKeys'
+import { workspaceKeys, workspaceSettingsKeys } from '@/hooks/queryKeys'
 
 interface NotificationSettingsSectionProps {
   workspaceId: string
@@ -55,7 +55,9 @@ export function NotificationSettingsSection({ workspaceId }: NotificationSetting
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: workspaceKeys.detail(workspaceId) })
-      queryClient.invalidateQueries({ queryKey: ['workspace-notification-settings', workspaceId] })
+      queryClient.invalidateQueries({
+        queryKey: workspaceSettingsKeys.notifications(workspaceId),
+      })
       toast.success('Настройки уведомлений сохранены')
     },
     onError: () => {

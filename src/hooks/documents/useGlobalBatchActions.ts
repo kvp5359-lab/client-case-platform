@@ -63,7 +63,9 @@ export function useGlobalBatchActions({
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
 
-  const { addCompressingDoc, removeCompressingDoc, setCompressProgress } = useDocumentKitUIStore()
+  const addCompressingDoc = useDocumentKitUIStore((s) => s.addCompressingDoc)
+  const removeCompressingDoc = useDocumentKitUIStore((s) => s.removeCompressingDoc)
+  const setCompressProgress = useDocumentKitUIStore((s) => s.setCompressProgress)
 
   // Сжатие PDF
   const queryClient = useQueryClient()

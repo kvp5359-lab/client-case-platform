@@ -4,7 +4,21 @@
  * Используют shallow comparison для оптимизации ререндеров.
  * Позволяют компонентам подписываться только на нужные части состояния.
  *
- * Для actions используйте useDocumentKitUIStore() напрямую.
+ * ДЛЯ ACTIONS: используйте **индивидуальный** селектор на каждую функцию,
+ * либо `useShallow` с объектом — НЕ деструктурируйте `useDocumentKitUIStore()`
+ * без селектора. Без селектора Zustand подписывает компонент на весь объект
+ * стора, и любой `set()` (например, progress tick экспорта Google Drive)
+ * вызывает ре-рендер даже если actions сами ссылочно стабильны.
+ *
+ * Правильно:
+ *   const closeEditDialog = useDocumentKitUIStore((s) => s.closeEditDialog)
+ *   // или
+ *   const { closeEditDialog, updateEditForm } = useDocumentKitUIStore(
+ *     useShallow((s) => ({
+ *       closeEditDialog: s.closeEditDialog,
+ *       updateEditForm: s.updateEditForm,
+ *     }))
+ *   )
  */
 
 import { useShallow } from 'zustand/shallow'

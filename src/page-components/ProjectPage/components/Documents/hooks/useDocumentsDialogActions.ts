@@ -17,6 +17,8 @@ import { useDocumentSummary } from '@/hooks/documents/useDocumentSummary'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import type { SourceDocument } from '@/components/documents'
 import type { FolderSlotWithDocument as FolderSlot } from '@/components/documents/types'
+import type { UploadDocumentFn, SoftDeleteDocumentFn } from '@/hooks/useDocuments.types'
+import type { useSourceDocumentDrop } from './useSourceDocumentDrop'
 
 interface UseDocumentsDialogActionsProps {
   projectId: string
@@ -26,20 +28,11 @@ interface UseDocumentsDialogActionsProps {
   folderStatuses: { id: string; name: string; color: string }[]
   moveDocument: (params: { documentId: string; folderId: string | null }) => Promise<void>
   duplicateDocument: (params: { documentId: string; folderId: string | null }) => Promise<string>
-  uploadDocument: (...args: unknown[]) => Promise<unknown>
-  softDeleteDocument: (...args: unknown[]) => Promise<unknown>
+  uploadDocument: UploadDocumentFn
+  softDeleteDocument: SoftDeleteDocumentFn
   sourceDocuments: SourceDocument[]
   toggleSourceDocHidden?: (sourceDocId: string, currentHidden: boolean) => Promise<void>
-  sourceDrop: {
-    sourceUpload: {
-      uploadSourceDocument: (
-        doc: unknown,
-        folderId: string | null,
-        showToast: boolean,
-      ) => Promise<boolean>
-    }
-    loadSourceDocuments: () => Promise<void>
-  }
+  sourceDrop: ReturnType<typeof useSourceDocumentDrop>
   invalidateDocumentKits: () => Promise<void>
   unlinkSlot: (slotId: string) => Promise<void>
   docActions: {
@@ -196,10 +189,8 @@ export function useDocumentsDialogActions({
     projectId,
     workspaceId,
     () => invalidateDocumentKits(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- UploadDocumentFn signature варьируется между вызовами
-    uploadDocument as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    softDeleteDocument as any,
+    uploadDocument,
+    softDeleteDocument,
     () => clearAllSelections(),
   )
 
