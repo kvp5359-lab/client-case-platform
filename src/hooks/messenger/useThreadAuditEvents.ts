@@ -10,14 +10,25 @@ import { useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
+/** Structured parts for `change_status` events, used to render coloured names. */
+export interface StatusChangeParts {
+  actorName: string
+  oldName: string
+  oldColor: string | null
+  newName: string
+  newColor: string | null
+}
+
 export interface ThreadAuditEvent {
   id: string
   action: string
   details: Record<string, unknown>
   created_at: string
   actor_name: string | null
-  /** Pre-formatted human-readable text for display */
+  /** Pre-formatted human-readable text for display (fallback). */
   display_text: string
+  /** Present only when action === 'change_status' and statuses resolved. */
+  status_change?: StatusChangeParts
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -103,36 +114,58 @@ export function useThreadAuditEvents(threadId: string | undefined) {
         }
       }
 
-      // Resolve status names from status UUIDs in details
+      // Resolve status names and colors from status UUIDs in details
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
       const statusIds = new Set<string>()
       for (const e of data) {
         const d = (e.details ?? {}) as Record<string, unknown>
-        if (d.old_status && typeof d.old_status === 'string') statusIds.add(d.old_status)
-        if (d.new_status && typeof d.new_status === 'string') statusIds.add(d.new_status)
+        if (typeof d.old_status === 'string' && UUID_RE.test(d.old_status)) statusIds.add(d.old_status)
+        if (typeof d.new_status === 'string' && UUID_RE.test(d.new_status)) statusIds.add(d.new_status)
       }
-      const statusMap: Record<string, string> = {}
+      const statusMap: Record<string, { name: string; color: string | null }> = {}
       if (statusIds.size > 0) {
         const { data: statuses } = await supabase
           .from('statuses')
-          .select('id, name')
+          .select('id, name, color')
           .in('id', [...statusIds])
         if (statuses) {
           for (const s of statuses) {
-            statusMap[s.id] = s.name
+            statusMap[s.id] = { name: s.name, color: s.color ?? null }
           }
         }
       }
 
+      // Adapter: buildDisplayText expects Record<string,string>; give it just names.
+      const nameOnlyMap: Record<string, string> = {}
+      for (const [id, v] of Object.entries(statusMap)) nameOnlyMap[id] = v.name
+
       return data.map((e) => {
         const details = (e.details ?? {}) as Record<string, unknown>
         const actorName = e.user_id ? nameMap[e.user_id] ?? 'Система' : 'Система'
+
+        let status_change: StatusChangeParts | undefined
+        if (e.action === 'change_status') {
+          const oldId = typeof details.old_status === 'string' ? details.old_status : null
+          const newId = typeof details.new_status === 'string' ? details.new_status : null
+          const oldEntry = oldId ? statusMap[oldId] : undefined
+          const newEntry = newId ? statusMap[newId] : undefined
+          status_change = {
+            actorName,
+            oldName: oldEntry?.name ?? 'без статуса',
+            oldColor: oldEntry?.color ?? null,
+            newName: newEntry?.name ?? 'без статуса',
+            newColor: newEntry?.color ?? null,
+          }
+        }
+
         return {
           id: e.id,
           action: e.action,
           details,
           created_at: e.created_at,
           actor_name: actorName,
-          display_text: buildDisplayText(e.action, actorName, details, statusMap),
+          display_text: buildDisplayText(e.action, actorName, details, nameOnlyMap),
+          status_change,
         }
       }) as ThreadAuditEvent[]
     },

@@ -3,7 +3,7 @@
  */
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { stripHtml } from '@/utils/format/messengerHtml'
+import { stripHtmlIgnoreQuotes } from '@/utils/format/messengerHtml'
 
 export interface RealtimeMessagePayload {
   project_id: string
@@ -64,7 +64,7 @@ export async function fetchAvatarUrl(participantId: string): Promise<string | nu
  * Handles attachment-only messages by querying message_attachments.
  */
 export async function parseTextLine(rawContent: string, messageId: string): Promise<string> {
-  const text = stripHtml(rawContent)
+  const text = stripHtmlIgnoreQuotes(rawContent)
   if (text !== '📎' && text.trim()) {
     return truncateLine(text)
   }

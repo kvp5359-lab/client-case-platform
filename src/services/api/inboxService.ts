@@ -47,12 +47,22 @@ export interface InboxThreadEntry {
   manually_unread: boolean
   has_unread_reaction: boolean
   last_reaction_emoji: string | null
+  /** Timestamp of the latest reaction on any message in this thread. */
+  last_reaction_at: string | null
+  /** Display name of the user who placed the latest reaction. */
+  last_reaction_sender_name: string | null
+  /** Avatar URL of the user who placed the latest reaction. */
+  last_reaction_sender_avatar_url: string | null
+  /** Raw HTML content of the message that was reacted to — needs stripping before display. */
+  last_reaction_message_preview: string | null
   contact_email: string | null
   email_subject: string | null
   /** Audit: timestamp of last event (status change, rename, etc.) */
   last_event_at: string | null
   /** Audit: human-readable event description */
   last_event_text: string | null
+  /** Audit: hex colour of the new status (only for change_status events) */
+  last_event_status_color: string | null
   /** Audit: count of unread events */
   unread_event_count: number
 }

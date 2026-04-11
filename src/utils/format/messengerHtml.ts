@@ -19,6 +19,19 @@ export function stripHtml(html: string): string {
     .trim()
 }
 
+/**
+ * Превью ответа для списка чатов / уведомлений: сначала вырезает все
+ * `<blockquote>…</blockquote>` (цитируемые сообщения), затем снимает остальные
+ * теги. Если после вырезания цитаты ничего не осталось (сообщение состоит
+ * только из цитаты) — возвращает полный текст, включая цитату, как fallback.
+ */
+export function stripHtmlIgnoreQuotes(html: string): string {
+  if (!html) return ''
+  const withoutQuotes = html.replace(/<blockquote\b[^>]*>[\s\S]*?<\/blockquote>/gi, '')
+  const stripped = stripHtml(withoutQuotes)
+  return stripped || stripHtml(html)
+}
+
 /** Убирает HTML-теги, но сохраняет переносы строк (для цитат при пересылке) */
 export function stripHtmlKeepNewlines(html: string): string {
   if (!html) return ''

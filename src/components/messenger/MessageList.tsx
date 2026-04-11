@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useMemo } from 'react'
+import { useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
@@ -6,6 +6,7 @@ import { MessageBubble } from './MessageBubble'
 import { ChatEmptyState } from './ChatEmptyState'
 import { useMessengerContext } from './MessengerContext'
 import { formatAuditEvent, type ThreadAuditEvent } from '@/hooks/messenger/useThreadAuditEvents'
+import { safeCssColor } from '@/utils/isValidCssColor'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
 interface MessageListProps {
@@ -46,14 +47,50 @@ function DateSeparator({ date }: { date: string }) {
   )
 }
 
-/** Сервисное сообщение Telegram (создание группы, добавление участников и т.д.) */
-function ServiceMessage({ text, time }: { text: string; time: string }) {
+/**
+ * Сервисное сообщение: изменение статуса, создание, переименование, а также
+ * системные сообщения Telegram (создание группы и т.д.).
+ * Принимает либо audit-`event` (тогда для change_status рендерит цветные имена
+ * статусов), либо плоскую пару `text + time` (для telegram_service).
+ */
+function ServiceMessage(
+  props: { event: ThreadAuditEvent } | { text: string; time: string },
+) {
+  const time = 'event' in props ? props.event.created_at : props.time
   const d = new Date(time)
   const timeStr = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+
+  let content: ReactNode
+  if ('event' in props) {
+    const sc = props.event.status_change
+    content = sc ? (
+      <>
+        {sc.actorName} изменил(а) статус:{' '}
+        <span
+          className="font-medium"
+          style={sc.oldColor ? { color: safeCssColor(sc.oldColor) } : undefined}
+        >
+          {sc.oldName}
+        </span>
+        {' → '}
+        <span
+          className="font-medium"
+          style={sc.newColor ? { color: safeCssColor(sc.newColor) } : undefined}
+        >
+          {sc.newName}
+        </span>
+      </>
+    ) : (
+      formatAuditEvent(props.event)
+    )
+  } else {
+    content = props.text
+  }
+
   return (
     <div className="flex justify-center py-1">
       <span className="text-xs text-muted-foreground bg-muted/60 px-3 py-1 rounded-full">
-        {text} · {timeStr}
+        {content} · {timeStr}
       </span>
     </div>
   )
@@ -286,8 +323,7 @@ export function MessageList({
             return (
               <ServiceMessage
                 key={`event-${item.event.id}`}
-                text={formatAuditEvent(item.event)}
-                time={item.event.created_at}
+                event={item.event}
               />
             )
           }

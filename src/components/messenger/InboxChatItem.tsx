@@ -2,10 +2,13 @@ import { memo } from 'react'
 import Image from 'next/image'
 import { MessageSquare, Send, Mail, EyeOff, CheckCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { stripHtml } from '@/utils/format/messengerHtml'
+import { stripHtml, stripHtmlIgnoreQuotes } from '@/utils/format/messengerHtml'
 import type { InboxThreadEntry, InboxChannelType } from '@/services/api/inboxService'
 import { getBadgeDisplay, formatBadgeCount } from '@/utils/inboxUnread'
 import { formatShortDate } from '@/utils/format/dateFormat'
+import { safeCssColor } from '@/utils/isValidCssColor'
+
+const STATUS_PREFIX = 'Статус: '
 
 function formatTime(isoString: string | null): string {
   if (!isoString) return ''
@@ -106,9 +109,34 @@ export const InboxChatItem = memo(function InboxChatItem({
   const badge = getBadgeDisplay(chat)
   const hasUnreadIndicator = badge.type !== 'none'
 
-  // Determine if the latest activity is an event (audit) or a message
-  const eventIsNewer = chat.last_event_at && (!chat.last_message_at || chat.last_event_at > chat.last_message_at)
-  const displayTime = eventIsNewer ? chat.last_event_at : chat.last_message_at
+  // Determine latest activity: reaction (unread only) > audit event > message.
+  // A read reaction stays a "badge on the message", it must not hijack the preview.
+  const reactionIsNewer =
+    chat.has_unread_reaction &&
+    !!chat.last_reaction_at &&
+    (!chat.last_message_at || chat.last_reaction_at > chat.last_message_at) &&
+    (!chat.last_event_at || chat.last_reaction_at > chat.last_event_at)
+
+  const eventIsNewer =
+    !reactionIsNewer &&
+    !!chat.last_event_at &&
+    (!chat.last_message_at || chat.last_event_at > chat.last_message_at)
+
+  const displayTime = reactionIsNewer
+    ? chat.last_reaction_at
+    : eventIsNewer
+      ? chat.last_event_at
+      : chat.last_message_at
+
+  // Avatar + name shown in the left slot: normally the message author, but for
+  // a newer unread reaction we show the person who reacted instead — otherwise
+  // the row reads as "Alice reacted to her own message", which is confusing.
+  const avatarUrl = reactionIsNewer
+    ? chat.last_reaction_sender_avatar_url
+    : chat.last_sender_avatar_url
+  const avatarFallbackName = reactionIsNewer
+    ? chat.last_reaction_sender_name
+    : chat.last_sender_name
 
   const accent = accentStyles[chat.thread_accent_color] ?? defaultAccent
   const ChannelIcon = channelIcons[chat.channel_type]
@@ -125,12 +153,12 @@ export const InboxChatItem = memo(function InboxChatItem({
             : 'hover:bg-gray-50',
       )}
     >
-      {/* Аватар последнего отправителя с цветной обводкой */}
+      {/* Аватар последнего отправителя (или автора реакции, если она новее) */}
       <div className="relative shrink-0 mt-0.5">
-        {chat.last_sender_avatar_url ? (
+        {avatarUrl ? (
           <Image
-            src={chat.last_sender_avatar_url}
-            alt={chat.last_sender_name ?? ''}
+            src={avatarUrl}
+            alt={avatarFallbackName ?? ''}
             width={40}
             height={40}
             className={cn('w-10 h-10 rounded-full object-cover ring-2', accent.ring)}
@@ -144,7 +172,7 @@ export const InboxChatItem = memo(function InboxChatItem({
               accent.ring,
             )}
           >
-            {(chat.last_sender_name ?? chat.thread_name).charAt(0).toUpperCase()}
+            {(avatarFallbackName ?? chat.thread_name).charAt(0).toUpperCase()}
           </div>
         )}
         {/* Бейдж типа канала */}
@@ -183,14 +211,40 @@ export const InboxChatItem = memo(function InboxChatItem({
                 <span className="text-red-500 font-medium">Черновик: </span>
                 <span className="text-gray-500">{truncateText(draftText, 40)}</span>
               </>
+            ) : reactionIsNewer && chat.last_reaction_emoji ? (
+              <span className="italic text-gray-500">
+                {chat.last_reaction_sender_name && (
+                  <span className="font-semibold text-gray-900 not-italic">
+                    {chat.last_reaction_sender_name}
+                  </span>
+                )}
+                {chat.last_reaction_sender_name ? ' отреагировал(а) ' : 'Реакция '}
+                <span className="not-italic">{chat.last_reaction_emoji}</span>
+                {chat.last_reaction_message_preview && (
+                  <>
+                    {' на: '}
+                    {truncateText(stripHtmlIgnoreQuotes(chat.last_reaction_message_preview), 30)}
+                  </>
+                )}
+              </span>
             ) : eventIsNewer && chat.last_event_text ? (
-              <span className="text-amber-600 italic">{chat.last_event_text}</span>
+              chat.last_event_status_color &&
+              chat.last_event_text.startsWith(STATUS_PREFIX) ? (
+                <span className="italic">
+                  <span className="text-gray-500">{STATUS_PREFIX}</span>
+                  <span style={{ color: safeCssColor(chat.last_event_status_color) }}>
+                    {chat.last_event_text.slice(STATUS_PREFIX.length)}
+                  </span>
+                </span>
+              ) : (
+                <span className="text-amber-600 italic">{chat.last_event_text}</span>
+              )
             ) : chat.last_message_text ? (
               <>
                 {chat.last_sender_name && (
                   <span className="font-semibold text-gray-900">{chat.last_sender_name}: </span>
                 )}
-                {truncateText(stripHtml(chat.last_message_text))}
+                {truncateText(stripHtmlIgnoreQuotes(chat.last_message_text))}
               </>
             ) : (
               <span className="text-gray-400">Нет сообщений</span>
