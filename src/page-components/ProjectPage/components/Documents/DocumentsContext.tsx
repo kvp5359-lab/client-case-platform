@@ -75,7 +75,7 @@ export function useDocumentsContext() {
   return ctx
 }
 
-interface DocumentsProviderProps {
+export interface DocumentsProviderProps {
   children: React.ReactNode
   projectId?: string
   workspaceId?: string

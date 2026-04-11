@@ -13,15 +13,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useDocumentStatuses, useDocumentKitStatuses } from '@/hooks/useStatuses'
 import { useDocuments } from '@/hooks/useDocuments'
-import { useDocumentEdit } from '@/components/projects/DocumentKitsTab/hooks/useDocumentEdit'
-import { useDocumentVerify } from '@/components/projects/DocumentKitsTab/hooks/useDocumentVerify'
-import {
-  useDocumentKitUIStore,
-  useEditDialogState,
-  useContentViewState,
-  useMergeDialogState,
-  useCompressState,
-} from '@/store/documentKitUI'
+import { useDocumentKitUIStore, useCompressState } from '@/store/documentKitUI'
 import { UngroupedCard } from './Documents'
 import { DocumentsProvider } from './Documents/DocumentsContext'
 import { KitDocuments } from './Documents/KitDocuments'
@@ -50,12 +42,13 @@ import {
   useCompressAnalysis,
   useDocumentsDialogActions,
   useDocumentsFlatList,
+  useDocumentsProviderProps,
+  useDocumentsDialogsProps,
 } from './Documents/hooks'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import { useProjectPermissions } from '@/hooks/permissions/useProjectPermissions'
 import { toggleSourceDocumentHidden } from '@/services/documents/sourceDocumentService'
-import { toast } from 'sonner'
-import { useDocumentSelection, clearAllSelections } from '@/hooks/documents/useDocumentSelection'
+import { useDocumentSelection } from '@/hooks/documents/useDocumentSelection'
 import { CreateDriveFoldersDialog } from './Documents/CreateDriveFoldersDialog'
 
 // === ТИПЫ ===
@@ -254,62 +247,55 @@ export function DocumentsTabContent({
     docActions,
   })
   const {
-    moveDialog,
-    allFolders,
-    folderGroups,
     handleMoveDocument,
-    handleMoveToFolder,
-    duplicateDialog,
     handleDuplicateDocument,
-    handleDuplicateToFolder,
-    batchActions,
     handleSlotUnlink,
-    documentEdit,
-    documentVerify,
-    documentMerge,
     handleOpenEditDialog,
     summary,
   } = dialogActions
 
-  const {
-    editDialogOpen,
-    documentToEdit,
-    editName,
-    editDescription,
-    editStatus,
-    suggestedNames,
-    isCheckingDocument,
-  } = useEditDialogState()
-  const { contentViewDialogOpen, documentContent, isLoadingContent } = useContentViewState()
   const { compressingDocIds } = useCompressState()
-  const { closeEditDialog, updateEditForm, closeContentViewDialog } = useDocumentKitUIStore()
-  const {
-    mergeDialogOpen,
-    mergeDocsList,
-    mergeName,
-    mergeFolderId,
-    isMerging,
-    isGeneratingMergeName,
-    draggedIndex,
-  } = useMergeDialogState()
-  const { openMergeDialog, closeMergeDialog, updateMergeName, setMergeFolder } =
-    useDocumentKitUIStore()
 
-  const handleOpenDocument = useCallback(async () => {
-    if (!documentToEdit) return
-    await docActions.handleOpenDocumentById(documentToEdit.id)
-  }, [documentToEdit, docActions])
-  const handleMergeDocuments = useCallback(() => {
-    const allDocs = documentKits.flatMap((kit) => kit.documents ?? [])
-    const kitForMerge = documentKits.find((kit) =>
-      mergeDocsList.some((m) => kit.documents?.some((d) => d.id === m.id)),
-    )
-    if (!kitForMerge) {
-      toast.error('Набор документов не найден')
-      return
-    }
-    documentMerge.handleMergeDocuments({ documentKitId: kitForMerge.id, allDocuments: allDocs })
-  }, [documentKits, mergeDocsList, documentMerge])
+  // Props для <DocumentsDialogs> — Zustand-селекторы документного стора
+  // и сборка всех 19 диалоговых пропсов инкапсулированы в этом хуке,
+  // чтобы не раздувать оркестратор.
+  const dialogsProps = useDocumentsDialogsProps({
+    workspaceId,
+    documentKits,
+    statuses,
+    isMoving,
+    isDuplicating,
+    dialogActions,
+    docActions,
+    fileUpload,
+    kitlessUpload,
+    kitActions,
+    kitDownload,
+    folderCRUD,
+    compressAnalysis,
+  })
+
+  // Props для <DocumentsProvider> — плоский объект с 40+ полями,
+  // собирается отдельно, чтобы JSX-разметка не тонула в пропсах.
+  const providerProps = useDocumentsProviderProps({
+    projectId,
+    workspaceId,
+    statuses,
+    compressingDocIds,
+    compressAnalysis,
+    fileUpload,
+    docActions,
+    dragDrop,
+    sourceDrop,
+    messengerDrop,
+    selectedDocuments,
+    hasSelection,
+    onSelectDocument: handleSelectDocument,
+    handleOpenEditDialog,
+    handleMoveDocument,
+    handleDuplicateDocument,
+    handleSlotUnlink,
+  })
 
   // Мемоизированные handler-объекты для KitDocuments
   const slotHandlers = useMemo<KitSlotHandlers>(
@@ -366,46 +352,7 @@ export function DocumentsTabContent({
   }
 
   return (
-    <DocumentsProvider
-      projectId={projectId}
-      workspaceId={workspaceId}
-      statuses={statuses}
-      compressingDocIds={compressingDocIds}
-      uploadingSlotId={fileUpload.uploadingSlotId}
-      highlightedCompressDocIds={compressAnalysis.highlightedCompressDocIds}
-      selectedDocuments={selectedDocuments}
-      hasSelection={hasSelection}
-      onSelectDocument={handleSelectDocument}
-      onStatusChange={docActions.handleStatusChange}
-      onOpenEdit={handleOpenEditDialog}
-      onOpenDocument={docActions.handleOpenDocumentById}
-      onDownloadDocument={docActions.handleDownloadDocument}
-      onDeleteDocument={docActions.handleDeleteDocument}
-      onCompressDocument={docActions.handleCompressDocument}
-      onMoveDocument={handleMoveDocument}
-      onDuplicateDocument={handleDuplicateDocument}
-      onSlotUnlink={handleSlotUnlink}
-      onSourceDocDrop={sourceDrop.handleSourceDocDrop}
-      onSourceDocSlotDrop={sourceDrop.handleSourceDocSlotDrop}
-      onMessengerAttachmentDrop={messengerDrop.handleMessengerAttachmentDrop}
-      onMessengerAttachmentSlotDrop={messengerDrop.handleMessengerAttachmentSlotDrop}
-      sourceUploadFolderId={sourceDrop.sourceUploadFolderId}
-      sourceUploadPhase={sourceDrop.sourceUploadPhase}
-      sourceUploadTargetDocId={sourceDrop.sourceUploadTargetDocId}
-      sourceUploadTargetPosition={sourceDrop.sourceUploadTargetPosition}
-      draggedDocId={dragDrop.draggedDocId}
-      dragOverDocId={dragDrop.dragOverDocId}
-      dragOverPosition={dragDrop.dragOverPosition}
-      dragOverFolderId={dragDrop.dragOverFolderId}
-      onDocDragStart={dragDrop.onDocDragStart}
-      onDocDragOver={dragDrop.onDocDragOver}
-      onDocDragLeave={dragDrop.onDocDragLeave}
-      onDocDragEnd={dragDrop.onDocDragEnd}
-      onDocDrop={dragDrop.onDocDrop}
-      onFolderDragOver={dragDrop.onFolderDragOver}
-      onFolderDragLeave={dragDrop.onFolderDragLeave}
-      onFolderDrop={dragDrop.onFolderDrop}
-    >
+    <DocumentsProvider {...providerProps}>
       <TooltipProvider>
         <DocumentsToolbar
           filterMode={filterMode}
@@ -481,138 +428,7 @@ export function DocumentsTabContent({
           </div>
         ))}
 
-        <DocumentsDialogs
-          editDocumentDialog={{
-            open: editDialogOpen,
-            onOpenChange: (open) => {
-              if (!open) closeEditDialog()
-            },
-            name: editName,
-            description: editDescription,
-            status: editStatus,
-            suggestedNames,
-            isCheckingDocument,
-            documentToEdit,
-            statuses,
-            onNameChange: (name) => updateEditForm('name', name),
-            onDescriptionChange: (desc) => updateEditForm('description', desc),
-            onStatusChange: (status) => updateEditForm('status', status),
-            onSave: documentEdit.handleSaveDocument,
-            onVerify: documentVerify.handleVerifyDocument,
-            onViewContent: documentEdit.handleViewContent,
-            onOpenDocument: handleOpenDocument,
-          }}
-          contentViewDialog={{
-            open: contentViewDialogOpen,
-            onOpenChange: (open) => {
-              if (!open) closeContentViewDialog()
-            },
-            documentName: documentToEdit?.name || '',
-            content: documentContent,
-            isLoading: isLoadingContent,
-            onClearContent: documentEdit.handleClearContent,
-          }}
-          hiddenFileInputs={{
-            fileInputRef: fileUpload.fileInputRef,
-            slotFileInputRef: fileUpload.slotFileInputRef,
-            onFileChange: fileUpload.handleFileChange,
-            onSlotFileChange: fileUpload.handleSlotFileChange,
-            kitlessFileInputRef: kitlessUpload.kitlessFileInputRef,
-            onKitlessFileChange: kitlessUpload.handleKitlessFileChange,
-          }}
-          summaryDialog={{
-            open: summary.summaryDialogOpen,
-            onOpenChange: summary.setSummaryDialogOpen,
-            text: summary.summaryText,
-            loading: summary.summaryLoading,
-            copied: summary.copied,
-            onCopy: summary.handleCopySummary,
-          }}
-          moveDocumentDialog={{
-            open: moveDialog.isOpen,
-            onOpenChange: (open) => !open && moveDialog.close(),
-            folders: allFolders,
-            folderGroups,
-            isMoving,
-            onMove: handleMoveToFolder,
-          }}
-          duplicateDocumentDialog={{
-            open: duplicateDialog.isOpen,
-            onOpenChange: (open) => !open && duplicateDialog.close(),
-            folders: allFolders,
-            folderGroups,
-            isMoving: isDuplicating,
-            title: 'Дублировать документ',
-            description: 'Выберите группу, в которую хотите дублировать документ',
-            onMove: handleDuplicateToFolder,
-          }}
-          mergeDocumentsDialog={{
-            open: mergeDialogOpen,
-            onOpenChange: (open) => (open ? openMergeDialog([]) : closeMergeDialog()),
-            mergeDocsList,
-            mergeName,
-            mergeFolderId,
-            folders: allFolders,
-            isMerging,
-            isGeneratingName: isGeneratingMergeName,
-            draggedIndex,
-            onNameChange: updateMergeName,
-            onFolderChange: setMergeFolder,
-            onRemoveDoc: documentMerge.handleRemoveFromMerge,
-            onDragStart: documentMerge.handleDragStart,
-            onDragOver: documentMerge.handleDragOver,
-            onDragEnd: documentMerge.handleDragEnd,
-            onGenerateName: () => documentMerge.generateMergeNameWithAI(mergeDocsList),
-            onMerge: handleMergeDocuments,
-          }}
-          folderDialog={{
-            open: folderCRUD.folderDialog.isOpen,
-            onOpenChange: (open) => !open && folderCRUD.folderDialog.close(),
-            isEditing: !!folderCRUD.editingFolderId,
-            name: folderCRUD.folderName,
-            description: folderCRUD.folderDescription,
-            aiNamingPrompt: folderCRUD.folderAiNamingPrompt,
-            aiCheckPrompt: folderCRUD.folderAiCheckPrompt,
-            knowledgeArticleId: folderCRUD.folderKnowledgeArticleId,
-            workspaceId,
-            onNameChange: folderCRUD.setFolderName,
-            onDescriptionChange: folderCRUD.setFolderDescription,
-            onAiNamingPromptChange: folderCRUD.setFolderAiNamingPrompt,
-            onAiCheckPromptChange: folderCRUD.setFolderAiCheckPrompt,
-            onKnowledgeArticleChange: folderCRUD.setFolderKnowledgeArticleId,
-            onSave: folderCRUD.handleSaveFolder,
-            isSaving: folderCRUD.isSavingFolder,
-          }}
-          deleteKitDialog={{
-            open: !!kitActions.deleteKitDialogOpen,
-            kitName: kitActions.deleteKitDialogOpen?.name ?? '',
-            onConfirm: kitActions.handleDeleteKitConfirm,
-            onCancel: () => kitActions.setDeleteKitDialogOpen(null),
-          }}
-          docActionsConfirm={docActions.confirmDialogProps}
-          deleteFolderConfirm={{
-            state: folderCRUD.deleteFolderConfirmState,
-            onConfirm: folderCRUD.deleteFolderHandleConfirm,
-            onCancel: folderCRUD.deleteFolderHandleCancel,
-          }}
-          syncKitConfirm={{
-            state: kitActions.syncKitConfirmState,
-            onConfirm: kitActions.syncKitHandleConfirm,
-            onCancel: kitActions.syncKitHandleCancel,
-          }}
-          mergeConfirm={documentMerge.confirmDialogProps}
-          batchActionsProps={batchActions.batchActionsProps}
-          batchDeleteConfirm={batchActions.batchDeleteConfirmProps}
-          batchHardDeleteConfirm={batchActions.batchHardDeleteConfirmProps}
-          batchDownloadDialog={batchActions.downloadDialogProps}
-          kitDownloadDialog={kitDownload.kitDownloadDialogProps}
-          compressAnalysisDialog={{
-            open: compressAnalysis.compressAnalysisOpen,
-            onOpenChange: compressAnalysis.setCompressAnalysisOpen,
-            items: compressAnalysis.compressAnalysisItems,
-            onHighlight: compressAnalysis.handleHighlightCompressDocs,
-          }}
-        />
+        <DocumentsDialogs {...dialogsProps} />
         <CreateDriveFoldersDialog
           open={!!driveFoldersKit}
           onOpenChange={(open) => !open && setDriveFoldersKit(null)}

@@ -14,7 +14,7 @@ import { FolderDialog } from '@/components/documents/dialogs/FolderDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { HiddenFileInputs } from './HiddenFileInputs'
 
-interface DocumentsDialogsProps {
+export interface DocumentsDialogsProps {
   editDocumentDialog: ComponentProps<typeof EditDocumentDialog>
   contentViewDialog: ComponentProps<typeof ContentViewDialog>
   hiddenFileInputs: ComponentProps<typeof HiddenFileInputs>
