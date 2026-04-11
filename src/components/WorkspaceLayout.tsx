@@ -29,6 +29,7 @@ import { TaskPanel } from '@/components/tasks/TaskPanel'
 import { useTaskPanelSetup } from '@/components/tasks/useTaskPanelSetup'
 import { TaskPanelContext, setGlobalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { newThreadToTaskItem } from '@/components/tasks/taskListConstants'
+import { useScrollIntoViewOnPanel } from '@/hooks/shared/useScrollIntoViewOnPanel'
 
 const ExtraPanelContent = lazy(() =>
   import('@/components/extra-panel/ExtraPanelContent').then((m) => ({
@@ -176,6 +177,12 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
     setGlobalOpenThread(tpSetOpenThread)
     return () => setGlobalOpenThread(null)
   }, [tpSetOpenThread])
+
+  // Авто-скролл кликнутого элемента из-под открывающейся боковой панели.
+  // DOM-driven: хук сам наблюдает за появлением `.side-panel` в любом месте
+  // дерева (основная sidePanel, layout-уровневая TaskPanel, локальная TaskPanel
+  // внутри BoardsPage — все они рендерятся с классом `.side-panel`).
+  useScrollIntoViewOnPanel()
 
   // При смене проекта закрываем TaskPanel, если открытый тред относится к
   // другому проекту (или к workspace-level: project_id === null).
