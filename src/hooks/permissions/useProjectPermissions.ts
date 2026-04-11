@@ -227,7 +227,7 @@ export function useProjectPermissions(
 
     if (!rolesData || userProjectRoles.length === 0) return null
 
-    // Z7-06: Сопоставление ролей по name — архитектурное решение:
+    // Сопоставление ролей по name — архитектурное решение:
     // project_participants.project_roles хранит массив имён ролей (string[]),
     // а project_roles.name — уникально в пределах workspace (unique constraint).
     // Переименование роли НЕ обновляет project_participants автоматически.

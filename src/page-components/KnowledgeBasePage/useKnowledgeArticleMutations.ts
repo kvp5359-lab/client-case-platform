@@ -15,7 +15,7 @@ export function useKnowledgeArticleMutations(workspaceId: string | undefined) {
 
   const createArticleMutation = useMutation({
     mutationFn: async (groupId?: string) => {
-      // Z5-03: атомарное создание через RPC
+      // атомарное создание через RPC
       const { data, error } = await supabase.rpc('create_article_with_group', {
         p_workspace_id: workspaceId!,
         p_group_id: groupId ?? undefined,
@@ -106,7 +106,7 @@ export function useKnowledgeArticleMutations(workspaceId: string | undefined) {
       fromGroupId: string | null
       toGroupId: string | null
     }) => {
-      // Z5-02: атомарное перемещение через RPC
+      // атомарное перемещение через RPC
       const { error } = await supabase.rpc('move_article_to_group', {
         p_article_id: articleId,
         p_from_group_id: fromGroupId ?? undefined,

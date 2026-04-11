@@ -34,7 +34,7 @@ import { useDelayedSend } from '@/hooks/messenger/useDelayedSend'
 import { useThreadAuditEvents } from '@/hooks/messenger/useThreadAuditEvents'
 import { useEmailLink } from '@/hooks/email/useEmailLink'
 import { useSendEmail } from '@/hooks/email/useSendEmail'
-// import { useChatState } from '@/hooks/messenger/useChatState'
+import { useChatState } from '@/hooks/messenger/useChatState'
 import { useDocumentPickerLogic } from './useDocumentPickerLogic'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { stripHtmlKeepNewlines } from '@/utils/format/messengerHtml'
@@ -68,8 +68,12 @@ export function useMessengerState({
   const [forwardedAttachments, setForwardedAttachments] = useState<ForwardedAttachment[]>([])
   const [sendTrigger, setSendTrigger] = useState(0)
 
-  // TODO: включить когда RPC get_chat_state будет создан в Supabase
-  // useChatState(threadId, projectId, workspaceId, channel)
+  // Single RPC `get_chat_state` warm-loads participant + telegram link + email
+  // link + unread count + last_read_at в один запрос вместо 5-6 параллельных.
+  // Результат сидится в существующие React Query кеши через
+  // queryClient.setQueryData, поэтому хуки `useUnreadCount`, `useTelegramLink`,
+  // `useEmailLink` ниже подхватывают данные без собственных HTTP-запросов.
+  useChatState(threadId, projectId, workspaceId, channel)
 
   const { isLinked, telegramLink, linkCode, isLoadingCode, unlink, isUnlinking } = useTelegramLink(
     projectId,

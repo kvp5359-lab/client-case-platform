@@ -1,7 +1,7 @@
 /**
  * useCompositeFieldMutations — queries, мутации и D&D для вложенных полей составного поля
  *
- * Вынесено из CompositeFieldEditor.tsx (Z5-54)
+ * Вынесено из CompositeFieldEditor.tsx
  */
 
 import React, { useState, useMemo } from 'react'

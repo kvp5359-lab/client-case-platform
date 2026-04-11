@@ -22,7 +22,7 @@ export async function parseSSEStream(
   const decoder = new TextDecoder()
   let buffer = ''
 
-  // Z6-13: try-finally гарантирует закрытие reader при ошибке
+  // try-finally гарантирует закрытие reader при ошибке
   try {
     while (true) {
       const { done, value } = await reader.read()
@@ -41,7 +41,7 @@ export async function parseSSEStream(
           const parsed = JSON.parse(data)
           onEvent({ type: eventType, data: parsed })
         } catch {
-          // Z6-06: логируем вместо молчаливого пропуска
+          // логируем вместо молчаливого пропуска
           logger.warn('SSE: malformed JSON for event', eventType, data.slice(0, 200))
         }
       }

@@ -65,7 +65,7 @@ export function useFolderOperations(
   } = useDocumentKitUIStore()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-  // Z3-55, Z3-56: guards against double invocation
+  // guards against double invocation
   const isCreatingFoldersRef = useRef(false)
   const isSavingFolderRef = useRef(false)
 

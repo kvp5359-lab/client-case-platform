@@ -79,7 +79,7 @@ export function DocumentKitTemplatesContent() {
 
         if (error) throw error
 
-        // Z5-02: Батчевый подсчёт папок одним запросом вместо N+1
+        // Батчевый подсчёт папок одним запросом вместо N+1
         const kitIds = (data || []).map((kit) => kit.id)
         const folderCountsMap: Record<string, number> = {}
 

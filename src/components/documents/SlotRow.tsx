@@ -58,7 +58,7 @@ const EmptySlotChip = memo(function EmptySlotChip({ slot }: { slot: FolderSlotWi
   const [isEditing, setIsEditing] = useState(isNewSlot)
   const [editName, setEditName] = useState(isNewSlot ? '' : slot.name)
   const [isDragOver, setIsDragOver] = useState(false)
-  // Z3-07: стандартный React-паттерн "Adjusting state when a prop changes"
+  // стандартный React-паттерн "Adjusting state when a prop changes"
   // https://react.dev/reference/react/useState#storing-information-from-previous-renders
    
   const [prevIsNewSlot, setPrevIsNewSlot] = useState(isNewSlot)

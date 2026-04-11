@@ -129,7 +129,7 @@ export async function bulkCreateQA(
 }
 
 export async function setQATags(qaId: string, tagIds: string[]): Promise<void> {
-  // Z6-01: атомарное обновление через RPC
+  // атомарное обновление через RPC
   const { error } = await supabase.rpc('update_qa_tags', {
     p_qa_id: qaId,
     p_tag_ids: tagIds,
@@ -138,7 +138,7 @@ export async function setQATags(qaId: string, tagIds: string[]): Promise<void> {
 }
 
 export async function setQAGroups(qaId: string, groupIds: string[]): Promise<void> {
-  // Z6-01: атомарное обновление через RPC
+  // атомарное обновление через RPC
   const { error } = await supabase.rpc('update_qa_groups', {
     p_qa_id: qaId,
     p_group_ids: groupIds,

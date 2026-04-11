@@ -8,7 +8,7 @@
 
 const HEX_RE = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
 const FUNC_RE = /^(?:rgb|hsl)a?\(\s*[\d.%,\s/]+\)$/
-// Z6-09: запрещаем CSS-функции (url, var, calc, expression) и слова длиннее 20 символов
+// запрещаем CSS-функции (url, var, calc, expression) и слова длиннее 20 символов
 const DANGEROUS_RE = /(?:url|var|calc|expression|env)\s*\(/i
 const NAMED_RE = /^[a-zA-Z]{1,20}$/
 

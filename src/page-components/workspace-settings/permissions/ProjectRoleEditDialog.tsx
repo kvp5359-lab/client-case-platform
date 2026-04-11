@@ -64,7 +64,7 @@ function ProjectRoleEditDialogContent({
   onSave: (updates: Partial<ProjectRole>) => void
   isSaving: boolean
 }) {
-  // Z5-09: key={role.id} на Content пересоздаёт компонент при смене роли
+  // key={role.id} на Content пересоздаёт компонент при смене роли
   const [name, setName] = useState(role.name)
   const [description, setDescription] = useState(role.description || '')
   const [moduleAccess, setModuleAccess] = useState<ProjectModuleAccess>(

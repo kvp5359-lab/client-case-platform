@@ -42,7 +42,7 @@ export function useBatchMoveOperations({
   sourceDocuments,
 }: UseBatchMoveOperationsProps) {
   const isBatchMovingRef = useRef(false)
-  // Z3-01: Guard для одиночного drag&drop — предотвращает race condition при быстром перетаскивании
+  // Guard для одиночного drag&drop — предотвращает race condition при быстром перетаскивании
   const isDragMovingRef = useRef(false)
 
   /**
@@ -146,7 +146,7 @@ export function useBatchMoveOperations({
     dragOverPosition: 'top' | 'bottom' | null,
     resetDragState: () => void,
   ) => {
-    // Z3-01: Guard от параллельных drag&drop операций
+    // Guard от параллельных drag&drop операций
     if (!draggedDocId || draggedDocId === targetDoc.id || isDragMovingRef.current) {
       resetDragState()
       return
@@ -217,7 +217,7 @@ export function useBatchMoveOperations({
     targetFolderId: string | null,
     resetDragState: () => void,
   ) => {
-    // Z3-01: Guard от параллельных drag&drop операций
+    // Guard от параллельных drag&drop операций
     if (!draggedDocId || isDragMovingRef.current) {
       resetDragState()
       return
@@ -231,7 +231,7 @@ export function useBatchMoveOperations({
       return
     }
 
-    // Z3-16: drop на ту же папку — пропускаем лишний запрос в БД
+    // drop на ту же папку — пропускаем лишний запрос в БД
     if (draggedDoc.folder_id === targetFolderId) {
       resetDragState()
       return

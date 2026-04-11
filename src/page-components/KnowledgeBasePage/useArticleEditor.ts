@@ -64,7 +64,7 @@ export function useArticleEditor() {
     isVersionDialogOpen,
   )
 
-  // --- Mutations (Z5-73: extracted to separate hook) ---
+  // --- Mutations (extracted to separate hook) ---
   const {
     updateArticleMutation,
     updateStatusMutation,

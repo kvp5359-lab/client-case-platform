@@ -67,7 +67,7 @@ export function useSectionDragDrop(
       return
     }
 
-    // Z5-32: try/catch для async drag&drop
+    // try/catch для async drag&drop
     try {
       const allSectionsSorted = [...sections].sort((a, b) => a.sort_order - b.sort_order)
       const draggedIndex = allSectionsSorted.findIndex((s) => s.id === state.draggedSectionFormId)

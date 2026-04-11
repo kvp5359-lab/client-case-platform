@@ -39,7 +39,7 @@ export function LoginForm() {
   const [cooldown, setCooldown] = useState(0)
   const [showPasswordForm, setShowPasswordForm] = useState(false)
 
-  // Z1-02: Клиентский lockout после неудачных попыток входа по паролю
+  // Клиентский lockout после неудачных попыток входа по паролю
   const {
     isLocked: isPasswordLocked,
     remainingSeconds: passwordLockout,

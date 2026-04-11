@@ -153,7 +153,7 @@ export function useDocumentCompress({
         return
       }
 
-      // Z3-13: обновляем total — только PDF-документы, не все выбранные
+      // обновляем total — только PDF-документы, не все выбранные
       if (pdfDocs.length < selectedDocuments.size) {
         setCompressProgress({ current: 0, total: pdfDocs.length })
       }

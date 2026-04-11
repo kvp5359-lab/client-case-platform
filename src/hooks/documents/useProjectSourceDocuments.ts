@@ -38,7 +38,7 @@ export function useProjectSourceDocuments({
   setSourceCollapsed,
   setSourceFolderName,
 }: UseProjectSourceDocumentsProps) {
-  // Z3-08: requestId prevents stale responses from overwriting fresh data
+  // requestId prevents stale responses from overwriting fresh data
   const loadRequestIdRef = useRef(0)
 
   // B-151: ref prevents stale closure — loadSourceDocuments always reads the latest value

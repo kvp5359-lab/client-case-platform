@@ -45,7 +45,7 @@ export function useDocumentMerge(
 ) {
   const { handleError } = useErrorHandler()
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
-  // Z3-05: защита от race condition при быстром переоткрытии диалога merge
+  // защита от race condition при быстром переоткрытии диалога merge
   const mergeNameRequestIdRef = useRef(0)
 
   // State
@@ -129,7 +129,7 @@ export function useDocumentMerge(
         },
       })
 
-      // Z3-05: игнорируем ответ, если уже был новый запрос
+      // игнорируем ответ, если уже был новый запрос
       if (requestId !== mergeNameRequestIdRef.current) return
 
       if (error) {

@@ -35,7 +35,7 @@ export function useFormKitData({ formKitId, enabled: enabledProp = true }: UseFo
   const [formData, setFormData] = useState<FormData>({})
   const isFormDataInitialized = useRef(false)
 
-  // Сброс флага инициализации при смене анкеты (Z2-03)
+  // Сброс флага инициализации при смене анкеты
   // Без этого при переключении formKitId данные предыдущей анкеты останутся в formData
   useEffect(() => {
     isFormDataInitialized.current = false
@@ -72,7 +72,7 @@ export function useFormKitData({ formKitId, enabled: enabledProp = true }: UseFo
     isLoading: structureLoading,
     error: structureError,
   } = useQuery({
-    // Z2-01: включаем template_id в ключ — при смене шаблона структура перезагрузится
+    // включаем template_id в ключ — при смене шаблона структура перезагрузится
     queryKey: [...formKitKeys.structure(formKitId), formKit?.template_id ?? null],
     queryFn: async () => {
       if (!formKit) return null

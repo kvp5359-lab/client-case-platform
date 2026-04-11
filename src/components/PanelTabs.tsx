@@ -1,7 +1,7 @@
 /**
  * PanelTabs — верхний ряд вкладок боковой панели: Чаты / Ассистент / Дополнительно
  *
- * Extracted from WorkspaceLayout.tsx (Z5-22)
+ * Extracted from WorkspaceLayout.tsx
  */
 
 import { MessageSquare, Sparkles, FolderCog, type LucideIcon } from 'lucide-react'

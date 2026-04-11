@@ -43,7 +43,7 @@ export function AutoFillFormDialog({
   const isAnalyzingRef = useRef(false)
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Z2-01: Очистка интервала при unmount
+  // Очистка интервала при unmount
   useEffect(() => {
     return () => {
       if (progressIntervalRef.current) {
@@ -96,7 +96,7 @@ export function AutoFillFormDialog({
     setStep('analyzing')
     setAnalysisProgress(0)
 
-    // Z2-01: Очищаем предыдущий интервал при двойном нажатии
+    // Очищаем предыдущий интервал при двойном нажатии
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current)
     }

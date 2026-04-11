@@ -40,7 +40,7 @@ type WorkspaceWithCount = Workspace & { participants_count?: number }
  * Загрузка workspaces с подсчётом участников
  */
 async function fetchWorkspacesWithCounts(userId: string): Promise<WorkspaceWithCount[]> {
-  // Z5-08: загружаем workspaces и counts в 2 параллельных запроса вместо N+1
+  // загружаем workspaces и counts в 2 параллельных запроса вместо N+1
   const [workspacesResult, countsResult] = await Promise.all([
     supabase
       .from('workspaces')

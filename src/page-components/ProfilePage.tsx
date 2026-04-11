@@ -55,7 +55,7 @@ export function ProfilePage() {
   // Google Drive OAuth popup
   const [googleDriveLoading, setGoogleDriveLoading] = useState(false)
   const popupCheckRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  // Z5-01: isMounted guard — предотвращает создание интервала после unmount
+  // isMounted guard — предотвращает создание интервала после unmount
   const isMountedRef = useRef(true)
 
   // Cleanup popup check interval on unmount
@@ -191,9 +191,9 @@ export function ProfilePage() {
   // Слушаем сообщения от OAuth окна
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Z5-06: проверяем origin чтобы не обработать сообщение от чужого окна
+      // проверяем origin чтобы не обработать сообщение от чужого окна
       if (event.origin !== window.location.origin) return
-      // Z5-02: валидируем event.data по типу — может быть null, string, или объект без .type
+      // валидируем event.data по типу — может быть null, string, или объект без .type
       if (!event.data || typeof event.data !== 'object' || typeof event.data.type !== 'string')
         return
       if (event.data.type === 'google-drive-auth-success') {
@@ -257,7 +257,7 @@ export function ProfilePage() {
         return
       }
 
-      // Z5-01: Проверяем, закрыто ли окно (если пользователь закрыл вручную).
+      // Проверяем, закрыто ли окно (если пользователь закрыл вручную).
       // isMountedRef guard предотвращает создание интервала после unmount.
       if (popupCheckRef.current) {
         clearInterval(popupCheckRef.current)

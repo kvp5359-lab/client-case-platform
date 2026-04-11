@@ -146,7 +146,7 @@ export async function deleteDocumentTemplate(id: string): Promise<void> {
     DocumentTemplateError,
   )
 
-  // Z6-04: логируем ошибку Storage-удаления (orphaned файл лучше чем потеря записи)
+  // логируем ошибку Storage-удаления (orphaned файл лучше чем потеря записи)
   const { error: storageError } = await supabase.storage
     .from('document-templates')
     .remove([template.file_path])

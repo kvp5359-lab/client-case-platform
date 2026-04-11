@@ -30,7 +30,7 @@ interface KeyValueTableFieldProps {
 
 type TableRow = string[] // Массив значений для каждой колонки
 
-// Z2-05: Маппинг типов колонок на HTML input type — вынесен из компонента
+// Маппинг типов колонок на HTML input type — вынесен из компонента
 const INPUT_TYPE_MAP: Record<string, string> = {
   number: 'number',
   email: 'email',
@@ -51,7 +51,7 @@ export function KeyValueTableField({
   disabled = false,
 }: KeyValueTableFieldProps) {
   const hasFocusedRef = useRef(false)
-  // Z2-07: Флаг внутреннего изменения — предотвращает цикл onChange → value → useEffect → setRows
+  // Флаг внутреннего изменения — предотвращает цикл onChange → value → useEffect → setRows
   const internalChangeRef = useRef<string | null>(null)
 
   // Parse value from JSON into rows
@@ -82,7 +82,7 @@ export function KeyValueTableField({
 
   const [rows, setRows] = useState<TableRow[]>(() => parseRows(value))
 
-  // Z2-07: Синхронизация только при ВНЕШНЕМ изменении value/columns
+  // Синхронизация только при ВНЕШНЕМ изменении value/columns
   // Пропускаем, если value совпадает с последним внутренним onChange
   useEffect(() => {
     if (internalChangeRef.current === value) {

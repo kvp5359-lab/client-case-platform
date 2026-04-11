@@ -57,7 +57,7 @@ export function prepareValidation(
   minLength: string,
   maxLength: string,
 ): Record<string, number> | null {
-  // Z5-34: !== '' вместо falsy-проверки, чтобы "0" не пропускалось
+  // !== '' вместо falsy-проверки, чтобы "0" не пропускалось
   if (fieldType === 'number') {
     const validation: Record<string, number> = {}
     if (minValue !== '') validation.min = parseFloat(minValue)

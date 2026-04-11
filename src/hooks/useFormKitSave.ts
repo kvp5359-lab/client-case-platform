@@ -120,9 +120,9 @@ export function useFormKitSave({ formKitId }: UseFormKitSaveParams) {
       return { serverValue: inserted?.value ?? value }
     },
     onSuccess: (data, variables) => {
-      // Оптимистичное обновление кэша fieldValues вместо полной инвалидации (Z2-04).
+      // Оптимистичное обновление кэша fieldValues вместо полной инвалидации.
       // setQueryData обновляет конкретное значение без рефетча всей таблицы.
-      // Z2-28: Используем значение из ответа сервера, а не из переданных параметров
+      // Используем значение из ответа сервера, а не из переданных параметров
       const { fieldId } = variables
       const value = data.serverValue
       const { fieldDefinitionId, compositeFieldId } = parseFieldKey(fieldId)
@@ -172,7 +172,7 @@ export function useFormKitSave({ formKitId }: UseFormKitSaveParams) {
   // Дедупликация — не отправляем повторный запрос если значение не изменилось
   const lastSavedValuesRef = useRef<Map<string, string>>(new Map())
 
-  // Сброс при смене formKitId (Z2-30: предотвращает ложную блокировку при copy-анкете)
+  // Сброс при смене formKitId (предотвращает ложную блокировку при copy-анкете)
   useEffect(() => {
     lastSavedValuesRef.current.clear()
   }, [formKitId])
@@ -183,7 +183,7 @@ export function useFormKitSave({ formKitId }: UseFormKitSaveParams) {
       onFieldSaved?.()
       return
     }
-    // Z2-05: записываем в ref только после успешного сохранения, чтобы retry не блокировался
+    // записываем в ref только после успешного сохранения, чтобы retry не блокировался
     saveMutation.mutate(
       { fieldId, value },
       {

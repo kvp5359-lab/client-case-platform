@@ -1,7 +1,7 @@
 /**
  * useKnowledgeQAData — queries, мутации и фильтрация для Q&A базы знаний
  *
- * Вынесено из KnowledgeQAView.tsx (Z5-70)
+ * Вынесено из KnowledgeQAView.tsx
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'

@@ -1,5 +1,5 @@
 /**
- * Z3-08: Хук для пакетного скачивания — делегирует в общую утилиту downloadDocumentsAsZip
+ * Хук для пакетного скачивания — делегирует в общую утилиту downloadDocumentsAsZip
  */
 
 import { toast } from 'sonner'

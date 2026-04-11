@@ -6,7 +6,7 @@
  * Колонки: Вопрос | Группы | Теги | Источник | Дата | Статус индексации
  * Фильтрация по тегам и группам (OR), поиск по тексту вопроса.
  *
- * Queries и мутации вынесены в useKnowledgeQAData (Z5-70)
+ * Queries и мутации вынесены в useKnowledgeQAData
  */
 
 import { useState, useEffect } from 'react'

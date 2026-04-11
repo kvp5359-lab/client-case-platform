@@ -2,7 +2,7 @@
 
 /**
  * Workspace Settings Page — настройки рабочего пространства с вкладками
- * Тяжёлые табы загружаются лениво через React.lazy (Z5-23)
+ * Тяжёлые табы загружаются лениво через React.lazy
  */
 
 import React, { Suspense, useEffect } from 'react'

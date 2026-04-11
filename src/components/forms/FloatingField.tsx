@@ -81,7 +81,7 @@ export function FloatingField({
     }, 0)
   }, [])
 
-  // Z2-14: мемоизация childrenProps — предотвращает лишние ререндеры дочерних компонентов
+  // мемоизация childrenProps — предотвращает лишние ререндеры дочерних компонентов
   const childrenProps = useMemo(
     () => ({ isFocused, onFocus: handleFocus, onBlur: handleBlur }),
     [isFocused, handleFocus, handleBlur],

@@ -27,7 +27,7 @@ export function useFormSections(templateId: string | undefined) {
 
         if (error) throw error
 
-        // Z5-04: один запрос вместо N+1 для подсчёта полей по секциям
+        // один запрос вместо N+1 для подсчёта полей по секциям
         const { data: allFields } = await supabase
           .from('form_template_fields')
           .select('form_template_section_id')
@@ -177,7 +177,7 @@ export function useFormSections(templateId: string | undefined) {
 
       newOrder.splice(insertIndex, 0, removed)
 
-      // Z5-05: Promise.all вместо последовательных await
+      // Promise.all вместо последовательных await
       await Promise.all(
         newOrder.map((s, i) =>
           supabase.from('form_template_sections').update({ sort_order: i }).eq('id', s.id),

@@ -169,7 +169,7 @@ export function useDocumentKitSetup({
   )
 
   // Мемоизированные производные данные — вынесены в useDocumentKitMemos.
-  // Z3-14: folders мемоизируется, чтобы не триггерить useEffect при каждом рендере.
+  // folders мемоизируется, чтобы не триггерить useEffect при каждом рендере.
   const { kit, folders, allFolders, documentNamesMap, allFilteredDocuments } = useDocumentKitMemos(
     documentKits,
     kitId,

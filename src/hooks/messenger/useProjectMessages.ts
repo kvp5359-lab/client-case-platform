@@ -211,7 +211,7 @@ export function useProjectMessages(
     }
   }, [query])
 
-  // Z4-11: количество сообщений на самой свежей странице (page[0]),
+  // количество сообщений на самой свежей странице (page[0]),
   // чтобы звук не срабатывал при подгрузке старых страниц
   const latestPageMessageCount = query.data?.pages?.[0]?.messages.length ?? 0
 

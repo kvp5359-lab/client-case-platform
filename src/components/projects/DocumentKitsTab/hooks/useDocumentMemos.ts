@@ -60,7 +60,7 @@ export function useDocumentMemos({
     const map = new Map<string, DocumentWithFiles[]>()
     kit.documents?.forEach((doc) => {
       if (doc.folder_id && !doc.is_deleted) {
-        // Z3-58: skip documents assigned to slots — they render in SlotRow, not in folder list
+        // skip documents assigned to slots — they render in SlotRow, not in folder list
         if (slotDocumentIds.has(doc.id)) return
         // Фильтр "только непроверенные": скрываем документы с установленным статусом
         if (showOnlyUnverified && !isStatusUnselected(doc.status)) return

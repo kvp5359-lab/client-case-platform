@@ -29,7 +29,7 @@ export function RegisterForm() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // Z1-01: Клиентский lockout после неудачных попыток регистрации
+  // Клиентский lockout после неудачных попыток регистрации
   const {
     isLocked,
     remainingSeconds: registerLockout,

@@ -1,7 +1,7 @@
 /**
  * ParticipantsTab - вкладка управления участниками workspace
  *
- * Мутации вынесены в useParticipantsMutations (Z5-71)
+ * Мутации вынесены в useParticipantsMutations
  */
 
 import { useState, useMemo } from 'react'

@@ -106,7 +106,7 @@ export const emailAccountKeys = {
 export const commentKeys = {
   all: ['comments'] as const,
   byEntity: (entityType: string, entityId: string) => ['comments', entityType, entityId] as const,
-  // Z7-04: Хешируем entityIds вместо spread — предотвращает огромные ключи
+  // Хешируем entityIds вместо spread — предотвращает огромные ключи
   // и путаницу кэшей при разном порядке IDs
   counts: (entityType: string, entityIds: string[]) =>
     ['comments', 'counts', entityType, [...entityIds].sort().join(',')] as const,

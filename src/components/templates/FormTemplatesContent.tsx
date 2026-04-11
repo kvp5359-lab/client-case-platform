@@ -6,7 +6,7 @@
  * - Таблица с шаблонами (название, техническое имя, кол-во полей)
  * - Кнопки: создать, редактировать, копировать, удалить
  *
- * Мутации и D&D вынесены в useFormTemplateMutations (Z5-52)
+ * Мутации и D&D вынесены в useFormTemplateMutations
  */
 
 import { useState } from 'react'

@@ -37,7 +37,7 @@ export interface SectionProgress {
 export type SectionRequiredStatus = 'complete' | 'in_progress' | 'empty'
 
 /**
- * Z2-23: DRY — единый обход полей секции с учётом composite fields.
+ * DRY — единый обход полей секции с учётом composite fields.
  * Принимает предикат для фильтрации полей (все / только обязательные).
  */
 function countSectionFields(

@@ -220,7 +220,7 @@ export function DocumentsTabContent({
   }, [filterMode, searchQuery, clearHighlightedCompressDocs])
   const folderCRUD = useFolderCRUD({ projectId, workspaceId, documentKits, invalidateDocumentKits })
 
-  // Z5-01: Диалоговые операции вынесены в отдельный хук
+  // Диалоговые операции вынесены в отдельный хук
   const dialogActions = useDocumentsDialogActions({
     projectId,
     workspaceId,

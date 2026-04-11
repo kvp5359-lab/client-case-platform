@@ -1,5 +1,5 @@
 /**
- * Z5-05: Drag & drop логика для KnowledgeTreeView, вынесенная из 611-строчного файла.
+ * Drag & drop логика для KnowledgeTreeView, вынесенная из 611-строчного файла.
  */
 
 import { useState, useCallback } from 'react'

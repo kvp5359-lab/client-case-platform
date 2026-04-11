@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // onAuthStateChange вызывает callback с INITIAL_SESSION при подписке,
-    // поэтому отдельный getSession() не нужен и избегаем race condition (Z7-01)
+    // поэтому отдельный getSession() не нужен и избегаем race condition
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {

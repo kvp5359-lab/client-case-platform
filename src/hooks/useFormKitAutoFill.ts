@@ -225,7 +225,7 @@ export function useFormKitAutoFill({
       // Обновляем UI-состояние один раз (батч)
       setFormData((prev) => ({ ...prev, ...dataUpdates }))
 
-      // Z2-13: Сохраняем в БД параллельно для ускорения
+      // Сохраняем в БД параллельно для ускорения
       const results = await Promise.allSettled(
         updates.map(({ fieldId, value }) => saveFieldAsync(fieldId, value)),
       )

@@ -1,7 +1,7 @@
 "use client"
 
 /**
- * Z5-01: Вынесенные из DocumentsTabContent диалоговые операции
+ * Вынесенные из DocumentsTabContent диалоговые операции
  * Move document, batch move source, create task, slot unlink, merge
  */
 

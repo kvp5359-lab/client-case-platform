@@ -140,7 +140,7 @@ export function useWorkspacePermissions(
     return ownerRole ? userRoles.includes(ownerRole.name) : false
   }, [rolesData, userRoles])
 
-  // Функция проверки разрешения (Z5-10: owner имеет все разрешения)
+  // Функция проверки разрешения (owner имеет все разрешения)
   const can = useCallback(
     (permission: WorkspacePermission): boolean => {
       if (isOwner) return true

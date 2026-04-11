@@ -60,7 +60,7 @@ export default function ProjectsPage() {
     isLoading,
     refetch,
   } = useQuery({
-    // Z5-35: permissionsResult влияет на queryFn (canViewAll) — добавлен в queryKey.
+    // permissionsResult влияет на queryFn (canViewAll) — добавлен в queryKey.
     // TODO queryKeys: сложный ключ, переносить вдумчиво — callsite хранит в ключе
     // can('view_all_projects') отдельно, а в queryFn canViewAll вычисляется ещё и
     // с OR isOwner. Т.е. семантика ключа и фабрики projectKeys.listForUser не совпадает.
@@ -76,7 +76,7 @@ export default function ProjectsPage() {
 
       const canViewAll = permissionsResult.isOwner || permissionsResult.can('view_all_projects')
 
-      // Z5-06: один RPC вместо 3 последовательных запросов
+      // один RPC вместо 3 последовательных запросов
       const { data, error } = await supabase.rpc('get_user_projects', {
         p_workspace_id: activeWorkspaceId,
         p_user_id: user!.id,

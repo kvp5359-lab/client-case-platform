@@ -87,7 +87,7 @@ export function useFolderAndUIHandlers(params: UseFolderAndUIHandlersParams) {
         .update({ status: statusId })
         .eq('id', folderId)
       if (error) {
-        // Z3-16: показываем ошибку пользователю
+        // показываем ошибку пользователю
         const { toast } = await import('sonner')
         toast.error('Не удалось обновить статус папки')
         return

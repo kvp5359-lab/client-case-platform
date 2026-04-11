@@ -263,7 +263,7 @@ const FormTemplateContext = createContext<FormTemplateContextValue | null>(null)
 export function FormTemplateProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(formTemplateReducer, initialState)
 
-  // Z5-01: мемоизируем value чтобы потребители не перерендеривались лишний раз
+  // мемоизируем value чтобы потребители не перерендеривались лишний раз
   const value = useMemo(() => ({ state, dispatch }), [state])
 
   return <FormTemplateContext.Provider value={value}>{children}</FormTemplateContext.Provider>

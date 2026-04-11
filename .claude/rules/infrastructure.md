@@ -12,11 +12,11 @@
 | React | 19.x | UI-библиотека |
 | TypeScript | 5.x | Типизация |
 | Tailwind CSS | 3.x | Стили (JS-конфигурация) |
-| shadcn/ui | latest | UI-компоненты (43 файла) |
+| shadcn/ui | latest | UI-компоненты (41 файл в `src/components/ui/`) |
 | Radix UI | latest | Примитивы для UI |
 | TanStack React Query | 5.x | Серверное состояние |
 | Zustand | 5.x | Клиентское состояние |
-| React Hook Form + Zod | 7.x | Формы и валидация |
+| Формы | — | Нативные `useState` + контролируемые компоненты. Ни `react-hook-form`, ни `zod` в проекте не используются (исторически были в шаблоне shadcn-init, но реальные формы в коде написаны на чистом React). |
 | Tiptap | latest | Rich text editor |
 | @dnd-kit | latest | Drag & drop |
 | Supabase JS | 2.x | БД, Auth, Storage, Realtime |
@@ -24,13 +24,13 @@
 
 ## Архитектура
 
-- **Фронтенд**: Next.js App Router. Клиентский код в `src/`, страницы в `app/`
+- **Фронтенд**: Next.js App Router. Клиентский код в `src/`, страницы и layout-ы — в `src/app/`
 - **Бэкенд**: Supabase (PostgreSQL + Auth + Storage + Realtime + Edge Functions)
 - **Стилизация**: Tailwind 3 + CSS Variables (HSL) + shadcn/ui
 - **Состояние**: React Query (серверное) + Zustand (клиентское)
-- **Структура**: `src/page-components/` (перенесённые страницы), `src/components/` (компоненты по модулям)
-- **Публичная часть**: `app/(public)/` — заглушки для маркетплейса (lawyers, blog, about)
-- **Приватная часть**: `app/(app)/` — защищена ProtectedRoute + Supabase middleware
+- **Структура**: `src/page-components/` (тяжёлые компоненты страниц), `src/components/` (переиспользуемые компоненты по модулям)
+- **Публичная часть**: `src/app/(public)/` — заглушки для маркетплейса (lawyers, blog, about)
+- **Приватная часть**: `src/app/(app)/` — защищена цепочкой middleware → server-side `(app)/layout.tsx` → клиентский `ProtectedRoute` → RLS в БД
 
 ## Supabase
 
@@ -122,10 +122,24 @@ npm run test:watch # Vitest watch mode
 pkill -f "next dev"; rm -rf .next tsconfig.tsbuildinfo
 ```
 
-## Роуты (27)
+## Роуты (46)
 
-**Auth**: /login, /login/email, /register, /auth/callback
-**App**: /profile, /dashboard, /workspaces, /workspaces/[id], /workspaces/[id]/inbox, /workspaces/[id]/projects, /workspaces/[id]/projects/[id], /workspaces/[id]/tasks
-**Settings**: /workspaces/[id]/settings, /workspaces/[id]/settings/knowledge-base/*, /workspaces/[id]/settings/templates/*
-**Public**: /lawyers, /blog, /about
-**API**: /api/payments, /api/webhooks
+Точное число: `find src/app -name page.tsx | wc -l`. На 2026-04-11 — **46**.
+
+**Root** (1): `/`
+
+**Auth** (4): `/login`, `/login/email`, `/register`, `/auth/callback`
+
+**Public** (5): `/lawyers`, `/blog`, `/about`, `/privacy`, `/terms`
+
+**App** — приватные, защищены `(app)/layout.tsx` (36):
+- Top-level: `/profile`, `/dashboard`, `/workspaces`
+- Workspace: `/workspaces/[id]`, `/workspaces/[id]/inbox`, `/workspaces/[id]/tasks`
+- Projects: `/workspaces/[id]/projects`, `/workspaces/[id]/projects/[projectId]`
+- Boards: `/workspaces/[id]/boards`, `/workspaces/[id]/boards/[boardId]`
+- Settings core: `/workspaces/[id]/settings`, `/workspaces/[id]/settings/general`, `/workspaces/[id]/settings/participants`, `/workspaces/[id]/settings/permissions`, `/workspaces/[id]/settings/trash`
+- Settings → directories: `/workspaces/[id]/settings/directories`, `/directories/custom`, `/directories/custom/[directoryId]`, `/directories/project-roles`, `/directories/quick-replies`, `/directories/statuses`, `/directories/workspace-roles`
+- Settings → knowledge base: `/workspaces/[id]/settings/knowledge-base`, `/knowledge-base/[articleId]`, `/knowledge-base/qa/[qaId]`
+- Settings → templates: `/workspaces/[id]/settings/templates`, `/templates/document-kit-templates`, `/templates/document-kit-templates/[kitId]`, `/templates/document-templates`, `/templates/field-templates`, `/templates/folder-templates`, `/templates/form-templates`, `/templates/form-templates/[templateId]`, `/templates/project-templates`, `/templates/project-templates/[templateId]`, `/templates/thread-templates`
+
+**API** (2): `/api/payments`, `/api/webhooks` — заглушки 501

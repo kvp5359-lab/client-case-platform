@@ -106,7 +106,7 @@ export async function getCommentsByEntity(
   // 2. Собираем уникальные user_id авторов
   const userIds = [...new Set(comments.map((c) => c.created_by))]
 
-  // Z6-03: Загружаем участников по user_id БЕЗ фильтра is_deleted —
+  // Загружаем участников по user_id БЕЗ фильтра is_deleted —
   // удалённые участники всё ещё могут быть авторами комментариев
   const { data: participants, error: pError } = await supabase
     .from('participants')

@@ -101,7 +101,7 @@ export function useSlotHandlers({
   const targetSlotIdRef = useRef<string | null>(null)
   const targetSlotFolderIdRef = useRef<string | null>(null)
 
-  // Z3-06: ref-based guard — предотвращает двойной клик пока файл выбирается
+  // ref-based guard — предотвращает двойной клик пока файл выбирается
   const handleSlotClick = useCallback((slotId: string, folderId: string) => {
     if (slotClickGuardRef.current) return
     slotClickGuardRef.current = true

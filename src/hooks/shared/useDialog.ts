@@ -83,7 +83,7 @@ export function useDialogWithData<T = unknown>(
   const [data, setData] = useState<T | null>(defaultData)
   const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Cleanup таймера при unmount (Z7-07)
+  // Cleanup таймера при unmount
   useEffect(() => {
     return () => {
       if (clearTimerRef.current !== null) {
@@ -113,7 +113,7 @@ export function useDialogWithData<T = unknown>(
     }, 300)
   }, [])
 
-  // Используем функциональное обновление вместо замыкания на isOpen (Z7-08)
+  // Используем функциональное обновление вместо замыкания на isOpen
   const toggle = useCallback(() => {
     setIsOpen((prev) => {
       if (prev) {

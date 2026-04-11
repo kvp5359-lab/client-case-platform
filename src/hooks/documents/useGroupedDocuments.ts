@@ -34,7 +34,7 @@ export function useGroupedDocuments({
     const trashedDocuments = allDocs.filter((d) => d.is_deleted === true)
     const visibleDocuments = allDocs.filter((d) => d.is_deleted !== true)
 
-    // Z3-39: Унифицирован фильтр — используем isStatusUnselected как в documentsByFolder
+    // Унифицирован фильтр — используем isStatusUnselected как в documentsByFolder
     const allFilteredDocuments = showOnlyUnverified
       ? visibleDocuments.filter((d) => isStatusUnselected(d.status))
       : visibleDocuments

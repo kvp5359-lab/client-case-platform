@@ -38,7 +38,7 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
   const isReindexingRef = useRef(false)
   const [editingGroup, setEditingGroup] = useState<KnowledgeGroup | null>(null)
 
-  // Z5-05: drag & drop логика вынесена в хук
+  // drag & drop логика вынесена в хук
   const dnd = useKnowledgeTreeDnd(page)
 
   const toggleCollapse = (id: string) => {

@@ -85,7 +85,7 @@ export function MergeDocumentsDialog({
                     e.currentTarget.classList.remove('bg-blue-50')
                   }}
                   onDragEnd={(e) => {
-                    // Z3-06: сбросить подсветку при окончании drag (включая drop на себя)
+                    // сбросить подсветку при окончании drag (включая drop на себя)
                     e.currentTarget.classList.remove('bg-blue-50')
                   }}
                   onDrop={(e) => {

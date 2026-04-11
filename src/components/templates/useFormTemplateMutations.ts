@@ -1,7 +1,7 @@
 /**
  * useFormTemplateMutations — query + мутации + D&D для шаблонов анкет
  *
- * Вынесено из FormTemplatesContent.tsx (Z5-52)
+ * Вынесено из FormTemplatesContent.tsx
  */
 
 import { useState } from 'react'

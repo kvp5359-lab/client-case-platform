@@ -62,7 +62,7 @@ export function useFieldDragDrop(
       return
     }
 
-    // Z5-32: try/catch для async drag&drop
+    // try/catch для async drag&drop
     try {
       const allFieldsSorted = [...fields].sort((a, b) => a.sort_order - b.sort_order)
       const draggedIndex = allFieldsSorted.findIndex((f) => f.id === state.draggedFieldId)
@@ -92,7 +92,7 @@ export function useFieldDragDrop(
 
       newOrder.splice(insertIndex, 0, removed)
 
-      // Z5-15: отправляем только записи с изменившимся sort_order
+      // отправляем только записи с изменившимся sort_order
       const changed = newOrder.filter((f, i) => f.sort_order !== i)
       if (changed.length > 0) {
         await Promise.all(

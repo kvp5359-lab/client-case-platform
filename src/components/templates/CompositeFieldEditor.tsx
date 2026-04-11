@@ -2,7 +2,7 @@
  * CompositeFieldEditor — компонент для управления вложенными полями составного поля
  * Позволяет добавлять, удалять и переупорядочивать вложенные поля
  *
- * Мутации и D&D вынесены в useCompositeFieldMutations (Z5-54)
+ * Мутации и D&D вынесены в useCompositeFieldMutations
  */
 
 import { useState, useEffect, useRef, useMemo } from 'react'

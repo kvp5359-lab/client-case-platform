@@ -51,7 +51,7 @@ export function useFormFieldSaveHandlers({
     canFillFormsRef.current = canFillForms
   }, [canFillForms])
 
-  // Z2-10: Сброс originalValues при смене анкеты + снимок при первой загрузке formData.
+  // Сброс originalValues при смене анкеты + снимок при первой загрузке formData.
   // Реализовано через tracked previous formKitId (derived-update), без setState-в-эффекте.
   // Логика ровно та же: новая анкета → сброс originalValues и флага инициализации;
   // дальше первый непустой formData попадает в снимок.
@@ -96,7 +96,7 @@ export function useFormFieldSaveHandlers({
     }
   }, [saveAllDirtyFields])
 
-  // Z2-12: Автосохранение каждую минуту — страховка от закрытия вкладки.
+  // Автосохранение каждую минуту — страховка от закрытия вкладки.
   // formKitId в deps: при смене анкеты интервал пересоздаётся,
   // а cleanup сохраняет несохранённые данные предыдущей формы.
   useEffect(() => {
@@ -110,7 +110,7 @@ export function useFormFieldSaveHandlers({
      
   }, [saveAllDirtyFields, formKitId])
 
-  // Z2-01: Сохранение при скрытии/закрытии вкладки
+  // Сохранение при скрытии/закрытии вкладки
   // visibilitychange + 'hidden' надёжнее beforeunload: браузер не убивает fetch сразу,
   // а даёт время на завершение запросов при переключении/закрытии вкладки
   useEffect(() => {
@@ -133,7 +133,7 @@ export function useFormFieldSaveHandlers({
 
   // Сохранение поля по onBlur — сравнивает с original
   // Используем refs вместо замыкания на formData/originalValues/saveField/canFillForms,
-  // чтобы избежать stale closure (Z2-02) и лишних ре-рендеров FieldsGrid (Z2-06)
+  // чтобы избежать stale closure и лишних ре-рендеров FieldsGrid
   const handleSaveField = useCallback((fieldId: string) => {
     if (!canFillFormsRef.current) {
       toast.error('Нет прав на заполнение анкет')

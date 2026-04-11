@@ -21,10 +21,10 @@ import { fromSupabaseJson } from '@/utils/supabaseJson'
 const SUBHEADING_WRAPPER = 'col-span-full pt-1.5 -mb-1'
 const SUBHEADING_TEXT = 'text-sm font-medium text-muted-foreground/70'
 
-// Z2-02: вынесена стабильная функция
+// вынесена стабильная функция
 const isFilled = (v: string) => v.trim() !== ''
 
-// Z2-06: стабильная ссылка, не создаётся на каждый рендер
+// стабильная ссылка, не создаётся на каждый рендер
 const DEFAULT_TABLE_COLUMNS = [
   { name: 'Ключ', type: 'text' as const },
   { name: 'Значение', type: 'text' as const },

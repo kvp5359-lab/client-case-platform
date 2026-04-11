@@ -216,7 +216,7 @@ export function useGlobalBatchActions({
     [globalCount, globalSelectedIds, sourceDocIds],
   )
 
-  // Z3-01: was hasPermission('documents.manage') — 1 arg instead of 2, always returned false
+  // was hasPermission('documents.manage') — 1 arg instead of 2, always returned false
   const canDeleteDocuments = hasPermission('documents', 'delete_documents')
   const canDownloadDocuments = hasPermission('documents', 'download_documents')
   const canUseAi = isEnabled('ai_document_check')

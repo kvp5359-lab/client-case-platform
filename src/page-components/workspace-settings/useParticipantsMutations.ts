@@ -1,7 +1,7 @@
 /**
  * useParticipantsMutations — query и мутации для управления участниками
  *
- * Вынесено из ParticipantsTab.tsx (Z5-71)
+ * Вынесено из ParticipantsTab.tsx
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'

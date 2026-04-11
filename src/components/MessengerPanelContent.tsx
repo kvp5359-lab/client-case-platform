@@ -3,7 +3,7 @@
 /**
  * MessengerPanelContent — содержимое мессенджер-панели: вкладки чатов + MessengerTabContent
  *
- * Extracted from WorkspaceLayout.tsx (Z5-22)
+ * Extracted from WorkspaceLayout.tsx
  * Contains chat tabs row, delete confirmation dialog, and the messenger itself.
  */
 

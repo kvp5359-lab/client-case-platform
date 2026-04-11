@@ -68,7 +68,7 @@ export function TrashedDocumentRow({
             </div>
           </div>
 
-          {/* Z3-03: Меню действий — показываем при hover ИЛИ открытом menu */}
+          {/* Меню действий — показываем при hover ИЛИ открытом menu */}
           {(isHovered || menuOpen) && (
             <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
               <DropdownMenuTrigger asChild>
