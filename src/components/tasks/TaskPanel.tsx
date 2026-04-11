@@ -12,10 +12,18 @@
 import { useState, useCallback, useRef, useEffect, createElement, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Pencil, Check, Settings, ExternalLink, X, Mail } from 'lucide-react'
+import { Pencil, Check, Settings, ExternalLink, X, Mail, ArrowLeft, ListTree } from 'lucide-react'
 import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
+import { TaskPanelContext, useLayoutTaskPanel } from './TaskPanelContext'
+
+// TaskListView импортируется лениво, чтобы избежать циклической зависимости:
+// TaskListView → TaskPanel → TaskListView. Нужен только когда пользователь
+// открыл встроенный список тредов проекта внутри панели.
+const TaskListView = lazy(() =>
+  import('./TaskListView').then((m) => ({ default: m.TaskListView })),
+)
 
 const ChatSettingsDialog = lazy(() =>
   import('@/components/messenger/ChatSettingsDialog').then((m) => ({
@@ -50,6 +58,12 @@ export interface TaskPanelProps {
   showProjectLink?: boolean
   /** Callback при клике на ссылку проекта */
   onProjectClick?: () => void
+  /** Вернуться на один шаг назад по стеку тредов. Если undefined — кнопка скрыта. */
+  onBack?: () => void
+  /** Есть ли предыдущий тред в стеке (кнопка «назад» активна). */
+  canGoBack?: boolean
+  /** Положить тред поверх стека — вызывается из встроенного TaskListView. */
+  onOpenThreadInStack?: (task: TaskItem) => void
 }
 
 export function TaskPanel({
@@ -68,11 +82,17 @@ export function TaskPanel({
   settingsPending,
   showProjectLink: _showProjectLink,
   onProjectClick,
+  onBack,
+  canGoBack = false,
+  onOpenThreadInStack,
 }: TaskPanelProps) {
   const router = useRouter()
+  const parentPanelCtx = useLayoutTaskPanel()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
   const toolbarRef = useCallback((node: HTMLDivElement | null) => setToolbarContainer(node), [])
+  /** Встроенный список тредов проекта — показывается поверх MessengerTabContent */
+  const [threadListOpen, setThreadListOpen] = useState(false)
 
   // Inline-редактирование названия
   const [editingName, setEditingName] = useState(false)
@@ -117,20 +137,24 @@ export function TaskPanel({
     return () => document.body.removeAttribute('data-task-panel-open')
   }, [open])
 
-  // Закрытие по Escape
+  // Закрытие по Escape (Escape с приоритетом: встроенный список тредов → панель)
   useEffect(() => {
     if (!open) return
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (settingsOpen) return
+        if (threadListOpen) {
+          e.preventDefault()
+          setThreadListOpen(false)
+          return
+        }
         e.preventDefault()
         onClose()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open, onClose, settingsOpen])
-
+  }, [open, onClose, settingsOpen, threadListOpen])
 
   const startEditName = () => {
     if (!task) return
@@ -153,10 +177,12 @@ export function TaskPanel({
     setEditingName(false)
   }
 
-  // Сброс editing при смене задачи
+  // Сброс при смене задачи: inline-редактирование названия и встроенный список тредов.
+  // Derived state during render — устраняет cascading-рендер useEffect+setState.
   if (task?.id !== prevTaskId) {
     setPrevTaskId(task?.id)
     setEditingName(false)
+    setThreadListOpen(false)
   }
 
   if (!open || !task) return null
@@ -178,6 +204,19 @@ export function TaskPanel({
         <div className="border-b shrink-0 min-h-[48px] flex flex-col justify-center py-2">
           {/* Строка 1: статус/иконка + название + действия */}
           <div className="flex items-center gap-2 px-4">
+            {/* Кнопка «назад» — видна только если в стеке тредов больше одного */}
+            {canGoBack && onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                title="Назад"
+                aria-label="Назад"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Статус-дропдаун (только задачи) или иконка треда */}
             {isTask && statuses.length > 0 && onStatusChange ? (
               <StatusDropdown
@@ -221,7 +260,7 @@ export function TaskPanel({
               </form>
             ) : (
               <h2
-                className="text-base font-semibold truncate min-w-0 cursor-pointer hover:text-primary transition-colors group/title"
+                className="text-base font-semibold leading-tight truncate min-w-0 cursor-pointer hover:text-primary transition-colors group/title"
                 onClick={startEditName}
               >
                 {task.name}
@@ -229,26 +268,7 @@ export function TaskPanel({
               </h2>
             )}
 
-            {/* Ссылка на проект */}
-            {task.project_id && resolvedProjectName && (
-              <a
-                href={`/workspaces/${workspaceId}/projects/${task.project_id}`}
-                onClick={(e) => {
-                  if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
-                    e.preventDefault()
-                    onProjectClick?.()
-                    router.push(`/workspaces/${workspaceId}/projects/${task.project_id}`)
-                  }
-                }}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
-                title="Открыть проект"
-              >
-                <span className="truncate max-w-[120px]">{resolvedProjectName}</span>
-                <ExternalLink className="h-3 w-3 opacity-50" />
-              </a>
-            )}
-
-            {/* Исполнители — только для задач */}
+            {/* Исполнители — сразу после названия (только для задач) */}
             {isTask && (
               <div className="shrink-0">
                 <AssigneesPopover
@@ -258,15 +278,6 @@ export function TaskPanel({
                   assignees={members}
                 />
               </div>
-            )}
-
-            {isTask && onDeadlineSet && onDeadlineClear && (
-              <DeadlinePopover
-                deadline={task.deadline}
-                onSet={onDeadlineSet}
-                onClear={onDeadlineClear}
-                isPending={deadlinePending}
-              />
             )}
 
             <div ref={toolbarRef} className="flex items-center gap-1 ml-auto shrink-0" />
@@ -290,7 +301,67 @@ export function TaskPanel({
             </button>
           </div>
 
-          {/* Строка 2: email получатели (только для email-тредов) */}
+          {/* Строка 2: проект + дедлайн.
+              Показываем, если есть проект или (тред — задача и доступен дедлайн). */}
+          {(task.project_id || (isTask && onDeadlineSet)) && (
+            <div className="flex items-center gap-2 px-4 mt-0.5">
+              {/* Отступ под название треда. База: иконка статуса (w-4 = 16px) + gap-2 (8px) = 24px.
+                  Если в строке 1 есть кнопка «назад» — плюс её ширина (p-1 + w-4 + p-1 = 24px)
+                  и разделитель gap-2 (8px) = ещё 32px. Итого 56px. */}
+              <div className={cn('shrink-0', canGoBack && onBack ? 'w-14' : 'w-6')} />
+
+              {/* Ссылка на проект */}
+              {task.project_id && resolvedProjectName && (
+                <a
+                  href={`/workspaces/${workspaceId}/projects/${task.project_id}`}
+                  onClick={(e) => {
+                    if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
+                      e.preventDefault()
+                      onProjectClick?.()
+                      router.push(`/workspaces/${workspaceId}/projects/${task.project_id}`)
+                    }
+                  }}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
+                  title="Открыть проект"
+                >
+                  <span className="truncate max-w-[200px]">{resolvedProjectName}</span>
+                  <ExternalLink className="h-3 w-3 opacity-50" />
+                </a>
+              )}
+
+              {/* Дедлайн — только для задач */}
+              {isTask && onDeadlineSet && onDeadlineClear && (
+                <DeadlinePopover
+                  deadline={task.deadline}
+                  onSet={onDeadlineSet}
+                  onClear={onDeadlineClear}
+                  isPending={deadlinePending}
+                />
+              )}
+
+              {/* Другие задачи — показать/скрыть встроенный TaskListView */}
+              {task.project_id && onOpenThreadInStack && (
+                <button
+                  type="button"
+                  onClick={() => setThreadListOpen((v) => !v)}
+                  className={cn(
+                    'shrink-0 inline-flex items-center gap-1 px-1.5 py-[3px] rounded text-xs font-medium transition-colors',
+                    threadListOpen
+                      ? 'bg-brand-100 text-brand-600'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                  )}
+                  title={threadListOpen ? 'Скрыть список тредов' : 'Другие задачи'}
+                  aria-label="Другие задачи"
+                  aria-pressed={threadListOpen}
+                >
+                  <ListTree className="w-3 h-3" />
+                  <span>Другие задачи</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Строка 3: email получатели (только для email-тредов) */}
           {isEmail && (
             <div className="flex items-center gap-2 px-4 -mt-1">
               <div className="w-[26px] shrink-0" />
@@ -312,7 +383,7 @@ export function TaskPanel({
         </div>
 
         {/* Контент — мессенджер */}
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden relative">
           <MessengerTabContent
             projectId={task.project_id ?? undefined}
             workspaceId={workspaceId}
@@ -320,6 +391,48 @@ export function TaskPanel({
             accent={task.accent_color as never}
             toolbarPortalContainer={toolbarContainer}
           />
+
+          {/* Встроенный список тредов проекта — оверлей поверх мессенджера.
+              Контекст перезаписан так, что клик по треду в списке вызывает
+              pushThread, а не внешнее openThread: так работает стек панели. */}
+          {threadListOpen && task.project_id && onOpenThreadInStack && (
+            <TaskPanelContext.Provider
+              value={{
+                // Клик по текущему открытому треду — просто закрыть оверлей списка
+                // (пользователь возвращается к тому, что уже видел). Клик по другому
+                // треду — push в стек.
+                openThread: (next) => {
+                  if (next.id === task.id) setThreadListOpen(false)
+                  else onOpenThreadInStack(next)
+                },
+                pushThread: (next) => {
+                  if (next.id === task.id) setThreadListOpen(false)
+                  else onOpenThreadInStack(next)
+                },
+                closeThread: parentPanelCtx?.closeThread ?? onClose,
+                isInsidePanel: true,
+              }}
+            >
+              <div className="absolute inset-0 z-20 bg-background overflow-auto">
+                <div className="p-4">
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                        Загрузка…
+                      </div>
+                    }
+                  >
+                    <TaskListView
+                      workspaceId={workspaceId}
+                      projectId={task.project_id}
+                      showProject={false}
+                      showProjectLink={false}
+                    />
+                  </Suspense>
+                </div>
+              </div>
+            </TaskPanelContext.Provider>
+          )}
         </div>
       </div>
 

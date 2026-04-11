@@ -284,7 +284,7 @@ export const TaskListView = memo(function TaskListView({
             className={cn(
               'h-full px-2 flex items-center transition-colors rounded-l-md',
               filters.groupByDeadline
-                ? 'bg-primary/10 text-primary'
+                ? 'bg-brand-100 text-brand-600'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
             )}
             title="По срокам"
@@ -297,7 +297,7 @@ export const TaskListView = memo(function TaskListView({
             className={cn(
               'h-full px-2 flex items-center transition-colors rounded-r-md',
               !filters.groupByDeadline
-                ? 'bg-primary/10 text-primary'
+                ? 'bg-brand-100 text-brand-600'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
             )}
             title="Без группировки"

@@ -161,8 +161,12 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   // TaskPanel
   const tp = useTaskPanelSetup({ workspaceId })
   const taskPanelCtx = useMemo(
-    () => ({ openThread: tp.setOpenThread, closeThread: () => tp.setOpenThread(null) }),
-    [tp.setOpenThread],
+    () => ({
+      openThread: tp.setOpenThread,
+      pushThread: tp.pushThread,
+      closeThread: () => tp.setOpenThread(null),
+    }),
+    [tp.setOpenThread, tp.pushThread],
   )
 
   // Глобальный ref для открытия TaskPanel из хуков вне React-дерева
