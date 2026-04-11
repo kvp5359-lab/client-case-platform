@@ -8,7 +8,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
-import { participantKeys } from '@/hooks/queryKeys'
+import { participantKeys, STALE_TIME } from '@/hooks/queryKeys'
 import {
   getCurrentProjectParticipant,
   getCurrentWorkspaceParticipant,
@@ -21,7 +21,7 @@ export function useCurrentProjectParticipant(projectId: string | undefined) {
     queryKey: participantKeys.projectParticipant(projectId ?? '', user?.id ?? ''),
     queryFn: () => getCurrentProjectParticipant(projectId!, user!.id),
     enabled: !!projectId && !!user?.id,
-    staleTime: 5 * 60 * 1000, // 5 минут — participant не меняется часто
+    staleTime: STALE_TIME.LONG, // 5 минут — participant не меняется часто
     gcTime: 10 * 60 * 1000,
   })
 }
@@ -33,7 +33,7 @@ export function useCurrentWorkspaceParticipant(workspaceId: string) {
     queryKey: participantKeys.workspaceParticipant(workspaceId, user?.id ?? ''),
     queryFn: () => getCurrentWorkspaceParticipant(workspaceId, user!.id),
     enabled: !!workspaceId && !!user?.id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
     gcTime: 10 * 60 * 1000,
   })
 }

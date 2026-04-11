@@ -22,7 +22,7 @@ import {
   markAsUnread,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
-import { messengerKeys, invalidateMessengerCaches, projectTemplateKeys } from '@/hooks/queryKeys'
+import { messengerKeys, invalidateMessengerCaches, projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
 import { useCreateThread, useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { TaskPanel } from '@/components/tasks/TaskPanel'
@@ -147,7 +147,7 @@ export default function InboxPage() {
       return (data?.template_id as string | null) ?? null
     },
     enabled: !!activeChat?.project_id,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 
   // Все видимые шаблоны в контексте активного проекта: глобальные + scoped.

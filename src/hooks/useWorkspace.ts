@@ -7,7 +7,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { workspaceKeys } from '@/hooks/queryKeys'
+import { workspaceKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { Workspace } from '@/types/entities'
 
 export function useWorkspace(workspaceId: string | undefined) {
@@ -24,6 +24,6 @@ export function useWorkspace(workspaceId: string | undefined) {
       return data
     },
     enabled: !!workspaceId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 }

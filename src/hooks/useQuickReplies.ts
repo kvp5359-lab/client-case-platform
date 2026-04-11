@@ -8,7 +8,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { quickReplyKeys } from '@/hooks/queryKeys'
+import { quickReplyKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
 import type { Database } from '@/types/database'
 
@@ -30,7 +30,7 @@ export function useQuickReplies(workspaceId: string | undefined) {
       return (data || []) as QuickReply[]
     },
     enabled: !!workspaceId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 }
 
@@ -237,6 +237,6 @@ export function useQuickRepliesForPicker(
       }))
     },
     enabled: !!workspaceId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 }

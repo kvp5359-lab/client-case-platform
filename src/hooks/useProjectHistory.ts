@@ -12,6 +12,7 @@ import {
   markHistoryAsRead,
 } from '@/services/api/historyService'
 import type { HistoryFilters } from '@/types/history'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 /**
  * Бесконечная лента истории проекта с cursor-based пагинацией
@@ -26,7 +27,7 @@ export function useProjectHistory(projectId: string, filters?: HistoryFilters) {
       return lastPage[lastPage.length - 1]?.created_at
     },
     enabled: !!projectId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 
@@ -38,7 +39,7 @@ export function useHistoryUnreadCount(projectId: string) {
     queryKey: historyKeys.unreadCount(projectId),
     queryFn: () => getHistoryUnreadCount(projectId),
     enabled: !!projectId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }
 

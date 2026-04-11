@@ -25,7 +25,7 @@ import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
 import { useThreadMembersMap } from '@/components/tasks/useThreadMembersMap'
 import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
 import { useAccessibleThreadIds } from '@/hooks/messenger/useAccessibleThreadIds'
-import { participantKeys, projectTemplateKeys } from '@/hooks/queryKeys'
+import { participantKeys, projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 /** Названия ролей проекта для tooltip */
 const PROJECT_ROLE_LABELS: Record<string, string> = {
@@ -150,7 +150,7 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
         })
     },
     enabled: !!projectId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 
   // Members for custom threads (for tooltips)
@@ -222,7 +222,7 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
       return (data?.template_id as string | null) ?? null
     },
     enabled: !!projectId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 
   // Thread templates: глобальные + привязанные к типу этого проекта.

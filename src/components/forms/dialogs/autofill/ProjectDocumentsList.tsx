@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { autofillKeys } from '@/hooks/queryKeys'
+import { autofillKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FileText, Image as ImageIcon, ArrowLeft, Loader2 } from 'lucide-react'
@@ -51,7 +51,7 @@ export function ProjectDocumentsList({
       return (data ?? []) as Document[]
     },
     enabled: !!projectId,
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
   })
 
   const getFileIcon = (mimeType: string) => {

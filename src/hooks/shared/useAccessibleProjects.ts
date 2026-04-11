@@ -11,7 +11,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { accessibleProjectKeys } from '@/hooks/queryKeys'
+import { accessibleProjectKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProjects'
 
 export function useAccessibleProjects(workspaceId: string | undefined) {
@@ -28,6 +28,6 @@ export function useAccessibleProjects(workspaceId: string | undefined) {
       return (data ?? []) as BoardProject[]
     },
     enabled: !!workspaceId && !!user?.id,
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
   })
 }

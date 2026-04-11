@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { customDirectoryKeys } from '@/hooks/queryKeys'
+import { customDirectoryKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DirectoryFieldsEditor } from './DirectoryFieldsEditor'
@@ -32,7 +32,7 @@ export function CustomDirectoryPage() {
       return data
     },
     enabled: !!directoryId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   const goBack = () => {

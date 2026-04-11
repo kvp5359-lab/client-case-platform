@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { currentParticipantKeys } from '@/hooks/queryKeys'
+import { currentParticipantKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 /**
  * Возвращает participant_id текущего пользователя в указанном workspace.
@@ -23,6 +23,6 @@ export function useCurrentParticipantId(workspaceId: string | undefined) {
       return data?.id ?? null
     },
     enabled: !!workspaceId && !!user?.id,
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIME.LONG,
   })
 }

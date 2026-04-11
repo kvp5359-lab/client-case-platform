@@ -27,7 +27,7 @@ export function useProjectParticipants(projectId: string | undefined) {
         .filter((p) => !p.is_deleted)
     },
     enabled: !!projectId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 
@@ -50,7 +50,7 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
       }[]
     },
     enabled: !!workspaceId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 

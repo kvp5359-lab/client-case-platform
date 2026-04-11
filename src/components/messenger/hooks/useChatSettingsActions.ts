@@ -37,6 +37,7 @@ import { useChatSettingsSave } from './useChatSettingsSave'
 import { useChatSettingsDefaults } from './useChatSettingsDefaults'
 import type { ComposeFieldHandle } from '../ComposeField'
 import type { useChatSettingsFormState } from './useChatSettingsFormState'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 type FormReturn = ReturnType<typeof useChatSettingsFormState>
 
@@ -84,7 +85,7 @@ export function useChatSettingsActions({
       return data ?? []
     },
     enabled: !!resolvedWorkspaceId && open,
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIME.LONG,
   })
 
   // ── Projects ──

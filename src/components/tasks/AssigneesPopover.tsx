@@ -28,7 +28,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
-import { participantKeys } from '@/hooks/queryKeys'
+import { participantKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useToggleAssignee } from './useTaskAssignees'
 import {
   useWorkspaceParticipants,
@@ -63,7 +63,7 @@ function useProjectParticipants(projectId: string | undefined) {
         .filter((p) => !p.is_deleted)
     },
     enabled: !!projectId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 

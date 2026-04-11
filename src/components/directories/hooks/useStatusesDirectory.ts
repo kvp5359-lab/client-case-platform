@@ -10,6 +10,7 @@ import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { Database } from '@/types/database'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 type EntityType = 'project' | 'task' | 'document' | 'form' | 'document_kit'
 type Status = Database['public']['Tables']['statuses']['Row']
@@ -66,7 +67,7 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
       return data ?? []
     },
     enabled: !!workspaceId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   // --- Мутация: сохранение ---

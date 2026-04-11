@@ -12,6 +12,7 @@ import {
   projectThreadKeys,
   workspaceTaskKeys,
   trashKeys,
+STALE_TIME,
 } from '@/hooks/queryKeys'
 import { logAuditAction } from '@/services/auditService'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
@@ -81,7 +82,7 @@ export function useProjectThreads(projectId: string | undefined) {
       return data as ProjectThread[]
     },
     enabled: !!projectId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 
@@ -104,7 +105,7 @@ export function useProjectThreadById(threadId: string | undefined, enabled = tru
       return (data as ProjectThread | null) ?? null
     },
     enabled: enabled && !!threadId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }
 

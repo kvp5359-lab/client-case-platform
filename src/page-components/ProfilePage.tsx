@@ -24,7 +24,7 @@ import { GmailSection } from './ProfilePage/GmailSection'
 import { AppSettingsSection } from './ProfilePage/AppSettingsSection'
 import { Database } from '@/types/database'
 import { toast } from 'sonner'
-import { userSettingsKeys, googleDriveKeys } from '@/hooks/queryKeys'
+import { userSettingsKeys, googleDriveKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 type UserSettings = Database['public']['Tables']['user_settings']['Row']
 
@@ -94,7 +94,7 @@ export function ProfilePage() {
       return data as UserSettings | null
     },
     enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   // Синхронизация серверных данных в локальное состояние для редактирования
@@ -122,7 +122,7 @@ export function ProfilePage() {
       return !error && !!data
     },
     enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   // --- Мутация: сохранение настроек ---

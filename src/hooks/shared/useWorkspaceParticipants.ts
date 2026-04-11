@@ -7,7 +7,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { participantKeys } from '@/hooks/queryKeys'
+import { participantKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 export interface WorkspaceParticipant {
   id: string
@@ -37,6 +37,6 @@ export function useWorkspaceParticipants(workspaceId: string | undefined) {
       return (data ?? []) as WorkspaceParticipant[]
     },
     enabled: !!workspaceId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }

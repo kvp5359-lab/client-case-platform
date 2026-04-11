@@ -4,6 +4,7 @@ import { useCallback, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 const PINNED_KEY = (userId: string, workspaceId: string) =>
   ['pinned-boards', userId, workspaceId] as const
@@ -30,7 +31,7 @@ export function usePinnedBoards(workspaceId: string | undefined) {
       return data?.map((r) => r.board_id) ?? []
     },
     enabled: !!user && !!workspaceId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 
   const toggleMutation = useMutation({

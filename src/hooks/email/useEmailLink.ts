@@ -9,7 +9,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { emailAccountKeys } from '@/hooks/queryKeys'
+import { emailAccountKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 export interface EmailLink {
   id: string
@@ -36,7 +36,7 @@ export function useEmailLink(threadId: string | undefined) {
       return data as EmailLink | null
     },
     enabled: !!threadId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 

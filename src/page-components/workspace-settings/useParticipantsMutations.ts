@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import type { Participant } from '@/types/entities'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 const participantKeys = {
   byWorkspace: (workspaceId: string) => ['participants', workspaceId] as const,
@@ -40,7 +41,7 @@ export function useParticipantsMutations(workspaceId: string | undefined) {
       return (data || []) as Participant[]
     },
     enabled: !!workspaceId,
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
   })
 
   // --- Mutations ---

@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { DocumentForAi } from '@/services/api/messenger/messengerAiService'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 /**
  * Load project documents for AI context
@@ -50,6 +51,6 @@ export function useDocumentsForAi(projectId: string) {
     queryKey: ['messenger-ai', 'documents', projectId],
     queryFn: () => fetchDocumentsForAi(projectId),
     enabled: !!projectId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 }

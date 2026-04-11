@@ -8,7 +8,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { emailAccountKeys } from '@/hooks/queryKeys'
+import { emailAccountKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 export interface EmailAccount {
   id: string
@@ -34,6 +34,6 @@ export function useEmailAccounts() {
       return (data ?? []) as EmailAccount[]
     },
     enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 }

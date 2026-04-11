@@ -25,7 +25,7 @@ import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
 import { usePinnedBoards } from './WorkspaceSidebar/usePinnedBoards'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useProjectTemplate, useProjectModules } from '@/page-components/ProjectPage/hooks'
-import { taskKeys } from '@/hooks/queryKeys'
+import { taskKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 /** Количество «моих» просроченных + сегодняшних задач */
 function useMyUrgentTasksCount(workspaceId: string | undefined) {
@@ -39,7 +39,7 @@ function useMyUrgentTasksCount(workspaceId: string | undefined) {
       return (data as number) ?? 0
     },
     enabled: !!workspaceId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 

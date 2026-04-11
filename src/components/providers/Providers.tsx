@@ -10,6 +10,7 @@ import { Toaster } from 'sonner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { DismissAllToasts } from '@/components/DismissAllToasts'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 const makeQueryClient = () =>
   new QueryClient({
@@ -17,7 +18,7 @@ const makeQueryClient = () =>
       queries: {
         refetchOnWindowFocus: false,
         retry: 1,
-        staleTime: 5 * 60 * 1000,
+        staleTime: STALE_TIME.LONG,
         gcTime: 10 * 60 * 1000,
       },
     },

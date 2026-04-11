@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { getChatIconComponent } from '@/components/messenger/ChatSettingsDialog'
-import { participantKeys } from '@/hooks/queryKeys'
+import { participantKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
@@ -37,7 +37,7 @@ export function useProjectChatParticipants(projectId: string | undefined) {
         .filter((p) => !p.is_deleted)
     },
     enabled: !!projectId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 
@@ -93,7 +93,7 @@ export function InboxChatHeader({
         .single()
       return data
     },
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 
   const deadline = threadData?.deadline

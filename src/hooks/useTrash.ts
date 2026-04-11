@@ -23,6 +23,7 @@ import {
   boardKeys,
   workspaceTaskKeys,
   trashKeys,
+STALE_TIME,
 } from '@/hooks/queryKeys'
 
 export { trashKeys }
@@ -89,7 +90,7 @@ export function useTrashedProjects(workspaceId: string | undefined) {
       }))
     },
     enabled: !!workspaceId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }
 
@@ -138,7 +139,7 @@ export function useTrashedThreads(workspaceId: string | undefined) {
       }))
     },
     enabled: !!workspaceId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }
 

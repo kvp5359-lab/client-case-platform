@@ -19,6 +19,7 @@ import type {
 } from '../../types/permissions'
 import { PermissionError } from '../../services/errors'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 /** Мёрж объектов boolean-полей по принципу ИЛИ */
 function mergeByOr<T extends object>(target: T, source: Partial<T> | null | undefined): void {
@@ -136,7 +137,7 @@ export function useProjectPermissions(
       return data
     },
     enabled: !!projectId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
@@ -178,7 +179,7 @@ export function useProjectPermissions(
       return data ? { project_roles: data.project_roles } : null
     },
     enabled: !!projectId && !!user?.id && !!workspaceId,
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
@@ -204,7 +205,7 @@ export function useProjectPermissions(
       return data
     },
     enabled: !!workspaceId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   })

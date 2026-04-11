@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ColorDot } from '@/components/ui/color-dot'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 type WorkspaceRole = Database['public']['Tables']['workspace_roles']['Row']
 type ProjectRole = Database['public']['Tables']['project_roles']['Row']
@@ -75,7 +76,7 @@ export function RolesDirectory({ type }: RolesDirectoryProps) {
       return data ?? []
     },
     enabled: !!workspaceId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   // --- Мутация: сохранение ---

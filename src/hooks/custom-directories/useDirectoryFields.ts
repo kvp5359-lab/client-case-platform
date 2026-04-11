@@ -7,7 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { customDirectoryKeys } from '@/hooks/queryKeys'
+import { customDirectoryKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type {
   CustomDirectoryField,
   CustomDirectoryFieldInsert,
@@ -35,7 +35,7 @@ export function useDirectoryFields(directoryId: string | undefined) {
       return data ?? []
     },
     enabled: !!directoryId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   const createFieldMutation = useMutation({

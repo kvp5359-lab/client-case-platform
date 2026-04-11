@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { calcThreadUnread, calcTotalUnread, getAggregateBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import { canAccessThread, type ThreadAccessInfo } from '@/utils/threadAccess'
 import { useInboxThreadsV2 } from './useInbox'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 interface MyProjectRole {
   project_id: string
@@ -52,7 +53,7 @@ function useWorkspaceAccessData(workspaceId: string) {
       }
     },
     enabled: !!workspaceId && !!user?.id,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 
   return {

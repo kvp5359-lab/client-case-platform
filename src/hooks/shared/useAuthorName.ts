@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { getParticipantName } from '@/services/api/participantService'
-import { participantKeys } from '@/hooks/queryKeys'
+import { participantKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 /**
  * Хук для загрузки имени автора (участника) по userId.
@@ -14,7 +14,7 @@ export function useAuthorName(userId: string | null | undefined): string | null 
     queryKey: participantKeys.authorName(userId ?? ''),
     queryFn: () => getParticipantName(userId!),
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   return authorName

@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { FormKitForAi } from '@/services/api/messenger/messengerAiService'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 /**
  * Load form kits data for AI context.
@@ -126,6 +127,6 @@ export function useFormKitsForAi(projectId: string) {
     queryKey: ['messenger-ai', 'form-kits', projectId],
     queryFn: () => fetchFormKitsForAi(projectId),
     enabled: !!projectId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 }

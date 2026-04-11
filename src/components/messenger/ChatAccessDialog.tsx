@@ -18,7 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { messengerKeys, participantKeys, projectThreadKeys } from '@/hooks/queryKeys'
+import { messengerKeys, participantKeys, projectThreadKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 
 interface Participant {
@@ -57,7 +57,7 @@ function useProjectParticipants(projectId: string | undefined) {
         .filter((p) => !('is_deleted' in p && p.is_deleted))
     },
     enabled: !!projectId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 
@@ -75,7 +75,7 @@ function useThreadMembers(threadId: string | undefined) {
       return new Set((data ?? []).map((m) => m.participant_id))
     },
     enabled: !!threadId,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.SHORT,
   })
 }
 

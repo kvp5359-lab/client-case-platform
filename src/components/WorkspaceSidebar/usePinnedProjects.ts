@@ -4,6 +4,7 @@ import { useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 const PINNED_KEY = (userId: string, workspaceId: string) =>
   ['pinned-projects', userId, workspaceId] as const
@@ -30,7 +31,7 @@ export function usePinnedProjects(workspaceId: string | undefined) {
       return data?.map((r) => r.project_id) ?? []
     },
     enabled: !!user && !!workspaceId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 
   // Миграция из localStorage → БД (один раз)

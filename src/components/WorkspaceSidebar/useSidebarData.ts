@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { useWorkspacePermissions } from '@/hooks/permissions'
-import { workspaceKeys, sidebarKeys } from '@/hooks/queryKeys'
+import { workspaceKeys, sidebarKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { Workspace, Participant } from '@/types/entities'
 import type { Database } from '@/types/database'
 
@@ -54,7 +54,7 @@ export function useSidebarData({ workspaceId }: UseSidebarDataOptions) {
       )
     },
     enabled: !!user?.email,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   // --- Projects (permission-aware) ---
@@ -110,7 +110,7 @@ export function useSidebarData({ workspaceId }: UseSidebarDataOptions) {
       return data ?? []
     },
     enabled: !!workspaceId && !permissionsResult.isLoading,
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
   })
 
   const currentWorkspace = workspaces.find((w) => w.id === workspaceId)

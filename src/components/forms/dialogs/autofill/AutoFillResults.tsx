@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { formKitKeys } from '@/hooks/queryKeys'
+import { formKitKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle2, Loader2 } from 'lucide-react'
@@ -63,7 +63,7 @@ export function AutoFillResults({
         sections: sectionsMap,
       }
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   const sections = fieldsData?.sections ?? {}

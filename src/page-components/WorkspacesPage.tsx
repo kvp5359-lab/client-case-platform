@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Database } from '@/types/database'
-import { workspaceKeys } from '@/hooks/queryKeys'
+import { workspaceKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
 
 type Workspace = Database['public']['Tables']['workspaces']['Row']
@@ -76,7 +76,7 @@ export function WorkspacesPage() {
   } = useQuery({
     queryKey: workspaceKeys.all,
     queryFn: () => fetchWorkspacesWithCounts(user!.id),
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()

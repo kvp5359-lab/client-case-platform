@@ -6,7 +6,7 @@
 
 import { Loader2 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { projectKeys, documentKitKeys } from '@/hooks/queryKeys'
+import { projectKeys, documentKitKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { getProjectById } from '@/services/api/projectService'
 import { supabase } from '@/lib/supabase'
 import { DocumentKitsTab } from '@/components/projects/DocumentKitsTab'
@@ -24,7 +24,7 @@ export function ExtraPanelContent({ projectId, workspaceId }: ExtraPanelContentP
   const { data: project, isLoading: isProjectLoading } = useQuery({
     queryKey: projectKeys.detail(projectId),
     queryFn: () => getProjectById(projectId),
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 
   // Загружаем первый kitId для правой панели — отдельный ключ, чтобы не перезаписывать
@@ -43,7 +43,7 @@ export function ExtraPanelContent({ projectId, workspaceId }: ExtraPanelContentP
       if (error) throw error
       return data || []
     },
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
     initialData: () => {
       const fullKits = queryClient.getQueryData<DocumentKitWithDocuments[]>(
         documentKitKeys.byProject(projectId),

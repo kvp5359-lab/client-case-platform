@@ -10,7 +10,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { threadTemplateKeys } from '@/hooks/queryKeys'
+import { threadTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { addDays } from 'date-fns'
@@ -38,7 +38,7 @@ export function useThreadTemplates(workspaceId: string | undefined) {
       return (data ?? []) as ThreadTemplate[]
     },
     enabled: !!workspaceId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 
@@ -63,7 +63,7 @@ export function useGlobalThreadTemplates(workspaceId: string | undefined) {
       return (data ?? []) as ThreadTemplate[]
     },
     enabled: !!workspaceId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 
@@ -98,7 +98,7 @@ export function useThreadTemplatesForProject(
       return (data ?? []) as ThreadTemplate[]
     },
     enabled: !!workspaceId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 
@@ -123,7 +123,7 @@ export function useThreadTemplatesByProjectTemplate(
       return (data ?? []) as ThreadTemplate[]
     },
     enabled: !!projectTemplateId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 

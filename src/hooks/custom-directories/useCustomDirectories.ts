@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { customDirectoryKeys } from '@/hooks/queryKeys'
+import { customDirectoryKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type {
   CustomDirectory,
   CustomDirectoryInsert,
@@ -82,7 +82,7 @@ export function useCustomDirectories() {
       return data ?? []
     },
     enabled: !!workspaceId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   })
 
   const createMutation = useMutation({

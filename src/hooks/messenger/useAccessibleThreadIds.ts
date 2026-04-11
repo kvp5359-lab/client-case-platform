@@ -14,6 +14,7 @@ import { canAccessThread } from '@/utils/threadAccess'
 import { useProjectThreads } from './useProjectThreads'
 import { useThreadMembersMap } from '@/components/tasks/useThreadMembersMap'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 interface MyProjectData {
   participantId: string
@@ -41,7 +42,7 @@ function useMyProjectData(projectId: string | undefined): MyProjectData | null {
         : null
     },
     enabled: !!projectId && !!user?.id,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.STANDARD,
   })
 
   return data ?? null

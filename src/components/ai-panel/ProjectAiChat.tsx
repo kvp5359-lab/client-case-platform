@@ -26,7 +26,7 @@ import { ChatEmptyState } from '@/components/shared/ChatEmptyState'
 import { useProjectAiConversations } from './hooks/useProjectAiConversations'
 import { useProjectAiRestore } from './hooks/useProjectAiRestore'
 import { useProjectAiDocuments } from './hooks/useProjectAiDocuments'
-import { projectAiKeys } from '@/hooks/queryKeys'
+import { projectAiKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { logger } from '@/utils/logger'
 
 interface ProjectAiChatProps {
@@ -79,13 +79,13 @@ export function ProjectAiChat({
     queryKey: projectAiKeys.messengerMessagesByChannel(projectId ?? '', 'client'),
     queryFn: () => getProjectMessagesByChannel(projectId!, 'client', { limit: 200 }),
     enabled: hasProject,
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
   })
   const { data: teamMessengerData } = useQuery({
     queryKey: projectAiKeys.messengerMessagesByChannel(projectId ?? '', 'internal'),
     queryFn: () => getProjectMessagesByChannel(projectId!, 'internal', { limit: 200 }),
     enabled: hasProject,
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
   })
   const clientMessages = clientMessengerData?.messages ?? []
   const teamMessages = teamMessengerData?.messages ?? []

@@ -8,6 +8,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspacePermissions } from '@/hooks/permissions'
+import { STALE_TIME } from '@/hooks/queryKeys'
 
 export function useProjectAccess(projectId: string | undefined, workspaceId: string | undefined) {
   const { user } = useAuth()
@@ -38,7 +39,7 @@ export function useProjectAccess(projectId: string | undefined, workspaceId: str
       return !!projectParticipant
     },
     enabled: !!projectId && !!user?.id && !!workspaceId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
