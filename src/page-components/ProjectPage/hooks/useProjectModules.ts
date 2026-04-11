@@ -14,12 +14,12 @@
 import { useCallback, useMemo } from 'react'
 import { useProjectPermissions, useWorkspaceFeatures } from '@/hooks/permissions'
 import { PROJECT_MODULES, type ModuleDefinition } from '../moduleRegistry'
-import type { ProjectTemplate } from '../types'
+import type { ProjectTemplateWithRelations } from '../types'
 
 export function useProjectModules(
   projectId: string | undefined,
   workspaceId: string | undefined,
-  projectTemplate: ProjectTemplate | null | undefined,
+  projectTemplate: ProjectTemplateWithRelations | null | undefined,
 ) {
   const { hasModuleAccess, isLoading, moduleAccess } = useProjectPermissions({
     projectId: projectId || '',

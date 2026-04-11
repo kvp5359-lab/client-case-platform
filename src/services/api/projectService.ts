@@ -4,13 +4,9 @@
  */
 
 import { supabase } from '@/lib/supabase'
-import { Tables } from '@/types/database'
+import type { Project, ProjectInsert, ProjectUpdate } from '@/types/entities'
 import { ProjectError } from '../errors'
 import { safeFetchOrThrow } from '../supabase/queryHelpers'
-
-export type Project = Tables<'projects'>
-export type ProjectInsert = Omit<Project, 'id' | 'created_at' | 'updated_at'>
-export type ProjectUpdate = Partial<ProjectInsert>
 
 /**
  * Получение проекта по ID

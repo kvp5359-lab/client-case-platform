@@ -8,7 +8,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { getProjectById } from '@/services/api/projectService'
 import { supabase } from '@/lib/supabase'
 import { projectKeys } from '@/hooks/queryKeys'
-import type { ProjectTemplate } from '../types'
+import type { ProjectTemplateWithRelations } from '../types'
 
 /**
  * Загрузка шаблона проекта по template_id.
@@ -37,7 +37,7 @@ export function useProjectTemplate(templateId: string | null | undefined) {
         .single()
 
       if (error) throw error
-      return data as ProjectTemplate
+      return data as ProjectTemplateWithRelations
     },
     enabled: !!templateId,
     staleTime: 5 * 60 * 1000,
@@ -85,7 +85,7 @@ export function useProjectData(projectId: string | undefined) {
 
       if (error) throw error
       // data is guaranteed non-null by .single() — it throws on no rows
-      return data as ProjectTemplate
+      return data as ProjectTemplateWithRelations
     },
     enabled: !!projectQuery.data?.template_id,
     staleTime: 5 * 60 * 1000,

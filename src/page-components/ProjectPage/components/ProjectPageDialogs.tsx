@@ -7,12 +7,12 @@
 import { AddDocumentKitDialog } from '@/components/projects/AddDocumentKitDialog'
 import { AddFormKitDialog } from '@/components/projects/AddFormKitDialog'
 import type { UseDialogReturn } from '@/hooks/shared/useDialog'
-import type { ProjectTemplate } from '../types'
+import type { ProjectTemplateWithRelations } from '../types'
 
 interface ProjectPageDialogsProps {
   projectId: string
   workspaceId: string
-  projectTemplate: ProjectTemplate | null | undefined
+  projectTemplate: ProjectTemplateWithRelations | null | undefined
   googleDriveFolderLink: string | null | undefined
   projectName: string | undefined
   addKitDialog: UseDialogReturn
