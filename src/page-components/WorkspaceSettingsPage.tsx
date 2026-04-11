@@ -5,12 +5,13 @@
  * Тяжёлые табы загружаются лениво через React.lazy (Z5-23)
  */
 
-import React, { Suspense } from 'react'
+import React, { Suspense, useEffect } from 'react'
 import { useParams, useRouter, usePathname } from 'next/navigation'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GeneralSettingsTab } from './workspace-settings/GeneralSettingsTab'
 import { useWorkspacePermissions } from '@/hooks/permissions'
+import { useSidePanelStore } from '@/store/sidePanelStore'
 
 const ParticipantsTab = React.lazy(() =>
   import('./workspace-settings/ParticipantsTab').then((m) => ({ default: m.ParticipantsTab })),
@@ -33,6 +34,13 @@ export function WorkspaceSettingsPage() {
   const router = useRouter()
   const pathname = usePathname()
   const permissions = useWorkspacePermissions({ workspaceId: workspaceId || '' })
+
+  // Закрываем основную правую панель: настройки — полноценная страница,
+  // содержимое шире, правая панель перекрывает контент.
+  const closePanel = useSidePanelStore((s) => s.closePanel)
+  useEffect(() => {
+    closePanel()
+  }, [closePanel])
 
   // Определяем активный таб по URL
   const getActiveTab = () => {

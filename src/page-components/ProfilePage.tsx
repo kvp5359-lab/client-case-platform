@@ -15,6 +15,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
+import { useSidePanelStore } from '@/store/sidePanelStore'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ProfileInfoSection } from './ProfilePage/ProfileInfoSection'
@@ -40,6 +41,13 @@ export function ProfilePage() {
     handleConfirm,
     handleCancel: handleConfirmCancel,
   } = useConfirmDialog()
+
+  // Закрываем основную правую панель: профиль — полноценная страница,
+  // правая панель здесь перекрывает контент.
+  const closePanel = useSidePanelStore((s) => s.closePanel)
+  useEffect(() => {
+    closePanel()
+  }, [closePanel])
 
   // Локальное состояние для редактируемых настроек (копия серверных данных)
   const [localSettings, setLocalSettings] = useState<UserSettings | null>(null)
