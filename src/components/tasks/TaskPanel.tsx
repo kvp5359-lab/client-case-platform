@@ -317,14 +317,34 @@ export function TaskPanel({
             </button>
           </div>
 
-          {/* Строка 2: проект + дедлайн.
-              Показываем, если есть проект или (тред — задача и доступен дедлайн). */}
+          {/* Строка 2: «Другие задачи» + проект + дедлайн.
+              Показываем, если доступен хотя бы один из элементов. */}
           {(task.project_id || (isTask && onDeadlineSet)) && (
             <div className="flex items-center gap-2 px-4 mt-0.5">
               {/* Отступ под название треда. База: иконка статуса (w-4 = 16px) + gap-2 (8px) = 24px.
                   Если в строке 1 есть кнопка «назад» — плюс её ширина (p-1 + w-4 + p-1 = 24px)
                   и разделитель gap-2 (8px) = ещё 32px. Итого 56px. */}
               <div className={cn('shrink-0', canGoBack && onBack ? 'w-14' : 'w-6')} />
+
+              {/* Другие задачи — показать/скрыть встроенный TaskListView */}
+              {task.project_id && onOpenThreadInStack && (
+                <button
+                  type="button"
+                  onClick={() => setThreadListOpen((v) => !v)}
+                  className={cn(
+                    'shrink-0 inline-flex items-center gap-1 px-1.5 py-[3px] rounded text-xs font-medium transition-colors',
+                    threadListOpen
+                      ? 'bg-brand-100 text-brand-600'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                  )}
+                  title={threadListOpen ? 'Скрыть список тредов' : 'Другие задачи'}
+                  aria-label="Другие задачи"
+                  aria-pressed={threadListOpen}
+                >
+                  <ListTree className="w-3 h-3" />
+                  <span>Другие задачи</span>
+                </button>
+              )}
 
               {/* Ссылка на проект */}
               {task.project_id && resolvedProjectName && (
@@ -353,26 +373,6 @@ export function TaskPanel({
                   onClear={onDeadlineClear}
                   isPending={deadlinePending}
                 />
-              )}
-
-              {/* Другие задачи — показать/скрыть встроенный TaskListView */}
-              {task.project_id && onOpenThreadInStack && (
-                <button
-                  type="button"
-                  onClick={() => setThreadListOpen((v) => !v)}
-                  className={cn(
-                    'shrink-0 inline-flex items-center gap-1 px-1.5 py-[3px] rounded text-xs font-medium transition-colors',
-                    threadListOpen
-                      ? 'bg-brand-100 text-brand-600'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-                  )}
-                  title={threadListOpen ? 'Скрыть список тредов' : 'Другие задачи'}
-                  aria-label="Другие задачи"
-                  aria-pressed={threadListOpen}
-                >
-                  <ListTree className="w-3 h-3" />
-                  <span>Другие задачи</span>
-                </button>
               )}
             </div>
           )}
