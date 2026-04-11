@@ -1,17 +1,22 @@
 /**
  * Actions / handlers for ChatSettingsDialog.
- * Encapsulates: template apply, email link, telegram copy,
- * document picker bridge, deadline/status/project/access handlers, save.
+ *
+ * После аудита 2026-04-11 (Зона 6) крупные блоки логики вынесены в отдельные
+ * хуки, чтобы этот файл не превышал 400 строк:
+ *  - `useChatSettingsTemplateApply` — применение шаблона треда
+ *  - `useChatSettingsSave` — сохранение формы (3 ветки: edit / task / chat+email)
+ *  - `useChatSettingsDefaults` — инициализация defaults (status, assignee)
+ *
+ * Этот файл держит только data-fetching, мутации, тонкие handler-обёртки
+ * и финальный объект, который отдаётся в UI.
  */
 
-import { useCallback, useEffect, useState, type RefObject } from 'react'
+import { useCallback, useEffect, type RefObject } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useEmailLink, useCreateEmailLink, useRemoveEmailLink } from '@/hooks/email/useEmailLink'
 import { useTelegramLink } from '@/hooks/messenger/useTelegramLink'
 import { toast } from 'sonner'
-import { formatDateToString } from '@/utils/format/dateFormat'
-import { applyTemplate } from '@/hooks/messenger/useThreadTemplates'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { useTaskAssigneeIds, useToggleAssignee } from '@/components/tasks/useTaskAssignees'
@@ -27,6 +32,9 @@ import { useChatSettingsMutations } from './useChatSettingsMutations'
 import { useDocumentPickerLogic } from './useDocumentPickerLogic'
 import { useTelegramLinkCopy } from './useTelegramLinkCopy'
 import { useEmailSuggestionsFilter } from './useEmailSuggestionsFilter'
+import { useChatSettingsTemplateApply } from './useChatSettingsTemplateApply'
+import { useChatSettingsSave } from './useChatSettingsSave'
+import { useChatSettingsDefaults } from './useChatSettingsDefaults'
 import type { ComposeFieldHandle } from '../ComposeField'
 import type { useChatSettingsFormState } from './useChatSettingsFormState'
 
@@ -172,94 +180,27 @@ export function useChatSettingsActions({
   const toggleAssignee = useToggleAssignee(editTaskId)
   const editAssigneeSet = new Set(editAssigneeIds)
 
-  // ── Default status for tasks (create mode) ──
-  if (!form.isEditMode && form.isTask && !form.defaultsApplied && taskStatuses.length > 0) {
-    const def = taskStatuses.find((s) => s.is_default) ?? taskStatuses[0]
-    if (def && !form.taskStatusId) form.setTaskStatusId(def.id)
-    form.setDefaultsApplied(true)
-  }
+  // ── Defaults (task status + assignee в create-mode) ──
+  useChatSettingsDefaults({
+    form,
+    taskStatuses,
+    effectiveParticipants,
+    userId,
+  })
 
-  // ── Default assignee — current user (create task mode) ──
-  if (
-    !form.isEditMode &&
-    form.isTask &&
-    !form.assigneeDefaultApplied &&
-    effectiveParticipants.length > 0 &&
-    userId
-  ) {
-    const me = effectiveParticipants.find((p) => p.user_id === userId)
-    if (me) {
-      form.setTaskAssignees(new Set([me.id]))
-      form.setAssigneeDefaultApplied(true)
-    }
-  }
-
-  // ── Template apply ──
-  // appliedTemplateId прокидывается в ChatSettingsResult.sourceTemplateId на
-  // submit — так свежесозданный тред запоминает, из какого шаблона он родом.
-  const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null)
-
-  const handleApplyTemplate = useCallback(
-    (template: ThreadTemplate) => {
-      const projectName = workspaceProjects.find((p) => p.id === form.selectedProjectId)?.name ?? ''
-      const projectParticipantIds = new Set(effectiveParticipants.map((p) => p.id))
-      const taskStatusIds = new Set(taskStatuses.map((s) => s.id))
-      const result = applyTemplate(template, {
-        projectName,
-        projectParticipantIds,
-        allParticipants: [...selectedProjectParticipants, ...workspaceParticipants],
-        taskStatusIds,
-      })
-      form.setTabMode(result.tabMode)
-      form.setName(result.name)
-      form.setAccentColor(result.accentColor)
-      form.setIcon(result.icon)
-      form.setAccessType(result.accessType)
-      form.setSelectedRoles(new Set(result.accessRoles))
-      if (result.taskStatusId) form.setTaskStatusId(result.taskStatusId)
-      if (result.taskDeadline) form.setTaskDeadline(result.taskDeadline)
-      form.setTaskAssignees(new Set(result.taskAssigneeIds))
-      if (result.channelType === 'email') {
-        if (result.contactEmails?.length) {
-          form.setSelectedEmails(
-            result.contactEmails.map((e: string) => {
-              const match = emailSuggestions.find((s) => s.email.toLowerCase() === e.toLowerCase())
-              return { email: e, label: match?.label ?? e }
-            }),
-          )
-        }
-        form.setEmailSubject(result.emailSubject)
-      }
-      if (result.initialMessageHtml) {
-        composeRef.current?.setHtml(result.initialMessageHtml)
-      }
-      if (result.missingAssignees.length > 0) {
-        toast.info(`Не найдены в проекте: ${result.missingAssignees.join(', ')}`, {
-          duration: 5000,
-        })
-      }
-      setAppliedTemplateId(template.id)
-    },
-    [
-      workspaceProjects,
-      form.selectedProjectId,
-      effectiveParticipants,
-      selectedProjectParticipants,
-      workspaceParticipants,
-      taskStatuses,
-      emailSuggestions,
-      composeRef,
-    ],
-  )
-
-  // Auto-apply initial template
-  useEffect(() => {
-    if (open && !form.isEditMode && initialTemplate && initialTemplate.id !== appliedTemplateId) {
-      handleApplyTemplate(initialTemplate)
-    }
-    if (!open) setAppliedTemplateId(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialTemplate])
+  // ── Template apply (+ auto-apply initialTemplate) ──
+  const { appliedTemplateId, handleApplyTemplate } = useChatSettingsTemplateApply({
+    open,
+    form,
+    composeRef,
+    initialTemplate,
+    workspaceProjects,
+    selectedProjectParticipants,
+    workspaceParticipants,
+    effectiveParticipants,
+    taskStatuses,
+    emailSuggestions,
+  })
 
   // ── Handlers ──
   const handleAccessChange = useCallback(
@@ -267,7 +208,7 @@ export function useChatSettingsActions({
       form.setAccessType(newAccess)
       if (form.isEditMode) updateAccessMutation.mutate({ accessType: newAccess, roles })
     },
-    [form.isEditMode, updateAccessMutation],
+    [form, updateAccessMutation],
   )
 
   const handleToggleMember = useCallback(
@@ -289,7 +230,7 @@ export function useChatSettingsActions({
       form.setSelectedProjectId(projectId)
       if (form.isEditMode) updateProjectMutation.mutate(projectId)
     },
-    [form.isEditMode, updateProjectMutation],
+    [form, updateProjectMutation],
   )
 
   const handleStatusSelect = useCallback(
@@ -302,7 +243,7 @@ export function useChatSettingsActions({
       }
       form.setStatusPopoverOpen(false)
     },
-    [form.isEditMode, updateStatusMutation],
+    [form, updateStatusMutation],
   )
 
   const handleDeadlineSelect = useCallback(
@@ -316,7 +257,7 @@ export function useChatSettingsActions({
         form.setTaskDeadline(date)
       }
     },
-    [form.isEditMode, updateDeadlineMutation],
+    [form, updateDeadlineMutation],
   )
 
   const handleDeadlineClear = useCallback(() => {
@@ -326,7 +267,7 @@ export function useChatSettingsActions({
     } else {
       form.setTaskDeadline(undefined)
     }
-  }, [form.isEditMode, updateDeadlineMutation])
+  }, [form, updateDeadlineMutation])
 
   const handleLinkEmail = useCallback(() => {
     if (!form.emailInput.trim()) return
@@ -341,7 +282,7 @@ export function useChatSettingsActions({
         onError: () => toast.error('Не удалось привязать email'),
       },
     )
-  }, [form.emailInput, form.emailSubject, createEmailLink])
+  }, [form, createEmailLink])
 
   const handleUnlinkEmail = useCallback(() => {
     if (!emailLink) return
@@ -351,65 +292,14 @@ export function useChatSettingsActions({
     })
   }, [emailLink, removeEmailLink])
 
-  const handleSave = useCallback(() => {
-    if (form.isEditMode) {
-      if (!form.name.trim()) return
-      onUpdate?.({
-        name: form.name.trim(),
-        accent_color: form.accentColor,
-        icon: form.icon,
-        type: form.threadType,
-      })
-    } else if (form.threadType === 'task') {
-      if (!form.name.trim()) return
-      const compose = composeRef.current
-      const initialMessage =
-        compose && !compose.isEmpty()
-          ? { html: compose.getHtml(), files: compose.getFiles() }
-          : undefined
-      onCreate?.({
-        threadType: 'task',
-        name: form.name.trim(),
-        accessType: form.accessType,
-        accentColor: 'slate',
-        icon: 'check-square',
-        channelType: 'none',
-        memberIds: form.accessType === 'custom' ? Array.from(form.selectedMemberIds) : undefined,
-        accessRoles: form.accessType === 'roles' ? Array.from(form.selectedRoles) : undefined,
-        deadline: form.taskDeadline ? formatDateToString(form.taskDeadline) : null,
-        statusId: form.taskStatusId,
-        assigneeIds: Array.from(form.taskAssignees),
-        projectId: form.selectedProjectId,
-        initialMessage,
-        sourceTemplateId: appliedTemplateId,
-      })
-    } else {
-      const isEmail = form.channelType === 'email'
-      if (isEmail && form.selectedEmails.length === 0) return
-      if (!isEmail && !form.name.trim()) return
-      const chatName = isEmail ? form.name.trim() || form.emailSubject.trim() : form.name.trim()
-      const compose = composeRef.current
-      const initialMessage =
-        compose && !compose.isEmpty()
-          ? { html: compose.getHtml(), files: compose.getFiles() }
-          : undefined
-      onCreate?.({
-        threadType: 'chat',
-        name: chatName,
-        accessType: form.accessType,
-        accentColor: form.accentColor,
-        icon: isEmail ? 'mail' : form.icon,
-        channelType: form.channelType,
-        contactEmails: isEmail ? form.selectedEmails : undefined,
-        emailSubject: isEmail ? form.emailSubject.trim() || undefined : undefined,
-        memberIds: form.accessType === 'custom' ? Array.from(form.selectedMemberIds) : undefined,
-        accessRoles: form.accessType === 'roles' ? Array.from(form.selectedRoles) : undefined,
-        projectId: form.selectedProjectId,
-        initialMessage,
-        sourceTemplateId: appliedTemplateId,
-      })
-    }
-  }, [form, composeRef, onCreate, onUpdate, appliedTemplateId])
+  // ── Save ──
+  const handleSave = useChatSettingsSave({
+    form,
+    composeRef,
+    appliedTemplateId,
+    onCreate,
+    onUpdate,
+  })
 
   const currentStatus = taskStatuses.find((s) => s.id === form.currentStatusId)
 

@@ -1,5 +1,18 @@
 "use client"
 
+/**
+ * Редактор группы фильтров для досок. Поддерживает:
+ *  - вложенные группы (логика И/ИЛИ)
+ *  - условия с произвольными полями (task/project)
+ *  - drag & drop перестановку правил и групп между собой
+ *
+ * После аудита 2026-04-11 (Зона 6) разбит на несколько файлов:
+ *  - `filterPathUtils.ts` — чистые утилиты работы с path-массивом
+ *  - `DraggableFilterRule.tsx` — обёртка drag-handle + drop-target
+ *  - `FilterDragOverlay.tsx` — overlay-содержимое во время drag
+ *  - этот файл — `InnerGroupEditor` + `FilterGroupEditorRoot` (dnd-контекст)
+ */
+
 import { useCallback, useId, useState } from 'react'
 import {
   DndContext,
@@ -7,188 +20,26 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  useDroppable,
-  useDraggable,
 } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core'
-import { Plus, FolderPlus, X, GripVertical } from 'lucide-react'
+import { Plus, FolderPlus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { FilterRuleRow } from './FilterRuleRow'
 import { getFieldsForEntity } from './filterDefinitions'
+import {
+  type RulePath,
+  getRuleByPath,
+  removeByPath,
+  insertAtPosition,
+  adjustPathAfterRemoval,
+  adjustIndexAfterRemoval,
+  pathToId,
+  idToPath,
+} from './filterPathUtils'
+import { DraggableFilterRule, type DropIndicatorState } from './DraggableFilterRule'
+import { FilterDragOverlay } from './FilterDragOverlay'
 import type { FilterGroup, FilterRule, FilterCondition } from '../types'
-
-// ── Утилиты для работы с path ────────────────────────────
-
-type RulePath = number[]
-
-/** Получить правило по path */
-function getRuleByPath(group: FilterGroup, path: RulePath): FilterRule | null {
-  if (path.length === 0) return null
-  const [idx, ...rest] = path
-  const rule = group.rules[idx]
-  if (!rule) return null
-  if (rest.length === 0) return rule
-  if (rule.type === 'group') return getRuleByPath(rule.group, rest)
-  return null
-}
-
-/** Удалить правило по path, вернуть [новая группа, удалённое правило] */
-function removeByPath(group: FilterGroup, path: RulePath): [FilterGroup, FilterRule | null] {
-  if (path.length === 0) return [group, null]
-  if (path.length === 1) {
-    const idx = path[0]
-    const removed = group.rules[idx] ?? null
-    return [{ ...group, rules: group.rules.filter((_, i) => i !== idx) }, removed]
-  }
-  const [idx, ...rest] = path
-  const rule = group.rules[idx]
-  if (!rule || rule.type !== 'group') return [group, null]
-  const [newSubGroup, removed] = removeByPath(rule.group, rest)
-  const newRules = [...group.rules]
-  newRules[idx] = { type: 'group', group: newSubGroup }
-  return [{ ...group, rules: newRules }, removed]
-}
-
-/** Вставить правило в группу по groupPath, на позицию insertIdx */
-function insertAtPosition(
-  group: FilterGroup,
-  groupPath: RulePath,
-  insertIdx: number,
-  rule: FilterRule,
-): FilterGroup {
-  if (groupPath.length === 0) {
-    const newRules = [...group.rules]
-    newRules.splice(insertIdx, 0, rule)
-    return { ...group, rules: newRules }
-  }
-  const [idx, ...rest] = groupPath
-  const target = group.rules[idx]
-  if (!target || target.type !== 'group') return group
-  const newSubGroup = insertAtPosition(target.group, rest, insertIdx, rule)
-  const newRules = [...group.rules]
-  newRules[idx] = { type: 'group', group: newSubGroup }
-  return { ...group, rules: newRules }
-}
-
-/**
- * Корректирует target path после удаления элемента по removedPath.
- */
-function adjustPathAfterRemoval(targetPath: RulePath, removedPath: RulePath): RulePath {
-  if (removedPath.length === 0 || targetPath.length === 0) return targetPath
-  const removedParent = removedPath.slice(0, -1)
-  const removedIdx = removedPath[removedPath.length - 1]
-  const adjusted = [...targetPath]
-  if (removedParent.length <= targetPath.length) {
-    const parentMatches = removedParent.every((v, i) => v === targetPath[i])
-    if (parentMatches && removedParent.length < targetPath.length) {
-      const levelIdx = removedParent.length
-      if (adjusted[levelIdx] > removedIdx) {
-        adjusted[levelIdx] = adjusted[levelIdx] - 1
-      }
-    }
-  }
-  return adjusted
-}
-
-function adjustIndexAfterRemoval(
-  targetGroupPath: RulePath,
-  targetIdx: number,
-  removedPath: RulePath,
-): number {
-  const removedParent = removedPath.slice(0, -1)
-  const removedIdx = removedPath[removedPath.length - 1]
-  // Если удаляем из той же группы и перед целевым индексом
-  if (
-    removedParent.length === targetGroupPath.length &&
-    removedParent.every((v, i) => v === targetGroupPath[i]) &&
-    removedIdx < targetIdx
-  ) {
-    return targetIdx - 1
-  }
-  return targetIdx
-}
-
-// ── Drag IDs ─────────────────────────────────────────────
-
-function pathToId(prefix: string, path: RulePath): string {
-  return `${prefix}:rule:${path.join('-')}`
-}
-
-function idToPath(prefix: string, id: string): { type: 'rule'; path: RulePath } | null {
-  if (!id.startsWith(prefix + ':')) return null
-  const rest = id.slice(prefix.length + 1)
-  const ruleMatch = rest.match(/^rule:(.+)$/)
-  if (ruleMatch) {
-    return { type: 'rule', path: ruleMatch[1].split('-').map(Number) }
-  }
-  return null
-}
-
-// ── Drop indicator state ─────────────────────────────────
-
-interface DropIndicatorState {
-  /** Path элемента, рядом с которым показать линию */
-  targetPath: RulePath
-  /** Позиция линии */
-  position: 'top' | 'bottom'
-}
-
-// ── Draggable Rule ───────────────────────────────────────
-
-interface DraggableRuleProps {
-  dndId: string
-  children: React.ReactNode
-  dropIndicator: DropIndicatorState | null
-  rulePath: RulePath
-}
-
-function DraggableRule({ dndId, children, dropIndicator, rulePath }: DraggableRuleProps) {
-  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
-    id: dndId,
-  })
-  const { setNodeRef: setDropRef } = useDroppable({
-    id: dndId,
-  })
-
-  const showTop =
-    dropIndicator &&
-    dropIndicator.position === 'top' &&
-    dropIndicator.targetPath.join('-') === rulePath.join('-')
-  const showBottom =
-    dropIndicator &&
-    dropIndicator.position === 'bottom' &&
-    dropIndicator.targetPath.join('-') === rulePath.join('-')
-
-  return (
-    <div
-      ref={(node) => {
-        setDragRef(node)
-        setDropRef(node)
-      }}
-      className={cn(
-        'relative flex items-center gap-1 border rounded-md px-2 py-1.5 bg-background',
-        isDragging && 'opacity-30',
-      )}
-    >
-      {showTop && (
-        <div className="absolute top-0 left-2 right-2 h-0.5 bg-blue-500 rounded-full z-10" />
-      )}
-      {showBottom && (
-        <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-500 rounded-full z-10" />
-      )}
-      <button
-        type="button"
-        className="cursor-grab active:cursor-grabbing p-0.5 text-muted-foreground/50 hover:text-muted-foreground shrink-0 touch-none"
-        {...listeners}
-        {...attributes}
-      >
-        <GripVertical className="h-3.5 w-3.5" />
-      </button>
-      <div className="flex-1 min-w-0">{children}</div>
-    </div>
-  )
-}
 
 // ── FilterGroupEditor (внутренний, без DndContext) ────────
 
@@ -297,7 +148,11 @@ function InnerGroupEditor({
         return (
           <div key={i}>
             {rule.type === 'condition' ? (
-              <DraggableRule dndId={ruleId} dropIndicator={dropIndicator} rulePath={rulePath}>
+              <DraggableFilterRule
+                dndId={ruleId}
+                dropIndicator={dropIndicator}
+                rulePath={rulePath}
+              >
                 <FilterRuleRow
                   condition={rule}
                   onChange={(updated) => updateRule(i, updated)}
@@ -305,9 +160,13 @@ function InnerGroupEditor({
                   entityType={entityType}
                   workspaceId={workspaceId}
                 />
-              </DraggableRule>
+              </DraggableFilterRule>
             ) : (
-              <DraggableRule dndId={ruleId} dropIndicator={dropIndicator} rulePath={rulePath}>
+              <DraggableFilterRule
+                dndId={ruleId}
+                dropIndicator={dropIndicator}
+                rulePath={rulePath}
+              >
                 <InnerGroupEditor
                   group={rule.group}
                   onChange={(updated) =>
@@ -321,7 +180,7 @@ function InnerGroupEditor({
                   path={rulePath}
                   dropIndicator={dropIndicator}
                 />
-              </DraggableRule>
+              </DraggableFilterRule>
             )}
           </div>
         )
@@ -350,30 +209,6 @@ function InnerGroupEditor({
           Группа
         </Button>
       </div>
-    </div>
-  )
-}
-
-// ── Overlay для drag ─────────────────────────────────────
-
-function DragOverlayContent({ rule, entityType }: { rule: FilterRule; entityType: 'task' | 'project' }) {
-  if (rule.type === 'condition') {
-    const fields = getFieldsForEntity(entityType)
-    const field = fields.find((f) => f.key === rule.field)
-    return (
-      <div className="bg-background border rounded-md px-3 py-2 shadow-lg text-xs flex items-center gap-2 max-w-[400px]">
-        <GripVertical className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <span className="font-medium">{field?.label ?? rule.field}</span>
-        <span className="text-muted-foreground">{rule.operator}</span>
-        <span className="truncate">{String(rule.value ?? '')}</span>
-      </div>
-    )
-  }
-  return (
-    <div className="bg-background border rounded-md px-3 py-2 shadow-lg text-xs flex items-center gap-2">
-      <GripVertical className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <span className="font-medium">Группа ({rule.group.logic === 'and' ? 'И' : 'ИЛИ'})</span>
-      <span className="text-muted-foreground">{rule.group.rules.length} усл.</span>
     </div>
   )
 }
@@ -471,7 +306,6 @@ function FilterGroupEditorRoot({
         return
       }
 
-      // Вычисляем позицию (top/bottom) по Y-координатам
       const overRect = over.rect
       if (!overRect) {
         setDropIndicator(null)
@@ -568,7 +402,7 @@ function FilterGroupEditorRoot({
         dropIndicator={activeRule ? dropIndicator : null}
       />
       <DragOverlay dropAnimation={null}>
-        {activeRule && <DragOverlayContent rule={activeRule} entityType={entityType} />}
+        {activeRule && <FilterDragOverlay rule={activeRule} entityType={entityType} />}
       </DragOverlay>
     </DndContext>
   )
