@@ -12,7 +12,7 @@
  * - TaskPanelTaskHeader — шапка режима 1
  */
 
-import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react'
+import { useState, useCallback, useEffect, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 import { cn } from '@/lib/utils'
