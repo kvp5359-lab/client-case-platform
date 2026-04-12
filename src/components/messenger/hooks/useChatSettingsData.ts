@@ -5,7 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { participantKeys, projectThreadKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { participantKeys, projectThreadKeys, chatSettingsKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { Participant } from '../chatSettingsTypes'
 
 export function useProjectParticipants(projectId: string | undefined) {
@@ -33,7 +33,7 @@ export function useProjectParticipants(projectId: string | undefined) {
 
 export function useWorkspaceProjects(workspaceId: string | undefined) {
   return useQuery({
-    queryKey: ['workspace-projects-list', workspaceId],
+    queryKey: chatSettingsKeys.workspaceProjects(workspaceId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
@@ -73,7 +73,7 @@ export function useThreadMembers(threadId: string | undefined) {
 /** Email suggestions from workspace participants + previously used emails */
 export function useEmailSuggestions(workspaceId: string | undefined) {
   return useQuery({
-    queryKey: ['email-suggestions', workspaceId],
+    queryKey: chatSettingsKeys.emailSuggestions(workspaceId),
     queryFn: async () => {
       // 1. Emails from workspace participants (clients, external staff)
       const { data: participants } = await supabase

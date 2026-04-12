@@ -296,7 +296,7 @@ export function useDeleteThread(workspaceId?: string) {
         // Fallback: старые вызовы без workspaceId — partial-match инвалидация
         // по префиксу. Работает, но задевает все воркспейсы пользователя.
         queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.all })
-        queryClient.invalidateQueries({ queryKey: ['my-urgent-tasks-count'] })
+        queryClient.invalidateQueries({ queryKey: taskKeys.allUrgent })
       }
       queryClient.invalidateQueries({ queryKey: trashKeys.all })
     },

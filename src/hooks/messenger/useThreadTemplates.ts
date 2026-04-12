@@ -235,7 +235,7 @@ export function applyTemplate(
   return {
     tabMode,
     name,
-    accentColor: template.accent_color,
+    accentColor: template.accent_color as ThreadAccentColor,
     icon: template.icon,
     accessType: template.access_type,
     accessRoles: template.access_roles ?? [],

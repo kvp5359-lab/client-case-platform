@@ -1,20 +1,23 @@
 "use client"
 
 /**
- * Хук для работы с папкой назначения на Google Drive (project-level)
+ * Хук для работы с папкой назначения на Google Drive (project-level).
+ *
+ * Данные destinationDocuments теперь в React Query (useDestinationDocumentsQuery).
+ * Этот хук предоставляет мутации: экспорт, загрузка состава, открытие в Drive.
  */
 
 import { useRef } from 'react'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 import { logger } from '@/utils/logger'
-import { exportToDestination, listFiles } from '@/services/api/googleDriveService'
-import { DestinationDocument } from '@/components/documents/types'
+import { exportToDestination } from '@/services/api/googleDriveService'
+import { googleDriveKeys } from '@/hooks/queryKeys'
 
 interface UseProjectDestinationFolderProps {
   projectId: string
   exportFolderId: string | null | undefined
   workspaceId: string
-  setDestinationDocuments: (docs: DestinationDocument[]) => void
   setExporting: (exporting: boolean) => void
   setFetchingDestination: (fetching: boolean) => void
   setHasExported: (hasExported: boolean) => void
@@ -25,13 +28,13 @@ export function useProjectDestinationFolder({
   projectId,
   exportFolderId,
   workspaceId,
-  setDestinationDocuments,
   setExporting,
   setFetchingDestination,
   setHasExported,
   setExportPhase,
 }: UseProjectDestinationFolderProps) {
   const isExportInProgress = useRef(false)
+  const queryClient = useQueryClient()
 
   const handleExportToDestination = async () => {
     if (!exportFolderId) {
@@ -93,32 +96,10 @@ export function useProjectDestinationFolder({
     setFetchingDestination(true)
 
     try {
-      const files = await listFiles(exportFolderId, workspaceId)
-
-      const destinationDocs: DestinationDocument[] = files.map((file) => ({
-        id: file.id,
-        name: file.name,
-        mimeType: file.mimeType,
-        size: file.size ? parseInt(file.size) : undefined,
-        createdTime: file.createdTime,
-        modifiedTime: file.modifiedTime,
-        webViewLink: file.webViewLink,
-        iconLink: file.iconLink,
-        parentFolderName: file.parentFolderName,
-      }))
-
-      destinationDocs.sort((a, b) => {
-        const folderA = a.parentFolderName || ''
-        const folderB = b.parentFolderName || ''
-
-        if (folderA !== folderB) {
-          return folderA.localeCompare(folderB, 'ru')
-        }
-
-        return a.name.localeCompare(b.name, 'ru')
+      // Инвалидируем + refetch через React Query
+      await queryClient.refetchQueries({
+        queryKey: googleDriveKeys.destinationDocuments(exportFolderId, workspaceId),
       })
-
-      setDestinationDocuments(destinationDocs)
       setHasExported(true)
     } catch (error) {
       logger.error('Ошибка получения состава:', error)

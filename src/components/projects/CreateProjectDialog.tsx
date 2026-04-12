@@ -245,7 +245,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
                 name: tpl.name,
                 type: tpl.thread_type,
                 access_type: tpl.access_type,
-                access_roles: tpl.access_type === 'roles' ? tpl.access_roles : [],
+                access_roles: tpl.access_type === 'roles' ? (tpl.access_roles ?? []) : [],
                 accent_color: tpl.accent_color,
                 icon: tpl.icon,
                 status_id: tpl.default_status_id,

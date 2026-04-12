@@ -14,6 +14,7 @@ import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useDocumentStatuses, useDocumentKitStatuses } from '@/hooks/useStatuses'
 import { useDocuments } from '@/hooks/useDocuments'
 import { useDocumentKitUIStore, useCompressState } from '@/store/documentKitUI'
+import { useSourceDocumentsQuery } from '@/hooks/documents/useSourceDocumentsQuery'
 import { UngroupedCard } from './Documents'
 import { DocumentsProvider } from './Documents/DocumentsContext'
 import { KitDocuments } from './Documents/KitDocuments'
@@ -159,7 +160,7 @@ export function DocumentsTabContent({
     removeCompressingDoc,
     setCompressProgress,
   })
-  const sourceDocuments = useDocumentKitUIStore((state) => state.sourceDocuments)
+  const { data: sourceDocuments = [] } = useSourceDocumentsQuery(projectId)
 
   const docActions = useDocumentsDocumentActions({
     documentKits,

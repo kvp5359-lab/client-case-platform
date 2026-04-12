@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { timelineKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 /** Тот же SELECT что и в messengerService — полные данные сообщения */
 const FULL_MESSAGE_SELECT = `
@@ -38,7 +38,7 @@ export function useTimelineMessages(
   threads: ProjectThread[],
 ) {
   return useQuery({
-    queryKey: ['timeline', 'messages-v2', projectId, [...threadIds].sort().join(',')],
+    queryKey: timelineKeys.messages(projectId, threadIds),
     queryFn: async (): Promise<TimelineMessageEntry[]> => {
       if (threadIds.length === 0) return []
 

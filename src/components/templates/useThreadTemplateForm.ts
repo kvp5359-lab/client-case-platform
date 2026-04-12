@@ -38,7 +38,7 @@ export function useThreadTemplateForm({
   )
   const [threadNameTemplate, setThreadNameTemplate] = useState(template?.thread_name_template ?? '')
   const [accentColor, setAccentColor] = useState<ThreadAccentColor>(
-    template?.accent_color ?? 'blue',
+    (template?.accent_color as ThreadAccentColor) ?? 'blue',
   )
   const [icon, setIcon] = useState(template?.icon ?? 'message-square')
   const [accessType, setAccessType] = useState<'all' | 'roles'>(template?.access_type ?? 'all')

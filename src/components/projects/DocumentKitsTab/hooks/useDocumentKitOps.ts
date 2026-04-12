@@ -26,7 +26,7 @@ import { useProjectDestinationFolder } from '@/hooks/documents/useProjectDestina
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import { projectKeys } from '@/hooks/queryKeys'
 import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
-import type { DocumentWithFiles, Folder, SourceDocument, DestinationDocument } from '@/components/documents/types'
+import type { DocumentWithFiles, Folder, SourceDocument } from '@/components/documents/types'
 import type { ProjectPermissionCode } from '@/types/permissions'
 import type { Tables } from '@/types/database'
 
@@ -94,13 +94,10 @@ interface UseDocumentKitOpsParams {
 
   // Store actions
   openBatchCheckDialog: (documentIds: string[]) => void
-  showHiddenSourceDocs: boolean
-  setSourceDocuments: (docs: SourceDocument[]) => void
   setSyncing: (value: boolean) => void
   setSystemSectionTab: (tab: 'unassigned' | 'source' | 'destination' | 'trash') => void
   setSourceCollapsed: (collapsed: boolean) => void
   setSourceFolderName: (name: string) => void
-  setDestinationDocuments: (docs: DestinationDocument[]) => void
   setExportingToDestination: (value: boolean) => void
   setFetchingDestination: (value: boolean) => void
   setHasExported: (value: boolean) => void
@@ -148,13 +145,10 @@ export function useDocumentKitOps({
   draggedSourceDoc,
   resetDragState,
   openBatchCheckDialog,
-  showHiddenSourceDocs,
-  setSourceDocuments,
   setSyncing,
   setSystemSectionTab,
   setSourceCollapsed,
   setSourceFolderName,
-  setDestinationDocuments,
   setExportingToDestination,
   setFetchingDestination,
   setHasExported,
@@ -219,8 +213,6 @@ export function useDocumentKitOps({
     projectId,
     sourceFolderId: sourceFolderId ?? null,
     workspaceId,
-    showHiddenSourceDocs,
-    setSourceDocuments,
     setSyncing,
     setSystemSectionTab,
     setSourceCollapsed,
@@ -274,7 +266,6 @@ export function useDocumentKitOps({
     projectId,
     exportFolderId: exportFolderId ?? null,
     workspaceId,
-    setDestinationDocuments,
     setExporting: setExportingToDestination,
     setFetchingDestination,
     setHasExported,

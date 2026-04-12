@@ -6,10 +6,9 @@
 
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
-import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import { useSourceDocumentUpload } from '@/components/projects/DocumentKitsTab/hooks/useSourceDocumentUpload'
-import { getSourceDocumentsByProject } from '@/services/documents/sourceDocumentService'
-import type { SourceDocumentInfo, SourceDocument } from '@/components/documents/types'
+import { useInvalidateSourceDocuments } from '@/hooks/documents/useSourceDocumentsQuery'
+import type { SourceDocumentInfo } from '@/components/documents/types'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 
 interface UseSourceDocumentDropParams {
@@ -41,29 +40,11 @@ export function useSourceDocumentDrop({
   )
 
   const firstKit = documentKits[0]
+  const invalidateSourceDocuments = useInvalidateSourceDocuments()
 
   const loadSourceDocuments = useCallback(async () => {
-    const { documents: sourceDocs, usedSourceIds } = await getSourceDocumentsByProject(projectId)
-    const { setSourceDocuments, showHiddenSourceDocs } = useDocumentKitUIStore.getState()
-    let availableDocs = sourceDocs.filter((doc) => !usedSourceIds.has(doc.id))
-    if (!showHiddenSourceDocs) {
-      availableDocs = availableDocs.filter((doc) => !doc.is_hidden)
-    }
-    const formattedDocs: SourceDocument[] = availableDocs.map((doc) => ({
-      id: doc.google_drive_file_id,
-      name: doc.name,
-      mimeType: doc.mime_type || '',
-      size: doc.file_size || undefined,
-      createdTime: doc.created_time || undefined,
-      modifiedTime: doc.modified_time || undefined,
-      webViewLink: doc.web_view_link || undefined,
-      iconLink: doc.icon_link || undefined,
-      parentFolderName: doc.parent_folder_name || undefined,
-      sourceDocumentId: doc.id,
-      isHidden: doc.is_hidden || undefined,
-    }))
-    setSourceDocuments(formattedDocs)
-  }, [projectId])
+    await invalidateSourceDocuments(projectId)
+  }, [projectId, invalidateSourceDocuments])
 
   const sourceUpload = useSourceDocumentUpload({
     kit: firstKit,

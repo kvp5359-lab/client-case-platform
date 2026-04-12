@@ -15,6 +15,8 @@
  * 8. access_type='custom' + в project_thread_members → доступ
  */
 
+import { SYSTEM_PROJECT_ROLES } from '@/types/permissions'
+
 export interface ThreadAccessInfo {
   id: string
   project_id: string | null
@@ -57,7 +59,7 @@ export function canAccessThread(params: ThreadAccessParams): boolean {
   if (hasViewAllProjects) return true
 
   // 3. Администратор проекта
-  if (projectRoles?.includes('Администратор')) return true
+  if (projectRoles?.includes(SYSTEM_PROJECT_ROLES.ADMIN)) return true
 
   // 4. Создатель треда
   if (thread.created_by === userId) return true

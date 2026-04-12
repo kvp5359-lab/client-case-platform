@@ -12,14 +12,14 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { boardParticipantKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 export function useWorkspaceProjectParticipants(
   workspaceId: string | undefined,
   enabled = true,
 ) {
   return useQuery({
-    queryKey: ['workspace-project-participants', workspaceId ?? ''],
+    queryKey: boardParticipantKeys.byWorkspace(workspaceId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_participants')

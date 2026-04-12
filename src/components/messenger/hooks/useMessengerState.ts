@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
+import { messengerParticipantKeys } from '@/hooks/queryKeys'
 import {
   useProjectMessages,
   useSendMessage,
@@ -86,7 +87,7 @@ export function useMessengerState({
   const isEmailChat = !!emailLink
 
   const { data: currentParticipant } = useQuery({
-    queryKey: ['messenger', 'current-participant', projectId ?? workspaceId, user?.id],
+    queryKey: messengerParticipantKeys.current(projectId ?? workspaceId, user?.id),
     queryFn: () =>
       projectId
         ? getCurrentProjectParticipant(projectId, user!.id)

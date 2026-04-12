@@ -37,6 +37,11 @@ export const documentKitKeys = {
   byProject: (projectId: string) => ['documentKits', projectId] as const,
 }
 
+export const documentKeys = {
+  /** Prefix for broad-invalidate of all document caches. */
+  all: ['documents'] as const,
+}
+
 export const kitlessDocumentKeys = {
   all: ['kitless-documents'] as const,
   byProject: (projectId: string) => ['kitless-documents', projectId] as const,
@@ -97,6 +102,10 @@ export const userSettingsKeys = {
 export const googleDriveKeys = {
   all: ['google-drive'] as const,
   connection: (userId: string) => ['google-drive', 'connection', userId] as const,
+  sourceDocuments: (projectId: string) =>
+    ['google-drive', 'source-documents', projectId] as const,
+  destinationDocuments: (exportFolderId: string, workspaceId: string) =>
+    ['google-drive', 'destination-documents', exportFolderId, workspaceId] as const,
 }
 
 export const emailAccountKeys = {
@@ -167,6 +176,8 @@ export const inboxKeys = {
 }
 
 export const taskKeys = {
+  /** Prefix for broad-invalidate: matches all workspaces. */
+  allUrgent: ['my-urgent-tasks-count'] as const,
   urgentCount: (workspaceId: string) => ['my-urgent-tasks-count', workspaceId] as const,
 }
 
@@ -488,4 +499,108 @@ export const trashKeys = {
   workspace: (workspaceId: string) => ['trash', workspaceId] as const,
   projects: (workspaceId: string) => ['trash', workspaceId, 'projects'] as const,
   threads: (workspaceId: string) => ['trash', workspaceId, 'threads'] as const,
+}
+
+/**
+ * Boards: workspace-level project participants (junction filter).
+ */
+export const boardParticipantKeys = {
+  byWorkspace: (workspaceId: string | undefined) =>
+    ['workspace-project-participants', workspaceId ?? ''] as const,
+}
+
+/**
+ * Project access check (can the current user see this project?).
+ */
+export const projectAccessKeys = {
+  check: (
+    projectId: string | undefined,
+    userId: string | undefined,
+    isWorkspaceOwner: boolean,
+    canViewAllProjects: boolean,
+  ) => ['project-access', projectId, userId, isWorkspaceOwner, canViewAllProjects] as const,
+}
+
+/**
+ * Timeline messages (merged view across threads).
+ */
+export const timelineKeys = {
+  messages: (projectId: string, threadIds: string[]) =>
+    ['timeline', 'messages-v2', projectId, [...threadIds].sort().join(',')] as const,
+}
+
+/**
+ * Messenger AI context data (documents, form-kits).
+ */
+export const messengerAiKeys = {
+  all: ['messenger-ai'] as const,
+  documents: (projectId: string) => ['messenger-ai', 'documents', projectId] as const,
+  formKits: (projectId: string) => ['messenger-ai', 'form-kits', projectId] as const,
+}
+
+/**
+ * Telegram link code for thread binding.
+ */
+export const telegramLinkKeys = {
+  linkCode: (threadId: string | undefined) =>
+    ['messenger', 'link-code', threadId ?? 'no-thread'] as const,
+  /** Fallback key when no threadId — matches messengerKeys.telegramLinkByThreadId pattern. */
+  noThread: ['messenger', 'telegram-link', 'no-thread'] as const,
+}
+
+/**
+ * Current user's project participant data (participantId + project roles).
+ */
+export const myProjectParticipantKeys = {
+  forUser: (projectId: string | undefined, userId: string | undefined) =>
+    ['my-project-participant', projectId, userId] as const,
+}
+
+/**
+ * Chat state — single RPC preload (participant, telegram, email, unread, last_read_at).
+ */
+export const chatStateKeys = {
+  byThread: (threadId: string | undefined, userId: string | undefined) =>
+    ['chat-state', threadId, userId] as const,
+}
+
+/**
+ * Sidebar data — workspace access RPC (threads, roles, members, assignees).
+ */
+export const sidebarDataKeys = {
+  forUser: (workspaceId: string, userId: string | undefined) =>
+    ['sidebar-data', workspaceId, userId] as const,
+}
+
+/**
+ * Current participant for messenger (project or workspace level).
+ */
+export const messengerParticipantKeys = {
+  current: (scopeId: string, userId: string | undefined) =>
+    ['messenger', 'current-participant', scopeId, userId] as const,
+}
+
+/**
+ * Chat settings data helpers.
+ */
+export const chatSettingsKeys = {
+  workspaceProjects: (workspaceId: string | undefined) =>
+    ['workspace-projects-list', workspaceId] as const,
+  emailSuggestions: (workspaceId: string | undefined) =>
+    ['email-suggestions', workspaceId] as const,
+}
+
+/**
+ * Inbox thread detail (deadline etc.).
+ */
+export const inboxThreadDetailKeys = {
+  byThread: (threadId: string) => ['inbox-thread-detail', threadId] as const,
+}
+
+/**
+ * Template access counts for knowledge/quick-reply entities.
+ */
+export const templateAccessKeys = {
+  counts: (entityType: string, entityIds: string[]) =>
+    ['template-access-counts', entityType, ...entityIds] as const,
 }

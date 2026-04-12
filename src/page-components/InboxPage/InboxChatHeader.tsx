@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { getChatIconComponent } from '@/components/messenger/ChatSettingsDialog'
-import { participantKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { participantKeys, inboxThreadDetailKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
@@ -84,7 +84,7 @@ export function InboxChatHeader({
   // InboxThreadEntry приходит из RPC get_inbox_threads_v2, которая не возвращает deadline.
   // Добавить deadline в RPC = миграция БД. Отдельный запрос с staleTime=60s — приемлемый компромисс.
   const { data: threadData } = useQuery({
-    queryKey: ['inbox-thread-detail', chat.thread_id],
+    queryKey: inboxThreadDetailKeys.byThread(chat.thread_id),
     queryFn: async () => {
       const { data } = await supabase
         .from('project_threads')

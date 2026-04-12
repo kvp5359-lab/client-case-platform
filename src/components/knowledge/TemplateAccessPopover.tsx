@@ -11,7 +11,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { knowledgeBaseKeys, quickReplyKeys, projectTemplateKeys } from '@/hooks/queryKeys'
+import { knowledgeBaseKeys, quickReplyKeys, projectTemplateKeys, templateAccessKeys } from '@/hooks/queryKeys'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, LayoutTemplate } from 'lucide-react'
@@ -282,7 +282,7 @@ export function useTemplateAccessCounts(entityIds: string[], entityType: Templat
   const fkColumn = config?.fkColumn
 
   return useQuery({
-    queryKey: ['template-access-counts', entityType, ...entityIds],
+    queryKey: templateAccessKeys.counts(entityType, entityIds),
     queryFn: async () => {
       if (entityIds.length === 0 || !table || !fkColumn) return {} as Record<string, number>
       const { data, error } = await supabase.from(table).select(fkColumn).in(fkColumn, entityIds)

@@ -1,12 +1,15 @@
 "use client"
 
 /**
- * Google Drive Slice - управление интеграцией с Google Drive
- * (source documents, export folder, destination documents)
+ * Google Drive Slice - управление UI-состоянием интеграции с Google Drive
+ * (dialogs, connection status, syncing/exporting flags)
+ *
+ * Данные sourceDocuments и destinationDocuments перенесены в React Query:
+ * - useSourceDocumentsQuery (hooks/documents/useSourceDocumentsQuery.ts)
+ * - useDestinationDocumentsQuery (hooks/documents/useDestinationDocumentsQuery.ts)
  */
 
 import { StateCreator } from 'zustand'
-import type { SourceDocument, DestinationDocument } from './types'
 
 export interface GoogleDriveState {
   // Source documents (Google Drive папка-источник)
@@ -15,7 +18,6 @@ export interface GoogleDriveState {
   sourceSettingsDialogOpen: boolean
   sourceFolderName: string
   isSourceConnected: boolean
-  sourceDocuments: SourceDocument[]
   isSyncing: boolean
   showHiddenSourceDocs: boolean
 
@@ -23,8 +25,7 @@ export interface GoogleDriveState {
   exportFolderName: string
   isExportFolderConnected: boolean
 
-  // Destination documents (документы на Google Drive)
-  destinationDocuments: DestinationDocument[]
+  // Destination documents (UI flags)
   isExporting: boolean
   isFetchingDestination: boolean
   hasExported: boolean
@@ -39,7 +40,6 @@ export interface GoogleDriveActions {
   closeSourceSettingsDialog: () => void
   setSourceFolderName: (name: string) => void
   setSourceConnected: (isConnected: boolean) => void
-  setSourceDocuments: (documents: SourceDocument[]) => void
   setSyncing: (isSyncing: boolean) => void
   toggleShowHiddenSourceDocs: () => void
 
@@ -47,8 +47,7 @@ export interface GoogleDriveActions {
   setExportFolderName: (name: string) => void
   setExportFolderConnected: (isConnected: boolean) => void
 
-  // Destination documents
-  setDestinationDocuments: (documents: DestinationDocument[]) => void
+  // Destination documents (UI flags)
   setExportingToDestination: (isExporting: boolean) => void
   setFetchingDestination: (isFetching: boolean) => void
   setHasExported: (hasExported: boolean) => void
@@ -63,7 +62,6 @@ const initialGoogleDriveState: GoogleDriveState = {
   sourceSettingsDialogOpen: false,
   sourceFolderName: '',
   isSourceConnected: false,
-  sourceDocuments: [],
   isSyncing: false,
   showHiddenSourceDocs: false,
 
@@ -72,7 +70,6 @@ const initialGoogleDriveState: GoogleDriveState = {
   isExportFolderConnected: false,
 
   // Destination documents
-  destinationDocuments: [],
   isExporting: false,
   isFetchingDestination: false,
   hasExported: false,
@@ -94,7 +91,6 @@ export const createGoogleDriveSlice: StateCreator<GoogleDriveSlice, [], [], Goog
   closeSourceSettingsDialog: () => set({ sourceSettingsDialogOpen: false }),
   setSourceFolderName: (name) => set({ sourceFolderName: name }),
   setSourceConnected: (isConnected) => set({ isSourceConnected: isConnected }),
-  setSourceDocuments: (documents) => set({ sourceDocuments: documents }),
   setSyncing: (isSyncing) => set({ isSyncing: isSyncing }),
   toggleShowHiddenSourceDocs: () => set((state) => ({ showHiddenSourceDocs: !state.showHiddenSourceDocs })),
 
@@ -103,7 +99,6 @@ export const createGoogleDriveSlice: StateCreator<GoogleDriveSlice, [], [], Goog
   setExportFolderConnected: (isConnected) => set({ isExportFolderConnected: isConnected }),
 
   // Destination documents
-  setDestinationDocuments: (documents) => set({ destinationDocuments: documents }),
   setExportingToDestination: (isExporting) => set({ isExporting: isExporting }),
   setFetchingDestination: (isFetching) => set({ isFetchingDestination: isFetching }),
   setHasExported: (hasExported) => set({ hasExported: hasExported }),

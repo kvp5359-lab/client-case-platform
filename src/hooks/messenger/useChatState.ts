@@ -19,7 +19,7 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { messengerKeys, emailAccountKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { messengerKeys, emailAccountKeys, chatStateKeys, messengerParticipantKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 interface ChatStateResult {
   participant: {
@@ -62,7 +62,7 @@ export function useChatState(
   const queryClient = useQueryClient()
 
   const { data } = useQuery({
-    queryKey: ['chat-state', threadId, user?.id],
+    queryKey: chatStateKeys.byThread(threadId, user?.id),
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_chat_state' as never, {
         p_thread_id: threadId!,
@@ -87,7 +87,7 @@ export function useChatState(
     queryClient.setQueryData(messengerKeys.lastReadAtByThreadId(threadId), data.lastReadAt)
 
     // Current participant cache
-    const participantKey = ['messenger', 'current-participant', projectId ?? workspaceId, user?.id]
+    const participantKey = messengerParticipantKeys.current(projectId ?? workspaceId, user?.id)
     if (data.participant) {
       queryClient.setQueryData(participantKey, {
         participantId: data.participant.participantId,

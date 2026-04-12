@@ -5,11 +5,11 @@ import { toast } from 'sonner'
 import { fetchDocumentsForAi } from '@/hooks/messenger/useDocumentsForAi'
 import { useDocumentStatuses } from '@/hooks/useStatuses'
 import { downloadDocumentBlob } from '@/services/documents/documentService'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { messengerAiKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 export function useDocumentPickerLogic(projectId: string, workspaceId: string) {
   const { data: projectDocuments = [] } = useQuery({
-    queryKey: ['messenger-ai', 'documents', projectId],
+    queryKey: messengerAiKeys.documents(projectId),
     queryFn: () => fetchDocumentsForAi(projectId),
     enabled: !!projectId,
     staleTime: STALE_TIME.LONG,

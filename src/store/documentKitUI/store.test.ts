@@ -291,8 +291,6 @@ describe('resetState', () => {
     expect(state.isSourceConnected).toBe(false)
     expect(state.isSyncing).toBe(false)
     expect(state.hasExported).toBe(false)
-    expect(state.sourceDocuments).toEqual([])
-    expect(state.destinationDocuments).toEqual([])
   })
 })
 

@@ -14,7 +14,7 @@ import { canAccessThread } from '@/utils/threadAccess'
 import { useProjectThreads } from './useProjectThreads'
 import { useThreadMembersMap } from '@/components/tasks/useThreadMembersMap'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { myProjectParticipantKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 interface MyProjectData {
   participantId: string
@@ -25,7 +25,7 @@ function useMyProjectData(projectId: string | undefined): MyProjectData | null {
   const { user } = useAuth()
 
   const { data } = useQuery({
-    queryKey: ['my-project-participant', projectId, user?.id],
+    queryKey: myProjectParticipantKeys.forUser(projectId, user?.id),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_participants')

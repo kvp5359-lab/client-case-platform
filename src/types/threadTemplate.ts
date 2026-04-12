@@ -2,7 +2,6 @@
  * Типы для шаблонов тредов (thread_templates + thread_template_assignees)
  */
 
-import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 
 export interface ThreadTemplateAssignee {
   participant_id: string
@@ -22,10 +21,10 @@ export interface ThreadTemplate {
   thread_type: 'chat' | 'task'
   is_email: boolean
   thread_name_template: string | null
-  accent_color: ThreadAccentColor
+  accent_color: string
   icon: string
   access_type: 'all' | 'roles'
-  access_roles: string[]
+  access_roles: string[] | null
   default_status_id: string | null
   deadline_days: number | null
   default_contact_email: string | null

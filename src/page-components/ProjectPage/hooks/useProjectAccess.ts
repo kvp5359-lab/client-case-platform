@@ -8,7 +8,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspacePermissions } from '@/hooks/permissions'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { projectAccessKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 export function useProjectAccess(projectId: string | undefined, workspaceId: string | undefined) {
   const { user } = useAuth()
@@ -17,7 +17,7 @@ export function useProjectAccess(projectId: string | undefined, workspaceId: str
   })
 
   const { data: hasAccess, isLoading } = useQuery({
-    queryKey: ['project-access', projectId, user?.id, isWorkspaceOwner, canViewAllProjects],
+    queryKey: projectAccessKeys.check(projectId, user?.id, isWorkspaceOwner, canViewAllProjects),
     queryFn: async () => {
       if (!projectId || !user?.id || !workspaceId) return false
 

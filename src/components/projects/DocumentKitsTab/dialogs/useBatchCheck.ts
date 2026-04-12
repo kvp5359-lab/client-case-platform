@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
+import { documentKeys } from '@/hooks/queryKeys'
 
 /**
  * Результат проверки одного документа
@@ -163,7 +164,7 @@ export function useBatchCheck({
         }),
       )
 
-      await queryClient.invalidateQueries({ queryKey: ['documents'] })
+      await queryClient.invalidateQueries({ queryKey: documentKeys.all })
 
       if (errorCount === 0) {
         toast.success('Изменения применены', {

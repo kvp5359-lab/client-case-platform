@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { calcThreadUnread, calcTotalUnread, getAggregateBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import { canAccessThread, type ThreadAccessInfo } from '@/utils/threadAccess'
 import { useInboxThreadsV2 } from './useInbox'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { sidebarDataKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 interface MyProjectRole {
   project_id: string
@@ -32,7 +32,7 @@ function useWorkspaceAccessData(workspaceId: string) {
   const { user } = useAuth()
 
   const { data } = useQuery({
-    queryKey: ['sidebar-data', workspaceId, user?.id],
+    queryKey: sidebarDataKeys.forUser(workspaceId, user?.id),
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_sidebar_data' as never, {
         p_workspace_id: workspaceId,

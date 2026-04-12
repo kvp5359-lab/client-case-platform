@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS boards (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_boards_workspace ON boards(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_boards_workspace ON boards(workspace_id);
 
 -- ============================================================
 -- 2. board_members — доступ конкретным участникам (для custom)
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS board_members (
   UNIQUE(board_id, participant_id)
 );
 
-CREATE INDEX idx_board_members_board ON board_members(board_id);
+CREATE INDEX IF NOT EXISTS idx_board_members_board ON board_members(board_id);
 
 -- ============================================================
 -- 3. board_lists — списки внутри доски
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS board_lists (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_board_lists_board ON board_lists(board_id);
+CREATE INDEX IF NOT EXISTS idx_board_lists_board ON board_lists(board_id);
 
 -- ============================================================
 -- 4. RPC: получение досок workspace с проверкой доступа

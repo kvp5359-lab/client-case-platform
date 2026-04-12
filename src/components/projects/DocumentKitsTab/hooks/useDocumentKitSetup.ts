@@ -22,6 +22,8 @@ import { useDocuments } from '@/hooks/useDocuments'
 import { useFolderSlots } from '@/hooks/useFolderSlots'
 import { useDocumentStatuses, useDocumentKitStatuses } from '@/hooks/useStatuses'
 import { useDocumentSelection, useDocumentDragDrop } from '@/hooks/documents'
+import { useSourceDocumentsQuery } from '@/hooks/documents/useSourceDocumentsQuery'
+import { useDestinationDocumentsQuery } from '@/hooks/documents/useDestinationDocumentsQuery'
 import type { SourceDocument } from '@/components/documents/types'
 import {
   buildToolbarConfig,
@@ -100,14 +102,16 @@ export function useDocumentKitSetup({
     exportPhase,
   } = operations
   const {
-    sourceDocuments,
     isSyncing,
     showHiddenSourceDocs,
-    destinationDocuments,
     isExporting,
     isFetchingDestination,
     hasExported,
   } = googleDrive
+
+  // Source & destination documents — из React Query вместо Zustand
+  const { data: sourceDocuments = [] } = useSourceDocumentsQuery(projectId, showHiddenSourceDocs)
+  const { data: destinationDocuments = [] } = useDestinationDocumentsQuery(exportFolderId, workspaceId)
 
   // Actions напрямую из store
   const {
@@ -118,7 +122,6 @@ export function useDocumentKitSetup({
     setSourceCollapsed,
     setDestinationCollapsed,
     setTrashCollapsed,
-    setDestinationDocuments,
     setExportingToDestination,
     setFetchingDestination,
     setHasExported,
@@ -127,7 +130,6 @@ export function useDocumentKitSetup({
     toggleShowOnlyUnverified,
     openConnectSourceDialog,
     openSourceSettingsDialog,
-    setSourceDocuments,
     setSourceConnected,
     setSourceFolderName,
     setSyncing,
@@ -260,13 +262,10 @@ export function useDocumentKitSetup({
     draggedSourceDoc,
     resetDragState,
     openBatchCheckDialog,
-    showHiddenSourceDocs,
-    setSourceDocuments,
     setSyncing,
     setSystemSectionTab,
     setSourceCollapsed,
     setSourceFolderName,
-    setDestinationDocuments,
     setExportingToDestination,
     setFetchingDestination,
     setHasExported,

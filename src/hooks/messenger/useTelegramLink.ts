@@ -8,7 +8,7 @@ import { useEffect, useId, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { messengerKeys } from '@/hooks/queryKeys'
+import { messengerKeys, telegramLinkKeys } from '@/hooks/queryKeys'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
 
 interface TelegramLink {
@@ -32,7 +32,7 @@ export function useTelegramLink(
     () =>
       threadId
         ? messengerKeys.telegramLinkByThreadId(threadId)
-        : ['messenger', 'telegram-link', 'no-thread'],
+        : telegramLinkKeys.noThread,
     [threadId],
   )
 
@@ -58,7 +58,7 @@ export function useTelegramLink(
 
   // Получить/сгенерировать код привязки для конкретного треда
   const linkCodeQuery = useQuery({
-    queryKey: ['messenger', 'link-code', threadId ?? 'no-thread'],
+    queryKey: telegramLinkKeys.linkCode(threadId),
     queryFn: async () => {
       if (!threadId) return null
       const { data, error } = await supabase

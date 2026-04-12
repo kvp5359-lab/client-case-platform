@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
 import { toast } from 'sonner'
 import type { Participant } from '@/types/entities'
+import { SYSTEM_PROJECT_ROLES, SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
 import type { ParticipantWithUser } from './useProjectParticipantsData'
 
 /**
@@ -164,7 +165,11 @@ export function useProjectParticipantsMutations({
 
   // Обработчик изменения участников для роли — с проверкой клиентов
   const handleRoleParticipantsChange = (roleName: string, participantIds: string[]) => {
-    const nonClientProjectRoles = ['Администратор', 'Исполнитель', 'Участник']
+    const nonClientProjectRoles: string[] = [
+      SYSTEM_PROJECT_ROLES.ADMIN,
+      SYSTEM_PROJECT_ROLES.EXECUTOR,
+      SYSTEM_PROJECT_ROLES.PARTICIPANT,
+    ]
 
     if (nonClientProjectRoles.includes(roleName)) {
       const currentParticipants = getParticipantsForRole(roleName)
@@ -174,7 +179,10 @@ export function useProjectParticipantsMutations({
       const newClientParticipants = toAdd
         .map((id) => participants.find((p) => p.id === id))
         .filter(
-          (p) => p && Array.isArray(p.workspace_roles) && p.workspace_roles.includes('Клиент'),
+          (p) =>
+            p &&
+            Array.isArray(p.workspace_roles) &&
+            p.workspace_roles.includes(SYSTEM_WORKSPACE_ROLES.CLIENT),
         )
         .filter(Boolean) as Participant[]
 

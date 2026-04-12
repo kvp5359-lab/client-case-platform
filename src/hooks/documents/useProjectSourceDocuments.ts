@@ -1,11 +1,10 @@
 "use client"
 
-import { useEffect, useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
 import {
-  getSourceDocumentsByProject,
   toggleSourceDocumentHidden as toggleHidden,
   toggleSourceFolderHidden,
   syncSourceDocumentsFromDrive,
@@ -13,16 +12,15 @@ import {
   refreshGoogleDriveTokenIfNeeded,
   downloadGoogleDriveFile,
 } from '@/services/documents/sourceDocumentService'
+import { useInvalidateSourceDocuments } from './useSourceDocumentsQuery'
 import type { SourceDocument } from '@/components/documents/types'
 
 interface UseProjectSourceDocumentsProps {
   projectId: string
   sourceFolderId: string | null | undefined
   workspaceId: string
-  showHiddenSourceDocs: boolean
-  setSourceDocuments: (docs: SourceDocument[]) => void
   setSyncing: (value: boolean) => void
-  setSystemSectionTab: (tab: 'unassigned' | 'destination' | 'trash') => void
+  setSystemSectionTab: (tab: 'unassigned' | 'source' | 'destination' | 'trash') => void
   setSourceCollapsed: (collapsed: boolean) => void
   setSourceFolderName?: (name: string) => void
 }
@@ -31,72 +29,25 @@ export function useProjectSourceDocuments({
   projectId,
   sourceFolderId,
   workspaceId,
-  showHiddenSourceDocs,
-  setSourceDocuments,
   setSyncing,
   setSystemSectionTab,
   setSourceCollapsed,
   setSourceFolderName,
 }: UseProjectSourceDocumentsProps) {
-  // requestId prevents stale responses from overwriting fresh data
-  const loadRequestIdRef = useRef(0)
+  const invalidateSourceDocuments = useInvalidateSourceDocuments()
 
-  // B-151: ref prevents stale closure — loadSourceDocuments always reads the latest value
-  const showHiddenRef = useRef(showHiddenSourceDocs)
-  showHiddenRef.current = showHiddenSourceDocs
-
+  /**
+   * Инвалидирует кэш source documents — React Query автоматически перезагрузит данные.
+   * Используется в тех местах, где раньше вызывался loadSourceDocuments().
+   */
   const loadSourceDocuments = useCallback(async () => {
     if (!projectId) return
-    const requestId = ++loadRequestIdRef.current
-
-    try {
-      const { documents: sourceDocs, usedSourceIds } = await getSourceDocumentsByProject(projectId)
-
-      // Stale response — a newer load was triggered while this one was in-flight
-      if (requestId !== loadRequestIdRef.current) return
-
-      let availableDocs = sourceDocs.filter((doc) => !usedSourceIds.has(doc.id))
-
-      if (!showHiddenRef.current) {
-        availableDocs = availableDocs.filter((doc) => !doc.is_hidden)
-      }
-
-      const formattedDocs: SourceDocument[] = availableDocs.map((doc) => ({
-        id: doc.google_drive_file_id,
-        name: doc.name,
-        mimeType: doc.mime_type || '',
-        size: doc.file_size || undefined,
-        createdTime: doc.created_time || undefined,
-        modifiedTime: doc.modified_time || undefined,
-        webViewLink: doc.web_view_link || undefined,
-        iconLink: doc.icon_link || undefined,
-        parentFolderName: doc.parent_folder_name || undefined,
-        sourceDocumentId: doc.id,
-        isHidden: doc.is_hidden || undefined,
-      }))
-
-      setSourceDocuments(formattedDocs)
-    } catch (error) {
-      if (requestId !== loadRequestIdRef.current) return
-      logger.error('Ошибка загрузки исходных документов:', error)
-    }
-  }, [projectId, setSourceDocuments])
-
-  useEffect(() => {
-    loadSourceDocuments()
-  }, [loadSourceDocuments])
-
-  // B-151: reload when toggle changes (ref keeps value fresh, effect triggers reload)
-  useEffect(() => {
-    loadSourceDocuments()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showHiddenSourceDocs])
+    await invalidateSourceDocuments(projectId)
+  }, [projectId, invalidateSourceDocuments])
 
   const cleanupTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
 
   useEffect(() => {
-    // Локальный снимок ref'а — чтобы cleanup работал именно с тем Set таймеров,
-    // что был на момент монтирования (react-hooks/exhaustive-deps требование).
     const timers = cleanupTimersRef.current
     return () => {
       for (const timer of timers) {
@@ -113,7 +64,7 @@ export function useProjectSourceDocuments({
     isTogglingRef.current = true
     try {
       await toggleHidden(sourceDocId, currentHiddenState)
-      await loadSourceDocuments()
+      await invalidateSourceDocuments(projectId)
     } catch (err) {
       logger.error('toggleSourceDocumentHidden failed:', err)
       toast.error('Не удалось изменить видимость документа')
@@ -127,7 +78,7 @@ export function useProjectSourceDocuments({
     isTogglingRef.current = true
     try {
       await toggleSourceFolderHidden(projectId, folderName, hide)
-      await loadSourceDocuments()
+      await invalidateSourceDocuments(projectId)
       toast.success(hide ? 'Папка скрыта' : 'Папка показана')
     } catch (err) {
       logger.error('handleToggleFolderHidden failed:', err)
@@ -160,7 +111,7 @@ export function useProjectSourceDocuments({
         setSourceFolderName?.(result.folderName)
       }
 
-      await loadSourceDocuments()
+      await invalidateSourceDocuments(projectId)
       setSystemSectionTab('unassigned')
       setSourceCollapsed(false)
 
