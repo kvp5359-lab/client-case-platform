@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useDeleteList, useUpdateList } from './hooks/useListMutations'
-import { useFilteredTasks } from './hooks/useFilteredListData'
+import { useFilteredTasks, useFilteredProjects } from './hooks/useFilteredListData'
+import { useWorkspaceProjectParticipants } from './hooks/useWorkspaceProjectParticipants'
 import { BoardTaskRow } from './BoardTaskRow'
 import { BoardProjectRow } from './BoardProjectRow'
 import { BoardInboxList } from './BoardInboxList'
@@ -139,6 +140,7 @@ interface BoardListCardProps {
   onOpenThread: (task: TaskItem) => void
   onStatusChange: (taskId: string, statusId: string | null) => void
   selectedThreadId?: string | null
+  selectedProjectId?: string | null
   existingColumns?: number
   /** Первый ли список в колонке */
   isFirst?: boolean
@@ -161,6 +163,7 @@ export function BoardListCard({
   onOpenThread,
   onStatusChange,
   selectedThreadId,
+  selectedProjectId,
   existingColumns,
   isFirst,
   isLast,
@@ -196,7 +199,22 @@ export function BoardListCard({
   const isProject = list.entity_type === 'project'
   const isInbox = list.entity_type === 'inbox'
   const hasFilters = safeFilters.rules.length > 0
-  const count = isInbox ? inboxThreads.length : isProject ? projects.length : filteredTasks.length
+
+  // Карта project_id → participants — нужна движку фильтров для junction-поля
+  // `participants`. Запрос идёт только если список действительно проектный.
+  const { data: projectParticipantsMap } = useWorkspaceProjectParticipants(
+    workspaceId,
+    isProject,
+  )
+
+  const filteredProjects = useFilteredProjects(
+    isProject ? projects : [],
+    safeFilters,
+    filterCtx,
+    projectParticipantsMap ?? {},
+  )
+
+  const count = isInbox ? inboxThreads.length : isProject ? filteredProjects.length : filteredTasks.length
   const CollapseIcon = collapsed ? ChevronRight : ChevronDown
   const isCards = (list.display_mode ?? 'list') === 'cards'
   const groupByField = (list.group_by ?? 'none') as GroupByField
@@ -311,20 +329,23 @@ export function BoardListCard({
               workspaceId={workspaceId}
             />
           ) : isProject ? (
-            projects.length > 0 ? (
+            filteredProjects.length > 0 ? (
               <div className={cn(isCards ? 'grid gap-1' : 'divide-y divide-border/50')}>
-                {projects.map((project) => (
+                {filteredProjects.map((project) => (
                   <BoardProjectRow
                     key={project.id}
                     project={project}
                     workspaceId={workspaceId}
                     displayMode={list.display_mode ?? 'list'}
                     visibleFields={list.visible_fields ?? ['status', 'template']}
+                    isSelected={selectedProjectId === project.id}
                   />
                 ))}
               </div>
             ) : (
-              <div className="px-3 py-4 text-xs text-muted-foreground text-center">Пусто</div>
+              <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+                {hasFilters ? 'Нет элементов по фильтру' : 'Пусто'}
+              </div>
             )
           ) : filteredTasks.length > 0 ? (
             <div className={cn(isCards ? 'grid gap-1' : hasGrouping ? 'flex flex-col gap-2' : 'divide-y divide-border/50')}>
@@ -356,6 +377,7 @@ export function BoardListCard({
                         displayMode={list.display_mode ?? 'list'}
                         onOpenTask={onOpenTask}
                         onStatusChange={onStatusChange}
+                        isSelected={selectedThreadId === task.id}
                       />
                     ))}
                   </div>

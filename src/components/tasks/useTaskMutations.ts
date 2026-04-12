@@ -9,7 +9,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logAuditAction } from '@/services/auditService'
-import { projectThreadKeys } from '@/hooks/queryKeys'
+import { projectThreadKeys, accessibleProjectKeys } from '@/hooks/queryKeys'
 
 export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
   const queryClient = useQueryClient()
@@ -37,6 +37,9 @@ export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unkno
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
+      // Смена статуса может перевести задачу в/из финального — это меняет
+      // has_active_deadline_task у проекта (используется в фильтрах на доске).
+      queryClient.invalidateQueries({ queryKey: accessibleProjectKeys.all })
     },
     onError: () => toast.error('Не удалось обновить статус'),
   })
@@ -67,6 +70,9 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
+      // Появление/исчезновение дедлайна меняет has_active_deadline_task у проекта
+      // (используется в фильтрах на доске).
+      queryClient.invalidateQueries({ queryKey: accessibleProjectKeys.all })
     },
     onError: () => toast.error('Не удалось обновить срок'),
   })

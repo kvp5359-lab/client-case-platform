@@ -5569,6 +5569,7 @@ export type Database = {
           description: string
           export_folder_id: string
           google_drive_folder_link: string
+          has_active_deadline_task: boolean
           id: string
           last_activity_at: string
           messenger_link_code: string

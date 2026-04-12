@@ -93,6 +93,12 @@ export const PROJECT_FILTER_FIELDS: FilterFieldDef[] = [
     junctionTable: 'project_participants',
   },
   {
+    key: 'has_active_deadline_task',
+    label: 'Есть активные задачи с дедлайном',
+    type: 'boolean',
+    operators: ['equals'],
+  },
+  {
     key: 'created_at',
     label: 'Дата создания',
     type: 'date',

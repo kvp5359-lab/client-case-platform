@@ -440,7 +440,7 @@ export const TaskListView = memo(function TaskListView({
       {/* Панель задачи (правая боковая) — только если нет layout-level панели */}
       {!hasLayoutPanel && (
         <TaskPanel
-          task={openTask}
+          stackTop={openTask ? { kind: 'task', task: openTask } : null}
           open={!!openTaskId}
           onClose={() => { setOpenTaskId(null); setCreatedThread(null) }}
           workspaceId={workspaceId}

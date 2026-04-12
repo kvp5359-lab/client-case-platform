@@ -31,6 +31,7 @@ import { BoardView } from '@/components/boards/BoardView'
 import { CreateBoardDialog } from '@/components/boards/CreateBoardDialog'
 import { CreateListDialog } from '@/components/boards/CreateListDialog'
 import { EditBoardDialog } from '@/components/boards/EditBoardDialog'
+import { TaskPanelContext } from '@/components/tasks/TaskPanelContext'
 import { cn } from '@/lib/utils'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { taskKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
@@ -118,48 +119,66 @@ function BoardTabContent({
     tp.setOpenThread({ ...task, workspace_id: workspaceId })
   }, [tp, workspaceId])
 
+  // Локальный контекст TaskPanel для доски: клики внутри BoardTabContent
+  // (в т.ч. BoardProjectRow.openProject) идут в локальный tp, а не в
+  // layout-уровневую панель из WorkspaceLayout. Так доска управляет
+  // собственной TaskPanel, которая передаётся в layout при навигации на проект.
+  const boardTaskPanelCtx = useMemo(
+    () => ({
+      openThread: tp.setOpenThread,
+      pushThread: tp.pushThread,
+      openProject: tp.openProjectTasks,
+      pushProject: tp.pushProject,
+      closeThread: () => tp.setOpenThread(null),
+    }),
+    [tp],
+  )
+
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <div className="flex-1 overflow-x-auto overflow-y-hidden">
-        <BoardView
-          lists={lists ?? []}
-          tasks={tasks ?? []}
-          projects={projects ?? []}
-          inboxThreads={inboxThreads}
-          assigneesMap={assigneesMap ?? {}}
-          workspaceId={workspaceId}
-          currentParticipantId={currentParticipantId ?? null}
-          currentUserId={user?.id ?? null}
-          userToParticipantMap={userToParticipantMap}
-          statuses={statuses}
-          columnWidths={board.column_widths}
-          onOpenTask={handleOpenTask}
-          onOpenThread={handleOpenThread}
-          onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}
-          selectedThreadId={tp.openThread?.id}
+    <TaskPanelContext.Provider value={boardTaskPanelCtx}>
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+          <BoardView
+            lists={lists ?? []}
+            tasks={tasks ?? []}
+            projects={projects ?? []}
+            inboxThreads={inboxThreads}
+            assigneesMap={assigneesMap ?? {}}
+            workspaceId={workspaceId}
+            currentParticipantId={currentParticipantId ?? null}
+            currentUserId={user?.id ?? null}
+            userToParticipantMap={userToParticipantMap}
+            statuses={statuses}
+            columnWidths={board.column_widths}
+            onOpenTask={handleOpenTask}
+            onOpenThread={handleOpenThread}
+            onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}
+            selectedThreadId={tp.openThread?.id}
+            selectedProjectId={tp.openProject?.id}
+          />
+        </div>
+
+        {/* Панель задачи (правая боковая) */}
+        <TaskPanel
+          {...tp.taskPanelProps}
+          showProjectLink
+          onProjectClick={() => {
+            // Передаём открытый тред в layout-уровневую TaskPanel,
+            // чтобы панель пережила размонтирование BoardsPage при навигации
+            // на страницу проекта. Затем локальную копию закрываем.
+            if (tp.openThread) globalOpenThread(tp.openThread)
+            tp.setOpenThread(null)
+          }}
+        />
+
+        <CreateListDialog
+          open={createListDialog.isOpen}
+          onClose={createListDialog.close}
+          boardId={board.id}
+          existingColumns={lists ? Math.max(0, ...lists.map((l) => l.column_index)) + 1 : 1}
         />
       </div>
-
-      {/* Панель задачи (правая боковая) */}
-      <TaskPanel
-        {...tp.taskPanelProps}
-        showProjectLink
-        onProjectClick={() => {
-          // Передаём открытый тред в layout-уровневую TaskPanel,
-          // чтобы панель пережила размонтирование BoardsPage при навигации
-          // на страницу проекта. Затем локальную копию закрываем.
-          if (tp.openThread) globalOpenThread(tp.openThread)
-          tp.setOpenThread(null)
-        }}
-      />
-
-      <CreateListDialog
-        open={createListDialog.isOpen}
-        onClose={createListDialog.close}
-        boardId={board.id}
-        existingColumns={lists ? Math.max(0, ...lists.map((l) => l.column_index)) + 1 : 1}
-      />
-    </div>
+    </TaskPanelContext.Provider>
   )
 }
 

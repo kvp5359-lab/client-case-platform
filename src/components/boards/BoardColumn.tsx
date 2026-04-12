@@ -24,6 +24,7 @@ interface BoardColumnProps {
   onOpenThread: (task: TaskItem) => void
   onStatusChange: (taskId: string, statusId: string | null) => void
   selectedThreadId?: string | null
+  selectedProjectId?: string | null
   existingColumns?: number
 }
 
@@ -41,6 +42,7 @@ export function BoardColumn({
   onOpenThread,
   onStatusChange,
   selectedThreadId,
+  selectedProjectId,
   existingColumns,
 }: BoardColumnProps) {
   return (
@@ -60,6 +62,7 @@ export function BoardColumn({
           onOpenThread={onOpenThread}
           onStatusChange={onStatusChange}
           selectedThreadId={selectedThreadId}
+          selectedProjectId={selectedProjectId}
           existingColumns={existingColumns}
           isFirst={index === 0}
           isLast={index === lists.length - 1}

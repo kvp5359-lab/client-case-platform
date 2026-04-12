@@ -20,11 +20,19 @@
 
 import { createContext, useContext } from 'react'
 import type { TaskItem } from './types'
+import type { ProjectHeaderInfo } from './TaskPanel'
 
 interface TaskPanelContextValue {
   openThread: (task: TaskItem) => void
   pushThread: (task: TaskItem) => void
   closeThread: () => void
+  /** Открыть проект в панели (Режим 2 — список задач проекта в шапке + теле).
+   *  Используется для клика по проекту на доске, из сайдбара и т.п.
+   *  Реализуется как replaceStack: сбрасывает стек и кладёт один проект. */
+  openProject?: (project: ProjectHeaderInfo) => void
+  /** Положить проект поверх стека (внутренняя навигация).
+   *  Используется кнопкой «Другие задачи» в открытой задаче. */
+  pushProject?: (project: ProjectHeaderInfo) => void
   /** true, если дерево рендерится внутри открытой TaskPanel */
   isInsidePanel?: boolean
 }

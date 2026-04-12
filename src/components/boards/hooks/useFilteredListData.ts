@@ -87,6 +87,7 @@ export function useFilteredProjects<T extends Record<string, unknown>>(
       created_by: (item) => (item as T).created_by,
       created_at: (item) => (item as T).created_at,
       updated_at: (item) => (item as T).updated_at,
+      has_active_deadline_task: (item) => (item as T).has_active_deadline_task,
     }
 
     const junctionAccessors: Record<string, (id: string) => string[]> = {

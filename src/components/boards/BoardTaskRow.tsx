@@ -17,6 +17,8 @@ interface BoardTaskRowProps {
   displayMode: DisplayMode
   onOpenTask: (taskId: string) => void
   onStatusChange: (taskId: string, statusId: string | null) => void
+  /** true, если именно этот тред открыт в боковой панели — строка подсвечивается. */
+  isSelected?: boolean
 }
 
 function formatDeadline(deadline: string | null): string | null {
@@ -48,6 +50,7 @@ export function BoardTaskRow({
   displayMode,
   onOpenTask,
   onStatusChange,
+  isSelected,
 }: BoardTaskRowProps) {
   const deadline = formatDeadline(task.deadline)
   const overdue = isOverdue(task.deadline)
@@ -72,7 +75,12 @@ export function BoardTaskRow({
     const hasBottom = (showDeadline && deadline) || (showProject && task.project_name)
     return (
       <div
-        className="rounded-md border border-border/50 bg-background px-2 py-1 hover:bg-accent/50 transition-colors cursor-pointer overflow-hidden"
+        className={cn(
+          'rounded-md border px-2 py-1 transition-colors cursor-pointer overflow-hidden',
+          isSelected
+            ? 'bg-brand-100 border-brand-200'
+            : 'border-border/50 bg-background hover:bg-accent/50',
+        )}
         role="button"
         tabIndex={0}
         onClick={handleClick}
@@ -97,7 +105,9 @@ export function BoardTaskRow({
               )}
             </div>
           )}
-          <span className="text-[14px] truncate leading-snug">{task.name}</span>
+          <span className={cn('text-[14px] truncate leading-snug', isSelected && 'font-medium text-brand-700')}>
+            {task.name}
+          </span>
           {showAssignees && assignees.length > 0 && (
             <div className="shrink-0">
               <ParticipantAvatars participants={assignees} maxVisible={2} size="sm" />
@@ -130,7 +140,10 @@ export function BoardTaskRow({
   // ── Вид списка (по умолчанию) ──
   return (
     <div
-      className="flex items-center gap-2 px-3 py-2 w-full text-left hover:bg-accent/50 transition-colors cursor-pointer"
+      className={cn(
+        'flex items-center gap-2 px-3 py-2 w-full text-left transition-colors cursor-pointer',
+        isSelected ? 'bg-brand-100' : 'hover:bg-accent/50',
+      )}
       role="button"
       tabIndex={0}
       onClick={handleClick}
@@ -154,7 +167,9 @@ export function BoardTaskRow({
         </div>
       )}
 
-      <span className="text-[14px] truncate">{task.name}</span>
+      <span className={cn('text-[14px] truncate', isSelected && 'font-medium text-brand-700')}>
+        {task.name}
+      </span>
       {showProject && task.project_name && (
         <span className="text-[13px] text-muted-foreground/60 truncate shrink-0">
           {task.project_name}

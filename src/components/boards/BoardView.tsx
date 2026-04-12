@@ -27,6 +27,8 @@ interface BoardViewProps {
   onOpenThread?: (task: TaskItem) => void
   onStatusChange?: (taskId: string, statusId: string | null) => void
   selectedThreadId?: string | null
+  /** id проекта, открытого в боковой панели — соответствующая строка подсвечивается. */
+  selectedProjectId?: string | null
 }
 
 export function BoardView({
@@ -45,6 +47,7 @@ export function BoardView({
   onOpenThread,
   onStatusChange,
   selectedThreadId,
+  selectedProjectId,
 }: BoardViewProps) {
   const columns = useMemo(() => {
     const map = new Map<number, BoardList[]>()
@@ -97,6 +100,7 @@ export function BoardView({
           onOpenThread={onOpenThread ?? (() => {})}
           onStatusChange={onStatusChange ?? (() => {})}
           selectedThreadId={selectedThreadId}
+          selectedProjectId={selectedProjectId}
           existingColumns={columns.length}
         />
       ))}

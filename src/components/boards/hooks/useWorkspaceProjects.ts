@@ -7,6 +7,10 @@ import type { Tables } from '@/types/database'
 
 export type BoardProject = Tables<'projects'> & {
   template_name: string | null
+  /** Есть ли у проекта хотя бы одна активная задача (не в финальном статусе) с дедлайном.
+   *  Приходит из RPC get_accessible_projects. В прямом SELECT из таблицы projects (legacy-путь)
+   *  не заполняется — используется только в фильтрах на доске проектов. */
+  has_active_deadline_task?: boolean
 }
 
 export function useWorkspaceProjects(workspaceId: string | undefined) {

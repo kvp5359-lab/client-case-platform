@@ -159,17 +159,24 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   const [initialTemplate, setInitialTemplate] = useState<ThreadTemplate | null>(null)
   const settingsOpen = settingsChat !== null
 
-  // TaskPanel. Деструктурируем setOpenThread/pushThread из tp, чтобы
+  // TaskPanel. Деструктурируем нужные методы из tp, чтобы
   // линтер не требовал весь объект tp в deps memo/эффектов (он новый на каждом рендере).
   const tp = useTaskPanelSetup({ workspaceId })
-  const { setOpenThread: tpSetOpenThread, pushThread: tpPushThread } = tp
+  const {
+    setOpenThread: tpSetOpenThread,
+    pushThread: tpPushThread,
+    openProjectTasks: tpOpenProject,
+    pushProject: tpPushProject,
+  } = tp
   const taskPanelCtx = useMemo(
     () => ({
       openThread: tpSetOpenThread,
       pushThread: tpPushThread,
+      openProject: tpOpenProject,
+      pushProject: tpPushProject,
       closeThread: () => tpSetOpenThread(null),
     }),
-    [tpSetOpenThread, tpPushThread],
+    [tpSetOpenThread, tpPushThread, tpOpenProject, tpPushProject],
   )
 
   // Глобальный ref для открытия TaskPanel из хуков вне React-дерева
@@ -184,12 +191,10 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   // внутри BoardsPage — все они рендерятся с классом `.side-panel`).
   useScrollIntoViewOnPanel()
 
-  // При смене проекта закрываем TaskPanel, если открытый тред относится к
-  // другому проекту (или к workspace-level: project_id === null).
-  // Реагируем только на ИЗМЕНЕНИЕ projectId, а не на факт несовпадения:
-  // тост нового сообщения может открыть тред из другого проекта без навигации
-  // — такую панель закрывать нельзя. Основную правую панель при этом не
-  // трогаем: ProjectPage сам откроет её при монтировании на новый проект.
+  // При смене проекта закрываем TaskPanel, если открытый элемент (тред или
+  // проект в Режиме 2) относится к другому проекту. Реагируем только на
+  // ИЗМЕНЕНИЕ projectId: тост нового сообщения может открыть тред из другого
+  // проекта без навигации — такую панель закрывать нельзя.
   const currentProjectId = pageContext.projectId ?? null
   const prevProjectIdRef = useRef(currentProjectId)
   const setOpenThread = tp.setOpenThread
@@ -198,13 +203,19 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
     prevProjectIdRef.current = currentProjectId
     if (prev === currentProjectId) return
     const openTask = tp.openThread
-    if (!openTask) return
-    const openTaskProjectId = openTask.project_id ?? null
-    if (openTaskProjectId === null || openTaskProjectId !== currentProjectId) {
-      setOpenThread(null)
+    const openProject = tp.openProject
+    if (openTask) {
+      const openTaskProjectId = openTask.project_id ?? null
+      if (openTaskProjectId === null || openTaskProjectId !== currentProjectId) {
+        setOpenThread(null)
+      }
+    } else if (openProject) {
+      if (openProject.id !== currentProjectId) {
+        setOpenThread(null)
+      }
     }
-    // tp.openThread читаем без подписки — эффект должен срабатывать только на
-    // смену projectId, иначе открытие панели тут же её и закроет.
+    // tp.openThread/openProject читаем без подписки — эффект должен срабатывать
+    // только на смену projectId, иначе открытие панели тут же её и закроет.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProjectId, setOpenThread])
 
