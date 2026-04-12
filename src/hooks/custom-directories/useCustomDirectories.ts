@@ -9,6 +9,7 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { customDirectoryKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { safeFetchOrThrow, safeInsertOrThrow, safeUpdateVoidOrThrow, safeDeleteOrThrow } from '@/services/supabase/queryHelpers'
 import type {
   CustomDirectory,
   CustomDirectoryInsert,
@@ -71,16 +72,11 @@ export function useCustomDirectories() {
     error,
   } = useQuery<CustomDirectory[]>({
     queryKey: customDirectoryKeys.byWorkspace(workspaceId ?? ''),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('custom_directories')
-        .select('*')
-        .eq('workspace_id', workspaceId!)
-        .eq('is_archived', false)
-        .order('order_index')
-      if (error) throw error
-      return data ?? []
-    },
+    queryFn: () =>
+      safeFetchOrThrow<CustomDirectory[]>(
+        supabase.from('custom_directories').select('*').eq('workspace_id', workspaceId!).eq('is_archived', false).order('order_index'),
+        'Не удалось загрузить справочники',
+      ),
     enabled: !!workspaceId,
     staleTime: STALE_TIME.LONG,
   })
@@ -102,13 +98,10 @@ export function useCustomDirectories() {
         color: input.color || '#6B7280',
         order_index: directories.length,
       }
-      const { data, error } = await supabase
-        .from('custom_directories')
-        .insert(insert)
-        .select()
-        .single()
-      if (error) throw error
-      return data
+      return safeInsertOrThrow<CustomDirectory>(
+        supabase.from('custom_directories').insert(insert).select().single(),
+        'Не удалось создать справочник',
+      )
     },
     onSuccess: () => {
       toast.success('Справочник создан')
@@ -128,11 +121,10 @@ export function useCustomDirectories() {
 
   const updateMutation = useMutation({
     mutationFn: async (params: { id: string; data: CustomDirectoryUpdate }) => {
-      const { error } = await supabase
-        .from('custom_directories')
-        .update(params.data)
-        .eq('id', params.id)
-      if (error) throw error
+      await safeUpdateVoidOrThrow(
+        supabase.from('custom_directories').update(params.data).eq('id', params.id),
+        'Не удалось обновить справочник',
+      )
     },
     onSuccess: () => {
       toast.success('Справочник обновлён')
@@ -147,11 +139,10 @@ export function useCustomDirectories() {
 
   const archiveMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('custom_directories')
-        .update({ is_archived: true })
-        .eq('id', id)
-      if (error) throw error
+      await safeUpdateVoidOrThrow(
+        supabase.from('custom_directories').update({ is_archived: true }).eq('id', id),
+        'Не удалось архивировать справочник',
+      )
     },
     onSuccess: () => {
       toast.success('Справочник архивирован')
@@ -166,8 +157,10 @@ export function useCustomDirectories() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('custom_directories').delete().eq('id', id)
-      if (error) throw error
+      await safeDeleteOrThrow(
+        supabase.from('custom_directories').delete().eq('id', id),
+        'Не удалось удалить справочник',
+      )
     },
     onSuccess: () => {
       toast.success('Справочник удалён')

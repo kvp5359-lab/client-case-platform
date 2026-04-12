@@ -47,8 +47,6 @@ function resetStore() {
     {
       panelTab: null,
       lastPanelTab: 'assistant',
-      messengerOpen: false,
-      aiOpen: false,
       requestedMessengerChannel: null,
       pageContext: { workspaceId: null },
       threadsEnabled: false,
@@ -85,23 +83,6 @@ describe('openPanel', () => {
     expect(state.lastPanelTab).toBe('client')
   })
 
-  it('messengerOpen=true для client/internal', () => {
-    useSidePanelStore.getState().openPanel('client')
-    expect(useSidePanelStore.getState().messengerOpen).toBe(true)
-    expect(useSidePanelStore.getState().aiOpen).toBe(false)
-  })
-
-  it('messengerOpen=true для internal', () => {
-    useSidePanelStore.getState().openPanel('internal')
-    expect(useSidePanelStore.getState().messengerOpen).toBe(true)
-  })
-
-  it('aiOpen=true для assistant', () => {
-    useSidePanelStore.getState().openPanel('assistant')
-    expect(useSidePanelStore.getState().aiOpen).toBe(true)
-    expect(useSidePanelStore.getState().messengerOpen).toBe(false)
-  })
-
   it('сохраняет в localStorage panel state', () => {
     useSidePanelStore.getState().openPanel('client')
     const stored = localStorage.getItem('cc:panel-state')
@@ -116,14 +97,10 @@ describe('openPanel', () => {
 })
 
 describe('closePanel', () => {
-  it('сбрасывает panelTab в null и обе панели закрывает', () => {
+  it('сбрасывает panelTab в null', () => {
     useSidePanelStore.getState().openPanel('client')
     useSidePanelStore.getState().closePanel()
-
-    const state = useSidePanelStore.getState()
-    expect(state.panelTab).toBe(null)
-    expect(state.messengerOpen).toBe(false)
-    expect(state.aiOpen).toBe(false)
+    expect(useSidePanelStore.getState().panelTab).toBe(null)
   })
 
   it('сохраняет lastPanelTab перед закрытием для восстановления', () => {
@@ -143,38 +120,26 @@ describe('togglePanel', () => {
   it('открывает панель если она закрыта', () => {
     useSidePanelStore.getState().togglePanel('client')
     expect(useSidePanelStore.getState().panelTab).toBe('client')
-    expect(useSidePanelStore.getState().messengerOpen).toBe(true)
   })
 
   it('закрывает панель если она открыта на той же вкладке', () => {
     useSidePanelStore.getState().openPanel('client')
     useSidePanelStore.getState().togglePanel('client')
-
-    const state = useSidePanelStore.getState()
-    expect(state.panelTab).toBe(null)
-    expect(state.messengerOpen).toBe(false)
+    expect(useSidePanelStore.getState().panelTab).toBe(null)
   })
 
   it('переключается на другую вкладку если открыта другая', () => {
     useSidePanelStore.getState().openPanel('client')
     useSidePanelStore.getState().togglePanel('assistant')
-
-    const state = useSidePanelStore.getState()
-    expect(state.panelTab).toBe('assistant')
-    expect(state.messengerOpen).toBe(false)
-    expect(state.aiOpen).toBe(true)
+    expect(useSidePanelStore.getState().panelTab).toBe('assistant')
   })
 })
 
 describe('openAI', () => {
-  it('открывает AI и закрывает мессенджер', () => {
+  it('открывает AI-панель', () => {
     useSidePanelStore.getState().openPanel('client')
     useSidePanelStore.getState().openAI()
-
-    const state = useSidePanelStore.getState()
-    expect(state.panelTab).toBe('assistant')
-    expect(state.aiOpen).toBe(true)
-    expect(state.messengerOpen).toBe(false)
+    expect(useSidePanelStore.getState().panelTab).toBe('assistant')
   })
 
   it('обновляет pageContext если передан', () => {
@@ -207,69 +172,6 @@ describe('openMessenger', () => {
     useSidePanelStore.getState().openMessenger('client')
     useSidePanelStore.getState().clearRequestedMessengerChannel()
     expect(useSidePanelStore.getState().requestedMessengerChannel).toBe(null)
-  })
-})
-
-// ============================================================
-// close/toggle (legacy API)
-// ============================================================
-
-describe('close', () => {
-  it('close("ai") закрывает только AI если он открыт', () => {
-    useSidePanelStore.getState().openPanel('assistant')
-    useSidePanelStore.getState().close('ai')
-
-    const state = useSidePanelStore.getState()
-    expect(state.panelTab).toBe(null)
-    expect(state.aiOpen).toBe(false)
-  })
-
-  it('close("ai") НЕ трогает мессенджер', () => {
-    useSidePanelStore.getState().openPanel('client')
-    useSidePanelStore.getState().close('ai')
-
-    const state = useSidePanelStore.getState()
-    expect(state.panelTab).toBe('client')
-    expect(state.messengerOpen).toBe(true)
-  })
-
-  it('close("messenger") закрывает только мессенджер', () => {
-    useSidePanelStore.getState().openPanel('client')
-    useSidePanelStore.getState().close('messenger')
-    expect(useSidePanelStore.getState().messengerOpen).toBe(false)
-  })
-
-  it('close() без аргумента закрывает всё', () => {
-    useSidePanelStore.getState().openPanel('client')
-    useSidePanelStore.getState().close()
-    const state = useSidePanelStore.getState()
-    expect(state.panelTab).toBe(null)
-    expect(state.messengerOpen).toBe(false)
-    expect(state.aiOpen).toBe(false)
-  })
-})
-
-describe('toggle', () => {
-  it('toggle("ai") открывает AI если ничего не открыто', () => {
-    useSidePanelStore.getState().toggle('ai')
-    expect(useSidePanelStore.getState().panelTab).toBe('assistant')
-  })
-
-  it('toggle("ai") закрывает AI если он открыт', () => {
-    useSidePanelStore.getState().openPanel('assistant')
-    useSidePanelStore.getState().toggle('ai')
-    expect(useSidePanelStore.getState().panelTab).toBe(null)
-  })
-
-  it('toggle("messenger") открывает client мессенджер если ничего не открыто', () => {
-    useSidePanelStore.getState().toggle('messenger')
-    expect(useSidePanelStore.getState().panelTab).toBe('client')
-  })
-
-  it('toggle("messenger") закрывает мессенджер если он открыт', () => {
-    useSidePanelStore.getState().openPanel('internal')
-    useSidePanelStore.getState().toggle('messenger')
-    expect(useSidePanelStore.getState().panelTab).toBe(null)
   })
 })
 
@@ -469,7 +371,6 @@ describe('openAssistantWithDocuments', () => {
 
     const state = useSidePanelStore.getState()
     expect(state.panelTab).toBe('assistant')
-    expect(state.aiOpen).toBe(true)
     expect(state.pendingAiDocuments).toEqual(docs)
   })
 
@@ -486,7 +387,6 @@ describe('sendDocumentsToMessenger', () => {
 
     const state = useSidePanelStore.getState()
     expect(state.panelTab).toBe('client')
-    expect(state.messengerOpen).toBe(true)
     expect(state.requestedMessengerChannel).toBe('client')
     expect(state.pendingMessengerDocuments).toEqual({ ids: ['d-1', 'd-2'], channel: 'client' })
   })
@@ -515,8 +415,6 @@ describe('forwardMessageToChannel', () => {
     const state = useSidePanelStore.getState()
     expect(state.pendingForwardMessage).toEqual(msg)
     expect(state.activeChatId).toBe('chat-42')
-    expect(state.messengerOpen).toBe(true)
-    expect(state.aiOpen).toBe(false)
   })
 
   it('clearPendingForwardMessage очищает', () => {
@@ -558,7 +456,6 @@ describe('openChat', () => {
     const state = useSidePanelStore.getState()
     expect(state.activeChatId).toBe('chat-1')
     expect(state.panelTab).toBe('client')
-    expect(state.messengerOpen).toBe(true)
   })
 
   it('открывает internal канал', () => {
@@ -611,8 +508,6 @@ describe('reset', () => {
     const state = useSidePanelStore.getState()
     expect(state.panelTab).toBe(null)
     expect(state.lastPanelTab).toBe('assistant')
-    expect(state.messengerOpen).toBe(false)
-    expect(state.aiOpen).toBe(false)
     expect(state.pageContext).toEqual({ workspaceId: null })
     expect(state.threadsEnabled).toBe(false)
     expect(state.activeAiTab).toBe(null)

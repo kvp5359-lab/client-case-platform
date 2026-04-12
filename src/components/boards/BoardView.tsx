@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { BoardColumn } from './BoardColumn'
 import { DEFAULT_COLUMN_WIDTH, type BoardList, type FilterContext } from './types'
-import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceTasks'
+import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/ui/status-dropdown'
 import type { BoardProject } from './hooks/useWorkspaceProjects'

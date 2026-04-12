@@ -3,7 +3,7 @@
  * Сюда вынесены: метки групп, порядок, цвета, функция groupTasks, конвертеры.
  */
 
-import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceTasks'
+import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
 import { getDeadlineGroup, type DeadlineGroup } from '@/utils/deadlineUtils'

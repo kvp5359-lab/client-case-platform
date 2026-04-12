@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { quickReplyKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
+import { safeFetchOrThrow, safeInsertOrThrow, safeDeleteOrThrow, safeUpdateVoidOrThrow } from '@/services/supabase/queryHelpers'
 import type { Database } from '@/types/database'
 
 export type QuickReply = Database['public']['Tables']['quick_replies']['Row']
@@ -20,15 +21,11 @@ type QuickReplyInsert = Database['public']['Tables']['quick_replies']['Insert']
 export function useQuickReplies(workspaceId: string | undefined) {
   return useQuery({
     queryKey: quickReplyKeys.list(workspaceId ?? ''),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quick_replies')
-        .select('*')
-        .eq('workspace_id', workspaceId!)
-        .order('order_index')
-      if (error) throw error
-      return (data || []) as QuickReply[]
-    },
+    queryFn: () =>
+      safeFetchOrThrow<QuickReply[]>(
+        supabase.from('quick_replies').select('*').eq('workspace_id', workspaceId!).order('order_index'),
+        'Не удалось загрузить быстрые ответы',
+      ),
     enabled: !!workspaceId,
     staleTime: STALE_TIME.LONG,
   })
@@ -53,13 +50,10 @@ export function useCreateQuickReply(workspaceId: string | undefined) {
         content: content ?? '',
         group_id: groupId || null,
       }
-      const { data, error } = await supabase
-        .from('quick_replies')
-        .insert(payload)
-        .select('id')
-        .single()
-      if (error) throw error
-      return data
+      return safeInsertOrThrow<{ id: string }>(
+        supabase.from('quick_replies').insert(payload).select('id').single(),
+        'Не удалось создать шаблон',
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: quickReplyKeys.list(workspaceId ?? '') })
@@ -90,8 +84,10 @@ export function useUpdateQuickReply(_workspaceId: string | undefined) {
       if (name !== undefined) updates.name = name.trim()
       if (content !== undefined) updates.content = content
       if (groupId !== undefined) updates.group_id = groupId
-      const { error } = await supabase.from('quick_replies').update(updates).eq('id', id)
-      if (error) throw error
+      await safeUpdateVoidOrThrow(
+        supabase.from('quick_replies').update(updates).eq('id', id),
+        'Не удалось обновить шаблон',
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: quickReplyKeys.all })
@@ -107,8 +103,10 @@ export function useDeleteQuickReply(workspaceId: string | undefined) {
 
   return useMutation({
     mutationFn: async (replyId: string) => {
-      const { error } = await supabase.from('quick_replies').delete().eq('id', replyId)
-      if (error) throw error
+      await safeDeleteOrThrow(
+        supabase.from('quick_replies').delete().eq('id', replyId),
+        'Не удалось удалить шаблон',
+      )
     },
     onSuccess: () => {
       toast.success('Шаблон удалён')

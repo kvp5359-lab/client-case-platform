@@ -2,7 +2,7 @@
 
 import { BoardListCard } from './BoardListCard'
 import type { BoardList, FilterContext } from './types'
-import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceTasks'
+import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/ui/status-dropdown'
 import type { BoardProject } from './hooks/useWorkspaceProjects'

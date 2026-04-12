@@ -207,28 +207,13 @@ export const createDialogsSlice: StateCreator<DialogsSlice, [], [], DialogsSlice
 
   // AI check dialogs
   openContentViewDialog: (content) =>
-    set({
-      contentViewDialogOpen: true,
-      documentContent: content,
-    }),
-
+    set({ contentViewDialogOpen: true, documentContent: content }),
   closeContentViewDialog: () =>
-    set({
-      contentViewDialogOpen: false,
-      documentContent: null,
-    }),
-
+    set({ contentViewDialogOpen: false, documentContent: null }),
   openBatchCheckDialog: (documentIds) =>
-    set({
-      batchCheckDialogOpen: true,
-      batchCheckDocumentIds: documentIds,
-    }),
-
+    set({ batchCheckDialogOpen: true, batchCheckDocumentIds: documentIds }),
   closeBatchCheckDialog: () =>
-    set({
-      batchCheckDialogOpen: false,
-      batchCheckDocumentIds: [],
-    }),
+    set({ batchCheckDialogOpen: false, batchCheckDocumentIds: [] }),
 
   // Folder dialogs
   openAddFolderDialog: () =>

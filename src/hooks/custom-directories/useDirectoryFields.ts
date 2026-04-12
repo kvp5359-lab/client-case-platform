@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { customDirectoryKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { safeFetchOrThrow, safeInsertOrThrow, safeUpdateVoidOrThrow, safeDeleteOrThrow } from '@/services/supabase/queryHelpers'
 import type {
   CustomDirectoryField,
   CustomDirectoryFieldInsert,
@@ -25,15 +26,11 @@ export function useDirectoryFields(directoryId: string | undefined) {
     error,
   } = useQuery<CustomDirectoryField[]>({
     queryKey: customDirectoryKeys.fields(directoryId ?? ''),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('custom_directory_fields')
-        .select('*')
-        .eq('directory_id', directoryId!)
-        .order('order_index')
-      if (error) throw error
-      return data ?? []
-    },
+    queryFn: () =>
+      safeFetchOrThrow<CustomDirectoryField[]>(
+        supabase.from('custom_directory_fields').select('*').eq('directory_id', directoryId!).order('order_index'),
+        'Не удалось загрузить поля справочника',
+      ),
     enabled: !!directoryId,
     staleTime: STALE_TIME.LONG,
   })
@@ -59,13 +56,10 @@ export function useDirectoryFields(directoryId: string | undefined) {
         options: (input.options ?? {}) as import('@/types/database').Json,
         order_index: fields.length,
       }
-      const { data, error } = await supabase
-        .from('custom_directory_fields')
-        .insert(insert)
-        .select()
-        .single()
-      if (error) throw error
-      return data
+      return safeInsertOrThrow<CustomDirectoryField>(
+        supabase.from('custom_directory_fields').insert(insert).select().single(),
+        'Не удалось добавить поле',
+      )
     },
     onSuccess: () => {
       toast.success('Поле добавлено')
@@ -83,11 +77,10 @@ export function useDirectoryFields(directoryId: string | undefined) {
 
   const updateFieldMutation = useMutation({
     mutationFn: async (params: { id: string; data: CustomDirectoryFieldUpdate }) => {
-      const { error } = await supabase
-        .from('custom_directory_fields')
-        .update(params.data)
-        .eq('id', params.id)
-      if (error) throw error
+      await safeUpdateVoidOrThrow(
+        supabase.from('custom_directory_fields').update(params.data).eq('id', params.id),
+        'Не удалось обновить поле',
+      )
     },
     onSuccess: () => {
       toast.success('Поле обновлено')
@@ -100,8 +93,10 @@ export function useDirectoryFields(directoryId: string | undefined) {
 
   const deleteFieldMutation = useMutation({
     mutationFn: async (fieldId: string) => {
-      const { error } = await supabase.from('custom_directory_fields').delete().eq('id', fieldId)
-      if (error) throw error
+      await safeDeleteOrThrow(
+        supabase.from('custom_directory_fields').delete().eq('id', fieldId),
+        'Не удалось удалить поле',
+      )
     },
     onSuccess: () => {
       toast.success('Поле удалено')

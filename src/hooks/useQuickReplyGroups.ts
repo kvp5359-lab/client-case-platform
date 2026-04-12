@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { quickReplyKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
+import { safeFetchOrThrow, safeInsertVoidOrThrow, safeUpdateVoidOrThrow, safeDeleteOrThrow } from '@/services/supabase/queryHelpers'
 import type { Database } from '@/types/database'
 
 export type QuickReplyGroup = Database['public']['Tables']['quick_reply_groups']['Row']
@@ -24,27 +25,24 @@ export function useQuickReplyGroups(workspaceId: string | undefined) {
 
   const groupsQuery = useQuery({
     queryKey: quickReplyKeys.groups(workspaceId!),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quick_reply_groups')
-        .select('*')
-        .eq('workspace_id', workspaceId!)
-        .order('order_index')
-        .order('name')
-      if (error) throw error
-      return (data || []) as QuickReplyGroup[]
-    },
+    queryFn: () =>
+      safeFetchOrThrow<QuickReplyGroup[]>(
+        supabase.from('quick_reply_groups').select('*').eq('workspace_id', workspaceId!).order('order_index').order('name'),
+        'Не удалось загрузить группы быстрых ответов',
+      ),
     enabled: !!workspaceId,
   })
 
   const createGroupMutation = useMutation({
     mutationFn: async ({ name, parentId }: { name: string; parentId?: string | null }) => {
-      const { error } = await supabase.from('quick_reply_groups').insert({
-        workspace_id: workspaceId!,
-        name,
-        parent_id: parentId || null,
-      })
-      if (error) throw error
+      await safeInsertVoidOrThrow(
+        supabase.from('quick_reply_groups').insert({
+          workspace_id: workspaceId!,
+          name,
+          parent_id: parentId || null,
+        }),
+        'Не удалось создать группу',
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: quickReplyKeys.groups(workspaceId!) })
@@ -59,8 +57,10 @@ export function useQuickReplyGroups(workspaceId: string | undefined) {
 
   const updateGroupMutation = useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) => {
-      const { error } = await supabase.from('quick_reply_groups').update({ name }).eq('id', id)
-      if (error) throw error
+      await safeUpdateVoidOrThrow(
+        supabase.from('quick_reply_groups').update({ name }).eq('id', id),
+        'Не удалось обновить группу',
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: quickReplyKeys.groups(workspaceId!) })
@@ -74,8 +74,10 @@ export function useQuickReplyGroups(workspaceId: string | undefined) {
 
   const deleteGroupMutation = useMutation({
     mutationFn: async (groupId: string) => {
-      const { error } = await supabase.from('quick_reply_groups').delete().eq('id', groupId)
-      if (error) throw error
+      await safeDeleteOrThrow(
+        supabase.from('quick_reply_groups').delete().eq('id', groupId),
+        'Не удалось удалить группу',
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: quickReplyKeys.groups(workspaceId!) })

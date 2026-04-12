@@ -9,7 +9,28 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { workspaceThreadKeys, STALE_TIME } from '@/hooks/queryKeys'
-import type { WorkspaceTask } from './useWorkspaceTasks'
+
+export interface WorkspaceTask {
+  id: string
+  name: string
+  type?: 'chat' | 'task'
+  project_id: string | null
+  project_name: string | null
+  workspace_id: string
+  status_id: string | null
+  status_name: string | null
+  status_color: string | null
+  status_order: number | null
+  status_show_to_creator: boolean
+  deadline: string | null
+  accent_color: string
+  icon: string
+  is_pinned: boolean
+  created_at: string
+  updated_at: string
+  created_by: string | null
+  sort_order: number
+}
 
 export function useWorkspaceThreads(workspaceId: string | undefined) {
   const { user } = useAuth()

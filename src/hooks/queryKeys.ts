@@ -160,18 +160,13 @@ export const quickReplyKeys = {
 
 export const inboxKeys = {
   all: ['inbox'] as const,
-  /**
-   * Единственный реальный ключ inbox-кеша — v2 thread-level.
-   * v1 `threads` был удалён в рамках аудита 2026-04-11, П5.1.
-   * Имя `threadsV2` сохранено для обратной совместимости импортов;
-   * в новых местах можно использовать синоним `threads` из этого же объекта.
-   */
+  /** Ключ inbox-кеша (thread-level). v1 удалён, остался только v2. */
+  threads: (workspaceId: string) => ['inbox', 'threads-v2', workspaceId] as const,
+  /** @deprecated Используй `threads`. Алиас для обратной совместимости. */
   threadsV2: (workspaceId: string) => ['inbox', 'threads-v2', workspaceId] as const,
 }
 
 export const taskKeys = {
-  all: ['tasks'] as const,
-  workspace: (workspaceId: string) => ['tasks', 'workspace', workspaceId] as const,
   urgentCount: (workspaceId: string) => ['my-urgent-tasks-count', workspaceId] as const,
 }
 

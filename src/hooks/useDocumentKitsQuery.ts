@@ -19,6 +19,7 @@ import {
   deleteDocumentKit,
 } from '@/services/api/documents/documentKitService'
 import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
+import { useOptimisticMutation } from '@/hooks/shared/useOptimisticMutation'
 
 /**
  * Загрузка наборов документов для проекта.
@@ -97,46 +98,14 @@ export function useSyncDocumentKitMutation() {
  * Удаление набора документов
  */
 export function useDeleteDocumentKitMutation() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async ({ kitId, projectId }: { kitId: string; projectId: string }) => {
-      await deleteDocumentKit(kitId)
-      return { kitId, projectId }
-    },
-    onMutate: async ({ kitId, projectId }) => {
-      // Optimistic update: убираем набор из кэша сразу
-      await queryClient.cancelQueries({
-        queryKey: documentKitKeys.byProject(projectId),
-      })
-
-      const previousData = queryClient.getQueryData<DocumentKitWithDocuments[]>(
-        documentKitKeys.byProject(projectId),
-      )
-
-      queryClient.setQueryData<DocumentKitWithDocuments[]>(
-        documentKitKeys.byProject(projectId),
-        (old) => old?.filter((kit) => kit.id !== kitId),
-      )
-
-      return { previousData }
-    },
-    onError: (error, variables, context) => {
-      // Откат при ошибке
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          documentKitKeys.byProject(variables.projectId),
-          context.previousData,
-        )
-      }
-      logger.error('Ошибка удаления набора:', error)
-      toast.error('Не удалось удалить набор')
-    },
-    onSettled: (_, __, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: documentKitKeys.byProject(variables.projectId),
-      })
-    },
+  return useOptimisticMutation<
+    DocumentKitWithDocuments[],
+    { kitId: string; projectId: string }
+  >({
+    queryKey: (v) => documentKitKeys.byProject(v.projectId),
+    mutationFn: async ({ kitId }) => { await deleteDocumentKit(kitId) },
+    optimisticUpdate: (old, { kitId }) => old?.filter((kit) => kit.id !== kitId),
+    errorMessage: 'Не удалось удалить набор',
   })
 }
 
@@ -144,41 +113,18 @@ export function useDeleteDocumentKitMutation() {
  * Переименование набора документов
  */
 export function useRenameDocumentKitMutation() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async ({ kitId, name }: { kitId: string; name: string; projectId: string }) => {
+  return useOptimisticMutation<
+    DocumentKitWithDocuments[],
+    { kitId: string; name: string; projectId: string }
+  >({
+    queryKey: (v) => documentKitKeys.byProject(v.projectId),
+    mutationFn: async ({ kitId, name }) => {
       const { error } = await supabase.from('document_kits').update({ name }).eq('id', kitId)
       if (error) throw error
     },
-    onMutate: async ({ kitId, name, projectId }) => {
-      await queryClient.cancelQueries({
-        queryKey: documentKitKeys.byProject(projectId),
-      })
-      const previousData = queryClient.getQueryData<DocumentKitWithDocuments[]>(
-        documentKitKeys.byProject(projectId),
-      )
-      queryClient.setQueryData<DocumentKitWithDocuments[]>(
-        documentKitKeys.byProject(projectId),
-        (old) => old?.map((kit) => (kit.id === kitId ? { ...kit, name } : kit)),
-      )
-      return { previousData }
-    },
-    onError: (error, variables, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          documentKitKeys.byProject(variables.projectId),
-          context.previousData,
-        )
-      }
-      logger.error('Ошибка переименования набора:', error)
-      toast.error('Не удалось переименовать набор')
-    },
-    onSettled: (_, __, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: documentKitKeys.byProject(variables.projectId),
-      })
-    },
+    optimisticUpdate: (old, { kitId, name }) =>
+      old?.map((kit) => (kit.id === kitId ? { ...kit, name } : kit)),
+    errorMessage: 'Не удалось переименовать набор',
   })
 }
 
@@ -186,21 +132,18 @@ export function useRenameDocumentKitMutation() {
  * Перемещение набора документов (вверх/вниз)
  */
 export function useMoveDocumentKitMutation() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async ({
-      kitId,
-      neighborKitId,
-      kitSortOrder,
-      neighborSortOrder,
-    }: {
+  return useOptimisticMutation<
+    DocumentKitWithDocuments[],
+    {
       kitId: string
       neighborKitId: string
       kitSortOrder: number
       neighborSortOrder: number
       projectId: string
-    }) => {
+    }
+  >({
+    queryKey: (v) => documentKitKeys.byProject(v.projectId),
+    mutationFn: async ({ kitId, neighborKitId, kitSortOrder, neighborSortOrder }) => {
       const { error: e1 } = await supabase
         .from('document_kits')
         .update({ sort_order: neighborSortOrder })
@@ -212,45 +155,23 @@ export function useMoveDocumentKitMutation() {
         .eq('id', neighborKitId)
       if (e2) throw e2
     },
-    onMutate: async ({ kitId, neighborKitId, projectId }) => {
-      await queryClient.cancelQueries({
-        queryKey: documentKitKeys.byProject(projectId),
+    optimisticUpdate: (old, { kitId, neighborKitId }) => {
+      if (!old) return old
+      const updated = old.map((kit) => {
+        if (kit.id === kitId) {
+          const neighbor = old.find((k) => k.id === neighborKitId)
+          return { ...kit, sort_order: neighbor?.sort_order ?? kit.sort_order }
+        }
+        if (kit.id === neighborKitId) {
+          const target = old.find((k) => k.id === kitId)
+          return { ...kit, sort_order: target?.sort_order ?? kit.sort_order }
+        }
+        return kit
       })
-      const previousData = queryClient.getQueryData<DocumentKitWithDocuments[]>(
-        documentKitKeys.byProject(projectId),
-      )
-      if (previousData) {
-        const updated = previousData.map((kit) => {
-          if (kit.id === kitId) {
-            const neighbor = previousData.find((k) => k.id === neighborKitId)
-            return { ...kit, sort_order: neighbor?.sort_order ?? kit.sort_order }
-          }
-          if (kit.id === neighborKitId) {
-            const target = previousData.find((k) => k.id === kitId)
-            return { ...kit, sort_order: target?.sort_order ?? kit.sort_order }
-          }
-          return kit
-        })
-        updated.sort((a, b) => a.sort_order - b.sort_order)
-        queryClient.setQueryData(documentKitKeys.byProject(projectId), updated)
-      }
-      return { previousData }
+      updated.sort((a, b) => a.sort_order - b.sort_order)
+      return updated
     },
-    onError: (error, variables, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          documentKitKeys.byProject(variables.projectId),
-          context.previousData,
-        )
-      }
-      logger.error('Ошибка перемещения набора:', error)
-      toast.error('Не удалось переместить набор')
-    },
-    onSettled: (_, __, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: documentKitKeys.byProject(variables.projectId),
-      })
-    },
+    errorMessage: 'Не удалось переместить набор',
   })
 }
 

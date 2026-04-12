@@ -56,8 +56,6 @@ const {
 export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
   panelTab: _initialPanelTab,
   lastPanelTab: _initialPanelTab ?? 'assistant',
-  messengerOpen: _initialPanelTab === 'client' || _initialPanelTab === 'internal',
-  aiOpen: _initialPanelTab === 'assistant',
   requestedMessengerChannel: null,
 
   pageContext: { workspaceId: null },
@@ -75,12 +73,7 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
       lsSet(LS_KEY_PANEL_TAB_PREFIX + pageContext.projectId, tab)
     }
     lsSet(LS_KEY_PANEL_STATE, { tab })
-    set({
-      panelTab: tab,
-      lastPanelTab: tab,
-      messengerOpen: tab === 'client' || tab === 'internal',
-      aiOpen: tab === 'assistant',
-    })
+    set({ panelTab: tab, lastPanelTab: tab })
   },
 
   closePanel: () => {
@@ -88,8 +81,6 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
     lsSet(LS_KEY_PANEL_STATE, { tab: null })
     set({
       panelTab: null,
-      messengerOpen: false,
-      aiOpen: false,
       ...(current ? { lastPanelTab: current } : {}),
     })
   },
@@ -101,23 +92,16 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
     }
     if (state.panelTab === tab) {
       lsSet(LS_KEY_PANEL_STATE, { tab: null })
-      set({ panelTab: null, messengerOpen: false, aiOpen: false, lastPanelTab: tab })
+      set({ panelTab: null, lastPanelTab: tab })
     } else {
       lsSet(LS_KEY_PANEL_STATE, { tab })
-      set({
-        panelTab: tab,
-        lastPanelTab: tab,
-        messengerOpen: tab === 'client' || tab === 'internal',
-        aiOpen: tab === 'assistant',
-      })
+      set({ panelTab: tab, lastPanelTab: tab })
     }
   },
 
   openAI: (ctx) => {
     set((state) => ({
       panelTab: 'assistant',
-      messengerOpen: false,
-      aiOpen: true,
       ...(ctx ? { pageContext: { ...state.pageContext, ...ctx } } : {}),
     }))
   },
@@ -126,46 +110,12 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
     const tab: PanelTab = channel === 'internal' ? 'internal' : 'client'
     set({
       panelTab: tab,
-      messengerOpen: true,
-      aiOpen: false,
       ...(channel ? { requestedMessengerChannel: channel } : {}),
     })
   },
 
   clearRequestedMessengerChannel: () => {
     set({ requestedMessengerChannel: null })
-  },
-
-  close: (panel) => {
-    const state = get()
-    if (panel === 'ai') {
-      if (state.panelTab === 'assistant') {
-        set({ panelTab: null, messengerOpen: false, aiOpen: false })
-      }
-    } else if (panel === 'messenger') {
-      if (state.panelTab === 'client' || state.panelTab === 'internal') {
-        set({ panelTab: null, messengerOpen: false, aiOpen: false })
-      }
-    } else {
-      set({ panelTab: null, messengerOpen: false, aiOpen: false })
-    }
-  },
-
-  toggle: (type) => {
-    const state = get()
-    if (type === 'ai') {
-      if (state.panelTab === 'assistant') {
-        set({ panelTab: null, messengerOpen: false, aiOpen: false })
-      } else {
-        state.openAI()
-      }
-    } else {
-      if (state.panelTab === 'client' || state.panelTab === 'internal') {
-        set({ panelTab: null, messengerOpen: false, aiOpen: false })
-      } else {
-        state.openMessenger()
-      }
-    }
   },
 
   setContext: (ctx) =>
@@ -239,8 +189,6 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
   openAssistantWithDocuments: (docs) => {
     set({
       panelTab: 'assistant',
-      messengerOpen: false,
-      aiOpen: true,
       pendingAiDocuments: docs,
     })
   },
@@ -250,8 +198,6 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
   sendDocumentsToMessenger: (ids, channel) => {
     set({
       panelTab: channel === 'internal' ? 'internal' : 'client',
-      messengerOpen: true,
-      aiOpen: false,
       requestedMessengerChannel: channel,
       pendingMessengerDocuments: { ids, channel },
     })
@@ -260,8 +206,6 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
 
   forwardMessageToChannel: (msg) => {
     set({
-      messengerOpen: true,
-      aiOpen: false,
       activeChatId: msg.targetChatId,
       pendingForwardMessage: msg,
     })
@@ -278,8 +222,6 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
     set({
       panelTab: null,
       lastPanelTab: 'assistant',
-      messengerOpen: false,
-      aiOpen: false,
       requestedMessengerChannel: null,
       pageContext: { workspaceId: null },
       threadsEnabled: false,
@@ -303,8 +245,6 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
     set({
       panelTab: tab,
       activeChatId: chatId,
-      messengerOpen: true,
-      aiOpen: false,
     })
   },
 

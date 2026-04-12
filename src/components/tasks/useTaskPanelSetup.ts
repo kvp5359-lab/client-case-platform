@@ -44,7 +44,7 @@ import {
   useRenameTask,
   useUpdateTaskSettings,
 } from './useTaskMutations'
-import { taskKeys } from '@/hooks/queryKeys'
+import { workspaceThreadKeys } from '@/hooks/queryKeys'
 import type { TaskItem } from './types'
 import type { TaskPanelProps, ProjectHeaderInfo, PanelStackItem } from './TaskPanel'
 
@@ -76,7 +76,7 @@ export function useTaskPanelSetup({ workspaceId, extraInvalidateKeys = [] }: Use
   const { data: membersMap = {} } = useTaskAssigneesMap(threadIds)
 
   const invalidateKeys = useMemo(
-    () => [taskKeys.workspace(workspaceId), ...extraInvalidateKeys],
+    () => [workspaceThreadKeys.workspace(workspaceId), ...extraInvalidateKeys],
     [workspaceId, extraInvalidateKeys],
   )
   const updateStatus = useUpdateTaskStatus(invalidateKeys)

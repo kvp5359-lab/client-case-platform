@@ -64,11 +64,6 @@ export interface SidePanelStore {
   /** Последняя открытая вкладка (для восстановления при повторном открытии) */
   lastPanelTab: PanelTab
 
-  /** Совместимость: мессенджер открыт */
-  messengerOpen: boolean
-  /** Совместимость: AI-ассистент открыт */
-  aiOpen: boolean
-
   /** Контекст текущей страницы (постоянный, пока мы на ProjectPage) */
   pageContext: PanelContext
 
@@ -98,18 +93,14 @@ export interface SidePanelStore {
   /** Переключить вкладку (или закрыть если та же) */
   togglePanel: (tab: PanelTab) => void
 
-  /** Совместимость: открыть AI-панель */
+  /** Открыть AI-панель */
   openAI: (ctx?: { projectId?: string; templateId?: string }) => void
   /** Канал мессенджера, запрошенный извне (из бейджа) */
   requestedMessengerChannel: 'client' | 'internal' | null
-  /** Совместимость: открыть мессенджер */
+  /** Открыть мессенджер */
   openMessenger: (channel?: 'client' | 'internal') => void
   /** Сбросить запрошенный канал (после применения) */
   clearRequestedMessengerChannel: () => void
-  /** Совместимость: закрыть конкретную панель или все */
-  close: (panel?: PanelType) => void
-  /** Совместимость: тоггл конкретной панели */
-  toggle: (type: PanelType) => void
   /** Установить контекст страницы (вызывается из ProjectPage/WorkspaceLayout) */
   setContext: (ctx: Partial<PanelContext>) => void
   setThreadsEnabled: (enabled: boolean) => void

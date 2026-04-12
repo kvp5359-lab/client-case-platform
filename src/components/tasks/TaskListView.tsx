@@ -15,9 +15,9 @@ import { useRouter } from 'next/navigation'
 import { CheckSquare, Loader2, Search, X, Plus, List, CalendarDays } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { useWorkspaceTasks } from '@/hooks/tasks/useWorkspaceTasks'
+import { useWorkspaceThreads } from '@/hooks/tasks/useWorkspaceThreads'
 import { useTaskStatuses } from '@/hooks/useStatuses'
-import { messengerKeys, taskKeys } from '@/hooks/queryKeys'
+import { messengerKeys, taskKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
 import { useProjectThreads, useDeleteThread } from '@/hooks/messenger/useProjectThreads'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { DeleteThreadDialog } from '@/components/messenger/DeleteThreadDialog'
@@ -95,7 +95,7 @@ export const TaskListView = memo(function TaskListView({
 
   // ── Загрузка данных ──
 
-  const { data: rawWorkspaceTasks = [], isLoading: isLoadingWorkspace } = useWorkspaceTasks(
+  const { data: rawWorkspaceTasks = [], isLoading: isLoadingWorkspace } = useWorkspaceThreads(
     isProjectMode ? undefined : workspaceId,
   )
   const { data: rawThreads = [], isLoading: isLoadingThreads } = useProjectThreads(
@@ -178,7 +178,7 @@ export const TaskListView = memo(function TaskListView({
 
   const invalidateKeys = useMemo(() => {
     const keys: Array<readonly unknown[]> = [
-      taskKeys.workspace(workspaceId),
+      workspaceThreadKeys.workspace(workspaceId),
       taskKeys.urgentCount(workspaceId),
     ]
     if (projectId) {

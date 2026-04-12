@@ -5,7 +5,7 @@ import { safeCssColor } from '@/utils/isValidCssColor'
 import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
 import { ParticipantAvatars, type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { UnreadBadge } from '@/components/tasks/UnreadBadge'
-import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceTasks'
+import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { DisplayMode, VisibleField } from './types'
 
 interface BoardTaskRowProps {
