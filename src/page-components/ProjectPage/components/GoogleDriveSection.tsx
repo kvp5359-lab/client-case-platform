@@ -74,7 +74,7 @@ export function GoogleDriveSection({
   projectName,
   projectDescription,
   projectCreatedAt,
-  templateName,
+  templateName: _templateName,
   onOpenDialog,
   onCloseDialog,
   onFolderLinkChange,
