@@ -96,7 +96,7 @@ export function WorkspaceSettingsPage() {
               >
                 Шаблоны
               </TabsTrigger>
-              {permissions.isOwner && (
+              {(permissions.isOwner || permissions.can('manage_workspace_settings')) && (
                 <TabsTrigger value="trash" onClick={() => handleTabChange('trash')}>
                   Корзина
                 </TabsTrigger>
