@@ -98,12 +98,12 @@ export function ModulesSection({
           const isForms = module.id === 'forms'
           const isDocuments = module.id === 'documents'
           const isKnowledgeBase = module.id === 'knowledge_base'
-          const isThreads = module.id === 'threads'
+          const isTasks = module.id === 'tasks'
           const hasContent =
             (isForms && isEnabled) ||
             (isDocuments && isEnabled) ||
             (isKnowledgeBase && isEnabled) ||
-            (isThreads && isEnabled)
+            (isTasks && isEnabled)
           const isExpanded = expandedModules.has(module.id)
           const contentItems = isForms
             ? linkedForms.map((r) => r.form_template.name)
@@ -114,7 +114,7 @@ export function ModulesSection({
                     ...linkedKnowledgeGroups.map((r) => r.knowledge_group.name),
                     ...linkedKnowledgeArticles.map((r) => r.knowledge_article.title),
                   ]
-                : isThreads
+                : isTasks
                   ? scopedThreadTemplates.map((t) => t.name)
                   : []
 
@@ -190,11 +190,11 @@ export function ModulesSection({
                     />
                   )}
 
-                  {isThreads && isEnabled && (
+                  {isTasks && isEnabled && (
                     <ProjectTemplateThreadList
                       workspaceId={workspaceId}
                       projectTemplateId={projectTemplateId}
-                      emptyHint="Шаблонов задач и чатов пока нет"
+                      emptyHint="Шаблонов задач пока нет"
                       addLabel="Добавить шаблон"
                     />
                   )}

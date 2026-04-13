@@ -149,7 +149,7 @@ export default function ProjectPage() {
 
   // Боковая панель: передаём контекст проекта + messenger
   const setContext = useSidePanelStore((s) => s.setContext)
-  const setThreadsEnabled = useSidePanelStore((s) => s.setThreadsEnabled)
+  const setChatsEnabled = useSidePanelStore((s) => s.setChatsEnabled)
   const sidePanelOpen = useSidePanelStore((s) => s.panelTab !== null)
 
   const panelTab = useSidePanelStore((s) => s.panelTab)
@@ -206,13 +206,12 @@ export default function ProjectPage() {
     }
   }, [projectTemplate, setContext])
 
-  // Threads enabled — обновляем только когда данные проекта загружены.
-  // `threads` включает и таб задач, и клиентскую/командную мессенджер-панели.
+  // Chats enabled — обновляем только когда данные проекта загружены.
   useEffect(() => {
     if (!isLoading) {
-      setThreadsEnabled(!!modules.threads)
+      setChatsEnabled(!!modules.chats)
     }
-  }, [modules.threads, isLoading, setThreadsEnabled])
+  }, [modules.chats, isLoading, setChatsEnabled])
 
   // Открытие мессенджера по URL-параметру ?panel=messenger&channel=internal
   // (клик на бейдж в сайдбаре). chatId уже сохранён в localStorage ДО
@@ -220,7 +219,7 @@ export default function ProjectPage() {
   const openMessenger = useSidePanelStore((s) => s.openMessenger)
   useEffect(() => {
     const params = new URLSearchParams(currentSearchParams.toString())
-    if (params.get('panel') === 'messenger' && modules.threads) {
+    if (params.get('panel') === 'messenger' && modules.chats) {
       const channel = params.get('channel') === 'internal' ? ('internal' as const) : undefined
       const chatId = params.get('chatId')
       if (chatId) {
@@ -237,7 +236,7 @@ export default function ProjectPage() {
         `/workspaces/${workspaceId}/projects/${projectId}${remaining ? `?${remaining}` : ''}`,
       )
     }
-  }, [projectId, currentSearchParams.toString(), modules.threads]) // eslint-disable-line react-hooks/exhaustive-deps -- navigate/openMessenger stable refs
+  }, [projectId, currentSearchParams.toString(), modules.chats]) // eslint-disable-line react-hooks/exhaustive-deps -- navigate/openMessenger stable refs
 
   // === ОБРАБОТЧИКИ ===
 

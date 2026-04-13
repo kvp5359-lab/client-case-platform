@@ -49,7 +49,7 @@ function resetStore() {
       lastPanelTab: 'assistant',
       requestedMessengerChannel: null,
       pageContext: { workspaceId: null },
-      threadsEnabled: false,
+      chatsEnabled: false,
       activeAiTab: null,
       aiSessions: {},
       pendingAiDocuments: [],
@@ -216,13 +216,13 @@ describe('setContext', () => {
   })
 })
 
-describe('setThreadsEnabled', () => {
-  it('меняет флаг threadsEnabled', () => {
-    useSidePanelStore.getState().setThreadsEnabled(true)
-    expect(useSidePanelStore.getState().threadsEnabled).toBe(true)
+describe('setChatsEnabled', () => {
+  it('меняет флаг chatsEnabled', () => {
+    useSidePanelStore.getState().setChatsEnabled(true)
+    expect(useSidePanelStore.getState().chatsEnabled).toBe(true)
 
-    useSidePanelStore.getState().setThreadsEnabled(false)
-    expect(useSidePanelStore.getState().threadsEnabled).toBe(false)
+    useSidePanelStore.getState().setChatsEnabled(false)
+    expect(useSidePanelStore.getState().chatsEnabled).toBe(false)
   })
 })
 
@@ -498,7 +498,7 @@ describe('reset', () => {
     // Накатываем кучу состояния
     useSidePanelStore.getState().openPanel('client')
     useSidePanelStore.getState().setContext({ workspaceId: 'ws-1', projectId: 'p-1' })
-    useSidePanelStore.getState().setThreadsEnabled(true)
+    useSidePanelStore.getState().setChatsEnabled(true)
     useSidePanelStore.getState().setActiveAiTab('chat')
     useSidePanelStore.getState().updateAiSession('p-1', { activeConversationId: 'conv-1' })
     useSidePanelStore.getState().openAssistantWithDocuments([{ id: 'd-1', name: 'X' }])
@@ -509,7 +509,7 @@ describe('reset', () => {
     expect(state.panelTab).toBe(null)
     expect(state.lastPanelTab).toBe('assistant')
     expect(state.pageContext).toEqual({ workspaceId: null })
-    expect(state.threadsEnabled).toBe(false)
+    expect(state.chatsEnabled).toBe(false)
     expect(state.activeAiTab).toBe(null)
     expect(state.aiSessions).toEqual({})
     expect(state.pendingAiDocuments).toEqual([])

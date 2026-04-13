@@ -11,6 +11,7 @@
 import {
   Settings,
   CheckSquare,
+  MessageSquare,
   History,
   FileText,
   DollarSign,
@@ -59,17 +60,24 @@ export interface ModuleDefinition {
  */
 export const PROJECT_MODULES: ModuleDefinition[] = [
   // === Основные вкладки ===
-  // Таб "Задачи" остаётся в UI проекта как отдельная вкладка, но он, а
-  // также клиентский/командный чаты (которые рендерятся в правой панели,
-  // не как табы), гейтятся одним module id — `threads`. См. миграцию
-  // 20260411_merge_task_chat_modules_into_threads.sql
   {
     id: 'tasks',
     label: 'Задачи',
     icon: CheckSquare,
     order: 1,
-    templateKey: 'threads',
-    permissionKey: 'threads',
+    templateKey: 'tasks',
+    permissionKey: 'tasks',
+  },
+  // Чаты живут в правой панели, отдельной вкладки нет (showTab: false).
+  // Модуль управляет видимостью мессенджер-панели.
+  {
+    id: 'chats',
+    label: 'Чаты',
+    icon: MessageSquare,
+    order: 99,
+    templateKey: 'chats',
+    permissionKey: 'chats',
+    showTab: false,
   },
   {
     id: 'documents',
@@ -77,7 +85,7 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     icon: FolderOpen,
     order: 2,
     templateKey: null,
-    permissionKey: 'card_view',
+    permissionKey: 'documents',
   },
   {
     id: 'forms',

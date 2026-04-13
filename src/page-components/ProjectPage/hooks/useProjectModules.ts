@@ -56,7 +56,6 @@ export function useProjectModules(
   }, [availableModules])
 
   // Объект modules — флаги для быстрой проверки в UI.
-  // `threads` — объединённый модуль задач + клиентского/командного чатов.
   const modules = useMemo(
     () => {
       const has = (id: string) => availableModules.some((m) => m.id === id)
@@ -65,13 +64,8 @@ export function useProjectModules(
         forms: has('forms'),
         documents: has('documents'),
         finances: has('finances'),
-        // Таб "Задачи" появляется в availableModules с id='tasks', но
-        // сам модуль в enabled_modules называется 'threads'. Поэтому
-        // `has('tasks')` здесь — корректная проверка "модуль threads
-        // доступен", а имена `threads` и `tasks` мы продолжаем
-        // различать осознанно: threads — бизнес-флаг (включена ли вся
-        // группа), tasks — id конкретного таба.
-        threads: has('tasks'),
+        tasks: has('tasks'),
+        chats: has('chats'),
         history: has('history'),
         participants: has('settings'), // участники — вкладка в settings, не отдельный модуль
         // ai-chat не в реестре: доступ = ИЛИ трёх permission keys + feature gate,

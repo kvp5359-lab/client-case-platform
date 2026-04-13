@@ -84,7 +84,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   const pageContext = useSidePanelStore((s) => s.pageContext)
   const openPanel = useSidePanelStore((s) => s.openPanel)
   const setContext = useSidePanelStore((s) => s.setContext)
-  const messengerEnabled = useSidePanelStore((s) => s.threadsEnabled)
+  const messengerEnabled = useSidePanelStore((s) => s.chatsEnabled)
   const panelOpen = panelTab !== null
 
   // Sync workspaceId in store

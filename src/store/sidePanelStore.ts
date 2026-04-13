@@ -59,7 +59,7 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
   requestedMessengerChannel: null,
 
   pageContext: { workspaceId: null },
-  threadsEnabled: false,
+  chatsEnabled: false,
   activeAiTab: persistedAiTab,
   aiSessions: initialAiSessions,
   pendingAiDocuments: [],
@@ -133,7 +133,7 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
       return next
     }),
 
-  setThreadsEnabled: (enabled) => set({ threadsEnabled: enabled }),
+  setChatsEnabled: (enabled) => set({ chatsEnabled: enabled }),
 
   setActiveAiTab: (tab) => {
     lsSet(LS_KEY_AI_TAB, tab)
@@ -224,7 +224,7 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
       lastPanelTab: 'assistant',
       requestedMessengerChannel: null,
       pageContext: { workspaceId: null },
-      threadsEnabled: false,
+      chatsEnabled: false,
       activeAiTab: null,
       aiSessions: {},
       pendingAiDocuments: [],

@@ -68,11 +68,10 @@ export interface SidePanelStore {
   pageContext: PanelContext
 
   /**
-   * Доступность объединённого модуля `threads` на текущей странице.
-   * Он включает таб задач и обе мессенджер-панели (клиент + команда) —
-   * если флаг false, кнопки открытия мессенджера скрываются.
+   * Доступность модуля `chats` на текущей странице.
+   * Если false — кнопки открытия мессенджера скрываются.
    */
-  threadsEnabled: boolean
+  chatsEnabled: boolean
 
   /** Активная вкладка AI-панели (sub-tab внутри assistant) */
   activeAiTab: string | null
@@ -103,7 +102,7 @@ export interface SidePanelStore {
   clearRequestedMessengerChannel: () => void
   /** Установить контекст страницы (вызывается из ProjectPage/WorkspaceLayout) */
   setContext: (ctx: Partial<PanelContext>) => void
-  setThreadsEnabled: (enabled: boolean) => void
+  setChatsEnabled: (enabled: boolean) => void
   setActiveAiTab: (tab: string) => void
   /** Получить или создать AI-сессию для проекта */
   getAiSession: (projectId: string) => AiSessionState
