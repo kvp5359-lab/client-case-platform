@@ -63,9 +63,9 @@ export const ProjectListItem = memo(function ProjectListItem({
   return (
     <div
       data-project-id={project.id}
-      className={`group/item relative border rounded-[6px] px-0 py-0 transition-all duration-150 ease-out ${
+      className={`group/item relative border rounded-[6px] transition-all duration-150 ease-out ${
         showTabs
-          ? 'border-gray-200 bg-gray-50/40 shadow-[0_0_8px_rgba(0,0,0,0.12)]'
+          ? 'border-gray-200 bg-gray-50/40 shadow-[0_0_8px_rgba(0,0,0,0.12)] pb-1.5 pr-1.5'
           : 'border-transparent bg-transparent shadow-none'
       }`}
     >
@@ -172,7 +172,7 @@ export const ProjectListItem = memo(function ProjectListItem({
       {hasTabsWrapper && visibleTabs && (
         <CollapsiblePrimitive.Root open={showTabs}>
           <CollapsiblePrimitive.Content data-slot="sidebar-tabs-collapsible">
-            <nav className="ml-[30px] mt-0.5 mb-0.5" style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+            <nav className="ml-[16px] mt-0.5" style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
               {visibleTabs.map((tab) => {
                 const Icon = tab.icon
                 const isTabActive = showTabs && activeTab === tab.id

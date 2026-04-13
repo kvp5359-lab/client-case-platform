@@ -98,16 +98,18 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   // Вкладки активного проекта для клиентского режима.
   // template_id берём из уже загруженного списка projects — без лишнего запроса за проектом.
   const activeProjectTemplateId = projects.find((p) => p.id === activeProjectId)?.template_id
-  const { data: projectTemplate } = useProjectTemplate(activeProjectTemplateId)
-  const { availableModules } = useProjectModules(activeProjectId, workspaceId, projectTemplate)
+  const { data: projectTemplate, isLoading: isTemplateLoading } = useProjectTemplate(activeProjectTemplateId)
+  const { availableModules, isLoading: isPermissionsLoading } = useProjectModules(activeProjectId, workspaceId, projectTemplate)
+  const isTabsLoading = isTemplateLoading || isPermissionsLoading
 
   // Показываем предыдущий список вкладок, пока загружаются реальные —
   // у клиента набор вкладок обычно одинаковый во всех проектах.
   const [lastModules, setLastModules] = useState(availableModules)
   useEffect(() => {
-    if (availableModules.length > 0) setLastModules(availableModules)
-  }, [availableModules])
-  const displayModules = availableModules.length > 0 ? availableModules : lastModules
+    // Не обновляем, пока шаблон/права ещё грузятся — иначе получим неполный список
+    if (!isTabsLoading && availableModules.length > 0) setLastModules(availableModules)
+  }, [availableModules, isTabsLoading])
+  const displayModules = (!isTabsLoading && availableModules.length > 0) ? availableModules : lastModules
   // Активная вкладка из URL
   const activeTab = isClientOnly ? (searchParams.get('tab') || 'documents') : undefined
 
