@@ -47,8 +47,11 @@ interface GoogleDriveSectionProps {
   // Корневая папка из шаблона (для создания подпапки)
   rootFolderId?: string | null
 
-  // Название проекта (для дефолтного имени папки)
+  // Данные проекта (для дефолтного имени папки)
   projectName?: string
+  projectDescription?: string | null
+  projectCreatedAt?: string | null
+  templateName?: string | null
 
   // Действия
   onOpenDialog: () => void
@@ -69,6 +72,9 @@ export function GoogleDriveSection({
   canManageGoogleDrive,
   rootFolderId,
   projectName,
+  projectDescription,
+  projectCreatedAt,
+  templateName,
   onOpenDialog,
   onCloseDialog,
   onFolderLinkChange,
@@ -81,9 +87,26 @@ export function GoogleDriveSection({
 
   const hasCreateOption = !!rootFolderId && !!onCreateFolder
 
+  const buildDefaultFolderName = () => {
+    const parts: string[] = ['БП']
+
+    if (projectCreatedAt) {
+      const d = new Date(projectCreatedAt)
+      const yyyy = d.getFullYear()
+      const mm = String(d.getMonth() + 1).padStart(2, '0')
+      const dd = String(d.getDate()).padStart(2, '0')
+      parts.push(`${yyyy}.${mm}.${dd}`)
+    }
+
+    if (projectName) parts.push(projectName)
+    if (projectDescription) parts.push(projectDescription)
+
+    return parts.join(' ').replace(/[\s,]+/g, '_')
+  }
+
   const handleOpenDialog = () => {
     setDialogMode('link')
-    setNewFolderName(projectName || '')
+    setNewFolderName(buildDefaultFolderName() || projectName || '')
     onOpenDialog()
   }
 

@@ -44,8 +44,8 @@ export function useAddFormKit({
   const createFormKit = useCreateFormKit(projectId, workspaceId)
   const queryClient = useQueryClient()
 
-  const [mode, setMode] = useState<Mode>('template')
-  const [googleSheetSubMode, setGoogleSheetSubMode] = useState<GoogleSheetSubMode>('existing')
+  const [mode, setMode] = useState<Mode>('google-sheet')
+  const [googleSheetSubMode, setGoogleSheetSubMode] = useState<GoogleSheetSubMode>('from-template')
   const [templates, setTemplates] = useState<TemplateWithFields[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
@@ -104,8 +104,8 @@ export function useAddFormKit({
 
   useEffect(() => {
     if (!open) {
-      setMode('template')
-      setGoogleSheetSubMode('existing')
+      setMode('google-sheet')
+      setGoogleSheetSubMode('from-template')
       setSelectedTemplateId(null)
       setSheetName(defaultBriefName)
       setSheetLink('')

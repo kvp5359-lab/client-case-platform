@@ -146,6 +146,9 @@ export function ProjectTabsContent({
               canManageGoogleDrive={canManageGoogleDrive}
               rootFolderId={rootFolderId}
               projectName={project.name}
+              projectDescription={project.description}
+              projectCreatedAt={project.created_at}
+              templateName={templateName}
               onOpenDialog={googleDrive.openDialog}
               onCloseDialog={googleDrive.closeDialog}
               onFolderLinkChange={googleDrive.setFolderLink}

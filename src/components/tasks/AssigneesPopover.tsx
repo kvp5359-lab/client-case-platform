@@ -273,7 +273,7 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
       onClick={(e) => e.stopPropagation()}
     >
       {props.assignees.length > 0 ? (
-        <ParticipantAvatars participants={props.assignees} maxVisible={3} />
+        <ParticipantAvatars participants={props.assignees} maxVisible={3} size="sm" />
       ) : (
         <span className="flex items-center gap-1 text-xs text-muted-foreground/50 hover:text-muted-foreground">
           <UserPlus className="w-3.5 h-3.5" />
