@@ -37,6 +37,8 @@ async function syncReactionToTelegram(messageId: string, emoji: string, added: b
 
     if (!msg?.telegram_message_id || !msg?.telegram_chat_id) return
 
+    await supabase.auth.getSession()
+
     const { data: funcData } = await supabase.functions.invoke('telegram-set-reaction', {
       body: {
         chat_id: msg.telegram_chat_id,

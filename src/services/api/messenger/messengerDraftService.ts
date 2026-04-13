@@ -207,6 +207,9 @@ export async function publishDraftMessage(
   if (tgLink?.telegram_chat_id) {
     const hasAttachments = message.attachments && message.attachments.length > 0
 
+    // Refresh session to ensure fresh JWT for Edge Function auth
+    await supabase.auth.getSession()
+
     // Single call: with attachments_only if has files, otherwise plain text
     supabase.functions
       .invoke('telegram-send-message', {

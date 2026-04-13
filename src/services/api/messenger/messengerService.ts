@@ -246,6 +246,9 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     const { data: tgLink } = await tgQuery.maybeSingle()
 
     if (tgLink?.telegram_chat_id) {
+      // Refresh session to ensure fresh JWT for Edge Function auth
+      await supabase.auth.getSession()
+
       supabase.functions
         .invoke('telegram-send-message', {
           body: {
@@ -324,6 +327,8 @@ export async function deleteMessage(messageId: string): Promise<void> {
   if (deleteError) throw new ConversationError(`Ошибка удаления сообщения: ${deleteError.message}`)
 
   if (message.telegram_message_id && message.telegram_chat_id) {
+    await supabase.auth.getSession()
+
     supabase.functions
       .invoke('telegram-delete-message', {
         body: {
@@ -365,6 +370,8 @@ export async function editMessage(
   await hydrateReplyMessages([message])
 
   if (message.telegram_message_id && message.telegram_chat_id) {
+    await supabase.auth.getSession()
+
     supabase.functions
       .invoke('telegram-edit-message', {
         body: {
