@@ -8,6 +8,8 @@ import {
   projectTemplateKeys,
   formTemplateKeys,
   documentKitTemplateKeys,
+  knowledgeListKeys,
+  knowledgeBaseKeys,
 } from '@/hooks/queryKeys'
 import type {
   FormTemplateWithRelation,
@@ -157,7 +159,7 @@ export function useLinkedKnowledgeGroups(templateId: string | undefined) {
  */
 export function useAvailableKnowledgeArticles(workspaceId: string | undefined) {
   return useQuery({
-    queryKey: ['knowledge-articles', workspaceId],
+    queryKey: knowledgeListKeys.articlesList(workspaceId),
     queryFn: async () => {
       if (!workspaceId) return []
 
@@ -179,7 +181,7 @@ export function useAvailableKnowledgeArticles(workspaceId: string | undefined) {
  */
 export function useAvailableKnowledgeGroups(workspaceId: string | undefined) {
   return useQuery({
-    queryKey: ['knowledge-groups', workspaceId],
+    queryKey: knowledgeBaseKeys.groups(workspaceId ?? ''),
     queryFn: async () => {
       if (!workspaceId) return []
 

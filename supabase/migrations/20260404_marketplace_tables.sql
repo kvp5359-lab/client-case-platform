@@ -125,3 +125,21 @@ CREATE TABLE IF NOT EXISTS custom_domains (
   verified_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- ============================================================
+-- RLS — включаем на всех таблицах маркетплейса
+-- Политики будут добавлены при реальном запуске маркетплейса,
+-- но RLS должен быть включён заранее, чтобы без политик
+-- таблицы были закрыты по умолчанию (deny all).
+-- ============================================================
+
+ALTER TABLE service_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lawyer_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lawyer_services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE blog_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE blog_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE custom_domains ENABLE ROW LEVEL SECURITY;

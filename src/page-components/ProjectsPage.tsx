@@ -60,17 +60,12 @@ export default function ProjectsPage() {
     isLoading,
     refetch,
   } = useQuery({
-    // permissionsResult влияет на queryFn (canViewAll) — добавлен в queryKey.
-    // TODO queryKeys: сложный ключ, переносить вдумчиво — callsite хранит в ключе
-    // can('view_all_projects') отдельно, а в queryFn canViewAll вычисляется ещё и
-    // с OR isOwner. Т.е. семантика ключа и фабрики projectKeys.listForUser не совпадает.
-    queryKey: [
-      'projects',
-      activeWorkspaceId,
+    queryKey: projectKeys.listForUser(
+      activeWorkspaceId ?? '',
       user?.id,
       permissionsResult.isOwner,
       permissionsResult.can('view_all_projects'),
-    ],
+    ),
     queryFn: async () => {
       if (!activeWorkspaceId) return []
 
