@@ -4,12 +4,10 @@
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { ColorPicker } from '@/components/ui/color-picker'
-import { STATUS_ICONS } from '@/components/ui/status-icons'
-import { cn } from '@/lib/utils'
-import { safeCssColor } from '@/utils/isValidCssColor'
+import { IconPicker } from '@/components/ui/icon-picker'
 import {
   Dialog,
   DialogContent,
@@ -93,7 +91,7 @@ export function StatusFormDialog({
             </p>
           </div>
 
-          <div className="flex gap-6">
+          <div className="flex gap-6 flex-wrap">
             <ColorPicker
               value={formData.color}
               onChange={(color) => onFormDataChange({ ...formData, color })}
@@ -106,35 +104,16 @@ export function StatusFormDialog({
               disabled={saving}
               label="Цвет названия"
             />
+            {formData.entity_type === 'task' && (
+              <IconPicker
+                value={formData.icon}
+                onChange={(icon) => onFormDataChange({ ...formData, icon })}
+                color={formData.color}
+                disabled={saving}
+                label="Иконка статуса"
+              />
+            )}
           </div>
-
-          {/* Выбор иконки (только для задач) */}
-          {formData.entity_type === 'task' && (
-            <div className="space-y-2">
-              <Label>Иконка статуса</Label>
-              <div className="grid grid-cols-10 gap-1">
-                {STATUS_ICONS.map((si) => {
-                  const Icon = si.icon
-                  const isSelected = formData.icon === si.id
-                  return (
-                    <button
-                      key={si.id}
-                      type="button"
-                      title={si.label}
-                      onClick={() => onFormDataChange({ ...formData, icon: si.id })}
-                      disabled={saving}
-                      className={cn(
-                        'w-8 h-8 rounded-md flex items-center justify-center transition-colors',
-                        isSelected ? 'ring-2 ring-primary bg-primary/10' : 'hover:bg-muted/50',
-                      )}
-                    >
-                      <Icon className="w-4 h-4" style={{ color: safeCssColor(formData.color) }} />
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
 
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
