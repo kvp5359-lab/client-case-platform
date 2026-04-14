@@ -17,6 +17,12 @@ interface MessageListProps {
   hasMoreOlder: boolean
   isFetchingOlder: boolean
   lastReadAt?: string
+  /**
+   * Флаг: запрос last_read_at завершён (данные либо получены, либо явно null).
+   * Пока false — не подсвечиваем непрочитанные, чтобы не мигало при первой
+   * загрузке страницы (до ответа RPC lastReadAt === undefined).
+   */
+  isLastReadAtLoaded?: boolean
   onFetchOlder: () => void
   /** Инкрементируется при отправке сообщения — принудительный скролл вниз */
   scrollToBottomTrigger?: number
@@ -130,6 +136,7 @@ export function MessageList({
   hasMoreOlder,
   isFetchingOlder,
   lastReadAt,
+  isLastReadAtLoaded = true,
   onFetchOlder,
   scrollToBottomTrigger,
   auditEvents = [],
@@ -334,8 +341,10 @@ export function MessageList({
 
         {timeline.map((item, _ti) => {
           if (item.kind === 'event') {
-            // Если last_read_at отсутствует — тред никогда не открывался, все чужие события непрочитанные
+            // Если last_read_at отсутствует — тред никогда не открывался, все чужие события непрочитанные.
+            // Пока lastReadAt ещё грузится (isLastReadAtLoaded=false) — не подсвечиваем, чтобы не мигало.
             const eventIsUnread =
+              isLastReadAtLoaded &&
               item.event.user_id !== currentUserId &&
               (!lastReadAt || item.event.created_at > lastReadAt)
             return (
@@ -354,8 +363,10 @@ export function MessageList({
             : false
 
           const showUnreadSeparator = i === firstUnreadIndex
-          // Если last_read_at отсутствует — тред никогда не открывался, все чужие сообщения непрочитанные
+          // Если last_read_at отсутствует — тред никогда не открывался, все чужие сообщения непрочитанные.
+          // Пока lastReadAt ещё грузится (isLastReadAtLoaded=false) — не подсвечиваем, чтобы не мигало.
           const isUnread =
+            isLastReadAtLoaded &&
             !isOwn &&
             msg.sender_participant_id !== currentParticipantId &&
             (!lastReadAt || msg.created_at > lastReadAt)

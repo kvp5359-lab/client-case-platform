@@ -175,6 +175,7 @@ export function MessengerTabContent({
           hasMoreOlder={state.isSearchActive ? false : state.hasMoreOlder}
           isFetchingOlder={state.isFetchingOlder}
           lastReadAt={state.lastReadAt ?? undefined}
+          isLastReadAtLoaded={!state.isLastReadAtPending}
           onFetchOlder={state.fetchOlderMessages}
           scrollToBottomTrigger={state.sendTrigger}
           auditEvents={state.auditEvents}

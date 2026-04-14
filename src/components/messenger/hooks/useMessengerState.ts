@@ -157,7 +157,12 @@ export function useMessengerState({
     threadId,
   )
   const { data: unreadEventCount = 0 } = useUnreadEventCount(workspaceId, threadId)
-  const { data: lastReadAt } = useLastReadAt(projectId, channel, pid, threadId)
+  const { data: lastReadAt, isPending: isLastReadAtPending } = useLastReadAt(
+    projectId,
+    channel,
+    pid,
+    threadId,
+  )
   const toggleReaction = useToggleReaction(projectId, channel, pid, workspaceId, threadId)
 
   const { typingUsers, startTyping, stopTyping } = useTypingIndicator(
@@ -288,6 +293,7 @@ export function useMessengerState({
     markAsUnread,
     showUnread,
     lastReadAt,
+    isLastReadAtPending,
     // Reactions
     toggleReaction,
     // Typing
