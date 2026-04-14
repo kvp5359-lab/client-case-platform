@@ -58,6 +58,7 @@ export function BoardColumn({
           filterCtx={filterCtx}
           workspaceId={workspaceId}
           statuses={statuses}
+          columnWidth={width}
           onOpenTask={onOpenTask}
           onOpenThread={onOpenThread}
           onStatusChange={onStatusChange}

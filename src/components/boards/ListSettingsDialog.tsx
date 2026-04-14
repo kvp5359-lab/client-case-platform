@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Filter, Settings2 } from 'lucide-react'
+import { Filter, Settings2, LayoutTemplate } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -26,9 +26,11 @@ import { Button } from '@/components/ui/button'
 import { useUpdateList } from './hooks/useListMutations'
 import { ListSettingsGeneralTab } from './ListSettingsGeneralTab'
 import { ListSettingsFiltersTab } from './ListSettingsFiltersTab'
-import { defaultVisibleFields } from './listSettingsConfigs'
+import ListSettingsAppearanceTab from './ListSettingsAppearanceTab'
+import { defaultVisibleFields, defaultCardLayout } from './listSettingsConfigs'
 import type {
   BoardList,
+  CardLayout,
   FilterGroup,
   SortField,
   SortDir,
@@ -45,6 +47,8 @@ interface ListSettingsDialogProps {
   workspaceId: string
   /** Количество существующих колонок на доске */
   existingColumns?: number
+  /** Ширина колонки в px (для превью) */
+  columnWidth?: number
 }
 
 export function ListSettingsDialog({
@@ -53,6 +57,7 @@ export function ListSettingsDialog({
   list,
   workspaceId,
   existingColumns = 1,
+  columnWidth,
 }: ListSettingsDialogProps) {
   const updateList = useUpdateList()
   const [name, setName] = useState(list.name)
@@ -70,6 +75,9 @@ export function ListSettingsDialog({
   const [groupBy, setGroupBy] = useState<GroupByField>(list.group_by ?? 'none')
   const [listHeight, setListHeight] = useState<ListHeight>(list.list_height ?? 'auto')
   const [headerColor, setHeaderColor] = useState<string>(list.header_color ?? '#6B7280')
+  const [cardLayout, setCardLayout] = useState<CardLayout>(
+    list.card_layout ?? defaultCardLayout(list.entity_type),
+  )
   const [inboxDefaultFilter, setInboxDefaultFilter] = useState<'all' | 'unread'>(
     (list.filters as unknown as { default_filter?: string })?.default_filter === 'unread'
       ? 'unread'
@@ -82,6 +90,7 @@ export function ListSettingsDialog({
     setEntityType(type)
     setFilters({ logic: 'and', rules: [] })
     setVisibleFields(defaultVisibleFields(type))
+    setCardLayout(defaultCardLayout(type))
     setSortBy('created_at')
     setGroupBy('none')
   }
@@ -100,6 +109,7 @@ export function ListSettingsDialog({
       setGroupBy(list.group_by ?? 'none')
       setListHeight(list.list_height ?? 'auto')
       setHeaderColor(list.header_color ?? '#6B7280')
+      setCardLayout(list.card_layout ?? defaultCardLayout(list.entity_type))
       setInboxDefaultFilter(
         (list.filters as unknown as { default_filter?: string })?.default_filter === 'unread'
           ? 'unread'
@@ -131,14 +141,9 @@ export function ListSettingsDialog({
         group_by: groupBy,
         list_height: listHeight,
         header_color: headerColor,
+        card_layout: isInbox ? null : cardLayout,
       },
       { onSuccess: onClose },
-    )
-  }
-
-  const toggleField = (field: VisibleField) => {
-    setVisibleFields((prev) =>
-      prev.includes(field) ? prev.filter((f) => f !== field) : [...prev, field],
     )
   }
 
@@ -148,6 +153,7 @@ export function ListSettingsDialog({
     setSortDir('desc')
     setDisplayMode('list')
     setVisibleFields(defaultVisibleFields(entityType))
+    setCardLayout(defaultCardLayout(entityType))
     setGroupBy('none')
     setListHeight('auto')
     setHeaderColor('gray')
@@ -163,7 +169,7 @@ export function ListSettingsDialog({
         </DialogHeader>
 
         <Tabs defaultValue="general" className="flex-1 min-h-0 flex flex-col">
-          <TabsList className="shrink-0">
+          <TabsList className="shrink-0 w-fit">
             <TabsTrigger value="general" className="gap-1.5 text-xs">
               <Settings2 className="h-3.5 w-3.5" />
               Основное
@@ -177,6 +183,12 @@ export function ListSettingsDialog({
                     {filterCount}
                   </span>
                 )}
+              </TabsTrigger>
+            )}
+            {!isInbox && (
+              <TabsTrigger value="appearance" className="gap-1.5 text-xs">
+                <LayoutTemplate className="h-3.5 w-3.5" />
+                Отображение
               </TabsTrigger>
             )}
           </TabsList>
@@ -196,10 +208,6 @@ export function ListSettingsDialog({
               onEntityTypeChange={handleEntityTypeChange}
               inboxDefaultFilter={inboxDefaultFilter}
               onInboxDefaultFilterChange={setInboxDefaultFilter}
-              displayMode={displayMode}
-              onDisplayModeChange={setDisplayMode}
-              visibleFields={visibleFields}
-              onToggleField={toggleField}
               sortBy={sortBy}
               onSortByChange={setSortBy}
               sortDir={sortDir}
@@ -216,6 +224,19 @@ export function ListSettingsDialog({
                 onFiltersChange={setFilters}
                 entityType={entityType === 'project' ? 'project' : 'task'}
                 workspaceId={workspaceId}
+              />
+            </TabsContent>
+          )}
+
+          {!isInbox && (
+            <TabsContent value="appearance" className="flex-1 overflow-y-auto pr-1">
+              <ListSettingsAppearanceTab
+                entityType={entityType === 'project' ? 'project' : 'task'}
+                cardLayout={cardLayout}
+                onCardLayoutChange={setCardLayout}
+                displayMode={displayMode}
+                onDisplayModeChange={setDisplayMode}
+                columnWidth={columnWidth}
               />
             </TabsContent>
           )}

@@ -104,6 +104,8 @@ export function BoardView({
           existingColumns={columns.length}
         />
       ))}
+      {/* Распорка: при открытой боковой панели (45% ширины) контент можно доскроллить */}
+      <div className="shrink-0 w-[45vw]" aria-hidden />
     </div>
   )
 }

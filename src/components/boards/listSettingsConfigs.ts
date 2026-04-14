@@ -4,7 +4,16 @@
  * в отдельный файл, чтобы главный компонент не был «стеной констант».
  */
 
-import type { SortField, SortDir, VisibleField, GroupByField } from './types'
+import type {
+  SortField,
+  SortDir,
+  VisibleField,
+  GroupByField,
+  CardFieldId,
+  CardFieldStyle,
+  CardLayout,
+  CardFieldPlacement,
+} from './types'
 
 export const SORT_DIRS: { value: SortDir; label: string }[] = [
   { value: 'asc', label: 'По возрастанию' },
@@ -47,6 +56,7 @@ export const TASK_VISIBLE_FIELDS: { value: VisibleField; label: string }[] = [
 
 export const PROJECT_VISIBLE_FIELDS: { value: VisibleField; label: string }[] = [
   { value: 'status', label: 'Статус' },
+  { value: 'deadline', label: 'Дедлайн' },
   { value: 'template', label: 'Шаблон' },
 ]
 
@@ -56,4 +66,82 @@ export function defaultVisibleFields(entityType: 'task' | 'project' | 'inbox'): 
   return entityType === 'project'
     ? ['status', 'template']
     : ['status', 'deadline', 'assignees', 'project']
+}
+
+// ── Card Layout: определения полей ──────────────────────
+
+export interface CardFieldDef {
+  id: CardFieldId
+  label: string
+  entityTypes: Array<'task' | 'project'>
+}
+
+export const CARD_FIELD_DEFS: CardFieldDef[] = [
+  { id: 'status',    label: 'Статус',        entityTypes: ['task'] },
+  { id: 'icon',      label: 'Иконка',        entityTypes: ['project'] },
+  { id: 'name',      label: 'Название',      entityTypes: ['task', 'project'] },
+  { id: 'deadline',  label: 'Дедлайн',       entityTypes: ['task', 'project'] },
+  { id: 'assignees', label: 'Исполнители',   entityTypes: ['task'] },
+  { id: 'project',   label: 'Проект',        entityTypes: ['task'] },
+  { id: 'template',  label: 'Шаблон',        entityTypes: ['project'] },
+  { id: 'unread',    label: 'Непрочитанные', entityTypes: ['task'] },
+]
+
+export function getFieldDefsForEntity(entityType: 'task' | 'project'): CardFieldDef[] {
+  return CARD_FIELD_DEFS.filter((f) => f.entityTypes.includes(entityType))
+}
+
+export function getFieldLabel(fieldId: CardFieldId): string {
+  return CARD_FIELD_DEFS.find((f) => f.id === fieldId)?.label ?? fieldId
+}
+
+// ── Дефолтные layout-ы ──────────────────────────────────
+
+const S: CardFieldStyle = { fontSize: 'sm', align: 'left', truncate: 'truncate', bold: false }
+const M: CardFieldStyle = { fontSize: 'md', align: 'left', truncate: 'truncate', bold: false }
+const SR: CardFieldStyle = { fontSize: 'sm', align: 'right', truncate: 'truncate', bold: false }
+
+function fp(fieldId: CardFieldId, visible: boolean, style: CardFieldStyle): CardFieldPlacement {
+  return { fieldId, visible, style }
+}
+
+export function defaultCardLayout(entityType: 'task' | 'project' | 'inbox'): CardLayout {
+  if (entityType === 'project') {
+    return {
+      version: 1,
+      rows: [
+        {
+          id: 'row-default-0',
+          fields: [
+            fp('icon', true, S),
+            fp('name', true, M),
+            fp('deadline', true, SR),
+            fp('template', true, SR),
+          ],
+        },
+      ],
+    }
+  }
+  // task (inbox не использует layout — вернём задачный как fallback)
+  return {
+    version: 1,
+    rows: [
+      {
+        id: 'row-default-0',
+        fields: [
+          fp('status', true, S),
+          fp('name', true, M),
+          fp('assignees', true, SR),
+          fp('unread', true, SR),
+        ],
+      },
+      {
+        id: 'row-default-1',
+        fields: [
+          fp('project', true, S),
+          fp('deadline', true, SR),
+        ],
+      },
+    ],
+  }
 }

@@ -68,6 +68,52 @@ export type VisibleField = 'status' | 'deadline' | 'assignees' | 'project' | 'te
 export type GroupByField = 'none' | 'status' | 'project' | 'assignee' | 'deadline'
 export type ListHeight = 'auto' | 'medium' | 'full'
 
+// ── Card Layout ─────────────────────────────────────────
+
+/** ID поля карточки — объединение всех типов сущностей.
+ *  Задачи: status, name, deadline, assignees, project, unread
+ *  Проекты: icon, name, deadline, template */
+export type CardFieldId =
+  | 'status'
+  | 'name'
+  | 'deadline'
+  | 'assignees'
+  | 'project'
+  | 'unread'
+  | 'icon'
+  | 'template'
+
+export type CardFontSize = 'sm' | 'md' | 'lg'
+export type CardAlign = 'left' | 'center' | 'right'
+export type CardTruncate = 'truncate' | 'wrap'
+
+/** Стиль одного поля в карточке */
+export interface CardFieldStyle {
+  fontSize: CardFontSize
+  align: CardAlign
+  truncate: CardTruncate
+  bold: boolean
+}
+
+/** Размещение поля в строке */
+export interface CardFieldPlacement {
+  fieldId: CardFieldId
+  visible: boolean
+  style: CardFieldStyle
+}
+
+/** Строка карточки (макс. 3) */
+export interface CardLayoutRow {
+  id: string
+  fields: CardFieldPlacement[]
+}
+
+/** Полный layout карточки, хранится в board_lists.card_layout JSONB */
+export interface CardLayout {
+  version: 1
+  rows: CardLayoutRow[]
+}
+
 export interface BoardList {
   id: string
   board_id: string
@@ -83,6 +129,7 @@ export interface BoardList {
   group_by: GroupByField
   list_height: ListHeight
   header_color: string | null
+  card_layout: CardLayout | null
   created_at: string
   updated_at: string
 }

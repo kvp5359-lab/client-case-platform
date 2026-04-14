@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { boardKeys } from '@/hooks/queryKeys'
-import type { BoardList, FilterGroup, SortField, SortDir, DisplayMode, VisibleField, GroupByField, ListHeight } from '../types'
+import type { BoardList, FilterGroup, SortField, SortDir, DisplayMode, VisibleField, GroupByField, ListHeight, CardLayout } from '../types'
 
 interface CreateListParams {
   board_id: string
@@ -28,6 +28,7 @@ interface UpdateListParams {
   group_by?: GroupByField
   list_height?: ListHeight
   header_color?: string | null
+  card_layout?: CardLayout | null
 }
 
 export function useCreateList() {
@@ -60,13 +61,14 @@ export function useUpdateList() {
 
   return useMutation({
     mutationFn: async (params: UpdateListParams) => {
-      const { id, board_id, filters, ...rest } = params
+      const { id, board_id, filters, card_layout, ...rest } = params
       void board_id // used in onSuccess
       const updatePayload: Record<string, unknown> = {
         ...rest,
         updated_at: new Date().toISOString(),
       }
       if (filters) updatePayload.filters = filters as unknown
+      if (card_layout !== undefined) updatePayload.card_layout = card_layout as unknown
       const { data, error } = await supabase
         .from('board_lists')
         .update(updatePayload as never)

@@ -49,6 +49,8 @@ interface BoardListCardProps {
   isLast?: boolean
   /** Все списки в колонке (для swap sort_order) */
   siblingLists?: BoardList[]
+  /** Ширина колонки в px */
+  columnWidth?: number
 }
 
 export function BoardListCard({
@@ -69,6 +71,7 @@ export function BoardListCard({
   isFirst,
   isLast,
   siblingLists,
+  columnWidth,
 }: BoardListCardProps) {
   const [collapsed, setCollapsed] = useState(false)
   const filterDialog = useDialog()
@@ -138,21 +141,21 @@ export function BoardListCard({
       {(() => {
         const hs = hexToHeaderStyle(list.header_color)
         return (
-          <div className="group/header flex items-center gap-2 mb-0">
+          <div className="group/header flex items-center gap-2 mb-0 min-w-0">
             <button
               type="button"
               onClick={() => setCollapsed(!collapsed)}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full transition-colors min-w-0 max-w-full"
               style={{ backgroundColor: hs.bg, color: hs.text }}
             >
               <CollapseIcon className="h-3.5 w-3.5 shrink-0" />
               <span className="text-sm font-medium truncate">{list.name}</span>
               {count > 0 && (
-                <span className="text-sm opacity-60">{count}</span>
+                <span className="text-sm opacity-60 shrink-0">{count}</span>
               )}
             </button>
             <div className="flex-1" />
-            <div className="flex items-center gap-0.5 opacity-0 group-hover/header:opacity-100 transition-opacity">
+            <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/header:opacity-100 transition-opacity">
               {!isInbox && hasFilters && (
                 <Button
                   variant="ghost"
@@ -220,7 +223,7 @@ export function BoardListCard({
 
       {/* Content */}
       {!collapsed && (
-        <div className={cn(heightClass, 'mt-1 overflow-y-auto', !isCards && !hasGrouping && 'rounded-lg border border-border/50 bg-white')}>
+        <div className={cn(heightClass, 'mt-1 overflow-y-auto', !isCards && 'rounded-lg border border-border/50 bg-white')}>
           {isInbox ? (
             <BoardInboxList
               threads={inboxThreads}
@@ -240,6 +243,7 @@ export function BoardListCard({
                     displayMode={list.display_mode ?? 'list'}
                     visibleFields={list.visible_fields ?? ['status', 'template']}
                     isSelected={selectedProjectId === project.id}
+                    cardLayout={list.card_layout}
                   />
                 ))}
               </div>
@@ -279,6 +283,7 @@ export function BoardListCard({
                         onOpenTask={onOpenTask}
                         onStatusChange={onStatusChange}
                         isSelected={selectedThreadId === task.id}
+                        cardLayout={list.card_layout}
                       />
                     ))}
                   </div>
@@ -300,6 +305,7 @@ export function BoardListCard({
         list={list}
         workspaceId={workspaceId}
         existingColumns={existingColumns}
+        columnWidth={columnWidth}
       />
     </div>
   )
