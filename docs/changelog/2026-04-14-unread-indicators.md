@@ -71,6 +71,12 @@
 | `src/components/messenger/ReactionBadges.tsx` | Красная палитра у непрочитанных реакций. |
 | `src/components/messenger/ReadUnreadButton.tsx` | Кнопка «Прочитано» в красных тонах. |
 
+## Доработки
+
+**Мигание подсветки на старте** (коммит `d814fff`): при первой загрузке страницы `useLastReadAt` отдавал `data = undefined` во время запроса. Логика `!lastReadAt || created_at > lastReadAt` трактовала это как «тред никогда не читался» и красила все чужие баблы/события красным на ~1 секунду, пока не приходил настоящий `last_read_at`. Решение: проброшен `isPending` из React Query через `MessengerTabContent` → `MessageList` как `isLastReadAtLoaded`. Пока запрос не завершён, подсветка не применяется, так что мигания больше нет.
+
+**Цвет непрочитанных реакций**: `bg-red-50 border-red-300` → `bg-red-100 border-red-500`. Фон чуть ярче, контур насыщеннее — чтобы подсветка читалась однозначно.
+
 ## Проверки
 
 - Vitest: 613/613 ✅

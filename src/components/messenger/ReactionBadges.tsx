@@ -87,7 +87,7 @@ export function ReactionBadges({
                     className={cn(
                       'inline-flex items-center gap-1 rounded-full h-7 pl-1.5 pr-0.5 text-xs border-2 transition-colors',
                       isUnread
-                        ? 'bg-red-50 border-red-300 text-red-600'
+                        ? 'bg-red-100 border-red-500 text-red-600'
                         : cn('border-white', isMine ? ownStyle : otherStyle),
                     )}
                   >
