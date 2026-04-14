@@ -136,6 +136,7 @@ export function ChatSettingsDialog({
             {!form.isEditMode && (
               <ThreadTemplatePicker
                 workspaceId={resolvedWorkspaceId}
+                projectId={form.selectedProjectId ?? propProjectId}
                 onSelect={actions.handleApplyTemplate}
               />
             )}

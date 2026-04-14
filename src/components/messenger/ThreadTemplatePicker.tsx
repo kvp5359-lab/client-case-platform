@@ -4,25 +4,63 @@
  */
 
 import { useState, createElement } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Zap, Search, MessageSquare, CheckSquare, Mail } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
+import { supabase } from '@/lib/supabase'
+import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
+import { projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { getChatIconComponent } from './EditChatDialog'
 import { COLOR_BG } from './threadConstants'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
 interface ThreadTemplatePickerProps {
   workspaceId: string | undefined
+  projectId: string | null | undefined
   onSelect: (template: ThreadTemplate) => void
 }
 
-export function ThreadTemplatePicker({ workspaceId, onSelect }: ThreadTemplatePickerProps) {
+export function ThreadTemplatePicker({
+  workspaceId,
+  projectId,
+  onSelect,
+}: ThreadTemplatePickerProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const { data: templates = [] } = useThreadTemplates(workspaceId)
+
+  // Тип проекта, откуда создаётся тред. Нужен, чтобы показать только
+  // шаблоны для этого типа + глобальные.
+  const { data: projectTemplateId = null } = useQuery<string | null>({
+    queryKey: projectTemplateKeys.idByProject(projectId),
+    queryFn: async () => {
+      if (!projectId) return null
+      const { data, error } = await supabase
+        .from('projects')
+        .select('template_id')
+        .eq('id', projectId)
+        .maybeSingle()
+      if (error) throw error
+      return (data?.template_id as string | null) ?? null
+    },
+    enabled: !!projectId,
+    staleTime: STALE_TIME.STANDARD,
+  })
+
+  // Имя типа проекта — берём из кеша projectTemplateKeys.detail, который
+  // уже наполнен useProjectTemplate в ProjectPage. Не делаем отдельный
+  // запрос, чтобы не конфликтовать с контрактом этого кеша.
+  const queryClient = useQueryClient()
+  const projectTemplate = projectTemplateId
+    ? queryClient.getQueryData<{ name?: string } | null>(
+        projectTemplateKeys.detail(projectTemplateId),
+      )
+    : null
+  const projectTemplateName = projectTemplate?.name ?? 'Тип проекта'
+
+  const { data: templates = [] } = useThreadTemplatesForProject(workspaceId, projectTemplateId)
 
   if (templates.length === 0) return null
 
@@ -31,9 +69,18 @@ export function ThreadTemplatePicker({ workspaceId, onSelect }: ThreadTemplatePi
     (t) => t.name.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q) ?? false),
   )
 
-  const tasks = filtered.filter((t) => t.thread_type === 'task' && !t.is_email)
-  const chats = filtered.filter((t) => t.thread_type === 'chat' && !t.is_email)
-  const emails = filtered.filter((t) => t.is_email)
+  // Делим на два блока: глобальные workspace и привязанные к типу проекта.
+  // Внутри каждого — подгруппы по типу треда (Задачи/Чаты/Email).
+  const globals = filtered.filter((t) => t.owner_project_template_id === null)
+  const projectScoped = filtered.filter((t) => t.owner_project_template_id !== null)
+
+  const splitByType = (arr: ThreadTemplate[]) => ({
+    tasks: arr.filter((t) => t.thread_type === 'task' && !t.is_email),
+    chats: arr.filter((t) => t.thread_type === 'chat' && !t.is_email),
+    emails: arr.filter((t) => t.is_email),
+  })
+  const globalGroups = splitByType(globals)
+  const projectGroups = splitByType(projectScoped)
 
   const renderItem = (t: ThreadTemplate) => (
     <button
@@ -73,6 +120,24 @@ export function ThreadTemplatePicker({ workspaceId, onSelect }: ThreadTemplatePi
     )
   }
 
+  const renderSection = (
+    title: string,
+    groups: { tasks: ThreadTemplate[]; chats: ThreadTemplate[]; emails: ThreadTemplate[] },
+  ) => {
+    const total = groups.tasks.length + groups.chats.length + groups.emails.length
+    if (total === 0) return null
+    return (
+      <div>
+        <p className="text-[11px] font-semibold uppercase text-foreground/80 px-2 pt-2 pb-1 border-b border-border/60 mb-1">
+          {title}
+        </p>
+        {renderGroup('Задачи', CheckSquare, groups.tasks)}
+        {renderGroup('Чаты', MessageSquare, groups.chats)}
+        {renderGroup('Email', Mail, groups.emails)}
+      </div>
+    )
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -85,7 +150,7 @@ export function ThreadTemplatePicker({ workspaceId, onSelect }: ThreadTemplatePi
           Шаблон
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-2" align="end">
+      <PopoverContent className="w-80 p-2" align="end">
         {templates.length > 5 && (
           <div className="flex items-center gap-1 mb-2 px-1">
             <Search className="w-3.5 h-3.5 text-muted-foreground" />
@@ -97,10 +162,12 @@ export function ThreadTemplatePicker({ workspaceId, onSelect }: ThreadTemplatePi
             />
           </div>
         )}
-        <div className="max-h-64 overflow-y-auto space-y-1">
-          {renderGroup('Задачи', CheckSquare, tasks)}
-          {renderGroup('Чаты', MessageSquare, chats)}
-          {renderGroup('Email', Mail, emails)}
+        <div
+          className="max-h-[28rem] overflow-y-auto space-y-1"
+          onWheel={(e) => e.stopPropagation()}
+        >
+          {renderSection('Общие', globalGroups)}
+          {renderSection(projectTemplateName, projectGroups)}
           {filtered.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-2">Ничего не найдено</p>
           )}
