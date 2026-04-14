@@ -393,3 +393,58 @@ export async function editMessage(
 
 // Participant functions вынесены в messengerParticipantService.ts — реэкспортированы выше.
 // Draft functions вынесены в messengerDraftService.ts — реэкспортированы выше.
+
+/**
+ * Повторная отправка уже существующего сообщения в Telegram-группу.
+ * Используется для кнопки «Повторить отправку» при статусе failed.
+ *
+ * Edge Function telegram-send-message идемпотентна по message_id: повторный вызов
+ * обновит telegram_message_id / telegram_attachments_delivered той же записи.
+ * Чтобы не задвоить текст в TG (если он уже ушёл через триггер БД), используем
+ * attachments_only при наличии вложений — тогда caption придёт только если
+ * telegram_message_id пустой, а дубля не будет, потому что триггер сработал один раз.
+ */
+export async function retryTelegramSend(
+  message: ProjectMessage,
+  senderName: string,
+  senderRole: string | null,
+): Promise<void> {
+  let tgQuery = supabase
+    .from('project_telegram_chats')
+    .select('telegram_chat_id')
+    .eq('is_active', true)
+  if (message.thread_id) {
+    tgQuery = tgQuery.eq('thread_id', message.thread_id)
+  } else {
+    tgQuery = tgQuery
+      .eq('project_id', message.project_id ?? '')
+      .eq('channel', message.channel ?? 'client')
+  }
+  const { data: tgLink } = await tgQuery.maybeSingle()
+
+  if (!tgLink?.telegram_chat_id) {
+    throw new ConversationError('Чат не привязан к Telegram')
+  }
+
+  const hasAttachments = !!message.attachments?.length
+
+  // Refresh session to ensure fresh JWT for Edge Function auth
+  await supabase.auth.getSession()
+
+  const { error } = await supabase.functions.invoke('telegram-send-message', {
+    body: {
+      message_id: message.id,
+      project_id: message.project_id,
+      content: message.content,
+      sender_name: senderName,
+      sender_role: senderRole,
+      telegram_chat_id: tgLink.telegram_chat_id,
+      ...(hasAttachments ? { attachments_only: true } : {}),
+    },
+  })
+
+  if (error) {
+    logger.error('Retry Telegram send failed:', error)
+    throw new ConversationError('Не удалось отправить сообщение в Telegram')
+  }
+}

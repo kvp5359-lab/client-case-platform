@@ -14,7 +14,7 @@ import { SendCountdown } from './SendCountdown'
 import { getDeliveryStatus } from './bubbleUtils'
 import { BubbleHeader } from './BubbleHeader'
 import { BubbleTimestamp } from './BubbleTimestamp'
-import { BubbleTextContent, DraftPublishButton } from './BubbleTextContent'
+import { BubbleTextContent, DraftPublishButton, RetrySendButton } from './BubbleTextContent'
 import { DeleteMessageDialog } from './DeleteMessageDialog'
 import { EmailFullViewDialog } from './EmailFullViewDialog'
 import { useMessengerContext } from './MessengerContext'
@@ -57,6 +57,7 @@ function MessageBubbleImpl({
     currentThreadId,
     onPublishDraft,
     onEditDraft,
+    onRetryTelegramSend,
   } = useMessengerContext()
   const colors = bubbleStyles[accent]
   const tgDeliveryStatus = useTelegramDeliveryStatus(message, isOwn, isTelegramLinked)
@@ -233,6 +234,7 @@ function MessageBubbleImpl({
                 maxCollapsedHeight={maxCollapsedHeight}
                 toggleCollapsed={toggleCollapsed}
                 onPublishDraft={onPublishDraft}
+                onRetrySend={onRetryTelegramSend}
               />
             )}
 
@@ -268,6 +270,13 @@ function MessageBubbleImpl({
                   accent={accent}
                   onPublishDraft={onPublishDraft}
                 />
+              </div>
+            )}
+
+            {/* Retry send button for failed Telegram delivery */}
+            {!message.is_draft && tgFailed && onRetryTelegramSend && !isOverflowing && (
+              <div className="flex justify-end mt-1.5">
+                <RetrySendButton message={message} onRetrySend={onRetryTelegramSend} />
               </div>
             )}
           </div>

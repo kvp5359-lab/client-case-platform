@@ -60,6 +60,13 @@ interface UseMessengerHandlersParams {
       participantId: string
     }) => void
   }
+  retryTelegramSendMutation: {
+    mutate: (args: {
+      message: ProjectMessage
+      senderName: string
+      senderRole: string | null
+    }) => void
+  }
   sendDelay: number
   sendWithDelay: (args: {
     content: string
@@ -98,6 +105,7 @@ export function useMessengerHandlers({
   saveDraftMutation,
   updateDraftMutation,
   publishDraftMutation,
+  retryTelegramSendMutation,
   sendDelay,
   sendWithDelay,
   scheduleExistingDraft,
@@ -276,6 +284,18 @@ export function useMessengerHandlers({
     [currentParticipant, publishDraftMutation],
   )
 
+  const handleRetryTelegramSend = useCallback(
+    (msg: ProjectMessage) => {
+      if (!currentParticipant) return
+      retryTelegramSendMutation.mutate({
+        message: msg,
+        senderName: currentParticipant.name,
+        senderRole: currentParticipant.role,
+      })
+    },
+    [currentParticipant, retryTelegramSendMutation],
+  )
+
   const handleCancelDelayed = useCallback(
     async (messageId: string) => {
       const msg = await cancelDelayedSend(messageId)
@@ -295,6 +315,7 @@ export function useMessengerHandlers({
     handleSaveDraft,
     handleEditDraft,
     handlePublishDraft,
+    handleRetryTelegramSend,
     handleCancelDelayed,
   }
 }

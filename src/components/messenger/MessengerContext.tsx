@@ -25,6 +25,7 @@ export interface MessengerContextValue {
   currentThreadId?: string
   onPublishDraft?: (msg: ProjectMessage) => void
   onEditDraft?: (msg: ProjectMessage) => void
+  onRetryTelegramSend?: (msg: ProjectMessage) => void
 
   // Delayed send
   isDelayedPending?: (messageId: string) => boolean
@@ -67,6 +68,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       currentThreadId: value.currentThreadId,
       onPublishDraft: value.onPublishDraft,
       onEditDraft: value.onEditDraft,
+      onRetryTelegramSend: value.onRetryTelegramSend,
       isDelayedPending: value.isDelayedPending,
       getDelayedExpiresAt: value.getDelayedExpiresAt,
       onCancelDelayed: value.onCancelDelayed,
@@ -91,6 +93,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       value.currentThreadId,
       value.onPublishDraft,
       value.onEditDraft,
+      value.onRetryTelegramSend,
       value.isDelayedPending,
       value.getDelayedExpiresAt,
       value.onCancelDelayed,

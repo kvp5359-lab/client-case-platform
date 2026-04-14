@@ -70,6 +70,7 @@ export function MessengerTabContent({
     saveDraftMutation: state.saveDraftMutation,
     updateDraftMutation: state.updateDraftMutation,
     publishDraftMutation: state.publishDraftMutation,
+    retryTelegramSendMutation: state.retryTelegramSendMutation,
     sendDelay: state.sendDelay,
     sendWithDelay: state.sendWithDelay,
     scheduleExistingDraft: state.scheduleExistingDraft,
@@ -155,6 +156,7 @@ export function MessengerTabContent({
         currentThreadId={threadId}
         onPublishDraft={handlers.handlePublishDraft}
         onEditDraft={handlers.handleEditDraft}
+        onRetryTelegramSend={handlers.handleRetryTelegramSend}
         isDelayedPending={state.isDelayedPending}
         getDelayedExpiresAt={state.getExpiresAt}
         onCancelDelayed={handlers.handleCancelDelayed}

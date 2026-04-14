@@ -22,6 +22,7 @@ import {
   useSaveDraft,
   useUpdateDraft,
   usePublishDraft,
+  useRetryTelegramSend,
 } from '@/hooks/messenger'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
 import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
@@ -121,6 +122,7 @@ export function useMessengerState({
   const saveDraftMutation = useSaveDraft(projectId, workspaceId, channel, threadId)
   const updateDraftMutation = useUpdateDraft(projectId, workspaceId, channel, threadId)
   const publishDraftMutation = usePublishDraft(projectId, workspaceId, channel, threadId)
+  const retryTelegramSendMutation = useRetryTelegramSend(threadId)
 
   const {
     sendDelay,
@@ -267,6 +269,7 @@ export function useMessengerState({
     saveDraftMutation,
     updateDraftMutation,
     publishDraftMutation,
+    retryTelegramSendMutation,
     // Delayed send
     sendDelay,
     sendWithDelay,

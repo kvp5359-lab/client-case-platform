@@ -10,6 +10,7 @@ export { playIncomingSound, playSendSound } from './useMessageSound'
 export { useMessageSearch } from './useMessageSearch'
 export { useMessengerAi } from './useMessengerAi'
 export { useSaveDraft, useUpdateDraft, usePublishDraft } from './useDraftMessages'
+export { useRetryTelegramSend } from './useRetryTelegramSend'
 export {
   useProjectThreads,
   useThreadIdByChannel,

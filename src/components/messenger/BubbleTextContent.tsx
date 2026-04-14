@@ -1,4 +1,4 @@
-import { ChevronDown, Send } from 'lucide-react'
+import { ChevronDown, RefreshCw, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isHtmlContent, sanitizeMessengerHtml, linkifyText } from '@/utils/format/messengerHtml'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
@@ -20,6 +20,7 @@ interface BubbleTextContentProps {
   maxCollapsedHeight: number
   toggleCollapsed: () => void
   onPublishDraft?: (msg: ProjectMessage) => void
+  onRetrySend?: (msg: ProjectMessage) => void
 }
 
 export function BubbleTextContent({
@@ -35,6 +36,7 @@ export function BubbleTextContent({
   maxCollapsedHeight,
   toggleCollapsed,
   onPublishDraft,
+  onRetrySend,
 }: BubbleTextContentProps) {
   const colors = bubbleStyles[accent]
 
@@ -129,6 +131,9 @@ export function BubbleTextContent({
                 onPublishDraft={onPublishDraft}
               />
             )}
+            {!message.is_draft && tgFailed && onRetrySend && (
+              <RetrySendButton message={message} onRetrySend={onRetrySend} />
+            )}
           </div>
         </div>
       )}
@@ -159,6 +164,27 @@ export function DraftPublishButton({ message, accent, onPublishDraft }: DraftPub
     >
       <Send className="h-3 w-3" />
       Отправить
+    </button>
+  )
+}
+
+interface RetrySendButtonProps {
+  message: ProjectMessage
+  onRetrySend: (msg: ProjectMessage) => void
+}
+
+export function RetrySendButton({ message, onRetrySend }: RetrySendButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        onRetrySend(message)
+      }}
+      className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full transition-colors text-red-500 hover:text-red-700 hover:bg-red-50"
+    >
+      <RefreshCw className="h-3 w-3" />
+      Повторить отправку
     </button>
   )
 }
