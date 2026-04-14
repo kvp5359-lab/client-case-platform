@@ -38,7 +38,7 @@ export function useTaskFilters({
   const [filtersModified, setFiltersModified] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [assigneeFilterIds, setAssigneeFilterIds] = useState<Set<string> | null>(null)
-  const [deadlineFilter, setDeadlineFilter] = useState<Set<DeadlineFilterValue>>(new Set())
+  const [deadlineFilter, setDeadlineFilter] = useState<Set<DeadlineFilterValue> | null>(null)
   const [projectFilterIds, setProjectFilterIds] = useState<Set<string>>(new Set())
   const [statusFilterIds, setStatusFilterIds] = useState<Set<string> | null>(null)
   const [groupByDeadline, setGroupByDeadline] = useState(!isProjectMode)
@@ -49,7 +49,7 @@ export function useTaskFilters({
     setFiltersModified(false)
     setAssigneeFilterIds(null)
     setStatusFilterIds(null)
-    setDeadlineFilter(new Set())
+    setDeadlineFilter(null)
     setProjectFilterIds(new Set())
     setSearchQuery('')
   }
@@ -77,6 +77,14 @@ export function useTaskFilters({
     // my_active — фильтр по текущему пользователю
     return new Set([currentParticipantId])
   }, [assigneeFilterIds, currentParticipantId, preset, membersMap])
+
+  const effectiveDeadlineFilter = useMemo(() => {
+    if (deadlineFilter !== null) return deadlineFilter
+    if (preset === 'my_active') {
+      return new Set<DeadlineFilterValue>(['overdue', 'today', 'tomorrow', 'this_week', 'later'])
+    }
+    return new Set<DeadlineFilterValue>()
+  }, [deadlineFilter, preset])
 
   const effectiveStatusFilter = useMemo(() => {
     if (statusFilterIds !== null) return statusFilterIds
@@ -132,10 +140,10 @@ export function useTaskFilters({
     }
 
     // Фильтр по сроку
-    if (deadlineFilter.size > 0) {
+    if (effectiveDeadlineFilter.size > 0) {
       result = result.filter((t) => {
         const group = getDeadlineGroup(t.deadline)
-        return deadlineFilter.has(group as DeadlineFilterValue)
+        return effectiveDeadlineFilter.has(group as DeadlineFilterValue)
       })
     }
 
@@ -165,7 +173,7 @@ export function useTaskFilters({
     allTasks,
     searchQuery,
     effectiveAssigneeFilter,
-    deadlineFilter,
+    effectiveDeadlineFilter,
     effectiveStatusFilter,
     projectFilterIds,
     membersMap,
@@ -225,6 +233,7 @@ export function useTaskFilters({
     markModified,
     // Computed
     effectiveAssigneeFilter,
+    effectiveDeadlineFilter,
     effectiveStatusFilter,
     projectOptions,
     filteredTasks,

@@ -19,6 +19,7 @@ import { type AvatarParticipant } from '@/components/participants/ParticipantAva
 import type { DraggableAttributes } from '@dnd-kit/core'
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities'
 import { safeCssColor } from '@/utils/isValidCssColor'
+import { getDeadlineGroup } from '@/utils/deadlineUtils'
 import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { DeadlinePopover } from './DeadlinePopover'
@@ -74,10 +75,13 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
     () => statuses.find((s) => s.id === task.status_id) ?? null,
     [statuses, task.status_id],
   )
-  const nameStyle = currentStatus?.text_color
-    ? { color: safeCssColor(currentStatus.text_color) }
-    : undefined
   const isFinal = !!task.status_id && !!finalStatusIds?.has(task.status_id)
+  const isOverdue = !isFinal && getDeadlineGroup(task.deadline) === 'overdue'
+  const nameStyle = isOverdue
+    ? undefined
+    : currentStatus?.text_color
+      ? { color: safeCssColor(currentStatus.text_color) }
+      : undefined
 
   return (
     <div
@@ -125,7 +129,10 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
         }}
         className="flex-1 flex items-center gap-2 min-w-0 text-left cursor-pointer"
       >
-        <span className="text-sm font-medium truncate" style={nameStyle}>
+        <span
+          className={cn('text-sm font-medium truncate', isOverdue && 'text-red-600')}
+          style={nameStyle}
+        >
           {task.name}
         </span>
         {task.type && task.type !== 'task' && (

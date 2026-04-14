@@ -133,14 +133,13 @@ export const TaskListControls = memo(function TaskListControls({
             currentParticipantId={currentParticipantId}
           />
           <DeadlineFilter
-            selectedValues={filters.deadlineFilter}
+            selectedValues={filters.effectiveDeadlineFilter}
             onToggle={(v) => {
-              filters.setDeadlineFilter((prev) => {
-                const next = new Set(prev)
-                if (next.has(v)) next.delete(v)
-                else next.add(v)
-                return next
-              })
+              const base = filters.deadlineFilter ?? filters.effectiveDeadlineFilter
+              const next = new Set(base)
+              if (next.has(v)) next.delete(v)
+              else next.add(v)
+              filters.setDeadlineFilter(next)
               filters.markModified()
             }}
             onClear={() => {

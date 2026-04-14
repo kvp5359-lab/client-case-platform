@@ -278,7 +278,7 @@ export const TaskListView = memo(function TaskListView({
       ) : filters.filteredTasks.length === 0 ? (
         <div className="py-8 text-center text-sm text-muted-foreground">
           {filters.effectiveAssigneeFilter.size > 0 ||
-          filters.deadlineFilter.size > 0 ||
+          filters.effectiveDeadlineFilter.size > 0 ||
           filters.projectFilterIds.size > 0
             ? 'Ничего не найдено по выбранным фильтрам'
             : 'Ничего не найдено'}
