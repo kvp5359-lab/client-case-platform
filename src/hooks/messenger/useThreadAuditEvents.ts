@@ -25,6 +25,8 @@ export interface ThreadAuditEvent {
   action: string
   details: Record<string, unknown>
   created_at: string
+  /** Автор события — нужен для подсветки непрочитанных (чужие события после last_read_at). */
+  user_id: string | null
   actor_name: string | null
   /** Pre-formatted human-readable text for display (fallback). */
   display_text: string
@@ -164,6 +166,7 @@ export function useThreadAuditEvents(threadId: string | undefined) {
           action: e.action,
           details,
           created_at: e.created_at,
+          user_id: e.user_id ?? null,
           actor_name: actorName,
           display_text: buildDisplayText(e.action, actorName, details, nameOnlyMap),
           status_change,

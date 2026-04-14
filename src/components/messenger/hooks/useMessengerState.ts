@@ -31,7 +31,11 @@ import {
   getCurrentWorkspaceParticipant,
   type ProjectMessage,
 } from '@/services/api/messenger/messengerService'
-import { useIsManuallyUnread, useHasUnreadReaction } from '@/hooks/messenger/useInbox'
+import {
+  useIsManuallyUnread,
+  useHasUnreadReaction,
+  useUnreadEventCount,
+} from '@/hooks/messenger/useInbox'
 import { useDelayedSend } from '@/hooks/messenger/useDelayedSend'
 import { useThreadAuditEvents } from '@/hooks/messenger/useThreadAuditEvents'
 import { useEmailLink } from '@/hooks/email/useEmailLink'
@@ -152,6 +156,7 @@ export function useMessengerState({
     channel,
     threadId,
   )
+  const { data: unreadEventCount = 0 } = useUnreadEventCount(workspaceId, threadId)
   const { data: lastReadAt } = useLastReadAt(projectId, channel, pid, threadId)
   const toggleReaction = useToggleReaction(projectId, channel, pid, workspaceId, threadId)
 
@@ -246,7 +251,8 @@ export function useMessengerState({
     }
   }, [pendingForwardMessage, threadId, clearPendingForwardMessage])
 
-  const showUnread = unreadCount > 0 || isManuallyUnread || hasUnreadReaction
+  const showUnread =
+    unreadCount > 0 || isManuallyUnread || hasUnreadReaction || unreadEventCount > 0
 
   return {
     // Auth & participant

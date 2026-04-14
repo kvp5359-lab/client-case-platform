@@ -92,6 +92,7 @@ export function BoardInboxList({
         unread_count: 0,
         manually_unread: false,
         has_unread_reaction: false,
+        unread_reaction_count: 0,
         unread_event_count: 0,
       })
       queryClient.setQueryData(messengerKeys.unreadCountByThreadId(chat.thread_id), 0)

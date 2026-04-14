@@ -12,6 +12,7 @@ function thread(overrides: Partial<ThreadUnreadFields>): ThreadUnreadFields {
   return {
     unread_count: 0,
     has_unread_reaction: false,
+    unread_reaction_count: 0,
     manually_unread: false,
     last_reaction_emoji: null,
     unread_event_count: 0,
@@ -31,10 +32,20 @@ describe('getBadgeDisplay', () => {
     })
   })
 
-  it('добавляет +1 за реакцию к unread_count', () => {
+  it('добавляет +1 за одну реакцию к unread_count', () => {
     expect(
-      getBadgeDisplay(thread({ unread_count: 3, has_unread_reaction: true }))
+      getBadgeDisplay(
+        thread({ unread_count: 3, has_unread_reaction: true, unread_reaction_count: 1 })
+      )
     ).toEqual({ type: 'number', value: 4 })
+  })
+
+  it('суммирует несколько реакций с сообщениями', () => {
+    expect(
+      getBadgeDisplay(
+        thread({ unread_count: 3, has_unread_reaction: true, unread_reaction_count: 2 })
+      )
+    ).toEqual({ type: 'number', value: 5 })
   })
 
   it('учитывает unread_event_count', () => {
@@ -46,9 +57,36 @@ describe('getBadgeDisplay', () => {
   it('возвращает эмодзи для одной реакции без сообщений', () => {
     expect(
       getBadgeDisplay(
-        thread({ has_unread_reaction: true, last_reaction_emoji: '👍' })
+        thread({
+          has_unread_reaction: true,
+          unread_reaction_count: 1,
+          last_reaction_emoji: '👍',
+        })
       )
     ).toEqual({ type: 'emoji', value: '👍' })
+  })
+
+  it('возвращает число 2, если в треде 2 непрочитанные реакции без сообщений', () => {
+    expect(
+      getBadgeDisplay(
+        thread({
+          has_unread_reaction: true,
+          unread_reaction_count: 2,
+          last_reaction_emoji: '👍',
+        })
+      )
+    ).toEqual({ type: 'number', value: 2 })
+  })
+
+  it('fallback на has_unread_reaction, если нет unread_reaction_count', () => {
+    expect(
+      getBadgeDisplay({
+        unread_count: 0,
+        has_unread_reaction: true,
+        manually_unread: false,
+        last_reaction_emoji: '🎉',
+      })
+    ).toEqual({ type: 'emoji', value: '🎉' })
   })
 
   it('возвращает точку для manually_unread без активности', () => {
@@ -87,16 +125,40 @@ describe('getAggregateBadgeDisplay', () => {
   it('возвращает эмодзи когда единственный непрочитанный — одна реакция', () => {
     expect(
       getAggregateBadgeDisplay([
-        thread({ has_unread_reaction: true, last_reaction_emoji: '🎉' }),
+        thread({
+          has_unread_reaction: true,
+          unread_reaction_count: 1,
+          last_reaction_emoji: '🎉',
+        }),
       ])
     ).toEqual({ type: 'emoji', value: '🎉' })
   })
 
-  it('возвращает число когда несколько реакций', () => {
+  it('возвращает число, когда один тред с 2 реакциями', () => {
     expect(
       getAggregateBadgeDisplay([
-        thread({ has_unread_reaction: true, last_reaction_emoji: '👍' }),
-        thread({ has_unread_reaction: true, last_reaction_emoji: '❤️' }),
+        thread({
+          has_unread_reaction: true,
+          unread_reaction_count: 2,
+          last_reaction_emoji: '👍',
+        }),
+      ])
+    ).toEqual({ type: 'number', value: 2 })
+  })
+
+  it('возвращает число когда несколько тредов с реакциями', () => {
+    expect(
+      getAggregateBadgeDisplay([
+        thread({
+          has_unread_reaction: true,
+          unread_reaction_count: 1,
+          last_reaction_emoji: '👍',
+        }),
+        thread({
+          has_unread_reaction: true,
+          unread_reaction_count: 1,
+          last_reaction_emoji: '❤️',
+        }),
       ])
     ).toEqual({ type: 'number', value: 2 })
   })
@@ -129,16 +191,17 @@ describe('calcThreadUnread', () => {
     expect(calcThreadUnread(thread({ unread_count: 5 }))).toBe(5)
   })
 
-  it('добавляет реакцию и события', () => {
+  it('добавляет реакции и события', () => {
     expect(
       calcThreadUnread(
         thread({
           unread_count: 2,
           has_unread_reaction: true,
+          unread_reaction_count: 2,
           unread_event_count: 1,
         })
       )
-    ).toBe(4)
+    ).toBe(5)
   })
 
   it('возвращает -1 для manually_unread без активности', () => {
@@ -155,7 +218,11 @@ describe('calcTotalUnread', () => {
     expect(
       calcTotalUnread([
         thread({ unread_count: 3 }),
-        thread({ unread_count: 2, has_unread_reaction: true }),
+        thread({
+          unread_count: 2,
+          has_unread_reaction: true,
+          unread_reaction_count: 1,
+        }),
       ])
     ).toBe(6)
   })

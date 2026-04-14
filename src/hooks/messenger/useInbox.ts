@@ -105,6 +105,41 @@ export function useHasUnreadReaction(
 }
 
 /**
+ * Сколько непрочитанных реакций у конкретного треда/проекта (канал 'client').
+ * Нужно для бейджа: при 2+ реакциях показывать цифру, а не эмодзи.
+ */
+export function useUnreadReactionCount(
+  workspaceId: string,
+  projectId: string,
+  channel: 'client' | 'internal' = 'client',
+  threadId?: string,
+) {
+  return useInboxBase(workspaceId, (threads) => {
+    let total = 0
+    for (const t of threads) {
+      const match = threadId
+        ? t.thread_id === threadId
+        : t.project_id === projectId && t.legacy_channel === channel
+      if (match) total += t.unread_reaction_count ?? (t.has_unread_reaction ? 1 : 0)
+    }
+    return total
+  })
+}
+
+/**
+ * Количество непрочитанных audit-событий треда (создание, смена статуса и т.д.).
+ * Нужно для ReadUnreadButton, иначе кнопка показывает «Непрочитано» даже когда
+ * в инбоксе висит бейдж по событию.
+ */
+export function useUnreadEventCount(workspaceId: string, threadId?: string) {
+  return useInboxBase(workspaceId, (threads) => {
+    if (!threadId) return 0
+    const t = threads.find((t) => t.thread_id === threadId)
+    return t?.unread_event_count ?? 0
+  })
+}
+
+/**
  * Emoji непрочитанной реакции для конкретного проекта (канал 'client').
  * Возвращает первый найденный emoji среди client-тредов проекта с реакцией.
  */

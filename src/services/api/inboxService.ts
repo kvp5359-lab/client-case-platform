@@ -41,6 +41,8 @@ export interface InboxThreadEntry {
   unread_count: number
   manually_unread: boolean
   has_unread_reaction: boolean
+  /** Сколько непрочитанных реакций в треде. `has_unread_reaction = unread_reaction_count > 0`. */
+  unread_reaction_count: number
   last_reaction_emoji: string | null
   /** Timestamp of the latest reaction on any message in this thread. */
   last_reaction_at: string | null

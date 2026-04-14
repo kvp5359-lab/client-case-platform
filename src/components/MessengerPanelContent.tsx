@@ -58,6 +58,7 @@ export function MessengerPanelContent({
     clientUnread,
     internalUnread,
     hasClientReaction,
+    clientReactionCount,
     reactionEmoji,
     isClientManuallyUnread,
     isInternalManuallyUnread,
@@ -130,6 +131,7 @@ export function MessengerPanelContent({
                 badge = getBadgeDisplay({
                   unread_count: clientUnread,
                   has_unread_reaction: hasClientReaction,
+                  unread_reaction_count: clientReactionCount,
                   manually_unread: isClientManuallyUnread,
                   last_reaction_emoji: reactionEmoji,
                 })
@@ -137,14 +139,17 @@ export function MessengerPanelContent({
                 badge = getBadgeDisplay({
                   unread_count: internalUnread,
                   has_unread_reaction: false,
+                  unread_reaction_count: 0,
                   manually_unread: isInternalManuallyUnread,
                 })
               } else {
                 badge = getBadgeDisplay({
                   unread_count: threadUnread?.unreadCount ?? 0,
                   has_unread_reaction: threadUnread?.hasReaction ?? false,
+                  unread_reaction_count: threadUnread?.reactionCount ?? 0,
                   manually_unread: threadUnread?.manuallyUnread ?? false,
                   last_reaction_emoji: threadUnread?.reactionEmoji ?? null,
+                  unread_event_count: threadUnread?.eventCount ?? 0,
                 })
               }
 

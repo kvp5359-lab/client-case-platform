@@ -52,6 +52,7 @@ function inboxThread(overrides: Partial<InboxThreadEntry> = {}): InboxThreadEntr
     unread_count: 0,
     manually_unread: false,
     has_unread_reaction: false,
+    unread_reaction_count: 0,
     last_reaction_emoji: null,
     last_reaction_at: null,
     last_reaction_sender_name: null,

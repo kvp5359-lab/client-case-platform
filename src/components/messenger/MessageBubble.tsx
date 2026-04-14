@@ -29,6 +29,10 @@ interface MessageBubbleProps {
   isDelayedPending?: boolean
   delayedExpiresAt?: number
   onCancelDelayed?: () => void
+  /** Чужое сообщение, пришедшее после last_read_at — подсветить как непрочитанное. */
+  isUnread?: boolean
+  /** Нужен ReactionBadges, чтобы определить непрочитанные реакции. */
+  lastReadAt?: string
 }
 
 function MessageBubbleImpl({
@@ -39,6 +43,8 @@ function MessageBubbleImpl({
   isDelayedPending,
   delayedExpiresAt,
   onCancelDelayed,
+  isUnread,
+  lastReadAt,
 }: MessageBubbleProps) {
   const {
     currentParticipantId,
@@ -190,6 +196,8 @@ function MessageBubbleImpl({
             id={`msg-${message.id}`}
             className={cn(
               'relative rounded-2xl px-4 py-2.5 min-w-[10rem] overflow-hidden transition-all duration-500',
+              // Красная полоса внутри бабла слева — индикатор непрочитанного
+              isUnread && !isOwn && 'border-l-4 border-red-500',
               message.reactions?.length && 'pb-5',
               message.is_draft
                 ? accent === 'dark'
@@ -287,6 +295,7 @@ function MessageBubbleImpl({
             currentParticipantId={currentParticipantId}
             onReact={(emoji) => onReact(message.id, emoji)}
             accent={accent}
+            lastReadAt={lastReadAt}
           />
 
           {/* Hover actions */}

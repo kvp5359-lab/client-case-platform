@@ -42,6 +42,8 @@ interface ReactionBadgesProps {
   currentParticipantId: string | null
   onReact: (emoji: string) => void
   accent?: MessengerAccent
+  /** last_read_at пользователя в этом треде — реакции позже этой метки от других участников считаются непрочитанными. */
+  lastReadAt?: string
 }
 
 export function ReactionBadges({
@@ -49,9 +51,20 @@ export function ReactionBadges({
   currentParticipantId,
   onReact,
   accent = 'blue',
+  lastReadAt,
 }: ReactionBadgesProps) {
   const grouped = groupReactions(reactions)
   if (grouped.size === 0) return null
+
+  // Эмодзи, у которых есть хотя бы одна чужая реакция, созданная после last_read_at
+  const unreadEmojis = new Set<string>()
+  if (lastReadAt) {
+    for (const r of reactions) {
+      if (r.created_at > lastReadAt && r.participant_id !== currentParticipantId) {
+        unreadEmojis.add(r.emoji)
+      }
+    }
+  }
 
   const ownStyle = OWN_REACTION_STYLES[accent] ?? OWN_REACTION_STYLES.blue
   const otherStyle = OTHER_REACTION_STYLES[accent] ?? OTHER_REACTION_STYLES.blue
@@ -64,6 +77,7 @@ export function ReactionBadges({
             const isMine = currentParticipantId
               ? participantIds.includes(currentParticipantId)
               : false
+            const isUnread = unreadEmojis.has(emoji)
             const authorName = names[0] ?? ''
             return (
               <Tooltip key={emoji}>
@@ -71,8 +85,10 @@ export function ReactionBadges({
                   <button
                     onClick={() => onReact(emoji)}
                     className={cn(
-                      'inline-flex items-center gap-1 rounded-full h-7 pl-1.5 pr-0.5 text-xs border-2 border-white transition-colors',
-                      isMine ? ownStyle : otherStyle,
+                      'inline-flex items-center gap-1 rounded-full h-7 pl-1.5 pr-0.5 text-xs border-2 transition-colors',
+                      isUnread
+                        ? 'bg-red-50 border-red-300 text-red-600'
+                        : cn('border-white', isMine ? ownStyle : otherStyle),
                     )}
                   >
                     <span className="text-sm leading-none">{emoji}</span>

@@ -7,6 +7,8 @@ import { ChatEmptyState } from './ChatEmptyState'
 import { useMessengerContext } from './MessengerContext'
 import { formatAuditEvent, type ThreadAuditEvent } from '@/hooks/messenger/useThreadAuditEvents'
 import { safeCssColor } from '@/utils/isValidCssColor'
+import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
 interface MessageListProps {
@@ -54,7 +56,9 @@ function DateSeparator({ date }: { date: string }) {
  * статусов), либо плоскую пару `text + time` (для telegram_service).
  */
 function ServiceMessage(
-  props: { event: ThreadAuditEvent } | { text: string; time: string },
+  props:
+    | { event: ThreadAuditEvent; isUnread?: boolean }
+    | { text: string; time: string },
 ) {
   const time = 'event' in props ? props.event.created_at : props.time
   const d = new Date(time)
@@ -87,9 +91,18 @@ function ServiceMessage(
     content = props.text
   }
 
+  const isUnread = 'event' in props && !!props.isUnread
+
   return (
     <div className="flex justify-center py-1">
-      <span className="text-xs text-muted-foreground bg-muted/60 px-3 py-1 rounded-full">
+      <span
+        className={cn(
+          'text-xs px-3 py-1 rounded-full border',
+          isUnread
+            ? 'text-red-600 bg-red-50 border-red-300'
+            : 'text-muted-foreground bg-muted/60 border-transparent',
+        )}
+      >
         {content} · {timeStr}
       </span>
     </div>
@@ -128,6 +141,8 @@ export function MessageList({
     getDelayedExpiresAt,
     onCancelDelayed,
   } = useMessengerContext()
+  const { user } = useAuth()
+  const currentUserId = user?.id ?? null
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const prevFirstIdRef = useRef<string | null>(null)
@@ -319,10 +334,15 @@ export function MessageList({
 
         {timeline.map((item, _ti) => {
           if (item.kind === 'event') {
+            // Если last_read_at отсутствует — тред никогда не открывался, все чужие события непрочитанные
+            const eventIsUnread =
+              item.event.user_id !== currentUserId &&
+              (!lastReadAt || item.event.created_at > lastReadAt)
             return (
               <ServiceMessage
                 key={`event-${item.event.id}`}
                 event={item.event}
+                isUnread={eventIsUnread}
               />
             )
           }
@@ -334,6 +354,11 @@ export function MessageList({
             : false
 
           const showUnreadSeparator = i === firstUnreadIndex
+          // Если last_read_at отсутствует — тред никогда не открывался, все чужие сообщения непрочитанные
+          const isUnread =
+            !isOwn &&
+            msg.sender_participant_id !== currentParticipantId &&
+            (!lastReadAt || msg.created_at > lastReadAt)
 
           // Показывать аватарку только для первого сообщения в группе от одного автора
           const prevMsg = messages[i - 1]
@@ -370,6 +395,8 @@ export function MessageList({
                   isDelayedPending={isDelayedPending?.(msg.id)}
                   delayedExpiresAt={getDelayedExpiresAt?.(msg.id) ?? undefined}
                   onCancelDelayed={onCancelDelayed ? () => onCancelDelayed(msg.id) : undefined}
+                  isUnread={isUnread}
+                  lastReadAt={lastReadAt}
                 />
               )}
             </div>

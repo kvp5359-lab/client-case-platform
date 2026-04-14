@@ -5709,6 +5709,7 @@ export type Database = {
           thread_name: string
           unread_count: number
           unread_event_count: number
+          unread_reaction_count: number
         }[]
       }
       get_my_urgent_tasks_count: {

@@ -18,6 +18,7 @@ import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useUnreadCount } from '@/hooks/messenger/useUnreadCount'
 import {
   useHasUnreadReaction,
+  useUnreadReactionCount,
   useUnreadReactionEmoji,
   useIsManuallyUnread,
 } from '@/hooks/messenger/useInbox'
@@ -62,6 +63,11 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
 
   // Reactions / manually unread
   const { data: hasClientReaction = false } = useHasUnreadReaction(workspaceId, projectId, 'client')
+  const { data: clientReactionCount = 0 } = useUnreadReactionCount(
+    workspaceId,
+    projectId,
+    'client',
+  )
   const { data: reactionEmoji = null } = useUnreadReactionEmoji(workspaceId, projectId)
   const { data: isClientManuallyUnread = false } = useIsManuallyUnread(
     workspaceId,
@@ -106,7 +112,9 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
         unreadCount: number
         manuallyUnread: boolean
         hasReaction: boolean
+        reactionCount: number
         reactionEmoji: string | null
+        eventCount: number
       }
     > = {}
     for (const t of inboxThreads) {
@@ -115,7 +123,9 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
         unreadCount: t.unread_count,
         manuallyUnread: !!t.manually_unread,
         hasReaction: !!t.has_unread_reaction,
+        reactionCount: t.unread_reaction_count ?? (t.has_unread_reaction ? 1 : 0),
         reactionEmoji: t.last_reaction_emoji ?? null,
+        eventCount: t.unread_event_count ?? 0,
       }
     }
     return map
@@ -254,6 +264,7 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
     clientUnread,
     internalUnread,
     hasClientReaction,
+    clientReactionCount,
     reactionEmoji,
     isClientManuallyUnread,
     isInternalManuallyUnread,
