@@ -40,6 +40,7 @@ function inboxThread(overrides: Partial<InboxThreadEntry> = {}): InboxThreadEntr
     thread_name: 'Чат',
     thread_icon: '💬',
     thread_accent_color: 'blue',
+    thread_type: 'chat',
     project_id: 'proj-1',
     project_name: 'Проект',
     channel_type: 'web',

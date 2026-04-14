@@ -17,6 +17,8 @@ export interface InboxThreadEntry {
   thread_name: string
   thread_icon: string
   thread_accent_color: string
+  /** 'task' | 'chat' — из project_threads.type. Нужен TaskPanel, чтобы правильно показать дропдаун статуса. */
+  thread_type: 'task' | 'chat'
   /**
    * `null` для workspace-level тредов (не привязаны к проекту).
    * v2 RPC реально возвращает null для таких — project_threads_insert policy

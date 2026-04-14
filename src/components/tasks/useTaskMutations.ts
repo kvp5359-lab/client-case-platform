@@ -36,6 +36,7 @@ export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unkno
     },
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
+      queryClient.invalidateQueries({ queryKey: projectThreadKeys.byId(threadId) })
       queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
       // Смена статуса может перевести задачу в/из финального — это меняет
       // has_active_deadline_task у проекта (используется в фильтрах на доске).
@@ -69,6 +70,7 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
     },
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
+      queryClient.invalidateQueries({ queryKey: projectThreadKeys.byId(threadId) })
       queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
       // Появление/исчезновение дедлайна меняет has_active_deadline_task у проекта
       // (используется в фильтрах на доске).
@@ -98,6 +100,7 @@ export function useRenameTask(invalidateKeys: ReadonlyArray<readonly unknown[]>)
     },
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
+      queryClient.invalidateQueries({ queryKey: projectThreadKeys.byId(threadId) })
       queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
     },
     onError: () => toast.error('Не удалось переименовать'),
@@ -176,6 +179,7 @@ export function useUpdateTaskSettings(invalidateKeys: ReadonlyArray<readonly unk
     },
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
+      queryClient.invalidateQueries({ queryKey: projectThreadKeys.byId(threadId) })
       queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
     },
     onError: () => toast.error('Не удалось сохранить настройки'),

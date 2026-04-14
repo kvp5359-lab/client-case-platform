@@ -165,8 +165,25 @@ export function TaskPanel({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [open, onClose, settingsOpen])
 
-  // Полный ProjectThread для настроек
-  const { data: fullThread } = useProjectThreadById(task?.id, settingsOpen)
+  // Полный ProjectThread: используем и для диалога настроек, и для live-синхронизации
+  // шапки панели с кешем (статус, дедлайн, имя, иконка, цвет могут меняться
+  // из списка задач или через realtime — снимок в стеке это не ловит).
+  const { data: fullThread } = useProjectThreadById(task?.id, !!task)
+
+  const liveTask: TaskItem | null = task
+    ? fullThread && fullThread.id === task.id
+      ? {
+          ...task,
+          type: fullThread.type,
+          name: fullThread.name,
+          status_id: fullThread.status_id,
+          deadline: fullThread.deadline,
+          accent_color: fullThread.accent_color,
+          icon: fullThread.icon,
+          is_pinned: fullThread.is_pinned,
+        }
+      : task
+    : null
 
   if (!open || !stackTop) return null
 
@@ -188,7 +205,7 @@ export function TaskPanel({
   }
 
   // ── Режим 1: тред ──
-  if (!task) return null
+  if (!task || !liveTask) return null
 
   const panel = (
     <>
@@ -200,7 +217,7 @@ export function TaskPanel({
         )}
       >
         <TaskPanelTaskHeader
-          task={task}
+          task={liveTask}
           workspaceId={workspaceId}
           statuses={statuses}
           members={members}

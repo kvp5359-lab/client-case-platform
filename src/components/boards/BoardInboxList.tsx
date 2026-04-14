@@ -24,7 +24,7 @@ function threadToTaskItem(thread: InboxThreadEntry): TaskItem {
   return {
     id: thread.thread_id,
     name: thread.thread_name,
-    type: 'chat',
+    type: thread.thread_type,
     project_id: thread.project_id,
     workspace_id: '',
     status_id: null,
