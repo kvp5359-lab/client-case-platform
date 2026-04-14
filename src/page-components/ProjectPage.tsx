@@ -159,26 +159,32 @@ export default function ProjectPage() {
   // Флаг: не сохранять panelTab пока восстановление не завершилось
   const panelRestoredRef = useRef(false)
 
+  // Храним modules.chats в ref, чтобы не раздувать deps useEffect
+  // (его чтение нужно только в момент первого открытия панели).
+  const chatsEnabledRef = useRef(modules.chats)
+  useEffect(() => {
+    chatsEnabledRef.current = modules.chats
+  }, [modules.chats])
+
   // projectId устанавливаем сразу, не дожидаясь projectTemplate
   // + восстанавливаем состояние панели per-project
-  // Панель ВСЕГДА открыта в проекте. Вкладка — сохранённая или 'client' по умолчанию.
+  // Панель открыта в проекте по умолчанию на 'client', если модуль чатов включён.
+  // Ждём загрузки модулей, чтобы не открывать панель с табом, которого нет.
   useEffect(() => {
     panelRestoredRef.current = false
-    if (projectId) {
+    if (projectId && !loadingModules) {
       setContext({ projectId })
-      // Восстановить вкладку панели для этого проекта (после setContext)
       requestAnimationFrame(() => {
         try {
           const saved = localStorage.getItem(`cc:panel-tab:${projectId}`)
-          // Панель всегда открыта: восстанавливаем сохранённую вкладку или 'client'
           if (saved && saved !== 'null' && saved !== '"null"') {
             const tab = saved.startsWith('"') ? JSON.parse(saved) : saved
             openPanel(tab as 'client' | 'internal' | 'assistant' | 'extra')
-          } else {
+          } else if (chatsEnabledRef.current) {
             openPanel('client')
           }
         } catch {
-          openPanel('client')
+          if (chatsEnabledRef.current) openPanel('client')
         }
         panelRestoredRef.current = true
       })
@@ -186,7 +192,7 @@ export default function ProjectPage() {
     return () => {
       setContext({ projectId: undefined, templateId: undefined })
     }
-  }, [projectId, setContext, openPanel, closePanel])
+  }, [projectId, setContext, openPanel, closePanel, loadingModules])
 
   // Сохранять panelTab per-project при изменении (только после восстановления)
   useEffect(() => {
