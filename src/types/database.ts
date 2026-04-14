@@ -71,6 +71,7 @@ export type Database = {
       board_lists: {
         Row: {
           board_id: string
+          card_layout: Json | null
           column_index: number | null
           created_at: string | null
           display_mode: string | null
@@ -89,6 +90,7 @@ export type Database = {
         }
         Insert: {
           board_id: string
+          card_layout?: Json | null
           column_index?: number | null
           created_at?: string | null
           display_mode?: string | null
@@ -107,6 +109,7 @@ export type Database = {
         }
         Update: {
           board_id?: string
+          card_layout?: Json | null
           column_index?: number | null
           created_at?: string | null
           display_mode?: string | null
@@ -173,6 +176,7 @@ export type Database = {
         Row: {
           access_roles: string[] | null
           access_type: string
+          column_widths: Json
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -185,6 +189,7 @@ export type Database = {
         Insert: {
           access_roles?: string[] | null
           access_type?: string
+          column_widths?: Json
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -197,6 +202,7 @@ export type Database = {
         Update: {
           access_roles?: string[] | null
           access_type?: string
+          column_widths?: Json
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -5599,6 +5605,7 @@ export type Database = {
         Args: { p_board_id: string }
         Returns: {
           board_id: string
+          card_layout: Json
           column_index: number
           created_at: string
           display_mode: string
@@ -6002,6 +6009,10 @@ export type Database = {
       set_workspace_voyageai_api_key: {
         Args: { api_key: string; workspace_uuid: string }
         Returns: string
+      }
+      swap_board_list_sort_order: {
+        Args: { p_list_a_id: string; p_list_b_id: string }
+        Returns: undefined
       }
       sync_form_kit_structure: {
         Args: { p_kit_id: string }

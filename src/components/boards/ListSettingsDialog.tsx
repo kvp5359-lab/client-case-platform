@@ -1,18 +1,5 @@
 "use client"
 
-/**
- * Главный диалог настроек списка доски. Оркестрирует две вкладки —
- * "Основное" и "Фильтры" — и хранит общее состояние формы.
- *
- * После аудита 2026-04-11 (Зона 6) вкладки вынесены в отдельные файлы:
- *  - `ListSettingsGeneralTab.tsx`
- *  - `ListSettingsFiltersTab.tsx`
- *
- * Константы (список полей сортировки/группировки/видимости) лежат в
- * `listSettingsConfigs.ts` и переиспользуются во вкладке "Основное".
- */
-
-import { useState, useEffect } from 'react'
 import { Filter, Settings2, LayoutTemplate } from 'lucide-react'
 import {
   Dialog,
@@ -24,30 +11,18 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { useUpdateList } from './hooks/useListMutations'
+import { useListSettingsState } from './hooks/useListSettingsState'
 import { ListSettingsGeneralTab } from './ListSettingsGeneralTab'
 import { ListSettingsFiltersTab } from './ListSettingsFiltersTab'
 import ListSettingsAppearanceTab from './ListSettingsAppearanceTab'
-import { defaultVisibleFields, defaultCardLayout } from './listSettingsConfigs'
-import type {
-  BoardList,
-  CardLayout,
-  FilterGroup,
-  SortField,
-  SortDir,
-  DisplayMode,
-  VisibleField,
-  GroupByField,
-  ListHeight,
-} from './types'
+import type { BoardList, FilterGroup } from './types'
 
 interface ListSettingsDialogProps {
   open: boolean
   onClose: () => void
   list: BoardList
   workspaceId: string
-  /** Количество существующих колонок на доске */
   existingColumns?: number
-  /** Ширина колонки в px (для превью) */
   columnWidth?: number
 }
 
@@ -60,109 +35,38 @@ export function ListSettingsDialog({
   columnWidth,
 }: ListSettingsDialogProps) {
   const updateList = useUpdateList()
-  const [name, setName] = useState(list.name)
-  const [entityType, setEntityType] = useState<'task' | 'project' | 'inbox'>(list.entity_type)
-  const [columnIndex, setColumnIndex] = useState(String(list.column_index))
-  const [filters, setFilters] = useState<FilterGroup>(
-    list.filters?.rules ? list.filters : { logic: 'and', rules: [] },
-  )
-  const [sortBy, setSortBy] = useState<SortField>(list.sort_by ?? 'created_at')
-  const [sortDir, setSortDir] = useState<SortDir>(list.sort_dir ?? 'desc')
-  const [displayMode, setDisplayMode] = useState<DisplayMode>(list.display_mode ?? 'list')
-  const [visibleFields, setVisibleFields] = useState<VisibleField[]>(
-    list.visible_fields ?? defaultVisibleFields(list.entity_type),
-  )
-  const [groupBy, setGroupBy] = useState<GroupByField>(list.group_by ?? 'none')
-  const [listHeight, setListHeight] = useState<ListHeight>(list.list_height ?? 'auto')
-  const [headerColor, setHeaderColor] = useState<string>(list.header_color ?? '#6B7280')
-  const [cardLayout, setCardLayout] = useState<CardLayout>(
-    list.card_layout ?? defaultCardLayout(list.entity_type),
-  )
-  const [inboxDefaultFilter, setInboxDefaultFilter] = useState<'all' | 'unread'>(
-    (list.filters as unknown as { default_filter?: string })?.default_filter === 'unread'
-      ? 'unread'
-      : 'all',
-  )
+  const { state: s, set, dispatch } = useListSettingsState(list, open)
 
-  const isInbox = entityType === 'inbox'
-
-  const handleEntityTypeChange = (type: 'task' | 'project' | 'inbox') => {
-    setEntityType(type)
-    setFilters({ logic: 'and', rules: [] })
-    setVisibleFields(defaultVisibleFields(type))
-    setCardLayout(defaultCardLayout(type))
-    setSortBy('created_at')
-    setGroupBy('none')
-  }
-
-  // Ресетим state при каждом открытии диалога
-  useEffect(() => {
-    if (open) {
-      setName(list.name)
-      setEntityType(list.entity_type as 'task' | 'project' | 'inbox')
-      setColumnIndex(String(list.column_index))
-      setFilters(list.filters?.rules ? list.filters : { logic: 'and', rules: [] })
-      setSortBy(list.sort_by ?? 'created_at')
-      setSortDir(list.sort_dir ?? 'desc')
-      setDisplayMode(list.display_mode ?? 'list')
-      setVisibleFields(list.visible_fields ?? defaultVisibleFields(list.entity_type))
-      setGroupBy(list.group_by ?? 'none')
-      setListHeight(list.list_height ?? 'auto')
-      setHeaderColor(list.header_color ?? '#6B7280')
-      setCardLayout(list.card_layout ?? defaultCardLayout(list.entity_type))
-      setInboxDefaultFilter(
-        (list.filters as unknown as { default_filter?: string })?.default_filter === 'unread'
-          ? 'unread'
-          : 'all',
-      )
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
-
-  const handleOpenChange = (v: boolean) => {
-    if (!v) onClose()
-  }
+  const isInbox = s.entityType === 'inbox'
 
   const handleSave = () => {
     updateList.mutate(
       {
         id: list.id,
         board_id: list.board_id,
-        name: name.trim() || list.name,
-        entity_type: entityType,
-        column_index: parseInt(columnIndex, 10),
+        name: s.name.trim() || list.name,
+        entity_type: s.entityType,
+        column_index: parseInt(s.columnIndex, 10),
         filters: isInbox
-          ? ({ default_filter: inboxDefaultFilter } as unknown as FilterGroup)
-          : filters,
-        sort_by: sortBy,
-        sort_dir: sortDir,
-        display_mode: displayMode,
-        visible_fields: visibleFields,
-        group_by: groupBy,
-        list_height: listHeight,
-        header_color: headerColor,
-        card_layout: isInbox ? null : cardLayout,
+          ? ({ default_filter: s.inboxDefaultFilter } as unknown as FilterGroup)
+          : s.filters,
+        sort_by: s.sortBy,
+        sort_dir: s.sortDir,
+        display_mode: s.displayMode,
+        visible_fields: s.visibleFields,
+        group_by: s.groupBy,
+        list_height: s.listHeight,
+        header_color: s.headerColor,
+        card_layout: isInbox ? null : s.cardLayout,
       },
       { onSuccess: onClose },
     )
   }
 
-  const handleResetAll = () => {
-    setFilters({ logic: 'and', rules: [] })
-    setSortBy('created_at')
-    setSortDir('desc')
-    setDisplayMode('list')
-    setVisibleFields(defaultVisibleFields(entityType))
-    setCardLayout(defaultCardLayout(entityType))
-    setGroupBy('none')
-    setListHeight('auto')
-    setHeaderColor('gray')
-  }
-
-  const filterCount = filters?.rules?.length ?? 0
+  const filterCount = s.filters?.rules?.length ?? 0
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent className="sm:max-w-[680px] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Настройки списка</DialogTitle>
@@ -195,34 +99,34 @@ export function ListSettingsDialog({
 
           <TabsContent value="general" className="flex-1 overflow-y-auto pr-1">
             <ListSettingsGeneralTab
-              name={name}
-              onNameChange={setName}
-              headerColor={headerColor}
-              onHeaderColorChange={setHeaderColor}
-              columnIndex={columnIndex}
-              onColumnIndexChange={setColumnIndex}
+              name={s.name}
+              onNameChange={(v) => set('name', v)}
+              headerColor={s.headerColor}
+              onHeaderColorChange={(v) => set('headerColor', v)}
+              columnIndex={s.columnIndex}
+              onColumnIndexChange={(v) => set('columnIndex', v)}
               existingColumns={existingColumns}
-              listHeight={listHeight}
-              onListHeightChange={setListHeight}
-              entityType={entityType}
-              onEntityTypeChange={handleEntityTypeChange}
-              inboxDefaultFilter={inboxDefaultFilter}
-              onInboxDefaultFilterChange={setInboxDefaultFilter}
-              sortBy={sortBy}
-              onSortByChange={setSortBy}
-              sortDir={sortDir}
-              onSortDirChange={setSortDir}
-              groupBy={groupBy}
-              onGroupByChange={setGroupBy}
+              listHeight={s.listHeight}
+              onListHeightChange={(v) => set('listHeight', v)}
+              entityType={s.entityType}
+              onEntityTypeChange={(t) => dispatch({ type: 'CHANGE_ENTITY_TYPE', entityType: t })}
+              inboxDefaultFilter={s.inboxDefaultFilter}
+              onInboxDefaultFilterChange={(v) => set('inboxDefaultFilter', v)}
+              sortBy={s.sortBy}
+              onSortByChange={(v) => set('sortBy', v)}
+              sortDir={s.sortDir}
+              onSortDirChange={(v) => set('sortDir', v)}
+              groupBy={s.groupBy}
+              onGroupByChange={(v) => set('groupBy', v)}
             />
           </TabsContent>
 
           {!isInbox && (
             <TabsContent value="filters" className="flex-1 overflow-y-auto pr-1">
               <ListSettingsFiltersTab
-                filters={filters}
-                onFiltersChange={setFilters}
-                entityType={entityType === 'project' ? 'project' : 'task'}
+                filters={s.filters}
+                onFiltersChange={(v) => set('filters', v)}
+                entityType={s.entityType === 'project' ? 'project' : 'task'}
                 workspaceId={workspaceId}
               />
             </TabsContent>
@@ -231,11 +135,11 @@ export function ListSettingsDialog({
           {!isInbox && (
             <TabsContent value="appearance" className="flex-1 overflow-y-auto pr-1">
               <ListSettingsAppearanceTab
-                entityType={entityType === 'project' ? 'project' : 'task'}
-                cardLayout={cardLayout}
-                onCardLayoutChange={setCardLayout}
-                displayMode={displayMode}
-                onDisplayModeChange={setDisplayMode}
+                entityType={s.entityType === 'project' ? 'project' : 'task'}
+                cardLayout={s.cardLayout}
+                onCardLayoutChange={(v) => set('cardLayout', v)}
+                displayMode={s.displayMode}
+                onDisplayModeChange={(v) => set('displayMode', v)}
                 columnWidth={columnWidth}
               />
             </TabsContent>
@@ -243,7 +147,7 @@ export function ListSettingsDialog({
         </Tabs>
 
         <DialogFooter className="flex justify-between pt-4 shrink-0">
-          <Button type="button" variant="ghost" size="sm" onClick={handleResetAll}>
+          <Button type="button" variant="ghost" size="sm" onClick={() => dispatch({ type: 'RESET_ALL', entityType: s.entityType })}>
             Сбросить всё
           </Button>
           <div className="flex gap-2">

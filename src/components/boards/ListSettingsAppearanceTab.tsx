@@ -16,8 +16,8 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import type { CardLayout, CardFieldId, CardFieldStyle, CardFontSize, CardAlign, CardTruncate, DisplayMode } from './types'
-import { getFieldLabel } from './listSettingsConfigs'
+import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode } from './types'
+import { getFieldLabel, CARD_FONT_SIZES, CARD_TRUNCATES } from './listSettingsConfigs'
 import {
   updateFieldStyle,
   addRow,
@@ -41,21 +41,10 @@ interface ListSettingsAppearanceTabProps {
   columnWidth?: number
 }
 
-const FONT_SIZES: { value: CardFontSize; label: string }[] = [
-  { value: 'sm', label: 'S' },
-  { value: 'md', label: 'M' },
-  { value: 'lg', label: 'L' },
-]
-
-const ALIGNS: { value: CardAlign; icon: React.ElementType }[] = [
+const ALIGNS: { value: 'left' | 'center' | 'right'; icon: React.ElementType }[] = [
   { value: 'left', icon: AlignLeft },
   { value: 'center', icon: AlignCenter },
   { value: 'right', icon: AlignRight },
-]
-
-const TRUNCATES: { value: CardTruncate; label: string }[] = [
-  { value: 'truncate', label: 'Обрезать' },
-  { value: 'wrap', label: 'Переносить' },
 ]
 
 const BANK_ID = '__bank__'
@@ -195,7 +184,7 @@ function FieldStyleEditor({
         <div className="space-y-1">
           <Label className="text-[11px] text-muted-foreground">Размер</Label>
           <div className="flex gap-1">
-            {FONT_SIZES.map((fs) => (
+            {CARD_FONT_SIZES.map((fs) => (
               <button
                 key={fs.value}
                 type="button"
@@ -237,7 +226,7 @@ function FieldStyleEditor({
         <div className="space-y-1">
           <Label className="text-[11px] text-muted-foreground">Текст</Label>
           <div className="flex gap-1">
-            {TRUNCATES.map((t) => (
+            {CARD_TRUNCATES.map((t) => (
               <button
                 key={t.value}
                 type="button"

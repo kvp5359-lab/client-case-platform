@@ -84,6 +84,23 @@ export function useUpdateList() {
   })
 }
 
+export function useSwapListOrder() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ listAId, listBId }: { listAId: string; listBId: string; board_id: string }) => {
+      const { error } = await supabase.rpc('swap_board_list_sort_order', {
+        p_list_a_id: listAId,
+        p_list_b_id: listBId,
+      })
+      if (error) throw error
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: boardKeys.lists(vars.board_id) })
+    },
+  })
+}
+
 export function useDeleteList() {
   const qc = useQueryClient()
 

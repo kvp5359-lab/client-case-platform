@@ -8,7 +8,7 @@ import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField } from './types'
 import { formatDeadline, isOverdue } from './boardListUtils'
-import { resolveCardLayout, fieldStyleToClasses } from './cardLayoutUtils'
+import { resolveCardLayout, fieldStyleToClasses, visibleFieldsToLayout } from './cardLayoutUtils'
 
 interface BoardProjectRowProps {
   project: BoardProject
@@ -89,9 +89,10 @@ export function BoardProjectRow({
   const deadline = formatDeadline(project.deadline)
   const overdue = isOverdue(project.deadline)
 
-  const resolved = useMemo(
-    () => resolveCardLayout(cardLayout, 'project'),
-    [cardLayout],
+  const rows = useMemo(
+    () => resolveCardLayout(cardLayout, 'project')
+      ?? visibleFieldsToLayout(visibleFields, displayMode, 'project'),
+    [cardLayout, visibleFields, displayMode],
   )
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -112,42 +113,6 @@ export function BoardProjectRow({
   const fieldProps = { project, deadline, overdue, isSelected }
   const isCards = displayMode === 'cards'
 
-  // ── Динамический рендеринг через cardLayout ──
-  if (resolved) {
-    const content = resolved.map((row, i) => (
-      <div key={i} className={cn('flex items-center gap-1.5 min-w-0', i > 0 && 'mt-0.5')}>
-        {row.fields.map((f) => (
-          <ProjectField key={f.fieldId} fieldId={f.fieldId} style={f.style} {...fieldProps} />
-        ))}
-      </div>
-    ))
-
-    return (
-      <a
-        href={href}
-        onClick={handleClick}
-        className={cn(
-          'block cursor-pointer overflow-hidden transition-colors',
-          isCards
-            ? cn(
-                'rounded-md border px-2.5 py-1 hover:shadow-sm',
-                isSelected ? 'bg-brand-100 border-brand-200 shadow-sm' : 'bg-background',
-              )
-            : cn(
-                'px-2.5 py-1',
-                isSelected ? 'bg-brand-100' : 'hover:bg-accent/50',
-              ),
-        )}
-      >
-        {content}
-      </a>
-    )
-  }
-
-  // ── Fallback: старый рендеринг через visibleFields ──
-  const showTemplate = visibleFields.includes('template')
-  const showDeadline = visibleFields.includes('deadline')
-
   return (
     <a
       href={href}
@@ -165,26 +130,13 @@ export function BoardProjectRow({
             ),
       )}
     >
-      <div className="flex items-center gap-1.5 min-w-0">
-        <FolderOpen
-          className={cn(
-            'h-3.5 w-3.5 shrink-0',
-            isSelected ? 'text-brand-600' : 'text-muted-foreground',
-          )}
-        />
-        <span className={cn('text-[14px] truncate leading-snug', isSelected && 'font-medium text-brand-700')}>
-          {project.name}
-        </span>
-        <div className="flex-1" />
-        {showDeadline && deadline && (
-          <span className={cn('text-[11px] shrink-0', overdue ? 'text-red-500' : 'text-muted-foreground')}>
-            {deadline}
-          </span>
-        )}
-        {showTemplate && project.template_name && (
-          <span className="text-[12px] text-muted-foreground/60 truncate shrink-0">{project.template_name}</span>
-        )}
-      </div>
+      {rows.map((row, i) => (
+        <div key={i} className={cn('flex items-center gap-1.5 min-w-0', i > 0 && 'mt-0.5')}>
+          {row.fields.map((f) => (
+            <ProjectField key={f.fieldId} fieldId={f.fieldId} style={f.style} {...fieldProps} />
+          ))}
+        </div>
+      ))}
     </a>
   )
 }

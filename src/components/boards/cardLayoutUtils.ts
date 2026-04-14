@@ -291,6 +291,59 @@ export function placeFieldInRow(
   return { ...layout, rows: newRows }
 }
 
+/**
+ * Конвертирует старые visibleFields + displayMode в CardLayout.
+ * Используется как fallback, когда card_layout === null.
+ */
+export function visibleFieldsToLayout(
+  visibleFields: string[],
+  displayMode: 'list' | 'cards',
+  entityType: 'task' | 'project',
+): ResolvedRow[] {
+  const S: CardFieldStyle = { fontSize: 'sm', align: 'left', truncate: 'truncate', bold: false }
+  const M: CardFieldStyle = { fontSize: 'md', align: 'left', truncate: 'truncate', bold: false }
+  const SR: CardFieldStyle = { fontSize: 'sm', align: 'right', truncate: 'truncate', bold: false }
+
+  const has = (f: string) => visibleFields.includes(f)
+
+  if (entityType === 'project') {
+    const row: ResolvedField[] = [
+      { fieldId: 'icon', style: S },
+      { fieldId: 'name', style: M },
+    ]
+    if (has('deadline')) row.push({ fieldId: 'deadline', style: SR })
+    if (has('template')) row.push({ fieldId: 'template', style: SR })
+    return [{ fields: row }]
+  }
+
+  // task
+  if (displayMode === 'cards') {
+    const top: ResolvedField[] = []
+    if (has('status')) top.push({ fieldId: 'status', style: S })
+    top.push({ fieldId: 'name', style: M })
+    if (has('assignees')) top.push({ fieldId: 'assignees', style: SR })
+    top.push({ fieldId: 'unread', style: SR })
+
+    const bottom: ResolvedField[] = []
+    if (has('project')) bottom.push({ fieldId: 'project', style: { fontSize: 'sm', align: 'left', truncate: 'truncate', bold: false } })
+    if (has('deadline')) bottom.push({ fieldId: 'deadline', style: SR })
+
+    const rows: ResolvedRow[] = [{ fields: top }]
+    if (bottom.length > 0) rows.push({ fields: bottom })
+    return rows
+  }
+
+  // list mode
+  const row: ResolvedField[] = []
+  if (has('status')) row.push({ fieldId: 'status', style: S })
+  row.push({ fieldId: 'name', style: M })
+  if (has('project')) row.push({ fieldId: 'project', style: { fontSize: 'sm', align: 'left', truncate: 'truncate', bold: false } })
+  if (has('deadline')) row.push({ fieldId: 'deadline', style: SR })
+  if (has('assignees')) row.push({ fieldId: 'assignees', style: SR })
+  row.push({ fieldId: 'unread', style: SR })
+  return [{ fields: row }]
+}
+
 /** Возвращает список полей, не размещённых (visible) ни в одной строке */
 export function getUnplacedFields(
   layout: CardLayout,

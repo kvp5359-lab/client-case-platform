@@ -5,8 +5,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import type { CardFieldId, CardFieldStyle, CardFontSize, CardAlign, CardTruncate } from './types'
-import { getFieldLabel } from './listSettingsConfigs'
+import type { CardFieldId, CardFieldStyle } from './types'
+import { getFieldLabel, CARD_FONT_SIZES, CARD_TRUNCATES } from './listSettingsConfigs'
+
+const ALIGNS: { value: 'left' | 'center' | 'right'; icon: React.ElementType }[] = [
+  { value: 'left', icon: AlignLeft },
+  { value: 'center', icon: AlignCenter },
+  { value: 'right', icon: AlignRight },
+]
 
 interface CardFieldStylePopoverProps {
   fieldId: CardFieldId
@@ -16,23 +22,6 @@ interface CardFieldStylePopoverProps {
   onStyleChange: (patch: Partial<CardFieldStyle>) => void
   children: React.ReactNode
 }
-
-const FONT_SIZES: { value: CardFontSize; label: string }[] = [
-  { value: 'sm', label: 'S' },
-  { value: 'md', label: 'M' },
-  { value: 'lg', label: 'L' },
-]
-
-const ALIGNS: { value: CardAlign; icon: React.ElementType }[] = [
-  { value: 'left', icon: AlignLeft },
-  { value: 'center', icon: AlignCenter },
-  { value: 'right', icon: AlignRight },
-]
-
-const TRUNCATES: { value: CardTruncate; label: string }[] = [
-  { value: 'truncate', label: 'Обрезать' },
-  { value: 'wrap', label: 'Переносить' },
-]
 
 export function CardFieldStylePopover({
   fieldId,
@@ -52,7 +41,7 @@ export function CardFieldStylePopover({
         <div className="space-y-1">
           <Label className="text-[11px] text-muted-foreground">Размер</Label>
           <div className="flex gap-1">
-            {FONT_SIZES.map((fs) => (
+            {CARD_FONT_SIZES.map((fs) => (
               <button
                 key={fs.value}
                 type="button"
@@ -96,7 +85,7 @@ export function CardFieldStylePopover({
         <div className="space-y-1">
           <Label className="text-[11px] text-muted-foreground">Текст</Label>
           <div className="flex gap-1">
-            {TRUNCATES.map((t) => (
+            {CARD_TRUNCATES.map((t) => (
               <button
                 key={t.value}
                 type="button"

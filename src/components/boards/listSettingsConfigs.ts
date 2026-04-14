@@ -11,9 +11,31 @@ import type {
   GroupByField,
   CardFieldId,
   CardFieldStyle,
+  CardFontSize,
+  CardAlign,
+  CardTruncate,
   CardLayout,
   CardFieldPlacement,
 } from './types'
+
+// ── Стилизация полей карточки (общие для AppearanceTab и CardFieldStylePopover) ──
+
+export const CARD_FONT_SIZES: { value: CardFontSize; label: string }[] = [
+  { value: 'sm', label: 'S' },
+  { value: 'md', label: 'M' },
+  { value: 'lg', label: 'L' },
+]
+
+export const CARD_ALIGNS: { value: CardAlign; label: string }[] = [
+  { value: 'left', label: 'Лево' },
+  { value: 'center', label: 'Центр' },
+  { value: 'right', label: 'Право' },
+]
+
+export const CARD_TRUNCATES: { value: CardTruncate; label: string }[] = [
+  { value: 'truncate', label: 'Обрезать' },
+  { value: 'wrap', label: 'Переносить' },
+]
 
 export const SORT_DIRS: { value: SortDir; label: string }[] = [
   { value: 'asc', label: 'По возрастанию' },
