@@ -245,7 +245,7 @@ export const ComposeField = forwardRef<ComposeFieldHandle, ComposeFieldProps>(fu
   )
 
   return (
-    <div className={cn('rounded-md border bg-background', className)}>
+    <div className={cn('rounded-md border bg-background min-w-0 overflow-hidden', className)}>
       {/* Editor */}
       <div
         className="px-3 pt-1 min-w-0"

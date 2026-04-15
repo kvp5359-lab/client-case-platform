@@ -183,7 +183,7 @@ export function MinimalTiptapEditor({
     editorProps: {
       attributes: {
         class:
-          'prose prose-sm max-w-none focus:outline-none min-h-[36px] overflow-y-auto py-2 text-sm leading-snug',
+          'prose prose-sm max-w-none focus:outline-none min-h-[36px] overflow-y-auto py-2 text-sm leading-snug break-words [overflow-wrap:anywhere]',
         style: `max-height: ${editorMaxHeight ?? 255}px`,
       },
       handlePaste: handlePasteImages,
@@ -217,7 +217,7 @@ export function MinimalTiptapEditor({
       editorProps: {
         attributes: {
           class:
-            'prose prose-sm max-w-none focus:outline-none min-h-[36px] overflow-y-auto py-2 text-sm leading-snug',
+            'prose prose-sm max-w-none focus:outline-none min-h-[36px] overflow-y-auto py-2 text-sm leading-snug break-words [overflow-wrap:anywhere]',
           style: `max-height: ${editorMaxHeight ?? 255}px`,
         },
         handlePaste: handlePasteImages,

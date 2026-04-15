@@ -281,7 +281,7 @@ export function ChatSettingsDialog({
 
         {/* First message compose (create mode only) */}
         {!form.isEditMode && (
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 min-w-0">
             <label className="text-sm text-muted-foreground">Первое сообщение</label>
             <ComposeField
               ref={composeRef}
