@@ -51,8 +51,7 @@ export interface PendingAiDocumentItem {
 }
 
 export const DEFAULT_AI_SOURCES: AiSources = {
-  clientMessages: true,
-  teamMessages: false,
+  chats: { mode: 'all', threadIds: [] },
   formData: false,
   documents: false,
   knowledge: null,

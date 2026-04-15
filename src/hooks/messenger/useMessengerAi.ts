@@ -46,7 +46,9 @@ export interface UseMessengerAiOptions {
 export function useMessengerAi(
   projectId: string,
   workspaceId: string,
-  chatMessages: { client: ProjectMessage[]; team: ProjectMessage[] },
+  chatMessages: ProjectMessage[],
+  /** Человекочитаемый ярлык скоупа чатов (для заголовка контекста), напр. «Все чаты» */
+  chatScopeLabel: string | undefined,
   options?: UseMessengerAiOptions,
 ) {
   const onAnswerCompleteRef = useRef(options?.onAnswerComplete)
@@ -105,7 +107,7 @@ export function useMessengerAi(
   )
 
   // Sources management
-  const { sources, setSources, toggleSource, setKnowledge, disableAllSources } = useAiSources({
+  const { sources, setSources, toggleSource, setKnowledge, setChatScope, disableAllSources } = useAiSources({
     initialSources: options?.initialSources,
     onSourcesChange: options?.onSourcesChange,
   })
@@ -140,12 +142,15 @@ export function useMessengerAi(
       const hasSessionDocs = sessionDocsRef.current.size > 0
       const hasHistory = aiMessages.length > 0
 
+      const chatsActive =
+        sources.chats.mode === 'all' ||
+        (sources.chats.mode === 'selected' && sources.chats.threadIds.length > 0)
+
       if (
         !hasAttachments &&
         !hasSessionDocs &&
         !hasHistory &&
-        !sources.clientMessages &&
-        !sources.teamMessages &&
+        !chatsActive &&
         !sources.formData &&
         !sources.documents &&
         !sources.knowledge
@@ -159,8 +164,13 @@ export function useMessengerAi(
       setStreamingContent('')
 
       const activeSources: string[] = []
-      if (sources.clientMessages) activeSources.push('Чат:клиенты')
-      if (sources.teamMessages) activeSources.push('Чат:команда')
+      if (chatsActive) {
+        activeSources.push(
+          sources.chats.mode === 'all'
+            ? 'Чаты: все'
+            : `Чаты: ${sources.chats.threadIds.length} выбрано`,
+        )
+      }
       if (sources.formData) activeSources.push('Анкеты')
       if (sources.documents) activeSources.push('Документы')
       if (sources.knowledge === 'project') activeSources.push('БЗ проекта')
@@ -182,8 +192,8 @@ export function useMessengerAi(
       try {
         context = buildProjectContext({
           sources,
-          clientMessages: chatMessages.client,
-          teamMessages: chatMessages.team,
+          chatMessages,
+          chatScopeLabel,
           formKits: formKits ?? undefined,
           documents: documents ?? undefined,
         })
@@ -296,6 +306,7 @@ export function useMessengerAi(
     [
       workspaceId,
       chatMessages,
+      chatScopeLabel,
       aiMessages,
       sources,
       formKits,
@@ -331,6 +342,7 @@ export function useMessengerAi(
     setSources,
     toggleSource,
     setKnowledge,
+    setChatScope,
     disableAllSources,
     formKitCount,
     documentCount,

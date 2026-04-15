@@ -267,8 +267,7 @@ describe('getAiSession', () => {
     localStorage.setItem(
       'cc:ai-sources',
       JSON.stringify({
-        clientMessages: false,
-        teamMessages: true,
+        chats: { mode: 'all', threadIds: [] },
         formData: false,
         documents: true,
         knowledge: 'project',
@@ -276,7 +275,7 @@ describe('getAiSession', () => {
     )
 
     const session = useSidePanelStore.getState().getAiSession('p-1')
-    expect(session.sources.teamMessages).toBe(true)
+    expect(session.sources.chats.mode).toBe('all')
     expect(session.sources.documents).toBe(true)
     expect(session.sources.knowledge).toBe('project')
   })

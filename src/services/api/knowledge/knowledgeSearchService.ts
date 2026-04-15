@@ -17,10 +17,13 @@ export type {
   ArticleSource,
   SearchSourcesResult,
   ConversationType,
+  ChatScope,
   ConversationSources,
   KnowledgeConversation,
   KnowledgeMessage,
 } from './knowledgeSearchService.types'
+
+export { migrateLegacySources } from './knowledgeSearchService.types'
 
 // =====================================================
 // Поиск

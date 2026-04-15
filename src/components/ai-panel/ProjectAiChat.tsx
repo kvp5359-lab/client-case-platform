@@ -14,8 +14,9 @@ import type { AiMessage } from '@/store/sidePanelStore'
 import { useDocumentStatuses } from '@/hooks/useStatuses'
 import { useAuth } from '@/contexts/AuthContext'
 import { DocumentPickerDialog } from '@/components/messenger/DocumentPickerDialog'
-import { getProjectMessagesByChannel } from '@/services/api/messenger/messengerService'
-import { type ConversationSources } from '@/services/api/knowledge/knowledgeSearchService'
+import { getProjectMessages } from '@/services/api/messenger/messengerService'
+import { type ConversationSources, migrateLegacySources } from '@/services/api/knowledge/knowledgeSearchService'
+import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { supabase } from '@/lib/supabase'
 import { AiChatInput } from './AiChatInput'
 import { AiMessageBubble } from './AiMessageBubble'
@@ -35,7 +36,6 @@ interface ProjectAiChatProps {
   templateId?: string
   hasKnowledgeProjectAccess?: boolean
   hasKnowledgeAllAccess?: boolean
-  hasTeamMessagesAccess?: boolean
 }
 
 export function ProjectAiChat({
@@ -44,7 +44,6 @@ export function ProjectAiChat({
   templateId,
   hasKnowledgeProjectAccess,
   hasKnowledgeAllAccess,
-  hasTeamMessagesAccess,
 }: ProjectAiChatProps) {
   const { user } = useAuth()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -65,39 +64,54 @@ export function ProjectAiChat({
   const conversationIdRef = useRef<string | null>(session.activeConversationId)
 
   // Sync activeConversationId to store
-  const setActiveConversationId = useCallback(
-    (id: string | null) => {
-      setActiveConversationIdLocal(id)
-      conversationIdRef.current = id
-      updateAiSession(sessionKey, { activeConversationId: id })
-    },
-    [sessionKey, updateAiSession],
-  )
+  const setActiveConversationId = (id: string | null) => {
+    setActiveConversationIdLocal(id)
+    conversationIdRef.current = id
+    updateAiSession(sessionKey, { activeConversationId: id })
+  }
 
-  // Загрузка сообщений мессенджера для AI-контекста (два канала проекта)
-  const { data: clientMessengerData } = useQuery({
-    queryKey: projectAiKeys.messengerMessagesByChannel(projectId ?? '', 'client'),
-    queryFn: () => getProjectMessagesByChannel(projectId!, 'client', { limit: 200 }),
-    enabled: hasProject,
-    staleTime: STALE_TIME.MEDIUM,
-  })
-  const { data: teamMessengerData } = useQuery({
-    queryKey: projectAiKeys.messengerMessagesByChannel(projectId ?? '', 'internal'),
-    queryFn: () => getProjectMessagesByChannel(projectId!, 'internal', { limit: 200 }),
-    enabled: hasProject,
-    staleTime: STALE_TIME.MEDIUM,
-  })
-  const clientMessages = clientMessengerData?.messages ?? []
-  const teamMessages = teamMessengerData?.messages ?? []
+  // Все треды проекта — для picker-а скоупа чатов
+  const { data: projectThreads = [] } = useProjectThreads(projectId)
 
   // Без проекта: knowledge: 'all' по умолчанию
-  const initialSources =
-    !hasProject && !session.sources.knowledge
-      ? { ...session.sources, knowledge: 'all' as const }
-      : session.sources
+  const sessionSources = migrateLegacySources(
+    session.sources as Partial<ConversationSources> | null | undefined,
+  )
+  const initialSources: ConversationSources =
+    !hasProject && !sessionSources.knowledge
+      ? { ...sessionSources, knowledge: 'all' as const }
+      : sessionSources
 
   // Ref для текущих sources — используется в callbacks без stale closure
-  const sourcesRef = useRef<ConversationSources>(initialSources as ConversationSources)
+  const sourcesRef = useRef<ConversationSources>(initialSources)
+
+  // Локальное зеркало текущего chat scope — обновляется в onSourcesChange.
+  // Нужно как state (не ref), чтобы реактивно перезапускать query сообщений.
+  const [chatScope, setChatScopeMirror] = useState<ConversationSources['chats']>(
+    initialSources.chats,
+  )
+  const threadIdsToLoad: string[] | null =
+    chatScope.mode === 'all' ? null : chatScope.threadIds
+
+  const { data: chatMessagesData } = useQuery({
+    queryKey: projectAiKeys.messengerMessagesByThreads(projectId ?? '', threadIdsToLoad),
+    queryFn: () => getProjectMessages(projectId!, threadIdsToLoad, { limit: 200 }),
+    enabled: hasProject,
+    staleTime: STALE_TIME.MEDIUM,
+  })
+  const chatMessages = chatMessagesData?.messages ?? []
+
+  const chatScopeLabel = useMemo(() => {
+    if (chatScope.mode === 'all') return 'ПЕРЕПИСКА (все чаты)'
+    if (chatScope.threadIds.length === 0) return 'ПЕРЕПИСКА'
+    const names = chatScope.threadIds
+      .map((tid) => projectThreads.find((t) => t.id === tid)?.name ?? '')
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(', ')
+    const more = chatScope.threadIds.length > 3 ? ` +${chatScope.threadIds.length - 3}` : ''
+    return `ПЕРЕПИСКА: ${names}${more}`
+  }, [chatScope, projectThreads])
 
   // Conversation CRUD (create, rename, delete, save messages, query list)
   const {
@@ -141,34 +155,34 @@ export function ProjectAiChat({
     addAttachedDocument,
     removeAttachedDocument,
     projectDocuments,
+    setChatScope,
   } = useMessengerAi(
     projectId || '',
     workspaceId,
-    { client: clientMessages, team: teamMessages },
+    chatMessages,
+    chatScopeLabel,
     {
       onAnswerComplete: handleAnswerComplete,
       templateId,
       initialSources: initialSources,
       initialAiMessages: session.aiMessages,
       initialSessionDocs: session.sessionDocs,
-      onSourcesChange: useCallback(
-        (s: import('@/services/api/messenger/messengerAiService').AiSources) => {
-          sourcesRef.current = s as ConversationSources
-          updateAiSession(sessionKey, { sources: s })
-          // Сохраняем sources в БД (fire-and-forget, не кидаем ошибку — у клиентов нет RLS-доступа)
-          const convId = conversationIdRef.current
-          if (convId) {
-            supabase
-              .from('knowledge_conversations')
-              .update({ sources: s } as never)
-              .eq('id', convId)
-              .then(({ error }) => {
-                if (error) logger.debug('Не удалось сохранить sources диалога:', error)
-              })
-          }
-        },
-        [sessionKey, updateAiSession],
-      ),
+      onSourcesChange: (s: import('@/services/api/messenger/messengerAiService').AiSources) => {
+        sourcesRef.current = s as ConversationSources
+        setChatScopeMirror(s.chats)
+        updateAiSession(sessionKey, { sources: s })
+        // Сохраняем sources в БД (fire-and-forget, не кидаем ошибку — у клиентов нет RLS-доступа)
+        const convId = conversationIdRef.current
+        if (convId) {
+          supabase
+            .from('knowledge_conversations')
+            .update({ sources: s } as never)
+            .eq('id', convId)
+            .then(({ error }) => {
+              if (error) logger.debug('Не удалось сохранить sources диалога:', error)
+            })
+        }
+      },
       onAiMessagesChange: useCallback(
         (msgs: AiMessage[]) => updateAiSession(sessionKey, { aiMessages: msgs }),
         [sessionKey, updateAiSession],
@@ -302,8 +316,9 @@ export function ProjectAiChat({
           sources={sources}
           toggleSource={toggleSource}
           setKnowledge={setKnowledge}
-          clientMessagesCount={clientMessages.length}
-          teamMessagesCount={teamMessages.length}
+          setChatScope={setChatScope}
+          projectThreads={projectThreads.map((t) => ({ id: t.id, name: t.name, type: t.type }))}
+          chatMessagesCount={chatMessages.length}
           formKitCount={formKitCount}
           documentCount={documentCount}
           isStreaming={isStreaming}
@@ -318,7 +333,6 @@ export function ProjectAiChat({
           hasKnowledgeProjectAccess={hasKnowledgeProjectAccess}
           hasKnowledgeAllAccess={hasKnowledgeAllAccess}
           hasProject={hasProject}
-          hasTeamMessagesAccess={hasTeamMessagesAccess}
         />
 
         {/* Диалог выбора документов из проекта */}

@@ -162,6 +162,45 @@ export async function getProjectMessagesByChannel(
 }
 
 /**
+ * Загрузить сообщения проекта по списку тредов (или все треды проекта, если threadIds=null).
+ * Используется AI-ассистентом для скоупа поиска по чатам.
+ */
+export async function getProjectMessages(
+  projectId: string,
+  threadIds: string[] | null,
+  options: { limit?: number } = {},
+): Promise<{ messages: ProjectMessage[]; hasMore: boolean }> {
+  const limit = options.limit ?? 200
+
+  if (threadIds && threadIds.length === 0) {
+    return { messages: [], hasMore: false }
+  }
+
+  let query = supabase
+    .from('project_messages')
+    .select(MESSAGE_SELECT)
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+    .limit(limit + 1)
+
+  if (threadIds) {
+    query = query.in('thread_id', threadIds)
+  }
+
+  const { data, error } = await query
+
+  if (error) throw new ConversationError(`Ошибка загрузки сообщений: ${error.message}`)
+
+  const messages = castToProjectMessages(data ?? [])
+  const hasMore = messages.length > limit
+  if (hasMore) messages.pop()
+
+  await hydrateReplyMessages(messages)
+
+  return { messages: messages.reverse(), hasMore }
+}
+
+/**
  * Send a message (with optional attachments)
  */
 export async function sendMessage(params: SendMessageParams): Promise<ProjectMessage> {

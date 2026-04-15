@@ -44,14 +44,9 @@ export interface DocumentForAi {
   statusId?: string | null
 }
 
-export interface AiSources {
-  clientMessages: boolean
-  teamMessages: boolean
-  formData: boolean
-  documents: boolean
-  /** 'project' = БЗ проекта, 'all' = вся БЗ, null = выключено */
-  knowledge: 'project' | 'all' | null
-}
+export type { ChatScope } from '../knowledge/knowledgeSearchService.types'
+export type { ConversationSources as AiSources } from '../knowledge/knowledgeSearchService.types'
+import type { ConversationSources as AiSources } from '../knowledge/knowledgeSearchService.types'
 
 // =====================================================
 // Форматирование контекста
@@ -148,25 +143,25 @@ export function formatDocumentsForAi(documents: DocumentForAi[]): string {
  */
 export function buildProjectContext(options: {
   sources: AiSources
-  clientMessages?: ProjectMessage[]
-  teamMessages?: ProjectMessage[]
+  /** Сообщения из тредов проекта, уже отфильтрованных по chats-скоупу. */
+  chatMessages?: ProjectMessage[]
+  /** Метки выбранных чатов: «Все чаты» или список названий. Для заголовка блока. */
+  chatScopeLabel?: string
   formKits?: FormKitForAi[]
   documents?: DocumentForAi[]
 }): string {
-  const { sources, clientMessages, teamMessages, formKits, documents } = options
+  const { sources, chatMessages, chatScopeLabel, formKits, documents } = options
   const blocks: string[] = []
 
-  if (sources.clientMessages && clientMessages && clientMessages.length > 0) {
-    const formatted = formatMessagesForAi(clientMessages)
-    if (formatted) {
-      blocks.push(`== ПЕРЕПИСКА С КЛИЕНТАМИ (${clientMessages.length} сообщ.) ==\n${formatted}`)
-    }
-  }
+  const chatsEnabled =
+    sources.chats.mode === 'all' ||
+    (sources.chats.mode === 'selected' && sources.chats.threadIds.length > 0)
 
-  if (sources.teamMessages && teamMessages && teamMessages.length > 0) {
-    const formatted = formatMessagesForAi(teamMessages)
+  if (chatsEnabled && chatMessages && chatMessages.length > 0) {
+    const formatted = formatMessagesForAi(chatMessages)
     if (formatted) {
-      blocks.push(`== ПЕРЕПИСКА С КОМАНДОЙ (${teamMessages.length} сообщ.) ==\n${formatted}`)
+      const label = chatScopeLabel ?? 'ПЕРЕПИСКА'
+      blocks.push(`== ${label} (${chatMessages.length} сообщ.) ==\n${formatted}`)
     }
   }
 

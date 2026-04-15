@@ -15,6 +15,7 @@ import {
   createConversation,
   addMessage,
   getKnowledgeMessages as getConversationMessages,
+  migrateLegacySources,
   type KnowledgeConversation,
   type ConversationSources,
   type SearchSource,
@@ -120,7 +121,7 @@ export function useProjectAiConversations({
       setAiMessagesRef.current(mapped)
       setActiveConversationId(conv.id)
       if (conv.sources) {
-        setSourcesRef.current(conv.sources)
+        setSourcesRef.current(migrateLegacySources(conv.sources))
       }
     },
     [setActiveConversationId],

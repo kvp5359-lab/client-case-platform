@@ -479,6 +479,15 @@ export const projectAiKeys = {
     ['project-ai', 'messenger-messages', projectId] as const,
   messengerMessagesByChannel: (projectId: string, channel: 'client' | 'internal') =>
     ['project-ai', 'messenger-messages', projectId, channel] as const,
+  /** Сообщения по списку тредов (или null = все треды проекта). */
+  messengerMessagesByThreads: (projectId: string, threadIds: string[] | null) =>
+    [
+      'project-ai',
+      'messenger-messages',
+      projectId,
+      'threads',
+      threadIds === null ? '__all__' : [...threadIds].sort().join(','),
+    ] as const,
 }
 
 /**

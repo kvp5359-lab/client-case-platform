@@ -140,8 +140,8 @@ describe('lsClearPanelKeys', () => {
   })
 
   it('удаляет все ключи по префиксам (per-project)', () => {
-    localStorage.setItem(LS_KEY_SOURCES_PREFIX + 'p-1', '{"clientMessages":true}')
-    localStorage.setItem(LS_KEY_SOURCES_PREFIX + 'p-2', '{"clientMessages":false}')
+    localStorage.setItem(LS_KEY_SOURCES_PREFIX + 'p-1', '{"chats":{"mode":"all","threadIds":[]}}')
+    localStorage.setItem(LS_KEY_SOURCES_PREFIX + 'p-2', '{"chats":{"mode":"selected","threadIds":[]}}')
     localStorage.setItem(LS_KEY_PANEL_TAB_PREFIX + 'p-1', '"client"')
     localStorage.setItem(LS_KEY_ACTIVE_THREAD_PREFIX + 'p-1', '"thread-1"')
 
@@ -181,7 +181,7 @@ describe('loadPersistedState', () => {
     expect(state.initialAiSessions).toEqual({})
     expect(state.initialPanelTab).toBe(null)
     // persistedSources имеет дефолтные значения из DEFAULT_AI_SOURCES
-    expect(state.persistedSources.clientMessages).toBe(true)
+    expect(state.persistedSources.chats.mode).toBe('all')
   })
 
   it('восстанавливает persistedAiTab', () => {
@@ -204,8 +204,7 @@ describe('loadPersistedState', () => {
     localStorage.setItem(
       LS_KEY_SOURCES,
       JSON.stringify({
-        clientMessages: false,
-        teamMessages: true,
+        chats: { mode: 'selected', threadIds: ['t-1'] },
         formData: false,
         documents: true,
         knowledge: null,
@@ -216,7 +215,7 @@ describe('loadPersistedState', () => {
 
     expect(Object.keys(state.initialAiSessions)).toEqual(['p-1', 'p-2'])
     expect(state.initialAiSessions['p-1'].activeConversationId).toBe('conv-1')
-    expect(state.initialAiSessions['p-1'].sources.teamMessages).toBe(true)
+    expect(state.initialAiSessions['p-1'].sources.chats.mode).toBe('selected')
     expect(state.initialAiSessions['p-1'].sources.documents).toBe(true)
     expect(state.initialAiSessions['p-2'].activeConversationId).toBe('conv-2')
   })
@@ -226,8 +225,7 @@ describe('loadPersistedState', () => {
     localStorage.setItem(
       LS_KEY_SOURCES,
       JSON.stringify({
-        clientMessages: false,
-        teamMessages: false,
+        chats: { mode: 'selected', threadIds: [] },
         formData: false,
         documents: false,
         knowledge: null,
@@ -237,8 +235,7 @@ describe('loadPersistedState', () => {
     localStorage.setItem(
       LS_KEY_SOURCES_PREFIX + 'p-1',
       JSON.stringify({
-        clientMessages: true,
-        teamMessages: true,
+        chats: { mode: 'all', threadIds: [] },
         formData: true,
         documents: true,
         knowledge: 'all',
@@ -247,7 +244,7 @@ describe('loadPersistedState', () => {
 
     const state = loadPersistedState()
 
-    expect(state.initialAiSessions['p-1'].sources.clientMessages).toBe(true)
+    expect(state.initialAiSessions['p-1'].sources.chats.mode).toBe('all')
     expect(state.initialAiSessions['p-1'].sources.knowledge).toBe('all')
   })
 

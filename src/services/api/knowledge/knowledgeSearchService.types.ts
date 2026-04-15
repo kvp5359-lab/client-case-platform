@@ -30,12 +30,65 @@ export interface SearchSourcesResult {
 
 export type ConversationType = 'knowledge' | 'project'
 
+/**
+ * Скоуп поиска по чатам/задачам проекта.
+ * - mode 'all'      — искать во всех тредах проекта
+ * - mode 'selected' — искать только в перечисленных threadIds (пустой массив = «никаких чатов»)
+ */
+export interface ChatScope {
+  mode: 'all' | 'selected'
+  threadIds: string[]
+}
+
 export interface ConversationSources {
-  clientMessages: boolean
-  teamMessages: boolean
+  /** Где искать переписку (треды проекта). */
+  chats: ChatScope
   formData: boolean
   documents: boolean
   knowledge: 'project' | 'all' | null
+  /** @deprecated старый формат — оставлено для совместимости при чтении из БД */
+  clientMessages?: boolean
+  /** @deprecated старый формат — оставлено для совместимости при чтении из БД */
+  teamMessages?: boolean
+}
+
+/**
+ * Конвертирует старый формат `sources` (clientMessages/teamMessages) в новый (chats).
+ * Если уже новый формат — возвращает как есть. Безопасно вызывать на null.
+ */
+export function migrateLegacySources(
+  raw: Partial<ConversationSources> | null | undefined,
+): ConversationSources {
+  if (!raw) {
+    return {
+      chats: { mode: 'all', threadIds: [] },
+      formData: false,
+      documents: false,
+      knowledge: null,
+    }
+  }
+
+  // Новый формат уже содержит chats
+  if (raw.chats && typeof raw.chats === 'object' && 'mode' in raw.chats) {
+    return {
+      chats: raw.chats,
+      formData: !!raw.formData,
+      documents: !!raw.documents,
+      knowledge: raw.knowledge ?? null,
+    }
+  }
+
+  // Старый формат: clientMessages/teamMessages → chats.mode = 'all' если хоть один true,
+  // иначе 'selected' с пустым массивом (пользователь явно отключал чаты).
+  const hadAnyChats = !!raw.clientMessages || !!raw.teamMessages
+  return {
+    chats: hadAnyChats
+      ? { mode: 'all', threadIds: [] }
+      : { mode: 'selected', threadIds: [] },
+    formData: !!raw.formData,
+    documents: !!raw.documents,
+    knowledge: raw.knowledge ?? null,
+  }
 }
 
 export interface KnowledgeConversation {

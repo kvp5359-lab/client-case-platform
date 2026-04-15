@@ -8,6 +8,7 @@ import type { AiMessage } from '@/store/sidePanelStore'
 import { logger } from '@/utils/logger'
 import {
   getKnowledgeMessages as getConversationMessages,
+  migrateLegacySources,
   type KnowledgeConversation,
   type ConversationSources,
 } from '@/services/api/knowledge/knowledgeSearchService'
@@ -83,7 +84,7 @@ export function useProjectAiRestore({
     const conv = conversations.find((c) => c.id === activeConversationId)
     if (conv?.sources) {
       sourcesRestoredRef.current = true
-      setSources(conv.sources)
+      setSources(migrateLegacySources(conv.sources))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversations, activeConversationId])

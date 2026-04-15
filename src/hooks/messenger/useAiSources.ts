@@ -1,11 +1,18 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import type { AiSources } from '@/services/api/messenger/messengerAiService'
+import type { AiSources, ChatScope } from '@/services/api/messenger/messengerAiService'
 
 export interface UseAiSourcesOptions {
   initialSources?: AiSources
   onSourcesChange?: (sources: AiSources) => void
+}
+
+const DEFAULT_SOURCES: AiSources = {
+  chats: { mode: 'all', threadIds: [] },
+  formData: false,
+  documents: false,
+  knowledge: null,
 }
 
 export function useAiSources(options?: UseAiSourcesOptions) {
@@ -15,14 +22,7 @@ export function useAiSources(options?: UseAiSourcesOptions) {
   }, [options?.onSourcesChange])
 
   const [sources, setSourcesRaw] = useState<AiSources>(
-    () =>
-      options?.initialSources ?? {
-        clientMessages: true,
-        teamMessages: false,
-        formData: false,
-        documents: false,
-        knowledge: null,
-      },
+    () => options?.initialSources ?? DEFAULT_SOURCES,
   )
 
   // Notify parent about sources changes outside of render
@@ -42,22 +42,24 @@ export function useAiSources(options?: UseAiSourcesOptions) {
     })
   }, [])
 
-  const toggleSource = useCallback((key: keyof AiSources) => {
-    setSources((prev) => {
-      if (key === 'knowledge') return prev
-      return { ...prev, [key]: !prev[key] }
-    })
+  /** Переключатель для бинарных источников: formData / documents. */
+  const toggleSource = useCallback((key: 'formData' | 'documents') => {
+    setSources((prev) => ({ ...prev, [key]: !prev[key] }))
   }, [setSources])
 
-  /** Toggle knowledge: project → all → off (null) */
+  /** Toggle knowledge: project | all | null. */
   const setKnowledge = useCallback((value: 'project' | 'all' | null) => {
     setSources((prev) => ({ ...prev, knowledge: value }))
   }, [setSources])
 
+  /** Заменить скоуп чатов целиком. */
+  const setChatScope = useCallback((scope: ChatScope) => {
+    setSources((prev) => ({ ...prev, chats: scope }))
+  }, [setSources])
+
   const disableAllSources = useCallback(() => {
     setSources({
-      clientMessages: false,
-      teamMessages: false,
+      chats: { mode: 'selected', threadIds: [] },
       formData: false,
       documents: false,
       knowledge: null,
@@ -69,6 +71,7 @@ export function useAiSources(options?: UseAiSourcesOptions) {
     setSources,
     toggleSource,
     setKnowledge,
+    setChatScope,
     disableAllSources,
   }
 }
