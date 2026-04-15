@@ -8,6 +8,9 @@ import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 function compareTasks(a: WorkspaceTask, b: WorkspaceTask, sortBy: SortField, sortDir: SortDir): number {
   let cmp = 0
   switch (sortBy) {
+    case 'manual_order':
+      // Ручная сортировка всегда по возрастанию sort_order, direction игнорируется
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0)
     case 'name':
       cmp = (a.name ?? '').localeCompare(b.name ?? '')
       break

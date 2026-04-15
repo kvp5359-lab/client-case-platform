@@ -37,6 +37,7 @@ function TaskField({
   workspaceId,
   isSelected,
   onStatusChange,
+  stretch,
 }: {
   fieldId: CardFieldId
   style: CardFieldStyle
@@ -49,13 +50,17 @@ function TaskField({
   workspaceId: string
   isSelected?: boolean
   onStatusChange: (taskId: string, statusId: string | null) => void
+  stretch?: boolean
 }) {
   const classes = fieldStyleToClasses(style)
 
   switch (fieldId) {
+    case 'spacer':
+      return <div className="shrink-0 w-[18px]" aria-hidden />
+
     case 'status':
       return (
-        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className={cn('shrink-0', style.align === 'right' && 'ml-auto')} onClick={(e) => e.stopPropagation()}>
           {statuses.length > 0 ? (
             <StatusDropdown
               currentStatus={currentStatus}
@@ -74,7 +79,15 @@ function TaskField({
 
     case 'name':
       return (
-        <span className={cn(classes, 'min-w-0 flex-1 leading-snug', isSelected && 'font-medium text-brand-700')}>
+        <span
+          className={cn(
+            classes,
+            'min-w-0 leading-snug',
+            stretch && 'flex-1',
+            overdue && 'text-red-500',
+            isSelected && 'font-medium text-brand-700',
+          )}
+        >
           {task.name}
         </span>
       )
@@ -90,7 +103,7 @@ function TaskField({
     case 'assignees':
       if (assignees.length === 0) return null
       return (
-        <div className="shrink-0">
+        <div className={cn('shrink-0', style.align === 'right' && 'ml-auto')}>
           <ParticipantAvatars participants={assignees} maxVisible={2} size="sm" />
         </div>
       )
@@ -104,7 +117,11 @@ function TaskField({
       )
 
     case 'unread':
-      return <UnreadBadge threadId={task.id} workspaceId={workspaceId} accentColor={task.accent_color} />
+      return (
+        <div className={cn('shrink-0', style.align === 'right' && 'ml-auto')}>
+          <UnreadBadge threadId={task.id} workspaceId={workspaceId} accentColor={task.accent_color} />
+        </div>
+      )
 
     default:
       return null
@@ -174,13 +191,25 @@ export function BoardTaskRow({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
-      {rows.map((row, i) => (
-        <div key={i} className={cn('flex items-center gap-1.5 min-w-0', i > 0 && 'mt-0.5')}>
-          {row.fields.map((f) => (
-            <TaskField key={f.fieldId} fieldId={f.fieldId} style={f.style} {...fieldProps} />
-          ))}
-        </div>
-      ))}
+      {rows.map((row, i) => {
+        const lastLeftIdx = row.fields.reduce(
+          (acc, f, idx) => (f.style.align === 'left' ? idx : acc),
+          -1,
+        )
+        return (
+          <div key={i} className={cn('flex items-center gap-1.5 min-w-0', i > 0 && 'mt-0.5')}>
+            {row.fields.map((f, idx) => (
+              <TaskField
+                key={f.fieldId}
+                fieldId={f.fieldId}
+                style={f.style}
+                stretch={idx === lastLeftIdx}
+                {...fieldProps}
+              />
+            ))}
+          </div>
+        )
+      })}
     </div>
   )
 }

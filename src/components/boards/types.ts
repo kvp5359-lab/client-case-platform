@@ -57,7 +57,7 @@ export interface BoardMember {
   added_at: string
 }
 
-export type SortField = 'created_at' | 'updated_at' | 'deadline' | 'status_order' | 'name'
+export type SortField = 'created_at' | 'updated_at' | 'deadline' | 'status_order' | 'name' | 'manual_order'
 export type SortDir = 'asc' | 'desc'
 export type DisplayMode = 'list' | 'cards'
 
@@ -82,6 +82,7 @@ export type CardFieldId =
   | 'unread'
   | 'icon'
   | 'template'
+  | 'spacer'
 
 export type CardFontSize = 'sm' | 'md' | 'lg'
 export type CardAlign = 'left' | 'center' | 'right'

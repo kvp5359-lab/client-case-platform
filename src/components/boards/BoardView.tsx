@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { BoardColumn } from './BoardColumn'
+import { usePanDrag } from './hooks/usePanDrag'
 import { DEFAULT_COLUMN_WIDTH, type BoardList, type FilterContext } from './types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
@@ -74,6 +75,8 @@ export function BoardView({
     [currentParticipantId, currentUserId, userToParticipantMap],
   )
 
+  const panRef = usePanDrag<HTMLDivElement>()
+
   if (lists.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
@@ -83,7 +86,7 @@ export function BoardView({
   }
 
   return (
-    <div className="flex gap-4 p-4 h-full min-w-min">
+    <div ref={panRef} className="flex gap-4 p-4 h-full min-w-min cursor-grab">
       {columns.map((col, idx) => (
         <BoardColumn
           key={col.index}

@@ -119,12 +119,14 @@ export function useReorderTasks(invalidateKeys: ReadonlyArray<readonly unknown[]
       if (error) throw error
     },
     onMutate: async (updates) => {
-      // Optimistic update: сразу обновляем sort_order в кэше
+      // Optimistic update: сразу обновляем sort_order в кэше.
+      // Используем setQueriesData (по префиксу), потому что фактические ключи
+      // в кэше включают userId — например, ['workspace-threads', wsId, userId].
       const orderMap = new Map(updates.map((u) => [u.id, u.sort_order]))
 
       for (const key of invalidateKeys) {
         await queryClient.cancelQueries({ queryKey: key })
-        queryClient.setQueryData(key, (old: unknown) => {
+        queryClient.setQueriesData({ queryKey: key }, (old: unknown) => {
           if (!Array.isArray(old)) return old
           return old.map((item: { id: string; sort_order?: number }) =>
             orderMap.has(item.id)
@@ -134,9 +136,10 @@ export function useReorderTasks(invalidateKeys: ReadonlyArray<readonly unknown[]
         })
       }
     },
-    onError: () => {
-      // При ошибке — рефетч актуальных данных
+    onSettled: () => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
+    },
+    onError: () => {
       toast.error('Не удалось сохранить порядок')
     },
   })

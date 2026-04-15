@@ -37,6 +37,9 @@ function ProjectField({
   const classes = fieldStyleToClasses(style)
 
   switch (fieldId) {
+    case 'spacer':
+      return <div className="shrink-0 w-3.5" aria-hidden />
+
     case 'icon':
       return (
         <FolderOpen

@@ -52,7 +52,7 @@ export function BoardListHeader({
   }
 
   return (
-    <div className="group/header flex items-center gap-2 mb-0 min-w-0">
+    <div className="group/header relative flex items-center gap-2 mb-0 min-w-0">
       <button
         type="button"
         onClick={onToggleCollapse}
@@ -65,8 +65,11 @@ export function BoardListHeader({
           <span className="text-sm opacity-60 shrink-0">{count}</span>
         )}
       </button>
-      <div className="flex-1" />
-      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/header:opacity-100 transition-opacity">
+      <div
+        className="flex-1 h-0.5 rounded-full ml-1"
+        style={{ backgroundColor: hs.bg }}
+      />
+      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/header:opacity-100 transition-opacity absolute right-0 bg-[#f6f6f7] rounded">
         {!isInbox && hasFilters && (
           <Button
             variant="ghost"

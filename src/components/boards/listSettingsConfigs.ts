@@ -43,6 +43,7 @@ export const SORT_DIRS: { value: SortDir; label: string }[] = [
 ]
 
 export const TASK_SORT_FIELDS: { value: SortField; label: string }[] = [
+  { value: 'manual_order', label: 'Вручную' },
   { value: 'created_at', label: 'Дата создания' },
   { value: 'updated_at', label: 'Дата обновления' },
   { value: 'deadline', label: 'Дедлайн' },
@@ -107,6 +108,7 @@ export const CARD_FIELD_DEFS: CardFieldDef[] = [
   { id: 'project',   label: 'Проект',        entityTypes: ['task'] },
   { id: 'template',  label: 'Шаблон',        entityTypes: ['project'] },
   { id: 'unread',    label: 'Непрочитанные', entityTypes: ['task'] },
+  { id: 'spacer',    label: 'Отступ',        entityTypes: ['task', 'project'] },
 ]
 
 export function getFieldDefsForEntity(entityType: 'task' | 'project'): CardFieldDef[] {

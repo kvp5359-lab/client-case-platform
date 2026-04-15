@@ -36,14 +36,27 @@ export function useCreateList() {
 
   return useMutation({
     mutationFn: async (params: CreateListParams) => {
+      const columnIndex = params.column_index ?? 0
+      let sortOrder = params.sort_order
+      if (sortOrder === undefined) {
+        const { data: maxRow } = await supabase
+          .from('board_lists')
+          .select('sort_order')
+          .eq('board_id', params.board_id)
+          .eq('column_index', columnIndex)
+          .order('sort_order', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        sortOrder = maxRow ? (maxRow as { sort_order: number }).sort_order + 1 : 0
+      }
       const { data, error } = await supabase
         .from('board_lists')
         .insert({
           board_id: params.board_id,
           name: params.name,
           entity_type: params.entity_type,
-          column_index: params.column_index ?? 0,
-          sort_order: params.sort_order ?? 0,
+          column_index: columnIndex,
+          sort_order: sortOrder,
         })
         .select()
         .single()

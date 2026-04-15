@@ -264,18 +264,20 @@ export function ListSettingsGeneralTab(props: ListSettingsGeneralTabProps) {
                     ))}
                   </SelectContent>
                 </Select>
-                <Select value={sortDir} onValueChange={(v) => onSortDirChange(v as SortDir)}>
-                  <SelectTrigger className="h-8 text-xs w-[120px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SORT_DIRS.map((d) => (
-                      <SelectItem key={d.value} value={d.value}>
-                        {d.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {sortBy !== 'manual_order' && (
+                  <Select value={sortDir} onValueChange={(v) => onSortDirChange(v as SortDir)}>
+                    <SelectTrigger className="h-8 text-xs w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SORT_DIRS.map((d) => (
+                        <SelectItem key={d.value} value={d.value}>
+                          {d.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 
