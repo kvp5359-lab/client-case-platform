@@ -74,7 +74,7 @@ export function BoardListCard({
   siblingLists,
   columnWidth,
 }: BoardListCardProps) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [userCollapsed, setUserCollapsed] = useState<boolean | null>(null)
   const settingsDialog = useDialog()
 
   const simpleAssigneesMap = useMemo(() => {
@@ -112,6 +112,8 @@ export function BoardListCard({
   )
 
   const count = isInbox ? inboxThreads.length : isProject ? filteredProjects.length : filteredTasks.length
+  const collapsed = userCollapsed ?? (!isInbox && count === 0)
+
   const isCards = (list.display_mode ?? 'list') === 'cards'
   const groupByField = (list.group_by ?? 'none') as GroupByField
   const listHeight = list.list_height ?? 'auto'
@@ -190,7 +192,7 @@ export function BoardListCard({
         list={list}
         count={count}
         collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed(!collapsed)}
+        onToggleCollapse={() => setUserCollapsed(!collapsed)}
         onOpenSettings={settingsDialog.open}
         hasFilters={hasFilters}
         isInbox={isInbox}
