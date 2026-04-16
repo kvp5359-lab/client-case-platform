@@ -75,7 +75,7 @@ export function EmailOtpForm() {
     } else {
       setSuccess('Успешный вход!')
       setLoading(false)
-      redirectTimerRef.current = setTimeout(() => router.push('/profile'), 500)
+      redirectTimerRef.current = setTimeout(() => router.push('/app'), 500)
     }
   }
 

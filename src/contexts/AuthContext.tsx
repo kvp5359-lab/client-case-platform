@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = useCallback(async (nextPath?: string) => {
     const callbackUrl = `${window.location.origin}/auth/callback`
     const safePath = nextPath ? safeInternalPath(nextPath) : null
-    const redirectTo = safePath && safePath !== '/profile'
+    const redirectTo = safePath && safePath !== '/profile' && safePath !== '/app'
       ? `${callbackUrl}?next=${encodeURIComponent(safePath)}`
       : callbackUrl
     const { error } = await supabase.auth.signInWithOAuth({

@@ -1,7 +1,8 @@
 /**
  * Layout auth-группы (login, register, callback).
  *
- * Server Component: если пользователь уже авторизован — редиректит на /profile.
+ * Server Component: если пользователь уже авторизован — редиректит на /app
+ * (который подбирает последний открытый или первый доступный воркспейс).
  * Defense-in-depth: middleware тоже может это делать, но layout гарантирует
  * на уровне SSR, что залогиненный пользователь не увидит форму входа.
  */
@@ -16,7 +17,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   } = await supabase.auth.getSession()
 
   if (session) {
-    redirect('/profile')
+    redirect('/app')
   }
 
   return <>{children}</>

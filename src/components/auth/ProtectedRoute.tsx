@@ -24,7 +24,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   useEffect(() => {
     if (!loading && !user) {
       const fullPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
-      if (fullPath !== '/' && fullPath !== '/profile') {
+      if (fullPath !== '/' && fullPath !== '/profile' && fullPath !== '/app') {
         localStorage.setItem('auth_redirect', fullPath)
       }
       router.replace('/login')

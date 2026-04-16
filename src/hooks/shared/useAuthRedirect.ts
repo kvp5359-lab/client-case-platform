@@ -13,13 +13,13 @@ import { useRouter } from 'next/navigation'
  * начинающиеся с одного `/` (но не `//`, не `/\`, не `javascript:`).
  */
 export function safeInternalPath(path: string | null | undefined): string {
-  if (!path || typeof path !== 'string') return '/profile'
-  if (!path.startsWith('/')) return '/profile'
-  if (path.startsWith('//') || path.startsWith('/\\')) return '/profile'
+  if (!path || typeof path !== 'string') return '/app'
+  if (!path.startsWith('/')) return '/app'
+  if (path.startsWith('//') || path.startsWith('/\\')) return '/app'
   // Блокируем URL-encoded обходы и опасные протоколы
   const decoded = decodeURIComponent(path)
-  if (decoded.startsWith('//') || decoded.startsWith('/\\')) return '/profile'
-  if (decoded.toLowerCase().includes('javascript:')) return '/profile'
+  if (decoded.startsWith('//') || decoded.startsWith('/\\')) return '/app'
+  if (decoded.toLowerCase().includes('javascript:')) return '/app'
   return path
 }
 

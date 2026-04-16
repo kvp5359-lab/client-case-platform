@@ -33,7 +33,7 @@ export function AuthCallbackPage() {
 
     const next = searchParams.get('next')
     const safeNext = next?.startsWith('/') ? next : null
-    const redirectTo = safeNext || localStorage.getItem('auth_redirect') || '/profile'
+    const redirectTo = safeNext || localStorage.getItem('auth_redirect') || '/app'
     localStorage.removeItem('auth_redirect')
     router.replace(redirectTo)
   }, [user, loading, router, searchParams])
