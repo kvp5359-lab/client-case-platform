@@ -8,7 +8,8 @@ import { MessageSquare, Sparkles, FolderCog, type LucideIcon } from 'lucide-reac
 import { cn } from '@/lib/utils'
 import type { PanelTab } from '@/store/sidePanelStore'
 import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
-import { getAggregateBadgeDisplay, formatBadgeCount } from '@/utils/inboxUnread'
+import { getAggregateBadgeDisplay, formatBadgeCount, calcThreadUnread } from '@/utils/inboxUnread'
+import { BADGE_COLOR_CLASSES } from '@/components/WorkspaceSidebar/projectListConstants'
 
 interface PanelTabsProps {
   activeTab: PanelTab
@@ -70,9 +71,22 @@ export function PanelTabs({
   const { data: inboxThreads = [] } = useFilteredInbox(workspaceId ?? '')
 
   // Единая логика бейджа для проекта через центральную функцию
-  const chatsBadge = getAggregateBadgeDisplay(
-    inboxThreads.filter((t) => t.project_id === projectId),
-  )
+  const projectThreads = inboxThreads.filter((t) => t.project_id === projectId)
+  const chatsBadge = getAggregateBadgeDisplay(projectThreads)
+
+  // Цвет бейджа — accent_color треда с непрочитанными; при разнобое — amber.
+  // Та же логика, что в WorkspaceSidebar (useFilteredInbox → badgeColors).
+  let badgeAccent: string | undefined
+  for (const t of projectThreads) {
+    if (calcThreadUnread(t) === 0) continue
+    const color = t.thread_accent_color ?? 'blue'
+    if (!badgeAccent) badgeAccent = color
+    else if (badgeAccent !== color) {
+      badgeAccent = 'amber'
+      break
+    }
+  }
+  const badgeBg = BADGE_COLOR_CLASSES[badgeAccent ?? 'blue']?.bg ?? BADGE_COLOR_CLASSES.blue.bg
   const isChatsActive = activeTab === 'client' || activeTab === 'internal'
 
   return (
@@ -86,15 +100,25 @@ export function PanelTabs({
           onClick={() => onTabChange('client')}
           badge={
             chatsBadge.type === 'number' ? (
-              <span className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-blue-500 text-white text-[11px] font-medium flex items-center justify-center">
+              <span
+                className={cn(
+                  'ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-white text-[11px] font-medium flex items-center justify-center',
+                  badgeBg,
+                )}
+              >
                 {formatBadgeCount(chatsBadge.value)}
               </span>
             ) : chatsBadge.type === 'emoji' ? (
-              <span className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-blue-100 text-[11px] flex items-center justify-center">
+              <span
+                className={cn(
+                  'ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[11px] flex items-center justify-center leading-none',
+                  badgeBg,
+                )}
+              >
                 {chatsBadge.value}
               </span>
             ) : chatsBadge.type === 'dot' ? (
-              <span className="ml-0.5 w-2.5 h-2.5 rounded-full bg-blue-500" />
+              <span className={cn('ml-0.5 w-2.5 h-2.5 rounded-full', badgeBg)} />
             ) : undefined
           }
         />

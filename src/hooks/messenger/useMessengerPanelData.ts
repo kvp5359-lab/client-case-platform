@@ -69,6 +69,16 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
     'client',
   )
   const { data: reactionEmoji = null } = useUnreadReactionEmoji(workspaceId, projectId)
+  const { data: hasInternalReaction = false } = useHasUnreadReaction(
+    workspaceId,
+    projectId,
+    'internal',
+  )
+  const { data: internalReactionCount = 0 } = useUnreadReactionCount(
+    workspaceId,
+    projectId,
+    'internal',
+  )
   const { data: isClientManuallyUnread = false } = useIsManuallyUnread(
     workspaceId,
     projectId,
@@ -293,6 +303,8 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
     hasClientReaction,
     clientReactionCount,
     reactionEmoji,
+    hasInternalReaction,
+    internalReactionCount,
     isClientManuallyUnread,
     isInternalManuallyUnread,
     unreadByThreadId,

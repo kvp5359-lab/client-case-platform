@@ -54,12 +54,14 @@ export function MessengerPanelContent({
     chatsLoading,
     visibleChats,
     clientChatId,
-    // internalChatId не используется напрямую — данные берутся через visibleChats
+    internalChatId,
     clientUnread,
     internalUnread,
     hasClientReaction,
     clientReactionCount,
     reactionEmoji,
+    hasInternalReaction,
+    internalReactionCount,
     isClientManuallyUnread,
     isInternalManuallyUnread,
     unreadByThreadId,
@@ -68,6 +70,10 @@ export function MessengerPanelContent({
     deleteChatMutation,
     pinThreadMutation,
   } = useMessengerPanelData(projectId, workspaceId)
+
+  const internalReactionEmoji = internalChatId
+    ? unreadByThreadId[internalChatId]?.reactionEmoji ?? null
+    : null
 
   // overrideChatId может быть из localStorage и указывать на удалённый/несуществующий чат
   const overrideValid = overrideChatId && visibleChats.some((c) => c.id === overrideChatId)
@@ -138,9 +144,10 @@ export function MessengerPanelContent({
               } else if (isInternal) {
                 badge = getBadgeDisplay({
                   unread_count: internalUnread,
-                  has_unread_reaction: false,
-                  unread_reaction_count: 0,
+                  has_unread_reaction: hasInternalReaction,
+                  unread_reaction_count: internalReactionCount,
                   manually_unread: isInternalManuallyUnread,
+                  last_reaction_emoji: internalReactionEmoji,
                 })
               } else {
                 badge = getBadgeDisplay({
