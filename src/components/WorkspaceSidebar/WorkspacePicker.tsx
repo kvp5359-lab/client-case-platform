@@ -64,7 +64,12 @@ export const WorkspacePicker = memo(function WorkspacePicker({
           {loadingWorkspaces ? (
             <div className="px-2 py-2 text-sm text-muted-foreground">Загрузка...</div>
           ) : workspaces.length === 0 ? (
-            <div className="px-2 py-2 text-sm text-muted-foreground">Нет доступных пространств</div>
+            <div className="px-2 py-2 text-sm text-muted-foreground">
+              Нет доступных пространств.
+              <br />
+              Если ожидалось увидеть пространство — попросите администратора
+              добавить вас, либо попробуйте выйти и войти снова.
+            </div>
           ) : (
             <>
               {workspaces.map((workspace) => {

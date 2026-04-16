@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -114,6 +114,36 @@ export function useSidebarData({ workspaceId }: UseSidebarDataOptions) {
   })
 
   const currentWorkspace = workspaces.find((w) => w.id === workspaceId)
+
+  // Диагностика: если у пользователя пустой список воркспейсов, это может
+  // означать либо реальное отсутствие доступа (новый юзер), либо протухший
+  // JWT — middleware пускает на cookie, но Supabase-сервер видит anon и RLS
+  // отсекает participants. Проверяем через getUser() (валидирует токен);
+  // при ошибке — signOut + редирект на /login?expired=1.
+  const expiredCheckRef = useRef(false)
+  useEffect(() => {
+    if (loadingWorkspaces) return
+    if (workspaces.length > 0) return
+    if (!user) return
+    if (expiredCheckRef.current) return
+    expiredCheckRef.current = true
+
+    let cancelled = false
+    const check = async () => {
+      const { data, error } = await supabase.auth.getUser()
+      if (cancelled) return
+      if (error || !data.user) {
+        await supabase.auth.signOut()
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login?expired=1'
+        }
+      }
+    }
+    check()
+    return () => {
+      cancelled = true
+    }
+  }, [loadingWorkspaces, workspaces.length, user])
 
   // B-108: invalidate ALL sidebar project keys for workspace (stable base key)
   const refreshProjects = () => {
