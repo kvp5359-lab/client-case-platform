@@ -5,7 +5,7 @@
  * Вынесено из MessengerPanelContent.tsx для уменьшения размера компонента.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { calcThreadUnread } from '@/utils/inboxUnread'
 import { supabase } from '@/lib/supabase'
@@ -38,6 +38,30 @@ const PROJECT_ROLE_LABELS: Record<string, string> = {
 
 function formatParticipantName(p: { name: string; last_name: string | null }): string {
   return p.last_name ? `${p.name} ${p.last_name}` : p.name
+}
+
+/**
+ * Sticky task tabs per project. Живёт в модуле, чтобы переживать перерендеры
+ * без React-стейта: ESLint запрещает setState/ref-запись в рендере, а эта
+ * карта — обычный модуль-левел кэш, который автоматически уходит при
+ * перезагрузке страницы (ровно то, что нужно).
+ */
+const stickyTasksByProject = new Map<string, Set<string>>()
+
+function updateStickyTasksAndSnapshot(
+  projectId: string,
+  unreadIds: Set<string>,
+  accessible: { id: string; type?: string | null }[],
+): Set<string> {
+  let bucket = stickyTasksByProject.get(projectId)
+  if (!bucket) {
+    bucket = new Set()
+    stickyTasksByProject.set(projectId, bucket)
+  }
+  for (const c of accessible) {
+    if (c.type === 'task' && unreadIds.has(c.id)) bucket.add(c.id)
+  }
+  return bucket
 }
 
 export function useMessengerPanelData(projectId: string, workspaceId: string) {
@@ -183,28 +207,13 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
   // Sticky task tabs: задачи, которые в этой сессии уже засветились во
   // вкладках (т.е. были непрочитанными), остаются видимыми до перезагрузки
   // страницы — даже после пометки прочитанным или отправки сообщения.
-  // Сбрасывается при смене проекта.
-  const [stickyTaskIds, setStickyTaskIds] = useState<Set<string>>(() => new Set())
-
-  useEffect(() => {
-    setStickyTaskIds(new Set())
-  }, [projectId])
-
-  useEffect(() => {
-    if (unreadThreadIds.size === 0) return
-    const taskTypeById = new Map<string, string | null | undefined>()
-    for (const c of accessibleChats) taskTypeById.set(c.id, c.type)
-    setStickyTaskIds((prev) => {
-      let next: Set<string> | null = null
-      for (const id of unreadThreadIds) {
-        if (taskTypeById.get(id) !== 'task') continue
-        if (prev.has(id)) continue
-        if (!next) next = new Set(prev)
-        next.add(id)
-      }
-      return next ?? prev
-    })
-  }, [accessibleChats, unreadThreadIds])
+  // Храним в модуль-левел Map (см. stickyTasksByProject выше), чтобы не
+  // плодить React-стейт. Snapshot пересчитывается только когда меняются
+  // входы — так visibleChats не ре-вычисляется каждый рендер.
+  const stickyTaskIds = useMemo(
+    () => updateStickyTasksAndSnapshot(projectId, unreadThreadIds, accessibleChats),
+    [projectId, unreadThreadIds, accessibleChats],
+  )
 
   // Visible (sorted) chats — already access-filtered by useAccessibleThreadIds
   const visibleChats = useMemo(
