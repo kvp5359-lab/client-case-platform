@@ -70,7 +70,7 @@ export function useSidebarData({ workspaceId }: UseSidebarDataOptions) {
           .eq('workspace_id', workspaceId!)
           .eq('is_deleted', false)
           .order('last_activity_at', { ascending: false })
-          .limit(25)
+          .limit(35)
 
         if (error) throw error
         return data ?? []
@@ -104,7 +104,7 @@ export function useSidebarData({ workspaceId }: UseSidebarDataOptions) {
         .eq('is_deleted', false)
         .in('id', projectIds)
         .order('last_activity_at', { ascending: false })
-        .limit(25)
+        .limit(35)
 
       if (error) throw error
       return data ?? []
