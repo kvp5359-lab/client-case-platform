@@ -5,7 +5,7 @@
  * Вынесено из MessengerPanelContent.tsx для уменьшения размера компонента.
  */
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { calcThreadUnread } from '@/utils/inboxUnread'
 import { supabase } from '@/lib/supabase'
@@ -170,6 +170,32 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
   )
   const { data: threadMembersMap = {} } = useThreadMembersMap(customThreadIds)
 
+  // Sticky task tabs: задачи, которые в этой сессии уже засветились во
+  // вкладках (т.е. были непрочитанными), остаются видимыми до перезагрузки
+  // страницы — даже после пометки прочитанным или отправки сообщения.
+  // Сбрасывается при смене проекта.
+  const [stickyTaskIds, setStickyTaskIds] = useState<Set<string>>(() => new Set())
+
+  useEffect(() => {
+    setStickyTaskIds(new Set())
+  }, [projectId])
+
+  useEffect(() => {
+    if (unreadThreadIds.size === 0) return
+    const taskTypeById = new Map<string, string | null | undefined>()
+    for (const c of accessibleChats) taskTypeById.set(c.id, c.type)
+    setStickyTaskIds((prev) => {
+      let next: Set<string> | null = null
+      for (const id of unreadThreadIds) {
+        if (taskTypeById.get(id) !== 'task') continue
+        if (prev.has(id)) continue
+        if (!next) next = new Set(prev)
+        next.add(id)
+      }
+      return next ?? prev
+    })
+  }, [accessibleChats, unreadThreadIds])
+
   // Visible (sorted) chats — already access-filtered by useAccessibleThreadIds
   const visibleChats = useMemo(
     () =>
@@ -178,6 +204,7 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
           if (c.is_pinned) return true
           if (unreadThreadIds.has(c.id)) return true
           if (c.type === 'task' && c.status_id && finalStatusIds.has(c.status_id)) return false
+          if (c.type === 'task' && stickyTaskIds.has(c.id)) return true
           if (c.type === 'task' && !unreadThreadIds.has(c.id)) return false
           return true
         })
@@ -190,7 +217,7 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
             t.type === 'task' ? 2 : t.icon === 'mail' ? 1 : 0
           return order(a) - order(b)
         }),
-    [accessibleChats, finalStatusIds, unreadThreadIds],
+    [accessibleChats, finalStatusIds, unreadThreadIds, stickyTaskIds],
   )
 
   // Access tooltip text per chat
