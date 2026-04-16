@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { formatSize } from '@/utils/files/formatSize'
 import { toast } from 'sonner'
 import { isVoice } from './utils/attachmentHelpers'
+import { useAudioPlaybackRate } from '@/hooks/useAudioPlaybackRate'
 
 function formatTime(sec: number) {
   if (!sec || !isFinite(sec)) return '0:00'
@@ -16,8 +17,6 @@ function formatTime(sec: number) {
   const s = Math.floor(sec % 60)
   return `${m}:${s.toString().padStart(2, '0')}`
 }
-
-const SPEEDS = [1, 1.5, 2]
 
 export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentType }) {
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
@@ -29,9 +28,17 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
   const [transcription, setTranscription] = useState<string | null>(attachment.transcription)
   const [transcriptionOpen, setTranscriptionOpen] = useState(false)
   const autoTranscribeTriggered = useRef(false)
-  const [playbackRate, setPlaybackRate] = useState(1)
+  const { rate: playbackRate, cycleRate } = useAudioPlaybackRate()
   const [sourceError, setSourceError] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
+
+  // Синхронизируем скорость с элементом <audio> — на изменение из других плееров
+  // (кеш react-query общий) или при первой загрузке.
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackRate
+    }
+  }, [playbackRate, audioUrl])
 
   // Load signed URL
   useEffect(() => {
@@ -93,12 +100,6 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
       audio.play()
     }
     setPlaying(!playing)
-  }
-
-  const cycleSpeed = () => {
-    const next = SPEEDS[(SPEEDS.indexOf(playbackRate) + 1) % SPEEDS.length]
-    setPlaybackRate(next)
-    if (audioRef.current) audioRef.current.playbackRate = next
   }
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -228,7 +229,7 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
                   <button
                     type="button"
                     className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors leading-none"
-                    onClick={cycleSpeed}
+                    onClick={cycleRate}
                     title="Скорость воспроизведения"
                   >
                     {playbackRate}x

@@ -5117,6 +5117,7 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          audio_playback_rate: number
           created_at: string | null
           last_workspace_id: string | null
           notifications_enabled: boolean | null
@@ -5126,6 +5127,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          audio_playback_rate?: number
           created_at?: string | null
           last_workspace_id?: string | null
           notifications_enabled?: boolean | null
@@ -5135,6 +5137,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          audio_playback_rate?: number
           created_at?: string | null
           last_workspace_id?: string | null
           notifications_enabled?: boolean | null
