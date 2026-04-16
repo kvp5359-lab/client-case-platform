@@ -21,6 +21,8 @@ export interface ProjectsListProps {
   projects: Project[]
   loading: boolean
   searchQuery?: string
+  /** Пробрасывает изменения локального поля поиска наверх (для серверного поиска). */
+  onSearchChange?: (query: string) => void
   badgeDisplays?: Map<string, BadgeDisplay>
   clientUnreadCounts?: Map<string, number>
   internalUnreadCounts?: Map<string, number>
@@ -43,6 +45,7 @@ export const ProjectsList = memo(function ProjectsList({
   projects,
   loading,
   searchQuery: externalSearchQuery,
+  onSearchChange,
   badgeDisplays,
   clientUnreadCounts,
   internalUnreadCounts,
@@ -102,6 +105,13 @@ export const ProjectsList = memo(function ProjectsList({
       searchInputRef.current?.focus()
     }
   }, [isSearchOpen])
+
+  // Пробрасываем локальный ввод наружу для серверного поиска (дебаунс делает родитель).
+  useEffect(() => {
+    if (externalSearchQuery === undefined) {
+      onSearchChange?.(localSearchQuery)
+    }
+  }, [localSearchQuery, externalSearchQuery, onSearchChange])
 
   const handleOpenSearch = () => {
     setIsSearchOpen(true)

@@ -92,6 +92,8 @@ export const sidebarKeys = {
   projectsBase: (workspaceId: string) => ['sidebar', 'projects', workspaceId] as const,
   projects: (workspaceId: string, canViewAll: boolean) =>
     ['sidebar', 'projects', workspaceId, canViewAll] as const,
+  projectsSearch: (workspaceId: string, canViewAll: boolean, query: string) =>
+    ['sidebar', 'projects', workspaceId, 'search', canViewAll, query] as const,
 }
 
 export const userSettingsKeys = {

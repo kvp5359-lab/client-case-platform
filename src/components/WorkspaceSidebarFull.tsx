@@ -64,6 +64,14 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   const activeProjectId = optimisticProjectId
   const { user } = useAuth()
 
+  // Поиск проектов: сырой ввод из ProjectsList и дебаунснутая версия для серверного запроса.
+  const [rawSearchQuery, setRawSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchQuery(rawSearchQuery), 250)
+    return () => clearTimeout(t)
+  }, [rawSearchQuery])
+
   const {
     workspaces,
     projects,
@@ -72,7 +80,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
     currentWorkspace,
     permissionsResult,
     refreshProjects,
-  } = useSidebarData({ workspaceId })
+  } = useSidebarData({ workspaceId, searchQuery: debouncedSearchQuery })
 
   const {
     can: hasPermission,
@@ -318,6 +326,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
         <ProjectsList
           projects={projects}
           loading={loadingProjects}
+          onSearchChange={setRawSearchQuery}
           badgeDisplays={badgeDisplays}
           clientUnreadCounts={clientUnreadCounts}
           internalUnreadCounts={internalUnreadCounts}

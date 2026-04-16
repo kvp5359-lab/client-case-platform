@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -17,14 +17,14 @@ type Project = Database['public']['Tables']['projects']['Row']
 
 interface UseSidebarDataOptions {
   workspaceId?: string
+  /** Строка поиска из сайдбара (уже дебаунснутая). Если ≥ 2 символов — активирует серверный поиск. */
+  searchQuery?: string
 }
 
-export function useSidebarData({ workspaceId }: UseSidebarDataOptions) {
+export function useSidebarData({ workspaceId, searchQuery }: UseSidebarDataOptions) {
   const { user } = useAuth()
   const permissionsResult = useWorkspacePermissions({ workspaceId: workspaceId || '' })
   const queryClient = useQueryClient()
-
-  const [searchQuery, setSearchQuery] = useState('')
 
   // --- Workspaces ---
   const { data: workspaces = [], isLoading: loadingWorkspaces } = useQuery<
@@ -113,6 +113,71 @@ export function useSidebarData({ workspaceId }: UseSidebarDataOptions) {
     staleTime: STALE_TIME.MEDIUM,
   })
 
+  // --- Serverside search (активируется при длине запроса ≥ 2) ---
+  const trimmedSearch = (searchQuery ?? '').trim()
+  const isSearching = trimmedSearch.length >= 2
+
+  const { data: searchResults = [], isLoading: loadingSearch } = useQuery<Project[]>({
+    queryKey: sidebarKeys.projectsSearch(workspaceId ?? '', canViewAll, trimmedSearch),
+    queryFn: async () => {
+      // Экранируем спецсимволы ilike (% _ \) чтобы ввод пользователя не превратился в подстановку
+      const pattern = `%${trimmedSearch.replace(/[\\%_]/g, '\\$&')}%`
+
+      if (canViewAll) {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('workspace_id', workspaceId!)
+          .eq('is_deleted', false)
+          .ilike('name', pattern)
+          .order('last_activity_at', { ascending: false })
+          .limit(50)
+
+        if (error) throw error
+        return data ?? []
+      }
+
+      const { data: participant } = await supabase
+        .from('participants')
+        .select('id')
+        .eq('workspace_id', workspaceId!)
+        .eq('user_id', user?.id ?? '')
+        .eq('is_deleted', false)
+        .maybeSingle()
+
+      if (!participant) return []
+
+      const { data: projectParticipants, error: ppError } = await supabase
+        .from('project_participants')
+        .select('project_id')
+        .eq('participant_id', participant.id)
+
+      if (ppError) throw ppError
+
+      const projectIds = projectParticipants?.map((pp) => pp.project_id) ?? []
+      if (projectIds.length === 0) return []
+
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('workspace_id', workspaceId!)
+        .eq('is_deleted', false)
+        .in('id', projectIds)
+        .ilike('name', pattern)
+        .order('last_activity_at', { ascending: false })
+        .limit(50)
+
+      if (error) throw error
+      return data ?? []
+    },
+    enabled: !!workspaceId && !permissionsResult.isLoading && isSearching,
+    staleTime: STALE_TIME.SHORT,
+  })
+
+  // При активном поиске отдаём серверные результаты вместо топа.
+  const effectiveProjects = isSearching ? searchResults : projects
+  const effectiveLoadingProjects = isSearching ? loadingSearch : loadingProjects
+
   const currentWorkspace = workspaces.find((w) => w.id === workspaceId)
 
   // Диагностика: если у пользователя пустой список воркспейсов, это может
@@ -154,11 +219,10 @@ export function useSidebarData({ workspaceId }: UseSidebarDataOptions) {
 
   return {
     workspaces,
-    projects,
+    projects: effectiveProjects,
     loadingWorkspaces,
-    loadingProjects,
-    searchQuery,
-    setSearchQuery,
+    loadingProjects: effectiveLoadingProjects,
+    isSearching,
     currentWorkspace,
     permissionsResult,
     refreshProjects,
