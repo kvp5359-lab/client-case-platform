@@ -14,6 +14,12 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vitest coverage report — generated, не наш код:
     "coverage/**",
+    // Supabase Edge Functions — Deno-рантайм со своим tsconfig, проверяются
+    // `supabase functions deploy`. Next-ESLint не понимает `jsr:` импорты
+    // и Deno-глобалы; прогонять его на этом коде бессмысленно.
+    "supabase/functions/**",
+    // Утилитарные tsx-скрипты (одноразовые, не в бандле приложения).
+    "scripts/**",
   ]),
   {
     rules: {
