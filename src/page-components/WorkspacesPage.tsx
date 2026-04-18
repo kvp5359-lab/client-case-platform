@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Users, MoreVertical, Pencil, Trash2, Settings } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePageTitle } from '@/hooks/usePageTitle'
 import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -64,6 +65,7 @@ async function fetchWorkspacesWithCounts(userId: string): Promise<WorkspaceWithC
 }
 
 export function WorkspacesPage() {
+  usePageTitle('Рабочие пространства')
   const { user } = useAuth()
   const router = useRouter()
   const queryClient = useQueryClient()

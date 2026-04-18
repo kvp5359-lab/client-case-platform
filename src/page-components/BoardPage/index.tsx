@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { BoardView } from '@/components/boards/BoardView'
 import { CreateListDialog } from '@/components/boards/CreateListDialog'
 import { EditBoardDialog } from '@/components/boards/EditBoardDialog'
+import { usePageTitle } from '@/hooks/usePageTitle'
 
 export default function BoardPage() {
   const { workspaceId, boardId } = useParams<{ workspaceId: string; boardId: string }>()
@@ -23,6 +24,7 @@ export default function BoardPage() {
   const editBoardDialog = useDialog()
 
   const { data: board, isLoading: boardLoading } = useBoardDetail(boardId)
+  usePageTitle(board?.name)
   const { data: lists } = useBoardLists(boardId)
 
   // Пул данных: задачи + проекты

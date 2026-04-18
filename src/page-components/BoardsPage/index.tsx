@@ -15,10 +15,12 @@ import { usePinnedBoards } from '@/components/WorkspaceSidebar/usePinnedBoards'
 import type { Board } from '@/components/boards/types'
 import { BoardTabContent } from './BoardTabContent'
 import { BoardTab } from './BoardTab'
+import { usePageTitle } from '@/hooks/usePageTitle'
 
 // ── Основная страница ──────────────────────────────────────
 
 export default function BoardsPage() {
+  usePageTitle('Доски')
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const searchParams = useSearchParams()
   const closePanel = useSidePanelStore((s) => s.closePanel)

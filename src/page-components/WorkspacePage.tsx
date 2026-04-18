@@ -9,9 +9,11 @@
 
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext'
+import { usePageTitle } from '@/hooks/usePageTitle'
 
 export function WorkspacePage() {
   const { workspace, isLoading, error } = useWorkspaceContext()
+  usePageTitle(workspace?.name)
 
   return (
     <WorkspaceLayout>

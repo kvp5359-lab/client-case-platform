@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Tables } from '@/types/database'
+import { usePageTitle } from '@/hooks/usePageTitle'
 import { PROJECT_STATUSES } from './ProjectPage/constants'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -42,6 +43,7 @@ import { projectKeys, trashKeys } from '@/hooks/queryKeys'
 type Project = Tables<'projects'>
 
 export default function ProjectsPage() {
+  usePageTitle('Проекты')
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const createDialog = useDialog()
   const [searchQuery, setSearchQuery] = useState('')

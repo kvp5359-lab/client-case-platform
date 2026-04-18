@@ -9,8 +9,10 @@ import { useParams } from 'next/navigation'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { TaskListView } from '@/components/tasks/TaskListView'
+import { usePageTitle } from '@/hooks/usePageTitle'
 
 export default function TasksPage() {
+  usePageTitle('Задачи')
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const closePanel = useSidePanelStore((s) => s.closePanel)
 

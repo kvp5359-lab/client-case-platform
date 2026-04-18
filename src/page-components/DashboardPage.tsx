@@ -9,8 +9,10 @@ import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowRight, FolderOpen } from 'lucide-react'
+import { usePageTitle } from '@/hooks/usePageTitle'
 
 export function DashboardPage() {
+  usePageTitle('Дашборд')
   const { user } = useAuth()
   const router = useRouter()
 

@@ -23,6 +23,7 @@ import {
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys, invalidateMessengerCaches, projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
+import { usePageTitle } from '@/hooks/usePageTitle'
 import { useCreateThread, useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { TaskPanel } from '@/components/tasks/TaskPanel'
 import { useTaskPanelSetup } from '@/components/tasks/useTaskPanelSetup'
@@ -44,6 +45,7 @@ const ChatSettingsDialog = lazy(() =>
 )
 
 export default function InboxPage() {
+  usePageTitle('Входящие')
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const { user } = useAuth()
   const queryClient = useQueryClient()

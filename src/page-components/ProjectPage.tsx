@@ -31,6 +31,7 @@ import {
 } from '@/hooks/permissions'
 import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
 import { useDialog } from '@/hooks/shared/useDialog'
+import { usePageTitle } from '@/hooks/usePageTitle'
 
 // Рефакторенные компоненты и хуки
 import {
@@ -64,6 +65,7 @@ export default function ProjectPage() {
 
   // Данные проекта
   const { project, projectTemplate, isLoading } = useProjectData(projectId)
+  usePageTitle(project?.name)
   const { data: participantGroups = [] } = useProjectHeaderParticipants(projectId, workspaceId)
 
   // Проверка доступа

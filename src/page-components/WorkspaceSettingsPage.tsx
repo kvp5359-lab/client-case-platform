@@ -12,6 +12,16 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GeneralSettingsTab } from './workspace-settings/GeneralSettingsTab'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useSidePanelStore } from '@/store/sidePanelStore'
+import { usePageTitle } from '@/hooks/usePageTitle'
+
+const SETTINGS_TAB_TITLES: Record<string, string> = {
+  general: 'Настройки',
+  participants: 'Участники',
+  permissions: 'Права',
+  directories: 'Справочники',
+  templates: 'Шаблоны',
+  trash: 'Корзина',
+}
 
 const ParticipantsTab = React.lazy(() =>
   import('./workspace-settings/ParticipantsTab').then((m) => ({ default: m.ParticipantsTab })),
@@ -57,6 +67,7 @@ export function WorkspaceSettingsPage() {
   }
 
   const activeTab = getActiveTab()
+  usePageTitle(SETTINGS_TAB_TITLES[activeTab] ?? 'Настройки')
 
   return (
     <WorkspaceLayout>

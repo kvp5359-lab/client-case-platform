@@ -23,12 +23,14 @@ import { GoogleDriveSection } from './ProfilePage/GoogleDriveSection'
 import { GmailSection } from './ProfilePage/GmailSection'
 import { AppSettingsSection } from './ProfilePage/AppSettingsSection'
 import { Database } from '@/types/database'
+import { usePageTitle } from '@/hooks/usePageTitle'
 import { toast } from 'sonner'
 import { userSettingsKeys, googleDriveKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 type UserSettings = Database['public']['Tables']['user_settings']['Row']
 
 export function ProfilePage() {
+  usePageTitle('Профиль')
   const { user } = useAuth()
   const router = useRouter()
   const savedWorkspaceId = typeof window !== 'undefined'
