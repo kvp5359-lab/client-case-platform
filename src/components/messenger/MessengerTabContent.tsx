@@ -183,7 +183,7 @@ export function MessengerTabContent({
         />
 
         {/* Кнопка Прочитано/Непрочитано — наезжает на список через negative margin */}
-        <div className="flex justify-center -mt-8 mb-1 relative z-10 pointer-events-none">
+        <div className="flex justify-center -mt-8 mb-3 relative z-10 pointer-events-none">
           <ReadUnreadButton
             showUnread={state.showUnread}
             onMarkRead={() => state.markAsRead.mutate()}
