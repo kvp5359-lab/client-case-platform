@@ -66,7 +66,7 @@ export function MessengerToolbar({ editor }: { editor: Editor }) {
     }
   }, [editor])
   return (
-    <div className="flex items-center gap-0.5 [&_button]:text-muted-foreground [&_button:hover]:text-foreground [&_button[data-state=on]]:!text-foreground [&_button[data-state=on]]:!bg-accent">
+    <div className="flex items-center gap-0 [&_button]:!px-1 [&_button]:!min-w-7 [&_button]:text-muted-foreground [&_button:hover]:text-foreground [&_button[data-state=on]]:!text-foreground [&_button[data-state=on]]:!bg-accent">
       <ToolbarButton
         icon={Bold}
         isActive={editor.isActive('bold')}

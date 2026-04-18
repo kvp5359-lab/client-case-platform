@@ -49,6 +49,7 @@ export function MessengerTabContent({
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const { data: allThreads = [] } = useProjectThreads(projectId)
+  const currentThread = allThreads.find((t) => t.id === threadId)
 
   const state = useMessengerState({
     projectId,
@@ -224,6 +225,8 @@ export function MessengerTabContent({
           }
           onSaveDraft={handlers.handleSaveDraft}
           isSavingDraft={state.saveDraftMutation.isPending}
+          threadType={currentThread?.type}
+          threadStatusId={currentThread?.status_id ?? null}
         />
       </div>
 

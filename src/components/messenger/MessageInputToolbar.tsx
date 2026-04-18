@@ -6,6 +6,8 @@ import type { MessengerAccent } from './MessageBubble'
 import { MessengerToolbar } from './MinimalTiptapEditor'
 import { AttachmentButton } from './AttachmentButton'
 import { QuickReplyPicker } from './QuickReplyPicker'
+import { TaskStatusPicker } from './TaskStatusPicker'
+import type { TaskStatus } from '@/hooks/useStatuses'
 
 export const sendButtonStyles: Record<string, string> = {
   blue: 'bg-blue-500 hover:bg-blue-600 text-white',
@@ -40,6 +42,12 @@ interface MessageInputToolbarProps {
   onQuickReplyPickerHandled: () => void
   onSend: () => void
   onSaveDraft: () => void
+  taskStatusPicker?: {
+    statuses: TaskStatus[]
+    currentStatusId: string | null
+    pendingStatusId: string | null
+    onPick: (statusId: string | null) => void
+  }
 }
 
 export function MessageInputToolbar({
@@ -59,11 +67,12 @@ export function MessageInputToolbar({
   onQuickReplyPickerHandled,
   onSend,
   onSaveDraft,
+  taskStatusPicker,
 }: MessageInputToolbarProps) {
   return (
     <div className="flex items-center pb-2 pt-0">
       {/* Left: attach + separator + quick reply + separator + formatting toolbar */}
-      <div className="flex items-center gap-0.5 px-1.5 flex-1 min-w-0">
+      <div className="flex items-center gap-0 px-1.5 flex-1 min-w-0">
         <AttachmentButton
           onFilesSelected={onFilesSelected}
           onOpenDocPicker={onOpenDocPicker}
@@ -74,7 +83,7 @@ export function MessageInputToolbar({
           iconClassName="h-4 w-4"
           badge={totalFiles}
         />
-        <div className="w-px h-5 bg-border/60 mx-0.5 shrink-0" />
+        <div className="w-px h-5 bg-border/60 mx-0 shrink-0" />
         {editor && (
           <QuickReplyPicker
             editor={editor}
@@ -86,6 +95,18 @@ export function MessageInputToolbar({
         )}
         {editor && <div className="w-px h-5 bg-border/60 mx-0.5 shrink-0" />}
         {editor && <MessengerToolbar editor={editor} />}
+        {taskStatusPicker && (
+          <>
+            <div className="ml-2 shrink-0" />
+            <TaskStatusPicker
+              statuses={taskStatusPicker.statuses}
+              currentStatusId={taskStatusPicker.currentStatusId}
+              pendingStatusId={taskStatusPicker.pendingStatusId}
+              onPick={taskStatusPicker.onPick}
+              disabled={isPending}
+            />
+          </>
+        )}
       </div>
       {/* Right: save + send */}
       <div className="flex items-center gap-1 pr-1.5">

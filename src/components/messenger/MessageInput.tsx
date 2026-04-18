@@ -11,6 +11,9 @@ import { isHtmlContent, plainTextToHtml } from '@/utils/format/messengerHtml'
 import { useDraftMessage } from './hooks/useDraftMessage'
 import { useMessageFiles } from './hooks/useMessageFiles'
 import { useEditorResizer } from './hooks/useEditorResizer'
+import { useTaskStatuses } from '@/hooks/useStatuses'
+import { useUpdateTaskStatus } from '@/components/tasks/useTaskMutations'
+import { messengerKeys, projectThreadKeys } from '@/hooks/queryKeys'
 
 interface MessageInputProps {
   projectId: string
@@ -40,6 +43,10 @@ interface MessageInputProps {
   onRemoveForwardedAttachment?: (index: number) => void
   onSaveDraft?: (content: string, files?: File[]) => void
   isSavingDraft?: boolean
+  /** Тип треда. Если 'task' — показываем переключатель статуса. */
+  threadType?: 'chat' | 'task'
+  /** Текущий статус задачи (nullable). */
+  threadStatusId?: string | null
 }
 
 export function MessageInput({
@@ -66,6 +73,8 @@ export function MessageInput({
   onRemoveForwardedAttachment,
   onSaveDraft,
   isSavingDraft,
+  threadType,
+  threadStatusId,
 }: MessageInputProps) {
   const [hasText, setHasText] = useState(false)
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -75,6 +84,48 @@ export function MessageInput({
   const { editorMaxHeight, handleResizerMouseDown } = useEditorResizer()
 
   const draftKey = threadId ? `msg_draft:${threadId}` : `msg_draft:${projectId}:${channel}`
+
+  // Переключатель статуса задачи (Планфикс-style) — виден только для тредов типа 'task'.
+  const isTaskThread = threadType === 'task' && !!threadId
+  const { data: taskStatuses = [] } = useTaskStatuses(isTaskThread ? workspaceId : undefined)
+  const pendingStatusKey = threadId ? `cc:pending-status:${threadId}` : null
+  const [pendingStatusId, setPendingStatusId] = useState<string | null>(() => {
+    if (!pendingStatusKey || typeof window === 'undefined') return null
+    try {
+      const saved = window.localStorage.getItem(pendingStatusKey)
+      return saved && saved !== 'null' ? saved : null
+    } catch {
+      return null
+    }
+  })
+
+  // Если текущий статус треда совпал с запланированным — сбрасываем «запланированное»:
+  // кто-то уже перевёл задачу в этот статус отдельно.
+  useEffect(() => {
+    if (pendingStatusId && pendingStatusId === threadStatusId) {
+      setPendingStatusId(null)
+      if (pendingStatusKey) {
+        try { window.localStorage.removeItem(pendingStatusKey) } catch { /* ignore */ }
+      }
+    }
+  }, [threadStatusId, pendingStatusId, pendingStatusKey])
+
+  const handlePickStatus = useCallback((statusId: string | null) => {
+    // «Не менять» передаёт текущий statusId (или null) — трактуем как сброс pending.
+    const next = statusId === threadStatusId ? null : statusId
+    setPendingStatusId(next)
+    if (pendingStatusKey) {
+      try {
+        if (next) window.localStorage.setItem(pendingStatusKey, next)
+        else window.localStorage.removeItem(pendingStatusKey)
+      } catch { /* ignore */ }
+    }
+  }, [threadStatusId, pendingStatusKey])
+
+  const updateStatusMutation = useUpdateTaskStatus([
+    projectId ? messengerKeys.projectThreads(projectId) : [],
+    threadId ? projectThreadKeys.byId(threadId) : [],
+  ])
 
   const {
     files,
@@ -182,6 +233,30 @@ export function MessageInput({
     }
 
     if ((!textContent && files.length === 0) || isPending) return
+
+    // Если в пикере выбран новый статус — сначала меняем его, потом отправляем сообщение.
+    // При ошибке смены статуса сообщение не отправляем, чтобы не было расхождения.
+    if (isTaskThread && threadId && pendingStatusId && pendingStatusId !== threadStatusId) {
+      updateStatusMutation.mutate(
+        { threadId, statusId: pendingStatusId },
+        {
+          onSuccess: () => {
+            setPendingStatusId(null)
+            if (pendingStatusKey) {
+              try { window.localStorage.removeItem(pendingStatusKey) } catch { /* ignore */ }
+            }
+            onSend(textContent ? htmlContent : '📎', replyTo?.id, files.length > 0 ? files : undefined)
+            editor.commands.clearContent()
+            setHasText(false)
+            clearFiles()
+            clearDraft()
+            onClearReply()
+          },
+        },
+      )
+      return
+    }
+
     onSend(textContent ? htmlContent : '📎', replyTo?.id, files.length > 0 ? files : undefined)
     editor.commands.clearContent()
     setHasText(false)
@@ -201,6 +276,12 @@ export function MessageInput({
     clearDraft,
     clearFiles,
     skipDraftRestoreRef,
+    isTaskThread,
+    threadId,
+    pendingStatusId,
+    threadStatusId,
+    updateStatusMutation,
+    pendingStatusKey,
   ])
 
   const handleSaveDraft = useCallback(() => {
@@ -330,6 +411,16 @@ export function MessageInput({
         onQuickReplyPickerHandled={() => setOpenQuickReplyPicker(false)}
         onSend={handleSend}
         onSaveDraft={handleSaveDraft}
+        taskStatusPicker={
+          isTaskThread
+            ? {
+                statuses: taskStatuses,
+                currentStatusId: threadStatusId ?? null,
+                pendingStatusId,
+                onPick: handlePickStatus,
+              }
+            : undefined
+        }
       />
     </div>
   )
