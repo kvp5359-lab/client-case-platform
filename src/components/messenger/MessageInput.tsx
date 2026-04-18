@@ -99,16 +99,12 @@ export function MessageInput({
     }
   })
 
-  // Если текущий статус треда совпал с запланированным — сбрасываем «запланированное»:
-  // кто-то уже перевёл задачу в этот статус отдельно.
-  useEffect(() => {
-    if (pendingStatusId && pendingStatusId === threadStatusId) {
-      setPendingStatusId(null)
-      if (pendingStatusKey) {
-        try { window.localStorage.removeItem(pendingStatusKey) } catch { /* ignore */ }
-      }
-    }
-  }, [threadStatusId, pendingStatusId, pendingStatusKey])
+  // Эффективное «запланированное» значение: если оно совпало с текущим статусом
+  // треда (кто-то уже перевёл задачу в этот статус отдельно) — трактуем как отсутствие.
+  // Выводим значение в рендере, а не через useEffect с setState, чтобы не нарушать
+  // react-hooks/set-state-in-effect (и не плодить каскадные рендеры).
+  const effectivePendingStatusId =
+    pendingStatusId && pendingStatusId !== threadStatusId ? pendingStatusId : null
 
   const handlePickStatus = useCallback((statusId: string | null) => {
     // «Не менять» передаёт текущий statusId (или null) — трактуем как сброс pending.
@@ -236,9 +232,9 @@ export function MessageInput({
 
     // Если в пикере выбран новый статус — сначала меняем его, потом отправляем сообщение.
     // При ошибке смены статуса сообщение не отправляем, чтобы не было расхождения.
-    if (isTaskThread && threadId && pendingStatusId && pendingStatusId !== threadStatusId) {
+    if (isTaskThread && threadId && effectivePendingStatusId) {
       updateStatusMutation.mutate(
-        { threadId, statusId: pendingStatusId },
+        { threadId, statusId: effectivePendingStatusId },
         {
           onSuccess: () => {
             setPendingStatusId(null)
@@ -278,8 +274,7 @@ export function MessageInput({
     skipDraftRestoreRef,
     isTaskThread,
     threadId,
-    pendingStatusId,
-    threadStatusId,
+    effectivePendingStatusId,
     updateStatusMutation,
     pendingStatusKey,
   ])
@@ -416,7 +411,7 @@ export function MessageInput({
             ? {
                 statuses: taskStatuses,
                 currentStatusId: threadStatusId ?? null,
-                pendingStatusId,
+                pendingStatusId: effectivePendingStatusId,
                 onPick: handlePickStatus,
               }
             : undefined
