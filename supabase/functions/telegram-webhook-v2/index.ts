@@ -1169,6 +1169,7 @@ async function showArticle(chatId: number, articlePrefix: string, from?: TgUser)
     await logServiceEvent(
       chatId,
       binding,
+      from,
       `👁️ ${formatUserName(from)} открыл(а) статью «${article.title}»`,
     );
   }
@@ -1176,6 +1177,11 @@ async function showArticle(chatId: number, articlePrefix: string, from?: TgUser)
 
 /**
  * Пишет служебное сообщение в project_messages чата проекта.
+ *
+ * sender_name = реальное имя пользователя, совершившего действие (чтобы в
+ * web-UI превью/уведомления не показывали обобщённого «Бот»).
+ * sender_participant_id подтягиваем по telegram_user_id — тогда в UI
+ * подхватится аватарка и форматирование как у обычных сообщений.
  *
  * Параметр `counted` управляет, попадёт ли событие в счётчик непрочитанных
  * сайдбара (RPC get_inbox_threads_v2 исключает source='telegram_service'):
@@ -1185,14 +1191,16 @@ async function showArticle(chatId: number, articlePrefix: string, from?: TgUser)
 async function logServiceEvent(
   _chatId: number,
   binding: TgChatBinding,
+  from: TgUser,
   text: string,
   opts: { counted?: boolean } = {},
 ) {
+  const participantId = await participantByTgId(binding.workspace_id, from.id);
   await service.from("project_messages").insert({
     project_id: binding.project_id,
     workspace_id: binding.workspace_id,
-    sender_participant_id: null,
-    sender_name: "Бот",
+    sender_participant_id: participantId,
+    sender_name: formatUserName(from),
     sender_role: null,
     content: text,
     source: opts.counted ? "bot_event" : "telegram_service",
@@ -1446,6 +1454,7 @@ async function showFolderArticle(chatId: number, folderPrefix: string, from?: Tg
     await logServiceEvent(
       chatId,
       binding,
+      from,
       `👁️ ${formatUserName(from)} открыл(а) требования к группе «${folder.name}»`,
     );
   }
@@ -1900,6 +1909,7 @@ async function handleFreeFileUpload(msg: TgMessage, binding: TgChatBinding) {
   await logServiceEvent(
     chatId,
     binding,
+    from,
     `📎 ${formatUserName(from)} загрузил(а) документ «${result.fileName}» ${logDest}`,
     { counted: true },
   );
@@ -2081,6 +2091,7 @@ async function handleSlotFileUpload(msg: TgMessage, binding: TgChatBinding, slot
   await logServiceEvent(
     chatId,
     binding,
+    from,
     `📎 ${formatUserName(from)} загрузил(а) документ «${f.originalName}» в слот «${slot.name}»`,
     { counted: true },
   );

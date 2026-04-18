@@ -91,6 +91,8 @@
 
 UI-часть ([`MessageList.tsx`](../../src/components/messenger/MessageList.tsx)): условие `msg.source === 'telegram_service'` → теперь `msg.source === 'telegram_service' || msg.source === 'bot_event'`. Оба типа рендерятся одинаковой тонкой плашкой.
 
+**Автор события — реальный пользователь.** Изначально `logServiceEvent` писал `sender_name: "Бот"` и `sender_participant_id: null`. В итоге в web-UI превью чата и всплывающие уведомления показывали обобщённого «Бот» вместо имени клиента. Поправил: функция теперь принимает `from: TgUser`, резолвит `participantId` через `participantByTgId(workspace_id, tg_user_id)` и пишет настоящее имя + participant. В UI подтягиваются аватар и стандартное форматирование как у обычных сообщений.
+
 ### Безопасность и выбор бота
 
 `project_telegram_chats.bot_version text NOT NULL DEFAULT 'v1' CHECK (bot_version IN ('v1','v2'))` — все существующие 58 строк остались `'v1'`. Старый бот их обслуживает без изменений (он вообще не знает про колонку). Новый бот фильтрует каждый `findChatBinding()` по `bot_version='v2'` — даже если его случайно добавят в старую группу, он проигнорирует сообщения.
