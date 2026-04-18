@@ -8,11 +8,11 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { safeJsonParse, findMissingField } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
+import { resolveBotToken } from "../_shared/telegramBotToken.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 
 interface ReactionType {
   type: "emoji";
@@ -111,6 +111,9 @@ Deno.serve(async (req: Request) => {
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    // Выбираем токен бота по bot_version привязки группы (v1 или v2)
+    const { token: TELEGRAM_BOT_TOKEN } = await resolveBotToken(supabaseAdmin, body.chat_id);
 
     const tgResponse = await fetch(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setMessageReaction`,

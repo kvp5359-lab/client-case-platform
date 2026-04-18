@@ -8,6 +8,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { safeJsonParse, findMissingField } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
+import { resolveBotToken } from "../_shared/telegramBotToken.ts";
 
 interface RequestBody {
   telegram_chat_id: number;
@@ -24,7 +25,6 @@ Deno.serve(async (req: Request) => {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 
   const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -87,6 +87,9 @@ Deno.serve(async (req: Request) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    // Выбираем токен бота по bot_version привязки группы (v1 или v2)
+    const { token: TELEGRAM_BOT_TOKEN } = await resolveBotToken(serviceClient, body.telegram_chat_id);
 
     // B-80: проверка workspace membership для JWT-вызовов
     if (authenticatedUserId) {
