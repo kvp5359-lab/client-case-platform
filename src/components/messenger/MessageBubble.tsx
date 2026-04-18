@@ -189,7 +189,7 @@ function MessageBubbleImpl({
 
       <div className={cn('max-w-[75%] min-w-0 flex flex-col', isOwn ? 'items-end' : 'items-start')}>
         {/* Bubble + reactions */}
-        <div className="relative pb-2 max-w-full" ref={contentRef} onMouseUp={handleMouseUp}>
+        <div className="relative max-w-full" ref={contentRef} onMouseUp={handleMouseUp}>
           {/* Quote popup рендерится императивно через DOM — см. handleMouseUp */}
 
           <div
@@ -198,7 +198,7 @@ function MessageBubbleImpl({
               'relative rounded-2xl px-4 py-2.5 min-w-[10rem] overflow-hidden transition-all duration-500',
               // Красная полоса внутри бабла слева — индикатор непрочитанного
               isUnread && !isOwn && 'border-l-4 border-red-500',
-              message.reactions?.length && 'pb-5',
+              message.reactions?.length && 'pb-8',
               message.is_draft
                 ? accent === 'dark'
                   ? 'bg-white border-2 border-stone-600 text-gray-900'

@@ -90,7 +90,7 @@ export function MessageActions({
   return (
     <div
       className={cn(
-        'absolute -bottom-2 right-1 z-10 flex gap-0.5 items-center opacity-0 group-hover:opacity-100 transition-opacity',
+        'absolute bottom-0 right-0 z-10 flex gap-0.5 items-center opacity-0 group-hover:opacity-100 transition-opacity',
         'bg-gray-100 border-2 border-white rounded-full px-1 py-px',
         (moreMenuOpen || reactionPopoverOpen) && 'opacity-100',
       )}

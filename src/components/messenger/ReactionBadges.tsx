@@ -70,7 +70,7 @@ export function ReactionBadges({
   const otherStyle = OTHER_REACTION_STYLES[accent] ?? OTHER_REACTION_STYLES.blue
 
   return (
-    <div className="absolute bottom-0 left-1 flex flex-wrap gap-1 z-10">
+    <div className="absolute bottom-0 left-0 flex flex-wrap gap-1 z-10">
       <TooltipProvider>
         {Array.from(grouped.entries()).map(
           ([emoji, { count, participantIds, names, avatarUrl }]) => {
