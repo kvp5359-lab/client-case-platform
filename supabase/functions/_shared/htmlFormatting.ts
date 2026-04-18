@@ -28,6 +28,21 @@ export function htmlToTelegramHtml(html: string): string {
   // <em> → <i>
   result = result.replace(/<em>/g, "<i>").replace(/<\/em>/g, "</i>");
 
+  // Заголовки: Telegram HTML не поддерживает <h1>…<h6>, эмулируем через <b>
+  // плюс визуальные отбивки разного уровня.
+  result = result.replace(/<h1[^>]*>([\s\S]*?)<\/h1>/g, (_m, inner: string) =>
+    `\n\n<b>━━━ ${inner.trim()} ━━━</b>\n\n`,
+  );
+  result = result.replace(/<h2[^>]*>([\s\S]*?)<\/h2>/g, (_m, inner: string) =>
+    `\n\n<b>▸ ${inner.trim()}</b>\n\n`,
+  );
+  result = result.replace(/<h3[^>]*>([\s\S]*?)<\/h3>/g, (_m, inner: string) =>
+    `\n\n<b>${inner.trim()}</b>\n\n`,
+  );
+  result = result.replace(/<h[4-6][^>]*>([\s\S]*?)<\/h[4-6]>/g, (_m, inner: string) =>
+    `\n\n<b><i>${inner.trim()}</i></b>\n\n`,
+  );
+
   // <ol> с <li> → нумерованный текст (Telegram не поддерживает <ol>/<li>)
   result = result.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/g, (_match, inner: string) => {
     let counter = 0;

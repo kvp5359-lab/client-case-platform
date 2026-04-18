@@ -22,8 +22,16 @@ export type CallbackAction =
   | { kind: "kb_article"; articleId: string }
   | { kind: "kb_qa"; qaId: string }
   | { kind: "kb_qa_list"; page: number }
+  | { kind: "upload_start" }
+  | { kind: "upload_folder"; folderId: string }
   | { kind: "upload_slot"; slotId: string }
+  | { kind: "upload_free" }
+  | { kind: "upload_folder_free"; folderId: string }
+  | { kind: "upload_finish" }
   | { kind: "upload_cancel" }
+  | { kind: "doc_status" }
+  | { kind: "folder_info" }
+  | { kind: "folder_article"; folderId: string }
   | { kind: "nav_back"; screen: "kb" | "up" | "home" };
 
 export function encode(action: CallbackAction): string {
@@ -38,10 +46,26 @@ export function encode(action: CallbackAction): string {
       return `k:qa:${action.qaId.slice(0, 8)}`;
     case "kb_qa_list":
       return `k:qalist:${action.page}`;
+    case "upload_start":
+      return "u:start";
+    case "upload_folder":
+      return `u:f:${action.folderId.slice(0, 8)}`;
     case "upload_slot":
       return `u:s:${action.slotId.slice(0, 8)}`;
+    case "upload_free":
+      return "u:free";
+    case "upload_folder_free":
+      return `u:ff:${action.folderId.slice(0, 8)}`;
+    case "upload_finish":
+      return "u:fin";
     case "upload_cancel":
       return "u:cancel";
+    case "doc_status":
+      return "d:s";
+    case "folder_info":
+      return "f:i";
+    case "folder_article":
+      return `f:a:${action.folderId.slice(0, 8)}`;
     case "nav_back":
       return `nav:b:${action.screen}`;
   }
@@ -71,8 +95,20 @@ export function decode(data: string): CallbackAction | null {
       }
       return null;
     case "u":
+      if (parts[1] === "start") return { kind: "upload_start" };
+      if (parts[1] === "f") return { kind: "upload_folder", folderId: parts[2] };
       if (parts[1] === "s") return { kind: "upload_slot", slotId: parts[2] };
+      if (parts[1] === "free") return { kind: "upload_free" };
+      if (parts[1] === "ff") return { kind: "upload_folder_free", folderId: parts[2] };
+      if (parts[1] === "fin") return { kind: "upload_finish" };
       if (parts[1] === "cancel") return { kind: "upload_cancel" };
+      return null;
+    case "d":
+      if (parts[1] === "s") return { kind: "doc_status" };
+      return null;
+    case "f":
+      if (parts[1] === "i") return { kind: "folder_info" };
+      if (parts[1] === "a") return { kind: "folder_article", folderId: parts[2] };
       return null;
     case "nav":
       if (parts[1] === "b" && (parts[2] === "kb" || parts[2] === "up" || parts[2] === "home")) {

@@ -335,7 +335,7 @@ export function MessageList({
           </div>
         </div>
       )}
-      <div className="p-4 pb-12 space-y-2" onCopy={handleCopy}>
+      <div className="p-4 pb-8 space-y-2" onCopy={handleCopy}>
         {/* Sentinel для подгрузки старых */}
         <div ref={sentinelRef} className="h-1" />
 
@@ -395,7 +395,7 @@ export function MessageList({
             >
               {showDate && <DateSeparator date={msg.created_at} />}
               {showUnreadSeparator && <UnreadSeparator />}
-              {msg.source === 'telegram_service' ? (
+              {msg.source === 'telegram_service' || msg.source === 'bot_event' ? (
                 <ServiceMessage text={msg.content} time={msg.created_at} />
               ) : (
                 <MessageBubble

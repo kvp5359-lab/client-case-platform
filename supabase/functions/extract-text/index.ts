@@ -30,7 +30,13 @@ Deno.serve(async (req: Request) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    // Внутренний вызов (например, от Telegram-бота) — без пользовательского JWT,
+    // авторизуется через x-internal-secret (тот же механизм, что в telegram-send-message)
+    const internalSecret = req.headers.get("x-internal-secret");
+    const expectedInternalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
+    const isInternalCall = !!internalSecret && !!expectedInternalSecret && internalSecret === expectedInternalSecret;
+
+    if (!authHeader && !isInternalCall) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
         { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
@@ -48,24 +54,31 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // User client — для проверки доступа через RLS
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
     // Service role client — для записи и доступа к vault
     const supabaseServiceRole = createClient(
       supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
-      );
+    // User client — для проверки доступа через RLS. При внутреннем вызове
+    // используем service-role, тк userа нет, а проверки membership мы пропускаем.
+    const supabase = isInternalCall
+      ? supabaseServiceRole
+      : createClient(supabaseUrl, supabaseKey, {
+          global: { headers: { Authorization: authHeader! } },
+        });
+
+    // Verify user (пропускаем для внутренних вызовов)
+    let userId: string | null = null;
+    if (!isInternalCall) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+      userId = user.id;
     }
 
     // Получаем документ (через user client для проверки доступа)
@@ -83,13 +96,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify workspace membership
-    const isMember = await checkWorkspaceMembership(supabaseServiceRole, user.id, document.workspace_id);
-    if (!isMember) {
-      return new Response(
-        JSON.stringify({ error: "Access denied" }),
-        { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
-      );
+    // Verify workspace membership (пропускаем для внутренних вызовов)
+    if (!isInternalCall && userId) {
+      const isMember = await checkWorkspaceMembership(supabaseServiceRole, userId, document.workspace_id);
+      if (!isMember) {
+        return new Response(
+          JSON.stringify({ error: "Access denied" }),
+          { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Идемпотентность: если текст уже извлечён — пропускаем

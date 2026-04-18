@@ -75,6 +75,7 @@ interface TgMessage {
   message_id: number;
   from?: TgUser;
   date: number;
+  media_group_id?: string;
   text?: string;
   caption?: string;
   entities?: TgEntity[];
@@ -147,10 +148,15 @@ async function tgCall<T = unknown>(method: string, body: Record<string, unknown>
   }
 }
 
+type SendReplyMarkup =
+  | { inline_keyboard: TgInlineKeyboard }
+  | { keyboard: { text: string }[][]; resize_keyboard?: boolean; is_persistent?: boolean; selective?: boolean }
+  | { remove_keyboard: true };
+
 async function sendMessage(
   chatId: number,
   text: string,
-  opts: { reply_markup?: { inline_keyboard: TgInlineKeyboard }; parse_mode?: string; reply_to_message_id?: number } = {},
+  opts: { reply_markup?: SendReplyMarkup; parse_mode?: string; reply_to_message_id?: number } = {},
 ) {
   return tgCall("sendMessage", {
     chat_id: chatId,
@@ -275,6 +281,12 @@ async function handleMessage(msg: TgMessage, isEdited: boolean) {
     return;
   }
 
+  // ── Нажатие постоянной reply-кнопки «📋 Меню» ──
+  if (!isEdited && rawText.trim() === MENU_REPLY_BUTTON_TEXT && msg.chat.type !== "private") {
+    await showMainMenu(chatId);
+    return;
+  }
+
   // ── Личный чат: проверяем, может это файл для awaiting_file сессии? ──
   if (isPrivate) {
     await handlePrivateMessage(msg);
@@ -291,7 +303,11 @@ async function handleMessage(msg: TgMessage, isEdited: boolean) {
     const session = await getSession(chatId, msg.from.id);
     if (session?.state === "awaiting_file" && session.context.slot_id) {
       await handleSlotFileUpload(msg, binding, session.context.slot_id as string);
-      return; // файл ушёл в слот, сообщением в чате НЕ дублируем
+      return;
+    }
+    if (session?.state === "awaiting_free_file") {
+      await handleFreeFileUpload(msg, binding);
+      return;
     }
   }
 
@@ -711,6 +727,20 @@ async function handleCommand(msg: TgMessage, text: string) {
       }
       await showUploadSlots(chatId, msg.from);
       return;
+    case "/status":
+      if (isPrivate) {
+        await sendMessage(chatId, "Эта команда работает в группе проекта.");
+        return;
+      }
+      await showDocStatus(chatId);
+      return;
+    case "/requirements":
+      if (isPrivate) {
+        await sendMessage(chatId, "Эта команда работает в группе проекта.");
+        return;
+      }
+      await showFolderInfo(chatId);
+      return;
     default:
       // Неизвестная команда — молчим
       return;
@@ -723,8 +753,10 @@ function helpText(): string {
     "",
     "Команды в группе проекта:",
     "• /menu — главное меню",
-    "• /knowledge — база знаний",
+    "• /knowledge — полезные материалы",
+    "• /requirements — требования к документам",
     "• /upload — загрузить документ в слот",
+    "• /status — статус документов",
     "",
     "Команды для админа:",
     "• /link КОД — привязать группу к проекту",
@@ -854,7 +886,12 @@ async function cmdLink(chatId: number, codeArg: string | undefined, msg: TgMessa
     await service.from("project_telegram_chats").insert(payload);
   }
 
-  await sendMessage(chatId, `✅ Группа привязана к чату «${thread.name}».\n\nНапишите /menu, чтобы открыть меню.`);
+  // Приветствие с постоянной кнопкой «📋 Меню» внизу
+  await sendMessage(
+    chatId,
+    `✅ Группа привязана к чату «${thread.name}».\n\nВнизу теперь есть кнопка <b>📋 Меню</b> — нажмите её в любой момент, чтобы открыть разделы бота.`,
+    { reply_markup: menuReplyKeyboard() },
+  );
 
   // Напомним про права админа (реакции требуют administrator)
   const me = await tgCall<{ status: string }>("getChatMember", {
@@ -886,27 +923,79 @@ async function cmdUnlink(chatId: number) {
 // Главное меню
 // ═══════════════════════════════════════════════════════════════════════════
 
+const MAIN_MENU_TEXT = "<b>Главное меню</b>\n\nВыберите раздел:";
+const MENU_REPLY_BUTTON_TEXT = "📋 Меню";
+
+/** Inline-клавиатура главного меню — используется и в /menu, и в callback menu_home. */
+function mainMenuInlineKeyboard(): TgInlineKeyboard {
+  return [
+    [
+      { text: "📚 Полезные материалы", callback_data: encodeCb({ kind: "kb_group", groupId: null, page: 0 }) },
+      { text: "❓ Требования", callback_data: encodeCb({ kind: "folder_info" }) },
+    ],
+    [
+      { text: "📎 Загрузить документ", callback_data: encodeCb({ kind: "upload_start" }) },
+      { text: "📊 Статус документов", callback_data: encodeCb({ kind: "doc_status" }) },
+    ],
+  ];
+}
+
+/**
+ * Постоянная reply-клавиатура с одной кнопкой «📋 Меню» — держится в чате
+ * всегда, чтобы клиенту не нужно было помнить команды. Тап отправляет текст
+ * "📋 Меню", handleMessage перехватывает его и запускает главное меню.
+ */
+function menuReplyKeyboard() {
+  return {
+    keyboard: [[{ text: MENU_REPLY_BUTTON_TEXT }]],
+    resize_keyboard: true,
+    is_persistent: true,
+  };
+}
+
 async function showMainMenu(chatId: number) {
   const binding = await findChatBinding(chatId);
   if (!binding) {
     await sendMessage(chatId, "Группа ещё не привязана к проекту. Используйте /link КОД.");
     return;
   }
-  await sendMessage(chatId, "<b>Главное меню</b>\n\nВыберите раздел:", {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "📚 База знаний", callback_data: encodeCb({ kind: "kb_group", groupId: null, page: 0 }) }],
-        [{ text: "📎 Загрузить документ", callback_data: encodeCb({ kind: "kb_qa_list", page: 0 }) }],
-      ],
-    },
+  await sendMessage(chatId, MAIN_MENU_TEXT, {
+    reply_markup: { inline_keyboard: mainMenuInlineKeyboard() },
   });
-  // Для простоты: вторая кнопка пока ведёт на Q&A, а загрузка вызывается /upload.
-  // В v2 кнопки загрузки привяжем к сообщениям сотрудников.
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // База знаний
 // ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Собирает id всех статей, доступных в рамках проекта, через шаблон.
+ * Возвращает null, если у проекта нет template_id.
+ */
+async function getProjectAccessibleArticleIds(projectId: string): Promise<Set<string> | null> {
+  const { data: project } = await service
+    .from("projects")
+    .select("template_id")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (!project?.template_id) return null;
+
+  const [{ data: articleLinks }, { data: groupLinks }] = await Promise.all([
+    service.from("knowledge_article_templates").select("article_id").eq("project_template_id", project.template_id),
+    service.from("knowledge_group_templates").select("group_id").eq("project_template_id", project.template_id),
+  ]);
+
+  const ids = new Set<string>((articleLinks ?? []).map((l: { article_id: string }) => l.article_id));
+  const groupIds = (groupLinks ?? []).map((l: { group_id: string }) => l.group_id);
+  if (groupIds.length > 0) {
+    const { data: groupArticles } = await service
+      .from("knowledge_article_groups")
+      .select("article_id")
+      .in("group_id", groupIds);
+    for (const ga of groupArticles ?? []) ids.add(ga.article_id);
+  }
+  return ids;
+}
 
 async function showKbGroups(chatId: number, parentGroupId: string | null, page: number, editMsgId?: number) {
   const binding = await findChatBinding(chatId);
@@ -915,40 +1004,89 @@ async function showKbGroups(chatId: number, parentGroupId: string | null, page: 
     return;
   }
 
-  let groupsQuery = service
+  // Список статей, доступных в проекте (через шаблон проекта)
+  const accessibleArticleIds = await getProjectAccessibleArticleIds(binding.project_id);
+  if (!accessibleArticleIds) {
+    const text = "📚 <b>База знаний</b>\n\n<i>Полезные материалы этого проекта ещё не настроены.</i>";
+    const kb: TgInlineKeyboard = [[{ text: "🏠 Главное меню", callback_data: encodeCb({ kind: "menu_home" }) }]];
+    if (editMsgId) await editMessage(chatId, editMsgId, text, kb);
+    else await sendMessage(chatId, text, { reply_markup: { inline_keyboard: kb } });
+    return;
+  }
+  if (accessibleArticleIds.size === 0) {
+    const text = "📚 <b>База знаний</b>\n\n<i>В этом проекте пока нет материалов.</i>";
+    const kb: TgInlineKeyboard = [[{ text: "🏠 Главное меню", callback_data: encodeCb({ kind: "menu_home" }) }]];
+    if (editMsgId) await editMessage(chatId, editMsgId, text, kb);
+    else await sendMessage(chatId, text, { reply_markup: { inline_keyboard: kb } });
+    return;
+  }
+
+  // Загружаем статьи с их группами — чтобы построить дерево
+  const articleIdArray = [...accessibleArticleIds];
+  const { data: articlesData } = await service
+    .from("knowledge_articles")
+    .select("id, title, is_published, knowledge_article_groups(group_id, sort_order)")
+    .in("id", articleIdArray)
+    .eq("is_published", true);
+
+  type ArticleData = {
+    id: string;
+    title: string;
+    knowledge_article_groups: { group_id: string; sort_order: number | null }[];
+  };
+  const articlesList = (articlesData ?? []) as ArticleData[];
+
+  // Загружаем все группы workspace, чтобы знать parent_id
+  const { data: allGroupsData } = await service
     .from("knowledge_groups")
-    .select("id, name")
+    .select("id, name, parent_id, sort_order")
     .eq("workspace_id", binding.workspace_id)
     .order("sort_order", { ascending: true });
+  type GroupRow = { id: string; name: string; parent_id: string | null; sort_order: number | null };
+  const allGroups = (allGroupsData ?? []) as GroupRow[];
+
+  // Плоская структура (как в веб-UI проекта):
+  // — группы показываем только те, к которым НАПРЯМУЮ привязаны доступные статьи
+  //   (никаких родительских групп дерева не раскручиваем)
+  // — статьи без группы идут отдельным списком на корневом экране
+  const groupById = new Map(allGroups.map((g) => [g.id, g]));
+  const directGroupIds = new Set<string>();
+  for (const a of articlesList) {
+    for (const ag of a.knowledge_article_groups) directGroupIds.add(ag.group_id);
+  }
+  const ungroupedArticles = articlesList.filter((a) => a.knowledge_article_groups.length === 0);
+
+  let screenGroups: GroupRow[] = [];
+  let screenArticles: { id: string; title: string }[] = [];
+  let parentTitle = "База знаний проекта";
+
   if (parentGroupId === null) {
-    groupsQuery = groupsQuery.is("parent_id", null);
+    // Корень: плоский список всех прямых групп + статьи без группы
+    screenGroups = allGroups.filter((g) => directGroupIds.has(g.id));
+    screenArticles = ungroupedArticles.map((a) => ({ id: a.id, title: a.title }));
   } else {
-    // Нужно найти полный UUID по префиксу
+    // Внутри группы: только её статьи, без вложенных подгрупп
     const fullId = await resolvePrefixId("knowledge_groups", binding.workspace_id, parentGroupId);
     if (!fullId) {
-      await sendMessage(chatId, "Раздел не найден.");
+      const text = "📚 <b>База знаний</b>\n\n<i>Раздел не найден.</i>";
+      const kb: TgInlineKeyboard = [[{ text: "↑ К разделам", callback_data: encodeCb({ kind: "kb_group", groupId: null, page: 0 }) }]];
+      if (editMsgId) await editMessage(chatId, editMsgId, text, kb);
+      else await sendMessage(chatId, text, { reply_markup: { inline_keyboard: kb } });
       return;
     }
-    groupsQuery = groupsQuery.eq("parent_id", fullId);
+    screenArticles = articlesList
+      .filter((a) => a.knowledge_article_groups.some((ag) => ag.group_id === fullId))
+      .sort((a, b) => {
+        const ao = a.knowledge_article_groups.find((ag) => ag.group_id === fullId)?.sort_order ?? 0;
+        const bo = b.knowledge_article_groups.find((ag) => ag.group_id === fullId)?.sort_order ?? 0;
+        return (ao ?? 0) - (bo ?? 0);
+      })
+      .map((a) => ({ id: a.id, title: a.title }));
+    parentTitle = groupById.get(fullId)?.name ?? "Раздел";
   }
-  const { data: groups } = await groupsQuery;
 
-  // Статьи в этой группе (is_public_for_clients + is_published)
-  let articles: { id: string; title: string }[] = [];
-  if (parentGroupId !== null) {
-    const fullId = await resolvePrefixId("knowledge_groups", binding.workspace_id, parentGroupId);
-    if (fullId) {
-      const { data } = await service
-        .from("knowledge_article_groups")
-        .select("article_id, sort_order, knowledge_articles!inner(id, title, workspace_id, is_public_for_clients, is_published)")
-        .eq("group_id", fullId)
-        .eq("knowledge_articles.workspace_id", binding.workspace_id)
-        .eq("knowledge_articles.is_public_for_clients", true)
-        .eq("knowledge_articles.is_published", true)
-        .order("sort_order", { ascending: true });
-      articles = (data ?? []).map((r: {article_id: string; knowledge_articles: {id: string; title: string}}) => ({ id: r.knowledge_articles.id, title: r.knowledge_articles.title }));
-    }
-  }
+  const groups = screenGroups;
+  const articles = screenArticles;
 
   const items: TgInlineButton[] = [];
   for (const g of groups ?? []) {
@@ -980,7 +1118,9 @@ async function showKbGroups(chatId: number, parentGroupId: string | null, page: 
   }
   keyboard.push([{ text: "🏠 Главное меню", callback_data: encodeCb({ kind: "menu_home" }) }]);
 
-  const title = parentGroupId === null ? "📚 <b>База знаний</b>" : "📚 <b>Раздел базы знаний</b>";
+  const title = parentGroupId === null
+    ? "📚 <b>База знаний проекта</b>"
+    : `📚 <b>${escapeHtml(parentTitle)}</b>`;
   const text = total === 0
     ? `${title}\n\n<i>Здесь пока нет материалов.</i>`
     : `${title}\n\nВыберите материал${total > PAGE_SIZE ? ` (стр. ${page + 1}/${Math.ceil(total / PAGE_SIZE)})` : ""}:`;
@@ -992,7 +1132,7 @@ async function showKbGroups(chatId: number, parentGroupId: string | null, page: 
   }
 }
 
-async function showArticle(chatId: number, articlePrefix: string) {
+async function showArticle(chatId: number, articlePrefix: string, from?: TgUser) {
   const binding = await findChatBinding(chatId);
   if (!binding) return;
   const fullId = await resolvePrefixId("knowledge_articles", binding.workspace_id, articlePrefix);
@@ -1002,11 +1142,11 @@ async function showArticle(chatId: number, articlePrefix: string) {
   }
   const { data: article } = await service
     .from("knowledge_articles")
-    .select("id, title, content, is_public_for_clients, is_published")
+    .select("id, title, content, is_published")
     .eq("id", fullId)
     .maybeSingle();
 
-  if (!article || !article.is_public_for_clients || !article.is_published) {
+  if (!article || !article.is_published) {
     await sendMessage(chatId, "Статья недоступна.");
     return;
   }
@@ -1023,6 +1163,42 @@ async function showArticle(chatId: number, articlePrefix: string) {
       ]],
     },
   });
+
+  // Служебное уведомление в чат проекта: «Кто-то открыл статью»
+  if (from) {
+    await logServiceEvent(
+      chatId,
+      binding,
+      `👁️ ${formatUserName(from)} открыл(а) статью «${article.title}»`,
+    );
+  }
+}
+
+/**
+ * Пишет служебное сообщение в project_messages чата проекта.
+ *
+ * Параметр `counted` управляет, попадёт ли событие в счётчик непрочитанных
+ * сайдбара (RPC get_inbox_threads_v2 исключает source='telegram_service'):
+ *   - counted=false → source='telegram_service' (видно в чате, не дёргает бейдж)
+ *   - counted=true  → source='bot_event'        (дёргает бейдж)
+ */
+async function logServiceEvent(
+  _chatId: number,
+  binding: TgChatBinding,
+  text: string,
+  opts: { counted?: boolean } = {},
+) {
+  await service.from("project_messages").insert({
+    project_id: binding.project_id,
+    workspace_id: binding.workspace_id,
+    sender_participant_id: null,
+    sender_name: "Бот",
+    sender_role: null,
+    content: text,
+    source: opts.counted ? "bot_event" : "telegram_service",
+    channel: binding.channel || "client",
+    thread_id: binding.thread_id ?? undefined,
+  });
 }
 
 async function resolvePrefixId(
@@ -1030,53 +1206,424 @@ async function resolvePrefixId(
   workspaceId: string,
   prefix: string,
 ): Promise<string | null> {
+  // UUID имеет тип uuid в Postgres, ilike не работает напрямую — кастим через RPC-стиль фильтр.
+  // Проще: фильтруем на клиенте после получения всех id workspace (их обычно не миллионы).
+  // В будущем — заменить на текстовый индекс по id::text, если выборка станет большой.
   const { data } = await service
     .from(table)
     .select("id")
-    .eq("workspace_id", workspaceId)
-    .ilike("id", `${prefix}%`)
-    .limit(2);
-  if (!data || data.length === 0) return null;
-  if (data.length > 1) {
+    .eq("workspace_id", workspaceId);
+  if (!data) return null;
+  const matches = data.filter((r: { id: string }) => r.id.startsWith(prefix.toLowerCase()));
+  if (matches.length === 0) return null;
+  if (matches.length > 1) {
     console.warn(`[resolvePrefixId] ambiguous prefix ${prefix} in ${table}`);
     return null;
   }
-  return data[0].id;
+  return matches[0].id;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Загрузка документа в слот
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function showUploadSlots(chatId: number, from: TgUser | undefined) {
+async function showDocStatus(chatId: number, editMsgId?: number) {
+  const binding = await findChatBinding(chatId);
+  if (!binding) {
+    await sendMessage(chatId, "Группа ещё не привязана к проекту.");
+    return;
+  }
+
+  const { data: slotsData } = await service
+    .from("folder_slots")
+    .select(`
+      id, name, sort_order, document_id, folder_id,
+      folders ( id, name, sort_order ),
+      statuses ( name ),
+      documents ( name )
+    `)
+    .eq("project_id", binding.project_id)
+    .order("sort_order", { ascending: true });
+
+  type SlotRow = {
+    id: string;
+    name: string;
+    sort_order: number | null;
+    document_id: string | null;
+    folder_id: string | null;
+    folders: { id: string; name: string; sort_order: number | null } | null;
+    statuses: { name: string } | null;
+    documents: { name: string } | null;
+  };
+  const slots = (slotsData ?? []) as SlotRow[];
+
+  if (slots.length === 0) {
+    const kb: TgInlineKeyboard = [[{ text: "🏠 Главное меню", callback_data: encodeCb({ kind: "menu_home" }) }]];
+    const text = "📊 <b>Статус документов</b>\n\n<i>В этом проекте пока нет слотов для документов.</i>";
+    if (editMsgId) await editMessage(chatId, editMsgId, text, kb);
+    else await sendMessage(chatId, text, { reply_markup: { inline_keyboard: kb } });
+    return;
+  }
+
+  // Группируем по папке
+  type Bucket = { folderName: string; folderOrder: number; rows: SlotRow[] };
+  const byFolder = new Map<string, Bucket>();
+  for (const s of slots) {
+    const key = s.folder_id ?? "__none__";
+    if (!byFolder.has(key)) {
+      byFolder.set(key, {
+        folderName: s.folders?.name ?? "Без папки",
+        folderOrder: s.folders?.sort_order ?? 999999,
+        rows: [],
+      });
+    }
+    byFolder.get(key)!.rows.push(s);
+  }
+
+  const folders = [...byFolder.values()].sort((a, b) => a.folderOrder - b.folderOrder);
+
+  const lines: string[] = ["📊 <b>Статус документов</b>", ""];
+  let totalFilled = 0;
+  let totalEmpty = 0;
+  for (const f of folders) {
+    lines.push(`<b>${escapeHtml(f.folderName)}</b>`);
+    for (const s of f.rows) {
+      if (s.document_id) {
+        totalFilled++;
+        const docName = s.documents?.name ?? "документ";
+        const status = s.statuses?.name;
+        lines.push(
+          `  ✅ ${escapeHtml(s.name)}: <i>${escapeHtml(docName)}</i>` +
+            (status ? ` · <b>${escapeHtml(status)}</b>` : ""),
+        );
+      } else {
+        totalEmpty++;
+        lines.push(`  ❌ ${escapeHtml(s.name)} · <i>пусто</i>`);
+      }
+    }
+    lines.push("");
+  }
+  // Документы без папки — загруженные «свободно», без привязки к слоту
+  const { data: freeDocsData } = await service
+    .from("documents")
+    .select("id, name, created_at")
+    .eq("project_id", binding.project_id)
+    .is("folder_id", null)
+    .eq("is_deleted", false)
+    .order("created_at", { ascending: true });
+  type FreeDoc = { id: string; name: string; created_at: string };
+  const freeDocs = (freeDocsData ?? []) as FreeDoc[];
+
+  if (freeDocs.length > 0) {
+    lines.push("<b>БЕЗ ПАПКИ</b>");
+    for (const d of freeDocs) {
+      lines.push(`  📄 <i>${escapeHtml(d.name)}</i>`);
+    }
+    lines.push("");
+  }
+
+  lines.push(
+    `Всего: заполнено <b>${totalFilled}</b>, пусто <b>${totalEmpty}</b>` +
+      (freeDocs.length > 0 ? `, без папки <b>${freeDocs.length}</b>` : ""),
+  );
+
+  const text = lines.join("\n");
+
+  const kb: TgInlineKeyboard = [
+    [
+      { text: "📎 Загрузить документ", callback_data: encodeCb({ kind: "upload_start" }) },
+      { text: "🏠 Главное меню", callback_data: encodeCb({ kind: "menu_home" }) },
+    ],
+  ];
+
+  // Статус-сообщение может легко превысить 4096 символов на больших проектах.
+  // В этом случае режем и шлём несколько сообщений.
+  if (text.length <= 4000) {
+    if (editMsgId) await editMessage(chatId, editMsgId, text, kb);
+    else await sendMessage(chatId, text, { reply_markup: { inline_keyboard: kb } });
+    return;
+  }
+
+  // Чанкинг: правим существующее сообщение первым куском, остальное шлём.
+  const chunks: string[] = [];
+  let buf = "";
+  for (const line of lines) {
+    if ((buf + "\n" + line).length > 3800) {
+      chunks.push(buf);
+      buf = line;
+    } else {
+      buf += (buf ? "\n" : "") + line;
+    }
+  }
+  if (buf) chunks.push(buf);
+
+  if (editMsgId) await editMessage(chatId, editMsgId, chunks[0]);
+  else await sendMessage(chatId, chunks[0]);
+  for (let i = 1; i < chunks.length - 1; i++) await sendMessage(chatId, chunks[i]);
+  await sendMessage(chatId, chunks[chunks.length - 1], { reply_markup: { inline_keyboard: kb } });
+}
+
+async function showFolderInfo(chatId: number, editMsgId?: number) {
+  const binding = await findChatBinding(chatId);
+  if (!binding) {
+    await sendMessage(chatId, "Группа ещё не привязана к проекту.");
+    return;
+  }
+
+  const { data: foldersData } = await service
+    .from("folders")
+    .select("id, name, sort_order, knowledge_article_id")
+    .eq("project_id", binding.project_id)
+    .not("knowledge_article_id", "is", null)
+    .order("sort_order", { ascending: true });
+
+  type FolderRow = { id: string; name: string; sort_order: number | null; knowledge_article_id: string };
+  const folders = (foldersData ?? []) as FolderRow[];
+
+  if (folders.length === 0) {
+    const kb: TgInlineKeyboard = [[{ text: "🏠 Главное меню", callback_data: encodeCb({ kind: "menu_home" }) }]];
+    const text = "❓ <b>Требования к документам</b>\n\n<i>Для этого проекта пока не заведены описания групп документов.</i>";
+    if (editMsgId) await editMessage(chatId, editMsgId, text, kb);
+    else await sendMessage(chatId, text, { reply_markup: { inline_keyboard: kb } });
+    return;
+  }
+
+  const keyboard: TgInlineKeyboard = folders.map((f) => [
+    { text: `📁 ${f.name}`, callback_data: encodeCb({ kind: "folder_article", folderId: f.id }) },
+  ]);
+  keyboard.push([{ text: "🏠 Главное меню", callback_data: encodeCb({ kind: "menu_home" }) }]);
+
+  const text = "❓ <b>Требования к документам</b>\n\nВыберите группу, чтобы посмотреть, что именно нужно:";
+  if (editMsgId) await editMessage(chatId, editMsgId, text, keyboard);
+  else await sendMessage(chatId, text, { reply_markup: { inline_keyboard: keyboard } });
+}
+
+async function showFolderArticle(chatId: number, folderPrefix: string, from?: TgUser) {
+  const binding = await findChatBinding(chatId);
+  if (!binding) return;
+
+  // Резолвим папку по префиксу в рамках проекта
+  const { data: allFolders } = await service
+    .from("folders")
+    .select("id, name, knowledge_article_id")
+    .eq("project_id", binding.project_id);
+  const folder = (allFolders ?? []).find((f: { id: string }) => f.id.startsWith(folderPrefix.toLowerCase()));
+  if (!folder || !folder.knowledge_article_id) {
+    await sendMessage(chatId, "Группа не найдена или для неё нет описания.");
+    return;
+  }
+
+  const { data: article } = await service
+    .from("knowledge_articles")
+    .select("id, title, content, is_published")
+    .eq("id", folder.knowledge_article_id)
+    .maybeSingle();
+  if (!article || !article.is_published) {
+    await sendMessage(chatId, "Описание требований недоступно.");
+    return;
+  }
+
+  const chunks = renderArticle(article.title, article.content);
+  for (const c of chunks) await sendMessage(chatId, c);
+
+  await sendMessage(chatId, "Что дальше?", {
+    reply_markup: {
+      inline_keyboard: [
+        [{
+          // Переход напрямую в список слотов этой папки — тот же экран, что
+          // открывается через «Загрузить документ» → выбор папки. Логика
+          // загрузки полностью переиспользована через callback upload_folder.
+          text: `📎 Загрузить в группу «${folder.name}»`,
+          callback_data: encodeCb({ kind: "upload_folder", folderId: folder.id }),
+        }],
+        [{ text: "← К требованиям", callback_data: encodeCb({ kind: "folder_info" }) }],
+        [{ text: "🏠 Главное меню", callback_data: encodeCb({ kind: "menu_home" }) }],
+      ],
+    },
+  });
+
+  if (from) {
+    await logServiceEvent(
+      chatId,
+      binding,
+      `👁️ ${formatUserName(from)} открыл(а) требования к группе «${folder.name}»`,
+    );
+  }
+}
+
+/**
+ * Шаг 1 загрузки: показать список папок проекта с прогрессом «заполнено / всего».
+ * Клик → showUploadFolderSlots(folderId).
+ */
+async function showUploadSlots(chatId: number, from: TgUser | undefined, editMsgId?: number) {
   const binding = await findChatBinding(chatId);
   if (!binding || !from) {
     await sendMessage(chatId, "Группа ещё не привязана к проекту.");
     return;
   }
 
-  const { data: slots } = await service
+  // Все слоты проекта — чтобы посчитать прогресс по папкам
+  const { data: slotsData } = await service
     .from("folder_slots")
-    .select("id, name, folder_id, sort_order, folders(name, sort_order)")
+    .select("id, name, folder_id, document_id, sort_order, folders(id, name, sort_order)")
     .eq("project_id", binding.project_id)
-    .is("document_id", null)
-    .order("sort_order", { ascending: true })
-    .limit(50);
+    .order("sort_order", { ascending: true });
 
-  if (!slots || slots.length === 0) {
-    await sendMessage(chatId, "В этом проекте нет незаполненных слотов для документов.");
-    return;
+  type SlotRow = {
+    id: string;
+    name: string;
+    folder_id: string | null;
+    document_id: string | null;
+    sort_order: number | null;
+    folders: { id: string; name: string; sort_order: number | null } | null;
+  };
+  const slots = (slotsData ?? []) as SlotRow[];
+
+  // Группируем по folder_id и считаем прогресс
+  type Bucket = {
+    folderId: string | null;
+    folderName: string;
+    folderOrder: number;
+    filled: number;
+    total: number;
+  };
+  const byFolder = new Map<string, Bucket>();
+  for (const s of slots) {
+    const key = s.folder_id ?? "__none__";
+    if (!byFolder.has(key)) {
+      byFolder.set(key, {
+        folderId: s.folder_id,
+        folderName: s.folders?.name ?? "Без папки",
+        folderOrder: s.folders?.sort_order ?? 999999,
+        filled: 0,
+        total: 0,
+      });
+    }
+    const b = byFolder.get(key)!;
+    b.total++;
+    if (s.document_id) b.filled++;
   }
 
-  const keyboard: TgInlineKeyboard = slots.map((s: {id: string; name: string; folders?: {name: string}}) => [{
-    text: `📎 ${s.name}${s.folders?.name ? ` · ${s.folders.name}` : ""}`,
-    callback_data: encodeCb({ kind: "upload_slot", slotId: s.id }),
-  }]);
+  const folders = [...byFolder.values()].sort((a, b) => a.folderOrder - b.folderOrder);
+
+  const keyboard: TgInlineKeyboard = folders
+    .filter((f) => f.folderId !== null) // слоты без папки пока пропускаем
+    .map((f) => {
+      const remaining = f.total - f.filled;
+      const statusSuffix = remaining === 0 ? " ✓" : ` (${f.filled}/${f.total})`;
+      return [{
+        text: `📁 ${f.folderName}${statusSuffix}`,
+        callback_data: encodeCb({ kind: "upload_folder", folderId: f.folderId! }),
+      }];
+    });
+
+  // Слоты без папки проекта — отдельной кнопкой, если они есть
+  const noFolderBucket = byFolder.get("__none__");
+  if (noFolderBucket && noFolderBucket.total > 0) {
+    const remaining = noFolderBucket.total - noFolderBucket.filled;
+    keyboard.push([{
+      text: `📂 Прочие слоты${remaining === 0 ? " ✓" : ` (${noFolderBucket.filled}/${noFolderBucket.total})`}`,
+      callback_data: encodeCb({ kind: "upload_folder", folderId: "__none__" }),
+    }]);
+  }
+
+  // Загрузка без привязки к слоту (попадает в «Без папки»)
+  keyboard.push([{ text: "📁 Загрузить без привязки", callback_data: encodeCb({ kind: "upload_free" }) }]);
   keyboard.push([{ text: "🏠 Главное меню", callback_data: encodeCb({ kind: "menu_home" }) }]);
 
-  await sendMessage(chatId, "<b>Выберите слот, куда загрузить документ:</b>", {
-    reply_markup: { inline_keyboard: keyboard },
-  });
+  const text = folders.length === 0 && !noFolderBucket
+    ? "<b>В этом проекте нет слотов для документов.</b>\n\nМожно загрузить документ без привязки — он попадёт в раздел «Без папки»."
+    : "<b>Выберите папку</b>\n\nВ скобках — заполнено из общего числа слотов.";
+
+  if (editMsgId) {
+    await editMessage(chatId, editMsgId, text, keyboard);
+  } else {
+    await sendMessage(chatId, text, { reply_markup: { inline_keyboard: keyboard } });
+  }
+}
+
+/**
+ * Шаг 2 загрузки: список ПУСТЫХ слотов выбранной папки.
+ */
+async function showUploadFolderSlots(
+  chatId: number,
+  from: TgUser,
+  folderPrefix: string,
+  editMsgId?: number,
+) {
+  const binding = await findChatBinding(chatId);
+  if (!binding) return;
+
+  // Спецкод "__none__" — слоты без папки
+  const isNoFolder = folderPrefix === "__none__";
+  let fullFolderId: string | null = null;
+  let folderName = "Прочие слоты";
+
+  // Есть ли у папки статья с требованиями (для кнопки «Прочитать требования»)
+  let hasRequirementsArticle = false;
+
+  if (!isNoFolder) {
+    const { data: allFolders } = await service
+      .from("folders")
+      .select("id, name, knowledge_article_id")
+      .eq("project_id", binding.project_id);
+    const f = (allFolders ?? []).find((x: { id: string }) => x.id.startsWith(folderPrefix.toLowerCase()));
+    if (!f) {
+      await sendMessage(chatId, "Папка не найдена.");
+      return;
+    }
+    fullFolderId = f.id;
+    folderName = f.name;
+    hasRequirementsArticle = !!f.knowledge_article_id;
+  }
+
+  let slotsQuery = service
+    .from("folder_slots")
+    .select("id, name, sort_order, document_id")
+    .eq("project_id", binding.project_id)
+    .is("document_id", null)
+    .order("sort_order", { ascending: true });
+  if (isNoFolder) {
+    slotsQuery = slotsQuery.is("folder_id", null);
+  } else {
+    slotsQuery = slotsQuery.eq("folder_id", fullFolderId!);
+  }
+
+  const { data: slots } = await slotsQuery;
+
+  const keyboard: TgInlineKeyboard = (slots ?? []).map((s: { id: string; name: string }) => [{
+    text: `📎 ${s.name}`,
+    callback_data: encodeCb({ kind: "upload_slot", slotId: s.id }),
+  }]);
+  // Загрузка в эту папку без привязки к конкретному слоту —
+  // возможна только для реальных папок (не для "Прочие слоты" без folder_id).
+  if (!isNoFolder && fullFolderId) {
+    keyboard.push([{
+      text: "📁 Загрузить в эту папку (без слота)",
+      callback_data: encodeCb({ kind: "upload_folder_free", folderId: fullFolderId }),
+    }]);
+  }
+  // Показать требования к группе (если статья настроена) — зеркальная кнопка
+  // к «Загрузить в группу» с экрана требований. Callback тот же, что и из
+  // «❓ Требования к документам» → выбор группы.
+  if (!isNoFolder && fullFolderId && hasRequirementsArticle) {
+    keyboard.push([{
+      text: "❓ Прочитать требования",
+      callback_data: encodeCb({ kind: "folder_article", folderId: fullFolderId }),
+    }]);
+  }
+  keyboard.push([{ text: "← К папкам", callback_data: encodeCb({ kind: "upload_start" }) }]);
+  keyboard.push([{ text: "🏠 Главное меню", callback_data: encodeCb({ kind: "menu_home" }) }]);
+
+  const text = !slots || slots.length === 0
+    ? `<b>📁 ${escapeHtml(folderName)}</b>\n\n<i>Все слоты этой папки уже заполнены.</i>`
+    : `<b>📁 ${escapeHtml(folderName)}</b>\n\nВыберите слот для загрузки:`;
+
+  if (editMsgId) await editMessage(chatId, editMsgId, text, keyboard);
+  else await sendMessage(chatId, text, { reply_markup: { inline_keyboard: keyboard } });
+
+  // Чтобы "from" считался использованным
+  void from;
 }
 
 async function onSlotSelected(chatId: number, from: TgUser, slotPrefix: string, editMsgId?: number) {
@@ -1112,6 +1659,264 @@ async function onSlotSelected(chatId: number, from: TgUser, slotPrefix: string, 
     await sendMessage(chatId, text, {
       reply_markup: { inline_keyboard: [[{ text: "❌ Отмена", callback_data: encodeCb({ kind: "upload_cancel" }) }]] },
     });
+  }
+}
+
+/**
+ * Включает режим «многофайловой» загрузки.
+ * folderPrefix = null → файлы попадают в раздел «Без папки».
+ * folderPrefix = <uuid8> → файлы попадают в указанную папку (но без слота).
+ */
+async function onFreeUploadSelected(
+  chatId: number,
+  from: TgUser,
+  folderPrefix: string | null,
+  editMsgId?: number,
+) {
+  const binding = await findChatBinding(chatId);
+  if (!binding) return;
+
+  let targetFolderId: string | null = null;
+  let targetFolderName: string | null = null;
+  if (folderPrefix) {
+    const { data: allFolders } = await service
+      .from("folders")
+      .select("id, name")
+      .eq("project_id", binding.project_id);
+    const f = (allFolders ?? []).find((x: { id: string }) => x.id.startsWith(folderPrefix.toLowerCase()));
+    if (!f) {
+      await sendMessage(chatId, "Папка не найдена.");
+      return;
+    }
+    targetFolderId = f.id;
+    targetFolderName = f.name;
+  }
+
+  await setSession(chatId, from.id, "awaiting_free_file", {
+    target_folder_id: targetFolderId,
+    target_folder_name: targetFolderName,
+  });
+
+  const destination = targetFolderName
+    ? `в папку <b>«${escapeHtml(targetFolderName)}»</b> (без привязки к слоту)`
+    : "в раздел <b>«Без папки»</b>";
+  const text = `✅ Режим: <b>свободная загрузка</b>.\n\n📎 Прикрепите файл ответным сообщением (до ${MAX_FILE_SIZE_MB} МБ). Документ попадёт ${destination}.`;
+  const cancelRow = [[{ text: "❌ Отмена", callback_data: encodeCb({ kind: "upload_cancel" }) }]];
+  if (editMsgId) {
+    await editMessage(chatId, editMsgId, text, cancelRow);
+  } else {
+    await sendMessage(chatId, text, { reply_markup: { inline_keyboard: cancelRow } });
+  }
+}
+
+/** Общая логика: скачать файл из Telegram, создать documents+files+версию, запустить extract-text. */
+async function uploadDocumentCore(
+  msg: TgMessage,
+  binding: TgChatBinding,
+  folderId: string | null,
+): Promise<{ ok: true; docId: string; fileName: string } | { ok: false; reason: string }> {
+  const chatId = msg.chat.id;
+  const files = collectFiles(msg);
+  if (files.length === 0) return { ok: false, reason: "no_file" };
+  if (files.length > 1) return { ok: false, reason: "multiple_files" };
+
+  const f = files[0];
+  const declaredSize =
+    msg.document?.file_size ?? msg.video?.file_size ?? msg.audio?.file_size ?? msg.voice?.file_size ?? 0;
+  if (declaredSize && declaredSize > MAX_FILE_SIZE_MB * 1024 * 1024) {
+    return { ok: false, reason: "too_large" };
+  }
+
+  const dl = await fetchTelegramFile(f.fileId);
+  if (!dl) return { ok: false, reason: "download_failed" };
+
+  const { data: doc, error: docErr } = await service
+    .from("documents")
+    .insert({
+      folder_id: folderId,
+      project_id: binding.project_id,
+      workspace_id: binding.workspace_id,
+      name: f.originalName,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+  if (docErr || !doc) {
+    console.error("create doc error:", docErr);
+    return { ok: false, reason: "create_document_failed" };
+  }
+
+  const ts = Date.now();
+  const storagePath = `${binding.workspace_id}/${doc.id}/v1_${ts}_${f.safeName}`;
+  const { error: upErr } = await service.storage.from("files").upload(storagePath, dl.buffer, {
+    contentType: f.mimeType,
+    upsert: false,
+  });
+  if (upErr) {
+    console.error("storage upload:", upErr);
+    await service.from("documents").delete().eq("id", doc.id);
+    return { ok: false, reason: "storage_upload_failed" };
+  }
+
+  const { data: fileRow, error: fileErr } = await service
+    .from("files")
+    .insert({
+      workspace_id: binding.workspace_id,
+      bucket: "files",
+      storage_path: storagePath,
+      file_name: f.originalName,
+      file_size: dl.buffer.byteLength,
+      mime_type: f.mimeType,
+    })
+    .select("id")
+    .single();
+  if (fileErr || !fileRow) {
+    console.error("files insert:", fileErr);
+    await service.storage.from("files").remove([storagePath]);
+    await service.from("documents").delete().eq("id", doc.id);
+    return { ok: false, reason: "file_insert_failed" };
+  }
+
+  const { error: verErr } = await service.rpc("add_document_version_service", {
+    p_document_id: doc.id,
+    p_file_path: storagePath,
+    p_file_name: f.originalName,
+    p_file_size: dl.buffer.byteLength,
+    p_mime_type: f.mimeType,
+    p_file_id: fileRow.id,
+  });
+  if (verErr) {
+    console.error("add_document_version:", verErr);
+    await service.storage.from("files").remove([storagePath]);
+    await service.from("files").delete().eq("id", fileRow.id);
+    await service.from("documents").delete().eq("id", doc.id);
+    return { ok: false, reason: "version_failed" };
+  }
+
+  await service.from("documents").update({ status: "in_progress" }).eq("id", doc.id);
+
+  // Fire-and-forget: извлечение текста, чтобы документ был виден в «Выбрать из проекта»
+  const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
+  if (internalSecret) {
+    fetch(`${SUPABASE_URL}/functions/v1/extract-text`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-secret": internalSecret,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ document_id: doc.id }),
+    }).catch((err) => console.warn("[extract-text] fire-and-forget failed:", err));
+  }
+
+  // Мы не возвращаем chatId — он используется только для сообщений об ошибках выше.
+  void chatId;
+  return { ok: true, docId: doc.id, fileName: f.originalName };
+}
+
+async function handleFreeFileUpload(msg: TgMessage, binding: TgChatBinding) {
+  const chatId = msg.chat.id;
+  const from = msg.from!;
+
+  // Целевую папку (если есть) берём из сессии, установленной на onFreeUploadSelected
+  const sessionBefore = await getSession(chatId, from.id);
+  const ctxBefore = (sessionBefore?.context ?? {}) as {
+    target_folder_id?: string | null;
+    target_folder_name?: string | null;
+  };
+  const targetFolderId = ctxBefore.target_folder_id ?? null;
+  const targetFolderName = ctxBefore.target_folder_name ?? null;
+
+  const result = await uploadDocumentCore(msg, binding, targetFolderId);
+  if (!result.ok) {
+    if (result.reason === "no_file") {
+      await clearSession(chatId, from.id);
+    }
+    const errText = mapUploadError(result.reason);
+    await sendMessage(chatId, errText, { reply_to_message_id: msg.message_id });
+    return;
+  }
+
+  const mediaGroupId = msg.media_group_id ?? null;
+
+  const ctx = (sessionBefore?.context ?? {}) as {
+    batch_msg_id?: number;
+    batch_group_id?: string;
+    batch_names?: string[];
+    target_folder_id?: string | null;
+    target_folder_name?: string | null;
+  };
+
+  const isSameBatch =
+    ctx.batch_msg_id &&
+    ctx.batch_group_id &&
+    mediaGroupId &&
+    ctx.batch_group_id === mediaGroupId;
+
+  const names = isSameBatch ? [...(ctx.batch_names ?? []), result.fileName] : [result.fileName];
+
+  const destinationLabel = targetFolderName
+    ? `в папку «${targetFolderName}»`
+    : "в «Без папки»";
+
+  const confirmationText = names.length === 1
+    ? `✅ Загружен <b>${escapeHtml(names[0])}</b> ${escapeHtml(destinationLabel)}. Можно присылать ещё файлы.`
+    : `✅ Загружено файлов: <b>${names.length}</b> ${escapeHtml(destinationLabel)}:\n` +
+      names.map((n) => `• ${escapeHtml(n)}`).join("\n") +
+      "\n\nМожно присылать ещё.";
+
+  const keyboard: TgInlineKeyboard = [
+    [
+      { text: "✅ Готово", callback_data: encodeCb({ kind: "upload_finish" }) },
+      { text: "📊 Статус", callback_data: encodeCb({ kind: "doc_status" }) },
+    ],
+    [{ text: "🏠 Главное меню", callback_data: encodeCb({ kind: "menu_home" }) }],
+  ];
+
+  let newBatchMsgId: number | null = null;
+  if (isSameBatch && ctx.batch_msg_id) {
+    await editMessage(chatId, ctx.batch_msg_id, confirmationText, keyboard);
+    newBatchMsgId = ctx.batch_msg_id;
+  } else {
+    const sent = await sendMessage(chatId, confirmationText, {
+      reply_to_message_id: msg.message_id,
+      reply_markup: { inline_keyboard: keyboard },
+    }) as { message_id?: number } | null;
+    newBatchMsgId = sent?.message_id ?? null;
+  }
+
+  // Обновляем состояние сессии: накопление батча + сохраняем папку-назначение
+  await setSession(chatId, from.id, "awaiting_free_file", {
+    batch_msg_id: newBatchMsgId,
+    batch_group_id: mediaGroupId,
+    batch_names: names,
+    target_folder_id: targetFolderId,
+    target_folder_name: targetFolderName,
+  });
+
+  const logDest = targetFolderName
+    ? `в папку «${targetFolderName}» (без слота)`
+    : "без привязки к слоту";
+  await logServiceEvent(
+    chatId,
+    binding,
+    `📎 ${formatUserName(from)} загрузил(а) документ «${result.fileName}» ${logDest}`,
+    { counted: true },
+  );
+}
+
+function mapUploadError(reason: string): string {
+  switch (reason) {
+    case "no_file":
+      return "Не вижу файла в сообщении. Прикрепите документ или фото.";
+    case "multiple_files":
+      return "Пожалуйста, пришлите один файл за раз.";
+    case "too_large":
+      return `⚠️ Файл больше ${MAX_FILE_SIZE_MB} МБ. Загрузите его через веб-интерфейс ClientCase.`;
+    case "download_failed":
+      return `⚠️ Не удалось получить файл (возможно, больше ${MAX_FILE_SIZE_MB} МБ). Загрузите через веб.`;
+    default:
+      return "⚠️ Не удалось загрузить документ.";
   }
 }
 
@@ -1218,8 +2023,8 @@ async function handleSlotFileUpload(msg: TgMessage, binding: TgChatBinding, slot
     return;
   }
 
-  // add_document_version RPC
-  const { error: verErr } = await service.rpc("add_document_version", {
+  // add_document_version_service RPC (служебный вариант без проверки auth.uid())
+  const { error: verErr } = await service.rpc("add_document_version_service", {
     p_document_id: doc.id,
     p_file_path: storagePath,
     p_file_name: f.originalName,
@@ -1239,8 +2044,8 @@ async function handleSlotFileUpload(msg: TgMessage, binding: TgChatBinding, slot
 
   await service.from("documents").update({ status: "in_progress" }).eq("id", doc.id);
 
-  // fill_slot_atomic
-  const { error: fillErr } = await service.rpc("fill_slot_atomic", {
+  // fill_slot_atomic_service (служебный вариант без проверки auth.uid())
+  const { error: fillErr } = await service.rpc("fill_slot_atomic_service", {
     p_slot_id: slot.id,
     p_document_id: doc.id,
     p_project_id: binding.project_id,
@@ -1258,8 +2063,45 @@ async function handleSlotFileUpload(msg: TgMessage, binding: TgChatBinding, slot
   await sendMessage(
     chatId,
     `✅ Документ <b>${escapeHtml(f.originalName)}</b> загружен в слот <b>${escapeHtml(slot.name)}</b>.`,
-    { reply_to_message_id: msg.message_id },
+    {
+      reply_to_message_id: msg.message_id,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "📎 Загрузить ещё", callback_data: encodeCb({ kind: "upload_start" }) },
+            { text: "📊 Статус", callback_data: encodeCb({ kind: "doc_status" }) },
+          ],
+          [{ text: "🏠 Главное меню", callback_data: encodeCb({ kind: "menu_home" }) }],
+        ],
+      },
+    },
   );
+
+  // Служебное уведомление в чат проекта — важное, в счётчик непрочитанных
+  await logServiceEvent(
+    chatId,
+    binding,
+    `📎 ${formatUserName(from)} загрузил(а) документ «${f.originalName}» в слот «${slot.name}»`,
+    { counted: true },
+  );
+
+  // Fire-and-forget: запустить извлечение текста, чтобы документ стал виден
+  // в выборе «Выбрать из проекта» и чтобы работала кнопка «Просмотреть содержимое».
+  const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
+  if (internalSecret) {
+    fetch(`${SUPABASE_URL}/functions/v1/extract-text`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-secret": internalSecret,
+        // Supabase Functions требует Authorization для любого вызова функции —
+        // кладём anon-подобный токен (service-role здесь безопасен, тк функция
+        // сама обнаружит x-internal-secret и не будет полагаться на JWT).
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ document_id: doc.id }),
+    }).catch((err) => console.warn("[extract-text] fire-and-forget failed:", err));
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1282,10 +2124,8 @@ async function handleCallback(cb: TgCallbackQuery) {
   switch (action.kind) {
     case "menu_home":
       await answerCallback(cb.id);
-      await editMessage(chatId, msgId, "<b>Главное меню</b>\n\nВыберите раздел:", [
-        [{ text: "📚 База знаний", callback_data: encodeCb({ kind: "kb_group", groupId: null, page: 0 }) }],
-        [{ text: "📎 Загрузить документ — напишите /upload" }],
-      ]);
+      await clearSession(chatId, cb.from.id);
+      await editMessage(chatId, msgId, MAIN_MENU_TEXT, mainMenuInlineKeyboard());
       return;
     case "kb_group":
       await answerCallback(cb.id);
@@ -1293,16 +2133,54 @@ async function handleCallback(cb: TgCallbackQuery) {
       return;
     case "kb_article":
       await answerCallback(cb.id);
-      await showArticle(chatId, action.articleId);
+      await showArticle(chatId, action.articleId, cb.from);
+      return;
+    case "upload_start":
+      await answerCallback(cb.id);
+      await showUploadSlots(chatId, cb.from, msgId);
+      return;
+    case "upload_folder":
+      await answerCallback(cb.id);
+      await showUploadFolderSlots(chatId, cb.from, action.folderId, msgId);
+      return;
+    case "doc_status":
+      await answerCallback(cb.id);
+      await showDocStatus(chatId, msgId);
+      return;
+    case "folder_info":
+      await answerCallback(cb.id);
+      await showFolderInfo(chatId, msgId);
+      return;
+    case "folder_article":
+      await answerCallback(cb.id);
+      await showFolderArticle(chatId, action.folderId, cb.from);
       return;
     case "upload_slot":
       await answerCallback(cb.id);
       await onSlotSelected(chatId, cb.from, action.slotId, msgId);
       return;
+    case "upload_free":
+      await answerCallback(cb.id);
+      await onFreeUploadSelected(chatId, cb.from, null, msgId);
+      return;
+    case "upload_folder_free":
+      await answerCallback(cb.id);
+      await onFreeUploadSelected(chatId, cb.from, action.folderId, msgId);
+      return;
     case "upload_cancel":
       await answerCallback(cb.id, "Отменено.");
       await clearSession(chatId, cb.from.id);
       await editMessage(chatId, msgId, "Загрузка отменена.");
+      return;
+    case "upload_finish":
+      // «Готово» — пользователь завершил многофайловую загрузку. Сессию закрываем,
+      // но в отличие от «Отмена» не переписываем историю как «Отменено» — ведь
+      // файлы реально загружены. Просто показываем подтверждение и меню.
+      await answerCallback(cb.id, "Готово!");
+      await clearSession(chatId, cb.from.id);
+      await sendMessage(chatId, "✅ Загрузка завершена. Что дальше?", {
+        reply_markup: { inline_keyboard: mainMenuInlineKeyboard() },
+      });
       return;
     case "nav_back":
       await answerCallback(cb.id);

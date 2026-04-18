@@ -1,10 +1,18 @@
 /**
- * Конвертер Tiptap JSON → Telegram HTML.
- * Telegram HTML поддерживает: <b>, <i>, <u>, <s>, <code>, <pre>, <a>, <blockquote>.
- * Списки и заголовки Telegram не понимает — эмулируем через префиксы и <b>.
+ * Конвертер контента статьи → Telegram HTML.
+ *
+ * Статьи в БД могут храниться в двух форматах:
+ * - Tiptap JSON (`{"type":"doc","content":[...]}`)
+ * - HTML-строка (`<p>...</p><strong>...</strong>...` — продукт generateHTML
+ *   из Tiptap; встречается чаще).
+ *
+ * Оба варианта приводим к ограниченному HTML, который понимает Telegram
+ * (<b>, <i>, <u>, <s>, <code>, <pre>, <a>, <blockquote>).
  *
  * Лимит одного sendMessage — 4096 символов, поэтому возвращаем массив чанков.
  */
+
+import { htmlToTelegramHtml, isHtmlContent } from "../_shared/htmlFormatting.ts";
 
 interface Node {
   type: string;
@@ -18,15 +26,25 @@ const MAX_MESSAGE_LENGTH = 4000; // с запасом от лимита 4096
 
 export function renderArticle(title: string, content: string | null): string[] {
   let body = "";
-  try {
-    const json = content ? JSON.parse(content) : null;
-    if (json && json.type === "doc" && Array.isArray(json.content)) {
-      body = renderNodes(json.content).trim();
-    } else if (typeof content === "string") {
-      body = escapeHtml(content);
+  if (content) {
+    const trimmed = content.trim();
+    // 1) Попытка: Tiptap JSON
+    if (trimmed.startsWith("{")) {
+      try {
+        const json = JSON.parse(trimmed);
+        if (json && json.type === "doc" && Array.isArray(json.content)) {
+          body = renderNodes(json.content).trim();
+        }
+      } catch {
+        // не JSON — упадём в HTML-ветку ниже
+      }
     }
-  } catch {
-    body = content ? escapeHtml(content) : "";
+    // 2) Если JSON не распарсился, но контент выглядит как HTML — конвертируем
+    if (!body && isHtmlContent(trimmed)) {
+      body = htmlToTelegramHtml(trimmed).trim();
+    }
+    // 3) Иначе — обычный текст, экранируем
+    if (!body) body = escapeHtml(trimmed);
   }
 
   const header = `<b>${escapeHtml(title)}</b>\n\n`;
