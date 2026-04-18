@@ -335,7 +335,7 @@ export function MessageList({
           </div>
         </div>
       )}
-      <div className="p-4 space-y-2" onCopy={handleCopy}>
+      <div className="p-4 pb-12 space-y-2" onCopy={handleCopy}>
         {/* Sentinel для подгрузки старых */}
         <div ref={sentinelRef} className="h-1" />
 
