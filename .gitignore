@@ -42,8 +42,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# claude code
-.claude/
+# claude code — игнорируем локальные настройки, но трекаем общие правила
+.claude/*
+!.claude/rules/
 .mcp.json
 .playwright-mcp/
 

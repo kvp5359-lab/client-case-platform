@@ -44,6 +44,14 @@
 - SSR клиент: `src/lib/supabase-server.ts`
 - Клиентский: `src/lib/supabase.ts`
 
+### Edge Functions
+
+- Исходники: `supabase/functions/` — 53 функции + `_shared/` (общие модули) + `types/deno.d.ts` + `tsconfig.json`.
+- Конфиг: `supabase/config.toml` (локальная разработка Supabase).
+- **Перенесены из старого репо `ClientCase` 2026-04-18** (ветка `feat/migrate-edge-functions`, коммит `c03f0dc`). Скачаны напрямую из live Supabase через `supabase functions download`, то есть исходники в репо ровно соответствуют тому, что задеплоено и работает в проде. Старый репо `ClientCase` как источник правды больше не используется — там остались некоторые незадеплоенные изменения, которые в момент переноса были признаны неактуальными.
+- **Деплой функции**: `supabase functions deploy <name> --project-ref zjatohckcpiqmxkmfxbs`. Через CI пока не автоматизировано — деплой вручную.
+- **Категории функций**: telegram-* (синхронизация с ботом), gmail-* (почта), google-drive-* / google-sheets-* / google-oauth-* / google-docs-export (Google интеграции), chat-* / generate-* / analyze-documents / extract-* / transcribe-audio / knowledge-* (AI), compress-* (сжатие файлов), email-track, fetch-image, fetch-sheets, fix-cyrillic-storage-paths, sandbox-test.
+
 ## Окружение
 
 | Переменная | Описание |
