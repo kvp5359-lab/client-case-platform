@@ -6195,7 +6195,7 @@ export type Database = {
         | "key-value-table"
         | "divider"
       message_sender_type: "user" | "assistant" | "system"
-      message_source: "web" | "telegram" | "telegram_service" | "email"
+      message_source: "web" | "telegram" | "telegram_service" | "email" | "bot_event"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -6375,7 +6375,7 @@ export const Constants = {
         "divider",
       ],
       message_sender_type: ["user", "assistant", "system"],
-      message_source: ["web", "telegram", "telegram_service", "email"],
+      message_source: ["web", "telegram", "telegram_service", "email", "bot_event"],
     },
   },
 } as const

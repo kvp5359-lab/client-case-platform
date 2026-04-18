@@ -56,7 +56,7 @@ export interface ProjectMessage {
   sender_name: string
   sender_role: string | null
   content: string
-  source: 'web' | 'telegram' | 'email' | 'telegram_service'
+  source: 'web' | 'telegram' | 'email' | 'telegram_service' | 'bot_event'
   reply_to_message_id: string | null
   reply_to_message: ReplyMessage | null
   telegram_message_id: number | null
