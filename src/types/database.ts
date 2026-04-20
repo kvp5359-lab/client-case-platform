@@ -4812,6 +4812,7 @@ export type Database = {
           name: string
           order_index: number
           show_to_creator: boolean
+          silent_transition: boolean
           text_color: string
           updated_at: string
           workspace_id: string
@@ -4830,6 +4831,7 @@ export type Database = {
           name: string
           order_index?: number
           show_to_creator?: boolean
+          silent_transition?: boolean
           text_color?: string
           updated_at?: string
           workspace_id: string
@@ -4848,6 +4850,7 @@ export type Database = {
           name?: string
           order_index?: number
           show_to_creator?: boolean
+          silent_transition?: boolean
           text_color?: string
           updated_at?: string
           workspace_id?: string

@@ -92,6 +92,8 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
         if ('icon' in params.data) extra.icon = params.data.icon ?? null
         if ('show_to_creator' in params.data)
           extra.show_to_creator = params.data.show_to_creator ?? false
+        if ('silent_transition' in params.data)
+          extra.silent_transition = params.data.silent_transition ?? false
         if (Object.keys(extra).length > 0) {
           await supabase.from('statuses').update(extra).eq('id', params.editing.id)
         }
@@ -110,8 +112,8 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
         })
         if (error) throw error
 
-        // Для новых статусов: назначить icon и show_to_creator
-        if (params.data.icon || params.data.show_to_creator) {
+        // Для новых статусов: назначить icon, show_to_creator и silent_transition
+        if (params.data.icon || params.data.show_to_creator || params.data.silent_transition) {
           const { data: created } = await supabase
             .from('statuses')
             .select('id')
@@ -127,6 +129,7 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
               .update({
                 icon: params.data.icon ?? null,
                 show_to_creator: params.data.show_to_creator ?? false,
+                silent_transition: params.data.silent_transition ?? false,
               })
               .eq('id', created.id)
           }
@@ -223,6 +226,7 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
       order_index: filteredStatuses.length,
       is_default: false,
       is_final: false,
+      silent_transition: false,
     })
     setIsDialogOpen(true)
   }
@@ -242,6 +246,7 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
       is_final: status.is_final,
       icon: status.icon ?? null,
       show_to_creator: status.show_to_creator ?? false,
+      silent_transition: status.silent_transition ?? false,
     })
     setIsDialogOpen(true)
   }

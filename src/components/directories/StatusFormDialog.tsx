@@ -162,6 +162,23 @@ export function StatusFormDialog({
                 </label>
               </div>
             )}
+
+            {formData.entity_type === 'task' && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="silent_transition"
+                  checked={formData.silent_transition ?? false}
+                  onCheckedChange={(checked) =>
+                    onFormDataChange({ ...formData, silent_transition: !!checked })
+                  }
+                  disabled={saving}
+                />
+                <label htmlFor="silent_transition" className="text-sm cursor-pointer">
+                  Не уведомлять о переходе
+                  <span className="text-gray-500 ml-1">(у участников не появится бейдж непрочитанного)</span>
+                </label>
+              </div>
+            )}
           </div>
         </div>
 

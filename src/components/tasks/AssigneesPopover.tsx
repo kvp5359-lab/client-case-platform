@@ -89,6 +89,11 @@ interface ControlledModeProps {
   /** Список участников, если родитель грузит их сам. Если не передан —
    *  грузим через useWorkspaceParticipants(workspaceId). */
   participantsOverride?: WorkspaceParticipant[]
+  /** Кастомный триггер (например, аватарки роли в списке проектов).
+   *  Если передан — используется вместо стандартной кнопки. */
+  triggerOverride?: React.ReactNode
+  /** Выравнивание поповера относительно триггера. По умолчанию 'start'. */
+  align?: 'start' | 'center' | 'end'
 }
 
 type AssigneesPopoverProps = ThreadModeProps | ControlledModeProps
@@ -221,7 +226,9 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
     ? participants.filter((p) => assigneeSet.has(p.id))
     : []
 
-  const trigger = isControlled ? (
+  const trigger = isControlled && props.triggerOverride ? (
+    props.triggerOverride
+  ) : isControlled ? (
     <button
       type="button"
       className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background hover:bg-accent transition-colors text-sm font-normal w-full justify-start"
@@ -293,7 +300,13 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent
         className="w-72 p-0"
-        align={isControlled ? 'start' : 'end'}
+        align={
+          isControlled && props.align
+            ? props.align
+            : isControlled
+              ? 'start'
+              : 'end'
+        }
         onWheel={(e) => e.stopPropagation()}
       >
         <div className="px-3 py-2 border-b">
