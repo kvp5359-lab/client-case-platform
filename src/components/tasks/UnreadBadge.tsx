@@ -55,7 +55,14 @@ export function UnreadBadge({ threadId, workspaceId, accentColor }: UnreadBadgeP
 
   if (badge.type === 'emoji') {
     return (
-      <span className="text-sm shrink-0">{badge.value}</span>
+      <span
+        className={cn(
+          'inline-flex items-center justify-center w-[18px] h-[18px] rounded-full shrink-0',
+          badgeBg,
+        )}
+      >
+        <span className="text-[10px] leading-none">{badge.value}</span>
+      </span>
     )
   }
 

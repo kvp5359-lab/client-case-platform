@@ -158,6 +158,8 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
           />
         </span>
 
+        <UnreadBadge threadId={task.id} workspaceId={workspaceId} accentColor={task.accent_color} />
+
         {/* Меню «три точки» — сразу после исполнителей */}
         {onRequestDelete && (
           <span className="shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -189,8 +191,6 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
           </span>
         )}
       </div>
-
-      <UnreadBadge threadId={task.id} workspaceId={workspaceId} accentColor={task.accent_color} />
 
       {/* Срок */}
       <DeadlinePopover
