@@ -359,7 +359,13 @@ async function sendAttachments(
     .select("*")
     .eq("message_id", messageId);
 
-  if (!attachments || attachments.length === 0) return true;
+  if (!attachments || attachments.length === 0) {
+    await supabaseClient
+      .from("project_messages")
+      .update({ telegram_error_detail: "sendAttachments: no attachments found in DB" })
+      .eq("id", messageId);
+    return false;
+  }
 
   let allSucceeded = true;
 
@@ -502,6 +508,14 @@ async function sendAttachments(
       try {
         const resolved = await Promise.all(chunk.map((a) => resolveAttachment(a, supabaseClient)));
 
+        const nullCount = resolved.filter((r) => !r).length;
+        if (nullCount > 0) {
+          await supabaseClient
+            .from("project_messages")
+            .update({ telegram_error_detail: `sendMediaGroup(document): ${nullCount}/${resolved.length} attachments failed to resolve` })
+            .eq("id", messageId);
+        }
+
         const formData = new FormData();
         formData.append("chat_id", String(chatId));
 
@@ -536,6 +550,11 @@ async function sendAttachments(
         if (!tgData.ok) {
           console.error("Telegram sendMediaGroup (document) error:", JSON.stringify(tgData));
           allSucceeded = false;
+          // Пишем причину в БД — чтобы потом можно было посмотреть SQL-запросом.
+          await supabaseClient
+            .from("project_messages")
+            .update({ telegram_error_detail: `sendMediaGroup(document): ${JSON.stringify(tgData).slice(0, 500)}` })
+            .eq("id", messageId);
         }
 
         if (isFirstChunk && !skipTelegramIdUpdate && images.length === 0 && tgData.ok) {
