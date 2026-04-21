@@ -289,6 +289,7 @@ export function ChatSettingsDialog({
                 form.tabMode === 'email' ? 'Текст письма...' : 'Сообщение (опционально)...'
               }
               editorMaxHeight={150}
+              initialHtml={actions.pendingInitialHtml}
               onChange={form.setHasInitialMessage}
               onSubmit={form.canSave ? actions.handleSave : undefined}
               projectId={form.selectedProjectId ?? propProjectId}

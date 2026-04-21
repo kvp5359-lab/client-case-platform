@@ -4,10 +4,9 @@
  */
 
 import { useState, useMemo } from 'react'
-import { Folder } from 'lucide-react'
+import { Folder, CheckSquare, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Dialog,
   DialogContent,
@@ -93,24 +92,55 @@ export function DocumentPickerDialog({
     return groups
   }, [documents])
 
+  const allIds = useMemo(() => documents.map((d) => d.id), [documents])
+  const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id))
+  const toggleAll = () => {
+    setSelected(allSelected ? new Set() : new Set(allIds))
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg p-0">
-        <DialogHeader className="p-4 pb-2">
-          <DialogTitle className="text-sm">Документы проекта ({documents.length})</DialogTitle>
+        <DialogHeader className="p-4 pb-2 pr-10">
+          <div className="flex items-center justify-between gap-2">
+            <DialogTitle className="text-sm">
+              Документы проекта ({documents.length})
+            </DialogTitle>
+            {allIds.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={toggleAll}
+              >
+                {allSelected ? (
+                  <>
+                    <Square className="h-3.5 w-3.5" />
+                    Снять все
+                  </>
+                ) : (
+                  <>
+                    <CheckSquare className="h-3.5 w-3.5" />
+                    Отметить все
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh]">
+        <div className="max-h-[60vh] overflow-y-auto">
           <div className="px-3 pb-2">
             {groupedDocuments.map((group) => (
               <div key={group.kitName} className="mb-2 last:mb-0">
-                <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide px-1 py-1">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-1 py-1">
                   {group.kitName}
                 </div>
                 {group.folders.map((folder) => (
                   <div key={folder.folderName ?? '__ungrouped'}>
                     {folder.folderName && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground px-1 py-0.5 mt-0.5">
-                        <Folder className="h-3 w-3" />
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground px-1 py-0.5 mt-0.5">
+                        <Folder className="h-3.5 w-3.5" />
                         <span>
                           {folder.folderIndex}. {folder.folderName}
                         </span>
@@ -122,35 +152,43 @@ export function DocumentPickerDialog({
                       const statusColor = docStatus?.color
                         ? safeCssColor(docStatus.color)
                         : undefined
+                      const toggle = () => {
+                        setSelected((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(doc.id)) next.delete(doc.id)
+                          else next.add(doc.id)
+                          return next
+                        })
+                      }
                       return (
-                        <button
+                        <div
                           key={doc.id}
-                          type="button"
+                          role="button"
+                          tabIndex={0}
                           className={cn(
-                            'w-full flex items-center gap-1.5 py-1 rounded text-xs text-left transition-colors',
+                            'w-full min-w-0 flex items-center gap-1.5 py-1 rounded text-sm transition-colors cursor-pointer',
                             folder.folderName ? 'pl-5 pr-2' : 'pl-2 pr-2',
                             isSelected ? 'bg-primary/10' : 'hover:bg-muted',
                           )}
-                          onClick={() => {
-                            setSelected((prev) => {
-                              const next = new Set(prev)
-                              if (next.has(doc.id)) next.delete(doc.id)
-                              else next.add(doc.id)
-                              return next
-                            })
+                          onClick={toggle}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              toggle()
+                            }
                           }}
                         >
                           <Checkbox
                             checked={isSelected}
-                            className="h-3 w-3 shrink-0 pointer-events-none"
+                            className="h-3.5 w-3.5 shrink-0 pointer-events-none"
                           />
                           <span
-                            className="truncate"
+                            className="truncate flex-1 min-w-0"
                             style={statusColor ? { color: statusColor } : undefined}
                           >
                             {doc.name}
                           </span>
-                        </button>
+                        </div>
                       )
                     })}
                   </div>
@@ -158,7 +196,7 @@ export function DocumentPickerDialog({
               </div>
             ))}
           </div>
-        </ScrollArea>
+        </div>
         <DialogFooter className="px-4 py-3 border-t">
           <Button size="sm" onClick={() => onConfirm(selected)} disabled={isLoading}>
             {isLoading

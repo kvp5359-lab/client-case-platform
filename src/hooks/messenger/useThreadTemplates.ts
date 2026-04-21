@@ -227,9 +227,20 @@ export function applyTemplate(
     ? replacePlaceholders(template.email_subject_template, placeholderCtx)
     : ''
 
-  // Initial message
-  const initialMessageHtml = template.initial_message_html
+  // Initial message. Поле хранит plain text с \n (вводится в <Textarea>),
+  // но может содержать и HTML. Если HTML-тегов нет — конвертируем \n в <br>,
+  // иначе Tiptap.setContent(html) проигнорирует переносы строк.
+  const rawInitial = template.initial_message_html
     ? replacePlaceholders(template.initial_message_html, placeholderCtx)
+    : null
+  const initialMessageHtml = rawInitial
+    ? /<\/?[a-z][\s\S]*?>/i.test(rawInitial)
+      ? rawInitial
+      : rawInitial
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\r?\n/g, '<br>')
     : null
 
   return {

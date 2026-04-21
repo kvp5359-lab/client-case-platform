@@ -344,6 +344,7 @@ export function TaskGroupList({
                     onDeadlineSet={(date) => onDeadlineSet(task.id, date)}
                     onDeadlineClear={() => onDeadlineClear(task.id)}
                     deadlinePending={deadlinePending}
+                    finalStatusIds={finalStatusIds}
                     showProject={showProject}
                     onRequestDelete={
                       onRequestDeleteTask ? () => onRequestDeleteTask(task) : undefined
@@ -370,6 +371,7 @@ export function TaskGroupList({
               onDeadlineSet={() => {}}
               onDeadlineClear={() => {}}
               deadlinePending={false}
+              finalStatusIds={finalStatusIds}
               showProject={showProject}
             />
           </div>

@@ -190,7 +190,7 @@ export function useChatSettingsActions({
   })
 
   // ── Template apply (+ auto-apply initialTemplate) ──
-  const { appliedTemplateId, handleApplyTemplate } = useChatSettingsTemplateApply({
+  const { appliedTemplateId, handleApplyTemplate, pendingInitialHtml } = useChatSettingsTemplateApply({
     open,
     form,
     composeRef,
@@ -338,6 +338,7 @@ export function useChatSettingsActions({
     handleOpenDocPicker,
     handleConfirmDocPicker,
     composeProjectId,
+    pendingInitialHtml,
     // Handlers
     handleApplyTemplate,
     handleAccessChange,

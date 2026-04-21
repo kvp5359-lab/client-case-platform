@@ -69,6 +69,9 @@ export function useChatSettingsTemplateApply({
   // appliedTemplateId прокидывается в ChatSettingsResult.sourceTemplateId на
   // submit — так свежесозданный тред запоминает, из какого шаблона он родом.
   const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null)
+  // pendingInitialHtml передаётся в ComposeField как initialHtml: Tiptap применит его
+  // когда редактор будет готов (editor инициализируется асинхронно, при immediatelyRender:false).
+  const [pendingInitialHtml, setPendingInitialHtml] = useState<string | null>(null)
 
   const handleApplyTemplate = useCallback(
     (template: ThreadTemplate) => {
@@ -105,6 +108,10 @@ export function useChatSettingsTemplateApply({
         form.setEmailSubject(result.emailSubject)
       }
       if (result.initialMessageHtml) {
+        // Через state + проп initialHtml: ComposeField применит контент, как только
+        // Tiptap-редактор будет готов (immediatelyRender:false → editor инициализируется в useEffect).
+        setPendingInitialHtml(result.initialMessageHtml)
+        // На всякий случай — императивно, если редактор уже готов (ручной выбор шаблона).
         composeRef.current?.setHtml(result.initialMessageHtml)
       }
       if (result.missingAssignees.length > 0) {
@@ -131,9 +138,12 @@ export function useChatSettingsTemplateApply({
     if (open && !form.isEditMode && initialTemplate && initialTemplate.id !== appliedTemplateId) {
       handleApplyTemplate(initialTemplate)
     }
-    if (!open) setAppliedTemplateId(null)
+    if (!open) {
+      setAppliedTemplateId(null)
+      setPendingInitialHtml(null)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialTemplate])
 
-  return { appliedTemplateId, handleApplyTemplate }
+  return { appliedTemplateId, handleApplyTemplate, pendingInitialHtml }
 }

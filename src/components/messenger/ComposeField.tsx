@@ -151,6 +151,8 @@ interface ComposeFieldProps {
   showAttachments?: boolean
   /** Show toolbar (default: true) */
   showToolbar?: boolean
+  /** Initial HTML — applied when editor becomes ready or when this value changes */
+  initialHtml?: string | null
   /** Show quick reply templates (requires projectId + workspaceId) */
   projectId?: string
   workspaceId?: string
@@ -172,6 +174,7 @@ export const ComposeField = forwardRef<ComposeFieldHandle, ComposeFieldProps>(fu
     disabled = false,
     showAttachments = true,
     showToolbar = true,
+    initialHtml,
     projectId,
     workspaceId,
     onOpenDocPicker,
@@ -220,6 +223,18 @@ export const ComposeField = forwardRef<ComposeFieldHandle, ComposeFieldProps>(fu
   useEffect(() => {
     onChange?.(hasContent)
   }, [hasContent, onChange])
+
+  // Apply initialHtml once editor is ready (fixes race with Tiptap's async init).
+  // Re-applies when initialHtml reference changes (e.g. user picks another template).
+  const appliedHtmlRef = useRef<string | null | undefined>(undefined)
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    if (initialHtml == null) return
+    if (appliedHtmlRef.current === initialHtml) return
+    editor.commands.setContent(initialHtml)
+    appliedHtmlRef.current = initialHtml
+    setHasText(editor.getText().trim().length > 0)
+  }, [editor, initialHtml])
 
   useImperativeHandle(
     ref,
