@@ -293,9 +293,11 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
           body: {
             message_id: message.id,
             project_id: params.projectId,
-            // Don't pass content — trigger already sent the text.
-            // Edge Function will send files only.
-            content: '📎',
+            // Передаём реальный text — edge function отправит его как caption
+            // первого файла media-group, получится один баббл в TG.
+            // Триггер БД при has_attachments=true пропускает отправку текста
+            // отдельным сообщением.
+            content: params.content,
             sender_name: params.senderName,
             sender_role: params.senderRole,
             telegram_chat_id: tgLink.telegram_chat_id,
