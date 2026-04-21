@@ -201,27 +201,62 @@ export async function getProjectMessages(
 }
 
 /**
- * Send a message (with optional attachments)
+ * Send a message (with optional attachments).
+ *
+ * Split-behavior: если есть текст И 2+ вложений — пишем в БД два отдельных
+ * `project_messages`: один с текстом, второй с файлами. Оба идут в тред
+ * последовательно, каждый со своими реакциями. Это повторяет структуру TG,
+ * где альбом и сопроводительный текст — тоже два разных сообщения.
+ * Для одного файла + текста пишем одну запись, текст уходит как caption.
  */
 export async function sendMessage(params: SendMessageParams): Promise<ProjectMessage> {
   const channel = params.channel ?? 'client'
+
+  const totalAttachments =
+    (params.attachments?.length ?? 0) + (params.forwardedAttachments?.length ?? 0)
+  const hasText = !!params.content && params.content.trim() !== '' && params.content !== '<p></p>'
+  const shouldSplit = hasText && totalAttachments >= 2
+
+  const commonFields = {
+    ...(params.projectId ? { project_id: params.projectId } : {}),
+    workspace_id: params.workspaceId,
+    sender_participant_id: params.senderParticipantId,
+    sender_name: params.senderName,
+    sender_role: params.senderRole,
+    source: 'web' as const,
+    channel,
+    thread_id: params.threadId,
+  }
+
+  let textRowId: string | null = null
+
+  // Split: сначала пишем текст — триггер БД сам отправит его как отдельное
+  // TG-сообщение. Потом ниже создаётся вторая запись с файлами.
+  if (shouldSplit) {
+    const { data: textRow, error: textErr } = await supabase
+      .from('project_messages')
+      .insert({
+        ...commonFields,
+        content: params.content,
+        reply_to_message_id: params.replyToMessageId ?? null,
+        has_attachments: false,
+      })
+      .select('id')
+      .single()
+    if (textErr) throw new ConversationError(`Ошибка отправки сообщения: ${textErr.message}`)
+    textRowId = textRow.id
+  }
+
   const { data, error } = await supabase
     .from('project_messages')
     .insert({
-      ...(params.projectId ? { project_id: params.projectId } : {}),
-      workspace_id: params.workspaceId,
-      content: params.content,
-      sender_participant_id: params.senderParticipantId,
-      sender_name: params.senderName,
-      sender_role: params.senderRole,
-      source: 'web' as const,
-      reply_to_message_id: params.replyToMessageId ?? null,
-      channel,
-      thread_id: params.threadId,
-      has_attachments:
-        (params.attachments && params.attachments.length > 0) ||
-        (params.forwardedAttachments && params.forwardedAttachments.length > 0) ||
-        false,
+      ...commonFields,
+      // В split-варианте текст уже в отдельной записи — здесь пусто.
+      content: shouldSplit ? '' : params.content,
+      // Reply-to цепляем к текстовой записи (если split — к текстовой, иначе
+      // к первой и единственной).
+      reply_to_message_id: shouldSplit ? null : params.replyToMessageId ?? null,
+      has_attachments: totalAttachments > 0,
     })
     .select('*')
     .single()
@@ -255,9 +290,7 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     }
   }
 
-  const hasAnyAttachments =
-    (params.attachments && params.attachments.length > 0) ||
-    (params.forwardedAttachments && params.forwardedAttachments.length > 0)
+  const hasAnyAttachments = totalAttachments > 0
 
   if (params.replyToMessageId || hasAnyAttachments) {
     const { data: fullMessage } = await supabase
@@ -293,11 +326,9 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
           body: {
             message_id: message.id,
             project_id: params.projectId,
-            // Передаём реальный text — edge function отправит его как caption
-            // первого файла media-group, получится один баббл в TG.
-            // Триггер БД при has_attachments=true пропускает отправку текста
-            // отдельным сообщением.
-            content: params.content,
+            // В split-варианте текст уже ушёл триггером как отдельное сообщение —
+            // здесь отправляем только файлы, без caption.
+            content: shouldSplit ? '' : params.content,
             sender_name: params.senderName,
             sender_role: params.senderRole,
             telegram_chat_id: tgLink.telegram_chat_id,
@@ -310,6 +341,9 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     }
   }
 
+  // Возвращаем файловую запись (оптимистик обновится именно на неё).
+  // Текстовая запись подхватится через realtime.
+  void textRowId
   return message
 }
 
