@@ -623,37 +623,23 @@ async function handleReaction(r: TgReaction) {
   const userId = r.user.id;
   const userName = formatUserName(r.user);
 
+  // Ищем исходное сообщение по массиву telegram_message_ids.
+  // Одна запись в project_messages может соответствовать нескольким TG-сообщениям
+  // (текст + каждый файл как отдельное сообщение в Telegram).
   const { data: msg } = await service
     .from("project_messages")
     .select("id, workspace_id")
     .eq("telegram_chat_id", chatId)
-    .eq("telegram_message_id", msgId)
+    .contains("telegram_message_ids", [msgId])
     .maybeSingle();
 
   const emojis = (r.new_reaction ?? [])
     .filter((x) => x.type === "emoji" && x.emoji)
     .map((x) => x.emoji!);
 
-  if (!msg) {
-    // Сообщение не найдено — вставляем реакцию как отдельное сообщение, но только для v2-групп
-    const binding = await findChatBinding(chatId);
-    if (!binding || emojis.length === 0) return;
-    const participantId = await participantByTgId(binding.workspace_id, userId);
-    await service.from("project_messages").insert({
-      project_id: binding.project_id,
-      workspace_id: binding.workspace_id,
-      sender_participant_id: participantId,
-      sender_name: userName,
-      sender_role: "Telegram",
-      content: emojis.join(" "),
-      source: "telegram",
-      channel: binding.channel || "client",
-      thread_id: binding.thread_id ?? undefined,
-      telegram_message_id: null,
-      telegram_chat_id: chatId,
-    });
-    return;
-  }
+  // Если сообщение не нашлось — просто игнорируем реакцию.
+  // Раньше здесь был fallback, который создавал «паразитное» сообщение с эмодзи.
+  if (!msg) return;
 
   const participantId = await participantByTgId(msg.workspace_id, userId);
   await service.from("message_reactions").delete().eq("message_id", msg.id).eq("telegram_user_id", userId);
