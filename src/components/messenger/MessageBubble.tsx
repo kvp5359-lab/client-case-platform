@@ -198,11 +198,12 @@ function MessageBubbleImpl({
               'relative rounded-2xl px-4 py-2.5 min-w-[10rem] overflow-hidden transition-all duration-500',
               // Красная полоса внутри бабла слева — индикатор непрочитанного
               isUnread && !isOwn && 'border-l-4 border-red-500',
-              // Нижний padding нужен для:
-              // - реакций (absolute bottom-0) у любого бабла
-              // - absolute-таймштампа у баббла с файлами (чтобы позиция времени
-              //   не менялась в зависимости от наличия реакций)
-              (message.reactions?.length || hasAttachments) && 'pb-8',
+              // Нижний padding:
+              // - pb-8 когда есть реакции (абсолютно-позиционированный бейдж h-7)
+              // - pb-6 для баббла с файлами без реакций (только абсолютное время)
+              message.reactions?.length
+                ? 'pb-8'
+                : hasAttachments && 'pb-6',
               message.is_draft
                 ? accent === 'dark'
                   ? 'bg-white border-2 border-stone-600 text-gray-900'
