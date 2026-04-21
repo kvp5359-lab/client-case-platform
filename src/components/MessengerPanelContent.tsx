@@ -80,8 +80,7 @@ export function MessengerPanelContent({
   const threadId = (overrideValid ? overrideChatId : null) ?? clientChatId ?? visibleChats[0]?.id
   const currentChat = chats.find((c) => c.id === threadId)
   const channel: 'client' | 'internal' =
-    // TODO: legacy_channel may contain other values — extend the type
-    (currentChat?.legacy_channel as 'client' | 'internal') ?? 'client'
+    currentChat?.legacy_channel === 'internal' ? 'internal' : 'client'
 
   const handleDeleteChat = useCallback(() => {
     if (!deletingChat) return
@@ -90,7 +89,7 @@ export function MessengerPanelContent({
         setDeletingChat(null)
         const fallback = visibleChats.find((c) => c.id !== deletingChat.id)
         if (fallback)
-          openChatFn(fallback.id, (fallback.legacy_channel as 'client' | 'internal') ?? 'client')
+          openChatFn(fallback.id, fallback.legacy_channel === 'internal' ? 'internal' : 'client')
       },
     })
   }, [deletingChat, deleteChatMutation, visibleChats, openChatFn])

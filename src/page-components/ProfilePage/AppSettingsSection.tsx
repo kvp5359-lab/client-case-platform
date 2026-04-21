@@ -3,7 +3,6 @@
 /**
  * AppSettingsSection — секция настроек приложения
  * Настройки AI модели, темы оформления и уведомлений
- * TODO: Заменить нативные <select> на shadcn Select для единообразия UI
  */
 
 import { memo } from 'react'
@@ -11,6 +10,13 @@ import { Save } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Database } from '@/types/database'
 
 type UserSettings = Database['public']['Tables']['user_settings']['Row']
@@ -46,35 +52,41 @@ export const AppSettingsSection = memo(function AppSettingsSection({
             {/* Предпочитаемая модель AI */}
             <div className="space-y-2">
               <Label htmlFor="ai-model">Предпочитаемая модель AI</Label>
-              <select
-                id="ai-model"
+              <Select
                 value={settings?.preferred_ai_model || 'claude-3-5-haiku-20241022'}
-                onChange={(e) =>
-                  settings && onSettingsChange({ ...settings, preferred_ai_model: e.target.value })
+                onValueChange={(value) =>
+                  settings && onSettingsChange({ ...settings, preferred_ai_model: value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
-                <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
-                <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
-                <option value="gpt-4o">GPT-4o</option>
-              </select>
+                <SelectTrigger id="ai-model" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</SelectItem>
+                  <SelectItem value="claude-sonnet-4-20250514">Claude Sonnet 4</SelectItem>
+                  <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Тема оформления */}
             <div className="space-y-2">
               <Label htmlFor="theme">Тема оформления</Label>
-              <select
-                id="theme"
+              <Select
                 value={settings?.theme || 'light'}
-                onChange={(e) =>
-                  settings && onSettingsChange({ ...settings, theme: e.target.value })
+                onValueChange={(value) =>
+                  settings && onSettingsChange({ ...settings, theme: value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
-                <option value="light">Светлая</option>
-                <option value="dark">Тёмная</option>
-                <option value="auto">Авто</option>
-              </select>
+                <SelectTrigger id="theme" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">Светлая</SelectItem>
+                  <SelectItem value="dark">Тёмная</SelectItem>
+                  <SelectItem value="auto">Авто</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Уведомления */}

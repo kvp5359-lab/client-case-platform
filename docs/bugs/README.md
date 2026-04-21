@@ -15,10 +15,10 @@
 
 ## Открытые
 
-| ID | Severity | Область | Название |
-|---|---|---|---|
-| [2026-04-10-telegram-reactions-media-group](open/2026-04-10-telegram-reactions-media-group.md) | medium | telegram-webhook, telegram-send-message | Реакции на файлы в Telegram media group приходят как отдельные сообщения |
+_(пусто)_
 
 ## Решённые
 
-_(пусто)_
+| ID | Severity | Область | Название | Решён |
+|---|---|---|---|---|
+| [2026-04-10-telegram-reactions-media-group](resolved/2026-04-10-telegram-reactions-media-group.md) | medium | telegram-webhook, telegram-send-message | Реакции на файлы в Telegram media group приходят как отдельные сообщения | 2026-04-21 |

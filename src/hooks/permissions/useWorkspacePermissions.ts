@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useWorkspaceContext } from '../../contexts/WorkspaceContext'
 import { permissionKeys } from '../queryKeys'
-import type { WorkspacePermission, WorkspacePermissions } from '../../types/permissions'
+import { SYSTEM_WORKSPACE_ROLES, type WorkspacePermission, type WorkspacePermissions } from '../../types/permissions'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 
 interface UseWorkspacePermissionsOptions {
@@ -32,6 +32,8 @@ export interface WorkspacePermissionsResult {
   userRoles: string[]
   /** Имеет ли право на просмотр всех проектов (для оптимизации) */
   canViewAllProjects: boolean
+  /** Пользователь имеет только роль клиента (ни одной сотруднической роли) */
+  isClientOnly: boolean
   /** Перезагрузить данные */
   refetch: () => void
 }
@@ -156,6 +158,13 @@ export function useWorkspacePermissions(
     [isOwner, permissions?.view_all_projects],
   )
 
+  const isClientOnly = useMemo(
+    () =>
+      userRoles.length > 0 &&
+      userRoles.every((role) => role === SYSTEM_WORKSPACE_ROLES.CLIENT),
+    [userRoles],
+  )
+
   const refetch = useCallback(() => {
     refetchParticipant()
     refetchRoles()
@@ -169,6 +178,7 @@ export function useWorkspacePermissions(
     permissions,
     userRoles,
     canViewAllProjects,
+    isClientOnly,
     refetch,
   }
 }

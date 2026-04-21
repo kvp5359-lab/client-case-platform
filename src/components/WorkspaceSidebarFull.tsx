@@ -21,7 +21,6 @@ import { supabase } from '@/lib/supabase'
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useSidePanelStore } from '@/store/sidePanelStore'
-import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
 import { usePinnedBoards } from './WorkspaceSidebar/usePinnedBoards'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useProjectTemplate, useProjectModules } from '@/page-components/ProjectPage/hooks'
@@ -85,14 +84,11 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   const {
     can: hasPermission,
     isOwner,
-    userRoles,
     isLoading: permissionsLoading,
+    isClientOnly: isClientOnlyRaw,
   } = permissionsResult
 
-  const isClientOnly =
-    !permissionsLoading &&
-    userRoles.length > 0 &&
-    userRoles.every((role) => role === SYSTEM_WORKSPACE_ROLES.CLIENT)
+  const isClientOnly = !permissionsLoading && isClientOnlyRaw
 
   const { sidebarWidth, sidebarRef, handleMouseDown } = useSidebarResize()
 

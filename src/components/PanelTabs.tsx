@@ -28,6 +28,7 @@ interface PanelTabButtonProps {
   activeClassName: string
   onClick: () => void
   badge?: React.ReactNode
+  tabId: string
 }
 
 function PanelTabButton({
@@ -37,10 +38,16 @@ function PanelTabButton({
   activeClassName,
   onClick,
   badge,
+  tabId,
 }: PanelTabButtonProps) {
   return (
     <button
       type="button"
+      role="tab"
+      id={`panel-tab-${tabId}`}
+      aria-selected={isActive}
+      aria-controls={`panel-tabpanel-${tabId}`}
+      tabIndex={isActive ? 0 : -1}
       onClick={onClick}
       className={cn(
         'text-sm px-3 py-1 rounded-full transition-all flex items-center gap-1.5',
@@ -56,9 +63,6 @@ function PanelTabButton({
   )
 }
 
-/**
- * TODO a11y: Replace buttons with role="tablist" / role="tab" for tab semantics
- */
 export function PanelTabs({
   activeTab,
   onTabChange,
@@ -90,9 +94,14 @@ export function PanelTabs({
   const isChatsActive = activeTab === 'client' || activeTab === 'internal'
 
   return (
-    <div className="flex items-center gap-1 bg-muted rounded-full p-1">
+    <div
+      role="tablist"
+      aria-label="Разделы боковой панели"
+      className="flex items-center gap-1 bg-muted rounded-full p-1"
+    >
       {showMessenger && (
         <PanelTabButton
+          tabId="chats"
           label="Чаты"
           icon={MessageSquare}
           isActive={isChatsActive}
@@ -125,6 +134,7 @@ export function PanelTabs({
       )}
       {showAssistant && (
         <PanelTabButton
+          tabId="assistant"
           label="Ассистент"
           icon={Sparkles}
           isActive={activeTab === 'assistant'}
@@ -134,6 +144,7 @@ export function PanelTabs({
       )}
       {showExtra && projectId && (
         <PanelTabButton
+          tabId="extra"
           label="Дополнительно"
           icon={FolderCog}
           isActive={activeTab === 'extra'}

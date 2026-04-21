@@ -73,10 +73,10 @@ export function TagFilterBar({ page }: { page: PageReturn }) {
             >
               {tag.name}
             </button>
-            {/* TODO a11y: hover-only кнопка — недоступна на тач-устройствах, добавить альтернативу */}
             <button
               onClick={() => handleDelete(tag.id, tag.name)}
-              className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full items-center justify-center text-[8px] hidden group-hover/tag:flex"
+              aria-label={`Удалить тег ${tag.name}`}
+              className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full items-center justify-center text-[8px] hidden group-hover/tag:flex [@media(hover:none)]:flex"
               title="Удалить тег"
             >
               <X className="w-2.5 h-2.5" />

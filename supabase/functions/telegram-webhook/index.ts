@@ -262,6 +262,7 @@ Deno.serve(async (req: Request) => {
           channel: tgChat.channel || "client",
           thread_id: tgChat.thread_id ?? undefined,
           telegram_message_id: telegramMessageId,
+          telegram_message_ids: [telegramMessageId],
           telegram_chat_id: chatId,
         });
 
@@ -373,6 +374,7 @@ Deno.serve(async (req: Request) => {
         channel: tgChat.channel || "client",
         thread_id: tgChat.thread_id ?? undefined,
         telegram_message_id: telegramMessageId,
+        telegram_message_ids: [telegramMessageId],
         telegram_chat_id: chatId,
         reply_to_message_id: replyToDbId,
         forwarded_from_name: forwardInfo.name,
@@ -723,58 +725,24 @@ async function handleReaction(reaction: TelegramMessageReaction) {
 
   if (!telegramUserId) return;
 
+  // Ищем исходное сообщение по массиву telegram_message_ids.
+  // Одна запись в project_messages может соответствовать нескольким TG-сообщениям
+  // (текст + каждый файл как отдельное сообщение в Telegram).
   const { data: msg } = await serviceClient
     .from("project_messages")
     .select("id, workspace_id")
     .eq("telegram_chat_id", chatId)
-    .eq("telegram_message_id", telegramMessageId)
+    .contains("telegram_message_ids", [telegramMessageId])
     .maybeSingle();
 
   const newEmojis: string[] = (reaction.new_reaction ?? [])
     .filter((r: TelegramReactionType) => r.type === "emoji")
     .map((r: TelegramReactionType) => r.emoji!);
 
-  if (!msg) {
-    if (newEmojis.length === 0) return;
-
-    const { data: tgChat } = await serviceClient
-      .from("project_telegram_chats")
-      .select("project_id, workspace_id, channel, thread_id")
-      .eq("telegram_chat_id", chatId)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (!tgChat) return;
-
-    let participantId: string | null = null;
-    const { data: participant } = await serviceClient
-      .from("participants")
-      .select("id")
-      .eq("workspace_id", tgChat.workspace_id)
-      .eq("telegram_user_id", telegramUserId)
-      .eq("is_deleted", false)
-      .maybeSingle();
-    if (participant) participantId = participant.id;
-
-    const emojiText = newEmojis.join(" ");
-    await serviceClient
-      .from("project_messages")
-      .insert({
-        project_id: tgChat.project_id,
-        workspace_id: tgChat.workspace_id,
-        sender_participant_id: participantId,
-        sender_name: telegramUserName,
-        sender_role: "Telegram",
-        content: emojiText,
-        source: "telegram",
-        channel: tgChat.channel || "client",
-        thread_id: tgChat.thread_id ?? undefined,
-        telegram_message_id: null,
-        telegram_chat_id: chatId,
-      });
-
-    return;
-  }
+  // Если сообщение не нашлось — просто игнорируем реакцию.
+  // Раньше здесь был fallback, который создавал «паразитное» сообщение с эмодзи.
+  // Он засорял чат, поэтому удалён.
+  if (!msg) return;
 
   let participantId: string | null = null;
   const { data: participant } = await serviceClient

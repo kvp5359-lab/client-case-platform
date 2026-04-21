@@ -16,7 +16,6 @@ import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
 import { getAggregateBadgeDisplay, formatBadgeCount } from '@/utils/inboxUnread'
 import { useWorkspacePermissions, useProjectPermissions } from '@/hooks/permissions'
-import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
 import { cn } from '@/lib/utils'
 
 export function FloatingPanelButtons() {
@@ -28,9 +27,7 @@ export function FloatingPanelButtons() {
   const openPanel = useSidePanelStore((s) => s.openPanel)
   const closePanel = useSidePanelStore((s) => s.closePanel)
 
-  const { userRoles } = useWorkspacePermissions()
-  const isClientOnly =
-    userRoles.length > 0 && userRoles.every((role) => role === SYSTEM_WORKSPACE_ROLES.CLIENT)
+  const { isClientOnly } = useWorkspacePermissions()
 
   const panelOpen = panelTab !== null
 

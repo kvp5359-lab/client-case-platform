@@ -1,13 +1,27 @@
 ---
 id: 2026-04-10-telegram-reactions-media-group
 title: Реакции на файлы в Telegram media group приходят как отдельные сообщения
-status: open
+status: resolved
 severity: medium
 area: telegram-webhook, telegram-send-message
 first-seen: 2026-03-10
 last-investigated: 2026-04-10
+resolved: 2026-04-21
+resolution: вариант B — массив telegram_message_ids
 reproduced: yes
 ---
+
+## Решение (2026-04-21)
+
+Выбран **вариант B**. Сделано:
+
+1. Миграция `20260421_telegram_message_ids_array.sql` — добавлена колонка `project_messages.telegram_message_ids bigint[]`, бэкфилл из `telegram_message_id`, GIN-индекс.
+2. `telegram-send-message` — helper `appendTelegramMessageId()` сохраняет **все** `message_id`, которые Telegram вернул (текст + каждый файл, включая все элементы media group).
+3. `telegram-webhook` — `handleReaction` ищет исходник через `.contains('telegram_message_ids', [...])`. Fallback, создававший паразитные сообщения с эмодзи, удалён.
+4. Входящие TG-сообщения в webhook теперь тоже заполняют `telegram_message_ids` при insert.
+
+Обе edge-функции задеплоены в прод 2026-04-21.
+
 
 ## Симптомы
 

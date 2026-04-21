@@ -16,7 +16,6 @@ import { FloatingPanelButtons } from './FloatingPanelButtons'
 import { MessengerPanelContent } from './MessengerPanelContent'
 import { ChatSettingsSection } from './ChatSettingsSection'
 import { useProjectPermissions, useWorkspacePermissions } from '@/hooks/permissions'
-import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import { useNewMessageToast } from '@/hooks/messenger/useNewMessageToast'
@@ -127,9 +126,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
     hasModuleAccess('ai_knowledge_project') ||
     hasModuleAccess('ai_project_assistant')
 
-  const { userRoles } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
-  const isClientOnly =
-    userRoles.length > 0 && userRoles.every((r) => r === SYSTEM_WORKSPACE_ROLES.CLIENT)
+  const { isClientOnly } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
   const showExtra = hasProject && !isClientOnly
 
   // Единая workspace-level Realtime-подписка на project_messages/message_reactions.

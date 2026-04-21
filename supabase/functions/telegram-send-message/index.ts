@@ -36,6 +36,41 @@ function isTelegramPhotoMime(mime: unknown): boolean {
   return typeof mime === "string" && TELEGRAM_PHOTO_MIME_TYPES.has(mime.toLowerCase());
 }
 
+/**
+ * Добавляет telegram_message_id в массив telegram_message_ids у project_messages.
+ * Одна запись в ЛК может породить несколько TG-сообщений (текст + каждый файл).
+ * Реакция может прилететь на любое из них — ищем по массиву в webhook.
+ * Также держим в актуальном состоянии legacy-колонку telegram_message_id (первый id).
+ */
+async function appendTelegramMessageId(
+  client: ReturnType<typeof createClient>,
+  messageId: string,
+  newTelegramId: number,
+  chatId: number,
+): Promise<void> {
+  const { data } = await client
+    .from("project_messages")
+    .select("telegram_message_id, telegram_message_ids")
+    .eq("id", messageId)
+    .maybeSingle();
+
+  const existing: number[] = Array.isArray(data?.telegram_message_ids)
+    ? (data!.telegram_message_ids as number[])
+    : [];
+  if (existing.includes(newTelegramId)) return;
+
+  const updated = [...existing, newTelegramId];
+  const patch: Record<string, unknown> = {
+    telegram_message_ids: updated,
+    telegram_chat_id: chatId,
+  };
+  if (!data?.telegram_message_id) {
+    patch.telegram_message_id = newTelegramId;
+  }
+
+  await client.from("project_messages").update(patch).eq("id", messageId);
+}
+
 Deno.serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
 
@@ -209,13 +244,12 @@ Deno.serve(async (req: Request) => {
       const tgData = await tgResponse.json();
 
       if (tgData.ok && tgData.result?.message_id) {
-        await serviceClient
-          .from("project_messages")
-          .update({
-            telegram_message_id: tgData.result.message_id,
-            telegram_chat_id: body.telegram_chat_id,
-          })
-          .eq("id", body.message_id);
+        await appendTelegramMessageId(
+          serviceClient,
+          body.message_id,
+          tgData.result.message_id,
+          body.telegram_chat_id,
+        );
       } else {
         console.error("Telegram API error:", tgData);
       }
@@ -254,10 +288,12 @@ Deno.serve(async (req: Request) => {
           );
           const tgData = await tgRes.json();
           if (tgData.ok && tgData.result?.message_id) {
-            await serviceClient
-              .from("project_messages")
-              .update({ telegram_message_id: tgData.result.message_id, telegram_chat_id: body.telegram_chat_id })
-              .eq("id", body.message_id);
+            await appendTelegramMessageId(
+              serviceClient,
+              body.message_id,
+              tgData.result.message_id,
+              body.telegram_chat_id,
+            );
           }
 
           attachmentsOk = await sendAttachments(
@@ -404,13 +440,11 @@ async function sendAttachments(
           allSucceeded = false;
         }
 
-        if (isFirstChunk && !skipTelegramIdUpdate && tgData.ok) {
-          const firstMsgId = Array.isArray(tgData.result) ? tgData.result[0]?.message_id : null;
-          if (firstMsgId) {
-            await supabaseClient
-              .from("project_messages")
-              .update({ telegram_message_id: firstMsgId, telegram_chat_id: chatId })
-              .eq("id", messageId);
+        if (!skipTelegramIdUpdate && tgData.ok && Array.isArray(tgData.result)) {
+          for (const item of tgData.result) {
+            if (item?.message_id) {
+              await appendTelegramMessageId(supabaseClient, messageId, item.message_id, chatId);
+            }
           }
         }
 
@@ -447,10 +481,7 @@ async function sendAttachments(
         }
 
         if (!skipTelegramIdUpdate && tgData.ok && tgData.result?.message_id) {
-          await supabaseClient
-            .from("project_messages")
-            .update({ telegram_message_id: tgData.result.message_id, telegram_chat_id: chatId })
-            .eq("id", messageId);
+          await appendTelegramMessageId(supabaseClient, messageId, tgData.result.message_id, chatId);
         }
       }
     } catch (err) {
@@ -491,11 +522,8 @@ async function sendAttachments(
         allSucceeded = false;
       }
 
-      if (isFirstOther && !skipTelegramIdUpdate && images.length === 0 && tgData.ok && tgData.result?.message_id) {
-        await supabaseClient
-          .from("project_messages")
-          .update({ telegram_message_id: tgData.result.message_id, telegram_chat_id: chatId })
-          .eq("id", messageId);
+      if (!skipTelegramIdUpdate && tgData.ok && tgData.result?.message_id) {
+        await appendTelegramMessageId(supabaseClient, messageId, tgData.result.message_id, chatId);
       }
 
       isFirstOther = false;

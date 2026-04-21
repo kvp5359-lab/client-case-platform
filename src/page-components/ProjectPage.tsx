@@ -29,7 +29,6 @@ import {
   useWorkspaceFeatures,
   useWorkspacePermissions,
 } from '@/hooks/permissions'
-import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { usePageTitle } from '@/hooks/usePageTitle'
 
@@ -115,9 +114,7 @@ export default function ProjectPage() {
   useWorkspaceFeatures({ workspaceId: workspaceId || '' })
 
   // Определяем, является ли пользователь только клиентом
-  const { userRoles } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
-  const isClientOnly =
-    userRoles.length > 0 && userRoles.every((role) => role === SYSTEM_WORKSPACE_ROLES.CLIENT)
+  const { isClientOnly } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
 
   // Права на действия
   const canAddForms = hasProjectPermission('forms', 'add_forms')
