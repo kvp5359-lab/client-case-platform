@@ -756,11 +756,15 @@ async function handleReaction(reaction: TelegramMessageReaction) {
     participantId = participant.id;
   }
 
+  // Удаляем реакции только на конкретное TG-сообщение (telegramMessageId), а не все
+  // реакции юзера на наш общий project_messages — иначе реакция на один элемент
+  // бабла (например, файл) затирает реакцию на другой (например, текст).
   await serviceClient
     .from("message_reactions")
     .delete()
     .eq("message_id", msg.id)
-    .eq("telegram_user_id", telegramUserId);
+    .eq("telegram_user_id", telegramUserId)
+    .eq("telegram_source_message_id", telegramMessageId);
 
   if (newEmojis.length > 0) {
     const rows = newEmojis.map((emoji: string) => ({
@@ -769,6 +773,7 @@ async function handleReaction(reaction: TelegramMessageReaction) {
       telegram_user_id: telegramUserId,
       telegram_user_name: telegramUserName,
       emoji,
+      telegram_source_message_id: telegramMessageId,
     }));
 
     const { error } = await serviceClient

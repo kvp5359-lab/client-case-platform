@@ -642,7 +642,15 @@ async function handleReaction(r: TgReaction) {
   if (!msg) return;
 
   const participantId = await participantByTgId(msg.workspace_id, userId);
-  await service.from("message_reactions").delete().eq("message_id", msg.id).eq("telegram_user_id", userId);
+  // Удаляем реакции только на конкретное TG-сообщение (msgId), а не все реакции юзера
+  // на наш общий project_messages — иначе реакция на один элемент бабла (например, файл)
+  // затирает реакцию на другой (например, текст).
+  await service
+    .from("message_reactions")
+    .delete()
+    .eq("message_id", msg.id)
+    .eq("telegram_user_id", userId)
+    .eq("telegram_source_message_id", msgId);
   if (emojis.length > 0) {
     await service.from("message_reactions").insert(
       emojis.map((e) => ({
@@ -651,6 +659,7 @@ async function handleReaction(r: TgReaction) {
         telegram_user_id: userId,
         telegram_user_name: userName,
         emoji: e,
+        telegram_source_message_id: msgId,
       })),
     );
   }
