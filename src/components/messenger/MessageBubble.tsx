@@ -198,7 +198,10 @@ function MessageBubbleImpl({
               'relative rounded-2xl px-4 py-2.5 min-w-[10rem] overflow-hidden transition-all duration-500',
               // Красная полоса внутри бабла слева — индикатор непрочитанного
               isUnread && !isOwn && 'border-l-4 border-red-500',
-              message.reactions?.length && 'pb-8',
+              // Padding снизу — чтобы поместились реакции (они absolute bottom-0).
+              // Для attachment-only баббла уменьшаем: у файлов нет нижнего line-height,
+              // как у текста, поэтому пустота под ними смотрится избыточной.
+              message.reactions?.length && (hasAttachmentsOnly ? 'pb-7' : 'pb-8'),
               message.is_draft
                 ? accent === 'dark'
                   ? 'bg-white border-2 border-stone-600 text-gray-900'
