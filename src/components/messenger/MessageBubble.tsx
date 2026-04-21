@@ -239,6 +239,7 @@ function MessageBubbleImpl({
                 isOwn={isOwn}
                 accent={accent}
                 hasAttachments={hasAttachments}
+                hasReactions={!!message.reactions?.length}
                 deliveryStatus={deliveryStatus}
                 tgFailed={tgFailed}
                 textRef={textRef}
@@ -294,10 +295,11 @@ function MessageBubbleImpl({
             lastReadAt={lastReadAt}
           />
 
-          {/* Attachments-bubble timestamp — всегда absolute в правом нижнем углу.
-              Позиция не меняется от наличия реакций (реакции рендерятся absolute
-              слева-снизу, поэтому не конфликтуют). */}
-          {hasAttachments && (
+          {/* Timestamp в правом нижнем углу:
+              - у attachments-баббла всегда (inline-время в textrow там нет)
+              - у текстового — только когда есть реакции (чтобы время не сидело
+                в середине строки, как в Telegram). Без реакций — inline в тексте. */}
+          {(hasAttachments || !!message.reactions?.length) && (
             <div className="absolute bottom-2 right-4 flex items-center gap-1 z-10 pointer-events-none">
               <BubbleTimestamp
                 message={message}
