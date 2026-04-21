@@ -413,6 +413,19 @@ async function sendAttachments(
               .eq("id", messageId);
           }
         }
+        // Добавляем в telegram_message_ids все id медиа-группы (не только первый),
+        // чтобы реакция на любой элемент группы нашла исходник.
+        if (!skipTelegramIdUpdate && tgData.ok && Array.isArray(tgData.result)) {
+          for (const item of tgData.result) {
+            if (item?.message_id) {
+              await supabaseClient.rpc("append_telegram_message_id", {
+                p_message_id: messageId,
+                p_tg_msg_id: item.message_id,
+                p_chat_id: chatId,
+              });
+            }
+          }
+        }
 
         isFirstChunk = false;
       } catch (err) {
@@ -496,6 +509,15 @@ async function sendAttachments(
           .from("project_messages")
           .update({ telegram_message_id: tgData.result.message_id, telegram_chat_id: chatId })
           .eq("id", messageId);
+      }
+      // Дописываем id каждого документа (включая 2-й, 3-й ...) в массив.
+      // Первый уже добавлен через update выше + триггер sync_telegram_message_ids.
+      if (!skipTelegramIdUpdate && tgData.ok && tgData.result?.message_id) {
+        await supabaseClient.rpc("append_telegram_message_id", {
+          p_message_id: messageId,
+          p_tg_msg_id: tgData.result.message_id,
+          p_chat_id: chatId,
+        });
       }
 
       isFirstOther = false;
