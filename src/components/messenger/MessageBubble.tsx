@@ -198,7 +198,11 @@ function MessageBubbleImpl({
               'relative rounded-2xl px-4 py-2.5 min-w-[10rem] overflow-hidden transition-all duration-500',
               // Красная полоса внутри бабла слева — индикатор непрочитанного
               isUnread && !isOwn && 'border-l-4 border-red-500',
-              message.reactions?.length && 'pb-8',
+              // Нижний padding нужен для:
+              // - реакций (absolute bottom-0) у любого бабла
+              // - absolute-таймштампа у баббла с файлами (чтобы позиция времени
+              //   не менялась в зависимости от наличия реакций)
+              (message.reactions?.length || hasAttachments) && 'pb-8',
               message.is_draft
                 ? accent === 'dark'
                   ? 'bg-white border-2 border-stone-600 text-gray-900'
@@ -258,19 +262,8 @@ function MessageBubbleImpl({
               />
             )}
 
-            {/* Time under attachments — только если нет реакций. С реакциями
-                время рендерится вместе с бейджами одной строкой (absolute bottom-0
-                под баблом), чтобы визуально всё выглядело как у текстовых баблов. */}
-            {hasAttachments && !message.reactions?.length && (
-              <div className="flex items-center gap-1 mt-1 justify-end">
-                <BubbleTimestamp
-                  message={message}
-                  isOwn={isOwn}
-                  deliveryStatus={deliveryStatus}
-                  tgFailed={tgFailed}
-                />
-              </div>
-            )}
+            {/* Timestamp для attachment-баббла рендерится absolute (см. ниже),
+                чтобы его позиция не менялась при появлении/исчезновении реакций. */}
 
             {/* Send now button for short drafts */}
             {message.is_draft && onPublishDraft && !isOverflowing && (
@@ -300,10 +293,11 @@ function MessageBubbleImpl({
             lastReadAt={lastReadAt}
           />
 
-          {/* Attachments-bubble timestamp — на одной абсолютной строке с реакциями,
-              чтобы не было лишней пустой строки между файлами и реакциями. */}
-          {hasAttachments && !!message.reactions?.length && (
-            <div className="absolute bottom-1.5 right-3 flex items-center gap-1 z-10 pointer-events-none">
+          {/* Attachments-bubble timestamp — всегда absolute в правом нижнем углу.
+              Позиция не меняется от наличия реакций (реакции рендерятся absolute
+              слева-снизу, поэтому не конфликтуют). */}
+          {hasAttachments && (
+            <div className="absolute bottom-2 right-4 flex items-center gap-1 z-10 pointer-events-none">
               <BubbleTimestamp
                 message={message}
                 isOwn={isOwn}
