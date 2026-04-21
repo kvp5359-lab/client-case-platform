@@ -233,7 +233,7 @@ export const ComposeField = forwardRef<ComposeFieldHandle, ComposeFieldProps>(fu
     if (appliedHtmlRef.current === initialHtml) return
     editor.commands.setContent(initialHtml)
     appliedHtmlRef.current = initialHtml
-    setHasText(editor.getText().trim().length > 0)
+    // setHasText не нужен — setContent триггерит onUpdate → onTextChange → setHasText.
   }, [editor, initialHtml])
 
   useImperativeHandle(
