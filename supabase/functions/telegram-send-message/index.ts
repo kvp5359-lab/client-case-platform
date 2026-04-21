@@ -472,55 +472,130 @@ async function sendAttachments(
     }
   }
 
-  let isFirstOther = images.length === 0;
-  for (const att of others) {
+  // Документы: 2+ файла отправляем одним альбомом (sendMediaGroup type=document),
+  // чтобы в TG получился один баббл. Один файл — обычный sendDocument с caption.
+  const documentsCaptionAvailable = images.length === 0 ? caption : undefined;
+  const documentsReplyTo = images.length === 0 ? replyToTelegramMessageId : undefined;
+
+  if (others.length >= 2) {
+    // Telegram API: media group принимает 2-10 элементов. Бьём на чанки по 10.
+    const chunks: typeof others[] = [];
+    for (let i = 0; i < others.length; i += 10) {
+      chunks.push(others.slice(i, i + 10));
+    }
+
+    let isFirstChunk = true;
+    for (const chunk of chunks) {
+      try {
+        const resolved = await Promise.all(chunk.map((a) => resolveAttachment(a, supabaseClient)));
+
+        const formData = new FormData();
+        formData.append("chat_id", String(chatId));
+
+        const media: Record<string, unknown>[] = [];
+        resolved.forEach((r, idx) => {
+          if (!r) return;
+          const attachKey = `attach_doc_${idx}`;
+          formData.append(attachKey, r.blob, r.fileName);
+          const item: Record<string, unknown> = {
+            type: "document",
+            media: `attach://${attachKey}`,
+          };
+          if (isFirstChunk && idx === 0 && documentsCaptionAvailable) {
+            item.caption = documentsCaptionAvailable.slice(0, 1024);
+            item.parse_mode = "HTML";
+          }
+          media.push(item);
+        });
+
+        formData.append("media", JSON.stringify(media));
+
+        if (isFirstChunk && documentsReplyTo) {
+          formData.append("reply_parameters", JSON.stringify({ message_id: documentsReplyTo }));
+        }
+
+        const tgResult = await fetch(
+          `https://api.telegram.org/bot${botToken}/sendMediaGroup`,
+          { method: "POST", body: formData },
+        );
+
+        const tgData = await tgResult.json();
+        if (!tgData.ok) {
+          console.error("Telegram sendMediaGroup (document) error:", JSON.stringify(tgData));
+          allSucceeded = false;
+        }
+
+        if (isFirstChunk && !skipTelegramIdUpdate && images.length === 0 && tgData.ok) {
+          const firstMsgId = Array.isArray(tgData.result) ? tgData.result[0]?.message_id : null;
+          if (firstMsgId) {
+            await supabaseClient
+              .from("project_messages")
+              .update({ telegram_message_id: firstMsgId, telegram_chat_id: chatId })
+              .eq("id", messageId);
+          }
+        }
+        if (!skipTelegramIdUpdate && tgData.ok && Array.isArray(tgData.result)) {
+          for (const item of tgData.result) {
+            if (item?.message_id) {
+              await supabaseClient.rpc("append_telegram_message_id", {
+                p_message_id: messageId,
+                p_tg_msg_id: item.message_id,
+                p_chat_id: chatId,
+              });
+            }
+          }
+        }
+
+        isFirstChunk = false;
+      } catch (err) {
+        console.error("Error sending document group to TG:", err);
+        allSucceeded = false;
+      }
+    }
+  } else if (others.length === 1) {
+    // Один документ — обычный sendDocument с caption.
     try {
-      const r = await resolveAttachment(att, supabaseClient);
+      const r = await resolveAttachment(others[0], supabaseClient);
       if (!r) {
         allSucceeded = false;
-        continue;
-      }
+      } else {
+        const formData = new FormData();
+        formData.append("chat_id", String(chatId));
+        formData.append("document", r.blob, r.fileName);
 
-      const formData = new FormData();
-      formData.append("chat_id", String(chatId));
-      formData.append("document", r.blob, r.fileName);
+        if (documentsCaptionAvailable) {
+          formData.append("caption", documentsCaptionAvailable.slice(0, 1024));
+          formData.append("parse_mode", "HTML");
+        }
+        if (documentsReplyTo) {
+          formData.append("reply_parameters", JSON.stringify({ message_id: documentsReplyTo }));
+        }
 
-      if (isFirstOther && caption) {
-        formData.append("caption", caption.slice(0, 1024));
-        formData.append("parse_mode", "HTML");
-      }
-      if (isFirstOther && replyToTelegramMessageId) {
-        formData.append("reply_parameters", JSON.stringify({ message_id: replyToTelegramMessageId }));
-      }
+        const tgResult = await fetch(
+          `https://api.telegram.org/bot${botToken}/sendDocument`,
+          { method: "POST", body: formData },
+        );
 
-      const tgResult = await fetch(
-        `https://api.telegram.org/bot${botToken}/sendDocument`,
-        { method: "POST", body: formData },
-      );
+        const tgData = await tgResult.json();
+        if (!tgData.ok) {
+          console.error("Telegram sendDocument error:", JSON.stringify(tgData), "file:", r.fileName);
+          allSucceeded = false;
+        }
 
-      const tgData = await tgResult.json();
-      if (!tgData.ok) {
-        console.error("Telegram sendDocument error:", JSON.stringify(tgData), "file:", r.fileName);
-        allSucceeded = false;
+        if (!skipTelegramIdUpdate && images.length === 0 && tgData.ok && tgData.result?.message_id) {
+          await supabaseClient
+            .from("project_messages")
+            .update({ telegram_message_id: tgData.result.message_id, telegram_chat_id: chatId })
+            .eq("id", messageId);
+        }
+        if (!skipTelegramIdUpdate && tgData.ok && tgData.result?.message_id) {
+          await supabaseClient.rpc("append_telegram_message_id", {
+            p_message_id: messageId,
+            p_tg_msg_id: tgData.result.message_id,
+            p_chat_id: chatId,
+          });
+        }
       }
-
-      if (isFirstOther && !skipTelegramIdUpdate && images.length === 0 && tgData.ok && tgData.result?.message_id) {
-        await supabaseClient
-          .from("project_messages")
-          .update({ telegram_message_id: tgData.result.message_id, telegram_chat_id: chatId })
-          .eq("id", messageId);
-      }
-      // Дописываем id каждого документа (включая 2-й, 3-й ...) в массив.
-      // Первый уже добавлен через update выше + триггер sync_telegram_message_ids.
-      if (!skipTelegramIdUpdate && tgData.ok && tgData.result?.message_id) {
-        await supabaseClient.rpc("append_telegram_message_id", {
-          p_message_id: messageId,
-          p_tg_msg_id: tgData.result.message_id,
-          p_chat_id: chatId,
-        });
-      }
-
-      isFirstOther = false;
     } catch (err) {
       console.error("Error sending document to TG:", err);
       allSucceeded = false;
