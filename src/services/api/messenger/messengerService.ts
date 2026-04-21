@@ -214,7 +214,11 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
 
   const totalAttachments =
     (params.attachments?.length ?? 0) + (params.forwardedAttachments?.length ?? 0)
-  const hasText = !!params.content && params.content.trim() !== '' && params.content !== '<p></p>'
+  const hasText =
+    !!params.content &&
+    params.content.trim() !== '' &&
+    params.content !== '<p></p>' &&
+    params.content !== '📎'
   const shouldSplit = hasText && totalAttachments >= 2
 
   const commonFields = {
