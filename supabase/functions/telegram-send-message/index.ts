@@ -233,7 +233,20 @@ Deno.serve(async (req: Request) => {
           ? `<b>${escapeHtmlEntities(body.sender_name || "")}:</b>\n${contentForTelegram}`
           : contentForTelegram;
 
-        if (formattedCaption.length <= 1024) {
+        // Считаем, сколько будет вложений — чтобы решить, как слать текст.
+        // При 2+ файлах caption на media-альбоме Telegram рисует между 1-м и 2-м
+        // файлом (выглядит странно), поэтому в этом случае шлём текст отдельным
+        // sendMessage ПЕРЕД альбомом. При 1 файле оставляем caption — получается
+        // один баббл (текст под файлом).
+        const { count: attachmentsCount } = await serviceClient
+          .from("message_attachments")
+          .select("id", { count: "exact", head: true })
+          .eq("message_id", body.message_id);
+
+        const sendTextAsSeparateMessage =
+          formattedCaption.length > 1024 || (attachmentsCount ?? 0) >= 2;
+
+        if (!sendTextAsSeparateMessage) {
           attachmentsOk = await sendAttachments(
             body.message_id, body.telegram_chat_id, serviceClient, TELEGRAM_BOT_TOKEN,
             formattedCaption, body.reply_to_telegram_message_id ?? undefined,
