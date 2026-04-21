@@ -184,12 +184,15 @@ export function useSendMessage(
           | { pages: { messages: ProjectMessage[]; hasMore: boolean }[]; pageParams: unknown[] }
           | undefined
         if (!typed) return typed
-        // Заменяем все оптимистики на реальные записи; сохраняем порядок
-        // реальных (text первый, files второй для split; [single] для обычного).
-        const pages = typed.pages.map((page) => {
-          const filtered = page.messages.filter((msg) => !msg.id.startsWith('optimistic-'))
-          return { ...page, messages: filtered }
-        })
+        // Убираем оптимистики и дедуплицируем с realtime-версиями (если succeed
+        // успел отработать после того, как realtime уже добавил запись).
+        const realIds = new Set(result.map((m) => m.id))
+        const pages = typed.pages.map((page) => ({
+          ...page,
+          messages: page.messages.filter(
+            (msg) => !msg.id.startsWith('optimistic-') && !realIds.has(msg.id),
+          ),
+        }))
         const lastIdx = pages.length - 1
         pages[lastIdx] = {
           ...pages[lastIdx],
