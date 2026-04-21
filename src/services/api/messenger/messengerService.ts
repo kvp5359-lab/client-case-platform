@@ -209,9 +209,11 @@ export async function getProjectMessages(
  * где альбом и сопроводительный текст — тоже два разных сообщения.
  * Для одного файла + текста пишем одну запись, текст уходит как caption.
  */
-export async function sendMessage(params: SendMessageParams): Promise<ProjectMessage> {
-  const channel = params.channel ?? 'client'
-
+export function shouldSplitTextAndFiles(params: {
+  content: string
+  attachments?: File[]
+  forwardedAttachments?: ForwardedAttachment[]
+}): boolean {
   const totalAttachments =
     (params.attachments?.length ?? 0) + (params.forwardedAttachments?.length ?? 0)
   const hasText =
@@ -219,7 +221,15 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     params.content.trim() !== '' &&
     params.content !== '<p></p>' &&
     params.content !== '📎'
-  const shouldSplit = hasText && totalAttachments >= 2
+  return hasText && totalAttachments >= 2
+}
+
+export async function sendMessage(params: SendMessageParams): Promise<ProjectMessage[]> {
+  const channel = params.channel ?? 'client'
+
+  const totalAttachments =
+    (params.attachments?.length ?? 0) + (params.forwardedAttachments?.length ?? 0)
+  const shouldSplit = shouldSplitTextAndFiles(params)
 
   const commonFields = {
     ...(params.projectId ? { project_id: params.projectId } : {}),
@@ -232,7 +242,7 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     thread_id: params.threadId,
   }
 
-  let textRowId: string | null = null
+  let textMessage: ProjectMessage | null = null
 
   // Split: сначала пишем текст — триггер БД сам отправит его как отдельное
   // TG-сообщение. Потом ниже создаётся вторая запись с файлами.
@@ -245,10 +255,18 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
         reply_to_message_id: params.replyToMessageId ?? null,
         has_attachments: false,
       })
-      .select('id')
+      .select('*')
       .single()
     if (textErr) throw new ConversationError(`Ошибка отправки сообщения: ${textErr.message}`)
-    textRowId = textRow.id
+    textMessage = castToProjectMessage({
+      ...textRow,
+      reply_to_message: null,
+      reactions: [],
+      attachments: [],
+    })
+    if (params.replyToMessageId) {
+      await hydrateReplyMessages([textMessage])
+    }
   }
 
   const { data, error } = await supabase
@@ -347,10 +365,9 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     }
   }
 
-  // Возвращаем файловую запись (оптимистик обновится именно на неё).
-  // Текстовая запись подхватится через realtime.
-  void textRowId
-  return message
+  // В split-варианте возвращаем [текстовая, файловая] — useSendMessage заменит
+  // оба оптимистичных баббла на реальные записи сразу (без ожидания realtime).
+  return textMessage ? [textMessage, message] : [message]
 }
 
 /**

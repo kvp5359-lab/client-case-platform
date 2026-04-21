@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   sendMessage,
+  shouldSplitTextAndFiles,
   markAsRead,
   getCurrentProjectParticipant,
   getCurrentWorkspaceParticipant,
@@ -71,7 +72,7 @@ export function useSendMessage(
       })
     },
     // Оптимистичное обновление
-    onMutate: async ({ content, replyToMessageId, replyToMessage, attachments }) => {
+    onMutate: async ({ content, replyToMessageId, replyToMessage, attachments, forwardedAttachments }) => {
       const qk = messagesKey
       await queryClient.cancelQueries({ queryKey: qk })
       const previous = queryClient.getQueryData(qk)
@@ -86,10 +87,47 @@ export function useSendMessage(
       }
 
       const now = new Date().toISOString()
-      const optimisticId = `optimistic-${crypto.randomUUID()}`
-      const optimisticAttachments = (attachments ?? []).map((file, i) => ({
-        id: `optimistic-att-${optimisticId}-${i}`,
-        message_id: optimisticId,
+      const willSplit = shouldSplitTextAndFiles({ content, attachments, forwardedAttachments })
+
+      const makeOptimistic = (
+        suffix: 'text' | 'files' | 'single',
+        overrides: Partial<ProjectMessage>,
+      ): ProjectMessage => {
+        const id = `optimistic-${suffix}-${crypto.randomUUID()}`
+        return {
+          id,
+          project_id: projectId ?? null,
+          workspace_id: workspaceId,
+          sender_participant_id: currentParticipant?.participantId ?? null,
+          sender_name: currentParticipant?.name ?? 'Вы',
+          sender_role: currentParticipant?.role ?? null,
+          content,
+          source: 'web',
+          reply_to_message_id: replyToMessageId ?? null,
+          reply_to_message: replyData,
+          telegram_message_id: null,
+          telegram_chat_id: null,
+          telegram_attachments_delivered: null,
+          is_edited: false,
+          is_draft: false,
+          forwarded_from_name: null,
+          forwarded_date: null,
+          scheduled_send_at: null,
+          channel,
+          thread_id: threadId,
+          email_metadata: null,
+          created_at: now,
+          updated_at: now,
+          reactions: [],
+          attachments: [],
+          sender: null,
+          ...overrides,
+        }
+      }
+
+      const optimisticFilesAttachments = (attachments ?? []).map((file, i) => ({
+        id: `optimistic-att-${crypto.randomUUID()}-${i}`,
+        message_id: '',
         file_name: file.name,
         file_size: file.size,
         mime_type: file.type || null,
@@ -100,34 +138,22 @@ export function useSendMessage(
         created_at: now,
       }))
 
-      const optimistic: ProjectMessage = {
-        id: optimisticId,
-        project_id: projectId ?? null,
-        workspace_id: workspaceId,
-        sender_participant_id: currentParticipant?.participantId ?? null,
-        sender_name: currentParticipant?.name ?? 'Вы',
-        sender_role: currentParticipant?.role ?? null,
-        content,
-        source: 'web',
-        reply_to_message_id: replyToMessageId ?? null,
-        reply_to_message: replyData,
-        telegram_message_id: null,
-        telegram_chat_id: null,
-        telegram_attachments_delivered: null,
-        is_edited: false,
-        is_draft: false,
-        forwarded_from_name: null,
-        forwarded_date: null,
-        scheduled_send_at: null,
-        channel,
-        thread_id: threadId,
-        email_metadata: null,
-        created_at: now,
-        updated_at: now,
-        reactions: [],
-        attachments: optimisticAttachments,
-        sender: null,
-      }
+      const optimisticList: ProjectMessage[] = willSplit
+        ? [
+            makeOptimistic('text', { content, attachments: [] }),
+            makeOptimistic('files', {
+              content: '📎',
+              reply_to_message_id: null,
+              reply_to_message: null,
+              attachments: optimisticFilesAttachments,
+            }),
+          ]
+        : [
+            makeOptimistic('single', {
+              content,
+              attachments: optimisticFilesAttachments,
+            }),
+          ]
 
       queryClient.setQueryData(qk, (old: unknown) => {
         const typed = old as
@@ -138,7 +164,7 @@ export function useSendMessage(
         const last = pages[pages.length - 1]
         pages[pages.length - 1] = {
           ...last,
-          messages: [...last.messages, optimistic],
+          messages: [...last.messages, ...optimisticList],
         }
         return { ...typed, pages }
       })
@@ -158,10 +184,17 @@ export function useSendMessage(
           | { pages: { messages: ProjectMessage[]; hasMore: boolean }[]; pageParams: unknown[] }
           | undefined
         if (!typed) return typed
-        const pages = typed.pages.map((page) => ({
-          ...page,
-          messages: page.messages.map((msg) => (msg.id.startsWith('optimistic-') ? result : msg)),
-        }))
+        // Заменяем все оптимистики на реальные записи; сохраняем порядок
+        // реальных (text первый, files второй для split; [single] для обычного).
+        const pages = typed.pages.map((page) => {
+          const filtered = page.messages.filter((msg) => !msg.id.startsWith('optimistic-'))
+          return { ...page, messages: filtered }
+        })
+        const lastIdx = pages.length - 1
+        pages[lastIdx] = {
+          ...pages[lastIdx],
+          messages: [...pages[lastIdx].messages, ...result],
+        }
         return { ...typed, pages }
       })
       // Если есть вложения — не рефетчим: вложения могут ещё не успеть записаться в БД,
