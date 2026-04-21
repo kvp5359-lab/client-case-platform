@@ -496,8 +496,38 @@ export default function ProjectsPage() {
                       )}
                     </Link>
                     <div className="flex items-center gap-2 shrink-0">
+                      {badge.type === 'number' && (
+                        <span
+                          className={cn(
+                            'min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-white text-[11px] font-bold px-1 shrink-0',
+                            getBadgeClasses(badgeColor, false),
+                          )}
+                        >
+                          {formatBadgeCount(badge.value)}
+                        </span>
+                      )}
+                      {badge.type === 'emoji' && (
+                        <span
+                          className={cn(
+                            'inline-flex items-center justify-center w-[18px] h-[18px] rounded-full shrink-0',
+                            getBadgeClasses(badgeColor, false),
+                          )}
+                        >
+                          <span className="text-[10px] leading-none">{badge.value}</span>
+                        </span>
+                      )}
+                      {badge.type === 'dot' && (
+                        <span
+                          className={cn(
+                            'inline-block w-[18px] h-[18px] rounded-full shrink-0',
+                            getBadgeClasses(badgeColor, false),
+                          )}
+                        />
+                      )}
+                    </div>
+                    <div className="ml-auto flex items-center gap-3 shrink-0">
                       {participantGroups.length > 0 && (
-                        <span className="hidden group-hover/row:flex has-[[data-state=open]]:flex items-center gap-0.5 shrink-0">
+                        <span className="flex items-center gap-0.5 shrink-0">
                           {participantGroups.map((group, idx) => {
                             const groupIds = new Set(group.participants.map((p) => p.id))
                             return (
@@ -539,36 +569,6 @@ export default function ProjectsPage() {
                           })}
                         </span>
                       )}
-                      {badge.type === 'number' && (
-                        <span
-                          className={cn(
-                            'min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-white text-[11px] font-bold px-1 shrink-0',
-                            getBadgeClasses(badgeColor, false),
-                          )}
-                        >
-                          {formatBadgeCount(badge.value)}
-                        </span>
-                      )}
-                      {badge.type === 'emoji' && (
-                        <span
-                          className={cn(
-                            'inline-flex items-center justify-center w-[18px] h-[18px] rounded-full shrink-0',
-                            getBadgeClasses(badgeColor, false),
-                          )}
-                        >
-                          <span className="text-[10px] leading-none">{badge.value}</span>
-                        </span>
-                      )}
-                      {badge.type === 'dot' && (
-                        <span
-                          className={cn(
-                            'inline-block w-[18px] h-[18px] rounded-full shrink-0',
-                            getBadgeClasses(badgeColor, false),
-                          )}
-                        />
-                      )}
-                    </div>
-                    <div className="ml-auto flex items-center gap-3 shrink-0">
                       <ProjectStatusPopover
                         currentStatus={project.status}
                         onChange={(newStatus) =>
