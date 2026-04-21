@@ -11,9 +11,8 @@ import { isHtmlContent, plainTextToHtml } from '@/utils/format/messengerHtml'
 import { useDraftMessage } from './hooks/useDraftMessage'
 import { useMessageFiles } from './hooks/useMessageFiles'
 import { useEditorResizer } from './hooks/useEditorResizer'
-import { useTaskStatuses } from '@/hooks/useStatuses'
-import { useUpdateTaskStatus } from '@/components/tasks/useTaskMutations'
-import { messengerKeys, projectThreadKeys } from '@/hooks/queryKeys'
+import { useTaskStatusPending } from './hooks/useTaskStatusPending'
+import { useQuoteInsertion } from './hooks/useQuoteInsertion'
 
 interface MessageInputProps {
   projectId: string
@@ -85,43 +84,14 @@ export function MessageInput({
 
   const draftKey = threadId ? `msg_draft:${threadId}` : `msg_draft:${projectId}:${channel}`
 
-  // Переключатель статуса задачи (Планфикс-style) — виден только для тредов типа 'task'.
-  const isTaskThread = threadType === 'task' && !!threadId
-  const { data: taskStatuses = [] } = useTaskStatuses(isTaskThread ? workspaceId : undefined)
-  const pendingStatusKey = threadId ? `cc:pending-status:${threadId}` : null
-  const [pendingStatusId, setPendingStatusId] = useState<string | null>(() => {
-    if (!pendingStatusKey || typeof window === 'undefined') return null
-    try {
-      const saved = window.localStorage.getItem(pendingStatusKey)
-      return saved && saved !== 'null' ? saved : null
-    } catch {
-      return null
-    }
-  })
-
-  // Эффективное «запланированное» значение: если оно совпало с текущим статусом
-  // треда (кто-то уже перевёл задачу в этот статус отдельно) — трактуем как отсутствие.
-  // Выводим значение в рендере, а не через useEffect с setState, чтобы не нарушать
-  // react-hooks/set-state-in-effect (и не плодить каскадные рендеры).
-  const effectivePendingStatusId =
-    pendingStatusId && pendingStatusId !== threadStatusId ? pendingStatusId : null
-
-  const handlePickStatus = useCallback((statusId: string | null) => {
-    // «Не менять» передаёт текущий statusId (или null) — трактуем как сброс pending.
-    const next = statusId === threadStatusId ? null : statusId
-    setPendingStatusId(next)
-    if (pendingStatusKey) {
-      try {
-        if (next) window.localStorage.setItem(pendingStatusKey, next)
-        else window.localStorage.removeItem(pendingStatusKey)
-      } catch { /* ignore */ }
-    }
-  }, [threadStatusId, pendingStatusKey])
-
-  const updateStatusMutation = useUpdateTaskStatus([
-    projectId ? messengerKeys.projectThreads(projectId) : [],
-    threadId ? projectThreadKeys.byId(threadId) : [],
-  ])
+  const {
+    isTaskThread,
+    taskStatuses,
+    effectivePendingStatusId,
+    handlePickStatus,
+    updateStatusMutation,
+    clearPending,
+  } = useTaskStatusPending({ threadId, projectId, workspaceId, threadType, threadStatusId })
 
   const {
     files,
@@ -145,10 +115,9 @@ export function MessageInput({
     setHasText,
   )
 
-  // Auto-focus editor when thread changes or component mounts
+  // Auto-focus editor when thread changes or component mounts (задержка — анимация панели)
   useEffect(() => {
     if (editorRef.current) {
-      // Небольшая задержка, чтобы панель успела анимироваться
       const timer = setTimeout(() => editorRef.current?.commands.focus('end'), 150)
       return () => clearTimeout(timer)
     }
@@ -161,29 +130,7 @@ export function MessageInput({
     }
   }, [replyTo])
 
-  // Insert quote
-  const onClearQuoteRef = useRef(onClearQuote)
-  useEffect(() => {
-    onClearQuoteRef.current = onClearQuote
-  }, [onClearQuote])
-
-  useEffect(() => {
-    const editor = editorRef.current
-    if (!editor || !quoteText) return
-    const paragraphs = quoteText
-      .split('\n')
-      .filter((line, i, arr) => {
-        if (line.trim() === '' && i > 0 && i < arr.length - 1) return false
-        return true
-      })
-      .map((line) => {
-        const escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        return `<p>${escaped || '<br>'}</p>`
-      })
-      .join('')
-    editor.chain().focus().insertContent(`<blockquote>${paragraphs}</blockquote><p></p>`).run()
-    onClearQuoteRef.current?.()
-  }, [quoteText])
+  useQuoteInsertion(editorRef, quoteText, onClearQuote)
 
   // Load content for editing
   useEffect(() => {
@@ -230,6 +177,15 @@ export function MessageInput({
 
     if ((!textContent && files.length === 0) || isPending) return
 
+    const sendMessage = () => {
+      onSend(textContent ? htmlContent : '📎', replyTo?.id, files.length > 0 ? files : undefined)
+      editor.commands.clearContent()
+      setHasText(false)
+      clearFiles()
+      clearDraft()
+      onClearReply()
+    }
+
     // Если в пикере выбран новый статус — сначала меняем его, потом отправляем сообщение.
     // При ошибке смены статуса сообщение не отправляем, чтобы не было расхождения.
     if (isTaskThread && threadId && effectivePendingStatusId) {
@@ -237,28 +193,15 @@ export function MessageInput({
         { threadId, statusId: effectivePendingStatusId },
         {
           onSuccess: () => {
-            setPendingStatusId(null)
-            if (pendingStatusKey) {
-              try { window.localStorage.removeItem(pendingStatusKey) } catch { /* ignore */ }
-            }
-            onSend(textContent ? htmlContent : '📎', replyTo?.id, files.length > 0 ? files : undefined)
-            editor.commands.clearContent()
-            setHasText(false)
-            clearFiles()
-            clearDraft()
-            onClearReply()
+            clearPending()
+            sendMessage()
           },
         },
       )
       return
     }
 
-    onSend(textContent ? htmlContent : '📎', replyTo?.id, files.length > 0 ? files : undefined)
-    editor.commands.clearContent()
-    setHasText(false)
-    clearFiles()
-    clearDraft()
-    onClearReply()
+    sendMessage()
   }, [
     files,
     existingAttachments,
@@ -276,7 +219,7 @@ export function MessageInput({
     threadId,
     effectivePendingStatusId,
     updateStatusMutation,
-    pendingStatusKey,
+    clearPending,
   ])
 
   const handleSaveDraft = useCallback(() => {
@@ -331,7 +274,6 @@ export function MessageInput({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Resizer handle */}
       <div
         className="absolute -top-1 left-0 right-0 h-2 cursor-row-resize z-20 flex items-center justify-center group"
         onMouseDown={handleResizerMouseDown}
@@ -351,7 +293,6 @@ export function MessageInput({
 
       {replyTo && !editingMessage && <ReplyBanner replyTo={replyTo} onClearReply={onClearReply} />}
 
-      {/* Editor area */}
       <div
         className="px-4 pt-2 min-w-0"
         onKeyDown={(e) => {
