@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { getChatIconComponent } from '@/components/messenger/ChatSettingsDialog'
 import { MessageBubble } from '@/components/messenger/MessageBubble'
 import { MessengerProvider } from '@/components/messenger/MessengerContext'
-import { ActivityItem } from './ActivityItem'
+import { AuditPill } from './AuditPill'
 import type { AuditLogEntry } from '@/types/history'
 import type { TimelineMessageEntry } from '@/hooks/useTimelineMessages'
 import type { MessengerAccent } from '@/components/messenger/utils/messageStyles'
@@ -24,7 +24,12 @@ interface TimelineFeedProps {
   auditEntries: AuditLogEntry[]
   messages: TimelineMessageEntry[]
   currentUserId?: string
+  /** Общий lastReadAt для ленты (совместимость со старым вызовом из HistoryTabContent). */
   lastReadAt?: string
+  /** last_read_at по каждому треду — для красной рамки «непрочитано» в бабблах. */
+  threadLastReadAt?: Map<string, string>
+  /** id статуса → {name, color} — для цветных имён в change_status аудите. */
+  statusMap?: Map<string, { name: string; color: string | null }>
   onOpenChat?: (threadId: string) => void
 }
 
@@ -79,27 +84,57 @@ export function TimelineFeed({
   messages,
   currentUserId,
   lastReadAt,
+  threadLastReadAt,
+  statusMap,
   onOpenChat,
 }: TimelineFeedProps) {
   const merged = useMemo(() => mergeTimeline(auditEntries, messages), [auditEntries, messages])
   const grouped = useMemo(() => groupByDay(merged), [merged])
+
+  // Set of message IDs, перед которыми нужен ChatDivider. Вычисляется плоским
+  // проходом по всей ленте, поэтому смена дня (внутри того же треда) НЕ добавляет
+  // разделитель — он только там, где реально меняется тред. Ключ — id сообщения.
+  const dividerMessageIds = useMemo(() => {
+    const set = new Set<string>()
+    let lastThreadId: string | null = null
+    for (const entry of merged) {
+      if (entry.kind !== 'message') continue
+      const tid = entry.entry.thread.id
+      if (tid !== lastThreadId) {
+        set.add(entry.entry.message.id)
+        lastThreadId = tid
+      }
+    }
+    return set
+  }, [merged])
   const bottomRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
 
-  // Автоскролл вниз при начальной загрузке (аудит + сообщения могут прийти в разное время)
+  // Автоскролл вниз — только один раз после первой загрузки данных,
+  // после этого любой user-scroll/добавление новых сообщений не должны
+  // дёргать вьюпорт (раньше скролл повторялся при каждом изменении длины
+  // в течение 3 секунд — отсюда дёрганье на тачпаде, когда приходили
+  // асинхронные чанки timeline-сообщений).
   useEffect(() => {
-    if (merged.length > 0) {
-      // Скроллим при каждом изменении длины в первые 3 секунды после монтирования
-      if (!initialLoadDone.current) {
-        requestAnimationFrame(() => bottomRef.current?.scrollIntoView())
-        // Через 3 секунды прекращаем автоскролл — данные загружены
-        const timer = setTimeout(() => {
-          initialLoadDone.current = true
-        }, 3000)
-        return () => clearTimeout(timer)
-      }
-    }
+    if (initialLoadDone.current) return
+    if (merged.length === 0) return
+    initialLoadDone.current = true
+    requestAnimationFrame(() => bottomRef.current?.scrollIntoView())
   }, [merged.length])
+
+  // Любое действие пользователя (скролл/клик/колёсико) блокирует автоскролл,
+  // даже если он ещё не успел сработать.
+  useEffect(() => {
+    const lock = () => {
+      initialLoadDone.current = true
+    }
+    window.addEventListener('wheel', lock, { passive: true, once: true })
+    window.addEventListener('touchmove', lock, { passive: true, once: true })
+    return () => {
+      window.removeEventListener('wheel', lock)
+      window.removeEventListener('touchmove', lock)
+    }
+  }, [])
 
   const handleChatClick = useCallback(
     (threadId: string) => {
@@ -129,9 +164,17 @@ export function TimelineFeed({
           </div>
 
           {/* Entries */}
-          <div>
+          <div className="space-y-2">
             {dayEntries.map((entry, idx) => {
-              const chatDivider = getChatDivider(dayEntries, idx)
+              const chatDivider =
+                entry.kind === 'message' && dividerMessageIds.has(entry.entry.message.id)
+                  ? {
+                      threadId: entry.entry.thread.id,
+                      name: entry.entry.thread.name,
+                      icon: entry.entry.thread.icon,
+                      accent: entry.entry.thread.accent_color,
+                    }
+                  : null
               const key =
                 entry.kind === 'audit' ? `a-${entry.data.id}` : `m-${entry.entry.message.id}`
 
@@ -147,37 +190,48 @@ export function TimelineFeed({
                   )}
 
                   {entry.kind === 'audit' ? (
-                    <ActivityItem
+                    <AuditPill
                       entry={entry.data}
                       isUnread={!!lastReadAt && entry.data.created_at > lastReadAt}
+                      statusMap={statusMap}
                     />
                   ) : (
-                    <div className="px-2">
-                      <MessengerProvider
-                        currentParticipantId={null}
-                        accent={entry.entry.thread.accent_color as MessengerAccent}
-                        onReply={noop}
-                        onReact={noop}
-                      >
-                        <MessageBubble
-                          message={entry.entry.message}
-                          isOwn={!!currentUserId && entry.entry.senderUserId === currentUserId}
-                          showAvatar={
-                            // Show avatar if previous entry is not a message from same sender
-                            idx === 0 ||
-                            dayEntries[idx - 1].kind !== 'message' ||
-                            (dayEntries[idx - 1].kind === 'message' &&
-                              (
-                                dayEntries[idx - 1] as {
-                                  kind: 'message'
-                                  entry: TimelineMessageEntry
-                                }
-                              ).entry.message.sender_participant_id !==
-                                entry.entry.message.sender_participant_id)
-                          }
-                        />
-                      </MessengerProvider>
-                    </div>
+                    (() => {
+                      const isOwn =
+                        !!currentUserId && entry.entry.senderUserId === currentUserId
+                      const prev = dayEntries[idx - 1]
+                      const prevIsMessage = prev?.kind === 'message'
+                      const prevSameSender =
+                        prevIsMessage &&
+                        (prev as { kind: 'message'; entry: TimelineMessageEntry }).entry.message
+                          .sender_participant_id === entry.entry.message.sender_participant_id
+                      // Аватар/имя показываем, когда сменился автор, сменился чат
+                      // (перед сообщением вставлен ChatDivider) или это первый элемент.
+                      const showAvatar = !!chatDivider || idx === 0 || !prevIsMessage || !prevSameSender
+                      const threadRead = threadLastReadAt?.get(entry.entry.thread.id)
+                      const isUnread =
+                        !isOwn &&
+                        !!threadRead &&
+                        entry.entry.message.created_at > threadRead
+                      return (
+                        <div className="px-2">
+                          <MessengerProvider
+                            currentParticipantId={null}
+                            accent={entry.entry.thread.accent_color as MessengerAccent}
+                            onReply={noop}
+                            onReact={noop}
+                          >
+                            <MessageBubble
+                              message={entry.entry.message}
+                              isOwn={isOwn}
+                              showAvatar={showAvatar}
+                              isUnread={isUnread}
+                              lastReadAt={threadRead}
+                            />
+                          </MessengerProvider>
+                        </div>
+                      )
+                    })()
                   )}
                 </div>
               )
@@ -188,38 +242,6 @@ export function TimelineFeed({
       <div ref={bottomRef} />
     </div>
   )
-}
-
-/** Определить, нужен ли разделитель чата перед entry[idx] */
-function getChatDivider(
-  entries: TimelineEntry[],
-  idx: number,
-): { threadId: string; name: string; icon: string; accent: string } | null {
-  const entry = entries[idx]
-  if (entry.kind !== 'message') return null
-
-  const currentThreadId = entry.entry.thread.id
-
-  if (idx === 0) {
-    return {
-      threadId: currentThreadId,
-      name: entry.entry.thread.name,
-      icon: entry.entry.thread.icon,
-      accent: entry.entry.thread.accent_color,
-    }
-  }
-
-  const prev = entries[idx - 1]
-  if (prev.kind !== 'message' || prev.entry.thread.id !== currentThreadId) {
-    return {
-      threadId: currentThreadId,
-      name: entry.entry.thread.name,
-      icon: entry.entry.thread.icon,
-      accent: entry.entry.thread.accent_color,
-    }
-  }
-
-  return null
 }
 
 /** Кликабельный разделитель чата */

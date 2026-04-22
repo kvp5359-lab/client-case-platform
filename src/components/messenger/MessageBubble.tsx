@@ -9,7 +9,7 @@ import { useCollapsibleText } from './hooks/useCollapsibleText'
 import { TelegramFailedBadge, useTelegramDeliveryStatus } from './TelegramDeliveryIndicator'
 // QuotePopup рендерится императивно (DOM) — см. handleMouseUp в MessageBubble
 import { ReactionBadges } from './ReactionBadges'
-import { MessageActions } from './MessageActions'
+import { MessageActions, MessageContextMenu } from './MessageActions'
 import { SendCountdown } from './SendCountdown'
 import { getDeliveryStatus } from './bubbleUtils'
 import { BubbleHeader } from './BubbleHeader'
@@ -189,6 +189,25 @@ function MessageBubbleImpl({
 
       <div className={cn('max-w-[75%] min-w-0 flex flex-col', isOwn ? 'items-end' : 'items-start')}>
         {/* Bubble + reactions */}
+        <MessageContextMenu
+          disabled={isDelayedPending}
+          message={message}
+          isOwn={isOwn}
+          onReply={onReply}
+          onReact={onReact}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          canDelete={canDelete}
+          onForwardToChat={onForwardToChat}
+          forwardChats={forwardChats}
+          currentThreadId={currentThreadId}
+          onPublishDraft={onPublishDraft}
+          onEditDraft={onEditDraft}
+          onViewEmail={message.source === 'email' ? () => setEmailViewOpen(true) : undefined}
+          onDeleteDialogOpen={() => setDeleteDialogOpen(true)}
+          reactionPopoverOpen={reactionPopoverOpen}
+          setReactionPopoverOpen={setReactionPopoverOpen}
+        >
         <div className="relative max-w-full" ref={contentRef} onMouseUp={handleMouseUp}>
           {/* Quote popup рендерится императивно через DOM — см. handleMouseUp */}
 
@@ -198,12 +217,9 @@ function MessageBubbleImpl({
               'relative rounded-2xl px-4 py-2.5 min-w-[10rem] overflow-hidden transition-all duration-500',
               // Красная полоса внутри бабла слева — индикатор непрочитанного
               isUnread && !isOwn && 'border-l-4 border-red-500',
-              // Нижний padding:
-              // - pb-8 когда есть реакции (абсолютно-позиционированный бейдж h-7)
-              // - pb-6 для баббла с файлами без реакций (только абсолютное время)
-              message.reactions?.length
-                ? 'pb-8'
-                : hasAttachments && 'pb-6',
+              // Нижний padding для абсолютно-позиционированного таймстампа у баббла
+              // с вложениями (когда нет реакций). Реакции рендерятся вне бабла.
+              hasAttachments && 'pb-6',
               message.is_draft
                 ? accent === 'dark'
                   ? 'bg-white border-2 border-stone-600 text-gray-900'
@@ -239,7 +255,6 @@ function MessageBubbleImpl({
                 isOwn={isOwn}
                 accent={accent}
                 hasAttachments={hasAttachments}
-                hasReactions={!!message.reactions?.length}
                 deliveryStatus={deliveryStatus}
                 tgFailed={tgFailed}
                 textRef={textRef}
@@ -295,11 +310,9 @@ function MessageBubbleImpl({
             lastReadAt={lastReadAt}
           />
 
-          {/* Timestamp в правом нижнем углу:
-              - у attachments-баббла всегда (inline-время в textrow там нет)
-              - у текстового — только когда есть реакции (чтобы время не сидело
-                в середине строки, как в Telegram). Без реакций — inline в тексте. */}
-          {(hasAttachments || !!message.reactions?.length) && (
+          {/* Timestamp в правом нижнем углу — только для attachments-баббла,
+              inline-время в textrow там отсутствует. У текстового — inline в тексте. */}
+          {hasAttachments && (
             <div className="absolute bottom-2 right-4 flex items-center gap-1 z-10 pointer-events-none">
               <BubbleTimestamp
                 message={message}
@@ -310,17 +323,18 @@ function MessageBubbleImpl({
             </div>
           )}
 
-          {/* Hover actions */}
+          {/* Hover actions — единственная кнопка: «три точки». Тот же набор действий
+              доступен по правой кнопке мыши через MessageContextMenu. */}
           {!isDelayedPending && (
             <MessageActions
               message={message}
               isOwn={isOwn}
+              accent={accent}
               onReply={onReply}
               onReact={onReact}
               onEdit={onEdit}
               onDelete={onDelete}
               canDelete={canDelete}
-              onQuote={onQuote}
               onForwardToChat={onForwardToChat}
               forwardChats={forwardChats}
               currentThreadId={currentThreadId}
@@ -336,6 +350,7 @@ function MessageBubbleImpl({
             />
           )}
         </div>
+        </MessageContextMenu>
 
         {/* Delayed send countdown */}
         {isDelayedPending && delayedExpiresAt && onCancelDelayed && (

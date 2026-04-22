@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { X } from 'lucide-react'
 
@@ -17,7 +18,12 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
     return () => document.removeEventListener('keydown', handler)
   }, [onClose])
 
-  return (
+  // Рендерим в document.body через портал — иначе `fixed inset-0` внутри
+  // предков с `transform` (TaskPanel, .side-panel) привязывается к этому
+  // предку, а не к viewport, и лайтбокс зажимается в границы боковой панели.
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -42,6 +48,7 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
         className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
         onClick={(e) => e.stopPropagation()}
       />
-    </div>
+    </div>,
+    document.body,
   )
 }

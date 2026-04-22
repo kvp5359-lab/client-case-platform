@@ -22,10 +22,9 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { TimelineFeed } from './TimelineFeed'
 import { ActivityFeed } from './ActivityFeed'
+import { AllHistoryContent } from './AllHistoryContent'
 import { useProjectHistory, useMarkHistoryAsRead } from '@/hooks/useProjectHistory'
-import { useTimelineMessages } from '@/hooks/useTimelineMessages'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { useAuth } from '@/contexts/AuthContext'
@@ -165,6 +164,7 @@ export function HistoryTabContent({ projectId, workspaceId }: HistoryTabContentP
         {selected.kind === 'all' && (
           <AllHistoryContent
             projectId={projectId}
+            workspaceId={workspaceId}
             threads={threads}
             currentUserId={user?.id}
             lastReadAt={lastReadAt}
@@ -226,77 +226,6 @@ function SidebarButton({
         </span>
       )}
     </button>
-  )
-}
-
-/** «Вся история» — timeline: аудит + сообщения из всех тредов */
-function AllHistoryContent({
-  projectId,
-  threads,
-  currentUserId,
-  lastReadAt,
-  onOpenChat,
-}: {
-  projectId: string
-  threads: ProjectThread[]
-  currentUserId?: string
-  lastReadAt?: string
-  onOpenChat: (threadId: string) => void
-}) {
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useProjectHistory(
-    projectId,
-    {},
-  )
-
-  const allAuditEntries = useMemo(
-    () => (data?.pages.flatMap((page) => page) ?? []) as AuditLogEntry[],
-    [data],
-  )
-
-  const visibleThreads = useMemo(() => threads.filter((t) => !t.is_deleted), [threads])
-  const allThreadIds = useMemo(() => visibleThreads.map((t) => t.id), [visibleThreads])
-  const { data: timelineMessages = [] } = useTimelineMessages(projectId, allThreadIds, threads)
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16 flex-1">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex flex-col flex-1 overflow-hidden">
-      <div className="flex-1 overflow-y-auto">
-        {/* Кнопка подгрузки старых событий — сверху */}
-        {hasNextPage && (
-          <div className="flex justify-center py-3 border-b">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => fetchNextPage()}
-              disabled={isFetchingNextPage}
-            >
-              {isFetchingNextPage ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Загрузка...
-                </>
-              ) : (
-                'Загрузить ранее'
-              )}
-            </Button>
-          </div>
-        )}
-        <TimelineFeed
-          auditEntries={allAuditEntries}
-          messages={timelineMessages}
-          currentUserId={currentUserId}
-          lastReadAt={lastReadAt}
-          onOpenChat={onOpenChat}
-        />
-      </div>
-    </div>
   )
 }
 

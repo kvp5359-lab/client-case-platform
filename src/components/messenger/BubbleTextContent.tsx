@@ -12,9 +12,6 @@ interface BubbleTextContentProps {
   isOwn: boolean
   accent: MessengerAccent
   hasAttachments: boolean
-  /** Есть ли реакции. Если да — inline-время скрываем, MessageBubble сам рисует
-   *  absolute-время в нижнем правом углу (как в Telegram). */
-  hasReactions: boolean
   deliveryStatus: DeliveryStatus
   tgFailed: boolean
   textRef: React.RefObject<HTMLDivElement | null>
@@ -31,7 +28,6 @@ export function BubbleTextContent({
   isOwn,
   accent,
   hasAttachments,
-  hasReactions,
   deliveryStatus,
   tgFailed,
   textRef,
@@ -67,7 +63,7 @@ export function BubbleTextContent({
               }}
             />
           )}
-          {!hasAttachments && !hasReactions && (
+          {!hasAttachments && (
             <BubbleTimestamp
               message={message}
               isOwn={isOwn}
@@ -120,7 +116,7 @@ export function BubbleTextContent({
             {isCollapsed ? 'Показать полностью' : 'Свернуть'}
           </button>
           <div className="flex items-center gap-2">
-            {isCollapsed && !hasAttachments && !hasReactions && (
+            {isCollapsed && !hasAttachments && (
               <BubbleTimestamp
                 message={message}
                 isOwn={isOwn}

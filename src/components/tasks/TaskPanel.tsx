@@ -15,9 +15,13 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
+import { AllHistoryContent } from '@/components/history/AllHistoryContent'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { useProjectThreadById } from '@/hooks/messenger/useProjectThreads'
+import { useProjectThreadById, useProjectThreads } from '@/hooks/messenger/useProjectThreads'
+import { useAuth } from '@/contexts/AuthContext'
+import { useQuery } from '@tanstack/react-query'
+import { getCurrentProjectParticipant } from '@/services/api/messenger/messengerService'
 import { TaskPanelProjectView } from './TaskPanelProjectView'
 import { TaskPanelTaskHeader } from './TaskPanelTaskHeader'
 import type { StatusOption } from '@/components/ui/status-dropdown'
@@ -89,10 +93,47 @@ export function TaskPanel({
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
   const toolbarRef = useCallback((node: HTMLDivElement | null) => setToolbarContainer(node), [])
   const [titleOffset, setTitleOffset] = useState(0)
+  const [viewMode, setViewMode] = useState<'thread' | 'history'>('thread')
+  const { user } = useAuth()
 
   const task = stackTop?.kind === 'task' ? stackTop.task : null
   const projectItemRaw = stackTop?.kind === 'project' ? stackTop.project : null
   const mode: 'task' | 'project' | null = stackTop ? stackTop.kind : null
+
+  // Сброс режима просмотра при смене треда в стеке
+  const [prevTaskId, setPrevTaskId] = useState(task?.id)
+  if (task?.id !== prevTaskId) {
+    setPrevTaskId(task?.id)
+    setViewMode('thread')
+  }
+
+  // Треды проекта — нужны для «Всей истории» (рендер и переход по клику на чат)
+  const { data: projectThreads = [] } = useProjectThreads(task?.project_id ?? undefined)
+
+  // Карта last_read_at по тредам проекта — для красной рамки «непрочитано»
+  // в бабблах «Всей истории». Загружаем только когда включён режим истории,
+  // чтобы не делать лишних запросов при обычном просмотре треда.
+  const historyActive = viewMode === 'history' && !!task?.project_id
+  const { data: threadLastReadAt } = useQuery({
+    queryKey: ['threadLastReadAt', task?.project_id, user?.id],
+    enabled: historyActive && !!user?.id && !!task?.project_id,
+    queryFn: async () => {
+      if (!task?.project_id || !user?.id) return new Map<string, string>()
+      const participant = await getCurrentProjectParticipant(task.project_id, user.id)
+      const pid = participant?.participantId
+      if (!pid) return new Map<string, string>()
+      const { data } = await supabase
+        .from('message_read_status')
+        .select('thread_id, last_read_at')
+        .eq('participant_id', pid)
+        .not('thread_id', 'is', null)
+      const map = new Map<string, string>()
+      for (const row of data ?? []) {
+        if (row.thread_id && row.last_read_at) map.set(row.thread_id, row.last_read_at)
+      }
+      return map
+    },
+  })
 
   // ── Ленивая подгрузка мета-данных проекта ──
   const [fetchedProjectMeta, setFetchedProjectMeta] = useState<{
@@ -236,16 +277,60 @@ export function TaskPanel({
           toolbarRef={toolbarRef}
           onTitleOffsetChange={setTitleOffset}
           titleOffset={titleOffset}
+          viewMode={viewMode}
+          onToggleHistory={
+            task.project_id
+              ? () => setViewMode((m) => (m === 'history' ? 'thread' : 'history'))
+              : undefined
+          }
         />
 
-        <div className="flex-1 min-h-0 overflow-hidden relative">
-          <MessengerTabContent
-            projectId={task.project_id ?? undefined}
-            workspaceId={workspaceId}
-            threadId={task.id}
-            accent={task.accent_color as never}
-            toolbarPortalContainer={toolbarContainer}
-          />
+        <div className="flex-1 min-h-0 overflow-hidden relative flex flex-col">
+          {viewMode === 'history' && task.project_id ? (
+            <AllHistoryContent
+              projectId={task.project_id}
+              workspaceId={workspaceId}
+              threads={projectThreads}
+              currentUserId={user?.id}
+              threadLastReadAt={threadLastReadAt}
+              onOpenChat={(threadId) => {
+                // Клик по тому же треду, что сейчас в стеке — просто закрываем историю.
+                if (threadId === task.id) {
+                  setViewMode('thread')
+                  return
+                }
+                const t = projectThreads.find((x) => x.id === threadId)
+                if (!t || !onOpenThreadInStack) {
+                  setViewMode('thread')
+                  return
+                }
+                // Пушим новый тред поверх стека. viewMode сбросится автоматически
+                // через эффект смены task.id.
+                onOpenThreadInStack({
+                  id: t.id,
+                  name: t.name,
+                  type: t.type,
+                  project_id: t.project_id,
+                  workspace_id: t.workspace_id,
+                  status_id: t.status_id,
+                  deadline: t.deadline,
+                  accent_color: t.accent_color,
+                  icon: t.icon,
+                  is_pinned: t.is_pinned,
+                  created_at: t.created_at,
+                  sort_order: t.sort_order,
+                })
+              }}
+            />
+          ) : (
+            <MessengerTabContent
+              projectId={task.project_id ?? undefined}
+              workspaceId={workspaceId}
+              threadId={task.id}
+              accent={task.accent_color as never}
+              toolbarPortalContainer={toolbarContainer}
+            />
+          )}
         </div>
       </div>
 

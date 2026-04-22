@@ -28,6 +28,8 @@ import { formatShortDate } from '@/utils/format/dateFormat'
 interface ActivityItemProps {
   entry: AuditLogEntry
   isUnread: boolean
+  /** Карта id → название статуса. Нужна чтобы в change_status вместо UUID показать имя. */
+  statusNames?: Map<string, string>
 }
 
 // Маппинг action → иконка и цвет
@@ -106,7 +108,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   project_participant: '',
 }
 
-function getResourceName(entry: AuditLogEntry): string {
+function getResourceName(entry: AuditLogEntry, statusNames?: Map<string, string>): string {
   // Задачи хранят title вместо name
   const name = (entry.details?.name ?? entry.details?.title) as string | undefined
   // Анкеты: «поле X в анкете Y»
@@ -127,13 +129,20 @@ function getResourceName(entry: AuditLogEntry): string {
     if (oldName && newName) return `«${oldName}» → «${newName}»`
   }
 
-  // Смена статуса: добавляем подробности
+  // Смена статуса: добавляем подробности — резолвим UUID статуса в имя,
+  // fallback — урезанный id (на случай если статус удалили)
   if (entry.action === 'change_status') {
     const parts: string[] = []
     if (name) parts.push(`«${name}»`)
     const oldStatus = entry.details?.old_status as string | undefined
     const newStatus = entry.details?.new_status as string | undefined
-    if (oldStatus && newStatus) parts.push(`(${oldStatus} → ${newStatus})`)
+    if (oldStatus || newStatus) {
+      const resolve = (v?: string) => {
+        if (!v) return '—'
+        return statusNames?.get(v) ?? v.slice(0, 8)
+      }
+      parts.push(`(${resolve(oldStatus)} → ${resolve(newStatus)})`)
+    }
     return parts.join(' ')
   }
 
@@ -162,11 +171,11 @@ function formatRelativeTime(dateStr: string): string {
   return formatShortDate(dateStr)
 }
 
-export function ActivityItem({ entry, isUnread }: ActivityItemProps) {
+export function ActivityItem({ entry, isUnread, statusNames }: ActivityItemProps) {
   const config = ACTION_CONFIG[entry.action] ?? DEFAULT_CONFIG
   const Icon = config.icon
   const resourceLabel = RESOURCE_LABELS[entry.resource_type] ?? entry.resource_type
-  const resourceName = getResourceName(entry)
+  const resourceName = getResourceName(entry, statusNames)
   const actorName = entry.actor_name ?? entry.actor_email ?? 'Система'
 
   return (

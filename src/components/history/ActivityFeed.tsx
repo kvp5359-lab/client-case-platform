@@ -8,6 +8,7 @@ import { ActivityItem } from './ActivityItem'
 interface ActivityFeedProps {
   entries: AuditLogEntry[]
   lastReadAt?: string
+  statusNames?: Map<string, string>
 }
 
 function formatDayHeader(dateStr: string): string {
@@ -38,7 +39,7 @@ function groupByDay(entries: AuditLogEntry[]): Map<string, AuditLogEntry[]> {
   return groups
 }
 
-export function ActivityFeed({ entries, lastReadAt }: ActivityFeedProps) {
+export function ActivityFeed({ entries, lastReadAt, statusNames }: ActivityFeedProps) {
   if (entries.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -65,6 +66,7 @@ export function ActivityFeed({ entries, lastReadAt }: ActivityFeedProps) {
                 key={entry.id}
                 entry={entry}
                 isUnread={!!lastReadAt && entry.created_at > lastReadAt}
+                statusNames={statusNames}
               />
             ))}
           </div>

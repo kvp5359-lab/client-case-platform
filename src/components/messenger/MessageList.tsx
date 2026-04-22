@@ -335,7 +335,15 @@ export function MessageList({
           </div>
         </div>
       )}
-      <div className="p-4 pb-8 space-y-2" onCopy={handleCopy}>
+      {/* overflow-anchor:none — отключаем браузерный scroll-anchoring, чтобы
+          не конкурировал с ручной компенсацией scrollTop при подгрузке старых
+          сообщений. Без этого при прокрутке вверх браузер и наш код одновременно
+          двигают viewport, отсюда мелкое дёрганье на тачпаде. */}
+      <div
+        className="p-4 pb-8 space-y-2"
+        style={{ overflowAnchor: 'none' }}
+        onCopy={handleCopy}
+      >
         {/* Sentinel для подгрузки старых */}
         <div ref={sentinelRef} className="h-1" />
 
@@ -384,11 +392,16 @@ export function MessageList({
           return (
             <div
               key={msg.id}
+              // contentVisibility оптимизирует отрисовку offscreen-сообщений, но
+              // c маленьким containIntrinsicSize браузер пересчитывает макет
+              // при входе бабла в вьюпорт — отсюда дёрганье при скролле.
+              // Включаем только на очень больших списках (>300) и держим резерв
+              // 200px — ближе к медианной высоте бабла.
               style={
-                messages.length > 100 && i >= 20 && i < messages.length - 20
+                messages.length > 300 && i >= 40 && i < messages.length - 40
                   ? {
                       contentVisibility: 'auto',
-                      containIntrinsicSize: 'auto 80px',
+                      containIntrinsicSize: 'auto 200px',
                     }
                   : undefined
               }

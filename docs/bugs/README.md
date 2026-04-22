@@ -15,7 +15,9 @@
 
 ## Открытые
 
-_(пусто)_
+| ID | Severity | Область | Название | Замечен |
+|---|---|---|---|---|
+| [2026-04-22-scroll-jitter-touchpad](open/2026-04-22-scroll-jitter-touchpad.md) | medium | messenger, history, scroll | Дёрганье при прокрутке истории и чатов на тачпаде MacBook | 2026-04-22 |
 
 ## Решённые
 

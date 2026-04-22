@@ -8,7 +8,7 @@
 import { useState, useRef, useEffect, createElement } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Check, Settings, ExternalLink, X, Mail, ArrowLeft, ListTree,
+  Check, Settings, ExternalLink, X, Mail, ArrowLeft, ListTree, History,
 } from 'lucide-react'
 import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
@@ -41,6 +41,10 @@ interface TaskPanelTaskHeaderProps {
   /** Коллбэк с замеренным offset для выравнивания строки 2 */
   onTitleOffsetChange: (offset: number) => void
   titleOffset: number
+  /** Текущий режим контента панели: тред или «Вся история» проекта */
+  viewMode?: 'thread' | 'history'
+  /** Переключатель «История» — undefined прячет кнопку (например, у треда без проекта) */
+  onToggleHistory?: () => void
 }
 
 export function TaskPanelTaskHeader({
@@ -63,6 +67,8 @@ export function TaskPanelTaskHeader({
   toolbarRef,
   onTitleOffsetChange,
   titleOffset,
+  viewMode = 'thread',
+  onToggleHistory,
 }: TaskPanelTaskHeaderProps) {
   const router = useRouter()
   const isTask = task.type === 'task'
@@ -133,15 +139,34 @@ export function TaskPanelTaskHeader({
           </button>
         )}
 
-        <StatusDropdown
-          currentStatus={isTask ? statuses.find((s) => s.id === task.status_id) ?? null : null}
-          statuses={isTask ? statuses : []}
-          onStatusChange={isTask && onStatusChange ? onStatusChange : () => {}}
-          size="md"
-          disabled={!isTask || !onStatusChange}
-        />
+        {viewMode === 'history' ? (
+          <span className="shrink-0 flex items-center justify-center w-6 h-6 text-muted-foreground">
+            <History className="w-4 h-4" />
+          </span>
+        ) : isTask ? (
+          <StatusDropdown
+            currentStatus={statuses.find((s) => s.id === task.status_id) ?? null}
+            statuses={statuses}
+            onStatusChange={onStatusChange ?? (() => {})}
+            size="md"
+            disabled={!onStatusChange}
+          />
+        ) : (
+          <span className="shrink-0 flex items-center justify-center w-6 h-6">
+            {createElement(ThreadIcon, {
+              className: cn('w-4 h-4', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
+            })}
+          </span>
+        )}
 
-        {editingName ? (
+        {viewMode === 'history' ? (
+          <h2
+            ref={titleRef}
+            className="text-sm font-semibold leading-tight truncate min-w-0"
+          >
+            История
+          </h2>
+        ) : editingName ? (
           <form
             className="flex items-center gap-1 min-w-0 flex-1"
             onSubmit={(e) => { e.preventDefault(); commitEditName() }}
@@ -152,7 +177,7 @@ export function TaskPanelTaskHeader({
               onChange={(e) => setEditNameValue(e.target.value)}
               onBlur={commitEditName}
               onKeyDown={(e) => { if (e.key === 'Escape') setEditingName(false) }}
-              className="flex-1 min-w-0 text-base font-semibold bg-transparent border-b-2 border-primary outline-none py-0"
+              className="flex-1 min-w-0 text-sm font-semibold bg-transparent border-b-2 border-primary outline-none py-0"
             />
             <button type="submit" className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground">
               <Check className="w-4 h-4" />
@@ -161,19 +186,35 @@ export function TaskPanelTaskHeader({
         ) : (
           <h2
             ref={titleRef}
-            className="text-base font-semibold leading-tight truncate min-w-0 cursor-pointer hover:text-primary transition-colors"
+            className="text-sm font-semibold leading-tight truncate min-w-0 cursor-pointer hover:text-primary transition-colors"
             onClick={startEditName}
           >
             {task.name}
           </h2>
         )}
 
-        {!isTask && (
-          <span className="shrink-0 -ml-0.5">
-            {createElement(ThreadIcon, {
-              className: cn('w-4 h-4', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
-            })}
+        {task.project_id && resolvedProjectName && (
+          <span className="shrink-0 text-muted-foreground/50 select-none" aria-hidden="true">
+            •
           </span>
+        )}
+
+        {task.project_id && resolvedProjectName && (
+          <a
+            href={`/workspaces/${workspaceId}/projects/${task.project_id}`}
+            onClick={(e) => {
+              if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault()
+                onProjectClick?.()
+                router.push(`/workspaces/${workspaceId}/projects/${task.project_id}`)
+              }
+            }}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors shrink-0 min-w-0"
+            title="Открыть проект"
+          >
+            <span className="truncate max-w-[200px]">{resolvedProjectName}</span>
+            <ExternalLink className="h-3 w-3 opacity-50 shrink-0" />
+          </a>
         )}
 
         {isTask && (
@@ -208,7 +249,7 @@ export function TaskPanelTaskHeader({
         </button>
       </div>
 
-      {/* Строка 2: «Другие задачи» + проект + дедлайн */}
+      {/* Строка 2: «Другие задачи» + дедлайн */}
       {(task.project_id || (isTask && onDeadlineSet)) && (
         <div
           className="flex items-center gap-2 pr-4 mt-0.5"
@@ -235,22 +276,22 @@ export function TaskPanelTaskHeader({
             </button>
           )}
 
-          {task.project_id && resolvedProjectName && (
-            <a
-              href={`/workspaces/${workspaceId}/projects/${task.project_id}`}
-              onClick={(e) => {
-                if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
-                  e.preventDefault()
-                  onProjectClick?.()
-                  router.push(`/workspaces/${workspaceId}/projects/${task.project_id}`)
-                }
-              }}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
-              title="Открыть проект"
+          {onToggleHistory && (
+            <button
+              type="button"
+              onClick={onToggleHistory}
+              className={cn(
+                'shrink-0 inline-flex items-center gap-1 px-1.5 py-[3px] rounded text-xs font-medium transition-colors',
+                viewMode === 'history'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              )}
+              title={viewMode === 'history' ? 'Вернуться к треду' : 'Вся история проекта'}
+              aria-pressed={viewMode === 'history'}
             >
-              <span className="truncate max-w-[200px]">{resolvedProjectName}</span>
-              <ExternalLink className="h-3 w-3 opacity-50" />
-            </a>
+              <History className="w-3 h-3" />
+              <span>История</span>
+            </button>
           )}
 
           {isTask && onDeadlineSet && onDeadlineClear && (
