@@ -16,6 +16,7 @@ import { useState, useCallback, useEffect, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 import { AllHistoryContent } from '@/components/history/AllHistoryContent'
+import { PanelDocumentsContent } from '@/components/documents/PanelDocumentsContent'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { useProjectThreadById, useProjectThreads } from '@/hooks/messenger/useProjectThreads'
@@ -93,7 +94,7 @@ export function TaskPanel({
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
   const toolbarRef = useCallback((node: HTMLDivElement | null) => setToolbarContainer(node), [])
   const [titleOffset, setTitleOffset] = useState(0)
-  const [viewMode, setViewMode] = useState<'thread' | 'history'>('thread')
+  const [viewMode, setViewMode] = useState<'thread' | 'history' | 'documents'>('thread')
   const { user } = useAuth()
 
   const task = stackTop?.kind === 'task' ? stackTop.task : null
@@ -283,10 +284,20 @@ export function TaskPanel({
               ? () => setViewMode((m) => (m === 'history' ? 'thread' : 'history'))
               : undefined
           }
+          onToggleDocuments={
+            task.project_id
+              ? () => setViewMode((m) => (m === 'documents' ? 'thread' : 'documents'))
+              : undefined
+          }
         />
 
         <div className="flex-1 min-h-0 overflow-hidden relative flex flex-col">
-          {viewMode === 'history' && task.project_id ? (
+          {viewMode === 'documents' && task.project_id ? (
+            <PanelDocumentsContent
+              projectId={task.project_id}
+              workspaceId={workspaceId}
+            />
+          ) : viewMode === 'history' && task.project_id ? (
             <AllHistoryContent
               projectId={task.project_id}
               workspaceId={workspaceId}

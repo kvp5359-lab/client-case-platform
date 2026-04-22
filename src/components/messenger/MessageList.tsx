@@ -1,5 +1,4 @@
 import { useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
 import { MessageBubble } from './MessageBubble'
@@ -160,9 +159,7 @@ export function MessageList({
   const preLoadScrollHeightRef = useRef<number | null>(null)
 
   const getViewport = useCallback((): HTMLElement | null => {
-    return (
-      scrollAreaRef.current?.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]') ?? null
-    )
+    return scrollAreaRef.current
   }, [])
 
   const scrollToBottom = useCallback(
@@ -326,7 +323,7 @@ export function MessageList({
   }
 
   return (
-    <ScrollArea className="flex-1 messenger-scroll-area relative" ref={scrollAreaRef}>
+    <div className="flex-1 messenger-scroll-area relative overflow-y-auto" ref={scrollAreaRef}>
       {/* Loader подгрузки — абсолютное позиционирование, чтобы не влиять на scrollHeight */}
       {isFetchingOlder && (
         <div className="absolute top-2 left-0 right-0 z-10 flex justify-center pointer-events-none">
@@ -335,15 +332,7 @@ export function MessageList({
           </div>
         </div>
       )}
-      {/* overflow-anchor:none — отключаем браузерный scroll-anchoring, чтобы
-          не конкурировал с ручной компенсацией scrollTop при подгрузке старых
-          сообщений. Без этого при прокрутке вверх браузер и наш код одновременно
-          двигают viewport, отсюда мелкое дёрганье на тачпаде. */}
-      <div
-        className="p-4 pb-8 space-y-2"
-        style={{ overflowAnchor: 'none' }}
-        onCopy={handleCopy}
-      >
+      <div className="p-4 pb-8 space-y-2" onCopy={handleCopy}>
         {/* Sentinel для подгрузки старых */}
         <div ref={sentinelRef} className="h-1" />
 
@@ -390,22 +379,7 @@ export function MessageList({
             !prevMsg || !isSameSender || !isSameDay(msg.created_at, prevMsg.created_at)
 
           return (
-            <div
-              key={msg.id}
-              // contentVisibility оптимизирует отрисовку offscreen-сообщений, но
-              // c маленьким containIntrinsicSize браузер пересчитывает макет
-              // при входе бабла в вьюпорт — отсюда дёрганье при скролле.
-              // Включаем только на очень больших списках (>300) и держим резерв
-              // 200px — ближе к медианной высоте бабла.
-              style={
-                messages.length > 300 && i >= 40 && i < messages.length - 40
-                  ? {
-                      contentVisibility: 'auto',
-                      containIntrinsicSize: 'auto 200px',
-                    }
-                  : undefined
-              }
-            >
+            <div key={msg.id}>
               {showDate && <DateSeparator date={msg.created_at} />}
               {showUnreadSeparator && <UnreadSeparator />}
               {msg.source === 'telegram_service' || msg.source === 'bot_event' ? (
@@ -429,6 +403,6 @@ export function MessageList({
 
         <div ref={bottomRef} />
       </div>
-    </ScrollArea>
+    </div>
   )
 }

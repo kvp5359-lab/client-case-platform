@@ -19,6 +19,14 @@ reproduced: yes
 2. Прокрутить до верха/низа ленты двумя пальцами на тачпаде MacBook.
 3. Наблюдать периодические микро-рывки вьюпорта.
 
+## Фикс 2026-04-22 (ждём подтверждения пользователем)
+
+После ресёрча (радар: множество открытых issue в radix-ui/primitives о jitter на trackpad macOS, issue [#2064](https://github.com/radix-ui/primitives/issues/2064), [#896](https://github.com/radix-ui/primitives/issues/896), [#2493](https://github.com/radix-ui/primitives/issues/2493), [radix-ui/themes#741](https://github.com/radix-ui/themes/issues/741)) применены три фикса:
+
+1. **Radix `ScrollArea` заменён на нативный `<div className="overflow-y-auto">`** в `MessageList.tsx`. Главный источник jitter: Radix рендерит кастомный scrollbar и синхронизирует его позицию через ResizeObserver + rAF на каждом wheel-событии — на трекпаде (60–120 событий/сек) это даёт микродёрганье.
+2. **`overflow-anchor: none` убран** в `MessageList.tsx` и `AllHistoryContent.tsx`. Раньше ставили, чтобы браузерный scroll-anchoring не конкурировал с ручной компенсацией `scrollTop`, но на деле anchoring как раз держит позицию при вставке DOM — выключив его, мы _усиливали_ прыжки. `auto` (дефолт) корректен.
+3. **`contentVisibility: auto` на сообщениях удалён.** Известный эффект «dancing scrollbar» ([infrequently.org](https://infrequently.org/2020/12/content-visibility-scroll-fix/)): когда элемент уходит из вьюпорта, высота схлопывается к `contain-intrinsic-size`; если реальная высота отличается — скроллбар прыгает. В паре с Radix усиливало эффект.
+
 ## Уже пробовали (не помогло полностью)
 
 1. **Автоскролл TimelineFeed переделан на one-shot** — раньше в течение 3 секунд после монтирования `bottomRef.scrollIntoView()` вызывался при каждом изменении длины ленты. Теперь — один раз, плюс блокируется при первом `wheel`/`touchmove`. Улучшило поведение при начальной загрузке, но основной jitter остался.

@@ -33,7 +33,7 @@ const ExtraPanelContent = lazy(() =>
   })),
 )
 
-const PANEL_DEFAULT_WIDTH = '45%'
+const PANEL_DEFAULT_WIDTH = '50%'
 
 /**
  * Контекст «shell уже выше по дереву». Устанавливается в Next.js layout —

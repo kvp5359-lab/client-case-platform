@@ -66,7 +66,7 @@ export function AllHistoryContent({
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <div className="flex-1 overflow-y-auto" style={{ overflowAnchor: 'none' }}>
+      <div className="flex-1 overflow-y-auto">
         {hasNextPage && (
           <div className="flex justify-center py-3 border-b">
             <Button

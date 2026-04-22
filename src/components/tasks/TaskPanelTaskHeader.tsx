@@ -8,7 +8,7 @@
 import { useState, useRef, useEffect, createElement } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Check, Settings, ExternalLink, X, Mail, ArrowLeft, ListTree, History,
+  Check, Settings, ExternalLink, X, Mail, ArrowLeft, ListTree, History, FolderOpen,
 } from 'lucide-react'
 import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
@@ -42,9 +42,11 @@ interface TaskPanelTaskHeaderProps {
   onTitleOffsetChange: (offset: number) => void
   titleOffset: number
   /** Текущий режим контента панели: тред или «Вся история» проекта */
-  viewMode?: 'thread' | 'history'
+  viewMode?: 'thread' | 'history' | 'documents'
   /** Переключатель «История» — undefined прячет кнопку (например, у треда без проекта) */
   onToggleHistory?: () => void
+  /** Переключатель «Документы» — undefined прячет кнопку (у треда без проекта) */
+  onToggleDocuments?: () => void
 }
 
 export function TaskPanelTaskHeader({
@@ -69,6 +71,7 @@ export function TaskPanelTaskHeader({
   titleOffset,
   viewMode = 'thread',
   onToggleHistory,
+  onToggleDocuments,
 }: TaskPanelTaskHeaderProps) {
   const router = useRouter()
   const isTask = task.type === 'task'
@@ -127,7 +130,27 @@ export function TaskPanelTaskHeader({
     <div className="border-b shrink-0 min-h-[48px] flex flex-col justify-center py-2">
       {/* Строка 1: статус/иконка + название + действия */}
       <div ref={headerRowRef} className="flex items-center gap-2 px-4">
-        {canGoBack && onBack && (
+        {viewMode === 'history' && onToggleHistory ? (
+          <button
+            type="button"
+            onClick={onToggleHistory}
+            className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            title="Назад к треду"
+            aria-label="Назад к треду"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+        ) : viewMode === 'documents' && onToggleDocuments ? (
+          <button
+            type="button"
+            onClick={onToggleDocuments}
+            className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            title="Назад к треду"
+            aria-label="Назад к треду"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+        ) : canGoBack && onBack ? (
           <button
             type="button"
             onClick={onBack}
@@ -137,11 +160,15 @@ export function TaskPanelTaskHeader({
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-        )}
+        ) : null}
 
         {viewMode === 'history' ? (
           <span className="shrink-0 flex items-center justify-center w-6 h-6 text-muted-foreground">
             <History className="w-4 h-4" />
+          </span>
+        ) : viewMode === 'documents' ? (
+          <span className="shrink-0 flex items-center justify-center w-6 h-6 text-muted-foreground">
+            <FolderOpen className="w-4 h-4" />
           </span>
         ) : isTask ? (
           <StatusDropdown
@@ -165,6 +192,13 @@ export function TaskPanelTaskHeader({
             className="text-sm font-semibold leading-tight truncate min-w-0"
           >
             История
+          </h2>
+        ) : viewMode === 'documents' ? (
+          <h2
+            ref={titleRef}
+            className="text-sm font-semibold leading-tight truncate min-w-0"
+          >
+            Документы
           </h2>
         ) : editingName ? (
           <form
@@ -283,7 +317,7 @@ export function TaskPanelTaskHeader({
               className={cn(
                 'shrink-0 inline-flex items-center gap-1 px-1.5 py-[3px] rounded text-xs font-medium transition-colors',
                 viewMode === 'history'
-                  ? 'bg-primary/10 text-primary'
+                  ? 'bg-amber-50 text-amber-700'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
               )}
               title={viewMode === 'history' ? 'Вернуться к треду' : 'Вся история проекта'}
@@ -291,6 +325,24 @@ export function TaskPanelTaskHeader({
             >
               <History className="w-3 h-3" />
               <span>История</span>
+            </button>
+          )}
+
+          {onToggleDocuments && (
+            <button
+              type="button"
+              onClick={onToggleDocuments}
+              className={cn(
+                'shrink-0 inline-flex items-center gap-1 px-1.5 py-[3px] rounded text-xs font-medium transition-colors',
+                viewMode === 'documents'
+                  ? 'bg-amber-50 text-amber-700'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              )}
+              title={viewMode === 'documents' ? 'Вернуться к треду' : 'Документы проекта'}
+              aria-pressed={viewMode === 'documents'}
+            >
+              <FolderOpen className="w-3 h-3" />
+              <span>Документы</span>
             </button>
           )}
 

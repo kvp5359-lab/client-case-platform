@@ -108,25 +108,22 @@ export function TimelineFeed({
     return set
   }, [merged])
   const bottomRef = useRef<HTMLDivElement>(null)
-  const initialLoadDone = useRef(false)
+  const userInteracted = useRef(false)
 
-  // Автоскролл вниз — только один раз после первой загрузки данных,
-  // после этого любой user-scroll/добавление новых сообщений не должны
-  // дёргать вьюпорт (раньше скролл повторялся при каждом изменении длины
-  // в течение 3 секунд — отсюда дёрганье на тачпаде, когда приходили
-  // асинхронные чанки timeline-сообщений).
+  // Автоскролл вниз — держим на последних сообщениях, пока пользователь не
+  // проскроллит сам. Данные приходят двумя батчами (аудит → сообщения), поэтому
+  // одного скролла недостаточно — после прихода второго батча длина ленты
+  // растёт, и без повторного scrollIntoView вьюпорт остаётся посередине.
   useEffect(() => {
-    if (initialLoadDone.current) return
+    if (userInteracted.current) return
     if (merged.length === 0) return
-    initialLoadDone.current = true
     requestAnimationFrame(() => bottomRef.current?.scrollIntoView())
   }, [merged.length])
 
-  // Любое действие пользователя (скролл/клик/колёсико) блокирует автоскролл,
-  // даже если он ещё не успел сработать.
+  // Любое действие пользователя (скролл/колёсико/тач) блокирует автоскролл.
   useEffect(() => {
     const lock = () => {
-      initialLoadDone.current = true
+      userInteracted.current = true
     }
     window.addEventListener('wheel', lock, { passive: true, once: true })
     window.addEventListener('touchmove', lock, { passive: true, once: true })
