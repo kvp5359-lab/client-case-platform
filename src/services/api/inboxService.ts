@@ -36,6 +36,10 @@ export interface InboxThreadEntry {
   legacy_channel: string | null
   last_message_at: string | null
   last_message_text: string | null
+  /** Имя первого вложения последнего сообщения — показываем в превью, если у сообщения нет текста. */
+  last_message_attachment_name: string | null
+  /** Количество вложений в последнем сообщении. 0 — вложений нет. */
+  last_message_attachment_count: number
   last_sender_name: string | null
   last_sender_avatar_url: string | null
   unread_count: number

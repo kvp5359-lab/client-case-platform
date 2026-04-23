@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import Image from 'next/image'
-import { MessageSquare, Send, Mail, EyeOff, CheckCheck } from 'lucide-react'
+import { MessageSquare, Send, Mail, EyeOff, CheckCheck, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { stripHtml, stripHtmlIgnoreQuotes } from '@/utils/format/messengerHtml'
 import type { InboxThreadEntry, InboxChannelType } from '@/services/api/inboxService'
@@ -29,6 +29,20 @@ function formatTime(isoString: string | null): string {
 function truncateText(text: string | null, maxLen = 50): string {
   if (!text) return ''
   return text.length > maxLen ? text.slice(0, maxLen) + '…' : text
+}
+
+/**
+ * Telegram-бот сохраняет в `content` эмодзи-плейсхолдеры («📎», «🖼», «🎤»…)
+ * для сообщений без текста но с вложением. В превью такое имя файла полезнее
+ * самой эмодзи: `📎` превращается в `Brief_Bogdanov.docx`.
+ */
+function isAttachmentPlaceholderText(text: string): boolean {
+  const trimmed = text.trim()
+  if (trimmed.length === 0) return true
+  // 1–2 юникод-code-unit'а, не содержащие ни букв, ни цифр, ни типичной пунктуации
+  // = эмодзи-плейсхолдер. Нормальные подписи длиннее или содержат буквы.
+  if (trimmed.length > 4) return false
+  return !/[\p{L}\p{N}]/u.test(trimmed)
 }
 
 /** Цвета фона и текста иконки по accent_color чата */
@@ -239,12 +253,32 @@ export const InboxChatItem = memo(function InboxChatItem({
               ) : (
                 <span className="text-amber-600 italic">{chat.last_event_text}</span>
               )
-            ) : chat.last_message_text ? (
+            ) : chat.last_message_text &&
+              !(
+                chat.last_message_attachment_name &&
+                isAttachmentPlaceholderText(stripHtmlIgnoreQuotes(chat.last_message_text))
+              ) ? (
               <>
                 {chat.last_sender_name && (
                   <span className="font-semibold text-gray-900">{chat.last_sender_name}: </span>
                 )}
                 {truncateText(stripHtmlIgnoreQuotes(chat.last_message_text))}
+              </>
+            ) : chat.last_message_attachment_name ? (
+              <>
+                {chat.last_sender_name && (
+                  <span className="font-semibold text-gray-900">{chat.last_sender_name}: </span>
+                )}
+                <span className="inline-flex items-center gap-1 align-middle">
+                  <Paperclip className="h-3 w-3 shrink-0" />
+                  {truncateText(chat.last_message_attachment_name, 36)}
+                  {chat.last_message_attachment_count > 1 && (
+                    <span className="text-gray-400">
+                      {' +'}
+                      {chat.last_message_attachment_count - 1}
+                    </span>
+                  )}
+                </span>
               </>
             ) : (
               <span className="text-gray-400">Нет сообщений</span>
