@@ -236,7 +236,7 @@ export function TimelineFeed({
           </div>
         </div>
       ))}
-      <div ref={bottomRef} />
+      <div ref={bottomRef} className="h-4" />
     </div>
   )
 }

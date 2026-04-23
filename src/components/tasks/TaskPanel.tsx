@@ -14,6 +14,7 @@
 
 import { useState, useCallback, useEffect, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
+import { ArrowLeft } from 'lucide-react'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 import { AllHistoryContent } from '@/components/history/AllHistoryContent'
 import { PanelDocumentsContent } from '@/components/documents/PanelDocumentsContent'
@@ -23,6 +24,8 @@ import { useProjectThreadById, useProjectThreads } from '@/hooks/messenger/usePr
 import { useAuth } from '@/contexts/AuthContext'
 import { useQuery } from '@tanstack/react-query'
 import { getCurrentProjectParticipant } from '@/services/api/messenger/messengerService'
+import { messengerKeys } from '@/hooks/queryKeys'
+import { useSidePanelStore } from '@/store/sidePanelStore'
 import { TaskPanelProjectView } from './TaskPanelProjectView'
 import { TaskPanelTaskHeader } from './TaskPanelTaskHeader'
 import type { StatusOption } from '@/components/ui/status-dropdown'
@@ -93,7 +96,6 @@ export function TaskPanel({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
   const toolbarRef = useCallback((node: HTMLDivElement | null) => setToolbarContainer(node), [])
-  const [titleOffset, setTitleOffset] = useState(0)
   const [viewMode, setViewMode] = useState<'thread' | 'history' | 'documents'>('thread')
   const { user } = useAuth()
 
@@ -111,12 +113,41 @@ export function TaskPanel({
   // Треды проекта — нужны для «Всей истории» (рендер и переход по клику на чат)
   const { data: projectThreads = [] } = useProjectThreads(task?.project_id ?? undefined)
 
+  // Пересылка сообщения в другой чат из TaskPanel: подхватываем pendingForwardMessage
+  // и пушим целевой тред поверх стека. Сам pendingForwardMessage не трогаем — его
+  // сконсумирует useMessengerState целевого треда (вставит цитату/вложения).
+  const pendingForwardMessage = useSidePanelStore((s) => s.pendingForwardMessage)
+  useEffect(() => {
+    if (!open) return
+    if (!pendingForwardMessage) return
+    if (!onOpenThreadInStack) return
+    const targetId = pendingForwardMessage.targetChatId
+    // Если уже в целевом треде — ничего не делаем, цитата вставится сама.
+    if (task?.id === targetId) return
+    const t = projectThreads.find((x) => x.id === targetId)
+    if (!t) return
+    onOpenThreadInStack({
+      id: t.id,
+      name: t.name,
+      type: t.type,
+      project_id: t.project_id,
+      workspace_id: t.workspace_id,
+      status_id: t.status_id,
+      deadline: t.deadline,
+      accent_color: t.accent_color,
+      icon: t.icon,
+      is_pinned: t.is_pinned,
+      created_at: t.created_at,
+      sort_order: t.sort_order,
+    })
+  }, [pendingForwardMessage, open, task?.id, projectThreads, onOpenThreadInStack])
+
   // Карта last_read_at по тредам проекта — для красной рамки «непрочитано»
   // в бабблах «Всей истории». Загружаем только когда включён режим истории,
   // чтобы не делать лишних запросов при обычном просмотре треда.
   const historyActive = viewMode === 'history' && !!task?.project_id
   const { data: threadLastReadAt } = useQuery({
-    queryKey: ['threadLastReadAt', task?.project_id, user?.id],
+    queryKey: messengerKeys.lastReadAtByProject(task?.project_id ?? '', user?.id ?? ''),
     enabled: historyActive && !!user?.id && !!task?.project_id,
     queryFn: async () => {
       if (!task?.project_id || !user?.id) return new Map<string, string>()
@@ -249,6 +280,16 @@ export function TaskPanel({
   // ── Режим 1: тред ──
   if (!task || !liveTask) return null
 
+  // Единая точка «шаг назад»: из history/documents — обратно к треду, иначе — по стеку.
+  const backAction =
+    viewMode === 'history'
+      ? () => setViewMode('thread')
+      : viewMode === 'documents'
+        ? () => setViewMode('thread')
+        : canGoBack
+          ? onBack
+          : undefined
+
   const panel = (
     <>
       <div
@@ -258,6 +299,21 @@ export function TaskPanel({
           visible ? 'translate-x-0' : 'translate-x-full',
         )}
       >
+        {/* Плавающая круглая кнопка «Назад» — сидит на левой границе панели,
+            не смещает содержимое шапки. Появляется и в стек-навигации
+            (canGoBack), и при переключении viewMode на history/documents. */}
+        {backAction && (
+          <button
+            type="button"
+            onClick={backAction}
+            className="absolute left-0 top-1 -translate-x-[60%] z-20 flex items-center justify-center w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm text-muted-foreground hover:text-foreground hover:bg-gray-50 transition-colors"
+            title={viewMode === 'thread' ? 'Назад' : 'Назад к треду'}
+            aria-label="Назад"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+        )}
+
         <TaskPanelTaskHeader
           task={liveTask}
           workspaceId={workspaceId}
@@ -270,14 +326,10 @@ export function TaskPanel({
           onRename={onRename}
           onSettingsOpen={() => setSettingsOpen(true)}
           onClose={onClose}
-          onBack={onBack}
-          canGoBack={canGoBack}
           onProjectClick={onProjectClick}
           onOpenProjectInStack={onOpenProjectInStack}
           resolvedProjectName={resolvedProjectName}
           toolbarRef={toolbarRef}
-          onTitleOffsetChange={setTitleOffset}
-          titleOffset={titleOffset}
           viewMode={viewMode}
           onToggleHistory={
             task.project_id

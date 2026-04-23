@@ -113,6 +113,14 @@ export function useMarkAsRead(
     onSuccess: () => {
       queryClient.setQueryData(unreadKey, 0)
       queryClient.invalidateQueries({ queryKey: lastReadKey })
+      // Агрегированная карта last_read_at в «Всей истории» TaskPanel — тоже надо
+      // пересчитать, иначе бабл останется с красной рамкой «непрочитано», пока
+      // пользователь не обновит страницу.
+      if (projectId) {
+        queryClient.invalidateQueries({
+          queryKey: ['messenger', 'last-read-at', 'project', projectId],
+        })
+      }
       if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
       if (projectId) dismissProjectToasts(projectId)
     },
@@ -147,6 +155,11 @@ export function useMarkAsUnread(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: unreadKey })
       queryClient.invalidateQueries({ queryKey: lastReadKey })
+      if (projectId) {
+        queryClient.invalidateQueries({
+          queryKey: ['messenger', 'last-read-at', 'project', projectId],
+        })
+      }
       if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
     },
   })

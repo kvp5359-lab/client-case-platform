@@ -232,6 +232,9 @@ export const messengerKeys = {
     ['messenger', 'telegram-link', 'chat', threadId] as const,
   lastReadAtByThreadId: (threadId: string) =>
     ['messenger', 'last-read-at', 'chat', threadId] as const,
+  /** Агрегированная карта last_read_at по всем тредам проекта — для «Всей истории» в TaskPanel. */
+  lastReadAtByProject: (projectId: string, userId: string) =>
+    ['messenger', 'last-read-at', 'project', projectId, userId] as const,
   searchByThreadId: (threadId: string, query: string) =>
     ['messenger', 'search', 'chat', threadId, query] as const,
   projectThreads: (projectId: string) => ['messenger', 'project-chats', projectId] as const,

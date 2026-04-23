@@ -57,24 +57,28 @@ export function TaskPanelProjectView({
           visible ? 'translate-x-0' : 'translate-x-full',
         )}
       >
-        {/* Шапка проекта */}
-        <div className="border-b shrink-0 flex flex-col py-2 gap-0.5">
-          <div className="flex items-center gap-2 px-4 min-h-[32px]">
-            {canGoBack && onBack && (
-              <button
-                type="button"
-                onClick={onBack}
-                className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                title="Назад"
-                aria-label="Назад"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </button>
-            )}
+        {/* Плавающая круглая кнопка «Назад» на левой границе панели — не смещает шапку. */}
+        {canGoBack && onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="absolute left-0 top-1 -translate-x-[60%] z-20 flex items-center justify-center w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm text-muted-foreground hover:text-foreground hover:bg-gray-50 transition-colors"
+            title="Назад"
+            aria-label="Назад"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+        )}
 
-            <FolderOpen className="w-4 h-4 shrink-0 text-muted-foreground" />
+        {/* Шапка проекта — та же геометрия, что у шапки треда: h-[66px], жёсткие
+            высоты строк (36 + 26 + 4 pt), иконка w-6 h-6, заголовок text-sm. */}
+        <div className="border-b shrink-0 h-[66px] flex flex-col">
+          <div className="flex items-center gap-2 px-4 h-9 shrink-0">
+            <span className="shrink-0 flex items-center justify-center w-6 h-6 text-muted-foreground">
+              <FolderOpen className="w-4 h-4" />
+            </span>
 
-            <h2 className="text-base font-semibold leading-tight truncate min-w-0 flex-1">
+            <h2 className="text-sm font-semibold leading-tight truncate min-w-0 flex-1">
               {project.name}
             </h2>
 
@@ -103,13 +107,11 @@ export function TaskPanelProjectView({
             </button>
           </div>
 
-          {(project.created_at || project.description) && (
-            <div
-              className={cn(
-                'flex items-center gap-2 pr-4 text-xs text-muted-foreground/70 min-w-0',
-                canGoBack ? 'pl-[72px]' : 'pl-[44px]',
-              )}
-            >
+          <div
+            className={cn(
+              'flex items-center gap-2 pr-4 pl-[48px] h-[26px] shrink-0 text-xs text-muted-foreground/70 min-w-0',
+            )}
+          >
               {project.created_at && (
                 <span className="shrink-0">
                   Создан {formatSmartDate(project.created_at)}
@@ -123,8 +125,7 @@ export function TaskPanelProjectView({
                   {project.description}
                 </span>
               )}
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Тело: список задач проекта */}

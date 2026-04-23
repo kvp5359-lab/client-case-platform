@@ -130,7 +130,7 @@ export function MessageInput({
     }
   }, [replyTo])
 
-  useQuoteInsertion(editorRef, quoteText, onClearQuote)
+  useQuoteInsertion(editor, quoteText, onClearQuote)
 
   // Load content for editing
   useEffect(() => {
