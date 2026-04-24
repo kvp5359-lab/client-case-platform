@@ -222,8 +222,11 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
         .filter((c) => {
           if (c.is_pinned) return true
           if (unreadThreadIds.has(c.id)) return true
-          if (c.type === 'task' && c.status_id && finalStatusIds.has(c.status_id)) return false
+          // Sticky проверяется ДО финального статуса: задача, открытая с непрочитанными
+          // в этой сессии, не должна пропадать после «Прочитано» даже если статус стал
+          // финальным (напр. «Выполнена»). Она уйдёт при перезагрузке или навигации.
           if (c.type === 'task' && stickyTaskIds.has(c.id)) return true
+          if (c.type === 'task' && c.status_id && finalStatusIds.has(c.status_id)) return false
           if (c.type === 'task' && !unreadThreadIds.has(c.id)) return false
           return true
         })
