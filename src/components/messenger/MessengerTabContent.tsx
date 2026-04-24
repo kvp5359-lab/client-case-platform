@@ -48,6 +48,7 @@ export function MessengerTabContent({
   const [telegramDialogOpen, setTelegramDialogOpen] = useState(false)
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [jumpToMessageId, setJumpToMessageId] = useState<string | null>(null)
   const { data: allThreads = [] } = useProjectThreads(projectId)
   const currentThread = allThreads.find((t) => t.id === threadId)
 
@@ -94,6 +95,15 @@ export function MessengerTabContent({
   const handleDelete = useCallback(
     (messageId: string) => state.deleteMessageMutation.mutate(messageId),
     [state.deleteMessageMutation],
+  )
+
+  const handleJumpToMessage = useCallback(
+    (messageId: string) => {
+      state.setSearchQuery('')
+      setSearchOpen(false)
+      setJumpToMessageId(messageId)
+    },
+    [state],
   )
 
   const displayMessages = useOptimisticEmail({
@@ -161,6 +171,8 @@ export function MessengerTabContent({
         isDelayedPending={state.isDelayedPending}
         getDelayedExpiresAt={state.getExpiresAt}
         onCancelDelayed={handlers.handleCancelDelayed}
+        isSearchActive={state.isSearchActive}
+        onJumpToMessage={handleJumpToMessage}
       >
       <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
         {state.isEmailChat && (
@@ -180,6 +192,8 @@ export function MessengerTabContent({
           onFetchOlder={state.fetchOlderMessages}
           scrollToBottomTrigger={state.sendTrigger}
           auditEvents={state.auditEvents}
+          jumpToMessageId={jumpToMessageId}
+          onJumpComplete={() => setJumpToMessageId(null)}
         />
 
         {/* Кнопка Прочитано/Непрочитано — наезжает на список через negative margin */}

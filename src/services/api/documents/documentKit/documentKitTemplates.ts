@@ -98,6 +98,7 @@ async function buildSlotsFromKitTemplate(
     workspace_id: string
     name: string
     description: string | null
+    knowledge_article_id: string | null
     sort_order: number
   }[] = []
 
@@ -111,6 +112,7 @@ async function buildSlotsFromKitTemplate(
         workspace_id: workspaceId,
         name: slot.name,
         description: slot.description ?? null,
+        knowledge_article_id: slot.knowledge_article_id ?? null,
         sort_order: slot.sort_order,
       })
     }

@@ -190,6 +190,8 @@ export function useFolderOperations(
                   workspace_id: workspaceId,
                   folder_template_slot_id: slot.id,
                   name: slot.name,
+                  description: slot.description ?? null,
+                  knowledge_article_id: slot.knowledge_article_id ?? null,
                   sort_order: slot.sort_order,
                 })
               }

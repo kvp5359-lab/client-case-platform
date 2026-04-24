@@ -305,6 +305,13 @@ export default function ProjectPage() {
       <ErrorBoundary title="Ошибка в проекте">
         <div
           data-project-scroll
+          onScroll={(e) => {
+            // Гарантия: левая граница контента проекта никогда не уходит под сайдбар.
+            // overflow-x:hidden не блокирует программный scrollLeft (его может выставить
+            // scrollIntoView / useScrollIntoViewOnPanel при смене вкладок с открытой
+            // боковой панелью) — сбрасываем вручную.
+            if (e.currentTarget.scrollLeft !== 0) e.currentTarget.scrollLeft = 0
+          }}
           className={cn(
             'flex-1 overflow-y-auto overflow-x-hidden scrollbar-auto-hide p-3 relative',
             'md:pt-4 md:pb-8 md:pl-8',

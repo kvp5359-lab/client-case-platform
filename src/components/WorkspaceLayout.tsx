@@ -247,7 +247,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
       <div id="workspace-panel-root" className="flex-1 flex min-w-0 relative overflow-hidden">
         {/* Main content */}
         <main
-          className="flex-1 overflow-auto"
+          className="flex-1 overflow-y-auto overflow-x-hidden"
           style={panelOpen ? { marginRight: PANEL_DEFAULT_WIDTH } : undefined}
         >
           {children}

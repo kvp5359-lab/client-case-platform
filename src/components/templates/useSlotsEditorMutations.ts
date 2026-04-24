@@ -12,7 +12,14 @@ export interface Slot {
   id: string
   name: string
   description: string | null
+  knowledge_article_id: string | null
   sort_order: number
+}
+
+export interface CreateSlotInput {
+  name: string
+  description?: string | null
+  knowledge_article_id?: string | null
 }
 
 export interface SlotTableConfig {
@@ -31,13 +38,16 @@ export function useSlotsEditorMutations(config: SlotTableConfig, slots: Slot[]) 
   }
 
   const createMutation = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (input: string | CreateSlotInput) => {
       const maxOrder = slots.length > 0 ? Math.max(...slots.map((s) => s.sort_order || 0)) : -1
+      const data = typeof input === 'string' ? { name: input } : input
 
       const { error } = await supabase.from(config.table).insert({
         [config.foreignKey]: config.foreignKeyValue,
         ...config.extraInsertFields,
-        name,
+        name: data.name,
+        description: data.description ?? null,
+        knowledge_article_id: data.knowledge_article_id ?? null,
         sort_order: maxOrder + 1,
       } as never)
 

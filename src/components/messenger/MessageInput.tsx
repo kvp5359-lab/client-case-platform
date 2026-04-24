@@ -175,7 +175,11 @@ export function MessageInput({
       return
     }
 
-    if ((!textContent && files.length === 0) || isPending) return
+    if (isPending) return
+
+    const hasMessageContent = !!textContent || files.length > 0
+    const hasPendingStatus = !!(isTaskThread && threadId && effectivePendingStatusId)
+    if (!hasMessageContent && !hasPendingStatus) return
 
     const sendMessage = () => {
       onSend(textContent ? htmlContent : '📎', replyTo?.id, files.length > 0 ? files : undefined)
@@ -186,15 +190,15 @@ export function MessageInput({
       onClearReply()
     }
 
-    // Если в пикере выбран новый статус — сначала меняем его, потом отправляем сообщение.
-    // При ошибке смены статуса сообщение не отправляем, чтобы не было расхождения.
-    if (isTaskThread && threadId && effectivePendingStatusId) {
+    // Если в пикере выбран новый статус — сначала меняем его, потом (только если
+    // есть текст/файлы) отправляем сообщение. При пустом поле просто смена статуса.
+    if (hasPendingStatus) {
       updateStatusMutation.mutate(
-        { threadId, statusId: effectivePendingStatusId },
+        { threadId: threadId!, statusId: effectivePendingStatusId! },
         {
           onSuccess: () => {
             clearPending()
-            sendMessage()
+            if (hasMessageContent) sendMessage()
           },
         },
       )
@@ -264,7 +268,10 @@ export function MessageInput({
 
   const totalFiles = files.length + existingAttachments.length + forwardedAttachments.length
   const hasAnyFiles = totalFiles > 0
-  const hasContent = hasText || hasAnyFiles
+  // В задачах кнопка отправки активна даже без текста/файлов, если в пикере
+  // статуса выбран новый статус — тогда отправка просто применит его.
+  const hasPendingStatus = !!(isTaskThread && effectivePendingStatusId)
+  const hasContent = hasText || hasAnyFiles || hasPendingStatus
 
   return (
     <div

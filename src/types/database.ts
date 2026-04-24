@@ -1260,6 +1260,7 @@ export type Database = {
           description: string | null
           id: string
           kit_folder_id: string
+          knowledge_article_id: string | null
           name: string
           sort_order: number
         }
@@ -1268,6 +1269,7 @@ export type Database = {
           description?: string | null
           id?: string
           kit_folder_id: string
+          knowledge_article_id?: string | null
           name: string
           sort_order?: number
         }
@@ -1276,6 +1278,7 @@ export type Database = {
           description?: string | null
           id?: string
           kit_folder_id?: string
+          knowledge_article_id?: string | null
           name?: string
           sort_order?: number
         }
@@ -1875,6 +1878,7 @@ export type Database = {
           folder_id: string
           folder_template_slot_id: string | null
           id: string
+          knowledge_article_id: string | null
           name: string
           project_id: string
           sort_order: number | null
@@ -1891,6 +1895,7 @@ export type Database = {
           folder_id: string
           folder_template_slot_id?: string | null
           id?: string
+          knowledge_article_id?: string | null
           name: string
           project_id: string
           sort_order?: number | null
@@ -1907,6 +1912,7 @@ export type Database = {
           folder_id?: string
           folder_template_slot_id?: string | null
           id?: string
+          knowledge_article_id?: string | null
           name?: string
           project_id?: string
           sort_order?: number | null
@@ -1972,6 +1978,7 @@ export type Database = {
           description: string | null
           folder_template_id: string
           id: string
+          knowledge_article_id: string | null
           name: string
           sort_order: number | null
           updated_at: string
@@ -1982,6 +1989,7 @@ export type Database = {
           description?: string | null
           folder_template_id: string
           id?: string
+          knowledge_article_id?: string | null
           name: string
           sort_order?: number | null
           updated_at?: string
@@ -1992,6 +2000,7 @@ export type Database = {
           description?: string | null
           folder_template_id?: string
           id?: string
+          knowledge_article_id?: string | null
           name?: string
           sort_order?: number | null
           updated_at?: string
@@ -4708,6 +4717,54 @@ export type Database = {
           },
           {
             foreignKeyName: "services_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slot_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          knowledge_article_id: string | null
+          name: string
+          sort_order: number | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          knowledge_article_id?: string | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          knowledge_article_id?: string | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slot_templates_knowledge_article_id_fkey"
+            columns: ["knowledge_article_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slot_templates_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"

@@ -83,6 +83,60 @@ export function linkifyText(text: string): string {
   })
 }
 
+/**
+ * Оборачивает URL в <a> внутри уже готового HTML-сообщения.
+ * Обходит только текстовые узлы, не трогает уже существующие <a> —
+ * безопасно для содержимого из Tiptap, где ссылки могут приходить без
+ * анкоров, но теги разметки оставлять нужно.
+ */
+export function linkifyHtml(html: string): string {
+  if (!html || typeof document === 'undefined') return html
+  const container = document.createElement('div')
+  container.innerHTML = html
+
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) =>
+      node.parentElement?.closest('a')
+        ? NodeFilter.FILTER_REJECT
+        : NodeFilter.FILTER_ACCEPT,
+  })
+
+  const textNodes: Text[] = []
+  let current: Node | null
+  while ((current = walker.nextNode())) textNodes.push(current as Text)
+
+  for (const text of textNodes) {
+    const parent = text.parentNode
+    if (!parent) continue
+    URL_REGEX.lastIndex = 0
+    if (!URL_REGEX.test(text.data)) continue
+    URL_REGEX.lastIndex = 0
+
+    const frag = document.createDocumentFragment()
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+    while ((match = URL_REGEX.exec(text.data))) {
+      const before = text.data.slice(lastIndex, match.index)
+      if (before) frag.appendChild(document.createTextNode(before))
+      const url = match[0]
+      const href = url.startsWith('www.') ? `https://${url}` : url
+      const a = document.createElement('a')
+      a.href = href
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+      a.textContent = url
+      frag.appendChild(a)
+      lastIndex = match.index + url.length
+    }
+    const tail = text.data.slice(lastIndex)
+    if (tail) frag.appendChild(document.createTextNode(tail))
+
+    parent.replaceChild(frag, text)
+  }
+
+  return container.innerHTML
+}
+
 /** Конвертирует plain text в простой HTML (для загрузки в Tiptap при редактировании старых сообщений) */
 export function plainTextToHtml(text: string): string {
   return text

@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, createElement } from 'react'
+import { memo, createElement, useState } from 'react'
 import { Check, CircleDashed } from 'lucide-react'
 import {
   Popover,
@@ -64,9 +64,14 @@ export const TaskStatusPicker = memo(function TaskStatusPicker({
     pendingStatusId !== null && pendingStatusId !== currentStatusId
 
   const label = displayed?.name ?? 'Выбрать статус'
+  const [open, setOpen] = useState(false)
+  const handlePick = (id: string | null) => {
+    onPick(id)
+    setOpen(false)
+  }
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild disabled={disabled}>
         <button
           type="button"
@@ -97,7 +102,7 @@ export const TaskStatusPicker = memo(function TaskStatusPicker({
           {currentStatusId !== null && (
             <button
               type="button"
-              onClick={() => onPick(currentStatusId)}
+              onClick={() => handlePick(currentStatusId)}
               className={cn(
                 'w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-sm text-muted-foreground',
                 'hover:bg-accent',
@@ -114,7 +119,7 @@ export const TaskStatusPicker = memo(function TaskStatusPicker({
               <button
                 key={s.id}
                 type="button"
-                onClick={() => onPick(s.id)}
+                onClick={() => handlePick(s.id)}
                 className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-sm hover:bg-accent"
               >
                 <StatusDot status={s} />

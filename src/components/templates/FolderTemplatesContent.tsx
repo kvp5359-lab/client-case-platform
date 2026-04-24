@@ -115,6 +115,8 @@ export function FolderTemplatesContent() {
             folder_template_id: newTemplate.id,
             workspace_id: workspaceId ?? '',
             name: slot.name,
+            description: slot.description ?? null,
+            knowledge_article_id: slot.knowledge_article_id ?? null,
             sort_order: slot.sort_order,
           }))
           const { error: slotsError } = await supabase

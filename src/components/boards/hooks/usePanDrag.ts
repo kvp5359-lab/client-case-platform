@@ -1,17 +1,27 @@
 "use client"
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 
 /**
  * Панорамирование доски: зажатие ЛКМ на пустом месте + тяга мышью скроллит
  * ближайший скроллируемый родитель по X/Y. Игнорируем нажатия на интерактивных
  * элементах (кнопки, ссылки, инпуты, карточки задач).
+ *
+ * Реализован через callback ref, а не useEffect — потому что BoardView имеет
+ * ранний return при пустом списке, и при первом монтировании ref.current был null.
+ * useEffect([]) с пустыми deps не перезапускался при появлении div'а, и pan-drag
+ * переставал работать. Callback ref срабатывает каждый раз при присваивании
+ * DOM-ноды, так что handlers подвешиваются в нужный момент.
  */
 export function usePanDrag<T extends HTMLElement>() {
-  const ref = useRef<T | null>(null)
+  const cleanupRef = useRef<(() => void) | null>(null)
 
-  useEffect(() => {
-    const el = ref.current
+  return useCallback((el: T | null) => {
+    // Отвязка предыдущих handlers — при размонтировании или смене ноды
+    if (cleanupRef.current) {
+      cleanupRef.current()
+      cleanupRef.current = null
+    }
     if (!el) return
 
     const scroller = findScrollableParent(el)
@@ -69,14 +79,12 @@ export function usePanDrag<T extends HTMLElement>() {
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('mouseup', onMouseUp)
 
-    return () => {
+    cleanupRef.current = () => {
       el.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mouseup', onMouseUp)
     }
   }, [])
-
-  return ref
 }
 
 function findScrollableParent(el: HTMLElement): HTMLElement | null {

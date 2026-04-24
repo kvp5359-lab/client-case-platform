@@ -31,6 +31,10 @@ export interface MessengerContextValue {
   isDelayedPending?: (messageId: string) => boolean
   getDelayedExpiresAt?: (messageId: string) => number | null
   onCancelDelayed?: (messageId: string) => void
+
+  // Search: jump to message from a search result
+  isSearchActive?: boolean
+  onJumpToMessage?: (messageId: string) => void
 }
 
 const MessengerContext = createContext<MessengerContextValue | null>(null)
@@ -72,8 +76,10 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       isDelayedPending: value.isDelayedPending,
       getDelayedExpiresAt: value.getDelayedExpiresAt,
       onCancelDelayed: value.onCancelDelayed,
+      isSearchActive: value.isSearchActive,
+      onJumpToMessage: value.onJumpToMessage,
     }),
-     
+
     [
       value.currentParticipantId,
       value.viewerRole,
@@ -97,6 +103,8 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       value.isDelayedPending,
       value.getDelayedExpiresAt,
       value.onCancelDelayed,
+      value.isSearchActive,
+      value.onJumpToMessage,
     ],
   )
 

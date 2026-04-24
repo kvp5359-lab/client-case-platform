@@ -16,6 +16,7 @@ import { FormTemplatesContent } from '@/components/templates/FormTemplatesConten
 import { FieldTemplatesContent } from '@/components/templates/FieldTemplatesContent'
 import { DocumentKitTemplatesContent } from '@/components/templates/DocumentKitTemplatesContent'
 import { FolderTemplatesContent } from '@/components/templates/FolderTemplatesContent'
+import { SlotTemplatesContent } from '@/components/templates/SlotTemplatesContent'
 import { DocumentTemplatesContent } from '@/components/templates/DocumentTemplatesContent'
 import { ThreadTemplatesContent } from '@/components/templates/ThreadTemplatesContent'
 
@@ -25,6 +26,7 @@ type TemplateSection =
   | 'field-templates' // field_definitions
   | 'document-kit-templates' // document_kit_templates
   | 'folder-templates' // folder_templates
+  | 'slot-templates' // slot_templates
   | 'document-templates' // document_templates
   | 'thread-templates' // thread_templates
 
@@ -42,6 +44,7 @@ export function TemplatesTab() {
       'field-templates',
       'document-kit-templates',
       'folder-templates',
+      'slot-templates',
       'document-templates',
       'thread-templates',
     ]
@@ -77,6 +80,11 @@ export function TemplatesTab() {
       id: 'folder-templates' as const,
       label: 'Шаблоны папок',
       dbTable: 'folder_templates',
+    },
+    {
+      id: 'slot-templates' as const,
+      label: 'Шаблоны слотов',
+      dbTable: 'slot_templates',
     },
     {
       id: 'document-templates' as const,
@@ -138,6 +146,7 @@ export function TemplatesTab() {
             <div className="space-y-0.5 pl-2">
               {renderMenuItem(menuItems[3])} {/* document_kit_templates */}
               {renderMenuItem(menuItems[4])} {/* folder_templates */}
+              {renderMenuItem(menuItems[5])} {/* slot_templates */}
             </div>
           </div>
 
@@ -158,7 +167,7 @@ export function TemplatesTab() {
               Генерация
             </p>
             <div className="space-y-0.5 pl-2">
-              {renderMenuItem(menuItems[5])} {/* document_templates */}
+              {renderMenuItem(menuItems[6])} {/* document_templates */}
             </div>
           </div>
         </nav>
@@ -171,6 +180,7 @@ export function TemplatesTab() {
         {activeSection === 'field-templates' && <FieldTemplatesContent />}
         {activeSection === 'document-kit-templates' && <DocumentKitTemplatesContent />}
         {activeSection === 'folder-templates' && <FolderTemplatesContent />}
+        {activeSection === 'slot-templates' && <SlotTemplatesContent />}
         {activeSection === 'document-templates' && <DocumentTemplatesContent />}
         {activeSection === 'thread-templates' && <ThreadTemplatesContent />}
       </div>

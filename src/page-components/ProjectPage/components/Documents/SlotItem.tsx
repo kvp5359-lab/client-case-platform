@@ -8,11 +8,10 @@
  */
 
 import { memo, useState, useCallback, useRef, useEffect } from 'react'
-import { FileUp, Pencil, Trash2, Loader2, HelpCircle } from 'lucide-react'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { FileUp, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { DocumentItem } from './DocumentItem'
+import { SlotHelpButton } from './SlotHelpButton'
 import { useDocumentsContext } from './DocumentsContext'
-import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 import type { FolderSlotWithDocument } from '@/components/documents/types'
 
 export interface SlotItemProps {
@@ -149,7 +148,13 @@ export const SlotItem = memo(function SlotItem({
             ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500'
             : 'border-brand-500 hover:border-brand-600 hover:bg-brand-50'
         }`}
-        onClick={() => !isEditing && onSlotClick(slot.id, slot.folder_id)}
+        onClick={(e) => {
+          // React-события из Portal (Dialog с требованиями) пропагируют
+          // через React-дерево, хотя в DOM рендерятся отдельно. Отсекаем —
+          // реагируем только на клики внутри самого слота в DOM.
+          if (!e.currentTarget.contains(e.target as Node)) return
+          if (!isEditing) onSlotClick(slot.id, slot.folder_id)
+        }}
         onKeyDown={(e) => {
           if ((e.key === 'Enter' || e.key === ' ') && !isEditing) {
             e.preventDefault()
@@ -193,27 +198,12 @@ export const SlotItem = memo(function SlotItem({
         )}
         {!isEditing && !isDragOver && (
           <div className="flex items-center gap-0.5 flex-shrink-0">
-            {slot.description && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="p-0.5 rounded text-brand-500 hover:text-brand-600 transition-colors"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <HelpCircle className="h-3 w-3" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  side="top"
-                  className="max-w-[320px] text-xs prose prose-sm prose-slate max-h-[200px] overflow-y-auto"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(slot.description) }} />
-                </PopoverContent>
-              </Popover>
-            )}
-            <div className="flex items-center gap-0.5 opacity-0 group-hover/slot:opacity-100 transition-opacity">
+            <SlotHelpButton
+              slotName={slot.name}
+              description={slot.description}
+              knowledgeArticleId={slot.knowledge_article_id}
+            />
+            <div className="hidden group-hover/slot:flex items-center gap-0.5">
               <button
                 type="button"
                 className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground/40 hover:text-muted-foreground transition-colors"

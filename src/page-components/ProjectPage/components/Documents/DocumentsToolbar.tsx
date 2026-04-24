@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { GenerateDocumentDialog } from '@/components/projects/GenerateDocumentDialog'
+import { useSidePanelStore } from '@/store/sidePanelStore'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import type { CompressAnalysisItem } from '@/components/documents/dialogs/CompressAnalysisDialog'
 
@@ -62,6 +63,9 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
   compressAnalysisItems,
   setCompressAnalysisOpen,
 }: DocumentsToolbarProps) {
+  // Когда открыта боковая панель — места мало, сокращаем подписи фильтра
+  const sidePanelOpen = useSidePanelStore((s) => s.panelTab !== null)
+
   return (
     <div className="flex items-center gap-2 h-9">
       {/* Кнопка загрузки документов */}
@@ -139,7 +143,7 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          Все документы
+          {sidePanelOpen ? 'Все' : 'Все документы'}
         </button>
         <button
           type="button"
@@ -150,8 +154,9 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
               ? 'bg-orange-50 text-orange-600 shadow-[0_1px_3px_rgba(0,0,0,0.2)] font-medium'
               : 'text-muted-foreground hover:text-foreground',
           )}
+          title={sidePanelOpen ? 'Требуется действие' : undefined}
         >
-          Требуется действие
+          {sidePanelOpen ? 'Действие' : 'Требуется действие'}
         </button>
       </div>
 

@@ -1,9 +1,13 @@
 import { ChevronDown, RefreshCw, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { isHtmlContent, sanitizeMessengerHtml, linkifyText } from '@/utils/format/messengerHtml'
+import {
+  isHtmlContent,
+  sanitizeMessengerHtml,
+  linkifyText,
+  linkifyHtml,
+} from '@/utils/format/messengerHtml'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import type { MessengerAccent } from './utils/messageStyles'
-import { bubbleStyles } from './utils/messageStyles'
 import type { DeliveryStatus } from './bubbleUtils'
 import { BubbleTimestamp } from './BubbleTimestamp'
 
@@ -38,21 +42,31 @@ export function BubbleTextContent({
   onPublishDraft,
   onRetrySend,
 }: BubbleTextContentProps) {
-  const colors = bubbleStyles[accent]
+  // Fade-out для свёрнутого текста через mask-image — работает поверх любого
+  // фона бабла (акцентный цвет / подсветка поиска / draft) без подстановки
+  // конкретных цветов. Нижние ~40px плавно уходят в прозрачность.
+  const collapsedStyle =
+    isOverflowing && isCollapsed
+      ? {
+          maxHeight: maxCollapsedHeight,
+          maskImage: 'linear-gradient(to bottom, black calc(100% - 40px), transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black calc(100% - 40px), transparent 100%)',
+        }
+      : undefined
 
   return (
     <div>
       <div
         ref={textRef}
         className={cn('relative', isOverflowing && isCollapsed && 'overflow-hidden')}
-        style={isOverflowing && isCollapsed ? { maxHeight: maxCollapsedHeight } : undefined}
+        style={collapsedStyle}
       >
         <div className={cn('flex items-end justify-between gap-2', hasAttachments && 'block')}>
           {isHtmlContent(message.content) ? (
             <div
               className="text-sm break-words min-w-0 messenger-content messenger-links"
               dangerouslySetInnerHTML={{
-                __html: sanitizeMessengerHtml(message.content),
+                __html: linkifyHtml(sanitizeMessengerHtml(message.content)),
               }}
             />
           ) : (
@@ -74,26 +88,9 @@ export function BubbleTextContent({
           )}
         </div>
 
-        {/* Gradient fade at collapsed bottom.
-            Цвет градиента должен совпадать с фоном бабла:
-            - draft → светло-белый
-            - own + tgFailed → нейтральный background (как сам бабл в ошибке)
-            - own → акцентный тёмный (fadeGradient)
-            - incoming → акцентный светлый (fadeGradientIncoming, под bg-{accent}-100/70) */}
-        {isOverflowing && isCollapsed && (
-          <div
-            className={cn(
-              'absolute bottom-0 left-0 right-0 h-12 pointer-events-none bg-gradient-to-t to-transparent',
-              message.is_draft
-                ? 'from-white/90'
-                : isOwn
-                  ? tgFailed
-                    ? 'from-background/90'
-                    : colors.fadeGradient
-                  : colors.fadeGradientIncoming,
-            )}
-          />
-        )}
+        {/* Fade-out реализован через mask-image на textRef — см. collapsedStyle.
+            Универсально работает поверх любого фона, не нуждается в подстановке
+            цветов акцента или highlight. */}
       </div>
 
       {isOverflowing && (
@@ -102,12 +99,12 @@ export function BubbleTextContent({
             type="button"
             onClick={toggleCollapsed}
             className={cn(
-              'flex items-center gap-1 text-xs transition-colors',
-              message.is_draft
-                ? 'text-muted-foreground hover:text-foreground'
-                : isOwn
-                  ? 'text-white/70 hover:text-white'
-                  : 'text-muted-foreground hover:text-foreground',
+              'inline-flex items-center gap-1 text-xs font-semibold hover:opacity-80 transition-opacity',
+              // Собственные сообщения имеют тёмный акцентный фон — текст белый.
+              // Draft/tg-failed и входящие — светлый фон, текст тёмный.
+              isOwn && !message.is_draft && !tgFailed
+                ? 'text-white'
+                : 'text-foreground',
             )}
           >
             <ChevronDown

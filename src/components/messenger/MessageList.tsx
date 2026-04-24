@@ -27,6 +27,10 @@ interface MessageListProps {
   scrollToBottomTrigger?: number
   /** Audit events to display inline between messages */
   auditEvents?: ThreadAuditEvent[]
+  /** ID сообщения, к которому нужно проскроллить (после jump из поиска). */
+  jumpToMessageId?: string | null
+  /** Коллбек после успешного jump — родитель сбрасывает jumpToMessageId. */
+  onJumpComplete?: () => void
 }
 
 /** Разделитель дат */
@@ -139,6 +143,8 @@ export function MessageList({
   onFetchOlder,
   scrollToBottomTrigger,
   auditEvents = [],
+  jumpToMessageId,
+  onJumpComplete,
 }: MessageListProps) {
   const {
     currentParticipantId,
@@ -203,6 +209,33 @@ export function MessageList({
     prevLastIdRef.current = lastId
     prevMessageCountRef.current = messages.length
   }, [messages, currentParticipantId, scrollToBottom, getViewport])
+
+  // Перемотка к сообщению из результатов поиска.
+  // Работает, когда сообщение уже есть в текущем окне; если нет (искомое
+  // глубже, чем подгружено) — скроллим к верху и полагаемся на подгрузку
+  // older через IntersectionObserver, jumpId остаётся активным и эффект
+  // повторно попытается найти ноду после каждого ре-рендера messages.
+  useEffect(() => {
+    if (!jumpToMessageId) return
+    const el = document.getElementById(`msg-${jumpToMessageId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Подсветка совпадает с той, что у reply-перехода (см. BubbleHeader).
+      el.style.backgroundColor = 'rgb(254 243 199)' // amber-100
+      el.style.color = 'rgb(180 83 9)' // amber-700
+      el.style.boxShadow = 'inset 0 0 0 2px rgb(180 83 9)'
+      const t = setTimeout(() => {
+        el.style.backgroundColor = ''
+        el.style.color = ''
+        el.style.boxShadow = ''
+        onJumpComplete?.()
+      }, 2000)
+      return () => clearTimeout(t)
+    }
+    // Сообщения ещё нет — скроллим вверх, чтобы сработал fetchOlder.
+    const viewport = getViewport()
+    if (viewport) viewport.scrollTop = 0
+  }, [jumpToMessageId, messages, getViewport, onJumpComplete])
 
   // Принудительный скролл вниз при отправке сообщения
   useEffect(() => {

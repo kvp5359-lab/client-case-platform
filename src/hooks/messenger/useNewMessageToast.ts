@@ -89,8 +89,20 @@ export function useNewMessageToast(workspaceId: string | undefined) {
           )
           const projectName =
             cachedThreads?.find((c) => c.project_id === msg.project_id)?.project_name ?? 'Проект'
-          const accentColor =
+          let accentColor =
             cachedThreads?.find((c) => c.thread_id === msg.thread_id)?.thread_accent_color ?? null
+
+          // Фоллбэк: если цвет не лежит в кеше (например, email-тред ещё не
+          // попадал в inbox v2), подгружаем accent_color прямо из project_threads,
+          // чтобы рамка тоста совпала с цветом треда.
+          if (!accentColor && msg.thread_id) {
+            const { data: threadAccent } = await supabase
+              .from('project_threads')
+              .select('accent_color')
+              .eq('id', msg.thread_id)
+              .maybeSingle()
+            accentColor = threadAccent?.accent_color ?? null
+          }
 
           const senderName = msg.sender_name ?? 'Участник'
           const messageId = (payload.new as { id: string }).id

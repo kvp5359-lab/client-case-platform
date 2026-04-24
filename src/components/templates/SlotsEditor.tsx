@@ -18,22 +18,29 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Plus, Trash2, GripVertical, HelpCircle } from 'lucide-react'
+import { Plus, Trash2, GripVertical, HelpCircle, Library } from 'lucide-react'
 import { TiptapEditor } from '@/components/tiptap-editor/tiptap-editor'
 import { useSlotsEditorMutations } from './useSlotsEditorMutations'
 import type { Slot, SlotTableConfig } from './useSlotsEditorMutations'
+import {
+  SlotTemplatePickerDialog,
+  type PickedSlotTemplate,
+} from './SlotTemplatePickerDialog'
 
 export type { SlotTableConfig }
 
 interface SlotsEditorProps {
   config: SlotTableConfig
   description?: string
+  /** ID воркспейса — нужен для picker-а из справочника. */
+  workspaceId?: string
 }
 
-export function SlotsEditor({ config, description }: SlotsEditorProps) {
+export function SlotsEditor({ config, description, workspaceId }: SlotsEditorProps) {
   const [newSlotName, setNewSlotName] = useState('')
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
 
   // Description dialog state
   const [descDialogSlot, setDescDialogSlot] = useState<Slot | null>(null)
@@ -70,6 +77,14 @@ export function SlotsEditor({ config, description }: SlotsEditorProps) {
     const name = newSlotName.trim()
     if (!name) return
     createMutation.mutate(name, { onSuccess: () => setNewSlotName('') })
+  }
+
+  const handlePickFromTemplate = (picked: PickedSlotTemplate) => {
+    createMutation.mutate({
+      name: picked.name,
+      description: picked.description,
+      knowledge_article_id: picked.knowledge_article_id,
+    })
   }
 
   const handleStartEdit = (slotId: string, currentName: string) => {
@@ -284,6 +299,20 @@ export function SlotsEditor({ config, description }: SlotsEditorProps) {
           <Plus className="h-3.5 w-3.5" />
           Добавить
         </Button>
+        {workspaceId && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1"
+            onClick={() => setIsPickerOpen(true)}
+            disabled={createMutation.isPending}
+            title="Выбрать из справочника шаблонов слотов"
+          >
+            <Library className="h-3.5 w-3.5" />
+            Из справочника
+          </Button>
+        )}
       </div>
 
       {/* Диалог редактирования описания слота */}
@@ -310,6 +339,15 @@ export function SlotsEditor({ config, description }: SlotsEditorProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {workspaceId && (
+        <SlotTemplatePickerDialog
+          open={isPickerOpen}
+          onOpenChange={setIsPickerOpen}
+          workspaceId={workspaceId}
+          onPick={handlePickFromTemplate}
+        />
+      )}
     </div>
   )
 }

@@ -150,6 +150,7 @@ export function FolderTemplateDialog({
                       queryKey: ['folder-template-slots', editingTemplate.id],
                       extraInsertFields: { workspace_id: workspaceId },
                     }}
+                    workspaceId={workspaceId}
                     description="Слоты — это предопределённые места для документов. При создании папки из шаблона слоты будут автоматически добавлены."
                   />
                 </TabsContent>

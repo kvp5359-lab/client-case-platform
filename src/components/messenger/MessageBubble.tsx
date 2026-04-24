@@ -1,4 +1,5 @@
 import { memo, useState, useRef, useCallback, useEffect } from 'react'
+import { CornerDownRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageAttachments } from './MessageAttachment'
@@ -20,6 +21,16 @@ import { EmailFullViewDialog } from './EmailFullViewDialog'
 import { useMessengerContext } from './MessengerContext'
 
 export type { MessengerAccent } from './utils/messageStyles'
+
+/**
+ * Считаем отправителя «командой», если его роль — из числа внутренних.
+ * Клиентские каналы (Telegram/Email/«Клиент») не маркируем кольцом.
+ */
+const TEAM_ROLES = new Set(['Администратор', 'Владелец', 'Сотрудник', 'Исполнитель'])
+function isTeamSender(role: string | null): boolean {
+  if (!role) return false
+  return TEAM_ROLES.has(role)
+}
 
 interface MessageBubbleProps {
   message: ProjectMessage
@@ -64,6 +75,8 @@ function MessageBubbleImpl({
     onPublishDraft,
     onEditDraft,
     onRetryTelegramSend,
+    isSearchActive,
+    onJumpToMessage,
   } = useMessengerContext()
   const colors = bubbleStyles[accent]
   const tgDeliveryStatus = useTelegramDeliveryStatus(message, isOwn, isTelegramLinked)
@@ -166,12 +179,42 @@ function MessageBubbleImpl({
   )
 
   return (
-    <div className={cn('flex group', isOwn ? 'justify-end' : 'justify-start')}>
-      {/* Avatar (other messages only) */}
+    <div className={cn('flex group items-start', isOwn ? 'justify-end' : 'justify-start')}>
+      {/* Кнопка «Перейти к сообщению» — только в режиме поиска и только
+          на hover над конкретным сообщением */}
+      {isSearchActive && onJumpToMessage && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onJumpToMessage(message.id)
+          }}
+          className="self-center mr-2 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-2.5 py-1 text-xs border border-muted-foreground/30 rounded-full text-muted-foreground hover:text-foreground hover:border-muted-foreground/60 hover:bg-muted whitespace-nowrap"
+          aria-label="Перейти к сообщению в чате"
+        >
+          <CornerDownRight className="h-3 w-3" />
+          Перейти к сообщению
+        </button>
+      )}
+
+      {/* Avatar (other messages only).
+          У сообщений от команды (любая роль кроме «Клиент» / «Telegram-контакт»)
+          добавляем 2px ring цвета иконки папки в сайдбаре (brand-500) —
+          визуальный маркер принадлежности к команде, чтобы отличать от клиента. */}
       {!isOwn && (
         <div className="w-8 flex-shrink-0 self-start mr-2 mt-1">
           {showAvatar ? (
-            <Avatar className="h-8 w-8">
+            <Avatar
+              className="h-8 w-8"
+              style={
+                isTeamSender(message.sender_role)
+                  ? {
+                      boxShadow:
+                        '0 0 0 3px hsl(var(--brand-500))',
+                    }
+                  : undefined
+              }
+            >
               {message.sender?.avatar_url && (
                 <AvatarImage src={message.sender.avatar_url} alt={message.sender_name} />
               )}

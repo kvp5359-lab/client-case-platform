@@ -3,6 +3,7 @@
  */
 
 import { useState } from 'react'
+import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -51,6 +52,7 @@ export function EditKitFolderDialog({
   articleGroups = [],
   onSubmit,
 }: EditKitFolderDialogProps) {
+  const { workspaceId } = useParams<{ workspaceId: string }>()
   const [name, setName] = useState(folder?.name || '')
   const [description, setDescription] = useState(folder?.description || '')
   const [aiNamingPrompt, setAiNamingPrompt] = useState(folder?.ai_naming_prompt || '')
@@ -165,6 +167,7 @@ export function EditKitFolderDialog({
                       foreignKeyValue: folder.id,
                       queryKey: ['kit-folder-slots', folder.id],
                     }}
+                    workspaceId={workspaceId}
                   />
                 </div>
               )}
