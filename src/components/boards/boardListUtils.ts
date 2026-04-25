@@ -124,3 +124,59 @@ export function groupTasks(
 
   return groups
 }
+
+// ── Группировка проектов ────────────────────────────────────
+//
+// Группировка списков «Проекты» поддерживает только 'status' (см.
+// PROJECT_GROUP_BY_OPTIONS). Для других значений возвращается одна группа.
+
+export interface ProjectGroup<T> {
+  key: string
+  label: string
+  color: string | null
+  projects: T[]
+}
+
+export function groupProjects<T extends { id: string; status_id: string | null }>(
+  projects: T[],
+  groupBy: GroupByField,
+  statuses: StatusOption[],
+): ProjectGroup<T>[] {
+  if (groupBy !== 'status') {
+    return [{ key: '__all__', label: '', color: null, projects }]
+  }
+
+  const map = new Map<string, T[]>()
+  const labelMap = new Map<string, string>()
+  const colorMap = new Map<string, string | null>()
+
+  for (const project of projects) {
+    const k = project.status_id ?? '__none__'
+    if (!labelMap.has(k)) {
+      const s = statuses.find((s) => s.id === project.status_id)
+      labelMap.set(k, s?.name ?? 'Без статуса')
+      colorMap.set(k, s?.color ?? null)
+    }
+    const arr = map.get(k)
+    if (arr) arr.push(project)
+    else map.set(k, [project])
+  }
+
+  // Порядок групп: по order_index статусов из справочника, затем «Без статуса» в конец.
+  const result: ProjectGroup<T>[] = []
+  for (const s of statuses) {
+    const list = map.get(s.id)
+    if (list) {
+      result.push({ key: s.id, label: s.name, color: s.color, projects: list })
+    }
+  }
+  if (map.has('__none__')) {
+    result.push({
+      key: '__none__',
+      label: 'Без статуса',
+      color: null,
+      projects: map.get('__none__')!,
+    })
+  }
+  return result
+}

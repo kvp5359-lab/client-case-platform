@@ -23,7 +23,8 @@ import { BoardInboxList } from './BoardInboxList'
 import { BoardListHeader } from './BoardListHeader'
 import { ListSettingsDialog } from './ListSettingsDialog'
 import type { BoardList, FilterContext, GroupByField } from './types'
-import { groupTasks } from './boardListUtils'
+import { groupTasks, groupProjects } from './boardListUtils'
+import { useAllProjectStatuses } from '@/hooks/useStatuses'
 import { useReorderTasks } from '@/components/tasks/useTaskMutations'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
@@ -174,6 +175,15 @@ export function BoardListCard({
     () => groupTasks(filteredTasks, groupByField, assigneesMap, statuses),
     [filteredTasks, groupByField, assigneesMap, statuses],
   )
+
+  // Project-статусы воркспейса нужны только для группировки списка проектов
+  // по статусу. Запрашиваются всегда — кэш единый и переиспользуется
+  // ProjectStatusFilter, BoardProjectRow и другими.
+  const { data: projectStatuses = [] } = useAllProjectStatuses(isProject ? workspaceId : undefined)
+  const projectGroups = useMemo(
+    () => groupProjects(filteredProjects, groupByField, projectStatuses),
+    [filteredProjects, groupByField, projectStatuses],
+  )
   const hasGrouping = groupByField !== 'none'
   const isManualSort = list.sort_by === 'manual_order' && !hasGrouping && !isProject && !isInbox
 
@@ -260,19 +270,50 @@ export function BoardListCard({
             />
           ) : isProject ? (
             filteredProjects.length > 0 ? (
-              <div className={cn(isCards ? 'grid grid-cols-1 gap-1' : 'divide-y divide-border/50')}>
-                {filteredProjects.map((project) => (
-                  <BoardProjectRow
-                    key={project.id}
-                    project={project}
-                    workspaceId={workspaceId}
-                    displayMode={list.display_mode ?? 'list'}
-                    visibleFields={list.visible_fields ?? ['status', 'template']}
-                    isSelected={selectedProjectId === project.id}
-                    cardLayout={list.card_layout}
-                    nextTask={nextTaskByProjectId[project.id]}
-                    authorName={project.created_by ? authorNameByUserId[project.created_by] : null}
-                  />
+              <div className={cn(isCards ? 'grid gap-1' : hasGrouping ? 'flex flex-col gap-2' : 'divide-y divide-border/50')}>
+                {projectGroups.map((group) => (
+                  <div key={group.key}>
+                    {hasGrouping && (
+                      <div className={cn('px-2 pb-1', isCards && 'px-0 pb-1')}>
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border"
+                          style={
+                            group.color
+                              ? {
+                                  backgroundColor: `${group.color}1A`,
+                                  color: group.color,
+                                  borderColor: `${group.color}66`,
+                                }
+                              : undefined
+                          }
+                        >
+                          {group.label}
+                          <span className="opacity-50">{group.projects.length}</span>
+                        </span>
+                      </div>
+                    )}
+                    <div className={cn(
+                      isCards
+                        ? 'grid grid-cols-1 gap-1'
+                        : hasGrouping
+                          ? 'divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden'
+                          : 'divide-y divide-border/50'
+                    )}>
+                      {group.projects.map((project) => (
+                        <BoardProjectRow
+                          key={project.id}
+                          project={project}
+                          workspaceId={workspaceId}
+                          displayMode={list.display_mode ?? 'list'}
+                          visibleFields={list.visible_fields ?? ['status', 'template']}
+                          isSelected={selectedProjectId === project.id}
+                          cardLayout={list.card_layout}
+                          nextTask={nextTaskByProjectId[project.id]}
+                          authorName={project.created_by ? authorNameByUserId[project.created_by] : null}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (

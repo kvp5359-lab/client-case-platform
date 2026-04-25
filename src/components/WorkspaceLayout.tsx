@@ -21,8 +21,7 @@ import type { ThreadTemplate } from '@/types/threadTemplate'
 import { useNewMessageToast } from '@/hooks/messenger/useNewMessageToast'
 import { useFaviconBadge } from '@/hooks/messenger/useFaviconBadge'
 import { useWorkspaceMessagesRealtime } from '@/hooks/messenger/useWorkspaceMessagesRealtime'
-import { TaskPanel } from '@/components/tasks/TaskPanel'
-import { useTaskPanelSetup } from '@/components/tasks/useTaskPanelSetup'
+import { useTaskPanelTabbedShell } from '@/components/tasks/TaskPanelTabbedShell'
 import { TaskPanelContext, setGlobalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { newThreadToTaskItem } from '@/components/tasks/taskListConstants'
 import { useScrollIntoViewOnPanel } from '@/hooks/shared/useScrollIntoViewOnPanel'
@@ -145,65 +144,32 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   const [initialTemplate, setInitialTemplate] = useState<ThreadTemplate | null>(null)
   const settingsOpen = settingsChat !== null
 
-  // TaskPanel. Деструктурируем нужные методы из tp, чтобы
-  // линтер не требовал весь объект tp в deps memo/эффектов (он новый на каждом рендере).
-  const tp = useTaskPanelSetup({ workspaceId })
-  const {
-    setOpenThread: tpSetOpenThread,
-    pushThread: tpPushThread,
-    openProjectTasks: tpOpenProject,
-    pushProject: tpPushProject,
-  } = tp
+  // TaskPanel — новая система вкладок (per-user-per-project, DB-backed).
+  // Старая «основная» правая панель (PanelTabs выше по коду) пока работает параллельно.
+  const taskPanelShell = useTaskPanelTabbedShell({
+    workspaceId,
+    projectId: pageContext.projectId ?? null,
+  })
+  const { openThreadTab, openProjectTab, closeAll: closeAllTabs } = taskPanelShell.api
   const taskPanelCtx = useMemo(
     () => ({
-      openThread: tpSetOpenThread,
-      pushThread: tpPushThread,
-      openProject: tpOpenProject,
-      pushProject: tpPushProject,
-      closeThread: () => tpSetOpenThread(null),
+      openThread: openThreadTab,
+      pushThread: openThreadTab,
+      openProject: openProjectTab,
+      pushProject: openProjectTab,
+      closeThread: closeAllTabs,
     }),
-    [tpSetOpenThread, tpPushThread, tpOpenProject, tpPushProject],
+    [openThreadTab, openProjectTab, closeAllTabs],
   )
 
   // Глобальный ref для открытия TaskPanel из хуков вне React-дерева
   useEffect(() => {
-    setGlobalOpenThread(tpSetOpenThread)
+    setGlobalOpenThread(openThreadTab)
     return () => setGlobalOpenThread(null)
-  }, [tpSetOpenThread])
+  }, [openThreadTab])
 
   // Авто-скролл кликнутого элемента из-под открывающейся боковой панели.
-  // DOM-driven: хук сам наблюдает за появлением `.side-panel` в любом месте
-  // дерева (основная sidePanel, layout-уровневая TaskPanel, локальная TaskPanel
-  // внутри BoardsPage — все они рендерятся с классом `.side-panel`).
   useScrollIntoViewOnPanel()
-
-  // При смене проекта закрываем TaskPanel, если открытый элемент (тред или
-  // проект в Режиме 2) относится к другому проекту. Реагируем только на
-  // ИЗМЕНЕНИЕ projectId: тост нового сообщения может открыть тред из другого
-  // проекта без навигации — такую панель закрывать нельзя.
-  const currentProjectId = pageContext.projectId ?? null
-  const prevProjectIdRef = useRef(currentProjectId)
-  const setOpenThread = tp.setOpenThread
-  useEffect(() => {
-    const prev = prevProjectIdRef.current
-    prevProjectIdRef.current = currentProjectId
-    if (prev === currentProjectId) return
-    const openTask = tp.openThread
-    const openProject = tp.openProject
-    if (openTask) {
-      const openTaskProjectId = openTask.project_id ?? null
-      if (openTaskProjectId === null || openTaskProjectId !== currentProjectId) {
-        setOpenThread(null)
-      }
-    } else if (openProject) {
-      if (openProject.id !== currentProjectId) {
-        setOpenThread(null)
-      }
-    }
-    // tp.openThread/openProject читаем без подписки — эффект должен срабатывать
-    // только на смену projectId, иначе открытие панели тут же её и закроет.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProjectId, setOpenThread])
 
   const handleSelectChat = useCallback(
     (chat: ProjectThread) => {
@@ -323,8 +289,8 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
       {/* Плавающие кнопки */}
       <FloatingPanelButtons />
 
-      {/* TaskPanel — боковая панель треда после создания */}
-      <TaskPanel {...tp.taskPanelProps} showProjectLink />
+      {/* TaskPanel — новая система вкладок с DB-backed состоянием */}
+      {taskPanelShell.shellElement}
 
       {/* Диалог создания/редактирования чата. Монтируется только когда открыт —
           тогда и грузится chunk с Tiptap и остальной обвязкой. */}
@@ -343,7 +309,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
             }}
             onCreated={(newChat, result) => {
               setSettingsChat(null)
-              tp.setOpenThread(newThreadToTaskItem(newChat, result))
+              openThreadTab(newThreadToTaskItem(newChat, result))
             }}
           />
         </Suspense>

@@ -26,6 +26,7 @@ interface TaskPanelProjectViewProps {
   onBack?: () => void
   onClose: () => void
   onOpenThreadInStack?: (task: TaskItem) => void
+  topSlot?: React.ReactNode
 }
 
 export function TaskPanelProjectView({
@@ -36,6 +37,7 @@ export function TaskPanelProjectView({
   onBack,
   onClose,
   onOpenThreadInStack,
+  topSlot,
 }: TaskPanelProjectViewProps) {
   const router = useRouter()
   const parentPanelCtx = useLayoutTaskPanel()
@@ -69,6 +71,8 @@ export function TaskPanelProjectView({
             <ArrowLeft className="w-4 h-4" />
           </button>
         )}
+
+        {topSlot}
 
         {/* Шапка проекта — та же геометрия, что у шапки треда: h-[61px], жёсткие
             высоты строк (30 + 26 + 5 pt), иконка w-6 h-6, заголовок text-sm. */}

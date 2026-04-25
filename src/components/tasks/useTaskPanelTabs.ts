@@ -66,7 +66,28 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
     staleTime: STALE_TIME.LONG,
     queryFn: async () => {
       if (!projectId || !userId) return EMPTY_STATE
-      const { data, error } = await supabase
+      // Таблица task_panel_tabs ещё не в сгенерированных Supabase-типах —
+      // используем нестрогий клиент для этого вызова.
+      const { data, error } = await (supabase as unknown as {
+        from: (t: string) => {
+          select: (cols: string) => {
+            eq: (
+              c: string,
+              v: string,
+            ) => {
+              eq: (
+                c: string,
+                v: string,
+              ) => {
+                maybeSingle: () => Promise<{
+                  data: { tabs: unknown; active_tab_id: string | null } | null
+                  error: { message: string } | null
+                }>
+              }
+            }
+          }
+        }
+      })
         .from('task_panel_tabs')
         .select('tabs, active_tab_id')
         .eq('project_id', projectId)
@@ -121,16 +142,25 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
   const upsertMutation = useMutation({
     mutationFn: async (next: PersistedRow) => {
       if (!projectId || !userId) return
-      const { error } = await supabase.from('task_panel_tabs').upsert(
-        {
-          user_id: userId,
-          project_id: projectId,
-          tabs: next.tabs,
-          active_tab_id: next.active_tab_id,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,project_id' },
-      )
+      const { error } = await (supabase as unknown as {
+        from: (t: string) => {
+          upsert: (
+            row: Record<string, unknown>,
+            opts: { onConflict: string },
+          ) => Promise<{ error: { message: string } | null }>
+        }
+      })
+        .from('task_panel_tabs')
+        .upsert(
+          {
+            user_id: userId,
+            project_id: projectId,
+            tabs: next.tabs as unknown,
+            active_tab_id: next.active_tab_id,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,project_id' },
+        )
       if (error) throw error
     },
     onSuccess: (_data, vars) => {
