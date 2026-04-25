@@ -1,7 +1,7 @@
 "use client"
 
 /**
- * Хук для управления привязкой Telegram-группы к проекту
+ * Хук для управления привязкой Telegram-группы к проекту.
  */
 
 import { useEffect, useId, useMemo } from 'react'
