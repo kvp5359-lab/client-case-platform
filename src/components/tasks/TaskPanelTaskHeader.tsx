@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import { Button } from '@/components/ui/button'
 import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { cn } from '@/lib/utils'
@@ -157,9 +158,14 @@ export function TaskPanelTaskHeader({
               onKeyDown={(e) => { if (e.key === 'Escape') setEditingName(false) }}
               className="flex-1 min-w-0 text-sm font-semibold bg-transparent border-b-2 border-primary outline-none py-0"
             />
-            <button type="submit" className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground">
+            <Button
+              type="submit"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 h-auto p-0.5 text-muted-foreground hover:text-foreground"
+            >
               <Check className="w-4 h-4" />
-            </button>
+            </Button>
           </form>
         ) : (
           <h2

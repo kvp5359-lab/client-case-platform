@@ -21,6 +21,16 @@ export const STALE_TIME = {
   LONG: 5 * 60_000,
 } as const
 
+/**
+ * Стандартные значения gcTime (как долго данные живут в кэше после того, как
+ * перестают быть нужными). Дольше staleTime — иначе данные удаляются раньше,
+ * чем устаревают.
+ */
+export const GC_TIME = {
+  STANDARD: 5 * 60_000,
+  LONG: 10 * 60_000,
+} as const
+
 export const formKitKeys = {
   all: ['form-kit'] as const,
   byProject: (projectId: string) => ['form-kit', 'project', projectId] as const,

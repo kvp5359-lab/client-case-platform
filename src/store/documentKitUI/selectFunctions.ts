@@ -191,6 +191,46 @@ export const selectConnectSource = (state: DocumentKitUIStore) => ({
   sourceFolderLink: state.sourceFolderLink,
 })
 
+/** Все actions стора. Функции стабильны между ре-рендерами, useShallow
+ * гарантирует, что объект-обёртка не меняет ссылку, и подписчик не
+ * перерендеривается при изменениях обычного state. */
+export const selectActions = (state: DocumentKitUIStore) => ({
+  setHoveredFolder: state.setHoveredFolder,
+  setHoveredDocument: state.setHoveredDocument,
+  setSystemSectionTab: state.setSystemSectionTab,
+  setUnassignedCollapsed: state.setUnassignedCollapsed,
+  setSourceCollapsed: state.setSourceCollapsed,
+  setDestinationCollapsed: state.setDestinationCollapsed,
+  setTrashCollapsed: state.setTrashCollapsed,
+  setExportingToDestination: state.setExportingToDestination,
+  setFetchingDestination: state.setFetchingDestination,
+  setHasExported: state.setHasExported,
+  openMoveDialog: state.openMoveDialog,
+  openSourceMoveDialog: state.openSourceMoveDialog,
+  toggleShowOnlyUnverified: state.toggleShowOnlyUnverified,
+  openConnectSourceDialog: state.openConnectSourceDialog,
+  openSourceSettingsDialog: state.openSourceSettingsDialog,
+  setSourceConnected: state.setSourceConnected,
+  setSourceFolderName: state.setSourceFolderName,
+  setSyncing: state.setSyncing,
+  toggleShowHiddenSourceDocs: state.toggleShowHiddenSourceDocs,
+  openTemplateSelectDialog: state.openTemplateSelectDialog,
+  closeEditFolderDialog: state.closeEditFolderDialog,
+  resetFolderForm: state.resetFolderForm,
+  openAddFolderDialog: state.openAddFolderDialog,
+  setExportFolderConnected: state.setExportFolderConnected,
+  setExportFolderName: state.setExportFolderName,
+  openKitSettingsDialog: state.openKitSettingsDialog,
+  openBatchCheckDialog: state.openBatchCheckDialog,
+  closeBatchCheckDialog: state.closeBatchCheckDialog,
+  setExportPhase: state.setExportPhase,
+  setExportDocuments: state.setExportDocuments,
+  updateExportDocumentStatus: state.updateExportDocumentStatus,
+  setExportCleaningProgress: state.setExportCleaningProgress,
+  openExportProgressDialog: state.openExportProgressDialog,
+  closeExportProgressDialog: state.closeExportProgressDialog,
+})
+
 /** Kit settings dialog — includes both source and export info */
 export const selectKitSettings = (state: DocumentKitUIStore) => ({
   kitSettingsDialogOpen: state.kitSettingsDialogOpen,

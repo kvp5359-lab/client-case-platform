@@ -50,7 +50,7 @@ export {
 } from './selectors'
 
 // Select-функции (coarse-grained)
-export { selectUI, selectDialogs, selectOperations, selectGoogleDrive } from './selectFunctions'
+export { selectUI, selectDialogs, selectOperations, selectGoogleDrive, selectActions } from './selectFunctions'
 
 // Select-функции (granular)
 export {
