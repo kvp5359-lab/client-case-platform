@@ -8,7 +8,7 @@ import { useEffect, useId, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { messengerKeys, telegramLinkKeys } from '@/hooks/queryKeys'
+import { messengerKeys, telegramLinkKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
 
 interface TelegramLink {
@@ -51,8 +51,11 @@ export function useTelegramLink(
       return data as TelegramLink | null
     },
     enabled: !!threadId,
-    staleTime: 0,
-    // Polling пока диалог привязки открыт и ещё не привязано — каждые 2 сек
+    // Привязка канала меняется редко (через UI «Подключить Telegram»). Polling
+    // ниже принудительно опрашивает каждые 2с — staleTime не мешает ему. Без
+    // polling кэшируем на минуту, чтобы переход между чатами не делал лишние
+    // запросы на одну и ту же связку.
+    staleTime: STALE_TIME.STANDARD,
     refetchInterval: polling ? (query) => (query.state.data ? false : 2000) : false,
   })
 

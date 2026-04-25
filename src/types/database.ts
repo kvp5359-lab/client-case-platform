@@ -675,6 +675,7 @@ export type Database = {
         Row: {
           block_type: string
           created_at: string
+          generation_model_id: string | null
           heading: string | null
           id: string
           order_index: number
@@ -689,6 +690,7 @@ export type Database = {
         Insert: {
           block_type?: string
           created_at?: string
+          generation_model_id?: string | null
           heading?: string | null
           id?: string
           order_index?: number
@@ -703,6 +705,7 @@ export type Database = {
         Update: {
           block_type?: string
           created_at?: string
+          generation_model_id?: string | null
           heading?: string | null
           id?: string
           order_index?: number
@@ -835,6 +838,9 @@ export type Database = {
           description: string | null
           document_summary: string | null
           general_context: Json
+          google_doc_id: string | null
+          google_doc_last_export_at: string | null
+          google_doc_url: string | null
           id: string
           name: string
           settings: Json
@@ -849,6 +855,9 @@ export type Database = {
           description?: string | null
           document_summary?: string | null
           general_context?: Json
+          google_doc_id?: string | null
+          google_doc_last_export_at?: string | null
+          google_doc_url?: string | null
           id?: string
           name: string
           settings?: Json
@@ -863,6 +872,9 @@ export type Database = {
           description?: string | null
           document_summary?: string | null
           general_context?: Json
+          google_doc_id?: string | null
+          google_doc_last_export_at?: string | null
+          google_doc_url?: string | null
           id?: string
           name?: string
           settings?: Json
@@ -1085,38 +1097,77 @@ export type Database = {
         Row: {
           context_definitions: Json
           created_at: string
+          default_validation_prompt: string | null
           description: string | null
           document_analysis_prompt: string | null
+          generation_model_id: string | null
+          generation_system_prompt: string | null
           id: string
           name: string
           primary_language: string
           secondary_language: string
+          translation_model_id: string | null
           updated_at: string
           user_id: string | null
+          validation_system_prompt: string | null
         }
         Insert: {
           context_definitions?: Json
           created_at?: string
+          default_validation_prompt?: string | null
           description?: string | null
           document_analysis_prompt?: string | null
+          generation_model_id?: string | null
+          generation_system_prompt?: string | null
           id?: string
           name: string
           primary_language?: string
           secondary_language?: string
+          translation_model_id?: string | null
           updated_at?: string
           user_id?: string | null
+          validation_system_prompt?: string | null
         }
         Update: {
           context_definitions?: Json
           created_at?: string
+          default_validation_prompt?: string | null
           description?: string | null
           document_analysis_prompt?: string | null
+          generation_model_id?: string | null
+          generation_system_prompt?: string | null
           id?: string
           name?: string
           primary_language?: string
           secondary_language?: string
+          translation_model_id?: string | null
           updated_at?: string
           user_id?: string | null
+          validation_system_prompt?: string | null
+        }
+        Relationships: []
+      }
+      docbuilder_user_settings: {
+        Row: {
+          created_at: string
+          id: string
+          settings: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          settings?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          settings?: Json
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1288,6 +1339,13 @@ export type Database = {
             columns: ["kit_folder_id"]
             isOneToOne: false
             referencedRelation: "document_kit_template_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_kit_template_folder_slots_knowledge_article_id_fkey"
+            columns: ["knowledge_article_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_articles"
             referencedColumns: ["id"]
           },
         ]
@@ -1950,6 +2008,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "folder_slots_knowledge_article_id_fkey"
+            columns: ["knowledge_article_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_articles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "folder_slots_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -2012,6 +2077,13 @@ export type Database = {
             columns: ["folder_template_id"]
             isOneToOne: false
             referencedRelation: "folder_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folder_template_slots_knowledge_article_id_fkey"
+            columns: ["knowledge_article_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_articles"
             referencedColumns: ["id"]
           },
           {
@@ -3344,6 +3416,7 @@ export type Database = {
           id: string
           message_id: string
           participant_id: string | null
+          telegram_source_message_id: number | null
           telegram_user_id: number | null
           telegram_user_name: string | null
         }
@@ -3353,6 +3426,7 @@ export type Database = {
           id?: string
           message_id: string
           participant_id?: string | null
+          telegram_source_message_id?: number | null
           telegram_user_id?: number | null
           telegram_user_name?: string | null
         }
@@ -3362,6 +3436,7 @@ export type Database = {
           id?: string
           message_id?: string
           participant_id?: string | null
+          telegram_source_message_id?: number | null
           telegram_user_id?: number | null
           telegram_user_name?: string | null
         }
@@ -3660,7 +3735,9 @@ export type Database = {
           source: Database["public"]["Enums"]["message_source"]
           telegram_attachments_delivered: boolean | null
           telegram_chat_id: number | null
+          telegram_error_detail: string | null
           telegram_message_id: number | null
+          telegram_message_ids: number[]
           telegram_retry_count: number
           thread_id: string | null
           updated_at: string
@@ -3686,7 +3763,9 @@ export type Database = {
           source?: Database["public"]["Enums"]["message_source"]
           telegram_attachments_delivered?: boolean | null
           telegram_chat_id?: number | null
+          telegram_error_detail?: string | null
           telegram_message_id?: number | null
+          telegram_message_ids?: number[]
           telegram_retry_count?: number
           thread_id?: string | null
           updated_at?: string
@@ -3712,7 +3791,9 @@ export type Database = {
           source?: Database["public"]["Enums"]["message_source"]
           telegram_attachments_delivered?: boolean | null
           telegram_chat_id?: number | null
+          telegram_error_detail?: string | null
           telegram_message_id?: number | null
+          telegram_message_ids?: number[]
           telegram_retry_count?: number
           thread_id?: string | null
           updated_at?: string
@@ -4036,6 +4117,7 @@ export type Database = {
       }
       project_telegram_chats: {
         Row: {
+          bot_version: string
           channel: string
           created_at: string
           id: string
@@ -4048,6 +4130,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          bot_version?: string
           channel?: string
           created_at?: string
           id?: string
@@ -4060,6 +4143,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          bot_version?: string
           channel?: string
           created_at?: string
           id?: string
@@ -4175,42 +4259,42 @@ export type Database = {
       }
       project_template_statuses: {
         Row: {
-          template_id: string
-          status_id: string
-          order_index: number
+          created_at: string
           is_default: boolean
           is_final: boolean
-          created_at: string
+          order_index: number
+          status_id: string
+          template_id: string
         }
         Insert: {
-          template_id: string
-          status_id: string
-          order_index?: number
+          created_at?: string
           is_default?: boolean
           is_final?: boolean
-          created_at?: string
+          order_index?: number
+          status_id: string
+          template_id: string
         }
         Update: {
-          template_id?: string
-          status_id?: string
-          order_index?: number
+          created_at?: string
           is_default?: boolean
           is_final?: boolean
-          created_at?: string
+          order_index?: number
+          status_id?: string
+          template_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "project_template_statuses_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "project_templates"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "project_template_statuses_status_id_fkey"
             columns: ["status_id"]
             isOneToOne: false
             referencedRelation: "statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_template_statuses_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "project_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -4470,6 +4554,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "project_threads_source_template_id_fkey"
+            columns: ["source_template_id"]
+            isOneToOne: false
+            referencedRelation: "thread_templates"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "project_threads_status_id_fkey"
             columns: ["status_id"]
             isOneToOne: false
@@ -4494,7 +4585,6 @@ export type Database = {
           messenger_link_code: string | null
           name: string
           source_folder_id: string | null
-          status: string | null
           status_id: string | null
           template_id: string | null
           updated_at: string | null
@@ -4515,7 +4605,6 @@ export type Database = {
           messenger_link_code?: string | null
           name: string
           source_folder_id?: string | null
-          status?: string | null
           status_id?: string | null
           template_id?: string | null
           updated_at?: string | null
@@ -4536,13 +4625,19 @@ export type Database = {
           messenger_link_code?: string | null
           name?: string
           source_folder_id?: string | null
-          status?: string | null
           status_id?: string | null
           template_id?: string | null
           updated_at?: string | null
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "statuses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_template_id_fkey"
             columns: ["template_id"]
@@ -5003,6 +5098,38 @@ export type Database = {
           },
         ]
       }
+      task_panel_tabs: {
+        Row: {
+          active_tab_id: string | null
+          project_id: string
+          tabs: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_tab_id?: string | null
+          project_id: string
+          tabs?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_tab_id?: string | null
+          project_id?: string
+          tabs?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_panel_tabs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           created_at: string
@@ -5093,6 +5220,84 @@ export type Database = {
           },
           {
             foreignKeyName: "tasks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_bot_sessions: {
+        Row: {
+          context: Json
+          created_at: string
+          expires_at: string
+          id: string
+          state: string
+          telegram_chat_id: number
+          telegram_user_id: number
+          updated_at: string
+        }
+        Insert: {
+          context?: Json
+          created_at?: string
+          expires_at?: string
+          id?: string
+          state: string
+          telegram_chat_id: number
+          telegram_user_id: number
+          updated_at?: string
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          expires_at?: string
+          id?: string
+          state?: string
+          telegram_chat_id?: number
+          telegram_user_id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      telegram_link_tokens: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          participant_id: string
+          token: string
+          workspace_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          participant_id: string
+          token?: string
+          workspace_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          participant_id?: string
+          token?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_link_tokens_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telegram_link_tokens_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -5212,6 +5417,20 @@ export type Database = {
             columns: ["default_status_id"]
             isOneToOne: false
             referencedRelation: "statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_templates_on_complete_set_project_status_id_fkey"
+            columns: ["on_complete_set_project_status_id"]
+            isOneToOne: false
+            referencedRelation: "statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_templates_owner_project_template_id_fkey"
+            columns: ["owner_project_template_id"]
+            isOneToOne: false
+            referencedRelation: "project_templates"
             referencedColumns: ["id"]
           },
           {
@@ -5411,30 +5630,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      add_document_version:
-        | {
-            Args: {
-              p_checksum?: string
-              p_document_id: string
-              p_file_name: string
-              p_file_path: string
-              p_file_size: number
-              p_mime_type: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              p_checksum?: string
-              p_document_id: string
-              p_file_id?: string
-              p_file_name: string
-              p_file_path: string
-              p_file_size: number
-              p_mime_type: string
-            }
-            Returns: string
-          }
+      add_document_version: {
+        Args: {
+          p_checksum?: string
+          p_document_id: string
+          p_file_id?: string
+          p_file_name: string
+          p_file_path: string
+          p_file_size: number
+          p_mime_type: string
+        }
+        Returns: string
+      }
+      add_document_version_service: {
+        Args: {
+          p_checksum?: string
+          p_document_id: string
+          p_file_id?: string
+          p_file_name: string
+          p_file_path: string
+          p_file_size: number
+          p_mime_type: string
+          p_uploaded_by?: string
+        }
+        Returns: string
+      }
       add_folders_to_kit_template: {
         Args: {
           p_folder_template_ids: string[]
@@ -5452,6 +5672,10 @@ export type Database = {
           p_user_message: string
         }
         Returns: Json
+      }
+      append_telegram_message_id: {
+        Args: { p_chat_id: number; p_message_id: string; p_tg_msg_id: number }
+        Returns: undefined
       }
       can_view_conversation: {
         Args: { p_conversation_id: string; p_user_id: string }
@@ -5532,82 +5756,45 @@ export type Database = {
         }
         Returns: string
       }
-      create_status_with_button_label:
-        | {
-            Args: {
-              p_button_label: string
-              p_color: string
-              p_description: string
-              p_entity_type: string
-              p_is_default: boolean
-              p_is_final: boolean
-              p_name: string
-              p_order_index: number
-              p_workspace_id: string
-            }
-            Returns: {
-              button_label: string | null
-              color: string
-              created_at: string
-              description: string | null
-              entity_type: Database["public"]["Enums"]["entity_type"]
-              icon: string | null
-              id: string
-              is_default: boolean
-              is_final: boolean
-              is_system: boolean
-              name: string
-              order_index: number
-              show_to_creator: boolean
-              text_color: string
-              updated_at: string
-              workspace_id: string
-            }
-            SetofOptions: {
-              from: "*"
-              to: "statuses"
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
-        | {
-            Args: {
-              p_button_label: string
-              p_color: string
-              p_description: string
-              p_entity_type: string
-              p_is_default: boolean
-              p_is_final: boolean
-              p_name: string
-              p_order_index: number
-              p_text_color?: string
-              p_workspace_id: string
-            }
-            Returns: {
-              button_label: string | null
-              color: string
-              created_at: string
-              description: string | null
-              entity_type: Database["public"]["Enums"]["entity_type"]
-              icon: string | null
-              id: string
-              is_default: boolean
-              is_final: boolean
-              is_system: boolean
-              name: string
-              order_index: number
-              show_to_creator: boolean
-              text_color: string
-              updated_at: string
-              workspace_id: string
-            }
-            SetofOptions: {
-              from: "*"
-              to: "statuses"
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
+      create_status_with_button_label: {
+        Args: {
+          p_button_label: string
+          p_color: string
+          p_description: string
+          p_entity_type: string
+          p_is_default: boolean
+          p_is_final: boolean
+          p_name: string
+          p_order_index: number
+          p_text_color?: string
+          p_workspace_id: string
+        }
+        Returns: {
+          button_label: string | null
+          color: string
+          created_at: string
+          description: string | null
+          entity_type: Database["public"]["Enums"]["entity_type"]
+          icon: string | null
+          id: string
+          is_default: boolean
+          is_final: boolean
+          is_system: boolean
+          name: string
+          order_index: number
+          show_to_creator: boolean
+          silent_transition: boolean
+          text_color: string
+          updated_at: string
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "statuses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_task_with_assignees: {
         Args: {
           p_assignee_ids?: string[]
@@ -5652,28 +5839,21 @@ export type Database = {
         Args: { p_document_id: string; p_project_id: string; p_slot_id: string }
         Returns: undefined
       }
-      fn_write_audit_log:
-        | {
-            Args: {
-              p_action: string
-              p_details: Json
-              p_resource_id: string
-              p_resource_type: string
-              p_workspace_id: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_action: string
-              p_details: Json
-              p_project_id: string
-              p_resource_id: string
-              p_resource_type: string
-              p_workspace_id: string
-            }
-            Returns: undefined
-          }
+      fill_slot_atomic_service: {
+        Args: { p_document_id: string; p_project_id: string; p_slot_id: string }
+        Returns: undefined
+      }
+      fn_write_audit_log: {
+        Args: {
+          p_action: string
+          p_details: Json
+          p_project_id: string
+          p_resource_id: string
+          p_resource_type: string
+          p_workspace_id: string
+        }
+        Returns: undefined
+      }
       generate_chat_link_code: { Args: never; Returns: string }
       generate_messenger_link_code: { Args: never; Returns: string }
       generate_thread_link_code: { Args: never; Returns: string }
@@ -5693,6 +5873,7 @@ export type Database = {
           name: string
           source_folder_id: string
           status: string
+          status_id: string
           template_id: string
           template_name: string
           updated_at: string
@@ -5804,10 +5985,17 @@ export type Database = {
           email_subject: string
           has_unread_reaction: boolean
           last_event_at: string
+          last_event_status_color: string
           last_event_text: string
           last_message_at: string
+          last_message_attachment_count: number
+          last_message_attachment_name: string
           last_message_text: string
+          last_reaction_at: string
           last_reaction_emoji: string
+          last_reaction_message_preview: string
+          last_reaction_sender_avatar_url: string
+          last_reaction_sender_name: string
           last_sender_avatar_url: string
           last_sender_name: string
           legacy_channel: string
@@ -5818,6 +6006,7 @@ export type Database = {
           thread_icon: string
           thread_id: string
           thread_name: string
+          thread_type: string
           unread_count: number
           unread_event_count: number
           unread_reaction_count: number
@@ -5895,7 +6084,7 @@ export type Database = {
           messenger_link_code: string | null
           name: string
           source_folder_id: string | null
-          status: string | null
+          status_id: string | null
           template_id: string | null
           updated_at: string | null
           workspace_id: string
@@ -5916,6 +6105,7 @@ export type Database = {
         Returns: {
           access_roles: string[]
           access_type: string
+          column_widths: Json
           created_at: string
           created_by: string
           description: string
@@ -6010,31 +6200,19 @@ export type Database = {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: boolean
       }
-      log_audit_action:
-        | {
-            Args: {
-              p_action: string
-              p_details?: Json
-              p_ip_address?: unknown
-              p_resource_id?: string
-              p_resource_type: string
-              p_workspace_id?: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              p_action: string
-              p_details?: Json
-              p_ip_address?: unknown
-              p_project_id?: string
-              p_resource_id?: string
-              p_resource_type: string
-              p_user_id?: string
-              p_workspace_id?: string
-            }
-            Returns: string
-          }
+      log_audit_action: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_ip_address?: unknown
+          p_project_id?: string
+          p_resource_id?: string
+          p_resource_type: string
+          p_user_id?: string
+          p_workspace_id?: string
+        }
+        Returns: string
+      }
       match_knowledge_chunks: {
         Args: {
           match_count?: number
@@ -6154,80 +6332,44 @@ export type Database = {
         Args: { p_qa_id: string; p_tag_ids: string[] }
         Returns: undefined
       }
-      update_status_with_button_label:
-        | {
-            Args: {
-              status_button_label: string
-              status_color: string
-              status_description: string
-              status_id: string
-              status_is_default: boolean
-              status_is_final: boolean
-              status_name: string
-              status_order_index: number
-            }
-            Returns: {
-              button_label: string | null
-              color: string
-              created_at: string
-              description: string | null
-              entity_type: Database["public"]["Enums"]["entity_type"]
-              icon: string | null
-              id: string
-              is_default: boolean
-              is_final: boolean
-              is_system: boolean
-              name: string
-              order_index: number
-              show_to_creator: boolean
-              text_color: string
-              updated_at: string
-              workspace_id: string
-            }
-            SetofOptions: {
-              from: "*"
-              to: "statuses"
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
-        | {
-            Args: {
-              status_button_label: string
-              status_color: string
-              status_description: string
-              status_id: string
-              status_is_default: boolean
-              status_is_final: boolean
-              status_name: string
-              status_order_index: number
-              status_text_color?: string
-            }
-            Returns: {
-              button_label: string | null
-              color: string
-              created_at: string
-              description: string | null
-              entity_type: Database["public"]["Enums"]["entity_type"]
-              icon: string | null
-              id: string
-              is_default: boolean
-              is_final: boolean
-              is_system: boolean
-              name: string
-              order_index: number
-              show_to_creator: boolean
-              text_color: string
-              updated_at: string
-              workspace_id: string
-            }
-            SetofOptions: {
-              from: "*"
-              to: "statuses"
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
+      update_status_with_button_label: {
+        Args: {
+          status_button_label: string
+          status_color: string
+          status_description: string
+          status_id: string
+          status_is_default: boolean
+          status_is_final: boolean
+          status_name: string
+          status_order_index: number
+          status_text_color?: string
+        }
+        Returns: {
+          button_label: string | null
+          color: string
+          created_at: string
+          description: string | null
+          entity_type: Database["public"]["Enums"]["entity_type"]
+          icon: string | null
+          id: string
+          is_default: boolean
+          is_final: boolean
+          is_system: boolean
+          name: string
+          order_index: number
+          show_to_creator: boolean
+          silent_transition: boolean
+          text_color: string
+          updated_at: string
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "statuses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       update_task_assignees: {
         Args: {
           p_assigned_by: string
@@ -6303,7 +6445,12 @@ export type Database = {
         | "key-value-table"
         | "divider"
       message_sender_type: "user" | "assistant" | "system"
-      message_source: "web" | "telegram" | "telegram_service" | "email" | "bot_event"
+      message_source:
+        | "web"
+        | "telegram"
+        | "telegram_service"
+        | "email"
+        | "bot_event"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -6483,7 +6630,13 @@ export const Constants = {
         "divider",
       ],
       message_sender_type: ["user", "assistant", "system"],
-      message_source: ["web", "telegram", "telegram_service", "email", "bot_event"],
+      message_source: [
+        "web",
+        "telegram",
+        "telegram_service",
+        "email",
+        "bot_event",
+      ],
     },
   },
 } as const
