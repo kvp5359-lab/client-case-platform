@@ -69,7 +69,7 @@ export function ProjectHeader({
   const hasGroups = participantGroups && participantGroups.length > 0
 
   return (
-    <div className="flex items-baseline gap-2">
+    <div className="flex items-baseline gap-2 flex-nowrap overflow-hidden min-w-0">
       {isEditing ? (
         <div className="flex items-center gap-2 w-full">
           <input
