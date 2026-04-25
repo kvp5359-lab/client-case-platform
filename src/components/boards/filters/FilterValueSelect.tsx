@@ -14,9 +14,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { useTaskStatuses } from '@/hooks/useStatuses'
+import { useTaskStatuses, useAllProjectStatuses } from '@/hooks/useStatuses'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
-import { PROJECT_STATUSES } from '@/page-components/ProjectPage/constants'
 import type { FilterFieldDef } from '../types'
 
 export interface FilterValueOption {
@@ -34,32 +33,28 @@ interface FilterValueSelectProps {
 }
 
 /** Хук: возвращает опции в зависимости от поля фильтра.
- *  entityType зарезервирован для фильтров, специфичных для проектов/задач;
- *  в текущих опциях не используется, но оставлен в сигнатуре для обратной совместимости. */
+ *  entityType переключает источник статусов: 'task' → useTaskStatuses,
+ *  'project' → useAllProjectStatuses (единый справочник проектных статусов). */
 function useFieldOptions(
   fieldKey: string,
   workspaceId: string,
-  _entityType: 'task' | 'project',
+  entityType: 'task' | 'project',
 ): FilterValueOption[] {
-  const { data: statuses } = useTaskStatuses(workspaceId)
+  const { data: taskStatuses } = useTaskStatuses(workspaceId)
+  const { data: projectStatuses } = useAllProjectStatuses(workspaceId)
   const { data: participants } = useWorkspaceParticipants(workspaceId)
 
   return useMemo(() => {
     switch (fieldKey) {
       case 'status_id': {
-        const items: FilterValueOption[] = (statuses ?? []).map((s) => ({
+        const source = entityType === 'project' ? (projectStatuses ?? []) : (taskStatuses ?? [])
+        const items: FilterValueOption[] = source.map((s) => ({
           id: s.id,
           label: s.name,
           color: s.color,
         }))
         items.push({ id: '__no_status__', label: 'Без статуса', color: '#9CA3AF' })
         return items
-      }
-      case 'status': {
-        return PROJECT_STATUSES.map((s) => ({
-          id: s.value,
-          label: s.label,
-        }))
       }
 
       case 'type': {
@@ -90,7 +85,7 @@ function useFieldOptions(
       default:
         return []
     }
-  }, [fieldKey, statuses, participants])
+  }, [fieldKey, entityType, taskStatuses, projectStatuses, participants])
 }
 
 /** Нормализует value в массив строк */
