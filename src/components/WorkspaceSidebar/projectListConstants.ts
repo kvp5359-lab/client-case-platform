@@ -1,7 +1,6 @@
 /** Константы и утилиты для ProjectsList */
 
 export const FOLDER_ICON_COLOR = 'hsl(var(--brand-500))'
-export const FOLDER_ICON_COLOR_ARCHIVED = 'hsl(var(--brand-500) / 0.5)'
 
 /** accent_color → { bg, hover } tailwind классы для бейджа непрочитанных */
 export const BADGE_COLOR_CLASSES: Record<string, { bg: string; hover: string }> = {
@@ -23,8 +22,4 @@ const DEFAULT_BADGE = BADGE_COLOR_CLASSES.blue
 export function getBadgeClasses(color: string | undefined, clickable: boolean) {
   const c = BADGE_COLOR_CLASSES[color ?? 'blue'] ?? DEFAULT_BADGE
   return `${c.bg}${clickable ? ` cursor-pointer ${c.hover} transition-colors` : ''}`
-}
-
-export function getStatusIconColor(status: string | null): string {
-  return status === 'archived' ? FOLDER_ICON_COLOR_ARCHIVED : FOLDER_ICON_COLOR
 }

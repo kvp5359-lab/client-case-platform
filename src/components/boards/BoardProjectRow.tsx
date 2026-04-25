@@ -10,6 +10,7 @@ import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import { formatDeadline, isOverdue } from './boardListUtils'
 import { resolveCardLayout, fieldStyleToClasses, visibleFieldsToLayout } from './cardLayoutUtils'
+import { useAllProjectStatuses } from '@/hooks/useStatuses'
 
 interface BoardProjectRowProps {
   project: BoardProject
@@ -33,6 +34,8 @@ function ProjectField({
   isSelected,
   nextTask,
   authorName,
+  statusName,
+  statusColor,
 }: {
   fieldId: CardFieldId
   style: CardFieldStyle
@@ -42,6 +45,8 @@ function ProjectField({
   isSelected?: boolean
   nextTask?: WorkspaceTask
   authorName?: string | null
+  statusName: string | null
+  statusColor: string | null
 }) {
   const classes = fieldStyleToClasses(style)
 
@@ -65,6 +70,22 @@ function ProjectField({
           {project.name}
         </span>
       )
+
+    case 'status': {
+      if (!statusName) return null
+      return (
+        <span
+          className={cn(classes, 'shrink-0 inline-flex items-center text-[11px] px-2 py-0.5 rounded-md border')}
+          style={{
+            backgroundColor: statusColor ? `${statusColor}1A` : undefined,
+            color: statusColor ?? undefined,
+            borderColor: statusColor ? `${statusColor}66` : undefined,
+          }}
+        >
+          {statusName}
+        </span>
+      )
+    }
 
     case 'deadline':
       if (!deadline) return null
@@ -141,6 +162,13 @@ export function BoardProjectRow({
   const deadline = formatDeadline(project.deadline)
   const overdue = isOverdue(project.deadline)
 
+  // Resolve status name/color через единый кэш статусов воркспейса.
+  // useQuery с одинаковым ключом не делает повторных запросов.
+  const { data: allStatuses = [] } = useAllProjectStatuses(workspaceId)
+  const status = project.status_id ? allStatuses.find((s) => s.id === project.status_id) : null
+  const statusName = status?.name ?? null
+  const statusColor = status?.color ?? null
+
   const rows = useMemo(
     () => resolveCardLayout(cardLayout, 'project')
       ?? visibleFieldsToLayout(visibleFields, displayMode, 'project'),
@@ -162,7 +190,7 @@ export function BoardProjectRow({
     }
   }
 
-  const fieldProps = { project, deadline, overdue, isSelected, nextTask, authorName }
+  const fieldProps = { project, deadline, overdue, isSelected, nextTask, authorName, statusName, statusColor }
   const isCards = displayMode === 'cards'
 
   return (

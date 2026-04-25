@@ -4453,6 +4453,7 @@ export type Database = {
           name: string
           source_folder_id: string | null
           status: string | null
+          status_id: string | null
           template_id: string | null
           updated_at: string | null
           workspace_id: string
@@ -4473,6 +4474,7 @@ export type Database = {
           name: string
           source_folder_id?: string | null
           status?: string | null
+          status_id?: string | null
           template_id?: string | null
           updated_at?: string | null
           workspace_id: string
@@ -4493,6 +4495,7 @@ export type Database = {
           name?: string
           source_folder_id?: string | null
           status?: string | null
+          status_id?: string | null
           template_id?: string | null
           updated_at?: string | null
           workspace_id?: string
@@ -4868,6 +4871,7 @@ export type Database = {
           is_system: boolean
           name: string
           order_index: number
+          project_template_id: string | null
           show_to_creator: boolean
           silent_transition: boolean
           text_color: string
@@ -4887,6 +4891,7 @@ export type Database = {
           is_system?: boolean
           name: string
           order_index?: number
+          project_template_id?: string | null
           show_to_creator?: boolean
           silent_transition?: boolean
           text_color?: string
@@ -4906,6 +4911,7 @@ export type Database = {
           is_system?: boolean
           name?: string
           order_index?: number
+          project_template_id?: string | null
           show_to_creator?: boolean
           silent_transition?: boolean
           text_color?: string
@@ -5105,6 +5111,7 @@ export type Database = {
           initial_message_html: string | null
           is_email: boolean
           name: string
+          on_complete_set_project_status_id: string | null
           owner_project_template_id: string | null
           sort_order: number
           thread_name_template: string | null
@@ -5128,6 +5135,7 @@ export type Database = {
           initial_message_html?: string | null
           is_email?: boolean
           name: string
+          on_complete_set_project_status_id?: string | null
           owner_project_template_id?: string | null
           sort_order?: number
           thread_name_template?: string | null
@@ -5151,6 +5159,7 @@ export type Database = {
           initial_message_html?: string | null
           is_email?: boolean
           name?: string
+          on_complete_set_project_status_id?: string | null
           owner_project_template_id?: string | null
           sort_order?: number
           thread_name_template?: string | null

@@ -245,8 +245,8 @@ export default function ProjectPage() {
 
   // === ОБРАБОТЧИКИ ===
 
-  const handleStatusChange = (newStatus: string) => {
-    updateProjectStatus.mutate(newStatus)
+  const handleStatusChange = (newStatusId: string) => {
+    updateProjectStatus.mutate(newStatusId)
   }
 
   const handleDeadlineChange = (date: Date | undefined) => {

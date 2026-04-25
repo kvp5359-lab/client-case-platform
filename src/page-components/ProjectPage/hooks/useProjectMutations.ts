@@ -28,11 +28,11 @@ export function useProjectMutations(projectId: string | undefined) {
     },
   })
 
-  // Мутация для обновления статуса проекта
+  // Мутация для обновления статуса проекта (status_id = uuid из таблицы statuses).
   const updateProjectStatus = useMutation({
-    mutationFn: async (status: string) => {
+    mutationFn: async (statusId: string) => {
       if (!projectId) throw new Error('Project ID is required')
-      return await updateProject(projectId, { status })
+      return await updateProject(projectId, { status_id: statusId })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId!) })

@@ -1,28 +1,37 @@
 "use client"
 
 /**
- * Фильтр по статусам проектов (active, paused, completed, archived).
- * Использует общие примитивы из tasks/filters для визуальной консистентности.
+ * Фильтр по статусам проектов — читает все project-статусы воркспейса из БД
+ * (`useAllProjectStatuses`), включая привязанные к шаблонам. Фильтр работает
+ * по `status_id` (uuid). Дубликаты имён («Завершён» в нескольких шаблонах)
+ * показываем подсказкой имени шаблона рядом — позже, пока без неё.
  */
 
 import { useState, useMemo } from 'react'
 import { CircleDot } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { FilterToolbar, CheckItem, FilterButton } from '@/components/tasks/filters/FilterPrimitives'
-import { PROJECT_STATUSES } from '@/page-components/ProjectPage/constants'
+import { useAllProjectStatuses } from '@/hooks/useStatuses'
 
 interface ProjectStatusFilterProps {
+  workspaceId: string
   selectedIds: Set<string>
   onToggle: (id: string) => void
   onClear: () => void
 }
 
-export function ProjectStatusFilter({ selectedIds, onToggle, onClear }: ProjectStatusFilterProps) {
+export function ProjectStatusFilter({
+  workspaceId,
+  selectedIds,
+  onToggle,
+  onClear,
+}: ProjectStatusFilterProps) {
   const [open, setOpen] = useState(false)
+  const { data: statuses = [] } = useAllProjectStatuses(workspaceId)
 
   const selectedLabels = useMemo(
-    () => PROJECT_STATUSES.filter((s) => selectedIds.has(s.value)).map((s) => s.label),
-    [selectedIds],
+    () => statuses.filter((s) => selectedIds.has(s.id)).map((s) => s.name),
+    [statuses, selectedIds],
   )
 
   return (
@@ -39,23 +48,27 @@ export function ProjectStatusFilter({ selectedIds, onToggle, onClear }: ProjectS
       </PopoverTrigger>
       <PopoverContent className="w-52 p-0" align="start">
         <FilterToolbar
-          totalCount={PROJECT_STATUSES.length}
+          totalCount={statuses.length}
           selectedCount={selectedIds.size}
           onSelectAll={() => {
-            for (const s of PROJECT_STATUSES) {
-              if (!selectedIds.has(s.value)) onToggle(s.value)
+            for (const s of statuses) {
+              if (!selectedIds.has(s.id)) onToggle(s.id)
             }
           }}
           onClear={onClear}
         />
         <div className="py-1">
-          {PROJECT_STATUSES.map((s) => (
+          {statuses.map((s) => (
             <CheckItem
-              key={s.value}
-              checked={selectedIds.has(s.value)}
-              onClick={() => onToggle(s.value)}
+              key={s.id}
+              checked={selectedIds.has(s.id)}
+              onClick={() => onToggle(s.id)}
             >
-              <span className="text-sm truncate flex-1">{s.label}</span>
+              <span
+                className="inline-block w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: s.color }}
+              />
+              <span className="text-sm truncate flex-1">{s.name}</span>
             </CheckItem>
           ))}
         </div>

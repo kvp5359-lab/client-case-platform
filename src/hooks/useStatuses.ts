@@ -7,8 +7,9 @@ import type { Tables } from '@/types/database'
 
 const STATUS_STALE_TIME = 5 * 60_000
 
-type EntityType = 'document' | 'task' | 'document_kit'
+type EntityType = 'document' | 'task' | 'document_kit' | 'project'
 export type TaskStatus = Tables<'statuses'>
+export type ProjectStatus = Tables<'statuses'>
 
 /**
  * Приватный базовый хук — загружает статусы по entity_type
@@ -60,4 +61,39 @@ export function useDocumentKitStatuses(workspaceId: string | undefined) {
     statusKeys.documentKit(workspaceId ?? ''),
     workspaceId,
   )
+}
+
+/**
+ * Все project-статусы воркспейса (общие + привязанные к любым шаблонам).
+ * Фильтрация по конкретному шаблону происходит на стороне потребителя через
+ * `useProjectStatusesForTemplate` — это позволяет одним кэшем покрыть все
+ * шаблоны и не делать N запросов.
+ */
+export function useAllProjectStatuses(workspaceId: string | undefined) {
+  return useStatusesByEntityType('project', statusKeys.project(workspaceId ?? ''), workspaceId)
+}
+
+/**
+ * Возвращает статусы, видимые проекту с заданным `templateId`.
+ *
+ * Правило наследования:
+ * - если шаблон задан и у него есть свои статусы (project_template_id = templateId)
+ *   — показываем только их;
+ * - иначе — общие статусы воркспейса (project_template_id = null).
+ *
+ * Это даёт одной командой настроенный набор для шаблона и фолбэк на воркспейс
+ * для проектов без шаблона / шаблонов без своих статусов.
+ */
+export function useProjectStatusesForTemplate(
+  workspaceId: string | undefined,
+  templateId: string | null | undefined,
+) {
+  const all = useAllProjectStatuses(workspaceId)
+  const data = (all.data ?? []).filter((s) => {
+    const hasTemplateOwn =
+      templateId != null && (all.data ?? []).some((x) => x.project_template_id === templateId)
+    if (hasTemplateOwn) return s.project_template_id === templateId
+    return s.project_template_id === null
+  })
+  return { ...all, data }
 }

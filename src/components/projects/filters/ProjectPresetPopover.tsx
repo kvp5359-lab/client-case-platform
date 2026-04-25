@@ -5,16 +5,15 @@
  * Визуально копирует TaskPresetPopover.
  */
 
-import { Filter, ChevronDown, Check, CheckSquare, Archive, Flag } from 'lucide-react'
+import { Filter, ChevronDown, Check, CheckSquare, Flag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 
-export type ProjectPreset = 'active' | 'completed' | 'archived' | 'all'
+export type ProjectPreset = 'active' | 'completed' | 'all'
 
 export const PROJECT_PRESET_LABELS: Record<ProjectPreset, string> = {
   active: 'Активные',
   completed: 'Завершённые',
-  archived: 'Архив',
   all: 'Все проекты',
 }
 
@@ -62,7 +61,7 @@ export function ProjectPresetPopover({
         </PopoverTrigger>
         <PopoverContent className="w-48 p-0" align="start">
           <div className="py-1">
-            {(['active', 'completed', 'archived', 'all'] as const).map((p) => (
+            {(['active', 'completed', 'all'] as const).map((p) => (
               <button
                 key={p}
                 type="button"
@@ -77,7 +76,6 @@ export function ProjectPresetPopover({
               >
                 {p === 'active' && <CheckSquare className="h-3.5 w-3.5 shrink-0" />}
                 {p === 'completed' && <Flag className="h-3.5 w-3.5 shrink-0" />}
-                {p === 'archived' && <Archive className="h-3.5 w-3.5 shrink-0" />}
                 {p === 'all' && <Filter className="h-3.5 w-3.5 shrink-0" />}
                 <span className="flex-1">{PROJECT_PRESET_LABELS[p]}</span>
                 {preset === p && !filtersModified && (

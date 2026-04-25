@@ -466,6 +466,8 @@ export const statusKeys = {
   document: (workspaceId: string) => ['statuses', 'document', workspaceId] as const,
   documentKit: (workspaceId: string) => ['statuses', 'document_kit', workspaceId] as const,
   task: (workspaceId: string) => ['statuses', 'task', workspaceId] as const,
+  /** Все project-статусы воркспейса (общие + привязанные к шаблонам) одним списком — клиент сам фильтрует. */
+  project: (workspaceId: string) => ['statuses', 'project', workspaceId] as const,
   knowledgeArticle: (workspaceId: string) =>
     ['statuses', 'knowledge_article', workspaceId] as const,
 }

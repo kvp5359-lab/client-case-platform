@@ -8,7 +8,7 @@ import type { Database } from '@/types/database'
 import type { ModuleDefinition } from '@/page-components/ProjectPage/moduleRegistry'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import { formatBadgeCount } from '@/utils/inboxUnread'
-import { getBadgeClasses, getStatusIconColor, FOLDER_ICON_COLOR } from './projectListConstants'
+import { getBadgeClasses, FOLDER_ICON_COLOR } from './projectListConstants'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
@@ -89,7 +89,7 @@ export const ProjectListItem = memo(function ProjectListItem({
           ) : (
             <FolderOpen
               className="h-[18px] w-[18px] group-hover/item:opacity-0 transition-opacity"
-              style={{ color: getStatusIconColor(project.status) }}
+              style={{ color: FOLDER_ICON_COLOR }}
             />
           )}
           <button

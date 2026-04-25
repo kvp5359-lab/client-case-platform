@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
@@ -13,6 +13,7 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useSidebarInboxCounts } from '@/hooks/messenger/useFilteredInbox'
+import { useAllProjectStatuses } from '@/hooks/useStatuses'
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import {
@@ -48,20 +49,46 @@ export default function ProjectsPage() {
   const [presetPopoverOpen, setPresetPopoverOpen] = useState(false)
   const [preset, setPreset] = useState<ProjectPreset>('active')
   const [filtersModified, setFiltersModified] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<Set<string>>(() => new Set(['active', 'paused']))
+  // Статус-фильтр теперь хранит uuid из таблицы statuses (раньше — текстовые
+  // 'active'/'paused'/'completed'/'archived'). Стартовое значение пустое — заполняется
+  // эффектом ниже после загрузки списка статусов воркспейса.
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set())
   const [assigneeFilter, setAssigneeFilter] = useState<Set<string>>(new Set())
   const [templateFilter, setTemplateFilter] = useState<Set<string>>(new Set())
+
+  const { data: allProjectStatuses = [] } = useAllProjectStatuses(activeWorkspaceId ?? undefined)
+
+  // Маппинг пресета → набор status_id по флагам is_default/is_final.
+  // 'active' = всё, что НЕ is_final (активные/в работе).
+  // 'completed' = is_final.
+  // 'archived' = пока без отдельного флага в БД — оставляем пустой набор
+  // (=== «все»). Когда добавим флаг is_archived — поправим тут.
+  const statusIdsForPreset = (p: ProjectPreset): Set<string> => {
+    if (p === 'active') {
+      return new Set(allProjectStatuses.filter((s) => !s.is_final).map((s) => s.id))
+    }
+    if (p === 'completed') {
+      return new Set(allProjectStatuses.filter((s) => s.is_final).map((s) => s.id))
+    }
+    return new Set()
+  }
 
   const applyPreset = (p: ProjectPreset) => {
     setPreset(p)
     setFiltersModified(false)
     setAssigneeFilter(new Set())
     setTemplateFilter(new Set())
-    if (p === 'active') setStatusFilter(new Set(['active', 'paused']))
-    else if (p === 'completed') setStatusFilter(new Set(['completed']))
-    else if (p === 'archived') setStatusFilter(new Set(['archived']))
-    else setStatusFilter(new Set())
+    setStatusFilter(statusIdsForPreset(p))
   }
+
+  // При первой загрузке статусов — применяем текущий пресет, чтобы фильтр
+  // «Активные» сработал автоматически (раньше работал на жёстких строках).
+  useEffect(() => {
+    if (!filtersModified && allProjectStatuses.length > 0 && statusFilter.size === 0) {
+      setStatusFilter(statusIdsForPreset(preset))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allProjectStatuses.length])
 
   const markModified = () => setFiltersModified(true)
 
@@ -122,7 +149,7 @@ export default function ProjectsPage() {
         (project.description?.toLowerCase().includes(q) ?? false)
 
       const matchesStatus =
-        statusFilter.size === 0 || statusFilter.has(project.status || 'active')
+        statusFilter.size === 0 || (project.status_id != null && statusFilter.has(project.status_id))
 
       const matchesTemplate =
         templateFilter.size === 0 ||
@@ -180,6 +207,7 @@ export default function ProjectsPage() {
           {filtersOpen && (
             <div className="flex items-center gap-1.5 mb-4">
               <ProjectStatusFilter
+                workspaceId={activeWorkspaceId}
                 selectedIds={statusFilter}
                 onToggle={toggleStatus}
                 onClear={() => setStatusFilter(new Set())}
@@ -220,8 +248,8 @@ export default function ProjectsPage() {
                     badgeColor={projectData.badgeColors.get(project.id)}
                     canEdit={canEdit}
                     onToggleRoleParticipant={(args) => toggleRoleParticipantMutation.mutate(args)}
-                    onChangeStatus={(projectId, status) =>
-                      updateStatusMutation.mutate({ projectId, status })
+                    onChangeStatus={(projectId, statusId) =>
+                      updateStatusMutation.mutate({ projectId, statusId })
                     }
                     onDelete={handleDeleteProject}
                   />

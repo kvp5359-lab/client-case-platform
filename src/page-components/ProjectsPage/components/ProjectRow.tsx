@@ -12,7 +12,7 @@ import { AssigneesPopover } from '@/components/tasks/AssigneesPopover'
 import { ProjectStatusPopover } from '@/components/projects/ProjectStatusPopover'
 import {
   getBadgeClasses,
-  getStatusIconColor,
+  FOLDER_ICON_COLOR,
 } from '@/components/WorkspaceSidebar/projectListConstants'
 import { formatBadgeCount } from '@/utils/inboxUnread'
 import type { Tables } from '@/types/database'
@@ -38,7 +38,7 @@ interface Props {
     participantId: string
     roleName: string
   }) => void
-  onChangeStatus: (projectId: string, status: string) => void
+  onChangeStatus: (projectId: string, statusId: string) => void
   onDelete: (projectId: string, projectName: string) => void
 }
 
@@ -58,7 +58,7 @@ export function ProjectRow({
     <div className="group/row relative flex items-center gap-3 px-3 py-2 border-b border-border/50 hover:bg-muted/30 transition-colors bg-background">
       <FolderOpen
         className="h-4 w-4 shrink-0"
-        style={{ color: getStatusIconColor(project.status) }}
+        style={{ color: FOLDER_ICON_COLOR }}
       />
       <Link
         href={`/workspaces/${workspaceId}/projects/${project.id}?tab=settings`}
@@ -68,7 +68,7 @@ export function ProjectRow({
         {templateName && (
           <span
             className="text-sm font-medium shrink-0 opacity-50"
-            style={{ color: getStatusIconColor(project.status) }}
+            style={{ color: FOLDER_ICON_COLOR }}
           >
             · {templateName}
           </span>
@@ -153,8 +153,10 @@ export function ProjectRow({
           </span>
         )}
         <ProjectStatusPopover
-          currentStatus={project.status}
-          onChange={(newStatus) => onChangeStatus(project.id, newStatus)}
+          workspaceId={project.workspace_id}
+          projectTemplateId={project.template_id}
+          currentStatusId={project.status_id}
+          onChange={(newStatusId) => onChangeStatus(project.id, newStatusId)}
           disabled={!canEdit}
         />
         <span className="text-xs text-muted-foreground tabular-nums shrink-0 w-[70px] text-right">

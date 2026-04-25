@@ -72,10 +72,10 @@ export const TASK_FILTER_FIELDS: FilterFieldDef[] = [
 
 export const PROJECT_FILTER_FIELDS: FilterFieldDef[] = [
   {
-    key: 'status',
+    key: 'status_id',
     label: 'Статус',
-    type: 'text',
-    operators: ['equals', 'in', 'not_in'],
+    type: 'uuid',
+    operators: ['equals', 'in', 'not_in', 'is_null'],
   },
   {
     key: 'deadline',

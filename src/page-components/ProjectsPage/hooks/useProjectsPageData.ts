@@ -162,8 +162,11 @@ export function useProjectsPageMutations(
   })
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ projectId, status }: { projectId: string; status: string }) => {
-      const { error } = await supabase.from('projects').update({ status }).eq('id', projectId)
+    mutationFn: async ({ projectId, statusId }: { projectId: string; statusId: string }) => {
+      const { error } = await supabase
+        .from('projects')
+        .update({ status_id: statusId })
+        .eq('id', projectId)
       if (error) throw error
     },
     onSuccess: () => {

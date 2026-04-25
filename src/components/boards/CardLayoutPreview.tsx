@@ -27,6 +27,9 @@ const MOCK: Record<CardFieldId, React.ReactNode> = {
   ),
   project: 'Мой проект',
   template: 'Бизнес-план',
+  next_task: 'Подготовить документы · 18 апр',
+  created_at: '12 апр',
+  created_by: 'Иван Петров',
   unread: <div className="h-2 w-2 rounded-full bg-primary shrink-0" />,
   spacer: null,
 }
