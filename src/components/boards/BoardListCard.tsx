@@ -276,13 +276,15 @@ export function BoardListCard({
                     {hasGrouping && (
                       <div className={cn('px-2 pb-1', isCards && 'px-0 pb-1')}>
                         <span
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border"
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
+                            !group.color && 'bg-muted-foreground/10 text-muted-foreground',
+                          )}
                           style={
                             group.color
                               ? {
                                   backgroundColor: `${group.color}1A`,
                                   color: group.color,
-                                  borderColor: `${group.color}66`,
                                 }
                               : undefined
                           }
