@@ -98,9 +98,9 @@ export function TaskPanelTaskHeader({
   }, [editingName])
 
   return (
-    <div className="border-b shrink-0 h-[66px] flex flex-col">
-      {/* Строка 1: статус/иконка + название + действия (жёсткая высота 36px) */}
-      <div className="flex items-center gap-2 px-4 h-9 shrink-0">
+    <div className="border-b shrink-0 h-[61px] flex flex-col">
+      {/* Строка 1: статус/иконка + название + действия (жёсткая высота 30px) */}
+      <div className="flex items-center gap-2 px-4 h-[30px] shrink-0">
         {viewMode === 'history' ? (
           <span className="shrink-0 flex items-center justify-center w-6 h-6 text-muted-foreground">
             <History className="w-4 h-4" />
@@ -198,6 +198,15 @@ export function TaskPanelTaskHeader({
           </div>
         )}
 
+        {onDeadlineSet && onDeadlineClear && (
+          <DeadlinePopover
+            deadline={task.deadline}
+            onSet={onDeadlineSet}
+            onClear={onDeadlineClear}
+            isPending={deadlinePending}
+          />
+        )}
+
         <div ref={toolbarRef} className="flex items-center gap-1 ml-auto shrink-0" />
 
         <button
@@ -222,7 +231,7 @@ export function TaskPanelTaskHeader({
       {/* Строка 2: «Другие задачи» + «История» + «Документы» + дедлайн.
           Жёсткая высота 26px, фиксированный отступ слева = 48px (px-4 + w-6 + gap-2)
           — ровно под названием. Рендерится всегда, даже пустой. */}
-      <div className="flex items-center gap-2 pr-4 pl-[48px] h-[26px] shrink-0">
+      <div className="flex items-start gap-2 pr-4 pl-[48px] h-[26px] shrink-0">
           {task.project_id && onOpenProjectInStack && (
             <button
               type="button"
@@ -280,14 +289,6 @@ export function TaskPanelTaskHeader({
             </button>
           )}
 
-          {isTask && onDeadlineSet && onDeadlineClear && (
-            <DeadlinePopover
-              deadline={task.deadline}
-              onSet={onDeadlineSet}
-              onClear={onDeadlineClear}
-              isPending={deadlinePending}
-            />
-          )}
       </div>
     </div>
   )

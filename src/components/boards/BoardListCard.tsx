@@ -25,6 +25,8 @@ import { ListSettingsDialog } from './ListSettingsDialog'
 import type { BoardList, FilterContext, GroupByField } from './types'
 import { groupTasks } from './boardListUtils'
 import { useReorderTasks } from '@/components/tasks/useTaskMutations'
+import { useTaskStatuses } from '@/hooks/useStatuses'
+import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { workspaceThreadKeys } from '@/hooks/queryKeys'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
@@ -90,6 +92,48 @@ export function BoardListCard({
   const safeFilters = isInbox ? { logic: 'and' as const, rules: [] } : list.filters
   const hasFilters = safeFilters.rules.length > 0
 
+  // Для списков проектов вычисляем карту «ближайшая незавершённая задача» по project_id.
+  // Используем уже загруженный кэш `tasks` (useWorkspaceThreads) — дополнительных запросов нет.
+  // Загружаем is_final из taskStatuses только если это project-list, чтобы не дёргать в task-списках.
+  const { data: fullStatuses = [] } = useTaskStatuses(isProject ? workspaceId : undefined)
+  const nextTaskByProjectId = useMemo(() => {
+    if (!isProject) return {}
+    const finalStatusIds = new Set(fullStatuses.filter((s) => s.is_final).map((s) => s.id))
+    const byProject: Record<string, WorkspaceTask> = {}
+    for (const t of tasks) {
+      if (t.type !== 'task') continue
+      if (!t.project_id || !t.deadline) continue
+      if (t.status_id && finalStatusIds.has(t.status_id)) continue
+      const existing = byProject[t.project_id]
+      if (!existing || new Date(t.deadline).getTime() < new Date(existing.deadline!).getTime()) {
+        byProject[t.project_id] = t
+      }
+    }
+    return byProject
+  }, [isProject, tasks, fullStatuses])
+
+  // Карта project_id → deadline ближайшей задачи (для сортировки в useFilteredProjects).
+  const nextTaskDeadlineByProjectId = useMemo(() => {
+    const map: Record<string, string | null> = {}
+    for (const [pid, t] of Object.entries(nextTaskByProjectId)) {
+      map[pid] = t.deadline
+    }
+    return map
+  }, [nextTaskByProjectId])
+
+  // Карта user_id (created_by) → имя участника для поля «Автор» в project-листах.
+  // Участники воркспейса уже кэшируются на уровне WorkspaceLayout, так что
+  // дополнительного запроса не будет — заглядываем в тот же кэш.
+  const { data: participants = [] } = useWorkspaceParticipants(isProject ? workspaceId : undefined)
+  const authorNameByUserId = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const p of participants) {
+      if (!p.user_id) continue
+      map[p.user_id] = p.last_name ? `${p.name} ${p.last_name}` : p.name
+    }
+    return map
+  }, [participants])
+
   const filteredTasks = useFilteredTasks(
     list.entity_type === 'task' ? tasks : [],
     safeFilters,
@@ -109,6 +153,9 @@ export function BoardListCard({
     safeFilters,
     filterCtx,
     projectParticipantsMap ?? {},
+    list.sort_by ?? 'created_at',
+    list.sort_dir ?? 'desc',
+    nextTaskDeadlineByProjectId,
   )
 
   const count = isInbox ? inboxThreads.length : isProject ? filteredProjects.length : filteredTasks.length
@@ -223,6 +270,8 @@ export function BoardListCard({
                     visibleFields={list.visible_fields ?? ['status', 'template']}
                     isSelected={selectedProjectId === project.id}
                     cardLayout={list.card_layout}
+                    nextTask={nextTaskByProjectId[project.id]}
+                    authorName={project.created_by ? authorNameByUserId[project.created_by] : null}
                   />
                 ))}
               </div>

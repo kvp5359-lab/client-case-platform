@@ -70,10 +70,10 @@ export function TaskPanelProjectView({
           </button>
         )}
 
-        {/* Шапка проекта — та же геометрия, что у шапки треда: h-[66px], жёсткие
-            высоты строк (36 + 26 + 4 pt), иконка w-6 h-6, заголовок text-sm. */}
-        <div className="border-b shrink-0 h-[66px] flex flex-col">
-          <div className="flex items-center gap-2 px-4 h-9 shrink-0">
+        {/* Шапка проекта — та же геометрия, что у шапки треда: h-[61px], жёсткие
+            высоты строк (30 + 26 + 5 pt), иконка w-6 h-6, заголовок text-sm. */}
+        <div className="border-b shrink-0 h-[61px] flex flex-col">
+          <div className="flex items-center gap-2 px-4 h-[30px] shrink-0">
             <span className="shrink-0 flex items-center justify-center w-6 h-6 text-muted-foreground">
               <FolderOpen className="w-4 h-4" />
             </span>
@@ -109,7 +109,7 @@ export function TaskPanelProjectView({
 
           <div
             className={cn(
-              'flex items-center gap-2 pr-4 pl-[48px] h-[26px] shrink-0 text-xs text-muted-foreground/70 min-w-0',
+              'flex items-start gap-2 pr-4 pl-[48px] h-[26px] shrink-0 text-xs text-muted-foreground/70 min-w-0',
             )}
           >
               {project.created_at && (

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,10 +37,25 @@ export function FilterRuleRow({ condition, onChange, onRemove, entityType, works
   const operators = fieldDef?.operators ?? ['equals']
   const needsValue = !NO_VALUE_OPERATORS.has(condition.operator)
 
+  // Самовосстановление старых фильтров: для boolean-полей UI отображает «Да»
+  // при value=null через fallback `?? 'true'`, но в движке actual===null даёт
+  // false, и фильтр молча ничего не показывает. Подменяем null → true один раз.
+  useEffect(() => {
+    if (fieldDef?.type === 'boolean' && condition.value == null) {
+      onChange({ ...condition, value: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fieldDef?.type, condition.value])
+
   const handleFieldChange = (field: string) => {
     const newDef = getFieldDef(entityType, field)
     const newOp = newDef?.operators[0] ?? 'equals'
-    onChange({ ...condition, field, operator: newOp, value: null })
+    // Для boolean-полей выставляем дефолт `true` сразу, чтобы синхронизировать
+    // значение с UI (которое визуально показывает «Да» при value=null через
+    // `String(condition.value ?? 'true')`). Иначе в движке actual===null и
+    // фильтр не пропускает ни одну запись, хотя в UI он «включён» на «Да».
+    const defaultValue: unknown = newDef?.type === 'boolean' ? true : null
+    onChange({ ...condition, field, operator: newOp, value: defaultValue })
   }
 
   const handleOperatorChange = (operator: string) => {

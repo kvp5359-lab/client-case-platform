@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField } from './types'
+import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import { formatDeadline, isOverdue } from './boardListUtils'
 import { resolveCardLayout, fieldStyleToClasses, visibleFieldsToLayout } from './cardLayoutUtils'
 
@@ -17,6 +18,10 @@ interface BoardProjectRowProps {
   visibleFields: VisibleField[]
   isSelected?: boolean
   cardLayout?: CardLayout | null
+  /** Ближайшая незавершённая задача этого проекта — используется полем `next_task`. */
+  nextTask?: WorkspaceTask
+  /** Имя автора проекта (resolved from created_by uuid) — используется полем `created_by`. */
+  authorName?: string | null
 }
 
 function ProjectField({
@@ -26,6 +31,8 @@ function ProjectField({
   deadline,
   overdue,
   isSelected,
+  nextTask,
+  authorName,
 }: {
   fieldId: CardFieldId
   style: CardFieldStyle
@@ -33,6 +40,8 @@ function ProjectField({
   deadline: string | null
   overdue: boolean
   isSelected?: boolean
+  nextTask?: WorkspaceTask
+  authorName?: string | null
 }) {
   const classes = fieldStyleToClasses(style)
 
@@ -52,7 +61,7 @@ function ProjectField({
 
     case 'name':
       return (
-        <span className={cn(classes, 'min-w-0 flex-1 leading-snug', isSelected && 'font-medium text-brand-700')}>
+        <span className={cn(classes, 'min-w-0 leading-snug', isSelected && 'font-medium text-brand-700')}>
           {project.name}
         </span>
       )
@@ -73,6 +82,44 @@ function ProjectField({
         </span>
       )
 
+    case 'created_at': {
+      const created = formatDeadline(project.created_at)
+      if (!created) return null
+      return (
+        <span className={cn(classes, 'shrink-0 text-muted-foreground/60')}>
+          {created}
+        </span>
+      )
+    }
+
+    case 'created_by':
+      if (!authorName) return null
+      return (
+        <span className={cn(classes, 'shrink-0 text-muted-foreground/80 truncate')}>
+          {authorName}
+        </span>
+      )
+
+    case 'next_task': {
+      if (!nextTask || !nextTask.deadline) {
+        return <span className={cn(classes, 'shrink-0 text-muted-foreground/40')}>—</span>
+      }
+      const taskOverdue = isOverdue(nextTask.deadline)
+      const taskDeadline = formatDeadline(nextTask.deadline)
+      return (
+        <span className={cn(classes, 'min-w-0 flex items-center gap-1.5 truncate')}>
+          <span className={cn('truncate', isSelected ? 'text-brand-700' : 'text-muted-foreground')}>
+            {nextTask.name}
+          </span>
+          {taskDeadline && (
+            <span className={cn('shrink-0', taskOverdue ? 'text-red-500' : 'text-muted-foreground/60')}>
+              {taskDeadline}
+            </span>
+          )}
+        </span>
+      )
+    }
+
     default:
       return null
   }
@@ -85,6 +132,8 @@ export function BoardProjectRow({
   visibleFields,
   isSelected,
   cardLayout,
+  nextTask,
+  authorName,
 }: BoardProjectRowProps) {
   const router = useRouter()
   const layoutPanel = useLayoutTaskPanel()
@@ -113,7 +162,7 @@ export function BoardProjectRow({
     }
   }
 
-  const fieldProps = { project, deadline, overdue, isSelected }
+  const fieldProps = { project, deadline, overdue, isSelected, nextTask, authorName }
   const isCards = displayMode === 'cards'
 
   return (

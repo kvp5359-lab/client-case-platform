@@ -88,7 +88,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
       ref={ref}
       style={style}
       className={cn(
-        'group/row relative flex items-center gap-3 px-3 py-2 border-b border-border/50 hover:bg-muted/30 transition-colors bg-background',
+        'group/row relative flex items-center gap-3 px-3 py-1.5 border-b border-border/50 hover:bg-muted/30 transition-colors bg-background',
         isDragging && 'opacity-50 shadow-lg z-10',
       )}
     >

@@ -45,6 +45,9 @@ interface DocumentsToolbarProps {
   workspaceId: string
   compressAnalysisItems: CompressAnalysisItem[]
   setCompressAnalysisOpen: (open: boolean) => void
+  /** Принудительно сжимать подписи (например, в TaskPanel → «Документы»).
+   *  Если не задан — включается автоматически при открытой боковой панели. */
+  compact?: boolean
 }
 
 export const DocumentsToolbar = memo(function DocumentsToolbar({
@@ -62,9 +65,13 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
   workspaceId,
   compressAnalysisItems,
   setCompressAnalysisOpen,
+  compact: compactProp,
 }: DocumentsToolbarProps) {
-  // Когда открыта боковая панель — места мало, сокращаем подписи фильтра
+  // Когда открыта боковая панель или нас явно попросили — места мало,
+  // сокращаем подписи фильтра. `compactProp === true` жёстко форсирует сжатие
+  // (используется в TaskPanel → «Документы», где panelTab может быть null).
   const sidePanelOpen = useSidePanelStore((s) => s.panelTab !== null)
+  const compact = compactProp ?? sidePanelOpen
 
   return (
     <div className="flex items-center gap-2 h-9">
@@ -143,7 +150,7 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          {sidePanelOpen ? 'Все' : 'Все документы'}
+          {compact ? 'Все' : 'Все документы'}
         </button>
         <button
           type="button"
@@ -154,9 +161,9 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
               ? 'bg-orange-50 text-orange-600 shadow-[0_1px_3px_rgba(0,0,0,0.2)] font-medium'
               : 'text-muted-foreground hover:text-foreground',
           )}
-          title={sidePanelOpen ? 'Требуется действие' : undefined}
+          title={compact ? 'Требуется действие' : undefined}
         >
-          {sidePanelOpen ? 'Действие' : 'Требуется действие'}
+          {compact ? 'Действие' : 'Требуется действие'}
         </button>
       </div>
 

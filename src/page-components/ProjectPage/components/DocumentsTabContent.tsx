@@ -60,6 +60,9 @@ interface DocumentsTabContentProps {
   workspaceId: string
   onOpenAddKitDialog?: () => void
   googleDriveFolderLink?: string | null
+  /** Принудительно сжимать подписи и максимальную ширину карточек.
+   *  Используется в TaskPanel → «Документы». */
+  compact?: boolean
 }
 
 // === ЭКСПОРТ ===
@@ -70,12 +73,14 @@ export function DocumentsTabContent({
   workspaceId,
   onOpenAddKitDialog,
   googleDriveFolderLink,
+  compact: compactProp,
 }: DocumentsTabContentProps) {
   const [filterMode, setFilterMode] = useState<'all' | 'action-required'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [generateDocOpen, setGenerateDocOpen] = useState(false)
   const sidePanelOpen = useSidePanelStore((s) => s.panelTab !== null)
-  const cardMaxW = !sidePanelOpen ? 'max-w-[789px]' : ''
+  const compact = compactProp ?? sidePanelOpen
+  const cardMaxW = !compact ? 'max-w-[789px]' : ''
   const { can } = useProjectPermissions({ projectId })
   const canAddDocuments = can('documents', 'add_documents')
   const canCreateFolders = can('documents', 'create_folders')
@@ -362,6 +367,7 @@ export function DocumentsTabContent({
           workspaceId={workspaceId}
           compressAnalysisItems={compressAnalysis.compressAnalysisItems}
           setCompressAnalysisOpen={compressAnalysis.setCompressAnalysisOpen}
+          compact={compact}
         />
 
         <div className={cardMaxW}>

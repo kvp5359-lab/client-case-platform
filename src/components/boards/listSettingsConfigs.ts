@@ -55,6 +55,7 @@ export const PROJECT_SORT_FIELDS: { value: SortField; label: string }[] = [
   { value: 'created_at', label: 'Дата создания' },
   { value: 'updated_at', label: 'Дата обновления' },
   { value: 'name', label: 'Название' },
+  { value: 'next_task_deadline', label: 'Дата ближайшей задачи' },
 ]
 
 export const TASK_GROUP_BY_OPTIONS: { value: GroupByField; label: string }[] = [
@@ -107,6 +108,9 @@ export const CARD_FIELD_DEFS: CardFieldDef[] = [
   { id: 'assignees', label: 'Исполнители',   entityTypes: ['task'] },
   { id: 'project',   label: 'Проект',        entityTypes: ['task'] },
   { id: 'template',  label: 'Шаблон',        entityTypes: ['project'] },
+  { id: 'next_task', label: 'Ближайшая задача', entityTypes: ['project'] },
+  { id: 'created_at', label: 'Дата создания', entityTypes: ['project'] },
+  { id: 'created_by', label: 'Автор',         entityTypes: ['project'] },
   { id: 'unread',    label: 'Непрочитанные', entityTypes: ['task'] },
   { id: 'spacer',    label: 'Отступ',        entityTypes: ['task', 'project'] },
 ]

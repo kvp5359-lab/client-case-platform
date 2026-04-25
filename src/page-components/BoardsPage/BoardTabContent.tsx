@@ -39,7 +39,11 @@ export function BoardTabContent({
   const hasTaskLists = lists?.some((l) => l.entity_type === 'task')
   const hasProjectLists = lists?.some((l) => l.entity_type === 'project')
   const hasInboxLists = lists?.some((l) => l.entity_type === 'inbox')
-  const { data: tasks } = useWorkspaceThreads(hasTaskLists ? workspaceId : undefined)
+  // Треды нужны и для task-listов, и для project-listов (поле «Ближайшая задача»
+  // вычисляется на клиенте из уже загруженного кэша — без доп. запросов).
+  const { data: tasks } = useWorkspaceThreads(
+    hasTaskLists || hasProjectLists ? workspaceId : undefined,
+  )
   const { data: projects } = useAccessibleProjects(hasProjectLists ? workspaceId : undefined)
   const { data: inboxThreads = [] } = useFilteredInbox(hasInboxLists ? workspaceId : '')
 

@@ -53,6 +53,7 @@ export function useFilteredTasks(
 ) {
   return useMemo(() => {
     const fieldAccessors: Record<string, (item: unknown) => unknown> = {
+      name: (item) => (item as WorkspaceTask).name,
       type: (item) => (item as WorkspaceTask).type,
       status_id: (item) => (item as WorkspaceTask).status_id,
       project_id: (item) => (item as WorkspaceTask).project_id,
@@ -75,13 +76,20 @@ export function useFilteredTasks(
 }
 
 /**
- * Фильтрует проекты по конфигу фильтров списка.
+ * Фильтрует и сортирует проекты по конфигу списка.
+ *
+ * Сортировка `next_task_deadline` — по дате ближайшей незавершённой задачи
+ * проекта из опционального `nextTaskDeadlineByProjectId`. Проекты без задачи
+ * уезжают в конец независимо от направления сортировки.
  */
-export function useFilteredProjects<T extends Record<string, unknown>>(
+export function useFilteredProjects<T extends Record<string, unknown> & { id: string }>(
   projects: T[],
   filters: FilterGroup,
   ctx: FilterContext,
   participantsMap: Record<string, { id: string }[]>,
+  sortBy: SortField = 'created_at',
+  sortDir: SortDir = 'desc',
+  nextTaskDeadlineByProjectId: Record<string, string | null> = {},
 ) {
   return useMemo(() => {
     const fieldAccessors: Record<string, (item: unknown) => unknown> = {
@@ -98,6 +106,33 @@ export function useFilteredProjects<T extends Record<string, unknown>>(
         (participantsMap[id] ?? []).map((p) => p.id),
     }
 
-    return applyFilters(projects, filters, ctx, fieldAccessors, junctionAccessors)
-  }, [projects, filters, ctx, participantsMap])
+    const filtered = applyFilters(projects, filters, ctx, fieldAccessors, junctionAccessors)
+
+    const getSortKey = (p: T): string | null => {
+      switch (sortBy) {
+        case 'name':
+          return ((p.name as string | undefined) ?? '').toLowerCase()
+        case 'updated_at':
+          return (p.updated_at as string | undefined) ?? null
+        case 'next_task_deadline':
+          return nextTaskDeadlineByProjectId[p.id] ?? null
+        case 'created_at':
+        default:
+          return (p.created_at as string | undefined) ?? null
+      }
+    }
+
+    const mult = sortDir === 'asc' ? 1 : -1
+    return [...filtered].sort((a, b) => {
+      const ka = getSortKey(a)
+      const kb = getSortKey(b)
+      // null (нет значения) всегда в конце, независимо от direction
+      if (ka == null && kb == null) return 0
+      if (ka == null) return 1
+      if (kb == null) return -1
+      if (ka < kb) return -1 * mult
+      if (ka > kb) return 1 * mult
+      return 0
+    })
+  }, [projects, filters, ctx, participantsMap, sortBy, sortDir, nextTaskDeadlineByProjectId])
 }

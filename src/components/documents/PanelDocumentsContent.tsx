@@ -58,6 +58,7 @@ export function PanelDocumentsContent({ projectId, workspaceId }: PanelDocuments
             workspaceId={workspaceId}
             onOpenAddKitDialog={canAddDocumentKits ? addKitDialog.open : undefined}
             googleDriveFolderLink={googleDriveFolderLink}
+            compact
           />
         )}
       </div>

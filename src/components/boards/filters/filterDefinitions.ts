@@ -6,6 +6,12 @@ import type { FilterFieldDef } from '../types'
 
 export const TASK_FILTER_FIELDS: FilterFieldDef[] = [
   {
+    key: 'name',
+    label: 'Название',
+    type: 'text',
+    operators: ['contains', 'equals'],
+  },
+  {
     key: 'type',
     label: 'Тип',
     type: 'text',
