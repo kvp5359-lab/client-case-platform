@@ -620,3 +620,8 @@ export const templateAccessKeys = {
   counts: (entityType: string, entityIds: string[]) =>
     ['template-access-counts', entityType, ...entityIds] as const,
 }
+
+export const taskPanelTabsKeys = {
+  byProjectUser: (projectId: string, userId: string) =>
+    ['task-panel-tabs', projectId, userId] as const,
+}

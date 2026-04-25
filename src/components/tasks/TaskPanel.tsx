@@ -71,6 +71,8 @@ export interface TaskPanelProps {
   canGoBack?: boolean
   onOpenThreadInStack?: (task: TaskItem) => void
   onOpenProjectInStack?: (project: ProjectHeaderInfo) => void
+  /** Слот, который рендерится сверху панели (над шапкой). Используется для системы вкладок. */
+  topSlot?: React.ReactNode
 }
 
 export function TaskPanel({
@@ -92,6 +94,7 @@ export function TaskPanel({
   canGoBack = false,
   onOpenThreadInStack,
   onOpenProjectInStack,
+  topSlot,
 }: TaskPanelProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
@@ -271,6 +274,7 @@ export function TaskPanel({
         onBack={onBack}
         onClose={onClose}
         onOpenThreadInStack={onOpenThreadInStack}
+        topSlot={topSlot}
       />
     )
     const portalRoot = document.getElementById('workspace-panel-root')
@@ -313,6 +317,8 @@ export function TaskPanel({
             <ArrowLeft className="w-4 h-4" />
           </button>
         )}
+
+        {topSlot}
 
         <TaskPanelTaskHeader
           task={liveTask}
