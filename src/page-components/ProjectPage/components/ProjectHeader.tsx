@@ -11,7 +11,6 @@ import { Pencil, Check, X } from 'lucide-react'
 import { logger } from '@/utils/logger'
 import { ParticipantAvatars } from '@/components/participants/ParticipantAvatars'
 import { ProjectStatusPopover } from '@/components/projects/ProjectStatusPopover'
-import { useSidePanelStore } from '@/store/sidePanelStore'
 import type { RoleGroup } from '../hooks/useProjectHeaderParticipants'
 import type { UseMutationResult } from '@tanstack/react-query'
 
@@ -41,10 +40,6 @@ export function ProjectHeader({
 }: ProjectHeaderProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedName, setEditedName] = useState('')
-  // При открытой боковой панели main сжимается на 50% — в шапке тег статуса
-  // не помещается и обрезается. Скрываем его в этом режиме (статус всегда
-  // доступен на вкладке «Настройки»).
-  const sidePanelOpen = useSidePanelStore((s) => s.panelTab !== null)
 
   const handleStartEdit = () => {
     setEditedName(projectName)
@@ -74,7 +69,7 @@ export function ProjectHeader({
   const hasGroups = participantGroups && participantGroups.length > 0
 
   return (
-    <div className="flex items-baseline gap-2">
+    <div className="flex items-baseline gap-2 flex-nowrap" style={{ width: 'max-content' }}>
       {isEditing ? (
         <div className="flex items-center gap-2 w-full">
           <input
@@ -135,7 +130,7 @@ export function ProjectHeader({
             </div>
           )}
 
-          {workspaceId && onStatusChange && !sidePanelOpen && (
+          {workspaceId && onStatusChange && (
             <div className="self-center flex items-center gap-2 shrink-0">
               <div className="w-px h-5 bg-gray-200 shrink-0" />
               <ProjectStatusPopover
