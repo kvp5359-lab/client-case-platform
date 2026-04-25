@@ -259,7 +259,7 @@ export function BoardListCard({
       />
 
       {!collapsed && (
-        <div className={cn(heightClass, 'mt-1 overflow-y-auto', !isCards && 'rounded-lg border border-border/50 bg-white')}>
+        <div className={cn(heightClass, 'mt-1 overflow-y-auto', !isCards && !hasGrouping && 'rounded-lg border border-border/50 bg-white')}>
           {isInbox ? (
             <BoardInboxList
               threads={inboxThreads}
