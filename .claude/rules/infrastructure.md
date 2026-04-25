@@ -117,14 +117,21 @@
 - **Хуки**: `src/hooks/useTrash.ts` — `useTrashedProjects`, `useTrashedThreads`, `useRestoreProject`, `useRestoreThread`, `useHardDeleteProject`, `useHardDeleteThread`.
 - **Миграции**: `20260410_trash_feature.sql` (колонки + `get_user_projects`), `20260410_trash_rpc_updates.sql` (остальные RPC).
 
-## Статусы проектов (только на уровне шаблона + автопереход)
+## Статусы проектов (единый справочник + per-template привязка)
 
-- **Хранение**: `projects.status_id` (uuid → `statuses.id`). Текстовая колонка `projects.status` помечена DEPRECATED 2026-04-25 — будет удалена после 2026-05-09.
-- **Принадлежность**: `statuses.project_template_id` для project-статусов **обязателен** (CHECK `project_status_must_have_template`). Концепции «общих воркспейсных project-статусов» нет — проекты без шаблона или шаблоны без статусов означают «без статуса». Для других `entity_type` (task/document/...) `project_template_id` остаётся NULL — они живут на уровне воркспейса.
-- **Резолв набора**: хук `useProjectStatusesForTemplate(workspaceId, templateId)` — возвращает только статусы заданного шаблона. Без шаблона → пустой массив.
-- **Автопереход**: `thread_templates.on_complete_set_project_status_id`. Если задано — при переходе треда (созданного из этого шаблона) в финальный статус, БД-триггер `auto_advance_project_status` обновляет `projects.status_id` соответствующего проекта. **Last write wins** — текущий статус проекта не сверяется.
-- **UI настройки**: вкладка статусов внутри редактора шаблона проекта (`/templates/project-templates/[id]`) — `ProjectTemplateStatusesSection`. Поле автоперехода в `ThreadTemplateDialog` (только для task-режима).
-- **Удаление статуса с проектами**: открывается `StatusReassignDialog` — сначала переводим проекты на замену, потом удаляем. Реализовано и в общем справочнике (`/directories/statuses`), и в редакторе шаблона.
+- **Хранение**: `projects.status_id` (uuid → `statuses.id`). Текстовая колонка `projects.status` помечена DEPRECATED 2026-04-25 — удалить после 2026-05-09.
+- **Модель**: project-статусы лежат в общем справочнике `statuses` (entity_type='project'), без привязки к шаблону. Связь м-к-м с шаблонами — через junction `project_template_statuses (template_id, status_id, order_index, is_default, is_final)`. Один статус может быть подключён к нескольким шаблонам с разными per-template флагами.
+- **Резолв набора шаблона**: хук `useProjectStatusesForTemplate(workspaceId, templateId)` — JOIN на junction, возвращает `TemplateProjectStatus[]` (поля shared из `statuses` + per-template `order_index/is_default/is_final` из junction).
+- **Все статусы воркспейса**: `useAllProjectStatuses(workspaceId)` — для фильтров/пресетов.
+- **Глобальные `is_default/is_final` в `statuses`**: дублируются при сохранении из редактора шаблона как «представительские» значения для фильтра «Активные/Завершённые» в общем списке проектов. Для точного per-template поведения (триггер автоперехода) используется junction.
+- **Автопереход**: `thread_templates.on_complete_set_project_status_id`. БД-триггер `auto_advance_project_status` при переходе треда в финальный статус задачи обновляет `projects.status_id`. Last write wins.
+- **UI настройки**:
+  - В редакторе шаблона проекта (`/templates/project-templates/[id]`) — `ProjectTemplateStatusesSection`: «Из справочника» (multiselect) или «Создать» (даёт новый в справочник + привязку). Drag-n-drop меняет порядок в junction.
+  - В общем справочнике (`/directories/statuses`) — все project-статусы воркспейса единым списком.
+  - Поле «При завершении перевести проект в статус» в `ThreadTemplateDialog` (только task-режим).
+- **Удаление статуса**:
+  - Из шаблона (в `ProjectTemplateStatusesSection`) → удаление записи в junction. Сам статус остаётся в справочнике. Если есть проекты этого шаблона в этом статусе → `StatusReassignDialog`, реассайн затрагивает только проекты данного шаблона.
+  - Из справочника (`/directories/statuses`) → полное удаление. CASCADE удаляет все junction-записи. Если есть проекты в этом статусе → реассайн.
 
 ## Локальная разработка
 

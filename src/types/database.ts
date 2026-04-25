@@ -4173,6 +4173,48 @@ export type Database = {
           },
         ]
       }
+      project_template_statuses: {
+        Row: {
+          template_id: string
+          status_id: string
+          order_index: number
+          is_default: boolean
+          is_final: boolean
+          created_at: string
+        }
+        Insert: {
+          template_id: string
+          status_id: string
+          order_index?: number
+          is_default?: boolean
+          is_final?: boolean
+          created_at?: string
+        }
+        Update: {
+          template_id?: string
+          status_id?: string
+          order_index?: number
+          is_default?: boolean
+          is_final?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_template_statuses_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "project_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_template_statuses_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_templates: {
         Row: {
           brief_template_sheet_id: string | null
@@ -4871,7 +4913,6 @@ export type Database = {
           is_system: boolean
           name: string
           order_index: number
-          project_template_id: string | null
           show_to_creator: boolean
           silent_transition: boolean
           text_color: string
@@ -4891,7 +4932,6 @@ export type Database = {
           is_system?: boolean
           name: string
           order_index?: number
-          project_template_id?: string | null
           show_to_creator?: boolean
           silent_transition?: boolean
           text_color?: string
@@ -4911,7 +4951,6 @@ export type Database = {
           is_system?: boolean
           name?: string
           order_index?: number
-          project_template_id?: string | null
           show_to_creator?: boolean
           silent_transition?: boolean
           text_color?: string

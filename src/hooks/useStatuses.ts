@@ -12,6 +12,19 @@ export type TaskStatus = Tables<'statuses'>
 export type ProjectStatus = Tables<'statuses'>
 
 /**
+ * Project-статус с per-template флагами (приходят из junction).
+ * Базовый Status describes сам справочный статус (имя, цвет, иконка),
+ * а order_index/is_default/is_final зависят от шаблона.
+ */
+export type TemplateProjectStatus = Tables<'statuses'> & {
+  /** Поле order_index из junction project_template_statuses, переписывает базовое. */
+  order_index: number
+  /** Per-template флаг — может отличаться у одного и того же статуса в разных шаблонах. */
+  is_default: boolean
+  is_final: boolean
+}
+
+/**
  * Приватный базовый хук — загружает статусы по entity_type
  */
 function useStatusesByEntityType(
@@ -64,30 +77,44 @@ export function useDocumentKitStatuses(workspaceId: string | undefined) {
 }
 
 /**
- * Все project-статусы воркспейса (общие + привязанные к любым шаблонам).
- * Фильтрация по конкретному шаблону происходит на стороне потребителя через
- * `useProjectStatusesForTemplate` — это позволяет одним кэшем покрыть все
- * шаблоны и не делать N запросов.
+ * Все project-статусы воркспейса — единый справочник без привязки к шаблонам.
+ * Используется в фильтрах по статусу проекта (на досках и в списке проектов)
+ * и при добавлении статусов в конкретный шаблон через диалог выбора.
  */
 export function useAllProjectStatuses(workspaceId: string | undefined) {
   return useStatusesByEntityType('project', statusKeys.project(workspaceId ?? ''), workspaceId)
 }
 
 /**
- * Возвращает project-статусы шаблона `templateId`.
- *
- * Модель упрощена: project-статусы существуют ТОЛЬКО на уровне шаблона
- * проекта. Если у проекта нет шаблона или у шаблона нет статусов —
- * проект «без статуса». Никаких фолбэков на общие воркспейсные.
+ * Project-статусы конкретного шаблона. JOIN на junction
+ * project_template_statuses, флаги order_index/is_default/is_final берутся
+ * оттуда (per-template). Возвращает массив, готовый к показу в селекторе.
  */
 export function useProjectStatusesForTemplate(
   workspaceId: string | undefined,
   templateId: string | null | undefined,
 ) {
-  const all = useAllProjectStatuses(workspaceId)
-  const data =
-    templateId == null
-      ? []
-      : (all.data ?? []).filter((s) => s.project_template_id === templateId)
-  return { ...all, data }
+  return useQuery({
+    queryKey: ['statuses', 'project-template', workspaceId ?? '', templateId ?? ''],
+    queryFn: async (): Promise<TemplateProjectStatus[]> => {
+      if (!workspaceId || !templateId) return []
+      const { data, error } = await supabase
+        .from('project_template_statuses')
+        .select('order_index, is_default, is_final, statuses(*)')
+        .eq('template_id', templateId)
+        .order('order_index', { ascending: true })
+      if (error) throw error
+      type Row = { order_index: number; is_default: boolean; is_final: boolean; statuses: Tables<'statuses'> | null }
+      return (data as unknown as Row[])
+        .filter((r) => r.statuses !== null)
+        .map((r) => ({
+          ...(r.statuses as Tables<'statuses'>),
+          order_index: r.order_index,
+          is_default: r.is_default,
+          is_final: r.is_final,
+        }))
+    },
+    enabled: !!workspaceId && !!templateId,
+    staleTime: STATUS_STALE_TIME,
+  })
 }

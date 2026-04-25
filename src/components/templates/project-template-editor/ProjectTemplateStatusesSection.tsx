@@ -3,32 +3,45 @@
 /**
  * ProjectTemplateStatusesSection — управление статусами шаблона проекта.
  *
- * Модель: project-статусы существуют ТОЛЬКО в контексте шаблона. Если у
- * шаблона нет статусов — проекты этого типа «без статуса». Фолбэков на
- * общие воркспейсные нет (CHECK-constraint в БД это запрещает).
- *
- * Технически — те же `statuses` (entity_type='project'), но всегда с
- * проставленным `project_template_id`. Идём напрямую через таблицу:
- * RLS-политика `manage_statuses` отрабатывает корректно.
+ * Модель: единый справочник project-статусов на воркспейс + junction
+ * project_template_statuses. В шаблон можно (а) подключить существующий
+ * статус из справочника, (б) создать новый — он добавится и в справочник,
+ * и в junction. Per-template флаги (order_index, is_default, is_final)
+ * хранятся в junction и могут отличаться у одного статуса в разных
+ * шаблонах. Удаление «из шаблона» = удаление записи в junction (статус
+ * остаётся в справочнике). Удаление статуса целиком — через директорию.
  */
 
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useMemo } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { DragEndEvent } from '@dnd-kit/core'
-import { Plus } from 'lucide-react'
+import { Plus, Library } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { supabase } from '@/lib/supabase'
-import { statusKeys } from '@/hooks/queryKeys'
+import {
+  useAllProjectStatuses,
+  useProjectStatusesForTemplate,
+  type TemplateProjectStatus,
+} from '@/hooks/useStatuses'
+import { statusKeys, projectKeys } from '@/hooks/queryKeys'
 import { StatusFormDialog } from '@/components/directories/StatusFormDialog'
 import { StatusesTable } from '@/components/directories/StatusesTable'
 import { StatusReassignDialog } from '@/components/projects/StatusReassignDialog'
-import { projectKeys } from '@/hooks/queryKeys'
 import type { Database } from '@/types/database'
 
 type Status = Database['public']['Tables']['statuses']['Row']
@@ -58,85 +71,149 @@ export function ProjectTemplateStatusesSection({
   projectTemplateId,
 }: ProjectTemplateStatusesSectionProps) {
   const queryClient = useQueryClient()
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingStatus, setEditingStatus] = useState<Status | null>(null)
   const [formData, setFormData] = useState<StatusInsert>(EMPTY_FORM(workspaceId))
-  // Реассайн при удалении: статус, кол-во проектов, открытость диалога.
-  const [reassignFor, setReassignFor] = useState<Status | null>(null)
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false)
+  const [librarySelected, setLibrarySelected] = useState<Set<string>>(new Set())
+  const [reassignFor, setReassignFor] = useState<TemplateProjectStatus | null>(null)
   const [reassignCount, setReassignCount] = useState(0)
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
-  // Один кэш на воркспейс (project-статусы) — фильтруем на клиенте по
-  // project_template_id, чтобы не плодить ключи.
-  const queryKey = statusKeys.project(workspaceId)
-  const { data: allProjectStatuses = [], isLoading } = useQuery({
-    queryKey,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('statuses')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('entity_type', 'project')
-        .order('order_index', { ascending: true })
-      if (error) throw error
-      return data ?? []
-    },
-    enabled: !!workspaceId,
-  })
+  const tplKey = useMemo(
+    () => ['statuses', 'project-template', workspaceId, projectTemplateId] as const,
+    [workspaceId, projectTemplateId],
+  )
 
-  const statuses = allProjectStatuses.filter((s) => s.project_template_id === projectTemplateId)
+  const { data: statuses = [], isLoading } = useProjectStatusesForTemplate(
+    workspaceId,
+    projectTemplateId,
+  )
+  const { data: allProjectStatuses = [] } = useAllProjectStatuses(workspaceId)
 
+  // Кандидаты для библиотечного добавления — статусы воркспейса, которых
+  // ещё нет в этом шаблоне.
+  const libraryCandidates = useMemo(() => {
+    const taken = new Set(statuses.map((s) => s.id))
+    return allProjectStatuses.filter((s) => !taken.has(s.id))
+  }, [allProjectStatuses, statuses])
+
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: tplKey })
+    queryClient.invalidateQueries({ queryKey: statusKeys.project(workspaceId) })
+  }
+
+  // Создание нового статуса: запись в statuses + связь в junction.
+  // Редактирование: апдейт справочной части (общий для всех шаблонов) +
+  // апдейт per-template флагов через junction.
   const saveMutation = useMutation({
     mutationFn: async ({ editing, data }: { editing: Status | null; data: StatusInsert }) => {
-      const payload = {
-        workspace_id: workspaceId,
-        entity_type: 'project' as const,
-        project_template_id: projectTemplateId,
+      // sharedPayload пишется в саму statuses (общая для всех шаблонов).
+      // is_default/is_final кладём и сюда тоже как «глобальное» значение —
+      // его читают пресеты фильтров по проектам, у которых нет контекста
+      // конкретного шаблона. Per-template флаги отдельно живут в junction.
+      const sharedPayload = {
         name: data.name!.trim(),
         description: data.description?.trim() ?? '',
         button_label: data.button_label?.trim() ?? '',
         color: data.color,
         text_color: data.text_color ?? '#1F2937',
-        order_index: data.order_index ?? 0,
-        is_default: data.is_default ?? false,
-        is_final: data.is_final ?? false,
         icon: data.icon ?? null,
         show_to_creator: data.show_to_creator ?? false,
         silent_transition: data.silent_transition ?? false,
+        is_default: data.is_default ?? false,
+        is_final: data.is_final ?? false,
       }
+      const tplPayload = {
+        order_index: data.order_index ?? 0,
+        is_default: data.is_default ?? false,
+        is_final: data.is_final ?? false,
+      }
+
       if (editing) {
-        const { error } = await supabase.from('statuses').update(payload).eq('id', editing.id)
-        if (error) throw error
+        const { error: e1 } = await supabase
+          .from('statuses')
+          .update(sharedPayload)
+          .eq('id', editing.id)
+        if (e1) throw e1
+        const { error: e2 } = await supabase
+          .from('project_template_statuses')
+          .update(tplPayload)
+          .eq('template_id', projectTemplateId)
+          .eq('status_id', editing.id)
+        if (e2) throw e2
       } else {
-        const { error } = await supabase.from('statuses').insert(payload)
-        if (error) throw error
+        const { data: created, error: e1 } = await supabase
+          .from('statuses')
+          .insert({
+            workspace_id: workspaceId,
+            entity_type: 'project',
+            ...sharedPayload,
+          })
+          .select('id')
+          .single()
+        if (e1) throw e1
+        const { error: e2 } = await supabase.from('project_template_statuses').insert({
+          template_id: projectTemplateId,
+          status_id: created.id,
+          ...tplPayload,
+        })
+        if (e2) throw e2
       }
     },
     onSuccess: (_, { editing }) => {
       toast.success(editing ? 'Статус обновлён' : 'Статус создан')
-      queryClient.invalidateQueries({ queryKey })
-      setIsDialogOpen(false)
+      invalidateAll()
+      setIsFormOpen(false)
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Не удалось сохранить'),
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: async (statusId: string) => {
-      const { error } = await supabase.rpc('delete_status', { p_status_id: statusId })
+  // Подключение существующих статусов из справочника — добавление записей
+  // в junction с дефолтными флагами.
+  const linkMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const baseOrder = statuses.length
+      const rows = ids.map((id, i) => ({
+        template_id: projectTemplateId,
+        status_id: id,
+        order_index: baseOrder + i,
+        is_default: false,
+        is_final: false,
+      }))
+      const { error } = await supabase.from('project_template_statuses').insert(rows)
       if (error) throw error
     },
     onSuccess: () => {
-      toast.success('Статус удалён')
-      queryClient.invalidateQueries({ queryKey })
+      toast.success('Статусы добавлены')
+      invalidateAll()
+      setIsLibraryOpen(false)
+      setLibrarySelected(new Set())
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Не удалось удалить'),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Не удалось добавить'),
   })
 
-  // Реассайн + удаление одной транзакцией с точки зрения UX:
-  // 1) UPDATE projects SET status_id=replacement WHERE status_id=deleted
-  // 2) DELETE статус
-  // Если что-то падает на 1 — статус не трогаем.
-  const reassignAndDeleteMutation = useMutation({
+  // Удаление «из шаблона» — отвязка через junction. Сам справочный статус
+  // остаётся.
+  const unlinkMutation = useMutation({
+    mutationFn: async (statusId: string) => {
+      const { error } = await supabase
+        .from('project_template_statuses')
+        .delete()
+        .eq('template_id', projectTemplateId)
+        .eq('status_id', statusId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      toast.success('Статус убран из шаблона')
+      invalidateAll()
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Не удалось убрать'),
+  })
+
+  // Реассайн: переводим проекты этого шаблона на новый статус, затем
+  // отвязываем удаляемый статус от шаблона.
+  const reassignAndUnlinkMutation = useMutation({
     mutationFn: async ({
       statusId,
       replacementId,
@@ -148,23 +225,32 @@ export function ProjectTemplateStatusesSection({
         .from('projects')
         .update({ status_id: replacementId })
         .eq('status_id', statusId)
+        .eq('template_id', projectTemplateId)
       if (updErr) throw updErr
-      const { error: delErr } = await supabase.rpc('delete_status', { p_status_id: statusId })
+      const { error: delErr } = await supabase
+        .from('project_template_statuses')
+        .delete()
+        .eq('template_id', projectTemplateId)
+        .eq('status_id', statusId)
       if (delErr) throw delErr
     },
     onSuccess: () => {
-      toast.success('Статус удалён, проекты перенесены')
-      queryClient.invalidateQueries({ queryKey })
+      toast.success('Статус убран, проекты перенесены')
+      invalidateAll()
       queryClient.invalidateQueries({ queryKey: projectKeys.byWorkspace(workspaceId) })
       setReassignFor(null)
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Не удалось удалить'),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Не удалось'),
   })
 
   const reorderMutation = useMutation({
-    mutationFn: async (reordered: Status[]) => {
+    mutationFn: async (reordered: TemplateProjectStatus[]) => {
       const updates = reordered.map((s, i) =>
-        supabase.from('statuses').update({ order_index: i }).eq('id', s.id),
+        supabase
+          .from('project_template_statuses')
+          .update({ order_index: i })
+          .eq('template_id', projectTemplateId)
+          .eq('status_id', s.id),
       )
       const results = await Promise.all(updates)
       const failed = results.find((r) => r.error)
@@ -172,7 +258,7 @@ export function ProjectTemplateStatusesSection({
     },
     onError: () => {
       toast.error('Не удалось изменить порядок')
-      queryClient.invalidateQueries({ queryKey })
+      invalidateAll()
     },
   })
 
@@ -183,22 +269,19 @@ export function ProjectTemplateStatusesSection({
     const newIndex = statuses.findIndex((s) => s.id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
     const reordered = arrayMove(statuses, oldIndex, newIndex)
-    queryClient.setQueryData<Status[]>(queryKey, (prev) => {
-      if (!prev) return prev
-      const others = prev.filter((s) => s.project_template_id !== projectTemplateId)
-      const updated = reordered.map((s, i) => ({ ...s, order_index: i }))
-      return [...others, ...updated]
-    })
+    queryClient.setQueryData<TemplateProjectStatus[]>(tplKey, () =>
+      reordered.map((s, i) => ({ ...s, order_index: i })),
+    )
     reorderMutation.mutate(reordered)
   }
 
   const openCreate = () => {
     setEditingStatus(null)
     setFormData({ ...EMPTY_FORM(workspaceId), order_index: statuses.length })
-    setIsDialogOpen(true)
+    setIsFormOpen(true)
   }
 
-  const openEdit = (status: Status) => {
+  const openEdit = (status: TemplateProjectStatus) => {
     setEditingStatus(status)
     setFormData({
       workspace_id: status.workspace_id,
@@ -215,7 +298,7 @@ export function ProjectTemplateStatusesSection({
       show_to_creator: status.show_to_creator ?? false,
       silent_transition: status.silent_transition ?? false,
     })
-    setIsDialogOpen(true)
+    setIsFormOpen(true)
   }
 
   const handleSave = () => {
@@ -226,17 +309,14 @@ export function ProjectTemplateStatusesSection({
     saveMutation.mutate({ editing: editingStatus, data: formData })
   }
 
-  const handleDelete = async (status: Status) => {
-    if (status.is_system) {
-      toast.error('Системные статусы нельзя удалять')
-      return
-    }
-    // Сначала проверяем, есть ли проекты в этом статусе. Если есть —
-    // открываем диалог реассайна, иначе обычный confirm.
+  // Удаление в данном UI = убрать из шаблона. Перед этим проверяем,
+  // используется ли статус проектами этого шаблона.
+  const handleRemoveFromTemplate = async (status: TemplateProjectStatus) => {
     const { count, error } = await supabase
       .from('projects')
       .select('id', { count: 'exact', head: true })
       .eq('status_id', status.id)
+      .eq('template_id', projectTemplateId)
       .eq('is_deleted', false)
     if (error) {
       toast.error('Не удалось проверить использование статуса')
@@ -249,13 +329,13 @@ export function ProjectTemplateStatusesSection({
       return
     }
     const ok = await confirm({
-      title: 'Удалить статус?',
-      description: `Статус «${status.name}» будет удалён. Это действие нельзя отменить.`,
+      title: 'Убрать из шаблона?',
+      description: `Статус «${status.name}» будет убран из этого шаблона. В справочнике он останется и будет доступен другим шаблонам.`,
       variant: 'destructive',
-      confirmText: 'Удалить',
+      confirmText: 'Убрать',
     })
     if (!ok) return
-    deleteMutation.mutate(status.id)
+    unlinkMutation.mutate(status.id)
   }
 
   return (
@@ -266,13 +346,19 @@ export function ProjectTemplateStatusesSection({
           <CardDescription>
             {statuses.length === 0
               ? 'Статусов пока нет — проекты этого типа будут «без статуса»'
-              : `${statuses.length} статус(ов) для этого шаблона`}
+              : `${statuses.length} статус(ов) в этом шаблоне`}
           </CardDescription>
         </div>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-1" />
-          Добавить
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setIsLibraryOpen(true)}>
+            <Library className="h-4 w-4 mr-1" />
+            Из справочника
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-1" />
+            Создать
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading || statuses.length === 0 ? (
@@ -284,36 +370,102 @@ export function ProjectTemplateStatusesSection({
           <StatusesTable
             statuses={statuses}
             onEdit={openEdit}
-            onDelete={handleDelete}
+            onDelete={handleRemoveFromTemplate}
             onDragEnd={handleDragEnd}
-            isDeleting={deleteMutation.isPending}
+            isDeleting={unlinkMutation.isPending || reassignAndUnlinkMutation.isPending}
           />
         )}
       </CardContent>
 
       <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
 
+      {/* Диалог реассайна — при удалении статуса с проектами этого шаблона */}
       <StatusReassignDialog
         open={!!reassignFor}
         onOpenChange={(o) => !o && setReassignFor(null)}
         statusToDelete={reassignFor}
         affectedProjectsCount={reassignCount}
-        // Кандидаты для замены: статусы того же шаблона + общие воркспейсные.
-        // Удаляемый сам отфильтруется внутри диалога.
-        candidates={allProjectStatuses.filter(
-          (s) =>
-            s.project_template_id === projectTemplateId || s.project_template_id === null,
-        )}
+        candidates={statuses}
         onConfirm={(replacementId) => {
           if (!reassignFor) return
-          reassignAndDeleteMutation.mutate({ statusId: reassignFor.id, replacementId })
+          reassignAndUnlinkMutation.mutate({
+            statusId: reassignFor.id,
+            replacementId,
+          })
         }}
-        isPending={reassignAndDeleteMutation.isPending}
+        isPending={reassignAndUnlinkMutation.isPending}
       />
 
+      {/* Диалог выбора из справочника */}
+      <Dialog open={isLibraryOpen} onOpenChange={setIsLibraryOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Добавить статусы из справочника</DialogTitle>
+            <DialogDescription>
+              Отметьте статусы, которые нужно подключить к шаблону. Их можно потом
+              переупорядочить и пометить дефолтными/финальными именно в этом шаблоне.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto py-2">
+            {libraryCandidates.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                Все статусы воркспейса уже добавлены в этот шаблон.
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {libraryCandidates.map((s) => {
+                  const checked = librarySelected.has(s.id)
+                  return (
+                    <label
+                      key={s.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/40 cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => {
+                          setLibrarySelected((prev) => {
+                            const next = new Set(prev)
+                            if (next.has(s.id)) next.delete(s.id)
+                            else next.add(s.id)
+                            return next
+                          })
+                        }}
+                      />
+                      <span
+                        className="inline-block w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: s.color }}
+                      />
+                      <span className="text-sm">{s.name}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setIsLibraryOpen(false)
+                setLibrarySelected(new Set())
+              }}
+              disabled={linkMutation.isPending}
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={() => linkMutation.mutate(Array.from(librarySelected))}
+              disabled={linkMutation.isPending || librarySelected.size === 0}
+            >
+              {linkMutation.isPending ? 'Добавление…' : `Добавить (${librarySelected.size})`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <StatusFormDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
         editingStatus={editingStatus}
         formData={formData}
         onFormDataChange={setFormData}
