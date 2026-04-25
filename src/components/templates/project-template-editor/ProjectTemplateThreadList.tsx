@@ -331,6 +331,7 @@ export function ProjectTemplateThreadList({
         }}
         workspaceId={workspaceId}
         template={editingItem}
+        ownerProjectTemplateIdOverride={projectTemplateId}
         onSave={handleSave}
         isPending={saveMutation.isPending}
       />

@@ -24,6 +24,7 @@ import {
   AddTemplatesDialog,
   AddKnowledgeDialog,
   ModulesSection,
+  ProjectTemplateStatusesSection,
 } from './project-template-editor'
 import { BriefTemplateSection } from './project-template-editor/BriefTemplateSection'
 import { RootFolderSection } from './project-template-editor/RootFolderSection'
@@ -265,6 +266,14 @@ export function ProjectTemplateEditorPage() {
               workspaceId={workspaceId}
             />
           </div>
+        </div>
+
+        {/* Статусы шаблона проекта (наследуются проектами этого типа) */}
+        <div className="mt-6">
+          <ProjectTemplateStatusesSection
+            workspaceId={workspaceId}
+            projectTemplateId={templateId}
+          />
         </div>
 
         {/* Диалоги добавления */}

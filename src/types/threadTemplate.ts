@@ -27,6 +27,13 @@ export interface ThreadTemplate {
   access_roles: string[] | null
   default_status_id: string | null
   deadline_days: number | null
+  /**
+   * Если задача, созданная по этому шаблону, переходит в финальный статус —
+   * проект автоматически переводится в этот статус (uuid из statuses).
+   * NULL = автоперехода нет. Применяется только для thread_type='task'.
+   * Применение делает БД-триггер `auto_advance_project_status`.
+   */
+  on_complete_set_project_status_id: string | null
   default_contact_email: string | null
   email_subject_template: string | null
   initial_message_html: string | null
@@ -50,6 +57,7 @@ export interface ThreadTemplateFormData {
   access_roles: string[]
   default_status_id: string | null
   deadline_days: number | null
+  on_complete_set_project_status_id: string | null
   assignee_ids: string[] // participant IDs
   default_contact_email: string
   email_subject_template: string

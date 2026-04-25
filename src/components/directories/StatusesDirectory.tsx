@@ -11,6 +11,7 @@ import { StatusFormDialog } from './StatusFormDialog'
 import { StatusesTable } from './StatusesTable'
 import { StatusesEntityFilter } from './StatusesEntityFilter'
 import { useStatusesDirectory, ENTITY_TYPE_LABELS } from './hooks/useStatusesDirectory'
+import { StatusReassignDialog } from '@/components/projects/StatusReassignDialog'
 import { EmptyState } from '@/components/ui/empty-state'
 
 export function StatusesDirectory() {
@@ -32,6 +33,10 @@ export function StatusesDirectory() {
     filteredStatuses,
     deleteMutation,
     saveMutation,
+    reassignAndDeleteMutation,
+    reassignFor,
+    setReassignFor,
+    reassignCount,
     handleDragEnd,
     openCreateDialog,
     openEditDialog,
@@ -92,6 +97,22 @@ export function StatusesDirectory() {
 
       {/* Диалог подтверждения удаления */}
       <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
+
+      {/* Диалог реассайна — для project-статусов с активными проектами */}
+      <StatusReassignDialog
+        open={!!reassignFor}
+        onOpenChange={(o) => !o && setReassignFor(null)}
+        statusToDelete={reassignFor}
+        affectedProjectsCount={reassignCount}
+        // Кандидаты — все project-статусы воркспейса (общие + по шаблонам);
+        // удаляемый отфильтруется внутри диалога.
+        candidates={filteredStatuses}
+        onConfirm={(replacementId) => {
+          if (!reassignFor) return
+          reassignAndDeleteMutation.mutate({ statusId: reassignFor.id, replacementId })
+        }}
+        isPending={reassignAndDeleteMutation.isPending}
+      />
 
       {/* Диалог создания/редактирования */}
       <StatusFormDialog

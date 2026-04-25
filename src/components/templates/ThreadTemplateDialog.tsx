@@ -23,7 +23,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { Users, UserCheck } from 'lucide-react'
 import { SegmentedToggle } from '@/components/ui/segmented-toggle'
-import { useTaskStatuses } from '@/hooks/useStatuses'
+import { useTaskStatuses, useProjectStatusesForTemplate } from '@/hooks/useStatuses'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTemplate'
 import { IconColorPicker } from './IconColorPicker'
@@ -47,6 +54,11 @@ interface ThreadTemplateDialogProps {
   onOpenChange: (open: boolean) => void
   workspaceId: string
   template: ThreadTemplate | null // null = create
+  /** Принудительно использовать этот project_template_id для подбора набора
+   *  статусов проекта в селекторе автоперехода. Нужен в редакторе шаблона
+   *  проекта при создании НОВОГО шаблона задачи (template=null), когда мы
+   *  ещё не можем взять `template.owner_project_template_id`. */
+  ownerProjectTemplateIdOverride?: string | null
   onSave: (data: ThreadTemplateFormData) => void
   isPending?: boolean
 }
@@ -56,6 +68,7 @@ export function ThreadTemplateDialog({
   onOpenChange,
   workspaceId,
   template,
+  ownerProjectTemplateIdOverride,
   onSave,
   isPending,
 }: ThreadTemplateDialogProps) {
@@ -67,6 +80,7 @@ export function ThreadTemplateDialog({
             key={template?.id ?? 'create'}
             workspaceId={workspaceId}
             template={template}
+            ownerProjectTemplateIdOverride={ownerProjectTemplateIdOverride}
             onSave={onSave}
             isPending={isPending}
             onClose={() => onOpenChange(false)}
@@ -80,12 +94,14 @@ export function ThreadTemplateDialog({
 function ThreadTemplateDialogBody({
   workspaceId,
   template,
+  ownerProjectTemplateIdOverride,
   onSave,
   isPending,
   onClose,
 }: {
   workspaceId: string
   template: ThreadTemplate | null
+  ownerProjectTemplateIdOverride?: string | null
   onSave: (data: ThreadTemplateFormData) => void
   isPending?: boolean
   onClose: () => void
@@ -94,6 +110,16 @@ function ThreadTemplateDialogBody({
 
   // Data
   const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)
+  // Project-статусы для селектора «при завершении задачи перевести проект в…».
+  // Если шаблон принадлежит шаблону проекта (owner_project_template_id) —
+  // показываем статусы этого шаблона (с фолбэком на общие). Если шаблон
+  // глобальный — только общие статусы воркспейса.
+  const ownerProjectTemplateId =
+    ownerProjectTemplateIdOverride ?? template?.owner_project_template_id ?? null
+  const { data: projectStatuses = [] } = useProjectStatusesForTemplate(
+    workspaceId,
+    ownerProjectTemplateId,
+  )
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
 
   // UI state (поповеры)
@@ -137,6 +163,8 @@ function ThreadTemplateDialogBody({
     selectedRoles,
     statusId,
     setStatusId,
+    onCompleteStatusId,
+    setOnCompleteStatusId,
     deadlineDays,
     setDeadlineDays,
     assigneeIds,
@@ -252,6 +280,39 @@ function ThreadTemplateDialogBody({
               />
               <span className="text-sm text-muted-foreground">дней после создания</span>
             </div>
+          </div>
+        )}
+
+        {/* Автопереход статуса проекта при завершении задачи. Применяется
+            БД-триггером auto_advance_project_status — last write wins. */}
+        {isTask && (
+          <div className="flex flex-col gap-1">
+            <Label className="text-sm text-muted-foreground">
+              При завершении перевести проект в статус
+            </Label>
+            <Select
+              value={onCompleteStatusId ?? '__none__'}
+              onValueChange={(v) => setOnCompleteStatusId(v === '__none__' ? null : v)}
+              disabled={projectStatuses.length === 0}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Не менять" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Не менять</SelectItem>
+                {projectStatuses.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className="inline-block w-2 h-2 rounded-full"
+                        style={{ backgroundColor: s.color }}
+                      />
+                      {s.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 

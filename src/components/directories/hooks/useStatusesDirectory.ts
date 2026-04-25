@@ -10,7 +10,7 @@ import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { Database } from '@/types/database'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { STALE_TIME, projectKeys } from '@/hooks/queryKeys'
 
 type EntityType = 'project' | 'task' | 'document' | 'form' | 'document_kit'
 type Status = Database['public']['Tables']['statuses']['Row']
@@ -33,6 +33,9 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
   const [selectedEntityType, setSelectedEntityType] = useState<EntityType>('project')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingStatus, setEditingStatus] = useState<Status | null>(null)
+  // Реассайн при удалении project-статуса, если в нём есть проекты.
+  const [reassignFor, setReassignFor] = useState<Status | null>(null)
+  const [reassignCount, setReassignCount] = useState(0)
   const [formData, setFormData] = useState<StatusInsert>({
     workspace_id: workspaceId || '',
     name: '',
@@ -161,6 +164,34 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
     },
   })
 
+  // --- Мутация: реассайн проектов + удаление статуса ---
+  const reassignAndDeleteMutation = useMutation({
+    mutationFn: async ({
+      statusId,
+      replacementId,
+    }: {
+      statusId: string
+      replacementId: string | null
+    }) => {
+      const { error: updErr } = await supabase
+        .from('projects')
+        .update({ status_id: replacementId })
+        .eq('status_id', statusId)
+      if (updErr) throw updErr
+      const { error: delErr } = await supabase.rpc('delete_status', { p_status_id: statusId })
+      if (delErr) throw delErr
+    },
+    onSuccess: () => {
+      toast.success('Статус удалён, проекты перенесены')
+      queryClient.invalidateQueries({ queryKey: statusesQueryKey(workspaceId ?? '') })
+      queryClient.invalidateQueries({ queryKey: projectKeys.byWorkspace(workspaceId ?? '') })
+      setReassignFor(null)
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Не удалось удалить статус')
+    },
+  })
+
   // --- Мутация: изменение порядка ---
   const reorderMutation = useMutation({
     mutationFn: async (reorderedStatuses: Status[]) => {
@@ -265,6 +296,23 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
       return
     }
 
+    // Для project-статусов проверяем usage. Если кто-то в нём — открываем
+    // reassign-диалог вместо confirm. Для остальных entity_type пока такой
+    // сценарий не реализован, fallback на стандартный confirm.
+    if (status.entity_type === 'project') {
+      const { count } = await supabase
+        .from('projects')
+        .select('id', { count: 'exact', head: true })
+        .eq('status_id', status.id)
+        .eq('is_deleted', false)
+      const usage = count ?? 0
+      if (usage > 0) {
+        setReassignFor(status)
+        setReassignCount(usage)
+        return
+      }
+    }
+
     const ok = await confirm({
       title: 'Удалить статус?',
       description: `Статус "${status.name}" будет удалён. Это действие нельзя отменить.`,
@@ -293,6 +341,10 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
     filteredStatuses,
     saveMutation,
     deleteMutation,
+    reassignAndDeleteMutation,
+    reassignFor,
+    setReassignFor,
+    reassignCount,
     handleDragEnd,
     openCreateDialog,
     openEditDialog,

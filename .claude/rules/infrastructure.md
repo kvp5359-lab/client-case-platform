@@ -117,6 +117,15 @@
 - **Хуки**: `src/hooks/useTrash.ts` — `useTrashedProjects`, `useTrashedThreads`, `useRestoreProject`, `useRestoreThread`, `useHardDeleteProject`, `useHardDeleteThread`.
 - **Миграции**: `20260410_trash_feature.sql` (колонки + `get_user_projects`), `20260410_trash_rpc_updates.sql` (остальные RPC).
 
+## Статусы проектов (наследование от шаблона + автопереход)
+
+- **Хранение**: `projects.status_id` (uuid → `statuses.id`). Текстовая колонка `projects.status` помечена DEPRECATED 2026-04-25 — будет удалена после 2026-05-09.
+- **Наследование**: `statuses.project_template_id`. Если задан — статус виден только проектам этого шаблона. Если NULL — это общий статус воркспейса (фолбэк для проектов без шаблона / шаблонов без своих статусов).
+- **Резолв набора**: хук `useProjectStatusesForTemplate(workspaceId, templateId)` — если у шаблона есть свои статусы, возвращает только их; иначе общие.
+- **Автопереход**: `thread_templates.on_complete_set_project_status_id`. Если задано — при переходе треда (созданного из этого шаблона) в финальный статус, БД-триггер `auto_advance_project_status` обновляет `projects.status_id` соответствующего проекта. **Last write wins** — текущий статус проекта не сверяется. Несколько одновременно завершённых задач — побеждает та, что обработалась последней. Ручная смена статуса проекта тоже подчиняется last-write-wins.
+- **UI настройки**: вкладка статусов внутри редактора шаблона проекта (`/templates/project-templates/[id]`) — `ProjectTemplateStatusesSection`. Поле автоперехода в `ThreadTemplateDialog` (только для task-режима).
+- **Удаление статуса с проектами**: открывается `StatusReassignDialog` — сначала переводим проекты на замену, потом удаляем. Реализовано и в общем справочнике (`/directories/statuses`), и в редакторе шаблона.
+
 ## Локальная разработка
 
 ```bash

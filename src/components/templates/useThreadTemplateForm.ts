@@ -46,6 +46,9 @@ export function useThreadTemplateForm({
     new Set(template?.access_roles ?? []),
   )
   const [statusId, setStatusId] = useState<string | null>(template?.default_status_id ?? null)
+  const [onCompleteStatusId, setOnCompleteStatusId] = useState<string | null>(
+    template?.on_complete_set_project_status_id ?? null,
+  )
   const [deadlineDays, setDeadlineDays] = useState<string>(
     template?.deadline_days != null ? String(template.deadline_days) : '',
   )
@@ -95,6 +98,7 @@ export function useThreadTemplateForm({
       access_roles: accessType === 'roles' ? Array.from(selectedRoles) : [],
       default_status_id: isTask ? statusId : null,
       deadline_days: isTask && days != null && !isNaN(days) ? days : null,
+      on_complete_set_project_status_id: isTask ? onCompleteStatusId : null,
       assignee_ids: isTask ? Array.from(assigneeIds) : [],
       default_contact_email: isEmail ? enrichedEmails.map((e) => e.email).join(', ') : '',
       email_subject_template: isEmail ? emailSubject.trim() : '',
@@ -112,6 +116,7 @@ export function useThreadTemplateForm({
     accessType,
     selectedRoles,
     statusId,
+    onCompleteStatusId,
     deadlineDays,
     assigneeIds,
     enrichedEmails,
@@ -156,6 +161,8 @@ export function useThreadTemplateForm({
     selectedRoles,
     statusId,
     setStatusId,
+    onCompleteStatusId,
+    setOnCompleteStatusId,
     deadlineDays,
     setDeadlineDays,
     assigneeIds,
