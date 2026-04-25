@@ -12,16 +12,14 @@
  *  - tasks  → существующий TaskPanel в режиме проекта (Mode 2) с TabBar в topSlot
  *  - history/documents/assistant/extra/forms/materials → собственный shell + контент
  *
- * Старая «основная» правая панель проекта в WorkspaceLayout продолжает работать
- * параллельно — её мы не трогаем до подтверждения, что новая обкатана.
+ * Контент вкладок (ThreadTabContent/TasksTabContent/SystemTabBody) — в TaskPanelTabContents.tsx.
+ * Видимость по правам — в usePanelTabsVisibility.ts.
+ * Маппинг ProjectThread → TaskItem — в threadToTaskItem.ts.
  */
 
-import { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useQuery } from '@tanstack/react-query'
-import { TaskPanel } from './TaskPanel'
 import { TaskPanelTabBar, type SystemTabDef } from './TaskPanelTabBar'
 import { PanelProjectInfoRow } from './PanelProjectInfoRow'
 import {
@@ -30,98 +28,15 @@ import {
   buildThreadTab,
 } from './useTaskPanelTabs'
 import type { TaskPanelTab } from './taskPanelTabs.types'
-import { useProjectThreadById, useProjectThreads } from '@/hooks/messenger/useProjectThreads'
-import { useTaskStatuses } from '@/hooks/useStatuses'
-import { useTaskAssigneesMap } from './useTaskAssignees'
-import {
-  useUpdateTaskStatus,
-  useUpdateTaskDeadline,
-  useRenameTask,
-  useUpdateTaskSettings,
-} from './useTaskMutations'
-import { workspaceThreadKeys, projectKeys, STALE_TIME } from '@/hooks/queryKeys'
-import { getProjectById } from '@/services/api/projectService'
-import { AiPanelContent } from '@/components/ai-panel'
-import { PanelDocumentsContent } from '@/components/documents/PanelDocumentsContent'
-import { AllHistoryContent } from '@/components/history/AllHistoryContent'
-import { useAuth } from '@/contexts/AuthContext'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
-import { useProjectPermissions, useWorkspacePermissions } from '@/hooks/permissions'
 import type { TaskItem } from './types'
 import type { ProjectHeaderInfo } from './TaskPanel'
-import type { TaskPanelTabType } from './taskPanelTabs.types'
-
-const ExtraPanelContent = lazy(() =>
-  import('@/components/extra-panel/ExtraPanelContent').then((m) => ({
-    default: m.ExtraPanelContent,
-  })),
-)
-
-/**
- * Видимость системных вкладок по правам пользователя.
- *
- * Возвращает Set типов системных вкладок, которые user может открывать.
- * Используется и для фильтрации [+] меню (нет смысла предлагать), и для
- * фильтрации UI бейджей (если user потерял доступ — не показываем вкладку).
- */
-function usePanelTabsVisibility(workspaceId: string, projectId: string | null): Set<TaskPanelTabType> {
-  const { hasModuleAccess } = useProjectPermissions({ projectId: projectId || '' })
-  const { isClientOnly } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
-  return useMemo(() => {
-    const set = new Set<TaskPanelTabType>()
-    if (projectId) {
-      if (hasModuleAccess('tasks')) set.add('tasks')
-      if (hasModuleAccess('history')) set.add('history')
-      if (hasModuleAccess('documents')) set.add('documents')
-      if (hasModuleAccess('forms')) set.add('forms')
-      if (hasModuleAccess('knowledge_base')) set.add('materials')
-      if (!isClientOnly) set.add('extra')
-    }
-    if (
-      !projectId ||
-      hasModuleAccess('ai_knowledge_all') ||
-      hasModuleAccess('ai_knowledge_project') ||
-      hasModuleAccess('ai_project_assistant')
-    ) {
-      set.add('assistant')
-    }
-    // 'thread' — отдельные треды, видимость определяется RLS / openThreadTab.
-    return set
-  }, [projectId, hasModuleAccess, isClientOnly])
-}
-
-/** Маппинг ProjectThread (из БД) → TaskItem (для TaskPanel и openThreadTab). */
-function threadToTaskItem(
-  thread: {
-    id: string
-    name: string
-    type: 'task' | 'chat'
-    project_id: string | null
-    workspace_id: string
-    status_id: string | null
-    deadline: string | null
-    accent_color: string
-    icon: string
-    is_pinned: boolean
-    created_at: string
-    sort_order: number | null
-  },
-): TaskItem {
-  return {
-    id: thread.id,
-    name: thread.name,
-    type: thread.type,
-    project_id: thread.project_id,
-    workspace_id: thread.workspace_id,
-    status_id: thread.status_id,
-    deadline: thread.deadline,
-    accent_color: thread.accent_color,
-    icon: thread.icon,
-    is_pinned: thread.is_pinned,
-    created_at: thread.created_at,
-    sort_order: thread.sort_order ?? 0,
-  }
-}
+import { usePanelTabsVisibility } from './usePanelTabsVisibility'
+import {
+  ThreadTabContent,
+  TasksTabContent,
+  SystemTabBody,
+} from './TaskPanelTabContents'
 
 interface TaskPanelTabbedShellProps {
   workspaceId: string
@@ -474,219 +389,4 @@ function TaskPanelTabbedShellRenderer({
 
   if (!portalRoot) return panel
   return createPortal(panel, portalRoot)
-}
-
-// ─── Thread tab content (bare) ─────────────────────────────────
-
-interface ThreadTabContentProps {
-  threadId: string
-  workspaceId: string
-  onClose: () => void
-}
-
-function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabContentProps) {
-  const { data: thread, isLoading, isFetched } = useProjectThreadById(threadId, true)
-
-  const task: TaskItem | null = useMemo(
-    () => (thread ? threadToTaskItem(thread) : null),
-    [thread],
-  )
-
-  const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)
-  const threadIds = useMemo(() => (task ? [task.id] : []), [task])
-  const { data: membersMap = {} } = useTaskAssigneesMap(threadIds)
-  const invalidateKeys = useMemo(
-    () => [workspaceThreadKeys.workspace(workspaceId)],
-    [workspaceId],
-  )
-  const updateStatus = useUpdateTaskStatus(invalidateKeys)
-  const updateDeadline = useUpdateTaskDeadline(invalidateKeys)
-  const renameTask = useRenameTask(invalidateKeys)
-  const updateSettings = useUpdateTaskSettings(invalidateKeys)
-
-  // Тред не найден после загрузки — либо удалён, либо RLS не пускает
-  // (нет доступа к проекту/треду). Показываем заглушку.
-  if (!task && isFetched && !isLoading) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 gap-2 text-sm text-muted-foreground text-center">
-        <div>Тред недоступен или удалён.</div>
-      </div>
-    )
-  }
-  if (!task) return <LoadingBody />
-
-  return (
-    <TaskPanel
-      bare
-      stackTop={{ kind: 'task', task }}
-      open
-      onClose={onClose}
-      workspaceId={workspaceId}
-      statuses={taskStatuses}
-      members={membersMap[task.id] ?? []}
-      onStatusChange={(statusId) => updateStatus.mutate({ threadId: task.id, statusId })}
-      onDeadlineSet={(d) => updateDeadline.mutate({ threadId: task.id, deadline: d.toISOString() })}
-      onDeadlineClear={() => updateDeadline.mutate({ threadId: task.id, deadline: null })}
-      onRename={(name) => renameTask.mutate({ threadId: task.id, name })}
-      onSettingsSave={(p) => updateSettings.mutate({ threadId: task.id, ...p })}
-      deadlinePending={updateDeadline.isPending}
-      settingsPending={updateSettings.isPending}
-      showProjectLink
-    />
-  )
-}
-
-// ─── Tasks tab content (bare) ───────────────────────────────────
-
-interface TasksTabContentProps {
-  projectId: string
-  workspaceId: string
-  onClose: () => void
-  onOpenThreadInTab: (task: TaskItem) => void
-}
-
-function TasksTabContent({ projectId, workspaceId, onClose, onOpenThreadInTab }: TasksTabContentProps) {
-  const { data: project, isLoading, isFetched, error } = useQuery({
-    queryKey: projectKeys.detail(projectId),
-    queryFn: () => getProjectById(projectId),
-    staleTime: STALE_TIME.MEDIUM,
-    retry: false,
-  })
-
-  const projectInfo: ProjectHeaderInfo | null = useMemo(() => {
-    if (!project) return null
-    return {
-      id: project.id,
-      name: project.name,
-      created_at: project.created_at ?? null,
-      description: project.description ?? null,
-    }
-  }, [project])
-
-  if (!projectInfo) {
-    if ((isFetched && !isLoading) || error) {
-      return (
-        <div className="flex-1 flex items-center justify-center p-6 text-sm text-muted-foreground text-center">
-          Проект недоступен или удалён.
-        </div>
-      )
-    }
-    return <LoadingBody />
-  }
-
-  return (
-    <TaskPanel
-      bare
-      stackTop={{ kind: 'project', project: projectInfo }}
-      open
-      onClose={onClose}
-      workspaceId={workspaceId}
-      onRename={() => {}}
-      onSettingsSave={() => {}}
-      settingsPending={false}
-      onOpenThreadInStack={onOpenThreadInTab}
-    />
-  )
-}
-
-// ─── System tab body (bare) ─────────────────────────────────────
-
-interface SystemTabBodyProps {
-  tab: TaskPanelTab
-  projectId: string | null
-  workspaceId: string
-  onOpenThread: (task: TaskItem) => void
-}
-
-function SystemTabBody({ tab, projectId, workspaceId, onOpenThread }: SystemTabBodyProps) {
-  // Заголовок-строка убрана — название уже видно в самой вкладке.
-  return (
-    <div className="flex flex-col h-full min-w-0">
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <SystemTabContent
-          tab={tab}
-          projectId={projectId}
-          workspaceId={workspaceId}
-          onOpenThread={onOpenThread}
-        />
-      </div>
-    </div>
-  )
-}
-
-function LoadingBody() {
-  return (
-    <div className="flex-1 flex items-center justify-center">
-      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-    </div>
-  )
-}
-
-// ─── System tab content dispatcher ─────────────────────────────
-
-interface SystemTabContentProps {
-  tab: TaskPanelTab
-  projectId: string | null
-  workspaceId: string
-  onOpenThread: (task: TaskItem) => void
-}
-
-function SystemTabContent({ tab, projectId, workspaceId, onOpenThread }: SystemTabContentProps) {
-  const { user } = useAuth()
-  const { data: projectThreads = [] } = useProjectThreads(projectId ?? undefined)
-
-  if (!projectId) {
-    return (
-      <div className="p-4 text-sm text-muted-foreground">
-        Откройте проект, чтобы пользоваться этим разделом.
-      </div>
-    )
-  }
-
-  switch (tab.type) {
-    case 'history':
-      return (
-        <AllHistoryContent
-          projectId={projectId}
-          workspaceId={workspaceId}
-          threads={projectThreads}
-          currentUserId={user?.id}
-          onOpenChat={(threadId) => {
-            const t = projectThreads.find((x) => x.id === threadId)
-            if (!t) return
-            onOpenThread(threadToTaskItem(t))
-          }}
-        />
-      )
-    case 'documents':
-      return <PanelDocumentsContent projectId={projectId} workspaceId={workspaceId} />
-    case 'assistant':
-      return <AiPanelContent workspaceId={workspaceId} projectId={projectId} />
-    case 'extra':
-      return (
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          }
-        >
-          <ExtraPanelContent projectId={projectId} workspaceId={workspaceId} />
-        </Suspense>
-      )
-    case 'forms':
-      return (
-        <div className="p-4 text-sm text-muted-foreground">
-          Анкеты в боковой панели — в разработке. Пока пользуйтесь вкладкой «Анкеты» на главной странице проекта.
-        </div>
-      )
-    case 'materials':
-      return (
-        <div className="p-4 text-sm text-muted-foreground">
-          Полезные материалы в боковой панели — в разработке.
-        </div>
-      )
-    default:
-      return null
-  }
 }
