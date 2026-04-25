@@ -29,6 +29,7 @@ import {
 } from './useTaskPanelTabs'
 import type { TaskPanelTab } from './taskPanelTabs.types'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
+import { calcThreadUnread } from '@/utils/inboxUnread'
 import type { TaskItem } from './types'
 import type { ProjectHeaderInfo } from './TaskPanel'
 import { usePanelTabsVisibility } from './usePanelTabsVisibility'
@@ -272,14 +273,15 @@ function TaskPanelTabbedShellRenderer({
     [tabs, visibleSystemTypes],
   )
   // Карта непрочитанных по thread_id — для бейджей на thread-вкладках.
+  // Используем calcThreadUnread из @/utils/inboxUnread — единый источник
+  // правды, та же функция считает бейджи для сайдбара, списка задач и inbox.
   const { data: inboxThreads = [] } = useInboxThreadsV2(workspaceId)
   const unreadByThreadId = useMemo(() => {
     const map: Record<string, number> = {}
     for (const t of inboxThreads) {
-      const total = (t.unread_count ?? 0) + (t.unread_event_count ?? 0)
-      if (total > 0 || t.has_unread_reaction || t.manually_unread) {
-        map[t.thread_id] = total > 0 ? total : 1
-      }
+      const count = calcThreadUnread(t)
+      if (count > 0) map[t.thread_id] = count
+      else if (count === -1) map[t.thread_id] = 1 // manually_unread → точка как «1» в TabBar
     }
     return map
   }, [inboxThreads])
