@@ -10,12 +10,9 @@ import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipant
 import { useAuth } from '@/contexts/AuthContext'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useUpdateTaskStatus } from '@/components/tasks/useTaskMutations'
-import { TaskPanel } from '@/components/tasks/TaskPanel'
-import { useTaskPanelSetup } from '@/components/tasks/useTaskPanelSetup'
-import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
+import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { BoardView } from '@/components/boards/BoardView'
 import { CreateListDialog } from '@/components/boards/CreateListDialog'
-import { TaskPanelContext } from '@/components/tasks/TaskPanelContext'
 import { workspaceThreadKeys } from '@/hooks/queryKeys'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
 import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
@@ -71,16 +68,15 @@ export function BoardTabContent({
   )
   const updateStatus = useUpdateTaskStatus(boardInvalidateKeys)
 
-  // TaskPanel
-  const tp = useTaskPanelSetup({
-    workspaceId,
-    extraInvalidateKeys: [workspaceThreadKeys.workspace(workspaceId)],
-  })
+  // TaskPanel — единая layout-уровневая через TaskPanelContext.
+  // BoardTabContent больше не держит свой локальный TaskPanel — все клики
+  // идут в layout shell (новая система вкладок per-project).
+  const layoutPanel = useLayoutTaskPanel()
 
   const handleOpenTask = useCallback((taskId: string) => {
     const t = (tasks ?? []).find((x) => x.id === taskId)
     if (!t) return
-    tp.setOpenThread({
+    layoutPanel?.openThread({
       id: t.id,
       name: t.name,
       type: (t.type as 'chat' | 'task') ?? 'task',
@@ -96,71 +92,41 @@ export function BoardTabContent({
       sort_order: t.sort_order,
       project_name: t.project_name,
     })
-  }, [tasks, tp])
+  }, [tasks, layoutPanel])
 
   const handleOpenThread = useCallback((task: TaskItem) => {
-    tp.setOpenThread({ ...task, workspace_id: workspaceId })
-  }, [tp, workspaceId])
-
-  // Локальный контекст TaskPanel для доски: клики внутри BoardTabContent
-  // (в т.ч. BoardProjectRow.openProject) идут в локальный tp, а не в
-  // layout-уровневую панель из WorkspaceLayout. Так доска управляет
-  // собственной TaskPanel, которая передаётся в layout при навигации на проект.
-  const boardTaskPanelCtx = useMemo(
-    () => ({
-      openThread: tp.setOpenThread,
-      pushThread: tp.pushThread,
-      openProject: tp.openProjectTasks,
-      pushProject: tp.pushProject,
-      closeThread: () => tp.setOpenThread(null),
-    }),
-    [tp],
-  )
+    layoutPanel?.openThread({ ...task, workspace_id: workspaceId })
+  }, [layoutPanel, workspaceId])
 
   return (
-    <TaskPanelContext.Provider value={boardTaskPanelCtx}>
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex-1 overflow-x-auto overflow-y-hidden">
-          <BoardView
-            lists={lists ?? []}
-            tasks={tasks ?? []}
-            projects={projects ?? []}
-            inboxThreads={inboxThreads}
-            assigneesMap={assigneesMap ?? {}}
-            workspaceId={workspaceId}
-            currentParticipantId={currentParticipantId ?? null}
-            currentUserId={user?.id ?? null}
-            userToParticipantMap={userToParticipantMap}
-            statuses={statuses}
-            columnWidths={board.column_widths}
-            onOpenTask={handleOpenTask}
-            onOpenThread={handleOpenThread}
-            onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}
-            selectedThreadId={tp.openThread?.id}
-            selectedProjectId={tp.openProject?.id}
-          />
-        </div>
-
-        {/* Панель задачи (правая боковая) */}
-        <TaskPanel
-          {...tp.taskPanelProps}
-          showProjectLink
-          onProjectClick={() => {
-            // Передаём открытый тред в layout-уровневую TaskPanel,
-            // чтобы панель пережила размонтирование BoardsPage при навигации
-            // на страницу проекта. Затем локальную копию закрываем.
-            if (tp.openThread) globalOpenThread(tp.openThread)
-            tp.setOpenThread(null)
-          }}
-        />
-
-        <CreateListDialog
-          open={createListDialog.isOpen}
-          onClose={createListDialog.close}
-          boardId={board.id}
-          existingColumns={lists ? Math.max(0, ...lists.map((l) => l.column_index)) + 1 : 1}
+    <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 overflow-x-auto overflow-y-hidden">
+        <BoardView
+          lists={lists ?? []}
+          tasks={tasks ?? []}
+          projects={projects ?? []}
+          inboxThreads={inboxThreads}
+          assigneesMap={assigneesMap ?? {}}
+          workspaceId={workspaceId}
+          currentParticipantId={currentParticipantId ?? null}
+          currentUserId={user?.id ?? null}
+          userToParticipantMap={userToParticipantMap}
+          statuses={statuses}
+          columnWidths={board.column_widths}
+          onOpenTask={handleOpenTask}
+          onOpenThread={handleOpenThread}
+          onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}
+          selectedThreadId={layoutPanel?.activeThreadId ?? null}
+          selectedProjectId={layoutPanel?.activeProjectId ?? null}
         />
       </div>
-    </TaskPanelContext.Provider>
+
+      <CreateListDialog
+        open={createListDialog.isOpen}
+        onClose={createListDialog.close}
+        boardId={board.id}
+        existingColumns={lists ? Math.max(0, ...lists.map((l) => l.column_index)) + 1 : 1}
+      />
+    </div>
   )
 }

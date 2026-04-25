@@ -18,11 +18,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { Loader2, X } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { TaskPanel } from './TaskPanel'
 import { TaskPanelTabBar, type SystemTabDef } from './TaskPanelTabBar'
+import { PanelProjectInfoRow } from './PanelProjectInfoRow'
 import {
   useTaskPanelTabs,
   buildSystemTab,
@@ -44,8 +45,11 @@ import { AiPanelContent } from '@/components/ai-panel'
 import { PanelDocumentsContent } from '@/components/documents/PanelDocumentsContent'
 import { AllHistoryContent } from '@/components/history/AllHistoryContent'
 import { useAuth } from '@/contexts/AuthContext'
+import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
+import { useProjectPermissions, useWorkspacePermissions } from '@/hooks/permissions'
 import type { TaskItem } from './types'
 import type { ProjectHeaderInfo } from './TaskPanel'
+import type { TaskPanelTabType } from './taskPanelTabs.types'
 
 const ExtraPanelContent = lazy(() =>
   import('@/components/extra-panel/ExtraPanelContent').then((m) => ({
@@ -53,10 +57,81 @@ const ExtraPanelContent = lazy(() =>
   })),
 )
 
+/**
+ * Видимость системных вкладок по правам пользователя.
+ *
+ * Возвращает Set типов системных вкладок, которые user может открывать.
+ * Используется и для фильтрации [+] меню (нет смысла предлагать), и для
+ * фильтрации UI бейджей (если user потерял доступ — не показываем вкладку).
+ */
+function usePanelTabsVisibility(workspaceId: string, projectId: string | null): Set<TaskPanelTabType> {
+  const { hasModuleAccess } = useProjectPermissions({ projectId: projectId || '' })
+  const { isClientOnly } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
+  return useMemo(() => {
+    const set = new Set<TaskPanelTabType>()
+    if (projectId) {
+      if (hasModuleAccess('tasks')) set.add('tasks')
+      if (hasModuleAccess('history')) set.add('history')
+      if (hasModuleAccess('documents')) set.add('documents')
+      if (hasModuleAccess('forms')) set.add('forms')
+      if (hasModuleAccess('knowledge_base')) set.add('materials')
+      if (!isClientOnly) set.add('extra')
+    }
+    if (
+      !projectId ||
+      hasModuleAccess('ai_knowledge_all') ||
+      hasModuleAccess('ai_knowledge_project') ||
+      hasModuleAccess('ai_project_assistant')
+    ) {
+      set.add('assistant')
+    }
+    // 'thread' — отдельные треды, видимость определяется RLS / openThreadTab.
+    return set
+  }, [projectId, hasModuleAccess, isClientOnly])
+}
+
+/** Маппинг ProjectThread (из БД) → TaskItem (для TaskPanel и openThreadTab). */
+function threadToTaskItem(
+  thread: {
+    id: string
+    name: string
+    type: 'task' | 'chat'
+    project_id: string | null
+    workspace_id: string
+    status_id: string | null
+    deadline: string | null
+    accent_color: string
+    icon: string
+    is_pinned: boolean
+    created_at: string
+    sort_order: number | null
+  },
+): TaskItem {
+  return {
+    id: thread.id,
+    name: thread.name,
+    type: thread.type,
+    project_id: thread.project_id,
+    workspace_id: thread.workspace_id,
+    status_id: thread.status_id,
+    deadline: thread.deadline,
+    accent_color: thread.accent_color,
+    icon: thread.icon,
+    is_pinned: thread.is_pinned,
+    created_at: thread.created_at,
+    sort_order: thread.sort_order ?? 0,
+  }
+}
+
 interface TaskPanelTabbedShellProps {
   workspaceId: string
-  /** projectId текущей страницы — определяет, для какого проекта грузим/пишем вкладки. */
-  projectId: string | null
+  /**
+   * projectId текущей страницы — стартовое значение «активного проекта».
+   * При открытии треда/проекта другого projectId shell автоматически переключится
+   * на его scope (вкладки per-project). На страницах без проекта (/boards, /inbox)
+   * передаём null — projectId возьмётся из task.project_id первого открываемого треда.
+   */
+  pageProjectId: string | null
 }
 
 export interface TaskPanelTabbedShellApi {
@@ -64,37 +139,158 @@ export interface TaskPanelTabbedShellApi {
   openThreadTab: (task: TaskItem) => void
   /** Открыть «список задач проекта» во вкладке (Mode 2 старого TaskPanel). */
   openProjectTab: (project: ProjectHeaderInfo) => void
-  /** Закрыть всё. */
+  /** Полный сброс: удалить все вкладки из БД. */
   closeAll: () => void
+  /** Скрыть панель UI (вкладки в БД сохраняются). */
+  hidePanel: () => void
+  /** Показать панель (если есть вкладки — появятся; если нет — no-op). */
+  showPanel: () => void
+  /** Переключить hidden. */
+  togglePanel: () => void
+  /** Скрыта ли панель прямо сейчас (но вкладки есть). */
+  isHidden: boolean
+  /** Есть ли хотя бы одна вкладка. */
+  hasTabs: boolean
+  /** id треда из активной вкладки (для подсветки в BoardView и т.п.). */
+  activeThreadId: string | null
+  /** id проекта из активной вкладки (для подсветки проектов на досках). */
+  activeProjectRefId: string | null
 }
 
 /**
  * Хук, возвращающий и API для внешнего открытия вкладок (для TaskPanelContext),
- * и сами рендер-методы для UI. Чтобы родитель мог одновременно прокидывать API
- * через контекст и рендерить shell.
+ * и сами рендер-методы для UI.
+ *
+ * activeProjectId — динамическое состояние scope. Меняется автоматически при
+ * открытии треда/проекта другого projectId. При смене страницы проекта — синк
+ * с pageProjectId.
  */
-export function useTaskPanelTabbedShell({ workspaceId, projectId }: TaskPanelTabbedShellProps) {
-  const tabs = useTaskPanelTabs({ projectId })
+export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPanelTabbedShellProps) {
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(pageProjectId)
+  // Hidden — UI-only флаг «панель скрыта». Не трогает вкладки в БД.
+  // Сбрасывается на false при любом open*Tab (см. ниже).
+  const [hidden, setHidden] = useState(false)
+  // Синк с pageProjectId: переключаем scope ТОЛЬКО когда pageProjectId реально
+  // изменился (пользователь перешёл на другой проект). Иначе при каждом
+  // ре-рендере мы бы откатывали scope, заданный openThreadTab, обратно
+  // на pageProjectId.
+  const prevPageProjectIdRef = useRef(pageProjectId)
+  useEffect(() => {
+    if (prevPageProjectIdRef.current !== pageProjectId) {
+      prevPageProjectIdRef.current = pageProjectId
+      if (pageProjectId) setActiveProjectId(pageProjectId)
+    }
+  }, [pageProjectId])
 
+  const tabs = useTaskPanelTabs({ projectId: activeProjectId })
+
+  // Очередь pending-вкладок: когда нужно сменить projectId перед openTab,
+  // ждём готовности хука с новым projectId.
+  const [pendingOpen, setPendingOpen] = useState<TaskPanelTab | null>(null)
+  useEffect(() => {
+    if (!pendingOpen) return
+    if (!tabs.isReady) return
+    tabs.openTab(pendingOpen)
+    setPendingOpen(null)
+  }, [pendingOpen, tabs])
+
+  const tabsOpenTab = tabs.openTab
   const openThreadTab = useCallback(
     (task: TaskItem) => {
-      tabs.openTab(buildThreadTab(task.id, task.name))
+      const targetPid = task.project_id ?? null
+      const tab = buildThreadTab(task.id, task.name, {
+        threadType: task.type,
+        icon: task.icon,
+        accentColor: task.accent_color,
+      })
+      // Открытие нового треда — гарантированно показываем панель.
+      setHidden(false)
+      if (targetPid !== activeProjectId) {
+        setActiveProjectId(targetPid)
+        setPendingOpen(tab)
+      } else {
+        tabsOpenTab(tab)
+      }
     },
-    [tabs],
+    [activeProjectId, tabsOpenTab],
   )
 
   const openProjectTab = useCallback(
     (project: ProjectHeaderInfo) => {
-      // Проект-в-панели = вкладка «Все задачи». Используем системную вкладку 'tasks'.
-      // refId = projectId, чтобы знать, какой проект показывать.
-      tabs.openTab({ id: `tasks:${project.id}`, type: 'tasks', refId: project.id, title: project.name })
+      const targetPid = project.id
+      const tab: TaskPanelTab = {
+        id: `tasks:${project.id}`,
+        type: 'tasks',
+        refId: project.id,
+        // Заголовок «Задачи» (одинаковый для обоих путей: и из [+] меню, и из
+        // клика на проект на доске). Имя проекта видно в шапке самой вкладки.
+        title: 'Задачи',
+      }
+      setHidden(false)
+      if (targetPid !== activeProjectId) {
+        setActiveProjectId(targetPid)
+        setPendingOpen(tab)
+      } else {
+        tabsOpenTab(tab)
+      }
     },
-    [tabs],
+    [activeProjectId, tabsOpenTab],
   )
 
+  // Активный thread/project из текущей активной вкладки — для подсветки.
+  const activeThreadId = tabs.activeTab?.type === 'thread' ? (tabs.activeTab.refId ?? null) : null
+  const activeProjectRefId =
+    tabs.activeTab?.type === 'tasks' ? (tabs.activeTab.refId ?? null) : null
+
+  const hidePanel = useCallback(() => setHidden(true), [])
+  const showPanel = useCallback(() => setHidden(false), [])
+  const togglePanel = useCallback(() => setHidden((h) => !h), [])
+  const hasTabs = tabs.tabs.length > 0
+
   const api: TaskPanelTabbedShellApi = useMemo(
-    () => ({ openThreadTab, openProjectTab, closeAll: tabs.closeAll }),
-    [openThreadTab, openProjectTab, tabs.closeAll],
+    () => ({
+      openThreadTab,
+      openProjectTab,
+      closeAll: tabs.closeAll,
+      hidePanel,
+      showPanel,
+      togglePanel,
+      isHidden: hidden,
+      hasTabs,
+      activeThreadId,
+      activeProjectRefId,
+    }),
+    [
+      openThreadTab,
+      openProjectTab,
+      tabs.closeAll,
+      hidePanel,
+      showPanel,
+      togglePanel,
+      hidden,
+      hasTabs,
+      activeThreadId,
+      activeProjectRefId,
+    ],
+  )
+
+  const onOpenSystemTab = useCallback(
+    (def: SystemTabDef) => {
+      // «Все задачи» — это всегда tasks-вкладка ТЕКУЩЕГО проекта (с refId).
+      // Без refId её нечем рендерить — поэтому требуется активный projectId.
+      if (def.type === 'tasks') {
+        if (!activeProjectId) return
+        tabsOpenTab({
+          id: `tasks:${activeProjectId}`,
+          type: 'tasks',
+          refId: activeProjectId,
+          title: def.title,
+        })
+        return
+      }
+      tabsOpenTab(buildSystemTab(def.type, def.title))
+    },
+    [tabsOpenTab, activeProjectId],
   )
 
   const shellElement = (
@@ -104,11 +300,13 @@ export function useTaskPanelTabbedShell({ workspaceId, projectId }: TaskPanelTab
       activeTabId={tabs.activeTabId}
       onActivate={tabs.activateTab}
       onCloseTab={tabs.closeTab}
-      onOpenSystem={(def: SystemTabDef) => tabs.openTab(buildSystemTab(def.type, def.title))}
+      onOpenSystem={onOpenSystemTab}
       onOpenThreadTab={openThreadTab}
-      onCloseAll={tabs.closeAll}
+      onHidePanel={hidePanel}
+      hidden={hidden}
       workspaceId={workspaceId}
-      projectId={projectId}
+      projectId={activeProjectId}
+      pageProjectId={pageProjectId}
     />
   )
 
@@ -123,9 +321,13 @@ interface RendererProps {
   onCloseTab: (id: string) => void
   onOpenSystem: (def: SystemTabDef) => void
   onOpenThreadTab: (task: TaskItem) => void
-  onCloseAll: () => void
+  onHidePanel: () => void
+  hidden: boolean
   workspaceId: string
+  /** Активный projectId scope-а вкладок. */
   projectId: string | null
+  /** projectId страницы, на которой находится пользователь. */
+  pageProjectId: string | null
 }
 
 function TaskPanelTabbedShellRenderer({
@@ -136,12 +338,43 @@ function TaskPanelTabbedShellRenderer({
   onCloseTab,
   onOpenSystem,
   onOpenThreadTab,
-  onCloseAll,
+  onHidePanel,
+  hidden,
   workspaceId,
   projectId,
+  pageProjectId,
 }: RendererProps) {
-  // Анимация въезда
-  const open = tabs.length > 0
+  // Видимость системных вкладок по правам пользователя в текущем scope (project).
+  const visibleSystemTypes = usePanelTabsVisibility(workspaceId, projectId)
+  // Фильтруем уже открытые вкладки: если user потерял доступ к системному
+  // разделу (например, перешёл в проект где модуля нет) — скрываем эту
+  // вкладку из бара. Сама запись в БД остаётся: при переключении scope обратно
+  // в проект где доступ есть — вкладка снова появится.
+  const visibleTabs = useMemo(
+    () =>
+      tabs.filter((t) => {
+        if (t.type === 'thread' || t.type === 'tasks') return true // RLS отрулит
+        return visibleSystemTypes.has(t.type)
+      }),
+    [tabs, visibleSystemTypes],
+  )
+  // Карта непрочитанных по thread_id — для бейджей на thread-вкладках.
+  const { data: inboxThreads = [] } = useInboxThreadsV2(workspaceId)
+  const unreadByThreadId = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const t of inboxThreads) {
+      const total = (t.unread_count ?? 0) + (t.unread_event_count ?? 0)
+      if (total > 0 || t.has_unread_reaction || t.manually_unread) {
+        map[t.thread_id] = total > 0 ? total : 1
+      }
+    }
+    return map
+  }, [inboxThreads])
+  // Один persistent .side-panel контейнер. Анимация въезда срабатывает только
+  // при первом появлении (tabs.length: 0 → >0). Переключение между вкладками
+  // не размонтирует контейнер — меняется только содержимое.
+  // hidden=true прячет панель UI, но не трогает вкладки в БД.
+  const open = tabs.length > 0 && !hidden
   const [painted, setPainted] = useState(false)
   useEffect(() => {
     if (!open) {
@@ -157,89 +390,108 @@ function TaskPanelTabbedShellRenderer({
   }, [open])
   const visible = open && painted
 
-  if (!open || !activeTab) return null
+  const portalRoot = typeof document !== 'undefined' ? document.getElementById('workspace-panel-root') : null
 
-  const tabBar = (
-    <TaskPanelTabBar
-      tabs={tabs}
-      activeTabId={activeTabId}
-      onActivate={onActivate}
-      onClose={onCloseTab}
-      onOpenSystem={onOpenSystem}
-    />
-  )
-
-  // Thread / tasks вкладки рендерим через существующий TaskPanel (с topSlot=tabBar).
-  if (activeTab.type === 'thread' && activeTab.refId) {
-    return (
-      <ThreadTabRenderer
-        threadId={activeTab.refId}
-        workspaceId={workspaceId}
-        topSlot={tabBar}
-        onClose={onCloseAll}
-      />
+  // Контент активной вкладки. Все рендереры возвращают «голое» содержимое
+  // без обёртки .side-panel — обёртка живёт здесь и не размонтируется.
+  // Если активная вкладка стала недоступной по правам — показываем заглушку.
+  const activeTabAccessible =
+    !activeTab ||
+    activeTab.type === 'thread' ||
+    activeTab.type === 'tasks' ||
+    visibleSystemTypes.has(activeTab.type)
+  let activeContent: React.ReactNode = null
+  if (activeTab && !activeTabAccessible) {
+    activeContent = (
+      <div className="flex-1 flex items-center justify-center p-6 text-sm text-muted-foreground text-center">
+        Нет доступа к этому разделу.
+      </div>
     )
+  } else if (activeTab) {
+    if (activeTab.type === 'thread' && activeTab.refId) {
+      activeContent = (
+        <ThreadTabContent
+          key={`thread:${activeTab.refId}`}
+          threadId={activeTab.refId}
+          workspaceId={workspaceId}
+          onClose={onHidePanel}
+        />
+      )
+    } else if (activeTab.type === 'tasks' && activeTab.refId) {
+      activeContent = (
+        <TasksTabContent
+          key={`tasks:${activeTab.refId}`}
+          projectId={activeTab.refId}
+          workspaceId={workspaceId}
+          onClose={onHidePanel}
+          onOpenThreadInTab={onOpenThreadTab}
+        />
+      )
+    } else {
+      activeContent = (
+        <SystemTabBody
+          key={`sys:${activeTab.id}`}
+          tab={activeTab}
+          projectId={projectId}
+          workspaceId={workspaceId}
+          onOpenThread={onOpenThreadTab}
+        />
+      )
+    }
   }
 
-  if (activeTab.type === 'tasks' && activeTab.refId) {
-    return (
-      <TasksTabRenderer
-        projectId={activeTab.refId}
-        workspaceId={workspaceId}
-        topSlot={tabBar}
-        onClose={onCloseAll}
-        onOpenThreadInTab={onOpenThreadTab}
-      />
-    )
-  }
-
-  // Системные вкладки — собственный shell.
-  return (
-    <SystemTabShell
-      visible={visible}
-      title={activeTab.title}
-      onCloseAll={onCloseAll}
-      topSlot={tabBar}
+  const panel = (
+    <div
+      className={cn(
+        'side-panel flex flex-col z-50',
+        'transition-transform duration-200 ease-out',
+        !open && 'hidden',
+        visible ? 'translate-x-0' : 'translate-x-full',
+      )}
     >
-      <SystemTabContent
-        tab={activeTab}
+      {/* Строка 1: информация о проекте текущего scope + кнопка скрыть панель. */}
+      <PanelProjectInfoRow
         projectId={projectId}
         workspaceId={workspaceId}
-        onOpenThread={onOpenThreadTab}
+        pageProjectId={pageProjectId}
+        onHidePanel={onHidePanel}
       />
-    </SystemTabShell>
+      {/* Строка 2: ряд открытых вкладок + меню добавления.
+          Учтена видимость по правам — недоступные системные вкладки
+          скрываются из бара и из меню. */}
+      <TaskPanelTabBar
+        tabs={visibleTabs}
+        activeTabId={activeTabId}
+        onActivate={onActivate}
+        onClose={onCloseTab}
+        onOpenSystem={onOpenSystem}
+        unreadByThreadId={unreadByThreadId}
+        visibleSystemTypes={visibleSystemTypes}
+      />
+      {/* Строка 3+: содержимое активной вкладки (со своей шапкой). */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">{activeContent}</div>
+    </div>
   )
+
+  if (!portalRoot) return panel
+  return createPortal(panel, portalRoot)
 }
 
-// ─── Thread tab ────────────────────────────────────────────────
+// ─── Thread tab content (bare) ─────────────────────────────────
 
-interface ThreadTabRendererProps {
+interface ThreadTabContentProps {
   threadId: string
   workspaceId: string
-  topSlot: React.ReactNode
   onClose: () => void
 }
 
-function ThreadTabRenderer({ threadId, workspaceId, topSlot, onClose }: ThreadTabRendererProps) {
-  const { data: thread } = useProjectThreadById(threadId, true)
+function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabContentProps) {
+  const { data: thread, isLoading, isFetched } = useProjectThreadById(threadId, true)
 
-  const task: TaskItem | null = useMemo(() => {
-    if (!thread) return null
-    return {
-      id: thread.id,
-      name: thread.name,
-      type: thread.type,
-      project_id: thread.project_id,
-      workspace_id: thread.workspace_id,
-      status_id: thread.status_id,
-      deadline: thread.deadline,
-      accent_color: thread.accent_color,
-      icon: thread.icon,
-      is_pinned: thread.is_pinned,
-      created_at: thread.created_at,
-      sort_order: thread.sort_order,
-    }
-  }, [thread])
+  const task: TaskItem | null = useMemo(
+    () => (thread ? threadToTaskItem(thread) : null),
+    [thread],
+  )
 
   const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)
   const threadIds = useMemo(() => (task ? [task.id] : []), [task])
@@ -253,13 +505,20 @@ function ThreadTabRenderer({ threadId, workspaceId, topSlot, onClose }: ThreadTa
   const renameTask = useRenameTask(invalidateKeys)
   const updateSettings = useUpdateTaskSettings(invalidateKeys)
 
-  if (!task) {
-    // пока нет данных — рендерим пустой shell с tabBar, чтобы не моргать
-    return <LoadingShell topSlot={topSlot} onClose={onClose} />
+  // Тред не найден после загрузки — либо удалён, либо RLS не пускает
+  // (нет доступа к проекту/треду). Показываем заглушку.
+  if (!task && isFetched && !isLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 gap-2 text-sm text-muted-foreground text-center">
+        <div>Тред недоступен или удалён.</div>
+      </div>
+    )
   }
+  if (!task) return <LoadingBody />
 
   return (
     <TaskPanel
+      bare
       stackTop={{ kind: 'task', task }}
       open
       onClose={onClose}
@@ -273,27 +532,26 @@ function ThreadTabRenderer({ threadId, workspaceId, topSlot, onClose }: ThreadTa
       onSettingsSave={(p) => updateSettings.mutate({ threadId: task.id, ...p })}
       deadlinePending={updateDeadline.isPending}
       settingsPending={updateSettings.isPending}
-      topSlot={topSlot}
       showProjectLink
     />
   )
 }
 
-// ─── Tasks tab (project list) ───────────────────────────────────
+// ─── Tasks tab content (bare) ───────────────────────────────────
 
-interface TasksTabRendererProps {
+interface TasksTabContentProps {
   projectId: string
   workspaceId: string
-  topSlot: React.ReactNode
   onClose: () => void
   onOpenThreadInTab: (task: TaskItem) => void
 }
 
-function TasksTabRenderer({ projectId, workspaceId, topSlot, onClose, onOpenThreadInTab }: TasksTabRendererProps) {
-  const { data: project } = useQuery({
+function TasksTabContent({ projectId, workspaceId, onClose, onOpenThreadInTab }: TasksTabContentProps) {
+  const { data: project, isLoading, isFetched, error } = useQuery({
     queryKey: projectKeys.detail(projectId),
     queryFn: () => getProjectById(projectId),
     staleTime: STALE_TIME.MEDIUM,
+    retry: false,
   })
 
   const projectInfo: ProjectHeaderInfo | null = useMemo(() => {
@@ -307,11 +565,19 @@ function TasksTabRenderer({ projectId, workspaceId, topSlot, onClose, onOpenThre
   }, [project])
 
   if (!projectInfo) {
-    return <LoadingShell topSlot={topSlot} onClose={onClose} />
+    if ((isFetched && !isLoading) || error) {
+      return (
+        <div className="flex-1 flex items-center justify-center p-6 text-sm text-muted-foreground text-center">
+          Проект недоступен или удалён.
+        </div>
+      )
+    }
+    return <LoadingBody />
   }
 
   return (
     <TaskPanel
+      bare
       stackTop={{ kind: 'project', project: projectInfo }}
       open
       onClose={onClose}
@@ -320,62 +586,41 @@ function TasksTabRenderer({ projectId, workspaceId, topSlot, onClose, onOpenThre
       onSettingsSave={() => {}}
       settingsPending={false}
       onOpenThreadInStack={onOpenThreadInTab}
-      topSlot={topSlot}
     />
   )
 }
 
-// ─── System tab shell ──────────────────────────────────────────
+// ─── System tab body (bare) ─────────────────────────────────────
 
-interface SystemTabShellProps {
-  visible: boolean
-  title: string
-  onCloseAll: () => void
-  topSlot: React.ReactNode
-  children: React.ReactNode
+interface SystemTabBodyProps {
+  tab: TaskPanelTab
+  projectId: string | null
+  workspaceId: string
+  onOpenThread: (task: TaskItem) => void
 }
 
-function SystemTabShell({ visible, title, onCloseAll, topSlot, children }: SystemTabShellProps) {
-  const portalRoot = typeof document !== 'undefined' ? document.getElementById('workspace-panel-root') : null
-  const panel = (
-    <div
-      className={cn(
-        'side-panel flex flex-col z-50',
-        'transition-transform duration-200 ease-out',
-        visible ? 'translate-x-0' : 'translate-x-full',
-      )}
-    >
-      {topSlot}
-      <div className="flex items-center justify-between px-4 h-[40px] border-b shrink-0 bg-white">
-        <div className="text-sm font-medium truncate">{title}</div>
-        <button
-          type="button"
-          onClick={onCloseAll}
-          className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-          aria-label="Закрыть панель"
-          title="Закрыть панель"
-        >
-          <X className="w-4 h-4" />
-        </button>
+function SystemTabBody({ tab, projectId, workspaceId, onOpenThread }: SystemTabBodyProps) {
+  // Заголовок-строка убрана — название уже видно в самой вкладке.
+  return (
+    <div className="flex flex-col h-full min-w-0">
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <SystemTabContent
+          tab={tab}
+          projectId={projectId}
+          workspaceId={workspaceId}
+          onOpenThread={onOpenThread}
+        />
       </div>
-      <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
     </div>
   )
-  return portalRoot ? createPortal(panel, portalRoot) : panel
 }
 
-function LoadingShell({ topSlot, onClose }: { topSlot: React.ReactNode; onClose: () => void }) {
-  const portalRoot = typeof document !== 'undefined' ? document.getElementById('workspace-panel-root') : null
-  const panel = (
-    <div className="side-panel flex flex-col z-50">
-      {topSlot}
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-      </div>
-      <button onClick={onClose} className="hidden">close</button>
+function LoadingBody() {
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
     </div>
   )
-  return portalRoot ? createPortal(panel, portalRoot) : panel
 }
 
 // ─── System tab content dispatcher ─────────────────────────────
@@ -410,20 +655,7 @@ function SystemTabContent({ tab, projectId, workspaceId, onOpenThread }: SystemT
           onOpenChat={(threadId) => {
             const t = projectThreads.find((x) => x.id === threadId)
             if (!t) return
-            onOpenThread({
-              id: t.id,
-              name: t.name,
-              type: t.type,
-              project_id: t.project_id,
-              workspace_id: t.workspace_id,
-              status_id: t.status_id,
-              deadline: t.deadline,
-              accent_color: t.accent_color,
-              icon: t.icon,
-              is_pinned: t.is_pinned,
-              created_at: t.created_at,
-              sort_order: t.sort_order,
-            })
+            onOpenThread(threadToTaskItem(t))
           }}
         />
       )

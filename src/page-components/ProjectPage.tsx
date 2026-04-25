@@ -152,46 +152,26 @@ export default function ProjectPage() {
   const sidePanelOpen = useSidePanelStore((s) => s.panelTab !== null)
 
   const panelTab = useSidePanelStore((s) => s.panelTab)
-  const openPanel = useSidePanelStore((s) => s.openPanel)
-  const closePanel = useSidePanelStore((s) => s.closePanel)
 
   // Флаг: не сохранять panelTab пока восстановление не завершилось
   const panelRestoredRef = useRef(false)
 
-  // Храним modules.chats в ref, чтобы не раздувать deps useEffect
-  // (его чтение нужно только в момент первого открытия панели).
-  const chatsEnabledRef = useRef(modules.chats)
-  useEffect(() => {
-    chatsEnabledRef.current = modules.chats
-  }, [modules.chats])
-
   // projectId устанавливаем сразу, не дожидаясь projectTemplate
   // + восстанавливаем состояние панели per-project
-  // Панель открыта в проекте по умолчанию на 'client', если модуль чатов включён.
-  // Ждём загрузки модулей, чтобы не открывать панель с табом, которого нет.
+  // Контекст проекта в стор. Авто-открытие основной правой панели отключено
+  // (раньше при заходе на проект она открывалась автоматически на вкладке
+  // 'client' или восстанавливала сохранённую). Теперь панель открывается
+  // ТОЛЬКО по клику на кнопки FloatingPanelButtons — это убирает визуальный
+  // конфликт с системой вкладок треда (TaskPanelTabbedShell).
   useEffect(() => {
-    panelRestoredRef.current = false
+    panelRestoredRef.current = true
     if (projectId && !loadingModules) {
       setContext({ projectId })
-      requestAnimationFrame(() => {
-        try {
-          const saved = localStorage.getItem(`cc:panel-tab:${projectId}`)
-          if (saved && saved !== 'null' && saved !== '"null"') {
-            const tab = saved.startsWith('"') ? JSON.parse(saved) : saved
-            openPanel(tab as 'client' | 'internal' | 'assistant' | 'extra')
-          } else if (chatsEnabledRef.current) {
-            openPanel('client')
-          }
-        } catch {
-          if (chatsEnabledRef.current) openPanel('client')
-        }
-        panelRestoredRef.current = true
-      })
     }
     return () => {
       setContext({ projectId: undefined, templateId: undefined })
     }
-  }, [projectId, setContext, openPanel, closePanel, loadingModules])
+  }, [projectId, setContext, loadingModules])
 
   // Сохранять panelTab per-project при изменении (только после восстановления)
   useEffect(() => {
@@ -218,30 +198,10 @@ export default function ProjectPage() {
     }
   }, [modules.chats, isLoading, setChatsEnabled])
 
-  // Открытие мессенджера по URL-параметру ?panel=messenger&channel=internal
-  // (клик на бейдж в сайдбаре). chatId уже сохранён в localStorage ДО
-  // навигации — restoreActiveChatId загрузит его при монтировании.
-  const openMessenger = useSidePanelStore((s) => s.openMessenger)
-  useEffect(() => {
-    const params = new URLSearchParams(currentSearchParams.toString())
-    if (params.get('panel') === 'messenger' && modules.chats) {
-      const channel = params.get('channel') === 'internal' ? ('internal' as const) : undefined
-      const chatId = params.get('chatId')
-      if (chatId) {
-        useSidePanelStore.getState().openChat(chatId, channel ?? 'client')
-      } else {
-        openMessenger(channel)
-      }
-      // Убираем параметры из URL, чтобы при перезагрузке не открывался повторно
-      params.delete('panel')
-      params.delete('channel')
-      params.delete('chatId')
-      const remaining = params.toString()
-      router.replace(
-        `/workspaces/${workspaceId}/projects/${projectId}${remaining ? `?${remaining}` : ''}`,
-      )
-    }
-  }, [projectId, currentSearchParams.toString(), modules.chats]) // eslint-disable-line react-hooks/exhaustive-deps -- navigate/openMessenger stable refs
+  // URL-обработчик ?panel=messenger&chatId=... убран. Раньше клик на бейдж
+  // непрочитанных в сайдбаре делал navigate с этими параметрами и открывал
+  // старую «основную» правую панель. Теперь сайдбар открывает тред напрямую
+  // в новой системе вкладок (через globalOpenThread).
 
   // === ОБРАБОТЧИКИ ===
 

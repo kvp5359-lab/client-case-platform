@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase'
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useSidePanelStore } from '@/store/sidePanelStore'
+import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { usePinnedBoards } from './WorkspaceSidebar/usePinnedBoards'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useProjectTemplate, useProjectModules } from '@/page-components/ProjectPage/hooks'
@@ -174,24 +175,41 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
     return pathname.startsWith(fullPath)
   }
 
-  const handleBadgeClick = (projectId: string, channel: 'client' | 'internal' = 'client') => {
-    const isCurrentProject = projectId === activeProjectId
+  const handleBadgeClick = async (projectId: string, channel: 'client' | 'internal' = 'client') => {
+    void channel
     const threadIdEntry = projectThreadIds?.get(projectId)
     const threadId = channel === 'internal' ? threadIdEntry?.internal : threadIdEntry?.client
-    if (isCurrentProject) {
-      if (threadId) {
-        useSidePanelStore.getState().openChat(threadId, channel)
-      } else {
-        useSidePanelStore.getState().openMessenger(channel)
-      }
-    } else {
-      if (threadId) {
-        try {
-          localStorage.setItem(`cc:active-thread:${projectId}`, JSON.stringify(threadId))
-        } catch { /* ignore */ }
-      }
-      useSidePanelStore.getState().openMessenger(channel)
+    if (!threadId) {
+      // Тред не определён — просто переходим на проект.
       handleNavigate(`projects/${projectId}`)
+      return
+    }
+    // Грузим данные треда и открываем его в layout-уровневой системе вкладок
+    // (не в старой основной панели). Shell сам переключит scope на нужный проект.
+    const { data: thread } = await supabase
+      .from('project_threads')
+      .select(
+        'id, name, type, project_id, workspace_id, status_id, deadline, accent_color, icon, is_pinned, created_at, created_by, sort_order',
+      )
+      .eq('id', threadId)
+      .eq('is_deleted', false)
+      .maybeSingle()
+    if (thread) {
+      globalOpenThread({
+        id: thread.id,
+        name: thread.name,
+        type: thread.type as 'chat' | 'task',
+        project_id: thread.project_id,
+        workspace_id: thread.workspace_id,
+        status_id: thread.status_id,
+        deadline: thread.deadline,
+        accent_color: thread.accent_color,
+        icon: thread.icon,
+        is_pinned: thread.is_pinned,
+        created_at: thread.created_at,
+        created_by: thread.created_by,
+        sort_order: thread.sort_order ?? 0,
+      })
     }
   }
 

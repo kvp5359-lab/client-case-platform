@@ -84,8 +84,8 @@ export const SystemSectionContainer = memo(function SystemSectionContainer() {
     <div className="overflow-visible">
       <Tabs value={activeTab}>
         {/* Шапка: табы + панель действий */}
-        <div className="px-3 py-2 border-b border-gray-200 bg-gray-50/80">
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+        <div className="px-2 border-b border-gray-200 bg-gray-50/80">
+          <div className="flex items-center gap-1 h-9">
             <TabButton
               tab="unassigned"
               activeTab={activeTab}
@@ -226,9 +226,9 @@ function TabButton({
       type="button"
       onClick={() => onClick(tab)}
       className={cn(
-        'text-sm px-3 py-1 rounded-md transition-all flex items-center gap-1.5',
+        'text-xs px-2 h-6 rounded-full transition-all flex items-center gap-1',
         isActive
-          ? `${colors.active} font-medium shadow-[0_1px_3px_rgba(0,0,0,0.15)]`
+          ? `${colors.active} font-medium shadow-[0_1px_3px_rgba(0,0,0,0.15)] border border-gray-300 ring-1 ring-black/5`
           : 'text-muted-foreground hover:text-foreground',
       )}
     >

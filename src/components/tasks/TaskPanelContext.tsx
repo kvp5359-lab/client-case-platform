@@ -35,6 +35,20 @@ interface TaskPanelContextValue {
   pushProject?: (project: ProjectHeaderInfo) => void
   /** true, если дерево рендерится внутри открытой TaskPanel */
   isInsidePanel?: boolean
+  /** id треда из активной вкладки — для подсветки в BoardView/списках. */
+  activeThreadId?: string | null
+  /** id проекта из активной «tasks»-вкладки — для подсветки на досках. */
+  activeProjectId?: string | null
+  /** Скрыть панель (без удаления вкладок). */
+  hidePanel?: () => void
+  /** Показать панель (если есть вкладки). */
+  showPanel?: () => void
+  /** Переключить видимость панели. */
+  togglePanel?: () => void
+  /** Скрыта ли панель сейчас. */
+  isHidden?: boolean
+  /** Есть ли хотя бы одна вкладка. */
+  hasTabs?: boolean
 }
 
 export const TaskPanelContext = createContext<TaskPanelContextValue | null>(null)

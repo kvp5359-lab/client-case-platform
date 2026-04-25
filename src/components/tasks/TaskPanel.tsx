@@ -73,6 +73,14 @@ export interface TaskPanelProps {
   onOpenProjectInStack?: (project: ProjectHeaderInfo) => void
   /** Слот, который рендерится сверху панели (над шапкой). Используется для системы вкладок. */
   topSlot?: React.ReactNode
+  /**
+   * Bare-режим: не оборачивать в .side-panel, не портить, не анимировать въезд.
+   * Когда true — TaskPanel рендерит только содержимое (шапка + body), а внешний
+   * контейнер с анимацией предоставляет родитель (например, TaskPanelTabbedShell).
+   * Это нужно для системы вкладок: при переключении вкладок панель не должна
+   * перевыезжать.
+   */
+  bare?: boolean
 }
 
 export function TaskPanel({
@@ -95,6 +103,7 @@ export function TaskPanel({
   onOpenThreadInStack,
   onOpenProjectInStack,
   topSlot,
+  bare = false,
 }: TaskPanelProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
@@ -213,19 +222,22 @@ export function TaskPanel({
   const resolvedProjectName = task?.project_name ?? (task?.project_id ? fetchedProjectName : null)
 
   // ── Анимация въезда ──
-  const [painted, setPainted] = useState(false)
+  // В bare-режиме внешний контейнер с анимацией предоставляет родитель
+  // (TaskPanelTabbedShell), поэтому painted здесь не нужен — рендерим сразу.
+  const [painted, setPainted] = useState(bare)
   const [prevOpen, setPrevOpen] = useState(open)
   if (open !== prevOpen) {
     setPrevOpen(open)
-    if (!open) setPainted(false)
+    if (!open && !bare) setPainted(false)
   }
   useEffect(() => {
+    if (bare) return
     if (!open) return
     const id = requestAnimationFrame(() => setPainted(true))
     document.body.setAttribute('data-task-panel-open', '')
     return () => { cancelAnimationFrame(id); document.body.removeAttribute('data-task-panel-open') }
-  }, [open])
-  const visible = open && painted
+  }, [open, bare])
+  const visible = bare ? true : open && painted
 
   // ── Escape ──
   useEffect(() => {
@@ -275,8 +287,10 @@ export function TaskPanel({
         onClose={onClose}
         onOpenThreadInStack={onOpenThreadInStack}
         topSlot={topSlot}
+        bare={bare}
       />
     )
+    if (bare) return panel
     const portalRoot = document.getElementById('workspace-panel-root')
     return portalRoot ? createPortal(panel, portalRoot) : panel
   }
@@ -294,15 +308,8 @@ export function TaskPanel({
           ? onBack
           : undefined
 
-  const panel = (
+  const innerContent = (
     <>
-      <div
-        className={cn(
-          'side-panel flex flex-col z-50',
-          'transition-transform duration-200 ease-out',
-          visible ? 'translate-x-0' : 'translate-x-full',
-        )}
-      >
         {/* Плавающая круглая кнопка «Назад» — сидит на левой границе панели,
             не смещает содержимое шапки. Появляется и в стек-навигации
             (canGoBack), и при переключении viewMode на history/documents. */}
@@ -332,6 +339,8 @@ export function TaskPanel({
           onRename={onRename}
           onSettingsOpen={() => setSettingsOpen(true)}
           onClose={onClose}
+          hideCloseButton={bare}
+          hideToolsRow={bare}
           onProjectClick={onProjectClick}
           onOpenProjectInStack={onOpenProjectInStack}
           resolvedProjectName={resolvedProjectName}
@@ -401,21 +410,46 @@ export function TaskPanel({
             />
           )}
         </div>
-      </div>
+    </>
+  )
 
-      {settingsOpen && fullThread && (
-        <Suspense fallback={null}>
-          <ChatSettingsDialog
-            chat={fullThread}
-            workspaceId={workspaceId}
-            projectId={fullThread.project_id ?? undefined}
-            open={settingsOpen}
-            onOpenChange={setSettingsOpen}
-            onUpdate={(params) => { onSettingsSave(params); setSettingsOpen(false) }}
-            isPending={settingsPending}
-          />
-        </Suspense>
-      )}
+  const settingsDialog = settingsOpen && fullThread ? (
+    <Suspense fallback={null}>
+      <ChatSettingsDialog
+        chat={fullThread}
+        workspaceId={workspaceId}
+        projectId={fullThread.project_id ?? undefined}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        onUpdate={(params) => { onSettingsSave(params); setSettingsOpen(false) }}
+        isPending={settingsPending}
+      />
+    </Suspense>
+  ) : null
+
+  // Bare-режим: возвращаем содержимое без обёртки .side-panel и без портала.
+  // Анимацию и портал предоставляет родитель (TaskPanelTabbedShell).
+  if (bare) {
+    return (
+      <div className="flex flex-col h-full min-w-0 relative">
+        {innerContent}
+        {settingsDialog}
+      </div>
+    )
+  }
+
+  const panel = (
+    <>
+      <div
+        className={cn(
+          'side-panel flex flex-col z-50',
+          'transition-transform duration-200 ease-out',
+          visible ? 'translate-x-0' : 'translate-x-full',
+        )}
+      >
+        {innerContent}
+      </div>
+      {settingsDialog}
     </>
   )
 

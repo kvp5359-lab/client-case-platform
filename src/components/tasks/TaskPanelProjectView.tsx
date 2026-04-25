@@ -27,6 +27,8 @@ interface TaskPanelProjectViewProps {
   onClose: () => void
   onOpenThreadInStack?: (task: TaskItem) => void
   topSlot?: React.ReactNode
+  /** Bare-режим: без обёртки .side-panel и анимации (предоставляет родитель). */
+  bare?: boolean
 }
 
 export function TaskPanelProjectView({
@@ -38,6 +40,7 @@ export function TaskPanelProjectView({
   onClose,
   onOpenThreadInStack,
   topSlot,
+  bare = false,
 }: TaskPanelProjectViewProps) {
   const router = useRouter()
   const parentPanelCtx = useLayoutTaskPanel()
@@ -54,9 +57,10 @@ export function TaskPanelProjectView({
     >
       <div
         className={cn(
-          'side-panel flex flex-col z-50',
-          'transition-transform duration-200 ease-out',
-          visible ? 'translate-x-0' : 'translate-x-full',
+          bare
+            ? 'flex flex-col h-full min-w-0 relative'
+            : 'side-panel flex flex-col z-50 transition-transform duration-200 ease-out',
+          !bare && (visible ? 'translate-x-0' : 'translate-x-full'),
         )}
       >
         {/* Плавающая круглая кнопка «Назад» на левой границе панели — не смещает шапку. */}
@@ -75,7 +79,10 @@ export function TaskPanelProjectView({
         {topSlot}
 
         {/* Шапка проекта — та же геометрия, что у шапки треда: h-[61px], жёсткие
-            высоты строк (30 + 26 + 5 pt), иконка w-6 h-6, заголовок text-sm. */}
+            высоты строк (30 + 26 + 5 pt), иконка w-6 h-6, заголовок text-sm.
+            В bare-режиме (внутри системы вкладок) скрыта — имя проекта уже
+            показано в верхней строке панели. */}
+        {!bare && (
         <div className="border-b shrink-0 h-[61px] flex flex-col">
           <div className="flex items-center gap-2 px-4 h-[30px] shrink-0">
             <span className="shrink-0 flex items-center justify-center w-6 h-6 text-muted-foreground">
@@ -101,14 +108,16 @@ export function TaskPanelProjectView({
               <ExternalLink className="w-4 h-4" />
             </a>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              title="Закрыть"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            {!bare && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                title="Закрыть"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           <div
@@ -131,6 +140,7 @@ export function TaskPanelProjectView({
               )}
           </div>
         </div>
+        )}
 
         {/* Тело: список задач проекта */}
         <div className="flex-1 min-h-0 overflow-auto">

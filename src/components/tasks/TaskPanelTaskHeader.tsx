@@ -32,6 +32,10 @@ interface TaskPanelTaskHeaderProps {
   onRename: (name: string) => void
   onSettingsOpen: () => void
   onClose: () => void
+  /** Скрыть X-крестик в шапке (когда панель управляется системой вкладок). */
+  hideCloseButton?: boolean
+  /** Скрыть строку 2 (Другие задачи / История / Документы) — она дублирует системные вкладки. */
+  hideToolsRow?: boolean
   onProjectClick?: () => void
   onOpenProjectInStack?: (project: ProjectHeaderInfo) => void
   resolvedProjectName: string | null
@@ -56,6 +60,8 @@ export function TaskPanelTaskHeader({
   onRename,
   onSettingsOpen,
   onClose,
+  hideCloseButton = false,
+  hideToolsRow = false,
   onProjectClick,
   onOpenProjectInStack,
   resolvedProjectName,
@@ -98,9 +104,10 @@ export function TaskPanelTaskHeader({
   }, [editingName])
 
   return (
-    <div className="border-b shrink-0 h-[61px] flex flex-col">
-      {/* Строка 1: статус/иконка + название + действия (жёсткая высота 30px) */}
-      <div className="flex items-center gap-2 px-4 h-[30px] shrink-0">
+    <div className={cn('border-b shrink-0 flex flex-col', hideToolsRow ? 'h-9' : 'h-[61px]')}>
+      {/* Строка 1: статус/иконка + название + действия (жёсткая высота 30px,
+          в bare-режиме растягивается на всю шапку h-9). */}
+      <div className={cn('flex items-center gap-2 px-4 shrink-0', hideToolsRow ? 'h-full' : 'h-[30px]')}>
         {viewMode === 'history' ? (
           <span className="shrink-0 flex items-center justify-center w-6 h-6 text-muted-foreground">
             <History className="w-4 h-4" />
@@ -163,13 +170,15 @@ export function TaskPanelTaskHeader({
           </h2>
         )}
 
-        {task.project_id && resolvedProjectName && (
+        {/* Проект в строке треда: в bare-режиме скрыт — он показан в верхней
+            строке панели (PanelProjectInfoRow). */}
+        {!hideToolsRow && task.project_id && resolvedProjectName && (
           <span className="shrink-0 text-muted-foreground/50 select-none" aria-hidden="true">
             •
           </span>
         )}
 
-        {task.project_id && resolvedProjectName && (
+        {!hideToolsRow && task.project_id && resolvedProjectName && (
           <a
             href={`/workspaces/${workspaceId}/projects/${task.project_id}`}
             onClick={(e) => {
@@ -218,19 +227,22 @@ export function TaskPanelTaskHeader({
           <Settings className="w-4 h-4" />
         </button>
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          title="Закрыть"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        {!hideCloseButton && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            title="Закрыть"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      {/* Строка 2: «Другие задачи» + «История» + «Документы» + дедлайн.
-          Жёсткая высота 26px, фиксированный отступ слева = 48px (px-4 + w-6 + gap-2)
-          — ровно под названием. Рендерится всегда, даже пустой. */}
+      {/* Строка 2: «Другие задачи» + «История» + «Документы».
+          В bare-режиме (когда панель управляется системой вкладок TaskPanelTabbedShell)
+          скрыта, потому что эти действия дублируют системные вкладки [+] меню. */}
+      {!hideToolsRow && (
       <div className="flex items-start gap-2 pr-4 pl-[48px] h-[26px] shrink-0">
           {task.project_id && onOpenProjectInStack && (
             <button
@@ -290,6 +302,7 @@ export function TaskPanelTaskHeader({
           )}
 
       </div>
+      )}
     </div>
   )
 }

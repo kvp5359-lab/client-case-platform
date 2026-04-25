@@ -186,12 +186,39 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
     [router, searchParams],
   )
 
+  // Debounce сохранения в БД: при быстрых переключениях вкладок (open/close/activate)
+  // не отправляем по upsert на каждый клик. Только последнее состояние через 250ms.
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const persistPayloadRef = useRef<PersistedRow | null>(null)
+  const upsertMutationRef = useRef(upsertMutation)
+  upsertMutationRef.current = upsertMutation
+
   const persist = useCallback(
     (nextTabs: TaskPanelTab[], nextActiveId: string | null) => {
-      upsertMutation.mutate({ tabs: nextTabs, active_tab_id: nextActiveId })
+      persistPayloadRef.current = { tabs: nextTabs, active_tab_id: nextActiveId }
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
+      persistTimerRef.current = setTimeout(() => {
+        if (persistPayloadRef.current) {
+          upsertMutationRef.current.mutate(persistPayloadRef.current)
+          persistPayloadRef.current = null
+        }
+        persistTimerRef.current = null
+      }, 250)
     },
-    [upsertMutation],
+    [],
   )
+
+  // На размонтировании — flush pending upsert, чтобы не потерять последнее состояние.
+  useEffect(() => {
+    return () => {
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current)
+        if (persistPayloadRef.current) {
+          upsertMutationRef.current.mutate(persistPayloadRef.current)
+        }
+      }
+    }
+  }, [])
 
   const openTab = useCallback(
     (tab: TaskPanelTab) => {
@@ -253,8 +280,12 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
 }
 
 /** Хелпер для построения объекта вкладки треда. */
-export function buildThreadTab(threadId: string, title: string): TaskPanelTab {
-  return { id: makeTabId('thread', threadId), type: 'thread', refId: threadId, title }
+export function buildThreadTab(
+  threadId: string,
+  title: string,
+  meta?: TaskPanelTab['meta'],
+): TaskPanelTab {
+  return { id: makeTabId('thread', threadId), type: 'thread', refId: threadId, title, meta }
 }
 
 /** Хелпер для системных вкладок (tasks/history/documents/forms/materials/assistant/extra). */
