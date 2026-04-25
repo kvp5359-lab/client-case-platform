@@ -180,6 +180,7 @@ describe('useProjectPermissions', () => {
       permissions: null,
       userRoles: [],
       canViewAllProjects: false,
+      isClientOnly: false,
       refetch: vi.fn(),
     })
   })
@@ -218,6 +219,7 @@ describe('useProjectPermissions', () => {
       permissions: null,
       userRoles: ['Владелец'],
       canViewAllProjects: true,
+      isClientOnly: false,
       refetch: vi.fn(),
     })
 
@@ -258,6 +260,7 @@ describe('useProjectPermissions', () => {
       permissions: null,
       userRoles: ['Владелец'],
       canViewAllProjects: true,
+      isClientOnly: false,
       refetch: vi.fn(),
     })
 
@@ -442,6 +445,7 @@ describe('useProjectPermissions', () => {
       permissions: null,
       userRoles: ['Владелец'],
       canViewAllProjects: true,
+      isClientOnly: false,
       refetch: vi.fn(),
     })
 

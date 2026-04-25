@@ -64,6 +64,8 @@ function inboxThread(overrides: Partial<InboxThreadEntry> = {}): InboxThreadEntr
     last_event_text: null,
     last_event_status_color: null,
     unread_event_count: 0,
+    last_message_attachment_name: null,
+    last_message_attachment_count: 0,
     ...overrides,
   }
 }

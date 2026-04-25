@@ -16,7 +16,7 @@
  * параллельно — её мы не трогаем до подтверждения, что новая обкатана.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
+import { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -171,16 +171,13 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   // Сбрасывается на false при любом open*Tab (см. ниже).
   const [hidden, setHidden] = useState(false)
   // Синк с pageProjectId: переключаем scope ТОЛЬКО когда pageProjectId реально
-  // изменился (пользователь перешёл на другой проект). Иначе при каждом
-  // ре-рендере мы бы откатывали scope, заданный openThreadTab, обратно
-  // на pageProjectId.
-  const prevPageProjectIdRef = useRef(pageProjectId)
-  useEffect(() => {
-    if (prevPageProjectIdRef.current !== pageProjectId) {
-      prevPageProjectIdRef.current = pageProjectId
-      if (pageProjectId) setActiveProjectId(pageProjectId)
-    }
-  }, [pageProjectId])
+  // изменился (пользователь перешёл на другой проект). Render-time pattern из
+  // React docs (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  const [lastPageProjectId, setLastPageProjectId] = useState(pageProjectId)
+  if (pageProjectId !== lastPageProjectId) {
+    setLastPageProjectId(pageProjectId)
+    if (pageProjectId) setActiveProjectId(pageProjectId)
+  }
 
   const tabs = useTaskPanelTabs({ projectId: activeProjectId })
 
@@ -191,6 +188,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     if (!pendingOpen) return
     if (!tabs.isReady) return
     tabs.openTab(pendingOpen)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- queue-processor: ждём готовности tabs, затем сбрасываем очередь
     setPendingOpen(null)
   }, [pendingOpen, tabs])
 
@@ -378,6 +376,7 @@ function TaskPanelTabbedShellRenderer({
   const [painted, setPainted] = useState(false)
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- сброс painted при закрытии панели; альтернатива (key-based remount) ломает анимацию
       setPainted(false)
       return
     }

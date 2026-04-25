@@ -11,7 +11,7 @@
  * в текущем scope (иначе показывать нечего).
  */
 
-import { ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { ChevronsLeft } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'

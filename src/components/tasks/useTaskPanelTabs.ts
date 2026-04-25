@@ -107,20 +107,20 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
   const [hydrated, setHydrated] = useState(false)
   useEffect(() => {
     if (isSuccess && persisted && !hydrated) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- async data sync: гидрация локальной копии после загрузки из БД
       setLocalTabs(persisted.tabs)
       setHydrated(true)
     }
   }, [isSuccess, persisted, hydrated])
 
-  // Сброс при смене проекта
-  const prevProjectRef = useRef(projectId)
-  useEffect(() => {
-    if (prevProjectRef.current !== projectId) {
-      prevProjectRef.current = projectId
-      setLocalTabs([])
-      setHydrated(false)
-    }
-  }, [projectId])
+  // Сброс при смене проекта — render-time pattern из React docs
+  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  const [lastProjectId, setLastProjectId] = useState(projectId)
+  if (projectId !== lastProjectId) {
+    setLastProjectId(projectId)
+    setLocalTabs([])
+    setHydrated(false)
+  }
 
   // Активная вкладка — из URL. Если URL не указывает или указывает несуществующую,
   // и в локальных есть вкладки, fallback на persisted.active_tab_id или последнюю.
@@ -191,7 +191,9 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const persistPayloadRef = useRef<PersistedRow | null>(null)
   const upsertMutationRef = useRef(upsertMutation)
-  upsertMutationRef.current = upsertMutation
+  useEffect(() => {
+    upsertMutationRef.current = upsertMutation
+  }, [upsertMutation])
 
   const persist = useCallback(
     (nextTabs: TaskPanelTab[], nextActiveId: string | null) => {
