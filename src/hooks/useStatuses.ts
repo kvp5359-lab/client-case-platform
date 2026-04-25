@@ -74,26 +74,20 @@ export function useAllProjectStatuses(workspaceId: string | undefined) {
 }
 
 /**
- * Возвращает статусы, видимые проекту с заданным `templateId`.
+ * Возвращает project-статусы шаблона `templateId`.
  *
- * Правило наследования:
- * - если шаблон задан и у него есть свои статусы (project_template_id = templateId)
- *   — показываем только их;
- * - иначе — общие статусы воркспейса (project_template_id = null).
- *
- * Это даёт одной командой настроенный набор для шаблона и фолбэк на воркспейс
- * для проектов без шаблона / шаблонов без своих статусов.
+ * Модель упрощена: project-статусы существуют ТОЛЬКО на уровне шаблона
+ * проекта. Если у проекта нет шаблона или у шаблона нет статусов —
+ * проект «без статуса». Никаких фолбэков на общие воркспейсные.
  */
 export function useProjectStatusesForTemplate(
   workspaceId: string | undefined,
   templateId: string | null | undefined,
 ) {
   const all = useAllProjectStatuses(workspaceId)
-  const data = (all.data ?? []).filter((s) => {
-    const hasTemplateOwn =
-      templateId != null && (all.data ?? []).some((x) => x.project_template_id === templateId)
-    if (hasTemplateOwn) return s.project_template_id === templateId
-    return s.project_template_id === null
-  })
+  const data =
+    templateId == null
+      ? []
+      : (all.data ?? []).filter((s) => s.project_template_id === templateId)
   return { ...all, data }
 }

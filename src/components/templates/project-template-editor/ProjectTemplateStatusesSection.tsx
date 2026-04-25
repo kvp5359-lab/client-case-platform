@@ -3,13 +3,13 @@
 /**
  * ProjectTemplateStatusesSection — управление статусами шаблона проекта.
  *
- * Наследование: проекты, созданные по этому шаблону, видят ИМЕННО эти статусы
- * (через `useProjectStatusesForTemplate`). Если у шаблона нет своих статусов,
- * проекты используют общие воркспейсные (project_template_id IS NULL).
+ * Модель: project-статусы существуют ТОЛЬКО в контексте шаблона. Если у
+ * шаблона нет статусов — проекты этого типа «без статуса». Фолбэков на
+ * общие воркспейсные нет (CHECK-constraint в БД это запрещает).
  *
- * Технически — те же `statuses` (entity_type='project'), но с проставленным
- * `project_template_id`. Идём напрямую через таблицу: RLS-политика
- * `manage_statuses` уже отрабатывает корректно.
+ * Технически — те же `statuses` (entity_type='project'), но всегда с
+ * проставленным `project_template_id`. Идём напрямую через таблицу:
+ * RLS-политика `manage_statuses` отрабатывает корректно.
  */
 
 import { useState } from 'react'
@@ -265,7 +265,7 @@ export function ProjectTemplateStatusesSection({
           <CardTitle className="text-lg">Статусы проекта</CardTitle>
           <CardDescription>
             {statuses.length === 0
-              ? 'Своих статусов нет — проекты будут использовать общие статусы воркспейса'
+              ? 'Статусов пока нет — проекты этого типа будут «без статуса»'
               : `${statuses.length} статус(ов) для этого шаблона`}
           </CardDescription>
         </div>
@@ -278,7 +278,7 @@ export function ProjectTemplateStatusesSection({
         {isLoading || statuses.length === 0 ? (
           <EmptyState
             loading={isLoading}
-            emptyText="Своих статусов пока нет. Добавьте, чтобы переопределить общий набор."
+            emptyText="Добавьте статусы — без них проекты этого типа будут «без статуса»."
           />
         ) : (
           <StatusesTable
