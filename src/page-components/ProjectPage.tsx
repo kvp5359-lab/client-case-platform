@@ -327,6 +327,10 @@ export default function ProjectPage() {
               updateProjectName={updateProjectName}
               templateName={projectTemplate?.name}
               participantGroups={participantGroups}
+              workspaceId={project.workspace_id}
+              projectTemplateId={project.template_id}
+              statusId={project.status_id}
+              onStatusChange={handleStatusChange}
             />
 
             {/* Вкладки — скрыты для клиента (навигация в боковой панели) */}

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Pencil, Check, X } from 'lucide-react'
 import { logger } from '@/utils/logger'
 import { ParticipantAvatars } from '@/components/participants/ParticipantAvatars'
+import { ProjectStatusPopover } from '@/components/projects/ProjectStatusPopover'
 import type { RoleGroup } from '../hooks/useProjectHeaderParticipants'
 import type { UseMutationResult } from '@tanstack/react-query'
 
@@ -19,6 +20,11 @@ interface ProjectHeaderProps {
   updateProjectName: UseMutationResult<unknown, Error, string>
   templateName?: string | null
   participantGroups?: RoleGroup[]
+  /** Поля для тега статуса в шапке. Если что-то из этого пропущено — тег не показывается. */
+  workspaceId?: string
+  projectTemplateId?: string | null
+  statusId?: string | null
+  onStatusChange?: (statusId: string) => void
 }
 
 export function ProjectHeader({
@@ -27,6 +33,10 @@ export function ProjectHeader({
   updateProjectName,
   templateName,
   participantGroups,
+  workspaceId,
+  projectTemplateId,
+  statusId,
+  onStatusChange,
 }: ProjectHeaderProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedName, setEditedName] = useState('')
@@ -117,6 +127,19 @@ export function ProjectHeader({
                   <ParticipantAvatars participants={group.participants} maxVisible={3} />
                 </div>
               ))}
+            </div>
+          )}
+
+          {workspaceId && onStatusChange && (
+            <div className="self-center flex items-center gap-2 shrink-0">
+              <div className="w-px h-5 bg-gray-200 shrink-0" />
+              <ProjectStatusPopover
+                workspaceId={workspaceId}
+                projectTemplateId={projectTemplateId ?? null}
+                currentStatusId={statusId ?? null}
+                onChange={onStatusChange}
+                disabled={!canEdit}
+              />
             </div>
           )}
         </>
