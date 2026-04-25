@@ -78,6 +78,12 @@ export const PROJECT_FILTER_FIELDS: FilterFieldDef[] = [
     operators: ['equals', 'in', 'not_in', 'is_null'],
   },
   {
+    key: 'template_id',
+    label: 'Шаблон проекта',
+    type: 'uuid',
+    operators: ['equals', 'in', 'not_in', 'is_null'],
+  },
+  {
     key: 'deadline',
     label: 'Дедлайн',
     type: 'date',

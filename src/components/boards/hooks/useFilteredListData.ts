@@ -94,6 +94,7 @@ export function useFilteredProjects<T extends Record<string, unknown> & { id: st
   return useMemo(() => {
     const fieldAccessors: Record<string, (item: unknown) => unknown> = {
       status_id: (item) => (item as T).status_id,
+      template_id: (item) => (item as T).template_id,
       deadline: (item) => (item as T).deadline,
       created_by: (item) => (item as T).created_by,
       created_at: (item) => (item as T).created_at,

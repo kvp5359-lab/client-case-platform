@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/popover'
 import { useTaskStatuses, useAllProjectStatuses } from '@/hooks/useStatuses'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { useProjectTemplatesQuery } from '@/page-components/ProjectsPage/hooks/useProjectsPageData'
 import type { FilterFieldDef } from '../types'
 
 export interface FilterValueOption {
@@ -43,6 +44,7 @@ function useFieldOptions(
   const { data: taskStatuses } = useTaskStatuses(workspaceId)
   const { data: projectStatuses } = useAllProjectStatuses(workspaceId)
   const { data: participants } = useWorkspaceParticipants(workspaceId)
+  const { data: projectTemplates } = useProjectTemplatesQuery(workspaceId)
 
   return useMemo(() => {
     switch (fieldKey) {
@@ -62,6 +64,10 @@ function useFieldOptions(
           { id: 'task', label: 'Задача' },
           { id: 'chat', label: 'Чат' },
         ]
+      }
+
+      case 'template_id': {
+        return (projectTemplates ?? []).map((t) => ({ id: t.id, label: t.name }))
       }
 
       case 'created_by':
@@ -85,7 +91,7 @@ function useFieldOptions(
       default:
         return []
     }
-  }, [fieldKey, entityType, taskStatuses, projectStatuses, participants])
+  }, [fieldKey, entityType, taskStatuses, projectStatuses, participants, projectTemplates])
 }
 
 /** Нормализует value в массив строк */
