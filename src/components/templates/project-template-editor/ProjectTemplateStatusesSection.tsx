@@ -81,7 +81,7 @@ export function ProjectTemplateStatusesSection({
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
   const tplKey = useMemo(
-    () => ['statuses', 'project-template', workspaceId, projectTemplateId] as const,
+    () => statusKeys.projectByTemplate(workspaceId, projectTemplateId),
     [workspaceId, projectTemplateId],
   )
 

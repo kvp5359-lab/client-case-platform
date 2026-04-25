@@ -37,7 +37,7 @@ import { useChatSettingsSave } from './useChatSettingsSave'
 import { useChatSettingsDefaults } from './useChatSettingsDefaults'
 import type { ComposeFieldHandle } from '../ComposeField'
 import type { useChatSettingsFormState } from './useChatSettingsFormState'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { STALE_TIME, statusKeys } from '@/hooks/queryKeys'
 
 type FormReturn = ReturnType<typeof useChatSettingsFormState>
 
@@ -73,7 +73,7 @@ export function useChatSettingsActions({
 }: UseChatSettingsActionsParams) {
   // ── Task statuses ──
   const { data: taskStatuses = [] } = useQuery({
-    queryKey: ['statuses', 'task', resolvedWorkspaceId ?? ''],
+    queryKey: statusKeys.task(resolvedWorkspaceId ?? ''),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('statuses')

@@ -118,7 +118,7 @@ export function useMarkAsRead(
       // пользователь не обновит страницу.
       if (projectId) {
         queryClient.invalidateQueries({
-          queryKey: ['messenger', 'last-read-at', 'project', projectId],
+          queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),
         })
       }
       if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
@@ -157,7 +157,7 @@ export function useMarkAsUnread(
       queryClient.invalidateQueries({ queryKey: lastReadKey })
       if (projectId) {
         queryClient.invalidateQueries({
-          queryKey: ['messenger', 'last-read-at', 'project', projectId],
+          queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),
         })
       }
       if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)

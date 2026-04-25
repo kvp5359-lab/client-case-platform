@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import type { Tables } from '@/types/database'
-import { projectKeys, trashKeys } from '@/hooks/queryKeys'
+import { projectKeys, projectTemplateKeys, trashKeys } from '@/hooks/queryKeys'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type {
   ProjectAssigneeOption,
@@ -47,7 +47,7 @@ export function useProjectsQuery(
 
 export function useProjectTemplatesQuery(workspaceId: string | null | undefined) {
   return useQuery({
-    queryKey: ['project-templates', workspaceId ?? ''],
+    queryKey: projectTemplateKeys.listByWorkspace(workspaceId ?? ''),
     queryFn: async (): Promise<ProjectTemplateOption[]> => {
       if (!workspaceId) return []
       const { data, error } = await supabase
@@ -64,7 +64,7 @@ export function useProjectTemplatesQuery(workspaceId: string | null | undefined)
 
 export function useProjectParticipantsQuery(workspaceId: string | null | undefined) {
   return useQuery<ProjectParticipantsData>({
-    queryKey: ['project-participants-filter', workspaceId ?? ''],
+    queryKey: projectKeys.participantsFilter(workspaceId),
     queryFn: async () => {
       if (!workspaceId)
         return { byProject: {}, byProjectGroups: {}, participants: [] }
@@ -224,7 +224,7 @@ export function useProjectsPageMutations(
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['project-participants-filter', workspaceId ?? ''],
+        queryKey: projectKeys.participantsFilter(workspaceId),
       })
     },
     onError: () => toast.error('Не удалось обновить участников'),

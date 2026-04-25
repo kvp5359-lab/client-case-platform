@@ -78,6 +78,9 @@ export const projectKeys = {
     isOwner: boolean,
     canViewAll: boolean,
   ) => ['projects', workspaceId, userId, isOwner, canViewAll] as const,
+  /** Кэш «участники проектов воркспейса» для фильтра в /projects. */
+  participantsFilter: (workspaceId: string | null | undefined) =>
+    ['project-participants-filter', workspaceId ?? ''] as const,
 }
 
 export const folderSlotKeys = {
@@ -245,6 +248,13 @@ export const messengerKeys = {
   /** Агрегированная карта last_read_at по всем тредам проекта — для «Всей истории» в TaskPanel. */
   lastReadAtByProject: (projectId: string, userId: string) =>
     ['messenger', 'last-read-at', 'project', projectId, userId] as const,
+  /**
+   * Префикс для broad-invalidate карты last_read_at в проекте — без userId.
+   * React Query matches partial prefix → попадёт в lastReadAtByProject любого
+   * пользователя в кэше (фактически только один — сам пользователь сессии).
+   */
+  lastReadAtByProjectPrefix: (projectId: string) =>
+    ['messenger', 'last-read-at', 'project', projectId] as const,
   searchByThreadId: (threadId: string, query: string) =>
     ['messenger', 'search', 'chat', threadId, query] as const,
   projectThreads: (projectId: string) => ['messenger', 'project-chats', projectId] as const,
@@ -370,6 +380,9 @@ export const projectTemplateKeys = {
   /** Ссылка «какой templateId у проекта» — используется в мессенджере/QuickReplyPicker. */
   idByProject: (projectId: string | null | undefined) =>
     ['project-template-id', projectId] as const,
+  /** Только имя шаблона по его id (для PanelProjectInfoRow). */
+  nameById: (templateId: string | null | undefined) =>
+    ['project-template-name', templateId ?? ''] as const,
   /** Привязанные к шаблону form-templates. */
   forms: (templateId: string | undefined) => ['project-template-forms', templateId] as const,
   /** Привязанные к шаблону document-kits. */
@@ -480,6 +493,12 @@ export const statusKeys = {
   project: (workspaceId: string) => ['statuses', 'project', workspaceId] as const,
   knowledgeArticle: (workspaceId: string) =>
     ['statuses', 'knowledge_article', workspaceId] as const,
+  /** Детали одного статуса по id (имя + цвет) — для UI-чипов. */
+  detailById: (statusId: string | null | undefined) =>
+    ['status-detail', statusId ?? ''] as const,
+  /** Project-статусы конкретного шаблона (через junction). */
+  projectByTemplate: (workspaceId: string | undefined, templateId: string | null | undefined) =>
+    ['statuses', 'project-template', workspaceId ?? '', templateId ?? ''] as const,
 }
 
 /**

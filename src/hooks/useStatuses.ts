@@ -95,7 +95,7 @@ export function useProjectStatusesForTemplate(
   templateId: string | null | undefined,
 ) {
   return useQuery({
-    queryKey: ['statuses', 'project-template', workspaceId ?? '', templateId ?? ''],
+    queryKey: statusKeys.projectByTemplate(workspaceId, templateId),
     queryFn: async (): Promise<TemplateProjectStatus[]> => {
       if (!workspaceId || !templateId) return []
       const { data, error } = await supabase

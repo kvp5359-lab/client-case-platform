@@ -11,7 +11,7 @@
 import { useRouter } from 'next/navigation'
 import { ExternalLink, FolderOpen, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { projectKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { projectKeys, projectTemplateKeys, statusKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { getProjectById } from '@/services/api/projectService'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -39,7 +39,7 @@ export function PanelProjectInfoRow({ projectId, workspaceId, pageProjectId, onH
   // Имя шаблона проекта.
   const templateId = (project as { template_id?: string | null } | undefined)?.template_id ?? null
   const { data: templateName } = useQuery<string | null>({
-    queryKey: ['project-template-name', templateId ?? ''],
+    queryKey: projectTemplateKeys.nameById(templateId),
     enabled: !!templateId,
     staleTime: STALE_TIME.LONG,
     queryFn: async () => {
@@ -57,7 +57,7 @@ export function PanelProjectInfoRow({ projectId, workspaceId, pageProjectId, onH
   // Текущий статус проекта (имя + цвет).
   const statusId = (project as { status_id?: string | null } | undefined)?.status_id ?? null
   const { data: status } = useQuery<{ name: string; color: string | null } | null>({
-    queryKey: ['status-detail', statusId ?? ''],
+    queryKey: statusKeys.detailById(statusId),
     enabled: !!statusId,
     staleTime: STALE_TIME.LONG,
     queryFn: async () => {
