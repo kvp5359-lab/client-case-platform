@@ -56,17 +56,12 @@ function ProjectField({
 
     case 'icon':
       return (
-        <FolderOpen
-          className={cn(
-            'h-3.5 w-3.5 shrink-0',
-            isSelected ? 'text-brand-600' : 'text-muted-foreground',
-          )}
-        />
+        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       )
 
     case 'name':
       return (
-        <span className={cn(classes, 'min-w-0 leading-snug', isSelected && 'font-medium text-brand-700')}>
+        <span className={cn(classes, 'min-w-0 leading-snug')}>
           {project.name}
         </span>
       )
@@ -129,7 +124,7 @@ function ProjectField({
       const taskDeadline = formatDeadline(nextTask.deadline)
       return (
         <span className={cn(classes, 'min-w-0 flex items-center gap-1.5 truncate')}>
-          <span className={cn('truncate', isSelected ? 'text-brand-700' : 'text-muted-foreground')}>
+          <span className="truncate text-muted-foreground">
             {nextTask.name}
           </span>
           {taskDeadline && (
@@ -192,21 +187,26 @@ export function BoardProjectRow({
 
   const fieldProps = { project, deadline, overdue, isSelected, nextTask, authorName, statusName, statusColor }
   const isCards = displayMode === 'cards'
+  const selectedOutlineColor = statusColor ?? 'hsl(var(--brand-500))'
+  const selectedStyle = isSelected
+    ? { outline: `3px solid ${selectedOutlineColor}`, outlineOffset: '-3px' }
+    : undefined
 
   return (
     <a
       href={href}
       onClick={handleClick}
+      style={selectedStyle}
       className={cn(
         'block cursor-pointer overflow-hidden transition-colors',
         isCards
           ? cn(
               'rounded-md border px-2.5 py-1 hover:shadow-sm',
-              isSelected ? 'bg-brand-100 border-brand-200 shadow-sm' : 'bg-background',
+              isSelected ? 'bg-background border-transparent shadow-sm' : 'bg-background',
             )
           : cn(
-              'px-2.5 py-1',
-              isSelected ? 'bg-brand-100' : 'hover:bg-accent/50',
+              'rounded-md px-2.5 py-1',
+              isSelected ? 'bg-transparent' : 'hover:bg-accent/50',
             ),
       )}
     >

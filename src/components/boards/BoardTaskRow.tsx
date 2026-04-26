@@ -85,7 +85,6 @@ function TaskField({
             'min-w-0 leading-snug',
             stretch && 'flex-1',
             overdue && 'text-red-500',
-            isSelected && 'font-medium text-brand-700',
           )}
         >
           {task.name}
@@ -171,6 +170,10 @@ export function BoardTaskRow({
   }
 
   const isCards = displayMode === 'cards'
+  const selectedOutlineColor = safeCssColor(task.status_color) ?? 'hsl(var(--brand-500))'
+  const selectedStyle = isSelected
+    ? { outline: `3px solid ${selectedOutlineColor}`, outlineOffset: '-3px' }
+    : undefined
 
   return (
     <div
@@ -179,13 +182,14 @@ export function BoardTaskRow({
         isCards
           ? cn(
               'rounded-md border px-2.5 py-1 hover:shadow-sm',
-              isSelected ? 'bg-brand-100 border-brand-200' : 'border-border/50 bg-background',
+              isSelected ? 'bg-background border-transparent' : 'border-border/50 bg-background',
             )
           : cn(
-              'px-2.5 py-1',
-              isSelected ? 'bg-brand-100' : 'hover:bg-accent/50',
+              'rounded-md px-2.5 py-1',
+              isSelected ? 'bg-transparent' : 'hover:bg-accent/50',
             ),
       )}
+      style={selectedStyle}
       role="button"
       tabIndex={0}
       onClick={handleClick}
