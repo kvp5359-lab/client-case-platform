@@ -17,7 +17,7 @@
  * Маппинг ProjectThread → TaskItem — в threadToTaskItem.ts.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { TaskPanelTabBar, type SystemTabDef } from './TaskPanelTabBar'
@@ -217,6 +217,10 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       onOpenSystem={onOpenSystemTab}
       onOpenThreadTab={openThreadTab}
       onHidePanel={hidePanel}
+      onTogglePin={tabs.togglePin}
+      onReorderTab={tabs.reorderTab}
+      onSeedTabs={tabs.seedTabs}
+      isNewProject={tabs.isNewProject}
       hidden={hidden}
       workspaceId={workspaceId}
       projectId={activeProjectId}
@@ -236,6 +240,12 @@ interface RendererProps {
   onOpenSystem: (def: SystemTabDef) => void
   onOpenThreadTab: (task: TaskItem) => void
   onHidePanel: () => void
+  onTogglePin: (id: string) => void
+  onReorderTab: (activeId: string, overId: string | null) => void
+  /** Засеять дефолтный набор вкладок (вызывается один раз для нового проекта). */
+  onSeedTabs: (seed: TaskPanelTab[]) => void
+  /** Признак "для пары проект/пользователь нет записи" — можно сеять дефолты. */
+  isNewProject: boolean
   hidden: boolean
   workspaceId: string
   /** Активный projectId scope-а вкладок. */
@@ -253,6 +263,10 @@ function TaskPanelTabbedShellRenderer({
   onOpenSystem,
   onOpenThreadTab,
   onHidePanel,
+  onTogglePin,
+  onReorderTab,
+  onSeedTabs,
+  isNewProject,
   hidden,
   workspaceId,
   projectId,
@@ -260,6 +274,26 @@ function TaskPanelTabbedShellRenderer({
 }: RendererProps) {
   // Видимость системных вкладок по правам пользователя в текущем scope (project).
   const visibleSystemTypes = usePanelTabsVisibility(workspaceId, projectId)
+
+  // Дефолтные вкладки для нового проекта: «Задачи» и «История» — закреплённые.
+  // Сеется один раз — при первом открытии панели в проекте, если в БД ещё нет
+  // записи task_panel_tabs для этой пары user/project и пользователь имеет доступ
+  // к этим разделам. После сидинга isNewProject становится false.
+  const seedDoneRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!projectId) return
+    if (!isNewProject) return
+    if (tabs.length > 0) return
+    if (seedDoneRef.current === projectId) return
+    const wantsTasks = visibleSystemTypes.has('tasks')
+    const wantsHistory = visibleSystemTypes.has('history')
+    if (!wantsTasks && !wantsHistory) return
+    const seed: TaskPanelTab[] = []
+    if (wantsTasks) seed.push({ ...buildSystemTab('tasks', 'Задачи'), pinned: true })
+    if (wantsHistory) seed.push({ ...buildSystemTab('history', 'История'), pinned: true })
+    seedDoneRef.current = projectId
+    onSeedTabs(seed)
+  }, [projectId, isNewProject, tabs.length, visibleSystemTypes, onSeedTabs])
   // Фильтруем уже открытые вкладки: если user потерял доступ к системному
   // разделу (например, перешёл в проект где модуля нет) — скрываем эту
   // вкладку из бара. Сама запись в БД остаётся: при переключении scope обратно
@@ -391,6 +425,8 @@ function TaskPanelTabbedShellRenderer({
         badgeByThreadId={badgeByThreadId}
         visibleSystemTypes={visibleSystemTypes}
         onHidePanel={infoRowVisible ? undefined : onHidePanel}
+        onTogglePin={onTogglePin}
+        onReorder={onReorderTab}
       />
       {/* Строка 3+: содержимое активной вкладки (со своей шапкой). */}
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">{activeContent}</div>

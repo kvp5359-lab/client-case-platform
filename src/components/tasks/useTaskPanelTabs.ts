@@ -23,6 +23,8 @@ import { makeTabId } from './taskPanelTabs.types'
 interface PersistedRow {
   tabs: TaskPanelTab[]
   active_tab_id: string | null
+  /** true если строки для пары user/project в БД ещё нет. */
+  isNew?: boolean
 }
 
 interface UseTaskPanelTabsParams {
@@ -34,6 +36,8 @@ interface UseTaskPanelTabsResult {
   activeTabId: string | null
   activeTab: TaskPanelTab | null
   isReady: boolean
+  /** true если для проекта/пользователя ещё нет записи в БД — можно засеять дефолтные вкладки. */
+  isNewProject: boolean
   /** Открыть/активировать вкладку. Если такой уже есть — просто активирует, без дубля. */
   openTab: (tab: TaskPanelTab) => void
   /** Закрыть вкладку. Если активную — активирует соседнюю (правую, иначе левую). */
@@ -42,6 +46,13 @@ interface UseTaskPanelTabsResult {
   activateTab: (id: string | null) => void
   /** Закрыть все вкладки (полный сброс). */
   closeAll: () => void
+  /** Переключить закрепление вкладки. Закреплённые рендерятся слева. */
+  togglePin: (id: string) => void
+  /** Переупорядочить вкладки: переместить вкладку с id `activeId` на место перед `overId`
+   *  (если overId === null — в конец своей группы). pin/unpin обрабатывается отдельно. */
+  reorderTab: (activeId: string, overId: string | null) => void
+  /** Засеять набор вкладок (используется один раз для новых проектов). */
+  seedTabs: (seed: TaskPanelTab[], activeId?: string | null) => void
 }
 
 const EMPTY_STATE: PersistedRow = { tabs: [], active_tab_id: null }
@@ -94,10 +105,11 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
         .eq('user_id', userId)
         .maybeSingle()
       if (error) throw error
-      if (!data) return EMPTY_STATE
+      if (!data) return { ...EMPTY_STATE, isNew: true }
       return {
         tabs: Array.isArray(data.tabs) ? (data.tabs as TaskPanelTab[]) : [],
         active_tab_id: data.active_tab_id ?? null,
+        isNew: false,
       }
     },
   })
@@ -267,15 +279,71 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
     setUrlActive(null)
   }, [persist, setUrlActive])
 
+  const togglePin = useCallback(
+    (id: string) => {
+      const target = localTabs.find((t) => t.id === id)
+      if (!target) return
+      const wasPinned = !!target.pinned
+      // Закрепляем → перемещаем в конец pinned-блока. Откреплённое идёт в начало unpinned.
+      const updated = localTabs.map((t) => (t.id === id ? { ...t, pinned: !wasPinned } : t))
+      const pinned = updated.filter((t) => t.pinned)
+      const unpinned = updated.filter((t) => !t.pinned)
+      const next = wasPinned
+        ? [...pinned, { ...target, pinned: false }, ...unpinned.filter((t) => t.id !== id)]
+        : [...pinned.filter((t) => t.id !== id), { ...target, pinned: true }, ...unpinned]
+      setLocalTabs(next)
+      persist(next, activeTabId)
+    },
+    [localTabs, activeTabId, persist],
+  )
+
+  const seedTabs = useCallback(
+    (seed: TaskPanelTab[], activeId: string | null = seed[seed.length - 1]?.id ?? null) => {
+      setLocalTabs(seed)
+      persist(seed, activeId)
+      setUrlActive(activeId)
+    },
+    [persist, setUrlActive],
+  )
+
+  const reorderTab = useCallback(
+    (activeId: string, overId: string | null) => {
+      const fromIdx = localTabs.findIndex((t) => t.id === activeId)
+      if (fromIdx === -1) return
+      const tab = localTabs[fromIdx]
+      const without = localTabs.filter((t) => t.id !== activeId)
+      let insertIdx: number
+      if (overId === null) {
+        insertIdx = without.length
+      } else {
+        insertIdx = without.findIndex((t) => t.id === overId)
+        if (insertIdx === -1) insertIdx = without.length
+      }
+      // Корректировка: закреплённые должны оставаться слева, откреплённые — справа.
+      // Если переносим закреплённую за пределы pinned-блока, обрезаем по последнему pinned + 1.
+      const pinnedCount = without.filter((t) => t.pinned).length
+      if (tab.pinned && insertIdx > pinnedCount) insertIdx = pinnedCount
+      if (!tab.pinned && insertIdx < pinnedCount) insertIdx = pinnedCount
+      const next = [...without.slice(0, insertIdx), tab, ...without.slice(insertIdx)]
+      setLocalTabs(next)
+      persist(next, activeTabId)
+    },
+    [localTabs, activeTabId, persist],
+  )
+
   return {
     tabs: localTabs,
     activeTabId,
     activeTab,
     isReady: hydrated || !enabled,
+    isNewProject: persisted?.isNew ?? false,
     openTab,
     closeTab,
     activateTab,
     closeAll,
+    togglePin,
+    reorderTab,
+    seedTabs,
   }
 }
 
