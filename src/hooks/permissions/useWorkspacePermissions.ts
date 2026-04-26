@@ -118,6 +118,7 @@ export function useWorkspacePermissions(
       delete_all_projects: false,
       view_knowledge_base: false,
       manage_knowledge_base: false,
+      view_workspace_digest: false,
     }
 
     // Объединяем по принципу ИЛИ

@@ -42,6 +42,7 @@ function makeRole(
     delete_all_projects: false,
     view_knowledge_base: false,
     manage_knowledge_base: false,
+    view_workspace_digest: false,
     ...permissions,
   }
   return {

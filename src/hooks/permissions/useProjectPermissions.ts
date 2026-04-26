@@ -77,6 +77,7 @@ const FULL_MODULE_ACCESS: ProjectModuleAccess = {
   ai_project_assistant: true,
   comments: true,
   knowledge_base: true,
+  digest: true,
   finance: true,
 }
 
@@ -249,6 +250,7 @@ export function useProjectPermissions(
       ai_project_assistant: false,
       comments: false,
       knowledge_base: false,
+      digest: false,
       finance: false,
     }
 

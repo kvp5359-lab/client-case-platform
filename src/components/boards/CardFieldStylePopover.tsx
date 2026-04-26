@@ -1,6 +1,6 @@
 "use client"
 
-import { AlignLeft, AlignCenter, AlignRight } from 'lucide-react'
+import { AlignLeft, AlignRight } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -8,9 +8,8 @@ import { cn } from '@/lib/utils'
 import type { CardFieldId, CardFieldStyle } from './types'
 import { getFieldLabel, CARD_FONT_SIZES, CARD_TRUNCATES } from './listSettingsConfigs'
 
-const ALIGNS: { value: 'left' | 'center' | 'right'; icon: React.ElementType }[] = [
+const ALIGNS: { value: 'left' | 'right'; icon: React.ElementType }[] = [
   { value: 'left', icon: AlignLeft },
-  { value: 'center', icon: AlignCenter },
   { value: 'right', icon: AlignRight },
 ]
 
