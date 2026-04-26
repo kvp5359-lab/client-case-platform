@@ -14,6 +14,7 @@ export interface AvatarParticipant {
 
 const SIZES = {
   sm: { px: 18, cls: 'w-[18px] h-[18px]', text: 'text-[7px]', overlap: '-space-x-1' },
+  compact: { px: 22, cls: 'w-[22px] h-[22px]', text: 'text-[9px]', overlap: '-space-x-1.5' },
   md: { px: 24, cls: 'w-6 h-6', text: 'text-[9px]', overlap: '-space-x-1.5' },
 } as const
 

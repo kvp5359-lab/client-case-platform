@@ -75,7 +75,7 @@ export function ProjectHeader({
           <input
             value={editedName}
             onChange={(e) => setEditedName(e.target.value)}
-            className="text-2xl font-bold bg-transparent border-none outline-none focus:ring-0 p-0 w-full"
+            className="text-lg font-bold bg-transparent border-none outline-none focus:ring-0 p-0 w-full"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSaveName()
@@ -102,29 +102,29 @@ export function ProjectHeader({
                   handleStartEdit()
                 }
               }}
-              className="relative text-2xl font-bold hover:text-primary transition-colors cursor-pointer group shrink-0"
+              className="relative text-lg font-bold hover:text-primary transition-colors cursor-pointer group shrink-0"
             >
               {projectName}
               <Pencil className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity absolute -right-5 top-1/2 -translate-y-1/2" />
             </div>
           ) : (
-            <h1 className="text-2xl font-bold shrink-0">{projectName}</h1>
+            <h1 className="text-lg font-bold shrink-0">{projectName}</h1>
           )}
 
           {templateName && (
             <>
               <div className="self-center w-px h-5 bg-gray-200" />
-              <span className="text-2xl font-bold text-gray-300 shrink-0">{templateName}</span>
+              <span className="text-lg font-bold text-gray-300 shrink-0">{templateName}</span>
             </>
           )}
 
           {hasGroups && (
-            <div className="self-center flex items-center gap-1.5">
+            <div className="self-center flex items-center gap-0.5">
               <div className="w-px h-5 bg-gray-200 shrink-0 mr-0.5" />
               {participantGroups.map((group, idx) => (
-                <div key={group.role} className="flex items-center gap-1.5 shrink-0">
+                <div key={group.role} className="flex items-center gap-0.5 shrink-0">
                   {idx > 0 && <span className="text-gray-300 text-xs shrink-0">·</span>}
-                  <ParticipantAvatars participants={group.participants} maxVisible={3} />
+                  <ParticipantAvatars participants={group.participants} maxVisible={3} size="compact" />
                 </div>
               ))}
             </div>
