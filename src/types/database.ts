@@ -3714,6 +3714,72 @@ export type Database = {
           },
         ]
       }
+      project_digests: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          digest_type: string
+          events_count: number
+          generation_mode: string
+          id: string
+          model: string | null
+          period_end: string
+          period_start: string
+          project_id: string
+          raw_events: Json
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          digest_type?: string
+          events_count?: number
+          generation_mode: string
+          id?: string
+          model?: string | null
+          period_end: string
+          period_start: string
+          project_id: string
+          raw_events?: Json
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          digest_type?: string
+          events_count?: number
+          generation_mode?: string
+          id?: string
+          model?: string | null
+          period_end?: string
+          period_start?: string
+          project_id?: string
+          raw_events?: Json
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_digests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_digests_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_messages: {
         Row: {
           channel: string
@@ -5483,6 +5549,41 @@ export type Database = {
           },
         ]
       }
+      workspace_digest_settings: {
+        Row: {
+          min_events_for_llm: number
+          model: string
+          system_prompt: string | null
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          min_events_for_llm?: number
+          model?: string
+          system_prompt?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          min_events_for_llm?: number
+          model?: string
+          system_prompt?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_digest_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_features: {
         Row: {
           created_at: string
@@ -5872,7 +5973,6 @@ export type Database = {
           messenger_link_code: string
           name: string
           source_folder_id: string
-          status: string
           status_id: string
           template_id: string
           template_name: string
@@ -5954,29 +6054,6 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: number
       }
-      get_inbox_threads: {
-        Args: { p_user_id: string; p_workspace_id: string }
-        Returns: {
-          client_accent_color: string
-          client_thread_id: string
-          has_unread_reaction: boolean
-          internal_accent_color: string
-          internal_manually_unread: boolean
-          internal_thread_id: string
-          internal_unread_count: number
-          last_message_at: string
-          last_message_id: string
-          last_message_text: string
-          last_reaction_at: string
-          last_reaction_emoji: string
-          last_sender_name: string
-          manually_unread: boolean
-          project_id: string
-          project_name: string
-          project_status: string
-          unread_count: number
-        }[]
-      }
       get_inbox_threads_v2: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: {
@@ -6046,6 +6123,19 @@ export type Database = {
       }
       get_project_participant_module_access: { Args: never; Returns: Json }
       get_project_participant_permissions: { Args: never; Returns: Json }
+      get_projects_with_activity: {
+        Args: {
+          p_period_end: string
+          p_period_start: string
+          p_workspace_id: string
+        }
+        Returns: {
+          events_count: number
+          has_digest: boolean
+          project_id: string
+          project_name: string
+        }[]
+      }
       get_sidebar_data: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: Json
