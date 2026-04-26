@@ -319,13 +319,9 @@ async function collectEvents(supabase: any, projectId: string, range: { gte: str
     const first = g[0];
     const channelLabel = first.channel === "email" ? "почта" : first.channel === "telegram" ? "telegram" : "чат";
     const previewParts: string[] = [];
-    let totalLen = 0;
     for (const m of g) {
       if (!m.content) continue;
-      const piece = m.content.length > 200 ? m.content.slice(0, 200) + "…" : m.content;
-      previewParts.push(piece);
-      totalLen += piece.length;
-      if (totalLen > 600) break;
+      previewParts.push(m.content);
     }
     const attachmentNote = g.some((m) => m.has_attachments) ? " (с вложениями)" : "";
     const countNote = g.length > 1 ? ` [${g.length} сообщ.]` : "";
@@ -387,12 +383,11 @@ async function collectEvents(supabase: any, projectId: string, range: { gte: str
   const commentActorMap = await fetchActorNames(supabase, commentUserIds);
   for (const c of (comments || []) as Array<{ created_by: string | null; entity_type: string; content: string | null; is_resolved: boolean; created_at: string }>) {
     const actor = (c.created_by && commentActorMap.get(c.created_by)) || "—";
-    const preview = (c.content || "").length > 250 ? (c.content || "").slice(0, 250) + "…" : (c.content || "");
     events.push({
       ts: c.created_at,
       kind: "comment",
       actor,
-      text: `${actor} оставил комментарий к ${c.entity_type}: ${preview}`,
+      text: `${actor} оставил комментарий к ${c.entity_type}: ${c.content || ""}`,
     });
   }
 
