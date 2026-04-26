@@ -67,6 +67,7 @@ export function useProjectModules(
         tasks: has('tasks'),
         chats: has('chats'),
         history: has('history'),
+        digest: has('digest'),
         participants: has('settings'), // участники — вкладка в settings, не отдельный модуль
         // ai-chat не в реестре: доступ = ИЛИ трёх permission keys + feature gate,
         // формат ModuleDefinition поддерживает только один permissionKey

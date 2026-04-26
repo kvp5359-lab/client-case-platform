@@ -8,7 +8,7 @@
 import { useEffect, useState, useMemo, startTransition } from 'react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Home, Inbox, CheckSquare, Users, Layout, Settings, BookOpen, Kanban, PinOff } from 'lucide-react'
+import { Home, Inbox, CheckSquare, Users, Layout, Settings, BookOpen, Kanban, PinOff, NotebookText } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { SidebarNavButton } from './WorkspaceSidebar/SidebarNavButton'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
@@ -307,6 +307,12 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
               label="Доски"
               href={buildHref('boards')}
               isActive={isNavActive('boards') && !searchParams.get('board')}
+            />
+            <SidebarNavButton
+              icon={NotebookText}
+              label="Дневник"
+              href={buildHref('digests')}
+              isActive={isNavActive('digests')}
             />
             {/* Закреплённые доски */}
             {pinnedBoards.map((board) => (

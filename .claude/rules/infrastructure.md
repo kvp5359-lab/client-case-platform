@@ -133,6 +133,37 @@
   - Из шаблона (в `ProjectTemplateStatusesSection`) → удаление записи в junction. Сам статус остаётся в справочнике. Если есть проекты этого шаблона в этом статусе → `StatusReassignDialog`, реассайн затрагивает только проекты данного шаблона.
   - Из справочника (`/directories/statuses`) → полное удаление. CASCADE удаляет все junction-записи. Если есть проекты в этом статусе → реассайн.
 
+## Дневник проекта (digests)
+
+Модуль автоматических сводок активности по проектам — введён 2026-04-26.
+
+- **Идея**: для проекта за период (MVP — день, по Europe/Madrid) собираем активность из трёх источников и формируем «карточку дня». Если событий мало — простой список. Если много — сводка через LLM.
+- **Источники активности (только чтение)**: `audit_logs`, `project_messages`, `comments`. Изменения в эти таблицы модуль НЕ вносит.
+- **Таблицы**:
+  - `project_digests` — карточки сводок. Поля: `period_start`, `period_end`, `digest_type` (day/week/month/custom — пока только day), `content`, `raw_events` (jsonb), `events_count`, `generation_mode` (`auto_list`/`llm`), `model`. Уник. ключ `(project_id, period_start, period_end, digest_type)` — повторный запуск перезаписывает.
+  - `workspace_digest_settings` — на воркспейс: `system_prompt` (если `null` → дефолт из кода функции), `min_events_for_llm` (порог авто/LLM, default 5), `model`. Редактирует только владелец.
+- **Edge Function**: `generate-project-digest` (deployed). Принимает `workspace_id`, `project_id`, опц. `period_start/end`, `force`, `test_run`, `override_prompt`. Использует общий хелпер `_shared/ai-chat-setup.ts` (Anthropic/Gemini, ключ из секретов воркспейса). Логика:
+  - Сообщения склеиваются: подряд от одного автора в одном треде в пределах 30 мин → одно событие (экономит токены).
+  - 0 событий → не сохраняем (skipped_reason: no_activity).
+  - < `min_events_for_llm` → авто-список без LLM.
+  - >= порога → зов LLM с системным промптом из настроек или дефолтным.
+  - `test_run: true` → возвращает результат, не сохраняет.
+- **RPC**: `get_projects_with_activity(workspace_id, period_start, period_end)` — список проектов с активностью за период. Используется страницей сводок воркспейса для пакетного прогона на фронте (вторая Edge Function НЕ нужна — таймауты не угрожают, прогресс-бар точный).
+- **Фронтовые хуки** (`src/hooks/useProjectDigests.ts`, `src/hooks/useWorkspaceDigestSettings.ts`):
+  - `useProjectDigests(projectId)` — лента карточек проекта.
+  - `useWorkspaceDigestsForDate(wsId, date)` — карточки всех проектов за дату.
+  - `useProjectsWithActivity(...)` — для пакетного прогона.
+  - `useGenerateProjectDigest()` — мутация (вызывает edge function).
+  - `useDeleteProjectDigest()` — удалить карточку.
+  - `useWorkspaceDigestSettings`/`useUpdateWorkspaceDigestSettings` — настройки.
+- **Дефолтный промпт**: `src/lib/digestDefaults.ts` (фронт) и константа `DEFAULT_SYSTEM_PROMPT` в `supabase/functions/generate-project-digest/index.ts` (бэкенд). При изменении синхронизировать оба места.
+- **UI**:
+  - Вкладка «Дневник» в проекте (модуль `digest` в `PROJECT_MODULES`, доступна всем участникам проекта без проверки прав).
+  - Страница `/workspaces/[id]/digests` — пакетный прогон по всем проектам с активностью (concurrency 2 на фронте).
+  - Раздел «Дневник проекта» в `/workspaces/[id]/settings/digest` (только владелец) — редактор промпта, порог, выбор модели, тестовый прогон.
+- **Миграции**: `20260426_project_digests.sql` (две таблицы + RLS), `20260426_get_projects_with_activity.sql` (RPC).
+- **Тайм-зона**: Europe/Madrid. Граничные даты считаются на фронте и передаются в edge function как `YYYY-MM-DD`.
+
 ## Локальная разработка
 
 ```bash
@@ -140,7 +171,7 @@ npm install
 npm run dev        # http://localhost:8080 (Webpack, не Turbopack)
 npm run build      # production build
 npm run lint       # ESLint
-npm test           # Vitest (26 тестов)
+npm test           # Vitest (613 тестов)
 npm run test:watch # Vitest watch mode
 ```
 
@@ -153,9 +184,9 @@ npm run test:watch # Vitest watch mode
 pkill -f "next dev"; rm -rf .next tsconfig.tsbuildinfo
 ```
 
-## Роуты (46)
+## Роуты (50)
 
-Точное число: `find src/app -name page.tsx | wc -l`. На 2026-04-11 — **46**.
+Точное число: `find src/app -name page.tsx | wc -l`. На 2026-04-26 — **50**.
 
 **Root** (1): `/`
 

@@ -36,6 +36,9 @@ const HistoryTabContent = lazy(() =>
     default: m.HistoryTabContent,
   })),
 )
+const DigestTabContent = lazy(() =>
+  import('./DigestTabContent').then((m) => ({ default: m.DigestTabContent })),
+)
 
 function TabLoading() {
   return (
@@ -210,6 +213,13 @@ export function ProjectTabsContent({
       {activeTab === 'history' && modules.history && (
         <div className="mt-2">
           <HistoryTabContent projectId={projectId} workspaceId={workspaceId} />
+        </div>
+      )}
+
+      {/* Вкладка "Дневник" */}
+      {activeTab === 'digest' && modules.digest && (
+        <div className="mt-2">
+          <DigestTabContent projectId={projectId} workspaceId={workspaceId} />
         </div>
       )}
 

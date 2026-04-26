@@ -17,6 +17,7 @@ import {
   DollarSign,
   FolderOpen,
   BookOpen,
+  NotebookText,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ProjectModule as ProjectModuleKey, WorkspaceFeature } from '@/types/permissions'
@@ -110,6 +111,14 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     order: 5,
     templateKey: null,
     permissionKey: 'history',
+  },
+  {
+    id: 'digest',
+    label: 'Дневник',
+    icon: NotebookText,
+    order: 5.5,
+    templateKey: null,
+    permissionKey: null,
   },
   {
     id: 'settings',

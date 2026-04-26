@@ -654,3 +654,40 @@ export const taskPanelTabsKeys = {
   byProjectUser: (projectId: string, userId: string) =>
     ['task-panel-tabs', projectId, userId] as const,
 }
+
+/**
+ * Дневник проекта: карточки сводок и настройки воркспейса.
+ *
+ * project-digests:
+ *  - byProject(projectId)             — лента карточек одного проекта (Дневник внутри проекта)
+ *  - byWorkspaceForDate(wsId, date)   — карточки всех проектов за конкретную дату (страница Сводок)
+ *  - card(projectId, periodStart...)  — отдельная карточка
+ *
+ * workspace-digest-settings:
+ *  - byWorkspace(wsId)                — настройки промпта/порога/модели
+ *
+ * projects-with-activity:
+ *  - byWorkspaceForPeriod(...)        — список проектов с активностью за период
+ */
+export const projectDigestKeys = {
+  all: ['project-digests'] as const,
+  byProject: (projectId: string) => ['project-digests', 'by-project', projectId] as const,
+  byWorkspaceForDate: (workspaceId: string, date: string) =>
+    ['project-digests', 'by-workspace-date', workspaceId, date] as const,
+  card: (
+    projectId: string,
+    periodStart: string,
+    periodEnd: string,
+    digestType: string,
+  ) => ['project-digests', 'card', projectId, periodStart, periodEnd, digestType] as const,
+}
+
+export const workspaceDigestSettingsKeys = {
+  byWorkspace: (workspaceId: string) =>
+    ['workspace-digest-settings', workspaceId] as const,
+}
+
+export const projectsWithActivityKeys = {
+  byWorkspaceForPeriod: (workspaceId: string, periodStart: string, periodEnd: string) =>
+    ['projects-with-activity', workspaceId, periodStart, periodEnd] as const,
+}
