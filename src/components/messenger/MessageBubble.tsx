@@ -3,6 +3,7 @@ import { CornerDownRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageAttachments } from './MessageAttachment'
+import { isImage } from './utils/attachmentHelpers'
 import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { bubbleStyles } from './utils/messageStyles'
@@ -177,6 +178,17 @@ function MessageBubbleImpl({
     hasAttachments &&
     (message.content === '📎' || !message.content.trim())
   )
+  const hasImages = !!message.attachments?.some((a) => isImage(a.mime_type))
+  const hasNonImageAttachments = !!message.attachments?.some((a) => !isImage(a.mime_type))
+  // Pill-фон таймстампа, лежащего поверх картинки — повторяет фон бабла,
+  // чтобы выглядело как «вырез» в углу изображения.
+  const timestampPillBg = message.is_draft
+    ? 'bg-white'
+    : isOwn
+      ? tgFailed
+        ? 'bg-white'
+        : colors.own.split(' ').find((c) => c.startsWith('bg-')) ?? ''
+      : colors.incoming.split(' ').find((c) => c.startsWith('bg-')) ?? ''
 
   return (
     <div className={cn('flex group items-start', isOwn ? 'justify-end' : 'justify-start')}>
@@ -260,9 +272,10 @@ function MessageBubbleImpl({
               'relative rounded-2xl px-4 py-2.5 min-w-[10rem] overflow-hidden transition-all duration-500',
               // Красная полоса внутри бабла слева — индикатор непрочитанного
               isUnread && !isOwn && 'border-l-4 border-red-500',
-              // Нижний padding для абсолютно-позиционированного таймстампа у баббла
-              // с вложениями (когда нет реакций). Реакции рендерятся вне бабла.
-              hasAttachments && 'pb-6',
+              // Нижний padding только для аудио/файлов: у них таймстамп лежит абсолютно
+              // под бабла. Если в сообщении есть картинки — таймстамп уезжает поверх
+              // картинки, и лишний отступ снизу не нужен.
+              hasNonImageAttachments && !hasImages && 'pb-6',
               message.is_draft
                 ? accent === 'dark'
                   ? 'bg-white border-2 border-stone-600 text-gray-900'
@@ -319,6 +332,23 @@ function MessageBubbleImpl({
                 isFailed={tgFailed}
                 projectId={projectId}
                 workspaceId={workspaceId}
+                imageTimestampOverlay={
+                  hasImages ? (
+                    <div
+                      className={cn(
+                        'flex items-center gap-1 rounded-full px-1.5 py-0.5 backdrop-blur-sm',
+                        timestampPillBg,
+                      )}
+                    >
+                      <BubbleTimestamp
+                        message={message}
+                        isOwn={isOwn}
+                        deliveryStatus={deliveryStatus}
+                        tgFailed={tgFailed}
+                      />
+                    </div>
+                  ) : undefined
+                }
               />
             )}
 
@@ -353,9 +383,10 @@ function MessageBubbleImpl({
             lastReadAt={lastReadAt}
           />
 
-          {/* Timestamp в правом нижнем углу — только для attachments-баббла,
-              inline-время в textrow там отсутствует. У текстового — inline в тексте. */}
-          {hasAttachments && (
+          {/* Timestamp в правом нижнем углу бабла — только когда есть аудио/файлы
+              без картинок. Для картинок таймстамп идёт оверлеем на самой картинке
+              (см. imageTimestampOverlay у MessageAttachments выше). */}
+          {hasNonImageAttachments && !hasImages && (
             <div className="absolute bottom-2 right-4 flex items-center gap-1 z-10 pointer-events-none">
               <BubbleTimestamp
                 message={message}

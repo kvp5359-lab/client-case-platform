@@ -49,48 +49,51 @@ export function BubbleTextContent({
     isOverflowing && isCollapsed
       ? {
           maxHeight: maxCollapsedHeight,
-          maskImage: 'linear-gradient(to bottom, black calc(100% - 40px), transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, black calc(100% - 40px), transparent 100%)',
+          maskImage: 'linear-gradient(to bottom, black calc(100% - 90px), rgba(0,0,0,0.2) calc(100% - 35px), transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black calc(100% - 90px), rgba(0,0,0,0.2) calc(100% - 35px), transparent 100%)',
         }
       : undefined
 
   return (
     <div>
-      <div
-        ref={textRef}
-        className={cn('relative', isOverflowing && isCollapsed && 'overflow-hidden')}
-        style={collapsedStyle}
-      >
-        <div className={cn('flex items-end justify-between gap-2', hasAttachments && 'block')}>
-          {isHtmlContent(message.content) ? (
-            <div
-              className="text-sm break-words min-w-0 messenger-content messenger-links"
-              dangerouslySetInnerHTML={{
-                __html: linkifyHtml(sanitizeMessengerHtml(message.content)),
-              }}
-            />
-          ) : (
-            <div
-              className="text-sm whitespace-pre-wrap break-words min-w-0 messenger-links"
-              dangerouslySetInnerHTML={{
-                __html: sanitizeMessengerHtml(linkifyText(message.content)),
-              }}
-            />
-          )}
-          {!hasAttachments && (
-            <BubbleTimestamp
-              message={message}
-              isOwn={isOwn}
-              deliveryStatus={deliveryStatus}
-              tgFailed={tgFailed}
-              className="flex-shrink-0 mb-[3px] ml-auto"
-            />
-          )}
+      <div className="relative">
+        <div
+          ref={textRef}
+          className={cn(isOverflowing && isCollapsed && 'overflow-hidden')}
+          style={collapsedStyle}
+        >
+          <div className={cn('flex items-end justify-between gap-2', hasAttachments && 'block')}>
+            {isHtmlContent(message.content) ? (
+              <div
+                className="text-sm break-words min-w-0 messenger-content messenger-links"
+                dangerouslySetInnerHTML={{
+                  __html: linkifyHtml(sanitizeMessengerHtml(message.content)),
+                }}
+              />
+            ) : (
+              <div
+                className="text-sm whitespace-pre-wrap break-words min-w-0 messenger-links"
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeMessengerHtml(linkifyText(message.content)),
+                }}
+              />
+            )}
+            {!hasAttachments && (
+              <BubbleTimestamp
+                message={message}
+                isOwn={isOwn}
+                deliveryStatus={deliveryStatus}
+                tgFailed={tgFailed}
+                className="flex-shrink-0 mb-[3px] ml-auto"
+              />
+            )}
+          </div>
+
+          {/* Fade-out реализован через mask-image на textRef — см. collapsedStyle.
+              Универсально работает поверх любого фона, не нуждается в подстановке
+              цветов акцента или highlight. */}
         </div>
 
-        {/* Fade-out реализован через mask-image на textRef — см. collapsedStyle.
-            Универсально работает поверх любого фона, не нуждается в подстановке
-            цветов акцента или highlight. */}
       </div>
 
       {isOverflowing && (

@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import Image from 'next/image'
 import { Loader2, ImageOff } from 'lucide-react'
 import {
   downloadAttachmentBlob,
   type MessageAttachment as AttachmentType,
 } from '@/services/api/messenger/messengerService'
-import { formatSize } from '@/utils/files/formatSize'
 import { isImage, isAudio } from './utils/attachmentHelpers'
 import { ImageLightbox } from './ImageLightbox'
 import { AttachmentMenuButton } from './AttachmentMenuButton'
@@ -25,6 +24,8 @@ interface MessageAttachmentsProps {
   isFailed?: boolean
   projectId?: string
   workspaceId?: string
+  /** Оверлей в правом нижнем углу последней картинки (обычно — таймстамп). */
+  imageTimestampOverlay?: ReactNode
 }
 
 export function MessageAttachments({
@@ -34,6 +35,7 @@ export function MessageAttachments({
   isFailed,
   projectId,
   workspaceId,
+  imageTimestampOverlay,
 }: MessageAttachmentsProps) {
   const images = attachments.filter((a) => isImage(a.mime_type))
   const audios = attachments.filter((a) => isAudio(a.mime_type))
@@ -53,12 +55,15 @@ export function MessageAttachments({
                   : 'repeat(3, 1fr)',
           }}
         >
-          {images.map((att) => (
+          {images.map((att, idx) => (
             <ImageAttachment
               key={att.id}
               attachment={att}
               projectId={projectId}
               workspaceId={workspaceId}
+              timestampOverlay={
+                idx === images.length - 1 ? imageTimestampOverlay : undefined
+              }
             />
           ))}
         </div>
@@ -96,10 +101,12 @@ function ImageAttachment({
   attachment,
   projectId,
   workspaceId,
+  timestampOverlay,
 }: {
   attachment: AttachmentType
   projectId?: string
   workspaceId?: string
+  timestampOverlay?: ReactNode
 }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(!!attachment.storage_path)
@@ -198,6 +205,11 @@ function ImageAttachment({
               setLoading={setMenuLoading}
             />
           </div>
+          {timestampOverlay && (
+            <div className="absolute bottom-1 right-1 z-10 pointer-events-none">
+              {timestampOverlay}
+            </div>
+          )}
         </div>
       ) : previewError ? (
         <div
@@ -212,10 +224,6 @@ function ImageAttachment({
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         </div>
       ) : null}
-      <p className="text-[10px] opacity-50 mt-0.5 truncate">
-        {attachment.file_name}
-        {attachment.file_size ? ` · ${formatSize(attachment.file_size)}` : ''}
-      </p>
 
       {lightboxOpen && previewUrl && (
         <ImageLightbox src={previewUrl} alt={attachment.file_name} onClose={closeLightbox} />
