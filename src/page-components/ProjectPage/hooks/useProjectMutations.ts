@@ -35,7 +35,13 @@ export function useProjectMutations(projectId: string | undefined) {
       return await updateProject(projectId, { status_id: statusId })
     },
     onSuccess: () => {
+      // Деталь проекта.
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId!) })
+      // Списки на /projects и /boards (группировка по статусу пересчитается).
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['accessible-projects'] })
+      // Сайдбар (точки статусов).
+      queryClient.invalidateQueries({ queryKey: ['sidebar', 'projects'] })
     },
     onError: (error) => {
       handleError(error, 'Не удалось обновить статус проекта')
