@@ -224,34 +224,32 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
 
   const openTab = useCallback(
     (tab: TaskPanelTab) => {
-      setLocalTabs((prev) => {
-        const exists = prev.some((t) => t.id === tab.id)
-        const next = exists ? prev : [...prev, tab]
-        persist(next, tab.id)
-        return next
-      })
+      const exists = localTabs.some((t) => t.id === tab.id)
+      const next = exists ? localTabs : [...localTabs, tab]
+      if (!exists) setLocalTabs(next)
+      persist(next, tab.id)
       setUrlActive(tab.id)
     },
-    [persist, setUrlActive],
+    [localTabs, persist, setUrlActive],
   )
 
   const closeTab = useCallback(
     (id: string) => {
-      setLocalTabs((prev) => {
-        const idx = prev.findIndex((t) => t.id === id)
-        if (idx === -1) return prev
-        const next = prev.filter((t) => t.id !== id)
-        let nextActive: string | null = activeTabId
-        if (activeTabId === id) {
-          // активируем правого соседа, иначе левого, иначе null
-          nextActive = next[idx]?.id ?? next[idx - 1]?.id ?? null
-        }
-        persist(next, nextActive)
-        if (activeTabId === id) setUrlActive(nextActive)
-        return next
-      })
+      // Вычисляем next/nextActive снаружи updater'а, чтобы не дёргать
+      // router.replace и другие setState внутри reducer-фазы React 19
+      // (иначе ловим «Cannot update Router while rendering …»).
+      const idx = localTabs.findIndex((t) => t.id === id)
+      if (idx === -1) return
+      const next = localTabs.filter((t) => t.id !== id)
+      const nextActive =
+        activeTabId === id
+          ? next[idx]?.id ?? next[idx - 1]?.id ?? null
+          : activeTabId
+      setLocalTabs(next)
+      persist(next, nextActive)
+      if (activeTabId === id) setUrlActive(nextActive)
     },
-    [activeTabId, persist, setUrlActive],
+    [localTabs, activeTabId, persist, setUrlActive],
   )
 
   const activateTab = useCallback(
