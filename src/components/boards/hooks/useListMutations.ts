@@ -114,6 +114,49 @@ export function useSwapListOrder() {
   })
 }
 
+interface ReorderListsParams {
+  board_id: string
+  updates: Array<{ id: string; column_index: number; sort_order: number }>
+}
+
+export function useReorderLists() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ updates }: ReorderListsParams) => {
+      // Шлём апдейты параллельно. Без uniq-индекса по (board_id, column_index, sort_order)
+      // гонок не будет, а у нас шаг 10 между значениями.
+      await Promise.all(
+        updates.map((u) =>
+          supabase
+            .from('board_lists')
+            .update({ column_index: u.column_index, sort_order: u.sort_order, updated_at: new Date().toISOString() })
+            .eq('id', u.id),
+        ),
+      )
+    },
+    onMutate: async ({ board_id, updates }) => {
+      await qc.cancelQueries({ queryKey: boardKeys.lists(board_id) })
+      const prev = qc.getQueryData<BoardList[]>(boardKeys.lists(board_id))
+      if (prev) {
+        const map = new Map(updates.map((u) => [u.id, u]))
+        const next = prev.map((l) => {
+          const u = map.get(l.id)
+          return u ? { ...l, column_index: u.column_index, sort_order: u.sort_order } : l
+        })
+        qc.setQueryData(boardKeys.lists(board_id), next)
+      }
+      return { prev }
+    },
+    onError: (_err, vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(boardKeys.lists(vars.board_id), ctx.prev)
+    },
+    onSettled: (_data, _err, vars) => {
+      qc.invalidateQueries({ queryKey: boardKeys.lists(vars.board_id) })
+    },
+  })
+}
+
 export function useDeleteList() {
   const qc = useQueryClient()
 

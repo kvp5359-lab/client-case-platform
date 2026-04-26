@@ -1,6 +1,7 @@
 "use client"
 
-import { ChevronDown, ChevronRight, Filter, MoreVertical, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
+import { ChevronDown, ChevronRight, Filter, MoreVertical, Trash2, ArrowUp, ArrowDown, GripVertical } from 'lucide-react'
+import { useDraggable } from '@dnd-kit/core'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -41,6 +42,9 @@ export function BoardListHeader({
   const deleteList = useDeleteList()
   const CollapseIcon = collapsed ? ChevronRight : ChevronDown
   const hs = hexToHeaderStyle(list.header_color)
+  const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
+    id: `list-drag:${list.id}`,
+  })
 
   const handleSwap = (direction: 'up' | 'down') => {
     if (!siblingLists) return
@@ -70,6 +74,17 @@ export function BoardListHeader({
         style={{ backgroundColor: hs.bg }}
       />
       <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/header:opacity-100 transition-opacity absolute right-0 bg-[#f6f6f7] rounded">
+        <button
+          ref={setDragRef}
+          type="button"
+          className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
+          aria-label="Перетащить список"
+          title="Перетащить"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
         {!isInbox && hasFilters && (
           <Button
             variant="ghost"

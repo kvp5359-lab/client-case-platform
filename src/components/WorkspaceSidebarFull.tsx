@@ -306,7 +306,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
               icon={Kanban}
               label="Доски"
               href={buildHref('boards')}
-              isActive={isNavActive('boards') && !searchParams.get('board')}
+              isActive={isNavActive('boards') && !pinnedBoards.some((b) => pathname.includes(`/boards/${b.id}`))}
             />
             {hasPermission('view_workspace_digest') && (
               <SidebarNavButton
@@ -322,8 +322,8 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
                 <SidebarNavButton
                   icon={Kanban}
                   label={board.name}
-                  href={buildHref(`boards?board=${board.id}`)}
-                  isActive={isNavActive('boards') && searchParams.get('board') === board.id}
+                  href={buildHref(`boards/${board.id}`)}
+                  isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
                 />
                 <button
                   type="button"

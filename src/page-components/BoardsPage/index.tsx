@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useEffect } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Kanban } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,8 @@ import { usePageTitle } from '@/hooks/usePageTitle'
 
 export default function BoardsPage() {
   usePageTitle('Доски')
-  const { workspaceId } = useParams<{ workspaceId: string }>()
+  const { workspaceId, boardId: boardIdFromPath } = useParams<{ workspaceId: string; boardId?: string }>()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const closePanel = useSidePanelStore((s) => s.closePanel)
   const createDialog = useDialog()
@@ -36,22 +37,33 @@ export default function BoardsPage() {
     closePanel()
   }, [closePanel])
 
-  // Инициализация из query-параметра ?board=<id> (клик из сайдбара).
-  // Синхронизация при смене URL — через tracked previous (derived-update),
-  // без useEffect+setState: при смене boardFromUrl локальный state подхватывает его.
-  const boardFromUrl = searchParams.get('board')
-  const [activeBoardId, setActiveBoardId] = useState<string | null>(boardFromUrl)
-  const [prevBoardFromUrl, setPrevBoardFromUrl] = useState(boardFromUrl)
-  if (boardFromUrl !== prevBoardFromUrl) {
-    setPrevBoardFromUrl(boardFromUrl)
-    if (boardFromUrl) setActiveBoardId(boardFromUrl)
-  }
+  // Источник активной доски — путь /boards/[boardId]. Для совместимости поддерживаем
+  // legacy ?board=<id> (клик из сайдбара со старыми ссылками) — мигрируем в путь.
+  const legacyBoardFromQuery = searchParams.get('board')
+  const requestedBoardId = boardIdFromPath ?? legacyBoardFromQuery ?? null
 
-  const resolvedBoardId = activeBoardId && boards?.some((b) => b.id === activeBoardId)
-    ? activeBoardId
+  const resolvedBoardId = requestedBoardId && boards?.some((b) => b.id === requestedBoardId)
+    ? requestedBoardId
     : boards?.[0]?.id ?? null
 
   const activeBoard = boards?.find((b) => b.id === resolvedBoardId) ?? null
+
+  const navigateToBoard = (id: string | null) => {
+    if (!workspaceId) return
+    const target = id ? `/workspaces/${workspaceId}/boards/${id}` : `/workspaces/${workspaceId}/boards`
+    router.push(target)
+  }
+
+  // Синхронизация URL: если в пути нет boardId, но есть резолвнутая доска (например,
+  // легаси-параметр ?board= или дефолтная первая) — переписываем URL чтобы был полным
+  // и шарабельным.
+  useEffect(() => {
+    if (!workspaceId) return
+    if (!resolvedBoardId) return
+    if (boardIdFromPath === resolvedBoardId) return
+    const target = `/workspaces/${workspaceId}/boards/${resolvedBoardId}`
+    router.replace(target)
+  }, [workspaceId, boardIdFromPath, resolvedBoardId, router])
 
   const handleDeleteBoard = (board: Board) => {
     if (!confirm(`Удалить доску «${board.name}»?`)) return
@@ -59,7 +71,7 @@ export default function BoardsPage() {
       { id: board.id, workspace_id: workspaceId! },
       {
         onSuccess: () => {
-          if (activeBoardId === board.id) setActiveBoardId(null)
+          if (resolvedBoardId === board.id) navigateToBoard(null)
         },
       },
     )
@@ -84,14 +96,14 @@ export default function BoardsPage() {
                       board={board}
                       isActive={resolvedBoardId === board.id}
                       isPinned={isBoardPinned(board.id)}
-                      onSelect={() => setActiveBoardId(board.id)}
+                      onSelect={() => navigateToBoard(board.id)}
                       onEdit={() => {
-                        setActiveBoardId(board.id)
+                        navigateToBoard(board.id)
                         editDialog.open()
                       }}
                       onDelete={() => handleDeleteBoard(board)}
                       onAddList={() => {
-                        setActiveBoardId(board.id)
+                        navigateToBoard(board.id)
                         createListDialog.open()
                       }}
                       onTogglePin={() => toggleBoardPin(board.id)}
