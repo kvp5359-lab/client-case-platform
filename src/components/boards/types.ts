@@ -88,7 +88,7 @@ export type CardFieldId =
   | 'spacer'
 
 export type CardFontSize = 'sm' | 'md' | 'lg'
-export type CardAlign = 'left' | 'center' | 'right'
+export type CardAlign = 'left' | 'right'
 export type CardTruncate = 'truncate' | 'wrap'
 
 /** Стиль одного поля в карточке */

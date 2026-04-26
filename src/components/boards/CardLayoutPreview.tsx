@@ -51,6 +51,21 @@ function PreviewField({
       />
     )
   }
+  if (fieldId === 'status' && entityType === 'project') {
+    const classes = fieldStyleToClasses(style)
+    return (
+      <span
+        className={cn(classes, 'shrink-0 inline-flex items-center px-2 py-0.5 rounded-md border')}
+        style={{
+          backgroundColor: '#3b82f61A',
+          color: '#3b82f6',
+          borderColor: '#3b82f666',
+        }}
+      >
+        В работе
+      </span>
+    )
+  }
   const content = MOCK[fieldId]
   if (!content) return null
 
@@ -59,7 +74,7 @@ function PreviewField({
 
   if (isComponent) {
     const alignClass =
-      style.align === 'right' ? 'ml-auto' : style.align === 'center' ? 'mx-auto' : ''
+      style.align === 'right' ? 'ml-auto' : ''
     return <span className={cn('shrink-0', alignClass)}>{content}</span>
   }
 

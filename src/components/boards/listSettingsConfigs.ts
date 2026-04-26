@@ -28,7 +28,6 @@ export const CARD_FONT_SIZES: { value: CardFontSize; label: string }[] = [
 
 export const CARD_ALIGNS: { value: CardAlign; label: string }[] = [
   { value: 'left', label: 'Лево' },
-  { value: 'center', label: 'Центр' },
   { value: 'right', label: 'Право' },
 ]
 
@@ -101,7 +100,7 @@ export interface CardFieldDef {
 }
 
 export const CARD_FIELD_DEFS: CardFieldDef[] = [
-  { id: 'status',    label: 'Статус',        entityTypes: ['task'] },
+  { id: 'status',    label: 'Статус',        entityTypes: ['task', 'project'] },
   { id: 'icon',      label: 'Иконка',        entityTypes: ['project'] },
   { id: 'name',      label: 'Название',      entityTypes: ['task', 'project'] },
   { id: 'deadline',  label: 'Дедлайн',       entityTypes: ['task', 'project'] },

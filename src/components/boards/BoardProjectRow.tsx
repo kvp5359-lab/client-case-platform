@@ -75,7 +75,7 @@ function ProjectField({
       if (!statusName) return null
       return (
         <span
-          className={cn(classes, 'shrink-0 inline-flex items-center text-[11px] px-2 py-0.5 rounded-md border')}
+          className={cn(classes, 'shrink-0 inline-flex items-center px-2 py-0.5 rounded-md border')}
           style={{
             backgroundColor: statusColor ? `${statusColor}1A` : undefined,
             color: statusColor ?? undefined,

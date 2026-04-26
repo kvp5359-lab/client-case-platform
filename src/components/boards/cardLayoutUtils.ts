@@ -58,7 +58,6 @@ const FONT_SIZE_MAP: Record<CardFieldStyle['fontSize'], string> = {
 export function fieldStyleToClasses(style: CardFieldStyle): string {
   const parts: string[] = [FONT_SIZE_MAP[style.fontSize]]
   if (style.align === 'right') parts.push('text-right ml-auto')
-  else if (style.align === 'center') parts.push('text-center')
   if (style.truncate === 'truncate') parts.push('truncate')
   else parts.push('break-words')
   if (style.bold) parts.push('font-medium')
