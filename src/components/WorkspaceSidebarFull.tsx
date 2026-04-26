@@ -71,6 +71,23 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
     return () => clearTimeout(t)
   }, [rawSearchQuery])
 
+  // Считаем непрочитанные ДО useSidebarData, чтобы прокинуть список проектов с непрочитанными
+  // и подгрузить те из них, что выпали из топ-35 по last_activity_at.
+  const { totalUnread, projectData: projectUnreadData } = useSidebarInboxCounts(workspaceId ?? '')
+  const badgeDisplays = projectUnreadData.badgeDisplays
+  const clientUnreadCounts = projectUnreadData.clientUnreadCounts
+  const internalUnreadCounts = projectUnreadData.internalUnreadCounts
+  const projectThreadIds = projectUnreadData.threadIds
+  const badgeColors = projectUnreadData.badgeColors
+
+  const unreadProjectIds = useMemo(() => {
+    const ids: string[] = []
+    badgeDisplays.forEach((badge, projectId) => {
+      if (badge.type !== 'none') ids.push(projectId)
+    })
+    return ids
+  }, [badgeDisplays])
+
   const {
     workspaces,
     projects,
@@ -79,7 +96,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
     currentWorkspace,
     permissionsResult,
     refreshProjects,
-  } = useSidebarData({ workspaceId, searchQuery: debouncedSearchQuery })
+  } = useSidebarData({ workspaceId, searchQuery: debouncedSearchQuery, unreadProjectIds })
 
   const {
     can: hasPermission,
@@ -118,15 +135,6 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   const activeTab = isClientOnly ? (searchParams.get('tab') || 'documents') : undefined
 
   const createProjectDialog = useDialog()
-  // Один вызов useSidebarInboxCounts вместо двух отдельных useTotalFilteredUnreadCount +
-  // useProjectFilteredUnreadCounts — раньше useFilteredInbox (с useMemo-фильтрацией) вычислялся
-  // дважды на каждый рендер сайдбара.
-  const { totalUnread, projectData: projectUnreadData } = useSidebarInboxCounts(workspaceId ?? '')
-  const badgeDisplays = projectUnreadData.badgeDisplays
-  const clientUnreadCounts = projectUnreadData.clientUnreadCounts
-  const internalUnreadCounts = projectUnreadData.internalUnreadCounts
-  const projectThreadIds = projectUnreadData.threadIds
-  const badgeColors = projectUnreadData.badgeColors
 
   const inboxBadge =
     totalUnread && totalUnread > 0 ? (totalUnread > 99 ? '99+' : String(totalUnread)) : undefined

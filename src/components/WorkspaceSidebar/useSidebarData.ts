@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -19,9 +19,15 @@ interface UseSidebarDataOptions {
   workspaceId?: string
   /** Строка поиска из сайдбара (уже дебаунснутая). Если ≥ 2 символов — активирует серверный поиск. */
   searchQuery?: string
+  /**
+   * ID проектов с непрочитанными сообщениями (от useSidebarInboxCounts).
+   * Те из них, что не попали в топ-35 по last_activity_at, подгружаются отдельным запросом
+   * и добавляются в `projects`, чтобы непрочитанные не выпадали из сайдбара.
+   */
+  unreadProjectIds?: string[]
 }
 
-export function useSidebarData({ workspaceId, searchQuery }: UseSidebarDataOptions) {
+export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: UseSidebarDataOptions) {
   const { user } = useAuth()
   const permissionsResult = useWorkspacePermissions({ workspaceId: workspaceId || '' })
   const queryClient = useQueryClient()
@@ -113,6 +119,39 @@ export function useSidebarData({ workspaceId, searchQuery }: UseSidebarDataOptio
     staleTime: STALE_TIME.MEDIUM,
   })
 
+  // --- Догрузка проектов с непрочитанными, выпавших из топ-35 ---
+  // Берём только те ID, которых нет в основной выборке. canViewAll учитываем в ключе:
+  // у пользователя без прав смысл "проекты по ID" другой (он всё равно увидит только свои
+  // через RLS, но кэш разделяем, чтобы не отдать чужой набор).
+  const missingUnreadIds = useMemo(() => {
+    if (!unreadProjectIds || unreadProjectIds.length === 0) return []
+    const present = new Set(projects.map((p) => p.id))
+    return unreadProjectIds.filter((id) => !present.has(id))
+  }, [unreadProjectIds, projects])
+
+  const { data: extraUnreadProjects = [] } = useQuery<Project[]>({
+    queryKey: sidebarKeys.projectsByIds(workspaceId ?? '', canViewAll, missingUnreadIds),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('workspace_id', workspaceId!)
+        .eq('is_deleted', false)
+        .in('id', missingUnreadIds)
+      if (error) throw error
+      return data ?? []
+    },
+    enabled: !!workspaceId && !permissionsResult.isLoading && missingUnreadIds.length > 0,
+    staleTime: STALE_TIME.MEDIUM,
+  })
+
+  // Объединяем: к топу по активности добавляем «выпавшие непрочитанные».
+  // Сортировку «непрочитанные сверху» делает ProjectsList.
+  const projectsWithUnread = useMemo<Project[]>(() => {
+    if (extraUnreadProjects.length === 0) return projects
+    return [...projects, ...extraUnreadProjects]
+  }, [projects, extraUnreadProjects])
+
   // --- Serverside search (активируется при длине запроса ≥ 2) ---
   const trimmedSearch = (searchQuery ?? '').trim()
   const isSearching = trimmedSearch.length >= 2
@@ -175,7 +214,7 @@ export function useSidebarData({ workspaceId, searchQuery }: UseSidebarDataOptio
   })
 
   // При активном поиске отдаём серверные результаты вместо топа.
-  const effectiveProjects = isSearching ? searchResults : projects
+  const effectiveProjects = isSearching ? searchResults : projectsWithUnread
   const effectiveLoadingProjects = isSearching ? loadingSearch : loadingProjects
 
   const currentWorkspace = workspaces.find((w) => w.id === workspaceId)

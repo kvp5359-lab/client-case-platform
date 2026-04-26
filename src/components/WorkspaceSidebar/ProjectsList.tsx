@@ -80,20 +80,31 @@ export const ProjectsList = memo(function ProjectsList({
     [projects, searchQuery],
   )
 
-  // Разделение на закреплённые и обычные
+  // Разделение на закреплённые и обычные.
+  // Обычные сортируются: сначала с непрочитанным (любой бейдж кроме 'none'),
+  // внутри группы сохраняется исходный порядок (по last_activity_at desc).
   const { pinnedProjects, unpinnedProjects } = useMemo(() => {
     const pinned: Project[] = []
-    const unpinned: Project[] = []
+    const unreadUnpinned: Project[] = []
+    const readUnpinned: Project[] = []
     for (const project of filteredProjects) {
       if (pinnedIds.includes(project.id)) {
         pinned.push(project)
+        continue
+      }
+      const badge = badgeDisplays?.get(project.id)
+      if (badge && badge.type !== 'none') {
+        unreadUnpinned.push(project)
       } else {
-        unpinned.push(project)
+        readUnpinned.push(project)
       }
     }
     pinned.sort((a, b) => pinnedIds.indexOf(a.id) - pinnedIds.indexOf(b.id))
-    return { pinnedProjects: pinned, unpinnedProjects: unpinned }
-  }, [filteredProjects, pinnedIds])
+    return {
+      pinnedProjects: pinned,
+      unpinnedProjects: [...unreadUnpinned, ...readUnpinned],
+    }
+  }, [filteredProjects, pinnedIds, badgeDisplays])
 
   // FLIP-анимация при изменении порядка проектов
   const projectIds = useMemo(() => filteredProjects.map((p) => p.id).join(','), [filteredProjects])

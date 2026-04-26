@@ -107,6 +107,9 @@ export const sidebarKeys = {
     ['sidebar', 'projects', workspaceId, canViewAll] as const,
   projectsSearch: (workspaceId: string, canViewAll: boolean, query: string) =>
     ['sidebar', 'projects', workspaceId, 'search', canViewAll, query] as const,
+  /** Fetch missing unread projects (ids outside the top-N activity window). */
+  projectsByIds: (workspaceId: string, canViewAll: boolean, ids: string[]) =>
+    ['sidebar', 'projects', workspaceId, 'by-ids', canViewAll, [...ids].sort().join(',')] as const,
 }
 
 export const userSettingsKeys = {
