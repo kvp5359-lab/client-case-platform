@@ -1,4 +1,20 @@
 /**
+ * Короткое имя модели для бейджа на карточке Дневника. Полное — кладётся в title.
+ *  "anthropic:claude-sonnet-4-6"          → "sonnet 4.6"
+ *  "anthropic:claude-haiku-4-5-20251001"  → "haiku 4.5"
+ *  "google:gemini-2.5-flash"              → "gemini 2.5 flash"
+ */
+export function shortenModel(model: string | null): string {
+  if (!model) return '—'
+  const stripped = model.replace(/^[a-z]+:/, '')
+  const claude = stripped.match(/^claude-(opus|sonnet|haiku)-(\d+)-(\d+)/)
+  if (claude) return `${claude[1]} ${claude[2]}.${claude[3]}`
+  const gemini = stripped.match(/^gemini-(\d+\.\d+)-(\w+)/)
+  if (gemini) return `gemini ${gemini[1]} ${gemini[2]}`
+  return stripped.length > 18 ? stripped.slice(0, 16) + '…' : stripped
+}
+
+/**
  * Дефолтный системный промпт для Дневника проекта.
  *
  * Используется:

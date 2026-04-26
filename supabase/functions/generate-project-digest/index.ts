@@ -139,12 +139,16 @@ Deno.serve(async (req: Request) => {
     // Verify project belongs to workspace.
     const { data: project, error: projErr } = await supabaseServiceRole
       .from("projects")
-      .select("id, name, workspace_id, project_template_id")
+      .select("id, name, workspace_id, template_id")
       .eq("id", project_id)
       .eq("workspace_id", workspace_id)
-      .single<{ id: string; name: string; workspace_id: string; project_template_id: string | null }>();
+      .single<{ id: string; name: string; workspace_id: string; template_id: string | null }>();
     if (projErr || !project) {
-      return jsonResponse(req, { error: "Project not found in this workspace" }, 404);
+      console.error("Project lookup failed:", { project_id, workspace_id, projErr, project });
+      return jsonResponse(req, {
+        error: "Project not found in this workspace",
+        debug: { project_id, workspace_id, projErr: projErr?.message ?? null },
+      }, 404);
     }
 
     // Load workspace digest settings (or fall back to defaults).

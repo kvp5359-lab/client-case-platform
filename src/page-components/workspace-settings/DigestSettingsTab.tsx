@@ -15,6 +15,8 @@
 import { useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { toast } from 'sonner'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Loader2, RotateCcw, Wand2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -303,7 +305,9 @@ function TestRunCard({ workspaceId, prompt }: { workspaceId: string | undefined;
               Режим: {result.generation_mode === 'llm' ? `ИИ (${result.model})` : 'авто-список'} ·
               событий: {result.events_count}
             </div>
-            <div className="whitespace-pre-wrap text-sm">{result.content}</div>
+            <div className="prose prose-sm max-w-none text-gray-800 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-2 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_hr]:my-3">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.content}</ReactMarkdown>
+            </div>
           </div>
         )}
       </CardContent>
