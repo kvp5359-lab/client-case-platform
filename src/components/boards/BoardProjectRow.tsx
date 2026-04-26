@@ -31,7 +31,6 @@ function ProjectField({
   project,
   deadline,
   overdue,
-  isSelected,
   nextTask,
   authorName,
   statusName,
@@ -42,7 +41,6 @@ function ProjectField({
   project: BoardProject
   deadline: string | null
   overdue: boolean
-  isSelected?: boolean
   nextTask?: WorkspaceTask
   authorName?: string | null
   statusName: string | null
@@ -185,7 +183,7 @@ export function BoardProjectRow({
     }
   }
 
-  const fieldProps = { project, deadline, overdue, isSelected, nextTask, authorName, statusName, statusColor }
+  const fieldProps = { project, deadline, overdue, nextTask, authorName, statusName, statusColor }
   const isCards = displayMode === 'cards'
   const selectedOutlineColor = statusColor ?? 'hsl(var(--brand-500))'
   const selectedStyle = isSelected

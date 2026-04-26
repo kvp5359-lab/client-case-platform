@@ -35,7 +35,6 @@ function TaskField({
   currentStatus,
   assignees,
   workspaceId,
-  isSelected,
   onStatusChange,
   stretch,
 }: {
@@ -48,7 +47,6 @@ function TaskField({
   currentStatus: StatusOption | null
   assignees: AvatarParticipant[]
   workspaceId: string
-  isSelected?: boolean
   onStatusChange: (taskId: string, statusId: string | null) => void
   stretch?: boolean
 }) {
@@ -165,7 +163,6 @@ export function BoardTaskRow({
     currentStatus,
     assignees,
     workspaceId,
-    isSelected,
     onStatusChange,
   }
 
