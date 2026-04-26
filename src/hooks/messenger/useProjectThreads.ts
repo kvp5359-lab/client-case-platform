@@ -305,10 +305,10 @@ export function useDeleteThread(workspaceId?: string) {
         queryClient.invalidateQueries({ queryKey: taskKeys.allUrgent })
       }
       queryClient.invalidateQueries({ queryKey: trashKeys.all })
-      // Удаление задачи с дедлайном может сбросить has_active_deadline_task у проекта.
-      if (thread.type === 'task' && thread.deadline) {
-        queryClient.invalidateQueries({ queryKey: accessibleProjectKeys.all })
-      }
+      // Удаление любого треда с дедлайном (task / chat / email) может сбросить
+      // has_active_deadline_task у проекта. У нас нет deadline в аргументе
+      // мутации — инвалидируем безусловно, цена пересчёта незначительная.
+      queryClient.invalidateQueries({ queryKey: accessibleProjectKeys.all })
     },
   })
 }
