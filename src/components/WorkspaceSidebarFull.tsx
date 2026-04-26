@@ -308,12 +308,14 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
               href={buildHref('boards')}
               isActive={isNavActive('boards') && !searchParams.get('board')}
             />
-            <SidebarNavButton
-              icon={NotebookText}
-              label="Дневник"
-              href={buildHref('digests')}
-              isActive={isNavActive('digests')}
-            />
+            {hasPermission('view_workspace_digest') && (
+              <SidebarNavButton
+                icon={NotebookText}
+                label="Дневник"
+                href={buildHref('digests')}
+                isActive={isNavActive('digests')}
+              />
+            )}
             {/* Закреплённые доски */}
             {pinnedBoards.map((board) => (
               <div key={board.id} className="group/pin flex items-center">

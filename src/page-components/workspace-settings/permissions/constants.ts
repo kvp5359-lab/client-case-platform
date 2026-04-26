@@ -12,6 +12,7 @@ import {
   MessageSquare,
   MessagesSquare,
   BookOpen,
+  NotebookText,
 } from 'lucide-react'
 import type { WorkspacePermissions, ProjectModuleAccess } from '@/types/permissions'
 
@@ -56,6 +57,10 @@ export const WORKSPACE_PERMISSION_LABELS: Record<
     label: 'Управление базой знаний',
     description: 'Создавать, редактировать и удалять статьи',
   },
+  view_workspace_digest: {
+    label: 'Дневник проекта',
+    description: 'Видеть общую страницу «Дневник» и собирать сводки по всем проектам',
+  },
 }
 
 // Используем Partial, так как finance опционально
@@ -75,4 +80,5 @@ export const MODULE_LABELS: Partial<
   ai_knowledge_project: { label: 'AI: База знаний проекта', icon: Sparkles },
   ai_project_assistant: { label: 'AI: Ассистент по проекту', icon: Sparkles },
   comments: { label: 'Комментарии', icon: MessageSquare },
+  digest: { label: 'Дневник', icon: NotebookText },
 }

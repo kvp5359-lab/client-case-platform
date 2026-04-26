@@ -672,8 +672,8 @@ export const taskPanelTabsKeys = {
 export const projectDigestKeys = {
   all: ['project-digests'] as const,
   byProject: (projectId: string) => ['project-digests', 'by-project', projectId] as const,
-  byWorkspaceForDate: (workspaceId: string, date: string) =>
-    ['project-digests', 'by-workspace-date', workspaceId, date] as const,
+  byWorkspaceForPeriod: (workspaceId: string, periodStart: string, periodEnd: string) =>
+    ['project-digests', 'by-workspace-period', workspaceId, periodStart, periodEnd] as const,
   card: (
     projectId: string,
     periodStart: string,

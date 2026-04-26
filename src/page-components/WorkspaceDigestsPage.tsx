@@ -18,15 +18,21 @@ import { Loader2, Wand2, ExternalLink, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
-import { shortenModel } from '@/lib/digestDefaults'
+import { DigestPeriodPicker } from '@/components/digests/DigestPeriodPicker'
+import { useWorkspacePermissions } from '@/hooks/permissions'
+import {
+  shortenModel,
+  digestTypeForPeriod,
+  formatPeriodLabel,
+  type DigestPeriod,
+} from '@/lib/digestDefaults'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import {
   todayInMadrid,
   useProjectsWithActivity,
-  useWorkspaceDigestsForDate,
+  useWorkspaceDigestsForPeriod,
   useGenerateProjectDigest,
   type ProjectWithActivity,
   type ProjectDigest,
@@ -41,13 +47,18 @@ export default function WorkspaceDigestsPage() {
   const closePanel = useSidePanelStore((s) => s.closePanel)
   useEffect(() => { closePanel() }, [closePanel])
 
-  const [date, setDate] = useState(todayInMadrid())
+  const today = todayInMadrid()
+  const [period, setPeriod] = useState<DigestPeriod>({ start: today, end: today })
+  const { isLoading: permsLoading, can, isOwner } = useWorkspacePermissions({
+    workspaceId: workspaceId || '',
+  })
+  const allowed = isOwner || can('view_workspace_digest')
 
   const { data: activeProjects = [], isLoading: loadingProjects } = useProjectsWithActivity(
-    workspaceId, date, date,
+    workspaceId, period.start, period.end,
   )
-  const { data: digests = [], isLoading: loadingDigests } = useWorkspaceDigestsForDate(
-    workspaceId, date,
+  const { data: digests = [], isLoading: loadingDigests } = useWorkspaceDigestsForPeriod(
+    workspaceId, period.start, period.end,
   )
 
   const generate = useGenerateProjectDigest()
@@ -82,9 +93,9 @@ export default function WorkspaceDigestsPage() {
             await generate.mutateAsync({
               workspaceId,
               projectId: item.project_id,
-              periodStart: date,
-              periodEnd: date,
-              digestType: 'day',
+              periodStart: period.start,
+              periodEnd: period.end,
+              digestType: digestTypeForPeriod(period),
               force: options.force,
             })
             success++
@@ -107,6 +118,17 @@ export default function WorkspaceDigestsPage() {
 
   if (!workspaceId) return null
 
+  if (!permsLoading && !allowed) {
+    return (
+      <WorkspaceLayout>
+        <div className="h-full flex items-center justify-center text-sm text-gray-600 px-6">
+          Нет доступа к Дневнику. Попроси администратора воркспейса включить право
+          «Дневник проекта» твоей роли.
+        </div>
+      </WorkspaceLayout>
+    )
+  }
+
   return (
     <WorkspaceLayout>
       <div className="h-full overflow-auto bg-gray-50">
@@ -114,20 +136,14 @@ export default function WorkspaceDigestsPage() {
           <div>
             <h1 className="text-xl font-semibold">Сводки по проектам</h1>
             <p className="text-sm text-gray-600 mt-0.5">
-              Дневник по всему воркспейсу: выбери дату, посмотри что было в каждом проекте.
+              Дневник по всему воркспейсу: выбери период, посмотри что было в каждом проекте.
             </p>
           </div>
 
           {/* Компактная панель управления — без фоновых плашек */}
           <div className="flex flex-wrap items-center gap-3 text-sm text-gray-700">
-            <span className="text-gray-500">Дата:</span>
-            <Input
-              id="ws-digest-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="h-8 w-[150px]"
-            />
+            <span className="text-gray-500">Период:</span>
+            <DigestPeriodPicker value={period} onChange={setPeriod} max={today} />
             <span className="text-gray-300">·</span>
             <span>
               Проектов с активностью: <b>{activeProjects.length}</b>
@@ -225,7 +241,7 @@ function DigestRow({
             className="text-xs font-normal text-gray-500 whitespace-nowrap"
             title={digest.generation_mode === 'llm' && digest.model ? digest.model : undefined}
           >
-            · {modeLabel} · событий: {digest.events_count}
+            · {formatPeriodLabel(digest.period_start, digest.period_end)} · {modeLabel} · событий: {digest.events_count}
           </span>
         </CardTitle>
         <Button variant="ghost" size="sm" className="h-7 shrink-0" onClick={onOpenProject}>

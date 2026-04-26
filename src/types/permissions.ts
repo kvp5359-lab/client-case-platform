@@ -24,6 +24,7 @@ export type WorkspacePermission =
   | 'delete_all_projects' // Удалять все проекты
   | 'view_knowledge_base' // Просматривать базу знаний
   | 'manage_knowledge_base' // Создавать, редактировать, удалять статьи
+  | 'view_workspace_digest' // Видеть страницу «Дневник» в воркспейсе и пакетные сводки
 
 /**
  * Объект разрешений workspace
@@ -42,6 +43,7 @@ export interface WorkspacePermissions {
   delete_all_projects: boolean
   view_knowledge_base: boolean
   manage_knowledge_base: boolean
+  view_workspace_digest: boolean
 }
 
 // =====================================================
@@ -70,6 +72,7 @@ export interface ProjectModuleAccess {
   ai_project_assistant: boolean
   comments: boolean
   knowledge_base: boolean
+  digest: boolean
   // Будущие модули — optional т.к. не все workspace имеют эти модули включенными
   finance?: boolean
 }

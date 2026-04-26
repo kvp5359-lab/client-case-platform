@@ -144,11 +144,23 @@ Deno.serve(async (req: Request) => {
       .eq("workspace_id", workspace_id)
       .single<{ id: string; name: string; workspace_id: string; template_id: string | null }>();
     if (projErr || !project) {
-      console.error("Project lookup failed:", { project_id, workspace_id, projErr, project });
-      return jsonResponse(req, {
-        error: "Project not found in this workspace",
-        debug: { project_id, workspace_id, projErr: projErr?.message ?? null },
-      }, 404);
+      return jsonResponse(req, { error: "Project not found in this workspace" }, 404);
+    }
+
+    // Проверка прав: модуль `digest` в роли проекта пользователя.
+    // Owner / view_all_projects обходят проверку (для общей страницы Дневника).
+    const { data: hasModule } = await supabaseServiceRole.rpc(
+      "has_project_module_access",
+      { p_user_id: user.id, p_project_id: project_id, p_module: "digest" },
+    );
+    if (!hasModule) {
+      const { data: hasWsView } = await supabaseServiceRole.rpc(
+        "has_workspace_permission",
+        { p_user_id: user.id, p_workspace_id: workspace_id, p_permission: "view_workspace_digest" },
+      );
+      if (!hasWsView) {
+        return jsonResponse(req, { error: "Forbidden: no access to digest module" }, 403);
+      }
     }
 
     // Load workspace digest settings (or fall back to defaults).

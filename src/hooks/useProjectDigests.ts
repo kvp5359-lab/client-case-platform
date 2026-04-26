@@ -5,7 +5,7 @@
  *
  * Чтение:
  *  - useProjectDigests(projectId)                 — лента карточек дневника одного проекта
- *  - useWorkspaceDigestsForDate(wsId, date)       — карточки всех проектов воркспейса за конкретную дату
+ *  - useWorkspaceDigestsForPeriod(wsId, s, e)     — карточки всех проектов воркспейса за конкретный период
  *  - useProjectsWithActivity(wsId, start, end)    — список проектов с активностью за период (для пакетного прогона)
  *
  * Мутации:
@@ -88,12 +88,22 @@ export function useProjectDigests(projectId: string | undefined) {
   })
 }
 
-export function useWorkspaceDigestsForDate(workspaceId: string | undefined, date: string) {
+/**
+ * Карточки всех проектов воркспейса, попадающие в выбранный период (включительно).
+ * Включает и дневные карточки за дни внутри периода, и кастомную карточку
+ * "за весь период" (если её сгенерировали кнопкой "Собрать"). Сортировка —
+ * сначала свежие по дате периода.
+ */
+export function useWorkspaceDigestsForPeriod(
+  workspaceId: string | undefined,
+  periodStart: string,
+  periodEnd: string,
+) {
   return useQuery({
     queryKey: workspaceId
-      ? projectDigestKeys.byWorkspaceForDate(workspaceId, date)
+      ? projectDigestKeys.byWorkspaceForPeriod(workspaceId, periodStart, periodEnd)
       : ['project-digests', 'noop'],
-    enabled: Boolean(workspaceId && date),
+    enabled: Boolean(workspaceId && periodStart && periodEnd),
     staleTime: STALE_TIME.SHORT,
     gcTime: GC_TIME.STANDARD,
     queryFn: async () => {
@@ -101,8 +111,9 @@ export function useWorkspaceDigestsForDate(workspaceId: string | undefined, date
         .from('project_digests')
         .select('*, project:projects(id, name)')
         .eq('workspace_id', workspaceId!)
-        .eq('period_start', date)
-        .eq('period_end', date)
+        .gte('period_start', periodStart)
+        .lte('period_end', periodEnd)
+        .order('period_start', { ascending: false })
         .order('updated_at', { ascending: false })
       if (error) throw error
       return data as Array<ProjectDigest & { project: { id: string; name: string } | null }>
@@ -191,16 +202,15 @@ export function useGenerateProjectDigest() {
     mutationFn: callGenerateDigest,
     onSuccess: (result, vars) => {
       if (vars.testRun) return // не трогаем кэш
-      // Инвалидируем ленту проекта и срез по дате воркспейса.
+      // Инвалидируем ленту проекта и любые срезы по периоду воркспейса
+      // (broad invalidate префиксом — частичный матч).
       queryClient.invalidateQueries({
         queryKey: projectDigestKeys.byProject(vars.projectId),
       })
-      const date = vars.periodStart ?? result.digest?.period_start
-      if (date) {
-        queryClient.invalidateQueries({
-          queryKey: projectDigestKeys.byWorkspaceForDate(vars.workspaceId, date),
-        })
-      }
+      queryClient.invalidateQueries({
+        queryKey: ['project-digests', 'by-workspace-period', vars.workspaceId],
+      })
+      void result
       // has_digest флаг в списке проектов с активностью — тоже мог измениться.
       queryClient.invalidateQueries({
         queryKey: ['projects-with-activity', vars.workspaceId],
@@ -227,11 +237,12 @@ export function useDeleteProjectDigest() {
       if (error) throw error
     },
     onSuccess: (_v, vars) => {
+      void vars.periodStart
       queryClient.invalidateQueries({
         queryKey: projectDigestKeys.byProject(vars.projectId),
       })
       queryClient.invalidateQueries({
-        queryKey: projectDigestKeys.byWorkspaceForDate(vars.workspaceId, vars.periodStart),
+        queryKey: ['project-digests', 'by-workspace-period', vars.workspaceId],
       })
       queryClient.invalidateQueries({
         queryKey: ['projects-with-activity', vars.workspaceId],

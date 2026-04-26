@@ -15,7 +15,6 @@ import remarkGfm from 'remark-gfm'
 import { Loader2, RefreshCw, Wand2, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import {
   todayInMadrid,
   useProjectDigests,
@@ -25,7 +24,13 @@ import {
 } from '@/hooks/useProjectDigests'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { shortenModel } from '@/lib/digestDefaults'
+import {
+  shortenModel,
+  digestTypeForPeriod,
+  formatPeriodLabel,
+  type DigestPeriod,
+} from '@/lib/digestDefaults'
+import { DigestPeriodPicker } from '@/components/digests/DigestPeriodPicker'
 
 interface Props {
   projectId: string
@@ -38,26 +43,32 @@ export function DigestTabContent({ projectId, workspaceId }: Props) {
   const remove = useDeleteProjectDigest()
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
   const today = todayInMadrid()
-  const [pickedDate, setPickedDate] = useState(today)
+  const [period, setPeriod] = useState<DigestPeriod>({ start: today, end: today })
 
-  const todayDigest = digests.find(
-    (d) => d.period_start === today && d.period_end === today && d.digest_type === 'day',
+  // Карточка ровно для выбранного периода (если есть).
+  const periodDigest = digests.find(
+    (d) =>
+      d.period_start === period.start &&
+      d.period_end === period.end &&
+      d.digest_type === digestTypeForPeriod(period),
   )
+  const isSingleDay = period.start === period.end
+  const isToday = isSingleDay && period.start === today
 
-  const handleGenerate = async (date: string, force: boolean) => {
+  const handleGenerate = async (p: DigestPeriod, force: boolean) => {
     try {
       const res = await generate.mutateAsync({
         workspaceId,
         projectId,
-        periodStart: date,
-        periodEnd: date,
-        digestType: 'day',
+        periodStart: p.start,
+        periodEnd: p.end,
+        digestType: digestTypeForPeriod(p),
         force,
       })
       if (res.skipped_reason === 'no_activity') {
-        toast.info('За этот день в проекте не было активности — карточка не создана')
+        toast.info('За этот период в проекте не было активности — карточка не создана')
       } else if (res.reused) {
-        toast.info('Сводка за этот день уже была — показал её')
+        toast.info('Сводка за этот период уже была — показал её')
       } else {
         toast.success('Сводка готова')
       }
@@ -71,7 +82,7 @@ export function DigestTabContent({ projectId, workspaceId }: Props) {
   const handleDelete = async (digest: ProjectDigest) => {
     const ok = await confirm({
       title: 'Удалить карточку?',
-      description: `Сводка за ${digest.period_start} будет удалена. Можно будет сгенерировать заново.`,
+      description: `Сводка за ${formatPeriodLabel(digest.period_start, digest.period_end)} будет удалена. Можно будет сгенерировать заново.`,
       confirmText: 'Удалить',
       variant: 'destructive',
     })
@@ -91,43 +102,36 @@ export function DigestTabContent({ projectId, workspaceId }: Props) {
     }
   }
 
+  // Лейбл основной кнопки — зависит от выбранного периода и наличия карточки.
+  const mainButtonLabel = (() => {
+    const action = periodDigest ? 'Обновить' : 'Сделать сводку'
+    if (isToday) return `${action} за сегодня`
+    if (isSingleDay) return `${action} за ${period.start}`
+    return `${action} за период`
+  })()
+
   return (
     <div className="space-y-3 mt-2">
       {/* Компактная панель управления — без фоновых плашек */}
       <div className="flex flex-wrap items-center gap-3 text-sm text-gray-700">
         <span>Карточек: <b>{digests.length}</b></span>
         <span className="text-gray-300">·</span>
-        <span className="text-gray-500">За другой день:</span>
-        <Input
-          id="digest-pick-date"
-          type="date"
-          value={pickedDate}
-          onChange={(e) => setPickedDate(e.target.value)}
-          max={today}
-          className="h-8 w-[150px]"
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleGenerate(pickedDate, false)}
-          disabled={generate.isPending || !pickedDate}
-        >
-          <Wand2 className="w-3.5 h-3.5 mr-1" /> Сделать
-        </Button>
+        <span className="text-gray-500">Период:</span>
+        <DigestPeriodPicker value={period} onChange={setPeriod} max={today} />
         <div className="flex-1" />
         <Button
           size="sm"
-          onClick={() => handleGenerate(today, Boolean(todayDigest))}
+          onClick={() => handleGenerate(period, Boolean(periodDigest))}
           disabled={generate.isPending}
         >
           {generate.isPending ? (
             <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-          ) : todayDigest ? (
+          ) : periodDigest ? (
             <RefreshCw className="w-3.5 h-3.5 mr-1" />
           ) : (
             <Wand2 className="w-3.5 h-3.5 mr-1" />
           )}
-          {todayDigest ? 'Обновить за сегодня' : 'Сделать сводку за сегодня'}
+          {mainButtonLabel}
         </Button>
       </div>
 
@@ -151,7 +155,7 @@ export function DigestTabContent({ projectId, workspaceId }: Props) {
           <DigestCard
             key={d.id}
             digest={d}
-            onRefresh={() => handleGenerate(d.period_start, true)}
+            onRefresh={() => handleGenerate({ start: d.period_start, end: d.period_end }, true)}
             onDelete={() => handleDelete(d)}
             isRefreshing={generate.isPending}
           />
@@ -175,13 +179,13 @@ function DigestCard({
   isRefreshing: boolean
 }) {
   const [showRaw, setShowRaw] = useState(false)
-  const dateLabel = formatDateLabel(digest.period_start)
+  const dateLabel = formatPeriodLabel(digest.period_start, digest.period_end)
   const rawCount = Array.isArray(digest.raw_events) ? digest.raw_events.length : 0
   const modeLabel = digest.generation_mode === 'llm'
     ? `ИИ · ${shortenModel(digest.model)}`
     : 'авто-список'
   return (
-    <Card>
+    <Card className="group">
       <CardHeader className="px-4 py-2.5 flex-row items-center justify-between space-y-0 gap-2">
         <CardTitle className="text-sm font-semibold flex items-center gap-2 min-w-0">
           <span className="truncate">{dateLabel}</span>
@@ -192,20 +196,33 @@ function DigestCard({
             · {modeLabel} · событий: {digest.events_count}
           </span>
         </CardTitle>
-        <div className="flex items-center gap-0.5 shrink-0">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRefresh} disabled={isRefreshing} title="Перегенерировать">
+        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-gray-400 hover:text-foreground"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            title="Перегенерировать"
+          >
             <RefreshCw className="w-3.5 h-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 text-gray-400 hover:text-foreground"
             onClick={() => setShowRaw((v) => !v)}
             title={`Сырой таймлайн (${rawCount})`}
           >
             {showRaw ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDelete} title="Удалить карточку">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-gray-400 hover:text-foreground"
+            onClick={onDelete}
+            title="Удалить карточку"
+          >
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
@@ -225,12 +242,3 @@ function DigestCard({
 }
 
 
-function formatDateLabel(iso: string): string {
-  const d = new Date(iso + 'T12:00:00Z')
-  return d.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    weekday: 'long',
-  })
-}

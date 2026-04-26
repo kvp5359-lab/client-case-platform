@@ -118,7 +118,7 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     icon: NotebookText,
     order: 5.5,
     templateKey: null,
-    permissionKey: null,
+    permissionKey: 'digest',
   },
   {
     id: 'settings',
