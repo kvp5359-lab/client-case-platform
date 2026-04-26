@@ -1,6 +1,8 @@
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { FolderOpen, MoreHorizontal, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +56,25 @@ export function ProjectRow({
   onChangeStatus,
   onDelete,
 }: Props) {
+  const router = useRouter()
+  const layoutPanel = useLayoutTaskPanel()
+  const href = `/workspaces/${workspaceId}/projects/${project.id}?tab=settings`
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.ctrlKey || e.metaKey || e.button === 1) return
+    e.preventDefault()
+    if (layoutPanel?.openProject) {
+      layoutPanel.openProject({
+        id: project.id,
+        name: project.name,
+        created_at: project.created_at,
+        description: project.description,
+      })
+    } else {
+      router.push(href)
+    }
+  }
+
   return (
     <div className="group/row relative flex items-center gap-3 px-3 py-2 border-b border-border/50 hover:bg-muted/30 transition-colors bg-background">
       <FolderOpen
@@ -61,7 +82,8 @@ export function ProjectRow({
         style={{ color: FOLDER_ICON_COLOR }}
       />
       <Link
-        href={`/workspaces/${workspaceId}/projects/${project.id}?tab=settings`}
+        href={href}
+        onClick={handleClick}
         className="flex items-center gap-2 min-w-0 text-left"
       >
         <span className="text-sm font-medium shrink-0">{project.name}</span>
