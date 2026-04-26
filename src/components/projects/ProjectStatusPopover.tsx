@@ -29,9 +29,13 @@ export function ProjectStatusPopover({
 }: ProjectStatusPopoverProps) {
   const [open, setOpen] = useState(false)
   const { data: statuses = [] } = useProjectStatusesForTemplate(workspaceId, projectTemplateId)
-  const current = statuses.find((s) => s.id === currentStatusId) ?? statuses[0]
+  // Без fallback на statuses[0]: когда currentStatusId=null, проект реально
+  // не имеет статуса. Дефолтный показывался бы как «есть статус», и список
+  // проектов рассинхронизировался с доской («Без статуса 55» vs «Новый» в /projects).
+  const current = statuses.find((s) => s.id === currentStatusId) ?? null
 
-  if (!current) {
+  // Если у шаблона нет статусов — выбирать нечего, неинтерактивный span.
+  if (statuses.length === 0) {
     return (
       <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-md border shrink-0 text-muted-foreground/60">
         —
@@ -39,7 +43,7 @@ export function ProjectStatusPopover({
     )
   }
 
-  const trigger = (
+  const trigger = current ? (
     <button
       type="button"
       disabled={disabled}
@@ -55,6 +59,18 @@ export function ProjectStatusPopover({
       }}
     >
       {current.name}
+    </button>
+  ) : (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={(e) => e.stopPropagation()}
+      className={cn(
+        'inline-flex items-center text-[11px] px-2 py-0.5 rounded-md border border-dashed shrink-0 text-muted-foreground/70 hover:text-foreground hover:border-solid transition-colors',
+        disabled && 'cursor-not-allowed opacity-60',
+      )}
+    >
+      —
     </button>
   )
 
