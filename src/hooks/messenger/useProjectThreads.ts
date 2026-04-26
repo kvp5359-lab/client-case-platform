@@ -12,6 +12,7 @@ import {
   projectThreadKeys,
   workspaceTaskKeys,
   trashKeys,
+  accessibleProjectKeys,
 STALE_TIME,
 } from '@/hooks/queryKeys'
 import { logAuditAction } from '@/services/auditService'
@@ -238,6 +239,11 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.assigneesMap })
       queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
+      // Создание задачи с дедлайном меняет has_active_deadline_task у проекта —
+      // инвалидируем кеш доступных проектов, чтобы фильтры на досках обновились.
+      if (params.type === 'task' && params.deadline) {
+        queryClient.invalidateQueries({ queryKey: accessibleProjectKeys.all })
+      }
     },
   })
 }
@@ -299,6 +305,10 @@ export function useDeleteThread(workspaceId?: string) {
         queryClient.invalidateQueries({ queryKey: taskKeys.allUrgent })
       }
       queryClient.invalidateQueries({ queryKey: trashKeys.all })
+      // Удаление задачи с дедлайном может сбросить has_active_deadline_task у проекта.
+      if (thread.type === 'task' && thread.deadline) {
+        queryClient.invalidateQueries({ queryKey: accessibleProjectKeys.all })
+      }
     },
   })
 }

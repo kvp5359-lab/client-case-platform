@@ -152,8 +152,11 @@ function resolveValue(val: unknown, field: string, ctx: FilterContext, item?: un
   return val
 }
 
-function resolveArray(arr: unknown[], field: string, ctx: FilterContext, item?: unknown): unknown[] {
-  return arr.map((v) => resolveValue(v, field, ctx, item))
+function resolveArray(arr: unknown, field: string, ctx: FilterContext, item?: unknown): unknown[] {
+  // Защита от данных, сохранённых до миграции на multi-select: value мог быть
+  // строкой/null. Приводим к массиву и пропускаем пустые значения.
+  const list: unknown[] = Array.isArray(arr) ? arr : arr == null || arr === '' ? [] : [arr]
+  return list.map((v) => resolveValue(v, field, ctx, item))
 }
 
 // ── Оценка одного условия ───────────────────────────────

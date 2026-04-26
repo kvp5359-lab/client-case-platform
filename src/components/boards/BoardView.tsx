@@ -325,7 +325,7 @@ export function BoardView({
       <div ref={panRef} className="flex p-4 h-full min-w-min cursor-grab">
         <ColumnGap gapIndex={0} active={gapTarget === 0} visible={isDragging} isFirst />
         {columns.map((col, idx) => (
-          <div key={col.index} className="flex shrink-0">
+          <div key={col.index} className="flex shrink-0 h-full">
             <DroppableColumn
               columnIndex={col.index}
               width={columnWidths?.[idx] ?? DEFAULT_COLUMN_WIDTH}
@@ -376,7 +376,7 @@ function DroppableColumn({ columnIndex, width, isActiveTarget, children }: { col
   return (
     <div
       ref={setNodeRef}
-      className={'shrink-0 rounded-lg transition-colors ' + ((isOver || isActiveTarget) ? 'bg-blue-100/40' : '')}
+      className={'shrink-0 h-full rounded-lg transition-colors ' + ((isOver || isActiveTarget) ? 'bg-blue-100/40' : '')}
       style={{ width: `${width}px` }}
     >
       {children}

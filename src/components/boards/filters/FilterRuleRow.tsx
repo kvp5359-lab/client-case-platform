@@ -18,7 +18,7 @@ import { OPERATOR_LABELS } from '../types'
 import type { FilterCondition } from '../types'
 
 /** Поля, для которых доступен мультиселект с опциями */
-const SELECTABLE_FIELDS = new Set(['status_id', 'status', 'type', 'created_by', 'assignees', 'participants'])
+const SELECTABLE_FIELDS = new Set(['status_id', 'status', 'type', 'template_id', 'created_by', 'assignees', 'participants'])
 
 interface FilterRuleRowProps {
   condition: FilterCondition

@@ -58,6 +58,7 @@ export function BoardColumn({
           key={list.id}
           listId={list.id}
           columnIndex={list.column_index}
+          isFullHeight={(list.list_height ?? 'auto') === 'full'}
           isDragging={activeDragListId === list.id}
           indicator={dropIndicator?.overListId === list.id ? dropIndicator.position : null}
         >
@@ -90,12 +91,14 @@ export function BoardColumn({
 function DroppableListWrapper({
   listId,
   columnIndex,
+  isFullHeight,
   isDragging,
   indicator,
   children,
 }: {
   listId: string
   columnIndex: number
+  isFullHeight: boolean
   isDragging: boolean
   indicator: 'top' | 'bottom' | null
   children: React.ReactNode
@@ -105,7 +108,16 @@ function DroppableListWrapper({
     data: { columnIndex },
   })
   return (
-    <div ref={setNodeRef} className={cn('relative', isDragging && 'opacity-40')}>
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'relative',
+        // Пробрасываем flex-поведение списка до wrapper'а: для list_height='full'
+        // BoardListCard ожидает быть flex-item с flex-1 min-h-0 в столбце.
+        isFullHeight && 'flex flex-col flex-1 min-h-0',
+        isDragging && 'opacity-40',
+      )}
+    >
       {indicator === 'top' && (
         <div className="absolute -top-2 left-0 right-0 h-0.5 rounded-full bg-blue-500 pointer-events-none" />
       )}

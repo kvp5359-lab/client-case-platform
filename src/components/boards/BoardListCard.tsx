@@ -259,7 +259,7 @@ export function BoardListCard({
       />
 
       {!collapsed && (
-        <div className={cn(heightClass, 'mt-1 overflow-y-auto', !isCards && !hasGrouping && 'rounded-lg border border-border/50 bg-white')}>
+        <div className={cn(heightClass, 'mt-1 overflow-y-auto scrollbar-hide', !isCards && !hasGrouping && 'rounded-lg border border-border/50 bg-white')}>
           {isInbox ? (
             <BoardInboxList
               threads={inboxThreads}
@@ -274,7 +274,7 @@ export function BoardListCard({
                 {projectGroups.map((group) => (
                   <div key={group.key}>
                     {hasGrouping && (
-                      <div className={cn('px-2 pb-1', isCards && 'px-0 pb-1')}>
+                      <div className={cn('px-0 pb-1')}>
                         <span
                           className={cn(
                             'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
