@@ -119,7 +119,6 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
   const [hydrated, setHydrated] = useState(false)
   useEffect(() => {
     if (isSuccess && persisted && !hydrated) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- async data sync: гидрация локальной копии после загрузки из БД
       setLocalTabs(persisted.tabs)
       setHydrated(true)
     }
