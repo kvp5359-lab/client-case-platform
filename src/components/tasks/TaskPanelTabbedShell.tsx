@@ -29,7 +29,7 @@ import {
 } from './useTaskPanelTabs'
 import type { TaskPanelTab } from './taskPanelTabs.types'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
-import { calcThreadUnread } from '@/utils/inboxUnread'
+import { getBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import type { TaskItem } from './types'
 import type { ProjectHeaderInfo } from './TaskPanel'
 import { usePanelTabsVisibility } from './usePanelTabsVisibility'
@@ -272,16 +272,16 @@ function TaskPanelTabbedShellRenderer({
       }),
     [tabs, visibleSystemTypes],
   )
-  // Карта непрочитанных по thread_id — для бейджей на thread-вкладках.
-  // Используем calcThreadUnread из @/utils/inboxUnread — единый источник
-  // правды, та же функция считает бейджи для сайдбара, списка задач и inbox.
+  // Карта бейджа по thread_id — для индикации на thread-вкладках.
+  // Используем getBadgeDisplay из @/utils/inboxUnread — единый источник правды,
+  // он же считает бейджи для сайдбара, списка задач и inbox. Возвращает структуру:
+  // number / dot (manually_unread без активности) / emoji / none.
   const { data: inboxThreads = [] } = useInboxThreadsV2(workspaceId)
-  const unreadByThreadId = useMemo(() => {
-    const map: Record<string, number> = {}
+  const badgeByThreadId = useMemo(() => {
+    const map: Record<string, BadgeDisplay> = {}
     for (const t of inboxThreads) {
-      const count = calcThreadUnread(t)
-      if (count > 0) map[t.thread_id] = count
-      else if (count === -1) map[t.thread_id] = 1 // manually_unread → точка как «1» в TabBar
+      const display = getBadgeDisplay(t)
+      if (display.type !== 'none') map[t.thread_id] = display
     }
     return map
   }, [inboxThreads])
@@ -388,7 +388,7 @@ function TaskPanelTabbedShellRenderer({
         onActivate={onActivate}
         onClose={onCloseTab}
         onOpenSystem={onOpenSystem}
-        unreadByThreadId={unreadByThreadId}
+        badgeByThreadId={badgeByThreadId}
         visibleSystemTypes={visibleSystemTypes}
         onHidePanel={infoRowVisible ? undefined : onHidePanel}
       />

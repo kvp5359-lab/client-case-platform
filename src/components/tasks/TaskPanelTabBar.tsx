@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { getChatIconComponent, getChatTabAccent } from '@/components/messenger/EditChatDialog'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
+import type { BadgeDisplay } from '@/utils/inboxUnread'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
 import { makeTabId } from './taskPanelTabs.types'
 
@@ -63,8 +64,8 @@ interface TaskPanelTabBarProps {
   onActivate: (id: string) => void
   onClose: (id: string) => void
   onOpenSystem: (def: SystemTabDef) => void
-  /** Карта непрочитанных сообщений per-thread. Используется для бейджей. */
-  unreadByThreadId?: Record<string, number>
+  /** Что показать в бейдже per-thread: число, точка (manually_unread) или эмодзи. */
+  badgeByThreadId?: Record<string, BadgeDisplay>
   /** Какие системные типы доступны пользователю по правам (для фильтра [+] меню). */
   visibleSystemTypes?: Set<TaskPanelTabType>
   /** Скрыть панель целиком (вкладки сохранятся). Кнопка «×» в правом углу. */
@@ -93,7 +94,7 @@ export function TaskPanelTabBar({
   onActivate,
   onClose,
   onOpenSystem,
-  unreadByThreadId = {},
+  badgeByThreadId = {},
   visibleSystemTypes,
   onHidePanel,
 }: TaskPanelTabBarProps) {
@@ -121,7 +122,8 @@ export function TaskPanelTabBar({
           const accent = isThread && tab.meta?.accentColor
             ? getChatTabAccent(tab.meta.accentColor as ThreadAccentColor)
             : null
-          const unread = isThread && tab.refId ? unreadByThreadId[tab.refId] ?? 0 : 0
+          const badge = isThread && tab.refId ? badgeByThreadId[tab.refId] : undefined
+          const hasBadge = !!badge && badge.type !== 'none'
           return (
             <div
               key={tab.id}
@@ -144,9 +146,19 @@ export function TaskPanelTabBar({
               <span className="truncate min-w-0 flex-1 max-w-[110px]">{tab.title}</span>
 
               {/* Бейдж непрочитанности (виден по умолчанию) и крестик закрытия
-                  (виден только при hover на вкладке) — занимают одно и то же место. */}
+                  (виден только при hover на вкладке) — занимают одно и то же место.
+                  Точка (manually_unread без активности) — пустой кружок без числа. */}
               <div className="relative w-4 h-4 shrink-0">
-                {unread > 0 && (
+                {hasBadge && badge && badge.type === 'dot' && (
+                  <span
+                    className={cn(
+                      'absolute inset-0 rounded-full',
+                      'group-hover:opacity-0 transition-opacity',
+                      accent ? accent.badge : 'bg-blue-600',
+                    )}
+                  />
+                )}
+                {hasBadge && badge && badge.type === 'number' && (
                   <span
                     className={cn(
                       'absolute inset-0 flex items-center justify-center rounded-full text-[10px] leading-none font-semibold text-white px-1',
@@ -154,7 +166,17 @@ export function TaskPanelTabBar({
                       accent ? accent.badge : 'bg-blue-600',
                     )}
                   >
-                    {unread > 99 ? '99+' : unread}
+                    {badge.value > 99 ? '99+' : badge.value}
+                  </span>
+                )}
+                {hasBadge && badge && badge.type === 'emoji' && (
+                  <span
+                    className={cn(
+                      'absolute inset-0 flex items-center justify-center text-[12px] leading-none',
+                      'group-hover:opacity-0 transition-opacity',
+                    )}
+                  >
+                    {badge.value}
                   </span>
                 )}
                 <button
@@ -162,7 +184,7 @@ export function TaskPanelTabBar({
                   className={cn(
                     'absolute inset-0 flex items-center justify-center rounded-full hover:bg-gray-200 text-muted-foreground/70 hover:text-foreground',
                     // Если есть бейдж — крестик скрыт, появляется по hover.
-                    unread > 0 ? 'opacity-0 group-hover:opacity-100 transition-opacity' : '',
+                    hasBadge ? 'opacity-0 group-hover:opacity-100 transition-opacity' : '',
                   )}
                   onClick={(e) => {
                     e.stopPropagation()
