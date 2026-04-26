@@ -67,6 +67,8 @@ interface TaskPanelTabBarProps {
   unreadByThreadId?: Record<string, number>
   /** Какие системные типы доступны пользователю по правам (для фильтра [+] меню). */
   visibleSystemTypes?: Set<TaskPanelTabType>
+  /** Скрыть панель целиком (вкладки сохранятся). Кнопка «×» в правом углу. */
+  onHidePanel?: () => void
 }
 
 /** Подобрать иконку для вкладки. */
@@ -93,6 +95,7 @@ export function TaskPanelTabBar({
   onOpenSystem,
   unreadByThreadId = {},
   visibleSystemTypes,
+  onHidePanel,
 }: TaskPanelTabBarProps) {
   // Если visibleSystemTypes не передан — показываем все (обратная совместимость).
   const visibleSystemDefs = useMemo(
@@ -214,6 +217,18 @@ export function TaskPanelTabBar({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {onHidePanel && (
+        <button
+          type="button"
+          onClick={onHidePanel}
+          className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full text-muted-foreground hover:text-foreground hover:bg-white border border-gray-200 transition-all duration-150 hover:scale-110 hover:rotate-90 hover:border-gray-300"
+          title="Скрыть панель (вкладки сохранятся)"
+          aria-label="Скрыть панель"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
     </div>
   )
 }

@@ -174,7 +174,7 @@ interface SystemTabBodyProps {
 export function SystemTabBody({ tab, projectId, workspaceId, onOpenThread }: SystemTabBodyProps) {
   return (
     <div className="flex flex-col h-full min-w-0">
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         <SystemTabContent
           tab={tab}
           projectId={projectId}

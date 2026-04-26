@@ -356,6 +356,10 @@ function TaskPanelTabbedShellRenderer({
     }
   }
 
+  // Шапка боковой панели прячется, когда панель открыта на той же странице
+  // проекта, что и текущая страница, — иначе она дублирует шапку страницы.
+  const infoRowVisible = !!projectId && pageProjectId !== projectId
+
   const panel = (
     <div
       className={cn(
@@ -365,16 +369,19 @@ function TaskPanelTabbedShellRenderer({
         visible ? 'translate-x-0' : 'translate-x-full',
       )}
     >
-      {/* Строка 1: информация о проекте текущего scope + кнопка скрыть панель. */}
-      <PanelProjectInfoRow
-        projectId={projectId}
-        workspaceId={workspaceId}
-        pageProjectId={pageProjectId}
-        onHidePanel={onHidePanel}
-      />
-      {/* Строка 2: ряд открытых вкладок + меню добавления.
-          Учтена видимость по правам — недоступные системные вкладки
-          скрываются из бара и из меню. */}
+      {/* Строка 1: информация о проекте текущего scope. Если scope-проект
+          совпадает с открытой страницей — строку прячем (дубль шапки страницы),
+          и тогда «×» уезжает в TabBar. */}
+      {infoRowVisible && (
+        <PanelProjectInfoRow
+          projectId={projectId!}
+          workspaceId={workspaceId}
+          onHidePanel={onHidePanel}
+        />
+      )}
+      {/* Строка 2: ряд открытых вкладок + меню добавления + (если шапки нет)
+          кнопка «скрыть панель». Учтена видимость по правам — недоступные
+          системные вкладки скрываются из бара и из меню. */}
       <TaskPanelTabBar
         tabs={visibleTabs}
         activeTabId={activeTabId}
@@ -383,6 +390,7 @@ function TaskPanelTabbedShellRenderer({
         onOpenSystem={onOpenSystem}
         unreadByThreadId={unreadByThreadId}
         visibleSystemTypes={visibleSystemTypes}
+        onHidePanel={infoRowVisible ? undefined : onHidePanel}
       />
       {/* Строка 3+: содержимое активной вкладки (со своей шапкой). */}
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">{activeContent}</div>
