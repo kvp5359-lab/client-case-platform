@@ -12,11 +12,14 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServerClient()
+  // getUser() валидирует JWT (а не просто читает куку, как getSession()).
+  // Согласовано с /app/page.tsx — иначе при просроченном токене получаем
+  // петлю /app → /login → /app: getSession видит куку, getUser её отвергает.
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (session) {
+  if (user) {
     redirect('/app')
   }
 

@@ -49,10 +49,14 @@ export function useProjectModules(
     [availableModules],
   )
 
-  // Первая доступная вкладка
+  // Первая доступная вкладка для открытия по умолчанию.
+  // Settings слева в табах визуально (order=0), но дефолтом её делать не нужно —
+  // при заходе в проект пользователь хочет видеть контент (Задачи), а не настройки.
+  // Settings становится дефолтом только если других доступных вкладок нет.
   const getFirstAvailableTab = useCallback((): string => {
-    const firstTab = availableModules.find((m) => m.showTab !== false)
-    return firstTab?.id || 'settings'
+    const visible = availableModules.filter((m) => m.showTab !== false)
+    const firstNonSettings = visible.find((m) => m.id !== 'settings')
+    return firstNonSettings?.id || visible[0]?.id || 'settings'
   }, [availableModules])
 
   // Объект modules — флаги для быстрой проверки в UI.
