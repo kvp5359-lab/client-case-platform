@@ -108,6 +108,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -e
             cd /opt/clientcase
 
             # Авторизация в GitHub Container Registry
@@ -116,20 +117,58 @@ jobs:
             # Загружаем новый образ
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-            # Перезапускаем контейнер
-            docker compose up -d --force-recreate app
+            # ----- Zero-downtime blue/green switch -----
+            UPSTREAM_FILE=/opt/relostart/nginx/conf.d/clientcase-upstream.conf
+            CURRENT=$(grep -oE 'clientcase-app-(blue|green)' "$UPSTREAM_FILE" | head -1 | sed 's/.*-//')
+            [ -z "$CURRENT" ] && CURRENT=blue
+            if [ "$CURRENT" = "blue" ]; then NEXT=green; PORT=3006; else NEXT=blue; PORT=3005; fi
+            echo "Active: $CURRENT  →  Deploying to: $NEXT (port $PORT)"
 
-            # Перезагружаем nginx (в контейнере relostart)
+            # Поднимаем второй цвет на новом образе
+            docker compose up -d --force-recreate app-$NEXT
+
+            # Ждём пока новый контейнер начнёт отдавать 200/302/307
+            echo "Waiting for app-$NEXT to become ready..."
+            READY=0
+            for i in $(seq 1 60); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$PORT/ || echo 000)
+              if [ "$code" = "200" ] || [ "$code" = "302" ] || [ "$code" = "307" ]; then
+                echo "app-$NEXT ready (HTTP $code) after ${i} attempts"
+                READY=1
+                break
+              fi
+              sleep 2
+            done
+            if [ "$READY" != "1" ]; then
+              echo "ERROR: app-$NEXT did not become ready — aborting, keeping $CURRENT live"
+              docker compose logs --tail 80 app-$NEXT
+              docker compose stop app-$NEXT
+              exit 1
+            fi
+
+            # Атомарно переключаем nginx upstream на новый цвет
+            cat > "$UPSTREAM_FILE" <<EOF
+            # Managed by ClientCase deploy.yml — do not edit manually.
+            # Active blue/green target. Switched atomically by deploy script.
+            upstream clientcase {
+                server clientcase-app-$NEXT:3000;
+                keepalive 64;
+            }
+            EOF
             cd /opt/relostart
+            docker compose exec -T nginx nginx -t
             docker compose exec -T nginx nginx -s reload
+
+            # Даём активным соединениям дотечь и гасим старый цвет
+            sleep 5
+            cd /opt/clientcase
+            docker compose stop app-$CURRENT
 
             # Очищаем старые образы
             docker image prune -f
 
-            # Проверяем статус
-            sleep 10
-            docker compose -f /opt/clientcase/docker-compose.yml ps
-            curl -f http://localhost:3002/ || exit 1
+            # Финальная проверка
+            curl -fsSI https://clientcase.kvp-projects.com/ -o /dev/null && echo "✓ Site live on $NEXT"
 
       - name: Deployment successful
         run: echo "✅ ClientCase deployment successful!"
