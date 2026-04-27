@@ -111,6 +111,7 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     order: 5,
     templateKey: null,
     permissionKey: 'history',
+    iconOnly: true,
   },
   {
     id: 'digest',
@@ -119,12 +120,13 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     order: 5.5,
     templateKey: null,
     permissionKey: 'digest',
+    iconOnly: true,
   },
   {
     id: 'settings',
     label: 'Настройки',
     icon: Settings,
-    order: 6,
+    order: 0,
     templateKey: null,
     permissionKey: 'settings',
     iconOnly: true,
@@ -137,5 +139,6 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     order: 9,
     templateKey: 'finances',
     permissionKey: 'finance',
+    iconOnly: true,
   },
 ]

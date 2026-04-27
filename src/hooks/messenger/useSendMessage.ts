@@ -171,11 +171,25 @@ export function useSendMessage(
 
       return { previous }
     },
-    onError: (_err, _vars, context) => {
+    onError: (_err, vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(messagesKey, context.previous)
       }
-      toast.error('Не удалось отправить сообщение')
+      // Возвращаем неотправленный текст в черновик, чтобы пользователь
+      // не потерял написанное при обрыве сети.
+      if (threadId && vars.content && vars.content !== '📎') {
+        try {
+          localStorage.setItem(`msg_draft:${threadId}`, vars.content)
+          window.dispatchEvent(
+            new CustomEvent('messenger:restore-draft', {
+              detail: { threadId, content: vars.content },
+            }),
+          )
+        } catch {
+          /* quota / SSR */
+        }
+      }
+      toast.error('Не удалось отправить — текст возвращён в поле ввода')
     },
     onSuccess: (result, variables) => {
       const qk = messagesKey

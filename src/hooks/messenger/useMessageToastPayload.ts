@@ -17,15 +17,19 @@ export interface RealtimeMessagePayload {
 
 export type GroupKey = string
 
-/** Message lines for each group (projectId + sender) */
+/** Message lines for each group (projectId + sender + thread) */
 export const groupedLines = new Map<GroupKey, string[]>()
 
 /** Avatar URL cache by participant_id */
 const MAX_AVATAR_CACHE = 200
 const avatarCache = new Map<string, string | null>()
 
-export function makeGroupKey(projectId: string, senderParticipantId: string | null): GroupKey {
-  return `${projectId}:${senderParticipantId ?? 'unknown'}`
+export function makeGroupKey(
+  projectId: string,
+  senderParticipantId: string | null,
+  threadId: string | null,
+): GroupKey {
+  return `${projectId}:${senderParticipantId ?? 'unknown'}:${threadId ?? 'no-thread'}`
 }
 
 /** Dismiss all message toasts for a given project */

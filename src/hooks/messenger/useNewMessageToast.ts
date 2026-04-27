@@ -108,7 +108,7 @@ export function useNewMessageToast(workspaceId: string | undefined) {
           const messageId = (payload.new as { id: string }).id
 
           const textLine = await parseTextLine(msg.content, messageId)
-          const groupKey = makeGroupKey(msg.project_id, msg.sender_participant_id)
+          const groupKey = makeGroupKey(msg.project_id, msg.sender_participant_id, msg.thread_id)
 
           const avatarUrl = msg.sender_participant_id
             ? await fetchAvatarUrl(msg.sender_participant_id)

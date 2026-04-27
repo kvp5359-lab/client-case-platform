@@ -38,7 +38,6 @@ import {
   ProjectTabsContent,
   ProjectHeader,
   ProjectPageState,
-  HistoryUnreadBadge,
 } from './ProjectPage/components'
 import {
   useProjectData,
@@ -311,9 +310,6 @@ export default function ProjectPage() {
                           >
                             <Icon className="w-4 h-4" />
                             {!m.iconOnly && <span className="hidden md:inline">{m.label}</span>}
-                            {m.id === 'history' && projectId && (
-                              <HistoryUnreadBadge projectId={projectId} />
-                            )}
                             {m.id === 'forms' && activeTab === 'forms' && canAddForms && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

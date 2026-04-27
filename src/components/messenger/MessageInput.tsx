@@ -123,6 +123,22 @@ export function MessageInput({
     }
   }, [threadId, editor])
 
+  // Восстанавливаем неотправленный текст в редактор после сетевой ошибки.
+  useEffect(() => {
+    if (!threadId) return
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ threadId: string; content: string }>).detail
+      if (!detail || detail.threadId !== threadId) return
+      const ed = editorRef.current
+      if (!ed) return
+      ed.commands.setContent(detail.content)
+      setHasText(!!ed.getText().trim())
+      ed.commands.focus('end')
+    }
+    window.addEventListener('messenger:restore-draft', handler)
+    return () => window.removeEventListener('messenger:restore-draft', handler)
+  }, [threadId])
+
   // Focus editor on reply
   useEffect(() => {
     if (replyTo && editorRef.current) {

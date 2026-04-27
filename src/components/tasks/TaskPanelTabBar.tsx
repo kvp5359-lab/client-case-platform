@@ -299,12 +299,11 @@ export function TaskPanelTabBar({
                 return (
                   <DropdownMenuItem
                     key={def.type}
+                    disabled={isOpen}
+                    className={isOpen ? 'data-[disabled]:opacity-30' : ''}
                     onClick={() => {
-                      if (isOpen) {
-                        onActivate(makeTabId(def.type))
-                      } else {
-                        onOpenSystem(def)
-                      }
+                      if (isOpen) return
+                      onOpenSystem(def)
                     }}
                   >
                     <Icon className="w-4 h-4 mr-2" />
