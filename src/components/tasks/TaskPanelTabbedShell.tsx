@@ -151,10 +151,12 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     [activeProjectId, tabsOpenTab],
   )
 
-  // Активный thread/project из текущей активной вкладки — для подсветки.
-  const activeThreadId = tabs.activeTab?.type === 'thread' ? (tabs.activeTab.refId ?? null) : null
+  // Активный thread/project из текущей активной вкладки — для подсветки карточек на доске.
+  // Когда панель скрыта, подсветку убираем — иначе обводка карточки остаётся после закрытия.
+  const activeThreadId =
+    !hidden && tabs.activeTab?.type === 'thread' ? (tabs.activeTab.refId ?? null) : null
   const activeProjectRefId =
-    tabs.activeTab?.type === 'tasks' ? (tabs.activeTab.refId ?? null) : null
+    !hidden && tabs.activeTab?.type === 'tasks' ? (tabs.activeTab.refId ?? null) : null
 
   const hidePanel = useCallback(() => setHidden(true), [])
   const showPanel = useCallback(() => setHidden(false), [])
