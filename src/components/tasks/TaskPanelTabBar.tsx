@@ -64,7 +64,6 @@ import { getChatIconComponent, getChatTabAccent } from '@/components/messenger/E
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
-import { makeTabId } from './taskPanelTabs.types'
 
 interface SystemTabDef {
   type: Exclude<TaskPanelTabType, 'thread'>
