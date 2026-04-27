@@ -75,18 +75,19 @@
 - **IP**: `72.61.82.244` (hostname: `srv1255608`)
 - **SSH**: `ssh vps` (конфиг в `~/.ssh/config`, ключ `~/.ssh/id_ed25519`)
 - **Путь проекта**: `/opt/clientcase/`
-- **Docker-контейнер**: `clientcase-app` — Next.js standalone, порт 3000 внутри → **3005** на хосте
 - **Docker-образ**: `ghcr.io/kvp5359-lab/client-case-platform:latest`
 - **Docker-сеть**: `relostart_web` (общая с nginx и другими сервисами)
+- **Blue/green деплой** (внедрено 2026-04-27): два контейнера `clientcase-app-blue` (порт 3005) и `clientcase-app-green` (порт 3006). В каждый момент времени запущен только один — активный. Деплой поднимает противоположный цвет, ждёт ответ 200/302/307, переключает nginx upstream и гасит старый. Если новый не поднялся — старый остаётся живым, деплой падает. Никаких 502 во время деплоя.
 
 ### Nginx (reverse proxy)
 
 - **Контейнер**: `relostart-nginx` (из `/opt/relostart/`)
-- **Конфиг ClientCase**: `/opt/relostart/nginx/conf.d/app-relostart.conf`
-- **Upstream**: `clientcase-app:3000` (по имени контейнера через Docker-сеть)
-- **Домены**: `app.relostart.com`, `clientcase.kvp-projects.com`
+- **Конфиги ClientCase** (два домена — два разных файла, оба требуют одинаковых настроек буферов):
+  - `/opt/relostart/nginx/conf.d/app-relostart.conf` — для `app.relostart.com`
+  - `/opt/relostart/nginx/conf.d/clientcase-kvp.conf` — для `clientcase.kvp-projects.com`
+- **Upstream-файл**: `/opt/relostart/nginx/conf.d/clientcase-upstream.conf` — единый блок `upstream clientcase { server clientcase-app-<color>:3000; ... }`. **Управляется деплой-скриптом, руками не править.** Скрипт переписывает этот файл при blue/green переключении.
 - **SSL**: Let's Encrypt (certbot контейнер `relostart-certbot`)
-- **Буферы прокси**: увеличены до 128k/256k (Supabase auth куки большие)
+- **Буферы прокси (ОБА конфига)**: `proxy_buffer_size 256k; proxy_buffers 8 512k; proxy_busy_buffers_size 512k;`. Меньшие значения дают 502 «upstream sent too big header» на залогиненных запросах — Next.js + Supabase шлёт жирные `Set-Cookie`/RSC headers. **При добавлении нового домена не забыть скопировать буферы.**
 
 ### Другие контейнеры на VPS
 
@@ -97,7 +98,8 @@
 | `migcases-app-dev` | 3002 | MigCases dev |
 | `kb-frontend` | 3003 | Knowledge Base frontend |
 | `migcases-app-prod` | 3004 | MigCases prod |
-| `clientcase-app` | 3005 | **ClientCase** |
+| `clientcase-app-blue` | 3005 | **ClientCase blue** (один из blue/green активен) |
+| `clientcase-app-green` | 3006 | **ClientCase green** (один из blue/green активен) |
 | `kb-backend` | 8000 | Knowledge Base API |
 | `kb-qdrant` | 6333 | Qdrant vector DB |
 
