@@ -198,6 +198,16 @@ export function MessageInput({
     if (!hasMessageContent && !hasPendingStatus) return
 
     const sendMessage = () => {
+      // Перекладываем текст из draft в outbox: если отправка зависнет / упадёт /
+      // браузер закроется — текст не потеряется. useSendMessage очистит outbox
+      // при успехе или вернёт обратно в draft при ошибке.
+      if (textContent && threadId) {
+        try {
+          localStorage.setItem(`msg_outbox:${threadId}`, htmlContent)
+        } catch {
+          /* quota */
+        }
+      }
       onSend(textContent ? htmlContent : '📎', replyTo?.id, files.length > 0 ? files : undefined)
       editor.commands.clearContent()
       setHasText(false)

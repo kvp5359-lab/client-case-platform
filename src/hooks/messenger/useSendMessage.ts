@@ -175,11 +175,11 @@ export function useSendMessage(
       if (context?.previous) {
         queryClient.setQueryData(messagesKey, context.previous)
       }
-      // Возвращаем неотправленный текст в черновик, чтобы пользователь
-      // не потерял написанное при обрыве сети.
+      // Возвращаем неотправленный текст в черновик и удаляем outbox-копию.
       if (threadId && vars.content && vars.content !== '📎') {
         try {
           localStorage.setItem(`msg_draft:${threadId}`, vars.content)
+          localStorage.removeItem(`msg_outbox:${threadId}`)
           window.dispatchEvent(
             new CustomEvent('messenger:restore-draft', {
               detail: { threadId, content: vars.content },
@@ -192,6 +192,14 @@ export function useSendMessage(
       toast.error('Не удалось отправить — текст возвращён в поле ввода')
     },
     onSuccess: (result, variables) => {
+      // Сообщение точно ушло — outbox-копия больше не нужна.
+      if (threadId) {
+        try {
+          localStorage.removeItem(`msg_outbox:${threadId}`)
+        } catch {
+          /* SSR */
+        }
+      }
       const qk = messagesKey
       queryClient.setQueryData(qk, (old: unknown) => {
         const typed = old as

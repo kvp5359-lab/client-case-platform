@@ -34,31 +34,52 @@ export function useTelegramDeliveryStatus(
     isOwn && isTelegramLinked && message.source === 'web' && !message.id.startsWith('optimistic-')
 
   const [tgFailed, setTgFailed] = useState(false)
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true,
+  )
 
   const hasAttachments = message.attachments && message.attachments.length > 0
 
-  // Тikают только таймеры "считать failed по истечении 30с".
-  // Явная отметка "not delivered = false" вычисляется derived на рендере ниже —
-  // setState для этого кейса не нужен (устраняет cascading-рендер).
+  // Слушаем online/offline: пока офлайн — снимаем «failed» (это могла быть просто
+  // временная пропажа сети, а не реальный фейл доставки).
+  useEffect(() => {
+    const onOnline = () => setIsOnline(true)
+    const onOffline = () => {
+      setIsOnline(false)
+      setTgFailed(false)
+    }
+    window.addEventListener('online', onOnline)
+    window.addEventListener('offline', onOffline)
+    return () => {
+      window.removeEventListener('online', onOnline)
+      window.removeEventListener('offline', onOffline)
+    }
+  }, [])
+
+  // Таймер «не доставилось через N сек» — стартует только если онлайн.
+  // Увеличено до 90 сек: пуш в Telegram через триггер + edge function иногда лагает.
   useEffect(() => {
     if (!showTgIndicator) return
+    if (!isOnline) return
 
-    // Текст ещё не доставлен — ждём
+    const FAILED_AFTER_MS = 90_000
+
+    const startTimer = () => {
+      const ageMs = Date.now() - new Date(message.created_at).getTime()
+      const remaining = ageMs > FAILED_AFTER_MS ? 0 : FAILED_AFTER_MS - ageMs + 500
+      return setTimeout(() => setTgFailed(true), remaining)
+    }
+
     if (!message.telegram_message_id) {
-      const ageMs = Date.now() - new Date(message.created_at).getTime()
-      const remaining = ageMs > 30_000 ? 0 : 30_000 - ageMs + 500
-      const timer = setTimeout(() => setTgFailed(true), remaining)
+      const timer = startTimer()
       return () => clearTimeout(timer)
     }
 
-    // Текст доставлен, вложения ещё в процессе (null = не записано) — таймер
     if (hasAttachments && message.telegram_attachments_delivered === null) {
-      const ageMs = Date.now() - new Date(message.created_at).getTime()
-      const remaining = ageMs > 30_000 ? 0 : 30_000 - ageMs + 500
-      const timer = setTimeout(() => setTgFailed(true), remaining)
+      const timer = startTimer()
       return () => clearTimeout(timer)
     }
-  }, [showTgIndicator, message.telegram_message_id, message.telegram_attachments_delivered, message.created_at, hasAttachments])
+  }, [showTgIndicator, isOnline, message.telegram_message_id, message.telegram_attachments_delivered, message.created_at, hasAttachments])
 
   if (!showTgIndicator) return null
 

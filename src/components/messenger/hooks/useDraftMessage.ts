@@ -68,6 +68,16 @@ export function useDraftMessage(
       skipDraftRestoreRef.current = false
       return
     }
+    // Если есть осиротевший outbox (отправка не завершилась — закрыли браузер
+    // или пропал интернет насовсем) — поднимаем его как черновик.
+    const outboxKey = draftKey.replace(/^msg_draft:/, 'msg_outbox:')
+    if (outboxKey !== draftKey) {
+      const orphaned = localStorage.getItem(outboxKey)
+      if (orphaned) {
+        localStorage.setItem(draftKey, orphaned)
+        localStorage.removeItem(outboxKey)
+      }
+    }
     const saved = localStorage.getItem(draftKey)
     if (saved) {
       editor.commands.setContent(saved)

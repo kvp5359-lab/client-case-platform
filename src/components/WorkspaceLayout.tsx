@@ -19,6 +19,8 @@ import { FloatingPanelButtons } from './FloatingPanelButtons'
 import { useNewMessageToast } from '@/hooks/messenger/useNewMessageToast'
 import { useFaviconBadge } from '@/hooks/messenger/useFaviconBadge'
 import { useWorkspaceMessagesRealtime } from '@/hooks/messenger/useWorkspaceMessagesRealtime'
+import { useQueryClient } from '@tanstack/react-query'
+import { messengerKeys } from '@/hooks/queryKeys'
 import { useTaskPanelTabbedShell } from '@/components/tasks/TaskPanelTabbedShell'
 import { TaskPanelContext, setGlobalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { useScrollIntoViewOnPanel } from '@/hooks/shared/useScrollIntoViewOnPanel'
@@ -80,6 +82,17 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   // Toast уведомления и favicon badge
   useNewMessageToast(workspaceId)
   useFaviconBadge(workspaceId)
+
+  // Когда сеть возвращается — рефетчим всё мессенджерное, чтобы подтянуть
+  // актуальный telegram_message_id для сообщений, отправленных в офлайне.
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    const onOnline = () => {
+      queryClient.invalidateQueries({ queryKey: messengerKeys.all })
+    }
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [queryClient])
 
   // Layout-уровневая система вкладок треда (per-user-per-project, DB-backed).
   const taskPanelShell = useTaskPanelTabbedShell({
