@@ -158,7 +158,7 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       const channel = chatInfo?.channel || "client";
-      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const sixtyMinAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
       const { data: lastMsg } = await serviceClient
         .from("project_messages")
@@ -166,7 +166,7 @@ Deno.serve(async (req: Request) => {
         .eq("project_id", body.project_id)
         .eq("channel", channel)
         .neq("id", body.message_id)
-        .gte("created_at", fiveMinAgo)
+        .gte("created_at", sixtyMinAgo)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
