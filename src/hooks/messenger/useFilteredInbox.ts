@@ -142,6 +142,7 @@ export function useSidebarInboxCounts(workspaceId: string) {
     const internalUnreadCounts = new Map<string, number>()
     const threadIds = new Map<string, { client: string | null; internal: string | null }>()
     const badgeColors = new Map<string, string>()
+    let unreadThreadsCount = 0
 
     for (const t of threads) {
       if (!t.project_id) continue
@@ -150,6 +151,7 @@ export function useSidebarInboxCounts(workspaceId: string) {
       const isInternal = t.legacy_channel === 'internal'
       const count = calcThreadUnread(t)
       const hasAny = count !== 0
+      if (hasAny) unreadThreadsCount += 1
 
       // Группируем для getAggregateBadgeDisplay
       if (!threadsByProject.has(pid)) threadsByProject.set(pid, [])
@@ -192,6 +194,7 @@ export function useSidebarInboxCounts(workspaceId: string) {
 
     return {
       totalUnread,
+      unreadThreadsCount,
       projectData: {
         badgeDisplays,
         clientUnreadCounts,

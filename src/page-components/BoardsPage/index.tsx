@@ -12,6 +12,7 @@ import { CreateBoardDialog } from '@/components/boards/CreateBoardDialog'
 import { EditBoardDialog } from '@/components/boards/EditBoardDialog'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { usePinnedBoards } from '@/components/WorkspaceSidebar/usePinnedBoards'
+import { useWorkspacePermissions } from '@/hooks/permissions'
 import type { Board } from '@/components/boards/types'
 import { BoardTabContent } from './BoardTabContent'
 import { BoardTab } from './BoardTab'
@@ -31,6 +32,7 @@ export default function BoardsPage() {
   const { data: boards, isLoading } = useBoardsQuery(workspaceId)
   const deleteBoard = useDeleteBoard()
   const { isPinned: isBoardPinned, togglePin: toggleBoardPin } = usePinnedBoards(workspaceId)
+  const { isOwner } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
 
   // Закрываем боковую панель при входе на страницу досок
   useEffect(() => {
@@ -96,6 +98,7 @@ export default function BoardsPage() {
                       board={board}
                       isActive={resolvedBoardId === board.id}
                       isPinned={isBoardPinned(board.id)}
+                      canPin={isOwner}
                       onSelect={() => navigateToBoard(board.id)}
                       onEdit={() => {
                         navigateToBoard(board.id)

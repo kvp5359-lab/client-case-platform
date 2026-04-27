@@ -15,6 +15,8 @@ interface BoardTabProps {
   board: Board
   isActive: boolean
   isPinned: boolean
+  /** Может ли текущий пользователь менять закрепления (на уровне воркспейса). */
+  canPin: boolean
   onSelect: () => void
   onEdit: () => void
   onDelete: () => void
@@ -22,7 +24,7 @@ interface BoardTabProps {
   onTogglePin: () => void
 }
 
-export function BoardTab({ board, isActive, isPinned, onSelect, onEdit, onDelete, onAddList, onTogglePin }: BoardTabProps) {
+export function BoardTab({ board, isActive, isPinned, canPin, onSelect, onEdit, onDelete, onAddList, onTogglePin }: BoardTabProps) {
   return (
     <div className="flex items-center shrink-0">
       <div
@@ -72,24 +74,26 @@ export function BoardTab({ board, isActive, isPinned, onSelect, onEdit, onDelete
                 <ListPlus className="h-3.5 w-3.5 mr-2" />
                 Добавить список
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onTogglePin()
-                }}
-              >
-                {isPinned ? (
-                  <>
-                    <PinOff className="h-3.5 w-3.5 mr-2" />
-                    Открепить из сайдбара
-                  </>
-                ) : (
-                  <>
-                    <Pin className="h-3.5 w-3.5 mr-2" />
-                    Закрепить в сайдбаре
-                  </>
-                )}
-              </DropdownMenuItem>
+              {canPin && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onTogglePin()
+                  }}
+                >
+                  {isPinned ? (
+                    <>
+                      <PinOff className="h-3.5 w-3.5 mr-2" />
+                      Открепить из сайдбара
+                    </>
+                  ) : (
+                    <>
+                      <Pin className="h-3.5 w-3.5 mr-2" />
+                      Закрепить в сайдбаре
+                    </>
+                  )}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={(e) => {

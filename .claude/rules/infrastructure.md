@@ -166,6 +166,31 @@
 - **Миграции**: `20260426_project_digests.sql` (две таблицы + RLS), `20260426_get_projects_with_activity.sql` (RPC).
 - **Тайм-зона**: Europe/Madrid. Граничные даты считаются на фронте и передаются в edge function как `YYYY-MM-DD`.
 
+## Настройки сайдбара воркспейса
+
+Состав и порядок верхней части сайдбара (всё кроме списка проектов) — настраиваются на уровне воркспейса. Единая модель: и пункты меню, и доски — это «слоты» одного и того же списка, размещаются в одной из двух зон (топбар/список) или скрываются.
+
+- **Таблица**: `workspace_sidebar_settings (workspace_id PK, slots jsonb, updated_at, updated_by)`. RLS: SELECT — любому участнику; INSERT/UPDATE/DELETE — только владельцу. Если строки нет — фронт берёт дефолт из кода (`DEFAULT_SIDEBAR_SLOTS` в `src/lib/sidebarSettings.ts`).
+- **Структура `slots`** (массив): `{ id, type, placement, order, badge_mode }`.
+  - `id` — `nav:<key>` (для пунктов меню) или `board:<uuid>` (для досок).
+  - `type` — `nav` | `board`.
+  - `placement` — `topbar` (иконка в верхней строке) или `list` (полный пункт в основном списке).
+  - `order` — позиция внутри своей зоны.
+  - `badge_mode` — режим счётчика, единый набор для пунктов и досок: `disabled` | `my_active_tasks` | `all_my_tasks` | `overdue_tasks` | `unread_messages` | `unread_threads`. Бейджи глобальные по воркспейсу — содержимое конкретной доски/пункта не учитывается.
+- **Скрытые элементы** не хранятся — они просто отсутствуют в `slots`. На странице настроек выводятся в секции «Доступные» и оттуда переносятся кнопками «в верх» / «в список». Удаление из сайдбара (× у элемента) возвращает его в «Доступные».
+- **Доски в «Доступных»** — все доски воркспейса, которых нет в `slots`. Список рендерится автоматически. Закрепить = добавить в одну из зон, открепить = убрать (× в зоне или PinOff на самой иконке доски в сайдбаре).
+- **Мёртвые слоты** (доски, удалённые из воркспейса) — фильтруются на рендере. На странице настроек владельцу показывается предупреждение и кнопка «Очистить» для физического удаления.
+- **RPC `get_my_task_counts(workspace_id)`** — батч `{ active, all, overdue }` для бейджей задач (active = «сегодня + просрочка», как старый `get_my_urgent_tasks_count`). При мутациях задач инвалидировать `myTaskCountsKeys.byWorkspace(workspaceId)` рядом с `taskKeys.urgentCount` — уже сделано в `useTrash.ts`, `useProjectThreads.ts`, `TaskListView.tsx`.
+- **`hasAccess` фильтр** — даже если пункт меню в `slots`, он скрывается у пользователей без соответствующего permission'а (см. `SIDEBAR_NAV_ITEMS[key].hasAccess`). Например, «Шаблоны» не показываются клиенту.
+- **Скрытые роуты остаются доступными по прямой ссылке** — настройка управляет только сайдбаром, middleware не трогаем.
+- **Хуки**: `useWorkspaceSidebarSettings`, `useUpdateWorkspaceSidebarSettings`, `useMyTaskCounts` в [`src/hooks/useWorkspaceSidebarSettings.ts`](../../src/hooks/useWorkspaceSidebarSettings.ts). `usePinnedBoards` в [`src/components/WorkspaceSidebar/usePinnedBoards.ts`](../../src/components/WorkspaceSidebar/usePinnedBoards.ts) — адаптер над `slots` для совместимости с `BoardsPage` (`isPinned`, `togglePin`).
+- **UI**: страница `/workspaces/[id]/settings/sidebar` (вкладка «Сайдбар», видна только владельцу). Компонент: [`src/page-components/workspace-settings/SidebarSettingsTab.tsx`](../../src/page-components/workspace-settings/SidebarSettingsTab.tsx). Три зоны: «Верхняя строка», «Список», «Доступные». Перенос между зонами — кнопками (× / стрелка-в-другую-зону), порядок внутри зоны — ↑↓. У каждого размещённого слота свой селектор бейджа. При >6 иконок в топ-баре — мягкое предупреждение.
+- **Открепить из самого сайдбара** — кнопка PinOff показывается только владельцу и появляется на месте иконки доски при ховере (через проп `hoverIconSlot` в `SidebarNavButton`). Это сделано чтобы не наезжать на бейдж справа.
+- **Миграции**:
+  - `20260427_workspace_sidebar_settings.sql` — исходная таблица (`items` + `board_badges`), RLS, RPC `get_my_task_counts`.
+  - `20260427_workspace_sidebar_pinned_boards.sql` — `board_badges` → `pinned_boards`.
+  - `20260427_workspace_sidebar_unified_slots.sql` — финальная унификация: `items` + `pinned_boards` → единая колонка `slots`. После применения старых колонок больше нет.
+
 ## Локальная разработка
 
 ```bash
@@ -186,9 +211,9 @@ npm run test:watch # Vitest watch mode
 pkill -f "next dev"; rm -rf .next tsconfig.tsbuildinfo
 ```
 
-## Роуты (50)
+## Роуты (51)
 
-Точное число: `find src/app -name page.tsx | wc -l`. На 2026-04-26 — **50**.
+Точное число: `find src/app -name page.tsx | wc -l`. На 2026-04-27 — **51**.
 
 **Root** (1): `/`
 
@@ -201,7 +226,7 @@ pkill -f "next dev"; rm -rf .next tsconfig.tsbuildinfo
 - Workspace: `/workspaces/[id]`, `/workspaces/[id]/inbox`, `/workspaces/[id]/tasks`
 - Projects: `/workspaces/[id]/projects`, `/workspaces/[id]/projects/[projectId]`
 - Boards: `/workspaces/[id]/boards`, `/workspaces/[id]/boards/[boardId]`
-- Settings core: `/workspaces/[id]/settings`, `/workspaces/[id]/settings/general`, `/workspaces/[id]/settings/participants`, `/workspaces/[id]/settings/permissions`, `/workspaces/[id]/settings/trash`
+- Settings core: `/workspaces/[id]/settings`, `/workspaces/[id]/settings/general`, `/workspaces/[id]/settings/participants`, `/workspaces/[id]/settings/permissions`, `/workspaces/[id]/settings/sidebar`, `/workspaces/[id]/settings/trash`
 - Settings → directories: `/workspaces/[id]/settings/directories`, `/directories/custom`, `/directories/custom/[directoryId]`, `/directories/project-roles`, `/directories/quick-replies`, `/directories/statuses`, `/directories/workspace-roles`
 - Settings → knowledge base: `/workspaces/[id]/settings/knowledge-base`, `/knowledge-base/[articleId]`, `/knowledge-base/qa/[qaId]`
 - Settings → templates: `/workspaces/[id]/settings/templates`, `/templates/document-kit-templates`, `/templates/document-kit-templates/[kitId]`, `/templates/document-templates`, `/templates/field-templates`, `/templates/folder-templates`, `/templates/form-templates`, `/templates/form-templates/[templateId]`, `/templates/project-templates`, `/templates/project-templates/[templateId]`, `/templates/thread-templates`

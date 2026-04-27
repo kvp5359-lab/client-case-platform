@@ -22,6 +22,12 @@ export interface SidebarNavButtonProps {
   compact?: boolean
   /** Показывать текст даже когда не активна (в compact mode) */
   showLabel?: boolean
+  /**
+   * Узел, который подменяет иконку при ховере родительского `.group/pin`.
+   * Используется для кнопок-действий вроде «Открепить» — оверлей слева,
+   * а не справа, чтобы не наезжать на бейдж.
+   */
+  hoverIconSlot?: React.ReactNode
 }
 
 export const SidebarNavButton = memo(function SidebarNavButton({
@@ -33,6 +39,7 @@ export const SidebarNavButton = memo(function SidebarNavButton({
   onClick,
   compact,
   showLabel,
+  hoverIconSlot,
 }: SidebarNavButtonProps) {
   if (compact) {
     return (
@@ -67,8 +74,18 @@ export const SidebarNavButton = memo(function SidebarNavButton({
         isActive ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100/50',
       )}
     >
-      <span className="shrink-0 w-[22px] h-[22px] flex items-center justify-center">
-        <Icon className="h-[18px] w-[18px]" />
+      <span className="relative shrink-0 w-[22px] h-[22px] flex items-center justify-center">
+        <Icon
+          className={cn(
+            'h-[18px] w-[18px]',
+            hoverIconSlot && 'group-hover/pin:hidden',
+          )}
+        />
+        {hoverIconSlot && (
+          <span className="hidden group-hover/pin:flex absolute inset-0 items-center justify-center">
+            {hoverIconSlot}
+          </span>
+        )}
       </span>
       <span className="flex-1 truncate">{label}</span>
       {badge && (

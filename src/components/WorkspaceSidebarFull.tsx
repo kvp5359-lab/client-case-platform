@@ -2,13 +2,13 @@
 
 /**
  * WorkspaceSidebarFull — полный сайдбар с навигацией, бейджами, входящими и задачами.
- * Мигрирован из WorkspaceSidebar.tsx оригинального ClientCase.
+ * Состав и порядок верхнего блока (топ-бар иконок + список) задаются настройкой
+ * `workspace_sidebar_settings` (страница /workspaces/<id>/settings/sidebar).
  */
 
 import { useEffect, useState, useMemo, startTransition } from 'react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
-import { Home, Inbox, CheckSquare, Users, Layout, Settings, BookOpen, Kanban, PinOff, NotebookText } from 'lucide-react'
+import { Kanban, PinOff } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { SidebarNavButton } from './WorkspaceSidebar/SidebarNavButton'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
@@ -24,23 +24,19 @@ import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { usePinnedBoards } from './WorkspaceSidebar/usePinnedBoards'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useProjectTemplate, useProjectModules } from '@/page-components/ProjectPage/hooks'
-import { taskKeys, STALE_TIME } from '@/hooks/queryKeys'
-
-/** Количество «моих» просроченных + сегодняшних задач */
-function useMyUrgentTasksCount(workspaceId: string | undefined) {
-  return useQuery({
-    queryKey: workspaceId ? taskKeys.urgentCount(workspaceId) : ['my-urgent-tasks-count', 'none'],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_my_urgent_tasks_count', {
-        p_workspace_id: workspaceId!,
-      })
-      if (error) throw error
-      return (data as number) ?? 0
-    },
-    enabled: !!workspaceId,
-    staleTime: STALE_TIME.STANDARD,
-  })
-}
+import {
+  useWorkspaceSidebarSettings,
+  useMyTaskCounts,
+} from '@/hooks/useWorkspaceSidebarSettings'
+import {
+  type SidebarNavKey,
+  type SidebarSlot,
+  type SidebarBadgeMode,
+  SIDEBAR_NAV_ITEMS,
+  formatBadgeCount,
+  navKeyFromSlotId,
+  boardIdFromSlotId,
+} from '@/lib/sidebarSettings'
 
 interface WorkspaceSidebarFullProps {
   workspaceId?: string
@@ -56,14 +52,12 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   // Extract projectId from URL + оптимистичный state для мгновенной анимации.
   const urlProjectId = pathname.match(/\/projects\/([^/]+)/)?.[1]
   const [optimisticProjectId, setOptimisticProjectId] = useState<string | undefined>(urlProjectId)
-  // Синхронизация с URL, когда навигация завершилась (или была сделана не через sidebar).
   useEffect(() => {
     setOptimisticProjectId(urlProjectId)
   }, [urlProjectId])
   const activeProjectId = optimisticProjectId
   const { user } = useAuth()
 
-  // Поиск проектов: сырой ввод из ProjectsList и дебаунснутая версия для серверного запроса.
   const [rawSearchQuery, setRawSearchQuery] = useState('')
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   useEffect(() => {
@@ -71,9 +65,9 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
     return () => clearTimeout(t)
   }, [rawSearchQuery])
 
-  // Считаем непрочитанные ДО useSidebarData, чтобы прокинуть список проектов с непрочитанными
-  // и подгрузить те из них, что выпали из топ-35 по last_activity_at.
-  const { totalUnread, projectData: projectUnreadData } = useSidebarInboxCounts(workspaceId ?? '')
+  // Считаем непрочитанные ДО useSidebarData, чтобы прокинуть список проектов с непрочитанными.
+  const { totalUnread, unreadThreadsCount, projectData: projectUnreadData } =
+    useSidebarInboxCounts(workspaceId ?? '')
   const badgeDisplays = projectUnreadData.badgeDisplays
   const clientUnreadCounts = projectUnreadData.clientUnreadCounts
   const internalUnreadCounts = projectUnreadData.internalUnreadCounts
@@ -109,56 +103,35 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
 
   const { sidebarWidth, sidebarRef, handleMouseDown } = useSidebarResize()
 
-  // Сохраняем последний активный workspaceId для страниц без workspaceId в URL (например /profile)
   useEffect(() => {
     if (workspaceId) {
       try { localStorage.setItem('cc:last-workspace-id', workspaceId) } catch { /* ignore */ }
     }
   }, [workspaceId])
 
-  // Вкладки активного проекта для клиентского режима.
-  // template_id берём из уже загруженного списка projects — без лишнего запроса за проектом.
   const activeProjectTemplateId = projects.find((p) => p.id === activeProjectId)?.template_id
   const { data: projectTemplate, isLoading: isTemplateLoading } = useProjectTemplate(activeProjectTemplateId)
   const { availableModules, isLoading: isPermissionsLoading } = useProjectModules(activeProjectId, workspaceId, projectTemplate)
   const isTabsLoading = isTemplateLoading || isPermissionsLoading
 
-  // Показываем предыдущий список вкладок, пока загружаются реальные —
-  // у клиента набор вкладок обычно одинаковый во всех проектах.
   const [lastModules, setLastModules] = useState(availableModules)
   useEffect(() => {
-    // Не обновляем, пока шаблон/права ещё грузятся — иначе получим неполный список
     if (!isTabsLoading && availableModules.length > 0) setLastModules(availableModules)
   }, [availableModules, isTabsLoading])
   const displayModules = (!isTabsLoading && availableModules.length > 0) ? availableModules : lastModules
-  // Активная вкладка из URL
   const activeTab = isClientOnly ? (searchParams.get('tab') || 'documents') : undefined
 
   const createProjectDialog = useDialog()
 
-  const inboxBadge =
-    totalUnread && totalUnread > 0 ? (totalUnread > 99 ? '99+' : String(totalUnread)) : undefined
-  const { data: urgentTasksCount } = useMyUrgentTasksCount(workspaceId)
-  const tasksBadge =
-    urgentTasksCount && urgentTasksCount > 0
-      ? urgentTasksCount > 99 ? '99+' : String(urgentTasksCount)
-      : undefined
+  // ── Настройки сайдбара (видимость/порядок + бейджи досок) ────────────────────
+  const { data: sidebarSettings } = useWorkspaceSidebarSettings(workspaceId)
+  const { data: taskCounts } = useMyTaskCounts(workspaceId)
 
-  // Закреплённые доски в сайдбаре
-  const { pinnedIds: pinnedBoardIds, togglePin: toggleBoardPin } = usePinnedBoards(workspaceId)
+  // Закреплённые доски — настройка на уровне воркспейса (внутри slots).
+  const { togglePin: toggleBoardPin } = usePinnedBoards(workspaceId)
   const { data: allBoards } = useBoardsQuery(workspaceId)
-  const pinnedBoards = useMemo(
-    () => pinnedBoardIds
-      .map((id) => allBoards?.find((b) => b.id === id))
-      .filter(Boolean) as NonNullable<typeof allBoards>[number][],
-    [pinnedBoardIds, allBoards],
-  )
-
-  // Realtime-подписка на project_messages вынесена в useWorkspaceMessagesRealtime
-  // (WorkspaceLayoutImpl) — один канал на весь workspace вместо дубля здесь.
 
   const buildHref = (path: string) => {
-    // Защита от open-redirect: блокируем protocol-relative URL (//evil.com) и /\evil.com
     if (path.startsWith('//') || path.startsWith('/\\')) return '#'
     if (path.startsWith('/')) return path
     if (!workspaceId) return '#'
@@ -166,8 +139,6 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   }
 
   const handleNavigate = (path: string) => {
-    // startTransition: навигация — low-priority update, так что Next.js не блокирует
-    // main thread тяжёлым ререндером страницы и CSS-анимация в сайдбаре запускается сразу.
     startTransition(() => {
       router.push(buildHref(path))
     })
@@ -182,17 +153,82 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
     return pathname.startsWith(fullPath)
   }
 
+  /** Бейдж по выбранному режиму. Один и тот же набор для пунктов меню и досок. */
+  const computeBadge = (mode: SidebarBadgeMode): string | undefined => {
+    switch (mode) {
+      case 'my_active_tasks':
+        return formatBadgeCount(taskCounts?.active)
+      case 'all_my_tasks':
+        return formatBadgeCount(taskCounts?.all)
+      case 'overdue_tasks':
+        return formatBadgeCount(taskCounts?.overdue)
+      case 'unread_messages':
+        return formatBadgeCount(totalUnread)
+      case 'unread_threads':
+        return formatBadgeCount(unreadThreadsCount)
+      case 'disabled':
+      default:
+        return undefined
+    }
+  }
+
+  const permissionsCtx = useMemo(
+    () => ({ isOwner, isClientOnly, hasPermission }),
+    [isOwner, isClientOnly, hasPermission],
+  )
+
+  /** Активность для пункта меню — спецслучаи для settings и boards. */
+  const isNavItemActive = (key: SidebarNavKey, listSlots: SidebarSlot[]): boolean => {
+    const meta = SIDEBAR_NAV_ITEMS[key]
+    if (key === 'settings') {
+      return (
+        isNavActive('settings') &&
+        !isNavActive('settings/participants') &&
+        !isNavActive('settings/templates') &&
+        !isNavActive('settings/knowledge-base')
+      )
+    }
+    if (key === 'boards') {
+      // /boards активен, но не внутри закреплённой доски (у неё свой пункт).
+      const pinnedBoardIds = listSlots
+        .filter((s) => s.type === 'board')
+        .map((s) => boardIdFromSlotId(s.id))
+        .filter((id): id is string => Boolean(id))
+      return (
+        isNavActive('boards') &&
+        !pinnedBoardIds.some((id) => pathname.includes(`/boards/${id}`))
+      )
+    }
+    return isNavActive(meta.path)
+  }
+
+  // Слоты, отсортированные по order и отфильтрованные по правам/существованию досок.
+  const { topbarSlots, listSlots } = useMemo(() => {
+    const slots = sidebarSettings?.slots ?? []
+    const accessible = slots.filter((s) => {
+      if (s.type === 'nav') {
+        const key = navKeyFromSlotId(s.id)
+        return key ? SIDEBAR_NAV_ITEMS[key].hasAccess(permissionsCtx) : false
+      }
+      // board: проверим, что доска ещё существует
+      const boardId = boardIdFromSlotId(s.id)
+      return boardId ? Boolean(allBoards?.find((b) => b.id === boardId)) : false
+    })
+    const sorted = [...accessible].sort((a, b) => a.order - b.order)
+    return {
+      topbarSlots: sorted.filter((s) => s.placement === 'topbar'),
+      listSlots: sorted.filter((s) => s.placement === 'list'),
+    }
+  }, [sidebarSettings, permissionsCtx, allBoards])
+
   const handleBadgeClick = async (projectId: string, channel: 'client' | 'internal' = 'client') => {
     void channel
     const threadIdEntry = projectThreadIds?.get(projectId)
     const threadId = channel === 'internal' ? threadIdEntry?.internal : threadIdEntry?.client
     if (!threadId) {
-      // Тред не определён — просто переходим на проект.
       handleNavigate(`projects/${projectId}`)
       return
     }
-    // Грузим данные треда и открываем его в layout-уровневой системе вкладок
-    // (не в старой основной панели). Shell сам переключит scope на нужный проект.
     const { data: thread } = await supabase
       .from('project_threads')
       .select(
@@ -243,99 +279,71 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
       )}
 
       <div className="px-2 pb-2">
-        <nav className="flex items-center justify-between gap-[1px]">
-          <SidebarNavButton
-            icon={Home}
-            label="Главная"
-            href={buildHref('')}
-            isActive={isNavActive('')}
-            compact
-          />
-          {!isClientOnly && (hasPermission('view_knowledge_base') || hasPermission('manage_knowledge_base') || hasPermission('manage_templates')) && (
-            <SidebarNavButton
-              icon={BookOpen}
-              label="База знаний"
-              href={buildHref('settings/knowledge-base')}
-              isActive={isNavActive('settings/knowledge-base')}
-              compact
-            />
-          )}
-          {!isClientOnly && hasPermission('manage_participants') && (
-            <SidebarNavButton
-              icon={Users}
-              label="Люди"
-              href={buildHref('settings/participants')}
-              isActive={isNavActive('settings/participants')}
-              compact
-            />
-          )}
-          {!isClientOnly && hasPermission('manage_templates') && (
-            <SidebarNavButton
-              icon={Layout}
-              label="Шаблоны"
-              href={buildHref('settings/templates/project-templates')}
-              isActive={isNavActive('settings/templates')}
-              compact
-            />
-          )}
-          {!isClientOnly && workspaceId && (isOwner || hasPermission('manage_workspace_settings')) && (
-            <SidebarNavButton
-              icon={Settings}
-              label="Настройки"
-              href={buildHref('settings')}
-              isActive={
-                isNavActive('settings') &&
-                !isNavActive('settings/participants') &&
-                !isNavActive('settings/templates') &&
-                !isNavActive('settings/knowledge-base')
+        {topbarSlots.length > 0 && (
+          <nav className="flex items-center justify-between gap-[1px]">
+            {topbarSlots.map((slot) => {
+              const badge = computeBadge(slot.badge_mode)
+              if (slot.type === 'nav') {
+                const key = navKeyFromSlotId(slot.id)!
+                const meta = SIDEBAR_NAV_ITEMS[key]
+                return (
+                  <SidebarNavButton
+                    key={slot.id}
+                    icon={meta.icon}
+                    label={meta.label}
+                    href={buildHref(meta.path)}
+                    isActive={isNavItemActive(key, listSlots)}
+                    badge={badge}
+                    compact
+                  />
+                )
               }
-              compact
-            />
-          )}
-        </nav>
-
-        {!isClientOnly && (
-          <nav className="mt-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-            <SidebarNavButton
-              icon={Inbox}
-              label="Входящие"
-              href={buildHref('inbox')}
-              badge={inboxBadge}
-              isActive={isNavActive('inbox')}
-            />
-            <SidebarNavButton
-              icon={CheckSquare}
-              label="Задачи"
-              href={buildHref('tasks')}
-              badge={tasksBadge}
-              isActive={isNavActive('tasks')}
-            />
-            <SidebarNavButton
-              icon={Kanban}
-              label="Доски"
-              href={buildHref('boards')}
-              isActive={isNavActive('boards') && !pinnedBoards.some((b) => pathname.includes(`/boards/${b.id}`))}
-            />
-            {hasPermission('view_workspace_digest') && (
-              <SidebarNavButton
-                icon={NotebookText}
-                label="Дневник"
-                href={buildHref('digests')}
-                isActive={isNavActive('digests')}
-              />
-            )}
-            {/* Закреплённые доски */}
-            {pinnedBoards.map((board) => (
-              <div key={board.id} className="group/pin flex items-center">
+              const boardId = boardIdFromSlotId(slot.id)!
+              const board = allBoards?.find((b) => b.id === boardId)
+              if (!board) return null
+              return (
                 <SidebarNavButton
+                  key={slot.id}
                   icon={Kanban}
                   label={board.name}
                   href={buildHref(`boards/${board.id}`)}
                   isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
+                  badge={badge}
+                  compact
                 />
+              )
+            })}
+          </nav>
+        )}
+
+        {!isClientOnly && (
+          <nav
+            className={topbarSlots.length > 0 ? 'mt-1.5' : ''}
+            style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}
+          >
+            {listSlots.map((slot) => {
+              const badge = computeBadge(slot.badge_mode)
+              if (slot.type === 'nav') {
+                const key = navKeyFromSlotId(slot.id)!
+                const meta = SIDEBAR_NAV_ITEMS[key]
+                return (
+                  <SidebarNavButton
+                    key={slot.id}
+                    icon={meta.icon}
+                    label={meta.label}
+                    href={buildHref(meta.path)}
+                    badge={badge}
+                    isActive={isNavItemActive(key, listSlots)}
+                  />
+                )
+              }
+              const boardId = boardIdFromSlotId(slot.id)!
+              const board = allBoards?.find((b) => b.id === boardId)
+              if (!board) return null
+              const hoverSlot = isOwner ? (
                 <button
                   type="button"
-                  className="p-0.5 rounded opacity-0 group-hover/pin:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 -ml-6 mr-1 shrink-0"
+                  className="p-0.5 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
                   title="Открепить"
                   onClick={(e) => {
                     e.preventDefault()
@@ -343,10 +351,22 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
                     toggleBoardPin(board.id)
                   }}
                 >
-                  <PinOff className="h-3.5 w-3.5" />
+                  <PinOff className="h-[14px] w-[14px]" />
                 </button>
-              </div>
-            ))}
+              ) : undefined
+              return (
+                <div key={slot.id} className="group/pin">
+                  <SidebarNavButton
+                    icon={Kanban}
+                    label={board.name}
+                    href={buildHref(`boards/${board.id}`)}
+                    badge={badge}
+                    isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
+                    hoverIconSlot={hoverSlot}
+                  />
+                </div>
+              )
+            })}
           </nav>
         )}
       </div>

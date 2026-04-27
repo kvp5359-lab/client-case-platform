@@ -21,6 +21,7 @@ const SETTINGS_TAB_TITLES: Record<string, string> = {
   directories: 'Справочники',
   templates: 'Шаблоны',
   digest: 'Дневник проекта',
+  sidebar: 'Сайдбар',
   trash: 'Корзина',
 }
 
@@ -41,6 +42,9 @@ const TrashTab = React.lazy(() =>
 )
 const DigestSettingsTab = React.lazy(() =>
   import('./workspace-settings/DigestSettingsTab').then((m) => ({ default: m.DigestSettingsTab })),
+)
+const SidebarSettingsTab = React.lazy(() =>
+  import('./workspace-settings/SidebarSettingsTab').then((m) => ({ default: m.SidebarSettingsTab })),
 )
 
 export function WorkspaceSettingsPage() {
@@ -63,6 +67,7 @@ export function WorkspaceSettingsPage() {
     if (pathname.includes('/directories')) return 'directories'
     if (pathname.includes('/templates')) return 'templates'
     if (pathname.includes('/digest')) return 'digest'
+    if (pathname.includes('/sidebar')) return 'sidebar'
     if (pathname.includes('/trash')) return 'trash'
     return 'general'
   }
@@ -117,6 +122,11 @@ export function WorkspaceSettingsPage() {
                   Дневник проекта
                 </TabsTrigger>
               )}
+              {permissions.isOwner && (
+                <TabsTrigger value="sidebar" onClick={() => handleTabChange('sidebar')}>
+                  Сайдбар
+                </TabsTrigger>
+              )}
               {(permissions.isOwner || permissions.can('manage_workspace_settings')) && (
                 <TabsTrigger value="trash" onClick={() => handleTabChange('trash')}>
                   Корзина
@@ -133,6 +143,7 @@ export function WorkspaceSettingsPage() {
             {(activeTab === 'directories' || pathname.includes('/directories')) && <DirectoriesTab />}
             {(activeTab === 'templates' || pathname.includes('/templates')) && <TemplatesTab />}
             {activeTab === 'digest' && <DigestSettingsTab />}
+            {activeTab === 'sidebar' && <SidebarSettingsTab />}
             {activeTab === 'trash' && <TrashTab />}
           </Suspense>
         </div>

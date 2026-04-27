@@ -23,6 +23,7 @@ import {
   boardKeys,
   workspaceTaskKeys,
   trashKeys,
+  myTaskCountsKeys,
 STALE_TIME,
 } from '@/hooks/queryKeys'
 
@@ -230,6 +231,7 @@ export function useRestoreThread(workspaceId: string) {
       }
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
       queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })
     },
   })
 }

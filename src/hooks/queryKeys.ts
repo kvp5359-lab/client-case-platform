@@ -694,3 +694,17 @@ export const projectsWithActivityKeys = {
   byWorkspaceForPeriod: (workspaceId: string, periodStart: string, periodEnd: string) =>
     ['projects-with-activity', workspaceId, periodStart, periodEnd] as const,
 }
+
+/**
+ * Настройки сайдбара воркспейса (видимость/порядок пунктов меню + режимы бейджей досок)
+ * и батч-счётчик задач для бейджей.
+ */
+export const workspaceSidebarSettingsKeys = {
+  byWorkspace: (workspaceId: string) =>
+    ['workspace-sidebar-settings', workspaceId] as const,
+}
+
+export const myTaskCountsKeys = {
+  byWorkspace: (workspaceId: string) =>
+    ['my-task-counts', workspaceId] as const,
+}

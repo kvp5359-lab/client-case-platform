@@ -13,6 +13,7 @@ import {
   workspaceTaskKeys,
   trashKeys,
   accessibleProjectKeys,
+  myTaskCountsKeys,
 STALE_TIME,
 } from '@/hooks/queryKeys'
 import { logAuditAction } from '@/services/auditService'
@@ -239,6 +240,7 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.assigneesMap })
       queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })
       // Создание задачи с дедлайном меняет has_active_deadline_task у проекта —
       // инвалидируем кеш доступных проектов, чтобы фильтры на досках обновились.
       if (params.type === 'task' && params.deadline) {
@@ -298,11 +300,13 @@ export function useDeleteThread(workspaceId?: string) {
       if (workspaceId) {
         queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
         queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
+        queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })
       } else {
         // Fallback: старые вызовы без workspaceId — partial-match инвалидация
         // по префиксу. Работает, но задевает все воркспейсы пользователя.
         queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.all })
         queryClient.invalidateQueries({ queryKey: taskKeys.allUrgent })
+        queryClient.invalidateQueries({ queryKey: ['my-task-counts'] })
       }
       queryClient.invalidateQueries({ queryKey: trashKeys.all })
       // Удаление любого треда с дедлайном (task / chat / email) может сбросить

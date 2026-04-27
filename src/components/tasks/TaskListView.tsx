@@ -16,7 +16,7 @@ import { CheckSquare, Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspaceThreads } from '@/hooks/tasks/useWorkspaceThreads'
 import { useTaskStatuses } from '@/hooks/useStatuses'
-import { messengerKeys, taskKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
+import { messengerKeys, taskKeys, workspaceThreadKeys, myTaskCountsKeys } from '@/hooks/queryKeys'
 import { useProjectThreads, useDeleteThread } from '@/hooks/messenger/useProjectThreads'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { DeleteThreadDialog } from '@/components/messenger/DeleteThreadDialog'
@@ -178,6 +178,7 @@ export const TaskListView = memo(function TaskListView({
     const keys: Array<readonly unknown[]> = [
       workspaceThreadKeys.workspace(workspaceId),
       taskKeys.urgentCount(workspaceId),
+      myTaskCountsKeys.byWorkspace(workspaceId),
     ]
     if (projectId) {
       keys.push(messengerKeys.projectThreads(projectId))

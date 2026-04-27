@@ -1,71 +1,103 @@
 "use client"
 
+/**
+ * Адаптер для BoardsPage: показать кнопку "закрепить/открепить" на доске.
+ * Закрепить = добавить slot { type:'board', placement:'list' } в конец списка.
+ * Открепить = удалить slot.
+ */
+
 import { useCallback, useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/contexts/AuthContext'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import {
+  useWorkspaceSidebarSettings,
+} from '@/hooks/useWorkspaceSidebarSettings'
+import { workspaceSidebarSettingsKeys } from '@/hooks/queryKeys'
+import {
+  type SidebarSlot,
+  reorderWithinZones,
+  boardIdFromSlotId,
+} from '@/lib/sidebarSettings'
 
-const PINNED_KEY = (userId: string, workspaceId: string) =>
-  ['pinned-boards', userId, workspaceId] as const
-
-/** Хук для управления закреплёнными досками в сайдбаре (БД) */
 export function usePinnedBoards(workspaceId: string | undefined) {
-  const { user } = useAuth()
   const queryClient = useQueryClient()
-  const qk = useMemo(
-    () => (user && workspaceId ? PINNED_KEY(user.id, workspaceId) : ['pinned-boards', 'none']),
-    [user, workspaceId],
-  )
+  const { data: settings } = useWorkspaceSidebarSettings(workspaceId)
 
-  const { data: pinnedIds = [] } = useQuery({
-    queryKey: qk,
-    queryFn: async () => {
-      if (!user || !workspaceId) return []
-      const { data } = await supabase
-        .from('pinned_boards')
-        .select('board_id, position')
-        .eq('user_id', user.id)
-        .eq('workspace_id', workspaceId)
-        .order('position')
-      return data?.map((r) => r.board_id) ?? []
-    },
-    enabled: !!user && !!workspaceId,
-    staleTime: STALE_TIME.STANDARD,
-  })
+  const slots: SidebarSlot[] = useMemo(() => settings?.slots ?? [], [settings])
+
+  const pinnedIds = useMemo(() => {
+    return slots
+      .filter((s) => s.type === 'board')
+      .sort((a, b) => a.order - b.order)
+      .map((s) => boardIdFromSlotId(s.id))
+      .filter((id): id is string => Boolean(id))
+  }, [slots])
+
+  const qk = workspaceId
+    ? workspaceSidebarSettingsKeys.byWorkspace(workspaceId)
+    : (['workspace-sidebar-settings', 'noop'] as const)
+
+  const buildNext = (boardId: string, current: SidebarSlot[]): SidebarSlot[] => {
+    const slotId = `board:${boardId}`
+    const exists = current.some((s) => s.id === slotId)
+    if (exists) {
+      return reorderWithinZones(current.filter((s) => s.id !== slotId))
+    }
+    // Закрепляем в конец списка.
+    const listMax = current
+      .filter((s) => s.placement === 'list')
+      .reduce((m, s) => Math.max(m, s.order), -1)
+    return reorderWithinZones([
+      ...current,
+      {
+        id: slotId,
+        type: 'board',
+        placement: 'list',
+        order: listMax + 1,
+        badge_mode: 'disabled',
+      },
+    ])
+  }
 
   const toggleMutation = useMutation({
     mutationFn: async (boardId: string) => {
-      if (!user || !workspaceId) return
-      const isPinned = pinnedIds.includes(boardId)
-      if (isPinned) {
-        await supabase
-          .from('pinned_boards')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('workspace_id', workspaceId)
-          .eq('board_id', boardId)
-      } else {
-        const maxPos = pinnedIds.length
-        await supabase.from('pinned_boards').insert({
-          user_id: user.id,
-          workspace_id: workspaceId,
-          board_id: boardId,
-          position: maxPos,
-        })
+      if (!workspaceId) return
+      const next = buildNext(boardId, slots)
+      const client = supabase as unknown as {
+        from: (t: string) => {
+          upsert: (
+            v: Record<string, unknown>,
+            o: { onConflict: string },
+          ) => Promise<{ error: unknown }>
+        }
       }
+      const { error } = await client
+        .from('workspace_sidebar_settings')
+        .upsert(
+          {
+            workspace_id: workspaceId,
+            slots: next,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'workspace_id' },
+        )
+      if (error) throw error as Error
     },
     onMutate: async (boardId) => {
+      if (!workspaceId) return
       await queryClient.cancelQueries({ queryKey: qk })
-      const prev = queryClient.getQueryData<string[]>(qk) ?? []
-      const next = prev.includes(boardId)
-        ? prev.filter((id) => id !== boardId)
-        : [...prev, boardId]
-      queryClient.setQueryData(qk, next)
+      const prev = queryClient.getQueryData(qk)
+      queryClient.setQueryData(qk, (old: unknown) => {
+        const prevSettings = (old ?? { slots: [], exists: false }) as {
+          slots: SidebarSlot[]
+          exists: boolean
+        }
+        return { ...prevSettings, slots: buildNext(boardId, prevSettings.slots ?? []) }
+      })
       return { prev }
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) queryClient.setQueryData(qk, ctx.prev)
+      if (ctx?.prev !== undefined) queryClient.setQueryData(qk, ctx.prev)
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: qk })
