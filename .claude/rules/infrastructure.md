@@ -55,6 +55,31 @@
 - **`x-internal-secret`**: триггер `notify_telegram_on_new_message` шлёт этот header. Его значение должно совпадать с env-переменной `INTERNAL_FUNCTION_SECRET` в Supabase secrets. Если разошлись — все исходящие сообщения из ЛК в Telegram отбиваются с 401 от нашего кода. Для диагностики: `SELECT content, status_code FROM net._http_response ORDER BY created DESC LIMIT 10;`.
 - **Категории функций**: telegram-* (синхронизация с ботом), gmail-* (почта), google-drive-* / google-sheets-* / google-oauth-* / google-docs-export (Google интеграции), chat-* / generate-* / analyze-documents / extract-* / transcribe-audio / knowledge-* (AI), compress-* (сжатие файлов), email-track, fetch-image, fetch-sheets, fix-cyrillic-storage-paths, sandbox-test.
 
+### pg_cron + service_role_key (Gmail watch refresh и подобные)
+
+- pg_cron-джоб `gmail-watch-refresh` (расписание `0 3 * * *`) каждые сутки дёргает Edge Function для продления Gmail watch-подписок (живут 7 дней). Если этот крон падает — через неделю входящие письма перестают доходить в сервис, потому что Gmail прекращает слать Pub/Sub уведомления. Симптом: в `email_accounts.watch_expires_at` дата в прошлом, ответы клиентов видны в Gmail, но не в сервисе.
+- **Ключ зашит прямо в команду крона** (`sb_secret_...`, новый формат Supabase API keys). На Supabase Cloud `ALTER DATABASE postgres SET app.settings.service_role_key = '...'` запрещён по правам, поэтому стандартный паттерн `current_setting('app.settings.service_role_key')` не работает — нужно хардкодить значение в команду.
+- **Где взять ключ**: Supabase Dashboard → Project Settings → API → вкладка «Publishable and secret API keys» → раздел «Secret keys» (формат `sb_secret_...`). **Важно**: легаси-ключ из вкладки «Legacy anon, service_role API keys» (JWT-формат) **не подходит** — Edge Functions проверяют через `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")`, а в env инжектится новый формат. Признак неправильного ключа — функция возвращает 401 `{"error":"Unauthorized"}` (от нашего кода, не от шлюза).
+- **При ротации ключа в Supabase** обязательно обновить команду крона:
+  ```sql
+  SELECT cron.alter_job(
+    job_id := (SELECT jobid FROM cron.job WHERE jobname = 'gmail-watch-refresh'),
+    command := $$
+      SELECT net.http_post(
+        url := 'https://zjatohckcpiqmxkmfxbs.supabase.co/functions/v1/gmail-watch-refresh',
+        headers := jsonb_build_object(
+          'Authorization', 'Bearer sb_secret_НОВЫЙ_КЛЮЧ',
+          'Content-Type', 'application/json'
+        ),
+        body := '{}'::jsonb
+      );
+    $$
+  );
+  ```
+- **Ручной триггер** (если watch уже истёк и нужно реактивировать немедленно): тот же `net.http_post` с теми же заголовками, выполнить через SQL Editor. Проверить результат: `SELECT id, status_code, content::text FROM net._http_response ORDER BY id DESC LIMIT 1;`. Ожидаемо: 200 OK, `{"refreshed":N,"failed":0,"total":N}`.
+- **Диагностика крона**: `SELECT jrd.start_time, jrd.status, jrd.return_message FROM cron.job_run_details jrd JOIN cron.job j ON jrd.jobid = j.jobid WHERE j.jobname = 'gmail-watch-refresh' ORDER BY start_time DESC LIMIT 10;`. Если `status = failed` — смотреть `return_message`.
+- **Потерянные письма**: пока watch был мёртв, Gmail Pub/Sub не присылал уведомлений → пропущенные входящие в сервис автоматически не подтянутся (Pub/Sub не повторяет пропуски). Только новые письма с момента реактивации.
+
 ## Окружение
 
 | Переменная | Описание |
