@@ -58,14 +58,15 @@ export async function downloadDocumentsAsZip({
       }
 
       const fileData = await downloadDocumentBlob(currentFile.file_path, currentFile.file_id)
+      const safeFileName = currentFile.file_name.replace(/[<>:"/\\|?*]/g, '_')
       let archivePath: string
 
       if (mode === 'folders' && doc.folder_id) {
         const folder = folderMap.get(doc.folder_id)
         const folderName = (folder?.name || 'Без названия').replace(/[<>:"/\\|?*]/g, '_')
-        archivePath = `${folderName}/${currentFile.file_name}`
+        archivePath = `${folderName}/${safeFileName}`
       } else {
-        archivePath = currentFile.file_name
+        archivePath = safeFileName
       }
 
       zip.file(archivePath, await fileData.arrayBuffer())
