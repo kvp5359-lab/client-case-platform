@@ -16,11 +16,7 @@ export function BriefIframe({ briefSheetId }: { briefSheetId: string }) {
 
     const update = () => {
       const r = el.getBoundingClientRect()
-      const scrollContainer = el.closest('[data-project-scroll]') as HTMLElement | null
-      const rightEdge = scrollContainer
-        ? scrollContainer.getBoundingClientRect().right
-        : window.innerWidth
-      setDims({ left: r.left, top: r.top, width: rightEdge - r.left })
+      setDims({ left: r.left, top: r.top, width: window.innerWidth - r.left })
     }
 
     update()
