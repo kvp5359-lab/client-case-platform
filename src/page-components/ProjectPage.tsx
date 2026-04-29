@@ -63,7 +63,6 @@ export default function ProjectPage() {
 
   // Данные проекта
   const { project, projectTemplate, isLoading } = useProjectData(projectId)
-  usePageTitle(project?.name)
   const { data: participantGroups = [] } = useProjectHeaderParticipants(projectId, workspaceId)
 
   // Проверка доступа
@@ -132,6 +131,11 @@ export default function ProjectPage() {
 
   const isTabAccessible = (tab: string) => availableModules.some((m) => m.id === tab)
   const activeTab = isTabAccessible(urlTab) ? urlTab : firstTab
+
+  const activeTabLabel = availableModules.find((m) => m.id === activeTab)?.label
+  usePageTitle(
+    project?.name ? (activeTabLabel ? `${project.name} — ${activeTabLabel}` : project.name) : null,
+  )
 
   // Запросы зависят от активной вкладки — грузим только то, что видим.
   // documentKits нужны в Документах, formKits — в Анкетах. Если юзер сразу идёт
