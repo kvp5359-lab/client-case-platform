@@ -150,23 +150,39 @@ Deno.serve(async (req: Request) => {
 
     let showSenderName = true;
     if (body.project_id) {
-      const { data: chatInfo } = await serviceClient
-        .from("project_telegram_chats")
-        .select("channel")
-        .eq("telegram_chat_id", body.telegram_chat_id)
-        .eq("is_active", true)
+      // thread_id текущего сообщения — без него «последнее сообщение» приходило
+      // из любого другого треда того же проекта с тем же channel ("client"). Если
+      // тот же сотрудник недавно писал в соседний тред, имя в этом треде ошибочно
+      // скрывалось. Фильтр по thread_id скопирует «последнее в этом треде».
+      const { data: currentMsg } = await serviceClient
+        .from("project_messages")
+        .select("thread_id")
+        .eq("id", body.message_id)
         .maybeSingle();
+      const threadId = currentMsg?.thread_id ?? null;
 
-      const channel = chatInfo?.channel || "client";
       const sixtyMinAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-      const { data: lastMsg } = await serviceClient
+      let q = serviceClient
         .from("project_messages")
         .select("sender_name, source")
         .eq("project_id", body.project_id)
-        .eq("channel", channel)
         .neq("id", body.message_id)
-        .gte("created_at", sixtyMinAgo)
+        .gte("created_at", sixtyMinAgo);
+      if (threadId) {
+        q = q.eq("thread_id", threadId);
+      } else {
+        // Fallback: если у сообщения нет thread_id — ограничимся каналом, как раньше.
+        const { data: chatInfo } = await serviceClient
+          .from("project_telegram_chats")
+          .select("channel")
+          .eq("telegram_chat_id", body.telegram_chat_id)
+          .eq("is_active", true)
+          .maybeSingle();
+        q = q.eq("channel", chatInfo?.channel || "client");
+      }
+
+      const { data: lastMsg } = await q
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
