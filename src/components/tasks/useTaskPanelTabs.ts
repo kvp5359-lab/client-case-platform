@@ -50,7 +50,7 @@ interface UseTaskPanelTabsResult {
   togglePin: (id: string) => void
   /** Переупорядочить вкладки: переместить вкладку с id `activeId` на место перед `overId`
    *  (если overId === null — в конец своей группы). pin/unpin обрабатывается отдельно. */
-  reorderTab: (activeId: string, overId: string | null) => void
+  reorderTab: (activeId: string, overId: string | null, pinned: boolean) => void
   /** Засеять набор вкладок (используется один раз для новых проектов). */
   seedTabs: (seed: TaskPanelTab[], activeId?: string | null) => void
 }
@@ -306,7 +306,7 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
   )
 
   const reorderTab = useCallback(
-    (activeId: string, overId: string | null) => {
+    (activeId: string, overId: string | null, pinned: boolean) => {
       const fromIdx = localTabs.findIndex((t) => t.id === activeId)
       if (fromIdx === -1) return
       const tab = localTabs[fromIdx]
@@ -318,12 +318,8 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
         insertIdx = without.findIndex((t) => t.id === overId)
         if (insertIdx === -1) insertIdx = without.length
       }
-      // Корректировка: закреплённые должны оставаться слева, откреплённые — справа.
-      // Если переносим закреплённую за пределы pinned-блока, обрезаем по последнему pinned + 1.
-      const pinnedCount = without.filter((t) => t.pinned).length
-      if (tab.pinned && insertIdx > pinnedCount) insertIdx = pinnedCount
-      if (!tab.pinned && insertIdx < pinnedCount) insertIdx = pinnedCount
-      const next = [...without.slice(0, insertIdx), tab, ...without.slice(insertIdx)]
+      const movedTab = { ...tab, pinned }
+      const next = [...without.slice(0, insertIdx), movedTab, ...without.slice(insertIdx)]
       setLocalTabs(next)
       persist(next, activeTabId)
     },

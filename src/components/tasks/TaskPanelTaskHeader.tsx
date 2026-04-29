@@ -105,7 +105,7 @@ export function TaskPanelTaskHeader({
   }, [editingName])
 
   return (
-    <div className={cn('border-b shrink-0 flex flex-col', hideToolsRow ? 'h-9' : 'h-[61px]')}>
+    <div className={cn('border-b shrink-0 flex flex-col', hideToolsRow ? 'h-10' : 'h-[65px]')}>
       {/* Строка 1: статус/иконка + название + действия (жёсткая высота 30px,
           в bare-режиме растягивается на всю шапку h-9). */}
       <div className={cn('flex items-center gap-2 px-4 shrink-0', hideToolsRow ? 'h-full' : 'h-[30px]')}>

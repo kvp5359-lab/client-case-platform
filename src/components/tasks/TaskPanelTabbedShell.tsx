@@ -243,7 +243,7 @@ interface RendererProps {
   onOpenThreadTab: (task: TaskItem) => void
   onHidePanel: () => void
   onTogglePin: (id: string) => void
-  onReorderTab: (activeId: string, overId: string | null) => void
+  onReorderTab: (activeId: string, overId: string | null, pinned: boolean) => void
   /** Засеять дефолтный набор вкладок (вызывается один раз для нового проекта). */
   onSeedTabs: (seed: TaskPanelTab[]) => void
   /** Признак "для пары проект/пользователь нет записи" — можно сеять дефолты. */

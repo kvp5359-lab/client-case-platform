@@ -13,7 +13,7 @@
  *  - В правом углу — кнопка скрытия панели (✕).
  */
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useMemo } from 'react'
 import {
   Plus,
   X,
@@ -34,17 +34,19 @@ import {
 import {
   DndContext,
   PointerSensor,
-  useDraggable,
-  useDroppable,
+  closestCenter,
+  pointerWithin,
   useSensor,
   useSensors,
-  pointerWithin,
-  rectIntersection,
   type CollisionDetection,
   type DragEndEvent,
-  type DragStartEvent,
-  type DragOverEvent,
 } from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
 import {
@@ -97,9 +99,12 @@ interface TaskPanelTabBarProps {
   onHidePanel?: () => void
   /** Переключить закрепление вкладки. */
   onTogglePin?: (id: string) => void
-  /** Переупорядочить вкладку: вставить активную перед overId (или в конец, если null). */
-  onReorder?: (activeId: string, overId: string | null) => void
+  /** Переупорядочить вкладку: вставить активную перед overId (или в конец, если null).
+   *  pinned — финальный статус закрепления (определяется позицией относительно разделителя). */
+  onReorder?: (activeId: string, overId: string | null, pinned: boolean) => void
 }
+
+const SEPARATOR_ID = '__pin_separator__'
 
 /** Подобрать иконку для вкладки. */
 function getTabIcon(tab: TaskPanelTab): React.ComponentType<{ className?: string }> {
@@ -146,103 +151,57 @@ export function TaskPanelTabBar({
     const unpinned = tabs.filter((t) => !t.pinned)
     return [...pinned, ...unpinned]
   }, [tabs])
-  const lastPinnedId = useMemo(() => {
-    const pinned = orderedTabs.filter((t) => t.pinned)
-    return pinned.length > 0 ? pinned[pinned.length - 1].id : null
-  }, [orderedTabs])
-
-  // DnD
+  // DnD: SortableContext двигает остальные элементы в стороны под курсором.
+  // Разделитель — полноценный sortable-item (id = SEPARATOR_ID), но без drag-листенеров,
+  // так что юзер не может его схватить. Зато он расступается вместе с соседями.
+  // Позиция активной вкладки относительно разделителя в финальном порядке определяет pinned.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
-  // Pointer-based collision: предпочитаем droppable, в который реально попадает курсор.
-  // Если ни один не попал (между табами) — fallback на rect-intersection.
+  // Pointer-based collision: что под курсором — то и over. Иначе при перетаскивании
+  // широкой unpinned-вкладки её центр перепрыгивает разделитель и попасть «между
+  // последней pinned и разделителем» невозможно. Fallback на closestCenter для
+  // случая, когда курсор вышел за пределы ряда.
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const within = pointerWithin(args)
     if (within.length > 0) return within
-    return rectIntersection(args)
+    return closestCenter(args)
   }, [])
-  const [activeDragId, setActiveDragId] = useState<string | null>(null)
-  const [overId, setOverId] = useState<string | null>(null)
-  const [dropSide, setDropSide] = useState<'left' | 'right' | null>(null)
-  // Реальная X-позиция курсора. dnd-kit-овский `activatorEvent.clientX + delta.x`
-  // в нашем случае давал смещение (особенно когда панель в портале), поэтому
-  // отслеживаем pointer через window-listener, активный только во время drag.
-  const pointerXRef = useRef(0)
-  useEffect(() => {
-    if (!activeDragId) return
-    const handler = (e: PointerEvent) => {
-      pointerXRef.current = e.clientX
-    }
-    window.addEventListener('pointermove', handler)
-    return () => window.removeEventListener('pointermove', handler)
-  }, [activeDragId])
+  const sortableItems = useMemo(() => {
+    const pinnedIds = orderedTabs.filter((t) => t.pinned).map((t) => t.id)
+    const unpinnedIds = orderedTabs.filter((t) => !t.pinned).map((t) => t.id)
+    return [...pinnedIds, SEPARATOR_ID, ...unpinnedIds]
+  }, [orderedTabs])
 
-  const handleDragStart = useCallback((e: DragStartEvent) => {
-    setActiveDragId(String(e.active.id))
-    const ev = e.activatorEvent as PointerEvent | undefined
-    if (ev && typeof ev.clientX === 'number') pointerXRef.current = ev.clientX
-  }, [])
-  const handleDragOver = useCallback((e: DragOverEvent) => {
-    const { over } = e
-    if (!over) {
-      setOverId(null)
-      setDropSide(null)
-      return
-    }
-    const oid = String(over.id)
-    setOverId(oid)
-    if (oid === '__end__') {
-      setDropSide('left')
-      return
-    }
-    const rect = over.rect
-    if (!rect) {
-      setDropSide('left')
-      return
-    }
-    const pointerX = pointerXRef.current
-    const midX = rect.left + rect.width / 2
-    setDropSide(pointerX < midX ? 'left' : 'right')
-  }, [])
-  const handleDragCancel = useCallback(() => {
-    setActiveDragId(null)
-    setOverId(null)
-    setDropSide(null)
-  }, [])
   const handleDragEnd = useCallback((e: DragEndEvent) => {
-    const aid = activeDragId
-    const side = dropSide
-    setActiveDragId(null)
-    setOverId(null)
-    setDropSide(null)
-    if (!aid || !e.over || !onReorder) return
+    if (!onReorder || !e.over) return
+    const aid = String(e.active.id)
     const oid = String(e.over.id)
-    if (oid === aid) return
-    if (oid === '__end__') {
-      onReorder(aid, null)
-      return
+    if (aid === SEPARATOR_ID || aid === oid) return
+    const oldIndex = sortableItems.indexOf(aid)
+    const newIndex = sortableItems.indexOf(oid)
+    if (oldIndex === -1 || newIndex === -1) return
+    const next = arrayMove(sortableItems, oldIndex, newIndex)
+    const sepPos = next.indexOf(SEPARATOR_ID)
+    const activePos = next.indexOf(aid)
+    const pinned = activePos < sepPos
+    // insertBeforeId — следующий за активной id, исключая разделитель.
+    let insertBeforeId: string | null = null
+    for (let i = activePos + 1; i < next.length; i++) {
+      if (next[i] !== SEPARATOR_ID) { insertBeforeId = next[i]; break }
     }
-    // Если бросили в правую половину tab'а X — вставляем ПОСЛЕ X (т.е. перед следующим).
-    let insertBeforeId: string | null = oid
-    if (side === 'right') {
-      const idx = orderedTabs.findIndex((t) => t.id === oid)
-      const next = idx >= 0 ? orderedTabs[idx + 1] : null
-      insertBeforeId = next ? next.id : null
-    }
-    onReorder(aid, insertBeforeId)
-  }, [activeDragId, dropSide, onReorder, orderedTabs])
+    onReorder(aid, insertBeforeId, pinned)
+  }, [onReorder, sortableItems])
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={collisionDetection}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
-    >
-      <div className="flex items-center gap-1 px-2 h-9 border-b bg-gray-50/80 shrink-0 min-w-0">
+    <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragEnd={handleDragEnd}>
+      <SortableContext items={sortableItems} strategy={horizontalListSortingStrategy}>
+      <div className="flex items-center gap-1 px-2 h-10 border-b bg-gray-50/80 shrink-0 min-w-0">
         <div className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto">
-          {orderedTabs.map((tab) => {
+          {sortableItems.map((id) => {
+            if (id === SEPARATOR_ID) {
+              return <SortableSeparator key={SEPARATOR_ID} />
+            }
+            const tab = orderedTabs.find((t) => t.id === id)
+            if (!tab) return null
             const isActive = tab.id === activeTabId
             const isThread = tab.type === 'thread'
             const Icon = getTabIcon(tab)
@@ -252,28 +211,20 @@ export function TaskPanelTabBar({
             const badge = isThread && tab.refId ? badgeByThreadId[tab.refId] : undefined
             const hasBadge = !!badge && badge.type !== 'none'
             return (
-              <Fragment key={tab.id}>
-                <DraggableTab
-                  tab={tab}
-                  isActive={isActive}
-                  accent={accent}
-                  Icon={Icon}
-                  badge={badge}
-                  hasBadge={hasBadge}
-                  onActivate={onActivate}
-                  onClose={onClose}
-                  onTogglePin={onTogglePin}
-                  indicator={overId === tab.id && activeDragId !== tab.id ? dropSide : null}
-                />
-                {/* Серый разделитель сразу после последней закреплённой вкладки —
-                    но только если в баре есть и pinned, и unpinned. */}
-                {tab.id === lastPinnedId && orderedTabs.some((t) => !t.pinned) && (
-                  <div className="self-stretch w-px bg-gray-300 mx-1 shrink-0" aria-hidden />
-                )}
-              </Fragment>
+              <DraggableTab
+                key={tab.id}
+                tab={tab}
+                isActive={isActive}
+                accent={accent}
+                Icon={Icon}
+                badge={badge}
+                hasBadge={hasBadge}
+                onActivate={onActivate}
+                onClose={onClose}
+                onTogglePin={onTogglePin}
+              />
             )
           })}
-          <DropEnd activeDragId={activeDragId} />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -327,6 +278,7 @@ export function TaskPanelTabBar({
           </button>
         )}
       </div>
+      </SortableContext>
     </DndContext>
   )
 }
@@ -341,8 +293,6 @@ interface DraggableTabProps {
   onActivate: (id: string) => void
   onClose: (id: string) => void
   onTogglePin?: (id: string) => void
-  /** Где показать индикатор drop: 'left' / 'right' / null. */
-  indicator: 'left' | 'right' | null
 }
 
 function DraggableTab({
@@ -355,29 +305,25 @@ function DraggableTab({
   onActivate,
   onClose,
   onTogglePin,
-  indicator,
 }: DraggableTabProps) {
-  const { attributes, listeners, setNodeRef: setDragRef, isDragging, transform } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging, transform, transition } = useSortable({
     id: tab.id,
   })
-  const { setNodeRef: setDropRef } = useDroppable({ id: tab.id })
 
-  const setRefs = (el: HTMLDivElement | null) => {
-    setDragRef(el)
-    setDropRef(el)
+  // Y залочен: вкладка скользит только по горизонтали. Соседние вкладки сами
+  // расступаются под курсором благодаря horizontalListSortingStrategy —
+  // отдельный drop-индикатор не нужен.
+  const dragStyle: React.CSSProperties = {
+    transform: transform ? CSS.Translate.toString({ ...transform, y: 0 }) : undefined,
+    transition,
+    zIndex: isDragging ? 50 : undefined,
   }
-
-  // Двигаем саму вкладку за курсором через CSS-transform — без отдельного DragOverlay,
-  // чтобы движение было видно прямо в ряду табов.
-  const dragStyle: React.CSSProperties | undefined = transform
-    ? { transform: CSS.Translate.toString(transform), zIndex: 50 }
-    : undefined
 
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
-          ref={setRefs}
+          ref={setNodeRef}
           {...attributes}
           {...listeners}
           style={dragStyle}
@@ -385,8 +331,6 @@ function DraggableTab({
             'group relative flex items-center gap-1 rounded-full text-xs cursor-pointer min-w-0',
             // Закреплённые компактные: только иконка (+ бейдж/крестик), без текста.
             tab.pinned ? 'px-1.5 h-6 w-7 justify-center shrink-0' : 'pl-2 pr-1 h-6 min-w-[56px]',
-            // Анимация только когда не тащим, иначе transform мешает плавному движению.
-            !isDragging && 'transition-all',
             !tab.pinned && (isActive ? 'shrink-0' : 'shrink'),
             isActive
               ? cn(
@@ -394,17 +338,11 @@ function DraggableTab({
                   accent ? accent.active : 'bg-white text-foreground',
                 )
               : 'text-muted-foreground hover:bg-white/70 hover:text-foreground',
-            isDragging && 'shadow-2xl ring-2 ring-blue-500/60 cursor-grabbing scale-105 rotate-1',
+            isDragging && 'shadow-2xl ring-2 ring-blue-500/60 cursor-grabbing scale-105 z-50',
           )}
           onClick={() => onActivate(tab.id)}
           title={tab.title}
         >
-          {indicator === 'left' && (
-            <div className="absolute -left-1 top-0 bottom-0 w-[3px] rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.6)] pointer-events-none animate-pulse" />
-          )}
-          {indicator === 'right' && (
-            <div className="absolute -right-1 top-0 bottom-0 w-[3px] rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.6)] pointer-events-none animate-pulse" />
-          )}
           <Icon className="shrink-0 w-3.5 h-3.5" />
           {!tab.pinned && (
             <span className="truncate min-w-0 flex-1 max-w-[110px]">{tab.title}</span>
@@ -424,7 +362,7 @@ function DraggableTab({
               {hasBadge && badge && badge.type === 'number' && (
                 <span
                   className={cn(
-                    'absolute -top-1 -right-1 min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-full text-[9px] leading-none font-semibold text-white ring-1 ring-white',
+                    'absolute -top-0.5 -right-1 min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-full text-[9px] leading-none font-semibold text-white ring-1 ring-white',
                     accent ? accent.badge : 'bg-blue-600',
                   )}
                 >
@@ -432,7 +370,7 @@ function DraggableTab({
                 </span>
               )}
               {hasBadge && badge && badge.type === 'emoji' && (
-                <span className="absolute -top-1 -right-1 text-[12px] leading-none">{badge.value}</span>
+                <span className="absolute -top-0.5 -right-1 text-[12px] leading-none">{badge.value}</span>
               )}
             </>
           ) : (
@@ -509,15 +447,23 @@ function DraggableTab({
   )
 }
 
-/** Droppable-зона в самом конце ряда — позволяет бросить вкладку в конец. */
-function DropEnd({ activeDragId }: { activeDragId: string | null }) {
-  const { setNodeRef, isOver } = useDroppable({ id: '__end__' })
-  if (!activeDragId) return null
+/** Серый разделитель pinned/unpinned. Sortable, но без drag-листенеров —
+ *  пользователь его не схватит, зато соседи расступаются вокруг него
+ *  как и вокруг остальных вкладок. */
+function SortableSeparator() {
+  const { setNodeRef, transform, transition } = useSortable({ id: SEPARATOR_ID })
+  const style: React.CSSProperties = {
+    transform: transform ? CSS.Translate.toString({ ...transform, y: 0 }) : undefined,
+    transition,
+  }
   return (
-    <div ref={setNodeRef} className="relative shrink-0 self-stretch w-4" aria-hidden>
-      {isOver && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[3px] rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.6)] animate-pulse" />
-      )}
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="self-stretch w-3 flex items-center justify-center shrink-0"
+      aria-hidden
+    >
+      <div className="self-stretch w-px bg-gray-300" />
     </div>
   )
 }
