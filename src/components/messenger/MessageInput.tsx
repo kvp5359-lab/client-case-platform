@@ -123,6 +123,15 @@ export function MessageInput({
     }
   }, [threadId, editor])
 
+  // Возвращаем фокус в поле после завершения отправки (на время isPending редактор disabled → фокус слетает).
+  const wasPendingRef = useRef(false)
+  useEffect(() => {
+    if (wasPendingRef.current && !isPending) {
+      editorRef.current?.commands.focus('end')
+    }
+    wasPendingRef.current = isPending
+  }, [isPending])
+
   // Восстанавливаем неотправленный текст в редактор после сетевой ошибки.
   useEffect(() => {
     if (!threadId) return
