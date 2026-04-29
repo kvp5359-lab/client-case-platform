@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
@@ -50,6 +50,31 @@ export function FormsTabContent({
 }: FormsTabContentProps) {
   const [filterMode, setFilterMode] = useState<'all' | 'action-required'>('all')
   const [autoFillKitId, setAutoFillKitId] = useState<string | null>(null)
+
+  // Свёрнутые анкеты — persist в localStorage по проекту, чтобы сохранялось между сессиями.
+  const collapsedStorageKey = `forms-collapsed:${projectId}`
+  const [collapsedKitIds, setCollapsedKitIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    try {
+      const raw = window.localStorage.getItem(collapsedStorageKey)
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set()
+    } catch {
+      return new Set()
+    }
+  })
+  const toggleKitCollapsed = (kitId: string) => {
+    setCollapsedKitIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(kitId)) next.delete(kitId)
+      else next.add(kitId)
+      try {
+        window.localStorage.setItem(collapsedStorageKey, JSON.stringify([...next]))
+      } catch {
+        /* quota */
+      }
+      return next
+    })
+  }
 
   const sidePanelOpen = useSidePanelStore((s) => s.panelTab !== null)
   const formSummary = useFormSummary({ workspaceId })
@@ -306,44 +331,59 @@ export function FormsTabContent({
       )}
 
       {/* Список анкет */}
-      {formKits.map((formKit) => (
-        <div key={formKit.id} className="space-y-2">
-          {/* Заголовок анкеты */}
-          <div className="flex items-center gap-3">
-            <h3 className="text-xl text-foreground uppercase tracking-wide font-bold">
-              {formKit.name}
-            </h3>
-            <KitMenu
-              formKitId={formKit.id}
-              googleSheetId={formKit.google_sheet_id}
-              briefSheetId={formKit.brief_sheet_id}
-              projectId={projectId}
-              hasBriefTemplate={!!briefTemplateSheetId}
-              onSummary={() => formSummary.generateSummary(formKit.id, formKit.name)}
-              onAutoFill={() => setAutoFillKitId(formKit.id)}
-              onSync={() => handleSyncFormKit(formKit)}
-              onCreateBrief={() => handleOpenCreateBrief(formKit)}
-              onConnectBrief={() => handleOpenConnectBrief(formKit)}
-              onDisconnectBrief={() => handleDisconnectBrief(formKit)}
-              onDelete={() => handleDeleteFormKit(formKit)}
-            />
-          </div>
+      {formKits.map((formKit) => {
+        const isCollapsed = collapsedKitIds.has(formKit.id)
+        return (
+          <div key={formKit.id} className="space-y-2">
+            {/* Заголовок анкеты — клик по нему сворачивает/разворачивает */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => toggleKitCollapsed(formKit.id)}
+                className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+                aria-expanded={!isCollapsed}
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                )}
+                <h3 className="text-xl text-foreground uppercase tracking-wide font-bold">
+                  {formKit.name}
+                </h3>
+              </button>
+              <KitMenu
+                formKitId={formKit.id}
+                googleSheetId={formKit.google_sheet_id}
+                briefSheetId={formKit.brief_sheet_id}
+                projectId={projectId}
+                hasBriefTemplate={!!briefTemplateSheetId}
+                onSummary={() => formSummary.generateSummary(formKit.id, formKit.name)}
+                onAutoFill={() => setAutoFillKitId(formKit.id)}
+                onSync={() => handleSyncFormKit(formKit)}
+                onCreateBrief={() => handleOpenCreateBrief(formKit)}
+                onConnectBrief={() => handleOpenConnectBrief(formKit)}
+                onDisconnectBrief={() => handleDisconnectBrief(formKit)}
+                onDelete={() => handleDeleteFormKit(formKit)}
+              />
+            </div>
 
-          {/* Содержимое: iframe с Google Таблицей или стандартная анкета */}
-          {formKit.brief_sheet_id ? (
-            <BriefIframe briefSheetId={formKit.brief_sheet_id} />
-          ) : (
-            <FormKitView
-              formKitId={formKit.id}
-              projectId={projectId}
-              workspaceId={workspaceId}
-              filterMode={filterMode}
-              autoFillOpen={autoFillKitId === formKit.id}
-              onAutoFillClose={() => setAutoFillKitId(null)}
-            />
-          )}
-        </div>
-      ))}
+            {/* Содержимое: iframe с Google Таблицей или стандартная анкета */}
+            {!isCollapsed && (formKit.brief_sheet_id ? (
+              <BriefIframe briefSheetId={formKit.brief_sheet_id} />
+            ) : (
+              <FormKitView
+                formKitId={formKit.id}
+                projectId={projectId}
+                workspaceId={workspaceId}
+                filterMode={filterMode}
+                autoFillOpen={autoFillKitId === formKit.id}
+                onAutoFillClose={() => setAutoFillKitId(null)}
+              />
+            ))}
+          </div>
+        )
+      })}
 
       <SummaryDialog
         open={formSummary.summaryDialogOpen}
