@@ -29,6 +29,7 @@ import {
 } from './useTaskPanelTabs'
 import type { TaskPanelTab } from './taskPanelTabs.types'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
+import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { getBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import type { TaskItem } from './types'
 import type { ProjectHeaderInfo } from './TaskPanel'
@@ -300,13 +301,34 @@ function TaskPanelTabbedShellRenderer({
   // разделу (например, перешёл в проект где модуля нет) — скрываем эту
   // вкладку из бара. Сама запись в БД остаётся: при переключении scope обратно
   // в проект где доступ есть — вкладка снова появится.
+  // Свежие данные тредов текущего scope-проекта — название, accent_color, icon.
+  // tab.meta это снапшот на момент открытия вкладки и устаревает после изменения
+  // настроек чата (диалог «Настройки» → название/цвет/иконка). Подмешиваем актуальные
+  // значения из БД, чтобы вкладки в баре сразу отражали изменения.
+  const { data: scopeThreads = [] } = useProjectThreads(projectId ?? undefined)
+  const freshThreadById = useMemo(
+    () => new Map(scopeThreads.map((t) => [t.id, t])),
+    [scopeThreads],
+  )
+
   const visibleTabs = useMemo(
     () =>
-      tabs.filter((t) => {
-        if (t.type === 'thread' || t.type === 'tasks') return true // RLS отрулит
-        return visibleSystemTypes.has(t.type)
-      }),
-    [tabs, visibleSystemTypes],
+      tabs
+        .filter((t) => {
+          if (t.type === 'thread' || t.type === 'tasks') return true // RLS отрулит
+          return visibleSystemTypes.has(t.type)
+        })
+        .map((t) => {
+          if (t.type !== 'thread' || !t.refId) return t
+          const fresh = freshThreadById.get(t.refId)
+          if (!fresh) return t
+          return {
+            ...t,
+            title: fresh.name,
+            meta: { ...t.meta, accentColor: fresh.accent_color, icon: fresh.icon },
+          }
+        }),
+    [tabs, visibleSystemTypes, freshThreadById],
   )
   // Карта бейджа по thread_id — для индикации на thread-вкладках.
   // Используем getBadgeDisplay из @/utils/inboxUnread — единый источник правды,
