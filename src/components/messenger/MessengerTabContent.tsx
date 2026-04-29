@@ -22,6 +22,7 @@ import { useMessengerState } from './hooks/useMessengerState'
 import { useMessengerHandlers } from './hooks/useMessengerHandlers'
 import { useOptimisticEmail } from './hooks/useOptimisticEmail'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
+import { useThreadHasClient } from '@/hooks/messenger/useThreadHasClient'
 
 interface MessengerTabContentProps {
   projectId?: string
@@ -51,6 +52,7 @@ export function MessengerTabContent({
   const [jumpToMessageId, setJumpToMessageId] = useState<string | null>(null)
   const { data: allThreads = [] } = useProjectThreads(projectId)
   const currentThread = allThreads.find((t) => t.id === threadId)
+  const hasClientParticipant = useThreadHasClient(currentThread)
 
   const state = useMessengerState({
     projectId,
@@ -157,6 +159,7 @@ export function MessengerTabContent({
         channel={channel}
         isAdmin={state.isAdmin}
         isTelegramLinked={state.isLinked}
+        isClientThread={hasClientParticipant || state.isLinked || !!state.emailLink}
         onReply={state.setReplyTo}
         onReact={handleReact}
         onEdit={handlers.handleStartEdit}

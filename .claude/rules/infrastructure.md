@@ -216,6 +216,21 @@
   - `20260427_workspace_sidebar_pinned_boards.sql` — `board_badges` → `pinned_boards`.
   - `20260427_workspace_sidebar_unified_slots.sql` — финальная унификация: `items` + `pinned_boards` → единая колонка `slots`. После применения старых колонок больше нет.
 
+## Подсветка сообщений сотрудников в клиентских чатах
+
+В клиентских тредах сообщения от сотрудников помечаются визуально, чтобы переписка с клиентом легко читалась глазами: **кольцо вокруг аватара** + **левая полоса на бабле** (`border-l-2`, в 2 раза тоньше красной полосы непрочитанного `border-l-4`). Цвет — динамический под акцент чата (`accent_color`), совпадает с цветом «своего» баббла. Красная полоса непрочитанного перебивает «сотрудниковую» (приоритет важнее).
+
+- **«Сотрудник»**: автор сообщения с проектной ролью из `TEAM_ROLES = ['Администратор', 'Владелец', 'Сотрудник', 'Исполнитель']` (см. [`MessageBubble.tsx`](../../src/components/messenger/MessageBubble.tsx) — `isTeamSender(message.sender_role)`). `sender_role` — это **проектная роль** на момент отправки, хранится в `project_messages.sender_role` (историчность сохраняется при смене ролей).
+- **«Клиентский тред»** определяется хуком [`useThreadHasClient`](../../src/hooks/messenger/useThreadHasClient.ts) + сигналами Telegram/Email из `MessengerTabContent`. Тред считается клиентским, если **любое** из:
+  1. Тред подключён к Telegram (`telegram_chat_link` на тред) — `state.isLinked`. Покрывает кейс «клиент пишет из Telegram, в сервисе его нет».
+  2. Тред подключён к Email (`email_chat_link` на тред) — `state.emailLink`. Аналогично для почты.
+  3. Среди `project_participants` проекта есть участник с проектной ролью «Клиент», у которого есть доступ к этому треду:
+     - `access_type='all'` → доступ есть у всех участников проекта;
+     - `access_type='roles'` → роли клиента пересекаются с `thread.access_roles`;
+     - `access_type='custom'` → клиент явно добавлен в `project_thread_members`.
+- **Что НЕ работает как сигнал**: `MessageChannel` ('client' | 'internal') в типах сервиса — это легаси-разделение для project_messages, не для тредов. Task-треды по умолчанию идут с `channel='client'`, но клиентскими не являются. Не использовать.
+- Флаг пробрасывается через `MessengerContext.isClientThread` → `MessageBubble`. Стили для каждого акцента (`staffBorder` + `staffRing`) — в [`messageStyles.ts`](../../src/components/messenger/utils/messageStyles.ts).
+
 ## Локальная разработка
 
 ```bash

@@ -13,6 +13,8 @@ export interface MessengerContextValue {
   channel?: MessageChannel
   isAdmin?: boolean
   isTelegramLinked?: boolean
+  /** В треде участвует клиент — включает подсветку сообщений сотрудников. */
+  isClientThread?: boolean
 
   // Callbacks
   onReply: (msg: ProjectMessage) => void
@@ -62,6 +64,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       channel: value.channel,
       isAdmin: value.isAdmin,
       isTelegramLinked: value.isTelegramLinked,
+      isClientThread: value.isClientThread,
       onReply: value.onReply,
       onReact: value.onReact,
       onEdit: value.onEdit,
@@ -89,6 +92,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       value.channel,
       value.isAdmin,
       value.isTelegramLinked,
+      value.isClientThread,
       value.onReply,
       value.onReact,
       value.onEdit,

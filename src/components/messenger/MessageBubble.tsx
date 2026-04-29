@@ -65,6 +65,7 @@ function MessageBubbleImpl({
     workspaceId,
     channel,
     isTelegramLinked,
+    isClientThread,
     onReply,
     onReact,
     onEdit,
@@ -80,6 +81,7 @@ function MessageBubbleImpl({
     onJumpToMessage,
   } = useMessengerContext()
   const colors = bubbleStyles[accent]
+  const showStaffMark = !!isClientThread && isTeamSender(message.sender_role)
   const tgDeliveryStatus = useTelegramDeliveryStatus(message, isOwn, isTelegramLinked)
   const deliveryStatus = getDeliveryStatus(message, isOwn, tgDeliveryStatus)
   const tgFailed = tgDeliveryStatus === 'failed'
@@ -211,21 +213,16 @@ function MessageBubbleImpl({
 
       {/* Avatar (other messages only).
           У сообщений от команды (любая роль кроме «Клиент» / «Telegram-контакт»)
-          добавляем 2px ring цвета иконки папки в сайдбаре (brand-500) —
-          визуальный маркер принадлежности к команде, чтобы отличать от клиента. */}
+          добавляем кольцо цвета акцента чата — визуальный маркер принадлежности
+          к команде, чтобы отличать от клиента. */}
       {!isOwn && (
         <div className="w-8 flex-shrink-0 self-start mr-2 mt-1">
           {showAvatar ? (
             <Avatar
-              className="h-8 w-8"
-              style={
-                isTeamSender(message.sender_role)
-                  ? {
-                      boxShadow:
-                        '0 0 0 3px hsl(var(--brand-500))',
-                    }
-                  : undefined
-              }
+              className={cn(
+                'h-8 w-8',
+                showStaffMark && cn('ring-2 ring-offset-1', colors.staffRing),
+              )}
             >
               {message.sender?.avatar_url && (
                 <AvatarImage src={message.sender.avatar_url} alt={message.sender_name} />
@@ -270,8 +267,12 @@ function MessageBubbleImpl({
             id={`msg-${message.id}`}
             className={cn(
               'relative rounded-2xl px-4 py-2.5 min-w-[10rem] overflow-hidden transition-all duration-500',
-              // Красная полоса внутри бабла слева — индикатор непрочитанного
-              isUnread && !isOwn && 'border-l-4 border-red-500',
+              // Левый индикатор бабла:
+              //  - 4px красный — непрочитанное (приоритет, перебивает «сотрудник»);
+              //  - 2px цвета акцента — прочитанное от сотрудника в клиентском чате.
+              isUnread && !isOwn
+                ? 'border-l-4 border-red-500'
+                : !isOwn && showStaffMark && cn('border-l-2', colors.staffBorder),
               // Нижний padding только для аудио/файлов: у них таймстамп лежит абсолютно
               // под бабла. Если в сообщении есть картинки — таймстамп уезжает поверх
               // картинки, и лишний отступ снизу не нужен.
