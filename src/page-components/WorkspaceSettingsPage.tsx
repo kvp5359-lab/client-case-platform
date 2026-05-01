@@ -20,6 +20,7 @@ const SETTINGS_TAB_TITLES: Record<string, string> = {
   permissions: 'Права',
   directories: 'Справочники',
   templates: 'Шаблоны',
+  integrations: 'Интеграции',
   digest: 'Дневник проекта',
   sidebar: 'Сайдбар',
   trash: 'Корзина',
@@ -46,6 +47,9 @@ const DigestSettingsTab = React.lazy(() =>
 const SidebarSettingsTab = React.lazy(() =>
   import('./workspace-settings/SidebarSettingsTab').then((m) => ({ default: m.SidebarSettingsTab })),
 )
+const IntegrationsTab = React.lazy(() =>
+  import('./workspace-settings/IntegrationsTab').then((m) => ({ default: m.IntegrationsTab })),
+)
 
 export function WorkspaceSettingsPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -66,6 +70,7 @@ export function WorkspaceSettingsPage() {
     if (pathname.includes('/permissions')) return 'permissions'
     if (pathname.includes('/directories')) return 'directories'
     if (pathname.includes('/templates')) return 'templates'
+    if (pathname.includes('/integrations')) return 'integrations'
     if (pathname.includes('/digest')) return 'digest'
     if (pathname.includes('/sidebar')) return 'sidebar'
     if (pathname.includes('/trash')) return 'trash'
@@ -118,6 +123,11 @@ export function WorkspaceSettingsPage() {
                 Шаблоны
               </TabsTrigger>
               {permissions.isOwner && (
+                <TabsTrigger value="integrations" onClick={() => handleTabChange('integrations')}>
+                  Интеграции
+                </TabsTrigger>
+              )}
+              {permissions.isOwner && (
                 <TabsTrigger value="digest" onClick={() => handleTabChange('digest')}>
                   Дневник проекта
                 </TabsTrigger>
@@ -142,6 +152,7 @@ export function WorkspaceSettingsPage() {
             {activeTab === 'permissions' && <PermissionsTab />}
             {(activeTab === 'directories' || pathname.includes('/directories')) && <DirectoriesTab />}
             {(activeTab === 'templates' || pathname.includes('/templates')) && <TemplatesTab />}
+            {activeTab === 'integrations' && <IntegrationsTab />}
             {activeTab === 'digest' && <DigestSettingsTab />}
             {activeTab === 'sidebar' && <SidebarSettingsTab />}
             {activeTab === 'trash' && <TrashTab />}
