@@ -122,9 +122,8 @@ export function ProjectTabsContent({
       {/* Вкладка "Настройки" */}
       {activeTab === 'settings' && modules.settings && (
         <div className="space-y-6 mt-2">
-          {/* Секция «Основное» */}
-          <div className="max-w-3xl rounded-lg border p-6">
-            <h3 className="text-base font-semibold mb-4">Основное</h3>
+          {/* Компактная строка свойств проекта (без обёртки и заголовка) */}
+          <div className="max-w-3xl">
             <ProjectSettingsSection
               project={project}
               templateName={templateName}

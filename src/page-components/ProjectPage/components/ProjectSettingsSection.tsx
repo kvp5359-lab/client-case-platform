@@ -55,30 +55,19 @@ export function ProjectSettingsSection({
   }
 
   return (
-    <div className="grid grid-cols-[140px_1fr] gap-y-4 items-center text-sm">
-      {/* Статус */}
-      <label className="font-medium text-muted-foreground">Статус</label>
-      <div>
+    <div className="space-y-4 text-sm">
+      {/* Компактная строка под вкладками: статус, дедлайн, шаблон без подписей */}
+      <div className="flex flex-wrap items-center gap-3">
         <ProjectStatusSelector
           project={project}
           onStatusChange={onStatusChange}
           disabled={!canEditProjectInfo}
         />
-      </div>
-
-      {/* Дедлайн */}
-      <label className="font-medium text-muted-foreground">Дедлайн</label>
-      <div>
         <ProjectDeadlinePicker
           project={project}
           onDeadlineChange={onDeadlineChange}
           disabled={!canEditProjectInfo}
         />
-      </div>
-
-      {/* Шаблон */}
-      <label className="font-medium text-muted-foreground">Шаблон</label>
-      <div>
         {canEditProjectInfo && templates.length > 0 ? (
           <Select
             value={project.template_id ?? 'none'}
@@ -98,26 +87,23 @@ export function ProjectSettingsSection({
             </SelectContent>
           </Select>
         ) : templateName ? (
-          <span>{templateName}</span>
+          <span className="text-muted-foreground">{templateName}</span>
         ) : (
           <span className="text-muted-foreground">Без шаблона</span>
         )}
       </div>
 
-      {/* Описание */}
-      <label className="font-medium text-muted-foreground self-start pt-2">Описание</label>
-      <div>
-        <Textarea
-          ref={textareaRef}
-          key={project.description ?? ''}
-          defaultValue={project.description || ''}
-          onBlur={handleDescriptionBlur}
-          placeholder="Описание проекта..."
-          rows={3}
-          disabled={!canEditProjectInfo}
-          className="resize-none"
-        />
-      </div>
+      {/* Описание — отдельным блоком ниже */}
+      <Textarea
+        ref={textareaRef}
+        key={project.description ?? ''}
+        defaultValue={project.description || ''}
+        onBlur={handleDescriptionBlur}
+        placeholder="Описание проекта..."
+        rows={3}
+        disabled={!canEditProjectInfo}
+        className="resize-none"
+      />
     </div>
   )
 }
