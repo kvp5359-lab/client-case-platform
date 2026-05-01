@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ProjectStatusSelector } from './ProjectStatusSelector'
+import { ProjectStatusPopover } from '@/components/projects/ProjectStatusPopover'
 import { ProjectDeadlinePicker } from './ProjectDeadlinePicker'
 import type { Project } from '../types'
 
@@ -57,24 +57,33 @@ export function ProjectSettingsSection({
   return (
     <div className="space-y-4 text-sm">
       {/* Компактная строка под вкладками: статус, дедлайн, шаблон без подписей */}
-      <div className="flex flex-wrap items-center gap-3">
-        <ProjectStatusSelector
-          project={project}
-          onStatusChange={onStatusChange}
-          disabled={!canEditProjectInfo}
-        />
-        <ProjectDeadlinePicker
-          project={project}
-          onDeadlineChange={onDeadlineChange}
-          disabled={!canEditProjectInfo}
-        />
+      <div className="flex flex-wrap items-stretch gap-2">
+        {/* Статус — тот же стиль, что и в шапке проекта */}
+        <div className="h-8 inline-flex items-center">
+          <ProjectStatusPopover
+            workspaceId={project.workspace_id}
+            projectTemplateId={project.template_id}
+            currentStatusId={project.status_id ?? null}
+            onChange={onStatusChange}
+            disabled={!canEditProjectInfo}
+          />
+        </div>
+        {/* Дедлайн — оборачиваем в контур, фиксируем высоту */}
+        <div className="h-8 inline-flex items-center px-2 rounded-md border bg-background">
+          <ProjectDeadlinePicker
+            project={project}
+            onDeadlineChange={onDeadlineChange}
+            disabled={!canEditProjectInfo}
+          />
+        </div>
+        {/* Шаблон */}
         {canEditProjectInfo && templates.length > 0 ? (
           <Select
             value={project.template_id ?? 'none'}
             onValueChange={(value) => onTemplateChange(value === 'none' ? null : value)}
             disabled={!canEditProjectInfo}
           >
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-[220px] h-8">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -86,10 +95,10 @@ export function ProjectSettingsSection({
               ))}
             </SelectContent>
           </Select>
-        ) : templateName ? (
-          <span className="text-muted-foreground">{templateName}</span>
         ) : (
-          <span className="text-muted-foreground">Без шаблона</span>
+          <div className="h-8 inline-flex items-center px-2 rounded-md border text-muted-foreground bg-background">
+            {templateName ?? 'Без шаблона'}
+          </div>
         )}
       </div>
 
