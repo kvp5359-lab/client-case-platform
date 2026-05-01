@@ -16,6 +16,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ArrowLeft, Pencil, Check, X } from 'lucide-react'
 import {
   useProjectTemplateData,
@@ -198,64 +199,73 @@ export function ProjectTemplateEditorPage() {
         </div>
 
         {/*
-          Двухколоночный layout 50/50: слева — модули проекта, справа —
-          настройки Google (корневая папка Drive, шаблон брифа Sheets).
-          На экранах <lg колонки складываются в одну.
+          Настройки шаблона разнесены на вкладки:
+          - Модули — какие разделы доступны в проектах этого типа
+          - Интеграции — корневая папка Drive и шаблон брифа Sheets
+          - Статусы — воронка статусов шаблона
+          - Поля — кастомные поля карточки проекта
         */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* Левая колонка — модули */}
-          <ModulesSection
-            workspaceId={workspaceId}
-            projectTemplateId={templateId}
-            enabledModules={template.enabled_modules || []}
-            linkedForms={linkedForms}
-            linkedDocKits={linkedDocKits}
-            linkedKnowledgeArticles={linkedKnowledgeArticles}
-            linkedKnowledgeGroups={linkedKnowledgeGroups}
-            onToggleModule={handleToggleModule}
-            onAddForms={dialogs.forms.open}
-            onAddDocKits={dialogs.docKits.open}
-            onAddKnowledge={dialogs.knowledge.open}
-            onRemoveForm={(id) =>
-              handleRemoveWithConfirm(
-                'Удалить шаблон анкеты?',
-                'Удалить этот шаблон анкеты из типа проекта?',
-                removeFormMutation.mutate,
-                id,
-              )
-            }
-            onRemoveDocKit={(id) =>
-              handleRemoveWithConfirm(
-                'Удалить шаблон набора документов?',
-                'Удалить этот шаблон набора документов из типа проекта?',
-                removeDocKitMutation.mutate,
-                id,
-              )
-            }
-            onRemoveKnowledgeArticle={(id) =>
-              handleRemoveWithConfirm(
-                'Удалить статью?',
-                'Удалить эту статью из типа проекта?',
-                removeKnowledgeArticleMutation.mutate,
-                id,
-              )
-            }
-            onRemoveKnowledgeGroup={(id) =>
-              handleRemoveWithConfirm(
-                'Удалить группу?',
-                'Удалить доступ ко всем статьям этой группы из типа проекта?',
-                removeKnowledgeGroupMutation.mutate,
-                id,
-              )
-            }
-            isRemovingForm={removeFormMutation.isPending}
-            isRemovingDocKit={removeDocKitMutation.isPending}
-            isRemovingKnowledgeArticle={removeKnowledgeArticleMutation.isPending}
-            isRemovingKnowledgeGroup={removeKnowledgeGroupMutation.isPending}
-          />
+        <Tabs defaultValue="modules" className="w-full">
+          <TabsList>
+            <TabsTrigger value="modules">Модули</TabsTrigger>
+            <TabsTrigger value="integrations">Интеграции</TabsTrigger>
+            <TabsTrigger value="statuses">Статусы</TabsTrigger>
+            <TabsTrigger value="fields">Поля</TabsTrigger>
+          </TabsList>
 
-          {/* Правая колонка — интеграции с Google */}
-          <div className="space-y-6">
+          <TabsContent value="modules" className="mt-4">
+            <ModulesSection
+              workspaceId={workspaceId}
+              projectTemplateId={templateId}
+              enabledModules={template.enabled_modules || []}
+              linkedForms={linkedForms}
+              linkedDocKits={linkedDocKits}
+              linkedKnowledgeArticles={linkedKnowledgeArticles}
+              linkedKnowledgeGroups={linkedKnowledgeGroups}
+              onToggleModule={handleToggleModule}
+              onAddForms={dialogs.forms.open}
+              onAddDocKits={dialogs.docKits.open}
+              onAddKnowledge={dialogs.knowledge.open}
+              onRemoveForm={(id) =>
+                handleRemoveWithConfirm(
+                  'Удалить шаблон анкеты?',
+                  'Удалить этот шаблон анкеты из типа проекта?',
+                  removeFormMutation.mutate,
+                  id,
+                )
+              }
+              onRemoveDocKit={(id) =>
+                handleRemoveWithConfirm(
+                  'Удалить шаблон набора документов?',
+                  'Удалить этот шаблон набора документов из типа проекта?',
+                  removeDocKitMutation.mutate,
+                  id,
+                )
+              }
+              onRemoveKnowledgeArticle={(id) =>
+                handleRemoveWithConfirm(
+                  'Удалить статью?',
+                  'Удалить эту статью из типа проекта?',
+                  removeKnowledgeArticleMutation.mutate,
+                  id,
+                )
+              }
+              onRemoveKnowledgeGroup={(id) =>
+                handleRemoveWithConfirm(
+                  'Удалить группу?',
+                  'Удалить доступ ко всем статьям этой группы из типа проекта?',
+                  removeKnowledgeGroupMutation.mutate,
+                  id,
+                )
+              }
+              isRemovingForm={removeFormMutation.isPending}
+              isRemovingDocKit={removeDocKitMutation.isPending}
+              isRemovingKnowledgeArticle={removeKnowledgeArticleMutation.isPending}
+              isRemovingKnowledgeGroup={removeKnowledgeGroupMutation.isPending}
+            />
+          </TabsContent>
+
+          <TabsContent value="integrations" className="mt-4 space-y-6">
             <RootFolderSection
               templateId={templateId}
               rootFolderId={template.root_folder_id}
@@ -266,24 +276,22 @@ export function ProjectTemplateEditorPage() {
               briefTemplateSheetId={template.brief_template_sheet_id}
               workspaceId={workspaceId}
             />
-          </div>
-        </div>
+          </TabsContent>
 
-        {/* Статусы шаблона проекта (наследуются проектами этого типа) */}
-        <div className="mt-6">
-          <ProjectTemplateStatusesSection
-            workspaceId={workspaceId}
-            projectTemplateId={templateId}
-          />
-        </div>
+          <TabsContent value="statuses" className="mt-4">
+            <ProjectTemplateStatusesSection
+              workspaceId={workspaceId}
+              projectTemplateId={templateId}
+            />
+          </TabsContent>
 
-        {/* Кастомные поля шаблона проекта */}
-        <div className="mt-6">
-          <ProjectTemplateFieldsSection
-            workspaceId={workspaceId}
-            projectTemplateId={templateId}
-          />
-        </div>
+          <TabsContent value="fields" className="mt-4">
+            <ProjectTemplateFieldsSection
+              workspaceId={workspaceId}
+              projectTemplateId={templateId}
+            />
+          </TabsContent>
+        </Tabs>
 
         {/* Диалоги добавления */}
         <AddTemplatesDialog
