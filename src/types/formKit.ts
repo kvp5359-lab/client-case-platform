@@ -41,6 +41,8 @@ export interface FieldOptions {
   maxLength?: number
   // Для select (значения хранятся отдельно, но могут быть и тут)
   values?: string[]
+  // Для directory_ref — id пользовательского справочника
+  ref_directory_id?: string
 }
 
 /**

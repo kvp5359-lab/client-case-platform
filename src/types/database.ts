@@ -6545,6 +6545,7 @@ export type Database = {
         | "composite"
         | "key-value-table"
         | "divider"
+        | "directory_ref"
       message_sender_type: "user" | "assistant" | "system"
       message_source:
         | "web"

@@ -29,6 +29,7 @@ import { FieldGroup } from '@/components/ui/field-group'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CompositeFieldEditor } from './CompositeFieldEditor'
 import { SelectOptionsEditor } from './SelectOptionsEditor'
+import { useCustomDirectories } from '@/hooks/custom-directories'
 import {
   FIELD_TYPES,
   TableColumnsEditor,
@@ -71,6 +72,8 @@ export function FieldDefinitionDialog({
     setMaxLength,
     tableColumns,
     setTableColumns,
+    refDirectoryId,
+    setRefDirectoryId,
     hasUnsavedCompositeChanges,
     setHasUnsavedCompositeChanges,
     existingField,
@@ -79,6 +82,8 @@ export function FieldDefinitionDialog({
     handleClose,
     isSaving,
   } = useFieldDefinitionForm({ open, field, onOpenChange, workspaceId })
+
+  const { directories } = useCustomDirectories()
 
   return (
     <Dialog
@@ -161,6 +166,31 @@ export function FieldDefinitionDialog({
                 onMinLengthChange={setMinLength}
                 onMaxLengthChange={setMaxLength}
               />
+            )}
+
+            {/* Выбор справочника-источника для directory_ref */}
+            {fieldType === 'directory_ref' && (
+              <FieldGroup label="Справочник-источник">
+                {directories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    В этой юрфирме пока нет справочников. Создайте справочник в разделе
+                    «Справочники», чтобы привязать к нему поле.
+                  </p>
+                ) : (
+                  <Select value={refDirectoryId} onValueChange={setRefDirectoryId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите справочник" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {directories.map((dir) => (
+                        <SelectItem key={dir.id} value={dir.id}>
+                          {dir.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </FieldGroup>
             )}
 
             {/* Вкладки */}

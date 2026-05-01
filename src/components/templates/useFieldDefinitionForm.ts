@@ -49,6 +49,9 @@ export function useFieldDefinitionForm({
   // Для key-value-table
   const [tableColumns, setTableColumns] = useState<TableColumn[]>(DEFAULT_TABLE_COLUMNS)
 
+  // Для directory_ref — id справочника-источника
+  const [refDirectoryId, setRefDirectoryId] = useState('')
+
   const queryClient = useQueryClient()
 
   const resetForm = () => {
@@ -62,6 +65,7 @@ export function useFieldDefinitionForm({
     setMinLength('')
     setMaxLength('')
     setTableColumns(DEFAULT_TABLE_COLUMNS)
+    setRefDirectoryId('')
   }
 
   // Заполнение формы при открытии или смене field
@@ -85,6 +89,12 @@ export function useFieldDefinitionForm({
         if (opts?.columns && opts.columns.length > 0) {
           setTableColumns(opts.columns)
         }
+      }
+
+      // Если это directory_ref — загружаем id справочника
+      if (field.field_type === 'directory_ref' && field.options) {
+        const opts = fromSupabaseJson<FieldOptions | null>(field.options)
+        setRefDirectoryId(opts?.ref_directory_id ?? '')
       }
 
       // Загружаем валидацию
@@ -120,6 +130,7 @@ export function useFieldDefinitionForm({
         step,
         minLength,
         maxLength,
+        refDirectoryId,
       })
 
       const existingField = field || savedField
@@ -182,6 +193,7 @@ export function useFieldDefinitionForm({
       step,
       minLength,
       maxLength,
+      refDirectoryId,
     })
 
     try {
@@ -246,6 +258,8 @@ export function useFieldDefinitionForm({
     setMaxLength,
     tableColumns,
     setTableColumns,
+    refDirectoryId,
+    setRefDirectoryId,
     hasUnsavedCompositeChanges,
     setHasUnsavedCompositeChanges,
     existingField,

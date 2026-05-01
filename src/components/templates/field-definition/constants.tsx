@@ -15,6 +15,7 @@ import {
   Layers,
   Minus,
   Table,
+  BookMarked,
 } from 'lucide-react'
 import type { FieldType } from '@/components/forms/types'
 
@@ -29,6 +30,7 @@ export const FIELD_TYPES: Array<{ value: FieldType; label: string; icon: React.R
   { value: 'url', label: 'URL ссылка', icon: <Link className="w-4 h-4" /> },
   { value: 'checkbox', label: 'Чекбокс', icon: <CheckSquare className="w-4 h-4" /> },
   { value: 'select', label: 'Список значений', icon: <List className="w-4 h-4" /> },
+  { value: 'directory_ref', label: 'Справочник', icon: <BookMarked className="w-4 h-4" /> },
   { value: 'composite', label: 'Составное поле', icon: <Layers className="w-4 h-4" /> },
   { value: 'key-value-table', label: 'Таблица', icon: <Table className="w-4 h-4" /> },
   { value: 'divider', label: 'Разделитель', icon: <Minus className="w-4 h-4" /> },
@@ -45,6 +47,7 @@ export const FIELD_TYPE_LABELS: Record<string, string> = {
   url: 'URL',
   checkbox: 'Чекбокс',
   select: 'Список значений',
+  directory_ref: 'Справочник',
   composite: 'Составное поле',
   'key-value-table': 'Таблица',
   divider: 'Разделитель',

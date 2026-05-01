@@ -16,6 +16,7 @@ interface PreparePayloadParams {
   step: string
   minLength: string
   maxLength: string
+  refDirectoryId: string
 }
 
 /**
@@ -25,6 +26,7 @@ export function prepareOptions(
   fieldType: FieldType,
   selectOptions: string,
   tableColumns: TableColumn[],
+  refDirectoryId: string,
 ): Record<string, unknown> | null {
   // Для select
   if (fieldType === 'select' && selectOptions.trim()) {
@@ -41,6 +43,11 @@ export function prepareOptions(
     return {
       columns: validColumns.length > 0 ? validColumns : DEFAULT_TABLE_COLUMNS,
     }
+  }
+
+  // Для directory_ref
+  if (fieldType === 'directory_ref' && refDirectoryId) {
+    return { ref_directory_id: refDirectoryId }
   }
 
   return null
@@ -91,13 +98,14 @@ export function prepareFieldPayload(params: PreparePayloadParams) {
     step,
     minLength,
     maxLength,
+    refDirectoryId,
   } = params
 
   return {
     name: name.trim(),
     field_type: fieldType,
     description: description.trim() || null,
-    options: prepareOptions(fieldType, selectOptions, tableColumns),
+    options: prepareOptions(fieldType, selectOptions, tableColumns, refDirectoryId),
     validation: prepareValidation(fieldType, minValue, maxValue, step, minLength, maxLength),
   }
 }
