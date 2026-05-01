@@ -18,7 +18,13 @@ function formatTime(sec: number) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentType }) {
+export function AudioAttachmentPlayer({
+  attachment,
+  isOwn = false,
+}: {
+  attachment: AttachmentType
+  isOwn?: boolean
+}) {
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [playing, setPlaying] = useState(false)
@@ -155,8 +161,20 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
   const voice = isVoice(attachment)
   const Icon = voice ? Mic : Music
 
+  const containerCls = isOwn
+    ? 'rounded-lg bg-white/15 border border-white/20 p-2'
+    : 'rounded-lg bg-background/50 border p-2'
+  const iconCls = isOwn ? 'text-white/80' : 'text-muted-foreground'
+  const subTextCls = isOwn ? 'text-white/70' : 'text-muted-foreground'
+  const subBtnCls = isOwn
+    ? 'text-white/70 hover:text-white'
+    : 'text-muted-foreground hover:text-foreground'
+  const progressBgCls = isOwn ? 'bg-white/25' : 'bg-muted'
+  const progressFillCls = isOwn ? 'bg-white' : 'bg-primary'
+  const hoverBtnCls = isOwn ? 'hover:bg-white/15' : 'hover:bg-muted/50'
+
   return (
-    <div className="rounded-lg bg-background/50 border p-2">
+    <div className={containerCls}>
       {audioUrl && <audio ref={audioRef} src={audioUrl} preload="metadata" />}
 
       <div className="flex items-center gap-2">
@@ -167,19 +185,19 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
               href={audioUrl ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="h-8 w-8 shrink-0 flex items-center justify-center rounded-md hover:bg-muted/50 transition-colors"
+              className={`h-8 w-8 shrink-0 flex items-center justify-center rounded-md ${hoverBtnCls} transition-colors`}
               title="Открыть в браузере"
             >
-              <Download className="h-4 w-4 text-muted-foreground" />
+              <Download className={`h-4 w-4 ${iconCls}`} />
             </a>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <Icon className={`h-3.5 w-3.5 ${iconCls} shrink-0`} />
                 <span className="text-xs font-medium truncate">
                   {voice ? 'Голосовое сообщение' : attachment.file_name}
                 </span>
               </div>
-              <span className="text-[10px] text-muted-foreground">
+              <span className={`text-[10px] ${subTextCls}`}>
                 Формат не поддерживается — откройте в браузере
               </span>
             </div>
@@ -190,7 +208,7 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0"
+              className={`h-8 w-8 shrink-0 ${isOwn ? 'text-white hover:bg-white/15 hover:text-white' : ''}`}
               onClick={togglePlay}
               disabled={loading || !audioUrl}
             >
@@ -206,36 +224,36 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
             {/* Progress + info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 mb-1">
-                <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <Icon className={`h-3.5 w-3.5 ${iconCls} shrink-0`} />
                 <span className="text-xs font-medium truncate">
                   {voice ? 'Голосовое сообщение' : attachment.file_name}
                 </span>
               </div>
 
               {/* Progress bar */}
-              <div className="h-1.5 rounded-full bg-muted cursor-pointer" onClick={handleSeek}>
+              <div className={`h-1.5 rounded-full ${progressBgCls} cursor-pointer`} onClick={handleSeek}>
                 <div
-                  className="h-full rounded-full bg-primary transition-[width] duration-100"
+                  className={`h-full rounded-full ${progressFillCls} transition-[width] duration-100`}
                   style={{ width: `${progress * 100}%` }}
                 />
               </div>
 
               <div className="flex items-center justify-between mt-0.5">
-                <span className="text-[10px] text-muted-foreground">
+                <span className={`text-[10px] ${subTextCls}`}>
                   {formatTime(audioRef.current?.currentTime ?? 0)}
                   {duration ? ` / ${formatTime(duration)}` : ''}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors leading-none"
+                    className={`text-[10px] font-medium ${subBtnCls} transition-colors leading-none`}
                     onClick={cycleRate}
                     title="Скорость воспроизведения"
                   >
                     {playbackRate}x
                   </button>
                   {attachment.file_size && (
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className={`text-[10px] ${subTextCls}`}>
                       {formatSize(attachment.file_size)}
                     </span>
                   )}
@@ -250,7 +268,7 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0"
+            className={`h-7 w-7 shrink-0 ${isOwn ? 'text-white hover:bg-white/15 hover:text-white' : ''}`}
             onClick={handleTranscribe}
             disabled={transcribing}
             title="Распознать текст"
@@ -264,14 +282,14 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
         ) : (
           <button
             type="button"
-            className="h-7 w-7 shrink-0 flex items-center justify-center rounded-md hover:bg-muted/50 transition-colors"
+            className={`h-7 w-7 shrink-0 flex items-center justify-center rounded-md ${hoverBtnCls} transition-colors`}
             onClick={() => setTranscriptionOpen(!transcriptionOpen)}
             title={transcriptionOpen ? 'Свернуть' : 'Показать текст'}
           >
             {transcriptionOpen ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              <ChevronUp className={`h-4 w-4 ${iconCls}`} />
             ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              <ChevronDown className={`h-4 w-4 ${iconCls}`} />
             )}
           </button>
         )}
@@ -279,7 +297,7 @@ export function AudioAttachmentPlayer({ attachment }: { attachment: AttachmentTy
 
       {/* Transcription text */}
       {transcription && transcriptionOpen && (
-        <div className="mt-1.5 px-1 py-1 text-xs text-muted-foreground bg-muted/30 rounded leading-relaxed">
+        <div className={`mt-1.5 px-1 py-1 text-xs rounded leading-relaxed ${isOwn ? 'text-white/85 bg-white/10' : 'text-muted-foreground bg-muted/30'}`}>
           {transcription}
         </div>
       )}

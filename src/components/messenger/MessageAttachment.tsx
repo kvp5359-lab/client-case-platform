@@ -71,7 +71,7 @@ export function MessageAttachments({
       {audios.length > 0 && (
         <div className="space-y-1 mt-1.5">
           {audios.map((att) => (
-            <AudioAttachmentPlayer key={att.id} attachment={att} />
+            <AudioAttachmentPlayer key={att.id} attachment={att} isOwn={isOwn} />
           ))}
         </div>
       )}
