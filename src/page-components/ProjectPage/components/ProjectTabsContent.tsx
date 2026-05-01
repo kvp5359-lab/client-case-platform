@@ -13,6 +13,7 @@ import { Loader2 } from 'lucide-react'
 import { ProjectParticipants } from '@/components/projects/ProjectParticipants'
 import { GoogleDriveSection } from './GoogleDriveSection'
 import { ProjectSettingsSection } from './ProjectSettingsSection'
+import { ProjectFieldsSection } from './ProjectFieldsSection'
 import type { Project } from '../types'
 import type { UseDialogReturn } from '@/hooks/shared/useDialog'
 import type { FormKit } from '@/hooks/useFormKitsQuery'
@@ -135,6 +136,13 @@ export function ProjectTabsContent({
               onTemplateChange={onTemplateChange}
             />
           </div>
+
+          {/* Секция «Поля» — кастомные поля шаблона проекта */}
+          <ProjectFieldsSection
+            projectId={projectId}
+            templateId={project.template_id}
+            disabled={!canEditProjectInfo}
+          />
 
           {/* Секция «Интеграции» */}
           <div className="max-w-3xl rounded-lg border p-6">

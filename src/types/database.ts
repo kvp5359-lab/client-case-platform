@@ -3725,6 +3725,48 @@ export type Database = {
           },
         ]
       }
+      project_field_values: {
+        Row: {
+          created_at: string
+          field_definition_id: string
+          id: string
+          project_id: string
+          updated_at: string
+          value: Json | null
+        }
+        Insert: {
+          created_at?: string
+          field_definition_id: string
+          id?: string
+          project_id: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Update: {
+          created_at?: string
+          field_definition_id?: string
+          id?: string
+          project_id?: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_field_values_field_definition_id_fkey"
+            columns: ["field_definition_id"]
+            isOneToOne: false
+            referencedRelation: "field_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_field_values_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_digests: {
         Row: {
           content: string
