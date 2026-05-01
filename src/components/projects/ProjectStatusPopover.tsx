@@ -18,6 +18,11 @@ interface ProjectStatusPopoverProps {
   currentStatusId: string | null
   onChange: (statusId: string) => void
   disabled?: boolean
+  /**
+   * Размер триггера. По умолчанию — компактный пилл (для шапки и списков).
+   * `md` — высота 32px, чтобы выровнять со стандартными h-8 инпутами.
+   */
+  size?: 'sm' | 'md'
 }
 
 export function ProjectStatusPopover({
@@ -26,7 +31,10 @@ export function ProjectStatusPopover({
   currentStatusId,
   onChange,
   disabled,
+  size = 'sm',
 }: ProjectStatusPopoverProps) {
+  const sizeCls =
+    size === 'md' ? 'text-sm h-8 px-3' : 'text-[11px] px-2 py-0.5'
   const [open, setOpen] = useState(false)
   const { data: statuses = [] } = useProjectStatusesForTemplate(workspaceId, projectTemplateId)
   // Без fallback на statuses[0]: когда currentStatusId=null, проект реально
@@ -37,7 +45,12 @@ export function ProjectStatusPopover({
   // Если у шаблона нет статусов — выбирать нечего, неинтерактивный span.
   if (statuses.length === 0) {
     return (
-      <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-md border shrink-0 text-muted-foreground/60">
+      <span
+        className={cn(
+          'inline-flex items-center rounded-md border shrink-0 text-muted-foreground/60',
+          sizeCls,
+        )}
+      >
         —
       </span>
     )
@@ -49,7 +62,8 @@ export function ProjectStatusPopover({
       disabled={disabled}
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        'inline-flex items-center text-[11px] px-2 py-0.5 rounded-md border shrink-0 transition-opacity hover:opacity-80',
+        'inline-flex items-center rounded-md border shrink-0 transition-opacity hover:opacity-80',
+        sizeCls,
         disabled && 'cursor-not-allowed opacity-60',
       )}
       style={{
@@ -66,7 +80,8 @@ export function ProjectStatusPopover({
       disabled={disabled}
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        'inline-flex items-center text-[11px] px-2 py-0.5 rounded-md border border-dashed shrink-0 text-muted-foreground/70 hover:text-foreground hover:border-solid transition-colors',
+        'inline-flex items-center rounded-md border border-dashed shrink-0 text-muted-foreground/70 hover:text-foreground hover:border-solid transition-colors',
+        sizeCls,
         disabled && 'cursor-not-allowed opacity-60',
       )}
     >

@@ -58,18 +58,17 @@ export function ProjectSettingsSection({
     <div className="space-y-4 text-sm">
       {/* Компактная строка под вкладками: статус, дедлайн, шаблон без подписей */}
       <div className="flex flex-wrap items-stretch gap-2">
-        {/* Статус — тот же стиль, что и в шапке проекта */}
-        <div className="h-8 inline-flex items-center">
-          <ProjectStatusPopover
-            workspaceId={project.workspace_id}
-            projectTemplateId={project.template_id}
-            currentStatusId={project.status_id ?? null}
-            onChange={onStatusChange}
-            disabled={!canEditProjectInfo}
-          />
-        </div>
-        {/* Дедлайн — оборачиваем в контур, фиксируем высоту */}
-        <div className="h-8 inline-flex items-center px-2 rounded-md border bg-background">
+        {/* Статус — тот же стиль, что и в шапке проекта (только высотой h-8) */}
+        <ProjectStatusPopover
+          workspaceId={project.workspace_id}
+          projectTemplateId={project.template_id}
+          currentStatusId={project.status_id ?? null}
+          onChange={onStatusChange}
+          disabled={!canEditProjectInfo}
+          size="md"
+        />
+        {/* Дедлайн — оборачиваем в контур, узкий блок под формат даты */}
+        <div className="h-8 w-[150px] inline-flex items-center px-2 rounded-md border bg-background">
           <ProjectDeadlinePicker
             project={project}
             onDeadlineChange={onDeadlineChange}
