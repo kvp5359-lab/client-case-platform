@@ -20,12 +20,14 @@ interface UseFieldDefinitionFormParams {
   open: boolean
   field: FieldDefinition | null
   onOpenChange: (open: boolean) => void
+  workspaceId: string
 }
 
 export function useFieldDefinitionForm({
   open,
   field,
   onOpenChange,
+  workspaceId,
 }: UseFieldDefinitionFormParams) {
   const [name, setName] = useState('')
   const [fieldType, setFieldType] = useState<FieldType>('text')
@@ -128,12 +130,15 @@ export function useFieldDefinitionForm({
           .eq('id', existingField.id)
         if (error) throw error
       } else {
-        const { error } = await supabase.from('field_definitions').insert(payload as never)
+        const { error } = await supabase
+          .from('field_definitions')
+          .insert({ ...payload, workspace_id: workspaceId } as never)
         if (error) throw error
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fieldDefinitionKeys.all })
+      queryClient.invalidateQueries({ queryKey: fieldDefinitionKeys.byWorkspace(workspaceId) })
       onOpenChange(false)
     },
     onError: (error) => {
@@ -188,12 +193,21 @@ export function useFieldDefinitionForm({
           .eq('id', existingField.id)
         if (error) throw error
         await queryClient.invalidateQueries({ queryKey: fieldDefinitionKeys.all })
+        await queryClient.invalidateQueries({
+          queryKey: fieldDefinitionKeys.byWorkspace(workspaceId),
+        })
       } else {
-        const { data, error } = await supabase.from('field_definitions').insert(payload as never).select()
+        const { data, error } = await supabase
+          .from('field_definitions')
+          .insert({ ...payload, workspace_id: workspaceId } as never)
+          .select()
         if (error) throw error
         if (data && data.length > 0) {
           setSavedField(data[0] as FieldDefinition)
           await queryClient.invalidateQueries({ queryKey: fieldDefinitionKeys.all })
+          await queryClient.invalidateQueries({
+            queryKey: fieldDefinitionKeys.byWorkspace(workspaceId),
+          })
         }
       }
       setHasUnsavedCompositeChanges(false)

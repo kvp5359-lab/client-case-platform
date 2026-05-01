@@ -1852,6 +1852,7 @@ export type Database = {
           placeholder: string | null
           updated_at: string
           validation: Json | null
+          workspace_id: string
         }
         Insert: {
           created_at?: string
@@ -1864,6 +1865,7 @@ export type Database = {
           placeholder?: string | null
           updated_at?: string
           validation?: Json | null
+          workspace_id: string
         }
         Update: {
           created_at?: string
@@ -1876,8 +1878,17 @@ export type Database = {
           placeholder?: string | null
           updated_at?: string
           validation?: Json | null
+          workspace_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "field_definitions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       files: {
         Row: {

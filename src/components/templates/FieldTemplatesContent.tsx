@@ -34,7 +34,11 @@ const FIELD_TYPE_COLORS: Record<string, string> = {
   select: 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400',
 }
 
-export function FieldTemplatesContent() {
+interface FieldTemplatesContentProps {
+  workspaceId: string
+}
+
+export function FieldTemplatesContent({ workspaceId }: FieldTemplatesContentProps) {
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -44,13 +48,14 @@ export function FieldTemplatesContent() {
 
   const queryClient = useQueryClient()
 
-  // Загрузка полей
+  // Загрузка полей текущей юрфирмы
   const { data: fields = [], isLoading } = useQuery({
-    queryKey: fieldDefinitionKeys.all,
+    queryKey: fieldDefinitionKeys.byWorkspace(workspaceId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('field_definitions')
         .select('*')
+        .eq('workspace_id', workspaceId)
         .order('name', { ascending: true })
 
       if (error) throw error
@@ -67,6 +72,7 @@ export function FieldTemplatesContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fieldDefinitionKeys.all })
+      queryClient.invalidateQueries({ queryKey: fieldDefinitionKeys.byWorkspace(workspaceId) })
     },
     onError: () => {
       toast.error('Не удалось удалить поле')
@@ -217,6 +223,7 @@ export function FieldTemplatesContent() {
           if (!open) handleDialogClose()
         }}
         field={editingField}
+        workspaceId={workspaceId}
       />
 
       <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />

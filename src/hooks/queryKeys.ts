@@ -455,6 +455,8 @@ export const knowledgeListKeys = {
  */
 export const fieldDefinitionKeys = {
   all: ['field-definitions'] as const,
+  byWorkspace: (workspaceId: string | undefined) =>
+    ['field-definitions', workspaceId] as const,
   byIds: (ids: string[]) => ['field-definitions-by-ids', ids] as const,
   selectOptions: (fieldId: string | undefined) =>
     ['field-definition-select-options', fieldId] as const,

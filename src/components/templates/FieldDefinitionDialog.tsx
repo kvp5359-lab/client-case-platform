@@ -41,9 +41,15 @@ interface FieldDefinitionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   field: FieldDefinition | null
+  workspaceId: string
 }
 
-export function FieldDefinitionDialog({ open, onOpenChange, field }: FieldDefinitionDialogProps) {
+export function FieldDefinitionDialog({
+  open,
+  onOpenChange,
+  field,
+  workspaceId,
+}: FieldDefinitionDialogProps) {
   const {
     name,
     setName,
@@ -72,7 +78,7 @@ export function FieldDefinitionDialog({ open, onOpenChange, field }: FieldDefini
     handleSaveWithoutClose,
     handleClose,
     isSaving,
-  } = useFieldDefinitionForm({ open, field, onOpenChange })
+  } = useFieldDefinitionForm({ open, field, onOpenChange, workspaceId })
 
   return (
     <Dialog

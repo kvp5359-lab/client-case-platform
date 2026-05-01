@@ -177,7 +177,7 @@ export function TemplatesTab() {
       <div className="flex-1 min-w-0 p-6 overflow-hidden">
         {activeSection === 'project-templates' && <ProjectTemplatesContent />}
         {activeSection === 'form-templates' && <FormTemplatesContent />}
-        {activeSection === 'field-templates' && <FieldTemplatesContent />}
+        {activeSection === 'field-templates' && <FieldTemplatesContent workspaceId={workspaceId} />}
         {activeSection === 'document-kit-templates' && <DocumentKitTemplatesContent />}
         {activeSection === 'folder-templates' && <FolderTemplatesContent />}
         {activeSection === 'slot-templates' && <SlotTemplatesContent />}
