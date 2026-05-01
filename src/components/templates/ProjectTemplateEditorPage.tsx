@@ -25,6 +25,7 @@ import {
   AddKnowledgeDialog,
   ModulesSection,
   ProjectTemplateStatusesSection,
+  ProjectTemplateFieldsSection,
 } from './project-template-editor'
 import { BriefTemplateSection } from './project-template-editor/BriefTemplateSection'
 import { RootFolderSection } from './project-template-editor/RootFolderSection'
@@ -271,6 +272,14 @@ export function ProjectTemplateEditorPage() {
         {/* Статусы шаблона проекта (наследуются проектами этого типа) */}
         <div className="mt-6">
           <ProjectTemplateStatusesSection
+            workspaceId={workspaceId}
+            projectTemplateId={templateId}
+          />
+        </div>
+
+        {/* Кастомные поля шаблона проекта */}
+        <div className="mt-6">
+          <ProjectTemplateFieldsSection
             workspaceId={workspaceId}
             projectTemplateId={templateId}
           />

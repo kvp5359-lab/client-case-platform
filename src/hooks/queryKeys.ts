@@ -397,6 +397,9 @@ export const projectTemplateKeys = {
   /** Привязанные к шаблону knowledge-groups. */
   knowledgeGroups: (templateId: string | undefined) =>
     ['knowledge-group-templates', templateId] as const,
+  /** Привязанные к шаблону кастомные поля (через project_template_field_links). */
+  fieldLinks: (templateId: string | undefined) =>
+    ['project-template-field-links', templateId] as const,
 }
 
 /**

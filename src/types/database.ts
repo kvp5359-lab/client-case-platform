@@ -4295,6 +4295,48 @@ export type Database = {
           },
         ]
       }
+      project_template_field_links: {
+        Row: {
+          created_at: string
+          field_definition_id: string
+          id: string
+          is_required: boolean
+          order_index: number
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          field_definition_id: string
+          id?: string
+          is_required?: boolean
+          order_index?: number
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          field_definition_id?: string
+          id?: string
+          is_required?: boolean
+          order_index?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_template_field_links_field_definition_id_fkey"
+            columns: ["field_definition_id"]
+            isOneToOne: false
+            referencedRelation: "field_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_template_field_links_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "project_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_template_forms: {
         Row: {
           created_at: string
