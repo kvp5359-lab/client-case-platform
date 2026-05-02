@@ -442,6 +442,38 @@ Deno.serve(async (req: Request) => {
       replyToDbId = replyMsg?.id ?? null;
     }
 
+    // Если событие пришло от личного бота, и секретарь уже успел вставить
+    // эту же входящую строку (без integration_id, без reply-связки), то
+    // вместо INSERT сольём в его строку: проставим integration_id и
+    // reply_to_message_id, чтобы остался один итоговый ряд с правильной
+    // связкой реплая. Это покрывает гонку «секретарь → личный бот».
+    if (asPersonalBot) {
+      const dedupSinceISO = new Date(Date.now() - 60_000).toISOString();
+      const dedupContent = text || "📎";
+      const { data: secRow } = await serviceClient
+        .from("project_messages")
+        .select("id, reply_to_message_id")
+        .eq("workspace_id", tgChat.workspace_id)
+        .eq("telegram_chat_id", chatId)
+        .eq("source", "telegram")
+        .eq("content", dedupContent)
+        .gte("created_at", dedupSinceISO)
+        .is("telegram_bot_integration_id", null)
+        .limit(1)
+        .maybeSingle();
+      if (secRow) {
+        await serviceClient
+          .from("project_messages")
+          .update({
+            telegram_bot_integration_id: asPersonalBot.integrationId,
+            telegram_message_id: telegramMessageId,
+            reply_to_message_id: replyToDbId ?? secRow.reply_to_message_id ?? null,
+          })
+          .eq("id", secRow.id);
+        return new Response("ok", { status: 200 });
+      }
+    }
+
     const { data: inserted } = await serviceClient
       .from("project_messages")
       .insert({
