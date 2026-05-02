@@ -13,8 +13,6 @@ import {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
-const TELEGRAM_WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET");
 
 /**
  * Транслитерация кириллицы и удаление небезопасных символов из имени файла.
@@ -190,8 +188,8 @@ function getServiceMessageText(message: TelegramMessage): string | null {
   return null;
 }
 
-async function sendTelegramMessage(chatId: number, text: string) {
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+async function sendTelegramMessage(token: string, chatId: number, text: string) {
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text }),
@@ -203,44 +201,44 @@ Deno.serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  if (!TELEGRAM_WEBHOOK_SECRET) {
-    console.error("TELEGRAM_WEBHOOK_SECRET is not configured");
+  // Webhook авторизуется по `secret_token` = id записи workspace_integrations.
+  // Под одним URL обслуживаются и секретари (telegram_workspace_bot), и личные
+  // боты сотрудников (telegram_employee_bot). При регистрации webhook'а у
+  // каждого бота через telegram-register-webhook secret_token = его integration.id.
+  const headerSecret = req.headers.get("x-telegram-bot-api-secret-token");
+  if (!headerSecret) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  const { data: integration } = await serviceClient
+    .from("workspace_integrations")
+    .select("id, type, workspace_id, config, secrets, is_active")
+    .eq("id", headerSecret)
+    .maybeSingle();
+  if (!integration || integration.is_active === false) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const integrationToken =
+    (integration.secrets as { token?: string } | null)?.token ?? "";
+  if (!integrationToken) {
     return new Response("Server configuration error", { status: 500 });
   }
-  const headerSecret = req.headers.get("x-telegram-bot-api-secret-token");
 
-  // Webhook теперь обслуживает не только бота-секретаря, но и личных ботов
-  // сотрудников. Различаем по secret_token:
-  //  - совпадает с TELEGRAM_WEBHOOK_SECRET → секретарь (старая логика)
-  //  - UUID активного workspace_integrations типа telegram_employee_bot →
-  //    личный бот; обрабатываем reply в его counter с телеграм-message-id.
-  let asPersonalBot: {
-    integrationId: string;
-    workspaceId: string;
-    botId: number | null;
-  } | null = null;
-  if (headerSecret !== TELEGRAM_WEBHOOK_SECRET) {
-    if (!headerSecret) return new Response("Unauthorized", { status: 401 });
-    const { data: integration } = await serviceClient
-      .from("workspace_integrations")
-      .select("id, type, workspace_id, config, is_active")
-      .eq("id", headerSecret)
-      .maybeSingle();
-    if (
-      !integration ||
-      integration.is_active === false ||
-      integration.type !== "telegram_employee_bot"
-    ) {
-      return new Response("Unauthorized", { status: 401 });
-    }
-    asPersonalBot = {
-      integrationId: integration.id as string,
-      workspaceId: integration.workspace_id as string,
-      botId:
-        ((integration.config as { bot_id?: number } | null)?.bot_id as number | undefined) ??
-        null,
-    };
-  }
+  // Контекст «это webhook личного бота» — нужно для дедупа и роутинга
+  // реплаев в его собственный counter. Для секретаря — null.
+  const asPersonalBot:
+    | { integrationId: string; workspaceId: string; botId: number | null }
+    | null =
+    integration.type === "telegram_employee_bot"
+      ? {
+          integrationId: integration.id as string,
+          workspaceId: integration.workspace_id as string,
+          botId:
+            ((integration.config as { bot_id?: number } | null)?.bot_id as
+              | number
+              | undefined) ?? null,
+        }
+      : null;
 
   try {
     const update = await req.json();
@@ -266,7 +264,7 @@ Deno.serve(async (req: Request) => {
       message.reply_to_message?.message_id ?? null;
 
     if (rawText.startsWith("/")) {
-      await handleCommand(chatId, rawText, message);
+      await handleCommand(integrationToken, chatId, rawText, message);
       return new Response("ok", { status: 200 });
     }
 
@@ -361,6 +359,7 @@ Deno.serve(async (req: Request) => {
         } else {
           senderParticipantId = newParticipant.id;
           downloadAndSaveTelegramAvatar(
+            integrationToken,
             telegramUserId,
             newParticipant.id,
             tgChat.workspace_id,
@@ -389,7 +388,7 @@ Deno.serve(async (req: Request) => {
     });
 
     if (sync.outcome === "inserted" && sync.rowId) {
-      await handleAttachments(message, sync.rowId, tgChat.workspace_id, tgChat.project_id);
+      await handleAttachments(integrationToken, message, sync.rowId, tgChat.workspace_id, tgChat.project_id);
     } else if (sync.outcome === "error") {
       console.error("[telegram-webhook] sync failed:", sync.error);
     }
@@ -402,12 +401,13 @@ Deno.serve(async (req: Request) => {
 });
 
 async function downloadAndSaveTelegramAvatar(
+  botToken: string,
   telegramUserId: number,
   participantId: string,
   workspaceId: string,
 ) {
   const photosRes = await fetch(
-    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUserProfilePhotos?user_id=${telegramUserId}&offset=0&limit=1`,
+    `https://api.telegram.org/bot${botToken}/getUserProfilePhotos?user_id=${telegramUserId}&offset=0&limit=1`,
   );
   const photosData = await photosRes.json();
 
@@ -423,12 +423,12 @@ async function downloadAndSaveTelegramAvatar(
   const photo = sizes[sizes.length - 1];
 
   const fileRes = await fetch(
-    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${photo.file_id}`,
+    `https://api.telegram.org/bot${botToken}/getFile?file_id=${photo.file_id}`,
   );
   const fileData = await fileRes.json();
   if (!fileData.ok || !fileData.result?.file_path) return;
 
-  const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileData.result.file_path}`;
+  const fileUrl = `https://api.telegram.org/file/bot${botToken}/${fileData.result.file_path}`;
   const downloadRes = await fetch(fileUrl);
   const blob = await downloadRes.blob();
 
@@ -455,13 +455,18 @@ async function downloadAndSaveTelegramAvatar(
     .eq("id", participantId);
 }
 
-async function handleCommand(chatId: number, text: string, message: TelegramMessage) {
+async function handleCommand(
+  botToken: string,
+  chatId: number,
+  text: string,
+  message: TelegramMessage,
+) {
   if (text.startsWith("/link ")) {
     const parts = text.split(" ").filter(Boolean);
     const code = parts[1]?.trim()?.toUpperCase();
 
     if (!code) {
-      await sendTelegramMessage(chatId, "Укажите код чата: /link КОД");
+      await sendTelegramMessage(botToken, chatId, "Укажите код чата: /link КОД");
       return;
     }
 
@@ -494,7 +499,7 @@ async function handleCommand(chatId: number, text: string, message: TelegramMess
         .maybeSingle();
 
       if (!project) {
-        await sendTelegramMessage(chatId, "Чат с таким кодом не найден.");
+        await sendTelegramMessage(botToken, chatId, "Чат с таким кодом не найден.");
         return;
       }
 
@@ -547,17 +552,18 @@ async function handleCommand(chatId: number, text: string, message: TelegramMess
       });
     }
 
-    await sendTelegramMessage(chatId, `Группа привязана к чату «${threadName}»!`);
+    await sendTelegramMessage(botToken, chatId, `Группа привязана к чату «${threadName}»!`);
 
     try {
-      const botId = TELEGRAM_BOT_TOKEN.split(":")[0];
+      const botId = botToken.split(":")[0];
       const res = await fetch(
-        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${botId}`,
+        `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${chatId}&user_id=${botId}`,
       );
       const data = await res.json();
       const status = data?.result?.status;
       if (status !== "administrator" && status !== "creator") {
         await sendTelegramMessage(
+          botToken,
           chatId,
           "⚠️ Для синхронизации реакций сделайте бота администратором группы.",
         );
@@ -578,12 +584,13 @@ async function handleCommand(chatId: number, text: string, message: TelegramMess
         .from("project_telegram_chats")
         .update({ is_active: false })
         .eq("id", tgChat.id);
-      await sendTelegramMessage(chatId, "Группа отвязана от проекта.");
+      await sendTelegramMessage(botToken, chatId, "Группа отвязана от проекта.");
     } else {
-      await sendTelegramMessage(chatId, "Эта группа не привязана ни к одному проекту.");
+      await sendTelegramMessage(botToken, chatId, "Эта группа не привязана ни к одному проекту.");
     }
   } else if (text === "/start") {
     await sendTelegramMessage(
+      botToken,
       chatId,
       "Привет! Я бот для связи с проектом.\n\n" +
         "Команды:\n" +
@@ -594,6 +601,7 @@ async function handleCommand(chatId: number, text: string, message: TelegramMess
 }
 
 async function handleAttachments(
+  botToken: string,
   message: TelegramMessage,
   messageId: string,
   workspaceId: string,
@@ -646,7 +654,7 @@ async function handleAttachments(
   for (const file of files) {
     try {
       const fileInfoRes = await fetch(
-        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${file.fileId}`,
+        `https://api.telegram.org/bot${botToken}/getFile?file_id=${file.fileId}`,
       );
       const fileInfo = await fileInfoRes.json();
 
@@ -655,7 +663,7 @@ async function handleAttachments(
         continue;
       }
 
-      const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileInfo.result.file_path}`;
+      const fileUrl = `https://api.telegram.org/file/bot${botToken}/${fileInfo.result.file_path}`;
       const fileRes = await fetch(fileUrl);
       const fileBuffer = await fileRes.arrayBuffer();
 

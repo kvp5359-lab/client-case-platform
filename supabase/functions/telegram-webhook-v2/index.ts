@@ -34,8 +34,11 @@ import { renderArticle } from "./tiptap.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN_V2")!;
-const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET_V2");
+// BOT_TOKEN раньше хранился в env. Теперь подгружается из workspace_integrations
+// в начале каждого запроса (по secret_token). v2 webhook обслуживает только
+// одного бота, поэтому модульная переменная безопасна (все параллельные
+// запросы используют один и тот же токен).
+let BOT_TOKEN = "";
 const BOT_VERSION = "v2";
 const PAGE_SIZE = 8;
 const MAX_FILE_SIZE_MB = 20;
@@ -242,13 +245,31 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
-  if (!WEBHOOK_SECRET) {
-    console.error("TELEGRAM_WEBHOOK_SECRET_V2 is not set");
-    return new Response("Server misconfigured", { status: 500 });
-  }
-  if (req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET) {
+
+  // Авторизация: secret_token = id записи workspace_integrations
+  // (того, кто настроил webhook через telegram-register-webhook).
+  // Подтягиваем оттуда же токен бота — env-переменных больше нет.
+  const headerSecret = req.headers.get("x-telegram-bot-api-secret-token");
+  if (!headerSecret) {
     return new Response("Unauthorized", { status: 401 });
   }
+  const { data: integration } = await service
+    .from("workspace_integrations")
+    .select("id, type, is_active, config, secrets")
+    .eq("id", headerSecret)
+    .maybeSingle();
+  if (
+    !integration ||
+    integration.is_active === false ||
+    integration.type !== "telegram_workspace_bot"
+  ) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  const tokenFromDb = (integration.secrets as { token?: string } | null)?.token;
+  if (!tokenFromDb) {
+    return new Response("Server misconfigured", { status: 500 });
+  }
+  BOT_TOKEN = tokenFromDb;
 
   try {
     const update = await req.json();
