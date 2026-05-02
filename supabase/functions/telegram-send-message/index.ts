@@ -138,8 +138,11 @@ Deno.serve(async (req: Request) => {
     const TELEGRAM_BOT_TOKEN = resolved.token;
     const isEmployeeBot = resolved.senderType === "employee_bot";
 
-    // Запоминаем, через какого бота отправили — нужно для edit/delete/reaction.
-    if (resolved.integrationId) {
+    // Стампим integration_id ТОЛЬКО для личного бота. Это поле обозначает
+    // «сообщение в counter этого бота», что важно только в basic-группах,
+    // где у каждого бота свой message_id. Секретарские сообщения остаются
+    // с null — webhook (тот же секретарь) ищет их по `.is(null)`.
+    if (isEmployeeBot && resolved.integrationId) {
       await serviceClient
         .from("project_messages")
         .update({ telegram_bot_integration_id: resolved.integrationId })
@@ -194,7 +197,7 @@ Deno.serve(async (req: Request) => {
 
       let q = serviceClient
         .from("project_messages")
-        .select("sender_name, source")
+        .select("sender_name, source, telegram_bot_integration_id")
         .eq("project_id", body.project_id)
         .neq("id", body.message_id)
         .gte("created_at", sixtyMinAgo);
@@ -216,7 +219,18 @@ Deno.serve(async (req: Request) => {
         .limit(1)
         .maybeSingle();
 
-      if (lastMsg && lastMsg.sender_name === body.sender_name && lastMsg.source === "web") {
+      // Скрываем префикс «Имя:» только если предыдущее сообщение было ТОЖЕ
+      // отправлено через секретаря (без integration_id). Если предыдущее
+      // ушло через личного бота — Telegram отрисовал его с другим именем
+      // и аватаркой, поэтому теперь нужно явно показать «Кирилл:».
+      const prevWasSecretary =
+        lastMsg && (lastMsg.telegram_bot_integration_id as string | null) == null;
+      if (
+        lastMsg &&
+        lastMsg.sender_name === body.sender_name &&
+        lastMsg.source === "web" &&
+        prevWasSecretary
+      ) {
         showSenderName = false;
       }
     }
