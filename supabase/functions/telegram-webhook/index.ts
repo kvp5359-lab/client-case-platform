@@ -6,6 +6,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { telegramEntitiesToHtml } from "../_shared/telegramEntitiesToHtml.ts";
+import {
+  syncTelegramIncomingMessage,
+  applyTelegramEdit,
+} from "../_shared/syncTelegramIncomingMessage.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -304,18 +308,12 @@ Deno.serve(async (req: Request) => {
       .join(" ");
 
     if (isEdited) {
-      let upd = serviceClient
-        .from("project_messages")
-        .update({ content: text || rawText, is_edited: true })
-        .eq("telegram_message_id", telegramMessageId)
-        .eq("telegram_chat_id", chatId);
-      // Скоупим UPDATE по integration_id, иначе у личного бота может быть
-      // та же пара (chat_id, message_id), что и у секретаря — обновили бы не ту строку.
-      upd = asPersonalBot
-        ? upd.eq("telegram_bot_integration_id", asPersonalBot.integrationId)
-        : upd.is("telegram_bot_integration_id", null);
-      await upd;
-
+      await applyTelegramEdit(serviceClient, {
+        chatId,
+        telegramMessageId,
+        newContent: text || rawText,
+        asPersonalBot,
+      });
       return new Response("ok", { status: 200 });
     }
 
@@ -375,101 +373,25 @@ Deno.serve(async (req: Request) => {
 
     const forwardInfo = getForwardInfo(message);
 
-    // Lookup исходника реплая. Для личного бота — в его собственном counter
-    // (по integration_id), для секретаря — без integration_id (там null).
-    let replyToDbId: string | null = null;
-    if (replyToTgMsgId) {
-      let q = serviceClient
-        .from("project_messages")
-        .select("id")
-        .eq("project_id", tgChat.project_id)
-        .eq("telegram_message_id", replyToTgMsgId);
-      q = asPersonalBot
-        ? q.eq("telegram_bot_integration_id", asPersonalBot.integrationId)
-        : q.is("telegram_bot_integration_id", null);
-      const { data: replyMsg } = await q.maybeSingle();
-      replyToDbId = replyMsg?.id ?? null;
-    }
+    const sync = await syncTelegramIncomingMessage(serviceClient, {
+      message,
+      binding: {
+        project_id: tgChat.project_id,
+        workspace_id: tgChat.workspace_id,
+        channel: tgChat.channel,
+        thread_id: tgChat.thread_id,
+      },
+      text,
+      senderName,
+      senderParticipantId,
+      forwardInfo,
+      asPersonalBot,
+    });
 
-    // Атомарный дедуп через уникальный индекс по (chat, sender_user_id,
-    // message_date). Telegram отдаёт эти три поля одинаково обоим ботам
-    // (секретарю и личному), поэтому одно физическое сообщение от
-    // человека не вставится дважды независимо от порядка прихода
-    // апдейтов и без эвристик по контенту/времени.
-    const messageDateISO = message.date
-      ? new Date((message.date as number) * 1000).toISOString()
-      : null;
-
-    const insertPayload = {
-      project_id: tgChat.project_id,
-      workspace_id: tgChat.workspace_id,
-      sender_participant_id: senderParticipantId,
-      sender_name: senderName,
-      sender_role: "Telegram",
-      content: text || "📎",
-      source: "telegram",
-      channel: tgChat.channel || "client",
-      thread_id: tgChat.thread_id ?? undefined,
-      telegram_message_id: telegramMessageId,
-      telegram_message_ids: [telegramMessageId],
-      telegram_chat_id: chatId,
-      telegram_sender_user_id: telegramUserId,
-      telegram_message_date: messageDateISO,
-      reply_to_message_id: replyToDbId,
-      forwarded_from_name: forwardInfo.name,
-      forwarded_date: forwardInfo.date,
-      // Личный бот стампит integration_id, чтобы edit/delete/reaction
-      // потом шли через его токен. Секретарь оставляет null.
-      telegram_bot_integration_id: asPersonalBot?.integrationId ?? null,
-    };
-
-    const insertResult = await serviceClient
-      .from("project_messages")
-      .insert(insertPayload)
-      .select("id")
-      .single();
-
-    if (insertResult.data) {
-      await handleAttachments(
-        message,
-        insertResult.data.id,
-        tgChat.workspace_id,
-        tgChat.project_id,
-      );
-      return new Response("ok", { status: 200 });
-    }
-
-    // Конфликт по uq_project_messages_telegram_dedup — другой webhook (секретарь
-    // или личный бот, в зависимости от того, кто пришёл первым) уже вставил
-    // эту строку. Догоним: проставим integration_id и reply_to_message_id,
-    // если они ещё не были заполнены. Используем `.is(...null)` чтобы не
-    // перетереть данные первого вставщика (он мог уже знать связку).
-    const isUniqueViolation =
-      typeof insertResult.error?.code === "string" &&
-      insertResult.error.code === "23505";
-    if (
-      isUniqueViolation &&
-      telegramUserId != null &&
-      messageDateISO &&
-      asPersonalBot
-    ) {
-      const enrich: Record<string, unknown> = {};
-      if (asPersonalBot.integrationId)
-        enrich.telegram_bot_integration_id = asPersonalBot.integrationId;
-      if (telegramMessageId) enrich.telegram_message_id = telegramMessageId;
-      if (replyToDbId) enrich.reply_to_message_id = replyToDbId;
-
-      // Только обновляем строки, у которых эти поля ещё не заполнены —
-      // личный бот «дописывает» секретарскую строку, но не наоборот.
-      await serviceClient
-        .from("project_messages")
-        .update(enrich)
-        .eq("telegram_chat_id", chatId)
-        .eq("telegram_sender_user_id", telegramUserId)
-        .eq("telegram_message_date", messageDateISO)
-        .is("telegram_bot_integration_id", null);
-    } else if (insertResult.error && !isUniqueViolation) {
-      console.error("[telegram-webhook] insert failed:", insertResult.error);
+    if (sync.outcome === "inserted" && sync.rowId) {
+      await handleAttachments(message, sync.rowId, tgChat.workspace_id, tgChat.project_id);
+    } else if (sync.outcome === "error") {
+      console.error("[telegram-webhook] sync failed:", sync.error);
     }
 
     return new Response("ok", { status: 200 });

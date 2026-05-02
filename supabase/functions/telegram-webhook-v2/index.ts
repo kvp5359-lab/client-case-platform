@@ -25,6 +25,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { telegramEntitiesToHtml } from "../_shared/telegramEntitiesToHtml.ts";
+import {
+  syncTelegramIncomingMessage,
+  applyTelegramEdit,
+} from "../_shared/syncTelegramIncomingMessage.ts";
 import { decode as decodeCb, encode as encodeCb, CallbackAction } from "./callback-data.ts";
 import { renderArticle } from "./tiptap.ts";
 
@@ -348,11 +352,12 @@ async function syncGroupMessage(msg: TgMessage, binding: TgChatBinding, isEdited
 
   // Правка существующего сообщения
   if (isEdited) {
-    await service
-      .from("project_messages")
-      .update({ content: text || rawText, is_edited: true })
-      .eq("telegram_message_id", telegramMessageId)
-      .eq("telegram_chat_id", chatId);
+    await applyTelegramEdit(service, {
+      chatId,
+      telegramMessageId,
+      newContent: text || rawText,
+      asPersonalBot: null,
+    });
     return;
   }
 
@@ -361,68 +366,24 @@ async function syncGroupMessage(msg: TgMessage, binding: TgChatBinding, isEdited
     ? await findOrCreateParticipant(binding.workspace_id, msg.from)
     : null;
 
-  // Дедупликация: для входящих от человека полагаемся на уникальный
-  // индекс uq_project_messages_telegram_dedup по
-  // (chat, sender_user_id, message_date). Это защищает от дубликатов в
-  // basic-группе, где секретарь и личный бот сотрудника видят одно
-  // физическое сообщение каждый в своём message_id-counter.
-  // Старая дедупликация по (chat, message_id) тут ненадёжна — идёт ниже
-  // как fallback для случая, когда секретарь получит апдейт повторно.
-  const { data: existing } = await service
-    .from("project_messages")
-    .select("id")
-    .eq("telegram_message_id", telegramMessageId)
-    .eq("telegram_chat_id", chatId)
-    .is("telegram_bot_integration_id", null)
-    .maybeSingle();
-  if (existing) return;
-
-  // Reply resolution. Секретарь видит только свой counter, поэтому ищем
-  // сообщения без integration_id (тоже секретарские).
-  let replyToDbId: string | null = null;
-  if (replyToTgMsgId) {
-    const { data: replyMsg } = await service
-      .from("project_messages")
-      .select("id")
-      .eq("project_id", binding.project_id)
-      .eq("telegram_message_id", replyToTgMsgId)
-      .is("telegram_bot_integration_id", null)
-      .maybeSingle();
-    replyToDbId = replyMsg?.id ?? null;
-  }
-
+  // Используем общий хелпер дедупа/вставки. Там — атомарный INSERT с
+  // unique-индексом по (chat, sender_user_id, message_date) +
+  // догоняющий enrich, если другой webhook успел вставить первым.
   const forward = extractForward(msg);
 
-  const messageDateISO = msg.date
-    ? new Date(msg.date * 1000).toISOString()
-    : null;
+  const sync = await syncTelegramIncomingMessage(service, {
+    message: msg,
+    binding,
+    text,
+    senderName: formatUserName(msg.from),
+    senderParticipantId,
+    forwardInfo: forward,
+    asPersonalBot: null, // v2 webhook всегда секретарский
+  });
 
-  // INSERT через атомарный unique-индекс. Если личный бот уже вставил
-  // эту строку — получим conflict (23505), просто игнорируем.
-  const { data: inserted, error: insertError } = await service
-    .from("project_messages")
-    .insert({
-      project_id: binding.project_id,
-      workspace_id: binding.workspace_id,
-      sender_participant_id: senderParticipantId,
-      sender_name: formatUserName(msg.from),
-      sender_role: "Telegram",
-      content: text || "📎",
-      source: "telegram",
-      channel: binding.channel || "client",
-      thread_id: binding.thread_id ?? undefined,
-      telegram_message_id: telegramMessageId,
-      telegram_chat_id: chatId,
-      telegram_sender_user_id: msg.from?.id ?? null,
-      telegram_message_date: messageDateISO,
-      reply_to_message_id: replyToDbId,
-      forwarded_from_name: forward.name,
-      forwarded_date: forward.date,
-    })
-    .select("id")
-    .single();
-  if (insertError && insertError.code !== "23505") {
-    console.error("[telegram-webhook-v2] insert error:", insertError);
+  const inserted = sync.rowId ? { id: sync.rowId } : null;
+  if (sync.outcome === "error") {
+    console.error("[telegram-webhook-v2] sync failed:", sync.error);
   }
 
   if (inserted) {

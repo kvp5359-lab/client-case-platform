@@ -256,7 +256,7 @@ Deno.serve(async (req: Request) => {
         };
       }
 
-      const tgResponse = await fetch(
+      let tgResponse = await fetch(
         `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
         {
           method: "POST",
@@ -264,8 +264,40 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify(payload),
         },
       );
+      let tgData = await tgResponse.json();
+      let activeToken = TELEGRAM_BOT_TOKEN;
+      let activeIntegrationId = resolved.integrationId;
 
-      const tgData = await tgResponse.json();
+      // Fallback: если личный бот не смог отправить (например, его нет
+      // в этом чате — Telegram возвращает "bot is not a member of the
+      // group chat"), переотправляем через бота-секретаря с приставкой
+      // «(Имя):» в тексте. Сохраняем диагностику.
+      if (!tgData.ok && isEmployeeBot) {
+        console.warn(
+          "[telegram-send-message] employee bot send failed, falling back to secretary:",
+          tgData.description,
+        );
+        const fallback = await resolveBotToken(serviceClient, body.telegram_chat_id);
+        const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`;
+        const secretaryPayload = { ...payload, text: secretaryFormatted };
+        tgResponse = await fetch(
+          `https://api.telegram.org/bot${fallback.token}/sendMessage`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(secretaryPayload),
+          },
+        );
+        tgData = await tgResponse.json();
+        activeToken = fallback.token;
+        // Секретарь отправил → integration_id личного бота больше не актуален,
+        // снимаем стамп, чтобы edit/delete/reaction роутились по секретарю.
+        activeIntegrationId = null;
+        await serviceClient
+          .from("project_messages")
+          .update({ telegram_bot_integration_id: null })
+          .eq("id", body.message_id);
+      }
 
       if (tgData.ok && tgData.result?.message_id) {
         await serviceClient
@@ -278,6 +310,10 @@ Deno.serve(async (req: Request) => {
       } else {
         console.error("Telegram API error:", tgData);
       }
+
+      // (только для устранения unused-warn'ов)
+      void activeToken;
+      void activeIntegrationId;
     }
 
     if (body.attachments_only && body.message_id) {

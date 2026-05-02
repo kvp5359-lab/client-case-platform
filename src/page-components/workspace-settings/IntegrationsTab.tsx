@@ -110,7 +110,14 @@ export function IntegrationsTab() {
   })
 
   const workspaceBots = useMemo(
-    () => integrations.filter((i) => i.type === 'telegram_workspace_bot'),
+    () =>
+      integrations.filter(
+        (i) =>
+          i.type === 'telegram_workspace_bot' &&
+          // v1-бот скрыт из UI: он остаётся в БД для обслуживания legacy-групп,
+          // но новый секретарь у воркспейса один — v2.
+          i.config.bot_version !== 'v1',
+      ),
     [integrations],
   )
   const employeeBots = useMemo(
@@ -579,35 +586,20 @@ function BotTokenDialog({ state, onClose, onSaved }: BotTokenDialogProps) {
         throw new Error('Невозможный сценарий: ни bot, ни createParams не заданы')
       }
 
-      // Для личного бота сразу регистрируем webhook на наш телеграм-handler.
-      // secret_token = id записи workspace_integrations: webhook так
-      // отличает входящий апдейт этого бота от других.
+      // Для личного бота — серверная регистрация webhook'а через
+      // edge-функцию. Edge-функция читает токен из БД и зовёт Telegram API.
+      // Это надёжнее, чем вызов напрямую из браузера: даже если у юзера
+      // отвалится интернет в момент сохранения, edge-функция отработает.
       if (integrationType === 'telegram_employee_bot' && integrationId) {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-        const webhookUrl = `${supabaseUrl}/functions/v1/telegram-webhook`
-        try {
-          const setRes = await fetch(`https://api.telegram.org/bot${trimmed}/setWebhook`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              url: webhookUrl,
-              secret_token: integrationId,
-              allowed_updates: ['message', 'edited_message', 'message_reaction'],
-              drop_pending_updates: true,
-            }),
-          })
-          const setJson = (await setRes.json()) as { ok: boolean; description?: string }
-          if (!setJson.ok) {
-            // Не блокируем сохранение — токен валиден, просто webhook не зарегистрировался.
-            // Пользователь увидит, что сообщения отправляются, но реплаи могут не связываться.
-            console.warn('[setWebhook] failed:', setJson.description)
-            toast.warning(
-              `Токен сохранён, но webhook не зарегистрировался: ${setJson.description ?? 'unknown'}. Реплаи в Telegram могут не связываться с исходниками.`,
-            )
-          }
-        } catch (err) {
-          console.warn('[setWebhook] network error:', err)
-          toast.warning('Токен сохранён, но webhook не зарегистрировался (сетевая ошибка).')
+        const { data: regData, error: regErr } = await supabase.functions.invoke(
+          'telegram-register-webhook',
+          { body: { integration_id: integrationId, action: 'register' } },
+        )
+        if (regErr || (regData as { ok?: boolean })?.ok === false) {
+          console.warn('[register-webhook] failed:', regErr ?? regData)
+          toast.warning(
+            'Токен сохранён, но webhook не зарегистрировался. Реплаи в Telegram могут не связываться с исходниками. Попробуй ещё раз — нажми «Изменить» и сохрани тот же токен.',
+          )
         }
       }
     },
@@ -643,6 +635,18 @@ function BotTokenDialog({ state, onClose, onSaved }: BotTokenDialogProps) {
           .eq('id', state.bot.id)
         if (updErr) throw updErr
       } else {
+        // Сначала отзываем webhook у Telegram (пока токен ещё в БД и
+        // edge-функция может его прочитать). Если запрос упал —
+        // продолжаем удаление, webhook останется висеть, но он будет
+        // отбиваться 401 на нашей стороне (его secret_token больше не
+        // совпадёт ни с одной активной интеграцией).
+        try {
+          await supabase.functions.invoke('telegram-register-webhook', {
+            body: { integration_id: state.bot.id, action: 'remove' },
+          })
+        } catch (err) {
+          console.warn('[delete-webhook] failed, continuing with row delete:', err)
+        }
         const { error: delErr } = await supabase
           .from('workspace_integrations')
           .delete()
