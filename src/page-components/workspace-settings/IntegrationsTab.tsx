@@ -18,7 +18,7 @@
  * Telegram Business — заглушка («Скоро»).
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -58,6 +58,7 @@ interface BotIntegration {
     bot_display_name?: string
     bot_id?: number
     owner_user_id?: string
+    bot_avatar_url?: string
   }
   has_token: boolean
 }
@@ -178,6 +179,27 @@ export function IntegrationsTab() {
       queryKey: ['integrations', 'workspace-integrations', workspaceId],
     })
 
+  // Тихий backfill: для подключённых ботов, у которых нет bot_avatar_url,
+  // дёргаем refresh_avatar один раз за сессию. После этого аватарки
+  // появляются. Используем ref-set, чтобы не звать дважды для одной интеграции.
+  const refreshedAvatarIdsRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    const needsAvatar = integrations.filter(
+      (i) => i.has_token && !i.config.bot_avatar_url && !refreshedAvatarIdsRef.current.has(i.id),
+    )
+    if (needsAvatar.length === 0) return
+    needsAvatar.forEach((i) => refreshedAvatarIdsRef.current.add(i.id))
+    Promise.all(
+      needsAvatar.map((i) =>
+        supabase.functions
+          .invoke('telegram-register-webhook', {
+            body: { integration_id: i.id, action: 'refresh_avatar' },
+          })
+          .catch((err) => console.warn('[refresh_avatar] failed for', i.id, err)),
+      ),
+    ).then(() => refreshIntegrations())
+  }, [integrations, refreshIntegrations])
+
   const sections: Array<{ id: SectionKey; label: string; icon: typeof MessageCircle }> = [
     { id: 'telegram', label: 'Telegram', icon: MessageCircle },
     { id: 'gmail', label: 'Gmail', icon: Mail },
@@ -271,41 +293,41 @@ function TelegramSecretarySection({
         {workspaceBots.length === 0 ? (
           <p className="text-sm text-muted-foreground">Бот не подключён.</p>
         ) : (
-          workspaceBots.map((bot) => (
-            <div
-              key={bot.id}
-              className="flex items-center justify-between gap-3 px-3 py-2 rounded-md border bg-card"
-            >
-              <div className="flex flex-col text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {bot.config.bot_display_name ||
-                      (bot.config.bot_version === 'v2' ? 'Бот v2' : 'Бот v1')}
+          workspaceBots.map((bot) => {
+            const avatar = bot.config.bot_avatar_url
+            return (
+              <div
+                key={bot.id}
+                className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-md border bg-card"
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={avatar}
+                      alt=""
+                      className="h-7 w-7 rounded-full shrink-0 object-cover bg-muted"
+                    />
+                  ) : (
+                    <div className="h-7 w-7 rounded-full shrink-0 bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
+                      <MessageCircle className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                  )}
+                  <span className="font-medium text-sm truncate">
+                    {bot.config.bot_display_name || 'Бот-секретарь'}
                   </span>
                   {bot.config.bot_username && (
-                    <span className="text-xs text-muted-foreground font-mono">
+                    <span className="text-xs text-muted-foreground font-mono truncate">
                       @{bot.config.bot_username}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                  {bot.has_token ? (
-                    <Badge variant="default" className="text-[10px] px-1.5 py-0">
-                      Токен в БД
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                      Использует env-fallback
-                    </Badge>
-                  )}
-                  {bot.config.bot_version && <span>версия: {bot.config.bot_version}</span>}
-                </div>
+                <Button size="sm" variant="outline" onClick={() => onEdit(bot)}>
+                  {bot.has_token ? 'Изменить' : 'Указать токен'}
+                </Button>
               </div>
-              <Button size="sm" variant="outline" onClick={() => onEdit(bot)}>
-                {bot.has_token ? 'Изменить' : 'Указать токен'}
-              </Button>
-            </div>
-          ))
+            )
+          })
         )}
         <p className="text-xs text-muted-foreground pt-1">
           Токен бота получается у{' '}
@@ -369,27 +391,41 @@ function EmployeeBotsSection({
           employees.map((p) => {
             const bot = p.user_id ? employeeBotByUserId.get(p.user_id) : undefined
             const fullName = [p.name, p.last_name].filter(Boolean).join(' ') || p.email || '—'
+            const botAvatarUrl = bot?.config.bot_avatar_url
             return (
               <div
                 key={p.id}
-                className="flex items-center justify-between gap-3 px-3 py-2 rounded-md border bg-card"
+                className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-md border bg-card"
               >
-                <div className="flex flex-col text-sm min-w-0">
-                  <span className="font-medium truncate">{fullName}</span>
-                  <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                    {bot ? (
-                      <>
-                        <Badge variant="default" className="text-[10px] px-1.5 py-0">
-                          Бот подключён
-                        </Badge>
-                        {bot.config.bot_username && (
-                          <span className="font-mono">@{bot.config.bot_username}</span>
-                        )}
-                      </>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {bot ? (
+                    botAvatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={botAvatarUrl}
+                        alt=""
+                        className="h-7 w-7 rounded-full shrink-0 object-cover bg-muted"
+                      />
                     ) : (
-                      <span>Личный бот не подключён</span>
-                    )}
-                  </div>
+                      <div className="h-7 w-7 rounded-full shrink-0 bg-cyan-50 dark:bg-cyan-950/30 flex items-center justify-center">
+                        <User className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
+                      </div>
+                    )
+                  ) : (
+                    <div className="h-7 w-7 rounded-full shrink-0 bg-muted flex items-center justify-center">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <span className="font-medium text-sm truncate">{fullName}</span>
+                  {bot ? (
+                    <span className="text-xs text-muted-foreground font-mono truncate">
+                      @{bot.config.bot_username}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground truncate">
+                      Личный бот не подключён
+                    </span>
+                  )}
                 </div>
                 <Button
                   size="sm"
