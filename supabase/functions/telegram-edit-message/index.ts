@@ -9,7 +9,7 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 import { safeJsonParse, findMissingField, isValidUUID } from "../_shared/validation.ts";
 import { htmlToTelegramHtml, escapeHtmlEntities, isHtmlContent } from "../_shared/htmlFormatting.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
-import { resolveBotToken } from "../_shared/telegramBotToken.ts";
+import { resolveBotToken, resolveTokenByIntegrationId } from "../_shared/telegramBotToken.ts";
 
 interface RequestBody {
   message_id: string;
@@ -94,8 +94,33 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Выбираем токен бота по bot_version привязки группы (v1 или v2)
-    const { token: TELEGRAM_BOT_TOKEN } = await resolveBotToken(serviceClient, body.telegram_chat_id);
+    // Сначала ищем, через какого бота было отправлено это сообщение — edit
+    // должен идти через того же бота. Если sender был личным ботом сотрудника,
+    // у него и токен другой, и формат текста без префикса "(Имя):".
+    let TELEGRAM_BOT_TOKEN: string;
+    let isEmployeeBot = false;
+    {
+      let savedIntegrationId: string | null = null;
+      if (body.message_id && isValidUUID(body.message_id)) {
+        const { data: msgRow } = await serviceClient
+          .from("project_messages")
+          .select("telegram_bot_integration_id")
+          .eq("id", body.message_id)
+          .maybeSingle();
+        savedIntegrationId =
+          (msgRow?.telegram_bot_integration_id as string | null) ?? null;
+      }
+      const fromIntegration = savedIntegrationId
+        ? await resolveTokenByIntegrationId(serviceClient, savedIntegrationId)
+        : null;
+      if (fromIntegration) {
+        TELEGRAM_BOT_TOKEN = fromIntegration.token;
+        isEmployeeBot = fromIntegration.senderType === "employee_bot";
+      } else {
+        const fallback = await resolveBotToken(serviceClient, body.telegram_chat_id);
+        TELEGRAM_BOT_TOKEN = fallback.token;
+      }
+    }
 
     // B-80: проверка workspace membership для JWT-вызовов
     if (authenticatedUserId) {
@@ -123,11 +148,14 @@ Deno.serve(async (req: Request) => {
       }
     } // end authenticatedUserId
 
-    // Формируем текст в HTML
+    // Формируем текст в HTML. Через личный бот сотрудника префикс "(Имя):"
+    // не нужен — Telegram сам отрисует имя/аватарку отправителя.
     const contentForTelegram = isHtmlContent(body.content)
       ? htmlToTelegramHtml(body.content)
       : escapeHtmlEntities(body.content);
-    const formattedText = `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`;
+    const formattedText = isEmployeeBot
+      ? contentForTelegram
+      : `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`;
 
     const tgResponse = await fetch(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,

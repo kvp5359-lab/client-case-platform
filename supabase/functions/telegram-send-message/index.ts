@@ -9,7 +9,7 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 import { safeJsonParse, findMissingField, isValidUUID } from "../_shared/validation.ts";
 import { htmlToTelegramHtml, escapeHtmlEntities, isHtmlContent } from "../_shared/htmlFormatting.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
-import { resolveBotToken } from "../_shared/telegramBotToken.ts";
+import { resolveBotToken, findEmployeeBot } from "../_shared/telegramBotToken.ts";
 
 interface RequestBody {
   message_id: string;
@@ -115,8 +115,36 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Выбираем токен бота по bot_version привязки группы (v1 или v2)
-    const { token: TELEGRAM_BOT_TOKEN } = await resolveBotToken(serviceClient, body.telegram_chat_id);
+    // Резолв бота: сначала пробуем личный бот сотрудника-отправителя; если
+    // его нет — fallback на бота-секретаря (resolveBotToken).
+    // Личный бот = настоящая аватарка/имя в Telegram → префикс "(Имя):" не нужен.
+    let senderParticipantId: string | null = null;
+    {
+      const { data: msgRow } = await serviceClient
+        .from("project_messages")
+        .select("sender_participant_id")
+        .eq("id", body.message_id)
+        .maybeSingle();
+      senderParticipantId = (msgRow?.sender_participant_id as string | null) ?? null;
+    }
+
+    const employeeBot = await findEmployeeBot(
+      serviceClient,
+      body.telegram_chat_id,
+      senderParticipantId,
+    );
+    const resolved =
+      employeeBot ?? (await resolveBotToken(serviceClient, body.telegram_chat_id));
+    const TELEGRAM_BOT_TOKEN = resolved.token;
+    const isEmployeeBot = resolved.senderType === "employee_bot";
+
+    // Запоминаем, через какого бота отправили — нужно для edit/delete/reaction.
+    if (resolved.integrationId) {
+      await serviceClient
+        .from("project_messages")
+        .update({ telegram_bot_integration_id: resolved.integrationId })
+        .eq("id", body.message_id);
+    }
 
     if (authenticatedUserId) {
       if (!body.project_id || !isValidUUID(body.project_id)) {
@@ -148,8 +176,9 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    let showSenderName = true;
-    if (body.project_id) {
+    // Через личный бот сотрудника — Telegram сам покажет имя/аватарку, префикс не нужен.
+    let showSenderName = !isEmployeeBot;
+    if (showSenderName && body.project_id) {
       // thread_id текущего сообщения — без него «последнее сообщение» приходило
       // из любого другого треда того же проекта с тем же channel ("client"). Если
       // тот же сотрудник недавно писал в соседний тред, имя в этом треде ошибочно

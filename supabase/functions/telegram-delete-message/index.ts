@@ -8,7 +8,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { safeJsonParse, findMissingField } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
-import { resolveBotToken } from "../_shared/telegramBotToken.ts";
+import { resolveBotToken, resolveTokenByIntegrationId } from "../_shared/telegramBotToken.ts";
 
 interface RequestBody {
   telegram_chat_id: number;
@@ -88,8 +88,29 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Выбираем токен бота по bot_version привязки группы (v1 или v2)
-    const { token: TELEGRAM_BOT_TOKEN } = await resolveBotToken(serviceClient, body.telegram_chat_id);
+    // Сначала ищем, через какого бота было отправлено сообщение — Telegram
+    // позволяет удалять только тем же ботом. Если сохранён integration_id,
+    // используем его токен. Иначе — fallback на бота-секретаря.
+    let TELEGRAM_BOT_TOKEN: string;
+    {
+      const { data: msgRow } = await serviceClient
+        .from("project_messages")
+        .select("telegram_bot_integration_id")
+        .eq("telegram_chat_id", body.telegram_chat_id)
+        .eq("telegram_message_id", body.telegram_message_id)
+        .maybeSingle();
+      const savedIntegrationId =
+        (msgRow?.telegram_bot_integration_id as string | null) ?? null;
+      const fromIntegration = savedIntegrationId
+        ? await resolveTokenByIntegrationId(serviceClient, savedIntegrationId)
+        : null;
+      if (fromIntegration) {
+        TELEGRAM_BOT_TOKEN = fromIntegration.token;
+      } else {
+        const fallback = await resolveBotToken(serviceClient, body.telegram_chat_id);
+        TELEGRAM_BOT_TOKEN = fallback.token;
+      }
+    }
 
     // B-80: проверка workspace membership для JWT-вызовов
     if (authenticatedUserId) {

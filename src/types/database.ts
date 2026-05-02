@@ -3853,6 +3853,7 @@ export type Database = {
           sender_role: string | null
           source: Database["public"]["Enums"]["message_source"]
           telegram_attachments_delivered: boolean | null
+          telegram_bot_integration_id: string | null
           telegram_chat_id: number | null
           telegram_error_detail: string | null
           telegram_message_id: number | null
@@ -3881,6 +3882,7 @@ export type Database = {
           sender_role?: string | null
           source?: Database["public"]["Enums"]["message_source"]
           telegram_attachments_delivered?: boolean | null
+          telegram_bot_integration_id?: string | null
           telegram_chat_id?: number | null
           telegram_error_detail?: string | null
           telegram_message_id?: number | null
@@ -3909,6 +3911,7 @@ export type Database = {
           sender_role?: string | null
           source?: Database["public"]["Enums"]["message_source"]
           telegram_attachments_delivered?: boolean | null
+          telegram_bot_integration_id?: string | null
           telegram_chat_id?: number | null
           telegram_error_detail?: string | null
           telegram_message_id?: number | null
