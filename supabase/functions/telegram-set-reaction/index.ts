@@ -86,7 +86,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Z8-12: verify workspace membership via project_telegram_chats
+    // Z8-12: verify workspace membership via project_telegram_chats.
+    // Telegram Business: setMessageReaction НЕ поддерживает business_connection_id
+    // на стороне Telegram Bot API, поэтому реакции в личных business-чатах
+    // не отправляем (фронт сам не вызывает функцию для business-сообщений).
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: chat } = await supabaseAdmin
       .from("project_telegram_chats")
@@ -112,12 +115,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Telegram setMessageReaction должен идти через того же бота, который
-    // отправил исходное сообщение. Если у нас сохранён integration_id —
-    // используем его токен, иначе fallback на бота-секретаря.
+    // setMessageReaction идёт через того же бота, который отправил оригинал.
     let TELEGRAM_BOT_TOKEN: string;
     {
-      // Здесь body.message_id — это ID сообщения в Telegram (number).
       const { data: msgRow } = await supabaseAdmin
         .from("project_messages")
         .select("telegram_bot_integration_id")

@@ -231,6 +231,39 @@
 - **Что НЕ работает как сигнал**: `MessageChannel` ('client' | 'internal') в типах сервиса — это легаси-разделение для project_messages, не для тредов. Task-треды по умолчанию идут с `channel='client'`, но клиентскими не являются. Не использовать.
 - Флаг пробрасывается через `MessengerContext.isClientThread` → `MessageBubble`. Стили для каждого акцента (`staffBorder` + `staffRing`) — в [`messageStyles.ts`](../../src/components/messenger/utils/messageStyles.ts).
 
+## Telegram Business (личные диалоги сотрудников)
+
+Реализовано 2026-05-03. Архитектура «как у Planfix» — один общий бот сервиса `@clientcase_bot` (id `8669511732`), которого все сотрудники подключают как делегата своего личного TG через **Telegram → Settings → Business → Chatbots**. Требует Telegram Premium у сотрудника. Бот «подсматривает» личные диалоги и тянет их в сервис; ответы из сервиса уходят от имени сотрудника, не бота.
+
+- **Бот**: `@clientcase_bot`, токен в Supabase secrets как `TELEGRAM_BUSINESS_BOT_TOKEN`. В BotFather у бота включён **Business Mode** (`/mybots → Bot Settings → Business Mode → Turn on`) — без этого Telegram не показывает бота в списке доступных делегатов.
+- **Webhook**: [`telegram-business-webhook`](../../supabase/functions/telegram-business-webhook/index.ts), деплой `--no-verify-jwt`. Защита — заголовок `X-Telegram-Bot-Api-Secret-Token`, значение в `TELEGRAM_BUSINESS_WEBHOOK_SECRET`. Слушает: `message` (для `/start biz_<token>`), `business_connection`, `business_message`, `edited_business_message`, `deleted_business_messages`.
+- **Двухшаговое подключение**:
+  1. Сотрудник в UI настроек интеграций → вкладка «Telegram Business» → жмёт «Подключить» → фронт вызывает [`telegram-business-link-init`](../../supabase/functions/telegram-business-link-init/index.ts) → возвращается deep-link `t.me/clientcase_bot?start=biz_<uuid>`. TTL токена — 30 мин.
+  2. Сотрудник кликает, в Telegram открывается чат с ботом, жмёт START → webhook ловит `/start biz_<token>` → пишет связку в `user_telegram_links (user_id ↔ tg_user_id)`. Один TG-аккаунт = один user_id (UNIQUE).
+  3. Сотрудник идёт в Telegram → Settings → Business → Chatbots → добавляет `@clientcase_bot` с правом «Reply to messages». Прилетает `business_connection` → webhook по `tg_user_id` находит привязку → создаёт запись в `telegram_business_connections`.
+- **Хранение диалогов**: каждый сотрудник получает системный проект **«Личные диалоги Telegram»** (`projects.is_system_business_inbox = true` + `system_inbox_user_id`). UNIQUE: один такой проект на сотрудника в воркспейсе. Каждый личный диалог с клиентом = один тред в этом проекте, с полями `business_connection_id` + `business_client_tg_user_id` (UNIQUE-индекс по этой паре). Создаётся автоматически при первом сообщении.
+- **Скрытие из общих списков**: системный инбокс **не появляется** в обычном списке проектов и тредов воркспейса. Фильтры в RPC: `get_user_projects` (`p.is_system_business_inbox = false`), `get_workspace_threads` и `get_sidebar_data` (исключают треды через `LEFT JOIN projects` + проверку флага). Доступ к этим тредам — через отдельный экран (TODO).
+- **Таблицы и миграции**:
+  - `telegram_business_connections (id, workspace_id, user_id, business_connection_id UNIQUE, tg_user_id, tg_username, tg_first_name, tg_last_name, is_enabled, can_reply, connected_at, disconnected_at)` — миграция `20260503_telegram_business.sql`.
+  - `user_telegram_links (user_id PK, tg_user_id UNIQUE, tg_username, tg_first_name, tg_last_name, linked_at)` — глобальная привязка, миграция `20260503_user_telegram_links.sql`.
+  - `telegram_business_link_tokens (token, user_id, workspace_id, expires_at, consumed_at)` — одноразовые токены шага 1.
+  - `projects.is_system_business_inbox` + `projects.system_inbox_user_id` — миграция `20260503_telegram_business.sql`.
+  - `project_threads.business_connection_id` + `project_threads.business_client_tg_user_id` — миграция `20260503_telegram_business.sql`.
+- **RLS**: `telegram_business_connections` — сам сотрудник видит свои + менеджеры воркспейса с `manage_workspace_settings` видят все в своём WS. `user_telegram_links` — аналогично. `telegram_business_link_tokens` — только владелец токена. INSERT/UPDATE/DELETE везде — service role.
+- **Источник в сообщениях**: `project_messages.source = 'telegram_business'` (новое значение, в дополнение к `telegram`/`email`/`web`). `telegram_chat_id` хранит id личного чата клиента, `telegram_sender_user_id` — реальный отправитель.
+- **Отправка ответов из сервиса**: Edge Function [`telegram-business-send`](../../supabase/functions/telegram-business-send/index.ts). PG-триггер `notify_telegram_on_new_message` маршрутизирует туда сообщения, у тредов которых заполнен `business_connection_id`. Поддерживается `reply_parameters` (цитата). Контент конвертируется через общий `_shared/htmlFormatting.ts`. После отправки стампится `telegram_chat_id` (равен `tg_user_id` клиента в личке) и `telegram_message_id` — без этого реакции/реплаи не привязываются.
+- **Реплаи**: работают в обе стороны через общий хелпер `_shared/syncTelegramIncomingMessage.ts` — он ищет оригинал по `telegram_message_id` в треде и проставляет `reply_to_message_id`. На отправке `telegram-business-send` передаёт `reply_parameters`.
+- **Ограничение Telegram (реакции)**: реакции в Telegram Business **не поддерживаются Bot API в принципе** — это не наш баг, а ограничение платформы:
+  - `setMessageReaction` не имеет параметра `business_connection_id` (см. [Bot API changelog](https://core.telegram.org/bots/api-changelog) — параметр добавляли к sendMessage/editMessage/pinMessage, но не к реакциям).
+  - Webhook `message_reaction` не приходит для личных чатов: Telegram требует, чтобы бот был **админом чата**, а в 1-на-1 чатах админов нет.
+  - Альтернативы из Bot API нет — реакции «от имени пользователя» ставятся только через клиентский MTProto (`messages.sendReaction`), что выходит за рамки Bot API.
+  - Поэтому реакции, поставленные сотрудником в сервисе на business-сообщения, **остаются только в сервисе** — фронт `messengerReactionService.ts` пропускает вызов `telegram-set-reaction` для `source = 'telegram_business'`. В обычных групповых чатах (через секретаря) реакции работают штатно.
+- **Общие хелперы**: бизнес-webhook максимально переиспользует код group-webhook'а:
+  - `_shared/syncTelegramIncomingMessage.ts` — дедуп, reply-lookup, инсёрт. Параметры `source` и `senderRole` позволяют различать обычный TG и Business.
+  - `_shared/syncTelegramReactions.ts` — общая обработка `message_reaction` updates (используется group-webhook'ом v1+v2; для business не вызывается, но если в будущем Telegram включит реакции — webhook готов).
+  - `_shared/htmlFormatting.ts` — HTML→Telegram-HTML при отправке.
+- **TODO**: отдельный UI «Мои личные диалоги Telegram» (сейчас системный инбокс показывается обычным проектом), вложения (фото/файлы) в business-сообщениях.
+
 ## Локальная разработка
 
 ```bash

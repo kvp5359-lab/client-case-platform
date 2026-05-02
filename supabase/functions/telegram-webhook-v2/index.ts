@@ -25,6 +25,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { telegramEntitiesToHtml } from "../_shared/telegramEntitiesToHtml.ts";
+import { syncTelegramReactions } from "../_shared/syncTelegramReactions.ts";
 import {
   syncTelegramIncomingMessage,
   applyTelegramEdit,
@@ -277,7 +278,7 @@ Deno.serve(async (req) => {
     if (update.callback_query) {
       await handleCallback(update.callback_query);
     } else if (update.message_reaction) {
-      await handleReaction(update.message_reaction);
+      await syncTelegramReactions(service, update.message_reaction);
     } else if (update.edited_message) {
       await handleMessage(update.edited_message, true);
     } else if (update.message) {
@@ -618,54 +619,7 @@ async function downloadAttachments(msg: TgMessage, messageId: string, workspaceI
 // Реакции (копия v1, + фильтр v2 в ветке "message not found")
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function handleReaction(r: TgReaction) {
-  if (!r.user) return;
-  const chatId = r.chat.id;
-  const msgId = r.message_id;
-  const userId = r.user.id;
-  const userName = formatUserName(r.user);
-
-  // Ищем исходное сообщение по массиву telegram_message_ids.
-  // Одна запись в project_messages может соответствовать нескольким TG-сообщениям
-  // (текст + каждый файл как отдельное сообщение в Telegram).
-  const { data: msg } = await service
-    .from("project_messages")
-    .select("id, workspace_id")
-    .eq("telegram_chat_id", chatId)
-    .contains("telegram_message_ids", [msgId])
-    .maybeSingle();
-
-  const emojis = (r.new_reaction ?? [])
-    .filter((x) => x.type === "emoji" && x.emoji)
-    .map((x) => x.emoji!);
-
-  // Если сообщение не нашлось — просто игнорируем реакцию.
-  // Раньше здесь был fallback, который создавал «паразитное» сообщение с эмодзи.
-  if (!msg) return;
-
-  const participantId = await participantByTgId(msg.workspace_id, userId);
-  // Удаляем реакции только на конкретное TG-сообщение (msgId), а не все реакции юзера
-  // на наш общий project_messages — иначе реакция на один элемент бабла (например, файл)
-  // затирает реакцию на другой (например, текст).
-  await service
-    .from("message_reactions")
-    .delete()
-    .eq("message_id", msg.id)
-    .eq("telegram_user_id", userId)
-    .eq("telegram_source_message_id", msgId);
-  if (emojis.length > 0) {
-    await service.from("message_reactions").insert(
-      emojis.map((e) => ({
-        message_id: msg.id,
-        participant_id: participantId,
-        telegram_user_id: userId,
-        telegram_user_name: userName,
-        emoji: e,
-        telegram_source_message_id: msgId,
-      })),
-    );
-  }
-}
+// handleReaction перенесён в _shared/syncTelegramReactions.ts.
 
 async function participantByTgId(workspaceId: string, tgId: number): Promise<string | null> {
   const { data } = await service

@@ -81,10 +81,28 @@ export async function syncTelegramIncomingMessage(
     forwardInfo: ForwardInfo;
     /** Контекст личного бота, если webhook его обрабатывает. null = секретарь. */
     asPersonalBot: PersonalBotContext | null;
+    /**
+     * Источник для project_messages.source. Default 'telegram'. Для
+     * Business-webhook передаётся 'telegram_business' — это нужно, чтобы
+     * исходящий триггер notify_telegram_on_new_message не зацикливался
+     * (он реагирует на свой источник иначе).
+     */
+    source?: "telegram" | "telegram_business";
+    /** Роль отправителя в UI. Default 'Telegram'. Для Business-клиента — 'Клиент'. */
+    senderRole?: string | null;
   },
 ): Promise<SyncResult> {
-  const { message, binding, text, senderName, senderParticipantId, forwardInfo, asPersonalBot } =
-    args;
+  const {
+    message,
+    binding,
+    text,
+    senderName,
+    senderParticipantId,
+    forwardInfo,
+    asPersonalBot,
+    source = "telegram",
+    senderRole = "Telegram",
+  } = args;
 
   const chatId = message.chat.id;
   const telegramMessageId = message.message_id;
@@ -114,9 +132,9 @@ export async function syncTelegramIncomingMessage(
     workspace_id: binding.workspace_id,
     sender_participant_id: senderParticipantId,
     sender_name: senderName,
-    sender_role: "Telegram",
+    sender_role: senderRole,
     content: text || "📎",
-    source: "telegram",
+    source,
     channel: binding.channel || "client",
     thread_id: binding.thread_id ?? undefined,
     telegram_message_id: telegramMessageId,
