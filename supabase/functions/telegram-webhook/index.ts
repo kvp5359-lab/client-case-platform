@@ -399,25 +399,28 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
       if (existingMsg) return new Response("ok", { status: 200 });
 
-      // Если это реплай на сообщение, отправленное одним из личных ботов
-      // воркспейса — пропускаем; обработает webhook соответствующего бота.
-      const replyFromBotId =
-        message.reply_to_message?.from?.is_bot === true
-          ? (message.reply_to_message?.from?.id as number | undefined)
-          : null;
-      if (replyFromBotId != null) {
-        const { data: ownedBots } = await serviceClient
-          .from("workspace_integrations")
-          .select("config")
-          .eq("workspace_id", tgChat.workspace_id)
-          .eq("type", "telegram_employee_bot")
-          .eq("is_active", true);
-        const personalBotIds = (ownedBots ?? [])
-          .map((b) => (b.config as { bot_id?: number } | null)?.bot_id)
-          .filter((x): x is number => typeof x === "number");
-        if (personalBotIds.includes(replyFromBotId)) {
-          return new Response("ok", { status: 200 });
-        }
+      // Дедуп против webhook'а личного бота. В basic-группе секретарь и
+      // личный бот оба получают тот же реплай человека, но с разными
+      // message_id. reply_to_message.from в апдейте секретаря может быть
+      // пустым (бот не видит чужих сообщений) — поэтому проверка по
+      // bot_id не всегда срабатывает. Запасной путь: сверяем по
+      // (chat, content, источник, окно ±60 сек). Если личный бот уже
+      // вставил эту строку — секретарь пропускает.
+      const dedupSinceISO = new Date(Date.now() - 60_000).toISOString();
+      const dedupContent = text || "📎";
+      const { data: dupRow } = await serviceClient
+        .from("project_messages")
+        .select("id")
+        .eq("workspace_id", tgChat.workspace_id)
+        .eq("telegram_chat_id", chatId)
+        .eq("source", "telegram")
+        .eq("content", dedupContent)
+        .gte("created_at", dedupSinceISO)
+        .not("telegram_bot_integration_id", "is", null)
+        .limit(1)
+        .maybeSingle();
+      if (dupRow) {
+        return new Response("ok", { status: 200 });
       }
     }
 
