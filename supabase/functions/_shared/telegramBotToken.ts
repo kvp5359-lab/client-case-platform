@@ -60,12 +60,16 @@ export async function resolveTokenByIntegrationId(
 /**
  * Поиск личного бота сотрудника. Возвращает запись `workspace_integrations`
  * с заполненным токеном, либо null. workspace определяется через
- * project_telegram_chats по telegram_chat_id (нужно знать, в какой юрфирме
- * мы находимся).
+ * project_telegram_chats по telegram_chat_id.
+ *
+ * Работает и в basic-группах, и в супергруппах. Связка ответов в basic
+ * решается тем, что у личного бота настроен собственный webhook (с
+ * `secret_token = workspace_integrations.id`) — он получает события
+ * «ответ на моё сообщение» в своём counter и сохраняет реплай в БД.
  */
 export async function findEmployeeBot(
   service: SupabaseClient,
-  telegramChatId: number,
+  _telegramChatId: number,
   senderParticipantId: string | null,
 ): Promise<ResolvedToken | null> {
   if (!senderParticipantId) return null;
@@ -74,7 +78,7 @@ export async function findEmployeeBot(
   const { data: chat } = await service
     .from("project_telegram_chats")
     .select("workspace_id")
-    .eq("telegram_chat_id", telegramChatId)
+    .eq("telegram_chat_id", _telegramChatId)
     .eq("is_active", true)
     .maybeSingle();
   if (!chat?.workspace_id) return null;

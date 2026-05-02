@@ -204,8 +204,38 @@ Deno.serve(async (req: Request) => {
     return new Response("Server configuration error", { status: 500 });
   }
   const headerSecret = req.headers.get("x-telegram-bot-api-secret-token");
+
+  // Webhook теперь обслуживает не только бота-секретаря, но и личных ботов
+  // сотрудников. Различаем по secret_token:
+  //  - совпадает с TELEGRAM_WEBHOOK_SECRET → секретарь (старая логика)
+  //  - UUID активного workspace_integrations типа telegram_employee_bot →
+  //    личный бот; обрабатываем reply в его counter с телеграм-message-id.
+  let asPersonalBot: {
+    integrationId: string;
+    workspaceId: string;
+    botId: number | null;
+  } | null = null;
   if (headerSecret !== TELEGRAM_WEBHOOK_SECRET) {
-    return new Response("Unauthorized", { status: 401 });
+    if (!headerSecret) return new Response("Unauthorized", { status: 401 });
+    const { data: integration } = await serviceClient
+      .from("workspace_integrations")
+      .select("id, type, workspace_id, config, is_active")
+      .eq("id", headerSecret)
+      .maybeSingle();
+    if (
+      !integration ||
+      integration.is_active === false ||
+      integration.type !== "telegram_employee_bot"
+    ) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    asPersonalBot = {
+      integrationId: integration.id as string,
+      workspaceId: integration.workspace_id as string,
+      botId:
+        ((integration.config as { bot_id?: number } | null)?.bot_id as number | undefined) ??
+        null,
+    };
   }
 
   try {
@@ -274,11 +304,17 @@ Deno.serve(async (req: Request) => {
       .join(" ");
 
     if (isEdited) {
-      await serviceClient
+      let upd = serviceClient
         .from("project_messages")
         .update({ content: text || rawText, is_edited: true })
         .eq("telegram_message_id", telegramMessageId)
         .eq("telegram_chat_id", chatId);
+      // Скоупим UPDATE по integration_id, иначе у личного бота может быть
+      // та же пара (chat_id, message_id), что и у секретаря — обновили бы не ту строку.
+      upd = asPersonalBot
+        ? upd.eq("telegram_bot_integration_id", asPersonalBot.integrationId)
+        : upd.is("telegram_bot_integration_id", null);
+      await upd;
 
       return new Response("ok", { status: 200 });
     }
@@ -337,27 +373,69 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { data: existingMsg } = await serviceClient
-      .from("project_messages")
-      .select("id")
-      .eq("telegram_message_id", telegramMessageId)
-      .eq("telegram_chat_id", chatId)
-      .maybeSingle();
+    // Проверка дубликата.
+    // - Если апдейт от личного бота — учитываем integration_id, потому что
+    //   у каждого бота свой counter; одно реальное telegram-сообщение может
+    //   попасть и сюда (от личного бота), и в секретаря с разными message_id.
+    // - Если секретарь увидел реплай на сообщение, отправленное одним из
+    //   личных ботов воркспейса, то этот реплай уже обработает webhook
+    //   личного бота — секретарю надо пропустить, чтобы не плодить дубликат.
+    if (asPersonalBot) {
+      const { data: existingMsg } = await serviceClient
+        .from("project_messages")
+        .select("id")
+        .eq("telegram_message_id", telegramMessageId)
+        .eq("telegram_chat_id", chatId)
+        .eq("telegram_bot_integration_id", asPersonalBot.integrationId)
+        .maybeSingle();
+      if (existingMsg) return new Response("ok", { status: 200 });
+    } else {
+      const { data: existingMsg } = await serviceClient
+        .from("project_messages")
+        .select("id")
+        .eq("telegram_message_id", telegramMessageId)
+        .eq("telegram_chat_id", chatId)
+        .is("telegram_bot_integration_id", null)
+        .maybeSingle();
+      if (existingMsg) return new Response("ok", { status: 200 });
 
-    if (existingMsg) {
-      return new Response("ok", { status: 200 });
+      // Если это реплай на сообщение, отправленное одним из личных ботов
+      // воркспейса — пропускаем; обработает webhook соответствующего бота.
+      const replyFromBotId =
+        message.reply_to_message?.from?.is_bot === true
+          ? (message.reply_to_message?.from?.id as number | undefined)
+          : null;
+      if (replyFromBotId != null) {
+        const { data: ownedBots } = await serviceClient
+          .from("workspace_integrations")
+          .select("config")
+          .eq("workspace_id", tgChat.workspace_id)
+          .eq("type", "telegram_employee_bot")
+          .eq("is_active", true);
+        const personalBotIds = (ownedBots ?? [])
+          .map((b) => (b.config as { bot_id?: number } | null)?.bot_id)
+          .filter((x): x is number => typeof x === "number");
+        if (personalBotIds.includes(replyFromBotId)) {
+          return new Response("ok", { status: 200 });
+        }
+      }
     }
 
     const forwardInfo = getForwardInfo(message);
 
+    // Lookup исходника реплая. Для личного бота — в его собственном counter
+    // (по integration_id), для секретаря — без integration_id (там null).
     let replyToDbId: string | null = null;
     if (replyToTgMsgId) {
-      const { data: replyMsg } = await serviceClient
+      let q = serviceClient
         .from("project_messages")
         .select("id")
         .eq("project_id", tgChat.project_id)
-        .eq("telegram_message_id", replyToTgMsgId)
-        .maybeSingle();
+        .eq("telegram_message_id", replyToTgMsgId);
+      q = asPersonalBot
+        ? q.eq("telegram_bot_integration_id", asPersonalBot.integrationId)
+        : q.is("telegram_bot_integration_id", null);
+      const { data: replyMsg } = await q.maybeSingle();
       replyToDbId = replyMsg?.id ?? null;
     }
 
@@ -379,6 +457,10 @@ Deno.serve(async (req: Request) => {
         reply_to_message_id: replyToDbId,
         forwarded_from_name: forwardInfo.name,
         forwarded_date: forwardInfo.date,
+        // Если событие пришло на webhook личного бота, маркируем
+        // вставленный реплай его integration_id, чтобы дальнейшие
+        // edit/delete/reaction роутились через того же бота.
+        telegram_bot_integration_id: asPersonalBot?.integrationId ?? null,
       })
       .select("id")
       .single();

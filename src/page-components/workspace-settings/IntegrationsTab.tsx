@@ -549,23 +549,66 @@ function BotTokenDialog({ state, onClose, onSaved }: BotTokenDialogProps) {
         bot_display_name: me.first_name,
       }
 
+      let integrationId: string | null = null
+      let integrationType: BotIntegration['type'] | null = null
+
       if (state.bot) {
         const { error: updErr } = await supabase
           .from('workspace_integrations')
           .update({ secrets: { token: trimmed }, config: newConfig })
           .eq('id', state.bot.id)
         if (updErr) throw updErr
+        integrationId = state.bot.id
+        integrationType = state.bot.type
       } else if (state.createParams) {
-        const { error: insErr } = await supabase.from('workspace_integrations').insert({
-          workspace_id: state.createParams.workspace_id,
-          type: state.createParams.type,
-          config: newConfig,
-          secrets: { token: trimmed },
-          is_active: true,
-        })
+        const { data: ins, error: insErr } = await supabase
+          .from('workspace_integrations')
+          .insert({
+            workspace_id: state.createParams.workspace_id,
+            type: state.createParams.type,
+            config: newConfig,
+            secrets: { token: trimmed },
+            is_active: true,
+          })
+          .select('id')
+          .single()
         if (insErr) throw insErr
+        integrationId = ins?.id ?? null
+        integrationType = state.createParams.type
       } else {
         throw new Error('Невозможный сценарий: ни bot, ни createParams не заданы')
+      }
+
+      // Для личного бота сразу регистрируем webhook на наш телеграм-handler.
+      // secret_token = id записи workspace_integrations: webhook так
+      // отличает входящий апдейт этого бота от других.
+      if (integrationType === 'telegram_employee_bot' && integrationId) {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        const webhookUrl = `${supabaseUrl}/functions/v1/telegram-webhook`
+        try {
+          const setRes = await fetch(`https://api.telegram.org/bot${trimmed}/setWebhook`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: webhookUrl,
+              secret_token: integrationId,
+              allowed_updates: ['message', 'edited_message', 'message_reaction'],
+              drop_pending_updates: true,
+            }),
+          })
+          const setJson = (await setRes.json()) as { ok: boolean; description?: string }
+          if (!setJson.ok) {
+            // Не блокируем сохранение — токен валиден, просто webhook не зарегистрировался.
+            // Пользователь увидит, что сообщения отправляются, но реплаи могут не связываться.
+            console.warn('[setWebhook] failed:', setJson.description)
+            toast.warning(
+              `Токен сохранён, но webhook не зарегистрировался: ${setJson.description ?? 'unknown'}. Реплаи в Telegram могут не связываться с исходниками.`,
+            )
+          }
+        } catch (err) {
+          console.warn('[setWebhook] network error:', err)
+          toast.warning('Токен сохранён, но webhook не зарегистрировался (сетевая ошибка).')
+        }
       }
     },
     onSuccess: () => {
