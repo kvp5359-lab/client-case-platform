@@ -69,12 +69,18 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
   const { data: projects = [], isLoading: loadingProjects } = useQuery<Project[]>({
     queryKey: sidebarKeys.projects(workspaceId ?? '', canViewAll),
     queryFn: async () => {
+      // Системный «инбокс»-проект Telegram Business виден ТОЛЬКО его владельцу.
+      // Чужие инбоксы прячем даже если у юзера view_all_projects, потому что
+      // там лежит личная переписка с клиентами.
+      const filterSystemInbox = `is_system_business_inbox.eq.false,system_inbox_user_id.eq.${user?.id ?? '00000000-0000-0000-0000-000000000000'}`
+
       if (canViewAll) {
         const { data, error } = await supabase
           .from('projects')
           .select('*')
           .eq('workspace_id', workspaceId!)
           .eq('is_deleted', false)
+          .or(filterSystemInbox)
           .order('last_activity_at', { ascending: false })
           .limit(35)
 
@@ -82,7 +88,8 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
         return data ?? []
       }
 
-      // Ограниченный доступ: только проекты, где пользователь — участник
+      // Ограниченный доступ: только проекты, где пользователь — участник.
+      // Дополнительно сюда же попадает свой системный инбокс (через .or).
       const { data: participant } = await supabase
         .from('participants')
         .select('id')
@@ -101,14 +108,19 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
       if (ppError) throw ppError
 
       const projectIds = projectParticipants?.map((pp) => pp.project_id) ?? []
-      if (projectIds.length === 0) return []
+
+      // Загружаем «обычные» проекты + свой системный инбокс одним запросом.
+      // `system_inbox_user_id = me` гарантирует, что в выборку попадает только
+      // твой инбокс. Если participant'а нет в project_participants для инбокса —
+      // он всё равно появится через эту ветку условия.
+      const orFilter = `id.in.(${projectIds.length > 0 ? projectIds.join(',') : '00000000-0000-0000-0000-000000000000'}),system_inbox_user_id.eq.${user?.id ?? '00000000-0000-0000-0000-000000000000'}`
 
       const { data, error } = await supabase
         .from('projects')
         .select('*')
         .eq('workspace_id', workspaceId!)
         .eq('is_deleted', false)
-        .in('id', projectIds)
+        .or(orFilter)
         .order('last_activity_at', { ascending: false })
         .limit(35)
 
