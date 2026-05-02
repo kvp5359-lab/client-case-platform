@@ -76,6 +76,7 @@ interface DialogState {
 interface EmailAccount {
   id: string
   email: string
+  user_id: string | null
   is_active: boolean | null
   watch_expires_at: string | null
 }
@@ -154,7 +155,7 @@ export function IntegrationsTab() {
       if (!workspaceId) return []
       const { data, error } = await supabase
         .from('email_accounts')
-        .select('id, email, is_active, watch_expires_at')
+        .select('id, email, user_id, is_active, watch_expires_at')
         .eq('workspace_id', workspaceId)
         .order('email', { ascending: true })
       if (error) throw error
@@ -246,7 +247,9 @@ export function IntegrationsTab() {
             />
           </>
         )}
-        {section === 'gmail' && <GmailSection emailAccounts={emailAccounts} />}
+        {section === 'gmail' && (
+          <GmailSection emailAccounts={emailAccounts} participants={participants} />
+        )}
         {section === 'business' && <TelegramBusinessSection />}
       </div>
 
@@ -469,7 +472,21 @@ function EmployeeBotsSection({
   )
 }
 
-function GmailSection({ emailAccounts }: { emailAccounts: EmailAccount[] }) {
+function GmailSection({
+  emailAccounts,
+  participants,
+}: {
+  emailAccounts: EmailAccount[]
+  participants: WorkspaceParticipant[]
+}) {
+  const participantByUserId = useMemo(() => {
+    const map = new Map<string, WorkspaceParticipant>()
+    participants.forEach((p) => {
+      if (p.user_id) map.set(p.user_id, p)
+    })
+    return map
+  }, [participants])
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
@@ -480,7 +497,8 @@ function GmailSection({ emailAccounts }: { emailAccounts: EmailAccount[] }) {
           <div>
             <CardTitle className="text-base">Gmail</CardTitle>
             <CardDescription className="mt-0.5">
-              Подключённые ящики для отправки и получения писем по проектам.
+              Подключённые ящики сотрудников. Подключение — через карточку проекта в разделе
+              «Почта».
             </CardDescription>
           </div>
         </div>
@@ -488,29 +506,55 @@ function GmailSection({ emailAccounts }: { emailAccounts: EmailAccount[] }) {
           {emailAccounts.length > 0 ? `${emailAccounts.length} ящик(ов)` : 'Нет ящиков'}
         </Badge>
       </CardHeader>
-      <CardContent className="text-sm">
+      <CardContent className="space-y-2">
         {emailAccounts.length === 0 ? (
-          <p className="text-muted-foreground">
-            Ящики пока не подключены. Подключение — через карточку проекта (раздел «Почта»).
-          </p>
+          <p className="text-sm text-muted-foreground">Ящики пока не подключены.</p>
         ) : (
-          <ul className="space-y-1">
-            {emailAccounts.map((acc) => (
-              <li key={acc.id} className="flex items-center gap-2 text-sm">
-                <span className="font-mono text-foreground">{acc.email}</span>
-                {!acc.is_active && (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                    выкл
-                  </Badge>
-                )}
-                {acc.watch_expires_at && new Date(acc.watch_expires_at) < new Date() && (
-                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                    watch истёк
-                  </Badge>
-                )}
-              </li>
-            ))}
-          </ul>
+          emailAccounts.map((acc) => {
+            const owner = acc.user_id ? participantByUserId.get(acc.user_id) : undefined
+            const ownerName = owner
+              ? [owner.name, owner.last_name].filter(Boolean).join(' ') || owner.email
+              : null
+            const watchExpired =
+              acc.watch_expires_at && new Date(acc.watch_expires_at) < new Date()
+            return (
+              <div
+                key={acc.id}
+                className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-md border bg-card"
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {owner?.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={owner.avatar_url}
+                      alt=""
+                      className="h-7 w-7 rounded-full shrink-0 object-cover bg-muted"
+                    />
+                  ) : (
+                    <div className="h-7 w-7 rounded-full shrink-0 bg-red-50 dark:bg-red-950/30 flex items-center justify-center">
+                      <Mail className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                    </div>
+                  )}
+                  <span className="font-medium text-sm truncate">
+                    {ownerName ?? '—'}
+                  </span>
+                  <span className="text-xs text-muted-foreground font-mono truncate">
+                    {acc.email}
+                  </span>
+                  {!acc.is_active && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+                      выкл
+                    </Badge>
+                  )}
+                  {watchExpired && (
+                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0 shrink-0">
+                      watch истёк
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )
+          })
         )}
       </CardContent>
     </Card>
