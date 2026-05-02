@@ -361,16 +361,24 @@ async function syncGroupMessage(msg: TgMessage, binding: TgChatBinding, isEdited
     ? await findOrCreateParticipant(binding.workspace_id, msg.from)
     : null;
 
-  // Дедупликация
+  // Дедупликация: для входящих от человека полагаемся на уникальный
+  // индекс uq_project_messages_telegram_dedup по
+  // (chat, sender_user_id, message_date). Это защищает от дубликатов в
+  // basic-группе, где секретарь и личный бот сотрудника видят одно
+  // физическое сообщение каждый в своём message_id-counter.
+  // Старая дедупликация по (chat, message_id) тут ненадёжна — идёт ниже
+  // как fallback для случая, когда секретарь получит апдейт повторно.
   const { data: existing } = await service
     .from("project_messages")
     .select("id")
     .eq("telegram_message_id", telegramMessageId)
     .eq("telegram_chat_id", chatId)
+    .is("telegram_bot_integration_id", null)
     .maybeSingle();
   if (existing) return;
 
-  // Reply resolution
+  // Reply resolution. Секретарь видит только свой counter, поэтому ищем
+  // сообщения без integration_id (тоже секретарские).
   let replyToDbId: string | null = null;
   if (replyToTgMsgId) {
     const { data: replyMsg } = await service
@@ -378,13 +386,20 @@ async function syncGroupMessage(msg: TgMessage, binding: TgChatBinding, isEdited
       .select("id")
       .eq("project_id", binding.project_id)
       .eq("telegram_message_id", replyToTgMsgId)
+      .is("telegram_bot_integration_id", null)
       .maybeSingle();
     replyToDbId = replyMsg?.id ?? null;
   }
 
   const forward = extractForward(msg);
 
-  const { data: inserted } = await service
+  const messageDateISO = msg.date
+    ? new Date(msg.date * 1000).toISOString()
+    : null;
+
+  // INSERT через атомарный unique-индекс. Если личный бот уже вставил
+  // эту строку — получим conflict (23505), просто игнорируем.
+  const { data: inserted, error: insertError } = await service
     .from("project_messages")
     .insert({
       project_id: binding.project_id,
@@ -398,12 +413,17 @@ async function syncGroupMessage(msg: TgMessage, binding: TgChatBinding, isEdited
       thread_id: binding.thread_id ?? undefined,
       telegram_message_id: telegramMessageId,
       telegram_chat_id: chatId,
+      telegram_sender_user_id: msg.from?.id ?? null,
+      telegram_message_date: messageDateISO,
       reply_to_message_id: replyToDbId,
       forwarded_from_name: forward.name,
       forwarded_date: forward.date,
     })
     .select("id")
     .single();
+  if (insertError && insertError.code !== "23505") {
+    console.error("[telegram-webhook-v2] insert error:", insertError);
+  }
 
   if (inserted) {
     await downloadAttachments(msg, inserted.id, binding.workspace_id, binding.project_id);
