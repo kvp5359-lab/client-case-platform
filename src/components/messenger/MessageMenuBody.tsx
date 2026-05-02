@@ -156,20 +156,23 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
 
   return (
     <>
-      {/* Quick reactions row */}
+      {/* Quick reactions row.
+          Каждый эмодзи обёрнут в Item (DropdownMenuItem / ContextMenuItem) —
+          Radix сам закрывает родительское меню после клика. Иначе для
+          ContextMenu (правая кнопка мыши) меню остаётся открытым, потому
+          что у ContextMenu Root нет controlled open/onOpenChange. */}
       <div className="flex items-center justify-between px-2 py-1.5">
         {quickReactions.map((emoji) => (
-          <button
+          <Item
             key={emoji}
             onClick={() => {
               trackReactionUsage(emoji)
               onReact(message.id, emoji)
-              onCloseMenu?.()
             }}
-            className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-muted text-lg transition-colors"
+            className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-muted text-lg transition-colors p-0 cursor-pointer"
           >
             {emoji}
-          </button>
+          </Item>
         ))}
         {/* Full picker button */}
         <Popover open={reactionPopoverOpen} onOpenChange={setReactionPopoverOpen}>
