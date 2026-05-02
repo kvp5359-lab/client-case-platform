@@ -373,57 +373,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Проверка дубликата.
-    // - Если апдейт от личного бота — учитываем integration_id, потому что
-    //   у каждого бота свой counter; одно реальное telegram-сообщение может
-    //   попасть и сюда (от личного бота), и в секретаря с разными message_id.
-    // - Если секретарь увидел реплай на сообщение, отправленное одним из
-    //   личных ботов воркспейса, то этот реплай уже обработает webhook
-    //   личного бота — секретарю надо пропустить, чтобы не плодить дубликат.
-    if (asPersonalBot) {
-      const { data: existingMsg } = await serviceClient
-        .from("project_messages")
-        .select("id")
-        .eq("telegram_message_id", telegramMessageId)
-        .eq("telegram_chat_id", chatId)
-        .eq("telegram_bot_integration_id", asPersonalBot.integrationId)
-        .maybeSingle();
-      if (existingMsg) return new Response("ok", { status: 200 });
-    } else {
-      const { data: existingMsg } = await serviceClient
-        .from("project_messages")
-        .select("id")
-        .eq("telegram_message_id", telegramMessageId)
-        .eq("telegram_chat_id", chatId)
-        .is("telegram_bot_integration_id", null)
-        .maybeSingle();
-      if (existingMsg) return new Response("ok", { status: 200 });
-
-      // Дедуп против webhook'а личного бота. В basic-группе секретарь и
-      // личный бот оба получают тот же реплай человека, но с разными
-      // message_id. reply_to_message.from в апдейте секретаря может быть
-      // пустым (бот не видит чужих сообщений) — поэтому проверка по
-      // bot_id не всегда срабатывает. Запасной путь: сверяем по
-      // (chat, content, источник, окно ±60 сек). Если личный бот уже
-      // вставил эту строку — секретарь пропускает.
-      const dedupSinceISO = new Date(Date.now() - 60_000).toISOString();
-      const dedupContent = text || "📎";
-      const { data: dupRow } = await serviceClient
-        .from("project_messages")
-        .select("id")
-        .eq("workspace_id", tgChat.workspace_id)
-        .eq("telegram_chat_id", chatId)
-        .eq("source", "telegram")
-        .eq("content", dedupContent)
-        .gte("created_at", dedupSinceISO)
-        .not("telegram_bot_integration_id", "is", null)
-        .limit(1)
-        .maybeSingle();
-      if (dupRow) {
-        return new Response("ok", { status: 200 });
-      }
-    }
-
     const forwardInfo = getForwardInfo(message);
 
     // Lookup исходника реплая. Для личного бота — в его собственном counter
@@ -442,66 +391,85 @@ Deno.serve(async (req: Request) => {
       replyToDbId = replyMsg?.id ?? null;
     }
 
-    // Если событие пришло от личного бота, и секретарь уже успел вставить
-    // эту же входящую строку (без integration_id, без reply-связки), то
-    // вместо INSERT сольём в его строку: проставим integration_id и
-    // reply_to_message_id, чтобы остался один итоговый ряд с правильной
-    // связкой реплая. Это покрывает гонку «секретарь → личный бот».
-    if (asPersonalBot) {
-      const dedupSinceISO = new Date(Date.now() - 60_000).toISOString();
-      const dedupContent = text || "📎";
-      const { data: secRow } = await serviceClient
-        .from("project_messages")
-        .select("id, reply_to_message_id")
-        .eq("workspace_id", tgChat.workspace_id)
-        .eq("telegram_chat_id", chatId)
-        .eq("source", "telegram")
-        .eq("content", dedupContent)
-        .gte("created_at", dedupSinceISO)
-        .is("telegram_bot_integration_id", null)
-        .limit(1)
-        .maybeSingle();
-      if (secRow) {
-        await serviceClient
-          .from("project_messages")
-          .update({
-            telegram_bot_integration_id: asPersonalBot.integrationId,
-            telegram_message_id: telegramMessageId,
-            reply_to_message_id: replyToDbId ?? secRow.reply_to_message_id ?? null,
-          })
-          .eq("id", secRow.id);
-        return new Response("ok", { status: 200 });
-      }
-    }
+    // Атомарный дедуп через уникальный индекс по (chat, sender_user_id,
+    // message_date). Telegram отдаёт эти три поля одинаково обоим ботам
+    // (секретарю и личному), поэтому одно физическое сообщение от
+    // человека не вставится дважды независимо от порядка прихода
+    // апдейтов и без эвристик по контенту/времени.
+    const messageDateISO = message.date
+      ? new Date((message.date as number) * 1000).toISOString()
+      : null;
 
-    const { data: inserted } = await serviceClient
+    const insertPayload = {
+      project_id: tgChat.project_id,
+      workspace_id: tgChat.workspace_id,
+      sender_participant_id: senderParticipantId,
+      sender_name: senderName,
+      sender_role: "Telegram",
+      content: text || "📎",
+      source: "telegram",
+      channel: tgChat.channel || "client",
+      thread_id: tgChat.thread_id ?? undefined,
+      telegram_message_id: telegramMessageId,
+      telegram_message_ids: [telegramMessageId],
+      telegram_chat_id: chatId,
+      telegram_sender_user_id: telegramUserId,
+      telegram_message_date: messageDateISO,
+      reply_to_message_id: replyToDbId,
+      forwarded_from_name: forwardInfo.name,
+      forwarded_date: forwardInfo.date,
+      // Личный бот стампит integration_id, чтобы edit/delete/reaction
+      // потом шли через его токен. Секретарь оставляет null.
+      telegram_bot_integration_id: asPersonalBot?.integrationId ?? null,
+    };
+
+    const insertResult = await serviceClient
       .from("project_messages")
-      .insert({
-        project_id: tgChat.project_id,
-        workspace_id: tgChat.workspace_id,
-        sender_participant_id: senderParticipantId,
-        sender_name: senderName,
-        sender_role: "Telegram",
-        content: text || "📎",
-        source: "telegram",
-        channel: tgChat.channel || "client",
-        thread_id: tgChat.thread_id ?? undefined,
-        telegram_message_id: telegramMessageId,
-        telegram_message_ids: [telegramMessageId],
-        telegram_chat_id: chatId,
-        reply_to_message_id: replyToDbId,
-        forwarded_from_name: forwardInfo.name,
-        forwarded_date: forwardInfo.date,
-        // Если событие пришло на webhook личного бота, маркируем
-        // вставленный реплай его integration_id, чтобы дальнейшие
-        // edit/delete/reaction роутились через того же бота.
-        telegram_bot_integration_id: asPersonalBot?.integrationId ?? null,
-      })
+      .insert(insertPayload)
       .select("id")
       .single();
 
-    if (inserted) {
-      await handleAttachments(message, inserted.id, tgChat.workspace_id, tgChat.project_id);
+    if (insertResult.data) {
+      await handleAttachments(
+        message,
+        insertResult.data.id,
+        tgChat.workspace_id,
+        tgChat.project_id,
+      );
+      return new Response("ok", { status: 200 });
+    }
+
+    // Конфликт по uq_project_messages_telegram_dedup — другой webhook (секретарь
+    // или личный бот, в зависимости от того, кто пришёл первым) уже вставил
+    // эту строку. Догоним: проставим integration_id и reply_to_message_id,
+    // если они ещё не были заполнены. Используем `.is(...null)` чтобы не
+    // перетереть данные первого вставщика (он мог уже знать связку).
+    const isUniqueViolation =
+      typeof insertResult.error?.code === "string" &&
+      insertResult.error.code === "23505";
+    if (
+      isUniqueViolation &&
+      telegramUserId != null &&
+      messageDateISO &&
+      asPersonalBot
+    ) {
+      const enrich: Record<string, unknown> = {};
+      if (asPersonalBot.integrationId)
+        enrich.telegram_bot_integration_id = asPersonalBot.integrationId;
+      if (telegramMessageId) enrich.telegram_message_id = telegramMessageId;
+      if (replyToDbId) enrich.reply_to_message_id = replyToDbId;
+
+      // Только обновляем строки, у которых эти поля ещё не заполнены —
+      // личный бот «дописывает» секретарскую строку, но не наоборот.
+      await serviceClient
+        .from("project_messages")
+        .update(enrich)
+        .eq("telegram_chat_id", chatId)
+        .eq("telegram_sender_user_id", telegramUserId)
+        .eq("telegram_message_date", messageDateISO)
+        .is("telegram_bot_integration_id", null);
+    } else if (insertResult.error && !isUniqueViolation) {
+      console.error("[telegram-webhook] insert failed:", insertResult.error);
     }
 
     return new Response("ok", { status: 200 });

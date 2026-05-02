@@ -3856,9 +3856,11 @@ export type Database = {
           telegram_bot_integration_id: string | null
           telegram_chat_id: number | null
           telegram_error_detail: string | null
+          telegram_message_date: string | null
           telegram_message_id: number | null
           telegram_message_ids: number[]
           telegram_retry_count: number
+          telegram_sender_user_id: number | null
           thread_id: string | null
           updated_at: string
           workspace_id: string
@@ -3885,9 +3887,11 @@ export type Database = {
           telegram_bot_integration_id?: string | null
           telegram_chat_id?: number | null
           telegram_error_detail?: string | null
+          telegram_message_date?: string | null
           telegram_message_id?: number | null
           telegram_message_ids?: number[]
           telegram_retry_count?: number
+          telegram_sender_user_id?: number | null
           thread_id?: string | null
           updated_at?: string
           workspace_id: string
@@ -3914,9 +3918,11 @@ export type Database = {
           telegram_bot_integration_id?: string | null
           telegram_chat_id?: number | null
           telegram_error_detail?: string | null
+          telegram_message_date?: string | null
           telegram_message_id?: number | null
           telegram_message_ids?: number[]
           telegram_retry_count?: number
+          telegram_sender_user_id?: number | null
           thread_id?: string | null
           updated_at?: string
           workspace_id?: string
