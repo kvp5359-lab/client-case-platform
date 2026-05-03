@@ -12,7 +12,6 @@ const threshold = LEVELS[config.LOG_LEVEL]
 function fmt(level: keyof typeof LEVELS, ...args: unknown[]) {
   if (LEVELS[level] < threshold) return
   const ts = new Date().toISOString()
-  // eslint-disable-next-line no-console
   console[level === "error" ? "error" : level === "warn" ? "warn" : "log"](
     `[${ts}] [${level.toUpperCase()}]`,
     ...args,
