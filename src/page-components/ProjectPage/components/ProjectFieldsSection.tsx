@@ -147,18 +147,19 @@ export function ProjectFieldsSection({ projectId, templateId, disabled }: Props)
 
       const { data: values, error: vErr } = await supabase
         .from('custom_directory_values')
-        .select('entry_id, field_id, value')
+        .select('entry_id, field_id, value_text, value_number, value_date, value_json')
         .in('entry_id', entryIds)
         .in('field_id', labelFieldIds)
       if (vErr) throw vErr
 
       const labelByEntry = new Map<string, string>()
       ;(values ?? []).forEach((v) => {
-        if (v.value != null) {
-          const text =
-            typeof v.value === 'string' ? v.value : JSON.stringify(v.value).replace(/^"|"$/g, '')
-          labelByEntry.set(v.entry_id, text)
-        }
+        const raw =
+          v.value_text ??
+          (v.value_number !== null ? String(v.value_number) : null) ??
+          v.value_date ??
+          (v.value_json !== null ? JSON.stringify(v.value_json).replace(/^"|"$/g, '') : null)
+        if (raw != null) labelByEntry.set(v.entry_id, raw)
       })
 
       const grouped: Record<string, EntryRow[]> = {}

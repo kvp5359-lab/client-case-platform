@@ -116,10 +116,22 @@ export function useFormFields(templateId: string | undefined) {
     mutationFn: async (targetSectionId: string | null) => {
       if (!templateId) return
 
-      // Создаём field_definition типа divider
+      // Берём workspace_id из шаблона — field_definitions требует
+      // workspace-scope (fix 51be04b против cross-tenant утечки).
+      const { data: tpl, error: tplError } = await supabase
+        .from('form_templates')
+        .select('workspace_id')
+        .eq('id', templateId)
+        .single()
+      if (tplError || !tpl) throw tplError ?? new Error('template not found')
+
       const { data: fieldDef, error: defError } = await supabase
         .from('field_definitions')
-        .insert({ name: 'Разделитель', field_type: 'divider' as const })
+        .insert({
+          name: 'Разделитель',
+          field_type: 'divider' as const,
+          workspace_id: tpl.workspace_id,
+        })
         .select('id')
         .single()
       if (defError) throw defError
