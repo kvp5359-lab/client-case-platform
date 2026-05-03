@@ -69,7 +69,7 @@ BEGIN
         ),
         headers := jsonb_build_object(
           'Content-Type', 'application/json',
-          'x-internal-secret', 'a9d84c085eceb22deb3e0b5e104a921e2eb8ca6bea8b326e5ac08b36d16dcf28'
+          'x-internal-secret', '097e79a971f850687012b96537d389b6b734b4538d29cf25cc7b58234dadcdab'
         )
       );
       RETURN NEW;
@@ -90,7 +90,7 @@ BEGIN
         body := jsonb_build_object('message_id', NEW.id),
         headers := jsonb_build_object(
           'Content-Type', 'application/json',
-          'x-internal-secret', 'a9d84c085eceb22deb3e0b5e104a921e2eb8ca6bea8b326e5ac08b36d16dcf28'
+          'x-internal-secret', '097e79a971f850687012b96537d389b6b734b4538d29cf25cc7b58234dadcdab'
         )
       );
       RETURN NEW;
@@ -137,7 +137,7 @@ BEGIN
     ),
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'x-internal-secret', 'a9d84c085eceb22deb3e0b5e104a921e2eb8ca6bea8b326e5ac08b36d16dcf28'
+      'x-internal-secret', '097e79a971f850687012b96537d389b6b734b4538d29cf25cc7b58234dadcdab'
     )
   );
 

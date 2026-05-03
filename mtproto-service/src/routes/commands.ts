@@ -68,7 +68,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
         text: z.string().min(1),
         // Если это reply — telegram_message_id оригинального сообщения,
         // на которое отвечаем.
-        reply_to_telegram_message_id: z.number().int().optional(),
+        reply_to_telegram_message_id: z.number().int().nullish(),
         // UUID нашего project_messages. Если передан — сервис сам стампит
         // telegram_message_id и telegram_chat_id после отправки. Используется
         // PG-триггером notify_telegram_on_new_message при автоотправке из UI.
@@ -89,7 +89,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       const result = await client.sendMessage(peer, {
         message: body.data.text,
         parseMode: "html",
-        replyTo: body.data.reply_to_telegram_message_id,
+        replyTo: body.data.reply_to_telegram_message_id ?? undefined,
       })
       const telegramMessageId = Number(result.id)
       const telegramDate = result.date
