@@ -14,6 +14,7 @@
 import type { FastifyPluginAsync } from "fastify"
 import bigInt from "big-integer"
 import { Api, TelegramClient } from "telegram"
+import { CustomFile } from "telegram/client/uploads.js"
 import { z } from "zod"
 import { config } from "../config.js"
 import { supabase } from "../db.js"
@@ -65,18 +66,19 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       .object({
         user_id: z.string().uuid(),
         client_tg_user_id: z.number().int(),
-        text: z.string().min(1),
-        // Если это reply — telegram_message_id оригинального сообщения,
-        // на которое отвечаем.
+        // text может быть пустой, если только вложения. Валидация ниже:
+        // должен быть либо непустой text, либо has_attachments=true.
+        text: z.string(),
         reply_to_telegram_message_id: z.number().int().nullish(),
-        // UUID нашего project_messages. Если передан — сервис сам стампит
-        // telegram_message_id и telegram_chat_id после отправки. Используется
-        // PG-триггером notify_telegram_on_new_message при автоотправке из UI.
         message_id_internal: z.string().uuid().optional(),
+        has_attachments: z.boolean().optional().default(false),
       })
       .safeParse(req.body)
     if (!body.success) {
       return reply.code(400).send({ error: "Invalid body", details: body.error.issues })
+    }
+    if (!body.data.has_attachments && body.data.text.length === 0) {
+      return reply.code(400).send({ error: "Either text or has_attachments must be set" })
     }
 
     const client = getClient(body.data.user_id)
@@ -86,27 +88,83 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
 
     try {
       const peer = await resolvePeer(client, body.data.client_tg_user_id)
-      const result = await client.sendMessage(peer, {
-        message: body.data.text,
-        parseMode: "html",
-        replyTo: body.data.reply_to_telegram_message_id ?? undefined,
-      })
-      const telegramMessageId = Number(result.id)
-      const telegramDate = result.date
+      const sentIds: number[] = []
+      let firstDate: number | undefined
 
-      // Стампим в нашу БД, если был передан id внутреннего сообщения,
-      // чтобы при ретраях (триггер шлёт повторно) мы видели «уже ушло»
-      // и могли строить корректные ответы/реакции.
+      if (body.data.has_attachments && body.data.message_id_internal) {
+        const files = await fetchAttachments(body.data.message_id_internal)
+        if (files.length === 0) {
+          throw new Error("Не удалось отправить ни одного файла.")
+        }
+        const caption = body.data.text.length > 0 ? body.data.text : undefined
+
+        if (files.length === 1) {
+          // Одиночный файл — обычный sendFile.
+          const f = files[0]!
+          const sent = await client.sendFile(peer, {
+            file: f.buffer,
+            caption,
+            parseMode: caption ? "html" : undefined,
+            attributes: [
+              new Api.DocumentAttributeFilename({ fileName: f.fileName }),
+            ],
+            replyTo: body.data.reply_to_telegram_message_id ?? undefined,
+          })
+          if (sent && "id" in sent) {
+            sentIds.push(Number((sent as { id: number | bigint }).id))
+            firstDate = (sent as { date?: number }).date
+          }
+        } else {
+          // Несколько файлов — альбом (groupedId), TG показывает как одну
+          // карточку. Имена файлов передаём через CustomFile, потому что
+          // в album-режиме gramjs не принимает общий attributes — каждый
+          // файл несёт свои метаданные сам.
+          const customFiles = files.map(
+            (f) => new CustomFile(f.fileName, f.buffer.length, "", f.buffer),
+          )
+          const sentList = await client.sendFile(peer, {
+            file: customFiles,
+            caption,
+            parseMode: caption ? "html" : undefined,
+            replyTo: body.data.reply_to_telegram_message_id ?? undefined,
+          }) as unknown as Api.Message | Api.Message[]
+          const arr = Array.isArray(sentList) ? sentList : [sentList]
+          for (const m of arr) {
+            if (m && "id" in m) {
+              sentIds.push(Number((m as { id: number | bigint }).id))
+              if (firstDate === undefined) {
+                firstDate = (m as { date?: number }).date
+              }
+            }
+          }
+        }
+
+        if (sentIds.length === 0) {
+          throw new Error("Не удалось отправить ни одного файла.")
+        }
+      } else {
+        const result = await client.sendMessage(peer, {
+          message: body.data.text,
+          parseMode: "html",
+          replyTo: body.data.reply_to_telegram_message_id ?? undefined,
+        })
+        sentIds.push(Number(result.id))
+        firstDate = result.date
+      }
+
+      const telegramMessageId = sentIds[0]
+
       if (body.data.message_id_internal) {
         await supabase
           .from("project_messages")
           .update({
             telegram_message_id: telegramMessageId,
-            telegram_message_ids: [telegramMessageId],
+            telegram_message_ids: sentIds,
             telegram_chat_id: body.data.client_tg_user_id,
-            telegram_message_date: telegramDate
-              ? new Date(telegramDate * 1000).toISOString()
+            telegram_message_date: firstDate
+              ? new Date(firstDate * 1000).toISOString()
               : null,
+            telegram_attachments_delivered: body.data.has_attachments ? true : null,
             telegram_error_detail: null,
           })
           .eq("id", body.data.message_id_internal)
@@ -115,15 +173,18 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       return {
         ok: true,
         telegram_message_id: telegramMessageId,
-        telegram_date: telegramDate,
+        telegram_message_ids: sentIds,
+        telegram_date: firstDate,
       }
     } catch (err) {
       app.log.error({ err }, "messages/send failed")
-      // Если был internal-id — стампим ошибку, чтобы UI мог показать «не доставлено».
       if (body.data.message_id_internal) {
         await supabase
           .from("project_messages")
-          .update({ telegram_error_detail: humanError(err) })
+          .update({
+            telegram_error_detail: humanError(err),
+            telegram_attachments_delivered: body.data.has_attachments ? false : null,
+          })
           .eq("id", body.data.message_id_internal)
       }
       return reply.code(500).send({ error: humanError(err) })
@@ -282,6 +343,72 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(500).send({ error: humanError(err) })
     }
   })
+}
+
+/**
+ * Качает все вложения нашего сообщения из Supabase Storage. Возвращает
+ * Buffer + имя файла для каждого. Большие файлы — память; ограничение
+ * файла Telegram'а ~2GB, реалистично нам прилетят PDF/картинки/доки в
+ * пределах десятков MB. Этого достаточно.
+ */
+async function fetchAttachments(messageId: string): Promise<
+  { buffer: Buffer; fileName: string; mimeType: string | null }[]
+> {
+  // Гонка: PG-триггер срабатывает на INSERT в project_messages мгновенно,
+  // а фронт заливает вложения в message_attachments отдельными запросами
+  // (после загрузки в Storage), причём не атомарно — несколько файлов могут
+  // появляться поочередно. Ждём пока количество стабилизируется: после
+  // первого появления продолжаем опрашивать, и выходим только когда два
+  // подряд опроса дали одинаковое количество. Жёсткий потолок — 8 попыток
+  // (~5.6с) чтобы не висеть бесконечно при поломке.
+  let rows: Array<{ file_name: string; mime_type: string | null; storage_path: string; file_id: string | null }> = []
+  let prevCount = -1
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const { data } = await supabase
+      .from("message_attachments")
+      .select("file_name, mime_type, storage_path, file_id")
+      .eq("message_id", messageId)
+    const cur = data?.length ?? 0
+    if (cur > 0 && cur === prevCount) {
+      rows = data as typeof rows
+      break
+    }
+    prevCount = cur
+    await new Promise((r) => setTimeout(r, 700))
+  }
+  if (rows.length === 0) return []
+
+  const result: { buffer: Buffer; fileName: string; mimeType: string | null }[] = []
+  for (const row of rows) {
+    let bucket = "message-attachments"
+    let path = row.storage_path as string
+    // Если есть file_id — bucket/path могут быть в таблице files (для
+    // переиспользуемых вложений из библиотеки). Совместимость с тем, как
+    // делает telegram-send-message.
+    if (row.file_id) {
+      const { data: fileRow } = await supabase
+        .from("files")
+        .select("bucket, storage_path")
+        .eq("id", row.file_id)
+        .maybeSingle()
+      if (fileRow) {
+        bucket = fileRow.bucket as string
+        path = fileRow.storage_path as string
+      }
+    }
+
+    const { data: blob, error } = await supabase.storage.from(bucket).download(path)
+    if (error || !blob) {
+      throw new Error(`Не удалось скачать вложение "${row.file_name}": ${error?.message ?? "no data"}`)
+    }
+    const arrayBuf = await blob.arrayBuffer()
+    result.push({
+      buffer: Buffer.from(arrayBuf),
+      fileName: row.file_name as string,
+      mimeType: (row.mime_type as string) ?? null,
+    })
+  }
+  return result
 }
 
 function humanError(err: unknown): string {

@@ -62,6 +62,8 @@ export interface ProjectMessage {
   telegram_message_id: number | null
   telegram_chat_id: number | null
   telegram_attachments_delivered: boolean | null
+  /** Когда собеседник прочитал это исходящее (заполняется MTProto-сервисом по UpdateReadHistoryOutbox). null — не прочитано или unknown. */
+  recipient_read_at: string | null
   is_edited: boolean
   is_draft: boolean
   forwarded_from_name: string | null

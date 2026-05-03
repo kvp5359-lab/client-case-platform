@@ -143,6 +143,7 @@ async function callMTProto(args: {
   telegram_message_id: number;
   emoji: string | null;
 }): Promise<void> {
+  console.log(`[telegram-mtproto-react] DEBUG url=${MTPROTO_SERVICE_URL} secret_len=${INTERNAL_SECRET.length} secret_prefix=${INTERNAL_SECRET.slice(0, 8)}`);
   try {
     const res = await fetch(`${MTPROTO_SERVICE_URL}/reactions/set`, {
       method: "POST",

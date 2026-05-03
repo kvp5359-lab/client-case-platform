@@ -63,11 +63,22 @@ async function handleReactionUpdate(
   ctx: SessionContext,
   upd: Api.UpdateMessageReactions,
 ): Promise<void> {
-  // Только private chats.
-  const peer = upd.peer
-  if (!(peer instanceof Api.PeerUser)) return
-  const clientTgUserId = Number(peer.userId)
-  const telegramMessageId = Number(upd.msgId)
+  if (!(upd.peer instanceof Api.PeerUser)) return
+  await processReactions(ctx, Number(upd.peer.userId), Number(upd.msgId), upd.reactions)
+}
+
+/**
+ * Универсальная обработка реакций. Принимает уже распакованные параметры,
+ * чтобы можно было звать как из UpdateMessageReactions, так и из
+ * UpdateEditMessage (Telegram в личных чатах присылает реакции именно
+ * через edit с заполненным полем msg.reactions, а не отдельным апдейтом).
+ */
+async function processReactions(
+  ctx: SessionContext,
+  clientTgUserId: number,
+  telegramMessageId: number,
+  reactions: Api.TypeMessageReactions | undefined,
+): Promise<void> {
 
   // Находим наше сообщение по (thread_id, telegram_message_id). thread
   // ищем через session_user_id + client_tg_user_id, потому что один
@@ -89,10 +100,10 @@ async function handleReactionUpdate(
     .maybeSingle()
   if (!msg) return
 
-  // upd.reactions — Api.MessageReactions с recentReactions: список последних
+  // reactions — Api.MessageReactions с recentReactions: список последних
   // авторов и их эмодзи. Полный список реакций — в .results (с количеством),
   // но без авторов. Для UI нам нужны и авторы, и эмодзи — берём из recent.
-  const recent = upd.reactions?.recentReactions ?? []
+  const recent = (reactions as Api.MessageReactions | undefined)?.recentReactions ?? []
 
   // Собираем все эмодзи каждого PeerUser. Нашему собеседнику в личке
   // соответствует только один PeerUser — клиент.
@@ -110,22 +121,39 @@ async function handleReactionUpdate(
   // апдейт о моих собственных реакциях, поставленных с другого устройства.
   // Обрабатываем все.
   for (const [tgUserId, emojis] of byUser) {
-    // Имя автора реакции для UI.
+    // Резолв participant: смотрим в participants по telegram_user_id в этом
+    // воркспейсе. Если есть — берём оттуда имя и id (UI покажет аватар).
+    // Если нет — fallback на user_telegram_links и плейсхолдер `tg:<id>`.
+    let participantId: string | null = null
     let userName = `tg:${tgUserId}`
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: link } = await (supabase as any)
-        .from("user_telegram_links")
-        .select("tg_first_name, tg_last_name, tg_username")
-        .eq("tg_user_id", tgUserId)
-        .maybeSingle()
-      if (link) {
-        userName =
-          [link.tg_first_name, link.tg_last_name].filter(Boolean).join(" ") ||
-          (link.tg_username ? `@${link.tg_username}` : userName)
+    const { data: participant } = await supabase
+      .from("participants")
+      .select("id, name, last_name")
+      .eq("workspace_id", msg.workspace_id)
+      .eq("telegram_user_id", tgUserId)
+      .eq("is_deleted", false)
+      .maybeSingle()
+    if (participant) {
+      participantId = participant.id as string
+      userName =
+        [participant.name, participant.last_name].filter(Boolean).join(" ") ||
+        userName
+    } else {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: link } = await (supabase as any)
+          .from("user_telegram_links")
+          .select("tg_first_name, tg_last_name, tg_username")
+          .eq("tg_user_id", tgUserId)
+          .maybeSingle()
+        if (link) {
+          userName =
+            [link.tg_first_name, link.tg_last_name].filter(Boolean).join(" ") ||
+            (link.tg_username ? `@${link.tg_username}` : userName)
+        }
+      } catch {
+        /* noop */
       }
-    } catch {
-      /* noop */
     }
 
     // Сначала чистим прежние реакции этого юзера на это сообщение.
@@ -140,7 +168,7 @@ async function handleReactionUpdate(
 
     const rows = emojis.map((emoji) => ({
       message_id: msg.id,
-      participant_id: null as string | null,
+      participant_id: participantId,
       telegram_user_id: tgUserId,
       telegram_user_name: userName,
       emoji,
@@ -186,21 +214,40 @@ async function handleReadOutbox(
 }
 
 async function handleEdit(
-  _ctx: SessionContext,
+  ctx: SessionContext,
   msg: Api.TypeMessage,
 ): Promise<void> {
   if (!(msg instanceof Api.Message)) return
   const peer = msg.peerId
   if (!(peer instanceof Api.PeerUser)) return
   const telegramMessageId = Number(msg.id)
-  await supabase
+  const clientTgUserId = Number(peer.userId)
+
+  // Telegram в личных чатах присылает изменение реакций как UpdateEditMessage
+  // (а не отдельный UpdateMessageReactions). Если в edit пришли реакции —
+  // обрабатываем их через общий путь.
+  if (msg.reactions) {
+    await processReactions(ctx, clientTgUserId, telegramMessageId, msg.reactions)
+  }
+
+  // Telegram присылает edit и при настоящем редактировании текста, и при
+  // изменении реакций / служебной мета (например, после доставки медиа).
+  // Помечаем is_edited только если в апдейте есть НЕпустой текст и он
+  // реально поменялся. Пустой msg.message у медиа-сообщений = caption нет,
+  // оригинал в БД ("📎" или текст пользователя) трогать нельзя.
+  if (!msg.message) return
+  const { data: existing } = await supabase
     .from("project_messages")
-    .update({
-      content: msg.message || "(вложение)",
-      is_edited: true,
-    })
-    .eq("telegram_chat_id", Number(peer.userId))
+    .select("id, content")
+    .eq("telegram_chat_id", clientTgUserId)
     .contains("telegram_message_ids", [telegramMessageId])
+    .maybeSingle()
+  if (existing && existing.content !== msg.message) {
+    await supabase
+      .from("project_messages")
+      .update({ content: msg.message, is_edited: true })
+      .eq("id", existing.id)
+  }
 }
 
 async function handleDelete(

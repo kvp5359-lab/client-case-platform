@@ -13,18 +13,46 @@
 
 import type { NewMessageEvent } from "telegram/events/NewMessage.js"
 import { Api } from "telegram"
+import { randomBytes } from "node:crypto"
 import { supabase } from "../db.js"
 import { logger } from "../utils/logger.js"
 import {
+  ensureClientParticipant,
   ensureMTProtoThread,
   ensureSystemInboxProject,
-  resolveSessionParticipantId,
+  resolveSessionParticipant,
 } from "./inbox.js"
 
 interface SessionContext {
   user_id: string
   workspace_id: string
   tg_user_id: number
+}
+
+/**
+ * In-process сериализатор по `(threadId, groupedId)`. Альбом Telegram
+ * приходит как N updateNewMessage в течение ~10мс — без mutex'а они
+ * конкурентно выполняют SELECT-then-INSERT и создают N дублей вместо
+ * одной склеенной записи. Promise-цепочка гарантирует, что внутри одной
+ * пары (тред, альбом) обработка идёт строго последовательно.
+ */
+const albumLocks = new Map<string, Promise<void>>()
+
+async function withAlbumLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const prev = albumLocks.get(key) ?? Promise.resolve()
+  let release!: () => void
+  const next = new Promise<void>((r) => { release = r })
+  albumLocks.set(key, prev.then(() => next))
+  try {
+    await prev
+    return await fn()
+  } finally {
+    release()
+    // Чистим Map чтобы не утекало.
+    if (albumLocks.get(key) === next || albumLocks.get(key) === prev.then(() => next)) {
+      albumLocks.delete(key)
+    }
+  }
 }
 
 export async function handleNewMessage(
@@ -38,6 +66,23 @@ export async function handleNewMessage(
   // У gramjs у Message есть isPrivate (через peerId.userId).
   const peerUser = msg.peerId instanceof Api.PeerUser ? msg.peerId : null
   if (!peerUser) return
+
+  // Если это альбом — сериализуем обработку всех его элементов: иначе
+  // конкурентные SELECT-then-INSERT создают N дублей вместо одной склейки.
+  const groupedIdEarly = msg.groupedId ? Number(msg.groupedId) : null
+  if (groupedIdEarly !== null) {
+    const lockKey = `${ctx.user_id}:${Number(peerUser.userId)}:${groupedIdEarly}`
+    return withAlbumLock(lockKey, () => handleNewMessageInner(ctx, event, msg, peerUser))
+  }
+  return handleNewMessageInner(ctx, event, msg, peerUser)
+}
+
+async function handleNewMessageInner(
+  ctx: SessionContext,
+  event: NewMessageEvent,
+  msg: Api.Message,
+  peerUser: Api.PeerUser,
+): Promise<void> {
 
   // 2. Идентификатор клиента (другой стороны) и направление.
   // В личке peerId.userId — это **всегда** id «собеседника», не нашего юзера,
@@ -89,12 +134,21 @@ export async function handleNewMessage(
 
   // 5. Дедуп через UNIQUE-индекс. Если сообщение уже в БД (нами отправленное
   // через /messages/send или повтор апдейта), 23505 — пропускаем.
-  const senderParticipantId = isOutgoing
-    ? await resolveSessionParticipantId({
+  const clientParticipantId = await ensureClientParticipant({
+    workspace_id: ctx.workspace_id,
+    telegram_user_id: clientTgUserId,
+    first_name: clientFirstName,
+    last_name: clientLastName,
+  })
+  const sessionParticipant = isOutgoing
+    ? await resolveSessionParticipant({
         user_id: ctx.user_id,
         workspace_id: ctx.workspace_id,
       })
     : null
+  const senderParticipantId = isOutgoing
+    ? sessionParticipant?.id ?? null
+    : clientParticipantId
 
   // Reply lookup: если в апдейте есть reply_to — ищем оригинал в нашей БД.
   let replyToMessageId: string | null = null
@@ -111,30 +165,194 @@ export async function handleNewMessage(
     if (original) replyToMessageId = original.id as string
   }
 
-  const payload = {
-    workspace_id: ctx.workspace_id,
-    project_id: projectId,
-    thread_id: threadId,
-    sender_participant_id: senderParticipantId,
-    sender_name: isOutgoing ? null : clientDisplayName,
-    sender_role: isOutgoing ? null : "Клиент",
-    content: msg.message || "(вложение)",
-    source: "telegram_mtproto" as const,
-    channel: "client" as const,
-    telegram_chat_id: clientTgUserId,
-    telegram_message_id: telegramMessageId,
-    telegram_message_ids: [telegramMessageId],
-    telegram_message_date: messageDateISO,
-    telegram_sender_user_id: senderId,
-    reply_to_message_id: replyToMessageId,
+  // Определяем медиа: документ (файл/voice/video) или фото.
+  const mediaInfo = extractMediaInfo(msg)
+  const groupedId = msg.groupedId ? Number(msg.groupedId) : null
+
+  // Если это часть альбома — пытаемся приклеиться к уже существующему
+  // project_message с тем же groupedId (другая половина альбома пришла
+  // раньше). Это даёт одну карточку с несколькими вложениями.
+  let inserted: { id: string } | null = null
+  if (groupedId !== null && mediaInfo) {
+    const { data: existing } = await supabase
+      .from("project_messages")
+      .select("id, content, telegram_message_ids")
+      .eq("thread_id", threadId)
+      .eq("telegram_grouped_id", groupedId)
+      .maybeSingle()
+    if (existing) {
+      // Дописываем telegram_message_id в массив, обновляем caption если
+      // в этом элементе он есть, а у предыдущего был "📎".
+      const ids = Array.isArray(existing.telegram_message_ids)
+        ? (existing.telegram_message_ids as number[])
+        : []
+      if (!ids.includes(telegramMessageId)) {
+        ids.push(telegramMessageId)
+      }
+      const update: Record<string, unknown> = { telegram_message_ids: ids }
+      if (msg.message && (existing.content === "📎" || !existing.content)) {
+        update.content = msg.message
+      }
+      await supabase
+        .from("project_messages")
+        .update(update)
+        .eq("id", existing.id)
+      inserted = { id: existing.id as string }
+    }
   }
 
-  const { error } = await supabase.from("project_messages").insert(payload)
-  if (error) {
-    if ((error as { code?: string }).code === "23505") {
-      // Дубликат (мы сами уже вставили через /messages/send или повтор апдейта).
+  if (!inserted) {
+    const payload = {
+      workspace_id: ctx.workspace_id,
+      project_id: projectId,
+      thread_id: threadId,
+      sender_participant_id: senderParticipantId,
+      sender_name: isOutgoing
+        ? sessionParticipant?.name ?? "Сотрудник"
+        : clientDisplayName,
+      sender_role: isOutgoing ? "Сотрудник" : "Клиент",
+      content: msg.message || (mediaInfo ? "📎" : "(вложение)"),
+      source: "telegram_mtproto" as const,
+      channel: "client" as const,
+      has_attachments: mediaInfo !== null,
+      telegram_chat_id: clientTgUserId,
+      telegram_message_id: telegramMessageId,
+      telegram_message_ids: [telegramMessageId],
+      telegram_message_date: messageDateISO,
+      telegram_sender_user_id: senderId,
+      reply_to_message_id: replyToMessageId,
+      telegram_grouped_id: groupedId,
+    }
+
+    const { data: row, error } = await supabase
+      .from("project_messages")
+      .insert(payload)
+      .select("id")
+      .single()
+    if (error) {
+      if ((error as { code?: string }).code === "23505") {
+        // Дубликат — наше же исходящее или повтор апдейта.
+        return
+      }
+      logger.error("[incoming] insert error:", error)
       return
     }
-    logger.error("[incoming] insert error:", error)
+    inserted = row as { id: string } | null
+  }
+
+  // Если есть медиа — качаем через gramjs, кладём в Storage, создаём строку
+  // в message_attachments. UI после реалтайма подтянет вложение.
+  if (mediaInfo && inserted) {
+    try {
+      await downloadAndStoreMedia({
+        client: event.client,
+        message: msg,
+        info: mediaInfo,
+        workspaceId: ctx.workspace_id,
+        projectId,
+        messageId: inserted.id as string,
+      })
+    } catch (err) {
+      logger.error("[incoming] media download failed:", err)
+    }
+  }
+}
+
+interface MediaInfo {
+  fileName: string
+  fileSize: number
+  mimeType: string | null
+}
+
+function extractMediaInfo(msg: Api.Message): MediaInfo | null {
+  const media = msg.media
+  if (!media) return null
+
+  if (media instanceof Api.MessageMediaDocument && media.document instanceof Api.Document) {
+    const doc = media.document
+    let fileName = `file_${Number(doc.id)}`
+    let mimeType: string | null = doc.mimeType ?? null
+    for (const a of doc.attributes ?? []) {
+      if (a instanceof Api.DocumentAttributeFilename) fileName = a.fileName
+    }
+    // Если у документа нет расширения, но есть mime — добавим.
+    if (!fileName.includes(".") && mimeType) {
+      const ext = mimeExtension(mimeType)
+      if (ext) fileName = `${fileName}.${ext}`
+    }
+    return {
+      fileName,
+      fileSize: Number(doc.size),
+      mimeType,
+    }
+  }
+
+  if (media instanceof Api.MessageMediaPhoto && media.photo instanceof Api.Photo) {
+    return {
+      fileName: `photo_${Number(media.photo.id)}.jpg`,
+      fileSize: 0, // считается после скачивания
+      mimeType: "image/jpeg",
+    }
+  }
+
+  return null
+}
+
+function mimeExtension(mime: string): string | null {
+  const map: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "video/mp4": "mp4",
+    "audio/ogg": "ogg",
+    "audio/mpeg": "mp3",
+    "audio/mp4": "m4a",
+    "application/pdf": "pdf",
+  }
+  return map[mime] ?? null
+}
+
+async function downloadAndStoreMedia(args: {
+  client: NewMessageEvent["client"]
+  message: Api.Message
+  info: MediaInfo
+  workspaceId: string
+  projectId: string
+  messageId: string
+}): Promise<void> {
+  if (!args.client) {
+    throw new Error("client is unavailable")
+  }
+  const buffer = await args.client.downloadMedia(args.message)
+  if (!buffer || !(buffer instanceof Buffer)) {
+    throw new Error("downloadMedia returned no data")
+  }
+
+  const ext = args.info.fileName.includes(".")
+    ? args.info.fileName.split(".").pop()!
+    : "bin"
+  const random = randomBytes(4).toString("hex")
+  const storagePath = `${args.workspaceId}/${args.projectId}/${args.messageId}/${Date.now()}-${random}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from("message-attachments")
+    .upload(storagePath, buffer, {
+      contentType: args.info.mimeType ?? "application/octet-stream",
+      upsert: false,
+    })
+  if (uploadError) {
+    throw new Error(`Storage upload failed: ${uploadError.message}`)
+  }
+
+  const { error: insertError } = await supabase.from("message_attachments").insert({
+    message_id: args.messageId,
+    file_name: args.info.fileName,
+    file_size: args.info.fileSize > 0 ? args.info.fileSize : buffer.length,
+    mime_type: args.info.mimeType,
+    storage_path: storagePath,
+  })
+  if (insertError) {
+    throw new Error(`message_attachments insert failed: ${insertError.message}`)
   }
 }

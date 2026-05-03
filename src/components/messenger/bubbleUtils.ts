@@ -13,6 +13,7 @@ export function getDeliveryStatus(
 ): DeliveryStatus {
   if (!isOwn) return null
   if (tgStatus === 'pending') return 'pending'
+  if (tgStatus === 'read') return 'read'
   if (tgStatus === 'delivered') return 'sent'
   if (message.source === 'email') {
     if (message.id.startsWith('optimistic-')) return 'pending'

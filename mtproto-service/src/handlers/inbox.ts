@@ -101,16 +101,84 @@ export async function ensureMTProtoThread(args: {
  * Нужен для proper-стампа sender_participant_id у исходящих с других
  * устройств.
  */
-export async function resolveSessionParticipantId(args: {
+export async function resolveSessionParticipant(args: {
   user_id: string
   workspace_id: string
-}): Promise<string | null> {
+}): Promise<{ id: string; name: string } | null> {
   const { data } = await supabase
     .from("participants")
-    .select("id")
+    .select("id, name, last_name")
     .eq("user_id", args.user_id)
     .eq("workspace_id", args.workspace_id)
     .eq("is_deleted", false)
     .maybeSingle()
-  return data ? (data.id as string) : null
+  if (!data) return null
+  const fullName = [data.name, data.last_name].filter(Boolean).join(" ") || "Сотрудник"
+  return { id: data.id as string, name: fullName }
+}
+
+// Совместимость со старым именем — возвращает только id.
+export async function resolveSessionParticipantId(args: {
+  user_id: string
+  workspace_id: string
+}): Promise<string | null> {
+  const p = await resolveSessionParticipant(args)
+  return p?.id ?? null
+}
+
+/**
+ * Upsert клиента (собеседника MTProto) в таблицу participants как
+ * "Telegram-контакт". Возвращает participant_id. Тот же контракт, что
+ * у telegram-webhook (групповые боты), поэтому работает существующая
+ * фича «Привязать к участнику» (RPC merge_telegram_contact).
+ *
+ * Дедуп по (workspace_id, telegram_user_id). Если уже привязан к юзеру
+ * (linked_user_id) — обновляем только имена/фамилии, чтобы не сломать
+ * слияние.
+ */
+export async function ensureClientParticipant(args: {
+  workspace_id: string
+  telegram_user_id: number
+  first_name: string | null
+  last_name: string | null
+}): Promise<string | null> {
+  const { data: existing } = await supabase
+    .from("participants")
+    .select("id, name, last_name")
+    .eq("workspace_id", args.workspace_id)
+    .eq("telegram_user_id", args.telegram_user_id)
+    .eq("is_deleted", false)
+    .maybeSingle()
+
+  const newName = args.first_name || existing?.name || "Telegram User"
+  const newLastName = args.last_name ?? existing?.last_name ?? null
+
+  if (existing) {
+    if (existing.name !== newName || existing.last_name !== newLastName) {
+      await supabase
+        .from("participants")
+        .update({ name: newName, last_name: newLastName })
+        .eq("id", existing.id)
+    }
+    return existing.id as string
+  }
+
+  const { data: created, error } = await supabase
+    .from("participants")
+    .insert({
+      workspace_id: args.workspace_id,
+      name: newName,
+      last_name: newLastName,
+      email: `tg_${args.telegram_user_id}@telegram.placeholder`,
+      telegram_user_id: args.telegram_user_id,
+      workspace_roles: ["Telegram-контакт"],
+      can_login: false,
+      is_deleted: false,
+    })
+    .select("id")
+    .single()
+  if (error || !created) {
+    return null
+  }
+  return created.id as string
 }

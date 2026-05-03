@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { AlertCircle } from 'lucide-react'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
-export type TgDeliveryStatus = 'pending' | 'delivered' | 'failed' | null
+export type TgDeliveryStatus = 'pending' | 'delivered' | 'read' | 'failed' | null
 
 /** Dot indicator for Telegram delivery status */
 export function TelegramDeliveryDot({ status }: { status: 'pending' | 'delivered' }) {
@@ -30,8 +30,15 @@ export function useTelegramDeliveryStatus(
   isOwn: boolean,
   isTelegramLinked?: boolean,
 ): TgDeliveryStatus {
+  // isTelegramLinked покрывает только групповые боты (project_telegram_chats).
+  // Для MTProto/Business тредов он false, но сообщение всё равно ушло в TG —
+  // признак этого: уже выставлен telegram_message_id. Показываем индикатор
+  // в любом из двух случаев.
   const showTgIndicator =
-    isOwn && isTelegramLinked && message.source === 'web' && !message.id.startsWith('optimistic-')
+    isOwn &&
+    (isTelegramLinked || !!message.telegram_message_id) &&
+    message.source === 'web' &&
+    !message.id.startsWith('optimistic-')
 
   const [tgFailed, setTgFailed] = useState(false)
   const [isOnline, setIsOnline] = useState(
@@ -95,6 +102,9 @@ export function useTelegramDeliveryStatus(
   if (hasAttachments && message.telegram_attachments_delivered === null) {
     return tgFailed ? 'failed' : 'pending'
   }
+
+  // Доставлено + прочитано собеседником (UpdateReadHistoryOutbox в MTProto).
+  if (message.recipient_read_at) return 'read'
 
   return 'delivered'
 }
