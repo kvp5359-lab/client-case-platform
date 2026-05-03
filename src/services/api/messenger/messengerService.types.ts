@@ -64,6 +64,7 @@ export interface ProjectMessage {
     | 'bot_event'
     | 'telegram_business'
     | 'telegram_mtproto'
+    | 'wazzup'
   reply_to_message_id: string | null
   reply_to_message: ReplyMessage | null
   telegram_message_id: number | null

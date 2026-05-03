@@ -264,6 +264,36 @@
   - `_shared/htmlFormatting.ts` — HTML→Telegram-HTML при отправке.
 - **TODO**: отдельный UI «Мои личные диалоги Telegram» (сейчас системный инбокс показывается обычным проектом), вложения (фото/файлы) в business-сообщениях.
 
+## Wazzup (WhatsApp / Instagram через шлюз)
+
+Реализовано 2026-05-03 (MVP-каркас). Архитектура «как у Telegram Business» — один общий API-ключ Wazzup на воркспейс, каналы (= номера WhatsApp / IG-аккаунты) привязываются к сотрудникам, личные диалоги клиента кладутся в системный проект-инбокс этого сотрудника.
+
+- **Шлюз**: Wazzup24 (https://wazzup24.com). Платный. Технически — обёртка над WhatsApp Web (через QR-код), Instagram, Telegram, etc. ToS WhatsApp формально нарушает, но коммерческий риск принимает Wazzup, не мы. Альтернативы: Green API, Chat API, Whapi.
+- **Один API-ключ на воркспейс** — хранится в `wazzup_settings.api_key`. Менеджеры воркспейса могут его сохранить через UI. На сотрудника — по одному (или нескольким) каналам через `wazzup_channels.user_id`.
+- **Webhook**: [`wazzup-webhook`](../../supabase/functions/wazzup-webhook/index.ts), деплой `--no-verify-jwt`. Защита — секрет в query-string URL'а (`?key=<webhook_secret>`), потому что Wazzup **не поддерживает custom-headers для webhooks**. Секрет генерируется при создании `wazzup_settings` (24 байта hex). Пользователь копирует полный URL из UI и вставляет в кабинете Wazzup.
+- **Подписки в кабинете Wazzup**: `messagesAndStatuses` + `channelsUpdates`. Webhook парсит три типа payload'ов: `messages[]`, `statuses[]`, `channelsUpdates[]`, плюс тестовый `{test:true}`.
+- **Отправка**: [`wazzup-send`](../../supabase/functions/wazzup-send/index.ts), вызывается pg-триггером `notify_telegram_on_new_message` (4-я ветка после MTProto/Business/Group). REST: `POST https://api.wazzup24.com/v3/message` с `Authorization: Bearer <api_key>`, payload `{channelId, chatType, chatId, text}`. Сейчас MVP — только текст (HTML из tiptap → plain через `stripHtml`). Файлы, реакции, голосовые — отдельной итерацией.
+- **Загрузка каналов**: [`wazzup-fetch-channels`](../../supabase/functions/wazzup-fetch-channels/index.ts) — ходит `GET /v3/channels` с API-ключом и upsert'ит в `wazzup_channels`. Вызывается из UI кнопкой «Загрузить из Wazzup». Деплой обычный (с JWT) — функция проверяет, что вызывающий = менеджер воркспейса.
+- **Системный инбокс**: `projects.is_system_wazzup_inbox = true` + `system_inbox_user_id`. Аналог Telegram Business. Скрыт из общих списков фильтром в [`useSidebarData.ts`](../../src/components/WorkspaceSidebar/useSidebarData.ts). Один на сотрудника (partial UNIQUE-индекс `uq_projects_system_wazzup_inbox_per_user`).
+- **Тред**: один на клиента в рамках канала. Поля `project_threads.wazzup_channel_id` (наш FK на `wazzup_channels.id`) + `wazzup_chat_id` (id чата в Wazzup — телефон без `+` для WA, username для IG). UNIQUE на пару + `is_deleted=false`.
+- **Сообщение**: `project_messages.source = 'wazzup'`, `wazzup_message_id` (UNIQUE для дедупа), `wazzup_status` (sent/delivered/read/error — обновляется webhook'ом по событиям `statuses[]`). `isEcho=true` от Wazzup — это сообщение, отправленное сотрудником с телефона; webhook привязывает его к participant'у сотрудника, sender_role='Сотрудник'.
+- **Миграции**: `20260503_wazzup_integration.sql` (таблицы + поля + RLS), `20260503_notify_wazzup_branch.sql` (расширение триггера на ветку Wazzup, плюс пропуск source='wazzup' от циклов).
+- **UI**: вкладка «WhatsApp (Wazzup)» в `IntegrationsTab` ([`WazzupSection.tsx`](../../src/page-components/workspace-settings/WazzupSection.tsx)). Шаги: ввести API-ключ → скопировать webhook URL в кабинет Wazzup → загрузить каналы → назначить каналы на сотрудников.
+- **Хуки**: [`useWazzup.ts`](../../src/hooks/useWazzup.ts) — `useWazzupSettings`, `useUpsertWazzupSettings`, `useWazzupChannels`, `useFetchWazzupChannels`, `useAssignWazzupChannelUser`, `buildWazzupWebhookUrl`.
+- **Env-переменная**: `INTERNAL_FUNCTION_SECRET` (тот же, что у telegram-*-send) — триггер шлёт его в `wazzup-send` как `x-internal-secret`.
+- **Деплой каркаса**:
+  ```bash
+  # 1. Применить миграции
+  supabase db push --project-ref zjatohckcpiqmxkmfxbs
+  # 2. Edge functions
+  supabase functions deploy wazzup-webhook --no-verify-jwt --project-ref zjatohckcpiqmxkmfxbs
+  supabase functions deploy wazzup-send --no-verify-jwt --project-ref zjatohckcpiqmxkmfxbs
+  supabase functions deploy wazzup-fetch-channels --project-ref zjatohckcpiqmxkmfxbs
+  # 3. Регенерация типов БД (новые таблицы)
+  supabase gen types typescript --project-id zjatohckcpiqmxkmfxbs > src/types/database.ts
+  ```
+- **TODO MVP+1**: вложения (фото/файлы/голосовые через `contentUri`), реакции (Wazzup отдаёт через webhook, но сейчас не обрабатываем), редактирование/удаление сообщений, привязка тредов к проектам (как у inbox-почты), синхронизация прочтений в обе стороны.
+
 ## Локальная разработка
 
 ```bash

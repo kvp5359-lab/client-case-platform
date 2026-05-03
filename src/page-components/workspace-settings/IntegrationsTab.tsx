@@ -22,7 +22,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { MessageCircle, Mail, Sparkles, Loader2, User, Copy, ExternalLink } from 'lucide-react'
+import { MessageCircle, Mail, Sparkles, Loader2, User, Copy, ExternalLink, MessageSquare } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -42,6 +42,7 @@ import {
   type WorkspaceParticipant,
 } from '@/hooks/shared/useWorkspaceParticipants'
 import { useAuth } from '@/contexts/AuthContext'
+import { WazzupSection } from './WazzupSection'
 
 /**
  * Командные роли — те, кто работает в воркспейсе как сотрудник, а не как
@@ -83,7 +84,7 @@ interface EmailAccount {
   watch_expires_at: string | null
 }
 
-type SectionKey = 'telegram' | 'gmail' | 'business'
+type SectionKey = 'telegram' | 'gmail' | 'business' | 'wazzup'
 
 export function IntegrationsTab() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -210,6 +211,7 @@ export function IntegrationsTab() {
     { id: 'telegram', label: 'Telegram', icon: MessageCircle },
     { id: 'gmail', label: 'Gmail', icon: Mail },
     { id: 'business', label: 'Личный Telegram сотрудника', icon: Sparkles },
+    { id: 'wazzup', label: 'WhatsApp (Wazzup)', icon: MessageSquare },
   ]
 
   return (
@@ -260,6 +262,9 @@ export function IntegrationsTab() {
             workspaceId={workspaceId!}
             employees={employees}
           />
+        )}
+        {section === 'wazzup' && (
+          <WazzupSection workspaceId={workspaceId!} employees={employees} />
         )}
       </div>
 
