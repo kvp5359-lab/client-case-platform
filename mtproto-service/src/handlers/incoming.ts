@@ -271,7 +271,7 @@ function extractMediaInfo(msg: Api.Message): MediaInfo | null {
   if (media instanceof Api.MessageMediaDocument && media.document instanceof Api.Document) {
     const doc = media.document
     let fileName = `file_${Number(doc.id)}`
-    let mimeType: string | null = doc.mimeType ?? null
+    const mimeType: string | null = doc.mimeType ?? null
     for (const a of doc.attributes ?? []) {
       if (a instanceof Api.DocumentAttributeFilename) fileName = a.fileName
     }

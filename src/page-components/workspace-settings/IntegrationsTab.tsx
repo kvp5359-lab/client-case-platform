@@ -18,7 +18,7 @@
  * Telegram Business — заглушка («Скоро»).
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -177,10 +177,13 @@ export function IntegrationsTab() {
     [participants],
   )
 
-  const refreshIntegrations = () =>
-    queryClient.invalidateQueries({
-      queryKey: ['integrations', 'workspace-integrations', workspaceId],
-    })
+  const refreshIntegrations = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: ['integrations', 'workspace-integrations', workspaceId],
+      }),
+    [queryClient, workspaceId],
+  )
 
   // Тихий backfill: для подключённых ботов, у которых нет bot_avatar_url,
   // дёргаем refresh_avatar один раз за сессию. После этого аватарки
@@ -769,7 +772,11 @@ function BusinessLinkDialog({
   const [botUsername, setBotUsername] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // Генерируем токен при открытии диалога.
+  // Генерируем токен при открытии диалога. Сетстейты внутри — стандартный
+  // fetch-on-mount паттерн, новый react-hooks lint-rule на это ругается, но
+  // переписывать ради него не имеет смысла — нет «каскадных рендеров»,
+  // setLoading сразу следует за reset'ом и fetch'ем.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) {
       setDeepLink(null)
@@ -800,6 +807,7 @@ function BusinessLinkDialog({
       cancelled = true
     }
   }, [open, workspaceId, onOpenChange])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const copyLink = async () => {
     if (!deepLink) return
