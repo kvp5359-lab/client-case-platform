@@ -17,6 +17,7 @@ import { config } from "../config.js"
 import { decryptSession } from "../crypto.js"
 import { supabase } from "../db.js"
 import { logger } from "../utils/logger.js"
+import { registerHandlers } from "../handlers/updates.js"
 
 interface SessionRow {
   user_id: string
@@ -117,7 +118,11 @@ export async function bootstrapAllSessions(): Promise<void> {
         continue
       }
       setClient(row.user_id, client)
-      // TODO (этап 4): client.addEventHandler(...) для апдейтов.
+      registerHandlers(client, {
+        user_id: row.user_id,
+        workspace_id: row.workspace_id,
+        tg_user_id: row.tg_user_id,
+      })
       logger.info(`[sessions] up: user_id=${row.user_id} tg_user_id=${row.tg_user_id}`)
     } catch (err) {
       logger.error(`[sessions] failed to bootstrap user_id=${row.user_id}:`, err)

@@ -19,6 +19,7 @@ import { config } from "../config.js"
 import { encryptSession, decryptSession } from "../crypto.js"
 import { supabase } from "../db.js"
 import { buildClient, setClient } from "../sessions/manager.js"
+import { registerHandlers } from "../handlers/updates.js"
 import { logger } from "../utils/logger.js"
 
 export interface SendCodeResult {
@@ -219,7 +220,11 @@ async function finalizeAuth(
   // Регистрируем клиент в менеджере — он останется висеть и обрабатывать
   // апдейты до отключения.
   setClient(userId, client)
-  // TODO (этап 4): client.addEventHandler(...) для входящих апдейтов.
+  registerHandlers(client, {
+    user_id: userId,
+    workspace_id: workspaceId,
+    tg_user_id: tgUser.id,
+  })
 
   logger.info(`[auth] signed in: user_id=${userId} tg_user_id=${tgUser.id}`)
   return { signed_in: true, requires_2fa: false, tg_user: tgUser }
