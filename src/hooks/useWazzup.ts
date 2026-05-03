@@ -107,6 +107,26 @@ export function useWazzupChannels(workspaceId: string | undefined) {
   })
 }
 
+/** Установить наш webhook в Wazzup через их REST API. */
+export function useSetWazzupWebhook(workspaceId: string | undefined) {
+  return useMutation({
+    mutationFn: async () => {
+      if (!workspaceId) throw new Error('workspace_id required')
+      const { data, error } = await supabase.functions.invoke('wazzup-set-webhook', {
+        body: { workspace_id: workspaceId },
+      })
+      if (error) throw new Error(error.message)
+      return data as { ok: boolean; webhookUrl: string }
+    },
+    onSuccess: () => {
+      toast.success('Webhook подписан в Wazzup')
+    },
+    onError: (err: Error) => {
+      toast.error(`Не удалось подписать webhook: ${err.message}`)
+    },
+  })
+}
+
 /** Синхронизация каналов с Wazzup REST через нашу Edge Function. */
 export function useFetchWazzupChannels(workspaceId: string | undefined) {
   const qc = useQueryClient()

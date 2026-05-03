@@ -69,12 +69,11 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
   const { data: projects = [], isLoading: loadingProjects } = useQuery<Project[]>({
     queryKey: sidebarKeys.projects(workspaceId ?? '', canViewAll),
     queryFn: async () => {
-      // Системный «инбокс»-проект Telegram Business виден ТОЛЬКО его владельцу.
-      // Чужие инбоксы прячем даже если у юзера view_all_projects, потому что
-      // там лежит личная переписка с клиентами.
-      // TODO: после применения миграции 20260503_wazzup_integration.sql
-      // добавить сюда `is_system_wazzup_inbox.eq.false` через `and(...)`.
-      const filterSystemInbox = `is_system_business_inbox.eq.false,system_inbox_user_id.eq.${user?.id ?? '00000000-0000-0000-0000-000000000000'}`
+      // Системные «инбокс»-проекты (TG Business, Wazzup) видны ТОЛЬКО их
+      // владельцу. Чужие инбоксы прячем даже при view_all_projects — там
+      // лежит личная переписка с клиентами.
+      const myUserId = user?.id ?? '00000000-0000-0000-0000-000000000000'
+      const filterSystemInbox = `and(is_system_business_inbox.eq.false,is_system_wazzup_inbox.eq.false),system_inbox_user_id.eq.${myUserId}`
 
       if (canViewAll) {
         const { data, error } = await supabase

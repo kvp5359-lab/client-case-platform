@@ -31,6 +31,7 @@ import {
   useUpsertWazzupSettings,
   useWazzupChannels,
   useFetchWazzupChannels,
+  useSetWazzupWebhook,
   useAssignWazzupChannelUser,
   buildWazzupWebhookUrl,
   type WazzupChannel,
@@ -48,6 +49,7 @@ export function WazzupSection({ workspaceId, employees }: Props) {
   const upsertSettings = useUpsertWazzupSettings(workspaceId)
   const { data: channels = [], isLoading: loadingChannels } = useWazzupChannels(workspaceId)
   const fetchChannels = useFetchWazzupChannels(workspaceId)
+  const setWebhook = useSetWazzupWebhook(workspaceId)
   const assignUser = useAssignWazzupChannelUser(workspaceId)
 
   const [apiKeyDraft, setApiKeyDraft] = useState('')
@@ -128,28 +130,36 @@ export function WazzupSection({ workspaceId, employees }: Props) {
         </CardContent>
       </Card>
 
-      {/* Шаг 2: Webhook URL */}
+      {/* Шаг 2: Webhook (через API Wazzup, не через UI кабинета) */}
       {settings && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Шаг 2. Webhook</CardTitle>
+            <CardTitle className="text-base">Шаг 2. Подписать webhook</CardTitle>
             <CardDescription>
-              В кабинете Wazzup открой Настройки → Webhooks. Вставь URL ниже и подпишись на события{' '}
-              <span className="font-mono">messagesAndStatuses</span> и{' '}
-              <span className="font-mono">channelsUpdates</span>.
+              Wazzup не позволяет настроить webhook через UI кабинета — только через API.
+              Нажми кнопку, и мы автоматически подпишем твой аккаунт Wazzup на наши события
+              (входящие сообщения, статусы доставки, обновления каналов).
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <div className="flex gap-2">
               <Input value={webhookUrl} readOnly className="flex-1 font-mono text-xs" />
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => copy(webhookUrl, 'Webhook URL')}
+                title="Скопировать URL"
               >
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
+            <Button
+              onClick={() => setWebhook.mutate()}
+              disabled={setWebhook.isPending}
+            >
+              {setWebhook.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Подписать webhook
+            </Button>
           </CardContent>
         </Card>
       )}
