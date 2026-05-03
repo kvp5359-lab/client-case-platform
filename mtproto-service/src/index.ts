@@ -12,6 +12,7 @@
 import Fastify from "fastify"
 import { config } from "./config.js"
 import { authRoutes } from "./routes/auth.js"
+import { commandsRoutes } from "./routes/commands.js"
 import {
   bootstrapAllSessions,
   disconnectAll,
@@ -32,6 +33,7 @@ async function main() {
   app.get("/health", async () => ({ ok: true, ts: Date.now() }))
 
   await app.register(authRoutes)
+  await app.register(commandsRoutes)
 
   app.setErrorHandler((err, _req, reply) => {
     app.log.error({ err }, "unhandled error")
