@@ -59,6 +59,23 @@ export async function disconnectAndRemove(userId: string): Promise<void> {
 }
 
 /**
+ * Прогрев entity-cache. Загружаем список диалогов и явно резолвим
+ * каждого peer'а — это заполняет access_hash в cache, без чего
+ * последующие send/react/read операции по голому user_id падают.
+ *
+ * limit=200 — Telegram отдаёт топ диалогов по последней активности,
+ * больше для нашего use case не нужно (мы переписываемся с активными).
+ */
+export async function primeEntityCache(client: TelegramClient): Promise<void> {
+  try {
+    const dialogs = await client.getDialogs({ limit: 200 })
+    logger.info(`[sessions] primed entity cache with ${dialogs.length} dialogs`)
+  } catch (err) {
+    logger.warn("[sessions] primeEntityCache failed (non-fatal):", err)
+  }
+}
+
+/**
  * Отключает все клиенты — для graceful shutdown.
  */
 export async function disconnectAll(): Promise<void> {
@@ -123,6 +140,10 @@ export async function bootstrapAllSessions(): Promise<void> {
         workspace_id: row.workspace_id,
         tg_user_id: row.tg_user_id,
       })
+      // Прогреваем entity-cache: загружаем список диалогов. Без этого
+      // gramjs не может найти access_hash для send/react/read по чистому
+      // user_id, и операции падают с PEER_ID_INVALID.
+      await primeEntityCache(client)
       logger.info(`[sessions] up: user_id=${row.user_id} tg_user_id=${row.tg_user_id}`)
     } catch (err) {
       logger.error(`[sessions] failed to bootstrap user_id=${row.user_id}:`, err)

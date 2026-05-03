@@ -18,7 +18,7 @@ import { StringSession } from "telegram/sessions/index.js"
 import { config } from "../config.js"
 import { encryptSession, decryptSession } from "../crypto.js"
 import { supabase } from "../db.js"
-import { buildClient, setClient } from "../sessions/manager.js"
+import { buildClient, primeEntityCache, setClient } from "../sessions/manager.js"
 import { registerHandlers } from "../handlers/updates.js"
 import { logger } from "../utils/logger.js"
 
@@ -225,6 +225,9 @@ async function finalizeAuth(
     workspace_id: workspaceId,
     tg_user_id: tgUser.id,
   })
+  // Прогрев entity-cache, чтобы send/react/read по чистому user_id работали
+  // сразу, а не только после первого входящего сообщения от каждого клиента.
+  await primeEntityCache(client)
 
   logger.info(`[auth] signed in: user_id=${userId} tg_user_id=${tgUser.id}`)
   return { signed_in: true, requires_2fa: false, tg_user: tgUser }

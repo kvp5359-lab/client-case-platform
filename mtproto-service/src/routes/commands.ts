@@ -12,10 +12,41 @@
  */
 
 import type { FastifyPluginAsync } from "fastify"
-import { Api } from "telegram"
+import bigInt from "big-integer"
+import { Api, TelegramClient } from "telegram"
 import { z } from "zod"
 import { config } from "../config.js"
 import { getClient } from "../sessions/manager.js"
+
+/**
+ * Резолв peer-а клиента через gramjs.
+ *
+ * gramjs `getInputEntity(numericId)` иногда не находит peer в кеше — кеш
+ * заполняется через `getEntity()` или Api.PeerUser-объекты из апдейтов.
+ * Поэтому мы:
+ *  1) Пробуем сразу через PeerUser с BigInt — это путь, по которому Telegram
+ *     присылает peer в апдейтах, gramjs его кеширует.
+ *  2) Fallback на client.getEntity(BigInt) — если в кеше нет, gramjs может
+ *     сделать ResolveUsername или иной поиск. Для чистого user_id без username
+ *     это сработает только если access_hash уже известен.
+ *
+ * Если оба способа не дают peer — кидаем понятную ошибку. Решение в этом
+ * случае — попросить клиента написать что-нибудь сотруднику; новый апдейт
+ * принесёт access_hash и сессия его закеширует.
+ */
+async function resolvePeer(
+  client: TelegramClient,
+  clientTgUserId: number,
+): Promise<Api.TypeInputPeer> {
+  const peerUser = new Api.PeerUser({ userId: bigInt(clientTgUserId) })
+  try {
+    return await client.getInputEntity(peerUser)
+  } catch (_) {
+    // Иногда InputEntity по чистому Peer не находится — пробуем через Entity.
+    const entity = await client.getEntity(peerUser)
+    return await client.getInputEntity(entity)
+  }
+}
 
 export const commandsRoutes: FastifyPluginAsync = async (app) => {
   app.addHook("preHandler", async (req, reply) => {
@@ -49,7 +80,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const peer = await client.getInputEntity(body.data.client_tg_user_id)
+      const peer = await resolvePeer(client, body.data.client_tg_user_id)
       const result = await client.sendMessage(peer, {
         message: body.data.text,
         parseMode: "html",
@@ -88,7 +119,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const peer = await client.getInputEntity(body.data.client_tg_user_id)
+      const peer = await resolvePeer(client, body.data.client_tg_user_id)
       await client.editMessage(peer, {
         message: body.data.telegram_message_id,
         text: body.data.text,
@@ -125,7 +156,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const peer = await client.getInputEntity(body.data.client_tg_user_id)
+      const peer = await resolvePeer(client, body.data.client_tg_user_id)
       await client.deleteMessages(peer, body.data.telegram_message_ids, {
         revoke: body.data.revoke,
       })
@@ -161,7 +192,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const peer = await client.getInputEntity(body.data.client_tg_user_id)
+      const peer = await resolvePeer(client, body.data.client_tg_user_id)
       const reaction = body.data.emoji
         ? [new Api.ReactionEmoji({ emoticon: body.data.emoji })]
         : []
@@ -207,7 +238,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const peer = await client.getInputEntity(body.data.client_tg_user_id)
+      const peer = await resolvePeer(client, body.data.client_tg_user_id)
       await client.markAsRead(
         peer,
         body.data.max_telegram_message_id,
