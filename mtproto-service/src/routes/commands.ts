@@ -16,6 +16,7 @@ import bigInt from "big-integer"
 import { Api, TelegramClient } from "telegram"
 import { z } from "zod"
 import { config } from "../config.js"
+import { supabase } from "../db.js"
 import { getClient } from "../sessions/manager.js"
 
 /**
@@ -68,6 +69,10 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
         // Если это reply — telegram_message_id оригинального сообщения,
         // на которое отвечаем.
         reply_to_telegram_message_id: z.number().int().optional(),
+        // UUID нашего project_messages. Если передан — сервис сам стампит
+        // telegram_message_id и telegram_chat_id после отправки. Используется
+        // PG-триггером notify_telegram_on_new_message при автоотправке из UI.
+        message_id_internal: z.string().uuid().optional(),
       })
       .safeParse(req.body)
     if (!body.success) {
@@ -86,13 +91,41 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
         parseMode: "html",
         replyTo: body.data.reply_to_telegram_message_id,
       })
+      const telegramMessageId = Number(result.id)
+      const telegramDate = result.date
+
+      // Стампим в нашу БД, если был передан id внутреннего сообщения,
+      // чтобы при ретраях (триггер шлёт повторно) мы видели «уже ушло»
+      // и могли строить корректные ответы/реакции.
+      if (body.data.message_id_internal) {
+        await supabase
+          .from("project_messages")
+          .update({
+            telegram_message_id: telegramMessageId,
+            telegram_message_ids: [telegramMessageId],
+            telegram_chat_id: body.data.client_tg_user_id,
+            telegram_message_date: telegramDate
+              ? new Date(telegramDate * 1000).toISOString()
+              : null,
+            telegram_error_detail: null,
+          })
+          .eq("id", body.data.message_id_internal)
+      }
+
       return {
         ok: true,
-        telegram_message_id: Number(result.id),
-        telegram_date: result.date,
+        telegram_message_id: telegramMessageId,
+        telegram_date: telegramDate,
       }
     } catch (err) {
       app.log.error({ err }, "messages/send failed")
+      // Если был internal-id — стампим ошибку, чтобы UI мог показать «не доставлено».
+      if (body.data.message_id_internal) {
+        await supabase
+          .from("project_messages")
+          .update({ telegram_error_detail: humanError(err) })
+          .eq("id", body.data.message_id_internal)
+      }
       return reply.code(500).send({ error: humanError(err) })
     }
   })

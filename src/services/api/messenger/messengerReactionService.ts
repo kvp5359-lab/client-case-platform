@@ -32,6 +32,15 @@ export async function toggleReaction(
     if (error) throw new ConversationError(`Ошибка переключения реакции: ${error.message}`)
     return { added: !!(data as { added?: boolean })?.added }
   }
+  if (source === 'telegram_mtproto') {
+    // Через MTProto — нативные реакции (через личную сессию сотрудника).
+    // Edge Function проверяет JWT и проксирует в наш mtproto-service на VPS.
+    const { data, error } = await supabase.functions.invoke('telegram-mtproto-react', {
+      body: { message_id: messageId, participant_id: participantId, emoji },
+    })
+    if (error) throw new ConversationError(`Ошибка переключения реакции: ${error.message}`)
+    return { added: !!(data as { added?: boolean })?.added }
+  }
 
   const { data, error } = await supabase.rpc('toggle_message_reaction', {
     p_message_id: messageId,
