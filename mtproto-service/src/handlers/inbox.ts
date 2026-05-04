@@ -87,7 +87,7 @@ export async function ensureMTProtoThread(args: {
       access_type: "all",
       mtproto_session_user_id: args.session_user_id,
       mtproto_client_tg_user_id: args.client_tg_user_id,
-      icon: "send",
+      icon: "telegram",
       accent_color: "blue",
     })
     .select("id")

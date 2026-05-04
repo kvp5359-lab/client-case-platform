@@ -477,7 +477,7 @@ async function ensureBusinessThread(
       access_type: "all",
       business_connection_id: connectionId,
       business_client_tg_user_id: clientTgUserId,
-      icon: "send",
+      icon: "telegram",
       accent_color: "blue",
     })
     .select("id")

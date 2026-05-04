@@ -505,7 +505,7 @@ async function ensureWazzupThread(
     wazzup_channel_id: args.channelDbId,
     wazzup_chat_id: args.chatId,
     wazzup_chat_type: args.chatType,
-    icon: "message-circle", accent_color: "green",
+    icon: "whatsapp", accent_color: "emerald",
   }).select("id").single();
   if (error || !created) throw new Error(`Failed to create wazzup thread: ${error?.message}`);
   return created.id as string;
