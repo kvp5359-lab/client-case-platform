@@ -306,24 +306,45 @@ Deno.serve(async (req: Request) => {
       sendBody.threadId = emailLink.gmail_thread_id;
     }
 
-    const sendResponse = await fetch(
-      "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-      {
+    const callGmailSend = async (body: Record<string, string>) =>
+      fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(sendBody),
-      },
-    );
+        body: JSON.stringify(body),
+      });
+
+    let sendResponse = await callGmailSend(sendBody);
+    let firstAttemptErr: string | null = null;
+
+    // Fallback: gmail_thread_id принадлежит другому пользователю воркспейса
+    // (он начал переписку), а отправляем мы. Gmail у текущего юзера не знает
+    // этот thread → отвечает 4xx. Повторяем без threadId — письмо уйдёт
+    // новой веткой, но уйдёт. Применяем только если threadId был.
+    if (!sendResponse.ok && sendBody.threadId) {
+      firstAttemptErr = await sendResponse.text().catch(() => "");
+      console.warn(
+        `[gmail-send] retrying without threadId (first attempt failed: ${firstAttemptErr.slice(0, 200)})`,
+      );
+      const retryBody: Record<string, string> = { raw: sendBody.raw };
+      sendResponse = await callGmailSend(retryBody);
+    }
 
     if (!sendResponse.ok) {
-      const errText = await sendResponse.text();
+      const errText = await sendResponse.text().catch(() => "");
       console.error("[gmail-send] Gmail API error:", errText);
+      // Возвращаем подробный текст ошибки в response — иначе в DevTools
+      // видно только безликий 500 и приходится лезть в Edge-логи.
       return new Response(
-        JSON.stringify({ error: "Failed to send email" }),
-        { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        JSON.stringify({
+          error: "Failed to send email",
+          gmail_status: sendResponse.status,
+          gmail_error: errText.slice(0, 1000),
+          first_attempt_error: firstAttemptErr?.slice(0, 500) ?? null,
+        }),
+        { status: 502, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
