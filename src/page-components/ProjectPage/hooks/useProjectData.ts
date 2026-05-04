@@ -74,7 +74,6 @@ export function useProjectData(projectId: string | undefined) {
   // Подменяем projectTemplate на синтетический, чтобы useProjectModules
   // открыл нужные вкладки без необходимости создавать настоящий шаблон.
   const project = projectQuery.data
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const inboxKind = (project as { system_inbox_kind?: string | null } | undefined)?.system_inbox_kind ?? null
   const isSystemInbox = inboxKind !== null
   const effectiveTemplate: ProjectTemplateWithRelations | null | undefined = isSystemInbox
