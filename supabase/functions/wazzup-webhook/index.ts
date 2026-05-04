@@ -20,6 +20,7 @@ import {
   okText, getServiceClient, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
   isOutgoingEcho,
 } from "../_shared/edge.ts";
+import { storeAttachment } from "../_shared/storeAttachment.ts";
 
 interface WazzupMessage {
   messageId: string;
@@ -289,41 +290,11 @@ async function downloadAndAttach(
     const buffer = await res.arrayBuffer();
     const contentType = res.headers.get("content-type") ?? args.mimeTypeHint;
     const fileName = guessFileName(args.contentUri, args.mediaType, contentType);
-    const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const storagePath = `${args.workspaceId}/${args.projectId}/${args.messageId}/${safeName}`;
-
-    const { error: upErr } = await service.storage.from("files").upload(
-      storagePath, buffer, { contentType, upsert: false },
-    );
-    if (upErr) {
-      console.error("[wazzup-webhook] storage upload error:", upErr);
-      return;
-    }
-
-    const { data: fileRow, error: fileErr } = await service
-      .from("files")
-      .insert({
-        workspace_id: args.workspaceId,
-        bucket: "files",
-        storage_path: storagePath,
-        file_name: fileName,
-        file_size: buffer.byteLength,
-        mime_type: contentType,
-      })
-      .select("id")
-      .single();
-    if (fileErr) {
-      console.error("[wazzup-webhook] files insert error:", fileErr);
-      return;
-    }
-
-    await service.from("message_attachments").insert({
-      message_id: args.messageId,
-      file_name: fileName,
-      file_size: buffer.byteLength,
-      mime_type: contentType,
-      storage_path: storagePath,
-      file_id: fileRow.id,
+    await storeAttachment(service, {
+      buffer, mimeType: contentType, fileName,
+      workspaceId: args.workspaceId,
+      projectId: args.projectId,
+      messageId: args.messageId,
     });
   } catch (err) {
     console.error("[wazzup-webhook] download/attach error:", err);
