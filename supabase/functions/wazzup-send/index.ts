@@ -235,6 +235,17 @@ async function sendWazzup(
     const errDesc = json.description ?? json.error ?? `HTTP ${res.status}`;
     return { ok: false, error: errDesc };
   }
+
+  // Все исходящие messageId записываем в dedup, чтобы webhook не создавал
+  // дубли когда Wazzup пришлёт нам эхо. Для первого ответа этого можно бы
+  // не делать (он уже сохранится в project_messages.wazzup_message_id и
+  // UNIQUE-индекс отсечёт дубль), но для второго/третьего файла без dedup
+  // мы бы получали отдельные баблы echo.
+  const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  await service
+    .from("wazzup_outgoing_dedup")
+    .insert({ wazzup_message_id: json.messageId, reason: "send" });
+
   return { ok: true, messageId: json.messageId };
 }
 
