@@ -34,13 +34,19 @@ export async function toggleReaction(
   }
   if (source === 'telegram_mtproto') {
     // Через MTProto — нативные реакции (через личную сессию сотрудника).
-    // Edge Function проверяет JWT и проксирует в наш mtproto-service на VPS.
+    // Edge Function проверяет JWT и проксирует в naш mtproto-service на VPS.
     const { data, error } = await supabase.functions.invoke('telegram-mtproto-react', {
       body: { message_id: messageId, participant_id: participantId, emoji },
     })
     if (error) throw new ConversationError(`Ошибка переключения реакции: ${error.message}`)
     return { added: !!(data as { added?: boolean })?.added }
   }
+
+  // Wazzup: native-реакции в WhatsApp через Bot API недоступны. Эмулируем —
+  // реакция в нашем сервисе сохраняется как обычная (через RPC), а в WhatsApp
+  // дополнительно уходит сообщение-реплай с эмодзи (как сам Wazzup делает в
+  // обратную сторону, когда клиент ставит реакцию).
+  const isWazzup = source === 'wazzup'
 
   const { data, error } = await supabase.rpc('toggle_message_reaction', {
     p_message_id: messageId,
@@ -52,6 +58,14 @@ export async function toggleReaction(
 
   const added = data as boolean
   void syncReactionToTelegram(messageId, emoji, added)
+  // Wazzup: только когда добавляем (added=true). Снятие — не уходит,
+  // потому что WhatsApp не позволяет удалять чужие сообщения, а наше
+  // эмодзи-сообщение уже доставлено клиенту.
+  if (isWazzup && added) {
+    void supabase.functions.invoke('wazzup-send-reaction', {
+      body: { message_id: messageId, emoji },
+    }).catch((err) => logger.warn('Wazzup reaction sync error:', err))
+  }
   return { added }
 }
 

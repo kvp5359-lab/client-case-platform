@@ -1,0 +1,104 @@
+/**
+ * Edge Function: wazzup-send-reaction
+ *
+ * Эмулирует реакцию на сообщение в WhatsApp через обычное сообщение-реплай
+ * с эмодзи. Wazzup/WhatsApp Bot API не поддерживают native-реакции (как у
+ * Telegram), но сам Wazzup в обратную сторону уже делает именно так:
+ * реакция клиента приходит к нам как обычное сообщение с эмодзи.
+ *
+ * Workflow:
+ *  1. По нашему message_id находим wazzup_message_id и thread.
+ *  2. POST /v3/message в Wazzup с text=emoji + quotedMessageId.
+ *
+ * Auth: verify_jwt=true — сама Supabase проверяет токен пользователя.
+ */
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
+  if (req.method !== "POST") return jsonRes({ error: "method not allowed" }, 405);
+
+  let body: { message_id?: string; emoji?: string };
+  try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400); }
+  if (!body.message_id || !body.emoji) return jsonRes({ error: "message_id and emoji required" }, 400);
+
+  const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  // 1. Сообщение и его wazzup_message_id
+  const { data: msg } = await service
+    .from("project_messages")
+    .select("id, thread_id, wazzup_message_id")
+    .eq("id", body.message_id)
+    .maybeSingle();
+  if (!msg || !msg.thread_id) return jsonRes({ skip: "no message" }, 200);
+  if (!msg.wazzup_message_id) return jsonRes({ skip: "not a wazzup message" }, 200);
+
+  // 2. Тред
+  const { data: thread } = await service
+    .from("project_threads")
+    .select("wazzup_channel_id, wazzup_chat_id, wazzup_chat_type")
+    .eq("id", msg.thread_id)
+    .maybeSingle();
+  if (!thread || !thread.wazzup_channel_id || !thread.wazzup_chat_id) {
+    return jsonRes({ skip: "not a wazzup thread" }, 200);
+  }
+
+  // 3. Канал + ключ
+  const { data: channel } = await service
+    .from("wazzup_channels")
+    .select("channel_id, transport, workspace_id, is_active")
+    .eq("id", thread.wazzup_channel_id)
+    .maybeSingle();
+  if (!channel?.is_active) return jsonRes({ skip: "channel disabled" }, 200);
+
+  const { data: settings } = await service
+    .from("wazzup_settings")
+    .select("api_key")
+    .eq("workspace_id", channel.workspace_id)
+    .maybeSingle();
+  if (!settings?.api_key) return jsonRes({ skip: "no api key" }, 200);
+
+  // 4. Шлём reply-эмодзи
+  const res = await fetch("https://api.wazzup24.com/v3/message", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${settings.api_key}`,
+    },
+    body: JSON.stringify({
+      channelId: channel.channel_id,
+      chatType: thread.wazzup_chat_type ?? channel.transport ?? "whatsapp",
+      chatId: thread.wazzup_chat_id,
+      text: body.emoji,
+      quotedMessageId: msg.wazzup_message_id,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    return jsonRes(
+      { error: "wazzup api error", status: res.status, body: text.slice(0, 500) },
+      502,
+    );
+  }
+
+  const json = await res.json().catch(() => ({}));
+  return jsonRes({ ok: true, wazzup_message_id: (json as { messageId?: string }).messageId }, 200);
+});
+
+function jsonRes(payload: unknown, status: number): Response {
+  return new Response(JSON.stringify(payload), {
+    status, headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+  });
+}
