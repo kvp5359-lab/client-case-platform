@@ -146,8 +146,9 @@ export function useMessengerState({
   const markAsUnread = useMarkAsUnread(projectId, workspaceId, channel, pid, threadId)
   const { data: unreadCount = 0 } = useUnreadCount(projectId, channel, pid, threadId)
   // Если тред Wazzup'овский — синхронизируем «прочитано» с WhatsApp.
-  // Edge function сама делает skip, если тред не Wazzup.
-  useWazzupMarkRead(threadId, unreadCount)
+  // Хук сам проверит wazzup_channel_id и не пойдёт во внешний invoke
+  // для не-Wazzup тредов (Зона 8 рефакторинга).
+  useWazzupMarkRead(projectId, threadId, unreadCount)
   const { data: isManuallyUnread = false } = useIsManuallyUnread(
     workspaceId,
     projectId ?? '',
