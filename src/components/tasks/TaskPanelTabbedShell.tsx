@@ -56,6 +56,10 @@ export interface TaskPanelTabbedShellApi {
   openThreadTab: (task: TaskItem) => void
   /** Открыть «список задач проекта» во вкладке (Mode 2 старого TaskPanel). */
   openProjectTab: (project: ProjectHeaderInfo) => void
+  /** Закрыть конкретную вкладку по id. */
+  closeTab: (id: string) => void
+  /** Открытые сейчас вкладки (per-project, DB-backed). */
+  openTabs: TaskPanelTab[]
   /** Полный сброс: удалить все вкладки из БД. */
   closeAll: () => void
   /** Скрыть панель UI (вкладки в БД сохраняются). */
@@ -168,6 +172,8 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     () => ({
       openThreadTab,
       openProjectTab,
+      closeTab: tabs.closeTab,
+      openTabs: tabs.tabs,
       closeAll: tabs.closeAll,
       hidePanel,
       showPanel,
@@ -180,6 +186,8 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     [
       openThreadTab,
       openProjectTab,
+      tabs.closeTab,
+      tabs.tabs,
       tabs.closeAll,
       hidePanel,
       showPanel,

@@ -21,11 +21,16 @@
 import { createContext, useContext } from 'react'
 import type { TaskItem } from './types'
 import type { ProjectHeaderInfo } from './TaskPanel'
+import type { TaskPanelTab } from './taskPanelTabs.types'
 
 interface TaskPanelContextValue {
   openThread: (task: TaskItem) => void
   pushThread: (task: TaskItem) => void
   closeThread: () => void
+  /** Закрыть конкретную вкладку. */
+  closeTab?: (id: string) => void
+  /** Снимок открытых вкладок панели (per-project). */
+  openTabs?: TaskPanelTab[]
   /** Открыть проект в панели (Режим 2 — список задач проекта в шапке + теле).
    *  Используется для клика по проекту на доске, из сайдбара и т.п.
    *  Реализуется как replaceStack: сбрасывает стек и кладёт один проект. */

@@ -1,13 +1,14 @@
 "use client"
 
 /**
- * Для клиентов — автоматически открывает доступные ему chat-треды
- * как вкладки в правой панели TaskPanel при заходе в проект, если:
- *  - роль клиентская (isClientOnly)
- *  - модуль чатов в проекте включён
- *  - правая панель ещё пустая (клиент сам не открыл/закрыл вкладки)
+ * Для клиентов синхронизирует TaskPanel с доступными ему чатами проекта:
+ *  - закрывает «мусорные» вкладки тредов, к которым доступа больше нет
+ *    (остались с прошлого UX, когда у клиента был сайдбар);
+ *  - досоздаёт вкладки для всех доступных chat-тредов проекта.
  *
- * У клиента нет сайдбара, поэтому это единственная точка входа в чаты.
+ * Запускается один раз на projectId-сессию. Если клиент сам закроет
+ * открытую вкладку позже — повторно открывать не будем (та же projectId
+ * уже отмечена как засеянная).
  */
 
 import { useEffect, useRef } from 'react'
@@ -29,25 +30,41 @@ export function useClientChatAutoOpen({ projectId, isClientOnly, chatsEnabled }:
   const { data: threads = [] } = useProjectThreads(enabled ? projectId : undefined)
   const { accessibleThreadIds } = useAccessibleThreadIds(enabled ? projectId : undefined)
 
-  // Запускаем автооткрытие один раз на проект-сессию.
   const seededRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!enabled || !taskPanel) return
     if (seededRef.current === projectId) return
-    if (taskPanel.hasTabs) {
-      seededRef.current = projectId ?? null
-      return
-    }
+    // Ждём, пока useAccessibleThreadIds реально посчитает доступы.
+    // Пустой Set — допустимое валидное значение (например, у клиента
+    // нет ни одного доступного треда), но при этом threads уже загружены.
+    if (threads.length === 0) return
 
-    const chatThreads = threads.filter(
-      (t) => t.type === 'chat' && !t.is_deleted && accessibleThreadIds.has(t.id),
+    const accessibleChatIds = new Set(
+      threads
+        .filter((t) => t.type === 'chat' && !t.is_deleted && accessibleThreadIds.has(t.id))
+        .map((t) => t.id),
     )
-    if (chatThreads.length === 0) return
 
-    for (const t of chatThreads) {
-      taskPanel.openThread(threadToItem(t))
+    // 1. Закрыть «мусорные» thread-вкладки — те, что в панели, но нет доступа.
+    if (taskPanel.closeTab && taskPanel.openTabs) {
+      for (const tab of taskPanel.openTabs) {
+        if (tab.type !== 'thread' || !tab.refId) continue
+        if (!accessibleChatIds.has(tab.refId)) {
+          taskPanel.closeTab(tab.id)
+        }
+      }
     }
+
+    // 2. Открыть все доступные chat-треды (повторное openThread по
+    //    существующей вкладке только активирует её, дубля не будет).
+    if (accessibleChatIds.size > 0) {
+      const chatThreads = threads.filter((t) => accessibleChatIds.has(t.id))
+      for (const t of chatThreads) {
+        taskPanel.openThread(threadToItem(t))
+      }
+    }
+
     seededRef.current = projectId ?? null
   }, [enabled, taskPanel, projectId, threads, accessibleThreadIds])
 }
