@@ -21,8 +21,9 @@ import {
   Coffee,
   Flame,
   CheckSquare,
+  Send,
 } from 'lucide-react'
-import { TelegramIcon, WhatsAppIcon } from './brandIcons'
+import { WhatsAppIcon } from './brandIcons'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 
 export const ACCENT_COLORS: {
@@ -46,7 +47,7 @@ export const ACCENT_COLORS: {
 export const THREAD_ICONS: { value: string; icon: typeof MessageSquare; label: string }[] = [
   { value: 'message-square', icon: MessageSquare, label: 'Сообщение' },
   { value: 'mail', icon: Mail, label: 'Email' },
-  { value: 'telegram', icon: TelegramIcon as unknown as typeof MessageSquare, label: 'Telegram' },
+  { value: 'telegram', icon: Send, label: 'Telegram' },
   { value: 'whatsapp', icon: WhatsAppIcon as unknown as typeof MessageSquare, label: 'WhatsApp' },
   { value: 'users', icon: Users, label: 'Команда' },
   { value: 'hash', icon: Hash, label: 'Канал' },
