@@ -29,7 +29,6 @@ export function ClientProjectHeader({
   const { user } = useAuth()
   const { data: projects = [] } = useClientWorkspaceProjects(workspaceId)
 
-  const hasMultiple = projects.length > 1
   const initial = user?.email?.charAt(0).toUpperCase() || '?'
   const username = user?.email?.split('@')[0] || 'User'
 
@@ -46,29 +45,25 @@ export function ClientProjectHeader({
 
   return (
     <div className="flex items-center justify-between gap-4 w-full">
-      {hasMultiple ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 text-lg font-bold hover:text-primary transition-colors">
-              <span className="truncate max-w-[60vw]">{projectName}</span>
-              <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-[260px] max-w-[420px]">
-            {projects.map((p) => (
-              <DropdownMenuItem
-                key={p.id}
-                onClick={() => handleSelectProject(p.id)}
-                className={p.id === projectId ? 'font-semibold bg-gray-100' : 'cursor-pointer'}
-              >
-                <span className="truncate">{p.name}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : (
-        <h1 className="text-lg font-bold truncate">{projectName}</h1>
-      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="flex items-center gap-2 text-lg font-bold hover:text-primary transition-colors">
+            <span className="truncate max-w-[60vw]">{projectName}</span>
+            <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[260px] max-w-[420px]">
+          {projects.map((p) => (
+            <DropdownMenuItem
+              key={p.id}
+              onClick={() => handleSelectProject(p.id)}
+              className={p.id === projectId ? 'font-semibold bg-gray-100' : 'cursor-pointer'}
+            >
+              <span className="truncate">{p.name}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
