@@ -37,6 +37,7 @@ import {
   ProjectPageDialogs,
   ProjectTabsContent,
   ProjectHeader,
+  ClientProjectHeader,
   ProjectPageState,
 } from './ProjectPage/components'
 import {
@@ -283,22 +284,31 @@ export default function ProjectPage() {
           )}
         >
           <div className={cn('max-w-7xl space-y-3', activeTab === 'documents' && 'relative')}>
-            {/* Редактируемое название проекта */}
-            <ProjectHeader
-              projectName={project.name}
-              canEdit={canEditProjectInfo}
-              updateProjectName={updateProjectName}
-              templateName={projectTemplate?.name}
-              participantGroups={participantGroups}
-              workspaceId={project.workspace_id}
-              projectTemplateId={project.template_id}
-              statusId={project.status_id}
-              onStatusChange={handleStatusChange}
-            />
+            {/* Шапка проекта: для клиента — селектор проектов + профиль,
+                для остальных — обычный заголовок с участниками и статусом. */}
+            {isClientOnly ? (
+              <ClientProjectHeader
+                workspaceId={project.workspace_id}
+                projectId={project.id}
+                projectName={project.name}
+              />
+            ) : (
+              <ProjectHeader
+                projectName={project.name}
+                canEdit={canEditProjectInfo}
+                updateProjectName={updateProjectName}
+                templateName={projectTemplate?.name}
+                participantGroups={participantGroups}
+                workspaceId={project.workspace_id}
+                projectTemplateId={project.template_id}
+                statusId={project.status_id}
+                onStatusChange={handleStatusChange}
+              />
+            )}
 
-            {/* Вкладки — скрыты для клиента (навигация в боковой панели) */}
+            {/* Вкладки модулей — теперь и для клиента (сайдбара у него нет) */}
             <Tabs value={activeTab} onValueChange={handleTabChange}>
-              {!isClientOnly && (
+              {availableModules.length > 0 && (
                 <div className="pb-3">
                   <TabsList>
                     {availableModules

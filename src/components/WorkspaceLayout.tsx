@@ -14,6 +14,7 @@ import { useParams } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WorkspaceSidebarFull } from './WorkspaceSidebarFull'
+import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { FloatingPanelButtons } from './FloatingPanelButtons'
 import { useNewMessageToast } from '@/hooks/messenger/useNewMessageToast'
@@ -59,6 +60,9 @@ export function WorkspaceLayoutShell({ children, workspaceId: propWorkspaceId }:
 function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: WorkspaceLayoutProps) {
   const params = useParams<{ workspaceId?: string }>()
   const workspaceId = propWorkspaceId || params.workspaceId || ''
+
+  // Клиенты работают без сайдбара — у них в шапке проекта свой селектор.
+  const { isClientOnly } = useWorkspacePermissions({ workspaceId })
 
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -162,31 +166,35 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   return (
     <TaskPanelContext.Provider value={taskPanelCtx}>
       <div className="flex h-screen bg-background relative">
-        {/* Мобильная кнопка меню */}
-        <button
-          className="fixed top-3 left-3 z-50 md:hidden p-2 rounded-md bg-background border"
-          onClick={() => setMobileOpen(!mobileOpen)}
-        >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        {!isClientOnly && (
+          <>
+            {/* Мобильная кнопка меню */}
+            <button
+              className="fixed top-3 left-3 z-50 md:hidden p-2 rounded-md bg-background border"
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
 
-        {/* Sidebar */}
-        <div
-          className={cn(
-            'fixed inset-y-0 left-0 z-40 md:relative md:z-auto',
-            'transition-transform duration-200 md:translate-x-0',
-            mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          )}
-        >
-          <WorkspaceSidebarFull workspaceId={workspaceId} />
-        </div>
+            {/* Sidebar */}
+            <div
+              className={cn(
+                'fixed inset-y-0 left-0 z-40 md:relative md:z-auto',
+                'transition-transform duration-200 md:translate-x-0',
+                mobileOpen ? 'translate-x-0' : '-translate-x-full',
+              )}
+            >
+              <WorkspaceSidebarFull workspaceId={workspaceId} />
+            </div>
 
-        {/* Overlay для мобильных */}
-        {mobileOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-30 md:hidden"
-            onClick={() => setMobileOpen(false)}
-          />
+            {/* Overlay для мобильных */}
+            {mobileOpen && (
+              <div
+                className="fixed inset-0 bg-black/50 z-30 md:hidden"
+                onClick={() => setMobileOpen(false)}
+              />
+            )}
+          </>
         )}
 
         {/* Main content + right panel root (портал для shell) */}
