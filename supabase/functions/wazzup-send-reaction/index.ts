@@ -38,11 +38,18 @@ Deno.serve(async (req: Request) => {
   // 1. Сообщение и его wazzup_message_id
   const { data: msg } = await service
     .from("project_messages")
-    .select("id, thread_id, wazzup_message_id")
+    .select("id, thread_id, wazzup_message_id, content")
     .eq("id", body.message_id)
     .maybeSingle();
   if (!msg || !msg.thread_id) return jsonRes({ skip: "no message" }, 200);
   if (!msg.wazzup_message_id) return jsonRes({ skip: "not a wazzup message" }, 200);
+
+  // Fallback-цитата в текст: Wazzup quotedMessageId не работает для исходящих,
+  // поэтому добавляем «> текст оригинала\nэмодзи». Без этого клиент видит просто
+  // эмодзи и не понимает, к чему оно относится.
+  const origText = stripHtml((msg.content as string) ?? "");
+  const truncated = origText.length > 200 ? origText.slice(0, 200) + "…" : origText;
+  const reactionText = truncated ? `> ${truncated}\n${body.emoji}` : body.emoji;
 
   // 2. Тред
   const { data: thread } = await service
@@ -80,7 +87,7 @@ Deno.serve(async (req: Request) => {
       channelId: channel.channel_id,
       chatType: thread.wazzup_chat_type ?? channel.transport ?? "whatsapp",
       chatId: thread.wazzup_chat_id,
-      text: body.emoji,
+      text: reactionText,
       quotedMessageId: msg.wazzup_message_id,
     }),
   });
@@ -101,4 +108,18 @@ function jsonRes(payload: unknown, status: number): Response {
   return new Response(JSON.stringify(payload), {
     status, headers: { "Content-Type": "application/json", ...CORS_HEADERS },
   });
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
 }
