@@ -409,7 +409,7 @@ async function ensureSystemInboxProject(
     .select("id")
     .eq("workspace_id", workspaceId)
     .eq("system_inbox_user_id", userId)
-    .eq("is_system_business_inbox", true)
+    .eq("system_inbox_kind", "telegram_business")
     .maybeSingle();
   if (existing) return existing.id;
 
@@ -419,7 +419,7 @@ async function ensureSystemInboxProject(
       workspace_id: workspaceId,
       name: "Личные диалоги Telegram",
       description: "Системный проект: личные диалоги сотрудника через Telegram Business.",
-      is_system_business_inbox: true,
+      system_inbox_kind: "telegram_business",
       system_inbox_user_id: userId,
       created_by: userId,
     })

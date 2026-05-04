@@ -69,11 +69,11 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
   const { data: projects = [], isLoading: loadingProjects } = useQuery<Project[]>({
     queryKey: sidebarKeys.projects(workspaceId ?? '', canViewAll),
     queryFn: async () => {
-      // Системные «инбокс»-проекты (TG Business, Wazzup) видны ТОЛЬКО их
+      // Системные «инбокс»-проекты (TG Business, Wazzup, …) видны ТОЛЬКО их
       // владельцу. Чужие инбоксы прячем даже при view_all_projects — там
       // лежит личная переписка с клиентами.
       const myUserId = user?.id ?? '00000000-0000-0000-0000-000000000000'
-      const filterSystemInbox = `and(is_system_business_inbox.eq.false,is_system_wazzup_inbox.eq.false),system_inbox_user_id.eq.${myUserId}`
+      const filterSystemInbox = `system_inbox_kind.is.null,system_inbox_user_id.eq.${myUserId}`
 
       if (canViewAll) {
         const { data, error } = await supabase

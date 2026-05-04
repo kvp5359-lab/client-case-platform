@@ -75,14 +75,12 @@ export function useProjectData(projectId: string | undefined) {
   // открыл нужные вкладки без необходимости создавать настоящий шаблон.
   const project = projectQuery.data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const isSystemBusinessInbox = !!(project as any)?.is_system_business_inbox
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const isSystemWazzupInbox = !!(project as any)?.is_system_wazzup_inbox
-  const isSystemInbox = isSystemBusinessInbox || isSystemWazzupInbox
+  const inboxKind = (project as { system_inbox_kind?: string | null } | undefined)?.system_inbox_kind ?? null
+  const isSystemInbox = inboxKind !== null
   const effectiveTemplate: ProjectTemplateWithRelations | null | undefined = isSystemInbox
     ? {
-        id: isSystemWazzupInbox ? '__system_wazzup_inbox__' : '__system_business_inbox__',
-        name: isSystemWazzupInbox ? 'Wazzup (WhatsApp)' : 'Личные диалоги Telegram',
+        id: `__system_inbox_${inboxKind}__`,
+        name: inboxKind === 'wazzup' ? 'Wazzup (WhatsApp)' : 'Личные диалоги Telegram',
         enabled_modules: ['chats', 'tasks'],
         root_folder_id: null,
         project_template_document_kits: [],

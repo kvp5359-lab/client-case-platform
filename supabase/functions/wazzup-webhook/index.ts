@@ -453,14 +453,14 @@ async function ensureSystemInboxProject(
   const { data: existing } = await service.from("projects")
     .select("id").eq("workspace_id", workspaceId)
     .eq("system_inbox_user_id", userId)
-    .eq("is_system_wazzup_inbox", true).maybeSingle();
+    .eq("system_inbox_kind", "wazzup").maybeSingle();
   if (existing) return existing.id as string;
 
   const { data: created, error } = await service.from("projects").insert({
     workspace_id: workspaceId,
     name: "Wazzup (WhatsApp)",
     description: "Системный проект: личные диалоги через Wazzup.",
-    is_system_wazzup_inbox: true,
+    system_inbox_kind: "wazzup",
     system_inbox_user_id: userId,
     created_by: userId,
   }).select("id").single();
