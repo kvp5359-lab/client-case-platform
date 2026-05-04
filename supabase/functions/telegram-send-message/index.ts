@@ -342,10 +342,16 @@ Deno.serve(async (req: Request) => {
           formattedCaption.length > 1024 || (attachmentsCount ?? 0) >= 2;
 
         if (!sendTextAsSeparateMessage) {
-          attachmentsOk = await sendAttachments(
-            body.message_id, body.telegram_chat_id, serviceClient, TELEGRAM_BOT_TOKEN,
-            formattedCaption, body.reply_to_telegram_message_id ?? undefined,
-          );
+          attachmentsOk = await sendAttachmentsWithFallback({
+            messageId: body.message_id,
+            chatId: body.telegram_chat_id,
+            supabaseClient: serviceClient,
+            primaryToken: TELEGRAM_BOT_TOKEN,
+            caption: formattedCaption,
+            replyTo: body.reply_to_telegram_message_id ?? undefined,
+            isEmployeeBot,
+            senderName: body.sender_name,
+          });
         } else {
           const payload: Record<string, unknown> = {
             chat_id: body.telegram_chat_id,
@@ -368,16 +374,26 @@ Deno.serve(async (req: Request) => {
               .eq("id", body.message_id);
           }
 
-          attachmentsOk = await sendAttachments(
-            body.message_id, body.telegram_chat_id, serviceClient, TELEGRAM_BOT_TOKEN,
-            undefined, undefined, true,
-          );
+          attachmentsOk = await sendAttachmentsWithFallback({
+            messageId: body.message_id,
+            chatId: body.telegram_chat_id,
+            supabaseClient: serviceClient,
+            primaryToken: TELEGRAM_BOT_TOKEN,
+            skipIdUpdate: true,
+            isEmployeeBot,
+            senderName: body.sender_name,
+          });
         }
       } else {
-        attachmentsOk = await sendAttachments(
-          body.message_id, body.telegram_chat_id, serviceClient, TELEGRAM_BOT_TOKEN,
-          undefined, body.reply_to_telegram_message_id ?? undefined,
-        );
+        attachmentsOk = await sendAttachmentsWithFallback({
+          messageId: body.message_id,
+          chatId: body.telegram_chat_id,
+          supabaseClient: serviceClient,
+          primaryToken: TELEGRAM_BOT_TOKEN,
+          replyTo: body.reply_to_telegram_message_id ?? undefined,
+          isEmployeeBot,
+          senderName: body.sender_name,
+        });
       }
 
       await serviceClient
@@ -438,6 +454,53 @@ async function resolveAttachment(
     console.error("resolveAttachment error for", att.file_name, ":", err);
     return null;
   }
+}
+
+/**
+ * Wrapper над sendAttachments: при ошибке отправки через личный бот сотрудника
+ * (его нет в группе → Telegram возвращает «bot is not a member of the group
+ * chat»), повторяет отправку через бот-секретаря этой группы. По аналогии с
+ * текстовой веткой (строки 274-296), которая тоже fallback'ит.
+ *
+ * Если caption присутствовал у personal-bot попытки — у secretary-бота
+ * добавляем префикс «<Имя>:», чтобы получатель понимал автора.
+ */
+async function sendAttachmentsWithFallback(
+  args: {
+    messageId: string;
+    chatId: number;
+    supabaseClient: ReturnType<typeof createClient>;
+    primaryToken: string;
+    caption?: string;
+    replyTo?: number;
+    skipIdUpdate?: boolean;
+    isEmployeeBot: boolean;
+    senderName?: string;
+  },
+): Promise<boolean> {
+  const ok = await sendAttachments(
+    args.messageId, args.chatId, args.supabaseClient,
+    args.primaryToken, args.caption, args.replyTo, args.skipIdUpdate ?? false,
+  );
+  if (ok || !args.isEmployeeBot) return ok;
+
+  console.warn("[telegram-send-message] employee bot attachments send failed, falling back to secretary");
+  let fallback;
+  try {
+    fallback = await resolveBotToken(args.supabaseClient, args.chatId);
+  } catch (e) {
+    console.error("[telegram-send-message] secretary token resolve failed:", e);
+    return false;
+  }
+
+  const fallbackCaption = args.caption
+    ? `<b>${escapeHtmlEntities(args.senderName ?? "")}:</b>\n${args.caption}`
+    : args.caption;
+
+  return await sendAttachments(
+    args.messageId, args.chatId, args.supabaseClient,
+    fallback.token, fallbackCaption, args.replyTo, args.skipIdUpdate ?? false,
+  );
 }
 
 async function sendAttachments(
