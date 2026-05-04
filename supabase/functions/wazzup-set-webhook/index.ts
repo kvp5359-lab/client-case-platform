@@ -2,49 +2,31 @@
  * Edge Function: wazzup-set-webhook
  *
  * Wazzup НЕ позволяет настроить webhook через UI кабинета — только через
- * API: PATCH https://api.wazzup24.com/v3/webhooks с телом
- *   { webhooksUri, subscriptions: { messagesAndStatuses, channelsUpdates, ... } }
- *
- * Эта функция:
+ * API: PATCH https://api.wazzup24.com/v3/webhooks. Эта функция:
  *  1. Берёт api_key и webhook_secret воркспейса.
- *  2. Собирает наш URL вида https://<project>.supabase.co/functions/v1/wazzup-webhook?key=<secret>.
- *  3. Делает PATCH на Wazzup, подписывая на messagesAndStatuses + channelsUpdates.
+ *  2. Собирает наш URL: https://<project>.supabase.co/functions/v1/wazzup-webhook?key=<secret>.
+ *  3. Делает PATCH, подписывая на messagesAndStatuses + channelsUpdates.
  *
- * Auth: пользовательский JWT, проверяется RLS на wazzup_settings (менеджеры воркспейса).
+ * Auth: пользовательский JWT, проверяется RLS на wazzup_settings.
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import {
+  preflight, jsonRes, getUser, getUserClient, SUPABASE_URL,
+} from "../_shared/edge.ts";
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  if (req.method === "OPTIONS") return preflight();
   if (req.method !== "POST") return jsonRes({ error: "method not allowed" }, 405);
 
-  const authHeader = req.headers.get("authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) return jsonRes({ error: "no auth" }, 401);
-
-  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: { user } } = await userClient.auth.getUser();
+  const user = await getUser(req);
   if (!user) return jsonRes({ error: "unauthorized" }, 401);
 
   let body: { workspace_id?: string };
   try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400); }
   if (!body.workspace_id) return jsonRes({ error: "workspace_id required" }, 400);
 
-  // RLS на wazzup_settings отдаст только менеджеру воркспейса.
+  const userClient = getUserClient(req);
   const { data: settings } = await userClient
     .from("wazzup_settings")
     .select("api_key, webhook_secret")
@@ -80,10 +62,3 @@ Deno.serve(async (req: Request) => {
 
   return jsonRes({ ok: true, webhookUrl });
 });
-
-function jsonRes(payload: unknown, status: number): Response {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-  });
-}

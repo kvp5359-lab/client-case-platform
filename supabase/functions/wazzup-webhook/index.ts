@@ -15,10 +15,10 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  okText, getServiceClient, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+} from "../_shared/edge.ts";
 
 interface WazzupMessage {
   messageId: string;
@@ -64,14 +64,14 @@ const MEDIA_TYPES = new Set([
 ]);
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "GET") return new Response("ok", { status: 200 });
-  if (req.method !== "POST") return new Response("ok", { status: 200 });
+  if (req.method === "GET") return okText();
+  if (req.method !== "POST") return okText();
 
   const url = new URL(req.url);
   const providedSecret = url.searchParams.get("key");
   if (!providedSecret) return new Response("forbidden", { status: 403 });
 
-  const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const service = getServiceClient();
 
   const { data: settings } = await service
     .from("wazzup_settings")
@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
 
   let payload: WazzupWebhookPayload;
   try { payload = await req.json() as WazzupWebhookPayload; }
-  catch { return new Response("ok", { status: 200 }); }
+  catch { return okText(); }
 
   if (payload.test) return new Response(JSON.stringify({ ok: true }), { status: 200 });
 
@@ -110,7 +110,7 @@ Deno.serve(async (req: Request) => {
     console.error("[wazzup-webhook] handler error:", err);
   }
 
-  return new Response("ok", { status: 200 });
+  return okText();
 });
 
 // ===========================================================================
@@ -380,7 +380,7 @@ function guessMimeFromType(t: string): string {
 
 async function transcribeFirstAttachment(messageId: string): Promise<void> {
   // Фоном дёргаем существующую функцию transcribe-audio с service-ключом.
-  const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const service = getServiceClient();
   const { data: attachment } = await service
     .from("message_attachments")
     .select("id")

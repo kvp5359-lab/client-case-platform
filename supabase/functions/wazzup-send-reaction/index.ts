@@ -14,26 +14,17 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { preflight, jsonRes, getServiceClient } from "../_shared/edge.ts";
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
+  if (req.method === "OPTIONS") return preflight();
   if (req.method !== "POST") return jsonRes({ error: "method not allowed" }, 405);
 
   let body: { message_id?: string; emoji?: string };
   try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400); }
   if (!body.message_id || !body.emoji) return jsonRes({ error: "message_id and emoji required" }, 400);
 
-  const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const service = getServiceClient();
 
   // 1. Сообщение и его wazzup_message_id
   const { data: msg } = await service
@@ -114,12 +105,6 @@ Deno.serve(async (req: Request) => {
 
   return jsonRes({ ok: true, wazzup_message_id: sentMessageId }, 200);
 });
-
-function jsonRes(payload: unknown, status: number): Response {
-  return new Response(JSON.stringify(payload), {
-    status, headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-  });
-}
 
 function stripHtml(html: string): string {
   return html

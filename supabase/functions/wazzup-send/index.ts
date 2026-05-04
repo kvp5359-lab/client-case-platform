@@ -18,56 +18,30 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const INTERNAL_SECRET = Deno.env.get("INTERNAL_FUNCTION_SECRET") ?? "";
+import {
+  preflight, jsonRes, okText, requireInternalSecret, getServiceClient,
+} from "../_shared/edge.ts";
 
 interface RequestBody {
   message_id: string;
   attachments_only?: boolean;
 }
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret",
-};
-
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
-  if (req.method !== "POST") return new Response("ok", { status: 200 });
+  if (req.method === "OPTIONS") return preflight();
+  if (req.method !== "POST") return okText();
 
-  // Двойная схема auth:
-  //  1) Триггер БД шлёт x-internal-secret (без JWT) — это исторический путь.
-  //  2) Фронт (через supabase.functions.invoke) шлёт Bearer JWT, и тогда
-  //     deploy с verify_jwt=true сам Supabase проверит токен — нам ничего
-  //     дополнительно делать не нужно. Поэтому если нет x-internal-secret,
-  //     просто продолжаем — JWT уже валиден.
-  const internal = req.headers.get("x-internal-secret");
-  const hasInternal = !!internal && INTERNAL_SECRET && internal === INTERNAL_SECRET;
-  const hasBearer = (req.headers.get("authorization") ?? "").startsWith("Bearer ");
-  if (!hasInternal && !hasBearer) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401, headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-    });
+  // Двойная схема auth: триггер шлёт x-internal-secret, фронт — Bearer JWT.
+  if (!requireInternalSecret(req, /* allowBearer */ true)) {
+    return jsonRes({ error: "Unauthorized" }, 401);
   }
 
   let body: RequestBody;
   try { body = await req.json() as RequestBody; }
-  catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-      status: 400, headers: { "Content-Type": "application/json" },
-    });
-  }
-  if (!body.message_id) {
-    return new Response(JSON.stringify({ error: "message_id required" }), {
-      status: 400, headers: { "Content-Type": "application/json" },
-    });
-  }
+  catch { return jsonRes({ error: "Invalid JSON" }, 400); }
+  if (!body.message_id) return jsonRes({ error: "message_id required" }, 400);
 
-  const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const service = getServiceClient();
 
   // 1. Сообщение
   const { data: msg } = await service
@@ -75,8 +49,8 @@ Deno.serve(async (req: Request) => {
     .select("id, thread_id, content, wazzup_message_id, workspace_id, reply_to_message_id, has_attachments")
     .eq("id", body.message_id)
     .maybeSingle();
-  if (!msg || !msg.thread_id) return jsonOk({ skip: "no thread" });
-  if (msg.wazzup_message_id) return jsonOk({ skip: "already sent" });
+  if (!msg || !msg.thread_id) return jsonRes({ skip: "no thread" });
+  if (msg.wazzup_message_id) return jsonRes({ skip: "already sent" });
 
   // 2. Тред
   const { data: thread } = await service
@@ -85,7 +59,7 @@ Deno.serve(async (req: Request) => {
     .eq("id", msg.thread_id)
     .maybeSingle();
   if (!thread || !thread.wazzup_channel_id || !thread.wazzup_chat_id) {
-    return jsonOk({ skip: "not a wazzup thread" });
+    return jsonRes({ skip: "not a wazzup thread" });
   }
 
   // 3. Канал
@@ -94,14 +68,14 @@ Deno.serve(async (req: Request) => {
     .select("channel_id, transport, workspace_id, is_active, state")
     .eq("id", thread.wazzup_channel_id)
     .maybeSingle();
-  if (!channel) return jsonOk({ skip: "channel not found" });
-  if (!channel.is_active) return jsonOk({ skip: "channel disabled in our DB" });
+  if (!channel) return jsonRes({ skip: "channel not found" });
+  if (!channel.is_active) return jsonRes({ skip: "channel disabled in our DB" });
 
   // 4. API-ключ
   const { data: settings } = await service
     .from("wazzup_settings").select("api_key")
     .eq("workspace_id", channel.workspace_id).maybeSingle();
-  if (!settings?.api_key) return jsonOk({ skip: "no api key" });
+  if (!settings?.api_key) return jsonRes({ skip: "no api key" });
 
   let text = stripHtml(msg.content || "");
 
@@ -146,7 +120,7 @@ Deno.serve(async (req: Request) => {
       .eq("message_id", msg.id);
 
     if (!attachments || attachments.length === 0) {
-      return jsonOk({ skip: "has_attachments=true but no rows in message_attachments" });
+      return jsonRes({ skip: "has_attachments=true but no rows in message_attachments" });
     }
 
     // Wazzup НЕ позволяет text + contentUri в одном запросе
@@ -196,7 +170,7 @@ Deno.serve(async (req: Request) => {
     }
   } else {
     // 7. Только текст.
-    if (!text.trim()) return jsonOk({ skip: "empty content" });
+    if (!text.trim()) return jsonRes({ skip: "empty content" });
     const payload: Record<string, unknown> = { ...baseRequest, text };
     if (quotedMessageId) payload.quotedMessageId = quotedMessageId;
 
@@ -211,12 +185,12 @@ Deno.serve(async (req: Request) => {
       wazzup_message_id: firstWazzupMessageId,
       wazzup_status: "sent",
     }).eq("id", msg.id);
-    return jsonOk({ ok: true, wazzup_message_id: firstWazzupMessageId });
+    return jsonRes({ ok: true, wazzup_message_id: firstWazzupMessageId });
   }
 
   console.error(`[wazzup-send] error:`, firstError);
   await service.from("project_messages").update({ wazzup_status: "error" }).eq("id", msg.id);
-  return jsonOk({ ok: false, error: firstError });
+  return jsonRes({ ok: false, error: firstError });
 });
 
 async function sendWazzup(
@@ -241,18 +215,11 @@ async function sendWazzup(
   // не делать (он уже сохранится в project_messages.wazzup_message_id и
   // UNIQUE-индекс отсечёт дубль), но для второго/третьего файла без dedup
   // мы бы получали отдельные баблы echo.
-  const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  await service
+  await getServiceClient()
     .from("wazzup_outgoing_dedup")
     .insert({ wazzup_message_id: json.messageId, reason: "send" });
 
   return { ok: true, messageId: json.messageId };
-}
-
-function jsonOk(payload: unknown): Response {
-  return new Response(JSON.stringify(payload), {
-    status: 200, headers: { "Content-Type": "application/json" },
-  });
 }
 
 function stripHtml(html: string): string {
