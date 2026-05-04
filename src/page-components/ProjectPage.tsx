@@ -47,6 +47,7 @@ import {
   useProjectHeaderParticipants,
 } from './ProjectPage/hooks'
 import { useProjectMutations } from './ProjectPage/hooks/useProjectMutations'
+import { useClientChatAutoOpen } from './ProjectPage/hooks/useClientChatAutoOpen'
 import { useProjectGoogleDrive } from './ProjectPage/hooks/useProjectGoogleDrive'
 import { useProjectGoogleDriveActions } from './ProjectPage/hooks/useProjectGoogleDriveActions'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -114,6 +115,13 @@ export default function ProjectPage() {
 
   // Определяем, является ли пользователь только клиентом
   const { isClientOnly } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
+
+  // Клиенту нет сайдбара — автооткрываем доступные ему чаты в правой панели.
+  useClientChatAutoOpen({
+    projectId,
+    isClientOnly,
+    chatsEnabled: modules.chats,
+  })
 
   // Права на действия
   const canAddForms = hasProjectPermission('forms', 'add_forms')
