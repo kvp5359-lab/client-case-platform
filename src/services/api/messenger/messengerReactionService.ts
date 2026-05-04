@@ -1,22 +1,17 @@
-import { supabase } from '@/lib/supabase'
-import { ConversationError } from '@/services/errors/AppError'
-import { logger } from '@/utils/logger'
-
 /**
- * Toggle reaction (add/remove)
- *
- * Для обычных сообщений (включая групповой Telegram) — RPC + setMessageReaction.
- * Для Telegram Business — отдельная Edge Function `telegram-business-react`,
- * потому что Telegram Bot API не поддерживает setMessageReaction в business-чатах.
- * Workaround там: реакция отправляется как обычное сообщение-реплай с эмодзи,
- * снятие — deleteBusinessMessages нашего реплая.
+ * Точка входа для toggle-реакций. Реальная логика (выбор стратегии по
+ * каналу + вызовы) вынесена в `reactionStrategies.ts` — оставляем тонкую
+ * обёртку, которая считывает `source` сообщения и делегирует.
  */
+
+import { supabase } from '@/lib/supabase'
+import { toggleReactionByChannel, type ReactionResult } from './reactionStrategies'
+
 export async function toggleReaction(
   messageId: string,
   participantId: string,
   emoji: string,
-): Promise<{ added: boolean }> {
-  // Определяем источник сообщения, чтобы выбрать путь.
+): Promise<ReactionResult> {
   const { data: msg } = await supabase
     .from('project_messages')
     .select('source')
@@ -25,80 +20,5 @@ export async function toggleReaction(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const source = (msg as any)?.source as string | undefined
-  if (source === 'telegram_business') {
-    const { data, error } = await supabase.functions.invoke('telegram-business-react', {
-      body: { message_id: messageId, participant_id: participantId, emoji },
-    })
-    if (error) throw new ConversationError(`Ошибка переключения реакции: ${error.message}`)
-    return { added: !!(data as { added?: boolean })?.added }
-  }
-  if (source === 'telegram_mtproto') {
-    // Через MTProto — нативные реакции (через личную сессию сотрудника).
-    // Edge Function проверяет JWT и проксирует в naш mtproto-service на VPS.
-    const { data, error } = await supabase.functions.invoke('telegram-mtproto-react', {
-      body: { message_id: messageId, participant_id: participantId, emoji },
-    })
-    if (error) throw new ConversationError(`Ошибка переключения реакции: ${error.message}`)
-    return { added: !!(data as { added?: boolean })?.added }
-  }
-
-  // Wazzup: native-реакции в WhatsApp через Bot API недоступны. Эмулируем —
-  // реакция в нашем сервисе сохраняется как обычная (через RPC), а в WhatsApp
-  // дополнительно уходит сообщение-реплай с эмодзи (как сам Wazzup делает в
-  // обратную сторону, когда клиент ставит реакцию).
-  const isWazzup = source === 'wazzup'
-
-  const { data, error } = await supabase.rpc('toggle_message_reaction', {
-    p_message_id: messageId,
-    p_participant_id: participantId,
-    p_emoji: emoji,
-  })
-
-  if (error) throw new ConversationError(`Ошибка переключения реакции: ${error.message}`)
-
-  const added = data as boolean
-  void syncReactionToTelegram(messageId, emoji, added)
-  // Wazzup: только когда добавляем (added=true). Снятие — не уходит,
-  // потому что WhatsApp не позволяет удалять чужие сообщения, а наше
-  // эмодзи-сообщение уже доставлено клиенту.
-  if (isWazzup && added) {
-    void supabase.functions.invoke('wazzup-send-reaction', {
-      body: { message_id: messageId, emoji },
-    }).catch((err) => logger.warn('Wazzup reaction sync error:', err))
-  }
-  return { added }
-}
-
-/**
- * Sync reaction to Telegram via setMessageReaction API.
- * Works only if bot is group admin (групповой секретарь).
- * Для Telegram Business используется отдельный путь — telegram-business-react,
- * вызывается из toggleReaction до этой функции.
- */
-async function syncReactionToTelegram(messageId: string, emoji: string, added: boolean) {
-  try {
-    const { data: msg } = await supabase
-      .from('project_messages')
-      .select('telegram_message_id, telegram_chat_id')
-      .eq('id', messageId)
-      .single()
-
-    if (!msg?.telegram_message_id || !msg?.telegram_chat_id) return
-
-    await supabase.auth.getSession()
-
-    const { data: funcData } = await supabase.functions.invoke('telegram-set-reaction', {
-      body: {
-        chat_id: msg.telegram_chat_id,
-        message_id: msg.telegram_message_id,
-        reaction: added ? [{ type: 'emoji', emoji }] : [],
-      },
-    })
-
-    if (funcData?.error) {
-      logger.warn('Telegram reaction sync failed:', funcData.error)
-    }
-  } catch (err) {
-    logger.warn('Telegram reaction sync error:', err)
-  }
+  return toggleReactionByChannel(source, { messageId, participantId, emoji })
 }

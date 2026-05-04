@@ -8,13 +8,11 @@ import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { bubbleStyles } from './utils/messageStyles'
 import { useCollapsibleText } from './hooks/useCollapsibleText'
-import { TelegramFailedBadge, useTelegramDeliveryStatus } from './TelegramDeliveryIndicator'
-import { WazzupFailedBadge, useWazzupDeliveryStatus } from './WazzupDeliveryIndicator'
+import { DeliveryFailedBadge, useDeliveryStatus } from './DeliveryIndicator'
 // QuotePopup рендерится императивно (DOM) — см. handleMouseUp в MessageBubble
 import { ReactionBadges } from './ReactionBadges'
 import { MessageActions, MessageContextMenu } from './MessageActions'
 import { SendCountdown } from './SendCountdown'
-import { getDeliveryStatus } from './bubbleUtils'
 import { BubbleHeader } from './BubbleHeader'
 import { BubbleTimestamp } from './BubbleTimestamp'
 import { BubbleTextContent, DraftPublishButton, RetrySendButton } from './BubbleTextContent'
@@ -83,11 +81,11 @@ function MessageBubbleImpl({
   } = useMessengerContext()
   const colors = bubbleStyles[accent]
   const showStaffMark = !!isClientThread && isTeamSender(message.sender_role)
-  const tgDeliveryStatus = useTelegramDeliveryStatus(message, isOwn, isTelegramLinked)
-  const wazzupDeliveryStatus = useWazzupDeliveryStatus(message, isOwn)
-  const deliveryStatus = getDeliveryStatus(message, isOwn, tgDeliveryStatus, wazzupDeliveryStatus)
-  const tgFailed = tgDeliveryStatus === 'failed'
-  const wazzupFailed = wazzupDeliveryStatus === 'failed'
+  const rawDeliveryStatus = useDeliveryStatus(message, isOwn, { isTelegramLinked })
+  const deliveryFailed = rawDeliveryStatus === 'failed'
+  // Старый getDeliveryStatus возвращал 'pending' | 'sent' | 'read' | null, а
+  // 'failed' рендерится отдельным бейджем. Маппим, чтобы не трогать DeliveryIcon.
+  const deliveryStatus = rawDeliveryStatus === 'failed' ? null : rawDeliveryStatus
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [emailViewOpen, setEmailViewOpen] = useState(false)
@@ -190,7 +188,7 @@ function MessageBubbleImpl({
   const timestampPillBg = message.is_draft
     ? 'bg-white'
     : isOwn
-      ? tgFailed
+      ? deliveryFailed
         ? 'bg-white'
         : colors.own.split(' ').find((c) => c.startsWith('bg-')) ?? ''
       : colors.incoming.split(' ').find((c) => c.startsWith('bg-')) ?? ''
@@ -285,7 +283,7 @@ function MessageBubbleImpl({
                   ? 'bg-white border-2 border-stone-600 text-gray-900'
                   : 'bg-white border-2 border-blue-500 text-gray-900'
                 : isOwn
-                  ? tgFailed
+                  ? deliveryFailed
                     ? 'bg-transparent border-2 border-red-500 text-red-600'
                     : colors.own
                   : cn(colors.incoming, showAvatar && 'rounded-tl-md'),
@@ -304,8 +302,7 @@ function MessageBubbleImpl({
             )}
 
             {/* Failed delivery badge */}
-            {tgFailed && !message.is_draft && <TelegramFailedBadge />}
-            {wazzupFailed && !message.is_draft && <WazzupFailedBadge />}
+            {deliveryFailed && !message.is_draft && <DeliveryFailedBadge />}
 
             <BubbleHeader message={message} isOwn={isOwn} showAvatar={showAvatar} accent={accent} />
 
@@ -317,7 +314,7 @@ function MessageBubbleImpl({
                 accent={accent}
                 hasAttachments={hasAttachments}
                 deliveryStatus={deliveryStatus}
-                tgFailed={tgFailed}
+                deliveryFailed={deliveryFailed}
                 textRef={textRef}
                 isCollapsed={isCollapsed}
                 isOverflowing={isOverflowing}
@@ -334,7 +331,7 @@ function MessageBubbleImpl({
                 attachments={message.attachments!}
                 isOwn={isOwn}
                 isDraft={message.is_draft}
-                isFailed={tgFailed}
+                isFailed={deliveryFailed}
                 projectId={projectId}
                 workspaceId={workspaceId}
                 imageTimestampOverlay={
@@ -349,7 +346,7 @@ function MessageBubbleImpl({
                         message={message}
                         isOwn={isOwn}
                         deliveryStatus={deliveryStatus}
-                        tgFailed={tgFailed}
+                        deliveryFailed={deliveryFailed}
                       />
                     </div>
                   ) : undefined
@@ -372,7 +369,7 @@ function MessageBubbleImpl({
             )}
 
             {/* Retry send button for failed Telegram delivery */}
-            {!message.is_draft && tgFailed && onRetryTelegramSend && !isOverflowing && (
+            {!message.is_draft && deliveryFailed && onRetryTelegramSend && !isOverflowing && (
               <div className="flex justify-end mt-1.5">
                 <RetrySendButton message={message} onRetrySend={onRetryTelegramSend} />
               </div>
@@ -397,7 +394,7 @@ function MessageBubbleImpl({
                 message={message}
                 isOwn={isOwn}
                 deliveryStatus={deliveryStatus}
-                tgFailed={tgFailed}
+                deliveryFailed={deliveryFailed}
               />
             </div>
           )}

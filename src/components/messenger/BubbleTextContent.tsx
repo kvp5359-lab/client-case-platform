@@ -17,7 +17,7 @@ interface BubbleTextContentProps {
   accent: MessengerAccent
   hasAttachments: boolean
   deliveryStatus: DeliveryStatus
-  tgFailed: boolean
+  deliveryFailed: boolean
   textRef: React.RefObject<HTMLDivElement | null>
   isCollapsed: boolean
   isOverflowing: boolean
@@ -33,7 +33,7 @@ export function BubbleTextContent({
   accent,
   hasAttachments,
   deliveryStatus,
-  tgFailed,
+  deliveryFailed,
   textRef,
   isCollapsed,
   isOverflowing,
@@ -83,7 +83,7 @@ export function BubbleTextContent({
                 message={message}
                 isOwn={isOwn}
                 deliveryStatus={deliveryStatus}
-                tgFailed={tgFailed}
+                deliveryFailed={deliveryFailed}
                 className="flex-shrink-0 mb-[3px] ml-auto"
               />
             )}
@@ -105,7 +105,7 @@ export function BubbleTextContent({
               'inline-flex items-center gap-1 text-xs font-semibold hover:opacity-80 transition-opacity',
               // Собственные сообщения имеют тёмный акцентный фон — текст белый.
               // Draft/tg-failed и входящие — светлый фон, текст тёмный.
-              isOwn && !message.is_draft && !tgFailed
+              isOwn && !message.is_draft && !deliveryFailed
                 ? 'text-white'
                 : 'text-foreground',
             )}
@@ -121,7 +121,7 @@ export function BubbleTextContent({
                 message={message}
                 isOwn={isOwn}
                 deliveryStatus={!message.is_draft ? deliveryStatus : null}
-                tgFailed={tgFailed}
+                deliveryFailed={deliveryFailed}
               />
             )}
             {message.is_draft && onPublishDraft && (
@@ -131,7 +131,7 @@ export function BubbleTextContent({
                 onPublishDraft={onPublishDraft}
               />
             )}
-            {!message.is_draft && tgFailed && onRetrySend && (
+            {!message.is_draft && deliveryFailed && onRetrySend && (
               <RetrySendButton message={message} onRetrySend={onRetrySend} />
             )}
           </div>

@@ -8,7 +8,7 @@ interface BubbleTimestampProps {
   message: ProjectMessage
   isOwn: boolean
   deliveryStatus: DeliveryStatus
-  tgFailed?: boolean
+  deliveryFailed?: boolean
   className?: string
 }
 
@@ -16,7 +16,7 @@ export function BubbleTimestamp({
   message,
   isOwn,
   deliveryStatus,
-  tgFailed = false,
+  deliveryFailed = false,
   className,
 }: BubbleTimestampProps) {
   return (
@@ -26,7 +26,7 @@ export function BubbleTimestamp({
         isOwn
           ? message.is_draft
             ? 'text-muted-foreground'
-            : tgFailed
+            : deliveryFailed
               ? 'text-muted-foreground'
               : 'text-white/60'
           : 'text-muted-foreground',
