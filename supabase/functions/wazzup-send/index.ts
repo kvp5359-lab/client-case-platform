@@ -122,11 +122,10 @@ Deno.serve(async (req: Request) => {
     if (orig) {
       const origText = stripHtml((orig.content as string) ?? "");
       const truncated = origText.length > 200 ? origText.slice(0, 200) + "…" : origText;
-      const senderLabel = (orig.sender_name as string | null) ?? "";
-      const quotePrefix = senderLabel
-        ? `> ${senderLabel}: ${truncated}\n\n`
-        : `> ${truncated}\n\n`;
-      text = quotePrefix + text;
+      // Имя автора не добавляем — у клиента в WhatsApp контекст и так очевиден
+      // (его собственное сообщение или наше предыдущее). Один перенос — иначе
+      // в WhatsApp выходит лишняя пустая строка.
+      text = `> ${truncated}\n${text}`;
     }
   }
 
