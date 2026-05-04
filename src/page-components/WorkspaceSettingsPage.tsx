@@ -62,6 +62,15 @@ export function WorkspaceSettingsPage() {
   const canManageRoles = permissions.isOwner || permissions.can('manage_roles')
   const canManageTemplates =
     permissions.isOwner || permissions.can('manage_templates')
+  const canManageSettings =
+    permissions.isOwner || permissions.can('manage_workspace_settings')
+
+  // Право заходить в раздел настроек хоть на какую-то вкладку
+  const hasAnySettingsAccess =
+    canManageSettings ||
+    canManageParticipants ||
+    canManageRoles ||
+    canManageTemplates
 
   // Закрываем основную правую панель: настройки — полноценная страница,
   // содержимое шире, правая панель перекрывает контент.
@@ -90,26 +99,44 @@ export function WorkspaceSettingsPage() {
   const activeTab = getActiveTab()
   usePageTitle(SETTINGS_TAB_TITLES[activeTab] ?? 'Настройки')
 
-  // Guard: если открыли таб без прав — редирект на общий settings
+  // Guard: если у юзера нет прав ни на одну вкладку — выкидываем из раздела
+  // настроек целиком. Иначе — точечный редирект с конкретного запрещённого таба.
   useEffect(() => {
-    if (!permissions.isLoading) {
-      if (activeTab === 'participants' && !canManageParticipants) {
-        router.replace(`/workspaces/${workspaceId}/settings/general`)
-      } else if (activeTab === 'permissions' && !canManageRoles) {
-        router.replace(`/workspaces/${workspaceId}/settings/general`)
-      } else if (activeTab === 'templates' && !canManageTemplates) {
-        router.replace(`/workspaces/${workspaceId}/settings/general`)
-      }
+    if (permissions.isLoading) return
+    if (!hasAnySettingsAccess) {
+      router.replace(`/workspaces/${workspaceId}`)
+      return
+    }
+    if (activeTab === 'general' && !canManageSettings) {
+      router.replace(`/workspaces/${workspaceId}/settings/directories`)
+    } else if (activeTab === 'participants' && !canManageParticipants) {
+      router.replace(`/workspaces/${workspaceId}/settings/general`)
+    } else if (activeTab === 'permissions' && !canManageRoles) {
+      router.replace(`/workspaces/${workspaceId}/settings/general`)
+    } else if (activeTab === 'templates' && !canManageTemplates) {
+      router.replace(`/workspaces/${workspaceId}/settings/general`)
     }
   }, [
     activeTab,
     canManageParticipants,
     canManageRoles,
+    canManageSettings,
     canManageTemplates,
+    hasAnySettingsAccess,
     permissions.isLoading,
     router,
     workspaceId,
   ])
+
+  // Пока проверяем права — ничего не рендерим, чтобы клиент даже на миг не
+  // увидел мерцание содержимого настроек до редиректа.
+  if (permissions.isLoading || !hasAnySettingsAccess) {
+    return (
+      <WorkspaceLayout>
+        <main className="flex-1 p-8 overflow-auto" />
+      </WorkspaceLayout>
+    )
+  }
 
   return (
     <WorkspaceLayout>
@@ -126,9 +153,11 @@ export function WorkspaceSettingsPage() {
           {/* Tabs */}
           <Tabs value={activeTab} className="w-full">
             <TabsList>
-              <TabsTrigger value="general" onClick={() => handleTabChange('general')}>
-                Настройки
-              </TabsTrigger>
+              {canManageSettings && (
+                <TabsTrigger value="general" onClick={() => handleTabChange('general')}>
+                  Настройки
+                </TabsTrigger>
+              )}
               {canManageParticipants && (
                 <TabsTrigger value="participants" onClick={() => handleTabChange('participants')}>
                   Участники
@@ -180,7 +209,7 @@ export function WorkspaceSettingsPage() {
 
           {/* Tab content */}
           <Suspense fallback={<div className="p-4">Загрузка...</div>}>
-            {activeTab === 'general' && <GeneralSettingsTab />}
+            {activeTab === 'general' && canManageSettings && <GeneralSettingsTab />}
             {activeTab === 'participants' && canManageParticipants && <ParticipantsTab />}
             {activeTab === 'permissions' && canManageRoles && <PermissionsTab />}
             {(activeTab === 'directories' || pathname.includes('/directories')) && <DirectoriesTab />}
