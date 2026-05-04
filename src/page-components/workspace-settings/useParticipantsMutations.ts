@@ -93,15 +93,50 @@ export function useParticipantsMutations(workspaceId: string | undefined) {
       participantId: string
       data: Partial<Participant>
     }) => {
-      const { error } = await supabase.from('participants').update(data).eq('id', participantId)
-      if (error) throw error
+      const { data: current, error: fetchErr } = await supabase
+        .from('participants')
+        .select('email')
+        .eq('id', participantId)
+        .single()
+      if (fetchErr) throw fetchErr
+
+      const newEmail = data.email?.trim().toLowerCase()
+      const oldEmail = current.email?.trim().toLowerCase()
+      const emailChanged = newEmail && newEmail !== oldEmail
+
+      if (emailChanged) {
+        const { data: res, error: fnErr } = await supabase.functions.invoke(
+          'update-participant-email',
+          { body: { participant_id: participantId, email: newEmail } },
+        )
+        if (fnErr) {
+          const msg =
+            (res as { error?: string } | null)?.error === 'email_taken_in_workspace'
+              ? 'Этот email уже используется другим участником'
+              : (res as { error?: string } | null)?.error === 'auth_update_failed'
+                ? 'Не удалось обновить email в системе авторизации (возможно, занят)'
+                : (res as { error?: string } | null)?.error === 'forbidden'
+                  ? 'Нет прав на редактирование участника'
+                  : fnErr.message || 'Не удалось обновить email'
+          throw new Error(msg)
+        }
+      }
+
+      const { email: _ignored, ...rest } = data
+      if (Object.keys(rest).length > 0) {
+        const { error } = await supabase
+          .from('participants')
+          .update(rest)
+          .eq('id', participantId)
+        if (error) throw error
+      }
     },
     onSuccess: () => {
       invalidateParticipants()
       toast.success('Участник обновлён')
     },
-    onError: () => {
-      toast.error('Не удалось сохранить участника')
+    onError: (err: Error) => {
+      toast.error(err.message || 'Не удалось сохранить участника')
     },
   })
 
