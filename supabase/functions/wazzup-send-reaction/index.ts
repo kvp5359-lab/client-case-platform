@@ -14,7 +14,9 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { preflight, jsonRes, getServiceClient } from "../_shared/edge.ts";
+import {
+  preflight, jsonRes, getServiceClient, markOutgoingExternal,
+} from "../_shared/edge.ts";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return preflight();
@@ -98,9 +100,7 @@ Deno.serve(async (req: Request) => {
   // же сообщение) не создал в треде дубль-баббл с эмодзи. Реакция уже
   // отображается у нас как обычная реакция под бабблом.
   if (sentMessageId) {
-    await service
-      .from("wazzup_outgoing_dedup")
-      .insert({ wazzup_message_id: sentMessageId, reason: "reaction" });
+    await markOutgoingExternal(service, "wazzup", sentMessageId, "reaction");
   }
 
   return jsonRes({ ok: true, wazzup_message_id: sentMessageId }, 200);

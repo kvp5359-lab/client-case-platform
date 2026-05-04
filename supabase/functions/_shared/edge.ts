@@ -84,3 +84,43 @@ export async function getUser(req: Request): Promise<{ id: string } | null> {
   const { data: { user } } = await userClient.auth.getUser();
   return user ? { id: user.id } : null;
 }
+
+// ===========================================================================
+// Дедуп исходящих echo (Зона 5 рефакторинга)
+// ===========================================================================
+
+/**
+ * Помечает (channel, messageId) как наше исходящее — чтобы webhook этого
+ * канала при `isEcho=true` пропустил его и не создал дубль в треде.
+ *
+ * Используется когда отправляемое сообщение НЕ имеет собственной строки
+ * в `project_messages` с таким `<channel>_message_id` (например, мы шлём
+ * эмодзи-реплай как часть реакции — реакция живёт в `message_reactions`).
+ * Если запись в `project_messages` будет — UNIQUE на `<channel>_message_id`
+ * сам отсечёт дубль и `markOutgoingExternal` не нужен.
+ */
+export async function markOutgoingExternal(
+  service: SupabaseClient,
+  channel: string,
+  messageId: string,
+  reason?: string,
+): Promise<void> {
+  await service
+    .from("external_outgoing_dedup")
+    .insert({ channel, message_id: messageId, reason: reason ?? null });
+}
+
+/** Проверяет, есть ли (channel, messageId) в dedup-таблице. */
+export async function isOutgoingEcho(
+  service: SupabaseClient,
+  channel: string,
+  messageId: string,
+): Promise<boolean> {
+  const { data } = await service
+    .from("external_outgoing_dedup")
+    .select("message_id")
+    .eq("channel", channel)
+    .eq("message_id", messageId)
+    .maybeSingle();
+  return !!data;
+}

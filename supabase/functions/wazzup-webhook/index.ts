@@ -18,6 +18,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   okText, getServiceClient, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+  isOutgoingEcho,
 } from "../_shared/edge.ts";
 
 interface WazzupMessage {
@@ -122,15 +123,11 @@ async function handleIncomingMessage(
   workspaceId: string,
   msg: WazzupMessage,
 ): Promise<void> {
-  // 0. Dedup: не наша ли это echo-реакция? Если messageId есть в служебной
-  // таблице — пропускаем (мы уже отрисовали её как реакцию под бабблом).
-  if (msg.isEcho) {
-    const { data: dedupRow } = await service
-      .from("wazzup_outgoing_dedup")
-      .select("wazzup_message_id")
-      .eq("wazzup_message_id", msg.messageId)
-      .maybeSingle();
-    if (dedupRow) return;
+  // 0. Dedup: не наша ли это echo? Если messageId есть в общей таблице
+  // dedup — пропускаем (мы уже отрисовали её в нашем UI). Покрывает
+  // эмодзи-реакции и доп. файлы из multi-file отправки.
+  if (msg.isEcho && await isOutgoingEcho(service, "wazzup", msg.messageId)) {
+    return;
   }
 
   // 1. Канал

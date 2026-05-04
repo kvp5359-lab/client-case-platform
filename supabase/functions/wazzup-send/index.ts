@@ -20,6 +20,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
   preflight, jsonRes, okText, requireInternalSecret, getServiceClient,
+  markOutgoingExternal,
 } from "../_shared/edge.ts";
 
 interface RequestBody {
@@ -210,14 +211,11 @@ async function sendWazzup(
     return { ok: false, error: errDesc };
   }
 
-  // Все исходящие messageId записываем в dedup, чтобы webhook не создавал
-  // дубли когда Wazzup пришлёт нам эхо. Для первого ответа этого можно бы
-  // не делать (он уже сохранится в project_messages.wazzup_message_id и
-  // UNIQUE-индекс отсечёт дубль), но для второго/третьего файла без dedup
-  // мы бы получали отдельные баблы echo.
-  await getServiceClient()
-    .from("wazzup_outgoing_dedup")
-    .insert({ wazzup_message_id: json.messageId, reason: "send" });
+  // Все исходящие messageId записываем в общий dedup, чтобы webhook не
+  // создавал дубли при echo. Первый id всё равно сохранится через
+  // project_messages.wazzup_message_id (UNIQUE отсечёт), но для второго/
+  // третьего файла без dedup мы бы получали отдельные баблы echo.
+  await markOutgoingExternal(getServiceClient(), "wazzup", json.messageId, "send");
 
   return { ok: true, messageId: json.messageId };
 }
