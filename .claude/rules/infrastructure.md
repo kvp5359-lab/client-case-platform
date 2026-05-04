@@ -310,6 +310,69 @@
 - **Реакции в обе стороны**: WhatsApp Business / Wazzup не отдают reactions как отдельный webhook-event и не дают их ставить через API. Реакция клиента (как видели на тесте) приходит как обычное сообщение с эмодзи в ответ.
 - **Edit/delete сообщений**: Wazzup webhook схема для этого не документирована; пропускаем.
 
+## Мессенджер-каналы — единая справка
+
+### Матрица возможностей
+
+| Возможность                       | TG group | TG Business | TG MTProto | Wazzup (WA) | Email |
+|-----------------------------------|----------|-------------|------------|-------------|-------|
+| Текст в обе стороны               | ✅       | ✅          | ✅         | ✅          | ✅    |
+| Вложения (приём)                  | ✅       | ✅          | ✅         | ✅          | ✅    |
+| Вложения (отправка)               | ✅       | частично    | частично   | ✅          | ✅    |
+| Reply-цитирование (приём)         | ✅       | ✅          | ✅         | ✅          | n/a   |
+| Reply-цитирование (отправка)      | ✅       | ✅          | ✅         | 🟡 fallback в текст | n/a   |
+| Reactions (приём)                 | ✅       | 🟡 как сообщение | ✅      | 🟡 как сообщение | ❌ |
+| Reactions (отправка)              | 🟡 если бот админ | 🟡 reply-эмодзи | ✅ native | 🟡 reply-эмодзи | ❌ |
+| Edit/Delete своих исходящих       | ✅       | ✅          | ✅         | ❌          | ❌    |
+| Read-receipts (от клиента)        | ❌       | ❌          | ✅ MTProto | ✅          | 🟡 пиксель |
+| Mark-as-read (мы → внешний)       | ❌       | ❌          | ✅         | ✅          | n/a   |
+| Голосовые с автотранскрипцией     | ✅       | ✅          | ✅         | ✅          | n/a   |
+
+Легенда: ✅ — нативно, 🟡 — эмуляция/частично, ❌ — не поддерживается каналом.
+
+### Edge Functions — общий слой
+
+[`supabase/functions/_shared/edge.ts`](../../supabase/functions/_shared/edge.ts) — единые helpers:
+`corsHeaders`, `preflight()`, `jsonRes(payload, status)`, `okText()`,
+`requireInternalSecret(req, allowBearer?)`, `getServiceClient()`,
+`getUserClient(req)`, `getUser(req)`. Всем новым функциям использовать.
+
+### Авторизация Edge Functions — матрица
+
+| Функция                    | verify_jwt | x-internal-secret | Bearer JWT | Кто вызывает |
+|----------------------------|------------|-------------------|------------|--------------|
+| `*-webhook` (TG, Wazzup)   | false      | —                 | —          | Сторонний сервис, защита через secret в URL/header |
+| `*-send` (TG group, Business, Wazzup) | false | да | да (фронт)| pg-триггер `notify_telegram_on_new_message` + фронт (для attachments_only) |
+| `wazzup-mark-read` / `wazzup-fetch-channels` / `wazzup-set-webhook` / `*-react` (Business/MTProto) | true | — | да | Только фронт (RLS внутри) |
+| `wazzup-send-reaction`     | true       | —                 | да         | Фронт |
+
+### Чек-лист «Как добавить новый мессенджер»
+
+1. **БД (миграция)**:
+   - `<channel>_settings` (workspace_id, api_key, webhook_secret) + RLS только для менеджеров
+   - `<channel>_channels` (привязка к user_id) + RLS
+   - Поля в `project_threads`: `<channel>_channel_id`, `<channel>_chat_id` + partial UNIQUE
+   - Поля в `project_messages`: `<channel>_message_id` (UNIQUE) + `<channel>_status` если нужны статусы
+   - Расширить enum `message_source` через `ALTER TYPE message_source ADD VALUE 'newchan'`
+   - Добавить ветку в триггер `notify_telegram_on_new_message` (skip 'newchan' source + блок маршрутизации)
+   - Добавить флаг системного инбокса в `projects` (или использовать `system_inbox_kind` после Зоны 4)
+2. **Edge Functions**:
+   - `<channel>-webhook` — приём входящих, с защитой query-param/header secret
+   - `<channel>-send` — отправка через REST канала; auth через x-internal-secret + Bearer
+   - При необходимости: `<channel>-mark-read`, `<channel>-send-reaction`, `<channel>-fetch-channels`
+   - Все на helpers из `_shared/edge.ts`
+3. **Фронт**:
+   - Хук `use<Channel>Settings` / `use<Channel>Channels`
+   - Секция в `IntegrationsTab` (трёх-шаговый онбординг по аналогии с WazzupSection)
+   - Расширить `ProjectMessage.source` enum
+   - Добавить ветку в `useDeliveryStatus` (если нужны индикаторы доставки)
+   - Добавить стратегию в `reactionStrategies.toggleReactionByChannel`
+   - Если есть mark-as-read API — добавить хук `use<Channel>MarkRead` и подключить в `useMessengerState`
+   - Расширить `useProjectData` для нового системного инбокса
+   - Расширить фильтр `useSidebarData` — скрыть чужой инбокс
+4. **Иконка/цвет тредов**: добавить в `THREAD_ICONS` (если нужна бренд-иконка) и в дефолтах создания тредов внутри webhook.
+5. **Документация**: обновить эту матрицу + добавить раздел канала в infrastructure.md.
+
 ## Локальная разработка
 
 ```bash
