@@ -153,7 +153,12 @@ Deno.serve(async (req: Request) => {
     // (INVALID_MESSAGE_DATA: fields["text","contentUri"]). Поэтому если есть
     // и текст-caption и файлы — сначала отдельным запросом отправляем текст
     // (с reply-цитатой и quotedMessageId), потом серию запросов с contentUri.
-    if (text.trim()) {
+    //
+    // Плейсхолдер «📎» (это значение content, когда у сообщения есть только
+    // вложения без текста) — пропускаем, иначе перед файлом приходит лишний
+    // одиночный «📎»-баббл.
+    const isAttachmentPlaceholder = text.trim() === "📎";
+    if (text.trim() && !isAttachmentPlaceholder) {
       const textPayload: Record<string, unknown> = { ...baseRequest, text };
       if (quotedMessageId) textPayload.quotedMessageId = quotedMessageId;
       const textRes = await sendWazzup(settings.api_key, textPayload);
