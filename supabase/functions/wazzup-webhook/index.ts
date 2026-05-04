@@ -122,6 +122,17 @@ async function handleIncomingMessage(
   workspaceId: string,
   msg: WazzupMessage,
 ): Promise<void> {
+  // 0. Dedup: не наша ли это echo-реакция? Если messageId есть в служебной
+  // таблице — пропускаем (мы уже отрисовали её как реакцию под бабблом).
+  if (msg.isEcho) {
+    const { data: dedupRow } = await service
+      .from("wazzup_outgoing_dedup")
+      .select("wazzup_message_id")
+      .eq("wazzup_message_id", msg.messageId)
+      .maybeSingle();
+    if (dedupRow) return;
+  }
+
   // 1. Канал
   const { data: channel } = await service
     .from("wazzup_channels")

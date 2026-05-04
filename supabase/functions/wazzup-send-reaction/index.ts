@@ -101,7 +101,18 @@ Deno.serve(async (req: Request) => {
   }
 
   const json = await res.json().catch(() => ({}));
-  return jsonRes({ ok: true, wazzup_message_id: (json as { messageId?: string }).messageId }, 200);
+  const sentMessageId = (json as { messageId?: string }).messageId;
+
+  // Записываем в dedup-таблицу, чтобы webhook (когда придёт isEcho=true на это
+  // же сообщение) не создал в треде дубль-баббл с эмодзи. Реакция уже
+  // отображается у нас как обычная реакция под бабблом.
+  if (sentMessageId) {
+    await service
+      .from("wazzup_outgoing_dedup")
+      .insert({ wazzup_message_id: sentMessageId, reason: "reaction" });
+  }
+
+  return jsonRes({ ok: true, wazzup_message_id: sentMessageId }, 200);
 });
 
 function jsonRes(payload: unknown, status: number): Response {

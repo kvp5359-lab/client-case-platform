@@ -149,11 +149,23 @@ Deno.serve(async (req: Request) => {
       return jsonOk({ skip: "has_attachments=true but no rows in message_attachments" });
     }
 
+    // Wazzup НЕ позволяет text + contentUri в одном запросе
+    // (INVALID_MESSAGE_DATA: fields["text","contentUri"]). Поэтому если есть
+    // и текст-caption и файлы — сначала отдельным запросом отправляем текст
+    // (с reply-цитатой и quotedMessageId), потом серию запросов с contentUri.
+    if (text.trim()) {
+      const textPayload: Record<string, unknown> = { ...baseRequest, text };
+      if (quotedMessageId) textPayload.quotedMessageId = quotedMessageId;
+      const textRes = await sendWazzup(settings.api_key, textPayload);
+      if (textRes.ok && textRes.messageId) firstWazzupMessageId = textRes.messageId;
+      else firstError = textRes.error ?? "text send failed";
+    }
+
     for (let i = 0; i < attachments.length; i++) {
       const att = attachments[i];
       const { data: signed } = await service.storage
         .from("files")
-        .createSignedUrl(att.storage_path as string, 60 * 60); // 1 час хватает
+        .createSignedUrl(att.storage_path as string, 60 * 60);
 
       if (!signed?.signedUrl) {
         console.warn("[wazzup-send] signed url failed for", att.storage_path);
@@ -164,17 +176,17 @@ Deno.serve(async (req: Request) => {
         ...baseRequest,
         contentUri: signed.signedUrl,
       };
-
-      // Caption — только у первого файла.
-      if (i === 0 && text.trim()) payload.text = text;
-      // Reply — только у первого.
-      if (i === 0 && quotedMessageId) payload.quotedMessageId = quotedMessageId;
+      // Если текста не было — quotedMessageId уйдёт с первым файлом.
+      if (i === 0 && !text.trim() && quotedMessageId) {
+        payload.quotedMessageId = quotedMessageId;
+      }
 
       const result = await sendWazzup(settings.api_key, payload);
       if (result.ok && result.messageId) {
-        if (i === 0) firstWazzupMessageId = result.messageId;
-      } else if (i === 0) {
-        firstError = result.error ?? "send failed";
+        // Запоминаем id только если не было текстового сообщения раньше.
+        if (!firstWazzupMessageId) firstWazzupMessageId = result.messageId;
+      } else if (!firstError) {
+        firstError = result.error ?? "attachment send failed";
       }
     }
   } else {
