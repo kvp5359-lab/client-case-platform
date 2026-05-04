@@ -3,6 +3,7 @@ import { createElement } from 'react'
 import { cn } from '@/lib/utils'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import type { TgDeliveryStatus } from './TelegramDeliveryIndicator'
+import type { WazzupDeliveryStatus } from './WazzupDeliveryIndicator'
 
 export type DeliveryStatus = 'pending' | 'sent' | 'read' | null
 
@@ -10,11 +11,16 @@ export function getDeliveryStatus(
   message: ProjectMessage,
   isOwn: boolean,
   tgStatus: TgDeliveryStatus,
+  wazzupStatus?: WazzupDeliveryStatus,
 ): DeliveryStatus {
   if (!isOwn) return null
   if (tgStatus === 'pending') return 'pending'
   if (tgStatus === 'read') return 'read'
   if (tgStatus === 'delivered') return 'sent'
+  // Wazzup: pending/sent/delivered → sent (одна-две галочки), read → read.
+  if (wazzupStatus === 'pending') return 'pending'
+  if (wazzupStatus === 'read') return 'read'
+  if (wazzupStatus === 'delivered' || wazzupStatus === 'sent') return 'sent'
   if (message.source === 'email') {
     if (message.id.startsWith('optimistic-')) return 'pending'
     const meta = message.email_metadata as Record<string, unknown> | null

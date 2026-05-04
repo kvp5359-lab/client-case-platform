@@ -72,6 +72,10 @@ export interface ProjectMessage {
   telegram_attachments_delivered: boolean | null
   /** Когда собеседник прочитал это исходящее (заполняется MTProto-сервисом по UpdateReadHistoryOutbox). null — не прочитано или unknown. */
   recipient_read_at?: string | null
+  /** Wazzup messageId — стампится при отправке/приёме. */
+  wazzup_message_id?: string | null
+  /** Статус доставки в Wazzup: sent / delivered / read / error. */
+  wazzup_status?: 'sent' | 'delivered' | 'read' | 'error' | null
   is_edited: boolean
   is_draft: boolean
   forwarded_from_name: string | null

@@ -294,7 +294,21 @@
   # 3. Регенерация типов БД (новые таблицы)
   supabase gen types typescript --project-id zjatohckcpiqmxkmfxbs > src/types/database.ts
   ```
-- **TODO MVP+1**: вложения (фото/файлы/голосовые через `contentUri`), реакции (Wazzup отдаёт через webhook, но сейчас не обрабатываем), редактирование/удаление сообщений, привязка тредов к проектам (как у inbox-почты), синхронизация прочтений в обе стороны.
+- **Вложения (приём)**: webhook v2 при `type ∈ {image,video,audio,voice,document,sticker}` скачивает `contentUri`, кладёт в Storage `files/<workspace>/<project>/<message>/<file>`, создаёт строки в `files` + `message_attachments`, ставит `has_attachments=true`.
+- **Вложения (отправка)**: `wazzup-send` v2 при `has_attachments=true` для каждого `message_attachments` создаёт signed URL (1 час) и шлёт `POST /v3/message` с `contentUri`. У первого файла добавляет `text` как caption и `quotedMessageId` (если reply). Триггер БД пропускает сообщения с `has_attachments=true` — фронт сам инициирует через `supabase.functions.invoke('wazzup-send', { body: { message_id, attachments_only: true } })` (см. блок в `messengerService.ts`).
+- **Голосовые транскрипция**: webhook после загрузки voice/audio fire-and-forget'ом дёргает существующую `transcribe-audio` функцию, она пишет в `message_attachments.transcription`.
+- **Reply при отправке**: `wazzup-send` ищет `wazzup_message_id` оригинала по `reply_to_message_id` и передаёт в `quotedMessageId`.
+- **Mark as read**: [`wazzup-mark-read`](../../supabase/functions/wazzup-mark-read/index.ts) → `POST /v3/markread`. Дёргается фронтом из [`useWazzupMarkRead`](../../src/hooks/messenger/useWazzupMarkRead.ts) при открытии Wazzup-треда (в `useMessengerState`).
+- **Read-receipts от клиента**: webhook v2 при `status='read'` обновляет не только `wazzup_status`, но и `recipient_read_at` — UI рисует синие галочки.
+- **Галочки доставки в UI**: [`WazzupDeliveryIndicator.tsx`](../../src/components/messenger/WazzupDeliveryIndicator.tsx) — `pending → sent → delivered → read → failed`. Подключён в `MessageBubble.tsx` через расширенный `getDeliveryStatus`.
+- **Имена клиентов**: webhook берёт `contact.name → authorName → username → phone → chatId`, при первом сообщении создаёт тред с реальным именем; если тред уже существовал с именем-телефоном-fallback, апдейтит `name`.
+- **Привязка треда к проекту**: RPC [`move_thread_to_project(thread_id, project_id)`](../../supabase/migrations/20260503_move_thread_to_project_rpc.sql) меняет `project_id` у треда + всех его сообщений (один воркспейс). Хук [`useMoveThreadToProject`](../../src/hooks/messenger/useMoveThreadToProject.ts). UI-точка пока не интегрирована — вызов из дев-консоли работает.
+- **Системный инбокс Wazzup в UI**: `useProjectData` теперь поддерживает `is_system_wazzup_inbox` и подмешивает синтетический template с модулями `chats + tasks` (как у TG Business).
+
+### Известные ограничения / не делается
+
+- **Реакции в обе стороны**: WhatsApp Business / Wazzup не отдают reactions как отдельный webhook-event и не дают их ставить через API. Реакция клиента (как видели на тесте) приходит как обычное сообщение с эмодзи в ответ.
+- **Edit/delete сообщений**: Wazzup webhook схема для этого не документирована; пропускаем.
 
 ## Локальная разработка
 

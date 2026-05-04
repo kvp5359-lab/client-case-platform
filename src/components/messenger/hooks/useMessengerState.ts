@@ -24,6 +24,7 @@ import {
   usePublishDraft,
   useRetryTelegramSend,
 } from '@/hooks/messenger'
+import { useWazzupMarkRead } from '@/hooks/messenger/useWazzupMarkRead'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
 import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import {
@@ -144,6 +145,9 @@ export function useMessengerState({
   const markAsRead = useMarkAsRead(projectId, workspaceId, channel, pid, threadId)
   const markAsUnread = useMarkAsUnread(projectId, workspaceId, channel, pid, threadId)
   const { data: unreadCount = 0 } = useUnreadCount(projectId, channel, pid, threadId)
+  // Если тред Wazzup'овский — синхронизируем «прочитано» с WhatsApp.
+  // Edge function сама делает skip, если тред не Wazzup.
+  useWazzupMarkRead(threadId, unreadCount)
   const { data: isManuallyUnread = false } = useIsManuallyUnread(
     workspaceId,
     projectId ?? '',

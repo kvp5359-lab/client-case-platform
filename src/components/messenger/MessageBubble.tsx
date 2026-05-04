@@ -9,6 +9,7 @@ import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { bubbleStyles } from './utils/messageStyles'
 import { useCollapsibleText } from './hooks/useCollapsibleText'
 import { TelegramFailedBadge, useTelegramDeliveryStatus } from './TelegramDeliveryIndicator'
+import { WazzupFailedBadge, useWazzupDeliveryStatus } from './WazzupDeliveryIndicator'
 // QuotePopup рендерится императивно (DOM) — см. handleMouseUp в MessageBubble
 import { ReactionBadges } from './ReactionBadges'
 import { MessageActions, MessageContextMenu } from './MessageActions'
@@ -83,8 +84,10 @@ function MessageBubbleImpl({
   const colors = bubbleStyles[accent]
   const showStaffMark = !!isClientThread && isTeamSender(message.sender_role)
   const tgDeliveryStatus = useTelegramDeliveryStatus(message, isOwn, isTelegramLinked)
-  const deliveryStatus = getDeliveryStatus(message, isOwn, tgDeliveryStatus)
+  const wazzupDeliveryStatus = useWazzupDeliveryStatus(message, isOwn)
+  const deliveryStatus = getDeliveryStatus(message, isOwn, tgDeliveryStatus, wazzupDeliveryStatus)
   const tgFailed = tgDeliveryStatus === 'failed'
+  const wazzupFailed = wazzupDeliveryStatus === 'failed'
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [emailViewOpen, setEmailViewOpen] = useState(false)
@@ -302,6 +305,7 @@ function MessageBubbleImpl({
 
             {/* Failed delivery badge */}
             {tgFailed && !message.is_draft && <TelegramFailedBadge />}
+            {wazzupFailed && !message.is_draft && <WazzupFailedBadge />}
 
             <BubbleHeader message={message} isOwn={isOwn} showAvatar={showAvatar} accent={accent} />
 

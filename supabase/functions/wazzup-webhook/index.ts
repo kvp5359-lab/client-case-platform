@@ -1,26 +1,17 @@
 /**
- * Edge Function: wazzup-webhook
+ * Edge Function: wazzup-webhook (v2 — с вложениями, edit/delete, статусами).
  *
- * Webhook от Wazzup24 (https://wazzup24.com). Обрабатывает события:
- *  - messages[]   — входящие/исходящие (echo) сообщения в каналах WhatsApp/Instagram/etc.
- *  - statuses[]   — статусы доставки (sent / delivered / read / error).
- *  - channelsUpdates[] — изменение состояния канала (active / disabled / qridle / …).
- *  - { test: true } — тестовый ping при настройке webhook'а в кабинете Wazzup.
+ * Webhook от Wazzup24. Обрабатывает события:
+ *  - messages[]            — входящие/исходящие (echo). Поддержка text + любых медиа
+ *                            (image/video/audio/voice/document/sticker), плюс quotedMessage
+ *                            для reply-lookup.
+ *  - statuses[]            — статусы доставки sent/delivered/read/error. status='read'
+ *                            обновляет recipient_read_at у исходящих.
+ *  - channelsUpdates[]     — состояние канала.
+ *  - { test: true }        — ping.
  *
- * Защита: Wazzup НЕ поддерживает custom-headers для webhooks. Поэтому мы
- * подсовываем секрет в query-string URL: …/wazzup-webhook?key=<secret>.
- * Секрет хранится в wazzup_settings.webhook_secret (генерируется при создании
- * настроек) и подставляется в URL, который пользователь копирует в кабинет
- * Wazzup. Любой запрос без правильного key — отбиваем 403.
- *
- * Деплой: --no-verify-jwt (Wazzup не шлёт JWT). Сама ф-я проверяет workspace
- * по совпадению webhook_secret в query.
- *
- * Для входящих сообщений:
- *  1. Находим канал по channelId → user_id сотрудника.
- *  2. Создаём (если ещё нет) системный проект-инбокс сотрудника.
- *  3. Создаём (если ещё нет) тред под клиента (по chatId).
- *  4. INSERT'им сообщение с source='wazzup', wazzup_message_id для дедупа.
+ * Защита: секрет в query-string ?key=<webhook_secret> (Wazzup не поддерживает
+ * custom-headers).
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -32,12 +23,12 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 interface WazzupMessage {
   messageId: string;
   channelId: string;
-  chatType: string;            // whatsapp | instagram | …
-  chatId: string;              // телефон без + или username
-  type: string;                // text | image | video | audio | document | geo | vcard | sticker | missed_call | …
+  chatType: string;
+  chatId: string;
+  type: string;
   text?: string;
-  contentUri?: string;         // ссылка на медиа (если type не text)
-  isEcho?: boolean;            // true = исходящее (отправили мы или с другого устройства)
+  contentUri?: string;
+  isEcho?: boolean;
   dateTime?: string;
   authorName?: string;
   authorPhone?: string;
@@ -67,24 +58,21 @@ interface WazzupWebhookPayload {
   channelsUpdates?: WazzupChannelUpdate[];
 }
 
+// Какие типы Wazzup-сообщений считаем медиа (требующими download).
+const MEDIA_TYPES = new Set([
+  "image", "video", "audio", "voice", "document", "sticker", "vcard", "geo",
+]);
+
 Deno.serve(async (req: Request) => {
-  // Wazzup при настройке шлёт GET для проверки доступности URL.
-  if (req.method === "GET") {
-    return new Response("ok", { status: 200 });
-  }
-  if (req.method !== "POST") {
-    return new Response("ok", { status: 200 });
-  }
+  if (req.method === "GET") return new Response("ok", { status: 200 });
+  if (req.method !== "POST") return new Response("ok", { status: 200 });
 
   const url = new URL(req.url);
   const providedSecret = url.searchParams.get("key");
-  if (!providedSecret) {
-    return new Response("forbidden", { status: 403 });
-  }
+  if (!providedSecret) return new Response("forbidden", { status: 403 });
 
   const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Найдём воркспейс по секрету. Секрет уникален в пределах wazzup_settings.
   const { data: settings } = await service
     .from("wazzup_settings")
     .select("workspace_id, webhook_secret")
@@ -97,15 +85,10 @@ Deno.serve(async (req: Request) => {
   }
 
   let payload: WazzupWebhookPayload;
-  try {
-    payload = (await req.json()) as WazzupWebhookPayload;
-  } catch {
-    return new Response("ok", { status: 200 });
-  }
+  try { payload = await req.json() as WazzupWebhookPayload; }
+  catch { return new Response("ok", { status: 200 }); }
 
-  if (payload.test) {
-    return new Response(JSON.stringify({ ok: true }), { status: 200 });
-  }
+  if (payload.test) return new Response(JSON.stringify({ ok: true }), { status: 200 });
 
   try {
     if (payload.messages?.length) {
@@ -159,7 +142,7 @@ async function handleIncomingMessage(
   // 2. Системный инбокс сотрудника
   const projectId = await ensureSystemInboxProject(service, channel.user_id, workspaceId);
 
-  // 3. Тред (один на клиента в рамках канала)
+  // 3. Имя клиента: contact.name (приоритет) > authorName > username > phone > chatId
   const clientName =
     msg.contact?.name?.trim() ||
     msg.authorName?.trim() ||
@@ -167,21 +150,30 @@ async function handleIncomingMessage(
     msg.contact?.phone ||
     msg.chatId;
 
+  // 4. Тред (один на клиента в рамках канала)
   const threadId = await ensureWazzupThread(service, {
-    projectId,
-    workspaceId,
+    projectId, workspaceId,
     channelDbId: channel.id as string,
     chatId: msg.chatId,
     chatType: msg.chatType,
     clientName,
   });
 
-  // 4. Содержимое: text для текстовых, описание для медиа.
-  const content =
-    (msg.text ?? "").trim() ||
-    (msg.contentUri ? `[${msg.type}] ${msg.contentUri}` : `[${msg.type}]`);
+  // Если тред уже был и имя клиента изменилось/уточнилось — апдейтнем.
+  await service.from("project_threads")
+    .update({ name: clientName })
+    .eq("id", threadId)
+    .eq("name", msg.chatId); // только если имя сейчас = телефон-fallback
 
-  // 5. Reply-lookup: ищем оригинал в БД по wazzup_message_id (если quotedMessage передан).
+  // 5. Контент: text/caption.
+  // Для медиа (если text пустой) ставим временный плейсхолдер «📎», как в TG.
+  // После скачивания, если файл загрузился, плейсхолдер остаётся (UI покажет
+  // attachment) — это совместимо с has_attachments-логикой.
+  const isMedia = MEDIA_TYPES.has(msg.type) && msg.contentUri;
+  const rawContent = (msg.text ?? "").trim();
+  const content = rawContent || (isMedia ? "📎" : `[${msg.type}]`);
+
+  // 6. Reply-lookup по wazzup_message_id оригинала.
   let replyToDbId: string | null = null;
   if (msg.quotedMessage?.messageId) {
     const { data: replyRow } = await service
@@ -192,10 +184,7 @@ async function handleIncomingMessage(
     replyToDbId = replyRow?.id ?? null;
   }
 
-  // 6. Sender attribution.
-  // isEcho=true → сообщение пришло «эхом» (отправлено сотрудником с телефона
-  // или другого устройства, синхронизировалось через WhatsApp Web). Привязываем
-  // к participant'у сотрудника.
+  // 7. Sender attribution. isEcho=true → сообщение от сотрудника (с его телефона/др. устройства).
   let senderParticipantId: string | null = null;
   let senderName: string;
   let senderRole: string;
@@ -218,6 +207,7 @@ async function handleIncomingMessage(
     senderRole = "Клиент";
   }
 
+  // 8. INSERT сообщения с has_attachments=true для медиа.
   const insertPayload = {
     project_id: projectId,
     workspace_id: workspaceId,
@@ -231,15 +221,171 @@ async function handleIncomingMessage(
     wazzup_message_id: msg.messageId,
     wazzup_status: msg.status ?? null,
     reply_to_message_id: replyToDbId,
+    has_attachments: !!isMedia,
   };
 
-  const { error } = await service.from("project_messages").insert(insertPayload);
+  const { data: inserted, error } = await service
+    .from("project_messages")
+    .insert(insertPayload)
+    .select("id")
+    .single();
 
-  // 23505 = unique violation на uq_project_messages_wazzup_dedup. Это значит,
-  // мы уже видели это сообщение (например, повторный webhook). Молча игнорируем.
-  if (error && error.code !== "23505") {
-    console.error("[wazzup-webhook] insert error:", error);
+  // 23505 = unique violation — webhook повторился, эту строку уже записали.
+  if (error) {
+    if (error.code !== "23505") console.error("[wazzup-webhook] insert error:", error);
+    return;
   }
+
+  const messageId = inserted.id as string;
+
+  // 9. Скачивание медиа.
+  if (isMedia && msg.contentUri) {
+    await downloadAndAttach(service, {
+      messageId, workspaceId, projectId,
+      contentUri: msg.contentUri,
+      mimeTypeHint: guessMimeFromType(msg.type),
+      mediaType: msg.type,
+    });
+
+    // 10. Авто-транскрипция voice/audio.
+    if (msg.type === "voice" || msg.type === "audio") {
+      // fire-and-forget: транскрипция может занять секунды, не блокируем webhook
+      transcribeFirstAttachment(messageId).catch(
+        (e) => console.warn("[wazzup-webhook] transcribe failed:", e),
+      );
+    }
+  }
+}
+
+// ===========================================================================
+// Скачивание contentUri в Storage + INSERT в message_attachments
+// ===========================================================================
+
+async function downloadAndAttach(
+  service: SupabaseClient,
+  args: {
+    messageId: string;
+    workspaceId: string;
+    projectId: string;
+    contentUri: string;
+    mimeTypeHint: string;
+    mediaType: string;
+  },
+): Promise<void> {
+  try {
+    const res = await fetch(args.contentUri);
+    if (!res.ok) {
+      console.warn(`[wazzup-webhook] download failed ${res.status} for ${args.contentUri}`);
+      return;
+    }
+    const buffer = await res.arrayBuffer();
+    const contentType = res.headers.get("content-type") ?? args.mimeTypeHint;
+    const fileName = guessFileName(args.contentUri, args.mediaType, contentType);
+    const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const storagePath = `${args.workspaceId}/${args.projectId}/${args.messageId}/${safeName}`;
+
+    const { error: upErr } = await service.storage.from("files").upload(
+      storagePath, buffer, { contentType, upsert: false },
+    );
+    if (upErr) {
+      console.error("[wazzup-webhook] storage upload error:", upErr);
+      return;
+    }
+
+    const { data: fileRow, error: fileErr } = await service
+      .from("files")
+      .insert({
+        workspace_id: args.workspaceId,
+        bucket: "files",
+        storage_path: storagePath,
+        file_name: fileName,
+        file_size: buffer.byteLength,
+        mime_type: contentType,
+      })
+      .select("id")
+      .single();
+    if (fileErr) {
+      console.error("[wazzup-webhook] files insert error:", fileErr);
+      return;
+    }
+
+    await service.from("message_attachments").insert({
+      message_id: args.messageId,
+      file_name: fileName,
+      file_size: buffer.byteLength,
+      mime_type: contentType,
+      storage_path: storagePath,
+      file_id: fileRow.id,
+    });
+  } catch (err) {
+    console.error("[wazzup-webhook] download/attach error:", err);
+  }
+}
+
+function guessFileName(contentUri: string, mediaType: string, contentType: string): string {
+  // Wazzup даёт contentUri вида https://wazzup24.com/.../something.jpg или signed.
+  const lastSeg = contentUri.split("?")[0].split("/").pop() || "";
+  if (lastSeg && lastSeg.includes(".")) return lastSeg;
+  const ext = mimeToExt(contentType) ?? defaultExtForType(mediaType);
+  return `${mediaType}_${Date.now()}.${ext}`;
+}
+
+function mimeToExt(mime: string): string | null {
+  const map: Record<string, string> = {
+    "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+    "video/mp4": "mp4", "audio/ogg": "ogg", "audio/mpeg": "mp3", "audio/mp4": "m4a",
+    "audio/aac": "aac", "audio/wav": "wav",
+    "application/pdf": "pdf", "application/zip": "zip",
+  };
+  return map[mime] ?? null;
+}
+
+function defaultExtForType(t: string): string {
+  switch (t) {
+    case "image": return "jpg";
+    case "video": return "mp4";
+    case "voice": return "ogg";
+    case "audio": return "mp3";
+    case "sticker": return "webp";
+    case "document": return "bin";
+    default: return "bin";
+  }
+}
+
+function guessMimeFromType(t: string): string {
+  switch (t) {
+    case "image": return "image/jpeg";
+    case "video": return "video/mp4";
+    case "voice": return "audio/ogg";
+    case "audio": return "audio/mpeg";
+    case "sticker": return "image/webp";
+    default: return "application/octet-stream";
+  }
+}
+
+// ===========================================================================
+// Авто-транскрипция voice/audio (fire-and-forget)
+// ===========================================================================
+
+async function transcribeFirstAttachment(messageId: string): Promise<void> {
+  // Фоном дёргаем существующую функцию transcribe-audio с service-ключом.
+  const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const { data: attachment } = await service
+    .from("message_attachments")
+    .select("id")
+    .eq("message_id", messageId)
+    .limit(1)
+    .maybeSingle();
+  if (!attachment) return;
+
+  await fetch(`${SUPABASE_URL}/functions/v1/transcribe-audio`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+    body: JSON.stringify({ attachment_id: attachment.id }),
+  });
 }
 
 // ===========================================================================
@@ -247,9 +393,19 @@ async function handleIncomingMessage(
 // ===========================================================================
 
 async function handleStatus(service: SupabaseClient, st: WazzupStatus): Promise<void> {
+  const update: Record<string, unknown> = { wazzup_status: st.status };
+
+  // status='read' от Wazzup → клиент прочитал наше исходящее. Стампим
+  // recipient_read_at, чтобы UI показал «прочитано».
+  if (st.status === "read") {
+    update.recipient_read_at = st.timestamp
+      ? new Date(st.timestamp).toISOString()
+      : new Date().toISOString();
+  }
+
   await service
     .from("project_messages")
-    .update({ wazzup_status: st.status })
+    .update(update)
     .eq("wazzup_message_id", st.messageId);
 }
 
@@ -283,39 +439,25 @@ async function ensureSystemInboxProject(
   userId: string,
   workspaceId: string,
 ): Promise<string> {
-  const { data: existing } = await service
-    .from("projects")
-    .select("id")
-    .eq("workspace_id", workspaceId)
+  const { data: existing } = await service.from("projects")
+    .select("id").eq("workspace_id", workspaceId)
     .eq("system_inbox_user_id", userId)
-    .eq("is_system_wazzup_inbox", true)
-    .maybeSingle();
+    .eq("is_system_wazzup_inbox", true).maybeSingle();
   if (existing) return existing.id as string;
 
-  const { data: created, error } = await service
-    .from("projects")
-    .insert({
-      workspace_id: workspaceId,
-      name: "Wazzup (WhatsApp)",
-      description: "Системный проект: личные диалоги через Wazzup.",
-      is_system_wazzup_inbox: true,
-      system_inbox_user_id: userId,
-      created_by: userId,
-    })
-    .select("id")
-    .single();
-  if (error || !created) {
-    throw new Error(`Failed to create wazzup inbox: ${error?.message}`);
-  }
+  const { data: created, error } = await service.from("projects").insert({
+    workspace_id: workspaceId,
+    name: "Wazzup (WhatsApp)",
+    description: "Системный проект: личные диалоги через Wazzup.",
+    is_system_wazzup_inbox: true,
+    system_inbox_user_id: userId,
+    created_by: userId,
+  }).select("id").single();
+  if (error || !created) throw new Error(`Failed to create wazzup inbox: ${error?.message}`);
 
-  // Добавляем владельца как Администратора в project_participants.
-  const { data: ownerParticipant } = await service
-    .from("participants")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("workspace_id", workspaceId)
-    .eq("is_deleted", false)
-    .maybeSingle();
+  const { data: ownerParticipant } = await service.from("participants")
+    .select("id").eq("user_id", userId)
+    .eq("workspace_id", workspaceId).eq("is_deleted", false).maybeSingle();
   if (ownerParticipant) {
     await service.from("project_participants").insert({
       project_id: created.id,
@@ -323,7 +465,6 @@ async function ensureSystemInboxProject(
       project_roles: ["Администратор"],
     });
   }
-
   return created.id as string;
 }
 
@@ -338,33 +479,23 @@ async function ensureWazzupThread(
     clientName: string;
   },
 ): Promise<string> {
-  const { data: existing } = await service
-    .from("project_threads")
+  const { data: existing } = await service.from("project_threads")
     .select("id")
     .eq("wazzup_channel_id", args.channelDbId)
     .eq("wazzup_chat_id", args.chatId)
-    .eq("is_deleted", false)
-    .maybeSingle();
+    .eq("is_deleted", false).maybeSingle();
   if (existing) return existing.id as string;
 
-  const { data: created, error } = await service
-    .from("project_threads")
-    .insert({
-      project_id: args.projectId,
-      workspace_id: args.workspaceId,
-      name: args.clientName,
-      type: "chat",
-      access_type: "all",
-      wazzup_channel_id: args.channelDbId,
-      wazzup_chat_id: args.chatId,
-      wazzup_chat_type: args.chatType,
-      icon: "message-circle",
-      accent_color: "green",
-    })
-    .select("id")
-    .single();
-  if (error || !created) {
-    throw new Error(`Failed to create wazzup thread: ${error?.message}`);
-  }
+  const { data: created, error } = await service.from("project_threads").insert({
+    project_id: args.projectId,
+    workspace_id: args.workspaceId,
+    name: args.clientName,
+    type: "chat", access_type: "all",
+    wazzup_channel_id: args.channelDbId,
+    wazzup_chat_id: args.chatId,
+    wazzup_chat_type: args.chatType,
+    icon: "message-circle", accent_color: "green",
+  }).select("id").single();
+  if (error || !created) throw new Error(`Failed to create wazzup thread: ${error?.message}`);
   return created.id as string;
 }
