@@ -103,17 +103,31 @@ Deno.serve(async (req: Request) => {
     .eq("workspace_id", channel.workspace_id).maybeSingle();
   if (!settings?.api_key) return jsonOk({ skip: "no api key" });
 
-  const text = stripHtml(msg.content || "");
+  let text = stripHtml(msg.content || "");
 
-  // 5. Reply lookup: если у нас reply_to_message_id, ищем wazzup_message_id оригинала.
+  // 5. Reply: Wazzup API через `quotedMessageId` не цитирует наши исходящие
+  // в WhatsApp (поле принимается без ошибки, но не отображается у клиента).
+  // Поэтому делаем fallback — префикс цитаты прямо в тексте сообщения, как
+  // делают Telegram-боты и Slack-интеграции. Если Wazzup когда-нибудь починит
+  // quote через API — этот блок можно вернуть к чистому quotedMessageId.
   let quotedMessageId: string | null = null;
   if (msg.reply_to_message_id) {
     const { data: orig } = await service
       .from("project_messages")
-      .select("wazzup_message_id")
+      .select("wazzup_message_id, content, sender_name")
       .eq("id", msg.reply_to_message_id)
       .maybeSingle();
     quotedMessageId = (orig?.wazzup_message_id as string | null) ?? null;
+
+    if (orig) {
+      const origText = stripHtml((orig.content as string) ?? "");
+      const truncated = origText.length > 200 ? origText.slice(0, 200) + "…" : origText;
+      const senderLabel = (orig.sender_name as string | null) ?? "";
+      const quotePrefix = senderLabel
+        ? `> ${senderLabel}: ${truncated}\n\n`
+        : `> ${truncated}\n\n`;
+      text = quotePrefix + text;
+    }
   }
 
   const baseRequest = {
