@@ -15,6 +15,7 @@ import { useProjectThreads } from './useProjectThreads'
 import { useThreadMembersMap } from '@/components/tasks/useThreadMembersMap'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
 import { myProjectParticipantKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { useWorkspacePermissions } from '@/hooks/permissions'
 
 interface MyProjectData {
   participantId: string
@@ -53,6 +54,12 @@ export function useAccessibleThreadIds(projectId: string | undefined) {
   const myData = useMyProjectData(projectId)
   const { data: allThreads = [], isLoading: threadsLoading } = useProjectThreads(projectId)
 
+  const workspaceId = allThreads[0]?.workspace_id
+  const { isOwner, canViewAllProjects } = useWorkspacePermissions({
+    workspaceId: workspaceId ?? '',
+  })
+  const hasViewAllProjects = isOwner || canViewAllProjects
+
   // Load members for custom threads
   const customThreadIds = useMemo(
     () => allThreads.filter((t) => t.access_type === 'custom').map((t) => t.id),
@@ -89,13 +96,13 @@ export function useAccessibleThreadIds(projectId: string | undefined) {
         projectRoles: myData?.projectRoles ?? null,
         isAssignee: assignees.some((a) => a.id === myData?.participantId),
         isMember: members.some((m) => m.id === myData?.participantId),
-        hasViewAllProjects: false, // В контексте проекта view_all не проверяем — это workspace-level
+        hasViewAllProjects,
       })
 
       if (hasAccess) ids.add(t.id)
     }
     return ids
-  }, [allThreads, myData, user?.id, threadMembersMap, taskAssigneesMap])
+  }, [allThreads, myData, user?.id, threadMembersMap, taskAssigneesMap, hasViewAllProjects])
 
   const accessibleChats = useMemo(
     () => allThreads.filter((t) => !t.is_deleted && accessibleThreadIds.has(t.id)),
