@@ -27,6 +27,7 @@ import {
   buildSystemTab,
   buildThreadTab,
 } from './useTaskPanelTabs'
+import { useThreadFromPanelTab } from './useThreadFromPanelTab'
 import type { TaskPanelTab } from './taskPanelTabs.types'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
@@ -99,6 +100,17 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     setLastPageProjectId(pageProjectId)
     if (pageProjectId) setActiveProjectId(pageProjectId)
   }
+
+  // Если URL содержит panelTab=thread:<short|uuid> и страница не знает projectId
+  // (например, /boards/X) — резолвим тред через RPC, выставляем activeProjectId
+  // под scope треда. Это позволяет открывать тред в side panel по shareable-ссылке.
+  const resolvedFromUrl = useThreadFromPanelTab(workspaceId)
+  useEffect(() => {
+    if (!resolvedFromUrl) return
+    if (activeProjectId === resolvedFromUrl.projectId) return
+    if (pageProjectId) return // на странице проекта scope уже задан
+    setActiveProjectId(resolvedFromUrl.projectId)
+  }, [resolvedFromUrl, activeProjectId, pageProjectId])
 
   const tabs = useTaskPanelTabs({ projectId: activeProjectId })
 
