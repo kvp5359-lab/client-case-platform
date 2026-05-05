@@ -166,10 +166,12 @@ async function handleWorkspaceHost(
   if (workspace) {
     const wsPrefix = `/workspaces/${workspace.id}`
 
-    // 0. Публичные пути (/, /login, /register, /auth/callback) — без rewrite
-    //    Они работают на любом host'е (включая custom_domain).
-    if (isPublicPath(pathname)) {
-      return await handleAuthOnly(request, host, true)
+    // 0. Маркетинговые публичные пути (/lawyers, /blog, /about, /privacy, /terms)
+    //    на поддомене не показываем — это страницы публичного маркетплейса,
+    //    их место на главном домене clientcase.app. Редирект на корень воркспейса.
+    const PUBLIC_MARKETING_PATHS = ['/lawyers', '/blog', '/about', '/privacy', '/terms']
+    if (PUBLIC_MARKETING_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
+      return NextResponse.redirect(new URL('/', request.url), 307)
     }
 
     // 1. URL уже с /workspaces/<uuid>/... → редирект на чистый URL

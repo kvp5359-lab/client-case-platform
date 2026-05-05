@@ -5,6 +5,12 @@ export const metadata = {
   description: 'Платформа для управления клиентскими делами, проектами и документами.',
 }
 
+// Принудительно динамический рендер: на поддоменах <slug>.clientcase.app
+// proxy делает rewrite на /workspaces/<uuid>, но статически-сгенерированная
+// страница `/` отдавалась бы напрямую без учёта rewrite. Force-dynamic заставляет
+// Next.js всегда рендерить через middleware-pipeline.
+export const dynamic = 'force-dynamic'
+
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
