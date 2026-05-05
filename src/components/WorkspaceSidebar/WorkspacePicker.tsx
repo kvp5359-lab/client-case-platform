@@ -45,6 +45,17 @@ function isCrossDomainTarget(url: string): boolean {
   return /^https?:\/\//i.test(url)
 }
 
+/**
+ * Определяем, что мы сейчас на custom_domain текущего воркспейса.
+ * На custom_domain не показываем другие воркспейсы — это «брендированная» точка входа,
+ * клиенты не должны видеть остальные воркспейсы пользователя.
+ */
+function isOnOwnCustomDomain(currentWorkspace?: WorkspaceWithParticipant): boolean {
+  if (typeof window === 'undefined') return false
+  if (!currentWorkspace?.custom_domain) return false
+  return window.location.hostname.toLowerCase() === currentWorkspace.custom_domain.toLowerCase()
+}
+
 export const WorkspacePicker = memo(function WorkspacePicker({
   workspaces,
   currentWorkspace,
@@ -54,6 +65,11 @@ export const WorkspacePicker = memo(function WorkspacePicker({
   canManageSettings,
 }: WorkspacePickerProps) {
   const router = useRouter()
+  const onCustomDomain = isOnOwnCustomDomain(currentWorkspace)
+  // На custom_domain показываем только текущий воркспейс
+  const visibleWorkspaces = onCustomDomain
+    ? workspaces.filter((w) => w.id === currentWorkspace?.id)
+    : workspaces
 
   const navigateToWorkspace = (workspace: WorkspaceWithParticipant) => {
     const url = buildWorkspaceUrl(workspace)
@@ -100,7 +116,7 @@ export const WorkspacePicker = memo(function WorkspacePicker({
         <DropdownMenuContent align="start" className="w-72 overflow-x-hidden">
           {loadingWorkspaces ? (
             <div className="px-2 py-2 text-sm text-muted-foreground">Загрузка...</div>
-          ) : workspaces.length === 0 ? (
+          ) : visibleWorkspaces.length === 0 ? (
             <div className="px-2 py-2 text-sm text-muted-foreground">
               Нет доступных пространств.
               <br />
@@ -109,7 +125,7 @@ export const WorkspacePicker = memo(function WorkspacePicker({
             </div>
           ) : (
             <>
-              {workspaces.map((workspace) => {
+              {visibleWorkspaces.map((workspace) => {
                 const isActive = workspace.id === workspaceId
 
                 return (
@@ -155,12 +171,15 @@ export const WorkspacePicker = memo(function WorkspacePicker({
             </>
           )}
 
-          <DropdownMenuSeparator />
-
-          <DropdownMenuItem onClick={() => router.push('/workspaces')} className="cursor-pointer">
-            <Plus className="mr-2 h-4 w-4" />
-            Новое пространство
-          </DropdownMenuItem>
+          {!onCustomDomain && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push('/workspaces')} className="cursor-pointer">
+                <Plus className="mr-2 h-4 w-4" />
+                Новое пространство
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

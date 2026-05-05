@@ -125,6 +125,34 @@ export async function proxy(request: NextRequest) {
     return await handleAuthOnly(request, host, /* publicAllowed */ isPublicPath(pathname))
   }
 
+  // ---- LEGACY REDIRECT HOSTS ----
+  // Старые домены, с которых редиректим на новые поддомены *.clientcase.app.
+  // Сейчас: clientcase.kvp-projects.com (старый dev-домен).
+  // Логика:
+  //   /workspaces/<uuid>/... → <slug>.clientcase.app/... (или custom_domain)
+  //   Прочее → my.clientcase.app/... (портал)
+  const cleanHost = host.split(':')[0].toLowerCase()
+  if (cleanHost === 'clientcase.kvp-projects.com') {
+    const wsMatch = pathname.match(
+      /^\/workspaces\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(\/.*)?$/i,
+    )
+    if (wsMatch) {
+      const ws = await getWorkspaceById(wsMatch[1])
+      const remaining = wsMatch[2] || '/'
+      if (ws?.slug) {
+        return NextResponse.redirect(
+          `https://${ws.slug}.${ROOT_DOMAIN}${remaining}${search}`,
+          301,
+        )
+      }
+      if (ws?.custom_domain) {
+        return NextResponse.redirect(`https://${ws.custom_domain}${remaining}${search}`, 301)
+      }
+    }
+    // Прочие пути → my.clientcase.app/<тот же путь>
+    return NextResponse.redirect(`https://${PORTAL_HOST}${pathname}${search}`, 301)
+  }
+
   // ---- SUBDOMAIN или LEGACY ----
   // Резолв воркспейса делаем для обоих, но с разной логикой rewrite
 
@@ -234,6 +262,37 @@ async function resolveWorkspaceByHost(
         Authorization: `Bearer ${anonKey}`,
       },
       body: JSON.stringify({ p_host: cleanHost }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    if (!Array.isArray(data) || data.length === 0) return null
+    const row = data[0]
+    return { id: row.id, slug: row.slug, custom_domain: row.custom_domain }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Резолв воркспейса по UUID через RPC. Используется для legacy-редиректов
+ * со старого домена /workspaces/<uuid>/... → <slug>.clientcase.app/...
+ */
+async function getWorkspaceById(
+  workspaceId: string,
+): Promise<{ id: string; slug: string | null; custom_domain: string | null } | null> {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!url || !anonKey) return null
+
+    const res = await fetch(`${url}/rest/v1/rpc/get_workspace_slug_by_id`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({ p_id: workspaceId }),
     })
     if (!res.ok) return null
     const data = await res.json()
