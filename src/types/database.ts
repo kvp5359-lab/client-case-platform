@@ -4709,6 +4709,7 @@ export type Database = {
           mtproto_session_user_id: string | null
           name: string
           project_id: string | null
+          short_id: number | null
           sort_order: number
           source_template_id: string | null
           status_id: string | null
@@ -4742,6 +4743,7 @@ export type Database = {
           mtproto_session_user_id?: string | null
           name: string
           project_id?: string | null
+          short_id?: number | null
           sort_order?: number
           source_template_id?: string | null
           status_id?: string | null
@@ -4775,6 +4777,7 @@ export type Database = {
           mtproto_session_user_id?: string | null
           name?: string
           project_id?: string | null
+          short_id?: number | null
           sort_order?: number
           source_template_id?: string | null
           status_id?: string | null
@@ -4847,6 +4850,7 @@ export type Database = {
           last_activity_at: string
           messenger_link_code: string | null
           name: string
+          short_id: number | null
           source_folder_id: string | null
           status_id: string | null
           system_inbox_kind: string | null
@@ -4871,6 +4875,7 @@ export type Database = {
           last_activity_at?: string
           messenger_link_code?: string | null
           name: string
+          short_id?: number | null
           source_folder_id?: string | null
           status_id?: string | null
           system_inbox_kind?: string | null
@@ -4895,6 +4900,7 @@ export type Database = {
           last_activity_at?: string
           messenger_link_code?: string | null
           name?: string
+          short_id?: number | null
           source_folder_id?: string | null
           status_id?: string | null
           system_inbox_kind?: string | null
@@ -6056,6 +6062,35 @@ export type Database = {
           },
         ]
       }
+      workspace_counters: {
+        Row: {
+          entity_type: string
+          next_id: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          entity_type: string
+          next_id?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          entity_type?: string
+          next_id?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_counters_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_digest_settings: {
         Row: {
           min_events_for_llm: number
@@ -6769,6 +6804,7 @@ export type Database = {
           last_activity_at: string
           messenger_link_code: string | null
           name: string
+          short_id: number | null
           source_folder_id: string | null
           status_id: string | null
           system_inbox_kind: string | null
@@ -6807,6 +6843,14 @@ export type Database = {
       get_workspace_google_api_key: {
         Args: { workspace_uuid: string }
         Returns: string
+      }
+      get_workspace_slug_by_id: {
+        Args: { p_id: string }
+        Returns: {
+          custom_domain: string
+          id: string
+          slug: string
+        }[]
       }
       get_workspace_threads: {
         Args: { p_user_id: string; p_workspace_id: string }
@@ -6970,7 +7014,19 @@ export type Database = {
         Args: { p_target_project_id: string; p_thread_id: string }
         Returns: undefined
       }
+      next_short_id: {
+        Args: { p_entity_type: string; p_workspace_id: string }
+        Returns: number
+      }
       reorder_documents: { Args: { p_updates: Json }; Returns: undefined }
+      resolve_short_id: {
+        Args: {
+          p_entity_type: string
+          p_short_id: number
+          p_workspace_id: string
+        }
+        Returns: string
+      }
       resolve_workspace_by_host: {
         Args: { p_host: string }
         Returns: {

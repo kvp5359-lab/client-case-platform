@@ -231,8 +231,38 @@ async function handleWorkspaceHost(
       return NextResponse.redirect(new URL(`https://${PORTAL_HOST}/select-workspace`))
     }
 
-    // 5. Всё остальное — rewrite на /workspaces/<uuid>/...
-    const targetPath = wsPrefix + (pathname === '/' ? '' : pathname)
+    // 5a. Если URL с UUID-ом проекта (/projects/<uuid>) — 301 редирект на короткий формат.
+    //     Так все ссылки в коде остаются с UUID, но браузер всегда видит короткий URL.
+    const projUuidMatch = pathname.match(
+      /^\/projects\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})((\/.*)?)$/i,
+    )
+    if (projUuidMatch) {
+      const projectUuid = projUuidMatch[1]
+      const remaining = projUuidMatch[2] || ''
+      const projShortId = await getShortIdByUuid('project', projectUuid)
+      if (projShortId !== null) {
+        const redirectUrl = request.nextUrl.clone()
+        redirectUrl.pathname = `/projects/${projShortId}${remaining}`
+        return NextResponse.redirect(redirectUrl, 301)
+      }
+    }
+
+    // 5b. Резолв short_id → UUID для коротких ссылок типа /projects/15
+    let pathToRewrite = pathname
+    const projShortMatch = pathname.match(/^\/projects\/(\d+)((\/.*)?)$/)
+    if (projShortMatch) {
+      const shortId = parseInt(projShortMatch[1], 10)
+      const remaining = projShortMatch[2] || ''
+      const projectUuid = await resolveShortId(workspace.id, 'project', shortId)
+      if (projectUuid) {
+        pathToRewrite = `/projects/${projectUuid}${remaining}`
+      } else {
+        return new NextResponse('Project not found', { status: 404 })
+      }
+    }
+
+    // 6. Всё остальное — rewrite на /workspaces/<uuid>/...
+    const targetPath = wsPrefix + (pathToRewrite === '/' ? '' : pathToRewrite)
     return await handleAuthAndRewrite(request, host, targetPath, search, true)
   }
 
@@ -299,6 +329,71 @@ async function getWorkspaceById(
     if (!Array.isArray(data) || data.length === 0) return null
     const row = data[0]
     return { id: row.id, slug: row.slug, custom_domain: row.custom_domain }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Обратный резолв: UUID → short_id. Используется для редиректа /projects/<uuid> → /projects/<short>.
+ */
+async function getShortIdByUuid(
+  entityType: 'project' | 'thread',
+  uuid: string,
+): Promise<number | null> {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!url || !anonKey) return null
+
+    const res = await fetch(`${url}/rest/v1/rpc/get_short_id_by_uuid`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({ p_entity_type: entityType, p_uuid: uuid }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    if (typeof data === 'number') return data
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Резолв short_id → UUID для коротких ссылок (как у Planfix: /projects/15).
+ */
+async function resolveShortId(
+  workspaceId: string,
+  entityType: 'project' | 'thread',
+  shortId: number,
+): Promise<string | null> {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!url || !anonKey) return null
+
+    const res = await fetch(`${url}/rest/v1/rpc/resolve_short_id`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({
+        p_workspace_id: workspaceId,
+        p_entity_type: entityType,
+        p_short_id: shortId,
+      }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    if (typeof data === 'string') return data
+    return null
   } catch {
     return null
   }

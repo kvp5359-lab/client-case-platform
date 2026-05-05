@@ -131,11 +131,13 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   const { togglePin: toggleBoardPin } = usePinnedBoards(workspaceId)
   const { data: allBoards } = useBoardsQuery(workspaceId)
 
+  // На воркспейс-поддомене (rs.clientcase.app) и custom-домене (app.relostart.com)
+  // proxy рерайтит /projects/* → /workspaces/<uuid>/projects/*, поэтому ссылки в коде
+  // делаем относительные — без /workspaces/<uuid>/ префикса.
   const buildHref = (path: string) => {
     if (path.startsWith('//') || path.startsWith('/\\')) return '#'
     if (path.startsWith('/')) return path
-    if (!workspaceId) return '#'
-    return `/workspaces/${workspaceId}/${path}`
+    return `/${path}`
   }
 
   const handleNavigate = (path: string) => {
@@ -145,12 +147,11 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   }
 
   const isNavActive = (href: string) => {
-    if (!workspaceId) return false
-    const fullPath = `/workspaces/${workspaceId}/${href}`
+    const target = `/${href}`
     if (href === '') {
-      return pathname === fullPath || pathname === `/workspaces/${workspaceId}`
+      return pathname === '/' || pathname === ''
     }
-    return pathname.startsWith(fullPath)
+    return pathname === target || pathname.startsWith(target + '/') || pathname.startsWith(target + '?')
   }
 
   /** Бейдж по выбранному режиму. Один и тот же набор для пунктов меню и досок. */
