@@ -17,15 +17,19 @@ export function useWazzupDeliveryStatus(
   isOwn: boolean,
 ): WazzupDeliveryStatus {
   // показываем только для исходящих, отправленных через сервис (source='web')
-  // и привязанных к Wazzup-треду (есть wazzup_message_id или ожидаем его)
+  // и привязанных к Wazzup-треду.
+  // ВАЖНО: проверка на не-null, а не на не-undefined — иначе после регенерации
+  // TS-типов поля начинают приходить как `null`, и индикатор показывается на ВСЕХ
+  // внутренних сообщениях (а должен только на Wazzup'овских).
+  const wazzupMsgId = (message as { wazzup_message_id?: string | null }).wazzup_message_id
   const isWazzupBound =
     isOwn &&
     message.source === 'web' &&
     !message.id.startsWith('optimistic-') &&
-    // тред уже Wazzup'овский — это видно по полю
-    // (wazzup_message_id может быть null, если ещё не успели отправить).
-    // Используем поле сообщения wazzup_status — оно начинает заполняться сразу.
-    (message.wazzup_status !== undefined || (message as { wazzup_message_id?: string }).wazzup_message_id !== undefined)
+    (
+      (message.wazzup_status !== undefined && message.wazzup_status !== null) ||
+      (wazzupMsgId !== undefined && wazzupMsgId !== null)
+    )
 
   if (!isWazzupBound) return null
 
