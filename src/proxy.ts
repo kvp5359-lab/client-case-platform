@@ -247,6 +247,22 @@ async function handleWorkspaceHost(
       }
     }
 
+    // 5a'. Если в panelTab=thread:<uuid> — редирект на panelTab=thread:<short>
+    const panelTab = request.nextUrl.searchParams.get('panelTab')
+    if (panelTab) {
+      const threadUuidMatch = panelTab.match(
+        /^thread:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i,
+      )
+      if (threadUuidMatch) {
+        const threadShortId = await getShortIdByUuid('thread', threadUuidMatch[1])
+        if (threadShortId !== null) {
+          const redirectUrl = request.nextUrl.clone()
+          redirectUrl.searchParams.set('panelTab', `thread:${threadShortId}`)
+          return NextResponse.redirect(redirectUrl, 301)
+        }
+      }
+    }
+
     // 5b. Резолв short_id → UUID для коротких ссылок типа /projects/15
     let pathToRewrite = pathname
     const projShortMatch = pathname.match(/^\/projects\/(\d+)((\/.*)?)$/)

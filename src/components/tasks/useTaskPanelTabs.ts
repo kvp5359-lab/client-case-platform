@@ -15,10 +15,42 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { taskPanelTabsKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { taskPanelTabsKeys, messengerKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useAuth } from '@/contexts/AuthContext'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
 import { makeTabId } from './taskPanelTabs.types'
+
+/** Минимальная информация о треде для конверсии short_id ↔ uuid в URL. */
+type ThreadShortIdInfo = { id: string; short_id: number | null }
+
+/**
+ * Канонизирует tabId, преобразуя URL-формат `thread:<short_id>` (числовой) в
+ * `thread:<uuid>` для матчинга с tab.id. Если tabId уже UUID или не "thread:" — возвращает как есть.
+ */
+function canonicalizeTabId(rawId: string | null, threads: ThreadShortIdInfo[]): string | null {
+  if (!rawId || !rawId.startsWith('thread:')) return rawId
+  const ref = rawId.slice('thread:'.length)
+  if (/^\d+$/.test(ref)) {
+    const shortId = parseInt(ref, 10)
+    const t = threads.find((x) => x.short_id === shortId)
+    if (t) return `thread:${t.id}`
+  }
+  return rawId
+}
+
+/**
+ * Преобразует tabId с UUID в URL-формат с short_id (если найден).
+ * Используется при записи URL: `thread:<uuid>` → `thread:<short>`.
+ */
+function shortenTabId(tabId: string | null, threads: ThreadShortIdInfo[]): string | null {
+  if (!tabId || !tabId.startsWith('thread:')) return tabId
+  const uuid = tabId.slice('thread:'.length)
+  // Уже short — оставляем как есть
+  if (/^\d+$/.test(uuid)) return tabId
+  const t = threads.find((x) => x.id === uuid)
+  if (t && t.short_id != null) return `thread:${t.short_id}`
+  return tabId
+}
 
 interface PersistedRow {
   tabs: TaskPanelTab[]
@@ -133,9 +165,27 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
     setHydrated(false)
   }
 
-  // Активная вкладка — из URL. Если URL не указывает или указывает несуществующую,
-  // и в локальных есть вкладки, fallback на persisted.active_tab_id или последнюю.
-  const urlActiveId = searchParams?.get('panelTab') ?? null
+  // Список тредов проекта из React Query кеша — для конверсии short_id ↔ uuid в URL.
+  const projectThreadsCache = queryClient.getQueryData<ThreadShortIdInfo[]>(
+    messengerKeys.projectThreads(projectId ?? ''),
+  )
+  const threadShortMap: ThreadShortIdInfo[] = useMemo(
+    () =>
+      (projectThreadsCache ?? []).map((t) => ({
+        id: t.id,
+        short_id: t.short_id ?? null,
+      })),
+    [projectThreadsCache],
+  )
+
+  // Активная вкладка — из URL. URL может содержать `thread:<short_id>` (числовой) —
+  // канонизируем в `thread:<uuid>` для матчинга с tab.id. Если URL не указывает или
+  // указывает несуществующую вкладку — fallback на persisted.active_tab_id или последнюю.
+  const rawUrlActiveId = searchParams?.get('panelTab') ?? null
+  const urlActiveId = useMemo(
+    () => canonicalizeTabId(rawUrlActiveId, threadShortMap),
+    [rawUrlActiveId, threadShortMap],
+  )
   const activeTabId = useMemo(() => {
     if (!hydrated) return null
     if (urlActiveId && localTabs.some((t) => t.id === urlActiveId)) return urlActiveId
@@ -180,13 +230,15 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
   })
 
   // Обновление URL: ставим/убираем ?panelTab=
+  // При записи UUID вида `thread:<uuid>` — конвертируем в короткий `thread:<short>` если знаем short_id.
   const setUrlActive = useCallback(
     (tabId: string | null) => {
       if (typeof window === 'undefined') return
       const params = new URLSearchParams(searchParams?.toString() ?? '')
-      if (tabId) {
-        if (params.get('panelTab') === tabId) return
-        params.set('panelTab', tabId)
+      const writeId = shortenTabId(tabId, threadShortMap)
+      if (writeId) {
+        if (params.get('panelTab') === writeId) return
+        params.set('panelTab', writeId)
       } else {
         if (!params.has('panelTab')) return
         params.delete('panelTab')
@@ -194,7 +246,7 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
       const qs = params.toString()
       router.replace(`${window.location.pathname}${qs ? `?${qs}` : ''}`, { scroll: false })
     },
-    [router, searchParams],
+    [router, searchParams, threadShortMap],
   )
 
   // Debounce сохранения в БД: при быстрых переключениях вкладок (open/close/activate)
