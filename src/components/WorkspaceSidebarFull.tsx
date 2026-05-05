@@ -131,13 +131,15 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   const { togglePin: toggleBoardPin } = usePinnedBoards(workspaceId)
   const { data: allBoards } = useBoardsQuery(workspaceId)
 
-  // На воркспейс-поддомене (rs.clientcase.app) и custom-домене (app.relostart.com)
-  // proxy рерайтит /projects/* → /workspaces/<uuid>/projects/*, поэтому ссылки в коде
-  // делаем относительные — без /workspaces/<uuid>/ префикса.
+  // Сохраняем legacy-формат /workspaces/<uuid>/... для совместимости с localhost-разработкой.
+  // На production-поддоменах proxy сам редиректит /workspaces/<uuid>/<path> → чистый /<path>
+  // (через 307 + URL rewrite), плюс делает обратный rewrite короткого URL обратно на полный.
+  // На localhost (нет proxy с резолвом host'а) URL остаётся в полной форме — это нормально для dev.
   const buildHref = (path: string) => {
     if (path.startsWith('//') || path.startsWith('/\\')) return '#'
     if (path.startsWith('/')) return path
-    return `/${path}`
+    if (!workspaceId) return '#'
+    return `/workspaces/${workspaceId}/${path}`
   }
 
   const handleNavigate = (path: string) => {
@@ -147,11 +149,24 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   }
 
   const isNavActive = (href: string) => {
-    const target = `/${href}`
+    if (!workspaceId) return false
+    const fullPath = `/workspaces/${workspaceId}/${href}`
+    // Также сравниваем с короткой формой (на subdomain proxy показывает /<path>)
+    const shortPath = `/${href}`
     if (href === '') {
-      return pathname === '/' || pathname === ''
+      return (
+        pathname === fullPath ||
+        pathname === `/workspaces/${workspaceId}` ||
+        pathname === '/' ||
+        pathname === ''
+      )
     }
-    return pathname === target || pathname.startsWith(target + '/') || pathname.startsWith(target + '?')
+    return (
+      pathname.startsWith(fullPath) ||
+      pathname === shortPath ||
+      pathname.startsWith(shortPath + '/') ||
+      pathname.startsWith(shortPath + '?')
+    )
   }
 
   /** Бейдж по выбранному режиму. Один и тот же набор для пунктов меню и досок. */
