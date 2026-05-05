@@ -231,19 +231,25 @@ async function handleWorkspaceHost(
       return NextResponse.redirect(new URL(`https://${PORTAL_HOST}/select-workspace`))
     }
 
-    // 5a. Если URL с UUID-ом проекта (/projects/<uuid>) — 301 редирект на короткий формат.
+    // 5a. Если URL с UUID-ом проекта/доски — 301 редирект на короткий формат.
     //     Так все ссылки в коде остаются с UUID, но браузер всегда видит короткий URL.
-    const projUuidMatch = pathname.match(
-      /^\/projects\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})((\/.*)?)$/i,
-    )
-    if (projUuidMatch) {
-      const projectUuid = projUuidMatch[1]
-      const remaining = projUuidMatch[2] || ''
-      const projShortId = await getShortIdByUuid('project', projectUuid)
-      if (projShortId !== null) {
-        const redirectUrl = request.nextUrl.clone()
-        redirectUrl.pathname = `/projects/${projShortId}${remaining}`
-        return NextResponse.redirect(redirectUrl, 301)
+    for (const entityType of ['projects', 'boards'] as const) {
+      const uuidMatch = pathname.match(
+        new RegExp(
+          `^\\/${entityType}\\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})((\\/.*)?)$`,
+          'i',
+        ),
+      )
+      if (uuidMatch) {
+        const uuid = uuidMatch[1]
+        const remaining = uuidMatch[2] || ''
+        const dbType = entityType === 'projects' ? 'project' : 'board'
+        const shortId = await getShortIdByUuid(dbType, uuid)
+        if (shortId !== null) {
+          const redirectUrl = request.nextUrl.clone()
+          redirectUrl.pathname = `/${entityType}/${shortId}${remaining}`
+          return NextResponse.redirect(redirectUrl, 301)
+        }
       }
     }
 
@@ -263,17 +269,21 @@ async function handleWorkspaceHost(
       }
     }
 
-    // 5b. Резолв short_id → UUID для коротких ссылок типа /projects/15
+    // 5b. Резолв short_id → UUID для коротких ссылок типа /projects/15 и /boards/3
     let pathToRewrite = pathname
-    const projShortMatch = pathname.match(/^\/projects\/(\d+)((\/.*)?)$/)
-    if (projShortMatch) {
-      const shortId = parseInt(projShortMatch[1], 10)
-      const remaining = projShortMatch[2] || ''
-      const projectUuid = await resolveShortId(workspace.id, 'project', shortId)
-      if (projectUuid) {
-        pathToRewrite = `/projects/${projectUuid}${remaining}`
-      } else {
-        return new NextResponse('Project not found', { status: 404 })
+    for (const entityType of ['projects', 'boards'] as const) {
+      const shortMatch = pathname.match(new RegExp(`^\\/${entityType}\\/(\\d+)((\\/.*)?)$`))
+      if (shortMatch) {
+        const shortId = parseInt(shortMatch[1], 10)
+        const remaining = shortMatch[2] || ''
+        const dbType = entityType === 'projects' ? 'project' : 'board'
+        const uuid = await resolveShortId(workspace.id, dbType, shortId)
+        if (uuid) {
+          pathToRewrite = `/${entityType}/${uuid}${remaining}`
+        } else {
+          return new NextResponse(`${entityType} not found`, { status: 404 })
+        }
+        break
       }
     }
 
@@ -354,7 +364,7 @@ async function getWorkspaceById(
  * Обратный резолв: UUID → short_id. Используется для редиректа /projects/<uuid> → /projects/<short>.
  */
 async function getShortIdByUuid(
-  entityType: 'project' | 'thread',
+  entityType: 'project' | 'thread' | 'board',
   uuid: string,
 ): Promise<number | null> {
   try {
@@ -385,7 +395,7 @@ async function getShortIdByUuid(
  */
 async function resolveShortId(
   workspaceId: string,
-  entityType: 'project' | 'thread',
+  entityType: 'project' | 'thread' | 'board',
   shortId: number,
 ): Promise<string | null> {
   try {
