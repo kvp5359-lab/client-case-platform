@@ -90,6 +90,25 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const TRACE_ID = `tg-send-${body.message_id?.slice(0, 8) ?? '?'}-${Date.now().toString(36)}`;
+    const T0 = Date.now();
+    const trace = (event: string, data: Record<string, unknown> = {}) => {
+      console.log(JSON.stringify({
+        trace_id: TRACE_ID,
+        elapsed_ms: Date.now() - T0,
+        event,
+        message_id: body.message_id,
+        chat_id: body.telegram_chat_id,
+        ...data,
+      }));
+    };
+    trace("request.start", {
+      attachments_only: body.attachments_only ?? false,
+      content_len: body.content?.length ?? 0,
+      sender_name: body.sender_name,
+      has_reply_to: !!body.reply_to_telegram_message_id,
+    });
+
     const requiredFields = body.attachments_only
       ? ["message_id", "telegram_chat_id"]
       : ["message_id", "content", "sender_name", "telegram_chat_id"];
@@ -133,10 +152,21 @@ Deno.serve(async (req: Request) => {
       body.telegram_chat_id,
       senderParticipantId,
     );
+    trace("bot.findEmployeeBot.result", {
+      found: !!employeeBot,
+      sender_participant_id: senderParticipantId,
+    });
     const resolved =
       employeeBot ?? (await resolveBotToken(serviceClient, body.telegram_chat_id));
     const TELEGRAM_BOT_TOKEN = resolved.token;
     const isEmployeeBot = resolved.senderType === "employee_bot";
+    trace("bot.resolved", {
+      sender_type: resolved.senderType,
+      bot_version: resolved.botVersion,
+      integration_id: resolved.integrationId ?? null,
+      // Маскируем токен — оставляем только первые 8 символов (id) для идентификации.
+      token_prefix: TELEGRAM_BOT_TOKEN.slice(0, 8),
+    });
 
     // Стампим integration_id ТОЛЬКО для личного бота. Это поле обозначает
     // «сообщение в counter этого бота», что важно только в basic-группах,
@@ -400,8 +430,10 @@ Deno.serve(async (req: Request) => {
         .from("project_messages")
         .update({ telegram_attachments_delivered: attachmentsOk })
         .eq("id", body.message_id);
+      trace("attachments.done", { ok: attachmentsOk });
     }
 
+    trace("request.end", { total_ms: Date.now() - T0 });
     return new Response(
       JSON.stringify({ ok: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -478,10 +510,25 @@ async function sendAttachmentsWithFallback(
     senderName?: string;
   },
 ): Promise<boolean> {
+  console.log(JSON.stringify({
+    sub: "sendAttachmentsWithFallback",
+    message_id: args.messageId,
+    event: "primary.start",
+    is_employee_bot: args.isEmployeeBot,
+    primary_token_prefix: args.primaryToken.slice(0, 8),
+    has_caption: !!args.caption,
+  }));
   const ok = await sendAttachments(
     args.messageId, args.chatId, args.supabaseClient,
     args.primaryToken, args.caption, args.replyTo, args.skipIdUpdate ?? false,
   );
+  console.log(JSON.stringify({
+    sub: "sendAttachmentsWithFallback",
+    message_id: args.messageId,
+    event: "primary.result",
+    ok,
+    will_fallback: !ok && args.isEmployeeBot,
+  }));
   if (ok || !args.isEmployeeBot) return ok;
 
   console.warn("[telegram-send-message] employee bot attachments send failed, falling back to secretary");
@@ -492,15 +539,28 @@ async function sendAttachmentsWithFallback(
     console.error("[telegram-send-message] secretary token resolve failed:", e);
     return false;
   }
+  console.log(JSON.stringify({
+    sub: "sendAttachmentsWithFallback",
+    message_id: args.messageId,
+    event: "fallback.start",
+    fallback_token_prefix: fallback.token.slice(0, 8),
+  }));
 
   const fallbackCaption = args.caption
     ? `<b>${escapeHtmlEntities(args.senderName ?? "")}:</b>\n${args.caption}`
     : args.caption;
 
-  return await sendAttachments(
+  const fallbackOk = await sendAttachments(
     args.messageId, args.chatId, args.supabaseClient,
     fallback.token, fallbackCaption, args.replyTo, args.skipIdUpdate ?? false,
   );
+  console.log(JSON.stringify({
+    sub: "sendAttachmentsWithFallback",
+    message_id: args.messageId,
+    event: "fallback.result",
+    ok: fallbackOk,
+  }));
+  return fallbackOk;
 }
 
 async function sendAttachments(
@@ -512,12 +572,26 @@ async function sendAttachments(
   replyToTelegramMessageId?: number,
   skipTelegramIdUpdate = false,
 ): Promise<boolean> {
+  const sendStart = Date.now();
+  const sendTrace = (event: string, data: Record<string, unknown> = {}) => {
+    console.log(JSON.stringify({
+      sub: "sendAttachments",
+      message_id: messageId,
+      chat_id: chatId,
+      token_prefix: botToken.slice(0, 8),
+      elapsed_ms: Date.now() - sendStart,
+      event,
+      ...data,
+    }));
+  };
+
   const { data: attachments } = await supabaseClient
     .from("message_attachments")
     .select("*")
     .eq("message_id", messageId);
 
   if (!attachments || attachments.length === 0) {
+    sendTrace("no_attachments_in_db");
     await supabaseClient
       .from("project_messages")
       .update({ telegram_error_detail: "sendAttachments: no attachments found in DB" })
@@ -531,6 +605,13 @@ async function sendAttachments(
   // Всё остальное (tiff, heic, bmp, svg, pdf, docs, ...) — как document.
   const images = attachments.filter((a: Record<string, unknown>) => isTelegramPhotoMime(a.mime_type));
   const others = attachments.filter((a: Record<string, unknown>) => !isTelegramPhotoMime(a.mime_type));
+
+  sendTrace("attachments.partition", {
+    total: attachments.length,
+    images: images.length,
+    others: others.length,
+    mimes: attachments.map((a: Record<string, unknown>) => a.mime_type),
+  });
 
   if (images.length >= 2) {
     const chunks: typeof images[] = [];
@@ -570,12 +651,21 @@ async function sendAttachments(
           }));
         }
 
+        const fetchStart = Date.now();
+        sendTrace("sendMediaGroup.start", { chunk_size: chunk.length, is_first: isFirstChunk });
         const tgResult = await fetch(
           `https://api.telegram.org/bot${botToken}/sendMediaGroup`,
           { method: "POST", body: formData },
         );
 
         const tgData = await tgResult.json();
+        sendTrace("sendMediaGroup.response", {
+          http_status: tgResult.status,
+          api_ok: tgData.ok,
+          error_code: tgData.error_code ?? null,
+          description: tgData.description ?? null,
+          duration_ms: Date.now() - fetchStart,
+        });
         if (!tgData.ok) {
           console.error("Telegram sendMediaGroup error:", JSON.stringify(tgData));
           allSucceeded = false;
@@ -625,12 +715,21 @@ async function sendAttachments(
           formData.append("reply_parameters", JSON.stringify({ message_id: replyToTelegramMessageId }));
         }
 
+        const fetchStart = Date.now();
+        sendTrace("sendPhoto.start");
         const tgResult = await fetch(
           `https://api.telegram.org/bot${botToken}/sendPhoto`,
           { method: "POST", body: formData },
         );
 
         const tgData = await tgResult.json();
+        sendTrace("sendPhoto.response", {
+          http_status: tgResult.status,
+          api_ok: tgData.ok,
+          error_code: tgData.error_code ?? null,
+          description: tgData.description ?? null,
+          duration_ms: Date.now() - fetchStart,
+        });
         if (!tgData.ok) {
           console.error("Telegram sendPhoto error:", JSON.stringify(tgData));
           allSucceeded = false;
@@ -699,12 +798,21 @@ async function sendAttachments(
           formData.append("reply_parameters", JSON.stringify({ message_id: documentsReplyTo }));
         }
 
+        const fetchStart = Date.now();
+        sendTrace("sendMediaGroup.docs.start", { chunk_size: chunk.length, is_first: isFirstChunk });
         const tgResult = await fetch(
           `https://api.telegram.org/bot${botToken}/sendMediaGroup`,
           { method: "POST", body: formData },
         );
 
         const tgData = await tgResult.json();
+        sendTrace("sendMediaGroup.docs.response", {
+          http_status: tgResult.status,
+          api_ok: tgData.ok,
+          error_code: tgData.error_code ?? null,
+          description: tgData.description ?? null,
+          duration_ms: Date.now() - fetchStart,
+        });
         if (!tgData.ok) {
           console.error("Telegram sendMediaGroup (document) error:", JSON.stringify(tgData));
           allSucceeded = false;
@@ -761,12 +869,22 @@ async function sendAttachments(
           formData.append("reply_parameters", JSON.stringify({ message_id: documentsReplyTo }));
         }
 
+        const fetchStart = Date.now();
+        sendTrace("sendDocument.start", { file_name: r.fileName });
         const tgResult = await fetch(
           `https://api.telegram.org/bot${botToken}/sendDocument`,
           { method: "POST", body: formData },
         );
 
         const tgData = await tgResult.json();
+        sendTrace("sendDocument.response", {
+          http_status: tgResult.status,
+          api_ok: tgData.ok,
+          error_code: tgData.error_code ?? null,
+          description: tgData.description ?? null,
+          duration_ms: Date.now() - fetchStart,
+          file_name: r.fileName,
+        });
         if (!tgData.ok) {
           console.error("Telegram sendDocument error:", JSON.stringify(tgData), "file:", r.fileName);
           allSucceeded = false;
