@@ -3,10 +3,16 @@
  *
  * Использует @supabase/ssr для корректной работы с cookies
  * (синхронизация сессии между клиентом и middleware).
+ *
+ * Cookie domain для cross-subdomain auth:
+ * на *.clientcase.app — Domain=.clientcase.app (расшаривание сессии между поддоменами).
+ * На localhost / legacy / custom-доменах — без указания domain (host-only).
  */
 
 import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from '@/types/database'
+
+const ROOT_DOMAIN = 'clientcase.app'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -21,4 +27,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+function getCookieOptions() {
+  if (typeof window === 'undefined') return undefined
+  const host = window.location.hostname.toLowerCase()
+  if (host === ROOT_DOMAIN || host.endsWith('.' + ROOT_DOMAIN)) {
+    return { domain: '.' + ROOT_DOMAIN, sameSite: 'lax' as const, secure: true }
+  }
+  return undefined
+}
+
+export const supabase = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey, {
+  cookieOptions: getCookieOptions(),
+})

@@ -1095,6 +1095,7 @@ export type Database = {
       }
       docbuilder_templates: {
         Row: {
+          content_markers: string[]
           context_definitions: Json
           created_at: string
           default_validation_prompt: string | null
@@ -1112,6 +1113,7 @@ export type Database = {
           validation_system_prompt: string | null
         }
         Insert: {
+          content_markers?: string[]
           context_definitions?: Json
           created_at?: string
           default_validation_prompt?: string | null
@@ -1129,6 +1131,7 @@ export type Database = {
           validation_system_prompt?: string | null
         }
         Update: {
+          content_markers?: string[]
           context_definitions?: Json
           created_at?: string
           default_validation_prompt?: string | null
@@ -1756,6 +1759,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      external_outgoing_dedup: {
+        Row: {
+          channel: string
+          created_at: string
+          message_id: string
+          reason: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          message_id: string
+          reason?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          message_id?: string
+          reason?: string | null
+        }
+        Relationships: []
       }
       field_definition_composite_items: {
         Row: {
@@ -3430,6 +3454,7 @@ export type Database = {
           telegram_source_message_id: number | null
           telegram_user_id: number | null
           telegram_user_name: string | null
+          tg_emoji_message_id: number | null
         }
         Insert: {
           created_at?: string
@@ -3440,6 +3465,7 @@ export type Database = {
           telegram_source_message_id?: number | null
           telegram_user_id?: number | null
           telegram_user_name?: string | null
+          tg_emoji_message_id?: number | null
         }
         Update: {
           created_at?: string
@@ -3450,6 +3476,7 @@ export type Database = {
           telegram_source_message_id?: number | null
           telegram_user_id?: number | null
           telegram_user_name?: string | null
+          tg_emoji_message_id?: number | null
         }
         Relationships: [
           {
@@ -3725,48 +3752,6 @@ export type Database = {
           },
         ]
       }
-      project_field_values: {
-        Row: {
-          created_at: string
-          field_definition_id: string
-          id: string
-          project_id: string
-          updated_at: string
-          value: Json | null
-        }
-        Insert: {
-          created_at?: string
-          field_definition_id: string
-          id?: string
-          project_id: string
-          updated_at?: string
-          value?: Json | null
-        }
-        Update: {
-          created_at?: string
-          field_definition_id?: string
-          id?: string
-          project_id?: string
-          updated_at?: string
-          value?: Json | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_field_values_field_definition_id_fkey"
-            columns: ["field_definition_id"]
-            isOneToOne: false
-            referencedRelation: "field_definitions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_field_values_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       project_digests: {
         Row: {
           content: string
@@ -3833,6 +3818,48 @@ export type Database = {
           },
         ]
       }
+      project_field_values: {
+        Row: {
+          created_at: string
+          field_definition_id: string
+          id: string
+          project_id: string
+          updated_at: string
+          value: Json | null
+        }
+        Insert: {
+          created_at?: string
+          field_definition_id: string
+          id?: string
+          project_id: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Update: {
+          created_at?: string
+          field_definition_id?: string
+          id?: string
+          project_id?: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_field_values_field_definition_id_fkey"
+            columns: ["field_definition_id"]
+            isOneToOne: false
+            referencedRelation: "field_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_field_values_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_messages: {
         Row: {
           channel: string
@@ -3846,6 +3873,7 @@ export type Database = {
           is_draft: boolean
           is_edited: boolean
           project_id: string | null
+          recipient_read_at: string | null
           reply_to_message_id: string | null
           scheduled_send_at: string | null
           sender_name: string
@@ -3856,6 +3884,7 @@ export type Database = {
           telegram_bot_integration_id: string | null
           telegram_chat_id: number | null
           telegram_error_detail: string | null
+          telegram_grouped_id: number | null
           telegram_message_date: string | null
           telegram_message_id: number | null
           telegram_message_ids: number[]
@@ -3863,6 +3892,8 @@ export type Database = {
           telegram_sender_user_id: number | null
           thread_id: string | null
           updated_at: string
+          wazzup_message_id: string | null
+          wazzup_status: string | null
           workspace_id: string
         }
         Insert: {
@@ -3877,6 +3908,7 @@ export type Database = {
           is_draft?: boolean
           is_edited?: boolean
           project_id?: string | null
+          recipient_read_at?: string | null
           reply_to_message_id?: string | null
           scheduled_send_at?: string | null
           sender_name: string
@@ -3887,6 +3919,7 @@ export type Database = {
           telegram_bot_integration_id?: string | null
           telegram_chat_id?: number | null
           telegram_error_detail?: string | null
+          telegram_grouped_id?: number | null
           telegram_message_date?: string | null
           telegram_message_id?: number | null
           telegram_message_ids?: number[]
@@ -3894,6 +3927,8 @@ export type Database = {
           telegram_sender_user_id?: number | null
           thread_id?: string | null
           updated_at?: string
+          wazzup_message_id?: string | null
+          wazzup_status?: string | null
           workspace_id: string
         }
         Update: {
@@ -3908,6 +3943,7 @@ export type Database = {
           is_draft?: boolean
           is_edited?: boolean
           project_id?: string | null
+          recipient_read_at?: string | null
           reply_to_message_id?: string | null
           scheduled_send_at?: string | null
           sender_name?: string
@@ -3918,6 +3954,7 @@ export type Database = {
           telegram_bot_integration_id?: string | null
           telegram_chat_id?: number | null
           telegram_error_detail?: string | null
+          telegram_grouped_id?: number | null
           telegram_message_date?: string | null
           telegram_message_id?: number | null
           telegram_message_ids?: number[]
@@ -3925,6 +3962,8 @@ export type Database = {
           telegram_sender_user_id?: number | null
           thread_id?: string | null
           updated_at?: string
+          wazzup_message_id?: string | null
+          wazzup_status?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -3954,6 +3993,13 @@ export type Database = {
             columns: ["sender_participant_id"]
             isOneToOne: false
             referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_messages_telegram_bot_integration_id_fkey"
+            columns: ["telegram_bot_integration_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_integrations"
             referencedColumns: ["id"]
           },
           {
@@ -4292,6 +4338,13 @@ export type Database = {
             columns: ["thread_id"]
             isOneToOne: false
             referencedRelation: "project_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_telegram_chats_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_integrations"
             referencedColumns: ["id"]
           },
           {
@@ -4637,6 +4690,8 @@ export type Database = {
           accent_color: string
           access_roles: string[] | null
           access_type: string
+          business_client_tg_user_id: number | null
+          business_connection_id: string | null
           created_at: string
           created_by: string | null
           deadline: string | null
@@ -4650,6 +4705,8 @@ export type Database = {
           is_pinned: boolean
           legacy_channel: string | null
           link_code: string | null
+          mtproto_client_tg_user_id: number | null
+          mtproto_session_user_id: string | null
           name: string
           project_id: string | null
           sort_order: number
@@ -4657,12 +4714,17 @@ export type Database = {
           status_id: string | null
           type: string
           updated_at: string
+          wazzup_channel_id: string | null
+          wazzup_chat_id: string | null
+          wazzup_chat_type: string | null
           workspace_id: string
         }
         Insert: {
           accent_color?: string
           access_roles?: string[] | null
           access_type?: string
+          business_client_tg_user_id?: number | null
+          business_connection_id?: string | null
           created_at?: string
           created_by?: string | null
           deadline?: string | null
@@ -4676,6 +4738,8 @@ export type Database = {
           is_pinned?: boolean
           legacy_channel?: string | null
           link_code?: string | null
+          mtproto_client_tg_user_id?: number | null
+          mtproto_session_user_id?: string | null
           name: string
           project_id?: string | null
           sort_order?: number
@@ -4683,12 +4747,17 @@ export type Database = {
           status_id?: string | null
           type?: string
           updated_at?: string
+          wazzup_channel_id?: string | null
+          wazzup_chat_id?: string | null
+          wazzup_chat_type?: string | null
           workspace_id: string
         }
         Update: {
           accent_color?: string
           access_roles?: string[] | null
           access_type?: string
+          business_client_tg_user_id?: number | null
+          business_connection_id?: string | null
           created_at?: string
           created_by?: string | null
           deadline?: string | null
@@ -4702,6 +4771,8 @@ export type Database = {
           is_pinned?: boolean
           legacy_channel?: string | null
           link_code?: string | null
+          mtproto_client_tg_user_id?: number | null
+          mtproto_session_user_id?: string | null
           name?: string
           project_id?: string | null
           sort_order?: number
@@ -4709,6 +4780,9 @@ export type Database = {
           status_id?: string | null
           type?: string
           updated_at?: string
+          wazzup_channel_id?: string | null
+          wazzup_chat_id?: string | null
+          wazzup_chat_type?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -4727,6 +4801,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "project_threads_business_connection_id_fkey"
+            columns: ["business_connection_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_business_connections"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "project_threads_source_template_id_fkey"
             columns: ["source_template_id"]
             isOneToOne: false
@@ -4738,6 +4819,13 @@ export type Database = {
             columns: ["status_id"]
             isOneToOne: false
             referencedRelation: "statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_threads_wazzup_channel_id_fkey"
+            columns: ["wazzup_channel_id"]
+            isOneToOne: false
+            referencedRelation: "wazzup_channels"
             referencedColumns: ["id"]
           },
         ]
@@ -4754,11 +4842,15 @@ export type Database = {
           google_drive_folder_link: string | null
           id: string
           is_deleted: boolean
+          is_system_business_inbox: boolean
+          is_system_wazzup_inbox: boolean
           last_activity_at: string
           messenger_link_code: string | null
           name: string
           source_folder_id: string | null
           status_id: string | null
+          system_inbox_kind: string | null
+          system_inbox_user_id: string | null
           template_id: string | null
           updated_at: string | null
           workspace_id: string
@@ -4774,11 +4866,15 @@ export type Database = {
           google_drive_folder_link?: string | null
           id?: string
           is_deleted?: boolean
+          is_system_business_inbox?: boolean
+          is_system_wazzup_inbox?: boolean
           last_activity_at?: string
           messenger_link_code?: string | null
           name: string
           source_folder_id?: string | null
           status_id?: string | null
+          system_inbox_kind?: string | null
+          system_inbox_user_id?: string | null
           template_id?: string | null
           updated_at?: string | null
           workspace_id: string
@@ -4794,11 +4890,15 @@ export type Database = {
           google_drive_folder_link?: string | null
           id?: string
           is_deleted?: boolean
+          is_system_business_inbox?: boolean
+          is_system_wazzup_inbox?: boolean
           last_activity_at?: string
           messenger_link_code?: string | null
           name?: string
           source_folder_id?: string | null
           status_id?: string | null
+          system_inbox_kind?: string | null
+          system_inbox_user_id?: string | null
           template_id?: string | null
           updated_at?: string | null
           workspace_id?: string
@@ -5433,6 +5533,97 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_business_connections: {
+        Row: {
+          business_connection_id: string
+          can_reply: boolean
+          connected_at: string
+          disconnected_at: string | null
+          id: string
+          is_enabled: boolean
+          tg_first_name: string | null
+          tg_last_name: string | null
+          tg_user_id: number
+          tg_username: string | null
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          business_connection_id: string
+          can_reply?: boolean
+          connected_at?: string
+          disconnected_at?: string | null
+          id?: string
+          is_enabled?: boolean
+          tg_first_name?: string | null
+          tg_last_name?: string | null
+          tg_user_id: number
+          tg_username?: string | null
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          business_connection_id?: string
+          can_reply?: boolean
+          connected_at?: string
+          disconnected_at?: string | null
+          id?: string
+          is_enabled?: boolean
+          tg_first_name?: string | null
+          tg_last_name?: string | null
+          tg_user_id?: number
+          tg_username?: string | null
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_business_connections_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_business_link_tokens: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          token: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          token?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          token?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_business_link_tokens_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       telegram_link_tokens: {
         Row: {
           consumed_at: string | null
@@ -5471,6 +5662,100 @@ export type Database = {
           },
           {
             foreignKeyName: "telegram_link_tokens_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_mtproto_auth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          pending_session_encrypted: string
+          phone: string
+          phone_code_hash: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          pending_session_encrypted: string
+          phone: string
+          phone_code_hash: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          pending_session_encrypted?: string
+          phone?: string
+          phone_code_hash?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_mtproto_auth_states_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_mtproto_sessions: {
+        Row: {
+          connected_at: string
+          disconnected_at: string | null
+          is_active: boolean
+          last_seen_at: string | null
+          session_encrypted: string
+          tg_first_name: string | null
+          tg_last_name: string | null
+          tg_phone: string | null
+          tg_user_id: number
+          tg_username: string | null
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          connected_at?: string
+          disconnected_at?: string | null
+          is_active?: boolean
+          last_seen_at?: string | null
+          session_encrypted: string
+          tg_first_name?: string | null
+          tg_last_name?: string | null
+          tg_phone?: string | null
+          tg_user_id: number
+          tg_username?: string | null
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          connected_at?: string
+          disconnected_at?: string | null
+          is_active?: boolean
+          last_seen_at?: string | null
+          session_encrypted?: string
+          tg_first_name?: string | null
+          tg_last_name?: string | null
+          tg_phone?: string | null
+          tg_user_id?: number
+          tg_username?: string | null
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_mtproto_sessions_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -5656,6 +5941,121 @@ export type Database = {
           },
         ]
       }
+      user_telegram_links: {
+        Row: {
+          linked_at: string
+          tg_first_name: string | null
+          tg_last_name: string | null
+          tg_user_id: number
+          tg_username: string | null
+          user_id: string
+        }
+        Insert: {
+          linked_at?: string
+          tg_first_name?: string | null
+          tg_last_name?: string | null
+          tg_user_id: number
+          tg_username?: string | null
+          user_id: string
+        }
+        Update: {
+          linked_at?: string
+          tg_first_name?: string | null
+          tg_last_name?: string | null
+          tg_user_id?: number
+          tg_username?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wazzup_channels: {
+        Row: {
+          channel_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          last_synced_at: string | null
+          name: string | null
+          phone: string | null
+          state: string | null
+          transport: string
+          updated_at: string
+          user_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_synced_at?: string | null
+          name?: string | null
+          phone?: string | null
+          state?: string | null
+          transport: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_synced_at?: string | null
+          name?: string | null
+          phone?: string | null
+          state?: string | null
+          transport?: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wazzup_channels_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wazzup_settings: {
+        Row: {
+          api_key: string
+          created_at: string
+          created_by: string | null
+          updated_at: string
+          webhook_secret: string
+          workspace_id: string
+        }
+        Insert: {
+          api_key: string
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          webhook_secret?: string
+          workspace_id: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          webhook_secret?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wazzup_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_digest_settings: {
         Row: {
           min_events_for_llm: number
@@ -5684,6 +6084,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "workspace_digest_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_features: {
+        Row: {
+          created_at: string
+          features: Json
+          id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          features?: Json
+          id?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          features?: Json
+          id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_features_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: true
             referencedRelation: "workspaces"
@@ -5727,38 +6159,6 @@ export type Database = {
             foreignKeyName: "workspace_integrations_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      workspace_features: {
-        Row: {
-          created_at: string
-          features: Json
-          id: string
-          updated_at: string
-          workspace_id: string
-        }
-        Insert: {
-          created_at?: string
-          features?: Json
-          id?: string
-          updated_at?: string
-          workspace_id: string
-        }
-        Update: {
-          created_at?: string
-          features?: Json
-          id?: string
-          updated_at?: string
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "workspace_features_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: true
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
@@ -5814,11 +6214,43 @@ export type Database = {
           },
         ]
       }
+      workspace_sidebar_settings: {
+        Row: {
+          slots: Json
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          slots?: Json
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          slots?: Json
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_sidebar_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspaces: {
         Row: {
           ai_model: Database["public"]["Enums"]["ai_model"] | null
           anthropic_api_key_id: string | null
           created_at: string
+          custom_domain: string | null
+          custom_domain_status: string | null
+          custom_domain_verified_at: string | null
           default_ai_check_prompt: string | null
           default_ai_naming_prompt: string | null
           deleted_at: string | null
@@ -5831,6 +6263,7 @@ export type Database = {
           name: string
           notification_toast_duration: number
           send_delay_seconds: number
+          slug: string | null
           updated_at: string
           voyageai_api_key_id: string | null
         }
@@ -5838,6 +6271,9 @@ export type Database = {
           ai_model?: Database["public"]["Enums"]["ai_model"] | null
           anthropic_api_key_id?: string | null
           created_at?: string
+          custom_domain?: string | null
+          custom_domain_status?: string | null
+          custom_domain_verified_at?: string | null
           default_ai_check_prompt?: string | null
           default_ai_naming_prompt?: string | null
           deleted_at?: string | null
@@ -5850,6 +6286,7 @@ export type Database = {
           name: string
           notification_toast_duration?: number
           send_delay_seconds?: number
+          slug?: string | null
           updated_at?: string
           voyageai_api_key_id?: string | null
         }
@@ -5857,6 +6294,9 @@ export type Database = {
           ai_model?: Database["public"]["Enums"]["ai_model"] | null
           anthropic_api_key_id?: string | null
           created_at?: string
+          custom_domain?: string | null
+          custom_domain_status?: string | null
+          custom_domain_verified_at?: string | null
           default_ai_check_prompt?: string | null
           default_ai_naming_prompt?: string | null
           deleted_at?: string | null
@@ -5869,6 +6309,7 @@ export type Database = {
           name?: string
           notification_toast_duration?: number
           send_delay_seconds?: number
+          slug?: string | null
           updated_at?: string
           voyageai_api_key_id?: string | null
         }
@@ -5925,6 +6366,10 @@ export type Database = {
       append_telegram_message_id: {
         Args: { p_chat_id: number; p_message_id: string; p_tg_msg_id: number }
         Returns: undefined
+      }
+      can_user_access_thread: {
+        Args: { p_thread_id: string; p_user_id: string }
+        Returns: boolean
       }
       can_view_conversation: {
         Args: { p_conversation_id: string; p_user_id: string }
@@ -6237,6 +6682,7 @@ export type Database = {
           unread_reaction_count: number
         }[]
       }
+      get_my_task_counts: { Args: { p_workspace_id: string }; Returns: Json }
       get_my_urgent_tasks_count: {
         Args: { p_workspace_id: string }
         Returns: number
@@ -6318,11 +6764,15 @@ export type Database = {
           google_drive_folder_link: string | null
           id: string
           is_deleted: boolean
+          is_system_business_inbox: boolean
+          is_system_wazzup_inbox: boolean
           last_activity_at: string
           messenger_link_code: string | null
           name: string
           source_folder_id: string | null
           status_id: string | null
+          system_inbox_kind: string | null
+          system_inbox_user_id: string | null
           template_id: string | null
           updated_at: string | null
           workspace_id: string
@@ -6516,7 +6966,21 @@ export type Database = {
         }
         Returns: undefined
       }
+      move_thread_to_project: {
+        Args: { p_target_project_id: string; p_thread_id: string }
+        Returns: undefined
+      }
       reorder_documents: { Args: { p_updates: Json }; Returns: undefined }
+      resolve_workspace_by_host: {
+        Args: { p_host: string }
+        Returns: {
+          custom_domain: string
+          id: string
+          name: string
+          resolved_via: string
+          slug: string
+        }[]
+      }
       restore_article_version: {
         Args: { p_version_id: string }
         Returns: string
@@ -6690,6 +7154,9 @@ export type Database = {
         | "telegram_service"
         | "email"
         | "bot_event"
+        | "telegram_business"
+        | "telegram_mtproto"
+        | "wazzup"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -6867,6 +7334,7 @@ export const Constants = {
         "composite",
         "key-value-table",
         "divider",
+        "directory_ref",
       ],
       message_sender_type: ["user", "assistant", "system"],
       message_source: [
@@ -6875,6 +7343,9 @@ export const Constants = {
         "telegram_service",
         "email",
         "bot_event",
+        "telegram_business",
+        "telegram_mtproto",
+        "wazzup",
       ],
     },
   },

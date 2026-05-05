@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { Workspace, Participant } from '@/types/entities'
 
+const ROOT_DOMAIN = 'clientcase.app'
+
 interface WorkspaceWithParticipant extends Workspace {
   participant?: Participant
 }
@@ -27,6 +29,22 @@ export interface WorkspacePickerProps {
   canManageSettings: boolean
 }
 
+/**
+ * Построить URL для перехода на воркспейс.
+ * - Если есть slug → переход на <slug>.clientcase.app (cross-subdomain).
+ * - Если есть custom_domain → переход на этот домен.
+ * - Иначе → legacy /workspaces/<uuid> (на текущем host'е).
+ */
+function buildWorkspaceUrl(workspace: WorkspaceWithParticipant): string {
+  if (workspace.slug) return `https://${workspace.slug}.${ROOT_DOMAIN}/`
+  if (workspace.custom_domain) return `https://${workspace.custom_domain}/`
+  return `/workspaces/${workspace.id}`
+}
+
+function isCrossDomainTarget(url: string): boolean {
+  return /^https?:\/\//i.test(url)
+}
+
 export const WorkspacePicker = memo(function WorkspacePicker({
   workspaces,
   currentWorkspace,
@@ -36,6 +54,25 @@ export const WorkspacePicker = memo(function WorkspacePicker({
   canManageSettings,
 }: WorkspacePickerProps) {
   const router = useRouter()
+
+  const navigateToWorkspace = (workspace: WorkspaceWithParticipant) => {
+    const url = buildWorkspaceUrl(workspace)
+    if (isCrossDomainTarget(url)) {
+      // Full reload — переход на другой поддомен / custom-домен
+      window.location.href = url
+    } else {
+      router.push(url)
+    }
+  }
+
+  const navigateToSettings = (workspace: WorkspaceWithParticipant) => {
+    const baseUrl = buildWorkspaceUrl(workspace)
+    if (isCrossDomainTarget(baseUrl)) {
+      window.location.href = baseUrl + 'settings'
+    } else {
+      router.push(`/workspaces/${workspace.id}/settings`)
+    }
+  }
 
   return (
     <div className="px-2 pt-3 pb-2">
@@ -78,7 +115,7 @@ export const WorkspacePicker = memo(function WorkspacePicker({
                 return (
                   <div key={workspace.id}>
                     <DropdownMenuItem
-                      onClick={() => router.push(`/workspaces/${workspace.id}`)}
+                      onClick={() => navigateToWorkspace(workspace)}
                       className="cursor-pointer flex items-center gap-2"
                     >
                       <Avatar className="h-5 w-5 flex-shrink-0">
@@ -88,6 +125,11 @@ export const WorkspacePicker = memo(function WorkspacePicker({
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{workspace.name}</p>
+                        {workspace.slug && (
+                          <p className="text-xs text-muted-foreground font-mono truncate">
+                            {workspace.slug}.{ROOT_DOMAIN}
+                          </p>
+                        )}
                       </div>
                       {isActive && (
                         <div className="flex items-center gap-2 flex-shrink-0">
@@ -95,7 +137,7 @@ export const WorkspacePicker = memo(function WorkspacePicker({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                router.push(`/workspaces/${workspace.id}/settings`)
+                                navigateToSettings(workspace)
                               }}
                               className="p-1 hover:bg-muted rounded transition-colors"
                               title="Настройки"
