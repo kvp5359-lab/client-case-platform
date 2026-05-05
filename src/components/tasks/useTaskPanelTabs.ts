@@ -156,13 +156,26 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
     }
   }, [isSuccess, persisted, hydrated])
 
+  // Refs для debounced persist — объявляем до сброса при смене проекта,
+  // чтобы можно было отменить in-flight upsert.
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const persistPayloadRef = useRef<PersistedRow | null>(null)
+
   // Сброс при смене проекта — render-time pattern из React docs
   // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  // ВАЖНО: при смене projectId также отменяем in-flight debounced persist,
+  // иначе stale-вкладки от старого проекта запишутся в строку нового
+  // (race condition наблюдалась ранее: вкладки протекали между проектами).
   const [lastProjectId, setLastProjectId] = useState(projectId)
   if (projectId !== lastProjectId) {
     setLastProjectId(projectId)
     setLocalTabs([])
     setHydrated(false)
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current)
+      persistTimerRef.current = null
+    }
+    persistPayloadRef.current = null
   }
 
   // Список тредов проекта из React Query кеша — для конверсии short_id ↔ uuid в URL.
@@ -251,8 +264,7 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
 
   // Debounce сохранения в БД: при быстрых переключениях вкладок (open/close/activate)
   // не отправляем по upsert на каждый клик. Только последнее состояние через 250ms.
-  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const persistPayloadRef = useRef<PersistedRow | null>(null)
+  // persistTimerRef и persistPayloadRef объявлены выше — для отмены при смене проекта.
   const upsertMutationRef = useRef(upsertMutation)
   useEffect(() => {
     upsertMutationRef.current = upsertMutation
