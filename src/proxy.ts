@@ -92,12 +92,6 @@ export async function proxy(request: NextRequest) {
   const host = request.headers.get('host') || ''
   const { pathname, search } = request.nextUrl
   const hostType = detectHostType(host)
-  // Diagnostic — temporary, remove after debug
-  if (pathname === '/__mw_test') {
-    return new NextResponse(JSON.stringify({ host, pathname, hostType }, null, 2), {
-      headers: { 'content-type': 'application/json', 'x-proxy-active': 'true' },
-    })
-  }
 
   // Статика и API — пропускаем (уже исключены matcher'ом, но для надёжности)
   if (pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.includes('.')) {
@@ -226,10 +220,7 @@ async function resolveWorkspaceByHost(
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!url || !anonKey) {
-      console.warn('[middleware] missing supabase env vars')
-      return null
-    }
+    if (!url || !anonKey) return null
 
     const cleanHost = host.split(':')[0].toLowerCase()
 
@@ -242,16 +233,12 @@ async function resolveWorkspaceByHost(
       },
       body: JSON.stringify({ p_host: cleanHost }),
     })
-    if (!res.ok) {
-      console.warn('[middleware] resolve RPC not ok', res.status, await res.text().catch(() => ''))
-      return null
-    }
+    if (!res.ok) return null
     const data = await res.json()
     if (!Array.isArray(data) || data.length === 0) return null
     const row = data[0]
     return { id: row.id, slug: row.slug, custom_domain: row.custom_domain }
-  } catch (err) {
-    console.warn('[middleware] resolve error', err)
+  } catch {
     return null
   }
 }
