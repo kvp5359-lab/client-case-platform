@@ -23,6 +23,7 @@ const SETTINGS_TAB_TITLES: Record<string, string> = {
   integrations: 'Интеграции',
   digest: 'Дневник проекта',
   sidebar: 'Сайдбар',
+  domain: 'Домен',
   trash: 'Корзина',
 }
 
@@ -49,6 +50,9 @@ const SidebarSettingsTab = React.lazy(() =>
 )
 const IntegrationsTab = React.lazy(() =>
   import('./workspace-settings/IntegrationsTab').then((m) => ({ default: m.IntegrationsTab })),
+)
+const DomainSettingsTab = React.lazy(() =>
+  import('./workspace-settings/DomainSettingsTab').then((m) => ({ default: m.DomainSettingsTab })),
 )
 
 export function WorkspaceSettingsPage() {
@@ -88,6 +92,7 @@ export function WorkspaceSettingsPage() {
     if (pathname.includes('/integrations')) return 'integrations'
     if (pathname.includes('/digest')) return 'digest'
     if (pathname.includes('/sidebar')) return 'sidebar'
+    if (pathname.includes('/domain')) return 'domain'
     if (pathname.includes('/trash')) return 'trash'
     return 'general'
   }
@@ -199,6 +204,11 @@ export function WorkspaceSettingsPage() {
                   Сайдбар
                 </TabsTrigger>
               )}
+              {permissions.isOwner && (
+                <TabsTrigger value="domain" onClick={() => handleTabChange('domain')}>
+                  Домен
+                </TabsTrigger>
+              )}
               {(permissions.isOwner || permissions.can('manage_workspace_settings')) && (
                 <TabsTrigger value="trash" onClick={() => handleTabChange('trash')}>
                   Корзина
@@ -218,6 +228,7 @@ export function WorkspaceSettingsPage() {
             {activeTab === 'integrations' && <IntegrationsTab />}
             {activeTab === 'digest' && <DigestSettingsTab />}
             {activeTab === 'sidebar' && <SidebarSettingsTab />}
+            {activeTab === 'domain' && permissions.isOwner && <DomainSettingsTab />}
             {activeTab === 'trash' && <TrashTab />}
           </Suspense>
         </div>
