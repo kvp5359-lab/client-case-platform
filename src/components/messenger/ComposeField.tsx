@@ -210,6 +210,11 @@ export const ComposeField = forwardRef<ComposeFieldHandle, ComposeFieldProps>(fu
     const arr = all.filter((f) => f.size <= MAX_FILE_SIZE)
     if (arr.length > 0) {
       setFiles((prev) => [...prev, ...arr])
+      // Автофокус на поле ввода после прикрепления файла —
+      // юзер обычно сразу хочет напечатать сопроводительный текст.
+      requestAnimationFrame(() => {
+        editorRef.current?.commands.focus('end')
+      })
     }
   }, [])
 
