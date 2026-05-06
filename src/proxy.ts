@@ -156,12 +156,22 @@ export async function proxy(request: NextRequest) {
   // ---- SUBDOMAIN или LEGACY ----
   // Резолв воркспейса делаем для обоих, но с разной логикой rewrite
 
-  // Портальные пути (/login, /register, /auth/callback, /select-workspace) не имеют смысла
-  // внутри воркспейса — таких роутов внутри `/workspaces/<id>/...` не существует, а rewrite
-  // на них приведёт к 404. Поэтому даже на legacy/custom-доменах с резолвом воркспейса
-  // редиректим на портал. Для legacy без custom_domain — выше уже отдельный блок
-  // (`clientcase.kvp-projects.com`), так что здесь это безопасно.
-  if (isPortalOnlyPath(pathname)) {
+  // Портальные пути на поддомене *.clientcase.app → редирект на портал.
+  // Cookies авторизации между my.clientcase.app и поддоменами расшарены
+  // через Domain=.clientcase.app, поэтому единый портал имеет смысл.
+  //
+  // Для legacy/custom-домена (например app.relostart.com) редирект НЕ делаем:
+  //   - cookies на custom-домене не расшарены с порталом, поэтому залогинить
+  //     пользователя на портале и потом «как-то перенести» сессию нельзя
+  //     без отдельного SSO-bridge'а
+  //   - вместо этого custom-домен должен иметь свой независимый логин:
+  //     /login, /register, /auth/callback показываются прямо на custom-домене,
+  //     OAuth callback ставит cookies на этот домен → независимая сессия
+  //   - в Supabase Dashboard → Authentication → URL Configuration
+  //     должны быть добавлены https://<custom_domain>/auth/callback
+  //
+  // Pass-through для custom-домена реализован в handleWorkspaceHost ниже.
+  if (isPortalOnlyPath(pathname) && hostType.type === 'subdomain') {
     const url = new URL(`https://${PORTAL_HOST}${pathname}${search}`)
     return NextResponse.redirect(url, 307)
   }
@@ -197,6 +207,21 @@ async function handleWorkspaceHost(
   // Если найден воркспейс (subdomain или custom_domain)
   if (workspace) {
     const wsPrefix = `/workspaces/${workspace.id}`
+
+    // 0a. Custom-домен (legacy + резолв по custom_domain): портальные пути
+     //    показываем как корневые роуты, без rewrite в /workspaces/<id>/...
+     //    Иначе rewrite уведёт на /workspaces/<id>/login — такой страницы нет, 404.
+     //    Cookies сессии останутся на custom-домене (независимая авторизация).
+     //    Для poddomain *.clientcase.app этот блок пропускается — там выше уже
+     //    редирект на портал.
+    if (hostType.type === 'legacy' && isPortalOnlyPath(pathname)) {
+      // /select-workspace на custom-домене смысла не имеет (домен жёстко привязан
+      // к одному воркспейсу) — редирект на корень.
+      if (pathname === '/select-workspace' || pathname.startsWith('/select-workspace/')) {
+        return NextResponse.redirect(new URL('/', request.url), 307)
+      }
+      return await handleAuthAndRewrite(request, host, pathname, search, false)
+    }
 
     // 0. Маркетинговые публичные пути (/lawyers, /blog, /about, /privacy, /terms)
     //    на поддомене не показываем — это страницы публичного маркетплейса,
