@@ -156,8 +156,12 @@ export async function proxy(request: NextRequest) {
   // ---- SUBDOMAIN или LEGACY ----
   // Резолв воркспейса делаем для обоих, но с разной логикой rewrite
 
-  // Портальные пути на не-портальном host → редирект на портал
-  if (isPortalOnlyPath(pathname) && hostType.type !== 'legacy') {
+  // Портальные пути (/login, /register, /auth/callback, /select-workspace) не имеют смысла
+  // внутри воркспейса — таких роутов внутри `/workspaces/<id>/...` не существует, а rewrite
+  // на них приведёт к 404. Поэтому даже на legacy/custom-доменах с резолвом воркспейса
+  // редиректим на портал. Для legacy без custom_domain — выше уже отдельный блок
+  // (`clientcase.kvp-projects.com`), так что здесь это безопасно.
+  if (isPortalOnlyPath(pathname)) {
     const url = new URL(`https://${PORTAL_HOST}${pathname}${search}`)
     return NextResponse.redirect(url, 307)
   }
