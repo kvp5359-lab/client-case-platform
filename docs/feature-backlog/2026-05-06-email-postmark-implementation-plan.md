@@ -1,195 +1,196 @@
-# Email — детальный план реализации (Planfix-модель)
+# Email — детальный план реализации (гибридная модель)
 
-**Дата:** 2026-05-06
-**Связано с:** [`2026-05-04-email-postmark-internal-addresses.md`](./2026-05-04-email-postmark-internal-addresses.md) (исходное ТЗ — общая концепция).
-**Статус:** план реализации, готов к старту по фазам.
+**Дата:** 2026-05-06 (v3 — гибридная)
+**Связано с:** [`2026-05-04-email-postmark-internal-addresses.md`](./2026-05-04-email-postmark-internal-addresses.md) (исходное ТЗ).
+**Статус:** план реализации, готов к старту.
 
 ---
 
-## 0. Главная архитектурная модель (Planfix-style)
+## 0. Главная архитектурная модель
 
-**Принцип:** клиент общается с сотрудником через **обычную рабочую почту сотрудника** (`ivan@petrov-firma.com`). Клиент даже не знает, что между ними есть какой-то сервис.
+**Принцип:** клиент может писать в сервис **двумя способами одновременно**. Сотрудник выбирает что предпочтительнее в каждом конкретном случае.
+
+### Канал A — Planfix-style (через подключённый ящик сотрудника)
 
 ```
-        КЛИЕНТ                       СОТРУДНИК                       СЕРВИС
-client@example.com  ←→  ivan@petrov-firma.com  ←→  rs.clientcase.app
-                                  ↓                          ↑
-                              forward rule  ──→  inbox@rs.clientcase.app
-                                                          ↓
-                                                       Postmark
-                                                          ↓
-                                                       парсим
-                                                          ↓
-                                                       тред
+client@example.com  ←→  ivan@petrov-firma.com  ←→  ClientCase
+                              ↓ forward rule
+                        inbox@rs.clientcase.app  →  Postmark  →  тред
 ```
 
-### Два потока
+**Когда использовать:** личное общение юрист ↔ клиент. Клиент видит настоящий адрес сотрудника, история переписки сохраняется в его обычном ящике.
 
-#### Исходящий (от сотрудника к клиенту)
+### Канал B — прямой адрес сервиса
 
-1. Сотрудник пишет ответ в треде в ClientCase.
-2. ClientCase отправляет письмо **через подключённый ящик сотрудника** (Gmail API или SMTP).
-3. Клиент получает письмо «От: Иван Иванов <ivan@petrov-firma.com>».
-4. Копия письма автоматически сохраняется в «Отправленных» сотрудника (стандартное поведение Gmail/SMTP).
+```
+client@example.com  ──────────────→  t+15@rs.clientcase.app  →  Postmark  →  тред 15
+                                     p+3@rs.clientcase.app   →  Postmark  →  проект 3
+                                     support@rs.clientcase.app →  Postmark  →  правило
+```
 
-#### Входящий (от клиента к сотруднику)
+**Когда использовать:**
+- Постоянный «адрес дела» который не зависит от смены сотрудника
+- Брендовые адреса (`support@`, `info@`) для входа клиента «с улицы»
+- Системные уведомления (платёжки, документы) от лица сервиса
 
-1. Клиент отвечает на привычный `ivan@petrov-firma.com`.
-2. У сотрудника настроен **forward** в почте: всё пересылается на `inbox@rs.clientcase.app`.
-3. Postmark принимает forward, шлёт нам JSON.
-4. Мы парсим, ищем тред по `In-Reply-To` (или по `From`), кладём сообщение туда.
+### Оба канала объединяются в одном Postmark и в одной таблице
 
-### Чем это отличается от моей первой версии плана
+Postmark принимает на любой адрес поддомена `<slug>.clientcase.app`. Мы парсим To:
+- `inbox@` → матчинг через In-Reply-To / References / From → тред
+- `t+<short>@` → прямой резолв через `project_threads.short_id` → тред
+- `p+<short>@` → прямой резолв через `projects.short_id` → создать тред в проекте
+- `<custom>@` (например, `support@`) → правило из `email_virtual_addresses`
 
-| Раньше (от 2026-05-06 v1) | Теперь (Planfix-style) |
-|---------------------------|------------------------|
-| Клиент пишет на `t+15@rs.clientcase.app` напрямую | Клиент пишет на `ivan@petrov-firma.com` как обычно |
-| Postmark = и приём, и отправка | Postmark = **только приём** (через forward) |
-| Отправка с домена `*.clientcase.app` | Отправка через **подключённый ящик сотрудника** (Gmail API / SMTP) |
-| Виртуальные адреса = основной канал входа | Виртуальные адреса = опциональная фича для брендовых сценариев («support@») |
-| Subject-line вводится в композере | Subject отлично восстанавливается из исходящего письма (мы его сохраняем) |
+### Отправка — два метода на выбор
 
-### Преимущества модели
+Каждый исходящий из ClientCase письмом: `email_send_method`:
 
-🟢 **Клиент видит твой настоящий адрес** — это критично для юриста: доверие, бренд, история в его записной книжке.
+- **`employee_mailbox`** — отправка через подключённый Gmail/SMTP сотрудника. From = его настоящий адрес. **Дефолт когда есть подключённый ящик.**
+- **`system_postmark`** — отправка через Postmark с From `t+15@rs.clientcase.app`. Дефолт когда у сотрудника нет подключённого ящика, либо при системных нотификациях.
 
-🟢 **Почтовая история живёт в почте сотрудника** — отвалится ClientCase, переписка остаётся в Gmail/Yandex/корп-ящике.
+В UI композера — toggle «Отправить от:» с двумя опциями.
 
-🟢 **Provider-agnostic** — можно подключать любой ящик: Gmail (через OAuth), Yandex/Mail.ru/корп (через SMTP login).
+### Преимущества гибридной модели
 
-🟢 **Никаких проблем с DKIM/SPF твоего домена** — мы не отправляем «как будто» от твоего имени, мы реально отправляем через твой SMTP.
+🟢 **Гибкость** — сотрудник выбирает «личное» (свой адрес) или «брендовое» (адрес сервиса).
 
-🟢 **Roll-back простой** — выключил forward в Gmail, всё вернулось как было.
+🟢 **Постоянство адреса** — `t+15@` живёт пока живёт тред, даже если сотрудник уволился.
+
+🟢 **Provider-agnostic** — можно подключать любую почту: Gmail (OAuth), Yandex/корп (SMTP).
+
+🟢 **Откат простой** — выключил forward → Planfix-канал отвалился, остальное работает.
 
 ---
 
 ## 1. Архитектура — компоненты
 
-### 1.1 Подключение ящика сотрудника
+### 1.1 Подключение ящика сотрудника (для канала A)
 
-Каждый сотрудник в воркспейсе **может** подключить свой почтовый ящик (необязательно — без него письма просто не отправляются).
+Каждый сотрудник в воркспейсе **может** подключить свой почтовый ящик.
 
-**Способы подключения:**
+**Способы:**
+1. **Gmail OAuth** — уже есть в проекте (`gmail-auth`, `gmail-callback`). Расширяем UX.
+2. **SMTP login + IMAP login** — для Yandex/Mail.ru/корп. Логин, пароль, host:port.
+3. **(Будущее) Microsoft 365 OAuth** — отложено.
 
-1. **Gmail OAuth** — уже есть в проекте (`gmail-auth`, `gmail-callback`). Расширяем UX, оставляем токены.
-2. **SMTP login + IMAP login** — для Yandex/Mail.ru/корп-ящиков. Логин, пароль, SMTP/IMAP-сервер, порты.
-3. **(Будущее) Microsoft 365 OAuth** — отложено на этап 2.
+**Хранение:** существующая таблица `email_accounts` расширяется (см. миграцию ниже).
 
-**Хранение:** существующая таблица `email_accounts` расширяется на новые поля.
+**Forward setup для Gmail OAuth — автоматический**: после OAuth мы через Gmail API сами добавляем forwarding rule, перехватываем confirmation-письмо в нашем Postmark webhook, парсим код, подтверждаем.
 
-### 1.2 Postmark — только приём
+**Для SMTP — вручную**: показываем инструкцию для конкретного провайдера.
 
-Postmark Server `clientcase-prod` принимает всю входящую почту на адрес `inbox@<slug>.clientcase.app`. Один общий webhook для всех воркспейсов.
+### 1.2 Postmark — приём + опциональная отправка
 
-**Функция Postmark в этой схеме:** «универсальный inbound MX-сервер». Не отправляет ничего.
+**Postmark Server `clientcase-prod`:**
+- **Inbound webhook**: один URL `https://my.clientcase.app/_internal/postmark-webhook` принимает всё.
+- **Sender Domain `<slug>.clientcase.app`**: добавлен через API при активации воркспейса. Используется для:
+  - Inbound (приём писем на любой адрес поддомена)
+  - Outbound (отправка с `t+<short>@`, `p+<short>@`, `<virtual>@`)
 
-**Альтернатива:** SES Inbound, Mailgun. Но Postmark проще на старте, потом можем переехать (raw MIME сохраняется).
+**API ключ** в Supabase secrets как `POSTMARK_SERVER_TOKEN`.
 
-### 1.3 Forward-правило в почте сотрудника
+### 1.3 Резолв входящего письма
 
-Сотрудник настраивает у себя в почтовой системе forward-правило:
+Postmark парсит и шлёт нам payload. Алгоритм маршрутизации:
 
-- **Gmail:** Settings → Forwarding → Add forwarding address → `inbox@rs.clientcase.app`. Подтверждение по коду — мы автоматически перехватим письмо с кодом подтверждения и покажем код сотруднику в UI ClientCase.
-- **Yandex:** аналогично через настройки.
-- **Корп-почта:** инструкция на месте.
+1. **Если To = `t+<N>@<slug>.clientcase.app`** → прямо в тред с `short_id=N`.
+2. **Если To = `p+<N>@<slug>.clientcase.app`** → проект с `short_id=N`:
+   - Найти существующий тред с этим From → положить туда
+   - Иначе создать новый тред
+3. **Если To = `<virtual>@<slug>.clientcase.app`** → правило из `email_virtual_addresses` (create_thread / append_existing / fixed_thread).
+4. **Если To = `inbox@<slug>.clientcase.app`** → forward от сотрудника:
+   - **Извлечь оригинального отправителя** из MIME (Reply-To или forwarded body)
+   - Match через RPC `match_inbound_email`:
+     - По `In-Reply-To` (отвечает на наше)
+     - По `References`
+     - По From + recent activity
+   - Если ничего не сматчилось → `email_inbound_unmatched`
+5. **Если ничего не подошло** → `email_inbound_unmatched`, нотификация менеджеру.
 
-### 1.4 Маршрутизация входящего письма в тред
+### 1.4 Адресация поддомена
 
-Письмо `client@example.com → ivan@petrov-firma.com → forward → inbox@rs.clientcase.app`
+```
+inbox@rs.clientcase.app          ← forward-цель из ящика сотрудника (Planfix-style)
+t+<N>@rs.clientcase.app          ← прямой адрес треда #N
+p+<N>@rs.clientcase.app          ← прямой адрес проекта #N
+support@rs.clientcase.app        ← виртуальный (созданный юзером)
+hh@rs.clientcase.app             ← виртуальный
+*@rs.clientcase.app              ← всё остальное → unmatched
+```
 
-Postmark парсит и шлёт нам payload. Мы сохраняем raw MIME и пытаемся определить тред в порядке приоритета:
-
-1. **По заголовку `In-Reply-To`** — если клиент отвечает на наше предыдущее письмо, его In-Reply-To указывает на Message-ID нашего отправленного. Мы храним Message-ID наших исходящих → находим тред.
-
-2. **По `References`** — если In-Reply-To не сматчился (например, клиент пересылал куда-то), пробуем все ID из References.
-
-3. **По From + project_participants** — ищем участника проекта (контакт-клиент) с этим email. Если найден один — кладём в дефолтный тред клиента в этом проекте. Если несколько — используем последний активный тред.
-
-4. **По From + recent threads** — если есть открытый тред где этот From — последний автор, кладём туда.
-
-5. **Не нашли** — `email_inbound_unmatched`, нотификация менеджеру воркспейса.
-
-### 1.5 Адресация — сильно упрощённая
-
-В Planfix-модели **внутренние адреса для клиентов не нужны**. Клиент пишет на обычную почту сотрудника. Внутренние адреса нужны только как:
-
-- **Технический получатель forward-правила**: `inbox@<slug>.clientcase.app` (один на воркспейс).
-- **Виртуальные адреса для брендовых сценариев**: `support@<slug>.clientcase.app` (опционально, если хочешь дать клиенту «нашу» почту вместо персональной сотрудника).
-
-**Адреса `t+<short>` и `p+<short>` — отбрасываем.** Клиенты не пишут на них, тред определяется через In-Reply-To.
+Все эти адреса работают на одном MX-сервере (Postmark inbound), один webhook на всё.
 
 ---
 
 ## 2. Изменения в БД
 
-### 2.1 Миграция `20260506_email_planfix_setup.sql`
+### 2.1 Миграция `20260506_email_hybrid_setup.sql`
 
 ```sql
 -- ============================================================
--- Planfix-style email: подключённые ящики + Postmark inbound
+-- Гибридная email-модель: подключённые ящики (Canal A) + Postmark direct (Canal B)
 -- ============================================================
 
--- 1. Расширяем enum message_source
+-- 1. Расширяем enum
 ALTER TYPE message_source ADD VALUE IF NOT EXISTS 'email_internal';
 
--- 2. Расширяем существующую email_accounts — добавляем SMTP-режим (не только Gmail OAuth)
+-- 2. Расширяем email_accounts для SMTP-ящиков и forward-настроек
 ALTER TABLE email_accounts
-  -- Тип подключения
   ADD COLUMN IF NOT EXISTS auth_type text NOT NULL DEFAULT 'gmail_oauth'
     CHECK (auth_type IN ('gmail_oauth', 'smtp_password', 'microsoft_oauth')),
-  -- Параметры SMTP/IMAP (зашифрованы через pg_sodium / Vault)
   ADD COLUMN IF NOT EXISTS smtp_host text,
   ADD COLUMN IF NOT EXISTS smtp_port int,
   ADD COLUMN IF NOT EXISTS smtp_username text,
-  ADD COLUMN IF NOT EXISTS smtp_password_encrypted bytea,    -- через pgsodium
+  ADD COLUMN IF NOT EXISTS smtp_password_encrypted bytea,
   ADD COLUMN IF NOT EXISTS smtp_use_tls boolean NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS imap_host text,
   ADD COLUMN IF NOT EXISTS imap_port int,
-  -- Display name для From-заголовка
   ADD COLUMN IF NOT EXISTS display_name text,
-  -- Forward-настройка (статус)
   ADD COLUMN IF NOT EXISTS forward_setup_status text NOT NULL DEFAULT 'not_setup'
     CHECK (forward_setup_status IN ('not_setup', 'pending_verification', 'verified', 'broken')),
-  ADD COLUMN IF NOT EXISTS forward_target_address text,      -- inbox@rs.clientcase.app или с уникальным токеном
+  ADD COLUMN IF NOT EXISTS forward_target_address text,
   ADD COLUMN IF NOT EXISTS forward_verified_at timestamptz,
-  -- Последний успешный приём через forward (для health-check)
   ADD COLUMN IF NOT EXISTS last_inbound_at timestamptz,
-  -- Подпись HTML (вставляется в исходящие, можно переопределить)
   ADD COLUMN IF NOT EXISTS signature_html text;
 
--- При smtp_password_encrypted — храним именно зашифрованный пароль.
--- Шифрование/расшифровка через RPC (вызывают только service-role и сам пользователь).
+-- 3. Workspace-level — Postmark domain status
+ALTER TABLE workspaces
+  ADD COLUMN IF NOT EXISTS email_postmark_domain_id text,
+  ADD COLUMN IF NOT EXISTS email_dkim_verified boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS email_return_path_verified boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS email_mx_verified boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS email_active boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS email_activated_at timestamptz;
 
--- 3. Поле «к какому ящику отправляется» в треде (если у проекта/треда есть «дефолтный отправитель»)
+-- 4. Project_threads — поля для email
 ALTER TABLE project_threads
   ADD COLUMN IF NOT EXISTS email_send_account_id uuid REFERENCES email_accounts(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS email_send_method text NOT NULL DEFAULT 'auto'
+    CHECK (email_send_method IN ('auto', 'employee_mailbox', 'system_postmark')),
   ADD COLUMN IF NOT EXISTS email_subject_root text,
   ADD COLUMN IF NOT EXISTS email_last_external_address text;
--- email_send_account_id — определяется при создании треда (берётся ящик у автора треда),
--- может быть переопределён вручную.
 
--- 4. Поля у project_messages для email_internal (для исходящих и входящих)
+-- 5. Project_messages — поля для email_internal
 ALTER TABLE project_messages
-  ADD COLUMN IF NOT EXISTS email_message_id text,        -- RFC5322 Message-ID
+  ADD COLUMN IF NOT EXISTS email_message_id text,
   ADD COLUMN IF NOT EXISTS email_in_reply_to text,
   ADD COLUMN IF NOT EXISTS email_references text[],
   ADD COLUMN IF NOT EXISTS email_raw_mime_path text,
   ADD COLUMN IF NOT EXISTS email_postmark_id text,
   ADD COLUMN IF NOT EXISTS email_subject text,
   ADD COLUMN IF NOT EXISTS email_send_account_id uuid REFERENCES email_accounts(id),
+  ADD COLUMN IF NOT EXISTS email_send_method text
+    CHECK (email_send_method IS NULL OR email_send_method IN ('employee_mailbox', 'system_postmark')),
   ADD COLUMN IF NOT EXISTS email_delivery_status text
     CHECK (email_delivery_status IS NULL OR email_delivery_status IN
-      ('queued', 'sent', 'delivered', 'bounced', 'failed'));
+      ('queued', 'sent', 'delivered', 'bounced', 'complaint', 'opened', 'clicked', 'failed'));
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_project_messages_email_message_id
   ON project_messages(email_message_id) WHERE email_message_id IS NOT NULL;
-
 CREATE INDEX IF NOT EXISTS idx_project_messages_email_in_reply_to
   ON project_messages(email_in_reply_to) WHERE email_in_reply_to IS NOT NULL;
 
--- 5. Виртуальные адреса (опциональная фича — для «support@», «hh@» и т.п.)
--- ОСТАЁТСЯ как было в первой версии плана. Юзер может создавать виртуальные адреса
--- для случаев когда нужен брендовый адрес (на сайте, в визитке).
+-- 6. Виртуальные адреса (опциональная фича для брендовых сценариев)
 CREATE TABLE IF NOT EXISTS email_virtual_addresses (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -197,7 +198,6 @@ CREATE TABLE IF NOT EXISTS email_virtual_addresses (
   display_name text,
   description text,
   is_active boolean NOT NULL DEFAULT true,
-
   routing_mode text NOT NULL DEFAULT 'create_thread'
     CHECK (routing_mode IN ('create_thread', 'append_existing', 'fixed_thread')),
   target_project_id uuid REFERENCES projects(id) ON DELETE SET NULL,
@@ -206,14 +206,12 @@ CREATE TABLE IF NOT EXISTS email_virtual_addresses (
   default_assignee_user_id uuid REFERENCES auth.users(id),
   auto_reply_enabled boolean NOT NULL DEFAULT false,
   auto_reply_text text,
-
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   created_by uuid REFERENCES auth.users(id),
-
   UNIQUE (workspace_id, local_part),
   CHECK (local_part ~ '^[a-z0-9]([a-z0-9._-]{0,28}[a-z0-9])?$'),
-  CHECK (local_part NOT IN ('inbox', 'admin', 'noreply', 'postmaster', 'mailer-daemon'))
+  CHECK (local_part NOT IN ('inbox', 't', 'p', 'admin', 'noreply', 'postmaster', 'mailer-daemon'))
 );
 
 ALTER TABLE email_virtual_addresses ENABLE ROW LEVEL SECURITY;
@@ -222,7 +220,7 @@ CREATE POLICY email_virtual_addresses_select ON email_virtual_addresses
 CREATE POLICY email_virtual_addresses_modify ON email_virtual_addresses
   FOR ALL USING (has_workspace_permission(workspace_id, auth.uid(), 'manage_workspace_settings'));
 
--- 6. Нераспознанные письма
+-- 7. Нераспознанные письма
 CREATE TABLE IF NOT EXISTS email_inbound_unmatched (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id uuid REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -236,8 +234,7 @@ CREATE TABLE IF NOT EXISTS email_inbound_unmatched (
   message_id_header text,
   in_reply_to text,
   references_headers text[],
-  -- Дополнительно: оригинальный получатель из X-Forwarded-For (если есть в forward-цепочке)
-  original_to text,
+  original_to text,                                      -- для forward-цепочек: оригинальный адрес
   received_at timestamptz NOT NULL DEFAULT now(),
   reason text NOT NULL,
   resolved_at timestamptz,
@@ -255,16 +252,16 @@ CREATE POLICY email_inbound_unmatched_update ON email_inbound_unmatched
 CREATE INDEX idx_email_inbound_unmatched_workspace_unresolved
   ON email_inbound_unmatched(workspace_id, received_at DESC) WHERE resolved_at IS NULL;
 
--- 7. Workspace-level настройки
+-- 8. Workspace email settings
 CREATE TABLE IF NOT EXISTS workspace_email_settings (
   workspace_id uuid PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
-  inbox_address text,                                    -- inbox@<slug>.clientcase.app, формируется из slug
-  postmark_domain_id text,                               -- ID Sender Domain в Postmark API
-  postmark_inbox_verified boolean NOT NULL DEFAULT false,
+  inbox_address text,
   reply_quote_style text NOT NULL DEFAULT 'gmail'
     CHECK (reply_quote_style IN ('gmail', 'outlook', 'minimal', 'none')),
-  signature_html text,                                   -- общая подпись воркспейса (если у сотрудника нет своей)
+  signature_html text,
   notify_managers_on_unmatched boolean NOT NULL DEFAULT true,
+  default_send_method text NOT NULL DEFAULT 'employee_mailbox'
+    CHECK (default_send_method IN ('employee_mailbox', 'system_postmark', 'auto')),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -276,9 +273,115 @@ CREATE POLICY workspace_email_settings_modify ON workspace_email_settings
   FOR ALL USING (has_workspace_permission(workspace_id, auth.uid(), 'manage_workspace_settings'));
 ```
 
-### 2.2 RPC: матчинг входящего письма в тред
+### 2.2 RPC `resolve_inbound_email_address` (полный с учётом всех типов)
 
 ```sql
+CREATE OR REPLACE FUNCTION public.resolve_inbound_email_address(p_address text)
+RETURNS TABLE (
+  workspace_id uuid,
+  workspace_slug text,
+  resolution_type text,                 -- 'thread' | 'project' | 'virtual' | 'inbox' | 'unknown_local' | 'unknown_workspace'
+  thread_id uuid,
+  project_id uuid,
+  virtual_address_id uuid,
+  routing_mode text,
+  target_project_id uuid,
+  target_thread_id uuid,
+  default_thread_template_id uuid,
+  default_assignee_user_id uuid,
+  auto_reply_enabled boolean,
+  auto_reply_text text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_local text := lower(split_part(p_address, '@', 1));
+  v_domain text := lower(split_part(p_address, '@', 2));
+  v_root_domain text := 'clientcase.app';
+  v_slug text;
+  v_workspace_id uuid;
+  v_short_id int;
+BEGIN
+  -- Резолв slug
+  IF v_domain LIKE '%.' || v_root_domain THEN
+    v_slug := substring(v_domain FROM 1 FOR length(v_domain) - length(v_root_domain) - 1);
+    SELECT w.id INTO v_workspace_id FROM workspaces w
+      WHERE w.slug = v_slug AND w.is_deleted = false LIMIT 1;
+  ELSE
+    -- custom_domain (если воркспейс подключил свой)
+    SELECT w.id, w.slug INTO v_workspace_id, v_slug
+    FROM workspaces w WHERE w.custom_domain = v_domain AND w.is_deleted = false LIMIT 1;
+  END IF;
+
+  IF v_workspace_id IS NULL THEN
+    RETURN QUERY SELECT NULL::uuid, v_slug, 'unknown_workspace'::text,
+      NULL::uuid, NULL::uuid, NULL::uuid, NULL::text, NULL::uuid, NULL::uuid,
+      NULL::uuid, NULL::uuid, NULL::boolean, NULL::text;
+    RETURN;
+  END IF;
+
+  -- 1. inbox@... — forward от сотрудника
+  IF v_local = 'inbox' THEN
+    RETURN QUERY SELECT v_workspace_id, v_slug, 'inbox'::text,
+      NULL::uuid, NULL::uuid, NULL::uuid, NULL::text, NULL::uuid, NULL::uuid,
+      NULL::uuid, NULL::uuid, NULL::boolean, NULL::text;
+    RETURN;
+  END IF;
+
+  -- 2. t+<N>@... — конкретный тред
+  IF v_local ~ '^t\+[0-9]+$' THEN
+    v_short_id := substring(v_local FROM 3)::int;
+    RETURN QUERY
+      SELECT v_workspace_id, v_slug, 'thread'::text,
+        pt.id, pt.project_id, NULL::uuid, NULL::text, NULL::uuid, NULL::uuid,
+        NULL::uuid, NULL::uuid, NULL::boolean, NULL::text
+      FROM project_threads pt
+      WHERE pt.workspace_id = v_workspace_id AND pt.short_id = v_short_id;
+    RETURN;
+  END IF;
+
+  -- 3. p+<N>@... — проект
+  IF v_local ~ '^p\+[0-9]+$' THEN
+    v_short_id := substring(v_local FROM 3)::int;
+    RETURN QUERY
+      SELECT v_workspace_id, v_slug, 'project'::text,
+        NULL::uuid, p.id, NULL::uuid, NULL::text, NULL::uuid, NULL::uuid,
+        NULL::uuid, NULL::uuid, NULL::boolean, NULL::text
+      FROM projects p
+      WHERE p.workspace_id = v_workspace_id AND p.short_id = v_short_id AND p.is_deleted = false;
+    RETURN;
+  END IF;
+
+  -- 4. Виртуальный адрес (support@, hh@, leads@...)
+  RETURN QUERY
+    SELECT v_workspace_id, v_slug, 'virtual'::text,
+      NULL::uuid, NULL::uuid, ev.id, ev.routing_mode,
+      ev.target_project_id, ev.target_thread_id,
+      ev.default_thread_template_id, ev.default_assignee_user_id,
+      ev.auto_reply_enabled, ev.auto_reply_text
+    FROM email_virtual_addresses ev
+    WHERE ev.workspace_id = v_workspace_id
+      AND ev.local_part = v_local
+      AND ev.is_active = true;
+
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT v_workspace_id, v_slug, 'unknown_local'::text,
+      NULL::uuid, NULL::uuid, NULL::uuid, NULL::text, NULL::uuid, NULL::uuid,
+      NULL::uuid, NULL::uuid, NULL::boolean, NULL::text;
+  END IF;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.resolve_inbound_email_address(text) TO service_role;
+```
+
+### 2.3 RPC `match_inbound_email` (для канала A — forward-режима)
+
+```sql
+-- Для resolution_type='inbox' нужен дополнительный матчинг,
+-- т.к. адрес-получатель не указывает на конкретный тред.
 CREATE OR REPLACE FUNCTION public.match_inbound_email(
   p_workspace_id uuid,
   p_from_address text,
@@ -288,7 +391,7 @@ CREATE OR REPLACE FUNCTION public.match_inbound_email(
 RETURNS TABLE (
   thread_id uuid,
   project_id uuid,
-  match_method text                                      -- 'in_reply_to' | 'references' | 'from_participant' | 'from_recent_thread' | 'none'
+  match_method text                     -- 'in_reply_to' | 'references' | 'from_recent' | 'none'
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -302,8 +405,7 @@ BEGIN
   IF p_in_reply_to IS NOT NULL THEN
     SELECT pm.thread_id, pm.project_id INTO v_thread_id, v_project_id
     FROM project_messages pm
-    WHERE pm.workspace_id = p_workspace_id
-      AND pm.email_message_id = p_in_reply_to
+    WHERE pm.workspace_id = p_workspace_id AND pm.email_message_id = p_in_reply_to
     LIMIT 1;
     IF FOUND THEN
       RETURN QUERY SELECT v_thread_id, v_project_id, 'in_reply_to'::text;
@@ -311,12 +413,11 @@ BEGIN
     END IF;
   END IF;
 
-  -- 2. По References (массив, проверяем каждый)
+  -- 2. По References
   IF p_references IS NOT NULL AND array_length(p_references, 1) > 0 THEN
     SELECT pm.thread_id, pm.project_id INTO v_thread_id, v_project_id
     FROM project_messages pm
-    WHERE pm.workspace_id = p_workspace_id
-      AND pm.email_message_id = ANY(p_references)
+    WHERE pm.workspace_id = p_workspace_id AND pm.email_message_id = ANY(p_references)
     ORDER BY pm.created_at DESC
     LIMIT 1;
     IF FOUND THEN
@@ -325,18 +426,17 @@ BEGIN
     END IF;
   END IF;
 
-  -- 3. По From — ищем недавний открытый тред где этот email фигурировал
-  -- (например, контакт-клиент в каком-то проекте → его дефолтный тред).
-  -- TODO: уточнить логику — например через project_participants с contact_email.
-  SELECT pm.thread_id, pm.project_id INTO v_thread_id, v_project_id
-  FROM project_messages pm
-  WHERE pm.workspace_id = p_workspace_id
-    AND pm.email_metadata->>'from_email' = p_from_address
-    AND pm.created_at > now() - interval '90 days'
-  ORDER BY pm.created_at DESC
+  -- 3. По From + recent activity (90 дней)
+  SELECT pt.id, pt.project_id INTO v_thread_id, v_project_id
+  FROM project_threads pt
+  WHERE pt.workspace_id = p_workspace_id
+    AND pt.email_last_external_address = p_from_address
+    AND pt.is_deleted = false
+    AND pt.updated_at > now() - interval '90 days'
+  ORDER BY pt.updated_at DESC
   LIMIT 1;
   IF FOUND THEN
-    RETURN QUERY SELECT v_thread_id, v_project_id, 'from_recent_thread'::text;
+    RETURN QUERY SELECT v_thread_id, v_project_id, 'from_recent'::text;
     RETURN;
   END IF;
 
@@ -348,53 +448,42 @@ $$;
 GRANT EXECUTE ON FUNCTION public.match_inbound_email(uuid, text, text, text[]) TO service_role;
 ```
 
-### 2.3 RPC: резолв inbox-адреса → workspace
+### 2.4 RPC `get_thread_email_address` (для UI)
 
 ```sql
-CREATE OR REPLACE FUNCTION public.resolve_inbox_workspace(p_address text)
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
+CREATE OR REPLACE FUNCTION public.get_thread_email_address(p_thread_id uuid)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE
-  v_local text := lower(split_part(p_address, '@', 1));
-  v_domain text := lower(split_part(p_address, '@', 2));
-  v_slug text;
-  v_workspace_id uuid;
+  v_short_id int;
+  v_workspace_slug text;
+  v_email_active boolean;
 BEGIN
-  -- inbox@<slug>.clientcase.app
-  IF v_local = 'inbox' AND v_domain LIKE '%.clientcase.app' THEN
-    v_slug := substring(v_domain FROM 1 FOR length(v_domain) - length('clientcase.app') - 1);
-    SELECT id INTO v_workspace_id FROM workspaces WHERE slug = v_slug AND is_deleted = false LIMIT 1;
-    RETURN v_workspace_id;
+  SELECT pt.short_id, w.slug, w.email_active
+  INTO v_short_id, v_workspace_slug, v_email_active
+  FROM project_threads pt
+  JOIN workspaces w ON w.id = pt.workspace_id
+  WHERE pt.id = p_thread_id;
+
+  IF v_short_id IS NULL OR v_workspace_slug IS NULL OR NOT v_email_active THEN
+    RETURN NULL;
   END IF;
 
-  -- Виртуальный адрес support@, hh@, etc.
-  -- Проверяем по email_virtual_addresses (даёт workspace_id)
-  SELECT ev.workspace_id INTO v_workspace_id
-  FROM email_virtual_addresses ev
-  JOIN workspaces w ON w.id = ev.workspace_id
-  WHERE ev.local_part = v_local
-    AND ev.is_active = true
-    AND v_domain LIKE w.slug || '.clientcase.app'
-  LIMIT 1;
-
-  RETURN v_workspace_id;
+  RETURN 't+' || v_short_id || '@' || v_workspace_slug || '.clientcase.app';
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.resolve_inbox_workspace(text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.get_thread_email_address(uuid) TO authenticated;
 ```
 
-### 2.4 Триггер исходящих
+### 2.5 Триггер исходящих
 
 ```sql
 CREATE OR REPLACE FUNCTION public.notify_telegram_on_new_message()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $function$
 BEGIN
-  -- Skip входящих/служебных источников
+  -- Skip входящих/служебных
   IF NEW.source IN ('telegram', 'telegram_service', 'bot_event',
                     'telegram_business', 'telegram_mtproto', 'wazzup',
                     'email', 'email_internal') THEN
@@ -404,25 +493,25 @@ BEGIN
   IF NEW.is_draft = true THEN RETURN NEW; END IF;
   IF NEW.has_attachments = true THEN RETURN NEW; END IF;
 
-  -- ВЕТКА: email_internal (если у треда есть привязанный email-ящик отправителя)
+  -- ВЕТКА: email_internal
+  -- (если у треда есть email-история ИЛИ привязан send_account)
   IF NEW.thread_id IS NOT NULL THEN
     DECLARE
       v_send_account_id uuid;
-      v_has_prior_email boolean;
+      v_is_email boolean;
     BEGIN
-      SELECT email_send_account_id INTO v_send_account_id
-      FROM project_threads WHERE id = NEW.thread_id;
+      SELECT pt.email_send_account_id,
+        (pt.email_send_account_id IS NOT NULL OR EXISTS (
+          SELECT 1 FROM project_messages
+          WHERE thread_id = NEW.thread_id
+            AND source = 'email_internal'
+            AND email_message_id IS NOT NULL
+          LIMIT 1
+        ))
+      INTO v_send_account_id, v_is_email
+      FROM project_threads pt WHERE pt.id = NEW.thread_id;
 
-      -- Тред email-канала — если у него привязан send_account ИЛИ был входящий email_internal
-      v_has_prior_email := v_send_account_id IS NOT NULL OR EXISTS (
-        SELECT 1 FROM project_messages
-        WHERE thread_id = NEW.thread_id
-          AND source = 'email_internal'
-          AND email_message_id IS NOT NULL
-        LIMIT 1
-      );
-
-      IF v_has_prior_email THEN
+      IF v_is_email THEN
         PERFORM net.http_post(
           url := 'https://zjatohckcpiqmxkmfxbs.supabase.co/functions/v1/email-internal-send',
           body := jsonb_build_object('message_id', NEW.id),
@@ -436,7 +525,7 @@ BEGIN
     END;
   END IF;
 
-  -- ... [остальные ветки telegram/wazzup/etc как раньше] ...
+  -- ... [остальные ветки telegram/wazzup как раньше] ...
 
   RETURN NEW;
 END;
@@ -447,13 +536,13 @@ $function$;
 
 ## 3. Edge Functions
 
-### 3.1 `postmark-webhook` — приём forward'ов
+### 3.1 `postmark-webhook` — единый приём
 
-**Где:** Next.js API route `src/app/api/postmark-webhook/route.ts` (нужен Node runtime для `mailparser`).
+**Где:** Next.js API route `src/app/api/postmark-webhook/route.ts` (Node runtime для `mailparser`).
 
-**Защита:** Basic Auth в URL.
+**Защита:** Basic Auth.
 
-**Поток:**
+**Псевдокод:**
 
 ```typescript
 export const dynamic = 'force-dynamic'
@@ -461,152 +550,203 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
-  // 1. Auth check
-  // 2. Parse Postmark JSON, decode RawEmail
+  // 1. Auth check (Basic Auth header)
+  // 2. Parse Postmark payload, decode RawEmail
   const parsed = await simpleParser(rawEmail)
 
   // 3. Дедуп по Message-ID
   // 4. Save raw MIME в Storage
 
-  // 5. Резолв воркспейса по To-адресу (inbox@<slug>.clientcase.app)
-  const toAddress = parsed.to?.value[0]?.address  // или ToFull[0].Email
-  const workspaceId = await resolveInboxWorkspace(toAddress)
-
-  // 6. Главный нюанс: оригинальный From — это форвард от сотрудника, а не от клиента.
-  //    Реальный отправитель внутри пересланного MIME → нужно извлечь.
-  const realFrom = extractOriginalFrom(parsed)
-  // см. ниже helper extractOriginalFrom
-
-  // 7. Match через RPC
-  const match = await supabase.rpc('match_inbound_email', {
-    p_workspace_id: workspaceId,
-    p_from_address: realFrom.address,
-    p_in_reply_to: parsed.inReplyTo,
-    p_references: parsed.references,
+  // 5. Резолв адреса получателя
+  const toAddress = parsed.to?.value[0]?.address
+  const { data: resolution } = await supabase.rpc('resolve_inbound_email_address', {
+    p_address: toAddress,
   }).single()
 
-  // 8. Если не нашли тред — записать в email_inbound_unmatched
-  if (match.match_method === 'none') {
-    await supabase.from('email_inbound_unmatched').insert({...})
-    return ok()
+  if (!resolution || resolution.resolution_type === 'unknown_workspace') {
+    return ok()  // не наш — игнорируем
   }
 
-  // 9. INSERT project_messages
-  await supabase.from('project_messages').insert({
-    thread_id: match.thread_id,
-    project_id: match.project_id,
-    workspace_id: workspaceId,
+  let threadId: string | null = null
+  let projectId: string | null = null
+  const fromAddress = parsed.from?.value[0]?.address
+
+  switch (resolution.resolution_type) {
+    case 'thread':
+      // Прямой адрес t+<N>@ — сразу знаем тред
+      threadId = resolution.thread_id
+      projectId = resolution.project_id
+      break
+
+    case 'project':
+      // p+<N>@ — найти thread по From или создать новый
+      const { data: existingThread } = await supabase
+        .from('project_threads')
+        .select('id')
+        .eq('project_id', resolution.project_id)
+        .eq('email_last_external_address', fromAddress)
+        .eq('is_deleted', false)
+        .maybeSingle()
+      if (existingThread) {
+        threadId = existingThread.id
+      } else {
+        // Создать новый тред в проекте
+        const { data: newThread } = await supabase.from('project_threads').insert({
+          project_id: resolution.project_id,
+          workspace_id: resolution.workspace_id,
+          name: parsed.subject ?? `Email от ${fromAddress}`,
+          type: 'chat',
+          email_subject_root: parsed.subject,
+          email_last_external_address: fromAddress,
+        }).select('id').single()
+        threadId = newThread!.id
+      }
+      projectId = resolution.project_id
+      break
+
+    case 'virtual':
+      // Виртуальный адрес — применить routing_mode
+      // ... аналогично project, но с правилом из virtual_addresses
+      break
+
+    case 'inbox':
+      // Forward от сотрудника — извлечь оригинального отправителя из MIME
+      const realFrom = extractOriginalFrom(parsed) ?? { address: fromAddress }
+
+      // Match через RPC
+      const { data: match } = await supabase.rpc('match_inbound_email', {
+        p_workspace_id: resolution.workspace_id,
+        p_from_address: realFrom.address,
+        p_in_reply_to: parsed.inReplyTo,
+        p_references: parsed.references,
+      }).single()
+
+      if (match.match_method !== 'none') {
+        threadId = match.thread_id
+        projectId = match.project_id
+      } else {
+        // Не нашли — в unmatched
+        await saveUnmatched({...})
+        return ok()
+      }
+      break
+
+    case 'unknown_local':
+      await saveUnmatched({...})
+      return ok()
+  }
+
+  // 6. INSERT project_messages (одинаково для всех каналов)
+  const { data: msg } = await supabase.from('project_messages').insert({
+    thread_id: threadId,
+    project_id: projectId,
+    workspace_id: resolution.workspace_id,
     source: 'email_internal',
-    content: parsed.html ?? parsed.text,
-    sender_name: realFrom.name,
+    content: parsed.html ?? parsed.text ?? '',
+    sender_name: parsed.from?.value[0]?.name ?? fromAddress,
     sender_role: 'Email',
+    has_attachments: (parsed.attachments?.length ?? 0) > 0,
     email_message_id: parsed.messageId,
     email_in_reply_to: parsed.inReplyTo,
     email_references: parsed.references,
     email_subject: parsed.subject,
     email_raw_mime_path: rawPath,
     email_postmark_id: payload.MessageID,
-    has_attachments: (parsed.attachments?.length ?? 0) > 0,
-  })
+  }).select('id').single()
 
-  // 10. Загрузка вложений
-  // 11. Обновить thread.email_last_external_address = realFrom.address
+  // 7. Загрузка вложений + обновить thread.email_last_external_address
   return ok()
 }
 
 /**
- * extractOriginalFrom:
- *   Forward в Gmail оборачивает оригинальное письмо в новый MIME, но обычно
- *   оригинальное From сохраняется как часть body или в заголовке Reply-To.
+ * extractOriginalFrom: извлекает оригинального отправителя из forwarded MIME.
+ * Стратегия:
+ * 1. Если Reply-To !== From и Reply-To не наш inbox — берём Reply-To.
+ * 2. Иначе парсим тело forwarded-блока (regex по «From: <address>»).
+ * 3. Иначе fallback на From.
  *
- *   Для Gmail-forward: From = ivan@petrov-firma.com (отправитель форварда),
- *                      Reply-To = client@example.com (если включена опция).
- *   Также Gmail добавляет в body: «---------- Forwarded message ---------»
- *   с заголовками From/To/Subject.
- *
- *   Стратегия:
- *   1. Если Reply-To !== From и Reply-To не наш inbox — берём Reply-To.
- *   2. Иначе — парсим тело forwarded-блока (regex по «From: <...>»).
- *   3. Иначе — fallback на From заголовка (ивановский ящик).
+ * Стартуем с Gmail (универсальный формат). Для Yandex/Outlook — добавляем по мере необходимости.
  */
 ```
 
-**Этот helper — самая хитрая часть.** Разные почтовые системы заворачивают forward по-разному. Для каждого провайдера (Gmail, Yandex, Outlook) — свой parser. Стартуем с Gmail, остальное добавляется по мере необходимости.
-
-### 3.2 `email-internal-send` — отправка через ящик сотрудника
+### 3.2 `email-internal-send` — выбор метода отправки
 
 **Где:** Supabase Edge Function `--no-verify-jwt`, защита `x-internal-secret`.
 
-**Поток:**
+**Псевдокод:**
 
 ```typescript
 Deno.serve(async (req) => {
   if (!await requireInternalSecret(req)) return jsonRes({ error: 'Unauthorized' }, 401)
-
   const { message_id } = await req.json()
-  const supabase = getServiceClient()
 
-  // 1. Загрузить сообщение + send_account
+  // 1. Загрузить сообщение + контекст
   const { data: msg } = await supabase.from('project_messages').select(`
     id, thread_id, content, sender_name,
-    email_send_account_id, email_subject, email_in_reply_to, email_references,
-    project_threads (email_subject_root, email_last_external_address, email_send_account_id),
+    email_send_account_id, email_send_method, email_subject, email_in_reply_to, email_references,
+    project_threads (email_subject_root, email_last_external_address, email_send_account_id, email_send_method, short_id),
+    workspaces (slug, email_active),
     message_attachments (file_name, mime_type, storage_path)
   `).eq('id', message_id).single()
 
-  // 2. Определяем sendAccount — из сообщения или из треда
-  const sendAccountId = msg.email_send_account_id ?? msg.project_threads.email_send_account_id
-  if (!sendAccountId) return jsonRes({ skip: true })
+  // 2. Определить method
+  // Priority: message-level → thread-level → workspace default → 'employee_mailbox' if account else 'system_postmark'
+  const sendMethod = msg.email_send_method
+    ?? msg.project_threads.email_send_method
+    ?? (msg.email_send_account_id ?? msg.project_threads.email_send_account_id ? 'employee_mailbox' : 'system_postmark')
 
-  const { data: account } = await supabase.from('email_accounts')
-    .select('*').eq('id', sendAccountId).single()
-
-  // 3. Определяем получателя
+  // 3. Подготовить общие поля
   const toAddress = msg.project_threads.email_last_external_address
-  if (!toAddress) return jsonRes({ error: 'No recipient' }, 400)
-
-  // 4. Subject + Headers
   const subject = msg.project_threads.email_subject_root
     ? `Re: ${msg.project_threads.email_subject_root}`
     : msg.email_subject
-
-  const messageIdHeader = `<${crypto.randomUUID()}@${account.email.split('@')[1]}>`
-
-  // 5. Конвертация HTML
   const safeHtml = sanitizeAndInlineStyles(msg.content)
+  const messageIdHeader = `<${crypto.randomUUID()}@<домен по методу>>`
 
-  // 6. Отправка по типу подключения
-  let postmarkId: string | undefined
-  if (account.auth_type === 'gmail_oauth') {
-    // Используем существующую логику gmail-send (refactor: вынести в _shared)
-    const result = await sendViaGmail({
-      account,
-      to: toAddress,
-      subject,
-      html: safeHtml,
-      attachments: msg.message_attachments,
-      inReplyTo: msg.email_in_reply_to,
-      references: msg.email_references,
-      messageIdHeader,
+  // 4. Развилка по методу отправки
+  if (sendMethod === 'employee_mailbox') {
+    const sendAccountId = msg.email_send_account_id ?? msg.project_threads.email_send_account_id
+    const { data: account } = await supabase.from('email_accounts')
+      .select('*').eq('id', sendAccountId).single()
+
+    if (account.auth_type === 'gmail_oauth') {
+      await sendViaGmail({ account, to, subject, html, attachments, messageIdHeader, ... })
+    } else if (account.auth_type === 'smtp_password') {
+      await sendViaSmtp({ account, to, subject, html, attachments, messageIdHeader, ... })
+    }
+  } else {
+    // system_postmark — отправка через Postmark API с From t+<short>@...
+    const fromAddress = `t+${msg.project_threads.short_id}@${msg.workspaces.slug}.clientcase.app`
+    const attachmentsB64 = await prepareAttachmentsBase64(msg.message_attachments)
+
+    const postmarkRes = await fetch('https://api.postmarkapp.com/email', {
+      method: 'POST',
+      headers: {
+        'X-Postmark-Server-Token': Deno.env.get('POSTMARK_SERVER_TOKEN'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        From: `"${msg.sender_name}" <${fromAddress}>`,
+        ReplyTo: fromAddress,
+        To: toAddress,
+        Subject: subject,
+        HtmlBody: safeHtml,
+        TextBody: htmlToPlainText(safeHtml),
+        Headers: [
+          { Name: 'Message-ID', Value: messageIdHeader },
+          ...(msg.email_in_reply_to ? [{ Name: 'In-Reply-To', Value: msg.email_in_reply_to }] : []),
+          ...(msg.email_references?.length ? [{ Name: 'References', Value: msg.email_references.join(' ') }] : []),
+        ],
+        Attachments: attachmentsB64,
+      }),
     })
-    postmarkId = result.gmail_message_id
-  } else if (account.auth_type === 'smtp_password') {
-    await sendViaSmtp({
-      account,
-      to: toAddress,
-      subject,
-      html: safeHtml,
-      attachments: msg.message_attachments,
-      inReplyTo: msg.email_in_reply_to,
-      references: msg.email_references,
-      messageIdHeader,
-    })
+    // ... обработать ответ
   }
 
-  // 7. Сохранить идентификаторы и статус
+  // 5. Сохранить идентификаторы
   await supabase.from('project_messages').update({
     email_message_id: messageIdHeader,
-    email_send_account_id: sendAccountId,
+    email_send_method: sendMethod,
     email_delivery_status: 'sent',
   }).eq('id', message_id)
 
@@ -614,56 +754,44 @@ Deno.serve(async (req) => {
 })
 ```
 
-**Helpers `sendViaGmail` и `sendViaSmtp`:**
-- `sendViaGmail` — переиспользуем существующий `gmail-send`. Делаем shared module.
-- `sendViaSmtp` — новый. Используем `npm:nodemailer` (Deno поддерживает через `npm:` префикс).
+### 3.3 `email-bounce-webhook` — статусы доставки
 
-### 3.3 Функция активации воркспейса
+Postmark Bounce/SpamComplaint/Open/Click events. Обновляет `email_delivery_status`. Нужен только для канала B (system_postmark) — для канала A (employee_mailbox) bounce приходит на ящик сотрудника отдельно.
 
-Расширяем `provision-domain`:
+### 3.4 Расширение `provision-domain`: type='email'
 
-```typescript
-// type='email' — настройка приёма для воркспейса
-if (body.type === 'email') {
-  // 1. Postmark API: добавить Sender Domain <slug>.clientcase.app (для inbound)
-  // 2. Cloudflare API: добавить MX <slug>.clientcase.app → inbound.postmarkapp.com
-  // 3. Сохранить в workspace_email_settings: inbox_address = inbox@<slug>.clientcase.app
-  // 4. INSERT system project «Email inbox» если notify_managers_on_unmatched
-}
-```
+Добавляет `<slug>.clientcase.app` как Sender Domain в Postmark, настраивает DNS (MX + DKIM + SPF + Return-Path) через Cloudflare API. Опрашивает Postmark пока не verified, обновляет `workspaces.email_active=true`.
 
-### 3.4 Функция настройки forward (для каждого аккаунта)
+### 3.5 `connect-email-account` — подключение ящика сотрудника
 
-Новый endpoint `connect-email-account`:
-1. **Gmail OAuth**: запускает OAuth-flow, получает токены.
-2. **SMTP**: принимает host/port/username/password, тестирует подключение.
-3. **Auto-setup forward** (для Gmail OAuth — мы можем сами добавить forward через API):
-   - `POST gmail.googleapis.com/gmail/v1/users/me/settings/forwardingAddresses` с `forwardingEmail = inbox@<slug>.clientcase.app`.
-   - Дождаться письма с кодом (Postmark примет, мы выловим).
-   - `POST .../verify` с кодом.
-   - `PUT .../settings/forwarding` `{enabled: true, emailAddress: ...}`.
-4. **Вручную** (для SMTP — мы не управляем чужой почтой):
-   - Показать инструкцию: «Зайдите в настройки Yandex Mail → Правила → Создать правило → Пересылать на inbox@rs.clientcase.app».
+Новая Edge Function:
+- Gmail OAuth: возвращает auth_url для редиректа
+- SMTP: принимает host/port/credentials, тестирует подключение
+- При успехе создаёт запись в `email_accounts`
+- **Auto-setup forward для Gmail OAuth**:
+  - Через Gmail API добавляет `inbox@<slug>.clientcase.app` как forwarding address
+  - Перехватывает confirmation code в нашем postmark-webhook
+  - Подтверждает forward через Gmail API
+  - Включает forward
+  - Status: pending_verification → verified
 
 ---
 
 ## 4. Расширение клиентского кода
 
-### 4.1 messengerService — отправка email
-
-В существующем `messengerService.ts` добавить ветку:
+### 4.1 messengerService
 
 ```typescript
-// Если у треда thread.email_send_account_id заполнен И у нас есть вложения —
-// инициируем отправку через email-internal-send (как для wazzup и telegram-attachments).
+// При has_attachments — вызвать email-internal-send для email-тредов
 if (hasAnyAttachments && params.threadId) {
   const { data: thread } = await supabase
     .from('project_threads')
-    .select('email_send_account_id')
+    .select('email_send_account_id, email_send_method')
     .eq('id', params.threadId).maybeSingle()
 
-  if (thread?.email_send_account_id) {
-    await supabase.auth.getSession()
+  // Тред считается email-каналом если есть send_account ИЛИ есть email-сообщения
+  const isEmailThread = thread?.email_send_account_id || /* проверка на email-историю */
+  if (isEmailThread) {
     supabase.functions.invoke('email-internal-send', {
       body: { message_id: message.id, attachments_only: true },
     }).catch((err) => logger.error('Email send failed:', err))
@@ -671,161 +799,167 @@ if (hasAnyAttachments && params.threadId) {
 }
 ```
 
-### 4.2 UI: «Подключить почту» — в профиле сотрудника
+### 4.2 UI: «Подключить почту» в профиле
 
-`/profile/email` или `/workspaces/[id]/settings/integrations` (для voркспейса):
+`/profile/email` (новая страница):
 
 ```
-[ ] Gmail (через OAuth)         → кнопка «Подключить»
-[ ] Яндекс / Mail.ru / корп     → кнопка «Подключить SMTP»
-                                   → диалог: email, server, port, password
-[ ] Microsoft 365               → (отложено)
-
 Подключённые ящики:
-  - ivan@petrov-firma.com (Gmail OAuth)         [✓ Forward активен]   [Удалить]
-  - sales@petrov-firma.com (SMTP yandex.ru)     [⚠ Настройте forward] [Инструкция]
-```
 
-**Под каждым ящиком — раздел «Forward»:**
-- Если Gmail OAuth → автоматически настраивается, показывается статус.
-- Если SMTP → показывается инструкция: «В настройках Яндекс-почты создайте правило: пересылать всё → `inbox@rs.clientcase.app`. Затем нажмите Проверить ниже».
+▸ ivan@petrov-firma.com (Gmail)
+  ✓ Forward активен
+  Подпись: [Текст подписи...]
+  [Отключить]
+
+▸ sales@petrov-firma.com (SMTP yandex.ru)
+  ⚠ Forward не настроен
+  [Показать инструкцию по настройке]
+
+[+ Подключить Gmail]   [+ Подключить SMTP-ящик]
+```
 
 ### 4.3 UI: вкладка «Email» в IntegrationsTab воркспейса
 
 Owner видит:
-- **Inbox-адрес воркспейса**: `inbox@rs.clientcase.app` (с кнопкой копирования).
-- **Список подключённых ящиков сотрудников** — read-only обзор.
-- **Виртуальные адреса** (если используются) — CRUD как в первой версии плана.
-- **Нераспознанные письма** — ссылка на отдельную страницу.
-- **Активация Postmark** — кнопка «Активировать email» (если ещё не активировано).
+- **Активация Postmark**: статус DKIM/SPF/MX/Active. Кнопка «Активировать» если ещё нет.
+- **Inbox-адрес воркспейса**: `inbox@rs.clientcase.app` (с кнопкой копирования) — для forward'ов.
+- **Дефолт метод отправки**: select 'employee_mailbox' / 'system_postmark' / 'auto'.
+- **Подключённые ящики сотрудников**: read-only обзор.
+- **Виртуальные адреса**: CRUD.
+- **Нераспознанные письма**: счётчик + ссылка.
 
 ### 4.4 UI: композер для email-тредов
 
-Если тред привязан к email (`email_send_account_id IS NOT NULL` или есть `email_internal` сообщения):
-- Сверху подсказка: «Отправляется как email с **ivan@petrov-firma.com** клиенту **client@example.com**».
-- Поле «Тема» (Subject) — для **первого** письма треда. После — авто-`Re:`.
-- Полноценный rich-text композер.
+Когда тред — email (есть `email_internal` сообщения или активный send_account):
 
-### 4.5 UI: индикатор канала в шапке треда
+```
+[Тема: ____________]  ← только для первого письма
 
-Аналогично Telegram-ссылке — иконка email + email-адрес контакта-клиента.
+[ HTML-композер ]
+
+От: 🔘 ivan@petrov-firma.com (мой Gmail)        ← дефолт если есть подключённый
+    ⚪ t+15@rs.clientcase.app (адрес треда)      ← опция
+
+[Отправить]  [Прикрепить]
+```
+
+### 4.5 UI: индикатор email в шапке треда
+
+```
+📧 Email активен
+   Адрес треда:    t+15@rs.clientcase.app   [📋 Скопировать]
+   Адрес проекта:  p+3@rs.clientcase.app    [📋]
+   Контакт:        client@example.com       (последний отправитель)
+```
+
+### 4.6 Раздел «Нераспознанные письма»
+
+Страница `/workspaces/[id]/inbox/unmatched` — для менеджеров:
+- Список писем из `email_inbound_unmatched` без `resolved_at`
+- Действия: «Привязать к треду» (поиск треда), «Создать тред в проекте», «Удалить как спам»
 
 ---
 
 ## 5. Безопасность
 
-1. **SMTP-пароли в БД** — шифровать через pg_sodium. Расшифровка только в Edge Function (через RPC с проверкой прав).
+1. **SMTP-пароли** — шифрование через pg_sodium. Расшифровка только в Edge Function.
 2. **Postmark webhook** — Basic Auth.
-3. **HTML-санитизация** — DOMPurify на входящие (рендер) и исходящие (отправка).
-4. **Rate limiting на отправку** — не более 200 писем/мин на воркспейс.
-5. **RLS** — `email_accounts` доступен только владельцу аккаунта + менеджерам воркспейса. SMTP-пароли никогда не возвращаются клиенту.
-6. **Валидация forward-адреса** — проверка что forward действительно работает (через тест-письмо при активации).
+3. **HTML-санитизация** — DOMPurify (входящие при рендере, исходящие при отправке).
+4. **Rate limiting** — на отправку: 200 писем/мин на воркспейс.
+5. **Storage** — bucket `email-raw-mime` приватный, signed URLs только участникам.
+6. **RLS** — `email_accounts` доступен только владельцу + менеджерам, пароли не возвращаются клиенту.
+7. **Антиспам** — Postmark проставляет `SpamScore`, при превышении порога → trash.
 
 ---
 
 ## 6. Phase breakdown
 
 ### Phase 0 — Postmark setup (1 час)
-
-- [ ] Регистрация на postmarkapp.com.
-- [ ] Создать Server `clientcase-prod` (только inbound).
-- [ ] Получить Account API Token + Server Token + Webhook Auth → в Supabase secrets.
-- [ ] План — Free → Pro по мере роста.
+- [ ] Регистрация, Server, Tokens в Supabase secrets.
 
 ### Phase 1 — БД (0.5 дня)
+- [ ] Миграция `20260506_email_hybrid_setup.sql`.
+- [ ] RPC `resolve_inbound_email_address`, `match_inbound_email`, `get_thread_email_address`.
+- [ ] Расширение триггера.
 
-- [ ] Применить миграцию `20260506_email_planfix_setup.sql`.
-- [ ] Применить RPC `match_inbound_email`, `resolve_inbox_workspace`.
-- [ ] Расширить триггер `notify_telegram_on_new_message`.
+### Phase 2 — Provision: type='email' (1 день)
+- [ ] `/opt/clientcase-provision/provision.sh` — команда `email-setup <slug>`.
+- [ ] Postmark API + Cloudflare API.
+- [ ] Edge Function `provision-domain` ветка email.
 
-### Phase 2 — Provision-сервис: email-setup (1 день)
+### Phase 3 — Postmark webhook (1.5 дня)
+- [ ] `src/app/api/postmark-webhook/route.ts`.
+- [ ] Helper `extractOriginalFrom` для Gmail-forward'ов.
+- [ ] Маршрутизация через `resolve_inbound_email_address` + `match_inbound_email`.
+- [ ] Тест: forward из личного Gmail + прямой email на `t+1@`.
 
-- [ ] Расширить `/opt/clientcase-provision/provision.sh` командой `email-setup <slug>`.
-- [ ] Расширить Edge Function `provision-domain` типом `email`.
-- [ ] Добавить `POSTMARK_ACCOUNT_TOKEN`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID` в secrets.
-- [ ] Тест на тестовом домене.
+### Phase 4 — Подключение ящика (2 дня)
+- [ ] Расширение `email_accounts` (через миграцию в Phase 1).
+- [ ] Edge Function `connect-email-account` (OAuth + SMTP).
+- [ ] Refactor `gmail-send` → shared `sendViaGmail`.
+- [ ] Реализация `sendViaSmtp` через nodemailer.
+- [ ] UI «Мои ящики» в профиле.
 
-### Phase 3 — Postmark inbound webhook (1-2 дня)
+### Phase 5 — Auto-setup forward (1 день)
+- [ ] Gmail API: добавление + verification forward'а.
+- [ ] Перехват confirmation code в postmark-webhook.
 
-- [ ] `src/app/api/postmark-webhook/route.ts` — приём, парсинг, маршрутизация.
-- [ ] Helper `extractOriginalFrom` — извлечение реального отправителя из forward-MIME (Gmail-вариант).
-- [ ] Тест: настроить forward в личном Gmail на тестовый inbox, отправить письмо себе → проверить тред.
-
-### Phase 4 — Подключение ящика сотрудника (2 дня)
-
-- [ ] Расширить таблицу `email_accounts` (миграция в Phase 1).
-- [ ] Edge Function `connect-email-account` (OAuth + SMTP setup).
-- [ ] Refactor `gmail-send` → переиспользуемая функция `sendViaGmail` в `_shared/`.
-- [ ] Реализовать `sendViaSmtp` через `nodemailer`.
-- [ ] UI: страница «Мои подключённые ящики» в профиле.
-
-### Phase 5 — Auto-setup forward для Gmail (1 день)
-
-- [ ] При подключении Gmail-аккаунта автоматически добавить forward на `inbox@<slug>.clientcase.app`.
-- [ ] Перехватить confirmation-письмо в нашем Postmark webhook → распарсить код → подтвердить через Gmail API.
-- [ ] Status: pending_verification → verified.
-
-### Phase 6 — Edge Function: email-internal-send (1 день)
-
-- [ ] `supabase/functions/email-internal-send/index.ts`.
-- [ ] Поддержка обоих auth-типов (Gmail OAuth, SMTP).
-- [ ] Reply-threading через In-Reply-To/References.
+### Phase 6 — `email-internal-send` с обоими методами (1 день)
+- [ ] Edge Function с веткой employee_mailbox vs system_postmark.
 - [ ] Frontend invoke в messengerService для attachments.
 
-### Phase 7 — UI треда и настроек (2-3 дня)
+### Phase 7 — Bounce webhook (0.5 дня)
+- [ ] `email-bounce-webhook` для системных нотификаций (только канал B).
 
-- [ ] Композер с полем Subject для email-тредов.
-- [ ] Индикатор email-канала в шапке.
+### Phase 8 — UI треда и настроек (2-3 дня)
+- [ ] Композер с полем Subject и toggle «От».
+- [ ] Индикатор email-канала в шапке треда.
 - [ ] Раздел «Нераспознанные письма».
-- [ ] Виртуальные адреса (опциональная фича).
-- [ ] Активация email на воркспейсе (вкладка «Домен» расширяется).
+- [ ] Виртуальные адреса CRUD.
+- [ ] Активация email на воркспейсе.
 
-### Phase 8 — SMTP-инструкции (0.5 дня)
+### Phase 9 — SMTP-инструкции (0.5 дня)
+- [ ] Готовые инструкции для Yandex, Mail.ru, корп.
 
-- [ ] Готовые инструкции по настройке forward для популярных провайдеров (Yandex, Mail.ru, корп).
-
-**Итого: ~10-12 рабочих дней.**
+**Итого: ~10-11 рабочих дней.**
 
 ---
 
 ## 7. Открытые вопросы
 
-1. **Forward-адрес: один на воркспейс или один на сотрудника?**
-   - Один (`inbox@rs.clientcase.app`) — проще, но если forward сломается — все сотрудники без писем.
-   - Per-employee (`inbox+ivan@rs.clientcase.app`) — изоляция, плюс мы знаем кто форвардит.
-   - **Рекомендую: один на воркспейс**, в `extractOriginalFrom` определяем сотрудника по From-заголовку (а не по To).
+1. **Forward-адрес: один на воркспейс или per-employee?**
+   Один (`inbox@<slug>.clientcase.app`). Сотрудника определяем из From-заголовка. Если нужно изолировать — потом добавим `inbox+<employee_id>@`.
 
-2. **Для SMTP-провайдеров без OAuth — как хранить пароль?**
-   - Шифровать через pg_sodium с `app.settings.encryption_key`.
-   - **Вариант лучше:** App-passwords (Yandex, Yahoo, Apple) — это отдельные пароли только для IMAP/SMTP, можно отозвать. Подсказывать пользователю в UI.
+2. **SMTP без OAuth — как хранить пароли?**
+   Через pg_sodium. Рекомендуем юзерам app-passwords (Yandex, Yahoo, Apple).
 
-3. **Нужен ли IMAP в дополнение к SMTP?**
-   - SMTP — только отправка.
-   - IMAP — нужен для синхронизации «Отправленных» (письмо из ClientCase должно появиться в папке Sent у сотрудника).
-   - Gmail SMTP при отправке через `smtp.gmail.com` НЕ кладёт письмо в Sent. Нужен IMAP-add для этого.
-   - **Рекомендую:** да, добавить IMAP-параметры для SMTP-аккаунтов.
+3. **IMAP в дополнение к SMTP?**
+   Да — для копирования Sent в папку «Отправленные» сотрудника. Без этого в Gmail ящике не будет видно отправленных через ClientCase писем.
 
-4. **Что с групповыми клиентами (Cc/Bcc)?**
-   - Если письмо с Cc — сохраняем все адреса. Отвечать только в To или всем?
-   - **Рекомендую:** при ответе показывать чекбокс «Ответить всем» (Reply All).
+4. **Cc / Bcc?**
+   Сохраняем все адреса. В композере — чекбокс «Ответить всем».
 
-5. **Дубли при forward**
-   - Если сотрудник в копии (Cc), письмо может прилететь и через основной forward, и через персональный.
-   - Дедуп через `email_message_id` (уникальный индекс).
+5. **Дубли при forward + прямой адрес одновременно**
+   Дедуп через unique индекс на `email_message_id`.
 
-6. **Bounce-нотификации**
-   - Если SMTP-отправка не доставилась, Gmail/Yandex шлёт «Mail Delivery Failed» обратно сотруднику.
-   - Это письмо тоже forward'ится → попадает к нам → можно распарсить и пометить наше отправленное как `bounced`.
-   - Edge case, не критично на старте.
+6. **Bounce при отправке через employee_mailbox**
+   Bounce приходит на ящик сотрудника → forward'ится → попадает в наш webhook → можно распарсить и пометить `email_delivery_status='bounced'`. Edge case, не критично на старте.
+
+7. **Subject у первого письма из сервиса**
+   Если в композере не введён → модалка «введите тему».
+
+8. **Headers `Auto-Submitted`** для auto-reply — добавлять, чтобы не было петель.
 
 ---
 
 ## 8. Метрики успеха
 
-- ✅ 95%+ ответов клиентов автоматически попадают в правильный тред (через In-Reply-To).
-- ✅ Доставляемость исходящих равна доставляемости через Gmail/SMTP сотрудника (без нашего влияния).
-- ✅ Подключение нового ящика ≤ 5 мин (включая forward-настройку).
-- ✅ Latency приёма входящего ≤ 30 секунд (forward + Postmark + наш webhook).
+- ✅ 95%+ ответов клиентов автоматически попадают в правильный тред.
+- ✅ Прямой адрес (t+/p+/virtual) — 100% попадают в правильный тред (адрес однозначен).
+- ✅ Доставляемость через employee_mailbox — равна штатной (через Gmail/SMTP сотрудника).
+- ✅ Доставляемость через system_postmark — ≥ 98%.
+- ✅ Подключение нового ящика ≤ 5 мин (включая forward).
+- ✅ Активация email на воркспейсе ≤ 10 мин (DNS-верификация).
 
 ---
 
@@ -834,21 +968,23 @@ Owner видит:
 - ❌ Custom-домены клиентов для email.
 - ❌ Маркетинговые рассылки.
 - ❌ PGP/S/MIME.
-- ❌ Поиск по архиву писем.
-- ❌ Sync контактов в CRM-карточки.
+- ❌ Полнотекстовый поиск.
+- ❌ CRM-карточки контактов из email.
 - ❌ Microsoft 365 OAuth.
 - ❌ Шаблоны исходящих писем.
+- ❌ Multi-user inbox (общий ящик с распределением между сотрудниками).
 
 ---
 
 ## 10. Готовность
 
-Документ покрывает:
-- ✅ Planfix-style модель целиком (отправка через ящик сотрудника, приём через forward)
-- ✅ Полные SQL-миграции с расширением existing `email_accounts`
-- ✅ RPC матчинга через In-Reply-To/References/From
-- ✅ Псевдокод webhook (Next.js API route с mailparser) и send (Deno Edge Function с nodemailer)
+Документ покрывает гибридную модель:
+- ✅ Канал A — Planfix-style через подключённые ящики
+- ✅ Канал B — прямые адреса (t+/p+/virtual) через Postmark
+- ✅ Полные SQL-миграции
+- ✅ Все RPC с подробной логикой резолва и матчинга
+- ✅ Псевдокод обоих edge functions с обработкой всех типов адресов
 - ✅ Phase breakdown с конкретными задачами
-- ✅ Безопасность (шифрование SMTP-паролей, Basic Auth webhook'ов)
+- ✅ 8 открытых вопросов
 
-**Готов начать с Phase 0 после твоего OK.**
+**Готов начать с Phase 0 после OK.**
