@@ -330,21 +330,33 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
   }
 
   if (hasAnyAttachments && params.threadId) {
-    // Для Wazzup-треда триггер БД пропускает сообщения с has_attachments=true
-    // (как и для TG). Поэтому здесь сами инициируем отправку — wazzup-send
-    // подтянет файлы из message_attachments и создаст signed URLs.
-    const { data: wazzupThread } = await supabase
+    // Для Wazzup / MTProto-тредов триггер БД пропускает сообщения с
+    // has_attachments=true (как и для группового TG). Поэтому здесь сами
+    // инициируем отправку — соответствующая edge function подтянет файлы из
+    // message_attachments и создаст signed URLs / зальёт через MTProto.
+    const { data: extThread } = await supabase
       .from('project_threads')
-      .select('wazzup_channel_id')
+      .select('wazzup_channel_id, mtproto_session_user_id')
       .eq('id', params.threadId)
       .maybeSingle()
 
-    if (wazzupThread && (wazzupThread as { wazzup_channel_id?: string }).wazzup_channel_id) {
+    const extRow = extThread as
+      | { wazzup_channel_id?: string | null; mtproto_session_user_id?: string | null }
+      | null
+
+    if (extRow?.wazzup_channel_id) {
       await supabase.auth.getSession()
       supabase.functions
         .invoke('wazzup-send', { body: { message_id: message.id, attachments_only: true } })
         .catch((err) => {
           logger.error('Failed to send attachments to Wazzup:', err)
+        })
+    } else if (extRow?.mtproto_session_user_id) {
+      await supabase.auth.getSession()
+      supabase.functions
+        .invoke('telegram-mtproto-send', { body: { message_id: message.id } })
+        .catch((err) => {
+          logger.error('Failed to send attachments via MTProto:', err)
         })
     }
   }

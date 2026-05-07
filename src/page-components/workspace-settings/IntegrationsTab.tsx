@@ -1393,16 +1393,18 @@ function MTProtoConnectDialog({
         body: { op: 'verify-code', code: code.trim() },
       })
       if (error) throw error
-      const result = data as { ok?: boolean; needs_password?: boolean; error?: string }
+      const result = data as { signed_in?: boolean; requires_2fa?: boolean; error?: string }
       if (result?.error) throw new Error(result.error)
-      if (result?.needs_password) {
+      if (result?.requires_2fa) {
         setStep('password')
         toast.info('Введите пароль 2FA')
-      } else {
+      } else if (result?.signed_in) {
         setStep('done')
         toast.success('Telegram подключён')
         onConnected()
         setTimeout(() => onOpenChange(false), 800)
+      } else {
+        throw new Error('Неожиданный ответ сервера')
       }
     } catch (err) {
       toast.error('Ошибка: ' + (err as Error).message)

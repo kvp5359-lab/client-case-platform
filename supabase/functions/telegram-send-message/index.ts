@@ -37,6 +37,51 @@ function isTelegramPhotoMime(mime: unknown): boolean {
   return typeof mime === "string" && TELEGRAM_PHOTO_MIME_TYPES.has(mime.toLowerCase());
 }
 
+// Telegram возвращает эту ошибку, когда reply_parameters.message_id указывает
+// на сообщение, которого больше нет в чате. Главный кейс — миграция группы в
+// супергруппу: старые message_id обнуляются, маппинга Telegram не отдаёт.
+function isReplyNotFoundError(tgData: unknown): boolean {
+  if (!tgData || typeof tgData !== "object") return false;
+  const data = tgData as { error_code?: number; description?: unknown };
+  return (
+    data.error_code === 400 &&
+    typeof data.description === "string" &&
+    /message to be replied not found/i.test(data.description)
+  );
+}
+
+// Загружает текст сообщения, на которое отвечают, и формирует HTML-blockquote
+// для вставки в начало нового сообщения. Используется как UX-fallback, когда
+// нативный Telegram-reply невозможен (см. isReplyNotFoundError).
+async function loadReplyQuoteHtml(
+  serviceClient: ReturnType<typeof createClient>,
+  currentMessageId: string,
+): Promise<string | null> {
+  const { data: cur } = await serviceClient
+    .from("project_messages")
+    .select("reply_to_message_id")
+    .eq("id", currentMessageId)
+    .maybeSingle();
+  const origId = (cur as { reply_to_message_id?: string } | null)?.reply_to_message_id;
+  if (!origId) return null;
+
+  const { data: orig } = await serviceClient
+    .from("project_messages")
+    .select("content, sender_name")
+    .eq("id", origId)
+    .maybeSingle();
+  const origRow = orig as { content?: string; sender_name?: string | null } | null;
+  if (!origRow?.content) return null;
+
+  const plain = String(origRow.content).replace(/<[^>]+>/g, "").trim();
+  if (!plain) return null;
+  const truncated = plain.length > 200 ? plain.slice(0, 200) + "…" : plain;
+  const senderPrefix = origRow.sender_name
+    ? `<b>${escapeHtmlEntities(origRow.sender_name)}</b>\n`
+    : "";
+  return `<blockquote>${senderPrefix}${escapeHtmlEntities(truncated)}</blockquote>`;
+}
+
 Deno.serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
 
@@ -319,6 +364,37 @@ Deno.serve(async (req: Request) => {
         tgData = await tgResponse.json();
       }
 
+      // Fallback на «висячий» reply: Telegram отбил отправку, потому что
+      // reply_parameters.message_id указывает на сообщение, которого больше
+      // нет (типичный кейс — миграция группы в супергруппу обнулила старые
+      // message_id, маппинг API не отдаёт). Шлём тем же ботом без
+      // reply_parameters, но с blockquote-цитатой текста оригинала в начале —
+      // визуально клиент увидит, на что отвечают.
+      if (!tgData.ok && isReplyNotFoundError(tgData) && payload.reply_parameters) {
+        const quote = await loadReplyQuoteHtml(serviceClient, body.message_id);
+        delete payload.reply_parameters;
+        if (quote) {
+          payload.text = `${quote}\n${formattedText}`;
+        }
+        tgResponse = await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
+        tgData = await tgResponse.json();
+        if (tgData.ok) {
+          await serviceClient
+            .from("project_messages")
+            .update({
+              telegram_error_detail: `reply_dropped: original message_id=${body.reply_to_telegram_message_id} not in chat (likely supergroup migration); via=text`,
+            })
+            .eq("id", body.message_id);
+        }
+      }
+
       // Fallback: если личный бот не смог отправить (например, его нет
       // в этом чате — Telegram возвращает "bot is not a member of the
       // group chat"), переотправляем через бота-секретаря с приставкой
@@ -435,6 +511,29 @@ Deno.serve(async (req: Request) => {
               { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
             );
             tgData = await tgRes.json();
+          }
+
+          // Fallback на «висячий» reply (см. коммент в текстовой ветке выше):
+          // переотправка тем же ботом без reply_parameters, с blockquote-цитатой.
+          if (!tgData.ok && isReplyNotFoundError(tgData) && payload.reply_parameters) {
+            const quote = await loadReplyQuoteHtml(serviceClient, body.message_id);
+            delete payload.reply_parameters;
+            if (quote) {
+              payload.text = `${quote}\n${formattedCaption}`;
+            }
+            tgRes = await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+              { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+            );
+            tgData = await tgRes.json();
+            if (tgData.ok) {
+              await serviceClient
+                .from("project_messages")
+                .update({
+                  telegram_error_detail: `reply_dropped: original message_id=${body.reply_to_telegram_message_id} not in chat (likely supergroup migration); via=split-text`,
+                })
+                .eq("id", body.message_id);
+            }
           }
 
           // Fallback на секретаря для split-текста: если личный бот не в группе

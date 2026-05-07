@@ -370,7 +370,14 @@ function DraggableTab({
                 </span>
               )}
               {hasBadge && badge && badge.type === 'emoji' && (
-                <span className="absolute -top-0.5 -right-1 text-[12px] leading-none">{badge.value}</span>
+                <span
+                  className={cn(
+                    'absolute -top-0.5 -right-1 w-4 h-4 flex items-center justify-center rounded-full text-[10px] leading-none ring-1 ring-white',
+                    accent ? accent.badge : 'bg-blue-600',
+                  )}
+                >
+                  {badge.value}
+                </span>
               )}
             </>
           ) : (
@@ -398,8 +405,9 @@ function DraggableTab({
               {hasBadge && badge && badge.type === 'emoji' && (
                 <span
                   className={cn(
-                    'absolute inset-0 flex items-center justify-center text-[12px] leading-none',
+                    'absolute inset-0 flex items-center justify-center rounded-full text-[10px] leading-none',
                     'group-hover:opacity-0 transition-opacity',
+                    accent ? accent.badge : 'bg-blue-600',
                   )}
                 >
                   {badge.value}

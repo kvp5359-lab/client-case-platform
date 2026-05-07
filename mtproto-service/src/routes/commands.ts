@@ -19,6 +19,29 @@ import { z } from "zod"
 import { config } from "../config.js"
 import { supabase } from "../db.js"
 import { getClient } from "../sessions/manager.js"
+import { htmlToTelegramHtml, isHtmlContent, escapeHtmlEntities } from "../utils/htmlFormatting.js"
+
+// Telegram sendPhoto / album-photo принимает только эти форматы. Остальное
+// (tiff, heic, bmp, svg, ...) уходит как документ. Зеркалит логику в
+// supabase/functions/telegram-send-message/index.ts.
+const TELEGRAM_PHOTO_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+])
+
+function isTelegramPhotoMime(mime: string | null | undefined): boolean {
+  return typeof mime === "string" && TELEGRAM_PHOTO_MIME_TYPES.has(mime.toLowerCase())
+}
+
+/** Превращает tiptap-HTML в Telegram-HTML. Plain text оставляем как есть,
+ *  только эскейпим спецсимволы (иначе parseMode=html уронит парсер на &/<). */
+function prepareTelegramText(raw: string): string {
+  if (!raw) return ""
+  return isHtmlContent(raw) ? htmlToTelegramHtml(raw) : escapeHtmlEntities(raw)
+}
 
 /**
  * Резолв peer-а клиента через gramjs.
@@ -96,18 +119,23 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
         if (files.length === 0) {
           throw new Error("Не удалось отправить ни одного файла.")
         }
-        const caption = body.data.text.length > 0 ? body.data.text : undefined
+        const captionText = prepareTelegramText(body.data.text)
+        const caption = captionText.length > 0 ? captionText : undefined
 
         if (files.length === 1) {
-          // Одиночный файл — обычный sendFile.
+          // Одиночный файл. Если это поддерживаемое фото — отправляем БЕЗ
+          // DocumentAttributeFilename и с forceDocument=false, чтобы Telegram
+          // показал inline-картинку, а не «иконку файла». Прочее — документом.
           const f = files[0]!
+          const isPhoto = isTelegramPhotoMime(f.mimeType)
           const sent = await client.sendFile(peer, {
             file: f.buffer,
             caption,
             parseMode: caption ? "html" : undefined,
-            attributes: [
-              new Api.DocumentAttributeFilename({ fileName: f.fileName }),
-            ],
+            forceDocument: !isPhoto,
+            attributes: isPhoto
+              ? undefined
+              : [new Api.DocumentAttributeFilename({ fileName: f.fileName })],
             replyTo: body.data.reply_to_telegram_message_id ?? undefined,
           })
           if (sent && "id" in sent) {
@@ -116,16 +144,17 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
           }
         } else {
           // Несколько файлов — альбом (groupedId), TG показывает как одну
-          // карточку. Имена файлов передаём через CustomFile, потому что
-          // в album-режиме gramjs не принимает общий attributes — каждый
-          // файл несёт свои метаданные сам.
+          // карточку. CustomFile несёт имя файла; для фото это не мешает —
+          // gramjs в album-режиме определяет тип по расширению / mime.
           const customFiles = files.map(
             (f) => new CustomFile(f.fileName, f.buffer.length, "", f.buffer),
           )
+          const allPhotos = files.every((f) => isTelegramPhotoMime(f.mimeType))
           const sentList = await client.sendFile(peer, {
             file: customFiles,
             caption,
             parseMode: caption ? "html" : undefined,
+            forceDocument: !allPhotos,
             replyTo: body.data.reply_to_telegram_message_id ?? undefined,
           }) as unknown as Api.Message | Api.Message[]
           const arr = Array.isArray(sentList) ? sentList : [sentList]
@@ -144,7 +173,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
         }
       } else {
         const result = await client.sendMessage(peer, {
-          message: body.data.text,
+          message: prepareTelegramText(body.data.text),
           parseMode: "html",
           replyTo: body.data.reply_to_telegram_message_id ?? undefined,
         })
@@ -216,7 +245,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       const peer = await resolvePeer(client, body.data.client_tg_user_id)
       await client.editMessage(peer, {
         message: body.data.telegram_message_id,
-        text: body.data.text,
+        text: prepareTelegramText(body.data.text),
         parseMode: "html",
       })
       return { ok: true }
