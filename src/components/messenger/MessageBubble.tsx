@@ -247,6 +247,7 @@ function MessageBubbleImpl({
           message={message}
           isOwn={isOwn}
           onReply={onReply}
+          onQuote={onQuote}
           onReact={onReact}
           onEdit={onEdit}
           onDelete={onDelete}
@@ -407,6 +408,7 @@ function MessageBubbleImpl({
               isOwn={isOwn}
               accent={accent}
               onReply={onReply}
+              onQuote={onQuote}
               onReact={onReact}
               onEdit={onEdit}
               onDelete={onDelete}

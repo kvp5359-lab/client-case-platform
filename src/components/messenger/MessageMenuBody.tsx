@@ -10,6 +10,7 @@ import {
   Forward,
   Send,
   ExternalLink,
+  Quote,
 } from 'lucide-react'
 import {
   DropdownMenuItem,
@@ -52,6 +53,8 @@ export interface MessageMenuBodyProps {
   isOwn: boolean
   quickReactions: string[]
   onReply: (msg: ProjectMessage) => void
+  /** Цитировать всё сообщение (plain text → blockquote в редакторе). */
+  onQuote?: (text: string) => void
   onReact: (messageId: string, emoji: string) => void
   onEdit?: (msg: ProjectMessage) => void
   onDelete?: (messageId: string) => void
@@ -74,6 +77,7 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
     isOwn,
     quickReactions,
     onReply,
+    onQuote,
     onReact,
     onEdit,
     onDelete,
@@ -212,6 +216,13 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
         <Reply className="h-4 w-4 mr-2" />
         Ответить
       </Item>
+
+      {onQuote && (
+        <Item onClick={() => onQuote(stripHtml(message.content))}>
+          <Quote className="h-4 w-4 mr-2" />
+          Цитировать
+        </Item>
+      )}
 
       {isOwn && onEdit && (
         <Item onClick={() => onEdit(message)}>

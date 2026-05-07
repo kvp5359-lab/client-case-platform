@@ -27,6 +27,7 @@ interface MessageActionsProps {
   isOwn: boolean
   accent?: MessengerAccent
   onReply: (msg: ProjectMessage) => void
+  onQuote?: (text: string) => void
   onReact: (messageId: string, emoji: string) => void
   onEdit?: (msg: ProjectMessage) => void
   onDelete?: (messageId: string) => void
@@ -50,6 +51,7 @@ export function MessageActions({
   isOwn,
   accent = 'blue',
   onReply,
+  onQuote,
   onReact,
   onEdit,
   onDelete,
@@ -101,6 +103,7 @@ export function MessageActions({
             isOwn,
             quickReactions,
             onReply,
+            onQuote,
             onReact,
             onEdit,
             onDelete,
@@ -138,6 +141,7 @@ export function MessageContextMenu({
   message,
   isOwn,
   onReply,
+  onQuote,
   onReact,
   onEdit,
   onDelete,
@@ -163,6 +167,7 @@ export function MessageContextMenu({
           isOwn,
           quickReactions,
           onReply,
+          onQuote,
           onReact,
           onEdit,
           onDelete,

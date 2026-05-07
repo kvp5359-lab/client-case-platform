@@ -148,10 +148,18 @@ export function MessageInput({
     return () => window.removeEventListener('messenger:restore-draft', handler)
   }, [threadId])
 
-  // Focus editor on reply
+  // Focus editor on reply.
+  // requestAnimationFrame — клик по «Ответить» в контекстном меню (Radix)
+  // закрывает меню и возвращает фокус на trigger (баббл) ПОСЛЕ нашего эффекта;
+  // без отложенного вызова возврат фокуса перебивает focus('end'), и курсор
+  // в поле ввода не появляется. RAF гарантирует, что мы фокусируем после
+  // того, как Radix отработал.
   useEffect(() => {
     if (replyTo && editorRef.current) {
-      editorRef.current.commands.focus('end')
+      const id = requestAnimationFrame(() => {
+        editorRef.current?.commands.focus('end')
+      })
+      return () => cancelAnimationFrame(id)
     }
   }, [replyTo])
 
