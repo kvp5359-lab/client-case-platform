@@ -104,10 +104,15 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   // Если URL содержит panelTab=thread:<short|uuid> и страница не знает projectId
   // (например, /boards/X) — резолвим тред через RPC, выставляем activeProjectId
   // под scope треда. Это позволяет открывать тред в side panel по shareable-ссылке.
+  // ВАЖНО: применяем только пока activeProjectId === null (первый рендер).
+  // Если пользователь УЖЕ кликнул на тред (activeProjectId стал не-null), URL
+  // ещё не успел обновиться, и эффект бы возвращал scope обратно на тред из
+  // URL — а pendingOpen для нового scope отбрасывался бы (guard ниже),
+  // и панель переставала переключаться.
   const resolvedFromUrl = useThreadFromPanelTab(workspaceId)
   useEffect(() => {
     if (!resolvedFromUrl) return
-    if (activeProjectId === resolvedFromUrl.projectId) return
+    if (activeProjectId !== null) return
     if (pageProjectId) return // на странице проекта scope уже задан
     // eslint-disable-next-line react-hooks/set-state-in-effect -- scope-resolver: подхватываем projectId из shareable-ссылки на /boards|/inbox
     setActiveProjectId(resolvedFromUrl.projectId)
