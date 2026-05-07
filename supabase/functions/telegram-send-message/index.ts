@@ -10,6 +10,7 @@ import { safeJsonParse, findMissingField, isValidUUID } from "../_shared/validat
 import { htmlToTelegramHtml, escapeHtmlEntities, isHtmlContent } from "../_shared/htmlFormatting.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { resolveBotToken, findEmployeeBot } from "../_shared/telegramBotToken.ts";
+import { detectChatMigration } from "../_shared/telegramMigration.ts";
 
 interface RequestBody {
   message_id: string;
@@ -274,8 +275,9 @@ Deno.serve(async (req: Request) => {
         ? `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`
         : contentForTelegram;
 
+      let activeChatId = body.telegram_chat_id;
       const payload: Record<string, unknown> = {
-        chat_id: body.telegram_chat_id,
+        chat_id: activeChatId,
         text: formattedText,
         parse_mode: "HTML",
       };
@@ -298,6 +300,25 @@ Deno.serve(async (req: Request) => {
       let activeToken = TELEGRAM_BOT_TOKEN;
       let activeIntegrationId = resolved.integrationId;
 
+      // Обработка апгрейда группы → супергруппы. Если Telegram вернул
+      // migrate_to_chat_id, обновляем project_telegram_chats и повторяем
+      // отправку с новым chat_id (тем же ботом). Только тогда переходим к
+      // fallback на секретаря — если retry тоже упал по другой причине.
+      const migratedChatId = await detectChatMigration(serviceClient, activeChatId, tgData);
+      if (migratedChatId !== null) {
+        activeChatId = migratedChatId;
+        payload.chat_id = migratedChatId;
+        tgResponse = await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
+        tgData = await tgResponse.json();
+      }
+
       // Fallback: если личный бот не смог отправить (например, его нет
       // в этом чате — Telegram возвращает "bot is not a member of the
       // group chat"), переотправляем через бота-секретаря с приставкой
@@ -308,9 +329,9 @@ Deno.serve(async (req: Request) => {
           "[telegram-send-message] employee bot send failed, falling back to secretary:",
           employeeErrorDescription,
         );
-        const fallback = await resolveBotToken(serviceClient, body.telegram_chat_id);
+        const fallback = await resolveBotToken(serviceClient, activeChatId);
         const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`;
-        const secretaryPayload = { ...payload, text: secretaryFormatted };
+        const secretaryPayload = { ...payload, chat_id: activeChatId, text: secretaryFormatted };
         tgResponse = await fetch(
           `https://api.telegram.org/bot${fallback.token}/sendMessage`,
           {
@@ -339,7 +360,7 @@ Deno.serve(async (req: Request) => {
           .from("project_messages")
           .update({
             telegram_message_id: tgData.result.message_id,
-            telegram_chat_id: body.telegram_chat_id,
+            telegram_chat_id: activeChatId,
           })
           .eq("id", body.message_id);
       } else {
@@ -388,8 +409,9 @@ Deno.serve(async (req: Request) => {
             senderName: body.sender_name,
           });
         } else {
+          let activeChatId = body.telegram_chat_id;
           const payload: Record<string, unknown> = {
-            chat_id: body.telegram_chat_id,
+            chat_id: activeChatId,
             text: formattedCaption,
             parse_mode: "HTML",
           };
@@ -403,6 +425,18 @@ Deno.serve(async (req: Request) => {
           );
           let tgData = await tgRes.json();
 
+          // Апгрейд группы → супергруппы: повторяем с новым chat_id.
+          const migratedSplit = await detectChatMigration(serviceClient, activeChatId, tgData);
+          if (migratedSplit !== null) {
+            activeChatId = migratedSplit;
+            payload.chat_id = migratedSplit;
+            tgRes = await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+              { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+            );
+            tgData = await tgRes.json();
+          }
+
           // Fallback на секретаря для split-текста: если личный бот не в группе
           // ("bot is not a member of the group chat"), переотправляем сообщение
           // через секретаря с префиксом "<Имя>:" в начале. Симметрично fallback'у
@@ -415,9 +449,9 @@ Deno.serve(async (req: Request) => {
               "[telegram-send-message] split-text employee bot send failed, falling back to secretary:",
               splitErrorDescription,
             );
-            const fallback = await resolveBotToken(serviceClient, body.telegram_chat_id);
+            const fallback = await resolveBotToken(serviceClient, activeChatId);
             const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name || "")}:</b>\n${contentForTelegram}`;
-            const secretaryPayload = { ...payload, text: secretaryFormatted };
+            const secretaryPayload = { ...payload, chat_id: activeChatId, text: secretaryFormatted };
             tgRes = await fetch(
               `https://api.telegram.org/bot${fallback.token}/sendMessage`,
               { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(secretaryPayload) },
@@ -434,13 +468,13 @@ Deno.serve(async (req: Request) => {
           if (tgData.ok && tgData.result?.message_id) {
             await serviceClient
               .from("project_messages")
-              .update({ telegram_message_id: tgData.result.message_id, telegram_chat_id: body.telegram_chat_id })
+              .update({ telegram_message_id: tgData.result.message_id, telegram_chat_id: activeChatId })
               .eq("id", body.message_id);
           }
 
           attachmentsOk = await sendAttachmentsWithFallback({
             messageId: body.message_id,
-            chatId: body.telegram_chat_id,
+            chatId: activeChatId,
             supabaseClient: serviceClient,
             primaryToken: TELEGRAM_BOT_TOKEN,
             skipIdUpdate: true,
