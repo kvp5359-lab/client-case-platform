@@ -303,9 +303,10 @@ Deno.serve(async (req: Request) => {
       // group chat"), переотправляем через бота-секретаря с приставкой
       // «(Имя):» в тексте. Сохраняем диагностику.
       if (!tgData.ok && isEmployeeBot) {
+        const employeeErrorDescription = tgData.description ?? "unknown";
         console.warn(
           "[telegram-send-message] employee bot send failed, falling back to secretary:",
-          tgData.description,
+          employeeErrorDescription,
         );
         const fallback = await resolveBotToken(serviceClient, body.telegram_chat_id);
         const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`;
@@ -322,10 +323,14 @@ Deno.serve(async (req: Request) => {
         activeToken = fallback.token;
         // Секретарь отправил → integration_id личного бота больше не актуален,
         // снимаем стамп, чтобы edit/delete/reaction роутились по секретарю.
+        // В telegram_error_detail пишем причину fallback'а (description от Telegram +
+        // флаг reply) — чтобы post-mortem можно было сделать SQL-запросом, а не
+        // лазать в Supabase Functions Logs.
         activeIntegrationId = null;
+        const fallbackDetail = `employee_bot_send_failed: ${employeeErrorDescription}; reply=${body.reply_to_telegram_message_id ?? "no"}; via=text`;
         await serviceClient
           .from("project_messages")
-          .update({ telegram_bot_integration_id: null })
+          .update({ telegram_bot_integration_id: null, telegram_error_detail: fallbackDetail })
           .eq("id", body.message_id);
       }
 
@@ -405,9 +410,10 @@ Deno.serve(async (req: Request) => {
           // (2+ файла или caption > 1024) терялся при отсутствии личного бота
           // в группе, в то время как файлы доходили через sendAttachmentsWithFallback.
           if (!tgData.ok && isEmployeeBot) {
+            const splitErrorDescription = tgData.description ?? "unknown";
             console.warn(
               "[telegram-send-message] split-text employee bot send failed, falling back to secretary:",
-              tgData.description,
+              splitErrorDescription,
             );
             const fallback = await resolveBotToken(serviceClient, body.telegram_chat_id);
             const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name || "")}:</b>\n${contentForTelegram}`;
@@ -418,9 +424,10 @@ Deno.serve(async (req: Request) => {
             );
             tgData = await tgRes.json();
             // Секретарь отправил → integration_id больше не актуален.
+            const fallbackDetail = `employee_bot_send_failed: ${splitErrorDescription}; reply=${body.reply_to_telegram_message_id ?? "no"}; via=split-text`;
             await serviceClient
               .from("project_messages")
-              .update({ telegram_bot_integration_id: null })
+              .update({ telegram_bot_integration_id: null, telegram_error_detail: fallbackDetail })
               .eq("id", body.message_id);
           }
 
@@ -559,6 +566,14 @@ async function sendAttachmentsWithFallback(
   if (ok || !args.isEmployeeBot) return ok;
 
   console.warn("[telegram-send-message] employee bot attachments send failed, falling back to secretary");
+  // Пишем причину fallback'а в БД для post-mortem через SQL. Точный description
+  // от Telegram идёт глубже — в sendAttachments (он вызывает console.error/sendTrace);
+  // здесь фиксируем сам факт fallback и наличие reply.
+  const attachmentsFallbackDetail = `employee_bot_attachments_failed; reply=${args.replyTo ?? "no"}; via=attachments`;
+  await args.supabaseClient
+    .from("project_messages")
+    .update({ telegram_error_detail: attachmentsFallbackDetail })
+    .eq("id", args.messageId);
   let fallback;
   try {
     fallback = await resolveBotToken(args.supabaseClient, args.chatId);
