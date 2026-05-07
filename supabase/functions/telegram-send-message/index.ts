@@ -392,11 +392,38 @@ Deno.serve(async (req: Request) => {
             payload.reply_parameters = { message_id: body.reply_to_telegram_message_id };
           }
 
-          const tgRes = await fetch(
+          let tgRes = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
             { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
           );
-          const tgData = await tgRes.json();
+          let tgData = await tgRes.json();
+
+          // Fallback на секретаря для split-текста: если личный бот не в группе
+          // ("bot is not a member of the group chat"), переотправляем сообщение
+          // через секретаря с префиксом "<Имя>:" в начале. Симметрично fallback'у
+          // в обычной текстовой ветке (строки 305-330): без него split-текст
+          // (2+ файла или caption > 1024) терялся при отсутствии личного бота
+          // в группе, в то время как файлы доходили через sendAttachmentsWithFallback.
+          if (!tgData.ok && isEmployeeBot) {
+            console.warn(
+              "[telegram-send-message] split-text employee bot send failed, falling back to secretary:",
+              tgData.description,
+            );
+            const fallback = await resolveBotToken(serviceClient, body.telegram_chat_id);
+            const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name || "")}:</b>\n${contentForTelegram}`;
+            const secretaryPayload = { ...payload, text: secretaryFormatted };
+            tgRes = await fetch(
+              `https://api.telegram.org/bot${fallback.token}/sendMessage`,
+              { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(secretaryPayload) },
+            );
+            tgData = await tgRes.json();
+            // Секретарь отправил → integration_id больше не актуален.
+            await serviceClient
+              .from("project_messages")
+              .update({ telegram_bot_integration_id: null })
+              .eq("id", body.message_id);
+          }
+
           if (tgData.ok && tgData.result?.message_id) {
             await serviceClient
               .from("project_messages")
