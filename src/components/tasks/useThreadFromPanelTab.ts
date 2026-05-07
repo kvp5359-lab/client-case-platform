@@ -7,7 +7,7 @@
  * (`?panelTab=thread:385`) панель смогла подхватить scope правильного проекта.
  */
 
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -21,23 +21,14 @@ export function useThreadFromPanelTab(workspaceId: string | null | undefined): R
   const searchParams = useSearchParams()
   const panelTab = searchParams?.get('panelTab') ?? null
 
-  const [parsed, setParsed] = useState<{ shortId?: number; uuid?: string } | null>(null)
-
-  useEffect(() => {
-    if (!panelTab || !panelTab.startsWith('thread:')) {
-      setParsed(null)
-      return
-    }
+  const parsed = useMemo<{ shortId?: number; uuid?: string } | null>(() => {
+    if (!panelTab || !panelTab.startsWith('thread:')) return null
     const ref = panelTab.slice('thread:'.length)
-    if (/^\d+$/.test(ref)) {
-      setParsed({ shortId: parseInt(ref, 10) })
-    } else if (
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref)
-    ) {
-      setParsed({ uuid: ref })
-    } else {
-      setParsed(null)
+    if (/^\d+$/.test(ref)) return { shortId: parseInt(ref, 10) }
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref)) {
+      return { uuid: ref }
     }
+    return null
   }, [panelTab])
 
   const queryKey = parsed?.shortId

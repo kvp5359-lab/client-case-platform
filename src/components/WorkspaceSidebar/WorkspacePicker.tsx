@@ -75,6 +75,7 @@ export const WorkspacePicker = memo(function WorkspacePicker({
     const url = buildWorkspaceUrl(workspace)
     if (isCrossDomainTarget(url)) {
       // Full reload — переход на другой поддомен / custom-домен
+      // eslint-disable-next-line react-hooks/immutability -- штатная навигация через window.location, false positive правила
       window.location.href = url
     } else {
       router.push(url)
@@ -84,6 +85,7 @@ export const WorkspacePicker = memo(function WorkspacePicker({
   const navigateToSettings = (workspace: WorkspaceWithParticipant) => {
     const baseUrl = buildWorkspaceUrl(workspace)
     if (isCrossDomainTarget(baseUrl)) {
+      // eslint-disable-next-line react-hooks/immutability -- штатная навигация через window.location, false positive правила
       window.location.href = baseUrl + 'settings'
     } else {
       router.push(`/workspaces/${workspace.id}/settings`)

@@ -72,6 +72,7 @@ export function SelectWorkspacePage() {
       const ws = workspaces[0]
       const url = buildWorkspaceUrl(ws.slug, ws.custom_domain)
       if (url) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- guard от повторного редиректа до того, как window.location.href сменит страницу
         setAutoRedirected(true)
         window.location.href = url
       }

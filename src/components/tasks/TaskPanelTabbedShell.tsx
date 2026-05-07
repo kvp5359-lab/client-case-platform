@@ -109,6 +109,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     if (!resolvedFromUrl) return
     if (activeProjectId === resolvedFromUrl.projectId) return
     if (pageProjectId) return // на странице проекта scope уже задан
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- scope-resolver: подхватываем projectId из shareable-ссылки на /boards|/inbox
     setActiveProjectId(resolvedFromUrl.projectId)
   }, [resolvedFromUrl, activeProjectId, pageProjectId])
 
