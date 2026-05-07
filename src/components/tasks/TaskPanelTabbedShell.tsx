@@ -116,15 +116,48 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   const tabs = useTaskPanelTabs({ projectId: activeProjectId })
 
   // Очередь pending-вкладок: когда нужно сменить projectId перед openTab,
-  // ждём готовности хука с новым projectId.
-  const [pendingOpen, setPendingOpen] = useState<TaskPanelTab | null>(null)
+  // ждём готовности хука с новым projectId. ВАЖНО: храним вместе с
+  // targetProjectId — если за время ожидания scope перешёл на другой
+  // проект (sync с pageProjectId, навигация по сайдбару), отбрасываем
+  // pending, иначе вкладка треда чужого проекта окажется в этом scope
+  // и зальётся в task_panel_tabs (мусорные вкладки в правой панели).
+  const [pendingOpen, setPendingOpen] = useState<{ tab: TaskPanelTab; projectId: string | null } | null>(null)
   useEffect(() => {
     if (!pendingOpen) return
     if (!tabs.isReady) return
-    tabs.openTab(pendingOpen)
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- queue-processor: ждём готовности tabs, затем сбрасываем очередь
+    if (pendingOpen.projectId !== activeProjectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- scope-changed: отбрасываем pending для прошлого проекта
+      setPendingOpen(null)
+      return
+    }
+    tabs.openTab(pendingOpen.tab)
     setPendingOpen(null)
-  }, [pendingOpen, tabs])
+  }, [pendingOpen, tabs, activeProjectId])
+
+  // Cleanup мусорных thread-вкладок: для всех пользователей (не только клиентов)
+  // удаляем из tabs те thread-вкладки, у которых refId нет среди тредов
+  // текущего scope-проекта. Покрывает кейсы: перемещение треда между проектами,
+  // soft-delete, race-condition pendingOpen-а до фикса выше (вычищает уже
+  // накопившийся мусор в task_panel_tabs).
+  const { data: scopeThreadsRaw = [] } = useProjectThreads(activeProjectId ?? undefined)
+  const scopeThreadIds = useMemo(
+    () => new Set(scopeThreadsRaw.map((t) => t.id)),
+    [scopeThreadsRaw],
+  )
+  const tabsCloseTab = tabs.closeTab
+  const tabsTabs = tabs.tabs
+  const tabsIsReady = tabs.isReady
+  useEffect(() => {
+    if (!tabsIsReady) return
+    if (!activeProjectId) return
+    if (scopeThreadsRaw.length === 0) return // ждём загрузки тредов проекта
+    for (const tab of tabsTabs) {
+      if (tab.type !== 'thread' || !tab.refId) continue
+      if (!scopeThreadIds.has(tab.refId)) {
+        tabsCloseTab(tab.id)
+      }
+    }
+  }, [tabsIsReady, tabsTabs, scopeThreadIds, scopeThreadsRaw.length, tabsCloseTab, activeProjectId])
 
   const tabsOpenTab = tabs.openTab
   const openThreadTab = useCallback(
@@ -139,7 +172,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       setHidden(false)
       if (targetPid !== activeProjectId) {
         setActiveProjectId(targetPid)
-        setPendingOpen(tab)
+        setPendingOpen({ tab, projectId: targetPid })
       } else {
         tabsOpenTab(tab)
       }
@@ -161,7 +194,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       setHidden(false)
       if (targetPid !== activeProjectId) {
         setActiveProjectId(targetPid)
-        setPendingOpen(tab)
+        setPendingOpen({ tab, projectId: targetPid })
       } else {
         tabsOpenTab(tab)
       }
