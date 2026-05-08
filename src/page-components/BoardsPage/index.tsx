@@ -11,6 +11,8 @@ import { useDeleteBoard } from '@/components/boards/hooks/useBoardMutations'
 import { CreateBoardDialog } from '@/components/boards/CreateBoardDialog'
 import { EditBoardDialog } from '@/components/boards/EditBoardDialog'
 import { BoardFilterDialog } from '@/components/boards/BoardFilterDialog'
+import { CreateFunnelDialog } from '@/components/boards/CreateFunnelDialog'
+import { useBoardLists } from '@/components/boards/hooks/useBoardQuery'
 import { normalizeBoardGlobalFilter } from '@/components/boards/types'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { usePinnedBoards } from '@/components/WorkspaceSidebar/usePinnedBoards'
@@ -31,6 +33,7 @@ export default function BoardsPage() {
   const createDialog = useDialog()
   const editDialog = useDialog()
   const filterDialog = useDialog()
+  const funnelDialog = useDialog()
   const createListDialog = useDialog()
   const { data: boards, isLoading } = useBoardsQuery(workspaceId)
   const deleteBoard = useDeleteBoard()
@@ -52,6 +55,13 @@ export default function BoardsPage() {
     : boards?.[0]?.id ?? null
 
   const activeBoard = boards?.find((b) => b.id === resolvedBoardId) ?? null
+
+  // Списки активной доски — нужны, чтобы понимать сколько уже занято колонок
+  // под воронку (новые колонки воронки приклеиваются справа от существующих).
+  const { data: activeBoardLists } = useBoardLists(activeBoard?.id)
+  const existingColumnsCount = activeBoardLists
+    ? Math.max(0, ...activeBoardLists.map((l) => l.column_index + 1))
+    : 0
 
   const navigateToBoard = (id: string | null) => {
     if (!workspaceId) return
@@ -114,6 +124,10 @@ export default function BoardsPage() {
                       onEditFilter={() => {
                         navigateToBoard(board.id)
                         filterDialog.open()
+                      }}
+                      onCreateFunnel={() => {
+                        navigateToBoard(board.id)
+                        funnelDialog.open()
                       }}
                       onDelete={() => handleDeleteBoard(board)}
                       onAddList={() => {
@@ -180,6 +194,16 @@ export default function BoardsPage() {
           open={filterDialog.isOpen}
           onClose={filterDialog.close}
           board={activeBoard}
+        />
+      )}
+
+      {activeBoard && (
+        <CreateFunnelDialog
+          open={funnelDialog.isOpen}
+          onClose={funnelDialog.close}
+          workspaceId={workspaceId}
+          boardId={activeBoard.id}
+          existingColumnsCount={existingColumnsCount}
         />
       )}
     </WorkspaceLayout>

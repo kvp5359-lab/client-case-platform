@@ -1,6 +1,6 @@
 "use client"
 
-import { Kanban, MoreVertical, Trash2, Pencil, ListPlus, Pin, PinOff, Filter } from 'lucide-react'
+import { Kanban, MoreVertical, Trash2, Pencil, ListPlus, Pin, PinOff, Filter, Target } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +22,7 @@ interface BoardTabProps {
   onSelect: () => void
   onEdit: () => void
   onEditFilter: () => void
+  onCreateFunnel: () => void
   onDelete: () => void
   onAddList: () => void
   onTogglePin: () => void
@@ -36,6 +37,7 @@ export function BoardTab({
   onSelect,
   onEdit,
   onEditFilter,
+  onCreateFunnel,
   onDelete,
   onAddList,
   onTogglePin,
@@ -88,6 +90,15 @@ export function BoardTab({
               >
                 <ListPlus className="h-3.5 w-3.5 mr-2" />
                 Добавить список
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onCreateFunnel()
+                }}
+              >
+                <Target className="h-3.5 w-3.5 mr-2" />
+                Создать воронку из шаблона
               </DropdownMenuItem>
               {canPin && (
                 <DropdownMenuItem
