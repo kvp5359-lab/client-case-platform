@@ -148,9 +148,6 @@ async function handleIncomingMessage(
     return;
   }
 
-  // 2. Системный инбокс сотрудника
-  const projectId = await ensureSystemInboxProject(service, channel.user_id, workspaceId);
-
   // 3. Имя клиента: contact.name (приоритет) > authorName > username > phone > chatId
   const clientName =
     msg.contact?.name?.trim() ||
@@ -159,14 +156,68 @@ async function handleIncomingMessage(
     msg.contact?.phone ||
     msg.chatId;
 
-  // 4. Тред (один на клиента в рамках канала)
-  const threadId = await ensureWazzupThread(service, {
-    projectId, workspaceId,
-    channelDbId: channel.id as string,
-    chatId: msg.chatId,
-    chatType: msg.chatType,
-    clientName,
-  });
+  // 4. Сначала смотрим существующий тред (один на клиента в рамках канала).
+  let projectId: string;
+  let threadId: string;
+  const { data: existingThread } = await service
+    .from("project_threads")
+    .select("id, project_id")
+    .eq("wazzup_channel_id", channel.id as string)
+    .eq("wazzup_chat_id", msg.chatId)
+    .eq("is_deleted", false)
+    .maybeSingle();
+
+  if (existingThread) {
+    projectId = existingThread.project_id as string;
+    threadId = existingThread.id as string;
+  } else if (!msg.isEcho) {
+    // Этап 9 CRM-фрейма: первое входящее от клиента — пробуем CRM-роутинг.
+    // Echo (исходящее с телефона сотрудника) → в системный инбокс по-старому.
+    const channelType = msg.chatType === "instagram" ? "instagram" : "phone";
+    const { data: routed } = await service.rpc("route_incoming_to_project", {
+      p_workspace_id: workspaceId,
+      p_source: "wazzup",
+      p_channel_type: channelType,
+      p_external_id: msg.chatId,
+      p_sender_name: clientName,
+      p_thread_name: clientName,
+    });
+    const r = Array.isArray(routed) ? routed[0] : routed;
+    if (r?.project_id && r?.thread_id) {
+      projectId = r.project_id as string;
+      threadId = r.thread_id as string;
+      // Дописываем wazzup-метаданные на тред — чтобы ответы и реакции находили его.
+      await service.from("project_threads").update({
+        wazzup_channel_id: channel.id as string,
+        wazzup_chat_id: msg.chatId,
+        wazzup_chat_type: msg.chatType,
+        icon: "whatsapp",
+        accent_color: "emerald",
+        name: clientName,
+      }).eq("id", threadId);
+      console.log(`[wazzup-webhook] CRM routed (${r.status}) → project ${projectId}, thread ${threadId}`);
+    } else {
+      // 'no_template' / disabled CRM → fallback в системный инбокс.
+      projectId = await ensureSystemInboxProject(service, channel.user_id, workspaceId);
+      threadId = await ensureWazzupThread(service, {
+        projectId, workspaceId,
+        channelDbId: channel.id as string,
+        chatId: msg.chatId,
+        chatType: msg.chatType,
+        clientName,
+      });
+    }
+  } else {
+    // Echo (сотрудник с телефона) — нет существующего треда, не CRM-кейс.
+    projectId = await ensureSystemInboxProject(service, channel.user_id, workspaceId);
+    threadId = await ensureWazzupThread(service, {
+      projectId, workspaceId,
+      channelDbId: channel.id as string,
+      chatId: msg.chatId,
+      chatType: msg.chatType,
+      clientName,
+    });
+  }
 
   // Если тред уже был и имя клиента изменилось/уточнилось — апдейтнем.
   await service.from("project_threads")

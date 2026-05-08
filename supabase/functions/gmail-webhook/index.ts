@@ -162,6 +162,7 @@ async function processGmailMessage(sc: SupabaseClient, accessToken: string, gmai
   if (html) { content = stripHtmlQuotes(html); } else { content = stripEmailQuotes(text || "(empty message)"); }
 
   const attachments = extractAttachments(msg.payload);
+  // ── Шаг 1: пытаемся найти существующий тред по Gmail thread_id или email-link ──
   const { data: el } = await sc.from("project_thread_email_links").select("thread_id, contact_email").eq("gmail_thread_id", msg.threadId).eq("is_active", true).maybeSingle();
   let threadId: string | null = el?.thread_id || null;
   let projectId: string | null = null;
@@ -170,6 +171,37 @@ async function processGmailMessage(sc: SupabaseClient, accessToken: string, gmai
     if (elc) { threadId = elc.thread_id; await sc.from("project_thread_email_links").update({ gmail_thread_id: msg.threadId }).eq("thread_id", threadId); }
   }
   if (threadId) { const { data: t } = await sc.from("project_threads").select("project_id").eq("id", threadId).single(); projectId = t?.project_id || null; }
+
+  // ── Шаг 2: если не нашли по email-link — пытаемся через CRM-маршрутизацию ──
+  // (этап 9 CRM-фрейма). RPC ищет participant по каналу, ищет его активные
+  // проекты, при отсутствии — создаёт лид по дефолтному шаблону для source='email'.
+  if (!threadId && !projectId) {
+    const { data: routed } = await sc.rpc("route_incoming_to_project", {
+      p_workspace_id: account.workspace_id,
+      p_source: "email",
+      p_channel_type: "email",
+      p_external_id: fromEmail,
+      p_sender_name: fromName || fromEmail,
+      p_thread_name: subject || "Без темы",
+    });
+    const r = Array.isArray(routed) ? routed[0] : routed;
+    if (r?.project_id && r?.thread_id) {
+      threadId = r.thread_id as string;
+      projectId = r.project_id as string;
+      // Создаём email-link, чтобы дальнейшие ответы в эту же email-ветку
+      // сразу попадали в этот тред (минуя CRM-маршрутизацию).
+      await sc.from("project_thread_email_links").insert({
+        thread_id: threadId,
+        gmail_thread_id: msg.threadId,
+        contact_email: fromEmail.toLowerCase(),
+        subject: subject || null,
+        is_active: true,
+      });
+      console.log(`[gmail-webhook] CRM routed email from ${fromEmail} → ${r.status}: thread ${threadId}, project ${projectId}`);
+    } else if (r?.status === "no_template") {
+      console.log(`[gmail-webhook] CRM enabled but no default lead template for source=email — dropping email from ${fromEmail}`);
+    }
+  }
 
   const emailMetadata = { gmail_message_id: gmailMessageId, message_id_header: messageIdHeader, in_reply_to: inReplyTo || null, from_email: fromEmail, to_emails: toEmails, cc_emails: ccEmails, subject, body_html: html || null, attachments: attachments.length > 0 ? attachments : null };
   const insertData: Record<string, unknown> = { workspace_id: account.workspace_id, sender_participant_id: null, sender_name: fromName, sender_role: "Email", content, source: "email", thread_id: threadId, email_metadata: emailMetadata, has_attachments: attachments.length > 0 };

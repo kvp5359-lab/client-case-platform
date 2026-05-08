@@ -328,16 +328,62 @@ async function handleBusinessMessage(
     [clientFirstName, clientLastName].filter(Boolean).join(" ") ||
     (clientUsername ? `@${clientUsername}` : `tg:${clientTgUserId}`);
 
-  // Системный инбокс-проект и тред под клиента (создаём при первом сообщении).
-  const projectId = await ensureSystemInboxProject(service, conn.user_id, conn.workspace_id);
-  const threadId = await ensureBusinessThread(
-    service,
-    projectId,
-    conn.workspace_id,
-    conn.id,
-    clientTgUserId,
-    clientDisplayName,
-  );
+  // Сначала ищем существующий тред по (business_connection, client_tg_user_id) —
+  // если уже общались, попадём именно в этот тред (даже если первое сообщение
+  // было от сотрудника или CRM-роутинг отключён).
+  let projectId: string
+  let threadId: string
+  const { data: existingThread } = await service
+    .from("project_threads")
+    .select("id, project_id")
+    .eq("business_connection_id", conn.id)
+    .eq("business_client_tg_user_id", clientTgUserId)
+    .eq("is_deleted", false)
+    .maybeSingle()
+
+  if (existingThread) {
+    projectId = existingThread.project_id as string
+    threadId = existingThread.id as string
+  } else if (!isOutgoingFromEmployee) {
+    // Этап 9 CRM-фрейма: если это первое сообщение от клиента — пробуем
+    // маршрутизацию через CRM. Сотрудник пишет первым → fallback в системный
+    // инбокс (как было раньше): не понимаем, кому это «лид».
+    const { data: routed } = await service.rpc("route_incoming_to_project", {
+      p_workspace_id: conn.workspace_id,
+      p_source: "telegram_business",
+      p_channel_type: "telegram",
+      p_external_id: String(clientTgUserId),
+      p_sender_name: clientDisplayName,
+      p_thread_name: clientDisplayName,
+    })
+    const r = Array.isArray(routed) ? routed[0] : routed
+    if (r?.project_id && r?.thread_id) {
+      projectId = r.project_id as string
+      threadId = r.thread_id as string
+      // Дописываем business-метаданные в свежесозданный тред — чтобы
+      // следующие сообщения этого диалога находились этим же запросом.
+      await service.from("project_threads").update({
+        business_connection_id: conn.id,
+        business_client_tg_user_id: clientTgUserId,
+        icon: "telegram",
+        accent_color: "blue",
+      }).eq("id", threadId)
+      console.log(`[telegram-business-webhook] CRM routed (${r.status}) → project ${projectId}, thread ${threadId}`)
+    } else {
+      // 'no_template' или другая причина — фоллбэк в системный инбокс.
+      projectId = await ensureSystemInboxProject(service, conn.user_id, conn.workspace_id)
+      threadId = await ensureBusinessThread(
+        service, projectId, conn.workspace_id, conn.id, clientTgUserId, clientDisplayName,
+      )
+    }
+  } else {
+    // Сотрудник пишет впервые из телефона — нет смысла создавать лида,
+    // системный инбокс это его «черновик».
+    projectId = await ensureSystemInboxProject(service, conn.user_id, conn.workspace_id)
+    threadId = await ensureBusinessThread(
+      service, projectId, conn.workspace_id, conn.id, clientTgUserId, clientDisplayName,
+    )
+  }
 
   const content = msg.text ?? msg.caption ?? "";
 

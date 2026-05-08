@@ -43,6 +43,7 @@ import {
 } from '@/hooks/shared/useWorkspaceParticipants'
 import { useAuth } from '@/contexts/AuthContext'
 import { WazzupSection } from './WazzupSection'
+import { LeadTemplateSetting } from './LeadTemplateSetting'
 
 /**
  * Командные роли — те, кто работает в воркспейсе как сотрудник, а не как
@@ -252,19 +253,30 @@ export function IntegrationsTab() {
               workspaceId={workspaceId!}
               onAction={setDialog}
             />
+            <LeadTemplateSetting workspaceId={workspaceId!} source="telegram" />
           </>
         )}
         {section === 'gmail' && (
-          <GmailSection emailAccounts={emailAccounts} participants={participants} />
+          <>
+            <GmailSection emailAccounts={emailAccounts} participants={participants} />
+            <LeadTemplateSetting workspaceId={workspaceId!} source="email" />
+          </>
         )}
         {section === 'business' && (
-          <PersonalTelegramSection
-            workspaceId={workspaceId!}
-            employees={employees}
-          />
+          <>
+            <PersonalTelegramSection
+              workspaceId={workspaceId!}
+              employees={employees}
+            />
+            <LeadTemplateSetting workspaceId={workspaceId!} source="telegram_business" />
+            <LeadTemplateSetting workspaceId={workspaceId!} source="telegram_mtproto" />
+          </>
         )}
         {section === 'wazzup' && (
-          <WazzupSection workspaceId={workspaceId!} employees={employees} />
+          <>
+            <WazzupSection workspaceId={workspaceId!} employees={employees} />
+            <LeadTemplateSetting workspaceId={workspaceId!} source="wazzup" />
+          </>
         )}
       </div>
 
