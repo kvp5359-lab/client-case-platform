@@ -16,8 +16,9 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { ArrowLeft, Pencil, Check, X } from 'lucide-react'
+import { ArrowLeft, Pencil, Check, X, Target } from 'lucide-react'
 import {
   useProjectTemplateData,
   useProjectTemplateMutations,
@@ -58,6 +59,7 @@ export function ProjectTemplateEditorPage() {
   // Мутации
   const {
     updateTemplateMutation,
+    updateIsLeadTemplateMutation,
     updateModulesMutation,
     addFormsMutation,
     removeFormMutation,
@@ -195,6 +197,33 @@ export function ProjectTemplateEditorPage() {
                 </>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Флаг «это шаблон лида» — CRM-фрейм этап 3.
+            Влияет на: воронку лидов в досках (этап 4), маршрутизацию
+            входящих от новых контактов (этап 9), кнопку конверсии (этап 11). */}
+        <div className="mb-6 flex items-center gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+          <Target className="size-4 text-muted-foreground shrink-0" />
+          <div className="flex-1 min-w-0">
+            <label
+              htmlFor="is-lead-template"
+              className="flex items-center gap-2 cursor-pointer select-none"
+            >
+              <Checkbox
+                id="is-lead-template"
+                checked={template.is_lead_template}
+                disabled={updateIsLeadTemplateMutation.isPending}
+                onCheckedChange={(checked) =>
+                  updateIsLeadTemplateMutation.mutate(checked === true)
+                }
+              />
+              <span className="text-sm font-medium">Это шаблон лида</span>
+            </label>
+            <p className="text-xs text-muted-foreground mt-0.5 ml-6">
+              Проекты с этим шаблоном попадают в воронку продаж и могут быть конвертированы
+              в рабочие проекты.
+            </p>
           </div>
         </div>
 

@@ -63,6 +63,7 @@ const EMPTY_FORM = (workspaceId: string): StatusInsert => ({
   order_index: 0,
   is_default: false,
   is_final: false,
+  final_kind: null,
   silent_transition: false,
 })
 
@@ -123,6 +124,7 @@ export function ProjectTemplateStatusesSection({
         silent_transition: data.silent_transition ?? false,
         is_default: data.is_default ?? false,
         is_final: data.is_final ?? false,
+        final_kind: data.final_kind ?? null,
       }
       const tplPayload = {
         order_index: data.order_index ?? 0,
@@ -294,6 +296,7 @@ export function ProjectTemplateStatusesSection({
       order_index: status.order_index,
       is_default: status.is_default,
       is_final: status.is_final,
+      final_kind: status.final_kind ?? null,
       icon: status.icon ?? null,
       show_to_creator: status.show_to_creator ?? false,
       silent_transition: status.silent_transition ?? false,

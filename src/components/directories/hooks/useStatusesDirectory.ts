@@ -97,6 +97,7 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
           extra.show_to_creator = params.data.show_to_creator ?? false
         if ('silent_transition' in params.data)
           extra.silent_transition = params.data.silent_transition ?? false
+        if ('final_kind' in params.data) extra.final_kind = params.data.final_kind ?? null
         if (Object.keys(extra).length > 0) {
           await supabase.from('statuses').update(extra).eq('id', params.editing.id)
         }
@@ -115,8 +116,13 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
         })
         if (error) throw error
 
-        // Для новых статусов: назначить icon, show_to_creator и silent_transition
-        if (params.data.icon || params.data.show_to_creator || params.data.silent_transition) {
+        // Для новых статусов: назначить icon, show_to_creator, silent_transition, final_kind
+        if (
+          params.data.icon ||
+          params.data.show_to_creator ||
+          params.data.silent_transition ||
+          params.data.final_kind
+        ) {
           const { data: created } = await supabase
             .from('statuses')
             .select('id')
@@ -133,6 +139,7 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
                 icon: params.data.icon ?? null,
                 show_to_creator: params.data.show_to_creator ?? false,
                 silent_transition: params.data.silent_transition ?? false,
+                final_kind: params.data.final_kind ?? null,
               })
               .eq('id', created.id)
           }
@@ -257,6 +264,7 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
       order_index: filteredStatuses.length,
       is_default: false,
       is_final: false,
+      final_kind: null,
       silent_transition: false,
     })
     setIsDialogOpen(true)
@@ -275,6 +283,7 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
       order_index: status.order_index,
       is_default: status.is_default,
       is_final: status.is_final,
+      final_kind: status.final_kind,
       icon: status.icon ?? null,
       show_to_creator: status.show_to_creator ?? false,
       silent_transition: status.silent_transition ?? false,

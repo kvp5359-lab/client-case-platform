@@ -4710,6 +4710,7 @@ export type Database = {
           description: string | null;
           enabled_modules: string[] | null;
           id: string;
+          is_lead_template: boolean;
           name: string;
           root_folder_id: string | null;
           updated_at: string;
@@ -4722,6 +4723,7 @@ export type Database = {
           description?: string | null;
           enabled_modules?: string[] | null;
           id?: string;
+          is_lead_template?: boolean;
           name: string;
           root_folder_id?: string | null;
           updated_at?: string;
@@ -4734,6 +4736,7 @@ export type Database = {
           description?: string | null;
           enabled_modules?: string[] | null;
           id?: string;
+          is_lead_template?: boolean;
           name?: string;
           root_folder_id?: string | null;
           updated_at?: string;
@@ -5467,6 +5470,7 @@ export type Database = {
           created_at: string;
           description: string | null;
           entity_type: Database["public"]["Enums"]["entity_type"];
+          final_kind: Database["public"]["Enums"]["status_final_kind"] | null;
           icon: string | null;
           id: string;
           is_default: boolean;
@@ -5486,6 +5490,7 @@ export type Database = {
           created_at?: string;
           description?: string | null;
           entity_type: Database["public"]["Enums"]["entity_type"];
+          final_kind?: Database["public"]["Enums"]["status_final_kind"] | null;
           icon?: string | null;
           id?: string;
           is_default?: boolean;
@@ -5505,6 +5510,7 @@ export type Database = {
           created_at?: string;
           description?: string | null;
           entity_type?: Database["public"]["Enums"]["entity_type"];
+          final_kind?: Database["public"]["Enums"]["status_final_kind"] | null;
           icon?: string | null;
           id?: string;
           is_default?: boolean;
@@ -6694,6 +6700,7 @@ export type Database = {
           created_at: string;
           description: string | null;
           entity_type: Database["public"]["Enums"]["entity_type"];
+          final_kind: Database["public"]["Enums"]["status_final_kind"] | null;
           icon: string | null;
           id: string;
           is_default: boolean;
@@ -7343,6 +7350,7 @@ export type Database = {
           created_at: string;
           description: string | null;
           entity_type: Database["public"]["Enums"]["entity_type"];
+          final_kind: Database["public"]["Enums"]["status_final_kind"] | null;
           icon: string | null;
           id: string;
           is_default: boolean;
@@ -7448,6 +7456,7 @@ export type Database = {
         | "telegram_business"
         | "telegram_mtproto"
         | "wazzup";
+      status_final_kind: "won" | "lost" | "abandoned";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -7641,6 +7650,7 @@ export const Constants = {
         "telegram_mtproto",
         "wazzup",
       ],
+      status_final_kind: ["won", "lost", "abandoned"],
     },
   },
 } as const;

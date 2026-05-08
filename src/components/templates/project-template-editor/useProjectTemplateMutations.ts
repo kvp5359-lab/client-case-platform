@@ -62,6 +62,23 @@ export function useProjectTemplateMutations({
     },
   })
 
+  // Переключение флага "это шаблон лида" (CRM-фрейм этап 3)
+  const updateIsLeadTemplateMutation = useMutation({
+    mutationFn: async (isLead: boolean) => {
+      const { error } = await supabase
+        .from('project_templates')
+        .update({ is_lead_template: isLead })
+        .eq('id', templateId ?? '')
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
+    },
+    onError: () => {
+      toast.error('Не удалось обновить флаг лида')
+    },
+  })
+
   // Обновление модулей
   const updateModulesMutation = useMutation({
     mutationFn: async (modules: string[]) => {
@@ -253,6 +270,7 @@ export function useProjectTemplateMutations({
 
   return {
     updateTemplateMutation,
+    updateIsLeadTemplateMutation,
     updateModulesMutation,
     addFormsMutation,
     removeFormMutation,

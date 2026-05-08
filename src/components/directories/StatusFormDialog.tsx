@@ -16,6 +16,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Database } from '@/types/database'
 
 type Status = Database['public']['Tables']['statuses']['Row']
@@ -135,9 +142,15 @@ export function StatusFormDialog({
               <Checkbox
                 id="is_final"
                 checked={formData.is_final}
-                onCheckedChange={(checked) =>
-                  onFormDataChange({ ...formData, is_final: !!checked })
-                }
+                onCheckedChange={(checked) => {
+                  // Если снимают флаг финальности — final_kind должен быть null
+                  // (этого требует CHECK-констрейнт в БД).
+                  onFormDataChange({
+                    ...formData,
+                    is_final: !!checked,
+                    final_kind: checked ? formData.final_kind : null,
+                  })
+                }}
                 disabled={saving}
               />
               <label htmlFor="is_final" className="text-sm cursor-pointer">
@@ -145,6 +158,43 @@ export function StatusFormDialog({
                 <span className="text-gray-500 ml-1">(завершён, отклонён)</span>
               </label>
             </div>
+
+            {/* Подтип финального статуса для аналитики воронки CRM (этап 3).
+                Показываем только для финальных. Опциональный — старые статусы
+                остаются с NULL и не учитываются в воронке. */}
+            {formData.is_final && (
+              <div className="space-y-1.5 ml-6">
+                <Label htmlFor="final_kind" className="text-sm">
+                  Тип финального статуса
+                  <span className="text-gray-500 font-normal ml-1">
+                    (для воронки лидов — опционально)
+                  </span>
+                </Label>
+                <Select
+                  value={formData.final_kind ?? 'none'}
+                  onValueChange={(value) =>
+                    onFormDataChange({
+                      ...formData,
+                      final_kind:
+                        value === 'none'
+                          ? null
+                          : (value as Database['public']['Enums']['status_final_kind']),
+                    })
+                  }
+                  disabled={saving}
+                >
+                  <SelectTrigger id="final_kind">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— не задан —</SelectItem>
+                    <SelectItem value="won">Выиграно (won)</SelectItem>
+                    <SelectItem value="lost">Проиграно (lost)</SelectItem>
+                    <SelectItem value="abandoned">Слит (abandoned)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {formData.entity_type === 'task' && (
               <div className="flex items-center space-x-2">
