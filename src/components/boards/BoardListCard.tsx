@@ -7,6 +7,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   DragOverlay,
   type DragStartEvent,
   type DragEndEvent,
@@ -19,6 +20,8 @@ import { useWorkspaceProjectParticipants } from './hooks/useWorkspaceProjectPart
 import { BoardTaskRow } from './BoardTaskRow'
 import { DraggableBoardTaskRow } from './DraggableBoardTaskRow'
 import { BoardProjectRow } from './BoardProjectRow'
+import { DraggableBoardProjectRow } from './DraggableBoardProjectRow'
+import { useUpdateProjectStatusOnBoard } from './hooks/useUpdateProjectStatusOnBoard'
 import { BoardInboxList } from './BoardInboxList'
 import { BoardListHeader } from './BoardListHeader'
 import { ListSettingsDialog } from './ListSettingsDialog'
@@ -59,6 +62,37 @@ interface BoardListCardProps {
   /** Фильтр всей доски (этап 4.1). Применяется AND к list.filters
    *  для соответствующего entity_type. Inbox-списки игнорируют. */
   boardGlobalFilter?: BoardGlobalFilter
+}
+
+/**
+ * Droppable-обёртка вокруг группы (статуса) на доске. При наведении карточки
+ * во время drag — подсвечивается. id вида `group:<status_id>` или
+ * `group:__none__` для «без статуса». Объявляется ДО BoardListCard, потому что
+ * Webpack/Next-bundler не всегда корректно хойстит function-declaration при
+ * eval()-режиме HMR.
+ */
+function BoardGroupDropZone({
+  groupKey,
+  isActive,
+  children,
+}: {
+  groupKey: string
+  isActive: boolean
+  children: React.ReactNode
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `group:${groupKey}` })
+  const hot = isOver || isActive
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'rounded-lg transition-colors',
+        hot && 'bg-blue-100/40 ring-1 ring-blue-300',
+      )}
+    >
+      {children}
+    </div>
+  )
 }
 
 export function BoardListCard({
@@ -266,6 +300,70 @@ export function BoardListCard({
     setDropIndicator(null)
   }, [])
 
+  // ── Этап 4.3: DnD по группам (cross-group → смена статуса) ──────
+  // Активно когда список сгруппирован по статусу (hasGrouping && groupByField === 'status').
+  // Работает и для проектов, и для тасков. Drop на группу с status_id, отличным
+  // от текущего, обновляет статус. Внутри одной группы — no-op (sort_order у
+  // проектов на доске не используется; reorder тасков работает только в
+  // manual_sort режиме без группировки).
+  const updateProjectStatus = useUpdateProjectStatusOnBoard()
+  const [draggedGroupItem, setDraggedGroupItem] = useState<
+    | { kind: 'project'; project: BoardProject }
+    | { kind: 'task'; task: WorkspaceTask }
+    | null
+  >(null)
+  const [overGroupKey, setOverGroupKey] = useState<string | null>(null)
+
+  const handleGroupDragStart = useCallback((e: DragStartEvent) => {
+    const data = e.active.data.current as
+      | { kind?: 'project'; project?: BoardProject }
+      | { kind?: 'task'; task?: WorkspaceTask }
+      | undefined
+    if (data?.kind === 'project' && data.project) {
+      setDraggedGroupItem({ kind: 'project', project: data.project })
+    } else if (data?.kind === 'task' && data.task) {
+      setDraggedGroupItem({ kind: 'task', task: data.task })
+    }
+  }, [])
+
+  const handleGroupDragOver = useCallback((e: DragOverEvent) => {
+    const overId = e.over ? String(e.over.id) : null
+    if (overId && overId.startsWith('group:')) {
+      setOverGroupKey(overId.slice('group:'.length))
+    } else {
+      setOverGroupKey(null)
+    }
+  }, [])
+
+  const handleGroupDragEnd = useCallback(
+    (e: DragEndEvent) => {
+      const item = draggedGroupItem
+      setDraggedGroupItem(null)
+      setOverGroupKey(null)
+      if (!item || !e.over) return
+      const overId = String(e.over.id)
+      if (!overId.startsWith('group:')) return
+      const targetKey = overId.slice('group:'.length)
+      // Группа `__none__` означает «без статуса» (status_id = null).
+      const targetStatusId = targetKey === '__none__' ? null : targetKey
+      if (item.kind === 'project') {
+        if (item.project.status_id === targetStatusId) return
+        updateProjectStatus.mutate({ projectId: item.project.id, statusId: targetStatusId })
+      } else {
+        if (item.task.status_id === targetStatusId) return
+        // Для тасков уже есть пробрасываемый коллбэк (используется popover'ом
+        // изменения статуса в карточке) — переиспользуем его.
+        onStatusChange(item.task.id, targetStatusId)
+      }
+    },
+    [draggedGroupItem, updateProjectStatus, onStatusChange],
+  )
+
+  const handleGroupDragCancel = useCallback(() => {
+    setDraggedGroupItem(null)
+    setOverGroupKey(null)
+  }, [])
+
   return (
     <div className={cn('rounded-lg', listHeight === 'full' && 'flex flex-col flex-1 min-h-0')}>
       <BoardListHeader
@@ -293,54 +391,80 @@ export function BoardListCard({
             />
           ) : isProject ? (
             filteredProjects.length > 0 ? (
-              <div className={cn(isCards ? 'grid gap-1' : hasGrouping ? 'flex flex-col gap-2' : 'divide-y divide-border/50')}>
-                {projectGroups.map((group) => (
-                  <div key={group.key}>
-                    {hasGrouping && (
-                      <div className={cn('px-0 pb-1')}>
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
-                            !group.color && 'bg-muted-foreground/10 text-muted-foreground',
-                          )}
-                          style={
-                            group.color
-                              ? {
-                                  backgroundColor: `${group.color}1A`,
-                                  color: group.color,
-                                }
-                              : undefined
-                          }
-                        >
-                          {group.label}
-                          <span className="opacity-50">{group.projects.length}</span>
-                        </span>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={pointerWithin}
+                onDragStart={handleGroupDragStart}
+                onDragOver={handleGroupDragOver}
+                onDragEnd={handleGroupDragEnd}
+                onDragCancel={handleGroupDragCancel}
+              >
+                <div className={cn(isCards ? 'grid gap-1' : hasGrouping ? 'flex flex-col gap-2' : 'divide-y divide-border/50')}>
+                  {projectGroups.map((group) => (
+                    <BoardGroupDropZone
+                      key={group.key}
+                      groupKey={group.key}
+                      isActive={overGroupKey === group.key && draggedGroupItem !== null}
+                    >
+                      {hasGrouping && (
+                        <div className={cn('px-0 pb-1')}>
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
+                              !group.color && 'bg-muted-foreground/10 text-muted-foreground',
+                            )}
+                            style={
+                              group.color
+                                ? {
+                                    backgroundColor: `${group.color}1A`,
+                                    color: group.color,
+                                  }
+                                : undefined
+                            }
+                          >
+                            {group.label}
+                            <span className="opacity-50">{group.projects.length}</span>
+                          </span>
+                        </div>
+                      )}
+                      <div className={cn(
+                        isCards
+                          ? 'grid grid-cols-1 gap-1'
+                          : hasGrouping
+                            ? 'divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden'
+                            : 'divide-y divide-border/50'
+                      )}>
+                        {group.projects.map((project) => (
+                          <DraggableBoardProjectRow
+                            key={project.id}
+                            project={project}
+                            workspaceId={workspaceId}
+                            displayMode={list.display_mode ?? 'list'}
+                            visibleFields={list.visible_fields ?? ['status', 'template']}
+                            isSelected={selectedProjectId === project.id}
+                            cardLayout={list.card_layout}
+                            nextTask={nextTaskByProjectId[project.id]}
+                            authorName={project.created_by ? authorNameByUserId[project.created_by] : null}
+                          />
+                        ))}
                       </div>
-                    )}
-                    <div className={cn(
-                      isCards
-                        ? 'grid grid-cols-1 gap-1'
-                        : hasGrouping
-                          ? 'divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden'
-                          : 'divide-y divide-border/50'
-                    )}>
-                      {group.projects.map((project) => (
-                        <BoardProjectRow
-                          key={project.id}
-                          project={project}
-                          workspaceId={workspaceId}
-                          displayMode={list.display_mode ?? 'list'}
-                          visibleFields={list.visible_fields ?? ['status', 'template']}
-                          isSelected={selectedProjectId === project.id}
-                          cardLayout={list.card_layout}
-                          nextTask={nextTaskByProjectId[project.id]}
-                          authorName={project.created_by ? authorNameByUserId[project.created_by] : null}
-                        />
-                      ))}
+                    </BoardGroupDropZone>
+                  ))}
+                </div>
+                <DragOverlay dropAnimation={null}>
+                  {draggedGroupItem?.kind === 'project' ? (
+                    <div className="shadow-xl rounded-md opacity-90 bg-white">
+                      <BoardProjectRow
+                        project={draggedGroupItem.project}
+                        workspaceId={workspaceId}
+                        displayMode={list.display_mode ?? 'list'}
+                        visibleFields={list.visible_fields ?? ['status', 'template']}
+                        cardLayout={list.card_layout}
+                      />
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
             ) : (
               <div className="px-3 py-4 text-xs text-muted-foreground text-center">
                 {hasFilters ? 'Нет элементов по фильтру' : 'Пусто'}
@@ -393,43 +517,74 @@ export function BoardListCard({
                 </DragOverlay>
               </DndContext>
             ) : (
-            <div className={cn(isCards ? 'grid gap-1' : hasGrouping ? 'flex flex-col gap-2' : 'divide-y divide-border/50')}>
-              {groups.map((group) => (
-                <div key={group.key}>
-                  {hasGrouping && (
-                    <div className={cn('px-2 pb-1', isCards && 'px-0 pb-1')}>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted-foreground/10 text-[11px] font-medium text-muted-foreground">
-                        {group.label}
-                        <span className="opacity-50">{group.tasks.length}</span>
-                      </span>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={pointerWithin}
+              onDragStart={handleGroupDragStart}
+              onDragOver={handleGroupDragOver}
+              onDragEnd={handleGroupDragEnd}
+              onDragCancel={handleGroupDragCancel}
+            >
+              <div className={cn(isCards ? 'grid gap-1' : hasGrouping ? 'flex flex-col gap-2' : 'divide-y divide-border/50')}>
+                {groups.map((group) => (
+                  <BoardGroupDropZone
+                    key={group.key}
+                    groupKey={group.key}
+                    isActive={overGroupKey === group.key && draggedGroupItem !== null}
+                  >
+                    {hasGrouping && (
+                      <div className={cn('px-2 pb-1', isCards && 'px-0 pb-1')}>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted-foreground/10 text-[11px] font-medium text-muted-foreground">
+                          {group.label}
+                          <span className="opacity-50">{group.tasks.length}</span>
+                        </span>
+                      </div>
+                    )}
+                    <div className={cn(
+                      isCards
+                        ? 'grid grid-cols-1 gap-1'
+                        : hasGrouping
+                          ? 'divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden'
+                          : 'divide-y divide-border/50'
+                    )}>
+                      {group.tasks.map((task) => (
+                        <DraggableBoardTaskRow
+                          key={task.id}
+                          task={task}
+                          workspaceId={workspaceId}
+                          assignees={assigneesMap[task.id] ?? []}
+                          statuses={statuses}
+                          visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
+                          displayMode={list.display_mode ?? 'list'}
+                          onOpenTask={onOpenTask}
+                          onStatusChange={onStatusChange}
+                          isSelected={selectedThreadId === task.id}
+                          cardLayout={list.card_layout}
+                          dropIndicator={null}
+                        />
+                      ))}
                     </div>
-                  )}
-                  <div className={cn(
-                    isCards
-                      ? 'grid grid-cols-1 gap-1'
-                      : hasGrouping
-                        ? 'divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden'
-                        : 'divide-y divide-border/50'
-                  )}>
-                    {group.tasks.map((task) => (
-                      <BoardTaskRow
-                        key={task.id}
-                        task={task}
-                        workspaceId={workspaceId}
-                        assignees={assigneesMap[task.id] ?? []}
-                        statuses={statuses}
-                        visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
-                        displayMode={list.display_mode ?? 'list'}
-                        onOpenTask={onOpenTask}
-                        onStatusChange={onStatusChange}
-                        isSelected={selectedThreadId === task.id}
-                        cardLayout={list.card_layout}
-                      />
-                    ))}
+                  </BoardGroupDropZone>
+                ))}
+              </div>
+              <DragOverlay dropAnimation={null}>
+                {draggedGroupItem?.kind === 'task' ? (
+                  <div className="shadow-xl rounded-md opacity-90 bg-white">
+                    <BoardTaskRow
+                      task={draggedGroupItem.task}
+                      workspaceId={workspaceId}
+                      assignees={assigneesMap[draggedGroupItem.task.id] ?? []}
+                      statuses={statuses}
+                      visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
+                      displayMode={list.display_mode ?? 'list'}
+                      onOpenTask={() => {}}
+                      onStatusChange={() => {}}
+                      cardLayout={list.card_layout}
+                    />
                   </div>
-                </div>
-              ))}
-            </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
             )
           ) : (
             <div className="px-3 py-4 text-xs text-muted-foreground text-center">
@@ -450,3 +605,4 @@ export function BoardListCard({
     </div>
   )
 }
+

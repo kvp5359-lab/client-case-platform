@@ -30,7 +30,9 @@ export const DraggableBoardTaskRow = memo(function DraggableBoardTaskRow({
 }: DraggableBoardTaskRowProps) {
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
     id: task.id,
-    data: { task },
+    // kind:'task' нужен для cross-group DnD по статусу (этап 4.3) — старый
+    // manual-sort DnD читает только data.task, новое поле не мешает.
+    data: { task, kind: 'task' as const },
   })
   const { setNodeRef: setDropRef } = useDroppable({ id: task.id })
 
