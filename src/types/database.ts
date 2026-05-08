@@ -182,6 +182,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          short_id: number | null
           sort_order: number | null
           updated_at: string | null
           workspace_id: string
@@ -195,6 +196,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          short_id?: number | null
           sort_order?: number | null
           updated_at?: string | null
           workspace_id: string
@@ -208,6 +210,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          short_id?: number | null
           sort_order?: number | null
           updated_at?: string | null
           workspace_id?: string
@@ -582,16 +585,40 @@ export type Database = {
           created_at: string | null
           email: string
           id: string
+          role: string
         }
         Insert: {
           created_at?: string | null
           email: string
           id?: string
+          role?: string
         }
         Update: {
           created_at?: string | null
           email?: string
           id?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      docbuilder_app_settings: {
+        Row: {
+          id: string
+          settings: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          settings?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          settings?: Json
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -730,6 +757,32 @@ export type Database = {
             columns: ["subsection_id"]
             isOneToOne: false
             referencedRelation: "docbuilder_subsections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      docbuilder_project_access: {
+        Row: {
+          created_at: string
+          project_id: string
+          user_email: string
+        }
+        Insert: {
+          created_at?: string
+          project_id: string
+          user_email: string
+        }
+        Update: {
+          created_at?: string
+          project_id?: string
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "docbuilder_project_access_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "docbuilder_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1089,6 +1142,32 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "docbuilder_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      docbuilder_template_access: {
+        Row: {
+          created_at: string
+          template_id: string
+          user_email: string
+        }
+        Insert: {
+          created_at?: string
+          template_id: string
+          user_email: string
+        }
+        Update: {
+          created_at?: string
+          template_id?: string
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "docbuilder_template_access_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "docbuilder_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -2726,6 +2805,53 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      impersonation_sessions: {
+        Row: {
+          ended_at: string | null
+          expires_at: string
+          id: string
+          ip: string | null
+          jti: string
+          owner_user_id: string
+          started_at: string
+          target_user_id: string
+          user_agent: string | null
+          workspace_id: string
+        }
+        Insert: {
+          ended_at?: string | null
+          expires_at: string
+          id?: string
+          ip?: string | null
+          jti: string
+          owner_user_id: string
+          started_at?: string
+          target_user_id: string
+          user_agent?: string | null
+          workspace_id: string
+        }
+        Update: {
+          ended_at?: string | null
+          expires_at?: string
+          id?: string
+          ip?: string | null
+          jti?: string
+          owner_user_id?: string
+          started_at?: string
+          target_user_id?: string
+          user_agent?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impersonation_sessions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -6560,6 +6686,20 @@ export type Database = {
         Args: { workspace_uuid: string }
         Returns: boolean
       }
+      docbuilder_has_project_access: {
+        Args: { p_project_id: string }
+        Returns: boolean
+      }
+      docbuilder_has_template_access: {
+        Args: { p_template_id: string }
+        Returns: boolean
+      }
+      docbuilder_is_admin: { Args: never; Returns: boolean }
+      docbuilder_user_email: { Args: never; Returns: string }
+      end_impersonation_session: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
       fill_folder_slot: {
         Args: { p_document_id: string; p_project_id: string; p_slot_id: string }
         Returns: undefined
@@ -6765,6 +6905,10 @@ export type Database = {
           project_name: string
         }[]
       }
+      get_short_id_by_uuid: {
+        Args: { p_entity_type: string; p_uuid: string }
+        Returns: number
+      }
       get_sidebar_data: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: Json
@@ -6908,10 +7052,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      impersonating_owner_id: { Args: never; Returns: string }
       is_feature_enabled: {
         Args: { p_feature: string; p_workspace_id: string }
         Returns: boolean
       }
+      is_impersonating: { Args: never; Returns: boolean }
       is_internal_member: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: boolean
@@ -7056,6 +7202,18 @@ export type Database = {
       }
       set_workspace_voyageai_api_key: {
         Args: { api_key: string; workspace_uuid: string }
+        Returns: string
+      }
+      start_impersonation_session: {
+        Args: {
+          p_expires_at: string
+          p_ip?: string
+          p_jti: string
+          p_owner_user_id: string
+          p_target_user_id: string
+          p_user_agent?: string
+          p_workspace_id: string
+        }
         Returns: string
       }
       swap_board_list_sort_order: {

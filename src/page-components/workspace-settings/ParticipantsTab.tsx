@@ -29,7 +29,7 @@ export function ParticipantsTab() {
   const [defaultRoleForNewParticipant, setDefaultRoleForNewParticipant] = useState<string>('')
   const [mergingContact, setMergingContact] = useState<Participant | null>(null)
 
-  const { can } = useWorkspacePermissions({ workspaceId })
+  const { can, isOwner } = useWorkspacePermissions({ workspaceId })
   const canManageParticipants = can('manage_participants')
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
@@ -194,6 +194,8 @@ export function ParticipantsTab() {
               onDelete={handleDeleteParticipant}
               actionInProgressId={actionInProgressId}
               canManage={canManageParticipants}
+              canImpersonate={isOwner}
+              workspaceId={workspaceId}
             />
           )}
         </div>
