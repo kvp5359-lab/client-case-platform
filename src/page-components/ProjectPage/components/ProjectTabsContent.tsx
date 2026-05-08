@@ -14,6 +14,7 @@ import { ProjectParticipants } from '@/components/projects/ProjectParticipants'
 import { GoogleDriveSection } from './GoogleDriveSection'
 import { ProjectSettingsSection } from './ProjectSettingsSection'
 import { ProjectFieldsSection } from './ProjectFieldsSection'
+import { ProjectContactSection } from './ProjectContactSection'
 import type { Project } from '../types'
 import type { UseDialogReturn } from '@/hooks/shared/useDialog'
 import type { FormKit } from '@/hooks/useFormKitsQuery'
@@ -135,6 +136,14 @@ export function ProjectTabsContent({
               onTemplateChange={onTemplateChange}
             />
           </div>
+
+          {/* Секция «Контакт» — про кого этот проект (CRM-фрейм этап 2) */}
+          <ProjectContactSection
+            projectId={projectId}
+            workspaceId={workspaceId}
+            contactParticipantId={project.contact_participant_id ?? null}
+            disabled={!canEditProjectInfo}
+          />
 
           {/* Секция «Поля» — кастомные поля шаблона проекта */}
           <ProjectFieldsSection

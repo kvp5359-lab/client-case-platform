@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Crown, Users, Link, HandshakeIcon, Camera, type LucideIcon } from 'lucide-react'
+import { ParticipantChannelsBlock } from './ParticipantChannelsBlock'
 
 export interface RoleOption {
   value: string
@@ -298,6 +299,18 @@ export function EditParticipantDialog({
                 Узнать свой ID: напишите @userinfobot в Telegram
               </p>
             </div>
+
+            {/* Каналы связи — доступны только для существующего participant'а
+                (нужен participant.id для FK). Поля выше (email/phone/tg) пока
+                остаются как «основной» канал каждого типа — миграция UI поэтапная. */}
+            {participant && (
+              <div className="pt-3 border-t">
+                <ParticipantChannelsBlock
+                  participantId={participant.id}
+                  workspaceId={participant.workspace_id}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="role">Роль в workspace</Label>

@@ -344,6 +344,18 @@ export const participantKeys = {
     ['project-header-participants', projectId] as const,
 }
 
+/** Каналы связи участника (telegram/email/phone и т.д.). */
+export const participantChannelKeys = {
+  all: ['participant-channels'] as const,
+  byParticipant: (participantId: string | undefined) =>
+    ['participant-channels', 'by-participant', participantId] as const,
+  byWorkspace: (workspaceId: string | undefined) =>
+    ['participant-channels', 'by-workspace', workspaceId] as const,
+  /** Поиск participant по каналу (для маршрутизации входящих). */
+  lookup: (workspaceId: string, channelType: string, externalId: string) =>
+    ['participant-channels', 'lookup', workspaceId, channelType, externalId] as const,
+}
+
 /**
  * Треды как сущности (project_threads). В отличие от messengerKeys (кэши чатов),
  * здесь хранится сам тред, его участники и аудит-события.
