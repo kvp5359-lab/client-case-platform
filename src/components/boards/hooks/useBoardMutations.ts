@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { boardKeys } from '@/hooks/queryKeys'
-import type { Board } from '../types'
+import type { Board, BoardGlobalFilter } from '../types'
 
 interface CreateBoardParams {
   workspace_id: string
@@ -22,6 +22,8 @@ interface UpdateBoardParams {
   access_type?: 'workspace' | 'private' | 'custom'
   access_roles?: string[]
   column_widths?: number[]
+  /** Фильтр на уровне всей доски (этап 4.1) */
+  global_filter?: BoardGlobalFilter
 }
 
 export function useCreateBoard() {

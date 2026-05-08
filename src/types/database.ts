@@ -180,6 +180,7 @@ export type Database = {
           created_at: string | null;
           created_by: string | null;
           description: string | null;
+          global_filter: Json;
           id: string;
           name: string;
           short_id: number | null;
@@ -194,6 +195,7 @@ export type Database = {
           created_at?: string | null;
           created_by?: string | null;
           description?: string | null;
+          global_filter?: Json;
           id?: string;
           name: string;
           short_id?: number | null;
@@ -208,6 +210,7 @@ export type Database = {
           created_at?: string | null;
           created_by?: string | null;
           description?: string | null;
+          global_filter?: Json;
           id?: string;
           name?: string;
           short_id?: number | null;
@@ -7061,6 +7064,7 @@ export type Database = {
           created_at: string;
           created_by: string;
           description: string;
+          global_filter: Json;
           id: string;
           name: string;
           sort_order: number;

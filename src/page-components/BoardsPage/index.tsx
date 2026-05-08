@@ -10,6 +10,8 @@ import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useDeleteBoard } from '@/components/boards/hooks/useBoardMutations'
 import { CreateBoardDialog } from '@/components/boards/CreateBoardDialog'
 import { EditBoardDialog } from '@/components/boards/EditBoardDialog'
+import { BoardFilterDialog } from '@/components/boards/BoardFilterDialog'
+import { normalizeBoardGlobalFilter } from '@/components/boards/types'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { usePinnedBoards } from '@/components/WorkspaceSidebar/usePinnedBoards'
 import { useWorkspacePermissions } from '@/hooks/permissions'
@@ -28,6 +30,7 @@ export default function BoardsPage() {
   const closePanel = useSidePanelStore((s) => s.closePanel)
   const createDialog = useDialog()
   const editDialog = useDialog()
+  const filterDialog = useDialog()
   const createListDialog = useDialog()
   const { data: boards, isLoading } = useBoardsQuery(workspaceId)
   const deleteBoard = useDeleteBoard()
@@ -99,10 +102,18 @@ export default function BoardsPage() {
                       isActive={resolvedBoardId === board.id}
                       isPinned={isBoardPinned(board.id)}
                       canPin={isOwner}
+                      hasBoardFilter={(() => {
+                        const f = normalizeBoardGlobalFilter(board.global_filter)
+                        return f.project.rules.length > 0 || f.task.rules.length > 0
+                      })()}
                       onSelect={() => navigateToBoard(board.id)}
                       onEdit={() => {
                         navigateToBoard(board.id)
                         editDialog.open()
+                      }}
+                      onEditFilter={() => {
+                        navigateToBoard(board.id)
+                        filterDialog.open()
                       }}
                       onDelete={() => handleDeleteBoard(board)}
                       onAddList={() => {
@@ -160,6 +171,14 @@ export default function BoardsPage() {
         <EditBoardDialog
           open={editDialog.isOpen}
           onClose={editDialog.close}
+          board={activeBoard}
+        />
+      )}
+
+      {activeBoard && (
+        <BoardFilterDialog
+          open={filterDialog.isOpen}
+          onClose={filterDialog.close}
           board={activeBoard}
         />
       )}

@@ -39,8 +39,49 @@ export interface Board {
   sort_order: number
   /** Массив ширин колонок в px по индексу. Если длина меньше количества колонок — недостающие = DEFAULT_COLUMN_WIDTH */
   column_widths: number[]
+  /** Фильтр на уровне всей доски (этап 4.1). Применяется AND к фильтру каждого
+   *  списка соответствующего entity_type. Inbox-списки игнорируют. */
+  global_filter: BoardGlobalFilter
   created_at: string
   updated_at: string
+}
+
+/**
+ * Фильтр всей доски — отдельные группы для разных entity_type.
+ * Inbox-списки имеют свою логику (default_filter), здесь не участвуют.
+ */
+export interface BoardGlobalFilter {
+  project: FilterGroup
+  task: FilterGroup
+}
+
+/** Дефолтный пустой board.global_filter. */
+export const EMPTY_BOARD_GLOBAL_FILTER: BoardGlobalFilter = {
+  project: { logic: 'and', rules: [] },
+  task: { logic: 'and', rules: [] },
+}
+
+/** Безопасно достать BoardGlobalFilter из старых/кривых данных — заменяет
+ *  отсутствующие поля дефолтными пустыми группами. */
+export function normalizeBoardGlobalFilter(value: unknown): BoardGlobalFilter {
+  const v = (value ?? {}) as Partial<BoardGlobalFilter>
+  return {
+    project: v.project ?? { logic: 'and', rules: [] },
+    task: v.task ?? { logic: 'and', rules: [] },
+  }
+}
+
+/** Объединить две группы фильтров через AND. Пустая группа (rules=[]) возвращает другую — без лишних обёрток. */
+export function mergeFilterGroupsAnd(a: FilterGroup, b: FilterGroup): FilterGroup {
+  if (!a || a.rules.length === 0) return b
+  if (!b || b.rules.length === 0) return a
+  return {
+    logic: 'and',
+    rules: [
+      { type: 'group', group: a },
+      { type: 'group', group: b },
+    ],
+  }
 }
 
 /** Дефолтная ширина колонки доски, если не задана */

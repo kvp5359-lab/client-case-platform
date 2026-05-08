@@ -113,6 +113,7 @@ export function BoardTabContent({
           userToParticipantMap={userToParticipantMap}
           statuses={statuses}
           columnWidths={board.column_widths}
+          boardGlobalFilter={board.global_filter}
           onOpenTask={handleOpenTask}
           onOpenThread={handleOpenThread}
           onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}

@@ -1,6 +1,6 @@
 "use client"
 
-import { Kanban, MoreVertical, Trash2, Pencil, ListPlus, Pin, PinOff } from 'lucide-react'
+import { Kanban, MoreVertical, Trash2, Pencil, ListPlus, Pin, PinOff, Filter } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,14 +17,29 @@ interface BoardTabProps {
   isPinned: boolean
   /** Может ли текущий пользователь менять закрепления (на уровне воркспейса). */
   canPin: boolean
+  /** Активен ли board.global_filter — для бейджа на иконке фильтра. */
+  hasBoardFilter: boolean
   onSelect: () => void
   onEdit: () => void
+  onEditFilter: () => void
   onDelete: () => void
   onAddList: () => void
   onTogglePin: () => void
 }
 
-export function BoardTab({ board, isActive, isPinned, canPin, onSelect, onEdit, onDelete, onAddList, onTogglePin }: BoardTabProps) {
+export function BoardTab({
+  board,
+  isActive,
+  isPinned,
+  canPin,
+  hasBoardFilter,
+  onSelect,
+  onEdit,
+  onEditFilter,
+  onDelete,
+  onAddList,
+  onTogglePin,
+}: BoardTabProps) {
   return (
     <div className="flex items-center shrink-0">
       <div
@@ -94,6 +109,18 @@ export function BoardTab({ board, isActive, isPinned, canPin, onSelect, onEdit, 
                   )}
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEditFilter()
+                }}
+              >
+                <Filter className="h-3.5 w-3.5 mr-2" />
+                Фильтр доски
+                {hasBoardFilter && (
+                  <span className="ml-auto inline-block w-1.5 h-1.5 rounded-full bg-amber-500" />
+                )}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={(e) => {

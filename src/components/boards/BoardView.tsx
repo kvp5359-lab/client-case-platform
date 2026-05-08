@@ -17,7 +17,13 @@ import {
 import { BoardColumn } from './BoardColumn'
 import { usePanDrag } from './hooks/usePanDrag'
 import { useReorderLists } from './hooks/useListMutations'
-import { DEFAULT_COLUMN_WIDTH, type BoardList, type FilterContext } from './types'
+import {
+  DEFAULT_COLUMN_WIDTH,
+  EMPTY_BOARD_GLOBAL_FILTER,
+  type BoardGlobalFilter,
+  type BoardList,
+  type FilterContext,
+} from './types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/ui/status-dropdown'
@@ -39,6 +45,9 @@ interface BoardViewProps {
   statuses?: StatusOption[]
   /** Массив ширин колонок в px по индексу (из board.column_widths) */
   columnWidths?: number[]
+  /** Фильтр на уровне всей доски (этап 4.1). Применяется AND к фильтру каждого
+   *  списка соответствующего entity_type. Если не передан — пустой (no-op). */
+  boardGlobalFilter?: BoardGlobalFilter
   onOpenTask?: (taskId: string) => void
   onOpenThread?: (task: TaskItem) => void
   onStatusChange?: (taskId: string, statusId: string | null) => void
@@ -59,12 +68,14 @@ export function BoardView({
   userToParticipantMap,
   statuses,
   columnWidths,
+  boardGlobalFilter,
   onOpenTask,
   onOpenThread,
   onStatusChange,
   selectedThreadId,
   selectedProjectId,
 }: BoardViewProps) {
+  const effectiveBoardFilter = boardGlobalFilter ?? EMPTY_BOARD_GLOBAL_FILTER
   const reorderLists = useReorderLists()
 
   const columns = useMemo(() => {
@@ -341,6 +352,7 @@ export function BoardView({
                 workspaceId={workspaceId}
                 statuses={statuses ?? []}
                 width={columnWidths?.[idx] ?? DEFAULT_COLUMN_WIDTH}
+                boardGlobalFilter={effectiveBoardFilter}
                 onOpenTask={onOpenTask ?? (() => {})}
                 onOpenThread={onOpenThread ?? (() => {})}
                 onStatusChange={onStatusChange ?? (() => {})}

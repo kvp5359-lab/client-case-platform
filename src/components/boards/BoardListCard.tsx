@@ -22,7 +22,8 @@ import { BoardProjectRow } from './BoardProjectRow'
 import { BoardInboxList } from './BoardInboxList'
 import { BoardListHeader } from './BoardListHeader'
 import { ListSettingsDialog } from './ListSettingsDialog'
-import type { BoardList, FilterContext, GroupByField } from './types'
+import type { BoardGlobalFilter, BoardList, FilterContext, GroupByField } from './types'
+import { mergeFilterGroupsAnd } from './types'
 import { groupTasks, groupProjects } from './boardListUtils'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
 import { useReorderTasks } from '@/components/tasks/useTaskMutations'
@@ -55,6 +56,9 @@ interface BoardListCardProps {
   isLast?: boolean
   siblingLists?: BoardList[]
   columnWidth?: number
+  /** Фильтр всей доски (этап 4.1). Применяется AND к list.filters
+   *  для соответствующего entity_type. Inbox-списки игнорируют. */
+  boardGlobalFilter?: BoardGlobalFilter
 }
 
 export function BoardListCard({
@@ -76,6 +80,7 @@ export function BoardListCard({
   isLast,
   siblingLists,
   columnWidth,
+  boardGlobalFilter,
 }: BoardListCardProps) {
   const [userCollapsed, setUserCollapsed] = useState<boolean | null>(null)
   const settingsDialog = useDialog()
@@ -90,7 +95,25 @@ export function BoardListCard({
 
   const isProject = list.entity_type === 'project'
   const isInbox = list.entity_type === 'inbox'
-  const safeFilters = isInbox ? { logic: 'and' as const, rules: [] } : list.filters
+
+  // Базовый фильтр списка. Inbox имеет свою логику (default_filter), у него
+  // обычных rules нет.
+  const listFilters = isInbox ? { logic: 'and' as const, rules: [] } : list.filters
+
+  // Накладываем board-level фильтр того же entity_type через AND.
+  // Inbox по соглашению игнорирует board.global_filter.
+  const safeFilters = useMemo(() => {
+    if (isInbox || !boardGlobalFilter) return listFilters
+    const boardSlice =
+      list.entity_type === 'project'
+        ? boardGlobalFilter.project
+        : list.entity_type === 'task'
+        ? boardGlobalFilter.task
+        : null
+    if (!boardSlice) return listFilters
+    return mergeFilterGroupsAnd(boardSlice, listFilters)
+  }, [isInbox, boardGlobalFilter, listFilters, list.entity_type])
+
   const hasFilters = safeFilters.rules.length > 0
 
   // Для списков проектов вычисляем карту «ближайшая незавершённая задача» по project_id.
