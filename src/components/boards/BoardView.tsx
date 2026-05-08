@@ -9,14 +9,20 @@ import {
   useSensors,
   DragOverlay,
   rectIntersection,
+  pointerWithin,
   type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
   type DragOverEvent,
 } from '@dnd-kit/core'
 import { BoardColumn } from './BoardColumn'
+import { BoardProjectRow } from './BoardProjectRow'
+import { BoardTaskRow } from './BoardTaskRow'
+import type { BoardCardDndState } from './BoardListCard'
 import { usePanDrag } from './hooks/usePanDrag'
 import { useReorderLists } from './hooks/useListMutations'
+import { useUpdateProjectStatusOnBoard } from './hooks/useUpdateProjectStatusOnBoard'
+import { extractStatusIdFromFilter, statusEquals } from './cardDndUtils'
 import {
   DEFAULT_COLUMN_WIDTH,
   EMPTY_BOARD_GLOBAL_FILTER,
@@ -110,17 +116,58 @@ export function BoardView({
   const [overColumnIndex, setOverColumnIndex] = useState<number | null>(null)
   const [gapTarget, setGapTarget] = useState<number | null>(null)
 
+  // Этап 4.5: card DnD состояние. Лежит здесь чтобы один контекст обслуживал
+  // все списки сразу (cross-list drag).
+  const [activeCard, setActiveCard] = useState<
+    | { kind: 'project'; project: BoardProject; sourceListId: string }
+    | { kind: 'task'; task: WorkspaceTask; sourceListId: string }
+    | null
+  >(null)
+  const [overCardTarget, setOverCardTarget] = useState<string | null>(null)
+
+  const updateProjectStatus = useUpdateProjectStatusOnBoard()
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   )
 
   const activeList = activeListId ? lists.find((l) => l.id === activeListId) ?? null : null
 
-  // Кастомный collision detection: при drag списка предпочитаем gap → list → col.
-  // Если курсор внутри колонки, но не на конкретном списке, выбираем ближайший по Y список,
-  // чтобы стрелка-индикатор показывала "выше/ниже" даже если мышь в зазоре между списками
-  // или над первым списком.
+  // Снимок состояния card-DnD, передаём вниз через BoardColumn → BoardListCard
+  // для подсветки активной группы/списка.
+  const cardDndState: BoardCardDndState = useMemo(
+    () => ({
+      activeGroupKey: overCardTarget && overCardTarget.startsWith('group:') ? overCardTarget : null,
+      activeListCardsId:
+        overCardTarget && overCardTarget.startsWith('list-cards:') ? overCardTarget : null,
+    }),
+    [overCardTarget],
+  )
+
+  // Кастомный collision detection. При drag списка приоритезируем
+  // gap-drop → list-drop → col-drop. При drag карточки (этап 4.5) —
+  // совершенно другая иерархия: group → list-cards (то есть никаких
+  // gap/col-drop, чтобы синяя полоска между списками не воровала фокус).
   const collisionDetection: CollisionDetection = useCallback((args) => {
+    const activeId = args.active ? String(args.active.id) : ''
+    const isCardDrag = activeId.startsWith('task:') || activeId.startsWith('project:')
+
+    if (isCardDrag) {
+      // ВАЖНО: для карточек DragOverlay прячет реальный элемент за курсором,
+      // и rectIntersection ловит исходную позицию. Используем pointerWithin —
+      // он работает по координате курсора.
+      const collisions = pointerWithin(args)
+      const group = collisions.find((c) => String(c.id).startsWith('group:'))
+      if (group) return [group]
+      const listCards = collisions.find((c) => String(c.id).startsWith('list-cards:'))
+      if (listCards) return [listCards]
+      return collisions.filter((c) => {
+        const id = String(c.id)
+        return !id.startsWith('gap-drop:') && !id.startsWith('list-drop:') && !id.startsWith('col-drop:')
+      })
+    }
+
+    // List drag — существующая логика на rectIntersection (списки не используют overlay).
     const intersections = rectIntersection(args)
     const gap = intersections.find((c) => String(c.id).startsWith('gap-drop:'))
     if (gap) return [gap]
@@ -159,12 +206,40 @@ export function BoardView({
 
   const handleDragStart = useCallback((e: DragStartEvent) => {
     const id = String(e.active.id)
-    if (!id.startsWith('list-drag:')) return
-    setActiveListId(id.slice('list-drag:'.length))
+    if (id.startsWith('list-drag:')) {
+      setActiveListId(id.slice('list-drag:'.length))
+      return
+    }
+    // Карточки (этап 4.5) — id вида `task:<id>:<listId>` или `project:<id>:<listId>`.
+    const data = e.active.data.current as
+      | { kind?: 'task'; task?: WorkspaceTask; sourceListId?: string }
+      | { kind?: 'project'; project?: BoardProject; sourceListId?: string }
+      | undefined
+    if (data?.kind === 'task' && data.task && data.sourceListId) {
+      setActiveCard({ kind: 'task', task: data.task, sourceListId: data.sourceListId })
+    } else if (data?.kind === 'project' && data.project && data.sourceListId) {
+      setActiveCard({ kind: 'project', project: data.project, sourceListId: data.sourceListId })
+    }
   }, [])
 
   const handleDragOver = useCallback((e: DragOverEvent) => {
-    const { over } = e
+    const { over, active } = e
+    const activeId = active ? String(active.id) : ''
+    const isCardDrag =
+      activeId.startsWith('task:') || activeId.startsWith('project:')
+
+    if (isCardDrag) {
+      // Card drag — отслеживаем только над group/list-cards droppables.
+      const overId = over ? String(over.id) : null
+      if (overId && (overId.startsWith('group:') || overId.startsWith('list-cards:'))) {
+        setOverCardTarget(overId)
+      } else {
+        setOverCardTarget(null)
+      }
+      return
+    }
+
+    // List drag — существующая логика (без изменений).
     if (!over) {
       setDropIndicator(null)
       setOverColumnIndex(null)
@@ -201,9 +276,62 @@ export function BoardView({
     setDropIndicator(null)
     setOverColumnIndex(null)
     setGapTarget(null)
+    setActiveCard(null)
+    setOverCardTarget(null)
   }, [])
 
   const handleDragEnd = useCallback((e: DragEndEvent) => {
+    const activeId = String(e.active.id)
+
+    // ── Card drag (этап 4.5) ────────────────────────────────────────
+    if (activeId.startsWith('task:') || activeId.startsWith('project:')) {
+      const card = activeCard
+      const target = overCardTarget
+      setActiveCard(null)
+      setOverCardTarget(null)
+      if (!card || !target) return
+
+      // Drop на конкретный статус-список = смена статуса.
+      if (target.startsWith('list-cards:')) {
+        const targetListId = target.slice('list-cards:'.length)
+        if (targetListId === card.sourceListId) return // дроп в свой же список — no-op
+        const targetList = lists.find((l) => l.id === targetListId)
+        if (!targetList) return
+        const newStatusId = extractStatusIdFromFilter(targetList.filters as never)
+        if (newStatusId === null) return // нет status_id-фильтра — drop не имеет смысла
+        if (card.kind === 'project') {
+          if (statusEquals(card.project.status_id, newStatusId)) return
+          updateProjectStatus.mutate({ projectId: card.project.id, statusId: newStatusId })
+        } else {
+          if (statusEquals(card.task.status_id, newStatusId)) return
+          if (onStatusChange) onStatusChange(card.task.id, newStatusId)
+        }
+        return
+      }
+
+      // Drop на группу внутри списка — формат `group:<list_id>:<status_id>`.
+      if (target.startsWith('group:')) {
+        const rest = target.slice('group:'.length)
+        const sep = rest.indexOf(':')
+        if (sep === -1) return
+        const targetListIdInGroup = rest.slice(0, sep)
+        const targetGroupKey = rest.slice(sep + 1)
+        // Drop в группу другого списка не делаем (используется list-cards для cross-list).
+        if (targetListIdInGroup !== card.sourceListId) return
+        const newStatusId = targetGroupKey === '__none__' ? null : targetGroupKey
+        if (card.kind === 'project') {
+          if (statusEquals(card.project.status_id, newStatusId)) return
+          updateProjectStatus.mutate({ projectId: card.project.id, statusId: newStatusId })
+        } else {
+          if (statusEquals(card.task.status_id, newStatusId)) return
+          if (onStatusChange) onStatusChange(card.task.id, newStatusId)
+        }
+        return
+      }
+      return
+    }
+
+    // ── List drag (существующая логика, без изменений) ─────────────
     const ind = dropIndicator
     const gap = gapTarget
     const dragged = activeList
@@ -312,7 +440,7 @@ export function BoardView({
 
     if (updates.length === 0) return
     reorderLists.mutate({ board_id: dragged.board_id, updates })
-  }, [activeList, dropIndicator, gapTarget, lists, reorderLists])
+  }, [activeList, dropIndicator, gapTarget, lists, reorderLists, activeCard, overCardTarget, updateProjectStatus, onStatusChange])
 
   if (lists.length === 0) {
     return (
@@ -353,6 +481,7 @@ export function BoardView({
                 statuses={statuses ?? []}
                 width={columnWidths?.[idx] ?? DEFAULT_COLUMN_WIDTH}
                 boardGlobalFilter={effectiveBoardFilter}
+                boardCardDnd={cardDndState}
                 onOpenTask={onOpenTask ?? (() => {})}
                 onOpenThread={onOpenThread ?? (() => {})}
                 onStatusChange={onStatusChange ?? (() => {})}
@@ -376,6 +505,28 @@ export function BoardView({
             color: hexToHeaderStyle(activeList.header_color).text,
           }}>
             {activeList.name}
+          </div>
+        ) : activeCard?.kind === 'project' ? (
+          <div className="shadow-xl rounded-md opacity-90 bg-white">
+            <BoardProjectRow
+              project={activeCard.project}
+              workspaceId={workspaceId}
+              displayMode="cards"
+              visibleFields={['status', 'template']}
+            />
+          </div>
+        ) : activeCard?.kind === 'task' ? (
+          <div className="shadow-xl rounded-md opacity-90 bg-white">
+            <BoardTaskRow
+              task={activeCard.task}
+              workspaceId={workspaceId}
+              assignees={assigneesMap[activeCard.task.id] ?? []}
+              statuses={statuses ?? []}
+              visibleFields={['status', 'deadline', 'assignees', 'project']}
+              displayMode="cards"
+              onOpenTask={() => {}}
+              onStatusChange={() => {}}
+            />
           </div>
         ) : null}
       </DragOverlay>

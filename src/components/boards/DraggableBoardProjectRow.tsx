@@ -19,6 +19,9 @@ import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 
 interface DraggableBoardProjectRowProps {
   project: BoardProject
+  /** Список, в котором карточка показана. Нужен для cross-list DnD (этап 4.5) —
+   *  на drop в другой список меняем статус, а сам source-список знаем по этому полю. */
+  listId: string
   workspaceId: string
   displayMode: DisplayMode
   visibleFields: VisibleField[]
@@ -30,11 +33,13 @@ interface DraggableBoardProjectRowProps {
 
 export const DraggableBoardProjectRow = memo(function DraggableBoardProjectRow({
   project,
+  listId,
   ...rest
 }: DraggableBoardProjectRowProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `project:${project.id}`,
-    data: { project, kind: 'project' },
+    // Namespace ID, чтобы не конфликтовало с list-drag и task DnD-IDs.
+    id: `project:${project.id}:${listId}`,
+    data: { project, kind: 'project' as const, sourceListId: listId },
   })
 
   return (

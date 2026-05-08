@@ -1,27 +1,13 @@
 "use client"
 
-import { useCallback, useMemo, useState } from 'react'
-import {
-  DndContext,
-  pointerWithin,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  useDroppable,
-  DragOverlay,
-  type DragStartEvent,
-  type DragEndEvent,
-  type DragOverEvent,
-} from '@dnd-kit/core'
+import { useMemo, useState } from 'react'
+import { useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useFilteredTasks, useFilteredProjects } from './hooks/useFilteredListData'
 import { useWorkspaceProjectParticipants } from './hooks/useWorkspaceProjectParticipants'
-import { BoardTaskRow } from './BoardTaskRow'
 import { DraggableBoardTaskRow } from './DraggableBoardTaskRow'
-import { BoardProjectRow } from './BoardProjectRow'
 import { DraggableBoardProjectRow } from './DraggableBoardProjectRow'
-import { useUpdateProjectStatusOnBoard } from './hooks/useUpdateProjectStatusOnBoard'
 import { BoardInboxList } from './BoardInboxList'
 import { BoardListHeader } from './BoardListHeader'
 import { ListSettingsDialog } from './ListSettingsDialog'
@@ -29,10 +15,8 @@ import type { BoardGlobalFilter, BoardList, FilterContext, GroupByField } from '
 import { mergeFilterGroupsAnd } from './types'
 import { groupTasks, groupProjects } from './boardListUtils'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
-import { useReorderTasks } from '@/components/tasks/useTaskMutations'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
-import { workspaceThreadKeys } from '@/hooks/queryKeys'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/ui/status-dropdown'
@@ -62,25 +46,40 @@ interface BoardListCardProps {
   /** Фильтр всей доски (этап 4.1). Применяется AND к list.filters
    *  для соответствующего entity_type. Inbox-списки игнорируют. */
   boardGlobalFilter?: BoardGlobalFilter
+  /** Состояние card-DnD из BoardView (этап 4.5) — для подсветки группы/списка
+   *  во время drag. Сама DnD-логика обрабатывается на уровне BoardView. */
+  boardCardDnd?: BoardCardDndState
+}
+
+/** Снимок состояния card-DnD, который BoardView пробрасывает в каждый список. */
+export interface BoardCardDndState {
+  /** Полный ID активной droppable-группы вида `group:<list_id>:<key>` или null. */
+  activeGroupKey: string | null
+  /** Полный ID активного droppable-списка вида `list-cards:<list_id>` или null. */
+  activeListCardsId: string | null
 }
 
 /**
- * Droppable-обёртка вокруг группы (статуса) на доске. При наведении карточки
- * во время drag — подсвечивается. id вида `group:<status_id>` или
- * `group:__none__` для «без статуса». Объявляется ДО BoardListCard, потому что
- * Webpack/Next-bundler не всегда корректно хойстит function-declaration при
- * eval()-режиме HMR.
+ * Droppable-обёртка вокруг группы (статуса) на доске. id вида
+ * `group:<list_id>:<status_id>` (с listId-namespace, чтобы у разных списков
+ * группы с одинаковым status_id не конфликтовали — это критично после
+ * лифтинга DnD на уровень BoardView в этапе 4.5).
+ *
+ * Объявляется ДО BoardListCard — webpack-bundler не всегда корректно
+ * хойстит function-declaration в eval()-режиме HMR.
  */
 function BoardGroupDropZone({
+  listId,
   groupKey,
   isActive,
   children,
 }: {
+  listId: string
   groupKey: string
   isActive: boolean
   children: React.ReactNode
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `group:${groupKey}` })
+  const { setNodeRef, isOver } = useDroppable({ id: `group:${listId}:${groupKey}` })
   const hot = isOver || isActive
   return (
     <div
@@ -88,6 +87,41 @@ function BoardGroupDropZone({
       className={cn(
         'rounded-lg transition-colors',
         hot && 'bg-blue-100/40 ring-1 ring-blue-300',
+      )}
+    >
+      {children}
+    </div>
+  )
+}
+
+/**
+ * Droppable-обёртка вокруг тела всего списка (этап 4.5). При drop карточки
+ * сюда — статус карточки меняется на тот, что прописан в фильтре списка
+ * (см. extractStatusIdFromFilter в cardDndUtils). Если фильтр не содержит
+ * status_id — drop игнорируется в BoardView.
+ *
+ * id: `list-cards:<list_id>`.
+ */
+function BoardListCardsDropZone({
+  listId,
+  isActive,
+  children,
+}: {
+  listId: string
+  isActive: boolean
+  children: React.ReactNode
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `list-cards:${listId}` })
+  const hot = isOver || isActive
+  // min-h обязателен: иначе у пустого списка droppable-зона имеет нулевую
+  // высоту и pointerWithin никогда не срабатывает — карточки не дотащить
+  // до пустой колонки воронки.
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'rounded-lg min-h-[60px] transition-colors',
+        hot && 'bg-blue-100/40 ring-2 ring-blue-400',
       )}
     >
       {children}
@@ -115,6 +149,7 @@ export function BoardListCard({
   siblingLists,
   columnWidth,
   boardGlobalFilter,
+  boardCardDnd,
 }: BoardListCardProps) {
   const [userCollapsed, setUserCollapsed] = useState<boolean | null>(null)
   const settingsDialog = useDialog()
@@ -242,127 +277,12 @@ export function BoardListCard({
     [filteredProjects, groupByField, projectStatuses],
   )
   const hasGrouping = groupByField !== 'none'
-  const isManualSort = list.sort_by === 'manual_order' && !hasGrouping && !isProject && !isInbox
 
-  const invalidateKeys = useMemo(
-    () => [workspaceThreadKeys.workspace(workspaceId)],
-    [workspaceId],
-  )
-  const reorderTasks = useReorderTasks(invalidateKeys)
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  )
-  const [activeTask, setActiveTask] = useState<WorkspaceTask | null>(null)
-  const [dropIndicator, setDropIndicator] = useState<{ taskId: string; position: 'top' | 'bottom' } | null>(null)
-
-  const handleDragStart = useCallback((e: DragStartEvent) => {
-    const task = e.active.data.current?.task as WorkspaceTask | undefined
-    setActiveTask(task ?? null)
-  }, [])
-
-  const handleDragOver = useCallback((e: DragOverEvent) => {
-    const { over, active } = e
-    if (!over || !active || String(over.id) === String(active.id)) {
-      setDropIndicator(null)
-      return
-    }
-    const rect = over.rect
-    if (!rect) return
-    const pointerY = (e.activatorEvent as PointerEvent)?.clientY ?? 0
-    const currentY = pointerY + (e.delta?.y ?? 0)
-    const midY = rect.top + rect.height / 2
-    setDropIndicator({ taskId: String(over.id), position: currentY < midY ? 'top' : 'bottom' })
-  }, [])
-
-  const handleDragEnd = useCallback((e: DragEndEvent) => {
-    const ind = dropIndicator
-    setActiveTask(null)
-    setDropIndicator(null)
-    if (!e.over || !ind) return
-    const activeId = String(e.active.id)
-    const overId = String(e.over.id)
-    if (activeId === overId) return
-
-    const current = filteredTasks
-    const dragged = current.find((t) => t.id === activeId)
-    if (!dragged) return
-    const filtered = current.filter((t) => t.id !== activeId)
-    const overIdx = filtered.findIndex((t) => t.id === overId)
-    if (overIdx === -1) return
-    const insertIdx = ind.position === 'bottom' ? overIdx + 1 : overIdx
-    const next = [...filtered.slice(0, insertIdx), dragged, ...filtered.slice(insertIdx)]
-    const updates = next.map((t, i) => ({ id: t.id, sort_order: i * 10 }))
-    reorderTasks.mutate(updates)
-  }, [dropIndicator, filteredTasks, reorderTasks])
-
-  const handleDragCancel = useCallback(() => {
-    setActiveTask(null)
-    setDropIndicator(null)
-  }, [])
-
-  // ── Этап 4.3: DnD по группам (cross-group → смена статуса) ──────
-  // Активно когда список сгруппирован по статусу (hasGrouping && groupByField === 'status').
-  // Работает и для проектов, и для тасков. Drop на группу с status_id, отличным
-  // от текущего, обновляет статус. Внутри одной группы — no-op (sort_order у
-  // проектов на доске не используется; reorder тасков работает только в
-  // manual_sort режиме без группировки).
-  const updateProjectStatus = useUpdateProjectStatusOnBoard()
-  const [draggedGroupItem, setDraggedGroupItem] = useState<
-    | { kind: 'project'; project: BoardProject }
-    | { kind: 'task'; task: WorkspaceTask }
-    | null
-  >(null)
-  const [overGroupKey, setOverGroupKey] = useState<string | null>(null)
-
-  const handleGroupDragStart = useCallback((e: DragStartEvent) => {
-    const data = e.active.data.current as
-      | { kind?: 'project'; project?: BoardProject }
-      | { kind?: 'task'; task?: WorkspaceTask }
-      | undefined
-    if (data?.kind === 'project' && data.project) {
-      setDraggedGroupItem({ kind: 'project', project: data.project })
-    } else if (data?.kind === 'task' && data.task) {
-      setDraggedGroupItem({ kind: 'task', task: data.task })
-    }
-  }, [])
-
-  const handleGroupDragOver = useCallback((e: DragOverEvent) => {
-    const overId = e.over ? String(e.over.id) : null
-    if (overId && overId.startsWith('group:')) {
-      setOverGroupKey(overId.slice('group:'.length))
-    } else {
-      setOverGroupKey(null)
-    }
-  }, [])
-
-  const handleGroupDragEnd = useCallback(
-    (e: DragEndEvent) => {
-      const item = draggedGroupItem
-      setDraggedGroupItem(null)
-      setOverGroupKey(null)
-      if (!item || !e.over) return
-      const overId = String(e.over.id)
-      if (!overId.startsWith('group:')) return
-      const targetKey = overId.slice('group:'.length)
-      // Группа `__none__` означает «без статуса» (status_id = null).
-      const targetStatusId = targetKey === '__none__' ? null : targetKey
-      if (item.kind === 'project') {
-        if (item.project.status_id === targetStatusId) return
-        updateProjectStatus.mutate({ projectId: item.project.id, statusId: targetStatusId })
-      } else {
-        if (item.task.status_id === targetStatusId) return
-        // Для тасков уже есть пробрасываемый коллбэк (используется popover'ом
-        // изменения статуса в карточке) — переиспользуем его.
-        onStatusChange(item.task.id, targetStatusId)
-      }
-    },
-    [draggedGroupItem, updateProjectStatus, onStatusChange],
-  )
-
-  const handleGroupDragCancel = useCallback(() => {
-    setDraggedGroupItem(null)
-    setOverGroupKey(null)
-  }, [])
+  // DnD логика теперь живёт на уровне BoardView (этап 4.5). Здесь — только
+  // визуал: какая группа/список «горячие» во время drag (из props
+  // boardCardDnd, передаются вниз через BoardColumn).
+  const activeGroupKey = boardCardDnd?.activeGroupKey ?? null
+  const activeListCardsId = boardCardDnd?.activeListCardsId ?? null
 
   return (
     <div className={cn('rounded-lg', listHeight === 'full' && 'flex flex-col flex-1 min-h-0')}>
@@ -379,32 +299,33 @@ export function BoardListCard({
         siblingLists={siblingLists}
       />
 
-      {!collapsed && (
-        <div className={cn(heightClass, 'mt-1 overflow-y-auto scrollbar-hide', !isCards && !hasGrouping && 'rounded-lg border border-border/50 bg-white')}>
-          {isInbox ? (
-            <BoardInboxList
-              threads={inboxThreads}
-              onOpenThread={onOpenThread}
-              selectedThreadId={selectedThreadId}
-              defaultFilter={(list.filters as unknown as { default_filter?: string })?.default_filter === 'unread' ? 'unread' : 'all'}
-              workspaceId={workspaceId}
-            />
-          ) : isProject ? (
-            filteredProjects.length > 0 ? (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={pointerWithin}
-                onDragStart={handleGroupDragStart}
-                onDragOver={handleGroupDragOver}
-                onDragEnd={handleGroupDragEnd}
-                onDragCancel={handleGroupDragCancel}
-              >
+      {/* BoardListCardsDropZone должен рендериться ВСЕГДА (даже у свёрнутых
+          списков — иначе пустая колонка воронки не сможет быть drop-target,
+          т.к. она автосворачивается при count=0). Содержимое внутри
+          скрывается отдельно через {!collapsed}. */}
+      <BoardListCardsDropZone
+        listId={list.id}
+        isActive={activeListCardsId === `list-cards:${list.id}`}
+      >
+        {!collapsed && (
+          <div className={cn(heightClass, 'mt-1 overflow-y-auto scrollbar-hide', !isCards && !hasGrouping && 'rounded-lg border border-border/50 bg-white')}>
+            {isInbox ? (
+              <BoardInboxList
+                threads={inboxThreads}
+                onOpenThread={onOpenThread}
+                selectedThreadId={selectedThreadId}
+                defaultFilter={(list.filters as unknown as { default_filter?: string })?.default_filter === 'unread' ? 'unread' : 'all'}
+                workspaceId={workspaceId}
+              />
+            ) : isProject ? (
+              filteredProjects.length > 0 ? (
                 <div className={cn(isCards ? 'grid gap-1' : hasGrouping ? 'flex flex-col gap-2' : 'divide-y divide-border/50')}>
                   {projectGroups.map((group) => (
                     <BoardGroupDropZone
                       key={group.key}
+                      listId={list.id}
                       groupKey={group.key}
-                      isActive={overGroupKey === group.key && draggedGroupItem !== null}
+                      isActive={activeGroupKey === `group:${list.id}:${group.key}`}
                     >
                       {hasGrouping && (
                         <div className={cn('px-0 pb-1')}>
@@ -437,6 +358,7 @@ export function BoardListCard({
                         {group.projects.map((project) => (
                           <DraggableBoardProjectRow
                             key={project.id}
+                            listId={list.id}
                             project={project}
                             workspaceId={workspaceId}
                             displayMode={list.display_mode ?? 'list'}
@@ -451,39 +373,59 @@ export function BoardListCard({
                     </BoardGroupDropZone>
                   ))}
                 </div>
-                <DragOverlay dropAnimation={null}>
-                  {draggedGroupItem?.kind === 'project' ? (
-                    <div className="shadow-xl rounded-md opacity-90 bg-white">
-                      <BoardProjectRow
-                        project={draggedGroupItem.project}
-                        workspaceId={workspaceId}
-                        displayMode={list.display_mode ?? 'list'}
-                        visibleFields={list.visible_fields ?? ['status', 'template']}
-                        cardLayout={list.card_layout}
-                      />
-                    </div>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
-            ) : (
-              <div className="px-3 py-4 text-xs text-muted-foreground text-center">
-                {hasFilters ? 'Нет элементов по фильтру' : 'Пусто'}
-              </div>
-            )
-          ) : filteredTasks.length > 0 ? (
-            isManualSort ? (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={pointerWithin}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
-                onDragCancel={handleDragCancel}
-              >
+              ) : (
+                <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+                  {hasFilters ? 'Нет элементов по фильтру' : 'Пусто'}
+                </div>
+              )
+            ) : filteredTasks.length > 0 ? (
+              hasGrouping ? (
+                <div className={cn(isCards ? 'grid gap-1' : 'flex flex-col gap-2')}>
+                  {groups.map((group) => (
+                    <BoardGroupDropZone
+                      key={group.key}
+                      listId={list.id}
+                      groupKey={group.key}
+                      isActive={activeGroupKey === `group:${list.id}:${group.key}`}
+                    >
+                      <div className={cn('px-2 pb-1', isCards && 'px-0 pb-1')}>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted-foreground/10 text-[11px] font-medium text-muted-foreground">
+                          {group.label}
+                          <span className="opacity-50">{group.tasks.length}</span>
+                        </span>
+                      </div>
+                      <div className={cn(
+                        isCards
+                          ? 'grid grid-cols-1 gap-1'
+                          : 'divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden'
+                      )}>
+                        {group.tasks.map((task) => (
+                          <DraggableBoardTaskRow
+                            key={task.id}
+                            listId={list.id}
+                            task={task}
+                            workspaceId={workspaceId}
+                            assignees={assigneesMap[task.id] ?? []}
+                            statuses={statuses}
+                            visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
+                            displayMode={list.display_mode ?? 'list'}
+                            onOpenTask={onOpenTask}
+                            onStatusChange={onStatusChange}
+                            isSelected={selectedThreadId === task.id}
+                            cardLayout={list.card_layout}
+                            dropIndicator={null}
+                          />
+                        ))}
+                      </div>
+                    </BoardGroupDropZone>
+                  ))}
+                </div>
+              ) : (
                 <div className={cn(isCards ? 'grid grid-cols-1 gap-1' : 'divide-y divide-border/50')}>
                   {filteredTasks.map((task) => (
                     <DraggableBoardTaskRow
                       key={task.id}
+                      listId={list.id}
                       task={task}
                       workspaceId={workspaceId}
                       assignees={assigneesMap[task.id] ?? []}
@@ -494,105 +436,19 @@ export function BoardListCard({
                       onStatusChange={onStatusChange}
                       isSelected={selectedThreadId === task.id}
                       cardLayout={list.card_layout}
-                      dropIndicator={dropIndicator?.taskId === task.id ? dropIndicator.position : null}
+                      dropIndicator={null}
                     />
                   ))}
                 </div>
-                <DragOverlay dropAnimation={null}>
-                  {activeTask ? (
-                    <div className="shadow-xl rounded-md opacity-90 bg-white">
-                      <BoardTaskRow
-                        task={activeTask}
-                        workspaceId={workspaceId}
-                        assignees={assigneesMap[activeTask.id] ?? []}
-                        statuses={statuses}
-                        visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
-                        displayMode={list.display_mode ?? 'list'}
-                        onOpenTask={() => {}}
-                        onStatusChange={() => {}}
-                        cardLayout={list.card_layout}
-                      />
-                    </div>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
+              )
             ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={pointerWithin}
-              onDragStart={handleGroupDragStart}
-              onDragOver={handleGroupDragOver}
-              onDragEnd={handleGroupDragEnd}
-              onDragCancel={handleGroupDragCancel}
-            >
-              <div className={cn(isCards ? 'grid gap-1' : hasGrouping ? 'flex flex-col gap-2' : 'divide-y divide-border/50')}>
-                {groups.map((group) => (
-                  <BoardGroupDropZone
-                    key={group.key}
-                    groupKey={group.key}
-                    isActive={overGroupKey === group.key && draggedGroupItem !== null}
-                  >
-                    {hasGrouping && (
-                      <div className={cn('px-2 pb-1', isCards && 'px-0 pb-1')}>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted-foreground/10 text-[11px] font-medium text-muted-foreground">
-                          {group.label}
-                          <span className="opacity-50">{group.tasks.length}</span>
-                        </span>
-                      </div>
-                    )}
-                    <div className={cn(
-                      isCards
-                        ? 'grid grid-cols-1 gap-1'
-                        : hasGrouping
-                          ? 'divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden'
-                          : 'divide-y divide-border/50'
-                    )}>
-                      {group.tasks.map((task) => (
-                        <DraggableBoardTaskRow
-                          key={task.id}
-                          task={task}
-                          workspaceId={workspaceId}
-                          assignees={assigneesMap[task.id] ?? []}
-                          statuses={statuses}
-                          visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
-                          displayMode={list.display_mode ?? 'list'}
-                          onOpenTask={onOpenTask}
-                          onStatusChange={onStatusChange}
-                          isSelected={selectedThreadId === task.id}
-                          cardLayout={list.card_layout}
-                          dropIndicator={null}
-                        />
-                      ))}
-                    </div>
-                  </BoardGroupDropZone>
-                ))}
+              <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+                {hasFilters ? 'Нет элементов по фильтру' : 'Пусто'}
               </div>
-              <DragOverlay dropAnimation={null}>
-                {draggedGroupItem?.kind === 'task' ? (
-                  <div className="shadow-xl rounded-md opacity-90 bg-white">
-                    <BoardTaskRow
-                      task={draggedGroupItem.task}
-                      workspaceId={workspaceId}
-                      assignees={assigneesMap[draggedGroupItem.task.id] ?? []}
-                      statuses={statuses}
-                      visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
-                      displayMode={list.display_mode ?? 'list'}
-                      onOpenTask={() => {}}
-                      onStatusChange={() => {}}
-                      cardLayout={list.card_layout}
-                    />
-                  </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-            )
-          ) : (
-            <div className="px-3 py-4 text-xs text-muted-foreground text-center">
-              {hasFilters ? 'Нет элементов по фильтру' : 'Пусто'}
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </BoardListCardsDropZone>
 
       <ListSettingsDialog
         open={settingsDialog.isOpen}

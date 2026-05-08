@@ -2,7 +2,7 @@
 
 import { useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
-import { BoardListCard } from './BoardListCard'
+import { BoardListCard, type BoardCardDndState } from './BoardListCard'
 import type { BoardGlobalFilter, BoardList, FilterContext } from './types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
@@ -24,6 +24,8 @@ interface BoardColumnProps {
   width: number
   /** Фильтр на уровне всей доски (этап 4.1) */
   boardGlobalFilter: BoardGlobalFilter
+  /** Состояние card-DnD из BoardView (этап 4.5) */
+  boardCardDnd?: BoardCardDndState
   onOpenTask: (taskId: string) => void
   onOpenThread: (task: TaskItem) => void
   onStatusChange: (taskId: string, statusId: string | null) => void
@@ -45,6 +47,7 @@ export function BoardColumn({
   statuses,
   width,
   boardGlobalFilter,
+  boardCardDnd,
   onOpenTask,
   onOpenThread,
   onStatusChange,
@@ -76,6 +79,7 @@ export function BoardColumn({
             statuses={statuses}
             columnWidth={width}
             boardGlobalFilter={boardGlobalFilter}
+            boardCardDnd={boardCardDnd}
             onOpenTask={onOpenTask}
             onOpenThread={onOpenThread}
             onStatusChange={onStatusChange}

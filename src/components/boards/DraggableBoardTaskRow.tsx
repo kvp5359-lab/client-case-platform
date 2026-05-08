@@ -11,6 +11,8 @@ import type { CardLayout, DisplayMode, VisibleField } from './types'
 
 interface DraggableBoardTaskRowProps {
   task: WorkspaceTask
+  /** Список, в котором карточка показана. Нужен для cross-list DnD (этап 4.5). */
+  listId: string
   workspaceId: string
   assignees: AvatarParticipant[]
   statuses: StatusOption[]
@@ -25,16 +27,19 @@ interface DraggableBoardTaskRowProps {
 
 export const DraggableBoardTaskRow = memo(function DraggableBoardTaskRow({
   task,
+  listId,
   dropIndicator,
   ...rest
 }: DraggableBoardTaskRowProps) {
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
-    id: task.id,
-    // kind:'task' нужен для cross-group DnD по статусу (этап 4.3) — старый
-    // manual-sort DnD читает только data.task, новое поле не мешает.
-    data: { task, kind: 'task' as const },
+    // Namespace ID, чтобы один и тот же task не конфликтовал, если показан
+    // в нескольких списках на доске.
+    id: `task:${task.id}:${listId}`,
+    data: { task, kind: 'task' as const, sourceListId: listId },
   })
-  const { setNodeRef: setDropRef } = useDroppable({ id: task.id })
+  // Сам task становится droppable-целью только для manual_sort reorder
+  // (этап 4.5 — лифтинг DnD; manual_sort обработка в BoardView).
+  const { setNodeRef: setDropRef } = useDroppable({ id: `task-row:${task.id}:${listId}` })
 
   const mergedRef = useCallback(
     (node: HTMLDivElement | null) => {
