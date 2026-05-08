@@ -100,6 +100,10 @@ export function useFilteredProjects<T extends Record<string, unknown> & { id: st
       created_at: (item) => (item as T).created_at,
       updated_at: (item) => (item as T).updated_at,
       has_active_deadline_task: (item) => (item as T).has_active_deadline_task,
+      // Этап 4.2: новые поля для фильтров (приходят денормализованно из RPC).
+      is_lead_template: (item) => (item as T).is_lead_template,
+      final_kind: (item) => (item as T).final_kind,
+      contact_participant_id: (item) => (item as T).contact_participant_id,
     }
 
     const junctionAccessors: Record<string, (id: string) => string[]> = {

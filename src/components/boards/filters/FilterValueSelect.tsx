@@ -88,6 +88,24 @@ function useFieldOptions(
         return [...special, ...people]
       }
 
+      // Этап 4.2 CRM-фрейма: контакт = participant (включая лидов без аккаунта,
+      // поэтому can_login-фильтр не накладываем).
+      case 'contact_participant_id': {
+        return (participants ?? []).map((p) => ({
+          id: p.id,
+          label: [p.name, p.last_name].filter(Boolean).join(' ') || p.email || p.id,
+        }))
+      }
+
+      // Этап 4.2 CRM-фрейма: подтип финального статуса проекта.
+      case 'final_kind': {
+        return [
+          { id: 'won', label: 'Выигран' },
+          { id: 'lost', label: 'Проигран' },
+          { id: 'abandoned', label: 'Слит' },
+        ]
+      }
+
       default:
         return []
     }

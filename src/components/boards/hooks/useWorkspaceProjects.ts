@@ -11,6 +11,12 @@ export type BoardProject = Tables<'projects'> & {
    *  Приходит из RPC get_accessible_projects. В прямом SELECT из таблицы projects (legacy-путь)
    *  не заполняется — используется только в фильтрах на доске проектов. */
   has_active_deadline_task?: boolean
+  /** Шаблон проекта помечен как «лид» (project_templates.is_lead_template).
+   *  Денормализуется в RPC. Используется фильтрами «только лиды». */
+  is_lead_template?: boolean
+  /** Подтип финального статуса проекта (won/lost/abandoned). NULL — если статус
+   *  не финальный или final_kind не задан. Денормализуется из statuses в RPC. */
+  final_kind?: 'won' | 'lost' | 'abandoned' | null
 }
 
 export function useWorkspaceProjects(workspaceId: string | undefined) {

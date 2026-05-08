@@ -110,6 +110,25 @@ export const PROJECT_FILTER_FIELDS: FilterFieldDef[] = [
     type: 'boolean',
     operators: ['equals'],
   },
+  // Этап 4.2 CRM-фрейма: фильтры под воронку лидов и связь с контактом.
+  {
+    key: 'is_lead_template',
+    label: 'Это лид',
+    type: 'boolean',
+    operators: ['equals'],
+  },
+  {
+    key: 'final_kind',
+    label: 'Тип финального статуса',
+    type: 'text',
+    operators: ['equals', 'in', 'not_in', 'is_null', 'is_not_null'],
+  },
+  {
+    key: 'contact_participant_id',
+    label: 'Контакт',
+    type: 'uuid',
+    operators: ['equals', 'in', 'not_in', 'is_null', 'is_not_null'],
+  },
   {
     key: 'created_at',
     label: 'Дата создания',

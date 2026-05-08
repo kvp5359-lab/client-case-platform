@@ -6815,14 +6815,17 @@ export type Database = {
       get_accessible_projects: {
         Args: { p_user_id: string; p_workspace_id: string };
         Returns: {
+          contact_participant_id: string;
           created_at: string;
           created_by: string;
           deadline: string;
           description: string;
           export_folder_id: string;
+          final_kind: Database["public"]["Enums"]["status_final_kind"];
           google_drive_folder_link: string;
           has_active_deadline_task: boolean;
           id: string;
+          is_lead_template: boolean;
           last_activity_at: string;
           messenger_link_code: string;
           name: string;
