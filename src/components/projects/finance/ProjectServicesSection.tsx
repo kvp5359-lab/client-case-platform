@@ -222,7 +222,7 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
                 </SortableContext>
                 <tfoot className="bg-gray-50">
                   <tr>
-                    <td className="px-3 py-2" colSpan={5}>
+                    <td className="px-3 py-2" colSpan={7}>
                       <div className="flex items-center justify-end gap-4 text-sm tabular-nums">
                         {hasAnyTax && (
                           <>
@@ -242,8 +242,6 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
                         </span>
                       </div>
                     </td>
-                    <td />
-                    <td />
                   </tr>
                 </tfoot>
               </table>

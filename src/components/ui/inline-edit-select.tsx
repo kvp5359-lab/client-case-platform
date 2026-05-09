@@ -82,7 +82,7 @@ export function InlineEditSelect({
           type="button"
           disabled={disabled}
           className={cn(
-            'w-full text-sm rounded px-2 py-1 -mx-2 -my-1 truncate',
+            'block w-full text-sm rounded px-3 py-2 -mx-3 -my-2 truncate',
             ALIGN_CLASS[align],
             disabled
               ? 'cursor-default text-gray-700'
