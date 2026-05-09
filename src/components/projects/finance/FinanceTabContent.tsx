@@ -19,7 +19,7 @@ interface Props {
 
 export function FinanceTabContent({ projectId, workspaceId }: Props) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       <FinanceSummary projectId={projectId} />
       <ProjectServicesSection projectId={projectId} workspaceId={workspaceId} />
       <ProjectTransactionsSection projectId={projectId} workspaceId={workspaceId} type="income" />

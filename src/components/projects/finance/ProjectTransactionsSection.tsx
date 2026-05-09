@@ -6,7 +6,6 @@
 import { useMemo, useState } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -156,30 +155,30 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
 
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+    <section>
+      <header className="flex items-center justify-between mb-3">
         <div>
-          <CardTitle className="text-lg">{config.title}</CardTitle>
-          <CardDescription>
+          <h3 className="text-lg font-semibold text-gray-900">{config.title}</h3>
+          <p className="text-sm text-gray-500">
             {isLoading
               ? '—'
               : transactions.length === 0
                 ? config.emptyText
                 : `${transactions.length} операций · итого ${fmt(totalSum)} EUR`}
-          </CardDescription>
+          </p>
         </div>
         <Button size="sm" onClick={openCreate}>
           <Plus className="h-4 w-4 mr-1" />
           {config.addLabel}
         </Button>
-      </CardHeader>
-      <CardContent>
+      </header>
+      <div>
         {isLoading || transactions.length === 0 ? (
           <EmptyState loading={isLoading} emptyText={config.emptyText} />
         ) : (
-          <div className="border rounded-lg overflow-hidden">
+          <div>
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
+              <thead className="text-gray-500 border-b">
                 <tr>
                   <th className="text-left px-3 py-2 font-medium w-28">Дата</th>
                   <th className="text-left px-3 py-2 font-medium">{config.subjectLabel}</th>
@@ -277,7 +276,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-gray-50">
+              <tfoot className="border-t">
                 <tr>
                   <td className="px-3 py-2" colSpan={6}>
                     <div className="flex items-center justify-end gap-2 text-sm tabular-nums">
@@ -292,7 +291,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
             </table>
           </div>
         )}
-      </CardContent>
+      </div>
 
       <ProjectTransactionFormDialog
         key={editing?.id ?? 'new'}
@@ -310,6 +309,6 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
         onConfirm={confirm.handleConfirm}
         onCancel={confirm.handleCancel}
       />
-    </Card>
+    </section>
   )
 }

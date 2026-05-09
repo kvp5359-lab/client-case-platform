@@ -21,7 +21,6 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { useQueryClient } from '@tanstack/react-query'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -159,31 +158,31 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+    <section>
+      <header className="flex items-center justify-between mb-3">
         <div>
-          <CardTitle className="text-lg">Услуги проекта</CardTitle>
-          <CardDescription>
+          <h3 className="text-lg font-semibold text-gray-900">Услуги проекта</h3>
+          <p className="text-sm text-gray-500">
             {isLoading
               ? '—'
               : services.length === 0
                 ? 'Пока нет услуг'
                 : `${services.length} позиций · итого ${fmt(totals.total)} EUR`}
-          </CardDescription>
+          </p>
         </div>
         <Button size="sm" onClick={openCreate}>
           <Plus className="h-4 w-4 mr-1" />
           Добавить
         </Button>
-      </CardHeader>
-      <CardContent>
+      </header>
+      <div>
         {isLoading || services.length === 0 ? (
           <EmptyState loading={isLoading} emptyText="Добавь первую услугу, чтобы начать учёт" />
         ) : (
-          <div className="border rounded-lg overflow-hidden">
+          <div>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-gray-600">
+                <thead className="text-gray-500 border-b">
                   <tr>
                     <th className="w-8" />
                     <th className="text-left px-3 py-2 font-medium">Название</th>
@@ -220,7 +219,7 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
                     ))}
                   </tbody>
                 </SortableContext>
-                <tfoot className="bg-gray-50">
+                <tfoot className="border-t">
                   <tr>
                     <td className="px-3 py-2" colSpan={7}>
                       <div className="flex items-center justify-end gap-4 text-sm tabular-nums">
@@ -248,7 +247,7 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
             </DndContext>
           </div>
         )}
-      </CardContent>
+      </div>
 
       <ProjectServiceFormDialog
         key={editing?.id ?? 'new'}
@@ -265,7 +264,7 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
         onConfirm={confirm.handleConfirm}
         onCancel={confirm.handleCancel}
       />
-    </Card>
+    </section>
   )
 }
 
