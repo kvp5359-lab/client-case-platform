@@ -5,12 +5,13 @@
  */
 
 import { ReactNode, useState } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, MutationCache } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { DismissAllToasts } from '@/components/DismissAllToasts'
 import { STALE_TIME, GC_TIME } from '@/hooks/queryKeys'
+import { isImpersonationWriteError } from '@/lib/impersonation'
 
 const makeQueryClient = () =>
   new QueryClient({
@@ -22,6 +23,18 @@ const makeQueryClient = () =>
         gcTime: GC_TIME.LONG,
       },
     },
+    // В режиме impersonation любые DML отбиваются БД-триггером. Это нормально —
+    // пользователь сидит как «зритель», и фоновых мутаций (mark-as-read,
+    // last-viewed и т.п.) при открытии треда легко набирается пачка. Тосты
+    // об этом — шум: верхний баннер уже объясняет, что режим read-only.
+    // Поэтому здесь молча гасим ошибку, чтобы дальше она не пробрасывалась.
+    mutationCache: new MutationCache({
+      onError: (err) => {
+        if (isImpersonationWriteError(err)) {
+          // no-op
+        }
+      },
+    }),
   })
 
 export function Providers({ children }: { children: ReactNode }) {

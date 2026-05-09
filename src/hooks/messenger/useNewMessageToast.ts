@@ -73,11 +73,19 @@ export function useNewMessageToast(workspaceId: string | undefined) {
           const msgChannel: 'client' | 'internal' =
             msg.channel === 'internal' ? 'internal' : 'client'
 
-          if (
-            msg.sender_participant_id &&
-            myParticipantIdsRef.current.has(msg.sender_participant_id)
-          )
-            return
+          // Не показываем тост на свои же сообщения. Может быть race —
+          // participants ещё не загрузились в ref. Тогда подгружаем синхронно.
+          if (msg.sender_participant_id) {
+            if (myParticipantIdsRef.current.size === 0 && userRef.current) {
+              const { data } = await supabase
+                .from('participants')
+                .select('id')
+                .eq('workspace_id', workspaceId)
+                .eq('user_id', userRef.current.id)
+              myParticipantIdsRef.current = new Set(data?.map((p) => p.id) ?? [])
+            }
+            if (myParticipantIdsRef.current.has(msg.sender_participant_id)) return
+          }
 
           const ws = queryClient.getQueryData<Workspace>(workspaceKeys.detail(workspaceId))
           const durationSec = ws?.notification_toast_duration ?? 5

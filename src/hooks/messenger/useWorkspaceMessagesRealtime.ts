@@ -16,7 +16,7 @@
 import { useEffect, useId } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { inboxKeys, sidebarKeys } from '@/hooks/queryKeys'
+import { inboxKeys, messengerKeys, sidebarKeys } from '@/hooks/queryKeys'
 
 export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
   const queryClient = useQueryClient()
@@ -76,6 +76,41 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
           table: 'message_reactions',
         },
         invalidateAll,
+      )
+      // project_threads: новые треды (например, созданные resend-webhook'ом
+      // при письме на p+<id>@) должны мгновенно появляться в списке тредов
+      // проекта без перезагрузки страницы.
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'project_threads',
+          filter: `workspace_id=eq.${workspaceId}`,
+        },
+        (payload) => {
+          invalidateAll()
+          const projectId = (payload.new as { project_id?: string } | null)?.project_id
+          if (projectId) {
+            queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(projectId) })
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'project_threads',
+          filter: `workspace_id=eq.${workspaceId}`,
+        },
+        (payload) => {
+          invalidateAll()
+          const projectId = (payload.new as { project_id?: string } | null)?.project_id
+          if (projectId) {
+            queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(projectId) })
+          }
+        },
       )
       .subscribe()
 

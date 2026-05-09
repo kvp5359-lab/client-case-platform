@@ -30,6 +30,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { REACTIONS } from './ReactionPicker'
 import { trackReactionUsage } from '@/utils/messenger/recentReactions'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
+import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { getChatIconComponent, getChatTabAccent } from './EditChatDialog'
 import { stripHtml, isHtmlContent, sanitizeMessengerHtml } from '@/utils/format/messengerHtml'
@@ -236,7 +237,7 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
         Копировать текст
       </Item>
 
-      {onViewEmail && message.source === 'email' && message.email_metadata?.body_html && (
+      {onViewEmail && isEmailSource(message.source) && message.email_metadata?.body_html && (
         <Item onClick={onViewEmail}>
           <ExternalLink className="h-4 w-4 mr-2" />
           Открыть письмо

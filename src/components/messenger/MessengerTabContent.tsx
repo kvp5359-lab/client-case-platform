@@ -18,6 +18,7 @@ import { DocumentPickerDialog } from './DocumentPickerDialog'
 import { ChatToolbar } from './ChatToolbar'
 import { ReadUnreadButton } from './ReadUnreadButton'
 import { EmailSubjectBar } from './EmailSubjectBar'
+import { EmailSendMethodSelector } from './EmailSendMethodSelector'
 import { useMessengerState } from './hooks/useMessengerState'
 import { useMessengerHandlers } from './hooks/useMessengerHandlers'
 import { useOptimisticEmail } from './hooks/useOptimisticEmail'
@@ -211,6 +212,8 @@ export function MessengerTabContent({
         </div>
 
         <TypingIndicator typingUsers={state.typingUsers} />
+
+        <EmailSendMethodSelector threadId={threadId} />
 
         <MessageInput
           projectId={projectId ?? ''}

@@ -10,6 +10,7 @@
 import { ReactNode, useEffect } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
+import { ImpersonationBanner } from '@/components/impersonation/ImpersonationBanner'
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -41,5 +42,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   // Пользователь авторизован — показываем контент
-  return <>{children}</>
+  return (
+    <>
+      <ImpersonationBanner />
+      {children}
+    </>
+  )
 }

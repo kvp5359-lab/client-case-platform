@@ -49,7 +49,7 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
       role="dialog"
       aria-modal="true"
       aria-label="Просмотр изображения"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 overflow-auto"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 overflow-auto"
       onClick={onClose}
       onWheel={handleWheel}
     >
@@ -101,11 +101,9 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
         </button>
       </div>
 
-      {/* Контейнер с картинкой — при зуме > 1 появляется скролл */}
-      <div
-        className="flex items-center justify-center min-w-full min-h-full p-4"
-        onClick={(e) => e.stopPropagation()}
-      >
+      {/* Контейнер с картинкой — при зуме > 1 появляется скролл.
+          Клик по любому месту (включая саму картинку) закрывает лайтбокс. */}
+      <div className="flex items-center justify-center min-w-full min-h-full p-4">
         <Image
           src={src}
           alt={alt}

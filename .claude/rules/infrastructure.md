@@ -373,6 +373,33 @@
 4. **Иконка/цвет тредов**: добавить в `THREAD_ICONS` (если нужна бренд-иконка) и в дефолтах создания тредов внутри webhook.
 5. **Документация**: обновить эту матрицу + добавить раздел канала в infrastructure.md.
 
+## Импersonация — «войти под пользователем» (read-only)
+
+Реализовано 2026-05-08. Владелец воркспейса может временно «увидеть глазами» любого активного сотрудника — задачи, чаты, сайдбар, доступы. Режим строго для просмотра: любые DML-операции блокируются на уровне БД.
+
+- **Кому доступно**: только участникам с ролью `Владелец` в воркспейсе. Запрещено: импersonировать самого себя; импersonировать другого `Владельца`; стартовать импersonацию из уже импersonированной сессии.
+- **TTL**: 30 минут. По истечению JWT баннер автоматически возвращает оригинальную сессию.
+- **Архитектура**: Edge Function `impersonate-start` подписывает кастомный JWT (HS256, секрет = `JWT_SIGNING_SECRET`) с claim `app_metadata.impersonated_by = owner_id`. Фронт меняет сессию через `supabase.auth.setSession({ access_token, refresh_token: '' })` и перезагружает страницу. Оригинальная сессия владельца бэкапится в `localStorage` под ключом `cc_impersonation_original_session_v1` и восстанавливается при выходе.
+- **Защита от записи** — БД-триггер `prevent_impersonation_writes` повешен на ВСЕ public-таблицы (кроме самой `impersonation_sessions`). Триггер проверяет `public.is_impersonating()` (читает claim из JWT). При импersonации — `RAISE EXCEPTION`. Service-role и pg_cron проходят свободно (у них в JWT нет нашего claim'а).
+- **Фронт**: глобальный обработчик `MutationCache.onError` ловит ошибку триггера по тексту `Impersonation mode is read-only` и показывает дружелюбный toast «В режиме просмотра изменения недоступны».
+- **UI**:
+  - Кнопка «Войти под пользователем» — в меню участника на `/workspaces/[id]/settings/participants` ([`ParticipantMenu.tsx`](../../src/page-components/workspace-settings/components/ParticipantMenu.tsx)). Виден только владельцу, только у активных участников с привязанным `user_id`, не-владельцев.
+  - Sticky-баннер сверху на всех приватных роутах — [`ImpersonationBanner.tsx`](../../src/components/impersonation/ImpersonationBanner.tsx). Показывает email просматриваемого юзера, таймер до истечения, кнопку «Выйти из режима».
+- **Таблица аудита**: `impersonation_sessions (id, owner_user_id, target_user_id, workspace_id, jti, started_at, ended_at, expires_at, user_agent, ip)`. SELECT — только владелец и сам импersонированный (если активна). INSERT/UPDATE — только service role через RPC.
+- **RPC**:
+  - `start_impersonation_session(owner_user_id, workspace_id, target_user_id, jti, expires_at, user_agent, ip)` — SECURITY DEFINER, доступна только service_role. Делает все проверки прав.
+  - `end_impersonation_session(session_id)` — SECURITY DEFINER, доступна authenticated. Может закрыть владелец (из своей сессии) или сам target (из импersonationного JWT).
+- **Helper-функции**: `public.is_impersonating()`, `public.impersonating_owner_id()`, `public.is_workspace_owner(user, workspace)`.
+- **Edge Functions**:
+  - `impersonate-start` — `--no-verify-jwt` (внутри сами читаем Authorization Bearer; verify=false снимает требование Supabase-шлюза, чтобы не било 401 до нашего кода). Требует env-переменную `JWT_SIGNING_SECRET` (тот же HS256 секрет, что и у GoTrue — берётся из Project Settings → API → JWT Secret).
+  - `impersonate-end` — обычный (`verify_jwt=true`).
+- **Миграции**: `20260507_impersonation.sql` (таблица + helpers + RPC + триггер на все public-таблицы).
+- **Хук**: [`useImpersonation`](../../src/hooks/useImpersonation.ts) — состояние читается из JWT текущей сессии, действия `start({ workspace_id, target_user_id })` и `end()`.
+- **Что нужно сделать руками** (если включаешь впервые на новом проекте): задать секрет `JWT_SIGNING_SECRET` в Supabase Edge Functions secrets — `supabase secrets set JWT_SIGNING_SECRET=<значение из Dashboard>`. Без него `impersonate-start` вернёт 500.
+- **Известные ограничения**:
+  - Реалтайм-подписки переподключаются при `setSession`, но в момент полного reload фронта на короткое время теряются — терпимо.
+  - Если импersonationный JWT истёк, а пользователь успел сделать действие — увидит ошибку аутентификации; баннер должен был успеть авто-выйти раньше.
+
 ## Локальная разработка
 
 ```bash

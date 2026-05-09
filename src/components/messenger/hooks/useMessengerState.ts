@@ -197,19 +197,15 @@ export function useMessengerState({
     const pending = pendingInitialMessage
     setPendingInitialMessage(null)
 
-    if (pending.isEmail) {
-      sendEmail.mutate({
-        threadId,
-        content: pending.html,
-        files: pending.files.length > 0 ? pending.files : undefined,
-      })
-    } else {
-      sendMessage.mutate({
-        content: pending.html,
-        attachments: pending.files.length > 0 ? pending.files : undefined,
-      })
-    }
-  }, [pendingInitialMessage, threadId, sendEmail, sendMessage, setPendingInitialMessage])
+    // Унифицированный путь: всё (включая email) идёт через INSERT в project_messages.
+    // БД-триггер сам разрулит — если тред type='email' / есть email-история /
+    // привязан email_send_account_id, дёрнет email-internal-send Edge Function,
+    // которая роутит между Gmail сотрудника и Resend.
+    sendMessage.mutate({
+      content: pending.html,
+      attachments: pending.files.length > 0 ? pending.files : undefined,
+    })
+  }, [pendingInitialMessage, threadId, sendMessage, setPendingInitialMessage])
 
   // Подхватываем документы, проброшенные из FloatingBatchActions → sendDocumentsToMessenger
   const pendingMessengerDocuments = useSidePanelStore((s) => s.pendingMessengerDocuments)

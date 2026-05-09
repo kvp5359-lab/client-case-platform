@@ -1,6 +1,7 @@
 import { Mail, MessageSquareText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
+import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import type { DeliveryStatus } from './bubbleUtils'
 import { DeliveryIcon, formatTime } from './bubbleUtils'
 
@@ -42,7 +43,7 @@ export function BubbleTimestamp({
             aria-label="Отправлено напрямую из Telegram"
           />
         )}
-      {isOwn && message.source === 'email' && <Mail className="h-3 w-3" />}
+      {isOwn && isEmailSource(message.source) && <Mail className="h-3 w-3" />}
       {formatTime(message.created_at)}
       {message.is_edited && <span className="italic">ред.</span>}
       {deliveryStatus && <DeliveryIcon status={deliveryStatus} />}

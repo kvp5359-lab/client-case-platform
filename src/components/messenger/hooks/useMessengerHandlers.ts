@@ -123,12 +123,14 @@ export function useMessengerHandlers({
 
   const handleSend = useCallback(
     async (content: string, replyToId?: string | null, files?: File[]) => {
-      if (isEmailChat && threadId) {
-        sendEmail.mutate({ threadId, content, files })
-        stopTyping()
-        setSendTrigger((prev) => prev + 1)
-        return
-      }
+      // Email-чаты теперь идут через обычный sendMessage → INSERT project_messages
+      // (source='web') → триггер notify_telegram_on_new_message видит type='email'
+      // и зовёт email-internal-send (Gmail OAuth / Resend). Старый прямой путь
+      // через gmail-send удалён — он минул триггер, цитировал по-старому и не
+      // заполнял email_message_id/in_reply_to/references, из-за чего письма у
+      // клиента отделялись в новый тред.
+      void isEmailChat
+      void sendEmail
 
       if (sendDelay > 0 && currentParticipant && !replyToId && forwardedAttachments.length === 0) {
         const delayed = await sendWithDelay({

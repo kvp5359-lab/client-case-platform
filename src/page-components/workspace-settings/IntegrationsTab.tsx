@@ -44,6 +44,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { WazzupSection } from './WazzupSection'
 import { LeadTemplateSetting } from './LeadTemplateSetting'
+import { EmailSection } from './EmailSection'
 
 /**
  * Командные роли — те, кто работает в воркспейсе как сотрудник, а не как
@@ -85,7 +86,7 @@ interface EmailAccount {
   watch_expires_at: string | null
 }
 
-type SectionKey = 'telegram' | 'gmail' | 'business' | 'wazzup'
+type SectionKey = 'telegram' | 'gmail' | 'business' | 'wazzup' | 'email'
 
 export function IntegrationsTab() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -213,6 +214,7 @@ export function IntegrationsTab() {
     { id: 'gmail', label: 'Gmail', icon: Mail },
     { id: 'business', label: 'Личный Telegram сотрудника', icon: Sparkles },
     { id: 'wazzup', label: 'WhatsApp (Wazzup)', icon: MessageSquare },
+    { id: 'email', label: 'Email (Resend)', icon: Mail },
   ]
 
   return (
@@ -277,6 +279,9 @@ export function IntegrationsTab() {
             <WazzupSection workspaceId={workspaceId!} employees={employees} />
             <LeadTemplateSetting workspaceId={workspaceId!} source="wazzup" />
           </>
+        )}
+        {section === 'email' && (
+          <EmailSection workspaceId={workspaceId!} />
         )}
       </div>
 

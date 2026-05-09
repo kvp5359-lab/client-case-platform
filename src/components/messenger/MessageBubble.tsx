@@ -6,6 +6,7 @@ import { MessageAttachments } from './MessageAttachment'
 import { isImage } from './utils/attachmentHelpers'
 import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
+import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import { bubbleStyles } from './utils/messageStyles'
 import { useCollapsibleText } from './hooks/useCollapsibleText'
 import { DeliveryFailedBadge, useDeliveryStatus } from './DeliveryIndicator'
@@ -257,7 +258,7 @@ function MessageBubbleImpl({
           currentThreadId={currentThreadId}
           onPublishDraft={onPublishDraft}
           onEditDraft={onEditDraft}
-          onViewEmail={message.source === 'email' ? () => setEmailViewOpen(true) : undefined}
+          onViewEmail={isEmailSource(message.source) ? () => setEmailViewOpen(true) : undefined}
           onDeleteDialogOpen={() => setDeleteDialogOpen(true)}
           reactionPopoverOpen={reactionPopoverOpen}
           setReactionPopoverOpen={setReactionPopoverOpen}
@@ -418,7 +419,7 @@ function MessageBubbleImpl({
               currentThreadId={currentThreadId}
               onPublishDraft={onPublishDraft}
               onEditDraft={onEditDraft}
-              onViewEmail={message.source === 'email' ? () => setEmailViewOpen(true) : undefined}
+              onViewEmail={isEmailSource(message.source) ? () => setEmailViewOpen(true) : undefined}
               channel={channel}
               onDeleteDialogOpen={() => setDeleteDialogOpen(true)}
               moreMenuOpen={moreMenuOpen}

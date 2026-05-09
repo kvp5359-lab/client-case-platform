@@ -15,6 +15,8 @@ interface ParticipantsTableProps {
   onDelete: (participantId: string) => void
   actionInProgressId: string | null
   canManage: boolean
+  canImpersonate?: boolean
+  workspaceId?: string
 }
 
 export function ParticipantsTable({
@@ -24,6 +26,8 @@ export function ParticipantsTable({
   onDelete,
   actionInProgressId,
   canManage,
+  canImpersonate,
+  workspaceId,
 }: ParticipantsTableProps) {
   return (
     <Table>
@@ -85,6 +89,8 @@ export function ParticipantsTable({
                   onDelete={onDelete}
                   isLoading={actionInProgressId === participant.id}
                   canManage={canManage}
+                  canImpersonate={canImpersonate}
+                  workspaceId={workspaceId}
                 />
               </div>
             </TableCell>

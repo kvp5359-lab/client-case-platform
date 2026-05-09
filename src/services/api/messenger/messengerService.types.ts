@@ -6,6 +6,18 @@
 
 export type MessageChannel = 'client' | 'internal'
 
+/**
+ * Источники сообщений, относящиеся к email-каналу:
+ *  - `email` — старая интеграция через Gmail OAuth (gmail-webhook)
+ *  - `email_internal` — новая через Resend (resend-webhook → /api/resend-webhook)
+ *
+ * UI-проверки «это email-сообщение?» должны принимать оба источника.
+ */
+export const EMAIL_SOURCES = ['email', 'email_internal'] as const
+export function isEmailSource(source: string | null | undefined): boolean {
+  return source === 'email' || source === 'email_internal'
+}
+
 export interface MessageReaction {
   id: string
   message_id: string
@@ -60,6 +72,7 @@ export interface ProjectMessage {
     | 'web'
     | 'telegram'
     | 'email'
+    | 'email_internal'
     | 'telegram_service'
     | 'bot_event'
     | 'telegram_business'
@@ -84,6 +97,19 @@ export interface ProjectMessage {
   channel: MessageChannel
   thread_id: string | null
   email_metadata: EmailMetadata | null
+  /** Resend email id (исходящие через email-internal-send + входящие). */
+  email_resend_id?: string | null
+  /** Статус доставки исходящего email от Resend (queued/sent/delivered/bounced/complaint/opened/clicked/failed). */
+  email_delivery_status?:
+    | 'queued'
+    | 'sent'
+    | 'delivered'
+    | 'bounced'
+    | 'complaint'
+    | 'opened'
+    | 'clicked'
+    | 'failed'
+    | null
   created_at: string
   updated_at: string
   reactions: MessageReaction[]

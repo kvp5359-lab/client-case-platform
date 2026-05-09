@@ -17,6 +17,7 @@ import {
   BookOpen,
   Kanban,
   NotebookText,
+  MailQuestion,
   type LucideIcon,
 } from 'lucide-react'
 import type { WorkspacePermission } from '@/types/permissions'
@@ -24,6 +25,7 @@ import type { WorkspacePermission } from '@/types/permissions'
 export type SidebarNavKey =
   | 'home'
   | 'inbox'
+  | 'inbox_unmatched'
   | 'tasks'
   | 'boards'
   | 'knowledge_base'
@@ -87,6 +89,14 @@ export const SIDEBAR_NAV_ITEMS: Record<SidebarNavKey, SidebarItemMeta> = {
     path: 'inbox',
     hasAccess: ({ isClientOnly }) => !isClientOnly,
   },
+  inbox_unmatched: {
+    key: 'inbox_unmatched',
+    label: 'Нераспознанные письма',
+    icon: MailQuestion,
+    path: 'inbox/unmatched',
+    hasAccess: ({ isClientOnly, isOwner, hasPermission }) =>
+      !isClientOnly && (isOwner || hasPermission('manage_workspace_settings')),
+  },
   tasks: {
     key: 'tasks',
     label: 'Задачи',
@@ -149,6 +159,7 @@ export const SIDEBAR_NAV_ITEMS: Record<SidebarNavKey, SidebarItemMeta> = {
 export const SIDEBAR_NAV_KEYS: SidebarNavKey[] = [
   'home',
   'inbox',
+  'inbox_unmatched',
   'tasks',
   'boards',
   'knowledge_base',

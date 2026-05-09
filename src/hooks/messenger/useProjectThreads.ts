@@ -134,7 +134,7 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
       accessType: 'all' | 'roles' | 'custom'
       accentColor?: ThreadAccentColor
       icon?: string
-      type?: 'chat' | 'task'
+      type?: 'chat' | 'task' | 'email'
       emailData?: { contactEmails: string[]; subject?: string }
       memberIds?: string[]
       accessRoles?: string[]
@@ -165,6 +165,27 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
         nextSortOrder = (maxRow?.sort_order ?? 0) + 10
       }
 
+      // Если тред email — определяем выставляемые поля для нового унифицированного канала.
+      const isEmailChannel = !!params.emailData && params.emailData.contactEmails.length > 0
+      let emailSendAccountId: string | null = null
+      if (isEmailChannel) {
+        // Берём первый активный email_account текущего пользователя — отправлять будем
+        // от его имени. Если нет — null, и trigger пойдёт через Resend (system_postmark).
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: acc } = await supabase
+            .from('email_accounts')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .limit(1)
+            .maybeSingle()
+          emailSendAccountId = acc?.id ?? null
+        }
+      }
+
+      const threadType = isEmailChannel ? 'email' : (params.type ?? 'chat')
+
       const { data, error } = await supabase
         .from('project_threads')
         .insert({
@@ -174,13 +195,19 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
           access_type: params.accessType,
           access_roles: params.accessType === 'roles' ? (params.accessRoles ?? []) : [],
           is_default: false,
-          type: params.type ?? 'chat',
+          type: threadType,
           sort_order: nextSortOrder,
           ...(params.accentColor && { accent_color: params.accentColor }),
           ...(params.icon && { icon: params.icon }),
           ...(params.deadline !== undefined && { deadline: params.deadline }),
           ...(params.statusId !== undefined && { status_id: params.statusId }),
           ...(params.sourceTemplateId && { source_template_id: params.sourceTemplateId }),
+          ...(isEmailChannel && {
+            email_last_external_address: params.emailData!.contactEmails[0],
+            email_subject_root: params.emailData!.subject ?? null,
+            email_send_account_id: emailSendAccountId,
+            email_send_method: emailSendAccountId ? 'employee_mailbox' : 'system_postmark',
+          }),
         })
         .select('*')
         .single()
@@ -188,21 +215,11 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
       if (error) throw error
       const thread = data as ProjectThread
 
-      // Create email links if email channel
-      if (params.emailData && params.emailData.contactEmails.length > 0) {
-        const rows = params.emailData.contactEmails.map((email) => ({
-          thread_id: thread.id,
-          contact_email: email,
-          subject: params.emailData!.subject || null,
-        }))
-        const { error: linkError } = await supabase.from('project_thread_email_links').insert(rows)
-
-        if (linkError) {
-          // Rollback: delete the thread
-          await supabase.from('project_threads').delete().eq('id', thread.id)
-          throw linkError
-        }
-      }
+      // Email-канал: новый унифицированный путь использует thread.type='email'
+      // и поля email_send_*. Старая project_thread_email_links нужна была только
+      // gmail-webhook'у для routing'а Gmail-Pub/Sub. Для нового потока пропускаем
+      // её — отправка идёт через email-internal-send Edge Function триггером,
+      // приём — через resend-webhook (по адресу t+<short_id>@<slug>.cc.app).
 
       // Add members for custom access
       if (params.accessType === 'custom' && params.memberIds?.length) {
