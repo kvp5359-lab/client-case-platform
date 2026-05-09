@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { useFinanceServices } from '@/hooks/useFinanceServices'
+import { useProjectServices } from '@/hooks/useProjectServices'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import {
   useProjectTransactions,
@@ -69,6 +70,9 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
 
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
   const { data: catalog = [] } = useFinanceServices(workspaceId)
+  // Услуги проекта нужны только для типа income — чтобы посчитать «Остаток»
+  // (стоимость с налогом минус уже полученные доходы) и подставить его в форму.
+  const { data: services = [] } = useProjectServices(type === 'income' ? projectId : undefined)
 
   const createMutation = useCreateProjectTransaction(projectId)
   const updateMutation = useUpdateProjectTransaction(projectId)
@@ -109,6 +113,23 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
     () => transactions.reduce((acc, t) => acc + Number(t.amount ?? 0), 0),
     [transactions],
   )
+
+  // Остаток к получению: стоимость услуг с налогом минус уже полученные доходы.
+  // Считаем только при создании нового дохода и не учитываем редактируемую
+  // запись, чтобы показать «сколько осталось бы оплатить, если этой записи нет».
+  const remainingAmount = useMemo(() => {
+    if (type !== 'income') return null
+    const servicesCost = services.reduce((acc, s) => {
+      const sub = Number(s.total ?? 0)
+      const rate = s.tax_rate == null ? 0 : Number(s.tax_rate)
+      return acc + sub * (1 + rate / 100)
+    }, 0)
+    const incomesExcludingEditing = transactions.reduce((acc, t) => {
+      if (editing && t.id === editing.id) return acc
+      return acc + Number(t.amount ?? 0)
+    }, 0)
+    return servicesCost - incomesExcludingEditing
+  }, [type, services, transactions, editing])
 
   const openCreate = () => {
     setEditing(null)
@@ -310,6 +331,8 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
         editing={editing}
         onSave={handleSave}
         saving={createMutation.isPending || updateMutation.isPending}
+        suggestedAmount={remainingAmount}
+        suggestedLabel="Остаток"
       />
 
       <ConfirmDialog

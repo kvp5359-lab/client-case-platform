@@ -43,6 +43,14 @@ interface Props {
   editing: ProjectTransaction | null
   onSave: (form: ProjectTransactionFormData) => void
   saving: boolean
+  /**
+   * Подсказка-сумма (например, остаток к оплате для дохода). Если задано
+   * и > 0, рядом с полем «Сумма» появляется кликабельный тег — клик
+   * подставляет это значение в поле.
+   */
+  suggestedAmount?: number | null
+  /** Подпись тега (например, «Остаток»). */
+  suggestedLabel?: string
 }
 
 export function ProjectTransactionFormDialog({
@@ -53,6 +61,8 @@ export function ProjectTransactionFormDialog({
   editing,
   onSave,
   saving,
+  suggestedAmount,
+  suggestedLabel = 'Остаток',
 }: Props) {
   const { data: catalog = [] } = useFinanceServices(workspaceId)
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
@@ -83,6 +93,12 @@ export function ProjectTransactionFormDialog({
   const amountNum = Number(amountText.replace(',', '.')) || 0
   const canSave = amountNum > 0 && !!date
 
+  const hasSuggestion =
+    typeof suggestedAmount === 'number' && Number.isFinite(suggestedAmount) && suggestedAmount > 0
+
+  const fmt2 = (v: number) =>
+    new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -107,7 +123,20 @@ export function ProjectTransactionFormDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="trx-amount">Сумма, EUR</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="trx-amount">Сумма, EUR</Label>
+                {hasSuggestion && (
+                  <button
+                    type="button"
+                    onClick={() => setAmountText(String(suggestedAmount))}
+                    className="inline-flex items-center gap-1 rounded-full bg-blue-100 hover:bg-blue-200 px-2 py-0.5 text-xs text-blue-900 transition-colors"
+                    title="Подставить сумму в поле"
+                  >
+                    <span>{suggestedLabel}:</span>
+                    <span className="font-semibold tabular-nums">{fmt2(suggestedAmount as number)}</span>
+                  </button>
+                )}
+              </div>
               <Input
                 id="trx-amount"
                 type="number"
