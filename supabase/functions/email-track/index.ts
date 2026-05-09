@@ -48,12 +48,12 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the message
+    // Get the message. Source-фильтр убран — после email-унификации исходящие
+    // пишутся с source='web', а не 'email'. Идентификации по UUID достаточно.
     const { data: message } = await supabaseAdmin
       .from("project_messages")
       .select("id, email_metadata")
       .eq("id", messageId)
-      .eq("source", "email")
       .maybeSingle();
 
     if (!message) {

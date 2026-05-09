@@ -125,8 +125,11 @@ export function useChatSettingsActions({
   const { telegramCopied, handleCopyTelegramCode } = useTelegramLinkCopy(telegramLinkCode)
 
   // ── Email suggestions ──
+  // tabMode='email' — режим «новый Email-тред» (channelType ещё не выставлен).
+  // channelType='email' — режим настроек существующего чата с email-каналом.
+  const isEmailContext = form.tabMode === 'email' || form.channelType === 'email'
   const { data: emailSuggestions = [] } = useEmailSuggestions(
-    form.channelType === 'email' ? resolvedWorkspaceId : undefined,
+    isEmailContext ? resolvedWorkspaceId : undefined,
   )
   const { filteredSuggestions } = useEmailSuggestionsFilter(
     emailSuggestions,

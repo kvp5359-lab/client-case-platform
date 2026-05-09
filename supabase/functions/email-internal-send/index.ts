@@ -17,7 +17,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
-  preflight, jsonRes, requireInternalSecret, getServiceClient,
+  preflight, jsonRes, requireInternalSecret, getServiceClient, SUPABASE_URL,
 } from "../_shared/edge.ts";
 import { ensureValidGmailToken, type GmailAccountData } from "../_shared/gmailToken.ts";
 import { uint8ArrayToBase64 } from "../_shared/encoding.ts";
@@ -126,6 +126,26 @@ Deno.serve(async (req: Request) => {
   let inReplyTo = m.email_in_reply_to;
   let references: string[] = m.email_references ?? [];
 
+  // Race-condition: если юзер шлёт 2 письма подряд, edge-function для второго
+  // стартует пока первое ещё в полёте и у него не записан email_message_id.
+  // Ждём до 6 сек, пока предыдущее наше исходящее не получит email_message_id —
+  // иначе второе уходит без In-Reply-To и Gmail получателя отделяет его
+  // в новый тред.
+  for (let i = 0; i < 6; i++) {
+    const { data: pending } = await service
+      .from("project_messages")
+      .select("id")
+      .eq("thread_id", t.id)
+      .neq("id", m.id)
+      .lt("created_at", m.created_at)
+      .is("email_message_id", null)
+      .in("source", ["web", "email"])
+      .limit(1)
+      .maybeSingle();
+    if (!pending) break;
+    await new Promise((res) => setTimeout(res, 1000));
+  }
+
   const { data: chain } = await service
     .from("project_messages")
     .select("email_message_id, source, created_at")
@@ -160,21 +180,23 @@ Deno.serve(async (req: Request) => {
   // хоть одно email-сообщение (любое — входящее или исходящее) — то это reply,
   // ставим "Re: <root>". Если в треде ещё нет email-сообщений — это первое
   // письмо, тема идёт как есть из email_subject_root / m.email_subject.
-  let isReply = !!inReplyTo
-  if (!isReply) {
-    const { count: emailHistoryCount } = await service
-      .from("project_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("thread_id", t.id)
-      .in("source", ["email", "email_internal"])
-      .neq("id", m.id)
-    isReply = (emailHistoryCount ?? 0) > 0
-  }
+  // «Re:» ставим только когда отвечаем на письмо клиента (source='email_internal').
+  // Если в треде только наши исходящие (followup без ответа клиента) — Subject
+  // должен повторять оригинал, иначе Gmail при users.messages.send с threadId
+  // видит «несовпадение Subject» и отделяет письмо в новый тред у получателя.
+  const hasInboundFromClient = chainList.some((row) => row.source === "email_internal")
+  const isReply = hasInboundFromClient
 
   const subjectRoot = (t.email_subject_root ?? m.email_subject ?? "").trim() || "(без темы)"
   const subjectRaw = isReply ? `Re: ${subjectRoot.replace(/^\s*Re:\s*/i, "")}` : subjectRoot
   const htmlInner = wrapPlainAsHtmlIfNeeded(m.content ?? "");
-  const html = wrapEmailHtml(htmlInner);
+  // 1×1 tracking pixel — клиент-почтовик скачает картинку при открытии,
+  // email-track edge-функция выставит email_metadata.read_at, и UI покажет
+  // двойную галочку. Gmail проксирует картинки через свой CDN — пиксель
+  // часто срабатывает уже при доставке (а не строго при открытии), но это
+  // лучшее доступное приближение.
+  const trackingPixel = `<img src="${SUPABASE_URL}/functions/v1/email-track?id=${m.id}" width="1" height="1" alt="" style="display:none;border:0" />`;
+  const html = wrapEmailHtml(htmlInner + trackingPixel);
   const text = htmlToPlainText(htmlInner);
 
   // Метод отправки: явный на сообщении/треде, иначе авто (есть account → Gmail, иначе Resend)
@@ -286,10 +308,35 @@ Deno.serve(async (req: Request) => {
     };
     const gmailThreadId = gmailJson.threadId ?? null;
 
+    // Gmail API при users.messages.send ИГНОРИРУЕТ наш Message-ID и подставляет
+    // свой. Если оставить наш UUID в email_message_id, следующее письмо в
+    // треде сошлётся на несуществующий ID, и Gmail получателя отделит его
+    // в новый тред. Поэтому читаем реальный Message-ID из Gmail и сохраняем.
+    let actualMessageId = messageIdHeader;
+    if (gmailJson.id) {
+      try {
+        const metaResp = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${gmailJson.id}?format=metadata&metadataHeaders=Message-ID`,
+          { headers: { Authorization: `Bearer ${accessToken}` } },
+        );
+        if (metaResp.ok) {
+          const meta = (await metaResp.json()) as {
+            payload?: { headers?: Array<{ name: string; value: string }> };
+          };
+          const midHeader = meta?.payload?.headers?.find(
+            (h) => h.name.toLowerCase() === "message-id",
+          );
+          if (midHeader?.value) actualMessageId = midHeader.value;
+        }
+      } catch (_) {
+        // Fallback на messageIdHeader — лучше что-то, чем ничего.
+      }
+    }
+
     await service
       .from("project_messages")
       .update({
-        email_message_id: messageIdHeader,
+        email_message_id: actualMessageId,
         email_send_method: "employee_mailbox",
         email_send_account_id: sendAccountId,
         email_delivery_status: "sent",
