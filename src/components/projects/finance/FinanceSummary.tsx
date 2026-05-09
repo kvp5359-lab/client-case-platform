@@ -24,7 +24,7 @@ function StatCard({ label, value, hint, tone = 'default' }: CardProps) {
   const valueColor =
     tone === 'positive' ? 'text-emerald-700' : tone === 'negative' ? 'text-red-700' : 'text-gray-900'
   return (
-    <div>
+    <div className="rounded-lg border bg-white p-4">
       <div className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</div>
       <div className={`mt-1 text-xl font-semibold tabular-nums ${valueColor}`}>{value}</div>
       {hint && <div className="mt-1 text-xs text-gray-500">{hint}</div>}
@@ -57,7 +57,7 @@ export function FinanceSummary({ projectId }: Props) {
   }, [services, incomes, expenses])
 
   return (
-    <div className="grid gap-x-8 gap-y-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+    <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
       <StatCard label="Стоимость" value={`${fmt(stats.cost)} EUR`} hint="Услуги проекта с налогом" />
       <StatCard
         label="Доходы"
