@@ -62,7 +62,15 @@ export function useProjectTemplateMutations({
     },
   })
 
-  // Обновление иконки шаблона (отображается в сайдбаре для проектов этого типа)
+  // Хелпер: общая инвалидация для всего, что связано с иконкой/цветом шаблона.
+  const invalidateIconAndColor = () => {
+    queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
+    queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detailFull(templateId) })
+    // Сайдбар держит мапу иконок и цветов шаблонов в отдельном ключе.
+    queryClient.invalidateQueries({ queryKey: ['sidebar', 'workspace-templates-icons'] })
+  }
+
+  // Обновление иконки шаблона
   const updateIconMutation = useMutation({
     mutationFn: async (icon: string) => {
       const { error } = await supabase
@@ -71,14 +79,39 @@ export function useProjectTemplateMutations({
         .eq('id', templateId ?? '')
       if (error) throw error
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
-      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detailFull(templateId) })
-      // Сайдбар держит мапу icon-ов шаблонов в отдельном ключе — обновляем.
-      queryClient.invalidateQueries({ queryKey: ['sidebar', 'workspace-templates-icons'] })
-    },
+    onSuccess: invalidateIconAndColor,
     onError: () => {
       toast.error('Не удалось обновить иконку')
+    },
+  })
+
+  // Режим окраски иконки: 'status' (цвет статуса) | 'fixed' (свой цвет)
+  const updateIconColorModeMutation = useMutation({
+    mutationFn: async (mode: 'status' | 'fixed') => {
+      const { error } = await supabase
+        .from('project_templates')
+        .update({ icon_color_mode: mode })
+        .eq('id', templateId ?? '')
+      if (error) throw error
+    },
+    onSuccess: invalidateIconAndColor,
+    onError: () => {
+      toast.error('Не удалось обновить режим цвета')
+    },
+  })
+
+  // Фиксированный цвет иконки (используется в режиме 'fixed')
+  const updateIconColorMutation = useMutation({
+    mutationFn: async (color: string) => {
+      const { error } = await supabase
+        .from('project_templates')
+        .update({ icon_color: color })
+        .eq('id', templateId ?? '')
+      if (error) throw error
+    },
+    onSuccess: invalidateIconAndColor,
+    onError: () => {
+      toast.error('Не удалось обновить цвет иконки')
     },
   })
 
@@ -291,6 +324,8 @@ export function useProjectTemplateMutations({
   return {
     updateTemplateMutation,
     updateIconMutation,
+    updateIconColorModeMutation,
+    updateIconColorMutation,
     updateIsLeadTemplateMutation,
     updateModulesMutation,
     addFormsMutation,
