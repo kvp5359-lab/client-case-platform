@@ -79,7 +79,12 @@ export function useProjectData(projectId: string | undefined) {
   const effectiveTemplate: ProjectTemplateWithRelations | null | undefined = isSystemInbox
     ? {
         id: `__system_inbox_${inboxKind}__`,
-        name: inboxKind === 'wazzup' ? 'Wazzup (WhatsApp)' : 'Личные диалоги Telegram',
+        name:
+          inboxKind === 'wazzup'
+            ? 'Wazzup (WhatsApp)'
+            : inboxKind === 'email'
+              ? 'Email'
+              : 'Личные диалоги Telegram',
         enabled_modules: ['chats', 'tasks'],
         root_folder_id: null,
         project_template_document_kits: [],
