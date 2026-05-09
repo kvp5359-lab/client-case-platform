@@ -72,6 +72,7 @@ export interface ProjectMessage {
     | 'web'
     | 'telegram'
     | 'email'
+    | 'email_internal'
     | 'telegram_service'
     | 'bot_event'
     | 'telegram_business'
@@ -96,6 +97,19 @@ export interface ProjectMessage {
   channel: MessageChannel
   thread_id: string | null
   email_metadata: EmailMetadata | null
+  /** Resend email id (исходящие через email-internal-send + входящие). */
+  email_resend_id?: string | null
+  /** Статус доставки исходящего email от Resend (queued/sent/delivered/bounced/complaint/opened/clicked/failed). */
+  email_delivery_status?:
+    | 'queued'
+    | 'sent'
+    | 'delivered'
+    | 'bounced'
+    | 'complaint'
+    | 'opened'
+    | 'clicked'
+    | 'failed'
+    | null
   created_at: string
   updated_at: string
   reactions: MessageReaction[]
