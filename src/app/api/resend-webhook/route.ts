@@ -247,19 +247,58 @@ async function handleInbound(
         }
       }
 
-      const { data: matchRows, error: matchErr } = await supabase.rpc('match_inbound_email', {
-        p_workspace_id: workspaceId,
-        p_from_address: realFrom.address,
-        p_in_reply_to: inReplyTo,
-        p_references: references,
-      })
-      if (matchErr) {
-        return NextResponse.json({ error: 'match_failed', detail: matchErr.message }, { status: 500 })
+      // Стратегия матчинга:
+      //  1. По In-Reply-To / References — это «настоящий» reply, нужно
+      //     отдать в существующий тред в любом случае.
+      //  2. Если не нашли и сотрудник определён — ищем тред среди
+      //     ЕГО ЛИЧНЫХ тредов (email_send_account_id = его аккаунт)
+      //     с тем же отправителем за последние 90 дней. Это покрывает
+      //     случай "тот же клиент пишет новое письмо тебе".
+      //  3. Если не нашли — создаём новый тред в его личном email-проекте.
+      //
+      // НЕ используем больше глобальный from+recent matcher — он
+      // подтаскивал треды из других проектов другого сотрудника
+      // и любых старых веток с тем же контактом.
+      let matchedThread: { thread_id: string | null; project_id: string | null } | null = null
+      if (inReplyTo || references.length) {
+        const { data: matchRows } = await supabase.rpc('match_inbound_email', {
+          p_workspace_id: workspaceId,
+          p_from_address: realFrom.address,
+          p_in_reply_to: inReplyTo,
+          p_references: references,
+        })
+        const m = (matchRows as { thread_id: string | null; project_id: string | null; match_method: string }[] | null)?.[0]
+        if (m && (m.match_method === 'in_reply_to' || m.match_method === 'references')) {
+          matchedThread = { thread_id: m.thread_id, project_id: m.project_id }
+        }
       }
-      const match = (matchRows as { thread_id: string | null; project_id: string | null; match_method: string }[] | null)?.[0]
-      if (match && match.match_method !== 'none') {
-        threadId = match.thread_id
-        projectId = match.project_id
+      if (!matchedThread && assignedAccountId) {
+        // Тот же отправитель → ищем тред с тем же email_subject_root,
+        // чтобы не склеивать разные обращения одного клиента в один тред.
+        const incomingSubject = (data.subject ?? '').replace(/^\s*(?:Re|Fwd?|Fw):\s*/i, '').trim()
+        if (incomingSubject) {
+          const { data: ownThread } = await supabase
+            .from('project_threads')
+            .select('id, project_id, email_subject_root')
+            .eq('workspace_id', workspaceId)
+            .eq('email_send_account_id', assignedAccountId)
+            .eq('email_last_external_address', realFrom.address)
+            .eq('is_deleted', false)
+            .gte('updated_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
+            .order('updated_at', { ascending: false })
+            .limit(10)
+          const found = (ownThread as { id: string; project_id: string | null; email_subject_root: string | null }[] | null)?.find(
+            (t) =>
+              (t.email_subject_root ?? '').replace(/^\s*(?:Re|Fwd?|Fw):\s*/i, '').trim().toLowerCase() ===
+              incomingSubject.toLowerCase(),
+          )
+          if (found) matchedThread = { thread_id: found.id, project_id: found.project_id }
+        }
+      }
+
+      if (matchedThread) {
+        threadId = matchedThread.thread_id
+        projectId = matchedThread.project_id
       } else if (assignedAccountId) {
         // Сотрудник определён, но треда с этим клиентом ещё нет — создаём
         // новый тред в его системном email-проекте «Мои email-треды».
