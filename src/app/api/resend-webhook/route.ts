@@ -1,0 +1,499 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createSupabaseServiceClient } from '@/lib/supabase-service'
+import {
+  extractOriginalFrom,
+  getSvixHeaders,
+  verifySvixSignature,
+  type ParsedAddress,
+} from '@/lib/resendWebhook'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const maxDuration = 60
+
+const ROOT_DOMAIN = 'clientcase.app'
+
+type ResendEvent = {
+  type: string
+  created_at?: string
+  data: ResendEmailData
+}
+
+type ResendEmailData = {
+  id?: string
+  email_id?: string
+  from?: string | { email: string; name?: string }
+  to?: string[] | { email: string; name?: string }[]
+  cc?: string[] | { email: string; name?: string }[]
+  subject?: string
+  text?: string
+  html?: string
+  headers?: { name: string; value: string }[] | Record<string, string>
+  attachments?: { filename?: string; content_type?: string; content?: string; size?: number }[]
+  spam_score?: number
+}
+
+type Resolution = {
+  workspace_id: string | null
+  workspace_slug: string | null
+  resolution_type: string
+  thread_id: string | null
+  project_id: string | null
+  virtual_address_id: string | null
+  routing_mode: string | null
+  target_project_id: string | null
+  target_thread_id: string | null
+  default_thread_template_id: string | null
+  default_assignee_user_id: string | null
+  auto_reply_enabled: boolean | null
+  auto_reply_text: string | null
+}
+
+export async function POST(req: NextRequest) {
+  const secret = process.env.RESEND_WEBHOOK_SECRET
+  if (!secret) {
+    return NextResponse.json({ error: 'webhook_secret_not_configured' }, { status: 500 })
+  }
+
+  const rawBody = await req.text()
+  const verification = verifySvixSignature({
+    rawBody,
+    headers: getSvixHeaders(req.headers),
+    secret,
+  })
+  if (!verification.valid) {
+    return NextResponse.json({ error: 'invalid_signature', reason: verification.reason }, { status: 401 })
+  }
+
+  let event: ResendEvent
+  try {
+    event = JSON.parse(rawBody)
+  } catch {
+    return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
+  }
+
+  const supabase = createSupabaseServiceClient()
+
+  switch (event.type) {
+    case 'email.received':
+    case 'inbound.received':
+      return handleInbound(supabase, event)
+    case 'email.sent':
+    case 'email.delivered':
+    case 'email.bounced':
+    case 'email.complained':
+    case 'email.opened':
+    case 'email.clicked':
+    case 'email.delivery_delayed':
+    case 'email.failed':
+      return handleDeliveryStatus(supabase, event)
+    default:
+      return NextResponse.json({ status: 'ignored', type: event.type })
+  }
+}
+
+async function handleInbound(
+  supabase: ReturnType<typeof createSupabaseServiceClient>,
+  event: ResendEvent,
+) {
+  const data = event.data
+  const resendId = data.id ?? data.email_id ?? null
+
+  const fromList = normalizeAddressList(data.from)
+  const toList = normalizeAddressList(data.to)
+  const ccList = normalizeAddressList(data.cc)
+
+  const outerFrom = fromList[0] ?? null
+  const headers = normalizeHeaders(data.headers)
+  const messageIdHeader = headers['message-id'] ?? null
+  const inReplyTo = headers['in-reply-to'] ?? null
+  const references = headers['references']
+    ? headers['references'].split(/\s+/).filter(Boolean)
+    : []
+  const replyTo = parseAddress(headers['reply-to'])
+
+  const recipient = pickPlatformRecipient(toList, ccList)
+  if (!recipient) {
+    return NextResponse.json({ status: 'ignored', reason: 'no_platform_recipient' })
+  }
+
+  // Дедуп — если такой Message-ID уже сохранён, выходим тихо
+  if (messageIdHeader) {
+    const { data: existing } = await supabase
+      .from('project_messages')
+      .select('id')
+      .eq('email_message_id', messageIdHeader)
+      .maybeSingle()
+    if (existing) {
+      return NextResponse.json({ status: 'duplicate', message_id: existing.id })
+    }
+  }
+
+  const { data: resolutionRows, error: resolutionError } = await supabase.rpc(
+    'resolve_inbound_email_address',
+    { p_address: recipient.address },
+  )
+  if (resolutionError) {
+    return NextResponse.json({ error: 'resolve_failed', detail: resolutionError.message }, { status: 500 })
+  }
+  const resolution = (resolutionRows as Resolution[] | null)?.[0]
+  if (!resolution || resolution.resolution_type === 'unknown_workspace') {
+    return NextResponse.json({ status: 'ignored', reason: 'unknown_workspace', recipient: recipient.address })
+  }
+
+  const workspaceId = resolution.workspace_id
+  if (!workspaceId) {
+    return NextResponse.json({ status: 'ignored', reason: 'no_workspace_id' })
+  }
+
+  // Определяем «реального» отправителя (нужно для inbox-режима с forward'ом)
+  const inboxAddress = `inbox@${resolution.workspace_slug}.${ROOT_DOMAIN}`
+  const realFrom =
+    resolution.resolution_type === 'inbox'
+      ? extractOriginalFrom({
+          outerFrom,
+          replyTo,
+          textBody: data.text ?? null,
+          inboxAddress,
+        }) ?? outerFrom
+      : outerFrom
+
+  if (!realFrom) {
+    return NextResponse.json({ error: 'no_from_address' }, { status: 400 })
+  }
+
+  let threadId: string | null = null
+  let projectId: string | null = null
+
+  switch (resolution.resolution_type) {
+    case 'thread': {
+      threadId = resolution.thread_id
+      projectId = resolution.project_id
+      break
+    }
+    case 'project': {
+      const result = await ensureThreadInProject(supabase, {
+        workspaceId,
+        projectId: resolution.project_id!,
+        fromAddress: realFrom.address,
+        subject: data.subject ?? null,
+        templateId: null,
+      })
+      threadId = result.threadId
+      projectId = resolution.project_id
+      break
+    }
+    case 'virtual': {
+      const result = await applyVirtualRouting(supabase, {
+        resolution,
+        workspaceId,
+        fromAddress: realFrom.address,
+        subject: data.subject ?? null,
+      })
+      threadId = result.threadId
+      projectId = result.projectId
+      break
+    }
+    case 'inbox': {
+      const { data: matchRows, error: matchErr } = await supabase.rpc('match_inbound_email', {
+        p_workspace_id: workspaceId,
+        p_from_address: realFrom.address,
+        p_in_reply_to: inReplyTo,
+        p_references: references,
+      })
+      if (matchErr) {
+        return NextResponse.json({ error: 'match_failed', detail: matchErr.message }, { status: 500 })
+      }
+      const match = (matchRows as { thread_id: string | null; project_id: string | null; match_method: string }[] | null)?.[0]
+      if (match && match.match_method !== 'none') {
+        threadId = match.thread_id
+        projectId = match.project_id
+      } else {
+        await saveUnmatched(supabase, {
+          workspaceId,
+          resendId,
+          fromAddress: realFrom.address,
+          fromName: realFrom.name ?? null,
+          toAddresses: toList.map((a) => a.address),
+          ccAddresses: ccList.map((a) => a.address),
+          subject: data.subject ?? null,
+          messageIdHeader,
+          inReplyTo,
+          references,
+          originalTo: recipient.address,
+          reason: 'inbox_match_failed',
+          spamScore: data.spam_score ?? null,
+        })
+        return NextResponse.json({ status: 'unmatched', reason: 'inbox_match_failed' })
+      }
+      break
+    }
+    case 'unknown_local':
+    default: {
+      await saveUnmatched(supabase, {
+        workspaceId,
+        resendId,
+        fromAddress: realFrom.address,
+        fromName: realFrom.name ?? null,
+        toAddresses: toList.map((a) => a.address),
+        ccAddresses: ccList.map((a) => a.address),
+        subject: data.subject ?? null,
+        messageIdHeader,
+        inReplyTo,
+        references,
+        originalTo: recipient.address,
+        reason: `unknown_local:${recipient.address}`,
+        spamScore: data.spam_score ?? null,
+      })
+      return NextResponse.json({ status: 'unmatched', reason: 'unknown_local' })
+    }
+  }
+
+  if (!threadId || !projectId) {
+    return NextResponse.json({ error: 'routing_returned_no_thread' }, { status: 500 })
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from('project_messages')
+    .insert({
+      thread_id: threadId,
+      project_id: projectId,
+      workspace_id: workspaceId,
+      source: 'email_internal',
+      content: data.html ?? data.text ?? '',
+      sender_name: realFrom.name ?? realFrom.address,
+      sender_role: 'Email',
+      has_attachments: (data.attachments?.length ?? 0) > 0,
+      email_message_id: messageIdHeader,
+      email_in_reply_to: inReplyTo,
+      email_references: references.length ? references : null,
+      email_subject: data.subject ?? null,
+      email_resend_id: resendId,
+    })
+    .select('id')
+    .single()
+  if (insertError) {
+    return NextResponse.json({ error: 'insert_failed', detail: insertError.message }, { status: 500 })
+  }
+
+  // Обновляем «последний внешний адрес» треда — нужно для матчинга и для UI
+  await supabase
+    .from('project_threads')
+    .update({ email_last_external_address: realFrom.address })
+    .eq('id', threadId)
+
+  return NextResponse.json({
+    status: 'ok',
+    message_id: inserted!.id,
+    resolution_type: resolution.resolution_type,
+    thread_id: threadId,
+  })
+}
+
+async function handleDeliveryStatus(
+  supabase: ReturnType<typeof createSupabaseServiceClient>,
+  event: ResendEvent,
+) {
+  const resendId = event.data.id ?? event.data.email_id
+  if (!resendId) {
+    return NextResponse.json({ status: 'ignored', reason: 'no_id' })
+  }
+
+  const statusMap: Record<string, string> = {
+    'email.sent': 'sent',
+    'email.delivered': 'delivered',
+    'email.bounced': 'bounced',
+    'email.complained': 'complaint',
+    'email.opened': 'opened',
+    'email.clicked': 'clicked',
+    'email.delivery_delayed': 'queued',
+    'email.failed': 'failed',
+  }
+  const status = statusMap[event.type]
+  if (!status) {
+    return NextResponse.json({ status: 'ignored', type: event.type })
+  }
+
+  const { error } = await supabase
+    .from('project_messages')
+    .update({ email_delivery_status: status })
+    .eq('email_resend_id', resendId)
+  if (error) {
+    return NextResponse.json({ error: 'update_failed', detail: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ status: 'ok', delivery_status: status })
+}
+
+async function ensureThreadInProject(
+  supabase: ReturnType<typeof createSupabaseServiceClient>,
+  opts: {
+    workspaceId: string
+    projectId: string
+    fromAddress: string
+    subject: string | null
+    templateId: string | null
+  },
+): Promise<{ threadId: string }> {
+  const { data: existing } = await supabase
+    .from('project_threads')
+    .select('id')
+    .eq('project_id', opts.projectId)
+    .eq('email_last_external_address', opts.fromAddress)
+    .eq('is_deleted', false)
+    .maybeSingle()
+  if (existing) return { threadId: existing.id }
+
+  const { data: created, error } = await supabase
+    .from('project_threads')
+    .insert({
+      project_id: opts.projectId,
+      workspace_id: opts.workspaceId,
+      name: opts.subject?.trim() || `Email от ${opts.fromAddress}`,
+      type: 'chat',
+      email_subject_root: opts.subject ?? null,
+      email_last_external_address: opts.fromAddress,
+    })
+    .select('id')
+    .single()
+  if (error || !created) throw error ?? new Error('create_thread_failed')
+  return { threadId: created.id }
+}
+
+async function applyVirtualRouting(
+  supabase: ReturnType<typeof createSupabaseServiceClient>,
+  opts: {
+    resolution: Resolution
+    workspaceId: string
+    fromAddress: string
+    subject: string | null
+  },
+): Promise<{ threadId: string | null; projectId: string | null }> {
+  const { resolution, workspaceId } = opts
+  if (resolution.routing_mode === 'fixed_thread' && resolution.target_thread_id) {
+    const { data: thread } = await supabase
+      .from('project_threads')
+      .select('id, project_id')
+      .eq('id', resolution.target_thread_id)
+      .maybeSingle()
+    if (thread) return { threadId: thread.id, projectId: thread.project_id }
+  }
+
+  const targetProjectId = resolution.target_project_id ?? null
+  if (!targetProjectId) {
+    return { threadId: null, projectId: null }
+  }
+
+  if (resolution.routing_mode === 'append_existing') {
+    const { data: existing } = await supabase
+      .from('project_threads')
+      .select('id')
+      .eq('project_id', targetProjectId)
+      .eq('email_last_external_address', opts.fromAddress)
+      .eq('is_deleted', false)
+      .maybeSingle()
+    if (existing) return { threadId: existing.id, projectId: targetProjectId }
+  }
+
+  const result = await ensureThreadInProject(supabase, {
+    workspaceId,
+    projectId: targetProjectId,
+    fromAddress: opts.fromAddress,
+    subject: opts.subject,
+    templateId: resolution.default_thread_template_id ?? null,
+  })
+  return { threadId: result.threadId, projectId: targetProjectId }
+}
+
+async function saveUnmatched(
+  supabase: ReturnType<typeof createSupabaseServiceClient>,
+  opts: {
+    workspaceId: string
+    resendId: string | null
+    fromAddress: string
+    fromName: string | null
+    toAddresses: string[]
+    ccAddresses: string[]
+    subject: string | null
+    messageIdHeader: string | null
+    inReplyTo: string | null
+    references: string[]
+    originalTo: string
+    reason: string
+    spamScore: number | null
+  },
+) {
+  await supabase.from('email_inbound_unmatched').insert({
+    workspace_id: opts.workspaceId,
+    raw_mime_path: opts.resendId ? `resend:${opts.resendId}` : 'resend:unknown',
+    resend_id: opts.resendId,
+    from_address: opts.fromAddress,
+    from_name: opts.fromName,
+    to_addresses: opts.toAddresses,
+    cc_addresses: opts.ccAddresses.length ? opts.ccAddresses : null,
+    subject: opts.subject,
+    message_id_header: opts.messageIdHeader,
+    in_reply_to: opts.inReplyTo,
+    references_headers: opts.references.length ? opts.references : null,
+    original_to: opts.originalTo,
+    reason: opts.reason,
+    spam_score: opts.spamScore,
+  })
+}
+
+function pickPlatformRecipient(
+  toList: ParsedAddress[],
+  ccList: ParsedAddress[],
+): ParsedAddress | null {
+  const all = [...toList, ...ccList]
+  return all.find((a) => isPlatformAddress(a.address)) ?? all[0] ?? null
+}
+
+function isPlatformAddress(address: string): boolean {
+  return address.toLowerCase().endsWith('.' + ROOT_DOMAIN)
+}
+
+function normalizeAddressList(
+  src: ResendEmailData['from'] | ResendEmailData['to'] | ResendEmailData['cc'],
+): ParsedAddress[] {
+  if (!src) return []
+  const arr = Array.isArray(src) ? src : [src]
+  const result: ParsedAddress[] = []
+  for (const item of arr) {
+    if (typeof item === 'string') {
+      const parsed = parseAddress(item)
+      if (parsed) result.push(parsed)
+    } else if (item && typeof item === 'object' && 'email' in item && item.email) {
+      result.push({ address: item.email, name: item.name })
+    }
+  }
+  return result
+}
+
+function parseAddress(input: string | null | undefined): ParsedAddress | null {
+  if (!input) return null
+  const angle = input.match(/^\s*(?:"?([^"<]+?)"?\s*)?<\s*([^>\s]+@[^>\s]+)\s*>\s*$/)
+  if (angle) {
+    return { address: angle[2].trim(), name: angle[1]?.trim() || undefined }
+  }
+  const bare = input.match(/([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i)
+  if (bare) return { address: bare[1].trim() }
+  return null
+}
+
+function normalizeHeaders(
+  headers: ResendEmailData['headers'] | undefined,
+): Record<string, string> {
+  if (!headers) return {}
+  const out: Record<string, string> = {}
+  if (Array.isArray(headers)) {
+    for (const h of headers) {
+      if (h?.name) out[h.name.toLowerCase()] = h.value
+    }
+  } else {
+    for (const [k, v] of Object.entries(headers)) {
+      out[k.toLowerCase()] = String(v)
+    }
+  }
+  return out
+}
