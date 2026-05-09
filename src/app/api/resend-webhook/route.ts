@@ -260,7 +260,7 @@ async function handleInbound(
       project_id: projectId,
       workspace_id: workspaceId,
       source: 'email_internal',
-      content: data.html ?? data.text ?? '',
+      content: pickContent(data),
       sender_name: realFrom.name ?? realFrom.address,
       sender_role: 'Email',
       has_attachments: (data.attachments?.length ?? 0) > 0,
@@ -439,6 +439,28 @@ async function saveUnmatched(
     reason: opts.reason,
     spam_score: opts.spamScore,
   })
+}
+
+/**
+ * Подбираем содержимое для project_messages.content. CHECK constraint
+ * требует длину > 0, поэтому при отсутствии html/text от Resend кладём
+ * subject либо плейсхолдер.
+ */
+function pickContent(data: ResendEmailData): string {
+  const html = data.html?.trim()
+  if (html) return html
+  const text = data.text?.trim()
+  if (text) return text
+  const subject = data.subject?.trim()
+  if (subject) return `<p><i>(Тема:)</i> ${escapeHtml(subject)}</p>`
+  return '<p><i>(пустое тело письма)</i></p>'
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
 }
 
 function pickPlatformRecipient(
