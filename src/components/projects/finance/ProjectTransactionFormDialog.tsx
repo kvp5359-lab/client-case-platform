@@ -112,8 +112,8 @@ export function ProjectTransactionFormDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+          <div className="flex gap-3">
+            <div className="flex-1 min-w-0 space-y-1.5">
               <Label htmlFor="trx-date">Дата</Label>
               <Input
                 id="trx-date"
@@ -122,21 +122,21 @@ export function ProjectTransactionFormDialog({
                 onChange={(e) => setDate(e.target.value)}
               />
             </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="trx-amount">Сумма, EUR</Label>
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <Label htmlFor="trx-amount" className="flex items-center gap-2">
+                <span>Сумма, EUR</span>
                 {hasSuggestion && (
                   <button
                     type="button"
                     onClick={() => setAmountText(String(suggestedAmount))}
-                    className="inline-flex items-center gap-1 rounded-full bg-blue-100 hover:bg-blue-200 px-2 py-0.5 text-xs text-blue-900 transition-colors"
+                    className="inline-flex items-center gap-1 rounded-full bg-blue-100 hover:bg-blue-200 px-2 py-0.5 text-xs font-normal text-blue-900 transition-colors"
                     title="Подставить сумму в поле"
                   >
                     <span>{suggestedLabel}:</span>
                     <span className="font-semibold tabular-nums">{fmt2(suggestedAmount as number)}</span>
                   </button>
                 )}
-              </div>
+              </Label>
               <Input
                 id="trx-amount"
                 type="number"
