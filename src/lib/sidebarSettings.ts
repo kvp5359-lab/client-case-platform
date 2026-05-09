@@ -53,17 +53,9 @@ export interface SidebarSlot {
 export interface SidebarSettingsRow {
   workspace_id: string
   slots: SidebarSlot[]
-  /**
-   * Если true — иконка проекта в сайдбаре окрашивается цветом статуса.
-   * Если false — иконка остаётся серой. По умолчанию true.
-   */
-  colorize_project_icons: boolean
   updated_at: string
   updated_by: string | null
 }
-
-/** Дефолт для нового воркспейса (совпадает с DEFAULT в миграции). */
-export const DEFAULT_COLORIZE_PROJECT_ICONS = true
 
 export interface SidebarItemMeta {
   key: SidebarNavKey

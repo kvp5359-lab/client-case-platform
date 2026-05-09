@@ -18,7 +18,6 @@ import {
   type SidebarSettingsRow,
   normalizeSidebarSlots,
   DEFAULT_SIDEBAR_SLOTS,
-  DEFAULT_COLORIZE_PROJECT_ICONS,
 } from '@/lib/sidebarSettings'
 
 /** Чтение настроек. Если строки нет — возвращает дефолты. */
@@ -50,11 +49,7 @@ export function useWorkspaceSidebarSettings(workspaceId: string | undefined) {
       const slots = data?.slots
         ? normalizeSidebarSlots(data.slots)
         : DEFAULT_SIDEBAR_SLOTS
-      const colorizeProjectIcons =
-        typeof data?.colorize_project_icons === 'boolean'
-          ? data.colorize_project_icons
-          : DEFAULT_COLORIZE_PROJECT_ICONS
-      return { slots, colorizeProjectIcons, exists: Boolean(data) }
+      return { slots, exists: Boolean(data) }
     },
   })
 }
@@ -62,8 +57,6 @@ export function useWorkspaceSidebarSettings(workspaceId: string | undefined) {
 export interface UpdateSidebarSettingsParams {
   workspaceId: string
   slots: SidebarSlot[]
-  /** Опционально — если не передан, поле в БД не трогается. */
-  colorizeProjectIcons?: boolean
 }
 
 export function useUpdateWorkspaceSidebarSettings() {
@@ -74,9 +67,6 @@ export function useUpdateWorkspaceSidebarSettings() {
         workspace_id: params.workspaceId,
         slots: params.slots,
         updated_at: new Date().toISOString(),
-      }
-      if (typeof params.colorizeProjectIcons === 'boolean') {
-        payload.colorize_project_icons = params.colorizeProjectIcons
       }
 
       const client = supabase as unknown as {
