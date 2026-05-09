@@ -65,7 +65,7 @@ export function CreateFunnelDialog({
 
   // Сбрасываем выбор при открытии диалога.
   useEffect(() => {
-    if (open) setSelectedTemplateId(null)
+    if (open) queueMicrotask(() => setSelectedTemplateId(null))
   }, [open])
 
   // Все шаблоны проектов воркспейса. Лид-шаблоны помечаем визуально, но

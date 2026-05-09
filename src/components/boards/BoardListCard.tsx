@@ -165,13 +165,11 @@ export function BoardListCard({
   const isProject = list.entity_type === 'project'
   const isInbox = list.entity_type === 'inbox'
 
-  // Базовый фильтр списка. Inbox имеет свою логику (default_filter), у него
-  // обычных rules нет.
-  const listFilters = isInbox ? { logic: 'and' as const, rules: [] } : list.filters
-
-  // Накладываем board-level фильтр того же entity_type через AND.
-  // Inbox по соглашению игнорирует board.global_filter.
+  // Базовый фильтр списка + наложение board-level фильтра того же entity_type
+  // через AND. Inbox имеет свою логику (default_filter) и по соглашению
+  // игнорирует board.global_filter — у него обычных rules нет.
   const safeFilters = useMemo(() => {
+    const listFilters = isInbox ? { logic: 'and' as const, rules: [] } : list.filters
     if (isInbox || !boardGlobalFilter) return listFilters
     const boardSlice =
       list.entity_type === 'project'
@@ -181,7 +179,7 @@ export function BoardListCard({
         : null
     if (!boardSlice) return listFilters
     return mergeFilterGroupsAnd(boardSlice, listFilters)
-  }, [isInbox, boardGlobalFilter, listFilters, list.entity_type])
+  }, [isInbox, boardGlobalFilter, list.filters, list.entity_type])
 
   const hasFilters = safeFilters.rules.length > 0
 

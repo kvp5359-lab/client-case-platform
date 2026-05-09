@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
 import { ParticipantAvatar } from '@/components/participants/ParticipantAvatar'
-import { participantKeys, projectKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { projectKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { cn } from '@/lib/utils'
 
 interface Props {

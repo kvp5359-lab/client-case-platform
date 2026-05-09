@@ -96,7 +96,7 @@ interface UseMessengerHandlersParams {
 
 export function useMessengerHandlers({
   channel: _channel,
-  threadId,
+  threadId: _threadId,
   isEmailChat,
   currentParticipant,
   sendMessage,
@@ -167,7 +167,6 @@ export function useMessengerHandlers({
       sendMessage,
       sendEmail,
       isEmailChat,
-      threadId,
       replyTo,
       forwardedAttachments,
       stopTyping,

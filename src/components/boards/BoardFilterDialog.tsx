@@ -46,7 +46,9 @@ export function BoardFilterDialog({ open, onClose, board }: BoardFilterDialogPro
   // normalize вернёт корректную структуру.
   useEffect(() => {
     if (open) {
-      setDraft(normalizeBoardGlobalFilter(board.global_filter))
+      // queueMicrotask избегает cascading render — обновление состояния
+      // происходит после завершения текущего render commit'а.
+      queueMicrotask(() => setDraft(normalizeBoardGlobalFilter(board.global_filter)))
     }
   }, [open, board.global_filter])
 
