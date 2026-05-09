@@ -155,19 +155,14 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
 
 
   return (
-    <section>
-      <header className="flex items-center justify-between mb-3">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">{config.title}</h3>
-          <p className="text-sm text-gray-500">
-            {isLoading
-              ? '—'
-              : transactions.length === 0
-                ? config.emptyText
-                : `${transactions.length} операций · итого ${fmt(totalSum)} EUR`}
-          </p>
-        </div>
-        <Button size="sm" onClick={openCreate}>
+    <section className="group/section">
+      <header className="flex items-center gap-3 mb-3">
+        <h3 className="text-2xl font-semibold text-gray-900">{config.title}</h3>
+        <Button
+          size="sm"
+          onClick={openCreate}
+          className="opacity-0 group-hover/section:opacity-100 transition-opacity"
+        >
           <Plus className="h-4 w-4 mr-1" />
           {config.addLabel}
         </Button>
