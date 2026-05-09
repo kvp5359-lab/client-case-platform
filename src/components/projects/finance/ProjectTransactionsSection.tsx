@@ -176,6 +176,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
         {isLoading || transactions.length === 0 ? (
           <EmptyState loading={isLoading} emptyText={config.emptyText} />
         ) : (
+          <>
           <div className="border-x">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500 border-b">
@@ -276,20 +277,23 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="border-t">
-                <tr>
-                  <td className="px-3 py-2" colSpan={6}>
-                    <div className="flex items-center justify-end gap-2 text-sm tabular-nums">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-900">
-                        <span>Итого:</span>
-                        <span className="font-semibold">{fmt(totalSum)} EUR</span>
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              </tfoot>
             </table>
           </div>
+          {/* Footer вне обёртки с border-x — без боковых разделителей.
+              Цвет тега «Итого» зависит от типа: доход — синий, расход — красный. */}
+          <div className="px-3 py-2 flex items-center justify-end gap-2 text-sm tabular-nums">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 ${
+                type === 'income'
+                  ? 'bg-blue-100 text-blue-900'
+                  : 'bg-red-100 text-red-900'
+              }`}
+            >
+              <span>Итого:</span>
+              <span className="font-semibold">{fmt(totalSum)} EUR</span>
+            </span>
+          </div>
+          </>
         )}
       </div>
 

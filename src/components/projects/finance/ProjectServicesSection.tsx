@@ -179,8 +179,8 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
         {isLoading || services.length === 0 ? (
           <EmptyState loading={isLoading} emptyText="Добавь первую услугу, чтобы начать учёт" />
         ) : (
-          <div className="border-x">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <div className="border-x">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-500 border-b">
                   <tr>
@@ -219,33 +219,28 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
                     ))}
                   </tbody>
                 </SortableContext>
-                <tfoot className="border-t">
-                  <tr>
-                    <td className="px-3 py-2" colSpan={7}>
-                      <div className="flex items-center justify-end gap-2 text-sm tabular-nums">
-                        {hasAnyTax && (
-                          <>
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-600">
-                              <span className="text-gray-500">Без налога:</span>
-                              <span className="font-medium">{fmt(totals.subtotal)}</span>
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-600">
-                              <span className="text-gray-500">Налог:</span>
-                              <span className="font-medium">+{fmt(totals.tax)}</span>
-                            </span>
-                          </>
-                        )}
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-900">
-                          <span>Итого:</span>
-                          <span className="font-semibold">{fmt(totals.total)} EUR</span>
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                </tfoot>
               </table>
-            </DndContext>
-          </div>
+            </div>
+            {/* Footer вне обёртки с border-x — без боковых разделителей */}
+            <div className="px-3 py-2 flex items-center justify-end gap-2 text-sm tabular-nums">
+              {hasAnyTax && (
+                <>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-600">
+                    <span className="text-gray-500">Без налога:</span>
+                    <span className="font-medium">{fmt(totals.subtotal)}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-600">
+                    <span className="text-gray-500">Налог:</span>
+                    <span className="font-medium">+{fmt(totals.tax)}</span>
+                  </span>
+                </>
+              )}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-900">
+                <span>Итого:</span>
+                <span className="font-semibold">{fmt(totals.total)} EUR</span>
+              </span>
+            </div>
+          </DndContext>
         )}
       </div>
 
