@@ -18,6 +18,7 @@ import { AlertCircle } from 'lucide-react'
 import { useTelegramDeliveryStatus } from './TelegramDeliveryIndicator'
 import { useWazzupDeliveryStatus } from './WazzupDeliveryIndicator'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
+import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 
 export type DeliveryStatus = 'pending' | 'sent' | 'read' | 'failed' | null
 
@@ -45,7 +46,7 @@ export function useDeliveryStatus(
   if (wazzup === 'read') return 'read'
   if (wazzup === 'delivered' || wazzup === 'sent') return 'sent'
 
-  if (isOwn && message.source === 'email') {
+  if (isOwn && isEmailSource(message.source)) {
     if (message.id.startsWith('optimistic-')) return 'pending'
     const meta = message.email_metadata as Record<string, unknown> | null
     if (meta?.read_at) return 'read'

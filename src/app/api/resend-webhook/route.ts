@@ -275,6 +275,24 @@ async function handleInbound(
     return NextResponse.json({ error: 'routing_returned_no_thread' }, { status: 500 })
   }
 
+  // Готовим email_metadata JSONB для UI-компонентов (EmailFullViewDialog
+  // показывает кнопку «Открыть письмо» при наличии email_metadata.body_html).
+  const bodyHtmlRaw = data.html?.trim() || null
+  const bodyTextRaw = data.text?.trim() || null
+  const fullBodyHtml = bodyHtmlRaw
+    ?? (bodyTextRaw ? `<pre style="white-space:pre-wrap">${escapeHtml(bodyTextRaw)}</pre>` : null)
+  const emailMetadata = {
+    gmail_message_id: messageIdHeader ?? resendId ?? '',
+    message_id_header: messageIdHeader,
+    in_reply_to: inReplyTo,
+    from_email: realFrom.address,
+    to_emails: toList.map((a) => a.address),
+    cc_emails: ccList.map((a) => a.address),
+    subject: data.subject ?? null,
+    body_html: fullBodyHtml,
+    attachments: null,
+  }
+
   const { data: inserted, error: insertError } = await supabase
     .from('project_messages')
     .insert({
@@ -291,6 +309,7 @@ async function handleInbound(
       email_references: references.length ? references : null,
       email_subject: data.subject ?? null,
       email_resend_id: resendId,
+      email_metadata: emailMetadata,
     })
     .select('id')
     .single()
@@ -366,7 +385,7 @@ async function createNewThreadInProject(
       project_id: opts.projectId,
       workspace_id: opts.workspaceId,
       name: opts.subject?.trim() || `Email от ${opts.fromAddress}`,
-      type: 'chat',
+      type: 'email',
       email_subject_root: opts.subject ?? null,
       email_last_external_address: opts.fromAddress,
     })

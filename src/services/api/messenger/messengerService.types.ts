@@ -6,6 +6,18 @@
 
 export type MessageChannel = 'client' | 'internal'
 
+/**
+ * Источники сообщений, относящиеся к email-каналу:
+ *  - `email` — старая интеграция через Gmail OAuth (gmail-webhook)
+ *  - `email_internal` — новая через Resend (resend-webhook → /api/resend-webhook)
+ *
+ * UI-проверки «это email-сообщение?» должны принимать оба источника.
+ */
+export const EMAIL_SOURCES = ['email', 'email_internal'] as const
+export function isEmailSource(source: string | null | undefined): boolean {
+  return source === 'email' || source === 'email_internal'
+}
+
 export interface MessageReaction {
   id: string
   message_id: string
