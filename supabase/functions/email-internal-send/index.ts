@@ -137,9 +137,24 @@ Deno.serve(async (req: Request) => {
   }
 
   const senderName = m.sender_name?.trim() || "ClientCase";
-  const subjectRaw = t.email_subject_root
-    ? `Re: ${t.email_subject_root}`
-    : (m.email_subject?.trim() || "(без темы)");
+
+  // Определяем, первое ли это исходящее в треде. Если у нас уже есть
+  // хоть одно email-сообщение (любое — входящее или исходящее) — то это reply,
+  // ставим "Re: <root>". Если в треде ещё нет email-сообщений — это первое
+  // письмо, тема идёт как есть из email_subject_root / m.email_subject.
+  let isReply = !!inReplyTo
+  if (!isReply) {
+    const { count: emailHistoryCount } = await service
+      .from("project_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("thread_id", t.id)
+      .in("source", ["email", "email_internal"])
+      .neq("id", m.id)
+    isReply = (emailHistoryCount ?? 0) > 0
+  }
+
+  const subjectRoot = (t.email_subject_root ?? m.email_subject ?? "").trim() || "(без темы)"
+  const subjectRaw = isReply ? `Re: ${subjectRoot.replace(/^\s*Re:\s*/i, "")}` : subjectRoot
   const html = wrapPlainAsHtmlIfNeeded(m.content ?? "");
   const text = htmlToPlainText(html);
 
