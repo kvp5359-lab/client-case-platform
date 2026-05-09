@@ -2252,6 +2252,50 @@ export type Database = {
           },
         ]
       }
+      finance_services: {
+        Row: {
+          base_price: number
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          name: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          base_price?: number
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          name: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          base_price?: number
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          name?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_services_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       folder_slots: {
         Row: {
           assignee_id: string | null
@@ -4712,6 +4756,69 @@ export type Database = {
           },
         ]
       }
+      project_services: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          name: string
+          price: number
+          project_id: string
+          quantity: number
+          service_id: string | null
+          sort_order: number
+          total: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          name: string
+          price?: number
+          project_id: string
+          quantity?: number
+          service_id?: string | null
+          sort_order?: number
+          total?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          name?: string
+          price?: number
+          project_id?: string
+          quantity?: number
+          service_id?: string | null
+          sort_order?: number
+          total?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_services_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "finance_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_telegram_chats: {
         Row: {
           bot_version: string
@@ -5283,6 +5390,76 @@ export type Database = {
             columns: ["wazzup_channel_id"]
             isOneToOne: false
             referencedRelation: "wazzup_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_transactions: {
+        Row: {
+          amount: number
+          comment: string | null
+          created_at: string
+          date: string
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          participant_id: string | null
+          project_id: string
+          service_id: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          comment?: string | null
+          created_at?: string
+          date?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          participant_id?: string | null
+          project_id: string
+          service_id?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          comment?: string | null
+          created_at?: string
+          date?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          participant_id?: string | null
+          project_id?: string
+          service_id?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_transactions_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_transactions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_transactions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "finance_services"
             referencedColumns: ["id"]
           },
         ]
