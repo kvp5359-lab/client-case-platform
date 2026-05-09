@@ -17,17 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import {
   useFinanceServices,
   useCreateFinanceService,
-  type FinanceService,
 } from '@/hooks/useFinanceServices'
 import { FinanceServiceFormDialog } from '@/components/directories/FinanceServiceFormDialog'
 import type {
@@ -72,8 +65,9 @@ export function ProjectServiceFormDialog({
 
   const [createCatalogOpen, setCreateCatalogOpen] = useState(false)
 
-  const handleSelectService = (id: string) => {
+  const handleSelectService = (id: string | null) => {
     setServiceId(id)
+    if (!id) return
     const fromCatalog = catalog.find((s) => s.id === id)
     if (fromCatalog) {
       // При выборе услуги из справочника подменяем имя и цену на snapshot.
@@ -127,22 +121,22 @@ export function ProjectServiceFormDialog({
             <div className="space-y-1.5">
               <Label htmlFor="proj-service-select">Услуга из справочника</Label>
               <div className="flex items-center gap-2">
-                <Select value={serviceId ?? ''} onValueChange={handleSelectService}>
-                  <SelectTrigger id="proj-service-select" className="flex-1">
-                    <SelectValue placeholder="Выбери услугу" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {catalog.length === 0 ? (
-                      <div className="px-2 py-1.5 text-sm text-gray-500">Справочник пуст</div>
-                    ) : (
-                      catalog.map((s: FinanceService) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <div className="flex-1">
+                  <SearchableSelect
+                    id="proj-service-select"
+                    value={serviceId}
+                    onChange={handleSelectService}
+                    options={catalog.map((s) => ({
+                      value: s.id,
+                      label: s.name,
+                      hint: Number(s.base_price) > 0 ? `${s.base_price} EUR` : undefined,
+                    }))}
+                    placeholder="Выбери услугу"
+                    noneLabel={null}
+                    searchPlaceholder="Поиск по названию"
+                    emptyText={catalog.length === 0 ? 'Справочник пуст' : 'Ничего не нашли'}
+                  />
+                </div>
                 <Button
                   type="button"
                   variant="outline"

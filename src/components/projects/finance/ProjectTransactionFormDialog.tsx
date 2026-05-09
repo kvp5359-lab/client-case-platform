@@ -16,13 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useFinanceServices } from '@/hooks/useFinanceServices'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import type {
@@ -30,8 +24,6 @@ import type {
   ProjectTransactionFormData,
   TransactionType,
 } from '@/hooks/useProjectTransactions'
-
-const NONE_VALUE = '__none__'
 
 const TYPE_LABELS: Record<TransactionType, { full: string; subject: string }> = {
   income: { full: 'доход', subject: 'От кого' },
@@ -131,42 +123,34 @@ export function ProjectTransactionFormDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="trx-participant">{labels.subject}</Label>
-            <Select
-              value={participantId ?? NONE_VALUE}
-              onValueChange={(v) => setParticipantId(v === NONE_VALUE ? null : v)}
-            >
-              <SelectTrigger id="trx-participant">
-                <SelectValue placeholder="Не указан" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE_VALUE}>— Не указан —</SelectItem>
-                {participants.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {fullName(p)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              id="trx-participant"
+              value={participantId}
+              onChange={setParticipantId}
+              options={participants.map((p) => ({
+                value: p.id,
+                label: fullName(p),
+                hint: p.email ?? undefined,
+              }))}
+              placeholder="Не указан"
+              noneLabel="— Не указан —"
+              searchPlaceholder="Поиск по имени или email"
+              emptyText="Никого не нашли"
+            />
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="trx-service">Статья (за что)</Label>
-            <Select
-              value={serviceId ?? NONE_VALUE}
-              onValueChange={(v) => setServiceId(v === NONE_VALUE ? null : v)}
-            >
-              <SelectTrigger id="trx-service">
-                <SelectValue placeholder="Не указана" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE_VALUE}>— Не указана —</SelectItem>
-                {catalog.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              id="trx-service"
+              value={serviceId}
+              onChange={setServiceId}
+              options={catalog.map((s) => ({ value: s.id, label: s.name }))}
+              placeholder="Не указана"
+              noneLabel="— Не указана —"
+              searchPlaceholder="Поиск услуги"
+              emptyText="Услуг с таким именем нет"
+            />
           </div>
 
           <div className="space-y-1.5">
