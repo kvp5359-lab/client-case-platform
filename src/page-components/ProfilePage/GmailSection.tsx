@@ -6,9 +6,12 @@
  */
 
 import { memo } from 'react'
-import { Link2, Unlink, Mail, AlertTriangle } from 'lucide-react'
+import { Link2, Unlink, Mail, AlertTriangle, Copy } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
 import { useEmailAccounts } from '@/hooks/email/useEmailAccounts'
 import { useConnectGmail } from '@/hooks/email/useConnectGmail'
 import { useDisconnectGmail } from '@/hooks/email/useDisconnectGmail'
@@ -21,6 +24,21 @@ export const GmailSection = memo(function GmailSection({ workspaceId }: GmailSec
   const { data: accounts = [], isLoading: accountsLoading } = useEmailAccounts()
   const { connect, loading: connectLoading } = useConnectGmail(workspaceId)
   const disconnectMutation = useDisconnectGmail()
+
+  // workspace.slug нужен чтобы показать персональный inbox-адрес
+  // вида inbox+<localpart>@<slug>.clientcase.app
+  const { data: workspace } = useQuery({
+    queryKey: ['workspace-slug-active', workspaceId ?? null],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('workspaces')
+        .select('slug, email_active')
+        .eq('id', workspaceId!)
+        .maybeSingle()
+      return data ?? null
+    },
+  })
 
   const hasAccount = accounts.length > 0
   const loading = connectLoading || disconnectMutation.isPending || accountsLoading
@@ -89,6 +107,13 @@ export const GmailSection = memo(function GmailSection({ workspaceId }: GmailSec
                   Доступ к Gmail отозван. Нажмите «Переподключить», чтобы восстановить отправку и получение писем.
                 </p>
               )}
+              {/* Персональный inbox-адрес для пересылки */}
+              {!inactive && workspace?.slug && workspace.email_active && (
+                <PersonalInboxBlock
+                  workspaceSlug={workspace.slug}
+                  accountEmail={account.email}
+                />
+              )}
             </div>
           )
         })}
@@ -115,3 +140,44 @@ export const GmailSection = memo(function GmailSection({ workspaceId }: GmailSec
     </Card>
   )
 })
+
+interface PersonalInboxBlockProps {
+  workspaceSlug: string
+  accountEmail: string
+}
+
+/**
+ * Карточка с персональным inbox-адресом сотрудника. Показывается ниже
+ * подключённого Gmail. Юзер копирует адрес → идёт в Gmail Settings →
+ * Forwarding → вставляет → подтверждает код.
+ */
+function PersonalInboxBlock({ workspaceSlug, accountEmail }: PersonalInboxBlockProps) {
+  const localPart = accountEmail.split('@')[0]?.toLowerCase() ?? 'me'
+  const inboxAddress = `inbox+${localPart}@${workspaceSlug}.clientcase.app`
+  return (
+    <div className="mx-4 mb-2 rounded-md border border-rose-200 bg-rose-50/50 p-3">
+      <div className="text-xs font-medium text-rose-900 uppercase tracking-wide mb-1">
+        Твой адрес для пересылки в ClientCase
+      </div>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="font-mono text-sm text-foreground">{inboxAddress}</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2"
+          onClick={() => {
+            navigator.clipboard.writeText(inboxAddress)
+            toast.success('Скопировано')
+          }}
+        >
+          <Copy className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Настрой пересылку в Gmail на этот адрес: <strong>Settings → Forwarding and POP/IMAP →
+        Add forwarding address</strong>. Все письма с твоего {accountEmail} будут автоматически
+        попадать в треды ClientCase, а ответы клиентов — продолжать переписку в том же треде.
+      </p>
+    </div>
+  )
+}

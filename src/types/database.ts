@@ -5292,6 +5292,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           is_system_business_inbox: boolean
+          is_system_email_inbox: boolean
           is_system_wazzup_inbox: boolean
           last_activity_at: string
           messenger_link_code: string | null
@@ -5318,6 +5319,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           is_system_business_inbox?: boolean
+          is_system_email_inbox?: boolean
           is_system_wazzup_inbox?: boolean
           last_activity_at?: string
           messenger_link_code?: string | null
@@ -5344,6 +5346,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           is_system_business_inbox?: boolean
+          is_system_email_inbox?: boolean
           is_system_wazzup_inbox?: boolean
           last_activity_at?: string
           messenger_link_code?: string | null
@@ -7095,6 +7098,14 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: undefined
       }
+      ensure_personal_email_inbox_project: {
+        Args: {
+          p_account_email: string
+          p_user_id: string
+          p_workspace_id: string
+        }
+        Returns: string
+      }
       fill_folder_slot: {
         Args: { p_document_id: string; p_project_id: string; p_slot_id: string }
         Returns: undefined
@@ -7347,6 +7358,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           is_system_business_inbox: boolean
+          is_system_email_inbox: boolean
           is_system_wazzup_inbox: boolean
           last_activity_at: string
           messenger_link_code: string | null
@@ -7591,6 +7603,8 @@ export type Database = {
           default_thread_template_id: string
           project_id: string
           resolution_type: string
+          resolved_email_account_id: string
+          resolved_user_id: string
           routing_mode: string
           target_project_id: string
           target_thread_id: string

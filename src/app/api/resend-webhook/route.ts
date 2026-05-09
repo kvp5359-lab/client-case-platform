@@ -53,6 +53,8 @@ type Resolution = {
   default_assignee_user_id: string | null
   auto_reply_enabled: boolean | null
   auto_reply_text: string | null
+  resolved_email_account_id: string | null
+  resolved_user_id: string | null
 }
 
 export async function POST(req: NextRequest) {
@@ -216,7 +218,35 @@ async function handleInbound(
       projectId = result.projectId
       break
     }
-    case 'inbox': {
+    case 'inbox':
+    case 'inbox_personal': {
+      // Если это персональный inbox+<id>@ — у нас уже есть привязка к
+      // email_account и user_id из RPC. Если общий inbox@ — пробуем
+      // определить сотрудника по headers (Delivered-To / X-Forwarded-To /
+      // Original-To) и ищем email_account с таким email.
+      let assignedAccountId = resolution.resolved_email_account_id
+      if (!assignedAccountId && resolution.resolution_type === 'inbox') {
+        const candidateHeaderAddrs = [
+          headers['delivered-to'],
+          headers['x-forwarded-to'],
+          headers['x-original-to'],
+        ]
+          .filter(Boolean)
+          .map((v) => parseAddress(v ?? null)?.address?.toLowerCase())
+          .filter((v): v is string => !!v)
+        if (candidateHeaderAddrs.length) {
+          const { data: accs } = await supabase
+            .from('email_accounts')
+            .select('id, email')
+            .eq('workspace_id', workspaceId)
+            .eq('is_active', true)
+          const found = (accs as { id: string; email: string }[] | null)?.find((a) =>
+            candidateHeaderAddrs.includes(a.email.toLowerCase()),
+          )
+          if (found) assignedAccountId = found.id
+        }
+      }
+
       const { data: matchRows, error: matchErr } = await supabase.rpc('match_inbound_email', {
         p_workspace_id: workspaceId,
         p_from_address: realFrom.address,
@@ -230,6 +260,17 @@ async function handleInbound(
       if (match && match.match_method !== 'none') {
         threadId = match.thread_id
         projectId = match.project_id
+      } else if (assignedAccountId) {
+        // Сотрудник определён, но треда с этим клиентом ещё нет — создаём
+        // новый тред в его системном email-проекте «Мои email-треды».
+        const newThread = await ensurePersonalEmailThread(supabase, {
+          workspaceId,
+          accountId: assignedAccountId,
+          fromAddress: realFrom.address,
+          subject: data.subject ?? null,
+        })
+        threadId = newThread.threadId
+        projectId = newThread.projectId
       } else {
         await saveUnmatched(supabase, {
           workspaceId,
@@ -381,6 +422,74 @@ async function sendAutoReply(opts: {
       headers,
     }),
   })
+}
+
+/**
+ * Создаёт новый тред в системном email-проекте сотрудника
+ * (is_system_email_inbox=true, system_inbox_user_id=ownerUserId).
+ * Используется для inbox+<localpart>@: каждый клиент = новый тред.
+ */
+async function ensurePersonalEmailThread(
+  supabase: ReturnType<typeof createSupabaseServiceClient>,
+  opts: {
+    workspaceId: string
+    accountId: string
+    fromAddress: string
+    subject: string | null
+  },
+): Promise<{ threadId: string; projectId: string }> {
+  // Определяем user_id и email сотрудника
+  const { data: account } = await supabase
+    .from('email_accounts')
+    .select('user_id, email')
+    .eq('id', opts.accountId)
+    .maybeSingle()
+  if (!account) throw new Error('email account not found')
+  const userId = (account as { user_id: string }).user_id
+  const accountEmail = (account as { email: string }).email
+
+  // Получаем/создаём системный email-проект сотрудника
+  const { data: pid, error: pidErr } = await supabase.rpc(
+    'ensure_personal_email_inbox_project',
+    {
+      p_workspace_id: opts.workspaceId,
+      p_user_id: userId,
+      p_account_email: accountEmail,
+    },
+  )
+  if (pidErr || !pid) throw pidErr ?? new Error('ensure_personal_email_inbox_project failed')
+  const projectId = String(pid)
+
+  // sort_order — в конец списка
+  const { data: maxRow } = await supabase
+    .from('project_threads')
+    .select('sort_order')
+    .eq('project_id', projectId)
+    .eq('is_deleted', false)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const nextSortOrder = ((maxRow as { sort_order: number | null } | null)?.sort_order ?? 0) + 10
+
+  const { data: created, error } = await supabase
+    .from('project_threads')
+    .insert({
+      project_id: projectId,
+      workspace_id: opts.workspaceId,
+      name: opts.subject?.trim() || `Email от ${opts.fromAddress}`,
+      type: 'email',
+      icon: 'mail',
+      accent_color: 'rose',
+      sort_order: nextSortOrder,
+      email_subject_root: opts.subject ?? null,
+      email_last_external_address: opts.fromAddress,
+      email_send_account_id: opts.accountId,
+      email_send_method: 'employee_mailbox',
+    })
+    .select('id')
+    .single()
+  if (error || !created) throw error ?? new Error('create personal email thread failed')
+  return { threadId: created.id, projectId }
 }
 
 async function handleDeliveryStatus(
