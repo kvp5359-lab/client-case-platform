@@ -308,13 +308,13 @@ export const ChatSettingsChannels = memo(function ChatSettingsChannels({
             {emailDropdownOpen && filteredSuggestions.length > 0 && (
               <div
                 ref={emailDropdownRef}
-                className="absolute z-50 top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto rounded-md border bg-popover shadow-md"
+                className="absolute z-50 top-full left-0 right-0 mt-1 max-h-80 overflow-y-auto rounded-md border bg-popover shadow-md"
               >
                 {filteredSuggestions.map((s) => (
                   <button
                     key={s.email}
                     type="button"
-                    className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent cursor-pointer flex flex-col"
+                    className="w-full text-left px-2 py-1 text-sm hover:bg-accent cursor-pointer flex items-center gap-2"
                     onMouseDown={(e) => {
                       e.preventDefault()
                       onSetSelectedEmails((prev) => [...prev, { email: s.email, label: s.label }])
@@ -324,8 +324,10 @@ export const ChatSettingsChannels = memo(function ChatSettingsChannels({
                   >
                     {s.label !== s.email ? (
                       <>
-                        <span className="truncate">{s.label}</span>
-                        <span className="text-xs text-muted-foreground truncate">{s.email}</span>
+                        <span className="truncate shrink-0 max-w-[40%]">{s.label}</span>
+                        <span className="text-xs text-muted-foreground truncate flex-1 text-right">
+                          {s.email}
+                        </span>
                       </>
                     ) : (
                       <span className="truncate">{s.email}</span>
