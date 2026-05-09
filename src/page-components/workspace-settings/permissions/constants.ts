@@ -13,6 +13,7 @@ import {
   MessagesSquare,
   BookOpen,
   NotebookText,
+  DollarSign,
 } from 'lucide-react'
 import type { WorkspacePermissions, ProjectModuleAccess } from '@/types/permissions'
 
@@ -81,4 +82,5 @@ export const MODULE_LABELS: Partial<
   ai_project_assistant: { label: 'AI: Ассистент по проекту', icon: Sparkles },
   comments: { label: 'Комментарии', icon: MessageSquare },
   digest: { label: 'Дневник', icon: NotebookText },
+  finance: { label: 'Финансы', icon: DollarSign },
 }
