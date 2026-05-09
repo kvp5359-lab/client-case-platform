@@ -180,6 +180,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           description: string | null
+          global_filter: Json
           id: string
           name: string
           short_id: number | null
@@ -194,6 +195,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          global_filter?: Json
           id?: string
           name: string
           short_id?: number | null
@@ -208,6 +210,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          global_filter?: Json
           id?: string
           name?: string
           short_id?: number | null
@@ -1751,12 +1754,26 @@ export type Database = {
       email_accounts: {
         Row: {
           access_token: string | null
+          auth_type: string
           created_at: string | null
+          display_name: string | null
           email: string
+          forward_setup_status: string
+          forward_target_address: string | null
+          forward_verified_at: string | null
           id: string
+          imap_host: string | null
+          imap_port: number | null
           is_active: boolean | null
           last_history_id: string | null
+          last_inbound_at: string | null
           refresh_token: string | null
+          signature_html: string | null
+          smtp_host: string | null
+          smtp_password_encrypted: string | null
+          smtp_port: number | null
+          smtp_use_tls: boolean
+          smtp_username: string | null
           token_expires_at: string | null
           updated_at: string | null
           user_id: string
@@ -1765,12 +1782,26 @@ export type Database = {
         }
         Insert: {
           access_token?: string | null
+          auth_type?: string
           created_at?: string | null
+          display_name?: string | null
           email: string
+          forward_setup_status?: string
+          forward_target_address?: string | null
+          forward_verified_at?: string | null
           id?: string
+          imap_host?: string | null
+          imap_port?: number | null
           is_active?: boolean | null
           last_history_id?: string | null
+          last_inbound_at?: string | null
           refresh_token?: string | null
+          signature_html?: string | null
+          smtp_host?: string | null
+          smtp_password_encrypted?: string | null
+          smtp_port?: number | null
+          smtp_use_tls?: boolean
+          smtp_username?: string | null
           token_expires_at?: string | null
           updated_at?: string | null
           user_id: string
@@ -1779,12 +1810,26 @@ export type Database = {
         }
         Update: {
           access_token?: string | null
+          auth_type?: string
           created_at?: string | null
+          display_name?: string | null
           email?: string
+          forward_setup_status?: string
+          forward_target_address?: string | null
+          forward_verified_at?: string | null
           id?: string
+          imap_host?: string | null
+          imap_port?: number | null
           is_active?: boolean | null
           last_history_id?: string | null
+          last_inbound_at?: string | null
           refresh_token?: string | null
+          signature_html?: string | null
+          smtp_host?: string | null
+          smtp_password_encrypted?: string | null
+          smtp_port?: number | null
+          smtp_use_tls?: boolean
+          smtp_username?: string | null
           token_expires_at?: string | null
           updated_at?: string | null
           user_id?: string
@@ -1794,6 +1839,173 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "email_accounts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_inbound_unmatched: {
+        Row: {
+          cc_addresses: string[] | null
+          from_address: string
+          from_name: string | null
+          id: string
+          in_reply_to: string | null
+          message_id_header: string | null
+          original_to: string | null
+          raw_mime_path: string
+          reason: string
+          received_at: string
+          references_headers: string[] | null
+          resend_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_thread_id: string | null
+          spam_score: number | null
+          subject: string | null
+          to_addresses: string[]
+          workspace_id: string | null
+        }
+        Insert: {
+          cc_addresses?: string[] | null
+          from_address: string
+          from_name?: string | null
+          id?: string
+          in_reply_to?: string | null
+          message_id_header?: string | null
+          original_to?: string | null
+          raw_mime_path: string
+          reason: string
+          received_at?: string
+          references_headers?: string[] | null
+          resend_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_thread_id?: string | null
+          spam_score?: number | null
+          subject?: string | null
+          to_addresses: string[]
+          workspace_id?: string | null
+        }
+        Update: {
+          cc_addresses?: string[] | null
+          from_address?: string
+          from_name?: string | null
+          id?: string
+          in_reply_to?: string | null
+          message_id_header?: string | null
+          original_to?: string | null
+          raw_mime_path?: string
+          reason?: string
+          received_at?: string
+          references_headers?: string[] | null
+          resend_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_thread_id?: string | null
+          spam_score?: number | null
+          subject?: string | null
+          to_addresses?: string[]
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_inbound_unmatched_resolved_thread_id_fkey"
+            columns: ["resolved_thread_id"]
+            isOneToOne: false
+            referencedRelation: "project_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_inbound_unmatched_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_virtual_addresses: {
+        Row: {
+          auto_reply_enabled: boolean
+          auto_reply_text: string | null
+          created_at: string
+          created_by: string | null
+          default_assignee_user_id: string | null
+          default_thread_template_id: string | null
+          description: string | null
+          display_name: string | null
+          id: string
+          is_active: boolean
+          local_part: string
+          routing_mode: string
+          target_project_id: string | null
+          target_thread_id: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          auto_reply_enabled?: boolean
+          auto_reply_text?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_assignee_user_id?: string | null
+          default_thread_template_id?: string | null
+          description?: string | null
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          local_part: string
+          routing_mode?: string
+          target_project_id?: string | null
+          target_thread_id?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          auto_reply_enabled?: boolean
+          auto_reply_text?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_assignee_user_id?: string | null
+          default_thread_template_id?: string | null
+          description?: string | null
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          local_part?: string
+          routing_mode?: string
+          target_project_id?: string | null
+          target_thread_id?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_virtual_addresses_default_thread_template_id_fkey"
+            columns: ["default_thread_template_id"]
+            isOneToOne: false
+            referencedRelation: "thread_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_virtual_addresses_target_project_id_fkey"
+            columns: ["target_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_virtual_addresses_target_thread_id_fkey"
+            columns: ["target_thread_id"]
+            isOneToOne: false
+            referencedRelation: "project_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_virtual_addresses_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -3732,6 +3944,57 @@ export type Database = {
         }
         Relationships: []
       }
+      participant_channels: {
+        Row: {
+          channel_type: string
+          created_at: string
+          external_id: string
+          id: string
+          is_primary: boolean
+          label: string | null
+          participant_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          channel_type: string
+          created_at?: string
+          external_id: string
+          id?: string
+          is_primary?: boolean
+          label?: string | null
+          participant_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          channel_type?: string
+          created_at?: string
+          external_id?: string
+          id?: string
+          is_primary?: boolean
+          label?: string | null
+          participant_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participant_channels_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participant_channels_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participants: {
         Row: {
           avatar_url: string | null
@@ -3991,7 +4254,16 @@ export type Database = {
           channel: string
           content: string
           created_at: string
+          email_delivery_status: string | null
+          email_in_reply_to: string | null
+          email_message_id: string | null
           email_metadata: Json | null
+          email_raw_mime_path: string | null
+          email_references: string[] | null
+          email_resend_id: string | null
+          email_send_account_id: string | null
+          email_send_method: string | null
+          email_subject: string | null
           forwarded_date: string | null
           forwarded_from_name: string | null
           has_attachments: boolean
@@ -4026,7 +4298,16 @@ export type Database = {
           channel?: string
           content: string
           created_at?: string
+          email_delivery_status?: string | null
+          email_in_reply_to?: string | null
+          email_message_id?: string | null
           email_metadata?: Json | null
+          email_raw_mime_path?: string | null
+          email_references?: string[] | null
+          email_resend_id?: string | null
+          email_send_account_id?: string | null
+          email_send_method?: string | null
+          email_subject?: string | null
           forwarded_date?: string | null
           forwarded_from_name?: string | null
           has_attachments?: boolean
@@ -4061,7 +4342,16 @@ export type Database = {
           channel?: string
           content?: string
           created_at?: string
+          email_delivery_status?: string | null
+          email_in_reply_to?: string | null
+          email_message_id?: string | null
           email_metadata?: Json | null
+          email_raw_mime_path?: string | null
+          email_references?: string[] | null
+          email_resend_id?: string | null
+          email_send_account_id?: string | null
+          email_send_method?: string | null
+          email_subject?: string | null
           forwarded_date?: string | null
           forwarded_from_name?: string | null
           has_attachments?: boolean
@@ -4098,6 +4388,13 @@ export type Database = {
             columns: ["thread_id"]
             isOneToOne: false
             referencedRelation: "project_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_messages_email_send_account_id_fkey"
+            columns: ["email_send_account_id"]
+            isOneToOne: false
+            referencedRelation: "email_accounts"
             referencedColumns: ["id"]
           },
           {
@@ -4659,6 +4956,7 @@ export type Database = {
           description: string | null
           enabled_modules: string[] | null
           id: string
+          is_lead_template: boolean
           name: string
           root_folder_id: string | null
           updated_at: string
@@ -4671,6 +4969,7 @@ export type Database = {
           description?: string | null
           enabled_modules?: string[] | null
           id?: string
+          is_lead_template?: boolean
           name: string
           root_folder_id?: string | null
           updated_at?: string
@@ -4683,6 +4982,7 @@ export type Database = {
           description?: string | null
           enabled_modules?: string[] | null
           id?: string
+          is_lead_template?: boolean
           name?: string
           root_folder_id?: string | null
           updated_at?: string
@@ -4824,6 +5124,10 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           description: string | null
+          email_last_external_address: string | null
+          email_send_account_id: string | null
+          email_send_method: string
+          email_subject_root: string | null
           icon: string
           id: string
           is_default: boolean
@@ -4858,6 +5162,10 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           description?: string | null
+          email_last_external_address?: string | null
+          email_send_account_id?: string | null
+          email_send_method?: string
+          email_subject_root?: string | null
           icon?: string
           id?: string
           is_default?: boolean
@@ -4892,6 +5200,10 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           description?: string | null
+          email_last_external_address?: string | null
+          email_send_account_id?: string | null
+          email_send_method?: string
+          email_subject_root?: string | null
           icon?: string
           id?: string
           is_default?: boolean
@@ -4937,6 +5249,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "project_threads_email_send_account_id_fkey"
+            columns: ["email_send_account_id"]
+            isOneToOne: false
+            referencedRelation: "email_accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "project_threads_source_template_id_fkey"
             columns: ["source_template_id"]
             isOneToOne: false
@@ -4961,6 +5280,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          contact_participant_id: string | null
           created_at: string | null
           created_by: string | null
           deadline: string | null
@@ -4986,6 +5306,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          contact_participant_id?: string | null
           created_at?: string | null
           created_by?: string | null
           deadline?: string | null
@@ -5011,6 +5332,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          contact_participant_id?: string | null
           created_at?: string | null
           created_by?: string | null
           deadline?: string | null
@@ -5036,6 +5358,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_contact_participant_id_fkey"
+            columns: ["contact_participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_status_id_fkey"
             columns: ["status_id"]
@@ -5406,6 +5735,7 @@ export type Database = {
           created_at: string
           description: string | null
           entity_type: Database["public"]["Enums"]["entity_type"]
+          final_kind: Database["public"]["Enums"]["status_final_kind"] | null
           icon: string | null
           id: string
           is_default: boolean
@@ -5425,6 +5755,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           entity_type: Database["public"]["Enums"]["entity_type"]
+          final_kind?: Database["public"]["Enums"]["status_final_kind"] | null
           icon?: string | null
           id?: string
           is_default?: boolean
@@ -5444,6 +5775,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           entity_type?: Database["public"]["Enums"]["entity_type"]
+          final_kind?: Database["public"]["Enums"]["status_final_kind"] | null
           icon?: string | null
           id?: string
           is_default?: boolean
@@ -6252,6 +6584,47 @@ export type Database = {
           },
         ]
       }
+      workspace_email_settings: {
+        Row: {
+          created_at: string
+          default_send_method: string
+          inbox_address: string | null
+          notify_managers_on_unmatched: boolean
+          reply_quote_style: string
+          signature_html: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_send_method?: string
+          inbox_address?: string | null
+          notify_managers_on_unmatched?: boolean
+          reply_quote_style?: string
+          signature_html?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          default_send_method?: string
+          inbox_address?: string | null
+          notify_managers_on_unmatched?: boolean
+          reply_quote_style?: string
+          signature_html?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_email_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_features: {
         Row: {
           created_at: string
@@ -6414,8 +6787,15 @@ export type Database = {
           custom_domain_verified_at: string | null
           default_ai_check_prompt: string | null
           default_ai_naming_prompt: string | null
+          default_lead_template_per_source: Json
           deleted_at: string | null
           description: string | null
+          email_activated_at: string | null
+          email_active: boolean
+          email_dkim_verified: boolean
+          email_mx_verified: boolean
+          email_resend_domain_id: string | null
+          email_return_path_verified: boolean
           gemini_thinking_budget: number | null
           google_api_key_id: string | null
           id: string
@@ -6437,8 +6817,15 @@ export type Database = {
           custom_domain_verified_at?: string | null
           default_ai_check_prompt?: string | null
           default_ai_naming_prompt?: string | null
+          default_lead_template_per_source?: Json
           deleted_at?: string | null
           description?: string | null
+          email_activated_at?: string | null
+          email_active?: boolean
+          email_dkim_verified?: boolean
+          email_mx_verified?: boolean
+          email_resend_domain_id?: string | null
+          email_return_path_verified?: boolean
           gemini_thinking_budget?: number | null
           google_api_key_id?: string | null
           id?: string
@@ -6460,8 +6847,15 @@ export type Database = {
           custom_domain_verified_at?: string | null
           default_ai_check_prompt?: string | null
           default_ai_naming_prompt?: string | null
+          default_lead_template_per_source?: Json
           deleted_at?: string | null
           description?: string | null
+          email_activated_at?: string | null
+          email_active?: boolean
+          email_dkim_verified?: boolean
+          email_mx_verified?: boolean
+          email_resend_domain_id?: string | null
+          email_return_path_verified?: boolean
           gemini_thinking_budget?: number | null
           google_api_key_id?: string | null
           id?: string
@@ -6630,6 +7024,7 @@ export type Database = {
           created_at: string
           description: string | null
           entity_type: Database["public"]["Enums"]["entity_type"]
+          final_kind: Database["public"]["Enums"]["status_final_kind"] | null
           icon: string | null
           id: string
           is_default: boolean
@@ -6729,14 +7124,17 @@ export type Database = {
       get_accessible_projects: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: {
+          contact_participant_id: string
           created_at: string
           created_by: string
           deadline: string
           description: string
           export_folder_id: string
+          final_kind: Database["public"]["Enums"]["status_final_kind"]
           google_drive_folder_link: string
           has_active_deadline_task: boolean
           id: string
+          is_lead_template: boolean
           last_activity_at: string
           messenger_link_code: string
           name: string
@@ -6913,6 +7311,10 @@ export type Database = {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: Json
       }
+      get_thread_email_address: {
+        Args: { p_thread_id: string }
+        Returns: string
+      }
       get_total_unread_count: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: number
@@ -6933,6 +7335,7 @@ export type Database = {
           p_workspace_id: string
         }
         Returns: {
+          contact_participant_id: string | null
           created_at: string | null
           created_by: string | null
           deadline: string | null
@@ -6977,6 +7380,7 @@ export type Database = {
           created_at: string
           created_by: string
           description: string
+          global_filter: Json
           id: string
           name: string
           sort_order: number
@@ -7091,6 +7495,19 @@ export type Database = {
         }
         Returns: string
       }
+      match_inbound_email: {
+        Args: {
+          p_from_address: string
+          p_in_reply_to: string
+          p_references: string[]
+          p_workspace_id: string
+        }
+        Returns: {
+          match_method: string
+          project_id: string
+          thread_id: string
+        }[]
+      }
       match_knowledge_chunks: {
         Args: {
           match_count?: number
@@ -7165,6 +7582,24 @@ export type Database = {
         Returns: number
       }
       reorder_documents: { Args: { p_updates: Json }; Returns: undefined }
+      resolve_inbound_email_address: {
+        Args: { p_address: string }
+        Returns: {
+          auto_reply_enabled: boolean
+          auto_reply_text: string
+          default_assignee_user_id: string
+          default_thread_template_id: string
+          project_id: string
+          resolution_type: string
+          routing_mode: string
+          target_project_id: string
+          target_thread_id: string
+          thread_id: string
+          virtual_address_id: string
+          workspace_id: string
+          workspace_slug: string
+        }[]
+      }
       resolve_short_id: {
         Args: {
           p_entity_type: string
@@ -7192,6 +7627,22 @@ export type Database = {
         Returns: string
       }
       retry_undelivered_telegram_messages: { Args: never; Returns: undefined }
+      route_incoming_to_project: {
+        Args: {
+          p_channel_type: string
+          p_external_id: string
+          p_sender_name?: string
+          p_source: string
+          p_thread_name?: string
+          p_workspace_id: string
+        }
+        Returns: {
+          participant_id: string
+          project_id: string
+          status: string
+          thread_id: string
+        }[]
+      }
       set_workspace_api_key: {
         Args: { api_key: string; workspace_uuid: string }
         Returns: string
@@ -7266,6 +7717,7 @@ export type Database = {
           created_at: string
           description: string | null
           entity_type: Database["public"]["Enums"]["entity_type"]
+          final_kind: Database["public"]["Enums"]["status_final_kind"] | null
           icon: string | null
           id: string
           is_default: boolean
@@ -7371,6 +7823,8 @@ export type Database = {
         | "telegram_business"
         | "telegram_mtproto"
         | "wazzup"
+        | "email_internal"
+      status_final_kind: "won" | "lost" | "abandoned"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -7560,7 +8014,9 @@ export const Constants = {
         "telegram_business",
         "telegram_mtproto",
         "wazzup",
+        "email_internal",
       ],
+      status_final_kind: ["won", "lost", "abandoned"],
     },
   },
 } as const
