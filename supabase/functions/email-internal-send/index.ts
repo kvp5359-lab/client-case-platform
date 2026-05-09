@@ -116,23 +116,41 @@ Deno.serve(async (req: Request) => {
   if (!w.slug) return jsonRes({ error: "workspace has no slug" }, 400);
 
   // Определяем In-Reply-To / References
+  // Стратегия:
+  //   In-Reply-To = Message-ID последнего входящего письма клиента в треде
+  //                 (на что мы конкретно отвечаем).
+  //   References  = вся цепочка Message-ID всех писем треда (входящих и
+  //                 исходящих) по возрастанию даты — RFC 5322 §3.6.4.
+  //                 Без полной цепочки Gmail иногда отделяет письма в
+  //                 отдельный тред у клиента.
   let inReplyTo = m.email_in_reply_to;
   let references: string[] = m.email_references ?? [];
+
+  const { data: chain } = await service
+    .from("project_messages")
+    .select("email_message_id, source, created_at")
+    .eq("thread_id", t.id)
+    .neq("id", m.id)
+    .not("email_message_id", "is", null)
+    .order("created_at", { ascending: true });
+
+  const chainList =
+    (chain as Array<{ email_message_id: string | null; source: string }> | null) ?? [];
+
+  if (references.length === 0 && chainList.length > 0) {
+    references = chainList
+      .map((row) => row.email_message_id)
+      .filter((id): id is string => !!id);
+  }
+
   if (!inReplyTo) {
-    const { data: lastInbound } = await service
-      .from("project_messages")
-      .select("email_message_id")
-      .eq("thread_id", t.id)
-      .eq("source", "email_internal")
-      .neq("id", m.id)
-      .not("email_message_id", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const lastId = (lastInbound as { email_message_id: string | null } | null)?.email_message_id ?? null;
-    if (lastId) {
-      inReplyTo = lastId;
-      if (references.length === 0) references = [lastId];
+    // Last inbound — последнее, на что отвечаем содержательно.
+    const lastInbound = [...chainList].reverse().find((row) => row.source === "email_internal");
+    if (lastInbound?.email_message_id) {
+      inReplyTo = lastInbound.email_message_id;
+    } else if (references.length > 0) {
+      // Нет входящих — берём последнее из всех (например, наше же).
+      inReplyTo = references[references.length - 1];
     }
   }
 
@@ -155,8 +173,9 @@ Deno.serve(async (req: Request) => {
 
   const subjectRoot = (t.email_subject_root ?? m.email_subject ?? "").trim() || "(без темы)"
   const subjectRaw = isReply ? `Re: ${subjectRoot.replace(/^\s*Re:\s*/i, "")}` : subjectRoot
-  const html = wrapPlainAsHtmlIfNeeded(m.content ?? "");
-  const text = htmlToPlainText(html);
+  const htmlInner = wrapPlainAsHtmlIfNeeded(m.content ?? "");
+  const html = wrapEmailHtml(htmlInner);
+  const text = htmlToPlainText(htmlInner);
 
   // Метод отправки: явный на сообщении/треде, иначе авто (есть account → Gmail, иначе Resend)
   const tExt = t as unknown as ThreadRowExt;
@@ -203,6 +222,20 @@ Deno.serve(async (req: Request) => {
     }
 
     const messageIdHeader = `<${crypto.randomUUID()}@${acc.email.split("@")[1] ?? "gmail.com"}>`;
+
+    // Если у треда уже есть gmail_thread_id (после первой отправки/входящего),
+    // передаём его в Gmail API — это гарантирует склейку в один тред у клиента.
+    // Без этого Gmail группирует только по In-Reply-To/Subject, и иногда
+    // отделяет письма в новый тред.
+    const { data: existingLinkPre } = await service
+      .from("project_thread_email_links")
+      .select("gmail_thread_id")
+      .eq("thread_id", t.id)
+      .eq("contact_email", (t.email_last_external_address ?? "").toLowerCase())
+      .maybeSingle();
+    const existingGmailThreadId =
+      (existingLinkPre as { gmail_thread_id: string | null } | null)?.gmail_thread_id ?? null;
+
     const rfc2822 = buildRfc2822({
       fromName: senderName,
       fromAddress: acc.email,
@@ -219,6 +252,9 @@ Deno.serve(async (req: Request) => {
       .replace(/\//g, "_")
       .replace(/=+$/, "");
 
+    const sendBody: { raw: string; threadId?: string } = { raw };
+    if (existingGmailThreadId) sendBody.threadId = existingGmailThreadId;
+
     const gmailResp = await fetch(
       "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
       {
@@ -227,7 +263,7 @@ Deno.serve(async (req: Request) => {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ raw }),
+        body: JSON.stringify(sendBody),
       },
     );
     if (!gmailResp.ok) {
@@ -390,6 +426,21 @@ function wrapPlainAsHtmlIfNeeded(content: string): string {
     .replace(/>/g, "&gt;")
     .replace(/\n/g, "<br>");
   return `<p>${escaped}</p>`;
+}
+
+/**
+ * Оборачиваем тело письма в полноценный HTML-документ с базовыми
+ * inline-стилями. Без них Gmail и Outlook схлопывают цитаты в одну
+ * строку (blockquote без бордера/отступов выглядит как обычный текст).
+ */
+function wrapEmailHtml(body: string): string {
+  // Прокидываем стили на blockquote в стиле Gmail (вертикальная серая полоска,
+  // отступ слева). Tiptap отдаёт <blockquote><p>...</p></blockquote> без стилей.
+  const styledBody = body.replace(
+    /<blockquote(\s[^>]*)?>/gi,
+    `<blockquote style="margin:0 0 0 0.8ex;border-left:1px solid #ccc;padding-left:1ex;color:#555">`,
+  );
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#222">${styledBody}</body></html>`;
 }
 
 function htmlToPlainText(html: string): string {

@@ -115,6 +115,24 @@ Deno.serve(async (req: Request) => {
       .select("id, user_id, email, access_token, refresh_token, token_expires_at, last_history_id, watch_expires_at, workspace_id")
       .eq("email", emailAddress).eq("is_active", true).maybeSingle();
     if (ae || !account) return new Response("ok", { status: 200 });
+
+    // Если у воркспейса включён unified Resend-приём — входящие идут через
+    // inbox+<id>@<slug>.clientcase.app (см. ensurePersonalEmailThread в
+    // resend-webhook). Gmail Pub/Sub при этом всё равно стреляет, но писать
+    // сообщения не должен — иначе одно и то же письмо задвоится: один раз от
+    // Resend (source='email_internal'), второй — отсюда (source='email').
+    const { data: ws } = await serviceClient.from("workspaces")
+      .select("email_active").eq("id", account.workspace_id).maybeSingle();
+    if (ws?.email_active) {
+      console.log(`[gmail-webhook] workspace ${account.workspace_id} on unified Resend — skipping inbound`);
+      // Всё равно продвигаем history_id, чтобы не накапливался лаг.
+      if (pubsubData.historyId) {
+        await serviceClient.from("email_accounts")
+          .update({ last_history_id: String(pubsubData.historyId), updated_at: new Date().toISOString() })
+          .eq("id", account.id);
+      }
+      return new Response("ok", { status: 200 });
+    }
     const accessToken = await ensureValidGmailToken(serviceClient, account as GmailAccountData);
     const startHistoryId = account.last_history_id;
     if (!startHistoryId) {
@@ -150,6 +168,16 @@ async function processGmailMessage(sc: SupabaseClient, accessToken: string, gmai
   const fromHeader = decodeRfc2047(getHeader(hdrs, "From"));
   const subject = decodeRfc2047(getHeader(hdrs, "Subject"));
   const messageIdHeader = getHeader(hdrs, "Message-ID");
+  // Дедуп по RFC Message-ID — если письмо уже пришло через Resend
+  // (source='email_internal' пишет email_message_id), не дублируем.
+  if (messageIdHeader) {
+    const { data: dupByMid } = await sc.from("project_messages")
+      .select("id").eq("email_message_id", messageIdHeader).maybeSingle();
+    if (dupByMid) {
+      console.log(`[gmail-webhook] Skip duplicate by Message-ID: ${messageIdHeader}`);
+      return;
+    }
+  }
   const inReplyTo = getHeader(hdrs, "In-Reply-To");
   const fromEmail = extractEmail(fromHeader);
   const fromName = extractName(fromHeader);
