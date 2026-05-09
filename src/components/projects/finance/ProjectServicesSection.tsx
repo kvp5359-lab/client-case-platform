@@ -180,6 +180,9 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
                 строкой появляется border-b. */}
             <table
               className="w-full text-sm
+                [&_thead_th]:border-y
+                [&_thead_th:first-child]:border-l
+                [&_thead_th:last-child]:border-r
                 [&_tbody_tr_td:first-child]:border-l
                 [&_tbody_tr_td:last-child]:border-r
                 [&_tbody_tr:last-child_td]:border-b"
