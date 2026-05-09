@@ -386,6 +386,8 @@ async function createNewThreadInProject(
       workspace_id: opts.workspaceId,
       name: opts.subject?.trim() || `Email от ${opts.fromAddress}`,
       type: 'email',
+      icon: 'mail',
+      accent_color: 'rose',
       email_subject_root: opts.subject ?? null,
       email_last_external_address: opts.fromAddress,
     })
