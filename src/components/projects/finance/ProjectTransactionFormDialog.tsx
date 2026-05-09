@@ -123,13 +123,13 @@ export function ProjectTransactionFormDialog({
               />
             </div>
             <div className="flex-1 min-w-0 space-y-1.5">
-              <Label htmlFor="trx-amount" className="flex items-center gap-2">
-                <span>Сумма, EUR</span>
+              <Label htmlFor="trx-amount">
+                Сумма, EUR
                 {hasSuggestion && (
                   <button
                     type="button"
                     onClick={() => setAmountText(String(suggestedAmount))}
-                    className="inline-flex items-center gap-1 rounded-full bg-blue-100 hover:bg-blue-200 px-2 py-0.5 text-xs font-normal text-blue-900 transition-colors"
+                    className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-100 hover:bg-blue-200 px-2 py-0.5 text-xs font-normal text-blue-900 transition-colors align-middle"
                     title="Подставить сумму в поле"
                   >
                     <span>{suggestedLabel}:</span>
