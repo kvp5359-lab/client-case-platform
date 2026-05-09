@@ -258,7 +258,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-8 w-8 text-gray-400 hover:text-gray-900"
                           onClick={() => openEdit(t)}
                           aria-label="Редактировать"
                         >
@@ -267,7 +267,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
                           onClick={() => askDelete(t)}
                           disabled={deleteMutation.isPending}
                           aria-label="Удалить"

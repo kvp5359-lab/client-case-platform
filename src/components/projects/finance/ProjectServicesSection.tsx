@@ -371,13 +371,19 @@ function SortableServiceRow({
       </td>
       <td className="px-3 py-2 text-right">
         <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit} aria-label="Редактировать">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-gray-400 hover:text-gray-900"
+            onClick={onEdit}
+            aria-label="Редактировать"
+          >
             <Pencil className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
             onClick={onDelete}
             disabled={isDeleting}
             aria-label="Удалить"
