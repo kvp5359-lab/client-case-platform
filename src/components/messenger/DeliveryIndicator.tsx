@@ -46,10 +46,15 @@ export function useDeliveryStatus(
   if (wazzup === 'read') return 'read'
   if (wazzup === 'delivered' || wazzup === 'sent') return 'sent'
 
-  if (isOwn && isEmailSource(message.source)) {
+  // После email-унификации исходящие пишутся с source='web', а email-флаги
+  // (email_send_method / email_delivery_status) проставляет триггер БД +
+  // email-internal-send. Поэтому сначала проверяем эти поля — они
+  // окончательный признак email-сообщения.
+  const ds = (message as unknown as { email_delivery_status?: string | null }).email_delivery_status
+  const sm = (message as unknown as { email_send_method?: string | null }).email_send_method
+  if (isOwn && (isEmailSource(message.source) || ds || sm)) {
     if (message.id.startsWith('optimistic-')) return 'pending'
     // Resend bounce/complaint/failed → красный «не доставлено»
-    const ds = (message as unknown as { email_delivery_status?: string }).email_delivery_status
     if (ds === 'bounced' || ds === 'complaint' || ds === 'failed') return 'failed'
     if (ds === 'queued') return 'pending'
     if (ds === 'opened' || ds === 'clicked') return 'read'
