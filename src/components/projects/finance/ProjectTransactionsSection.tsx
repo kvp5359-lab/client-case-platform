@@ -177,9 +177,16 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
           <EmptyState loading={isLoading} emptyText={config.emptyText} />
         ) : (
           <>
-          <div className="border-x">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-500 border-b">
+            {/* border-x только у tbody-строк через arbitrary variants —
+                заголовок остаётся без боковых разделителей, а под последней
+                строкой появляется border-b. */}
+            <table
+              className="w-full text-sm
+                [&_tbody_tr_td:first-child]:border-l
+                [&_tbody_tr_td:last-child]:border-r
+                [&_tbody_tr:last-child_td]:border-b"
+            >
+              <thead className="bg-gray-50 text-gray-500">
                 <tr>
                   <th className="text-left px-3 py-2 font-medium w-28">Дата</th>
                   <th className="text-left px-3 py-2 font-medium">{config.subjectLabel}</th>
@@ -278,8 +285,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                 ))}
               </tbody>
             </table>
-          </div>
-          {/* Footer вне обёртки с border-x — без боковых разделителей.
+          {/* Footer-теги без боковых разделителей.
               Цвет тега «Итого» зависит от типа: доход — синий, расход — красный. */}
           <div className="px-3 py-2 flex items-center justify-end gap-2 text-sm tabular-nums">
             <span

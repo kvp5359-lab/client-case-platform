@@ -180,9 +180,16 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
           <EmptyState loading={isLoading} emptyText="Добавь первую услугу, чтобы начать учёт" />
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <div className="border-x">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-gray-500 border-b">
+            {/* border-x только у tbody-строк через arbitrary variants —
+                заголовок остаётся без боковых разделителей, а под последней
+                строкой появляется border-b. */}
+            <table
+              className="w-full text-sm
+                [&_tbody_tr_td:first-child]:border-l
+                [&_tbody_tr_td:last-child]:border-r
+                [&_tbody_tr:last-child_td]:border-b"
+            >
+              <thead className="bg-gray-50 text-gray-500">
                   <tr>
                     <th className="w-8" />
                     <th className="text-left px-3 py-2 font-medium">Название</th>
@@ -219,9 +226,8 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
                     ))}
                   </tbody>
                 </SortableContext>
-              </table>
-            </div>
-            {/* Footer вне обёртки с border-x — без боковых разделителей */}
+            </table>
+            {/* Footer-теги — без боковых границ */}
             <div className="px-3 py-2 flex items-center justify-end gap-2 text-sm tabular-nums">
               {hasAnyTax && (
                 <>
