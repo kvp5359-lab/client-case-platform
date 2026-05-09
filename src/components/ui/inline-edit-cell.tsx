@@ -136,9 +136,8 @@ export function InlineEditCell(props: Props) {
     return String(props.value)
   })()
 
-  // Padding/margin кнопки и инпута подобраны так, чтобы текст совпадал с
-  // padding `px-3 py-2` родительской `<td>` (12px слева/справа, 8px сверху/снизу) —
-  // то есть с тем же отступом, что и у заголовков таблицы.
+  // Без horizontal padding — он уже есть на td (px-3). Текст в read-mode
+  // и инпут в edit-mode стоят ровно по краям контент-зоны td, как и заголовок.
   if (editing) {
     return (
       <input
@@ -153,7 +152,7 @@ export function InlineEditCell(props: Props) {
         onBlur={commit}
         onKeyDown={handleKey}
         className={cn(
-          'block w-full bg-white border border-amber-300 rounded px-3 py-1.5 -mx-3 -my-1.5 outline-none focus:ring-2 focus:ring-amber-200 text-sm tabular-nums',
+          'block w-full bg-white border border-amber-300 rounded py-1 -my-1 outline-none focus:ring-2 focus:ring-amber-200 text-sm tabular-nums px-1',
           ALIGN_CLASS[align],
           className,
         )}
@@ -167,7 +166,7 @@ export function InlineEditCell(props: Props) {
       onClick={startEditing}
       disabled={disabled}
       className={cn(
-        'block w-full text-sm rounded px-3 py-2 -mx-3 -my-2 truncate',
+        'block w-full text-sm rounded py-1 -my-1 truncate',
         ALIGN_CLASS[align],
         disabled
           ? 'cursor-default text-gray-700'
