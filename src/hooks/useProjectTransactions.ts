@@ -41,9 +41,9 @@ export function useProjectTransactions(
         .eq('project_id', projectId)
         .eq('type', type)
         .eq('is_deleted', false)
-        // Сначала новые даты сверху; внутри одного дня — в порядке
-        // добавления (старая запись выше, новая ниже).
-        .order('date', { ascending: false })
+        // Хронологический порядок: старые даты сверху, новые ниже;
+        // при одинаковой дате — в порядке добавления (FIFO).
+        .order('date', { ascending: true })
         .order('created_at', { ascending: true })
       if (error) throw error
       return (data ?? []) as ProjectTransaction[]
