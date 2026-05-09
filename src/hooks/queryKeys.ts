@@ -132,6 +132,14 @@ export const emailAccountKeys = {
   emailLink: (threadId: string) => ['email-accounts', 'link', threadId] as const,
 }
 
+export const emailInboundKeys = {
+  all: ['email-inbound-unmatched'] as const,
+  byWorkspace: (workspaceId: string) =>
+    ['email-inbound-unmatched', workspaceId] as const,
+  byWorkspaceUnresolved: (workspaceId: string) =>
+    ['email-inbound-unmatched', workspaceId, 'unresolved'] as const,
+}
+
 export const commentKeys = {
   all: ['comments'] as const,
   byEntity: (entityType: string, entityId: string) => ['comments', entityType, entityId] as const,
