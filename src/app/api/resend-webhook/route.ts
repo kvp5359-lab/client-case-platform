@@ -379,6 +379,19 @@ async function createNewThreadInProject(
     subject: string | null
   },
 ): Promise<{ threadId: string }> {
+  // Считаем sort_order чтобы новый тред оказался в конце списка проекта
+  // (как делает useProjectThreads при ручном создании). Без этого default=0
+  // и треды толкаются в начало вперемешку.
+  const { data: maxRow } = await supabase
+    .from('project_threads')
+    .select('sort_order')
+    .eq('project_id', opts.projectId)
+    .eq('is_deleted', false)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const nextSortOrder = ((maxRow as { sort_order: number | null } | null)?.sort_order ?? 0) + 10
+
   const { data: created, error } = await supabase
     .from('project_threads')
     .insert({
@@ -388,6 +401,7 @@ async function createNewThreadInProject(
       type: 'email',
       icon: 'mail',
       accent_color: 'rose',
+      sort_order: nextSortOrder,
       email_subject_root: opts.subject ?? null,
       email_last_external_address: opts.fromAddress,
     })
