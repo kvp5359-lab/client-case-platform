@@ -3,6 +3,8 @@ import { createSupabaseServiceClient } from '@/lib/supabase-service'
 import {
   extractOriginalFrom,
   getSvixHeaders,
+  stripEmailQuotes,
+  stripHtmlQuotes,
   verifySvixSignature,
   type ParsedAddress,
 } from '@/lib/resendWebhook'
@@ -506,9 +508,18 @@ async function fetchResendInbound(emailId: string): Promise<ResendEmailData | nu
 
 function pickContent(data: ResendEmailData): string {
   const html = data.html?.trim()
-  if (html) return html
+  if (html) return stripHtmlQuotes(html)
   const text = data.text?.trim()
-  if (text) return text
+  if (text) {
+    const cleaned = stripEmailQuotes(text)
+    // Простейшее plain → html: сохраняем переносы строк
+    const escaped = cleaned
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>')
+    return `<p>${escaped}</p>`
+  }
   const subject = data.subject?.trim()
   if (subject) return `<p><i>(Тема:)</i> ${escapeHtml(subject)}</p>`
   return '<p><i>(пустое тело письма)</i></p>'

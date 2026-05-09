@@ -109,6 +109,55 @@ export function extractOriginalFrom(opts: {
   return outerFrom
 }
 
+/**
+ * Срезает Gmail-style цитату исходного письма из HTML-ответа.
+ * Перенесено из supabase/functions/gmail-webhook/index.ts.
+ */
+export function stripHtmlQuotes(html: string): string {
+  let result = html
+  // Снимаем обёртки <html>/<head>/<body> если есть
+  result = result.replace(/^[\s\S]*<body[^>]*>/i, '')
+  result = result.replace(/<\/body>[\s\S]*$/i, '')
+  // <style> блоки
+  result = result.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+  // Gmail quote-контейнеры (div с классом gmail_quote)
+  result = result.replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*$/i, '')
+  // Любые <blockquote>
+  result = result.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '')
+  // Trailing <br>
+  result = result.replace(/(<br\s*\/?\s*>)+$/gi, '')
+  // Tracking-пиксели 1×1
+  result = result.replace(/<img[^>]*(?:width=["']1["']|height=["']1["'])[^>]*>/gi, '')
+  // Пустые завершающие div/p/br
+  result = result.replace(/(<div[^>]*>\s*<\/div>\s*|<p[^>]*>\s*<\/p>\s*|<br\s*\/?>)+$/gi, '')
+  return result.trim() || html.trim()
+}
+
+/**
+ * Срезает email-цитату из plain text body.
+ * Перенесено из supabase/functions/gmail-webhook/index.ts.
+ */
+export function stripEmailQuotes(text: string): string {
+  let result = text
+  const patterns = [
+    /\s*On\s+.{10,80}wrote:\s*/,
+    /\s*(?:пн|вт|ср|чт|пт|сб|вс)[,.\s].{10,80}(?:<[^>]+>|@).{0,20}:\s*/,
+    /\s*\d{1,2}[\s./-]\S{2,10}[\s./-]\d{4}\s*.{0,20}(?:в|at)\s+\d{1,2}:\d{2}.{0,50}(?:<[^>]+>|@).{0,20}:\s*/,
+    /\n-- \n/,
+  ]
+  for (const p of patterns) {
+    const m = result.match(p)
+    if (m && m.index !== undefined && m.index > 0) {
+      result = result.substring(0, m.index)
+      break
+    }
+  }
+  const lines = result.split('\n')
+  while (lines.length > 0 && /^\s*>/.test(lines[lines.length - 1])) lines.pop()
+  while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop()
+  return lines.join('\n').trim() || text.trim()
+}
+
 function parseAddressLine(line: string): ParsedAddress | null {
   const angle = line.match(/<\s*([^>\s]+@[^>\s]+)\s*>/)
   if (angle) {
