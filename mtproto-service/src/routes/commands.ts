@@ -36,10 +36,17 @@ function isTelegramPhotoMime(mime: string | null | undefined): boolean {
   return typeof mime === "string" && TELEGRAM_PHOTO_MIME_TYPES.has(mime.toLowerCase())
 }
 
+// Фронт в split-варианте (текст + 2+ файла) пишет вторую запись с
+// placeholder-content "📎" — он трактуется как «вложения без caption».
+// БД не принимает пустой content (CHECK), поэтому такой сентинел нужен.
+const ATTACHMENTS_ONLY_PLACEHOLDER = "\u{1F4CE}"
+
 /** Превращает tiptap-HTML в Telegram-HTML. Plain text оставляем как есть,
- *  только эскейпим спецсимволы (иначе parseMode=html уронит парсер на &/<). */
+ *  только эскейпим спецсимволы (иначе parseMode=html уронит парсер на &/<).
+ *  Placeholder "📎" → пустая строка. */
 function prepareTelegramText(raw: string): string {
   if (!raw) return ""
+  if (raw === ATTACHMENTS_ONLY_PLACEHOLDER) return ""
   return isHtmlContent(raw) ? htmlToTelegramHtml(raw) : escapeHtmlEntities(raw)
 }
 
@@ -123,19 +130,18 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
         const caption = captionText.length > 0 ? captionText : undefined
 
         if (files.length === 1) {
-          // Одиночный файл. Если это поддерживаемое фото — отправляем БЕЗ
-          // DocumentAttributeFilename и с forceDocument=false, чтобы Telegram
-          // показал inline-картинку, а не «иконку файла». Прочее — документом.
+          // Одиночный файл. Оборачиваем в CustomFile, чтобы gramjs увидел
+          // имя/расширение — без этого Buffer летит как «unnamed» без типа.
+          // Для поддерживаемых фото-mime ставим forceDocument=false → Telegram
+          // отрисует inline-картинку, а не иконку файла.
           const f = files[0]!
           const isPhoto = isTelegramPhotoMime(f.mimeType)
+          const customFile = new CustomFile(f.fileName, f.buffer.length, "", f.buffer)
           const sent = await client.sendFile(peer, {
-            file: f.buffer,
+            file: customFile,
             caption,
             parseMode: caption ? "html" : undefined,
             forceDocument: !isPhoto,
-            attributes: isPhoto
-              ? undefined
-              : [new Api.DocumentAttributeFilename({ fileName: f.fileName })],
             replyTo: body.data.reply_to_telegram_message_id ?? undefined,
           })
           if (sent && "id" in sent) {
