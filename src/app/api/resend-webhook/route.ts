@@ -323,11 +323,63 @@ async function handleInbound(
     .update({ email_last_external_address: realFrom.address })
     .eq('id', threadId)
 
+  // Auto-responder: если письмо пришло на виртуальный адрес с включённым
+  // auto_reply_enabled — fire-and-forget шлём готовый ответ.
+  // Заголовок Auto-Submitted предотвращает ping-pong с другими auto-responder'ами.
+  if (
+    resolution.resolution_type === 'virtual' &&
+    resolution.auto_reply_enabled &&
+    resolution.auto_reply_text
+  ) {
+    sendAutoReply({
+      to: realFrom.address,
+      subject: data.subject?.trim() ? `Re: ${data.subject}` : 'Автоответ',
+      text: resolution.auto_reply_text,
+      fromLocal: recipient.address.split('@')[0] ?? 'noreply',
+      fromDomain: recipient.address.split('@')[1] ?? `${resolution.workspace_slug}.${ROOT_DOMAIN}`,
+      inReplyTo: messageIdHeader,
+    }).catch((e) => {
+      console.error('[resend-webhook] auto_reply failed:', e)
+    })
+  }
+
   return NextResponse.json({
     status: 'ok',
     message_id: inserted!.id,
     resolution_type: resolution.resolution_type,
     thread_id: threadId,
+  })
+}
+
+async function sendAutoReply(opts: {
+  to: string
+  subject: string
+  text: string
+  fromLocal: string
+  fromDomain: string
+  inReplyTo: string | null
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return
+  const headers: Record<string, string> = {
+    'Auto-Submitted': 'auto-replied',
+    'X-Auto-Response-Suppress': 'All',
+    Precedence: 'auto_reply',
+  }
+  if (opts.inReplyTo) headers['In-Reply-To'] = opts.inReplyTo
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `${opts.fromLocal}@${opts.fromDomain}`,
+      to: [opts.to],
+      subject: opts.subject,
+      text: opts.text,
+      headers,
+    }),
   })
 }
 
