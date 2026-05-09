@@ -16,7 +16,7 @@ export function useBoardDetail(boardId: string | undefined) {
         .eq('id', boardId!)
         .single()
       if (error) throw error
-      return data as Board
+      return data as unknown as Board
     },
     enabled: !!boardId,
     staleTime: STALE_TIME.SHORT,

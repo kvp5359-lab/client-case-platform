@@ -13,6 +13,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import type { Database } from '@/types/database'
+
+type BoardListInsert = Database['public']['Tables']['board_lists']['Insert']
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Target } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -134,7 +137,11 @@ export function CreateFunnelDialog({
           header_color: s.color,
         }
       })
-      const { error } = await supabase.from('board_lists').insert(rows)
+      // FilterGroup имеет интерфейсный тип, а Supabase Insert ждёт чистый Json
+      // (запись с index signature). Структура совместима — каст безопасен.
+      const { error } = await supabase
+        .from('board_lists')
+        .insert(rows as unknown as BoardListInsert[])
       if (error) throw error
     },
     onSuccess: () => {

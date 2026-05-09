@@ -17,7 +17,7 @@ export function useBoardsQuery(workspaceId: string | undefined) {
         p_user_id: user!.id,
       })
       if (error) throw error
-      return (data ?? []) as Board[]
+      return (data ?? []) as unknown as Board[]
     },
     enabled: !!workspaceId && !!user,
     staleTime: STALE_TIME.SHORT,

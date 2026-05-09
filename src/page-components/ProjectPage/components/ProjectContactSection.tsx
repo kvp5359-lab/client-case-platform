@@ -69,7 +69,18 @@ export function ProjectContactSection({
         .eq('is_deleted', false)
         .limit(PAGE_SIZE * 5)
       if (error) throw error
-      return (data ?? []).map((row) => ({
+      // PostgREST embedded select объединяет тип со внутренним GenericStringError,
+      // в TS это даёт union — мы знаем что запрос валидный, кастуем явно.
+      type Row = {
+        id: string
+        name: string
+        last_name: string | null
+        avatar_url: string | null
+        user_id: string | null
+        workspace_roles: string[] | null
+        participant_channels: Array<{ channel_type: string; external_id: string }> | null
+      }
+      return ((data ?? []) as unknown as Row[]).map((row) => ({
         id: row.id,
         name: row.name,
         last_name: row.last_name,

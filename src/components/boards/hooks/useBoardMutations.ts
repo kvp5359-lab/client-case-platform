@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { boardKeys } from '@/hooks/queryKeys'
 import type { Board, BoardGlobalFilter } from '../types'
+import type { Database } from '@/types/database'
 
 interface CreateBoardParams {
   workspace_id: string
@@ -44,7 +45,7 @@ export function useCreateBoard() {
         .select()
         .single()
       if (error) throw error
-      return data as Board
+      return data as unknown as Board
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: boardKeys.byWorkspace(vars.workspace_id) })
@@ -61,12 +62,14 @@ export function useUpdateBoard() {
       void workspace_id // used in onSuccess
       const { data, error } = await supabase
         .from('boards')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        // BoardGlobalFilter — интерфейс, Supabase ждёт Json (index-signature тип).
+        // Структурно совместимы — каст безопасен.
+        .update({ ...updates, updated_at: new Date().toISOString() } as unknown as Database['public']['Tables']['boards']['Update'])
         .eq('id', id)
         .select()
         .single()
       if (error) throw error
-      return data as Board
+      return data as unknown as Board
     },
     onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: boardKeys.byWorkspace(vars.workspace_id) })
