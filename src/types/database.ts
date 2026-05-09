@@ -2296,6 +2296,53 @@ export type Database = {
           },
         ]
       }
+      finance_tax_rates: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_default: boolean
+          is_deleted: boolean
+          name: string
+          rate: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_default?: boolean
+          is_deleted?: boolean
+          name: string
+          rate: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_default?: boolean
+          is_deleted?: boolean
+          name?: string
+          rate?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_tax_rates_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       folder_slots: {
         Row: {
           assignee_id: string | null
@@ -4769,6 +4816,8 @@ export type Database = {
           quantity: number
           service_id: string | null
           sort_order: number
+          tax_rate: number | null
+          tax_rate_id: string | null
           total: number | null
           updated_at: string
         }
@@ -4784,6 +4833,8 @@ export type Database = {
           quantity?: number
           service_id?: string | null
           sort_order?: number
+          tax_rate?: number | null
+          tax_rate_id?: string | null
           total?: number | null
           updated_at?: string
         }
@@ -4799,6 +4850,8 @@ export type Database = {
           quantity?: number
           service_id?: string | null
           sort_order?: number
+          tax_rate?: number | null
+          tax_rate_id?: string | null
           total?: number | null
           updated_at?: string
         }
@@ -4815,6 +4868,13 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "finance_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_services_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "finance_tax_rates"
             referencedColumns: ["id"]
           },
         ]

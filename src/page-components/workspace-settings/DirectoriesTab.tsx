@@ -10,6 +10,7 @@ import {
 } from '@/components/directories/RolesDirectory'
 import { QuickRepliesDirectory } from '@/components/directories/QuickRepliesDirectory'
 import { FinanceServicesDirectory } from '@/components/directories/FinanceServicesDirectory'
+import { FinanceTaxRatesDirectory } from '@/components/directories/FinanceTaxRatesDirectory'
 import {
   CustomDirectoriesList,
   CustomDirectoryPage,
@@ -21,6 +22,7 @@ type DirectorySection =
   | 'project-roles' // Роли проекта
   | 'quick-replies' // Быстрые ответы
   | 'finance-services' // Услуги (финансовый модуль)
+  | 'finance-tax-rates' // Налоги (финансовый модуль)
   | 'custom' // Пользовательские справочники
   | 'custom-detail' // Конкретный справочник
 
@@ -38,6 +40,7 @@ export function DirectoriesTab() {
     if (section === 'workspace-roles' || section === 'project-roles') return section
     if (section === 'quick-replies') return section
     if (section === 'finance-services') return section
+    if (section === 'finance-tax-rates') return section
     if (section === 'custom' && subsection) return 'custom-detail'
     if (section === 'custom') return 'custom'
     return 'statuses'
@@ -65,6 +68,10 @@ export function DirectoriesTab() {
     {
       id: 'finance-services' as const,
       label: 'Услуги',
+    },
+    {
+      id: 'finance-tax-rates' as const,
+      label: 'Налоги',
     },
     {
       id: 'custom' as const,
@@ -139,6 +146,7 @@ export function DirectoriesTab() {
               <div className="space-y-0.5 pl-2">
                 {renderMenuItem(menuItems[4])}
                 {renderMenuItem(menuItems[5])}
+                {renderMenuItem(menuItems[6])}
               </div>
             </div>
           </nav>
@@ -151,6 +159,7 @@ export function DirectoriesTab() {
           {activeSection === 'project-roles' && <ProjectRolesDirectory />}
           {activeSection === 'quick-replies' && <QuickRepliesDirectory />}
           {activeSection === 'finance-services' && <FinanceServicesDirectory />}
+          {activeSection === 'finance-tax-rates' && <FinanceTaxRatesDirectory />}
           {activeSection === 'custom' && <CustomDirectoriesList />}
           {activeSection === 'custom-detail' && <CustomDirectoryPage />}
         </div>

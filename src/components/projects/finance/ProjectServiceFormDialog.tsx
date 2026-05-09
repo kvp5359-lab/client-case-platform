@@ -22,6 +22,7 @@ import {
   useFinanceServices,
   useCreateFinanceService,
 } from '@/hooks/useFinanceServices'
+import { useFinanceTaxRates } from '@/hooks/useFinanceTaxRates'
 import { FinanceServiceFormDialog } from '@/components/directories/FinanceServiceFormDialog'
 import type {
   ProjectService,
@@ -37,9 +38,9 @@ interface Props {
   saving: boolean
 }
 
-const formatTotal = (q: number, p: number): string =>
+const fmt = (value: number): string =>
   new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-    q * p,
+    value,
   )
 
 export function ProjectServiceFormDialog({
@@ -51,7 +52,11 @@ export function ProjectServiceFormDialog({
   saving,
 }: Props) {
   const { data: catalog = [] } = useFinanceServices(workspaceId)
+  const { data: taxRates = [] } = useFinanceTaxRates(workspaceId)
   const createCatalogItem = useCreateFinanceService(workspaceId)
+
+  // При создании новой позиции — автоподставляем дефолтный налог из справочника.
+  const defaultTax = taxRates.find((t) => t.is_default)
 
   // Инициализация — компонент пересоздаётся снаружи через key={editing?.id ?? 'new'}.
   const [serviceId, setServiceId] = useState<string | null>(editing?.service_id ?? null)
@@ -61,6 +66,9 @@ export function ProjectServiceFormDialog({
   )
   const [priceText, setPriceText] = useState(
     editing ? String(editing.price) : '0',
+  )
+  const [taxRateId, setTaxRateId] = useState<string | null>(
+    editing ? editing.tax_rate_id : (defaultTax?.id ?? null),
   )
 
   const [createCatalogOpen, setCreateCatalogOpen] = useState(false)
@@ -90,6 +98,8 @@ export function ProjectServiceFormDialog({
     })
   }
 
+  const selectedTax = taxRates.find((t) => t.id === taxRateId)
+
   const handleSubmit = () => {
     const q = Number(quantityText.replace(',', '.'))
     const p = Number(priceText.replace(',', '.'))
@@ -98,11 +108,17 @@ export function ProjectServiceFormDialog({
       name,
       quantity: Number.isFinite(q) && q > 0 ? q : 1,
       price: Number.isFinite(p) && p >= 0 ? p : 0,
+      tax_rate_id: taxRateId,
+      // Snapshot процента — чтобы изменения справочника не пересчитывали историю.
+      tax_rate: selectedTax ? Number(selectedTax.rate) : null,
     })
   }
 
   const quantityNum = Number(quantityText.replace(',', '.')) || 0
   const priceNum = Number(priceText.replace(',', '.')) || 0
+  const subtotalNum = quantityNum * priceNum
+  const taxNum = selectedTax ? subtotalNum * (Number(selectedTax.rate) / 100) : 0
+  const totalNum = subtotalNum + taxNum
   const canSave = name.trim().length > 0 && quantityNum > 0
 
   return (
@@ -163,7 +179,7 @@ export function ProjectServiceFormDialog({
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="proj-service-qty">Кол-во</Label>
                 <Input
@@ -177,7 +193,7 @@ export function ProjectServiceFormDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="proj-service-price">Цена, EUR</Label>
+                <Label htmlFor="proj-service-price">Цена, EUR (без налога)</Label>
                 <Input
                   id="proj-service-price"
                   type="number"
@@ -188,11 +204,44 @@ export function ProjectServiceFormDialog({
                   onChange={(e) => setPriceText(e.target.value)}
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label>Сумма, EUR</Label>
-                <div className="h-10 flex items-center px-3 rounded-md border bg-gray-50 text-sm tabular-nums">
-                  {formatTotal(quantityNum, priceNum)}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="proj-service-tax">Налог</Label>
+              <SearchableSelect
+                id="proj-service-tax"
+                value={taxRateId}
+                onChange={setTaxRateId}
+                options={taxRates.map((t) => ({
+                  value: t.id,
+                  label: t.name,
+                  hint: `${Number(t.rate)}%`,
+                }))}
+                placeholder="Без налога"
+                noneLabel="— Без налога —"
+                searchPlaceholder="Поиск ставки"
+                emptyText={
+                  taxRates.length === 0
+                    ? 'Справочник налогов пуст'
+                    : 'Ничего не нашли'
+                }
+              />
+            </div>
+
+            <div className="rounded-md border bg-gray-50 p-3 space-y-1 text-sm tabular-nums">
+              <div className="flex justify-between text-gray-600">
+                <span>Без налога</span>
+                <span>{fmt(subtotalNum)} EUR</span>
+              </div>
+              {selectedTax && (
+                <div className="flex justify-between text-gray-600">
+                  <span>{selectedTax.name} ({Number(selectedTax.rate)}%)</span>
+                  <span>+{fmt(taxNum)} EUR</span>
                 </div>
+              )}
+              <div className="flex justify-between font-semibold pt-1 border-t">
+                <span>Итого</span>
+                <span>{fmt(totalNum)} EUR</span>
               </div>
             </div>
           </div>

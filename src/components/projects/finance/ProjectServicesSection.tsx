@@ -63,8 +63,20 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
 
   const confirm = useConfirmDialog()
 
-  const totalSum = useMemo(
-    () => services.reduce((acc, s) => acc + Number(s.total ?? 0), 0),
+  // Subtotal — без налога; tax — суммарный налог; total — с налогом.
+  const totals = useMemo(() => {
+    let subtotal = 0
+    let tax = 0
+    for (const s of services) {
+      const sub = Number(s.total ?? 0)
+      subtotal += sub
+      const rate = s.tax_rate == null ? 0 : Number(s.tax_rate)
+      tax += sub * (rate / 100)
+    }
+    return { subtotal, tax, total: subtotal + tax }
+  }, [services])
+  const hasAnyTax = useMemo(
+    () => services.some((s) => s.tax_rate != null && Number(s.tax_rate) > 0),
     [services],
   )
 
@@ -139,7 +151,7 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
               ? '—'
               : services.length === 0
                 ? 'Пока нет услуг'
-                : `${services.length} позиций · итого ${fmt(totalSum)} EUR`}
+                : `${services.length} позиций · итого ${fmt(totals.total)} EUR`}
           </CardDescription>
         </div>
         <Button size="sm" onClick={openCreate}>
@@ -160,6 +172,7 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
                     <th className="text-left px-3 py-2 font-medium">Название</th>
                     <th className="text-right px-3 py-2 font-medium w-24">Кол-во</th>
                     <th className="text-right px-3 py-2 font-medium w-32">Цена, EUR</th>
+                    <th className="text-right px-3 py-2 font-medium w-24">Налог</th>
                     <th className="text-right px-3 py-2 font-medium w-32">Сумма, EUR</th>
                     <th className="px-3 py-2 w-24" />
                   </tr>
@@ -181,12 +194,34 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
                   </tbody>
                 </SortableContext>
                 <tfoot className="bg-gray-50">
+                  {hasAnyTax && (
+                    <>
+                      <tr>
+                        <td className="px-3 py-1 text-right text-gray-600" colSpan={5}>
+                          Без налога
+                        </td>
+                        <td className="px-3 py-1 text-right tabular-nums text-gray-600">
+                          {fmt(totals.subtotal)}
+                        </td>
+                        <td />
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-1 text-right text-gray-600" colSpan={5}>
+                          Налог
+                        </td>
+                        <td className="px-3 py-1 text-right tabular-nums text-gray-600">
+                          +{fmt(totals.tax)}
+                        </td>
+                        <td />
+                      </tr>
+                    </>
+                  )}
                   <tr>
-                    <td className="px-3 py-2 text-right font-medium" colSpan={4}>
+                    <td className="px-3 py-2 text-right font-medium" colSpan={5}>
                       Итого
                     </td>
                     <td className="px-3 py-2 text-right font-semibold tabular-nums">
-                      {fmt(totalSum)}
+                      {fmt(totals.total)}
                     </td>
                     <td />
                   </tr>
@@ -257,8 +292,17 @@ function SortableServiceRow({
         {Number(service.quantity).toLocaleString('ru-RU')}
       </td>
       <td className="px-3 py-2 text-right tabular-nums">{fmt(Number(service.price))}</td>
+      <td className="px-3 py-2 text-right text-gray-600 tabular-nums">
+        {service.tax_rate == null
+          ? '—'
+          : `${Number(service.tax_rate).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}%`}
+      </td>
       <td className="px-3 py-2 text-right font-medium tabular-nums">
-        {fmt(Number(service.total ?? 0))}
+        {(() => {
+          const sub = Number(service.total ?? 0)
+          const rate = service.tax_rate == null ? 0 : Number(service.tax_rate)
+          return fmt(sub * (1 + rate / 100))
+        })()}
       </td>
       <td className="px-3 py-2 text-right">
         <div className="flex items-center justify-end gap-1">

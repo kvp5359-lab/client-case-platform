@@ -42,7 +42,13 @@ export function FinanceSummary({ projectId }: Props) {
   const { data: expenses = [] } = useProjectTransactions(projectId, 'expense')
 
   const stats = useMemo(() => {
-    const cost = services.reduce((acc, s) => acc + Number(s.total ?? 0), 0)
+    // Стоимость = сумма позиций с учётом налога (subtotal + налог сверху).
+    let cost = 0
+    for (const s of services) {
+      const sub = Number(s.total ?? 0)
+      const rate = s.tax_rate == null ? 0 : Number(s.tax_rate)
+      cost += sub * (1 + rate / 100)
+    }
     const incomeSum = incomes.reduce((acc, t) => acc + Number(t.amount ?? 0), 0)
     const expenseSum = expenses.reduce((acc, t) => acc + Number(t.amount ?? 0), 0)
     const profit = incomeSum - expenseSum
@@ -52,7 +58,7 @@ export function FinanceSummary({ projectId }: Props) {
 
   return (
     <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-      <StatCard label="Стоимость" value={`${fmt(stats.cost)} EUR`} hint="Сумма услуг проекта" />
+      <StatCard label="Стоимость" value={`${fmt(stats.cost)} EUR`} hint="Услуги проекта с налогом" />
       <StatCard
         label="Доходы"
         value={`${fmt(stats.incomeSum)} EUR`}

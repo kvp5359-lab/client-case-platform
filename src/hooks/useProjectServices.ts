@@ -15,8 +15,12 @@ export interface ProjectServiceFormData {
   /** Snapshot имени (по умолчанию из справочника, но можно править). */
   name: string
   quantity: number
-  /** Цена за единицу в EUR. */
+  /** Цена за единицу в EUR (без налога). */
   price: number
+  /** UUID ставки налога из справочника finance_tax_rates (или null). */
+  tax_rate_id: string | null
+  /** Snapshot процента налога (накручивается сверху на subtotal). */
+  tax_rate: number | null
 }
 
 /** Список услуг проекта (без удалённых), отсортирован по sort_order. */
@@ -62,6 +66,8 @@ export function useCreateProjectService(projectId: string | undefined) {
           name: form.name.trim(),
           quantity: form.quantity,
           price: form.price,
+          tax_rate_id: form.tax_rate_id,
+          tax_rate: form.tax_rate,
           sort_order: nextOrder,
         })
         .select('*')
@@ -87,6 +93,8 @@ export function useUpdateProjectService(projectId: string | undefined) {
           name: params.form.name.trim(),
           quantity: params.form.quantity,
           price: params.form.price,
+          tax_rate_id: params.form.tax_rate_id,
+          tax_rate: params.form.tax_rate,
         })
         .eq('id', params.id)
         .select('*')
