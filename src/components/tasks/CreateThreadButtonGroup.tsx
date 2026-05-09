@@ -69,7 +69,7 @@ export function CreateThreadButtonGroup({
         onClick={() => onCreate(primary)}
       >
         <PrimaryIcon className="w-4 h-4 mr-1.5" />
-        Создать {primaryMeta.label.toLowerCase()}
+        Создать
       </Button>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -98,7 +98,7 @@ export function CreateThreadButtonGroup({
                 }}
               >
                 <I className="w-4 h-4 text-muted-foreground shrink-0" />
-                Создать {m.label.toLowerCase()}
+                {m.label}
               </button>
             )
           })}
