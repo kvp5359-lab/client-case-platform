@@ -109,6 +109,37 @@ export function useUpdateProjectService(projectId: string | undefined) {
   })
 }
 
+/**
+ * Частичное обновление одного поля строки услуги — для inline-редактирования
+ * прямо в таблице. Принимает только те поля, которые надо обновить;
+ * остальные не трогаются.
+ */
+export type ProjectServicePatch = Partial<{
+  service_id: string | null
+  name: string
+  quantity: number
+  price: number
+  tax_rate_id: string | null
+  tax_rate: number | null
+}>
+
+export function usePatchProjectService(projectId: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (params: { id: string; patch: ProjectServicePatch }): Promise<void> => {
+      const { error } = await supabase
+        .from('project_services')
+        .update(params.patch)
+        .eq('id', params.id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      if (!projectId) return
+      queryClient.invalidateQueries({ queryKey: projectServiceKeys.list(projectId) })
+    },
+  })
+}
+
 /** Мягкое удаление: is_deleted=true. Сумма проекта пересчитается автоматически. */
 export function useDeleteProjectService(projectId: string | undefined) {
   const queryClient = useQueryClient()

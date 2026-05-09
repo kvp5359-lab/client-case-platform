@@ -18,10 +18,14 @@ import {
   useCreateProjectTransaction,
   useUpdateProjectTransaction,
   useDeleteProjectTransaction,
+  usePatchProjectTransaction,
   type ProjectTransaction,
   type ProjectTransactionFormData,
+  type ProjectTransactionPatch,
   type TransactionType,
 } from '@/hooks/useProjectTransactions'
+import { InlineEditCell } from '@/components/ui/inline-edit-cell'
+import { InlineEditSelect } from '@/components/ui/inline-edit-select'
 import { ProjectTransactionFormDialog } from './ProjectTransactionFormDialog'
 
 const fmt = (value: number): string =>
@@ -64,15 +68,38 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
   const { data, isLoading } = useProjectTransactions(projectId, type)
   const transactions = useMemo(() => data ?? [], [data])
 
-  // Карты для быстрого отображения имён по id (Selects берут эти же данные).
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
   const { data: catalog = [] } = useFinanceServices(workspaceId)
-  const participantMap = useMemo(() => new Map(participants.map((p) => [p.id, p])), [participants])
-  const serviceMap = useMemo(() => new Map(catalog.map((s) => [s.id, s])), [catalog])
 
   const createMutation = useCreateProjectTransaction(projectId)
   const updateMutation = useUpdateProjectTransaction(projectId)
   const deleteMutation = useDeleteProjectTransaction(projectId)
+  const patchMutation = usePatchProjectTransaction(projectId)
+
+  const handlePatch = (id: string, patch: ProjectTransactionPatch) => {
+    patchMutation.mutate(
+      { id, patch },
+      {
+        onError: (e) =>
+          toast.error('Не удалось сохранить', { description: (e as Error).message }),
+      },
+    )
+  }
+
+  const participantOptions = useMemo(
+    () =>
+      participants.map((p) => ({
+        value: p.id,
+        label: [p.name, p.last_name].filter(Boolean).join(' ') || p.name,
+        hint: p.email ?? undefined,
+      })),
+    [participants],
+  )
+
+  const serviceOptions = useMemo(
+    () => catalog.map((s) => ({ value: s.id, label: s.name })),
+    [catalog],
+  )
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<ProjectTransaction | null>(null)
@@ -127,16 +154,6 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
     })
   }
 
-  const formatParticipant = (id: string | null): string => {
-    if (!id) return '—'
-    const p = participantMap.get(id)
-    if (!p) return '—'
-    return [p.name, p.last_name].filter(Boolean).join(' ') || p.name
-  }
-  const formatService = (id: string | null): string => {
-    if (!id) return '—'
-    return serviceMap.get(id)?.name ?? '—'
-  }
 
   return (
     <Card>
@@ -175,13 +192,65 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
               <tbody>
                 {transactions.map((t) => (
                   <tr key={t.id} className="border-t">
-                    <td className="px-3 py-2 tabular-nums">{formatDate(t.date)}</td>
-                    <td className="px-3 py-2">{formatParticipant(t.participant_id)}</td>
-                    <td className="px-3 py-2">{formatService(t.service_id)}</td>
-                    <td className="px-3 py-2 text-right font-medium tabular-nums">
-                      {fmt(Number(t.amount))}
+                    <td className="px-3 py-2">
+                      <InlineEditCell
+                        type="date"
+                        value={t.date}
+                        onCommit={(v) => {
+                          if (!v || v === t.date) return
+                          handlePatch(t.id, { date: v })
+                        }}
+                      />
                     </td>
-                    <td className="px-3 py-2 text-gray-600">{t.comment ?? '—'}</td>
+                    <td className="px-3 py-2">
+                      <InlineEditSelect
+                        value={t.participant_id}
+                        options={participantOptions}
+                        emptyText="—"
+                        noneLabel="— Не указан —"
+                        searchPlaceholder="Поиск по имени или email"
+                        popoverEmpty="Никого не нашли"
+                        onCommit={(id) => handlePatch(t.id, { participant_id: id })}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <InlineEditSelect
+                        value={t.service_id}
+                        options={serviceOptions}
+                        emptyText="—"
+                        noneLabel="— Не указана —"
+                        searchPlaceholder="Поиск услуги"
+                        onCommit={(id) => handlePatch(t.id, { service_id: id })}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <InlineEditCell
+                        type="number"
+                        align="right"
+                        value={Number(t.amount)}
+                        format={(v) => (typeof v === 'number' ? fmt(v) : '—')}
+                        min={0.01}
+                        onCommit={(v) => {
+                          if (v <= 0) return
+                          handlePatch(t.id, { amount: v })
+                        }}
+                        className="font-medium"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <InlineEditCell
+                        type="text"
+                        value={t.comment ?? ''}
+                        emptyText="—"
+                        placeholder="Комментарий"
+                        onCommit={(v) => {
+                          const trimmed = v.trim()
+                          const next = trimmed === '' ? null : trimmed
+                          if (next === t.comment) return
+                          handlePatch(t.id, { comment: next })
+                        }}
+                      />
+                    </td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button
@@ -210,13 +279,14 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
               </tbody>
               <tfoot className="bg-gray-50">
                 <tr>
-                  <td className="px-3 py-2 text-right font-medium" colSpan={3}>
-                    Итого
+                  <td className="px-3 py-2" colSpan={6}>
+                    <div className="flex items-center justify-end gap-2 text-sm tabular-nums">
+                      <span className="font-medium">
+                        Итого:{' '}
+                        <span className="font-semibold">{fmt(totalSum)} EUR</span>
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-3 py-2 text-right font-semibold tabular-nums">
-                    {fmt(totalSum)}
-                  </td>
-                  <td colSpan={2} />
                 </tr>
               </tfoot>
             </table>

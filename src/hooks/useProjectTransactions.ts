@@ -108,6 +108,36 @@ export function useUpdateProjectTransaction(projectId: string | undefined) {
   })
 }
 
+/**
+ * Частичное обновление одной транзакции — для inline-редактирования
+ * прямо в таблице доходов/расходов.
+ */
+export type ProjectTransactionPatch = Partial<{
+  type: TransactionType
+  date: string
+  participant_id: string | null
+  service_id: string | null
+  amount: number
+  comment: string | null
+}>
+
+export function usePatchProjectTransaction(projectId: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (params: {
+      id: string
+      patch: ProjectTransactionPatch
+    }): Promise<void> => {
+      const { error } = await supabase
+        .from('project_transactions')
+        .update(params.patch)
+        .eq('id', params.id)
+      if (error) throw error
+    },
+    onSuccess: () => invalidate(queryClient, projectId),
+  })
+}
+
 export function useDeleteProjectTransaction(projectId: string | undefined) {
   const queryClient = useQueryClient()
   return useMutation({

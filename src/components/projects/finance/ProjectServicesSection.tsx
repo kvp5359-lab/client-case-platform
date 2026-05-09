@@ -32,10 +32,15 @@ import {
   useUpdateProjectService,
   useDeleteProjectService,
   useReorderProjectServices,
+  usePatchProjectService,
   type ProjectService,
   type ProjectServiceFormData,
+  type ProjectServicePatch,
 } from '@/hooks/useProjectServices'
+import { useFinanceTaxRates } from '@/hooks/useFinanceTaxRates'
 import { projectServiceKeys } from '@/hooks/queryKeys'
+import { InlineEditCell } from '@/components/ui/inline-edit-cell'
+import { InlineEditSelect } from '@/components/ui/inline-edit-select'
 import { ProjectServiceFormDialog } from './ProjectServiceFormDialog'
 
 const fmt = (value: number): string =>
@@ -57,6 +62,8 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
   const updateMutation = useUpdateProjectService(projectId)
   const deleteMutation = useDeleteProjectService(projectId)
   const reorderMutation = useReorderProjectServices(projectId)
+  const patchMutation = usePatchProjectService(projectId)
+  const { data: taxRates = [] } = useFinanceTaxRates(workspaceId)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<ProjectService | null>(null)
@@ -127,6 +134,16 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
     }
   }
 
+  const handlePatch = (id: string, patch: ProjectServicePatch) => {
+    patchMutation.mutate(
+      { id, patch },
+      {
+        onError: (e) =>
+          toast.error('Не удалось сохранить', { description: (e as Error).message }),
+      },
+    )
+  }
+
   const askDelete = async (service: ProjectService) => {
     const ok = await confirm.confirm({
       title: 'Удалить услугу?',
@@ -186,6 +203,16 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
                       <SortableServiceRow
                         key={s.id}
                         service={s}
+                        taxOptions={taxRates.map((t) => ({
+                          value: t.id,
+                          label: t.name,
+                          hint: `${Number(t.rate)}%`,
+                        }))}
+                        taxRateById={(id) => {
+                          const t = taxRates.find((r) => r.id === id)
+                          return t ? Number(t.rate) : null
+                        }}
+                        onPatch={(patch) => handlePatch(s.id, patch)}
                         onEdit={() => openEdit(s)}
                         onDelete={() => askDelete(s)}
                         isDeleting={deleteMutation.isPending}
@@ -194,35 +221,28 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
                   </tbody>
                 </SortableContext>
                 <tfoot className="bg-gray-50">
-                  {hasAnyTax && (
-                    <>
-                      <tr>
-                        <td className="px-3 py-1 text-right text-gray-600" colSpan={5}>
-                          Без налога
-                        </td>
-                        <td className="px-3 py-1 text-right tabular-nums text-gray-600">
-                          {fmt(totals.subtotal)}
-                        </td>
-                        <td />
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-1 text-right text-gray-600" colSpan={5}>
-                          Налог
-                        </td>
-                        <td className="px-3 py-1 text-right tabular-nums text-gray-600">
-                          +{fmt(totals.tax)}
-                        </td>
-                        <td />
-                      </tr>
-                    </>
-                  )}
                   <tr>
-                    <td className="px-3 py-2 text-right font-medium" colSpan={5}>
-                      Итого
+                    <td className="px-3 py-2" colSpan={5}>
+                      <div className="flex items-center justify-end gap-4 text-sm tabular-nums">
+                        {hasAnyTax && (
+                          <>
+                            <span className="text-gray-500">
+                              Без налога:{' '}
+                              <span className="text-gray-700">{fmt(totals.subtotal)}</span>
+                            </span>
+                            <span className="text-gray-500">
+                              Налог:{' '}
+                              <span className="text-gray-700">+{fmt(totals.tax)}</span>
+                            </span>
+                          </>
+                        )}
+                        <span className="font-medium">
+                          Итого:{' '}
+                          <span className="font-semibold">{fmt(totals.total)} EUR</span>
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-3 py-2 text-right font-semibold tabular-nums">
-                      {fmt(totals.total)}
-                    </td>
+                    <td />
                     <td />
                   </tr>
                 </tfoot>
@@ -253,11 +273,17 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
 
 function SortableServiceRow({
   service,
+  taxOptions,
+  taxRateById,
+  onPatch,
   onEdit,
   onDelete,
   isDeleting,
 }: {
   service: ProjectService
+  taxOptions: { value: string; label: string; hint?: string }[]
+  taxRateById: (id: string) => number | null
+  onPatch: (patch: ProjectServicePatch) => void
   onEdit: () => void
   onDelete: () => void
   isDeleting: boolean
@@ -287,15 +313,61 @@ function SortableServiceRow({
           <GripVertical className="h-4 w-4" />
         </button>
       </td>
-      <td className="px-3 py-2">{service.name}</td>
-      <td className="px-3 py-2 text-right tabular-nums">
-        {Number(service.quantity).toLocaleString('ru-RU')}
+      <td className="px-3 py-2">
+        <InlineEditCell
+          type="text"
+          value={service.name}
+          onCommit={(v) => {
+            const trimmed = v.trim()
+            if (!trimmed || trimmed === service.name) return
+            onPatch({ name: trimmed })
+          }}
+          placeholder="Название"
+        />
       </td>
-      <td className="px-3 py-2 text-right tabular-nums">{fmt(Number(service.price))}</td>
-      <td className="px-3 py-2 text-right text-gray-600 tabular-nums">
-        {service.tax_rate == null
-          ? '—'
-          : `${Number(service.tax_rate).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}%`}
+      <td className="px-3 py-2">
+        <InlineEditCell
+          type="number"
+          align="right"
+          value={Number(service.quantity)}
+          format={(v) => (typeof v === 'number' ? v.toLocaleString('ru-RU') : '—')}
+          min={0.01}
+          onCommit={(v) => {
+            if (v <= 0) return
+            onPatch({ quantity: v })
+          }}
+        />
+      </td>
+      <td className="px-3 py-2">
+        <InlineEditCell
+          type="number"
+          align="right"
+          value={Number(service.price)}
+          format={(v) => (typeof v === 'number' ? fmt(v) : '—')}
+          min={0}
+          onCommit={(v) => {
+            if (v < 0) return
+            onPatch({ price: v })
+          }}
+        />
+      </td>
+      <td className="px-3 py-2 text-gray-600">
+        <InlineEditSelect
+          align="right"
+          value={service.tax_rate_id}
+          options={taxOptions}
+          noneLabel="— Без налога —"
+          searchPlaceholder="Поиск ставки"
+          emptyText={
+            service.tax_rate == null
+              ? '—'
+              : `${Number(service.tax_rate).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}%`
+          }
+          onCommit={(id) => {
+            const rate = id ? taxRateById(id) : null
+            onPatch({ tax_rate_id: id, tax_rate: rate })
+          }}
+        />
       </td>
       <td className="px-3 py-2 text-right font-medium tabular-nums">
         {(() => {
