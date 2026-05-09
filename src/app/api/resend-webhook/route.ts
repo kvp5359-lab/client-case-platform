@@ -28,6 +28,10 @@ type ResendEmailData = {
   subject?: string
   text?: string
   html?: string
+  /** Resend для inbound кладёт Message-ID как top-level поле, не только в headers. */
+  message_id?: string
+  in_reply_to?: string
+  references?: string | string[]
   headers?: { name: string; value: string }[] | Record<string, string>
   attachments?: { filename?: string; content_type?: string; content?: string; size?: number }[]
   spam_score?: number
@@ -105,11 +109,16 @@ async function handleInbound(
 
   const outerFrom = fromList[0] ?? null
   const headers = normalizeHeaders(data.headers)
-  const messageIdHeader = headers['message-id'] ?? null
-  const inReplyTo = headers['in-reply-to'] ?? null
-  const references = headers['references']
-    ? headers['references'].split(/\s+/).filter(Boolean)
-    : []
+  // Resend для inbound кладёт message_id / in_reply_to / references как top-level
+  // поля на data; на всякий случай fallback в headers тех же имён.
+  const messageIdHeader = data.message_id ?? headers['message-id'] ?? null
+  const inReplyTo = data.in_reply_to ?? headers['in-reply-to'] ?? null
+  const referencesRaw = data.references ?? headers['references'] ?? null
+  const references: string[] = Array.isArray(referencesRaw)
+    ? referencesRaw
+    : typeof referencesRaw === 'string'
+      ? referencesRaw.split(/\s+/).filter(Boolean)
+      : []
   const replyTo = parseAddress(headers['reply-to'])
 
   const recipient = pickPlatformRecipient(toList, ccList)
