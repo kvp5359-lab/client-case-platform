@@ -33,6 +33,8 @@ import { BriefTemplateSection } from './project-template-editor/BriefTemplateSec
 import { RootFolderSection } from './project-template-editor/RootFolderSection'
 import { IconPicker } from '@/components/ui/icon-picker'
 import { ColorPicker } from '@/components/ui/color-picker'
+import { Label } from '@/components/ui/label'
+import { SegmentedToggle } from '@/components/ui/segmented-toggle'
 import { PROJECT_ICONS } from '@/components/ui/project-icons'
 
 export function ProjectTemplateEditorPage() {
@@ -155,13 +157,13 @@ export function ProjectTemplateEditorPage() {
             Назад к типам проектов
           </Button>
 
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4 flex-1 min-w-0">
-              {/* Иконка шаблона + режим окраски. В режиме 'status' иконка
-                  в сайдбаре окрашивается цветом текущего статуса проекта,
-                  в режиме 'fixed' — фиксированным template.icon_color.
-                  В превью пикера показываем актуальный цвет. */}
-              <div className="space-y-3">
+          {/* Шапка: одна строка — иконка, название, карандаш. Описание (если
+              есть) — отдельной строкой ниже. Все настройки иконки (выбор
+              рисунка, режим цвета, фиксированный цвет) лежат внутри поповера
+              самой иконки, чтобы не загромождать шапку. */}
+          {!isEditingName ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
                 <IconPicker
                   value={template.icon}
                   onChange={(iconId) => updateIconMutation.mutate(iconId)}
@@ -170,93 +172,82 @@ export function ProjectTemplateEditorPage() {
                   color={
                     template.icon_color_mode === 'fixed' ? template.icon_color : '#6B7280'
                   }
-                  label="Иконка в сайдбаре"
-                  popoverWidth={320}
-                  popoverMaxHeight={360}
+                  label=""
+                  hideTriggerText
+                  popoverWidth={340}
+                  popoverMaxHeight={300}
+                  popoverHeaderSlot={
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Цвет иконки</Label>
+                      <div className="flex items-center gap-2">
+                        <SegmentedToggle<'status' | 'fixed'>
+                          value={template.icon_color_mode as 'status' | 'fixed'}
+                          onChange={(v) => updateIconColorModeMutation.mutate(v)}
+                          options={[
+                            { value: 'status', label: 'По статусу' },
+                            { value: 'fixed', label: 'Свой' },
+                          ]}
+                        />
+                        {template.icon_color_mode === 'fixed' && (
+                          <ColorPicker
+                            value={template.icon_color}
+                            onChange={(color) => updateIconColorMutation.mutate(color)}
+                            disabled={updateIconColorMutation.isPending}
+                            label=""
+                            bareTrigger
+                          />
+                        )}
+                      </div>
+                    </div>
+                  }
                 />
-
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Цвет иконки</Label>
-                  <RadioGroup
-                    value={template.icon_color_mode}
-                    onValueChange={(v) =>
-                      updateIconColorModeMutation.mutate(v as 'status' | 'fixed')
-                    }
-                    disabled={updateIconColorModeMutation.isPending}
-                    className="flex flex-col gap-1.5"
-                  >
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <RadioGroupItem value="status" id="icon-color-mode-status" />
-                      <span>По цвету статуса</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <RadioGroupItem value="fixed" id="icon-color-mode-fixed" />
-                      <span>Свой цвет</span>
-                    </label>
-                  </RadioGroup>
-                </div>
-
-                {template.icon_color_mode === 'fixed' && (
-                  <ColorPicker
-                    value={template.icon_color}
-                    onChange={(color) => updateIconColorMutation.mutate(color)}
-                    disabled={updateIconColorMutation.isPending}
-                    label=""
-                  />
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0 pt-7">
-                {!isEditingName ? (
-                  <>
-                    <h1 className="text-3xl font-bold mb-2">{template.name}</h1>
-                    {template.description && (
-                      <p className="text-muted-foreground">{template.description}</p>
-                    )}
-                  </>
-                ) : (
-                  <div className="space-y-3">
-                    <Input
-                      value={editedName}
-                      onChange={(e) => setEditedName(e.target.value)}
-                      placeholder="Название типа проекта"
-                      className="text-2xl font-bold h-auto py-2"
-                    />
-                    <Input
-                      value={editedDescription}
-                      onChange={(e) => setEditedDescription(e.target.value)}
-                      placeholder="Описание (необязательно)"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {!isEditingName ? (
-                <Button variant="outline" size="sm" onClick={handleStartEditingName}>
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Редактировать
+                <h1 className="text-3xl font-bold flex-1 min-w-0 truncate">
+                  {template.name}
+                </h1>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={handleStartEditingName}
+                  title="Редактировать название и описание"
+                >
+                  <Pencil className="w-4 h-4" />
                 </Button>
-              ) : (
-                <>
-                  <Button variant="ghost" size="sm" onClick={handleCancelEditingName}>
-                    <X className="w-4 h-4 mr-2" />
-                    Отмена
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={handleSaveName}
-                    disabled={!editedName.trim() || updateTemplateMutation.isPending}
-                  >
-                    <Check className="w-4 h-4 mr-2" />
-                    Сохранить
-                  </Button>
-                </>
+              </div>
+              {template.description && (
+                <p className="text-muted-foreground pl-1">{template.description}</p>
               )}
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              <Input
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                placeholder="Название типа проекта"
+                className="text-2xl font-bold h-auto py-2"
+              />
+              <Input
+                value={editedDescription}
+                onChange={(e) => setEditedDescription(e.target.value)}
+                placeholder="Описание (необязательно)"
+              />
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={handleCancelEditingName}>
+                  <X className="w-4 h-4 mr-2" />
+                  Отмена
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleSaveName}
+                  disabled={!editedName.trim() || updateTemplateMutation.isPending}
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  Сохранить
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Флаг «это шаблон лида» — CRM-фрейм этап 3.

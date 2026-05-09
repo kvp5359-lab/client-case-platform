@@ -41,7 +41,16 @@ interface ColorPickerProps {
   onChange: (color: string) => void
   disabled?: boolean
   presetColors?: string[]
+  /** Если строка непустая — рендерим Label сверху. Пустая строка — без лейбла. */
   label?: string
+  /** Скрыть HEX-текст в триггере, оставить только цветной кружок. */
+  hideTriggerText?: boolean
+  /**
+   * Минималистичный триггер — только цветной кружок, без рамки/фона/паддинга.
+   * Полезно, когда пикер встроен в составной UI (например, рядом с другим
+   * контролом, который сам задаёт визуальный контейнер).
+   */
+  bareTrigger?: boolean
 }
 
 export function ColorPicker({
@@ -50,25 +59,35 @@ export function ColorPicker({
   disabled = false,
   presetColors = PRESET_COLORS,
   label = 'Цвет',
+  hideTriggerText = false,
+  bareTrigger = false,
 }: ColorPickerProps) {
   return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
+    <div className={label ? 'space-y-2' : undefined}>
+      {label ? <Label>{label}</Label> : null}
       <Popover>
         <PopoverTrigger asChild>
           <button
             type="button"
             disabled={disabled}
             className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors',
+              bareTrigger
+                ? 'flex items-center justify-center rounded-full transition-transform hover:scale-110'
+                : 'flex items-center gap-2 px-3 py-2 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors',
               disabled && 'opacity-50 cursor-not-allowed',
             )}
+            aria-label={bareTrigger ? `Цвет ${value}` : undefined}
           >
             <div
-              className="w-5 h-5 rounded-full border border-gray-300 flex-shrink-0"
+              className={cn(
+                'rounded-full flex-shrink-0',
+                bareTrigger ? 'w-7 h-7 border border-gray-200' : 'w-5 h-5 border border-gray-300',
+              )}
               style={{ backgroundColor: safeCssColor(value) }}
             />
-            <span className="text-sm text-muted-foreground">{value}</span>
+            {!hideTriggerText && !bareTrigger && (
+              <span className="text-sm text-muted-foreground">{value}</span>
+            )}
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-[280px] p-3" align="start">

@@ -53,14 +53,17 @@ export const ProjectListItem = memo(function ProjectListItem({
   isPinned,
   togglePin,
 }: ProjectListItemProps) {
-  // Иконка проекта берётся из его шаблона (project_templates.icon).
-  // Цвет — от статуса проекта (statuses.color); если статус не задан, серый дефолт.
+  // Иконка и её цвет уже посчитаны в useSidebarData: см. там логику по
+  // template.icon_color_mode ('status' → цвет статуса с fallback в чёрный,
+  // 'fixed' → template.icon_color). Если у проекта нет шаблона — серый дефолт.
   // Закреплённые проекты сохраняют визуальное отличие — иконка Pin.
   // createElement используем, чтобы линтер не считал это «созданием компонента
   // на рендере» — мы лишь выбираем существующий Lucide-компонент из мапы.
-  const iconColor = safeCssColor(project.status?.color || DEFAULT_ICON_COLOR)
-  const projectIconNode = createElement(getProjectIcon(project.template?.icon), {
-    className: 'h-[18px] w-[18px] group-hover/item:opacity-0 transition-opacity',
+  const iconColor = safeCssColor(project.iconColor || DEFAULT_ICON_COLOR)
+  // Размер 16px и тонкий strokeWidth=1.5 — компактный визуал в стиле Resend.
+  const projectIconNode = createElement(getProjectIcon(project.iconId), {
+    className: 'h-4 w-4 group-hover/item:opacity-0 transition-opacity',
+    strokeWidth: 1.5,
     style: { color: iconColor },
   })
 
@@ -100,7 +103,8 @@ export const ProjectListItem = memo(function ProjectListItem({
         <span className="relative shrink-0 w-[22px] h-[22px] flex items-center justify-center">
           {isPinned ? (
             <Pin
-              className="h-[18px] w-[18px] group-hover/item:opacity-0 transition-opacity"
+              className="h-4 w-4 group-hover/item:opacity-0 transition-opacity"
+              strokeWidth={1.5}
               style={{ color: iconColor }}
             />
           ) : (

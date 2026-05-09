@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { useWorkspacePermissions } from '@/hooks/permissions'
-import { useWorkspaceSidebarSettings } from '@/hooks/useWorkspaceSidebarSettings'
 import { workspaceKeys, sidebarKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { Workspace, Participant } from '@/types/entities'
 import type { Database } from '@/types/database'
@@ -17,15 +16,20 @@ interface WorkspaceWithParticipant extends Workspace {
 type ProjectRow = Database['public']['Tables']['projects']['Row']
 
 /**
- * Расширенный тип проекта с подгруженной иконкой шаблона и цветом статуса.
- * Используется для отрисовки иконки проекта в сайдбаре. Поля `template` и
- * `status` мерджатся в коде (см. ниже useWorkspaceProjectTemplates +
- * useWorkspaceProjectStatuses) — embedded-select Supabase JS не используем,
- * чтобы не зависеть от различий one-to-one/many-to-one в PostgREST.
+ * Расширенный тип проекта с уже посчитанной иконкой и её цветом для сайдбара.
+ *
+ * `iconId` берётся из `project_templates.icon`.
+ * `iconColor` рассчитывается по `project_templates.icon_color_mode`:
+ *   - 'fixed'  → всегда `project_templates.icon_color`
+ *   - 'status' → цвет статуса проекта (statuses.color);
+ *                fallback в чёрный (#000000), если статус не задан.
+ *
+ * Если у проекта нет шаблона — поля undefined, ProjectListItem рисует
+ * дефолтную папку в дефолтном сером.
  */
 export type Project = ProjectRow & {
-  template?: { icon: string | null } | null
-  status?: { color: string } | null
+  iconId?: string | null
+  iconColor?: string
 }
 
 interface UseSidebarDataOptions {
@@ -44,11 +48,6 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
   const { user } = useAuth()
   const permissionsResult = useWorkspacePermissions({ workspaceId: workspaceId || '' })
   const queryClient = useQueryClient()
-  // Флаг «использовать цвет статуса для иконки проекта в сайдбаре».
-  // Пока настройки грузятся — считаем true (как до фичи); если отключено в БД,
-  // на следующем рендере перерисуем без цвета.
-  const { data: sidebarSettings } = useWorkspaceSidebarSettings(workspaceId)
-  const colorizeProjectIcons = sidebarSettings?.colorizeProjectIcons ?? true
 
   // --- Workspaces ---
   const { data: workspaces = [], isLoading: loadingWorkspaces } = useQuery<
@@ -251,16 +250,27 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
   // --- Шаблоны и статусы воркспейса для иконок проектов в сайдбаре ---
   // Грузим отдельными лёгкими запросами (несколько строк) и мерджим в проекты.
   // Так не зависим от различий one-to-one / many-to-one в PostgREST embedded select.
-  const { data: templatesById } = useQuery<Record<string, { icon: string | null }>>({
+  type TemplateMeta = {
+    icon: string | null
+    icon_color_mode: 'status' | 'fixed'
+    icon_color: string
+  }
+  const { data: templatesById } = useQuery<Record<string, TemplateMeta>>({
     queryKey: ['sidebar', 'workspace-templates-icons', workspaceId ?? ''],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_templates')
-        .select('id, icon')
+        .select('id, icon, icon_color_mode, icon_color')
         .eq('workspace_id', workspaceId!)
       if (error) throw error
-      const map: Record<string, { icon: string | null }> = {}
-      for (const row of data ?? []) map[row.id] = { icon: row.icon }
+      const map: Record<string, TemplateMeta> = {}
+      for (const row of data ?? []) {
+        map[row.id] = {
+          icon: row.icon,
+          icon_color_mode: (row.icon_color_mode === 'fixed' ? 'fixed' : 'status'),
+          icon_color: row.icon_color,
+        }
+      }
       return map
     },
     enabled: !!workspaceId,
@@ -284,20 +294,24 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
     staleTime: STALE_TIME.MEDIUM,
   })
 
-  // Обогащаем каждый проект полями `template` и `status` для сайдбара.
-  // Если colorizeProjectIcons выключен — `status` не подмешиваем; ProjectListItem
-  // увидит status=null и нарисует иконку серым (DEFAULT_ICON_COLOR).
+  // Fallback цвет, если режим 'status' но у проекта нет статуса —
+  // чёрный (по требованию).
+  const STATUS_FALLBACK_COLOR = '#000000'
+
+  // Обогащаем каждый проект готовыми `iconId` и `iconColor` для отрисовки в сайдбаре.
   const effectiveProjects = useMemo<Project[]>(() => {
     if (!templatesById && !statusesById) return projectsBeforeEnrich
-    return projectsBeforeEnrich.map((p) => ({
-      ...p,
-      template: p.template_id ? (templatesById?.[p.template_id] ?? null) : null,
-      status:
-        colorizeProjectIcons && p.status_id
-          ? (statusesById?.[p.status_id] ?? null)
-          : null,
-    }))
-  }, [projectsBeforeEnrich, templatesById, statusesById, colorizeProjectIcons])
+    return projectsBeforeEnrich.map((p) => {
+      const tpl = p.template_id ? templatesById?.[p.template_id] : undefined
+      if (!tpl) return p
+      const iconId = tpl.icon
+      const iconColor =
+        tpl.icon_color_mode === 'fixed'
+          ? tpl.icon_color
+          : (p.status_id && statusesById?.[p.status_id]?.color) || STATUS_FALLBACK_COLOR
+      return { ...p, iconId, iconColor }
+    })
+  }, [projectsBeforeEnrich, templatesById, statusesById])
 
   const currentWorkspace = workspaces.find((w) => w.id === workspaceId)
 
