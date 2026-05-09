@@ -198,6 +198,17 @@ export const financeServiceKeys = {
   list: (workspaceId: string) => ['finance-services', 'list', workspaceId] as const,
 }
 
+export const projectServiceKeys = {
+  all: ['project-services'] as const,
+  list: (projectId: string) => ['project-services', 'list', projectId] as const,
+}
+
+export const projectTransactionKeys = {
+  all: ['project-transactions'] as const,
+  list: (projectId: string, type: 'income' | 'expense' | 'all' = 'all') =>
+    ['project-transactions', 'list', projectId, type] as const,
+}
+
 export const inboxKeys = {
   all: ['inbox'] as const,
   /** Ключ inbox-кеша (thread-level). v1 удалён, остался только v2. */

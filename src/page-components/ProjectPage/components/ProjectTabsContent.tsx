@@ -41,6 +41,11 @@ const HistoryTabContent = lazy(() =>
 const DigestTabContent = lazy(() =>
   import('./DigestTabContent').then((m) => ({ default: m.DigestTabContent })),
 )
+const FinanceTabContent = lazy(() =>
+  import('@/components/projects/finance/FinanceTabContent').then((m) => ({
+    default: m.FinanceTabContent,
+  })),
+)
 
 function TabLoading() {
   return (
@@ -213,15 +218,10 @@ export function ProjectTabsContent({
 
       {/* Вкладка "Финансы" */}
       {activeTab === 'finances' && modules.finances && (
-        <div className="space-y-6 mt-2">
-          <div className="rounded-lg border p-12">
-            <div className="text-center">
-              <h3 className="text-lg font-medium mb-2">Финансы</h3>
-              <p className="text-muted-foreground">
-                Здесь будет отображаться финансовая информация проекта
-              </p>
-            </div>
-          </div>
+        <div className="mt-2">
+          <Suspense fallback={<TabLoading />}>
+            <FinanceTabContent projectId={projectId} workspaceId={workspaceId} />
+          </Suspense>
         </div>
       )}
 
