@@ -1,10 +1,16 @@
 /**
  * FinanceTabContent — содержимое вкладки «Финансы» проекта.
- * Этап 4: пока только секция «Услуги проекта». Доходы/расходы/сводка
- * добавляются на этапах 5-6.
+ *
+ * Структура (сверху вниз):
+ *   1. Карточки сводки (стоимость, доходы, расходы, прибыль, % оплаты)
+ *   2. Услуги проекта (с DnD-сортировкой)
+ *   3. Доходы
+ *   4. Расходы
  */
 
+import { FinanceSummary } from './FinanceSummary'
 import { ProjectServicesSection } from './ProjectServicesSection'
+import { ProjectTransactionsSection } from './ProjectTransactionsSection'
 
 interface Props {
   projectId: string
@@ -14,7 +20,10 @@ interface Props {
 export function FinanceTabContent({ projectId, workspaceId }: Props) {
   return (
     <div className="space-y-4">
+      <FinanceSummary projectId={projectId} />
       <ProjectServicesSection projectId={projectId} workspaceId={workspaceId} />
+      <ProjectTransactionsSection projectId={projectId} workspaceId={workspaceId} type="income" />
+      <ProjectTransactionsSection projectId={projectId} workspaceId={workspaceId} type="expense" />
     </div>
   )
 }
