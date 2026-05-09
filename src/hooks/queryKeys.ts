@@ -193,6 +193,11 @@ export const quickReplyKeys = {
     ['quick-replies', 'picker', workspaceId, templateId ?? 'all'] as const,
 }
 
+export const financeServiceKeys = {
+  all: ['finance-services'] as const,
+  list: (workspaceId: string) => ['finance-services', 'list', workspaceId] as const,
+}
+
 export const inboxKeys = {
   all: ['inbox'] as const,
   /** Ключ inbox-кеша (thread-level). v1 удалён, остался только v2. */
