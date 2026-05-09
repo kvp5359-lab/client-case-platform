@@ -511,8 +511,13 @@ function TaskPanelTabbedShellRenderer({
         onTogglePin={onTogglePin}
         onReorder={onReorderTab}
       />
-      {/* Строка 3+: содержимое активной вкладки (со своей шапкой). */}
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">{activeContent}</div>
+      {/* Строка 3+: содержимое активной вкладки (со своей шапкой).
+          Рендерим только когда панель открыта — иначе Tiptap-редактор
+          (ComposeField) инициализируется в hidden-контейнере с display:none,
+          получает 0×0 и после показа панели остаётся неотзывчивым к кликам. */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        {open && activeContent}
+      </div>
     </div>
   )
 
