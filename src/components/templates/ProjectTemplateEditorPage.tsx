@@ -32,6 +32,7 @@ import {
 import { BriefTemplateSection } from './project-template-editor/BriefTemplateSection'
 import { RootFolderSection } from './project-template-editor/RootFolderSection'
 import { IconPicker } from '@/components/ui/icon-picker'
+import { ColorPicker } from '@/components/ui/color-picker'
 import { PROJECT_ICONS } from '@/components/ui/project-icons'
 
 export function ProjectTemplateEditorPage() {
@@ -62,6 +63,8 @@ export function ProjectTemplateEditorPage() {
   const {
     updateTemplateMutation,
     updateIconMutation,
+    updateIconColorModeMutation,
+    updateIconColorMutation,
     updateIsLeadTemplateMutation,
     updateModulesMutation,
     addFormsMutation,
@@ -154,19 +157,54 @@ export function ProjectTemplateEditorPage() {
 
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 flex-1 min-w-0">
-              {/* Иконка шаблона — отображается в сайдбаре для всех проектов
-                  этого типа. Цвет задаётся динамически от статуса каждого
-                  конкретного проекта; здесь в редакторе показываем серым. */}
-              <IconPicker
-                value={template.icon}
-                onChange={(iconId) => updateIconMutation.mutate(iconId)}
-                disabled={updateIconMutation.isPending}
-                icons={PROJECT_ICONS}
-                color="#6B7280"
-                label="Иконка в сайдбаре"
-                popoverWidth={320}
-                popoverMaxHeight={360}
-              />
+              {/* Иконка шаблона + режим окраски. В режиме 'status' иконка
+                  в сайдбаре окрашивается цветом текущего статуса проекта,
+                  в режиме 'fixed' — фиксированным template.icon_color.
+                  В превью пикера показываем актуальный цвет. */}
+              <div className="space-y-3">
+                <IconPicker
+                  value={template.icon}
+                  onChange={(iconId) => updateIconMutation.mutate(iconId)}
+                  disabled={updateIconMutation.isPending}
+                  icons={PROJECT_ICONS}
+                  color={
+                    template.icon_color_mode === 'fixed' ? template.icon_color : '#6B7280'
+                  }
+                  label="Иконка в сайдбаре"
+                  popoverWidth={320}
+                  popoverMaxHeight={360}
+                />
+
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Цвет иконки</Label>
+                  <RadioGroup
+                    value={template.icon_color_mode}
+                    onValueChange={(v) =>
+                      updateIconColorModeMutation.mutate(v as 'status' | 'fixed')
+                    }
+                    disabled={updateIconColorModeMutation.isPending}
+                    className="flex flex-col gap-1.5"
+                  >
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <RadioGroupItem value="status" id="icon-color-mode-status" />
+                      <span>По цвету статуса</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <RadioGroupItem value="fixed" id="icon-color-mode-fixed" />
+                      <span>Свой цвет</span>
+                    </label>
+                  </RadioGroup>
+                </div>
+
+                {template.icon_color_mode === 'fixed' && (
+                  <ColorPicker
+                    value={template.icon_color}
+                    onChange={(color) => updateIconColorMutation.mutate(color)}
+                    disabled={updateIconColorMutation.isPending}
+                    label=""
+                  />
+                )}
+              </div>
 
               <div className="flex-1 min-w-0 pt-7">
                 {!isEditingName ? (
