@@ -19,6 +19,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
   preflight, jsonRes, requireInternalSecret, getServiceClient,
 } from "../_shared/edge.ts";
+import { ensureValidGmailToken, type GmailAccountData } from "../_shared/gmailToken.ts";
+import { uint8ArrayToBase64 } from "../_shared/encoding.ts";
 
 const ROOT_DOMAIN = "clientcase.app";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
@@ -35,6 +37,11 @@ interface MessageRow {
   email_send_account_id: string | null;
   thread_id: string;
   workspace_id: string;
+}
+
+interface ThreadRowExt {
+  email_send_account_id?: string | null;
+  email_send_method?: string | null;
 }
 
 interface ThreadRow {
@@ -82,7 +89,9 @@ Deno.serve(async (req: Request) => {
 
   const { data: thread, error: threadErr } = await service
     .from("project_threads")
-    .select("id, short_id, email_subject_root, email_last_external_address")
+    .select(
+      "id, short_id, email_subject_root, email_last_external_address, email_send_account_id, email_send_method",
+    )
     .eq("id", m.thread_id)
     .maybeSingle();
   if (threadErr || !thread) {
@@ -127,15 +136,126 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  const fromAddress = `t+${t.short_id}@${w.slug}.${ROOT_DOMAIN}`;
   const senderName = m.sender_name?.trim() || "ClientCase";
   const subjectRaw = t.email_subject_root
     ? `Re: ${t.email_subject_root}`
     : (m.email_subject?.trim() || "(без темы)");
-  const messageIdHeader = `<${crypto.randomUUID()}@${w.slug}.${ROOT_DOMAIN}>`;
-
   const html = wrapPlainAsHtmlIfNeeded(m.content ?? "");
   const text = htmlToPlainText(html);
+
+  // Метод отправки: явный на сообщении/треде, иначе авто (есть account → Gmail, иначе Resend)
+  const tExt = t as unknown as ThreadRowExt;
+  const explicitMethod = m.email_send_method ?? tExt.email_send_method ?? null;
+  const sendAccountId = m.email_send_account_id ?? tExt.email_send_account_id ?? null;
+  const method =
+    explicitMethod === "employee_mailbox"
+      ? "employee_mailbox"
+      : explicitMethod === "system_postmark"
+        ? "system_postmark"
+        : sendAccountId
+          ? "employee_mailbox"
+          : "system_postmark";
+
+  // === ВЕТКА 1: employee_mailbox (через Gmail сотрудника) ===
+  if (method === "employee_mailbox" && sendAccountId) {
+    const { data: account, error: accErr } = await service
+      .from("email_accounts")
+      .select(
+        "id, user_id, email, access_token, refresh_token, token_expires_at, last_history_id, watch_expires_at, workspace_id, is_active",
+      )
+      .eq("id", sendAccountId)
+      .maybeSingle();
+    if (accErr || !account) {
+      return jsonRes({ error: "email account not found" }, 404);
+    }
+    const acc = account as GmailAccountData & { is_active: boolean; workspace_id: string };
+    if (!acc.is_active) {
+      return jsonRes({ error: "email account inactive" }, 400);
+    }
+
+    let accessToken: string;
+    try {
+      accessToken = await ensureValidGmailToken(service, acc);
+    } catch (e) {
+      await service
+        .from("project_messages")
+        .update({ email_delivery_status: "failed", email_send_method: "employee_mailbox" })
+        .eq("id", m.id);
+      return jsonRes(
+        { error: "gmail_token_failed", detail: e instanceof Error ? e.message : String(e) },
+        502,
+      );
+    }
+
+    const messageIdHeader = `<${crypto.randomUUID()}@${acc.email.split("@")[1] ?? "gmail.com"}>`;
+    const rfc2822 = buildRfc2822({
+      fromName: senderName,
+      fromAddress: acc.email,
+      to: t.email_last_external_address,
+      subject: subjectRaw,
+      messageId: messageIdHeader,
+      inReplyTo,
+      references,
+      html,
+      text,
+    });
+    const raw = uint8ArrayToBase64(new TextEncoder().encode(rfc2822))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    const gmailResp = await fetch(
+      "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ raw }),
+      },
+    );
+    if (!gmailResp.ok) {
+      const errBody = await gmailResp.text().catch(() => "");
+      await service
+        .from("project_messages")
+        .update({ email_delivery_status: "failed", email_send_method: "employee_mailbox" })
+        .eq("id", m.id);
+      return jsonRes(
+        { error: "gmail_send_failed", status: gmailResp.status, detail: errBody.slice(0, 500) },
+        502,
+      );
+    }
+    await service
+      .from("project_messages")
+      .update({
+        email_message_id: messageIdHeader,
+        email_send_method: "employee_mailbox",
+        email_send_account_id: sendAccountId,
+        email_delivery_status: "sent",
+        email_subject: subjectRaw,
+      })
+      .eq("id", m.id);
+
+    if (!t.email_subject_root) {
+      const root = subjectRaw.replace(/^\s*Re:\s*/i, "").trim();
+      if (root) {
+        await service.from("project_threads").update({ email_subject_root: root }).eq("id", t.id);
+      }
+    }
+
+    return jsonRes({
+      ok: true,
+      method: "employee_mailbox",
+      message_id_header: messageIdHeader,
+      from: acc.email,
+      to: t.email_last_external_address,
+    });
+  }
+
+  // === ВЕТКА 2: system_postmark (через Resend от t+<id>@<slug>) ===
+  const fromAddress = `t+${t.short_id}@${w.slug}.${ROOT_DOMAIN}`;
+  const messageIdHeader = `<${crypto.randomUUID()}@${w.slug}.${ROOT_DOMAIN}>`;
 
   const headers: Record<string, string> = { "Message-ID": messageIdHeader };
   if (inReplyTo) headers["In-Reply-To"] = inReplyTo;
@@ -241,4 +361,67 @@ function htmlToPlainText(html: string): string {
 /** В заголовке From "..." нужно избежать кавычек/CR/LF в имени отправителя. */
 function escapeFromName(name: string): string {
   return name.replace(/["\r\n]/g, " ").trim();
+}
+
+/**
+ * Минимальный RFC2822 message с multipart/alternative (text + html)
+ * для отправки через Gmail API users.messages.send.
+ *
+ * Subject и Имя кодируются в RFC2047 (UTF-8 base64) — иначе кириллица будет
+ * битой в Gmail клиенте получателя.
+ */
+function buildRfc2822(opts: {
+  fromName: string;
+  fromAddress: string;
+  to: string;
+  subject: string;
+  messageId: string;
+  inReplyTo: string | null;
+  references: string[];
+  html: string;
+  text: string;
+}): string {
+  const altBoundary = `alt_${crypto.randomUUID().replace(/-/g, "")}`;
+  const lines: string[] = [];
+  lines.push(`From: ${rfc2047EncodeName(opts.fromName)} <${opts.fromAddress}>`);
+  lines.push(`To: ${opts.to}`);
+  lines.push(`Subject: ${rfc2047Encode(opts.subject)}`);
+  lines.push(`Message-ID: ${opts.messageId}`);
+  if (opts.inReplyTo) lines.push(`In-Reply-To: ${opts.inReplyTo}`);
+  if (opts.references.length) lines.push(`References: ${opts.references.join(" ")}`);
+  lines.push(`MIME-Version: 1.0`);
+  lines.push(`Content-Type: multipart/alternative; boundary="${altBoundary}"`);
+  lines.push(``);
+  lines.push(`--${altBoundary}`);
+  lines.push(`Content-Type: text/plain; charset=UTF-8`);
+  lines.push(`Content-Transfer-Encoding: base64`);
+  lines.push(``);
+  lines.push(toBase64(opts.text));
+  lines.push(``);
+  lines.push(`--${altBoundary}`);
+  lines.push(`Content-Type: text/html; charset=UTF-8`);
+  lines.push(`Content-Transfer-Encoding: base64`);
+  lines.push(``);
+  lines.push(toBase64(opts.html));
+  lines.push(``);
+  lines.push(`--${altBoundary}--`);
+  return lines.join("\r\n");
+}
+
+function toBase64(s: string): string {
+  return uint8ArrayToBase64(new TextEncoder().encode(s));
+}
+
+/** RFC 2047 encoded-word для не-ASCII значений (например, кириллицы в Subject). */
+function rfc2047Encode(value: string): string {
+  // Если только ASCII — оставляем как есть
+  if (/^[\x20-\x7e]*$/.test(value)) return value;
+  return `=?UTF-8?B?${toBase64(value)}?=`;
+}
+
+/** Кавычит и (если надо) кодирует имя для From. */
+function rfc2047EncodeName(name: string): string {
+  const cleaned = escapeFromName(name);
+  if (/^[\x20-\x7e]*$/.test(cleaned)) return `"${cleaned}"`;
+  return rfc2047Encode(cleaned);
 }
