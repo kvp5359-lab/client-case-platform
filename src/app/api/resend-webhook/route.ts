@@ -100,8 +100,16 @@ async function handleInbound(
   supabase: ReturnType<typeof createSupabaseServiceClient>,
   event: ResendEvent,
 ) {
-  const data = event.data
-  const resendId = data.id ?? data.email_id ?? null
+  // Resend в webhook payload передаёт только метаданные — без html/text body
+  // и (часто) без headers. Поэтому достаём полный inbound через REST API
+  // используя email_id из payload.
+  const initialId = event.data.id ?? event.data.email_id ?? null
+  let data: ResendEmailData = event.data
+  if (initialId) {
+    const fetched = await fetchResendInbound(initialId)
+    if (fetched) data = { ...event.data, ...fetched }
+  }
+  const resendId = initialId
 
   const fromList = normalizeAddressList(data.from)
   const toList = normalizeAddressList(data.to)
@@ -181,12 +189,15 @@ async function handleInbound(
       break
     }
     case 'project': {
-      const result = await ensureThreadInProject(supabase, {
+      // Каждое письмо на p+<id>@ — НОВОЕ обращение → создаём новый тред,
+      // даже если от того же отправителя уже есть треды в проекте.
+      // Продолжение переписки клиент делает, отвечая на наше письмо
+      // (Reply-To = t+<thread_id>@), которое уйдёт в resolution_type='thread'.
+      const result = await createNewThreadInProject(supabase, {
         workspaceId,
         projectId: resolution.project_id!,
         fromAddress: realFrom.address,
         subject: data.subject ?? null,
-        templateId: null,
       })
       threadId = result.threadId
       projectId = resolution.project_id
@@ -334,6 +345,39 @@ async function handleDeliveryStatus(
   return NextResponse.json({ status: 'ok', delivery_status: status })
 }
 
+/**
+ * Создаёт новый тред в проекте — без поиска существующего. Используется
+ * для p+<id>@: каждое письмо клиента на адрес проекта = новое обращение.
+ */
+async function createNewThreadInProject(
+  supabase: ReturnType<typeof createSupabaseServiceClient>,
+  opts: {
+    workspaceId: string
+    projectId: string
+    fromAddress: string
+    subject: string | null
+  },
+): Promise<{ threadId: string }> {
+  const { data: created, error } = await supabase
+    .from('project_threads')
+    .insert({
+      project_id: opts.projectId,
+      workspace_id: opts.workspaceId,
+      name: opts.subject?.trim() || `Email от ${opts.fromAddress}`,
+      type: 'chat',
+      email_subject_root: opts.subject ?? null,
+      email_last_external_address: opts.fromAddress,
+    })
+    .select('id')
+    .single()
+  if (error || !created) throw error ?? new Error('create_thread_failed')
+  return { threadId: created.id }
+}
+
+/**
+ * Ищет существующий тред в проекте по from-адресу, иначе создаёт новый.
+ * Используется виртуальными адресами с routing_mode='append_existing'.
+ */
 async function ensureThreadInProject(
   supabase: ReturnType<typeof createSupabaseServiceClient>,
   opts: {
@@ -352,21 +396,7 @@ async function ensureThreadInProject(
     .eq('is_deleted', false)
     .maybeSingle()
   if (existing) return { threadId: existing.id }
-
-  const { data: created, error } = await supabase
-    .from('project_threads')
-    .insert({
-      project_id: opts.projectId,
-      workspace_id: opts.workspaceId,
-      name: opts.subject?.trim() || `Email от ${opts.fromAddress}`,
-      type: 'chat',
-      email_subject_root: opts.subject ?? null,
-      email_last_external_address: opts.fromAddress,
-    })
-    .select('id')
-    .single()
-  if (error || !created) throw error ?? new Error('create_thread_failed')
-  return { threadId: created.id }
+  return createNewThreadInProject(supabase, opts)
 }
 
 async function applyVirtualRouting(
@@ -455,6 +485,25 @@ async function saveUnmatched(
  * требует длину > 0, поэтому при отсутствии html/text от Resend кладём
  * subject либо плейсхолдер.
  */
+/**
+ * Resend webhook payload содержит только метаданные. Полные данные
+ * (html/text body, headers, attachments) — отдельным GET-запросом.
+ */
+async function fetchResendInbound(emailId: string): Promise<ResendEmailData | null> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return null
+  try {
+    const res = await fetch(`https://api.resend.com/emails/inbound/${emailId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as ResendEmailData
+    return data
+  } catch {
+    return null
+  }
+}
+
 function pickContent(data: ResendEmailData): string {
   const html = data.html?.trim()
   if (html) return html
