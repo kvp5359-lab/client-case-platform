@@ -176,9 +176,9 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
         {isLoading || transactions.length === 0 ? (
           <EmptyState loading={isLoading} emptyText={config.emptyText} />
         ) : (
-          <div>
+          <div className="border-x">
             <table className="w-full text-sm">
-              <thead className="text-gray-500 border-b">
+              <thead className="bg-gray-50 text-gray-500 border-b">
                 <tr>
                   <th className="text-left px-3 py-2 font-medium w-28">Дата</th>
                   <th className="text-left px-3 py-2 font-medium">{config.subjectLabel}</th>
@@ -280,8 +280,8 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                 <tr>
                   <td className="px-3 py-2" colSpan={6}>
                     <div className="flex items-center justify-end gap-2 text-sm tabular-nums">
-                      <span className="font-medium">
-                        Итого:{' '}
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-900">
+                        <span>Итого:</span>
                         <span className="font-semibold">{fmt(totalSum)} EUR</span>
                       </span>
                     </div>
