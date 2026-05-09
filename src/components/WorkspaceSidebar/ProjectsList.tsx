@@ -8,14 +8,12 @@
 
 import { memo, useState, useRef, useEffect, useMemo } from 'react'
 import { Search, X, Plus } from 'lucide-react'
-import type { Database } from '@/types/database'
 import type { ModuleDefinition } from '@/page-components/ProjectPage/moduleRegistry'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import { usePinnedProjects } from './usePinnedProjects'
 import { useFlipAnimation } from './useFlipAnimation'
 import { ProjectListItem } from './ProjectListItem'
-
-type Project = Database['public']['Tables']['projects']['Row']
+import type { Project } from './useSidebarData'
 
 export interface ProjectsListProps {
   projects: Project[]

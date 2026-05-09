@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { Circle } from 'lucide-react'
-import { STATUS_ICONS } from '@/components/ui/status-icons'
+import { STATUS_ICONS, type StatusIconDef } from '@/components/ui/status-icons'
 
 interface IconPickerProps {
   value: string | null | undefined
@@ -15,6 +15,15 @@ interface IconPickerProps {
   color?: string
   disabled?: boolean
   label?: string
+  /**
+   * Набор иконок для выбора. По умолчанию — STATUS_ICONS (для статусов).
+   * Передай PROJECT_ICONS для иконок шаблонов проектов и т.п.
+   */
+  icons?: StatusIconDef[]
+  /** Ширина поповера в пикселях. По умолчанию 280 (6 колонок). */
+  popoverWidth?: number
+  /** Высота поповера для скролла, в пикселях. Если не задана — без скролла. */
+  popoverMaxHeight?: number
 }
 
 export function IconPicker({
@@ -23,8 +32,11 @@ export function IconPicker({
   color,
   disabled = false,
   label = 'Иконка',
+  icons = STATUS_ICONS,
+  popoverWidth = 280,
+  popoverMaxHeight,
 }: IconPickerProps) {
-  const currentDef = STATUS_ICONS.find((i) => i.id === value)
+  const currentDef = icons.find((i) => i.id === value)
   const CurrentIcon = currentDef?.icon ?? Circle
 
   return (
@@ -49,9 +61,20 @@ export function IconPicker({
             </span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[280px] p-3" align="start">
-          <div className="grid grid-cols-6 gap-1">
-            {STATUS_ICONS.map((si) => {
+        <PopoverContent
+          className="p-3"
+          align="start"
+          style={{ width: popoverWidth }}
+        >
+          <div
+            className="grid grid-cols-6 gap-1"
+            style={
+              popoverMaxHeight
+                ? { maxHeight: popoverMaxHeight, overflowY: 'auto' }
+                : undefined
+            }
+          >
+            {icons.map((si) => {
               const Icon = si.icon
               const isSelected = value === si.id
               return (

@@ -31,6 +31,8 @@ import {
 } from './project-template-editor'
 import { BriefTemplateSection } from './project-template-editor/BriefTemplateSection'
 import { RootFolderSection } from './project-template-editor/RootFolderSection'
+import { IconPicker } from '@/components/ui/icon-picker'
+import { PROJECT_ICONS } from '@/components/ui/project-icons'
 
 export function ProjectTemplateEditorPage() {
   const { workspaceId, templateId } = useParams<{ workspaceId: string; templateId: string }>()
@@ -59,6 +61,7 @@ export function ProjectTemplateEditorPage() {
   // Мутации
   const {
     updateTemplateMutation,
+    updateIconMutation,
     updateIsLeadTemplateMutation,
     updateModulesMutation,
     addFormsMutation,
@@ -150,28 +153,46 @@ export function ProjectTemplateEditorPage() {
           </Button>
 
           <div className="flex items-start justify-between gap-4">
-            {!isEditingName ? (
-              <div>
-                <h1 className="text-3xl font-bold mb-2">{template.name}</h1>
-                {template.description && (
-                  <p className="text-muted-foreground">{template.description}</p>
+            <div className="flex items-start gap-4 flex-1 min-w-0">
+              {/* Иконка шаблона — отображается в сайдбаре для всех проектов
+                  этого типа. Цвет задаётся динамически от статуса каждого
+                  конкретного проекта; здесь в редакторе показываем серым. */}
+              <IconPicker
+                value={template.icon}
+                onChange={(iconId) => updateIconMutation.mutate(iconId)}
+                disabled={updateIconMutation.isPending}
+                icons={PROJECT_ICONS}
+                color="#6B7280"
+                label="Иконка в сайдбаре"
+                popoverWidth={320}
+                popoverMaxHeight={360}
+              />
+
+              <div className="flex-1 min-w-0 pt-7">
+                {!isEditingName ? (
+                  <>
+                    <h1 className="text-3xl font-bold mb-2">{template.name}</h1>
+                    {template.description && (
+                      <p className="text-muted-foreground">{template.description}</p>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <Input
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      placeholder="Название типа проекта"
+                      className="text-2xl font-bold h-auto py-2"
+                    />
+                    <Input
+                      value={editedDescription}
+                      onChange={(e) => setEditedDescription(e.target.value)}
+                      placeholder="Описание (необязательно)"
+                    />
+                  </div>
                 )}
               </div>
-            ) : (
-              <div className="flex-1 space-y-3">
-                <Input
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  placeholder="Название типа проекта"
-                  className="text-2xl font-bold h-auto py-2"
-                />
-                <Input
-                  value={editedDescription}
-                  onChange={(e) => setEditedDescription(e.target.value)}
-                  placeholder="Описание (необязательно)"
-                />
-              </div>
-            )}
+            </div>
 
             <div className="flex items-center gap-2">
               {!isEditingName ? (

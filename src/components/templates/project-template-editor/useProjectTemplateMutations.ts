@@ -62,6 +62,26 @@ export function useProjectTemplateMutations({
     },
   })
 
+  // Обновление иконки шаблона (отображается в сайдбаре для проектов этого типа)
+  const updateIconMutation = useMutation({
+    mutationFn: async (icon: string) => {
+      const { error } = await supabase
+        .from('project_templates')
+        .update({ icon })
+        .eq('id', templateId ?? '')
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detailFull(templateId) })
+      // Сайдбар держит мапу icon-ов шаблонов в отдельном ключе — обновляем.
+      queryClient.invalidateQueries({ queryKey: ['sidebar', 'workspace-templates-icons'] })
+    },
+    onError: () => {
+      toast.error('Не удалось обновить иконку')
+    },
+  })
+
   // Переключение флага "это шаблон лида" (CRM-фрейм этап 3)
   const updateIsLeadTemplateMutation = useMutation({
     mutationFn: async (isLead: boolean) => {
@@ -270,6 +290,7 @@ export function useProjectTemplateMutations({
 
   return {
     updateTemplateMutation,
+    updateIconMutation,
     updateIsLeadTemplateMutation,
     updateModulesMutation,
     addFormsMutation,

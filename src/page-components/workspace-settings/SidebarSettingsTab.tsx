@@ -30,6 +30,8 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -53,6 +55,7 @@ import {
   BADGE_MODES,
   TOPBAR_SOFT_LIMIT,
   DEFAULT_SIDEBAR_SLOTS,
+  DEFAULT_COLORIZE_PROJECT_ICONS,
   reorderWithinZones,
   navKeyFromSlotId,
   boardIdFromSlotId,
@@ -73,6 +76,12 @@ export function SidebarSettingsTab() {
 
   const [override, setOverride] = useState<SidebarSlot[] | null>(null)
   const slots = override ?? settings?.slots ?? DEFAULT_SIDEBAR_SLOTS
+
+  // Локальное состояние тумблера «цвет статуса для иконки проекта».
+  // null = не редактировано, тогда берём значение из БД (или дефолт).
+  const [colorizeOverride, setColorizeOverride] = useState<boolean | null>(null)
+  const colorizeProjectIcons =
+    colorizeOverride ?? settings?.colorizeProjectIcons ?? DEFAULT_COLORIZE_PROJECT_ICONS
 
   if (!isOwner) {
     return (
@@ -97,8 +106,13 @@ export function SidebarSettingsTab() {
   const handleSave = async () => {
     if (!workspaceId) return
     try {
-      await update.mutateAsync({ workspaceId, slots })
+      await update.mutateAsync({
+        workspaceId,
+        slots,
+        colorizeProjectIcons,
+      })
       setOverride(null)
+      setColorizeOverride(null)
       toast.success('Настройки сайдбара сохранены')
     } catch (err) {
       toast.error('Не удалось сохранить', {
@@ -107,15 +121,20 @@ export function SidebarSettingsTab() {
     }
   }
 
-  const handleResetDefaults = () => setOverride([...DEFAULT_SIDEBAR_SLOTS])
+  const handleResetDefaults = () => {
+    setOverride([...DEFAULT_SIDEBAR_SLOTS])
+    setColorizeOverride(DEFAULT_COLORIZE_PROJECT_ICONS)
+  }
 
-  const dirty = override !== null
+  const dirty = override !== null || colorizeOverride !== null
 
   return (
     <SidebarSettingsView
       slots={slots}
       boards={boards.map((b) => ({ id: b.id, name: b.name }))}
       onChange={setOverride}
+      colorizeProjectIcons={colorizeProjectIcons}
+      onChangeColorize={setColorizeOverride}
       onSave={handleSave}
       onReset={handleResetDefaults}
       dirty={dirty}
@@ -128,6 +147,8 @@ function SidebarSettingsView({
   slots,
   boards,
   onChange,
+  colorizeProjectIcons,
+  onChangeColorize,
   onSave,
   onReset,
   dirty,
@@ -136,6 +157,8 @@ function SidebarSettingsView({
   slots: SidebarSlot[]
   boards: { id: string; name: string }[]
   onChange: (next: SidebarSlot[]) => void
+  colorizeProjectIcons: boolean
+  onChangeColorize: (value: boolean) => void
   onSave: () => void
   onReset: () => void
   dirty: boolean
@@ -256,6 +279,36 @@ function SidebarSettingsView({
           </Button>
         </div>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Иконки проектов</CardTitle>
+          <CardDescription>
+            Настройка отображения иконок рядом с названиями проектов в сайдбаре.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-start gap-3">
+            <Switch
+              id="colorize-project-icons"
+              checked={colorizeProjectIcons}
+              onCheckedChange={onChangeColorize}
+            />
+            <div className="flex-1">
+              <Label
+                htmlFor="colorize-project-icons"
+                className="text-sm font-medium cursor-pointer"
+              >
+                Использовать цвет статуса для иконки проекта в сайдбаре
+              </Label>
+              <p className="text-xs text-gray-500 mt-1">
+                Если включено — иконка проекта окрашивается цветом его текущего статуса.
+                Если выключено — иконка остаётся серой.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <ZoneCard
         title="Верхняя строка"

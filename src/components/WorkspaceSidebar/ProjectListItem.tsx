@@ -1,16 +1,22 @@
 "use client"
 
-import { memo } from 'react'
+import { memo, createElement } from 'react'
 import Link from 'next/link'
-import { FolderOpen, ChevronRight, ChevronDown, Pin, PinOff } from 'lucide-react'
+import { ChevronRight, ChevronDown, Pin, PinOff } from 'lucide-react'
 import * as CollapsiblePrimitive from '@radix-ui/react-collapsible'
-import type { Database } from '@/types/database'
 import type { ModuleDefinition } from '@/page-components/ProjectPage/moduleRegistry'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import { formatBadgeCount } from '@/utils/inboxUnread'
-import { getBadgeClasses, FOLDER_ICON_COLOR } from './projectListConstants'
+import { getBadgeClasses } from './projectListConstants'
+import { getProjectIcon } from '@/components/ui/project-icons'
+import { safeCssColor } from '@/utils/isValidCssColor'
+import type { Project } from './useSidebarData'
 
-type Project = Database['public']['Tables']['projects']['Row']
+/**
+ * Дефолтный серый цвет для иконки проекта без статуса.
+ * Тон совпадает с muted-foreground (Tailwind gray-500).
+ */
+const DEFAULT_ICON_COLOR = '#6B7280'
 
 export interface ProjectListItemProps {
   project: Project
@@ -47,6 +53,17 @@ export const ProjectListItem = memo(function ProjectListItem({
   isPinned,
   togglePin,
 }: ProjectListItemProps) {
+  // Иконка проекта берётся из его шаблона (project_templates.icon).
+  // Цвет — от статуса проекта (statuses.color); если статус не задан, серый дефолт.
+  // Закреплённые проекты сохраняют визуальное отличие — иконка Pin.
+  // createElement используем, чтобы линтер не считал это «созданием компонента
+  // на рендере» — мы лишь выбираем существующий Lucide-компонент из мапы.
+  const iconColor = safeCssColor(project.status?.color || DEFAULT_ICON_COLOR)
+  const projectIconNode = createElement(getProjectIcon(project.template?.icon), {
+    className: 'h-[18px] w-[18px] group-hover/item:opacity-0 transition-opacity',
+    style: { color: iconColor },
+  })
+
   const badge = badgeDisplays?.get(project.id) ?? { type: 'none' as const }
   const hasClientUnread = clientUnreadCounts?.has(project.id) ?? false
   const hasInternalUnread = internalUnreadCounts?.has(project.id) ?? false
@@ -84,13 +101,10 @@ export const ProjectListItem = memo(function ProjectListItem({
           {isPinned ? (
             <Pin
               className="h-[18px] w-[18px] group-hover/item:opacity-0 transition-opacity"
-              style={{ color: FOLDER_ICON_COLOR }}
+              style={{ color: iconColor }}
             />
           ) : (
-            <FolderOpen
-              className="h-[18px] w-[18px] group-hover/item:opacity-0 transition-opacity"
-              style={{ color: FOLDER_ICON_COLOR }}
-            />
+            projectIconNode
           )}
           <button
             type="button"
