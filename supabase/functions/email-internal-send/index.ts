@@ -241,6 +241,15 @@ Deno.serve(async (req: Request) => {
         502,
       );
     }
+    // Сохраняем gmail_thread_id чтобы gmail-webhook смог сматчить
+    // ответ клиента (Pub/Sub-уведомление приходит на наш Gmail и
+    // gmail-webhook ищет тред по project_thread_email_links.gmail_thread_id).
+    const gmailJson = (await gmailResp.json().catch(() => ({}))) as {
+      threadId?: string;
+      id?: string;
+    };
+    const gmailThreadId = gmailJson.threadId ?? null;
+
     await service
       .from("project_messages")
       .update({
@@ -259,10 +268,34 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Upsert email_link: один на (thread_id, contact_email).
+    if (gmailThreadId && t.email_last_external_address) {
+      const { data: existingLink } = await service
+        .from("project_thread_email_links")
+        .select("id")
+        .eq("thread_id", t.id)
+        .eq("contact_email", t.email_last_external_address)
+        .maybeSingle();
+      if (existingLink) {
+        await service
+          .from("project_thread_email_links")
+          .update({ gmail_thread_id: gmailThreadId, is_active: true })
+          .eq("id", (existingLink as { id: string }).id);
+      } else {
+        await service.from("project_thread_email_links").insert({
+          thread_id: t.id,
+          contact_email: t.email_last_external_address,
+          gmail_thread_id: gmailThreadId,
+          subject: subjectRoot,
+        });
+      }
+    }
+
     return jsonRes({
       ok: true,
       method: "employee_mailbox",
       message_id_header: messageIdHeader,
+      gmail_thread_id: gmailThreadId,
       from: acc.email,
       to: t.email_last_external_address,
     });
