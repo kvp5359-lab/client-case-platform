@@ -6,15 +6,16 @@
  */
 
 import { memo } from 'react'
-import { Search, X, Plus, List, CalendarDays } from 'lucide-react'
+import { Search, X, List, CalendarDays } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import type { TaskStatus } from '@/hooks/useStatuses'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { useTaskFilters } from './useTaskFilters'
+import type { ThreadTemplate } from '@/types/threadTemplate'
 
 import { TaskPresetPopover } from './TaskPresetPopover'
 import { AssigneeFilter, DeadlineFilter, StatusFilter, ProjectFilter } from './filters'
+import { CreateThreadButtonGroup, type ThreadKind } from './CreateThreadButtonGroup'
 
 interface TaskListControlsProps {
   filters: ReturnType<typeof useTaskFilters>
@@ -22,7 +23,8 @@ interface TaskListControlsProps {
   onToggleFilters: () => void
   presetPopoverOpen: boolean
   onPresetPopoverChange: (open: boolean) => void
-  onCreateClick: () => void
+  onCreate: (kind: ThreadKind, template?: ThreadTemplate) => void
+  threadTemplates: ThreadTemplate[]
   isProjectMode: boolean
   allAssignees: AvatarParticipant[]
   currentParticipantId: string | null
@@ -35,7 +37,8 @@ export const TaskListControls = memo(function TaskListControls({
   onToggleFilters,
   presetPopoverOpen,
   onPresetPopoverChange,
-  onCreateClick,
+  onCreate,
+  threadTemplates,
   isProjectMode,
   allAssignees,
   currentParticipantId,
@@ -101,15 +104,11 @@ export const TaskListControls = memo(function TaskListControls({
             <List className="w-3.5 h-3.5" />
           </button>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-9 shrink-0"
-          onClick={onCreateClick}
-        >
-          <Plus className="w-4 h-4 mr-1.5" />
-          Создать задачу
-        </Button>
+        <CreateThreadButtonGroup
+          threadTemplates={threadTemplates}
+          onCreate={onCreate}
+          primary="task"
+        />
       </div>
 
       {/* Фильтры (отдельная строка, сворачиваемые) */}

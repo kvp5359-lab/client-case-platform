@@ -25,6 +25,10 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { getCurrentWorkspaceParticipant } from '@/services/api/messenger/messengerService'
 import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
+import type { ThreadTemplate } from '@/types/threadTemplate'
+import { useThreadTemplatesForProject, useThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 import type { TaskItem } from './types'
 
 // Lazy-load: ChatSettingsDialog тянет Tiptap (~200 KB) через ComposeField.
@@ -87,6 +91,8 @@ export const TaskListView = memo(function TaskListView({
   // Свежесозданный тред — используется пока он не появится в кеше
   const [createdThread, setCreatedThread] = useState<TaskItem | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [createDefaultType, setCreateDefaultType] = useState<'task' | 'chat' | 'email'>('task')
+  const [createTemplate, setCreateTemplate] = useState<ThreadTemplate | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [presetPopoverOpen, setPresetPopoverOpen] = useState(false)
   const [deletingTask, setDeletingTask] = useState<TaskItem | null>(null)
@@ -119,6 +125,30 @@ export const TaskListView = memo(function TaskListView({
   const membersMap = useMemo(() => rawMembersMap ?? {}, [rawMembersMap])
   const { data: currentParticipantId = null } = useCurrentParticipantId(workspaceId)
   const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)
+
+  // Загружаем template_id проекта (если в проектном режиме) — чтобы попап
+  // создания показывал релевантные шаблоны тредов.
+  const { data: projectTemplateId } = useQuery<string | null>({
+    queryKey: ['project-template-id', projectId ?? ''],
+    enabled: !!projectId,
+    queryFn: async () => {
+      if (!projectId) return null
+      const { data } = await supabase
+        .from('projects')
+        .select('template_id')
+        .eq('id', projectId)
+        .maybeSingle()
+      return (data?.template_id as string | null) ?? null
+    },
+  })
+  const { data: projectThreadTemplates = [] } = useThreadTemplatesForProject(
+    isProjectMode ? workspaceId : undefined,
+    projectTemplateId,
+  )
+  const { data: globalThreadTemplates = [] } = useThreadTemplates(
+    isProjectMode ? undefined : workspaceId,
+  )
+  const threadTemplates = isProjectMode ? projectThreadTemplates : globalThreadTemplates
 
   // ── Фильтры ──
 
@@ -255,7 +285,12 @@ export const TaskListView = memo(function TaskListView({
         onToggleFilters={() => setFiltersOpen((v) => !v)}
         presetPopoverOpen={presetPopoverOpen}
         onPresetPopoverChange={setPresetPopoverOpen}
-        onCreateClick={() => setCreateOpen(true)}
+        onCreate={(kind, template) => {
+          setCreateDefaultType(kind)
+          setCreateTemplate(template ?? null)
+          setCreateOpen(true)
+        }}
+        threadTemplates={threadTemplates}
         isProjectMode={isProjectMode}
         allAssignees={allAssignees}
         currentParticipantId={currentParticipantId}
@@ -347,9 +382,17 @@ export const TaskListView = memo(function TaskListView({
             chat={null}
             workspaceId={workspaceId}
             projectId={projectId}
-            defaultThreadType="task"
+            defaultThreadType={createDefaultType === 'task' ? 'task' : 'chat'}
+            defaultTabMode={createDefaultType}
+            initialTemplate={createTemplate ?? undefined}
             open={createOpen}
-            onOpenChange={setCreateOpen}
+            onOpenChange={(open) => {
+              setCreateOpen(open)
+              if (!open) {
+                setCreateTemplate(null)
+                setCreateDefaultType('task')
+              }
+            }}
             onCreate={handleCreate}
             isPending={createPending}
           />
