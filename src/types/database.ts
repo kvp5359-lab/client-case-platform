@@ -4956,6 +4956,8 @@ export type Database = {
           description: string | null
           enabled_modules: string[] | null
           icon: string
+          icon_color: string
+          icon_color_mode: string
           id: string
           is_lead_template: boolean
           name: string
@@ -4970,6 +4972,8 @@ export type Database = {
           description?: string | null
           enabled_modules?: string[] | null
           icon?: string
+          icon_color?: string
+          icon_color_mode?: string
           id?: string
           is_lead_template?: boolean
           name: string
@@ -4984,6 +4988,8 @@ export type Database = {
           description?: string | null
           enabled_modules?: string[] | null
           icon?: string
+          icon_color?: string
+          icon_color_mode?: string
           id?: string
           is_lead_template?: boolean
           name?: string
@@ -6756,21 +6762,18 @@ export type Database = {
       }
       workspace_sidebar_settings: {
         Row: {
-          colorize_project_icons: boolean
           slots: Json
           updated_at: string
           updated_by: string | null
           workspace_id: string
         }
         Insert: {
-          colorize_project_icons?: boolean
           slots?: Json
           updated_at?: string
           updated_by?: string | null
           workspace_id: string
         }
         Update: {
-          colorize_project_icons?: boolean
           slots?: Json
           updated_at?: string
           updated_by?: string | null
