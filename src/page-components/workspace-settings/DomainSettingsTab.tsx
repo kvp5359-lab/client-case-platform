@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { workspaceKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { workspaceKeys, workspaceDomainKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
 
 const ROOT_DOMAIN = 'clientcase.app'
@@ -71,7 +71,7 @@ export function DomainSettingsTab() {
   const queryClient = useQueryClient()
 
   const { data: domain, isLoading, error } = useQuery({
-    queryKey: ['workspace-domain', workspaceId],
+    queryKey: workspaceDomainKeys.domain(workspaceId),
     queryFn: () => fetchWorkspaceDomain(workspaceId!),
     staleTime: STALE_TIME.LONG,
     enabled: !!workspaceId,
@@ -104,7 +104,7 @@ export function DomainSettingsTab() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workspace-domain', workspaceId] })
+      queryClient.invalidateQueries({ queryKey: workspaceDomainKeys.domain(workspaceId) })
       queryClient.invalidateQueries({ queryKey: workspaceKeys.all })
       toast.success('Домен сохранён')
       setCustomDomainInput('')
@@ -129,7 +129,7 @@ export function DomainSettingsTab() {
       if (res.error) throw new Error(res.error.message ?? 'Ошибка проверки')
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workspace-domain', workspaceId] })
+      queryClient.invalidateQueries({ queryKey: workspaceDomainKeys.domain(workspaceId) })
       toast.success('Проверка запущена')
     },
     onError: (err: Error) => {

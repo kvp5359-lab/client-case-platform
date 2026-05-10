@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase'
 import { useEmailAccounts } from '@/hooks/email/useEmailAccounts'
 import { useConnectGmail } from '@/hooks/email/useConnectGmail'
 import { useDisconnectGmail } from '@/hooks/email/useDisconnectGmail'
+import { workspaceDomainKeys } from '@/hooks/queryKeys'
 
 interface GmailSectionProps {
   workspaceId?: string | null
@@ -28,7 +29,7 @@ export const GmailSection = memo(function GmailSection({ workspaceId }: GmailSec
   // workspace.slug нужен чтобы показать персональный inbox-адрес
   // вида inbox+<localpart>@<slug>.clientcase.app
   const { data: workspace } = useQuery({
-    queryKey: ['workspace-slug-active', workspaceId ?? null],
+    queryKey: workspaceDomainKeys.activeSlug(workspaceId ?? ''),
     enabled: !!workspaceId,
     queryFn: async () => {
       const { data } = await supabase

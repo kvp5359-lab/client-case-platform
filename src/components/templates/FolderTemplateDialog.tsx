@@ -19,6 +19,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { SlotsEditor } from './SlotsEditor'
+import { folderTemplateSlotKeys } from '@/hooks/queryKeys'
 import {
   ArticleTreePicker,
   type ArticleTreePickerGroup,
@@ -147,7 +148,7 @@ export function FolderTemplateDialog({
                       table: 'folder_template_slots',
                       foreignKey: 'folder_template_id',
                       foreignKeyValue: editingTemplate.id,
-                      queryKey: ['folder-template-slots', editingTemplate.id],
+                      queryKey: folderTemplateSlotKeys.byTemplate(editingTemplate.id),
                       extraInsertFields: { workspace_id: workspaceId },
                     }}
                     workspaceId={workspaceId}

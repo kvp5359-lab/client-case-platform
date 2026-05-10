@@ -9,6 +9,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { slotTemplatesKeys } from '@/hooks/queryKeys'
 import {
   Dialog,
   DialogContent,
@@ -44,7 +45,7 @@ export function SlotTemplatePickerDialog({
   const [searchQuery, setSearchQuery] = useState('')
 
   const { data: templates = [], isLoading } = useQuery({
-    queryKey: ['slot-templates', workspaceId],
+    queryKey: slotTemplatesKeys.byWorkspace(workspaceId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('slot_templates')

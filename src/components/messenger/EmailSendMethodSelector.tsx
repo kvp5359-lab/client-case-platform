@@ -20,7 +20,7 @@ import { Mail, Loader2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useEmailAccounts } from '@/hooks/email/useEmailAccounts'
-import { messengerKeys } from '@/hooks/queryKeys'
+import { messengerKeys, threadEmailSettingsKeys } from '@/hooks/queryKeys'
 import {
   Select,
   SelectContent,
@@ -48,7 +48,7 @@ export function EmailSendMethodSelector({ threadId }: Props) {
   const activeAccounts = useMemo(() => accounts.filter((a) => a.is_active), [accounts])
 
   const { data: ctx } = useQuery<ThreadEmailContext | null>({
-    queryKey: ['thread-email-settings', threadId],
+    queryKey: threadEmailSettingsKeys.byThread(threadId),
     enabled: !!threadId,
     queryFn: async () => {
       const { data: thread, error } = await supabase
@@ -96,7 +96,7 @@ export function EmailSendMethodSelector({ threadId }: Props) {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thread-email-settings', threadId] })
+      queryClient.invalidateQueries({ queryKey: threadEmailSettingsKeys.byThread(threadId) })
       queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads('') })
     },
   })

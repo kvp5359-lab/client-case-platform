@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { STALE_TIME, threadScopeKeys } from '@/hooks/queryKeys'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { getBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
@@ -78,7 +78,7 @@ function TaskPanelTabbedShellRenderer({
     project_id: string | null
     contact_participant_id: string | null
   } | null>({
-    queryKey: ['thread-scope', activeThreadRefId],
+    queryKey: threadScopeKeys.byThread(activeThreadRefId ?? ''),
     enabled: !!activeThreadRefId,
     staleTime: STALE_TIME.MEDIUM,
     queryFn: async () => {

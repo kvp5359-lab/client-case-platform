@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Target } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { templatesForRoutingKeys } from '@/hooks/queryKeys'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
@@ -64,7 +65,7 @@ export function LeadTemplateSetting({ workspaceId, source }: Props) {
   const queryClient = useQueryClient()
 
   const { data: settings } = useQuery({
-    queryKey: ['workspace-default-lead-templates', workspaceId],
+    queryKey: templatesForRoutingKeys.defaultLeadTemplates(workspaceId),
     queryFn: async (): Promise<Record<string, string | null>> => {
       const { data, error } = await supabase
         .from('workspaces')
@@ -78,7 +79,7 @@ export function LeadTemplateSetting({ workspaceId, source }: Props) {
   })
 
   const { data: templates = [] } = useQuery({
-    queryKey: ['project-templates-for-lead-routing', workspaceId],
+    queryKey: templatesForRoutingKeys.forLeadRouting(workspaceId),
     queryFn: async (): Promise<ProjectTemplateRow[]> => {
       const { data, error } = await supabase
         .from('project_templates')
@@ -107,7 +108,7 @@ export function LeadTemplateSetting({ workspaceId, source }: Props) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['workspace-default-lead-templates', workspaceId],
+        queryKey: templatesForRoutingKeys.defaultLeadTemplates(workspaceId),
       })
       toast.success('Шаблон лида обновлён')
     },

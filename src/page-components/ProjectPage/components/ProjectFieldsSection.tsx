@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select'
 import type { FieldDefinition, FieldOptions } from '@/types/formKit'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
+import { projectFieldsKeys } from '@/hooks/queryKeys'
 
 interface Props {
   projectId: string
@@ -108,7 +109,7 @@ export function ProjectFieldsSection({ projectId, templateId, disabled }: Props)
   }, [linked])
 
   const { data: directoryEntriesByDir = {} } = useQuery({
-    queryKey: ['custom-directory-entries-batch', refDirectoryIds.join(',')],
+    queryKey: projectFieldsKeys.customDirectoryEntriesBatch(refDirectoryIds.join(',')),
     queryFn: async () => {
       if (refDirectoryIds.length === 0) return {} as Record<string, EntryRow[]>
       // Получаем primary-поле для каждого справочника

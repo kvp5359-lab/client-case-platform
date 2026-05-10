@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { KitFolder } from './types'
 import { SlotsEditor } from '../SlotsEditor'
+import { documentKitTemplateKeys } from '@/hooks/queryKeys'
 import {
   ArticleTreePicker,
   type ArticleTreePickerGroup,
@@ -165,7 +166,7 @@ export function EditKitFolderDialog({
                       table: 'document_kit_template_folder_slots',
                       foreignKey: 'kit_folder_id',
                       foreignKeyValue: folder.id,
-                      queryKey: ['kit-folder-slots', folder.id],
+                      queryKey: documentKitTemplateKeys.kitFolderSlots(folder.id),
                     }}
                     workspaceId={workspaceId}
                   />

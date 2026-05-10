@@ -16,7 +16,13 @@ import { CheckSquare, Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspaceThreads } from '@/hooks/tasks/useWorkspaceThreads'
 import { useTaskStatuses } from '@/hooks/useStatuses'
-import { messengerKeys, taskKeys, workspaceThreadKeys, myTaskCountsKeys } from '@/hooks/queryKeys'
+import {
+  messengerKeys,
+  taskKeys,
+  workspaceThreadKeys,
+  myTaskCountsKeys,
+  templatesForRoutingKeys,
+} from '@/hooks/queryKeys'
 import { useProjectThreads, useDeleteThread } from '@/hooks/messenger/useProjectThreads'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { DeleteThreadDialog } from '@/components/messenger/DeleteThreadDialog'
@@ -129,7 +135,7 @@ export const TaskListView = memo(function TaskListView({
   // Загружаем template_id проекта (если в проектном режиме) — чтобы попап
   // создания показывал релевантные шаблоны тредов.
   const { data: projectTemplateId } = useQuery<string | null>({
-    queryKey: ['project-template-id', projectId ?? ''],
+    queryKey: templatesForRoutingKeys.templateIdForProject(projectId ?? ''),
     enabled: !!projectId,
     queryFn: async () => {
       if (!projectId) return null

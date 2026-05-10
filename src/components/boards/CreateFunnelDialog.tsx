@@ -37,7 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useProjectStatusesForTemplate } from '@/hooks/useStatuses'
-import { boardKeys } from '@/hooks/queryKeys'
+import { boardKeys, templatesForRoutingKeys } from '@/hooks/queryKeys'
 import type { FilterGroup } from '@/lib/filters/types'
 
 interface Props {
@@ -75,7 +75,7 @@ export function CreateFunnelDialog({
   // воронку можно создать для любого — это валидно для рабочих процессов
   // (например, «Этапы ВНЖ»).
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
-    queryKey: ['project-templates-for-funnel', workspaceId],
+    queryKey: templatesForRoutingKeys.forFunnel(workspaceId),
     queryFn: async (): Promise<ProjectTemplateRow[]> => {
       const { data, error } = await supabase
         .from('project_templates')

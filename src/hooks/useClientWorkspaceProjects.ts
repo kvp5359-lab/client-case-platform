@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { STALE_TIME, clientWorkspaceProjectsKeys } from '@/hooks/queryKeys'
 
 export interface ClientProjectListItem {
   id: string
@@ -17,7 +17,7 @@ export function useClientWorkspaceProjects(workspaceId: string | undefined) {
   const { user } = useAuth()
 
   return useQuery<ClientProjectListItem[]>({
-    queryKey: ['client-workspace-projects', workspaceId ?? '', user?.id ?? ''],
+    queryKey: clientWorkspaceProjectsKeys.byUser(workspaceId ?? '', user?.id),
     enabled: !!workspaceId && !!user?.id,
     staleTime: STALE_TIME.LONG,
     queryFn: async () => {

@@ -784,6 +784,91 @@ export const contactThreadKeys = {
     ['contact-threads', participantId] as const,
 }
 
+// ============================================================================
+// A1: ключи, ранее жившие инлайном в компонентах. Добавлены в реестр для
+// единообразия и безопасной prefix-инвалидации.
+// ============================================================================
+
+/** Настройки email для конкретного треда (`thread-email-settings`). */
+export const threadEmailSettingsKeys = {
+  all: ['thread-email-settings'] as const,
+  byThread: (threadId: string) => ['thread-email-settings', threadId] as const,
+}
+
+/** Скоуп треда для tab-shell (`thread-scope`). */
+export const threadScopeKeys = {
+  all: ['thread-scope'] as const,
+  byThread: (threadRefId: string) => ['thread-scope', threadRefId] as const,
+}
+
+/** Клиенты и каналы тредов в проекте — для resolve клиентских тредов. */
+export const projectClientThreadKeys = {
+  clients: (projectId: string) => ['project-clients', projectId] as const,
+  telegram: (projectId: string) => ['project-telegram-threads', projectId] as const,
+  email: (projectId: string, threadIdsKey: string) =>
+    ['project-email-threads', projectId, threadIdsKey] as const,
+  custom: (projectId: string, threadIdsKey: string) =>
+    ['project-custom-thread-members', projectId, threadIdsKey] as const,
+}
+
+/** Шаблоны воронок/lead-routing/funnel — все висели инлайном. */
+export const templatesForRoutingKeys = {
+  forFunnel: (workspaceId: string) => ['project-templates-for-funnel', workspaceId] as const,
+  forLeadRouting: (workspaceId: string) =>
+    ['project-templates-for-lead-routing', workspaceId] as const,
+  defaultLeadTemplates: (workspaceId: string) =>
+    ['workspace-default-lead-templates', workspaceId] as const,
+  templateIdForProject: (projectId: string) => ['project-template-id', projectId] as const,
+}
+
+/**
+ * Реестр слотов шаблонов и наборов уже есть выше (folderTemplateSlotKeys,
+ * documentKitTemplateKeys.kitFolderSlots). Тут только новый ключ для пикера
+ * slot-templates на уровне воркспейса.
+ */
+export const slotTemplatesKeys = {
+  all: ['slot-templates'] as const,
+  byWorkspace: (workspaceId: string) => ['slot-templates', workspaceId] as const,
+}
+
+/** Интеграции воркспейса (telegram-groups, gmail, mtproto, business). */
+export const integrationsKeys = {
+  all: ['integrations'] as const,
+  workspace: (workspaceId: string) =>
+    ['integrations', 'workspace-integrations', workspaceId] as const,
+  telegramGroups: (workspaceId: string) =>
+    ['integrations', 'telegram-groups', workspaceId] as const,
+  gmailAccounts: (workspaceId: string) =>
+    ['integrations', 'gmail-accounts', workspaceId] as const,
+  businessConnections: (workspaceId: string) =>
+    ['integrations', 'business-connections', workspaceId] as const,
+  tgLinks: (workspaceId: string, userId: string | null | undefined) =>
+    ['integrations', 'tg-links', workspaceId, userId ?? null] as const,
+  mtprotoSessions: (workspaceId: string) =>
+    ['integrations', 'mtproto-sessions', workspaceId] as const,
+}
+
+/** Домен воркспейса и публичный slug. */
+export const workspaceDomainKeys = {
+  domain: (workspaceId: string) => ['workspace-domain', workspaceId] as const,
+  activeSlug: (workspaceId: string) => ['workspace-slug-active', workspaceId] as const,
+}
+
+/** Клиентский view списка проектов для портального юзера. */
+export const clientWorkspaceProjectsKeys = {
+  byUser: (workspaceId: string, userId: string | undefined) =>
+    ['client-workspace-projects', workspaceId, userId ?? null] as const,
+}
+
+/** Кандидаты и батч-лукапы для секций проекта. */
+export const projectFieldsKeys = {
+  contactCandidates: (workspaceId: string) =>
+    ['project-contact-candidates', workspaceId] as const,
+  /** Батчевая загрузка записей кастомных справочников по списку id. */
+  customDirectoryEntriesBatch: (key: string) =>
+    ['custom-directory-entries-batch', key] as const,
+}
+
 /** Кеши вспомогательных мета-данных, рисуемых в сайдбаре. */
 export const sidebarMetaKeys = {
   /** Префикс для broad-invalidate во всех воркспейсах. */

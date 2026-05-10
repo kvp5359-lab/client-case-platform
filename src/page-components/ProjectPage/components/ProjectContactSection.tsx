@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
 import { ParticipantAvatar } from '@/components/participants/ParticipantAvatar'
-import { projectKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { projectKeys, projectFieldsKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -57,7 +57,7 @@ export function ProjectContactSection({
   // Все participants воркспейса с их каналами — берём оптом, фильтруем на фронте.
   // Для воркспейса ≤ нескольких сотен это нормально; при росте перенесём на RPC.
   const { data: candidates = [] } = useQuery({
-    queryKey: ['project-contact-candidates', workspaceId],
+    queryKey: projectFieldsKeys.contactCandidates(workspaceId),
     queryFn: async (): Promise<ContactCandidate[]> => {
       const { data, error } = await supabase
         .from('participants')

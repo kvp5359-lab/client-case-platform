@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
+import { integrationsKeys } from '@/hooks/queryKeys'
 import { useAuth } from '@/contexts/AuthContext'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
 
@@ -42,7 +43,7 @@ export function TelegramMTProtoSection({
   const [connectDialogOpen, setConnectDialogOpen] = useState(false)
 
   const { data: sessions = [] } = useQuery({
-    queryKey: ['integrations', 'mtproto-sessions', workspaceId],
+    queryKey: integrationsKeys.mtprotoSessions(workspaceId),
     queryFn: async (): Promise<MTProtoSessionRow[]> => {
       const { data, error } = await supabase
         .from('telegram_mtproto_sessions')
@@ -73,7 +74,7 @@ export function TelegramMTProtoSection({
     onSuccess: () => {
       toast.success('Отключено')
       queryClient.invalidateQueries({
-        queryKey: ['integrations', 'mtproto-sessions', workspaceId],
+        queryKey: integrationsKeys.mtprotoSessions(workspaceId),
       })
     },
     onError: (err) => {
@@ -187,7 +188,7 @@ export function TelegramMTProtoSection({
         workspaceId={workspaceId}
         onConnected={() =>
           queryClient.invalidateQueries({
-            queryKey: ['integrations', 'mtproto-sessions', workspaceId],
+            queryKey: integrationsKeys.mtprotoSessions(workspaceId),
           })
         }
       />

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
+import { integrationsKeys } from '@/hooks/queryKeys'
 import { useAuth } from '@/contexts/AuthContext'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
 
@@ -51,7 +52,7 @@ export function TelegramBusinessSection({
   // Подключения через @clientcase_bot. Видны: своё (всегда), все
   // сотрудников воркспейса (если у текущего юзера manage_workspace_settings).
   const { data: connections = [] } = useQuery({
-    queryKey: ['integrations', 'business-connections', workspaceId],
+    queryKey: integrationsKeys.businessConnections(workspaceId),
     queryFn: async (): Promise<BusinessConnectionRow[]> => {
       const { data, error } = await supabase
         .from('telegram_business_connections')
@@ -70,7 +71,7 @@ export function TelegramBusinessSection({
     [employees],
   )
   const { data: tgLinks = [] } = useQuery({
-    queryKey: ['integrations', 'tg-links', workspaceId, employeeUserIds.join(',')],
+    queryKey: integrationsKeys.tgLinks(workspaceId, employeeUserIds.join(',')),
     queryFn: async (): Promise<UserTelegramLinkRow[]> => {
       if (employeeUserIds.length === 0) return []
       const { data, error } = await supabase

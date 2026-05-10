@@ -22,6 +22,7 @@ import { useParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Mail, MessageCircle, MessageSquare, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { integrationsKeys } from '@/hooks/queryKeys'
 import {
   useWorkspaceParticipants,
   type WorkspaceParticipant,
@@ -59,7 +60,7 @@ export function IntegrationsTab() {
   const [section, setSection] = useState<SectionKey>('telegram')
 
   const { data: integrations = [] } = useQuery({
-    queryKey: ['integrations', 'workspace-integrations', workspaceId],
+    queryKey: integrationsKeys.workspace(workspaceId),
     queryFn: async (): Promise<BotIntegration[]> => {
       if (!workspaceId) return []
       const { data, error } = await supabase
@@ -104,7 +105,7 @@ export function IntegrationsTab() {
   }, [employeeBots])
 
   const { data: telegramGroups = 0 } = useQuery({
-    queryKey: ['integrations', 'telegram-groups', workspaceId],
+    queryKey: integrationsKeys.telegramGroups(workspaceId),
     queryFn: async () => {
       if (!workspaceId) return 0
       const { count, error } = await supabase
@@ -119,7 +120,7 @@ export function IntegrationsTab() {
   })
 
   const { data: emailAccounts = [] } = useQuery({
-    queryKey: ['integrations', 'gmail-accounts', workspaceId],
+    queryKey: integrationsKeys.gmailAccounts(workspaceId),
     queryFn: async () => {
       if (!workspaceId) return []
       const { data, error } = await supabase
@@ -147,7 +148,7 @@ export function IntegrationsTab() {
   const refreshIntegrations = useCallback(
     () =>
       queryClient.invalidateQueries({
-        queryKey: ['integrations', 'workspace-integrations', workspaceId],
+        queryKey: integrationsKeys.workspace(workspaceId),
       }),
     [queryClient, workspaceId],
   )

@@ -17,7 +17,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { CLIENT_ROLES } from '@/components/messenger/chatSettingsTypes'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { STALE_TIME, projectClientThreadKeys } from '@/hooks/queryKeys'
 
 interface ProjectClientRow {
   participant_id: string
@@ -32,7 +32,7 @@ export function useProjectClientThreadIds(
   const threadIdsKey = useMemo(() => [...threadIds].sort().join(','), [threadIds])
 
   const { data: clients = [] } = useQuery({
-    queryKey: ['project-clients', projectId],
+    queryKey: projectClientThreadKeys.clients(projectId ?? ''),
     queryFn: async (): Promise<ProjectClientRow[]> => {
       if (!projectId) return []
       const { data, error } = await supabase
@@ -49,7 +49,7 @@ export function useProjectClientThreadIds(
   })
 
   const { data: telegramThreads = [] } = useQuery({
-    queryKey: ['project-telegram-threads', projectId],
+    queryKey: projectClientThreadKeys.telegram(projectId ?? ''),
     queryFn: async (): Promise<string[]> => {
       if (!projectId) return []
       const { data, error } = await supabase
@@ -65,7 +65,7 @@ export function useProjectClientThreadIds(
   })
 
   const { data: emailThreads = [] } = useQuery({
-    queryKey: ['project-email-threads', projectId, threadIdsKey],
+    queryKey: projectClientThreadKeys.email(projectId ?? '', threadIdsKey),
     queryFn: async (): Promise<string[]> => {
       if (!projectId || threadIds.length === 0) return []
       const { data, error } = await supabase
@@ -81,7 +81,7 @@ export function useProjectClientThreadIds(
   })
 
   const { data: customMembers = [] } = useQuery({
-    queryKey: ['project-custom-thread-members', projectId, threadIdsKey],
+    queryKey: projectClientThreadKeys.custom(projectId ?? '', threadIdsKey),
     queryFn: async (): Promise<{ thread_id: string; participant_id: string }[]> => {
       if (!projectId || threadIds.length === 0) return []
       const { data, error } = await supabase
