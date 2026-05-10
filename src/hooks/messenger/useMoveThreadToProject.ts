@@ -21,6 +21,8 @@ export function useMoveThreadToProject(workspaceId: string | undefined) {
       qc.invalidateQueries({ queryKey: ['sidebar'] })
       qc.invalidateQueries({ queryKey: ['threads'] })
       qc.invalidateQueries({ queryKey: ['messenger'] })
+      qc.invalidateQueries({ queryKey: ['personal-dialogs'] })
+      qc.invalidateQueries({ queryKey: ['inbox'] })
       if (workspaceId) qc.invalidateQueries({ queryKey: ['workspace', workspaceId] })
       toast.success('Тред перенесён')
     },

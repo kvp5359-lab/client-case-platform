@@ -12,14 +12,19 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { MessageSquare, Search, X } from 'lucide-react'
+import { MessageSquare, Search, X, FolderInput, Users } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { usePersonalDialogs } from '@/hooks/messenger/usePersonalDialogs'
+import { useMoveThreadToProject } from '@/hooks/messenger/useMoveThreadToProject'
+import { useAccessibleProjects } from '@/hooks/shared/useAccessibleProjects'
+import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import { cn } from '@/lib/utils'
 import type { PersonalDialogChannel, PersonalDialogEntry } from '@/services/api/personalDialogsService'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
@@ -88,15 +93,23 @@ export default function PersonalDialogsPage() {
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all')
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [targetUserOverride, setTargetUserOverride] = useState<string | null>(null)
+  const [bindOpen, setBindOpen] = useState(false)
 
-  // MVP: смотрим только свои. Селектор «чьи» для владельца — следующая итерация.
-  const targetUserId = user?.id
+  const permsResult = useWorkspacePermissions({ workspaceId })
+  const canViewAll = permsResult.isOwner || permsResult.can('view_all_projects')
+
+  // Целевой юзер: владелец может смотреть чужие диалоги через override.
+  const targetUserId = canViewAll ? (targetUserOverride ?? user?.id) : user?.id
 
   useEffect(() => {
     closePanel()
   }, [closePanel])
 
   const { data: dialogs = [], isLoading } = usePersonalDialogs(workspaceId, targetUserId)
+  const { data: participants = [] } = useWorkspaceParticipants(canViewAll ? workspaceId : undefined)
+  const { data: accessibleProjects = [] } = useAccessibleProjects(workspaceId)
+  const moveMutation = useMoveThreadToProject(workspaceId)
 
   const visibleDialogs = useMemo(() => {
     let result = dialogs
@@ -141,20 +154,77 @@ export default function PersonalDialogsPage() {
             <div className="px-4 py-3 border-b shrink-0">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <h2 className="font-semibold text-sm">Личные диалоги</h2>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (searchOpen) {
-                      setSearchOpen(false)
-                      setSearchQuery('')
-                    } else {
-                      setSearchOpen(true)
-                    }
-                  }}
-                  className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-                >
-                  {searchOpen ? <X className="h-3.5 w-3.5" /> : <Search className="h-3.5 w-3.5" />}
-                </button>
+                <div className="flex items-center gap-1">
+                  {canViewAll && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center gap-1"
+                          title={
+                            targetUserOverride
+                              ? `Смотрим: ${
+                                  participants.find((p) => p.user_id === targetUserOverride)?.name ?? 'другой сотрудник'
+                                }`
+                              : 'Мои диалоги'
+                          }
+                        >
+                          <Users className="h-3.5 w-3.5" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-64 p-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTargetUserOverride(null)
+                            setSelectedThreadId(null)
+                          }}
+                          className={cn(
+                            'w-full text-left px-2 py-1.5 rounded text-sm hover:bg-gray-100',
+                            !targetUserOverride && 'bg-blue-50 text-blue-700',
+                          )}
+                        >
+                          Мои диалоги
+                        </button>
+                        <div className="my-1 border-t" />
+                        <div className="max-h-64 overflow-y-auto">
+                          {participants
+                            .filter((p) => p.user_id && p.user_id !== user?.id && p.can_login)
+                            .map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  setTargetUserOverride(p.user_id)
+                                  setSelectedThreadId(null)
+                                }}
+                                className={cn(
+                                  'w-full text-left px-2 py-1.5 rounded text-sm hover:bg-gray-100',
+                                  targetUserOverride === p.user_id && 'bg-blue-50 text-blue-700',
+                                )}
+                              >
+                                {[p.name, p.last_name].filter(Boolean).join(' ')}
+                              </button>
+                            ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (searchOpen) {
+                        setSearchOpen(false)
+                        setSearchQuery('')
+                      } else {
+                        setSearchOpen(true)
+                      }
+                    }}
+                    className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                  >
+                    {searchOpen ? <X className="h-3.5 w-3.5" /> : <Search className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
               </div>
 
               {searchOpen ? (
@@ -240,16 +310,64 @@ export default function PersonalDialogsPage() {
           {/* Правая панель */}
           <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
             {activeChat && workspaceId ? (
-              <div className="flex-1 min-h-0">
-                <MessengerTabContent
-                  key={activeChat.thread_id}
-                  projectId={activeChat.project_id ?? undefined}
-                  workspaceId={workspaceId}
-                  channel={(activeChat.legacy_channel as MessageChannel) ?? 'client'}
-                  threadId={activeChat.thread_id}
-                  accent={(activeChat.thread_accent_color as MessengerAccent) ?? 'blue'}
-                />
-              </div>
+              <>
+                <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
+                  <div className="text-sm font-medium truncate">{activeChat.thread_name}</div>
+                  <Popover open={bindOpen} onOpenChange={setBindOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="text-xs px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 flex items-center gap-1 text-gray-600"
+                      >
+                        <FolderInput className="h-3.5 w-3.5" />
+                        Привязать к проекту
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-72 p-1">
+                      <div className="px-2 py-1 text-xs text-muted-foreground">
+                        Перенести этот диалог в проект:
+                      </div>
+                      <div className="max-h-72 overflow-y-auto">
+                        {accessibleProjects.length === 0 ? (
+                          <div className="px-2 py-2 text-sm text-muted-foreground">Проекты не найдены</div>
+                        ) : (
+                          accessibleProjects.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              disabled={moveMutation.isPending}
+                              onClick={() => {
+                                moveMutation.mutate(
+                                  { threadId: activeChat.thread_id, targetProjectId: p.id },
+                                  {
+                                    onSuccess: () => {
+                                      setBindOpen(false)
+                                      setSelectedThreadId(null)
+                                    },
+                                  },
+                                )
+                              }}
+                              className="w-full text-left px-2 py-1.5 rounded text-sm hover:bg-gray-100 disabled:opacity-50"
+                            >
+                              {p.name}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="flex-1 min-h-0">
+                  <MessengerTabContent
+                    key={activeChat.thread_id}
+                    projectId={activeChat.project_id ?? undefined}
+                    workspaceId={workspaceId}
+                    channel={(activeChat.legacy_channel as MessageChannel) ?? 'client'}
+                    threadId={activeChat.thread_id}
+                    accent={(activeChat.thread_accent_color as MessengerAccent) ?? 'blue'}
+                  />
+                </div>
+              </>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3">
                 <MessageSquare className="h-12 w-12 opacity-20" />
