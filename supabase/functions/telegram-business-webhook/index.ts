@@ -7,10 +7,16 @@
  *  - business_connection      — апдейт о подключении/отключении бота
  *                               сотрудником через Settings → Business → Chatbots.
  *  - business_message         — личное сообщение клиенту/от клиента.
+ *                               Короткие эмодзи-only reply от клиента
+ *                               детектируются как реакции и пишутся в
+ *                               message_reactions (см. _shared/syncBusinessEmojiReaction).
  *  - edited_business_message  — редактирование сообщения.
- *  - message_reaction         — реакции в личных диалогах (приходят и для
- *                               business-чатов, если `business_connection_id`
- *                               заполнен).
+ *  - deleted_business_messages — удаление business-сообщений; сейчас
+ *                               используем только для снятия реакций
+ *                               (когда клиент убирает реакцию в Telegram).
+ *  - message_reaction         — реакции в личных диалогах (Bot API НЕ шлёт
+ *                               их для 1-на-1 Business; код страховочно
+ *                               готов на будущее).
  *
  * Сохранение сообщения и реакций — через общие хелперы в `_shared/`,
  * чтобы не дублировать дедуп / reply-lookup из обычного webhook'а.
@@ -29,6 +35,10 @@ import {
   type ChatBinding,
 } from "../_shared/syncTelegramIncomingMessage.ts";
 import { syncTelegramReactions } from "../_shared/syncTelegramReactions.ts";
+import {
+  maybeSyncBusinessEmojiReaction,
+  deleteBusinessReactionsByMessageIds,
+} from "../_shared/syncBusinessEmojiReaction.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -87,12 +97,19 @@ interface TgMessageReaction {
   business_connection_id?: string;
 }
 
+interface TgBusinessMessagesDeleted {
+  business_connection_id: string;
+  chat: TgChat;
+  message_ids: number[];
+}
+
 interface TgUpdate {
   update_id: number;
   message?: TgMessage;
   business_connection?: TgBusinessConnection;
   business_message?: TgMessage;
   edited_business_message?: TgMessage;
+  deleted_business_messages?: TgBusinessMessagesDeleted;
   message_reaction?: TgMessageReaction;
 }
 
@@ -123,9 +140,20 @@ Deno.serve(async (req: Request) => {
       await handleBusinessMessage(service, update.business_message, false);
     } else if (update.edited_business_message) {
       await handleBusinessMessage(service, update.edited_business_message, true);
+    } else if (update.deleted_business_messages) {
+      // Удаление business-сообщений. Сейчас задействуем только для снятия
+      // эмодзи-реакций: если клиент удалил своё короткое эмодзи-сообщение
+      // в Telegram — реакция должна пропасть и у нас. Удаление обычных
+      // business-сообщений (soft-delete в project_messages) пока не делаем.
+      await deleteBusinessReactionsByMessageIds(
+        service,
+        update.deleted_business_messages.message_ids,
+      );
     } else if (update.message_reaction) {
       // Общий хелпер сам не различает business / group — поиск идёт по
-      // (telegram_chat_id, telegram_message_ids contains).
+      // (telegram_chat_id, telegram_message_ids contains). Сейчас Bot API
+      // НЕ шлёт эти update'ы для 1-на-1 Business — но если когда-нибудь
+      // включит, обработка готова.
       await syncTelegramReactions(service, update.message_reaction);
     } else if (update.message) {
       await handlePrivateMessage(service, update.message);
@@ -386,6 +414,20 @@ async function handleBusinessMessage(
   }
 
   const content = msg.text ?? msg.caption ?? "";
+
+  // Детектор реакции: если клиент шлёт короткий эмодзи-only reply на наше
+  // сообщение — это с большой вероятностью реакция (Bot API не отдаёт
+  // нативные `message_reaction` updates для 1-на-1 Business). Конвертируем
+  // в запись в `message_reactions` и НЕ вставляем в ленту.
+  // Edit-сообщения и исходящие от сотрудника пропускаем — там не реакции.
+  if (!isEdit && !isOutgoingFromEmployee) {
+    const reactionResult = await maybeSyncBusinessEmojiReaction(service, {
+      msg,
+      projectId,
+      workspaceId: conn.workspace_id,
+    });
+    if (reactionResult.consumed) return;
+  }
 
   // EDIT: общий хелпер ищет строку и в counter того же бота, и в массиве IDs.
   if (isEdit) {
