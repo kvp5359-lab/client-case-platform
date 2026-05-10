@@ -69,8 +69,12 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   }, [rawSearchQuery])
 
   // Считаем непрочитанные ДО useSidebarData, чтобы прокинуть список проектов с непрочитанными.
-  const { totalUnread, unreadThreadsCount, projectData: projectUnreadData } =
-    useSidebarInboxCounts(workspaceId ?? '')
+  const {
+    totalUnread,
+    unreadThreadsCount,
+    unreadPersonalDialogsCount,
+    projectData: projectUnreadData,
+  } = useSidebarInboxCounts(workspaceId ?? '')
   const badgeDisplays = projectUnreadData.badgeDisplays
   const clientUnreadCounts = projectUnreadData.clientUnreadCounts
   const internalUnreadCounts = projectUnreadData.internalUnreadCounts
@@ -187,6 +191,8 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
         return formatBadgeCount(totalUnread)
       case 'unread_threads':
         return formatBadgeCount(unreadThreadsCount)
+      case 'unread_personal_dialogs':
+        return formatBadgeCount(unreadPersonalDialogsCount)
       case 'disabled':
       default:
         return undefined

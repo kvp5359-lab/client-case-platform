@@ -143,15 +143,20 @@ export function useSidebarInboxCounts(workspaceId: string) {
     const threadIds = new Map<string, { client: string | null; internal: string | null }>()
     const badgeColors = new Map<string, string>()
     let unreadThreadsCount = 0
+    let unreadPersonalDialogsCount = 0
 
     for (const t of threads) {
-      if (!t.project_id) continue
-      const pid = t.project_id
       const isClient = t.legacy_channel === 'client'
       const isInternal = t.legacy_channel === 'internal'
       const count = calcThreadUnread(t)
       const hasAny = count !== 0
       if (hasAny) unreadThreadsCount += 1
+      // Личные диалоги — отдельный счётчик (project_id=NULL).
+      if (!t.project_id) {
+        if (hasAny) unreadPersonalDialogsCount += 1
+        continue
+      }
+      const pid = t.project_id
 
       // Группируем для getAggregateBadgeDisplay
       if (!threadsByProject.has(pid)) threadsByProject.set(pid, [])
@@ -195,6 +200,7 @@ export function useSidebarInboxCounts(workspaceId: string) {
     return {
       totalUnread,
       unreadThreadsCount,
+      unreadPersonalDialogsCount,
       projectData: {
         badgeDisplays,
         clientUnreadCounts,

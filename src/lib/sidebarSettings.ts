@@ -47,6 +47,7 @@ export type SidebarBadgeMode =
   | 'overdue_tasks'
   | 'unread_messages'
   | 'unread_threads'
+  | 'unread_personal_dialogs'
 
 export interface SidebarSlot {
   id: string // 'nav:<key>' | 'board:<uuid>' | 'list:<uuid>'
@@ -197,7 +198,7 @@ export const DEFAULT_SIDEBAR_SLOTS: SidebarSlot[] = [
   { id: 'nav:templates', type: 'nav', placement: 'topbar', order: 3, badge_mode: 'disabled' },
   { id: 'nav:settings', type: 'nav', placement: 'topbar', order: 4, badge_mode: 'disabled' },
   { id: 'nav:inbox', type: 'nav', placement: 'list', order: 0, badge_mode: 'unread_threads' },
-  { id: 'nav:personal_dialogs', type: 'nav', placement: 'list', order: 1, badge_mode: 'disabled' },
+  { id: 'nav:personal_dialogs', type: 'nav', placement: 'list', order: 1, badge_mode: 'unread_personal_dialogs' },
   { id: 'nav:tasks', type: 'nav', placement: 'list', order: 2, badge_mode: 'my_active_tasks' },
   { id: 'nav:boards', type: 'nav', placement: 'list', order: 3, badge_mode: 'disabled' },
   { id: 'nav:lists', type: 'nav', placement: 'list', order: 4, badge_mode: 'disabled' },
@@ -239,6 +240,11 @@ export const BADGE_MODES: BadgeModeMeta[] = [
     value: 'unread_threads',
     label: 'Непрочитанные треды',
     description: 'Число тредов, в которых есть хотя бы одно непрочитанное сообщение.',
+  },
+  {
+    value: 'unread_personal_dialogs',
+    label: 'Непрочитанные личные диалоги',
+    description: 'Число личных диалогов (TG/Wazzup/Email), в которых есть непрочитанные сообщения.',
   },
 ]
 
