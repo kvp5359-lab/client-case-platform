@@ -760,9 +760,9 @@ function TelegramBusinessSection({
                       <span className="text-xs text-muted-foreground shrink-0">не подключено</span>
                     )}
                   </div>
-                  {isMe && !conn && (
+                  {isMe && (
                     <Button size="sm" variant="outline" onClick={() => setLinkDialogOpen(true)}>
-                      Подключить
+                      {!link ? 'Подключить' : conn?.is_enabled ? 'Переподключить' : 'Активировать'}
                     </Button>
                   )}
                 </div>
