@@ -718,7 +718,7 @@ async function sendAttachmentsWithFallback(
     sub: "sendAttachmentsWithFallback",
     message_id: args.messageId,
     event: "fallback.start",
-    fallback_token_prefix: fallback.token.slice(0, 8),
+    fallback_token_len: fallback.token.length,
   }));
 
   const fallbackCaption = args.caption

@@ -66,7 +66,7 @@ async function runOcr(body: OcrRequest): Promise<{ text: string }> {
       }],
     }
 
-    console.log('Calling Vision API files:annotate, key prefix:', body.vision_api_key.slice(0, 8))
+    console.log('Calling Vision API files:annotate, has_key:', !!body.vision_api_key)
     const res = await fetch(
       `https://vision.googleapis.com/v1/files:annotate?key=${body.vision_api_key}`,
       {
@@ -97,7 +97,7 @@ async function runOcr(body: OcrRequest): Promise<{ text: string }> {
       }],
     }
 
-    console.log('Calling Vision API images:annotate, key prefix:', body.vision_api_key.slice(0, 8))
+    console.log('Calling Vision API images:annotate, has_key:', !!body.vision_api_key)
     const res = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${body.vision_api_key}`,
       {
