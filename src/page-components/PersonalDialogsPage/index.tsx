@@ -82,6 +82,11 @@ function toInboxEntry(d: PersonalDialogEntry): InboxThreadEntry {
     last_event_text: null,
     last_event_status_color: null,
     unread_event_count: 0,
+    // PersonalDialogEntry не несёт «собеседника» отдельно — у личных диалогов
+    // он совпадает с last_sender (внешний контакт), InboxChatItem умеет
+    // fallback на last_sender_name/avatar когда counterpart_* пустые.
+    counterpart_name: null,
+    counterpart_avatar_url: null,
   }
 }
 
