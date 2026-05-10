@@ -14,12 +14,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
-// Таблицы wazzup_* добавлены миграцией 20260503_wazzup_integration.sql.
-// Сгенерированные типы database.ts о них пока не знают — после применения
-// миграции и регенерации `supabase gen types` каст станет не нужен.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any
-
 export interface WazzupSettings {
   workspace_id: string
   api_key: string
@@ -50,7 +44,7 @@ export function useWazzupSettings(workspaceId: string | undefined) {
     queryKey: wazzupKeys.settings(workspaceId ?? ''),
     queryFn: async () => {
       if (!workspaceId) return null
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from('wazzup_settings')
         .select('workspace_id, api_key, webhook_secret, updated_at')
         .eq('workspace_id', workspaceId)
@@ -68,7 +62,7 @@ export function useUpsertWazzupSettings(workspaceId: string | undefined) {
     mutationFn: async (apiKey: string) => {
       if (!workspaceId) throw new Error('workspace_id required')
       const { data: { user } } = await supabase.auth.getUser()
-      const { error } = await sb
+      const { error } = await supabase
         .from('wazzup_settings')
         .upsert(
           {
@@ -95,7 +89,7 @@ export function useWazzupChannels(workspaceId: string | undefined) {
     queryKey: wazzupKeys.channels(workspaceId ?? ''),
     queryFn: async () => {
       if (!workspaceId) return []
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from('wazzup_channels')
         .select('*')
         .eq('workspace_id', workspaceId)
@@ -153,7 +147,7 @@ export function useAssignWazzupChannelUser(workspaceId: string | undefined) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ channelDbId, userId }: { channelDbId: string; userId: string | null }) => {
-      const { error } = await sb
+      const { error } = await supabase
         .from('wazzup_channels')
         .update({ user_id: userId })
         .eq('id', channelDbId)

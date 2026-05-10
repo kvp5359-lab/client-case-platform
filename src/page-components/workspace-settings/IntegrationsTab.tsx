@@ -626,10 +626,7 @@ function TelegramBusinessSection({
   const { data: connections = [] } = useQuery({
     queryKey: ['integrations', 'business-connections', workspaceId],
     queryFn: async (): Promise<BusinessConnectionRow[]> => {
-      // Таблица свежая, типы Supabase ещё не регенерированы — каст через any.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const client = supabase as any
-      const { data, error } = await client
+      const { data, error } = await supabase
         .from('telegram_business_connections')
         .select('id, user_id, tg_user_id, tg_username, tg_first_name, is_enabled, can_reply')
         .eq('workspace_id', workspaceId)
@@ -649,9 +646,7 @@ function TelegramBusinessSection({
     queryKey: ['integrations', 'tg-links', workspaceId, employeeUserIds.join(',')],
     queryFn: async (): Promise<UserTelegramLinkRow[]> => {
       if (employeeUserIds.length === 0) return []
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const client = supabase as any
-      const { data, error } = await client
+      const { data, error } = await supabase
         .from('user_telegram_links')
         .select('user_id, tg_user_id, tg_username, tg_first_name')
         .in('user_id', employeeUserIds)
@@ -1201,9 +1196,7 @@ function TelegramMTProtoSection({
   const { data: sessions = [] } = useQuery({
     queryKey: ['integrations', 'mtproto-sessions', workspaceId],
     queryFn: async (): Promise<MTProtoSessionRow[]> => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const client = supabase as any
-      const { data, error } = await client
+      const { data, error } = await supabase
         .from('telegram_mtproto_sessions')
         .select('user_id, tg_user_id, tg_username, tg_first_name, tg_last_name, is_active')
         .eq('workspace_id', workspaceId)

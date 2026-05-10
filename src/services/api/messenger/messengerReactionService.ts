@@ -18,7 +18,6 @@ export async function toggleReaction(
     .eq('id', messageId)
     .single()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const source = (msg as any)?.source as string | undefined
+  const source = msg?.source ?? undefined
   return toggleReactionByChannel(source, { messageId, participantId, emoji })
 }
