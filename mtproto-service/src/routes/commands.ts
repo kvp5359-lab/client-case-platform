@@ -378,6 +378,92 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(500).send({ error: humanError(err) })
     }
   })
+
+  // ------------------------------------------------------------------
+  // POST /users/fetch-avatar
+  // ------------------------------------------------------------------
+  // Качает profile photo клиента через gramjs и сохраняет URL в
+  // participants.avatar_url. Bot API не работает для MTProto-юзеров;
+  // только клиентский MTProto может достать фото. Идемпотентно: если у
+  // participant'а уже есть avatar_url — пропускаем (force=true перепишет).
+  app.post("/users/fetch-avatar", async (req, reply) => {
+    const body = z
+      .object({
+        user_id: z.string().uuid(),
+        workspace_id: z.string().uuid(),
+        client_tg_user_id: z.number().int(),
+        force: z.boolean().optional().default(false),
+      })
+      .safeParse(req.body)
+    if (!body.success) {
+      return reply.code(400).send({ error: "Invalid body", details: body.error.issues })
+    }
+
+    const client = getClient(body.data.user_id)
+    if (!client) {
+      return reply.code(409).send({ error: "Session not connected" })
+    }
+
+    try {
+      // 1. Резолвим participant'а — без него некуда писать avatar_url.
+      const { data: participant } = await supabase
+        .from("participants")
+        .select("id, avatar_url")
+        .eq("workspace_id", body.data.workspace_id)
+        .eq("telegram_user_id", body.data.client_tg_user_id)
+        .eq("is_deleted", false)
+        .maybeSingle()
+      if (!participant) {
+        return reply.code(404).send({ error: "Participant not found" })
+      }
+      if (participant.avatar_url && !body.data.force) {
+        return { ok: true, cached: true, avatar_url: participant.avatar_url }
+      }
+
+      // 2. Получаем entity клиента (с photo внутри).
+      const peerUser = new Api.PeerUser({ userId: bigInt(body.data.client_tg_user_id) })
+      const entity = await client.getEntity(peerUser)
+      const hasPhoto = entity && "photo" in entity &&
+        entity.photo && entity.photo.className !== "UserProfilePhotoEmpty"
+      if (!hasPhoto) {
+        return { ok: true, avatar_url: null, no_photo: true }
+      }
+
+      // 3. Скачиваем фото (большой размер).
+      const buffer = await client.downloadProfilePhoto(entity, { isBig: true })
+      if (!buffer || (buffer as Buffer).length === 0) {
+        return { ok: true, avatar_url: null, no_photo: true }
+      }
+
+      // 4. Заливаем в Supabase Storage.
+      const path = `tg/${body.data.client_tg_user_id}.jpg`
+      const { error: uploadErr } = await supabase.storage
+        .from("participant-avatars")
+        .upload(path, buffer as Buffer, {
+          contentType: "image/jpeg",
+          upsert: true,
+        })
+      if (uploadErr) {
+        return reply.code(500).send({ error: "Storage upload failed", detail: uploadErr.message })
+      }
+
+      const { data: pub } = supabase.storage
+        .from("participant-avatars")
+        .getPublicUrl(path)
+      const avatarUrl = `${pub.publicUrl}?v=${Date.now()}`
+
+      // 5. Апдейтим participants.avatar_url.
+      await supabase
+        .from("participants")
+        .update({ avatar_url: avatarUrl })
+        .eq("id", participant.id)
+
+      return { ok: true, avatar_url: avatarUrl }
+    } catch (err) {
+      app.log.error({ err }, "users/fetch-avatar failed")
+      return reply.code(500).send({ error: humanError(err) })
+    }
+  })
 }
 
 /**

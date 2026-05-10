@@ -140,6 +140,18 @@ async function handleNewMessageInner(
     first_name: clientFirstName,
     last_name: clientLastName,
   })
+
+  // Fire-and-forget: загрузить аватар клиента, если его ещё нет в participant.
+  // Bot API не работает для MTProto — только клиентский gramjs может
+  // достать profile photo. Делаем здесь, потому что entity клиента сейчас
+  // в gramjs cache (только что сделали getEntity выше).
+  if (clientParticipantId && event.client) {
+    void fetchAndStoreAvatar(event.client, {
+      participantId: clientParticipantId,
+      clientTgUserId,
+      peerUser,
+    }).catch((err) => logger.warn({ err, clientTgUserId }, "avatar fetch failed"))
+  }
   const sessionParticipant = isOutgoing
     ? await resolveSessionParticipant({
         user_id: ctx.user_id,
@@ -355,4 +367,54 @@ async function downloadAndStoreMedia(args: {
   if (insertError) {
     throw new Error(`message_attachments insert failed: ${insertError.message}`)
   }
+}
+
+/**
+ * Качает profile photo клиента через gramjs и сохраняет URL в participants.
+ * Идемпотентно: пропускает, если у participant'а уже есть avatar_url.
+ * Вызывается fire-and-forget из handleNewMessage.
+ */
+async function fetchAndStoreAvatar(
+  client: import("telegram").TelegramClient,
+  args: {
+    participantId: string
+    clientTgUserId: number
+    peerUser: Api.PeerUser
+  },
+): Promise<void> {
+  const { data: row } = await supabase
+    .from("participants")
+    .select("avatar_url")
+    .eq("id", args.participantId)
+    .maybeSingle()
+  if (row?.avatar_url) return // уже есть
+
+  const entity = await client.getEntity(args.peerUser)
+  const hasPhoto = entity && "photo" in entity &&
+    entity.photo && entity.photo.className !== "UserProfilePhotoEmpty"
+  if (!hasPhoto) return
+
+  const buf = await client.downloadProfilePhoto(entity, { isBig: true })
+  if (!buf || (buf as Buffer).length === 0) return
+
+  const path = `tg/${args.clientTgUserId}.jpg`
+  const { error: upErr } = await supabase.storage
+    .from("participant-avatars")
+    .upload(path, buf as Buffer, {
+      contentType: "image/jpeg",
+      upsert: true,
+    })
+  if (upErr) {
+    logger.warn({ err: upErr, clientTgUserId: args.clientTgUserId }, "avatar storage upload failed")
+    return
+  }
+  const { data: pub } = supabase.storage
+    .from("participant-avatars")
+    .getPublicUrl(path)
+  const avatarUrl = `${pub.publicUrl}?v=${Date.now()}`
+
+  await supabase
+    .from("participants")
+    .update({ avatar_url: avatarUrl })
+    .eq("id", args.participantId)
 }

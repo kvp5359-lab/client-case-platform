@@ -316,6 +316,25 @@
 - **Реакции в обе стороны**: WhatsApp Business / Wazzup не отдают reactions как отдельный webhook-event и не дают их ставить через API. Реакция клиента (как видели на тесте) приходит как обычное сообщение с эмодзи в ответ.
 - **Edit/delete сообщений**: Wazzup webhook схема для этого не документирована; пропускаем.
 
+## Аватары собеседников во «Входящих»
+
+Реализовано 2026-05-10. В списке тредов аватар = клиент (собеседник), а не последний отправитель. Логика и инфраструктура подтягивания внешних аватаров — здесь.
+
+- **Резолв в RPC** [`get_inbox_threads_v2`](../../supabase/migrations/20260510_inbox_v2_counterpart_avatar.sql) возвращает `counterpart_name` + `counterpart_avatar_url`. Приоритет источников:
+  1. `participants.avatar_url` — если у клиента есть participant (TG group / MTProto после обогащения / web).
+  2. `telegram_user_avatars.avatar_url` — для TG Business (`business_client_tg_user_id`), TG MTProto (`mtproto_client_tg_user_id`), TG group (по `telegram_sender_user_id` последнего клиентского сообщения).
+  3. `project_threads.wazzup_contact_avatar_url` — для Wazzup-тредов.
+  4. NULL → UI рисует инициал `counterpart_name`.
+- **Кэш TG**: таблица `telegram_user_avatars (tg_user_id PK, avatar_url, is_missing, fetched_at)`. TTL для hit — 30 дней, для miss — 7 дней. RLS: SELECT всем authenticated, write — только service_role.
+- **Edge Function `fetch-telegram-avatar`**: принимает `{tg_user_id, force?}`, через Bot API (`getUserProfilePhotos` + `getFile`) скачивает фото и кладёт в Storage `participant-avatars/tg/<tg_user_id>.jpg`. Дедупит по кэшу. Auth: x-internal-secret или Bearer JWT. Деплой `--no-verify-jwt`. **Не работает для MTProto-юзеров** — Bot API не «видит» их (возвращает `Bad Request: user not found`).
+- **MTProto-аватары** (отдельный путь): эндпоинт `POST /users/fetch-avatar` в [`mtproto-service/src/routes/commands.ts`](../../mtproto-service/src/routes/commands.ts) через gramjs `client.downloadProfilePhoto` → Storage → пишет в `participants.avatar_url`. Также автоматически вызывается из [`handleNewMessage`](../../mtproto-service/src/handlers/incoming.ts) при каждом входящем сообщении (fire-and-forget, идемпотентно — пропускается если participant уже имеет avatar_url).
+- **Wazzup-аватары**: webhook сохраняет `msg.contact.avatarUri` в `project_threads.wazzup_contact_avatar_url` (только для входящих, не для echo сотрудника). URL у Wazzup публичный.
+- **Hooks в webhook'ах**: TG group ([`telegram-webhook-v2`](../../supabase/functions/telegram-webhook-v2/index.ts)) и TG business ([`telegram-business-webhook`](../../supabase/functions/telegram-business-webhook/index.ts)) после `syncTelegramIncomingMessage` дёргают `fetch-telegram-avatar` fire-and-forget — для Business это критичный момент, потому что вне активного коннекта `getUserProfilePhotos` отбивает «user not found».
+- **Image hostnames** (`next.config.ts`): разрешены `*.wazzup24.com`, `pps.whatsapp.net` плюс существующие `*.googleusercontent.com` и Supabase Storage.
+- **Email**: gravatar не используется — большинство адресов без gravatar, домен пришлось бы добавлять в `next.config.ts`, и `?d=404` ломает `next/image`. Для email-тредов остаётся инициал по `contact_email`.
+- **Миграции**: `20260510_client_avatars_infra.sql` (таблица + колонка), `20260510_inbox_v2_counterpart_avatar.sql` (расширение RPC).
+- **Backfill**: при сбое сессии MTProto или непрогретом Bot API — записи остаются с `is_missing=true` до следующего сообщения. После рестарта mtproto-сервиса аватары начинают подтягиваться автоматически при первом же сообщении в треде.
+
 ## Мессенджер-каналы — единая справка
 
 ### Матрица возможностей
