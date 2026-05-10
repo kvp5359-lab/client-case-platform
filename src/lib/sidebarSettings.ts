@@ -16,6 +16,7 @@ import {
   Settings as SettingsIcon,
   BookOpen,
   Kanban,
+  ListChecks,
   NotebookText,
   MailQuestion,
   type LucideIcon,
@@ -28,6 +29,7 @@ export type SidebarNavKey =
   | 'inbox_unmatched'
   | 'tasks'
   | 'boards'
+  | 'lists'
   | 'knowledge_base'
   | 'people'
   | 'templates'
@@ -111,6 +113,13 @@ export const SIDEBAR_NAV_ITEMS: Record<SidebarNavKey, SidebarItemMeta> = {
     path: 'boards',
     hasAccess: ({ isClientOnly }) => !isClientOnly,
   },
+  lists: {
+    key: 'lists',
+    label: 'Списки',
+    icon: ListChecks,
+    path: 'lists',
+    hasAccess: ({ isClientOnly }) => !isClientOnly,
+  },
   knowledge_base: {
     key: 'knowledge_base',
     label: 'База знаний',
@@ -162,6 +171,7 @@ export const SIDEBAR_NAV_KEYS: SidebarNavKey[] = [
   'inbox_unmatched',
   'tasks',
   'boards',
+  'lists',
   'knowledge_base',
   'people',
   'templates',
@@ -179,7 +189,8 @@ export const DEFAULT_SIDEBAR_SLOTS: SidebarSlot[] = [
   { id: 'nav:inbox', type: 'nav', placement: 'list', order: 0, badge_mode: 'unread_threads' },
   { id: 'nav:tasks', type: 'nav', placement: 'list', order: 1, badge_mode: 'my_active_tasks' },
   { id: 'nav:boards', type: 'nav', placement: 'list', order: 2, badge_mode: 'disabled' },
-  { id: 'nav:digests', type: 'nav', placement: 'list', order: 3, badge_mode: 'disabled' },
+  { id: 'nav:lists', type: 'nav', placement: 'list', order: 3, badge_mode: 'disabled' },
+  { id: 'nav:digests', type: 'nav', placement: 'list', order: 4, badge_mode: 'disabled' },
 ]
 
 /** Мягкий лимит на количество иконок в топ-баре. Превышение — только предупреждение. */

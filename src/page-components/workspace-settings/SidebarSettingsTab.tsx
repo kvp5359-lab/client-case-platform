@@ -30,6 +30,8 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -153,10 +155,10 @@ function SidebarSettingsView({
   const topbar = useMemo(() => sorted.filter((s) => s.placement === 'topbar'), [sorted])
   const list = useMemo(() => sorted.filter((s) => s.placement === 'list'), [sorted])
 
-  // Доступные = все возможные элементы минус те, что уже в slots.
+  // Доступные nav-пункты = все возможные пункты меню минус уже размещённые.
   const placedIds = useMemo(() => new Set(slots.map((s) => s.id)), [slots])
-  const available: AvailableEntry[] = useMemo(() => {
-    const navEntries: AvailableEntry[] = SIDEBAR_NAV_KEYS.filter(
+  const availableNav: AvailableEntry[] = useMemo(() => {
+    const entries: AvailableEntry[] = SIDEBAR_NAV_KEYS.filter(
       (key) => !placedIds.has(`nav:${key}`),
     ).map((key) => ({
       kind: 'nav' as const,
@@ -164,29 +166,22 @@ function SidebarSettingsView({
       label: SIDEBAR_NAV_ITEMS[key].label,
       navKey: key,
     }))
-    const boardEntries: AvailableEntry[] = boards
-      .filter((b) => !placedIds.has(`board:${b.id}`))
-      .map((b) => ({
-        kind: 'board' as const,
-        id: `board:${b.id}`,
-        label: b.name,
-        boardId: b.id,
-      }))
-    const listEntries: AvailableEntry[] = itemLists
-      .filter((l) => !placedIds.has(`list:${l.id}`))
-      .map((l) => ({
-        kind: 'list' as const,
-        id: `list:${l.id}`,
-        label: l.name,
-        listId: l.id,
-        entityType: l.entity_type,
-      }))
-    // Сортировка по алфавиту внутри каждой группы; пункты меню — первыми.
-    navEntries.sort((a, b) => a.label.localeCompare(b.label, 'ru'))
-    boardEntries.sort((a, b) => a.label.localeCompare(b.label, 'ru'))
-    listEntries.sort((a, b) => a.label.localeCompare(b.label, 'ru'))
-    return [...navEntries, ...boardEntries, ...listEntries]
-  }, [placedIds, boards, itemLists])
+    entries.sort((a, b) => a.label.localeCompare(b.label, 'ru'))
+    return entries
+  }, [placedIds])
+
+  // Незакреплённые конкретные доски и списки — для поповеров «Доска» / «Список»
+  // в секции «Доступные». Внутри попапа клик добавляет в нужную зону.
+  const availableBoards = useMemo(
+    () => boards.filter((b) => !placedIds.has(`board:${b.id}`))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru')),
+    [placedIds, boards],
+  )
+  const availableLists = useMemo(
+    () => itemLists.filter((l) => !placedIds.has(`list:${l.id}`))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru')),
+    [placedIds, itemLists],
+  )
 
   // Очистка слотов от мёртвых досок/списков (удалённых из воркспейса).
   const liveSlots = useMemo(() => {
@@ -315,7 +310,12 @@ function SidebarSettingsView({
         warning={null}
       />
 
-      <AvailableCard available={available} onAdd={addToZone} />
+      <AvailableCard
+        availableNav={availableNav}
+        availableBoards={availableBoards}
+        availableLists={availableLists}
+        onAdd={addToZone}
+      />
 
       <div className="flex flex-wrap gap-2 sticky bottom-0 bg-white py-3 border-t border-gray-200">
         <Button onClick={onSave} disabled={saving || !dirty}>
@@ -479,69 +479,239 @@ function ZoneCard({
 // ── Available pool ────────────────────────────────────────────────────────────
 
 function AvailableCard({
-  available,
+  availableNav,
+  availableBoards,
+  availableLists,
   onAdd,
 }: {
-  available: AvailableEntry[]
+  availableNav: AvailableEntry[]
+  availableBoards: { id: string; name: string }[]
+  availableLists: ItemList[]
   onAdd: (entry: AvailableEntry, placement: SidebarPlacement) => void
 }) {
+  const total = availableNav.length + (availableBoards.length > 0 ? 1 : 0) + (availableLists.length > 0 ? 1 : 0)
   return (
     <Card>
       <CardHeader>
         <CardTitle>Доступные</CardTitle>
         <CardDescription>
           Элементы, которые сейчас не в сайдбаре. Нажми «в верх» или «в список», чтобы добавить.
-          Доски попадают сюда автоматически — открепить = вернуть сюда.
+          «Доска» и «Список» — групповые пункты: при клике откроется список конкретных, для добавления одного из них.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {available.length === 0 ? (
+        {total === 0 ? (
           <div className="text-sm text-gray-500 rounded-md border border-dashed border-gray-300 px-3 py-4 text-center">
             Все элементы уже размещены.
           </div>
         ) : (
           <div className="divide-y divide-gray-100 rounded-md border border-dashed border-gray-300 bg-gray-50/40">
-            {available.map((entry) => {
-              const Icon =
-                entry.kind === 'nav'
-                  ? SIDEBAR_NAV_ITEMS[entry.navKey].icon
-                  : entry.kind === 'board'
-                    ? Kanban
-                    : entry.entityType === 'project'
-                      ? FolderOpen
-                      : ListChecks
+            {availableNav.map((entry) => {
+              if (entry.kind !== 'nav') return null
+              const Icon = SIDEBAR_NAV_ITEMS[entry.navKey].icon
               return (
-                <div key={entry.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <Icon className="w-4 h-4 shrink-0 text-gray-400" />
-                  <div className="flex-1 min-w-0 text-sm text-gray-700 truncate">
-                    {entry.label}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => onAdd(entry, 'topbar')}
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    в верх
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => onAdd(entry, 'list')}
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    в список
-                  </Button>
-                </div>
+                <AvailableRowSimple
+                  key={entry.id}
+                  icon={<Icon className="w-4 h-4 shrink-0 text-gray-400" />}
+                  label={entry.label}
+                  onAdd={(placement) => onAdd(entry, placement)}
+                />
               )
             })}
+
+            {availableBoards.length > 0 && (
+              <AvailableGroupRow
+                icon={<Kanban className="w-4 h-4 shrink-0 text-gray-400" />}
+                label="Доска"
+                hint={`${availableBoards.length} ${plural(availableBoards.length, 'доска', 'доски', 'досок')} доступны`}
+                onAdd={(boardId, placement) =>
+                  onAdd(
+                    {
+                      kind: 'board',
+                      id: `board:${boardId}`,
+                      label: availableBoards.find((b) => b.id === boardId)?.name ?? '',
+                      boardId,
+                    },
+                    placement,
+                  )
+                }
+                items={availableBoards.map((b) => ({
+                  id: b.id,
+                  label: b.name,
+                  icon: <Kanban className="w-3.5 h-3.5 text-gray-400" />,
+                }))}
+              />
+            )}
+
+            {availableLists.length > 0 && (
+              <AvailableGroupRow
+                icon={<ListChecks className="w-4 h-4 shrink-0 text-gray-400" />}
+                label="Список"
+                hint={`${availableLists.length} ${plural(availableLists.length, 'список', 'списка', 'списков')} доступны`}
+                onAdd={(listId, placement) => {
+                  const target = availableLists.find((l) => l.id === listId)
+                  if (!target) return
+                  onAdd(
+                    {
+                      kind: 'list',
+                      id: `list:${listId}`,
+                      label: target.name,
+                      listId,
+                      entityType: target.entity_type,
+                    },
+                    placement,
+                  )
+                }}
+                items={availableLists.map((l) => ({
+                  id: l.id,
+                  label: l.name,
+                  icon:
+                    l.entity_type === 'project' ? (
+                      <FolderOpen className="w-3.5 h-3.5 text-gray-400" />
+                    ) : (
+                      <ListChecks className="w-3.5 h-3.5 text-gray-400" />
+                    ),
+                }))}
+              />
+            )}
           </div>
         )}
       </CardContent>
     </Card>
   )
+}
+
+function AvailableRowSimple({
+  icon,
+  label,
+  onAdd,
+}: {
+  icon: React.ReactNode
+  label: string
+  onAdd: (placement: SidebarPlacement) => void
+}) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5">
+      {icon}
+      <div className="flex-1 min-w-0 text-sm text-gray-700 truncate">{label}</div>
+      <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onAdd('topbar')}>
+        <Plus className="w-3.5 h-3.5 mr-1" />
+        в верх
+      </Button>
+      <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onAdd('list')}>
+        <Plus className="w-3.5 h-3.5 mr-1" />
+        в список
+      </Button>
+    </div>
+  )
+}
+
+/** Групповой пункт в «Доступных»: один пункт «Доска» / «Список», при клике на
+ * «в верх»/«в список» открывается поповер с конкретными элементами. Пользователь
+ * выбирает конкретный элемент → он добавляется в выбранную зону. */
+function AvailableGroupRow({
+  icon,
+  label,
+  hint,
+  items,
+  onAdd,
+}: {
+  icon: React.ReactNode
+  label: string
+  hint: string
+  items: { id: string; label: string; icon?: React.ReactNode }[]
+  onAdd: (id: string, placement: SidebarPlacement) => void
+}) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5">
+      {icon}
+      <div className="flex-1 min-w-0">
+        <div className="text-sm text-gray-700 truncate">{label}</div>
+        <div className="text-[11px] text-muted-foreground truncate">{hint}</div>
+      </div>
+      <GroupPickerButton
+        triggerLabel="в верх"
+        items={items}
+        onPick={(id) => onAdd(id, 'topbar')}
+      />
+      <GroupPickerButton
+        triggerLabel="в список"
+        items={items}
+        onPick={(id) => onAdd(id, 'list')}
+      />
+    </div>
+  )
+}
+
+function GroupPickerButton({
+  triggerLabel,
+  items,
+  onPick,
+}: {
+  triggerLabel: string
+  items: { id: string; label: string; icon?: React.ReactNode }[]
+  onPick: (id: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return items
+    return items.filter((it) => it.label.toLowerCase().includes(q))
+  }, [items, search])
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs">
+          <Plus className="w-3.5 h-3.5 mr-1" />
+          {triggerLabel}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[300px] p-0">
+        {items.length > 5 && (
+          <div className="p-2 border-b">
+            <Input
+              placeholder="Поиск…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+              className="h-8 text-sm"
+            />
+          </div>
+        )}
+        <div className="max-h-[260px] overflow-y-auto py-1">
+          {filtered.length === 0 ? (
+            <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+              Ничего не найдено
+            </div>
+          ) : (
+            filtered.map((it) => (
+              <button
+                key={it.id}
+                type="button"
+                onClick={() => {
+                  onPick(it.id)
+                  setOpen(false)
+                  setSearch('')
+                }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-muted/50 text-sm"
+              >
+                {it.icon}
+                <span className="truncate">{it.label}</span>
+              </button>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function plural(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return one
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few
+  return many
 }

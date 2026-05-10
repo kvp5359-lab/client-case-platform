@@ -220,6 +220,17 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
         !pinnedBoardIds.some((id) => pathname.includes(`/boards/${id}`))
       )
     }
+    if (key === 'lists') {
+      // /lists активен, но не внутри закреплённого списка (у него свой пункт).
+      const pinnedListIds = listSlots
+        .filter((s) => s.type === 'list')
+        .map((s) => listIdFromSlotId(s.id))
+        .filter((id): id is string => Boolean(id))
+      return (
+        isNavActive('lists') &&
+        !pinnedListIds.some((id) => pathname.includes(`/lists/${id}`))
+      )
+    }
     return isNavActive(meta.path)
   }
 
