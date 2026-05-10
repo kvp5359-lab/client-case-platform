@@ -5406,6 +5406,7 @@ export type Database = {
           access_type: string
           business_client_tg_user_id: number | null
           business_connection_id: string | null
+          contact_participant_id: string | null
           created_at: string
           created_by: string | null
           deadline: string | null
@@ -5445,6 +5446,7 @@ export type Database = {
           access_type?: string
           business_client_tg_user_id?: number | null
           business_connection_id?: string | null
+          contact_participant_id?: string | null
           created_at?: string
           created_by?: string | null
           deadline?: string | null
@@ -5484,6 +5486,7 @@ export type Database = {
           access_type?: string
           business_client_tg_user_id?: number | null
           business_connection_id?: string | null
+          contact_participant_id?: string | null
           created_at?: string
           created_by?: string | null
           deadline?: string | null
@@ -5537,6 +5540,13 @@ export type Database = {
             columns: ["business_connection_id"]
             isOneToOne: false
             referencedRelation: "telegram_business_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_threads_contact_participant_id_fkey"
+            columns: ["contact_participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
             referencedColumns: ["id"]
           },
           {
@@ -7469,6 +7479,16 @@ export type Database = {
         Args: { p_document_id: string; p_project_id: string; p_slot_id: string }
         Returns: undefined
       }
+      find_or_create_contact_participant: {
+        Args: {
+          p_email?: string
+          p_name: string
+          p_phone?: string
+          p_telegram_user_id?: number
+          p_workspace_id: string
+        }
+        Returns: string
+      }
       fn_write_audit_log: {
         Args: {
           p_action: string
@@ -7939,6 +7959,10 @@ export type Database = {
           qa_id: string
           similarity: number
         }[]
+      }
+      merge_participants: {
+        Args: { p_source_id: string; p_target_id: string }
+        Returns: Json
       }
       merge_telegram_contact: {
         Args: {

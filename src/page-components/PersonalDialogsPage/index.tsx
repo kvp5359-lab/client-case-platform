@@ -17,6 +17,7 @@ import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ContactCardDialog } from '@/components/contacts/ContactCardDialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { usePageTitle } from '@/hooks/usePageTitle'
@@ -95,6 +96,7 @@ export default function PersonalDialogsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [targetUserOverride, setTargetUserOverride] = useState<string | null>(null)
   const [bindOpen, setBindOpen] = useState(false)
+  const [contactCardOpen, setContactCardOpen] = useState(false)
 
   const permsResult = useWorkspacePermissions({ workspaceId })
   const canViewAll = permsResult.isOwner || permsResult.can('view_all_projects')
@@ -311,8 +313,19 @@ export default function PersonalDialogsPage() {
           <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
             {activeChat && workspaceId ? (
               <>
-                <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
-                  <div className="text-sm font-medium truncate">{activeChat.thread_name}</div>
+                <div className="flex items-center justify-between px-4 py-2 border-b shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => activeChat.contact_participant_id && setContactCardOpen(true)}
+                    disabled={!activeChat.contact_participant_id}
+                    className="flex items-center gap-2 min-w-0 text-sm font-medium hover:text-blue-600 disabled:hover:text-current disabled:cursor-default"
+                    title={activeChat.contact_participant_id ? 'Открыть карточку контакта' : 'Контакт не определён'}
+                  >
+                    <div className="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center text-xs text-gray-500 shrink-0">
+                      {activeChat.thread_name.slice(0, 1).toUpperCase()}
+                    </div>
+                    <span className="truncate">{activeChat.thread_name}</span>
+                  </button>
                   <Popover open={bindOpen} onOpenChange={setBindOpen}>
                     <PopoverTrigger asChild>
                       <button
@@ -377,6 +390,12 @@ export default function PersonalDialogsPage() {
           </div>
         </div>
       </div>
+      <ContactCardDialog
+        participantId={activeChat?.contact_participant_id ?? null}
+        open={contactCardOpen}
+        onOpenChange={setContactCardOpen}
+        onOpenThread={(tid) => setSelectedThreadId(tid)}
+      />
     </WorkspaceLayout>
   )
 }

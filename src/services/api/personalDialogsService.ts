@@ -40,6 +40,7 @@ export interface PersonalDialogEntry {
   email_contact: string | null
   email_subject: string | null
   owner_user_id: string
+  contact_participant_id: string | null
 }
 
 export async function getPersonalDialogs(

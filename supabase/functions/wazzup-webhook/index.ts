@@ -482,9 +482,18 @@ async function ensureWazzupThread(
     .eq("is_deleted", false).maybeSingle();
   if (existing) return existing.id as string;
 
+  // chatId для WhatsApp — это телефон (E.164 без +), для Instagram — username.
+  const phoneCandidate = args.chatType === "instagram" ? null : args.chatId;
+  const { data: contactId } = await service.rpc("find_or_create_contact_participant", {
+    p_workspace_id: args.workspaceId,
+    p_name: args.clientName,
+    p_phone: phoneCandidate,
+  });
+
   const { data: created, error } = await service.from("project_threads").insert({
     project_id: null,
     owner_user_id: args.ownerUserId,
+    contact_participant_id: contactId ?? null,
     workspace_id: args.workspaceId,
     name: args.clientName,
     type: "chat", access_type: "all",

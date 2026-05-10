@@ -360,6 +360,8 @@ export const permissionKeys = {
 }
 
 export const participantKeys = {
+  all: ['participants'] as const,
+  byId: (id: string) => ['participant', 'by-id', id] as const,
   authorName: (userId: string) => ['author-name', userId] as const,
   projectParticipant: (projectId: string, userId: string) =>
     ['participant', 'project', projectId, userId] as const,

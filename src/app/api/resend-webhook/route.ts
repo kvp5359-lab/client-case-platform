@@ -485,11 +485,19 @@ async function ensurePersonalEmailThread(
   if (!account) throw new Error('email account not found')
   const userId = (account as { user_id: string }).user_id
 
+  // Находим/создаём контакт в справочнике участников по email-адресу.
+  const { data: contactId } = await supabase.rpc('find_or_create_contact_participant', {
+    p_workspace_id: opts.workspaceId,
+    p_name: opts.fromAddress,
+    p_email: opts.fromAddress,
+  })
+
   const { data: created, error } = await supabase
     .from('project_threads')
     .insert({
       project_id: null,
       owner_user_id: userId,
+      contact_participant_id: (contactId as string | null) ?? null,
       workspace_id: opts.workspaceId,
       name: opts.subject?.trim() || `Email от ${opts.fromAddress}`,
       type: 'email',

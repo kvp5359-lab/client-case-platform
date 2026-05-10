@@ -503,11 +503,19 @@ async function ensureBusinessThread(
     .maybeSingle();
   if (existing) return existing.id;
 
+  // Контакт в справочнике участников: ищем по telegram_user_id, при отсутствии создаём.
+  const { data: contactId } = await service.rpc("find_or_create_contact_participant", {
+    p_workspace_id: workspaceId,
+    p_name: clientDisplayName,
+    p_telegram_user_id: clientTgUserId,
+  });
+
   const { data: created, error } = await service
     .from("project_threads")
     .insert({
       project_id: null,
       owner_user_id: ownerUserId,
+      contact_participant_id: contactId ?? null,
       workspace_id: workspaceId,
       name: clientDisplayName,
       type: "chat",
