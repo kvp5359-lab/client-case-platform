@@ -3203,6 +3203,74 @@ export type Database = {
           },
         ]
       }
+      item_lists: {
+        Row: {
+          color: string | null
+          columns: Json
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
+          entity_type: string
+          filter_config: Json
+          icon: string | null
+          id: string
+          is_deleted: boolean
+          name: string
+          owner_user_id: string | null
+          sort_by: string | null
+          sort_dir: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string | null
+          columns?: Json
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          entity_type: string
+          filter_config?: Json
+          icon?: string | null
+          id?: string
+          is_deleted?: boolean
+          name: string
+          owner_user_id?: string | null
+          sort_by?: string | null
+          sort_dir?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          color?: string | null
+          columns?: Json
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          entity_type?: string
+          filter_config?: Json
+          icon?: string | null
+          id?: string
+          is_deleted?: boolean
+          name?: string
+          owner_user_id?: string | null
+          sort_by?: string | null
+          sort_dir?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_lists_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_article_groups: {
         Row: {
           article_id: string
