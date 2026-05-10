@@ -10,8 +10,8 @@
  */
 
 import { GripVertical } from 'lucide-react'
-import { getFieldsForEntity } from './filterDefinitions'
-import type { FilterRule } from '../types'
+import { getFieldsForEntity } from '@/lib/filters/filterDefinitions'
+import type { FilterRule } from '@/lib/filters/types'
 
 interface FilterDragOverlayProps {
   rule: FilterRule

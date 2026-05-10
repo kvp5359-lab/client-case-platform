@@ -2,7 +2,7 @@
  * Реестр полей для фильтрации задач и проектов.
  */
 
-import type { FilterFieldDef } from '../types'
+import type { FilterFieldDef } from './types'
 
 export const TASK_FILTER_FIELDS: FilterFieldDef[] = [
   {

@@ -1,11 +1,13 @@
 /**
- * Движок фильтрации для досок.
+ * Движок фильтрации.
  *
  * Чистая функция — принимает данные и фильтры, возвращает отфильтрованный массив.
  * Поддерживает рекурсивные AND/OR группы и относительного пользователя (__me__).
+ *
+ * Используется и досками (board_lists.filters), и списками (item_lists.filter_config).
  */
 
-import type { FilterGroup, FilterRule, FilterCondition, FilterContext } from '../types'
+import type { FilterGroup, FilterRule, FilterCondition, FilterContext } from './types'
 
 const ME = '__me__'
 const CREATOR = '__creator__'

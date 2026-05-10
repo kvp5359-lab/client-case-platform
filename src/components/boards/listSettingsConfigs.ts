@@ -5,8 +5,6 @@
  */
 
 import type {
-  SortField,
-  SortDir,
   VisibleField,
   GroupByField,
   CardFieldId,
@@ -17,6 +15,7 @@ import type {
   CardLayout,
   CardFieldPlacement,
 } from './types'
+import type { SortField, SortDir } from '@/lib/filters/types'
 
 // ── Стилизация полей карточки (общие для AppearanceTab и CardFieldStylePopover) ──
 

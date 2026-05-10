@@ -1,30 +1,13 @@
 /**
  * Типы для досок (планировщика).
+ *
+ * Чистые типы фильтра (FilterCondition, FilterGroup, FilterRule, FilterFieldDef,
+ * FilterContext, OPERATOR_LABELS, SortField, SortDir, mergeFilterGroupsAnd,
+ * EMPTY_FILTER_GROUP) переехали в `@/lib/filters/types` — переиспользуются
+ * между board_lists и item_lists.
  */
 
-// ── Фильтры ──────────────────────────────────────────────
-
-/** Одно условие фильтра */
-export interface FilterCondition {
-  type: 'condition'
-  field: string
-  operator: string
-  value: unknown
-}
-
-/** Группа условий (AND / OR), может содержать вложенные группы */
-export interface FilterGroup {
-  logic: 'and' | 'or'
-  rules: FilterRule[]
-}
-
-/** Правило: либо условие, либо вложенная группа */
-export type FilterRule =
-  | FilterCondition
-  | { type: 'group'; group: FilterGroup }
-
-/** Пустая группа фильтров */
-export const EMPTY_FILTER_GROUP: FilterGroup = { logic: 'and', rules: [] }
+import type { FilterGroup, SortField, SortDir } from '@/lib/filters/types'
 
 // ── Сущности БД ─────────────────────────────────────────
 
@@ -71,19 +54,6 @@ export function normalizeBoardGlobalFilter(value: unknown): BoardGlobalFilter {
   }
 }
 
-/** Объединить две группы фильтров через AND. Пустая группа (rules=[]) возвращает другую — без лишних обёрток. */
-export function mergeFilterGroupsAnd(a: FilterGroup, b: FilterGroup): FilterGroup {
-  if (!a || a.rules.length === 0) return b
-  if (!b || b.rules.length === 0) return a
-  return {
-    logic: 'and',
-    rules: [
-      { type: 'group', group: a },
-      { type: 'group', group: b },
-    ],
-  }
-}
-
 /** Дефолтная ширина колонки доски, если не задана */
 export const DEFAULT_COLUMN_WIDTH = 340
 /** Минимальная допустимая ширина колонки (чтобы UI не ломался) */
@@ -98,8 +68,6 @@ export interface BoardMember {
   added_at: string
 }
 
-export type SortField = 'created_at' | 'updated_at' | 'deadline' | 'status_order' | 'name' | 'manual_order' | 'next_task_deadline'
-export type SortDir = 'asc' | 'desc'
 export type DisplayMode = 'list' | 'cards'
 
 /** Поля, которые можно показывать/скрывать в строке */
@@ -208,50 +176,4 @@ export function hexToHeaderStyle(color: string | null): { bg: string; text: stri
 
   // Произвольный hex — светлый фон (20% opacity), тёмный текст
   return { bg: color + '20', text: color }
-}
-
-// ── Определения полей для фильтров ──────────────────────
-
-export type FieldType = 'uuid' | 'date' | 'boolean' | 'text' | 'junction'
-
-export interface FilterFieldDef {
-  key: string
-  label: string
-  type: FieldType
-  operators: string[]
-  /** Показывать опцию «Я» в выборе значения */
-  supportsMe?: boolean
-  /** Название junction-таблицы */
-  junctionTable?: string
-}
-
-// ── Контекст фильтрации ─────────────────────────────────
-
-export interface FilterContext {
-  currentParticipantId: string | null
-  currentUserId: string | null
-  now: Date
-  /** Маппинг user_id → participant_id (для резолва __creator__ в junction-фильтрах) */
-  userToParticipantMap?: Record<string, string>
-}
-
-// ── Операторы ────────────────────────────────────────────
-
-export const OPERATOR_LABELS: Record<string, string> = {
-  equals: '=',
-  not_equals: '≠',
-  in: 'содержит',
-  not_in: 'не содержит',
-  is_null: 'пусто',
-  is_not_null: 'не пусто',
-  before: '<',
-  before_eq: '≤',
-  after: '>',
-  after_eq: '≥',
-  date_eq: '=',
-  between: 'между',
-  today: 'сегодня',
-  this_week: 'эта неделя',
-  overdue: 'просрочено',
-  contains: 'содержит текст',
 }

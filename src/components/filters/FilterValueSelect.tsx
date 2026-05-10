@@ -17,7 +17,7 @@ import {
 import { useTaskStatuses, useAllProjectStatuses } from '@/hooks/useStatuses'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { useProjectTemplatesQuery } from '@/page-components/ProjectsPage/hooks/useProjectsPageData'
-import type { FilterFieldDef } from '../types'
+import type { FilterFieldDef } from '@/lib/filters/types'
 
 export interface FilterValueOption {
   id: string

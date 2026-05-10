@@ -15,7 +15,8 @@ import { useListSettingsState } from './hooks/useListSettingsState'
 import { ListSettingsGeneralTab } from './ListSettingsGeneralTab'
 import { ListSettingsFiltersTab } from './ListSettingsFiltersTab'
 import ListSettingsAppearanceTab from './ListSettingsAppearanceTab'
-import type { BoardList, FilterGroup } from './types'
+import type { BoardList } from './types'
+import type { FilterGroup } from '@/lib/filters/types'
 
 interface ListSettingsDialogProps {
   open: boolean

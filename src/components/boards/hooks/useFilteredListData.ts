@@ -1,8 +1,8 @@
 "use client"
 
 import { useMemo } from 'react'
-import { applyFilters } from '../filters/filterEngine'
-import type { FilterGroup, FilterContext, SortField, SortDir } from '../types'
+import { applyFilters } from '@/lib/filters/filterEngine'
+import type { FilterGroup, FilterContext, SortField, SortDir } from '@/lib/filters/types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 
 function compareTasks(a: WorkspaceTask, b: WorkspaceTask, sortBy: SortField, sortDir: SortDir): number {

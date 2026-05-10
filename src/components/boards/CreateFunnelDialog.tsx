@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/select'
 import { useProjectStatusesForTemplate } from '@/hooks/useStatuses'
 import { boardKeys } from '@/hooks/queryKeys'
-import type { FilterGroup } from './types'
+import type { FilterGroup } from '@/lib/filters/types'
 
 interface Props {
   open: boolean

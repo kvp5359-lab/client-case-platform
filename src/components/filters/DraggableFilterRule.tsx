@@ -13,7 +13,7 @@ import type { ReactNode } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { RulePath } from './filterPathUtils'
+import type { RulePath } from '@/lib/filters/filterPathUtils'
 
 export interface DropIndicatorState {
   /** Path элемента, рядом с которым показать линию */

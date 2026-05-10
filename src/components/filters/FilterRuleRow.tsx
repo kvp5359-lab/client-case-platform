@@ -11,11 +11,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { getFieldsForEntity, getFieldDef } from './filterDefinitions'
+import { getFieldsForEntity, getFieldDef } from '@/lib/filters/filterDefinitions'
 import { FilterValueSelect } from './FilterValueSelect'
 import { FilterDateValue } from './FilterDateValue'
-import { OPERATOR_LABELS } from '../types'
-import type { FilterCondition } from '../types'
+import { OPERATOR_LABELS } from '@/lib/filters/types'
+import type { FilterCondition } from '@/lib/filters/types'
 
 /** Поля, для которых доступен мультиселект с опциями */
 const SELECTABLE_FIELDS = new Set(['status_id', 'status', 'type', 'template_id', 'created_by', 'assignees', 'participants'])

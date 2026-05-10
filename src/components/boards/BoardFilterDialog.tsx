@@ -22,15 +22,15 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { FilterGroupEditor } from './filters/FilterGroupEditor'
+import { FilterGroupEditor } from '@/components/filters/FilterGroupEditor'
 import { useUpdateBoard } from './hooks/useBoardMutations'
 import {
   EMPTY_BOARD_GLOBAL_FILTER,
   normalizeBoardGlobalFilter,
   type Board,
   type BoardGlobalFilter,
-  type FilterGroup,
 } from './types'
+import type { FilterGroup } from '@/lib/filters/types'
 
 interface BoardFilterDialogProps {
   open: boolean

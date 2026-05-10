@@ -26,7 +26,7 @@ import { Plus, FolderPlus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { FilterRuleRow } from './FilterRuleRow'
-import { getFieldsForEntity } from './filterDefinitions'
+import { getFieldsForEntity } from '@/lib/filters/filterDefinitions'
 import {
   type RulePath,
   getRuleByPath,
@@ -36,10 +36,10 @@ import {
   adjustIndexAfterRemoval,
   pathToId,
   idToPath,
-} from './filterPathUtils'
+} from '@/lib/filters/filterPathUtils'
 import { DraggableFilterRule, type DropIndicatorState } from './DraggableFilterRule'
 import { FilterDragOverlay } from './FilterDragOverlay'
-import type { FilterGroup, FilterRule, FilterCondition } from '../types'
+import type { FilterGroup, FilterRule, FilterCondition } from '@/lib/filters/types'
 
 // ── FilterGroupEditor (внутренний, без DndContext) ────────
 

@@ -3,14 +3,12 @@ import { defaultVisibleFields, defaultCardLayout } from '../listSettingsConfigs'
 import type {
   BoardList,
   CardLayout,
-  FilterGroup,
-  SortField,
-  SortDir,
   DisplayMode,
   VisibleField,
   GroupByField,
   ListHeight,
 } from '../types'
+import type { FilterGroup, SortField, SortDir } from '@/lib/filters/types'
 
 export interface ListSettingsState {
   name: string

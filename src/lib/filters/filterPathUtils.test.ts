@@ -18,7 +18,7 @@ import {
   idToPath,
   type RulePath,
 } from './filterPathUtils'
-import type { FilterGroup, FilterRule, FilterCondition } from '../types'
+import type { FilterGroup, FilterRule, FilterCondition } from './types'
 
 // ── Helpers для построения тестовых деревьев ───────────────────────────────
 

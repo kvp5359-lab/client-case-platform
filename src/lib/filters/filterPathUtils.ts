@@ -8,7 +8,7 @@
  *   внутри 2-е правило (тоже группа), внутри 1-е правило (любое).
  */
 
-import type { FilterGroup, FilterRule } from '../types'
+import type { FilterGroup, FilterRule } from './types'
 
 export type RulePath = number[]
 

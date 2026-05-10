@@ -35,11 +35,10 @@ import {
   PROJECT_GROUP_BY_OPTIONS,
 } from './listSettingsConfigs'
 import type {
-  SortField,
-  SortDir,
   GroupByField,
   ListHeight,
 } from './types'
+import type { SortField, SortDir } from '@/lib/filters/types'
 
 interface ListSettingsGeneralTabProps {
   // Базовые поля

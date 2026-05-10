@@ -9,8 +9,8 @@
  */
 
 import { Button } from '@/components/ui/button'
-import { FilterGroupEditor } from './filters/FilterGroupEditor'
-import type { FilterGroup } from './types'
+import { FilterGroupEditor } from '@/components/filters/FilterGroupEditor'
+import type { FilterGroup } from '@/lib/filters/types'
 
 interface ListSettingsFiltersTabProps {
   filters: FilterGroup

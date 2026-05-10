@@ -3,7 +3,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { boardKeys } from '@/hooks/queryKeys'
-import type { BoardList, FilterGroup, SortField, SortDir, DisplayMode, VisibleField, GroupByField, ListHeight, CardLayout } from '../types'
+import type { BoardList, DisplayMode, VisibleField, GroupByField, ListHeight, CardLayout } from '../types'
+import type { FilterGroup, SortField, SortDir } from '@/lib/filters/types'
 
 interface CreateListParams {
   board_id: string

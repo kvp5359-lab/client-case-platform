@@ -28,8 +28,8 @@ import {
   EMPTY_BOARD_GLOBAL_FILTER,
   type BoardGlobalFilter,
   type BoardList,
-  type FilterContext,
 } from './types'
+import type { FilterContext } from '@/lib/filters/types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/ui/status-dropdown'
