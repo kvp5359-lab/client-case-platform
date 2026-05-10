@@ -7,11 +7,12 @@
  * автоматически при любом изменении inbox-данных (новое сообщение, mark as read, realtime).
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { useMemo, useSyncExternalStore } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { inboxKeys } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
-import { getBadgeDisplay } from '@/utils/inboxUnread'
+import { getBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 
 const ACCENT_BADGE: Record<string, string> = {
   blue: 'bg-blue-500',
@@ -32,16 +33,49 @@ interface UnreadBadgeProps {
   accentColor?: string
 }
 
+function computeBadge(
+  threads: InboxThreadEntry[] | undefined,
+  threadId: string,
+): BadgeDisplay {
+  const entry = threads?.find((e) => e.thread_id === threadId)
+  return entry ? getBadgeDisplay(entry) : { type: 'none' as const }
+}
+
 export function UnreadBadge({ threadId, workspaceId, accentColor }: UnreadBadgeProps) {
-  const { data: badge } = useQuery({
-    queryKey: inboxKeys.threadsV2(workspaceId),
-    queryFn: () => [] as InboxThreadEntry[],
-    enabled: false,
-    select: (threads: InboxThreadEntry[] | undefined) => {
-      const entry = threads?.find((e) => e.thread_id === threadId)
-      return entry ? getBadgeDisplay(entry) : { type: 'none' as const }
+  // ВАЖНО: подписываемся на кэш inbox v2 БЕЗ собственного useQuery.
+  // Раньше тут стоял useQuery({ queryKey, queryFn: () => [], enabled: false }) —
+  // при множественных observer-ах одного queryKey React Query 5 при рефетче
+  // мог использовать «пустой» queryFn от UnreadBadge вместо настоящего из
+  // useInboxBase и класть в кэш [], после чего у всех тредов разом исчезали
+  // бейджи. useSyncExternalStore — корректный read-only паттерн без своего
+  // queryFn и без setState из subscribe (избегаем «Cannot update a component
+  // while rendering a different component»: getSnapshot возвращает стабильную
+  // ссылку на массив тредов, badge выводим через useMemo в render-фазе).
+  const queryClient = useQueryClient()
+  const queryKey = useMemo(() => inboxKeys.threadsV2(workspaceId), [workspaceId])
+
+  const threads = useSyncExternalStore<InboxThreadEntry[] | undefined>(
+    (onChange) => {
+      const cache = queryClient.getQueryCache()
+      return cache.subscribe((event) => {
+        const evKey = event.query.queryKey
+        if (
+          !Array.isArray(evKey) ||
+          evKey.length !== queryKey.length ||
+          evKey[0] !== queryKey[0] ||
+          evKey[1] !== queryKey[1] ||
+          evKey[2] !== queryKey[2]
+        ) {
+          return
+        }
+        onChange()
+      })
     },
-  })
+    () => queryClient.getQueryData<InboxThreadEntry[]>(queryKey),
+    () => undefined,
+  )
+
+  const badge = useMemo<BadgeDisplay>(() => computeBadge(threads, threadId), [threads, threadId])
 
   if (!badge || badge.type === 'none') return null
 
