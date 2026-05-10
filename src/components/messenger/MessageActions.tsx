@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { MoreVertical } from 'lucide-react'
+import { MoreVertical, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -79,10 +79,21 @@ export function MessageActions({
   return (
     <div
       className={cn(
-        'absolute top-1 right-1 z-10 flex items-center opacity-0 group-hover:opacity-100 transition-opacity',
+        'absolute top-1 right-1 z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity',
         (moreMenuOpen || reactionPopoverOpen) && 'opacity-100',
       )}
     >
+      {onViewEmail && (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Открыть письмо"
+          className={cn('h-6 w-6 rounded-full hover:brightness-110', pillClass)}
+          onClick={onViewEmail}
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+      )}
       <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button

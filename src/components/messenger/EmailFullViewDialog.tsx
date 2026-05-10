@@ -100,7 +100,7 @@ export function EmailFullViewDialog({ message, open, onOpenChange }: EmailFullVi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 pt-5 pb-4 border-b space-y-3 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Mail className="h-4 w-4 text-red-500 shrink-0" />
