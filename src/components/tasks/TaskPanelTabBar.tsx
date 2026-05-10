@@ -330,7 +330,7 @@ function DraggableTab({
           className={cn(
             'group relative flex items-center gap-1 rounded-full text-xs cursor-pointer min-w-0',
             // Закреплённые компактные: только иконка (+ бейдж/крестик), без текста.
-            tab.pinned ? 'px-1.5 h-6 w-7 justify-center shrink-0' : 'pl-2 pr-1 h-6 min-w-[56px]',
+            tab.pinned ? 'px-1.5 h-6 w-7 justify-center shrink-0' : 'pl-2 pr-0.5 h-6 min-w-[80px]',
             !tab.pinned && (isActive ? 'shrink-0' : 'shrink'),
             isActive
               ? cn(
@@ -381,43 +381,55 @@ function DraggableTab({
               )}
             </>
           ) : (
-            <div className="relative w-4 h-4 shrink-0">
-              {hasBadge && badge && badge.type === 'dot' && (
-                <span
+            <>
+              {/* Бейдж: занимает место в потоке только когда есть. На hover
+                  скрывается, чтобы крестик визуально перекрыл его в той же позиции. */}
+              {hasBadge && badge && (
+                <div
                   className={cn(
-                    'absolute inset-0 rounded-full',
+                    'relative w-4 h-4 shrink-0 -ml-1',
                     'group-hover:opacity-0 transition-opacity',
-                    accent ? accent.badge : 'bg-blue-600',
-                  )}
-                />
-              )}
-              {hasBadge && badge && badge.type === 'number' && (
-                <span
-                  className={cn(
-                    'absolute inset-0 flex items-center justify-center rounded-full text-[10px] leading-none font-semibold text-white px-1',
-                    'group-hover:opacity-0 transition-opacity',
-                    accent ? accent.badge : 'bg-blue-600',
                   )}
                 >
-                  {badge.value > 99 ? '99+' : badge.value}
-                </span>
-              )}
-              {hasBadge && badge && badge.type === 'emoji' && (
-                <span
-                  className={cn(
-                    'absolute inset-0 flex items-center justify-center rounded-full text-[10px] leading-none',
-                    'group-hover:opacity-0 transition-opacity',
-                    accent ? accent.badge : 'bg-blue-600',
+                  {badge.type === 'dot' && (
+                    <span
+                      className={cn(
+                        'absolute inset-0 rounded-full',
+                        accent ? accent.badge : 'bg-blue-600',
+                      )}
+                    />
                   )}
-                >
-                  {badge.value}
-                </span>
+                  {badge.type === 'number' && (
+                    <span
+                      className={cn(
+                        'absolute inset-0 flex items-center justify-center rounded-full text-[10px] leading-none font-semibold text-white px-1',
+                        accent ? accent.badge : 'bg-blue-600',
+                      )}
+                    >
+                      {badge.value > 99 ? '99+' : badge.value}
+                    </span>
+                  )}
+                  {badge.type === 'emoji' && (
+                    <span
+                      className={cn(
+                        'absolute inset-0 flex items-center justify-center rounded-full text-[10px] leading-none',
+                        accent ? accent.badge : 'bg-blue-600',
+                      )}
+                    >
+                      {badge.value}
+                    </span>
+                  )}
+                </div>
               )}
+              {/* Крестик: появляется поверх правого края при hover, в потоке не
+                  занимает места — текст вкладки получает чуть больше пространства. */}
               <button
                 type="button"
                 className={cn(
-                  'absolute inset-0 flex items-center justify-center rounded-full hover:bg-gray-200 text-muted-foreground/70 hover:text-foreground',
-                  hasBadge ? 'opacity-0 group-hover:opacity-100 transition-opacity' : '',
+                  'absolute right-1 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full',
+                  'opacity-0 group-hover:opacity-100 transition-opacity',
+                  isActive ? 'bg-white shadow-sm' : 'bg-gray-100 hover:bg-gray-200',
+                  'text-muted-foreground hover:text-foreground',
                 )}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -428,7 +440,7 @@ function DraggableTab({
               >
                 <X className="w-3 h-3" />
               </button>
-            </div>
+            </>
           )}
         </div>
       </ContextMenuTrigger>

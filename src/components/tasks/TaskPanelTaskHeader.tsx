@@ -117,20 +117,14 @@ export function TaskPanelTaskHeader({
           <span className="shrink-0 flex items-center justify-center w-6 h-6 text-muted-foreground">
             <FolderOpen className="w-4 h-4" />
           </span>
-        ) : isTask ? (
+        ) : (
           <StatusDropdown
             currentStatus={statuses.find((s) => s.id === task.status_id) ?? null}
             statuses={statuses}
             onStatusChange={onStatusChange ?? (() => {})}
-            size="md"
+            size="lg"
             disabled={!onStatusChange}
           />
-        ) : (
-          <span className="shrink-0 flex items-center justify-center w-6 h-6">
-            {createElement(ThreadIcon, {
-              className: cn('w-4 h-4', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
-            })}
-          </span>
         )}
 
         {viewMode === 'history' ? (
@@ -176,6 +170,14 @@ export function TaskPanelTaskHeader({
           </h2>
         )}
 
+        {viewMode === 'thread' && !isTask && !editingName && (
+          <span className="shrink-0 flex items-center justify-center w-5 h-5" title="Тип треда">
+            {createElement(ThreadIcon, {
+              className: cn('w-4 h-4', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
+            })}
+          </span>
+        )}
+
         {/* Проект в строке треда: в bare-режиме скрыт — он показан в верхней
             строке панели (PanelProjectInfoRow). */}
         {!hideToolsRow && task.project_id && resolvedProjectName && (
@@ -202,16 +204,14 @@ export function TaskPanelTaskHeader({
           </a>
         )}
 
-        {isTask && (
-          <div className="shrink-0">
-            <AssigneesPopover
-              threadId={task.id}
-              projectId={task.project_id}
-              workspaceId={workspaceId}
-              assignees={members}
-            />
-          </div>
-        )}
+        <div className="shrink-0">
+          <AssigneesPopover
+            threadId={task.id}
+            projectId={task.project_id}
+            workspaceId={workspaceId}
+            assignees={members}
+          />
+        </div>
 
         {onDeadlineSet && onDeadlineClear && (
           <DeadlinePopover

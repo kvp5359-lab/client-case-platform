@@ -136,7 +136,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
           {task.name}
         </span>
         {task.type && task.type !== 'task' && (
-          <span className="shrink-0">
+          <span className={cn('shrink-0', isFinal && 'opacity-40')}>
             {createElement(getChatIconComponent(task.icon), {
               className: cn('w-3.5 h-3.5', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
             })}
