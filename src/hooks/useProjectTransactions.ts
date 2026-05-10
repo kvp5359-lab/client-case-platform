@@ -16,8 +16,8 @@ export interface ProjectTransactionFormData {
   date: string
   /** Контрагент (от кого / кому) — необязательно. */
   participant_id: string | null
-  /** Статья (за что) — необязательно. */
-  service_id: string | null
+  /** Статья — id из finance_transaction_categories соответствующего kind, опционально. */
+  category_id: string | null
   amount: number
   comment: string | null
   /** UUID ставки налога из справочника finance_tax_rates (или null). */
@@ -75,7 +75,7 @@ export function useCreateProjectTransaction(projectId: string | undefined) {
           type: form.type,
           date: form.date,
           participant_id: form.participant_id,
-          service_id: form.service_id,
+          category_id: form.category_id,
           amount: form.amount,
           comment: form.comment?.trim() || null,
           tax_rate_id: form.tax_rate_id,
@@ -103,7 +103,7 @@ export function useUpdateProjectTransaction(projectId: string | undefined) {
           type: params.form.type,
           date: params.form.date,
           participant_id: params.form.participant_id,
-          service_id: params.form.service_id,
+          category_id: params.form.category_id,
           amount: params.form.amount,
           comment: params.form.comment?.trim() || null,
           tax_rate_id: params.form.tax_rate_id,
@@ -127,7 +127,7 @@ export type ProjectTransactionPatch = Partial<{
   type: TransactionType
   date: string
   participant_id: string | null
-  service_id: string | null
+  category_id: string | null
   amount: number
   comment: string | null
   tax_rate_id: string | null

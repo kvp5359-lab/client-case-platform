@@ -11,6 +11,7 @@ import {
 import { QuickRepliesDirectory } from '@/components/directories/QuickRepliesDirectory'
 import { FinanceServicesDirectory } from '@/components/directories/FinanceServicesDirectory'
 import { FinanceTaxRatesDirectory } from '@/components/directories/FinanceTaxRatesDirectory'
+import { FinanceTxCategoriesDirectory } from '@/components/directories/FinanceTxCategoriesDirectory'
 import {
   CustomDirectoriesList,
   CustomDirectoryPage,
@@ -23,6 +24,8 @@ type DirectorySection =
   | 'quick-replies' // Быстрые ответы
   | 'finance-services' // Услуги (финансовый модуль)
   | 'finance-tax-rates' // Налоги (финансовый модуль)
+  | 'finance-income-categories' // Статьи доходов
+  | 'finance-expense-categories' // Статьи расходов
   | 'custom' // Пользовательские справочники
   | 'custom-detail' // Конкретный справочник
 
@@ -41,6 +44,8 @@ export function DirectoriesTab() {
     if (section === 'quick-replies') return section
     if (section === 'finance-services') return section
     if (section === 'finance-tax-rates') return section
+    if (section === 'finance-income-categories') return section
+    if (section === 'finance-expense-categories') return section
     if (section === 'custom' && subsection) return 'custom-detail'
     if (section === 'custom') return 'custom'
     return 'statuses'
@@ -48,34 +53,35 @@ export function DirectoriesTab() {
 
   const activeSection = getActiveSection()
 
-  const menuItems = [
+  // Группы пунктов меню — в каждом блоке свой заголовок и набор пунктов.
+  const groups: { title: string; items: { id: DirectorySection; label: string }[] }[] = [
     {
-      id: 'statuses' as const,
-      label: 'Статусы',
+      title: 'Статусы',
+      items: [{ id: 'statuses', label: 'Статусы' }],
     },
     {
-      id: 'workspace-roles' as const,
-      label: 'Роли workspace',
+      title: 'Роли',
+      items: [
+        { id: 'workspace-roles', label: 'Роли workspace' },
+        { id: 'project-roles', label: 'Роли проекта' },
+      ],
     },
     {
-      id: 'project-roles' as const,
-      label: 'Роли проекта',
+      title: 'Шаблоны',
+      items: [{ id: 'quick-replies', label: 'Быстрые ответы' }],
     },
     {
-      id: 'quick-replies' as const,
-      label: 'Быстрые ответы',
+      title: 'Финансы',
+      items: [
+        { id: 'finance-services', label: 'Услуги' },
+        { id: 'finance-tax-rates', label: 'Налоги' },
+        { id: 'finance-income-categories', label: 'Статьи доходов' },
+        { id: 'finance-expense-categories', label: 'Статьи расходов' },
+      ],
     },
     {
-      id: 'finance-services' as const,
-      label: 'Услуги',
-    },
-    {
-      id: 'finance-tax-rates' as const,
-      label: 'Налоги',
-    },
-    {
-      id: 'custom' as const,
-      label: 'Справочники',
+      title: 'Данные',
+      items: [{ id: 'custom', label: 'Справочники' }],
     },
   ]
 
@@ -83,7 +89,7 @@ export function DirectoriesTab() {
     router.push(`/workspaces/${workspaceId}/settings/directories/${section}`)
   }
 
-  const renderMenuItem = (item: (typeof menuItems)[0]) => (
+  const renderMenuItem = (item: { id: DirectorySection; label: string }) => (
     <button
       key={item.id}
       onClick={() => handleSectionChange(item.id)}
@@ -111,44 +117,14 @@ export function DirectoriesTab() {
         {/* Боковая навигация */}
         <aside className="w-56 border-r bg-white p-3 flex-shrink-0">
           <nav className="space-y-1">
-            {/* Секция СТАТУСЫ */}
-            <div>
-              <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
-                Статусы
-              </p>
-              <div className="space-y-0.5 pl-2">{renderMenuItem(menuItems[0])}</div>
-            </div>
-
-            {/* Секция РОЛИ */}
-            <div className="pt-4">
-              <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
-                Роли
-              </p>
-              <div className="space-y-0.5 pl-2">
-                {renderMenuItem(menuItems[1])}
-                {renderMenuItem(menuItems[2])}
+            {groups.map((group, idx) => (
+              <div key={group.title} className={idx === 0 ? '' : 'pt-4'}>
+                <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
+                  {group.title}
+                </p>
+                <div className="space-y-0.5 pl-2">{group.items.map(renderMenuItem)}</div>
               </div>
-            </div>
-
-            {/* Секция ШАБЛОНЫ */}
-            <div className="pt-4">
-              <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
-                Шаблоны
-              </p>
-              <div className="space-y-0.5 pl-2">{renderMenuItem(menuItems[3])}</div>
-            </div>
-
-            {/* Секция ДАННЫЕ */}
-            <div className="pt-4">
-              <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
-                Данные
-              </p>
-              <div className="space-y-0.5 pl-2">
-                {renderMenuItem(menuItems[4])}
-                {renderMenuItem(menuItems[5])}
-                {renderMenuItem(menuItems[6])}
-              </div>
-            </div>
+            ))}
           </nav>
         </aside>
 
@@ -160,6 +136,12 @@ export function DirectoriesTab() {
           {activeSection === 'quick-replies' && <QuickRepliesDirectory />}
           {activeSection === 'finance-services' && <FinanceServicesDirectory />}
           {activeSection === 'finance-tax-rates' && <FinanceTaxRatesDirectory />}
+          {activeSection === 'finance-income-categories' && (
+            <FinanceTxCategoriesDirectory kind="income" />
+          )}
+          {activeSection === 'finance-expense-categories' && (
+            <FinanceTxCategoriesDirectory kind="expense" />
+          )}
           {activeSection === 'custom' && <CustomDirectoriesList />}
           {activeSection === 'custom-detail' && <CustomDirectoryPage />}
         </div>

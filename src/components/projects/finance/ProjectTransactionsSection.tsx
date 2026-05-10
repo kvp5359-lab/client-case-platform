@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
-import { useFinanceServices } from '@/hooks/useFinanceServices'
+import { useFinanceTxCategories } from '@/hooks/useFinanceTransactionCategories'
 import { useFinanceTaxRates } from '@/hooks/useFinanceTaxRates'
 import { useProjectServices } from '@/hooks/useProjectServices'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
@@ -70,7 +70,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
   const transactions = useMemo(() => data ?? [], [data])
 
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
-  const { data: catalog = [] } = useFinanceServices(workspaceId)
+  const { data: categories = [] } = useFinanceTxCategories(workspaceId, type)
   const { data: taxRates = [] } = useFinanceTaxRates(workspaceId)
   // Услуги проекта нужны только для типа income — чтобы посчитать «Остаток»
   // (стоимость с налогом минус уже полученные доходы) и подставить его в форму.
@@ -101,9 +101,9 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
     [participants],
   )
 
-  const serviceOptions = useMemo(
-    () => catalog.map((s) => ({ value: s.id, label: s.name })),
-    [catalog],
+  const categoryOptions = useMemo(
+    () => categories.map((c) => ({ value: c.id, label: c.name })),
+    [categories],
   )
 
   const taxOptions = useMemo(
@@ -259,12 +259,12 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                     </td>
                     <td className="px-3 py-2">
                       <InlineEditSelect
-                        value={t.service_id}
-                        options={serviceOptions}
+                        value={t.category_id}
+                        options={categoryOptions}
                         emptyText="—"
                         noneLabel="— Не указана —"
-                        searchPlaceholder="Поиск услуги"
-                        onCommit={(id) => handlePatch(t.id, { service_id: id })}
+                        searchPlaceholder="Поиск статьи"
+                        onCommit={(id) => handlePatch(t.id, { category_id: id })}
                       />
                     </td>
                     <td className="px-3 py-2 text-gray-600">

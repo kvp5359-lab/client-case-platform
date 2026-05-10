@@ -203,6 +203,12 @@ export const financeTaxRateKeys = {
   list: (workspaceId: string) => ['finance-tax-rates', 'list', workspaceId] as const,
 }
 
+export const financeTxCategoryKeys = {
+  all: ['finance-tx-categories'] as const,
+  list: (workspaceId: string, kind: 'income' | 'expense') =>
+    ['finance-tx-categories', 'list', workspaceId, kind] as const,
+}
+
 export const projectServiceKeys = {
   all: ['project-services'] as const,
   list: (projectId: string) => ['project-services', 'list', projectId] as const,

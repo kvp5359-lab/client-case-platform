@@ -2343,6 +2343,50 @@ export type Database = {
           },
         ]
       }
+      finance_transaction_categories: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          kind: string
+          name: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          kind: string
+          name: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          kind?: string
+          name?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_transaction_categories_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       folder_slots: {
         Row: {
           assignee_id: string | null
@@ -5457,6 +5501,7 @@ export type Database = {
       project_transactions: {
         Row: {
           amount: number
+          category_id: string | null
           comment: string | null
           created_at: string
           date: string
@@ -5466,7 +5511,6 @@ export type Database = {
           is_deleted: boolean
           participant_id: string | null
           project_id: string
-          service_id: string | null
           tax_rate: number | null
           tax_rate_id: string | null
           type: string
@@ -5474,6 +5518,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          category_id?: string | null
           comment?: string | null
           created_at?: string
           date?: string
@@ -5483,7 +5528,6 @@ export type Database = {
           is_deleted?: boolean
           participant_id?: string | null
           project_id: string
-          service_id?: string | null
           tax_rate?: number | null
           tax_rate_id?: string | null
           type: string
@@ -5491,6 +5535,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          category_id?: string | null
           comment?: string | null
           created_at?: string
           date?: string
@@ -5500,13 +5545,19 @@ export type Database = {
           is_deleted?: boolean
           participant_id?: string | null
           project_id?: string
-          service_id?: string | null
           tax_rate?: number | null
           tax_rate_id?: string | null
           type?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_transaction_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_transactions_participant_id_fkey"
             columns: ["participant_id"]
@@ -5519,13 +5570,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_transactions_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "finance_services"
             referencedColumns: ["id"]
           },
           {

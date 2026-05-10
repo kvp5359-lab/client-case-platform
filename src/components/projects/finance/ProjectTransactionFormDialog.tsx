@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import { useFinanceServices } from '@/hooks/useFinanceServices'
+import { useFinanceTxCategories } from '@/hooks/useFinanceTransactionCategories'
 import { useFinanceTaxRates } from '@/hooks/useFinanceTaxRates'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import type {
@@ -65,7 +65,7 @@ export function ProjectTransactionFormDialog({
   suggestedAmount,
   suggestedLabel = 'Остаток',
 }: Props) {
-  const { data: catalog = [] } = useFinanceServices(workspaceId)
+  const { data: categories = [] } = useFinanceTxCategories(workspaceId, type)
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
   const { data: taxRates = [] } = useFinanceTaxRates(workspaceId)
   const defaultTax = taxRates.find((t) => t.is_default)
@@ -75,7 +75,7 @@ export function ProjectTransactionFormDialog({
   const [participantId, setParticipantId] = useState<string | null>(
     editing?.participant_id ?? null,
   )
-  const [serviceId, setServiceId] = useState<string | null>(editing?.service_id ?? null)
+  const [categoryId, setCategoryId] = useState<string | null>(editing?.category_id ?? null)
   const [amountText, setAmountText] = useState(editing ? String(editing.amount) : '')
   const [comment, setComment] = useState(editing?.comment ?? '')
   const [taxRateId, setTaxRateId] = useState<string | null>(
@@ -92,7 +92,7 @@ export function ProjectTransactionFormDialog({
       type,
       date,
       participant_id: participantId,
-      service_id: serviceId,
+      category_id: categoryId,
       amount: Number.isFinite(amount) && amount > 0 ? amount : 0,
       comment: comment.trim() || null,
       tax_rate_id: taxRateId,
@@ -180,16 +180,22 @@ export function ProjectTransactionFormDialog({
 
           <div className="flex gap-3">
             <div className="flex-1 min-w-0 space-y-1.5">
-              <Label htmlFor="trx-service">Статья (за что)</Label>
+              <Label htmlFor="trx-category">Статья (за что)</Label>
               <SearchableSelect
-                id="trx-service"
-                value={serviceId}
-                onChange={setServiceId}
-                options={catalog.map((s) => ({ value: s.id, label: s.name }))}
+                id="trx-category"
+                value={categoryId}
+                onChange={setCategoryId}
+                options={categories.map((c) => ({ value: c.id, label: c.name }))}
                 placeholder="Не указана"
                 noneLabel="— Не указана —"
-                searchPlaceholder="Поиск услуги"
-                emptyText="Услуг с таким именем нет"
+                searchPlaceholder="Поиск статьи"
+                emptyText={
+                  categories.length === 0
+                    ? type === 'income'
+                      ? 'Справочник статей доходов пуст'
+                      : 'Справочник статей расходов пуст'
+                    : 'Ничего не нашли'
+                }
               />
             </div>
             <div className="flex-1 min-w-0 space-y-1.5">
