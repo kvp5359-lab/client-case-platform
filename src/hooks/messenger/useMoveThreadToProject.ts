@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { invalidateAfterThreadMove } from '@/hooks/queryKeys'
 
 /**
  * Перенос треда в другой проект (например, из системного инбокса Wazzup
@@ -18,12 +19,7 @@ export function useMoveThreadToProject(workspaceId: string | undefined) {
       if (error) throw new Error(error.message)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sidebar'] })
-      qc.invalidateQueries({ queryKey: ['threads'] })
-      qc.invalidateQueries({ queryKey: ['messenger'] })
-      qc.invalidateQueries({ queryKey: ['personal-dialogs'] })
-      qc.invalidateQueries({ queryKey: ['inbox'] })
-      if (workspaceId) qc.invalidateQueries({ queryKey: ['workspace', workspaceId] })
+      invalidateAfterThreadMove(qc, workspaceId)
       toast.success('Тред перенесён')
     },
     onError: (err: Error) => {

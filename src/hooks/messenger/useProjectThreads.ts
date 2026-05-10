@@ -331,7 +331,7 @@ export function useDeleteThread(workspaceId?: string) {
         // по префиксу. Работает, но задевает все воркспейсы пользователя.
         queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.all })
         queryClient.invalidateQueries({ queryKey: taskKeys.allUrgent })
-        queryClient.invalidateQueries({ queryKey: ['my-task-counts'] })
+        queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.all })
       }
       queryClient.invalidateQueries({ queryKey: trashKeys.all })
       // Удаление любого треда с дедлайном (task / chat / email) может сбросить

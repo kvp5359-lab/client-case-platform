@@ -3,7 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { participantKeys, STALE_TIME } from '@/hooks/queryKeys'
+import {
+  contactThreadKeys,
+  invalidateAfterThreadMove,
+  participantKeys,
+  STALE_TIME,
+} from '@/hooks/queryKeys'
 
 export interface ContactParticipant {
   id: string
@@ -52,7 +57,7 @@ export function useContactParticipant(participantId: string | null | undefined) 
 
 export function useContactThreads(participantId: string | null | undefined) {
   return useQuery<ContactThread[]>({
-    queryKey: ['contact-threads', participantId ?? ''],
+    queryKey: contactThreadKeys.byParticipant(participantId ?? ''),
     queryFn: async () => {
       if (!participantId) return []
       const { data, error } = await supabase
@@ -115,12 +120,8 @@ export function useMergeParticipants(workspaceId: string | undefined) {
       if (error) throw new Error(error.message)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['personal-dialogs'] })
-      qc.invalidateQueries({ queryKey: ['contact-threads'] })
       qc.invalidateQueries({ queryKey: participantKeys.all })
-      qc.invalidateQueries({ queryKey: ['inbox'] })
-      qc.invalidateQueries({ queryKey: ['threads'] })
-      if (workspaceId) qc.invalidateQueries({ queryKey: ['workspace', workspaceId] })
+      invalidateAfterThreadMove(qc, workspaceId)
       toast.success('Контакты объединены')
     },
     onError: (err: Error) => {

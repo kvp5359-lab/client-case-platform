@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { useWorkspacePermissions } from '@/hooks/permissions'
-import { workspaceKeys, sidebarKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { workspaceKeys, sidebarKeys, sidebarMetaKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { Workspace, Participant } from '@/types/entities'
 import type { Database } from '@/types/database'
 
@@ -242,7 +242,7 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
     icon_color: string
   }
   const { data: templatesById } = useQuery<Record<string, TemplateMeta>>({
-    queryKey: ['sidebar', 'workspace-templates-icons', workspaceId ?? ''],
+    queryKey: sidebarMetaKeys.templatesIcons(workspaceId ?? ''),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_templates')
@@ -264,7 +264,7 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
   })
 
   const { data: statusesById } = useQuery<Record<string, { color: string }>>({
-    queryKey: ['sidebar', 'workspace-statuses-colors', workspaceId ?? ''],
+    queryKey: sidebarMetaKeys.statusesColors(workspaceId ?? ''),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('statuses')

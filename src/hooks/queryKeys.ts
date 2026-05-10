@@ -771,6 +771,53 @@ export const workspaceSidebarSettingsKeys = {
 }
 
 export const myTaskCountsKeys = {
+  /** Префикс для broad-invalidate во всех воркспейсах. */
+  all: ['my-task-counts'] as const,
   byWorkspace: (workspaceId: string) =>
     ['my-task-counts', workspaceId] as const,
+}
+
+/** Кеш списка тредов контакта (используется в карточке контакта). */
+export const contactThreadKeys = {
+  all: ['contact-threads'] as const,
+  byParticipant: (participantId: string) =>
+    ['contact-threads', participantId] as const,
+}
+
+/** Кеши вспомогательных мета-данных, рисуемых в сайдбаре. */
+export const sidebarMetaKeys = {
+  /** Префикс для broad-invalidate во всех воркспейсах. */
+  templatesIconsAll: ['sidebar', 'workspace-templates-icons'] as const,
+  templatesIcons: (workspaceId: string) =>
+    ['sidebar', 'workspace-templates-icons', workspaceId] as const,
+  statusesColors: (workspaceId: string) =>
+    ['sidebar', 'workspace-statuses-colors', workspaceId] as const,
+}
+
+/**
+ * Инвалидировать кеши после перемещения треда между контекстами (между
+ * проектами / в/из «Личных диалогов» / при merge участников). Сбрасывает
+ * все списки тредов, инбоксы, сайдбар и счётчики.
+ *
+ * Заменяет руками выписанные пакеты broad-invalidate вроде
+ * `['sidebar'] / ['threads'] / ['messenger'] / ['personal-dialogs'] /
+ * ['inbox'] / ['workspace', workspaceId]` — часть из которых не
+ * совпадала ни с одним реальным префиксом и фактически ничего не
+ * инвалидировала (`['threads']`, `['workspace', workspaceId]`).
+ */
+export function invalidateAfterThreadMove(
+  queryClient: { invalidateQueries: (opts: { queryKey: readonly unknown[] }) => void },
+  workspaceId: string | undefined,
+) {
+  queryClient.invalidateQueries({ queryKey: messengerKeys.all })
+  queryClient.invalidateQueries({ queryKey: personalDialogsKeys.all })
+  queryClient.invalidateQueries({ queryKey: inboxKeys.all })
+  queryClient.invalidateQueries({ queryKey: contactThreadKeys.all })
+  queryClient.invalidateQueries({ queryKey: ['sidebar'] })
+  if (workspaceId) {
+    queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
+    queryClient.invalidateQueries({ queryKey: projectKeys.byWorkspace(workspaceId) })
+    queryClient.invalidateQueries({ queryKey: accessibleProjectKeys.workspace(workspaceId) })
+    queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })
+  }
 }

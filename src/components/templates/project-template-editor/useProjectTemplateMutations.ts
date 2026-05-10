@@ -5,7 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { projectTemplateKeys } from '@/hooks/queryKeys'
+import { projectTemplateKeys, sidebarMetaKeys } from '@/hooks/queryKeys'
 import type {
   FormTemplateWithRelation,
   DocumentKitTemplateWithRelation,
@@ -67,7 +67,7 @@ export function useProjectTemplateMutations({
     queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
     queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detailFull(templateId) })
     // Сайдбар держит мапу иконок и цветов шаблонов в отдельном ключе.
-    queryClient.invalidateQueries({ queryKey: ['sidebar', 'workspace-templates-icons'] })
+    queryClient.invalidateQueries({ queryKey: sidebarMetaKeys.templatesIconsAll })
   }
 
   // Обновление иконки шаблона
