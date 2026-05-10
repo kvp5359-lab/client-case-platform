@@ -67,6 +67,8 @@ function MessageBubbleImpl({
     isTelegramLinked,
     isClientThread,
     isEmailThread,
+    isBusinessThread,
+    isWazzupThread,
     onReply,
     onReact,
     onEdit,
@@ -261,7 +263,7 @@ function MessageBubbleImpl({
           onEditDraft={onEditDraft}
           onViewEmail={isEmailSource(message.source) ? () => setEmailViewOpen(true) : undefined}
           onDeleteDialogOpen={() => setDeleteDialogOpen(true)}
-          reactionsDisabled={isEmailThread}
+          reactionsDisabled={Boolean(isEmailThread || isBusinessThread || isWazzupThread)}
           reactionPopoverOpen={reactionPopoverOpen}
           setReactionPopoverOpen={setReactionPopoverOpen}
         >
@@ -424,7 +426,7 @@ function MessageBubbleImpl({
               onViewEmail={isEmailSource(message.source) ? () => setEmailViewOpen(true) : undefined}
               channel={channel}
               onDeleteDialogOpen={() => setDeleteDialogOpen(true)}
-              reactionsDisabled={isEmailThread}
+              reactionsDisabled={Boolean(isEmailThread || isBusinessThread || isWazzupThread)}
               moreMenuOpen={moreMenuOpen}
               setMoreMenuOpen={setMoreMenuOpen}
               reactionPopoverOpen={reactionPopoverOpen}

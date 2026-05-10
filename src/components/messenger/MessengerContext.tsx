@@ -22,6 +22,10 @@ export interface MessengerContextValue {
    * web-форму попадают с source='web', хотя по факту это email.
    */
   isEmailThread?: boolean
+  /** Тред — Telegram Business. Реакции через Bot API в 1-на-1 не работают. */
+  isBusinessThread?: boolean
+  /** Тред — Wazzup (WhatsApp/IG). Реакции через шлюз не доставляются. */
+  isWazzupThread?: boolean
 
   // Callbacks
   onReply: (msg: ProjectMessage) => void
@@ -73,6 +77,8 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       isTelegramLinked: value.isTelegramLinked,
       isClientThread: value.isClientThread,
       isEmailThread: value.isEmailThread,
+      isBusinessThread: value.isBusinessThread,
+      isWazzupThread: value.isWazzupThread,
       onReply: value.onReply,
       onReact: value.onReact,
       onEdit: value.onEdit,
@@ -102,6 +108,8 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       value.isTelegramLinked,
       value.isClientThread,
       value.isEmailThread,
+      value.isBusinessThread,
+      value.isWazzupThread,
       value.onReply,
       value.onReact,
       value.onEdit,

@@ -60,6 +60,14 @@ export interface ProjectThread {
    * project, avoiding accidental duplicates.
    */
   source_template_id: string | null
+  /** Привязка треда к Telegram Business connection. NULL — обычный тред. */
+  business_connection_id: string | null
+  /** TG-user_id клиента в business-чате (вместе с business_connection_id уникально определяет тред). */
+  business_client_tg_user_id: number | null
+  /** Привязка к каналу Wazzup. NULL — не Wazzup-тред. */
+  wazzup_channel_id: string | null
+  /** ID чата в Wazzup (телефон без `+` для WA, username для IG). */
+  wazzup_chat_id: string | null
   created_at: string
   updated_at: string
 }
