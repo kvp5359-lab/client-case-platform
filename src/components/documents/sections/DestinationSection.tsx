@@ -2,7 +2,6 @@
 
 /**
  * Секция папки назначения (Google Drive)
- * TODO: Collapsible-обёртка дублируется 4 раза — рефакторинг на BaseSection
  */
 
 import { memo } from 'react'
