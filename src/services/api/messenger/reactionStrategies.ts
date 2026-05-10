@@ -19,6 +19,7 @@
 import { supabase } from '@/lib/supabase'
 import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
+import { isEmailSource } from './messengerService.types'
 
 export interface ReactionParams {
   messageId: string
@@ -113,4 +114,35 @@ export async function toggleReactionByChannel(
   // Default: TG-группы (через секретаря/личного бота) + всё остальное
   // (web, email — там просто наш RPC без внешнего sync).
   return internalFirst(params, syncTelegramGroup)
+}
+
+/**
+ * Поддерживается ли постановка реакции для этого канала так, чтобы
+ * получатель её увидел? Если нет — UI скрывает кнопку реакции, чтобы не
+ * вводить пользователя в заблуждение «отреагировал, но клиент ничего не
+ * увидит».
+ *
+ * Состояние на 2026-05-10 (см. infrastructure.md → «Мессенджер-каналы»):
+ *  - web                — внутренний чат, реакции живут только в БД ✅
+ *  - telegram (group)   — `setMessageReaction` если бот админ группы ✅
+ *  - telegram_mtproto   — нативно через MTProto ✅
+ *  - telegram_business  — Bot API не отдаёт `message_reaction` для 1-на-1
+ *                         Business-чатов (бот не может быть «админом»
+ *                         личного диалога). Можем отправить reply-эмодзи,
+ *                         но клиент это видит как сообщение, а не реакцию,
+ *                         и поставленная им реакция-tap до нас не доходит
+ *                         в принципе. Поэтому кнопку скрываем —
+ *                         пользователь может реагировать через свайп
+ *                         «Ответить» → эмодзи как обычное сообщение.
+ *  - wazzup             — WhatsApp Bot API не позволяет ставить реакции
+ *                         нативно; reply-эмодзи возможен (как с Business),
+ *                         но это сообщение, не реакция.
+ *  - email              — у почты нет понятия реакции.
+ */
+export function isReactionSupportedForSource(source: string | undefined | null): boolean {
+  if (!source) return true // legacy/internal — оставляем как было
+  if (source === 'telegram_business') return false
+  if (source === 'wazzup') return false
+  if (isEmailSource(source)) return false
+  return true
 }

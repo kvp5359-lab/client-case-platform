@@ -31,6 +31,7 @@ import { REACTIONS } from './ReactionPicker'
 import { trackReactionUsage } from '@/utils/messenger/recentReactions'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { isEmailSource } from '@/services/api/messenger/messengerService.types'
+import { isReactionSupportedForSource } from '@/services/api/messenger/reactionStrategies'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { getChatIconComponent, getChatTabAccent } from './EditChatDialog'
 import { stripHtml, isHtmlContent, sanitizeMessengerHtml } from '@/utils/format/messengerHtml'
@@ -159,59 +160,69 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
       ? forwardChats.filter((c) => c.id !== currentThreadId && c.type === 'chat')
       : []
 
+  // В каналах, где Telegram/WhatsApp/email не позволяют доставить
+  // реакцию получателю, скрываем UI «быстрых реакций» совсем — вместо
+  // этого менеджер использует «Ответить» свайпом и шлёт эмодзи как
+  // обычное сообщение. См. infrastructure.md → «Мессенджер-каналы».
+  const reactionsAllowed = isReactionSupportedForSource(message.source)
+
   return (
     <>
-      {/* Quick reactions row.
-          Каждый эмодзи обёрнут в Item (DropdownMenuItem / ContextMenuItem) —
-          Radix сам закрывает родительское меню после клика. Иначе для
-          ContextMenu (правая кнопка мыши) меню остаётся открытым, потому
-          что у ContextMenu Root нет controlled open/onOpenChange. */}
-      <div className="flex items-center justify-between px-2 py-1.5">
-        {quickReactions.map((emoji) => (
-          <Item
-            key={emoji}
-            onClick={() => {
-              trackReactionUsage(emoji)
-              onReact(message.id, emoji)
-            }}
-            className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-muted text-lg transition-colors p-0 cursor-pointer"
-          >
-            {emoji}
-          </Item>
-        ))}
-        {/* Full picker button */}
-        <Popover open={reactionPopoverOpen} onOpenChange={setReactionPopoverOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              onClick={(e) => e.stopPropagation()}
-              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
-            >
-              <SmilePlus className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-2" align="end" side="top">
-            <div className="grid grid-cols-6 gap-1">
-              {REACTIONS.map((e) => (
+      {reactionsAllowed && (
+        <>
+          {/* Quick reactions row.
+              Каждый эмодзи обёрнут в Item (DropdownMenuItem / ContextMenuItem) —
+              Radix сам закрывает родительское меню после клика. Иначе для
+              ContextMenu (правая кнопка мыши) меню остаётся открытым, потому
+              что у ContextMenu Root нет controlled open/onOpenChange. */}
+          <div className="flex items-center justify-between px-2 py-1.5">
+            {quickReactions.map((emoji) => (
+              <Item
+                key={emoji}
+                onClick={() => {
+                  trackReactionUsage(emoji)
+                  onReact(message.id, emoji)
+                }}
+                className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-muted text-lg transition-colors p-0 cursor-pointer"
+              >
+                {emoji}
+              </Item>
+            ))}
+            {/* Full picker button */}
+            <Popover open={reactionPopoverOpen} onOpenChange={setReactionPopoverOpen}>
+              <PopoverTrigger asChild>
                 <button
-                  key={e}
-                  onClick={() => {
-                    trackReactionUsage(e)
-                    onReact(message.id, e)
-                    setReactionPopoverOpen(false)
-                    onCloseMenu?.()
-                  }}
-                  className="h-8 w-8 flex items-center justify-center rounded hover:bg-muted text-lg transition-colors"
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
                 >
-                  {e}
+                  <SmilePlus className="h-4 w-4 text-muted-foreground" />
                 </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" align="end" side="top">
+                <div className="grid grid-cols-6 gap-1">
+                  {REACTIONS.map((e) => (
+                    <button
+                      key={e}
+                      onClick={() => {
+                        trackReactionUsage(e)
+                        onReact(message.id, e)
+                        setReactionPopoverOpen(false)
+                        onCloseMenu?.()
+                      }}
+                      className="h-8 w-8 flex items-center justify-center rounded hover:bg-muted text-lg transition-colors"
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
 
-      <Separator />
+          <Separator />
+        </>
+      )}
 
       <Item onClick={() => onReply(message)}>
         <Reply className="h-4 w-4 mr-2" />
