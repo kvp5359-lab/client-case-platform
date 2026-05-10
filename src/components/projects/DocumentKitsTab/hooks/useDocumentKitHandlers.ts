@@ -10,6 +10,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { useShallow } from 'zustand/shallow'
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import { useDocumentKitBatchHandlers } from './useDocumentKitBatchHandlers'
 import { useDocumentKitDragDropHandlers } from './useDocumentKitDragDropHandlers'
@@ -69,7 +70,24 @@ export function useDocumentKitHandlers({
     setSourceFolderLink,
     setSourceConnected,
     setSyncing,
-  } = useDocumentKitUIStore()
+  } = useDocumentKitUIStore(
+    useShallow((s) => ({
+      closeMoveDialog: s.closeMoveDialog,
+      closeSourceMoveDialog: s.closeSourceMoveDialog,
+      setMovingSourceDoc: s.setMovingSourceDoc,
+      setBatchMoving: s.setBatchMoving,
+      setStatusDropdownOpen: s.setStatusDropdownOpen,
+      setCheckingBatch: s.setCheckingBatch,
+      openExportDialog: s.openExportDialog,
+      closeExportDialog: s.closeExportDialog,
+      setGoogleDriveFolderLink: s.setGoogleDriveFolderLink,
+      setExporting: s.setExporting,
+      closeConnectSourceDialog: s.closeConnectSourceDialog,
+      setSourceFolderLink: s.setSourceFolderLink,
+      setSourceConnected: s.setSourceConnected,
+      setSyncing: s.setSyncing,
+    })),
+  )
 
   const folders = kit?.folders || []
 

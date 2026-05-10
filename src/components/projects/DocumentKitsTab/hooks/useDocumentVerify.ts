@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
 import { useErrorHandler } from '@/hooks/shared/useErrorHandler'
 import { checkDocument } from '@/services/api/googleDriveService'
+import { useShallow } from 'zustand/shallow'
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import { documentKitKeys } from '@/hooks/queryKeys'
 
@@ -20,7 +21,14 @@ export function useDocumentVerify(
 
   // Actions
   const { setCheckingDocument, setSuggestedNames, updateEditForm, updateDocumentTextContent } =
-    useDocumentKitUIStore()
+    useDocumentKitUIStore(
+      useShallow((s) => ({
+        setCheckingDocument: s.setCheckingDocument,
+        setSuggestedNames: s.setSuggestedNames,
+        updateEditForm: s.updateEditForm,
+        updateDocumentTextContent: s.updateDocumentTextContent,
+      })),
+    )
 
   const handleVerifyDocument = async () => {
     if (!documentToEdit) return

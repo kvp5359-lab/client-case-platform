@@ -23,6 +23,7 @@ import { useSlotHandlers } from './useSlotHandlers'
 import { useProjectSourceDocuments } from '@/hooks/documents/useProjectSourceDocuments'
 import { useProjectSourceConnection } from '@/hooks/documents/useProjectSourceConnection'
 import { useProjectDestinationFolder } from '@/hooks/documents/useProjectDestinationFolder'
+import { useShallow } from 'zustand/shallow'
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import { projectKeys } from '@/hooks/queryKeys'
 import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
@@ -190,7 +191,13 @@ export function useDocumentKitOps({
     openBatchCheckDialog,
     requirePermission,
   })
-  const { addCompressingDoc, removeCompressingDoc, setCompressProgress } = useDocumentKitUIStore()
+  const { addCompressingDoc, removeCompressingDoc, setCompressProgress } = useDocumentKitUIStore(
+    useShallow((s) => ({
+      addCompressingDoc: s.addCompressingDoc,
+      removeCompressingDoc: s.removeCompressingDoc,
+      setCompressProgress: s.setCompressProgress,
+    })),
+  )
   const compressOps = useDocumentCompress({
     projectId,
     fetchDocumentKits,

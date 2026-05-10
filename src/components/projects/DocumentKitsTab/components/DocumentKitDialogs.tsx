@@ -17,6 +17,7 @@ import {
   DocumentKitSettingsDialog,
 } from '../dialogs'
 import { ExportProgressDialog } from '../dialogs/ExportProgressDialog'
+import { useShallow } from 'zustand/shallow'
 import {
   useMoveDialogState,
   useEditDialogState,
@@ -118,7 +119,38 @@ export function DocumentKitDialogs({ handlers }: DocumentKitDialogsProps) {
     closeExportProgressDialog,
     openKitSettingsDialog,
     closeKitSettingsDialog,
-  } = useDocumentKitUIStore()
+  } = useDocumentKitUIStore(
+    useShallow((s) => ({
+      closeMoveDialog: s.closeMoveDialog,
+      closeEditDialog: s.closeEditDialog,
+      updateEditForm: s.updateEditForm,
+      closeContentViewDialog: s.closeContentViewDialog,
+      openTemplateSelectDialog: s.openTemplateSelectDialog,
+      closeTemplateSelectDialog: s.closeTemplateSelectDialog,
+      clearTemplateSelection: s.clearTemplateSelection,
+      openAddFolderDialog: s.openAddFolderDialog,
+      closeAddFolderDialog: s.closeAddFolderDialog,
+      closeEditFolderDialog: s.closeEditFolderDialog,
+      resetFolderForm: s.resetFolderForm,
+      updateFolderForm: s.updateFolderForm,
+      openMergeDialog: s.openMergeDialog,
+      closeMergeDialog: s.closeMergeDialog,
+      updateMergeName: s.updateMergeName,
+      setMergeFolder: s.setMergeFolder,
+      openConnectSourceDialog: s.openConnectSourceDialog,
+      closeConnectSourceDialog: s.closeConnectSourceDialog,
+      setSourceFolderLink: s.setSourceFolderLink,
+      openSourceSettingsDialog: s.openSourceSettingsDialog,
+      closeSourceSettingsDialog: s.closeSourceSettingsDialog,
+      openExportDialog: s.openExportDialog,
+      closeExportDialog: s.closeExportDialog,
+      setGoogleDriveFolderLink: s.setGoogleDriveFolderLink,
+      setExportSyncMode: s.setExportSyncMode,
+      closeExportProgressDialog: s.closeExportProgressDialog,
+      openKitSettingsDialog: s.openKitSettingsDialog,
+      closeKitSettingsDialog: s.closeKitSettingsDialog,
+    })),
+  )
 
   // --- Context data ---
   const { folders, statuses } = useDocumentKitData()

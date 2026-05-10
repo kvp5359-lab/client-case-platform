@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { Tables } from '@/types/database'
 import { logger } from '@/utils/logger'
 import { updateDocument } from '@/services/documents'
+import { useShallow } from 'zustand/shallow'
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 
@@ -25,7 +26,17 @@ export function useDocumentEdit(
     openContentViewDialog,
     setLoadingContent,
     updateDocumentTextContent,
-  } = useDocumentKitUIStore()
+  } = useDocumentKitUIStore(
+    useShallow((s) => ({
+      openEditDialog: s.openEditDialog,
+      closeEditDialog: s.closeEditDialog,
+      updateEditForm: s.updateEditForm,
+      setSuggestedNames: s.setSuggestedNames,
+      openContentViewDialog: s.openContentViewDialog,
+      setLoadingContent: s.setLoadingContent,
+      updateDocumentTextContent: s.updateDocumentTextContent,
+    })),
+  )
 
   const handleOpenEditDialog = (documentId: string, kit: DocumentKitWithDocuments | undefined) => {
     const doc = kit?.documents?.find((d) => d.id === documentId)

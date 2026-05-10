@@ -7,6 +7,7 @@ import { logger } from '@/utils/logger'
 import { Tables } from '@/types/database'
 import { useErrorHandler } from '@/hooks/shared/useErrorHandler'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { useShallow } from 'zustand/shallow'
 import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import type { DocumentKit } from '@/services/api/documents/documentKitService'
 import { deleteFolder } from '@/services/documents/folderService'
@@ -62,7 +63,22 @@ export function useFolderOperations(
     resetFolderForm,
     setTargetFolder,
     setUploadingFiles,
-  } = useDocumentKitUIStore()
+  } = useDocumentKitUIStore(
+    useShallow((s) => ({
+      toggleFolderCollapse: s.toggleFolderCollapse,
+      setLoadingTemplates: s.setLoadingTemplates,
+      setFolderTemplates: s.setFolderTemplates,
+      toggleTemplateSelection: s.toggleTemplateSelection,
+      clearTemplateSelection: s.clearTemplateSelection,
+      closeTemplateSelectDialog: s.closeTemplateSelectDialog,
+      closeAddFolderDialog: s.closeAddFolderDialog,
+      openEditFolderDialog: s.openEditFolderDialog,
+      closeEditFolderDialog: s.closeEditFolderDialog,
+      resetFolderForm: s.resetFolderForm,
+      setTargetFolder: s.setTargetFolder,
+      setUploadingFiles: s.setUploadingFiles,
+    })),
+  )
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   // guards against double invocation
