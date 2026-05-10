@@ -141,6 +141,7 @@ export function StatusFormDialog({
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="is_final"
+                className="size-3.5"
                 checked={formData.is_final}
                 onCheckedChange={(checked) => {
                   // Если снимают флаг финальности — final_kind должен быть null
