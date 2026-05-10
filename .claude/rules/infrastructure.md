@@ -28,7 +28,7 @@
 | Tiptap | latest | Rich text editor |
 | @dnd-kit | latest | Drag & drop |
 | Supabase JS | 2.x | БД, Auth, Storage, Realtime |
-| Vitest | latest | Тесты |
+| Vitest | 4.x | Тесты (620+ кейсов) |
 
 ## Архитектура
 
@@ -38,7 +38,7 @@
 - **Состояние**: React Query (серверное) + Zustand (клиентское)
 - **Структура**: `src/page-components/` (тяжёлые компоненты страниц), `src/components/` (переиспользуемые компоненты по модулям)
 - **Публичная часть**: `src/app/(public)/` — заглушки для маркетплейса (lawyers, blog, about)
-- **Приватная часть**: `src/app/(app)/` — защищена цепочкой middleware → server-side `(app)/layout.tsx` → клиентский `ProtectedRoute` → RLS в БД
+- **Приватная часть**: `src/app/(app)/` — защищена цепочкой middleware → server-side `(app)/layout.tsx` → клиентский `ProtectedRoute` → RLS в БД. Файл middleware называется `src/proxy.ts` (новое стандартное имя в Next 16, ранее `middleware.ts`).
 
 ## Supabase
 
@@ -150,7 +150,7 @@
 
 ## Статусы проектов (единый справочник + per-template привязка)
 
-- **Хранение**: `projects.status_id` (uuid → `statuses.id`). Текстовая колонка `projects.status` помечена DEPRECATED 2026-04-25 — удалить после 2026-05-09.
+- **Хранение**: `projects.status_id` (uuid → `statuses.id`). Текстовая колонка `projects.status` дропнута миграцией `drop_projects_status_text_with_triggers` (2026-04-25).
 - **Модель**: project-статусы лежат в общем справочнике `statuses` (entity_type='project'), без привязки к шаблону. Связь м-к-м с шаблонами — через junction `project_template_statuses (template_id, status_id, order_index, is_default, is_final)`. Один статус может быть подключён к нескольким шаблонам с разными per-template флагами.
 - **Резолв набора шаблона**: хук `useProjectStatusesForTemplate(workspaceId, templateId)` — JOIN на junction, возвращает `TemplateProjectStatus[]` (поля shared из `statuses` + per-template `order_index/is_default/is_final` из junction).
 - **Все статусы воркспейса**: `useAllProjectStatuses(workspaceId)` — для фильтров/пресетов.
