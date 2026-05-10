@@ -540,6 +540,12 @@ export const boardKeys = {
   projectsByWorkspace: (workspaceId: string) => ['boards', 'projects', workspaceId] as const,
 }
 
+export const itemListKeys = {
+  all: ['item-lists'] as const,
+  byWorkspace: (workspaceId: string) => ['item-lists', 'workspace', workspaceId] as const,
+  detail: (listId: string) => ['item-lists', 'detail', listId] as const,
+}
+
 export const statusKeys = {
   document: (workspaceId: string) => ['statuses', 'document', workspaceId] as const,
   documentKit: (workspaceId: string) => ['statuses', 'document_kit', workspaceId] as const,
