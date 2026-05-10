@@ -22,6 +22,7 @@ import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { TaskPanelTabBar, type SystemTabDef } from './TaskPanelTabBar'
 import { PanelProjectInfoRow } from './PanelProjectInfoRow'
+import { PanelContactInfoRow } from './PanelContactInfoRow'
 import {
   useTaskPanelTabs,
   buildSystemTab,
@@ -296,6 +297,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       hidden={hidden}
       workspaceId={workspaceId}
       projectId={activeProjectId}
+      contactId={activeProjectId ? null : activeContactId}
       pageProjectId={pageProjectId}
     />
   )
@@ -322,6 +324,8 @@ interface RendererProps {
   workspaceId: string
   /** Активный projectId scope-а вкладок. */
   projectId: string | null
+  /** Активный contactId scope-а вкладок (только если projectId=null). */
+  contactId: string | null
   /** projectId страницы, на которой находится пользователь. */
   pageProjectId: string | null
 }
@@ -342,6 +346,7 @@ function TaskPanelTabbedShellRenderer({
   hidden,
   workspaceId,
   projectId,
+  contactId,
   pageProjectId,
 }: RendererProps) {
   // Видимость системных вкладок по правам пользователя в текущем scope (project).
@@ -485,7 +490,9 @@ function TaskPanelTabbedShellRenderer({
 
   // Шапка боковой панели прячется, когда панель открыта на той же странице
   // проекта, что и текущая страница, — иначе она дублирует шапку страницы.
-  const infoRowVisible = !!projectId && pageProjectId !== projectId
+  // Для contact-scope шапка показывается всегда (страница «Личные диалоги»
+  // не предоставляет своего проекта в pageProjectId).
+  const infoRowVisible = !!contactId || (!!projectId && pageProjectId !== projectId)
 
   const panel = (
     <div
@@ -500,11 +507,19 @@ function TaskPanelTabbedShellRenderer({
           совпадает с открытой страницей — строку прячем (дубль шапки страницы),
           и тогда «×» уезжает в TabBar. */}
       {infoRowVisible && (
-        <PanelProjectInfoRow
-          projectId={projectId!}
-          workspaceId={workspaceId}
-          onHidePanel={onHidePanel}
-        />
+        contactId ? (
+          <PanelContactInfoRow
+            contactId={contactId}
+            workspaceId={workspaceId}
+            onHidePanel={onHidePanel}
+          />
+        ) : (
+          <PanelProjectInfoRow
+            projectId={projectId!}
+            workspaceId={workspaceId}
+            onHidePanel={onHidePanel}
+          />
+        )
       )}
       {/* Строка 2: ряд открытых вкладок + меню добавления + (если шапки нет)
           кнопка «скрыть панель». Учтена видимость по правам — недоступные

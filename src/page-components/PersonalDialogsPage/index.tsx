@@ -18,6 +18,7 @@ import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ContactCardDialog } from '@/components/contacts/ContactCardDialog'
+import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { usePageTitle } from '@/hooks/usePageTitle'
@@ -301,7 +302,26 @@ export default function PersonalDialogsPage() {
                     key={d.thread_id}
                     chat={toInboxEntry(d)}
                     isSelected={activeChat?.thread_id === d.thread_id}
-                    onClick={() => setSelectedThreadId(d.thread_id)}
+                    onClick={() => {
+                      setSelectedThreadId(d.thread_id)
+                      // Открываем в глобальной side-панели — шапка покажет контакт
+                      // вместо проекта, вкладки сгруппируются по контакту.
+                      globalOpenThread({
+                        id: d.thread_id,
+                        name: d.thread_name,
+                        type: d.thread_type === 'task' ? 'task' : 'chat',
+                        project_id: d.project_id,
+                        workspace_id: workspaceId ?? '',
+                        status_id: null,
+                        deadline: null,
+                        accent_color: d.thread_accent_color,
+                        icon: d.thread_icon,
+                        is_pinned: false,
+                        created_at: '',
+                        sort_order: 0,
+                        contact_participant_id: d.contact_participant_id,
+                      })
+                    }}
                     hideProjectName
                   />
                 ))

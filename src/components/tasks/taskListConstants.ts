@@ -94,6 +94,7 @@ export function threadToItem(t: ProjectThread): TaskItem {
     created_at: t.created_at,
     created_by: t.created_by,
     sort_order: t.sort_order ?? 0,
+    contact_participant_id: (t as unknown as { contact_participant_id?: string | null }).contact_participant_id ?? null,
   }
 }
 
@@ -117,5 +118,6 @@ export function newThreadToTaskItem(thread: ProjectThread, result?: ChatSettings
         ? result.contactEmails.map((e) => e.email)
         : undefined,
     email_subject: result?.emailSubject ?? null,
+    contact_participant_id: (thread as unknown as { contact_participant_id?: string | null }).contact_participant_id ?? null,
   }
 }

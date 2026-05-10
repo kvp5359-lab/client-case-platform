@@ -12,11 +12,10 @@
  * поэтому локальный selectedIds естественно сбрасывается без useEffect.
  *
  * MVP-ограничения:
- *  - Ресайз колонок мышкой не реализован.
  *  - Inline-смена «Проекта» треда — только через bulk action.
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Pin } from 'lucide-react'
 import { format } from 'date-fns'
@@ -31,7 +30,7 @@ import { useUpdateTaskStatus, useUpdateTaskDeadline } from '@/components/tasks/u
 import { workspaceThreadKeys } from '@/hooks/queryKeys'
 import type { FilterContext, FilterGroup } from '@/lib/filters/types'
 import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProjects'
-import type { ItemList } from '@/hooks/useItemLists'
+import { useUpdateItemList, type ItemList, type ItemListColumnConfig } from '@/hooks/useItemLists'
 import { defaultColumnsForEntity, getColumnDef, type ItemListColumnKey } from './columns'
 import { BulkActionsBar } from './BulkActionsBar'
 import type { StatusOption } from '@/components/ui/status-dropdown'
@@ -46,9 +45,28 @@ interface ItemListTabContentProps {
 
 export function ItemListTabContent({ list, workspaceId, currentUserId }: ItemListTabContentProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const updateList = useUpdateItemList()
 
-  // Эффективные колонки: из списка либо дефолтные.
-  const columns = (list.columns?.length ? list.columns : defaultColumnsForEntity(list.entity_type))
+  // Локальное состояние ширин — чтобы ресайз был мгновенным, без ожидания сети.
+  // Синхронизируется с list при смене списка или внешнем апдейте конфига.
+  const [columnConfig, setColumnConfig] = useState<ItemListColumnConfig[]>(
+    () => (list.columns?.length ? list.columns : defaultColumnsForEntity(list.entity_type)),
+  )
+  /* eslint-disable react-hooks/set-state-in-effect -- props→state sync */
+  useEffect(() => {
+    setColumnConfig(list.columns?.length ? list.columns : defaultColumnsForEntity(list.entity_type))
+  }, [list.id, list.columns, list.entity_type])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const handleColumnResize = (key: string, width: number) => {
+    setColumnConfig((prev) => prev.map((c) => (c.key === key ? { ...c, width } : c)))
+  }
+
+  const handleResizeCommit = () => {
+    updateList.mutate({ id: list.id, workspace_id: workspaceId, columns: columnConfig })
+  }
+
+  const columns = columnConfig
     .filter((c) => c.visible)
     .sort((a, b) => a.order - b.order)
     .map((c) => ({ ...c, def: getColumnDef(c.key) }))
@@ -66,6 +84,8 @@ export function ItemListTabContent({ list, workspaceId, currentUserId }: ItemLis
           columns={columns}
           selectedIds={selectedIds}
           onSelectedChange={setSelectedIds}
+          onColumnResize={handleColumnResize}
+          onResizeCommit={handleResizeCommit}
         />
       ) : (
         <ProjectTableView
@@ -77,6 +97,8 @@ export function ItemListTabContent({ list, workspaceId, currentUserId }: ItemLis
           columns={columns}
           selectedIds={selectedIds}
           onSelectedChange={setSelectedIds}
+          onColumnResize={handleColumnResize}
+          onResizeCommit={handleResizeCommit}
         />
       )}
     </div>
@@ -94,6 +116,8 @@ interface TableViewProps {
   columns: Array<{ key: string; width: number; def: NonNullable<ReturnType<typeof getColumnDef>> }>
   selectedIds: Set<string>
   onSelectedChange: (next: Set<string>) => void
+  onColumnResize: (key: string, width: number) => void
+  onResizeCommit: () => void
 }
 
 function ThreadTableView({
@@ -105,6 +129,8 @@ function ThreadTableView({
   columns,
   selectedIds,
   onSelectedChange,
+  onColumnResize,
+  onResizeCommit,
 }: TableViewProps) {
   const { data: threads = [], isLoading } = useWorkspaceThreads(workspaceId)
   const taskIds = useMemo(() => threads.map((t) => t.id), [threads])
@@ -140,6 +166,8 @@ function ThreadTableView({
       selectedIds={selectedIds}
       allItemIds={filtered.map((t) => t.id)}
       onSelectedChange={onSelectedChange}
+      onColumnResize={onColumnResize}
+      onResizeCommit={onResizeCommit}
       bulkActions={
         <BulkActionsBar
           entityType="thread"
@@ -187,6 +215,8 @@ function ProjectTableView({
   columns,
   selectedIds,
   onSelectedChange,
+  onColumnResize,
+  onResizeCommit,
 }: TableViewProps) {
   const { data: projects = [], isLoading } = useAccessibleProjects(workspaceId)
   const { data: projectStatuses = [] } = useAllProjectStatuses(workspaceId)
@@ -223,6 +253,8 @@ function ProjectTableView({
       selectedIds={selectedIds}
       allItemIds={filtered.map((p) => p.id)}
       onSelectedChange={onSelectedChange}
+      onColumnResize={onColumnResize}
+      onResizeCommit={onResizeCommit}
       bulkActions={
         <BulkActionsBar
           entityType="project"
@@ -264,14 +296,18 @@ interface TableShellProps<T extends { id: string }> {
   selectedIds: Set<string>
   allItemIds: string[]
   onSelectedChange: (next: Set<string>) => void
+  onColumnResize: (key: string, width: number) => void
+  onResizeCommit: () => void
   bulkActions: React.ReactNode
   renderRow: (item: T) => React.ReactNode
   items: T[]
 }
 
+const CHECKBOX_COL_WIDTH = 36
+
 function TableShell<T extends { id: string }>({
   isLoading, isEmpty, total, columns, selectedIds, allItemIds,
-  onSelectedChange, bulkActions, renderRow, items,
+  onSelectedChange, onColumnResize, onResizeCommit, bulkActions, renderRow, items,
 }: TableShellProps<T>) {
   const allChecked = allItemIds.length > 0 && allItemIds.every((id) => selectedIds.has(id))
   const someChecked = !allChecked && allItemIds.some((id) => selectedIds.has(id))
@@ -305,10 +341,19 @@ function TableShell<T extends { id: string }>({
       )}
 
       <div className="flex-1 overflow-auto bg-white">
-        <table className="w-full text-sm border-collapse">
+        <table
+          className="text-sm border-collapse table-fixed"
+          style={{ width: CHECKBOX_COL_WIDTH + columns.reduce((s, c) => s + c.width, 0) }}
+        >
+          <colgroup>
+            <col style={{ width: CHECKBOX_COL_WIDTH }} />
+            {columns.map((c) => (
+              <col key={c.key} style={{ width: c.width }} />
+            ))}
+          </colgroup>
           <thead className="sticky top-0 bg-white border-b z-10">
             <tr>
-              <th className="w-9 px-3 py-2 text-left">
+              <th className="px-3 py-2 text-left">
                 <Checkbox
                   checked={allChecked || (someChecked ? 'indeterminate' : false)}
                   onCheckedChange={toggleAll}
@@ -317,10 +362,15 @@ function TableShell<T extends { id: string }>({
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className="text-left text-xs font-medium text-muted-foreground px-3 py-2 truncate"
-                  style={{ width: c.width, minWidth: c.def.minWidth }}
+                  className="relative text-left text-xs font-medium text-muted-foreground px-3 py-2 truncate select-none"
                 >
                   {c.def.label}
+                  <ColumnResizeHandle
+                    currentWidth={c.width}
+                    minWidth={c.def.minWidth}
+                    onResize={(w) => onColumnResize(c.key, w)}
+                    onCommit={onResizeCommit}
+                  />
                 </th>
               ))}
             </tr>
@@ -379,11 +429,10 @@ function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, tas
         <Checkbox checked={checked} onCheckedChange={onToggle} />
       </td>
       {columns.map((c) => {
-        const cellWidth = { width: c.width, minWidth: c.def.minWidth }
         switch (c.key as ItemListColumnKey) {
           case 'name':
             return (
-              <td key={c.key} className="px-3 py-2 cursor-pointer truncate" style={cellWidth} onClick={onOpen}>
+              <td key={c.key} className="px-3 py-2 cursor-pointer truncate" onClick={onOpen}>
                 <div className="flex items-center gap-2 min-w-0">
                   {task.is_pinned && <Pin className="h-3 w-3 text-amber-500 shrink-0" />}
                   <span className="truncate font-medium">{task.name}</span>
@@ -392,7 +441,7 @@ function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, tas
             )
           case 'type':
             return (
-              <td key={c.key} className="px-3 py-2" style={cellWidth}>
+              <td key={c.key} className="px-3 py-2">
                 <Badge variant="outline" className="text-xs">
                   {task.type === 'chat' ? 'Чат' : 'Задача'}
                 </Badge>
@@ -400,7 +449,7 @@ function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, tas
             )
           case 'status':
             return (
-              <td key={c.key} className="px-3 py-2" style={cellWidth} onClick={(e) => e.stopPropagation()}>
+              <td key={c.key} className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-2 min-w-0">
                   <StatusDropdown
                     currentStatus={currentStatus}
@@ -418,13 +467,13 @@ function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, tas
             )
           case 'project':
             return (
-              <td key={c.key} className="px-3 py-2 truncate text-xs text-muted-foreground" style={cellWidth}>
+              <td key={c.key} className="px-3 py-2 truncate text-xs text-muted-foreground">
                 {task.project_name ?? '—'}
               </td>
             )
           case 'deadline':
             return (
-              <td key={c.key} className="px-3 py-2 text-xs" style={cellWidth} onClick={(e) => e.stopPropagation()}>
+              <td key={c.key} className="px-3 py-2 text-xs" onClick={(e) => e.stopPropagation()}>
                 <DatePicker
                   date={task.deadline ? new Date(task.deadline) : undefined}
                   onDateChange={(d) =>
@@ -436,7 +485,7 @@ function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, tas
             )
           case 'assignees':
             return (
-              <td key={c.key} className="px-3 py-2 text-xs" style={cellWidth}>
+              <td key={c.key} className="px-3 py-2 text-xs">
                 {assignees.length === 0 ? (
                   <span className="text-muted-foreground">—</span>
                 ) : (
@@ -446,7 +495,7 @@ function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, tas
             )
           case 'is_pinned':
             return (
-              <td key={c.key} className="px-3 py-2" style={cellWidth}>
+              <td key={c.key} className="px-3 py-2">
                 {task.is_pinned ? <Pin className="h-3.5 w-3.5 text-amber-500" /> : null}
               </td>
             )
@@ -454,13 +503,13 @@ function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, tas
           case 'updated_at': {
             const value = c.key === 'created_at' ? task.created_at : task.updated_at
             return (
-              <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground" style={cellWidth}>
+              <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground">
                 {value ? format(new Date(value), 'dd.MM.yyyy') : '—'}
               </td>
             )
           }
           default:
-            return <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground" style={cellWidth}>—</td>
+            return <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground">—</td>
         }
       })}
     </tr>
@@ -487,17 +536,16 @@ function ProjectRow({ project, columns, checked, onToggle, onOpen, projectStatus
         <Checkbox checked={checked} onCheckedChange={onToggle} />
       </td>
       {columns.map((c) => {
-        const cellWidth = { width: c.width, minWidth: c.def.minWidth }
         switch (c.key as ItemListColumnKey) {
           case 'name':
             return (
-              <td key={c.key} className="px-3 py-2 cursor-pointer truncate font-medium" style={cellWidth} onClick={onOpen}>
+              <td key={c.key} className="px-3 py-2 cursor-pointer truncate font-medium" onClick={onOpen}>
                 {project.name}
               </td>
             )
           case 'status':
             return (
-              <td key={c.key} className="px-3 py-2" style={cellWidth}>
+              <td key={c.key} className="px-3 py-2">
                 {currentStatus ? (
                   <span
                     className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs"
@@ -512,7 +560,7 @@ function ProjectRow({ project, columns, checked, onToggle, onOpen, projectStatus
             )
           case 'template':
             return (
-              <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground" style={cellWidth}>
+              <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground">
                 {project.template_name ?? '—'}
               </td>
             )
@@ -525,17 +573,61 @@ function ProjectRow({ project, columns, checked, onToggle, onOpen, projectStatus
               c.key === 'next_task_deadline' ? null :
               c.key === 'created_at' ? project.created_at : project.updated_at
             return (
-              <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground" style={cellWidth}>
+              <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground">
                 {v ? format(new Date(v as string), 'dd.MM.yyyy') : '—'}
               </td>
             )
           }
           case 'participants':
-            return <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground" style={cellWidth}>—</td>
+            return <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground">—</td>
           default:
-            return <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground" style={cellWidth}>—</td>
+            return <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground">—</td>
         }
       })}
     </tr>
+  )
+}
+
+// ── Drag-handle для ресайза колонки ────────────────────────
+
+interface ColumnResizeHandleProps {
+  currentWidth: number
+  minWidth: number
+  onResize: (width: number) => void
+  onCommit: () => void
+}
+
+function ColumnResizeHandle({ currentWidth, minWidth, onResize, onCommit }: ColumnResizeHandleProps) {
+  const startRef = useRef<{ x: number; w: number } | null>(null)
+  const [active, setActive] = useState(false)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    startRef.current = { x: e.clientX, w: currentWidth }
+    setActive(true)
+
+    const onMove = (ev: MouseEvent) => {
+      if (!startRef.current) return
+      const dx = ev.clientX - startRef.current.x
+      const next = Math.max(minWidth, Math.round(startRef.current.w + dx))
+      onResize(next)
+    }
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      startRef.current = null
+      setActive(false)
+      onCommit()
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      className={`absolute top-0 right-0 h-full w-1.5 cursor-col-resize z-20 hover:bg-primary/40 ${active ? 'bg-primary/60' : ''}`}
+    />
   )
 }

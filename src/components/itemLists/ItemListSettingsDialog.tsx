@@ -317,7 +317,20 @@ function ColumnsEditor({
             <ArrowDown className="h-3.5 w-3.5" />
           </button>
           <span className="text-sm flex-1">{def.label}</span>
-          <span className="text-xs text-muted-foreground">{cfg.width}px</span>
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              value={cfg.width}
+              min={def.minWidth}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10)
+                if (!Number.isFinite(v)) return
+                updateColumn(def.key, { width: Math.max(def.minWidth, v) })
+              }}
+              className="h-7 w-20 text-xs"
+            />
+            <span className="text-xs text-muted-foreground">px</span>
+          </div>
           <button
             type="button"
             className="text-muted-foreground hover:text-foreground p-1 disabled:opacity-30"
