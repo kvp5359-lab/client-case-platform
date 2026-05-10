@@ -498,6 +498,13 @@ async function handleBusinessMessage(
     source: "telegram_business",
     senderRole: isOutgoingFromEmployee ? null : "Клиент",
   });
+
+  // Fire-and-forget: попытаться загрузить аватар клиента. Бот сейчас имеет
+  // активный business-коннект → getUserProfilePhotos с большой вероятностью
+  // вернёт фото. Сама функция дедуплицирует по кэшу.
+  if (!isOutgoingFromEmployee && msg.from?.id) {
+    triggerAvatarFetch(msg.from.id);
+  }
 }
 
 // ===========================================================================

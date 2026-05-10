@@ -225,6 +225,15 @@ async function handleIncomingMessage(
     .eq("id", threadId)
     .eq("name", msg.chatId); // только если имя сейчас = телефон-fallback
 
+  // Аватар клиента — кэшируем URL прямо на тред (Wazzup отдаёт публичный URL).
+  // Обновляем только для входящих от клиента, чтобы echo от сотрудника не
+  // затирал контакт-аватар своим (там avatarUri = аватар сотрудника).
+  if (!msg.isEcho && msg.contact?.avatarUri) {
+    await service.from("project_threads")
+      .update({ wazzup_contact_avatar_url: msg.contact.avatarUri })
+      .eq("id", threadId);
+  }
+
   // 5. Контент: text/caption.
   // Для медиа (если text пустой) ставим временный плейсхолдер «📎», как в TG.
   // После скачивания, если файл загрузился, плейсхолдер остаётся (UI покажет
