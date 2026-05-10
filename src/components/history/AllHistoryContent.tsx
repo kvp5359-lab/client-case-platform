@@ -14,6 +14,7 @@ import { useProjectHistory } from '@/hooks/useProjectHistory'
 import { useTimelineMessages } from '@/hooks/useTimelineMessages'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
+import { useProjectClientThreadIds } from '@/hooks/messenger/useProjectClientThreadIds'
 import type { AuditLogEntry } from '@/types/history'
 
 interface AllHistoryContentProps {
@@ -55,6 +56,7 @@ export function AllHistoryContent({
   const visibleThreads = useMemo(() => threads.filter((t) => !t.is_deleted), [threads])
   const allThreadIds = useMemo(() => visibleThreads.map((t) => t.id), [visibleThreads])
   const { data: timelineMessages = [] } = useTimelineMessages(projectId, allThreadIds, threads)
+  const clientThreadIds = useProjectClientThreadIds(projectId, visibleThreads)
 
   if (isLoading) {
     return (
@@ -93,6 +95,7 @@ export function AllHistoryContent({
           lastReadAt={lastReadAt}
           threadLastReadAt={threadLastReadAt}
           statusMap={statusMap}
+          clientThreadIds={clientThreadIds}
           onOpenChat={onOpenChat}
         />
       </div>

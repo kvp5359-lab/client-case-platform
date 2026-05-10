@@ -30,6 +30,9 @@ interface TimelineFeedProps {
   threadLastReadAt?: Map<string, string>
   /** id статуса → {name, color} — для цветных имён в change_status аудите. */
   statusMap?: Map<string, { name: string; color: string | null }>
+  /** Set thread_id, у которых есть участник-«Клиент» / линк на TG/Email — для
+   *  подсветки сообщений сотрудников (как в обычном режиме треда). */
+  clientThreadIds?: Set<string>
   onOpenChat?: (threadId: string) => void
 }
 
@@ -86,6 +89,7 @@ export function TimelineFeed({
   lastReadAt,
   threadLastReadAt,
   statusMap,
+  clientThreadIds,
   onOpenChat,
 }: TimelineFeedProps) {
   const merged = useMemo(() => mergeTimeline(auditEntries, messages), [auditEntries, messages])
@@ -217,6 +221,7 @@ export function TimelineFeed({
                             accent={entry.entry.thread.accent_color as MessengerAccent}
                             onReply={noop}
                             onReact={noop}
+                            isClientThread={clientThreadIds?.has(entry.entry.thread.id) ?? false}
                           >
                             <MessageBubble
                               message={entry.entry.message}
