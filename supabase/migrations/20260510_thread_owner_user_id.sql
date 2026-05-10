@@ -11,9 +11,24 @@ CREATE INDEX IF NOT EXISTS idx_project_threads_owner_user_id
   WHERE owner_user_id IS NOT NULL;
 
 -- Заполняем владельца для тредов, которые сейчас лежат в фейковых системных инбоксах.
-UPDATE public.project_threads pt
-SET owner_user_id = p.system_inbox_user_id
-FROM public.projects p
-WHERE pt.project_id = p.id
-  AND p.system_inbox_user_id IS NOT NULL
-  AND (p.is_system_business_inbox OR p.is_system_wazzup_inbox OR p.is_system_email_inbox);
+-- ВАЖНО: миграция должна работать в любом порядке относительно
+-- 20260510_drop_system_inbox_projects.sql (которая DROP'ит эти колонки).
+-- На свежем окружении этот UPDATE no-op (нет данных), но колонок может уже не быть.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'projects'
+      AND column_name = 'system_inbox_user_id'
+  ) THEN
+    EXECUTE $upd$
+      UPDATE public.project_threads pt
+      SET owner_user_id = p.system_inbox_user_id
+      FROM public.projects p
+      WHERE pt.project_id = p.id
+        AND p.system_inbox_user_id IS NOT NULL
+        AND (p.is_system_business_inbox OR p.is_system_wazzup_inbox OR p.is_system_email_inbox)
+    $upd$;
+  END IF;
+END$$;
