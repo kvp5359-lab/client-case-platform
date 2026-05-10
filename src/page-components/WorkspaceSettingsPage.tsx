@@ -176,7 +176,6 @@ export function WorkspaceSettingsPage() {
               <TabsTrigger
                 value="directories"
                 onClick={() => handleTabChange('directories')}
-                data-state={pathname.includes('/directories/') ? 'active' : 'inactive'}
               >
                 Справочники
               </TabsTrigger>
@@ -184,7 +183,6 @@ export function WorkspaceSettingsPage() {
                 <TabsTrigger
                   value="templates"
                   onClick={() => handleTabChange('templates')}
-                  data-state={pathname.includes('/templates/') ? 'active' : 'inactive'}
                 >
                   Шаблоны
                 </TabsTrigger>
