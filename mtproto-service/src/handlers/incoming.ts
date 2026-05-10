@@ -19,7 +19,6 @@ import { logger } from "../utils/logger.js"
 import {
   ensureClientParticipant,
   ensureMTProtoThread,
-  ensureSystemInboxProject,
   resolveSessionParticipant,
 } from "./inbox.js"
 
@@ -119,13 +118,10 @@ async function handleNewMessageInner(
   const telegramMessageId = Number(msg.id)
   const messageDateISO = msg.date ? new Date(msg.date * 1000).toISOString() : null
 
-  // 4. Системный инбокс + тред под клиента.
-  const projectId = await ensureSystemInboxProject({
-    user_id: ctx.user_id,
-    workspace_id: ctx.workspace_id,
-  })
+  // 4. Тред без проекта (project_id=NULL + owner_user_id).
+  // Архитектура «Личные диалоги»: треды не сидят в фейковом
+  // системном проекте, а живут как workspace-level бесхозные.
   const threadId = await ensureMTProtoThread({
-    project_id: projectId,
     workspace_id: ctx.workspace_id,
     session_user_id: ctx.user_id,
     client_tg_user_id: clientTgUserId,
@@ -216,7 +212,7 @@ async function handleNewMessageInner(
   if (!inserted) {
     const payload = {
       workspace_id: ctx.workspace_id,
-      project_id: projectId,
+      project_id: null,
       thread_id: threadId,
       sender_participant_id: senderParticipantId,
       sender_name: isOutgoing
@@ -261,7 +257,7 @@ async function handleNewMessageInner(
         message: msg,
         info: mediaInfo,
         workspaceId: ctx.workspace_id,
-        projectId,
+        threadId,
         messageId: inserted.id as string,
       })
     } catch (err) {
@@ -330,7 +326,7 @@ async function downloadAndStoreMedia(args: {
   message: Api.Message
   info: MediaInfo
   workspaceId: string
-  projectId: string
+  threadId: string
   messageId: string
 }): Promise<void> {
   if (!args.client) {
@@ -345,7 +341,10 @@ async function downloadAndStoreMedia(args: {
     ? args.info.fileName.split(".").pop()!
     : "bin"
   const random = randomBytes(4).toString("hex")
-  const storagePath = `${args.workspaceId}/${args.projectId}/${args.messageId}/${Date.now()}-${random}.${ext}`
+  // У личных диалогов нет project_id, используем thread_id в storage path,
+  // чтобы вложения не сваливались в одну папку «null» и были привязаны
+  // к треду.
+  const storagePath = `${args.workspaceId}/${args.threadId}/${args.messageId}/${Date.now()}-${random}.${ext}`
 
   const { error: uploadError } = await supabase.storage
     .from("message-attachments")
