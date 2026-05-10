@@ -79,7 +79,10 @@ export function ItemListSettingsDialog({ open, onClose, list, workspaceId }: Pro
     list.columns?.length ? list.columns : defaultColumnsForEntity(list.entity_type),
   )
 
-  // Сброс при смене list (при перепозиционировании в обзоре)
+  // Синхронизация props → state при открытии диалога / смене list. Это
+  // легитимный паттерн «инициализация формы из props» — линтер ругается,
+  // но переход на key-based remount усложнит передачу из родителя.
+  /* eslint-disable react-hooks/set-state-in-effect -- props→state form init */
   useEffect(() => {
     if (!open) return
     setName(list.name)
@@ -89,6 +92,7 @@ export function ItemListSettingsDialog({ open, onClose, list, workspaceId }: Pro
     setSortDir((list.sort_dir as SortDir) ?? 'desc')
     setColumns(list.columns?.length ? list.columns : defaultColumnsForEntity(list.entity_type))
   }, [open, list])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const sortOptions = list.entity_type === 'project' ? PROJECT_SORT_OPTIONS : THREAD_SORT_OPTIONS
 

@@ -28,7 +28,6 @@ import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSidePanelStore } from '@/store/sidePanelStore'
@@ -61,10 +60,14 @@ export default function ItemListPage() {
   const softDelete = useSoftDeleteItemList()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  // Очищаем выделение при смене списка
+  // Очищаем выделение при смене списка. Это синхронизация деривата от
+  // listId — корректнее было бы через key-based remount, но selectedIds
+  // живёт на родителе из-за тулбара действий, поэтому используем effect.
+  /* eslint-disable react-hooks/set-state-in-effect -- reset on prop change */
   useEffect(() => {
     setSelectedIds(new Set())
   }, [listId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!workspaceId || !listId || !user) return null
 

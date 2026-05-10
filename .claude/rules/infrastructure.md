@@ -197,12 +197,14 @@
 
 ## Настройки сайдбара воркспейса
 
-Состав и порядок верхней части сайдбара (всё кроме списка проектов) — настраиваются на уровне воркспейса. Единая модель: и пункты меню, и доски — это «слоты» одного и того же списка, размещаются в одной из двух зон (топбар/список) или скрываются.
+Состав и порядок верхней части сайдбара (всё кроме списка проектов) — настраиваются на уровне воркспейса. Единая модель: пункты меню, доски и **списки `item_lists`** — это «слоты» одного и того же списка, размещаются в одной из двух зон (топбар/список) или скрываются.
+
+> **Будущий рефакторинг сайдбара** (папки + системные разделы + ссылки + per-role) — backlog: [`docs/feature-backlog/2026-05-10-sidebar-redesign.md`](../../docs/feature-backlog/2026-05-10-sidebar-redesign.md).
 
 - **Таблица**: `workspace_sidebar_settings (workspace_id PK, slots jsonb, updated_at, updated_by)`. RLS: SELECT — любому участнику; INSERT/UPDATE/DELETE — только владельцу. Если строки нет — фронт берёт дефолт из кода (`DEFAULT_SIDEBAR_SLOTS` в `src/lib/sidebarSettings.ts`).
 - **Структура `slots`** (массив): `{ id, type, placement, order, badge_mode }`.
-  - `id` — `nav:<key>` (для пунктов меню) или `board:<uuid>` (для досок).
-  - `type` — `nav` | `board`.
+  - `id` — `nav:<key>` (пункт меню), `board:<uuid>` (доска) или `list:<uuid>` (список item_lists).
+  - `type` — `nav` | `board` | `list`.
   - `placement` — `topbar` (иконка в верхней строке) или `list` (полный пункт в основном списке).
   - `order` — позиция внутри своей зоны.
   - `badge_mode` — режим счётчика, единый набор для пунктов и досок: `disabled` | `my_active_tasks` | `all_my_tasks` | `overdue_tasks` | `unread_messages` | `unread_threads`. Бейджи глобальные по воркспейсу — содержимое конкретной доски/пункта не учитывается.
@@ -212,7 +214,7 @@
 - **RPC `get_my_task_counts(workspace_id)`** — батч `{ active, all, overdue }` для бейджей задач (active = «сегодня + просрочка», как старый `get_my_urgent_tasks_count`). При мутациях задач инвалидировать `myTaskCountsKeys.byWorkspace(workspaceId)` рядом с `taskKeys.urgentCount` — уже сделано в `useTrash.ts`, `useProjectThreads.ts`, `TaskListView.tsx`.
 - **`hasAccess` фильтр** — даже если пункт меню в `slots`, он скрывается у пользователей без соответствующего permission'а (см. `SIDEBAR_NAV_ITEMS[key].hasAccess`). Например, «Шаблоны» не показываются клиенту.
 - **Скрытые роуты остаются доступными по прямой ссылке** — настройка управляет только сайдбаром, middleware не трогаем.
-- **Хуки**: `useWorkspaceSidebarSettings`, `useUpdateWorkspaceSidebarSettings`, `useMyTaskCounts` в [`src/hooks/useWorkspaceSidebarSettings.ts`](../../src/hooks/useWorkspaceSidebarSettings.ts). `usePinnedBoards` в [`src/components/WorkspaceSidebar/usePinnedBoards.ts`](../../src/components/WorkspaceSidebar/usePinnedBoards.ts) — адаптер над `slots` для совместимости с `BoardsPage` (`isPinned`, `togglePin`).
+- **Хуки**: `useWorkspaceSidebarSettings`, `useUpdateWorkspaceSidebarSettings`, `useMyTaskCounts` в [`src/hooks/useWorkspaceSidebarSettings.ts`](../../src/hooks/useWorkspaceSidebarSettings.ts). `usePinnedBoards` в [`src/components/WorkspaceSidebar/usePinnedBoards.ts`](../../src/components/WorkspaceSidebar/usePinnedBoards.ts) — адаптер над `slots` для досок (`isPinned`, `togglePin`). Зеркальный `usePinnedItemLists` в [`src/components/WorkspaceSidebar/usePinnedItemLists.ts`](../../src/components/WorkspaceSidebar/usePinnedItemLists.ts) — для списков `item_lists`.
 - **UI**: страница `/workspaces/[id]/settings/sidebar` (вкладка «Сайдбар», видна только владельцу). Компонент: [`src/page-components/workspace-settings/SidebarSettingsTab.tsx`](../../src/page-components/workspace-settings/SidebarSettingsTab.tsx). Три зоны: «Верхняя строка», «Список», «Доступные». Перенос между зонами — кнопками (× / стрелка-в-другую-зону), порядок внутри зоны — ↑↓. У каждого размещённого слота свой селектор бейджа. При >6 иконок в топ-баре — мягкое предупреждение.
 - **Открепить из самого сайдбара** — кнопка PinOff показывается только владельцу и появляется на месте иконки доски при ховере (через проп `hoverIconSlot` в `SidebarNavButton`). Это сделано чтобы не наезжать на бейдж справа.
 - **Миграции**:
@@ -404,6 +406,46 @@
   - Реалтайм-подписки переподключаются при `setSession`, но в момент полного reload фронта на короткое время теряются — терпимо.
   - Если импersonationный JWT истёк, а пользователь успел сделать действие — увидит ошибку аутентификации; баннер должен был успеть авто-выйти раньше.
 
+## Фильтры — общий примитив
+
+Реализован 2026-05-10. Фильтр тредов и проектов — общий формат и общий движок,
+используется и колонками досок (`board_lists.filters`), и списками
+(`item_lists.filter_config`).
+
+- **Типы и движок**: [`src/lib/filters/`](../../src/lib/filters/).
+  - `types.ts` — `FilterCondition`, `FilterGroup`, `FilterRule`, `FilterFieldDef`, `FilterContext`, `OPERATOR_LABELS`, `SortField`, `SortDir`, `EMPTY_FILTER_GROUP`, `mergeFilterGroupsAnd`, `ThreadType`.
+  - `filterEngine.ts` — `applyFilters(items, group, ctx, fieldAccessors, junctionAccessors)`. Чистая функция, поддерживает рекурсивные AND/OR, динамические даты (`__today__`, `__last_n_days:7__` и т.п.), резолв `__me__` / `__creator__`.
+  - `filterDefinitions.ts` — `THREAD_FILTER_FIELDS` и `PROJECT_FILTER_FIELDS`. У каждого поля для тредов есть `applicableTypes: ThreadType[]` (`task`/`chat`/`email`).
+  - `fieldVisibility.ts` — `getApplicableThreadTypes(group)` и `filterFieldsByThreadTypes(fields, types)`. Когда в фильтре есть условие на поле `type` (equals/in/not_in), UI сужает список доступных полей под выбранные типы.
+- **UI-редактор**: [`src/components/filters/`](../../src/components/filters/) — `FilterGroupEditor`, `FilterRuleRow`, `FilterValueSelect`, `FilterDateValue`, `FilterDragOverlay`, `DraggableFilterRule`. Корневой компонент оборачивает дочерние в `FilterRootGroupContext` — это позволяет дочерним строкам читать корневую группу для умной видимости полей.
+- **`entity_type='thread'`** — единое имя для тредов в фильтре. Соответствует `project_threads`, у которого собственное поле `type ∈ {task, chat, email}`. Раньше у досок было `entity_type='task'` — миграция `20260510_rename_task_to_thread_in_board_lists.sql` переименовала и в `board_lists.entity_type`, и в JSONB-ключе `boards.global_filter`.
+- **`entity_type='inbox'`** — спец-кейс только у `board_lists` (входящие чаты с собственной логикой `default_filter`); фильтр-движок к нему не применяется.
+
+## Списки `item_lists` (треды и проекты в табличном виде)
+
+Реализовано 2026-05-10. Альтернатива доскам: **доска** даёт несколько подсписков
+рядом (kanban-режим), **list** — одна выборка по фильтру с табличным
+представлением, чекбоксами и пакетными действиями.
+
+- **Таблица**: `item_lists (id, workspace_id, owner_user_id, entity_type, name, icon, color, filter_config jsonb, sort_by, sort_dir, columns jsonb, created_by, created_at, updated_at, is_deleted, deleted_at, deleted_by)`.
+- **owner_user_id**:
+  - `NULL` — общий список воркспейса (видят все участники, меняют владелец воркспейса и менеджеры с `manage_workspace_settings`).
+  - `NOT NULL` — личный список этого юзера (видит и меняет только владелец).
+- **`entity_type`**: `'thread' | 'project'`.
+- **`filter_config`**: общий `FilterGroup` из `@/lib/filters/types`. Применяется на фронте через `applyFilters` — не RPC.
+- **`columns`**: массив `[{ key, width, order, visible }]`. Реестр доступных колонок и их meta — [`src/page-components/ItemListPage/columns.ts`](../../src/page-components/ItemListPage/columns.ts). MVP: ресайз мышкой не реализован (только width из БД).
+- **Корзина**: `is_deleted=true` через `useSoftDeleteItemList`. UI-восстановления пока нет — добавим вместе с общей корзиной воркспейса.
+- **RLS**: SELECT/INSERT/UPDATE/DELETE — см. миграцию `20260510_item_lists.sql`. Личные списки несут `owner_user_id = auth.uid()`, общие требуют `is_workspace_owner` или `has_workspace_permission(... 'manage_workspace_settings')`.
+- **Хуки**: [`src/hooks/useItemLists.ts`](../../src/hooks/useItemLists.ts) — `useItemLists`, `useItemList`, `useCreateItemList`, `useUpdateItemList`, `useSoftDeleteItemList`. Query keys: `itemListKeys` в `queryKeys.ts`.
+- **UI**:
+  - `/workspaces/[id]/lists` ([`ItemListsPage`](../../src/page-components/ItemListsPage/index.tsx)) — обзор всех списков (общие + мои личные), кнопка «Создать», карточки с группировкой.
+  - `/workspaces/[id]/lists/[listId]` ([`ItemListPage`](../../src/page-components/ItemListPage/index.tsx)) — таблица элементов списка, чекбоксы, тулбар пакетных действий, inline-редактирование статуса/дедлайна для тредов.
+  - `CreateItemListDialog` — название, тип (thread/project), личный/общий. После создания — переход на страницу нового списка.
+  - `ItemListSettingsDialog` — три вкладки: Общее (название+цвет+сортировка), Фильтр (общий `FilterGroupEditor`), Колонки (показ/скрытие, переупорядочивание).
+- **Пакетные действия**: для тредов — смена статуса (только task-треды), архив. Для проектов — статус, архив. При смешанной выборке (есть чаты/email) кнопка «Сменить статус» дизейблена с подсказкой о причине.
+- **Закрепить в сайдбар**: `usePinnedItemLists` (см. раздел про сайдбар выше) → слот `list:<uuid>` с иконкой по `entity_type`.
+- **Миграции**: `20260510_item_lists.sql` (таблица + RLS + триггер `touch_item_lists_updated_at`), `20260510_rename_task_to_thread_in_board_lists.sql` (миграция `entity_type='task'`→`'thread'` в досках для согласования с item_lists).
+
 ## Локальная разработка
 
 ```bash
@@ -424,9 +466,9 @@ npm run test:watch # Vitest watch mode
 pkill -f "next dev"; rm -rf .next tsconfig.tsbuildinfo
 ```
 
-## Роуты (51)
+## Роуты (61)
 
-Точное число: `find src/app -name page.tsx | wc -l`. На 2026-04-27 — **51**.
+Точное число: `find src/app -name page.tsx | wc -l`. На 2026-05-10 — **61**.
 
 **Root** (1): `/`
 
@@ -439,6 +481,7 @@ pkill -f "next dev"; rm -rf .next tsconfig.tsbuildinfo
 - Workspace: `/workspaces/[id]`, `/workspaces/[id]/inbox`, `/workspaces/[id]/tasks`
 - Projects: `/workspaces/[id]/projects`, `/workspaces/[id]/projects/[projectId]`
 - Boards: `/workspaces/[id]/boards`, `/workspaces/[id]/boards/[boardId]`
+- Lists: `/workspaces/[id]/lists`, `/workspaces/[id]/lists/[listId]`
 - Settings core: `/workspaces/[id]/settings`, `/workspaces/[id]/settings/general`, `/workspaces/[id]/settings/participants`, `/workspaces/[id]/settings/permissions`, `/workspaces/[id]/settings/sidebar`, `/workspaces/[id]/settings/trash`
 - Settings → directories: `/workspaces/[id]/settings/directories`, `/directories/custom`, `/directories/custom/[directoryId]`, `/directories/project-roles`, `/directories/quick-replies`, `/directories/statuses`, `/directories/workspace-roles`
 - Settings → knowledge base: `/workspaces/[id]/settings/knowledge-base`, `/knowledge-base/[articleId]`, `/knowledge-base/qa/[qaId]`
