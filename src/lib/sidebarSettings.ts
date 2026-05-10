@@ -45,8 +45,8 @@ export type SidebarBadgeMode =
   | 'unread_threads'
 
 export interface SidebarSlot {
-  id: string // 'nav:<key>' | 'board:<uuid>'
-  type: 'nav' | 'board'
+  id: string // 'nav:<key>' | 'board:<uuid>' | 'list:<uuid>'
+  type: 'nav' | 'board' | 'list'
   placement: SidebarPlacement
   order: number
   badge_mode: SidebarBadgeMode
@@ -232,7 +232,8 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
     if (!item || typeof item !== 'object') continue
     const obj = item as Record<string, unknown>
     const id = typeof obj.id === 'string' ? obj.id : null
-    const type = obj.type === 'nav' || obj.type === 'board' ? obj.type : null
+    const type =
+      obj.type === 'nav' || obj.type === 'board' || obj.type === 'list' ? obj.type : null
     const placement =
       obj.placement === 'topbar' || obj.placement === 'list' ? obj.placement : null
     const order = typeof obj.order === 'number' ? obj.order : out.length
@@ -245,8 +246,12 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
     if (type === 'nav') {
       const key = id.startsWith('nav:') ? id.slice(4) : null
       if (!key || !VALID_NAV_KEYS.has(key)) continue
-    } else {
+    } else if (type === 'board') {
       const uuid = id.startsWith('board:') ? id.slice(6) : null
+      if (!uuid || !UUID_RE.test(uuid)) continue
+    } else {
+      // type === 'list'
+      const uuid = id.startsWith('list:') ? id.slice(5) : null
       if (!uuid || !UUID_RE.test(uuid)) continue
     }
     out.push({ id, type, placement, order, badge_mode: badgeMode })
@@ -282,6 +287,12 @@ export function navKeyFromSlotId(id: string): SidebarNavKey | null {
 export function boardIdFromSlotId(id: string): string | null {
   if (!id.startsWith('board:')) return null
   return id.slice(6)
+}
+
+/** Извлекает item_list uuid из id вида 'list:<uuid>'. */
+export function listIdFromSlotId(id: string): string | null {
+  if (!id.startsWith('list:')) return null
+  return id.slice(5)
 }
 
 /** Форматирует число в badge-строку (>99 → "99+"). undefined если 0/нет. */

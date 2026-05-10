@@ -39,6 +39,8 @@ import {
 } from '@/components/ui/select'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
+import { useItemLists, type ItemList } from '@/hooks/useItemLists'
+import { ListChecks, FolderOpen } from 'lucide-react'
 import {
   useWorkspaceSidebarSettings,
   useUpdateWorkspaceSidebarSettings,
@@ -56,11 +58,13 @@ import {
   reorderWithinZones,
   navKeyFromSlotId,
   boardIdFromSlotId,
+  listIdFromSlotId,
 } from '@/lib/sidebarSettings'
 
 type AvailableEntry =
   | { kind: 'nav'; id: string; label: string; navKey: SidebarNavKey }
   | { kind: 'board'; id: string; label: string; boardId: string }
+  | { kind: 'list'; id: string; label: string; listId: string; entityType: 'thread' | 'project' }
 
 export function SidebarSettingsTab() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -69,6 +73,7 @@ export function SidebarSettingsTab() {
 
   const { data: settings, isLoading } = useWorkspaceSidebarSettings(workspaceId)
   const { data: boards = [] } = useBoardsQuery(workspaceId)
+  const { data: itemLists = [] } = useItemLists(workspaceId)
   const update = useUpdateWorkspaceSidebarSettings()
 
   const [override, setOverride] = useState<SidebarSlot[] | null>(null)
@@ -115,6 +120,7 @@ export function SidebarSettingsTab() {
     <SidebarSettingsView
       slots={slots}
       boards={boards.map((b) => ({ id: b.id, name: b.name }))}
+      itemLists={itemLists}
       onChange={setOverride}
       onSave={handleSave}
       onReset={handleResetDefaults}
@@ -127,6 +133,7 @@ export function SidebarSettingsTab() {
 function SidebarSettingsView({
   slots,
   boards,
+  itemLists,
   onChange,
   onSave,
   onReset,
@@ -135,6 +142,7 @@ function SidebarSettingsView({
 }: {
   slots: SidebarSlot[]
   boards: { id: string; name: string }[]
+  itemLists: ItemList[]
   onChange: (next: SidebarSlot[]) => void
   onSave: () => void
   onReset: () => void
@@ -164,21 +172,37 @@ function SidebarSettingsView({
         label: b.name,
         boardId: b.id,
       }))
+    const listEntries: AvailableEntry[] = itemLists
+      .filter((l) => !placedIds.has(`list:${l.id}`))
+      .map((l) => ({
+        kind: 'list' as const,
+        id: `list:${l.id}`,
+        label: l.name,
+        listId: l.id,
+        entityType: l.entity_type,
+      }))
     // Сортировка по алфавиту внутри каждой группы; пункты меню — первыми.
     navEntries.sort((a, b) => a.label.localeCompare(b.label, 'ru'))
     boardEntries.sort((a, b) => a.label.localeCompare(b.label, 'ru'))
-    return [...navEntries, ...boardEntries]
-  }, [placedIds, boards])
+    listEntries.sort((a, b) => a.label.localeCompare(b.label, 'ru'))
+    return [...navEntries, ...boardEntries, ...listEntries]
+  }, [placedIds, boards, itemLists])
 
-  // Очистка слотов от мёртвых досок (удалённых из воркспейса).
+  // Очистка слотов от мёртвых досок/списков (удалённых из воркспейса).
   const liveSlots = useMemo(() => {
     const boardIds = new Set(boards.map((b) => b.id))
+    const listIds = new Set(itemLists.map((l) => l.id))
     return slots.filter((s) => {
       if (s.type === 'nav') return true
-      const bid = boardIdFromSlotId(s.id)
-      return bid ? boardIds.has(bid) : false
+      if (s.type === 'board') {
+        const bid = boardIdFromSlotId(s.id)
+        return bid ? boardIds.has(bid) : false
+      }
+      // type === 'list'
+      const lid = listIdFromSlotId(s.id)
+      return lid ? listIds.has(lid) : false
     })
-  }, [slots, boards])
+  }, [slots, boards, itemLists])
   const hasDeadSlots = liveSlots.length !== slots.length
 
   const moveWithinZone = (slotId: string, delta: -1 | 1) => {
@@ -232,7 +256,7 @@ function SidebarSettingsView({
           : 'disabled'
     const slot: SidebarSlot = {
       id: entry.id,
-      type: entry.kind === 'nav' ? 'nav' : 'board',
+      type: entry.kind,
       placement,
       order: 0, // reorder перенумерует
       badge_mode: baseBadge,
@@ -263,6 +287,7 @@ function SidebarSettingsView({
         emptyHint="Пусто. Добавь элементы из «Доступных» ниже."
         slots={topbar}
         boards={boards}
+        itemLists={itemLists}
         zone="topbar"
         onMove={moveWithinZone}
         onSetBadge={setBadge}
@@ -281,6 +306,7 @@ function SidebarSettingsView({
         emptyHint="Пусто. Добавь элементы из «Доступных» ниже."
         slots={list}
         boards={boards}
+        itemLists={itemLists}
         zone="list"
         onMove={moveWithinZone}
         onSetBadge={setBadge}
@@ -312,6 +338,7 @@ function ZoneCard({
   emptyHint,
   slots,
   boards,
+  itemLists,
   zone,
   onMove,
   onSetBadge,
@@ -324,6 +351,7 @@ function ZoneCard({
   emptyHint: string
   slots: SidebarSlot[]
   boards: { id: string; name: string }[]
+  itemLists: ItemList[]
   zone: SidebarPlacement
   onMove: (id: string, delta: -1 | 1) => void
   onSetBadge: (id: string, mode: SidebarBadgeMode) => void
@@ -358,15 +386,21 @@ function ZoneCard({
             {slots.map((slot, idx) => {
               const canUp = idx > 0
               const canDown = idx < slots.length - 1
-              const label =
-                slot.type === 'nav'
-                  ? SIDEBAR_NAV_ITEMS[navKeyFromSlotId(slot.id)!].label
-                  : (boards.find((b) => b.id === boardIdFromSlotId(slot.id))?.name ??
-                    '— удалённая доска —')
-              const Icon =
-                slot.type === 'nav'
-                  ? SIDEBAR_NAV_ITEMS[navKeyFromSlotId(slot.id)!].icon
-                  : Kanban
+              let label: string
+              let Icon: typeof Kanban
+              if (slot.type === 'nav') {
+                const k = navKeyFromSlotId(slot.id)!
+                label = SIDEBAR_NAV_ITEMS[k].label
+                Icon = SIDEBAR_NAV_ITEMS[k].icon
+              } else if (slot.type === 'board') {
+                label = boards.find((b) => b.id === boardIdFromSlotId(slot.id))?.name ?? '— удалённая доска —'
+                Icon = Kanban
+              } else {
+                // type === 'list'
+                const list = itemLists.find((l) => l.id === listIdFromSlotId(slot.id))
+                label = list?.name ?? '— удалённый список —'
+                Icon = list?.entity_type === 'project' ? FolderOpen : ListChecks
+              }
               return (
                 <div key={slot.id} className="flex items-center gap-3 px-3 py-2.5">
                   <Icon className="w-4 h-4 shrink-0 text-gray-500" />
@@ -469,7 +503,13 @@ function AvailableCard({
           <div className="divide-y divide-gray-100 rounded-md border border-dashed border-gray-300 bg-gray-50/40">
             {available.map((entry) => {
               const Icon =
-                entry.kind === 'nav' ? SIDEBAR_NAV_ITEMS[entry.navKey].icon : Kanban
+                entry.kind === 'nav'
+                  ? SIDEBAR_NAV_ITEMS[entry.navKey].icon
+                  : entry.kind === 'board'
+                    ? Kanban
+                    : entry.entityType === 'project'
+                      ? FolderOpen
+                      : ListChecks
               return (
                 <div key={entry.id} className="flex items-center gap-3 px-3 py-2.5">
                   <Icon className="w-4 h-4 shrink-0 text-gray-400" />

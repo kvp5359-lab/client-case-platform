@@ -8,7 +8,7 @@
 
 import { useEffect, useState, useMemo, startTransition } from 'react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Kanban, PinOff } from 'lucide-react'
+import { Kanban, PinOff, ListChecks, FolderOpen } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { SidebarNavButton } from './WorkspaceSidebar/SidebarNavButton'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
@@ -22,7 +22,9 @@ import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { usePinnedBoards } from './WorkspaceSidebar/usePinnedBoards'
+import { usePinnedItemLists } from './WorkspaceSidebar/usePinnedItemLists'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
+import { useItemLists } from '@/hooks/useItemLists'
 import { useProjectTemplate, useProjectModules } from '@/page-components/ProjectPage/hooks'
 import {
   useWorkspaceSidebarSettings,
@@ -36,6 +38,7 @@ import {
   formatBadgeCount,
   navKeyFromSlotId,
   boardIdFromSlotId,
+  listIdFromSlotId,
 } from '@/lib/sidebarSettings'
 
 interface WorkspaceSidebarFullProps {
@@ -129,7 +132,9 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
 
   // Закреплённые доски — настройка на уровне воркспейса (внутри slots).
   const { togglePin: toggleBoardPin } = usePinnedBoards(workspaceId)
+  const { togglePin: toggleListPin } = usePinnedItemLists(workspaceId)
   const { data: allBoards } = useBoardsQuery(workspaceId)
+  const { data: allItemLists } = useItemLists(workspaceId)
 
   // Сохраняем legacy-формат /workspaces/<uuid>/... для совместимости с localhost-разработкой.
   // На production-поддоменах proxy сам редиректит /workspaces/<uuid>/<path> → чистый /<path>
@@ -226,16 +231,20 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
         const key = navKeyFromSlotId(s.id)
         return key ? SIDEBAR_NAV_ITEMS[key].hasAccess(permissionsCtx) : false
       }
-      // board: проверим, что доска ещё существует
-      const boardId = boardIdFromSlotId(s.id)
-      return boardId ? Boolean(allBoards?.find((b) => b.id === boardId)) : false
+      if (s.type === 'board') {
+        const boardId = boardIdFromSlotId(s.id)
+        return boardId ? Boolean(allBoards?.find((b) => b.id === boardId)) : false
+      }
+      // type === 'list'
+      const listId = listIdFromSlotId(s.id)
+      return listId ? Boolean(allItemLists?.find((l) => l.id === listId)) : false
     })
     const sorted = [...accessible].sort((a, b) => a.order - b.order)
     return {
       topbarSlots: sorted.filter((s) => s.placement === 'topbar'),
       listSlots: sorted.filter((s) => s.placement === 'list'),
     }
-  }, [sidebarSettings, permissionsCtx, allBoards])
+  }, [sidebarSettings, permissionsCtx, allBoards, allItemLists])
 
   const handleBadgeClick = async (projectId: string, channel: 'client' | 'internal' = 'client') => {
     void channel
@@ -314,16 +323,33 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
                   />
                 )
               }
-              const boardId = boardIdFromSlotId(slot.id)!
-              const board = allBoards?.find((b) => b.id === boardId)
-              if (!board) return null
+              if (slot.type === 'board') {
+                const boardId = boardIdFromSlotId(slot.id)!
+                const board = allBoards?.find((b) => b.id === boardId)
+                if (!board) return null
+                return (
+                  <SidebarNavButton
+                    key={slot.id}
+                    icon={Kanban}
+                    label={board.name}
+                    href={buildHref(`boards/${board.id}`)}
+                    isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
+                    badge={badge}
+                    compact
+                  />
+                )
+              }
+              // type === 'list'
+              const listId = listIdFromSlotId(slot.id)!
+              const list = allItemLists?.find((l) => l.id === listId)
+              if (!list) return null
               return (
                 <SidebarNavButton
                   key={slot.id}
-                  icon={Kanban}
-                  label={board.name}
-                  href={buildHref(`boards/${board.id}`)}
-                  isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
+                  icon={list.entity_type === 'project' ? FolderOpen : ListChecks}
+                  label={list.name}
+                  href={buildHref(`lists/${list.id}`)}
+                  isActive={pathname.includes(`/lists/${list.id}`)}
                   badge={badge}
                   compact
                 />
@@ -353,9 +379,41 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
                   />
                 )
               }
-              const boardId = boardIdFromSlotId(slot.id)!
-              const board = allBoards?.find((b) => b.id === boardId)
-              if (!board) return null
+              if (slot.type === 'board') {
+                const boardId = boardIdFromSlotId(slot.id)!
+                const board = allBoards?.find((b) => b.id === boardId)
+                if (!board) return null
+                const hoverSlot = isOwner ? (
+                  <button
+                    type="button"
+                    className="p-0.5 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
+                    title="Открепить"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      toggleBoardPin(board.id)
+                    }}
+                  >
+                    <PinOff className="h-[14px] w-[14px]" />
+                  </button>
+                ) : undefined
+                return (
+                  <div key={slot.id} className="group/pin">
+                    <SidebarNavButton
+                      icon={Kanban}
+                      label={board.name}
+                      href={buildHref(`boards/${board.id}`)}
+                      badge={badge}
+                      isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
+                      hoverIconSlot={hoverSlot}
+                    />
+                  </div>
+                )
+              }
+              // type === 'list'
+              const listId = listIdFromSlotId(slot.id)!
+              const list = allItemLists?.find((l) => l.id === listId)
+              if (!list) return null
               const hoverSlot = isOwner ? (
                 <button
                   type="button"
@@ -364,7 +422,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    toggleBoardPin(board.id)
+                    toggleListPin(list.id)
                   }}
                 >
                   <PinOff className="h-[14px] w-[14px]" />
@@ -373,11 +431,11 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
               return (
                 <div key={slot.id} className="group/pin">
                   <SidebarNavButton
-                    icon={Kanban}
-                    label={board.name}
-                    href={buildHref(`boards/${board.id}`)}
+                    icon={list.entity_type === 'project' ? FolderOpen : ListChecks}
+                    label={list.name}
+                    href={buildHref(`lists/${list.id}`)}
                     badge={badge}
-                    isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
+                    isActive={pathname.includes(`/lists/${list.id}`)}
                     hoverIconSlot={hoverSlot}
                   />
                 </div>
