@@ -227,9 +227,9 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                   <th className="text-left px-3 py-2 font-medium w-28">Дата</th>
                   <th className="text-left px-3 py-2 font-medium">{config.subjectLabel}</th>
                   <th className="text-left px-3 py-2 font-medium">Статья</th>
+                  <th className="text-left px-3 py-2 font-medium">Комментарий</th>
                   <th className="text-right px-3 py-2 font-medium w-24">Налог</th>
                   <th className="text-right px-3 py-2 font-medium w-32">Сумма, EUR</th>
-                  <th className="text-left px-3 py-2 font-medium">Комментарий</th>
                   <th className="px-3 py-2 w-24" />
                 </tr>
               </thead>
@@ -267,6 +267,20 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                         onCommit={(id) => handlePatch(t.id, { category_id: id })}
                       />
                     </td>
+                    <td className="px-3 py-2">
+                      <InlineEditCell
+                        type="text"
+                        value={t.comment ?? ''}
+                        emptyText="—"
+                        placeholder="Комментарий"
+                        onCommit={(v) => {
+                          const trimmed = v.trim()
+                          const next = trimmed === '' ? null : trimmed
+                          if (next === t.comment) return
+                          handlePatch(t.id, { comment: next })
+                        }}
+                      />
+                    </td>
                     <td className="px-3 py-2 text-gray-600">
                       <InlineEditSelect
                         align="right"
@@ -297,20 +311,6 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                           handlePatch(t.id, { amount: v })
                         }}
                         className="font-medium"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <InlineEditCell
-                        type="text"
-                        value={t.comment ?? ''}
-                        emptyText="—"
-                        placeholder="Комментарий"
-                        onCommit={(v) => {
-                          const trimmed = v.trim()
-                          const next = trimmed === '' ? null : trimmed
-                          if (next === t.comment) return
-                          handlePatch(t.id, { comment: next })
-                        }}
                       />
                     </td>
                     <td className="px-3 py-2 text-right">
