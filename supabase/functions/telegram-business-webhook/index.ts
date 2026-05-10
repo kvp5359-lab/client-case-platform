@@ -359,7 +359,7 @@ async function handleBusinessMessage(
   // Сначала ищем существующий тред по (business_connection, client_tg_user_id) —
   // если уже общались, попадём именно в этот тред (даже если первое сообщение
   // было от сотрудника или CRM-роутинг отключён).
-  let projectId: string
+  let projectId: string | null = null
   let threadId: string
   const { data: existingThread } = await service
     .from("project_threads")
@@ -398,19 +398,18 @@ async function handleBusinessMessage(
       }).eq("id", threadId)
       console.log(`[telegram-business-webhook] CRM routed (${r.status}) → project ${projectId}, thread ${threadId}`)
     } else {
-      // 'no_template' или другая причина — фоллбэк в системный инбокс.
-      projectId = await ensureSystemInboxProject(service, conn.user_id, conn.workspace_id)
+      // 'no_template' или другая причина — фоллбэк в личные диалоги (без проекта).
       threadId = await ensureBusinessThread(
-        service, projectId, conn.workspace_id, conn.id, clientTgUserId, clientDisplayName,
+        service, conn.user_id, conn.workspace_id, conn.id, clientTgUserId, clientDisplayName,
       )
+      projectId = null
     }
   } else {
-    // Сотрудник пишет впервые из телефона — нет смысла создавать лида,
-    // системный инбокс это его «черновик».
-    projectId = await ensureSystemInboxProject(service, conn.user_id, conn.workspace_id)
+    // Сотрудник пишет впервые из телефона — личные диалоги, без проекта.
     threadId = await ensureBusinessThread(
-      service, projectId, conn.workspace_id, conn.id, clientTgUserId, clientDisplayName,
+      service, conn.user_id, conn.workspace_id, conn.id, clientTgUserId, clientDisplayName,
     )
+    projectId = null
   }
 
   const content = msg.text ?? msg.caption ?? "";
@@ -540,7 +539,7 @@ async function ensureSystemInboxProject(
 
 async function ensureBusinessThread(
   service: SupabaseClient,
-  projectId: string,
+  ownerUserId: string,
   workspaceId: string,
   connectionId: string,
   clientTgUserId: number,
@@ -558,7 +557,8 @@ async function ensureBusinessThread(
   const { data: created, error } = await service
     .from("project_threads")
     .insert({
-      project_id: projectId,
+      project_id: null,
+      owner_user_id: ownerUserId,
       workspace_id: workspaceId,
       name: clientDisplayName,
       type: "chat",
@@ -567,6 +567,7 @@ async function ensureBusinessThread(
       business_client_tg_user_id: clientTgUserId,
       icon: "telegram",
       accent_color: "blue",
+      created_by: ownerUserId,
     })
     .select("id")
     .single();

@@ -157,7 +157,7 @@ async function handleIncomingMessage(
     msg.chatId;
 
   // 4. Сначала смотрим существующий тред (один на клиента в рамках канала).
-  let projectId: string;
+  let projectId: string | null = null;
   let threadId: string;
   const { data: existingThread } = await service
     .from("project_threads")
@@ -197,26 +197,26 @@ async function handleIncomingMessage(
       }).eq("id", threadId);
       console.log(`[wazzup-webhook] CRM routed (${r.status}) → project ${projectId}, thread ${threadId}`);
     } else {
-      // 'no_template' / disabled CRM → fallback в системный инбокс.
-      projectId = await ensureSystemInboxProject(service, channel.user_id, workspaceId);
+      // 'no_template' / disabled CRM → fallback в личные диалоги (без проекта).
       threadId = await ensureWazzupThread(service, {
-        projectId, workspaceId,
+        ownerUserId: channel.user_id, workspaceId,
         channelDbId: channel.id as string,
         chatId: msg.chatId,
         chatType: msg.chatType,
         clientName,
       });
+      projectId = null;
     }
   } else {
-    // Echo (сотрудник с телефона) — нет существующего треда, не CRM-кейс.
-    projectId = await ensureSystemInboxProject(service, channel.user_id, workspaceId);
+    // Echo (сотрудник с телефона) — личные диалоги, без проекта.
     threadId = await ensureWazzupThread(service, {
-      projectId, workspaceId,
+      ownerUserId: channel.user_id, workspaceId,
       channelDbId: channel.id as string,
       chatId: msg.chatId,
       chatType: msg.chatType,
       clientName,
     });
+    projectId = null;
   }
 
   // Если тред уже был и имя клиента изменилось/уточнилось — апдейтнем.
@@ -326,7 +326,7 @@ async function downloadAndAttach(
   args: {
     messageId: string;
     workspaceId: string;
-    projectId: string;
+    projectId: string | null;
     contentUri: string;
     mimeTypeHint: string;
     mediaType: string;
@@ -501,7 +501,7 @@ async function ensureSystemInboxProject(
 async function ensureWazzupThread(
   service: SupabaseClient,
   args: {
-    projectId: string;
+    ownerUserId: string;
     workspaceId: string;
     channelDbId: string;
     chatId: string;
@@ -517,7 +517,8 @@ async function ensureWazzupThread(
   if (existing) return existing.id as string;
 
   const { data: created, error } = await service.from("project_threads").insert({
-    project_id: args.projectId,
+    project_id: null,
+    owner_user_id: args.ownerUserId,
     workspace_id: args.workspaceId,
     name: args.clientName,
     type: "chat", access_type: "all",
@@ -525,6 +526,7 @@ async function ensureWazzupThread(
     wazzup_chat_id: args.chatId,
     wazzup_chat_type: args.chatType,
     icon: "whatsapp", accent_color: "emerald",
+    created_by: args.ownerUserId,
   }).select("id").single();
   if (error || !created) throw new Error(`Failed to create wazzup thread: ${error?.message}`);
   return created.id as string;

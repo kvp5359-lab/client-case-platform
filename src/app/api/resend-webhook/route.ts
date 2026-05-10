@@ -351,7 +351,7 @@ async function handleInbound(
     }
   }
 
-  if (!threadId || !projectId) {
+  if (!threadId) {
     return NextResponse.json({ error: 'routing_returned_no_thread' }, { status: 500 })
   }
 
@@ -464,9 +464,9 @@ async function sendAutoReply(opts: {
 }
 
 /**
- * Создаёт новый тред в системном email-проекте сотрудника
- * (is_system_email_inbox=true, system_inbox_user_id=ownerUserId).
- * Используется для inbox+<localpart>@: каждый клиент = новый тред.
+ * Создаёт новый тред «Личные email-диалоги» сотрудника без проекта
+ * (`project_id = NULL`, `owner_user_id = userId`). Используется
+ * для inbox+<localpart>@: каждый клиент = новый тред.
  */
 async function ensurePersonalEmailThread(
   supabase: ReturnType<typeof createSupabaseServiceClient>,
@@ -476,59 +476,35 @@ async function ensurePersonalEmailThread(
     fromAddress: string
     subject: string | null
   },
-): Promise<{ threadId: string; projectId: string }> {
-  // Определяем user_id и email сотрудника
+): Promise<{ threadId: string; projectId: string | null }> {
   const { data: account } = await supabase
     .from('email_accounts')
-    .select('user_id, email')
+    .select('user_id')
     .eq('id', opts.accountId)
     .maybeSingle()
   if (!account) throw new Error('email account not found')
   const userId = (account as { user_id: string }).user_id
-  const accountEmail = (account as { email: string }).email
-
-  // Получаем/создаём системный email-проект сотрудника
-  const { data: pid, error: pidErr } = await supabase.rpc(
-    'ensure_personal_email_inbox_project',
-    {
-      p_workspace_id: opts.workspaceId,
-      p_user_id: userId,
-      p_account_email: accountEmail,
-    },
-  )
-  if (pidErr || !pid) throw pidErr ?? new Error('ensure_personal_email_inbox_project failed')
-  const projectId = String(pid)
-
-  // sort_order — в конец списка
-  const { data: maxRow } = await supabase
-    .from('project_threads')
-    .select('sort_order')
-    .eq('project_id', projectId)
-    .eq('is_deleted', false)
-    .order('sort_order', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  const nextSortOrder = ((maxRow as { sort_order: number | null } | null)?.sort_order ?? 0) + 10
 
   const { data: created, error } = await supabase
     .from('project_threads')
     .insert({
-      project_id: projectId,
+      project_id: null,
+      owner_user_id: userId,
       workspace_id: opts.workspaceId,
       name: opts.subject?.trim() || `Email от ${opts.fromAddress}`,
       type: 'email',
       icon: 'mail',
       accent_color: 'rose',
-      sort_order: nextSortOrder,
       email_subject_root: opts.subject ?? null,
       email_last_external_address: opts.fromAddress,
       email_send_account_id: opts.accountId,
       email_send_method: 'employee_mailbox',
+      created_by: userId,
     })
     .select('id')
     .single()
   if (error || !created) throw error ?? new Error('create personal email thread failed')
-  return { threadId: created.id, projectId }
+  return { threadId: created.id, projectId: null }
 }
 
 async function handleDeliveryStatus(
