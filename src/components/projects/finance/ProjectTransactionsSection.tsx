@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { useFinanceServices } from '@/hooks/useFinanceServices'
+import { useFinanceTaxRates } from '@/hooks/useFinanceTaxRates'
 import { useProjectServices } from '@/hooks/useProjectServices'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import {
@@ -70,6 +71,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
 
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
   const { data: catalog = [] } = useFinanceServices(workspaceId)
+  const { data: taxRates = [] } = useFinanceTaxRates(workspaceId)
   // Услуги проекта нужны только для типа income — чтобы посчитать «Остаток»
   // (стоимость с налогом минус уже полученные доходы) и подставить его в форму.
   const { data: services = [] } = useProjectServices(type === 'income' ? projectId : undefined)
@@ -103,6 +105,21 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
     () => catalog.map((s) => ({ value: s.id, label: s.name })),
     [catalog],
   )
+
+  const taxOptions = useMemo(
+    () =>
+      taxRates.map((t) => ({
+        value: t.id,
+        label: t.name,
+        hint: `${Number(t.rate)}%`,
+      })),
+    [taxRates],
+  )
+
+  const taxRateById = (id: string): number | null => {
+    const t = taxRates.find((r) => r.id === id)
+    return t ? Number(t.rate) : null
+  }
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<ProjectTransaction | null>(null)
@@ -210,6 +227,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                   <th className="text-left px-3 py-2 font-medium w-28">Дата</th>
                   <th className="text-left px-3 py-2 font-medium">{config.subjectLabel}</th>
                   <th className="text-left px-3 py-2 font-medium">Статья</th>
+                  <th className="text-right px-3 py-2 font-medium w-24">Налог</th>
                   <th className="text-right px-3 py-2 font-medium w-32">Сумма, EUR</th>
                   <th className="text-left px-3 py-2 font-medium">Комментарий</th>
                   <th className="px-3 py-2 w-24" />
@@ -247,6 +265,24 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                         noneLabel="— Не указана —"
                         searchPlaceholder="Поиск услуги"
                         onCommit={(id) => handlePatch(t.id, { service_id: id })}
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-gray-600">
+                      <InlineEditSelect
+                        align="right"
+                        value={t.tax_rate_id}
+                        options={taxOptions}
+                        noneLabel="— Без налога —"
+                        searchPlaceholder="Поиск ставки"
+                        emptyText={
+                          t.tax_rate == null
+                            ? '—'
+                            : `${Number(t.tax_rate).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}%`
+                        }
+                        onCommit={(id) => {
+                          const rate = id ? taxRateById(id) : null
+                          handlePatch(t.id, { tax_rate_id: id, tax_rate: rate })
+                        }}
                       />
                     </td>
                     <td className="px-3 py-2">

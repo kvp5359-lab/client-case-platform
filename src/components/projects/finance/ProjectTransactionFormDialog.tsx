@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useFinanceServices } from '@/hooks/useFinanceServices'
+import { useFinanceTaxRates } from '@/hooks/useFinanceTaxRates'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import type {
   ProjectTransaction,
@@ -66,6 +67,8 @@ export function ProjectTransactionFormDialog({
 }: Props) {
   const { data: catalog = [] } = useFinanceServices(workspaceId)
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
+  const { data: taxRates = [] } = useFinanceTaxRates(workspaceId)
+  const defaultTax = taxRates.find((t) => t.is_default)
 
   // Инициализация — пересоздание через key={editing?.id ?? 'new'} снаружи.
   const [date, setDate] = useState(editing?.date ?? todayISO())
@@ -75,8 +78,13 @@ export function ProjectTransactionFormDialog({
   const [serviceId, setServiceId] = useState<string | null>(editing?.service_id ?? null)
   const [amountText, setAmountText] = useState(editing ? String(editing.amount) : '')
   const [comment, setComment] = useState(editing?.comment ?? '')
+  const [taxRateId, setTaxRateId] = useState<string | null>(
+    editing ? editing.tax_rate_id : (defaultTax?.id ?? null),
+  )
 
   const labels = TYPE_LABELS[type]
+
+  const selectedTax = taxRates.find((t) => t.id === taxRateId)
 
   const handleSubmit = () => {
     const amount = Number(amountText.replace(',', '.'))
@@ -87,6 +95,8 @@ export function ProjectTransactionFormDialog({
       service_id: serviceId,
       amount: Number.isFinite(amount) && amount > 0 ? amount : 0,
       comment: comment.trim() || null,
+      tax_rate_id: taxRateId,
+      tax_rate: selectedTax ? Number(selectedTax.rate) : null,
     })
   }
 
@@ -168,18 +178,39 @@ export function ProjectTransactionFormDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="trx-service">Статья (за что)</Label>
-            <SearchableSelect
-              id="trx-service"
-              value={serviceId}
-              onChange={setServiceId}
-              options={catalog.map((s) => ({ value: s.id, label: s.name }))}
-              placeholder="Не указана"
-              noneLabel="— Не указана —"
-              searchPlaceholder="Поиск услуги"
-              emptyText="Услуг с таким именем нет"
-            />
+          <div className="flex gap-3">
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <Label htmlFor="trx-service">Статья (за что)</Label>
+              <SearchableSelect
+                id="trx-service"
+                value={serviceId}
+                onChange={setServiceId}
+                options={catalog.map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Не указана"
+                noneLabel="— Не указана —"
+                searchPlaceholder="Поиск услуги"
+                emptyText="Услуг с таким именем нет"
+              />
+            </div>
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <Label htmlFor="trx-tax">Налог</Label>
+              <SearchableSelect
+                id="trx-tax"
+                value={taxRateId}
+                onChange={setTaxRateId}
+                options={taxRates.map((t) => ({
+                  value: t.id,
+                  label: t.name,
+                  hint: `${Number(t.rate)}%`,
+                }))}
+                placeholder="Без налога"
+                noneLabel="— Без налога —"
+                searchPlaceholder="Поиск ставки"
+                emptyText={
+                  taxRates.length === 0 ? 'Справочник налогов пуст' : 'Ничего не нашли'
+                }
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">

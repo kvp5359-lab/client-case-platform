@@ -20,6 +20,11 @@ export interface ProjectTransactionFormData {
   service_id: string | null
   amount: number
   comment: string | null
+  /** UUID ставки налога из справочника finance_tax_rates (или null). */
+  tax_rate_id: string | null
+  /** Snapshot процента налога (накручен в amount; «чистая» сумма
+   *  = amount × 100 / (100 + tax_rate)). */
+  tax_rate: number | null
 }
 
 /** Список транзакций проекта по типу, отсортирован по date DESC. */
@@ -73,6 +78,8 @@ export function useCreateProjectTransaction(projectId: string | undefined) {
           service_id: form.service_id,
           amount: form.amount,
           comment: form.comment?.trim() || null,
+          tax_rate_id: form.tax_rate_id,
+          tax_rate: form.tax_rate,
         })
         .select('*')
         .single()
@@ -99,6 +106,8 @@ export function useUpdateProjectTransaction(projectId: string | undefined) {
           service_id: params.form.service_id,
           amount: params.form.amount,
           comment: params.form.comment?.trim() || null,
+          tax_rate_id: params.form.tax_rate_id,
+          tax_rate: params.form.tax_rate,
         })
         .eq('id', params.id)
         .select('*')
@@ -121,6 +130,8 @@ export type ProjectTransactionPatch = Partial<{
   service_id: string | null
   amount: number
   comment: string | null
+  tax_rate_id: string | null
+  tax_rate: number | null
 }>
 
 export function usePatchProjectTransaction(projectId: string | undefined) {

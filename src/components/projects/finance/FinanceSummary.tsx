@@ -49,28 +49,46 @@ export function FinanceSummary({ projectId }: Props) {
   const { data: expenses = [] } = useProjectTransactions(projectId, 'expense')
 
   const stats = useMemo(() => {
-    // subtotal — без налога, taxTotal — суммарный налог по всем услугам,
-    // cost — итог с налогом (то, что должен заплатить клиент).
-    let subtotal = 0
-    let taxTotal = 0
+    // Стоимость = сумма позиций с учётом налога (subtotal + налог сверху).
+    let cost = 0
     for (const s of services) {
       const sub = Number(s.total ?? 0)
       const rate = s.tax_rate == null ? 0 : Number(s.tax_rate)
-      subtotal += sub
-      taxTotal += sub * (rate / 100)
+      cost += sub * (1 + rate / 100)
     }
-    const cost = subtotal + taxTotal
 
     const incomeSum = incomes.reduce((acc, t) => acc + Number(t.amount ?? 0), 0)
     const expenseSum = expenses.reduce((acc, t) => acc + Number(t.amount ?? 0), 0)
 
-    // Налог в полученных доходах — пропорционально оплаченной доле услуг:
-    // если клиент заплатил половину — половина НДС считается «начисленной».
-    const taxInIncome = cost > 0 ? incomeSum * (taxTotal / cost) : 0
+    // Чистая сумма транзакции = amount × 100 / (100 + tax_rate). Если ставка
+    // не указана, считаем что в amount нет налога — берём amount как есть.
+    const netAmount = (amount: number, rate: number | null): number => {
+      const r = rate ?? 0
+      return r > 0 ? (amount * 100) / (100 + r) : amount
+    }
+    const incomeNet = incomes.reduce(
+      (acc, t) => acc + netAmount(Number(t.amount ?? 0), t.tax_rate == null ? null : Number(t.tax_rate)),
+      0,
+    )
+    const expenseNet = expenses.reduce(
+      (acc, t) => acc + netAmount(Number(t.amount ?? 0), t.tax_rate == null ? null : Number(t.tax_rate)),
+      0,
+    )
+    const taxInIncome = incomeSum - incomeNet
+    const taxInExpense = expenseSum - expenseNet
 
-    const profit = incomeSum - expenseSum - taxInIncome
+    // Прибыль = чистые_доходы − чистые_расходы.
+    const profit = incomeNet - expenseNet
     const paymentPct = cost > 0 ? (incomeSum / cost) * 100 : null
-    return { cost, incomeSum, expenseSum, profit, paymentPct, taxInIncome }
+    return {
+      cost,
+      incomeSum,
+      expenseSum,
+      profit,
+      paymentPct,
+      taxInIncome,
+      taxInExpense,
+    }
   }, [services, incomes, expenses])
 
   return (
@@ -91,8 +109,8 @@ export function FinanceSummary({ projectId }: Props) {
         value={`${fmt(stats.profit)} EUR`}
         tone={stats.profit >= 0 ? 'positive' : 'negative'}
         hint={
-          stats.taxInIncome > 0
-            ? `Доходы − расходы − налог (${fmt(stats.taxInIncome)})`
+          stats.taxInIncome > 0 || stats.taxInExpense > 0
+            ? 'Чистые доходы − чистые расходы (без налога)'
             : 'Доходы − расходы'
         }
       />

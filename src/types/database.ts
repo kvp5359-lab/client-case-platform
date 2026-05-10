@@ -5467,6 +5467,8 @@ export type Database = {
           participant_id: string | null
           project_id: string
           service_id: string | null
+          tax_rate: number | null
+          tax_rate_id: string | null
           type: string
           updated_at: string
         }
@@ -5482,6 +5484,8 @@ export type Database = {
           participant_id?: string | null
           project_id: string
           service_id?: string | null
+          tax_rate?: number | null
+          tax_rate_id?: string | null
           type: string
           updated_at?: string
         }
@@ -5497,6 +5501,8 @@ export type Database = {
           participant_id?: string | null
           project_id?: string
           service_id?: string | null
+          tax_rate?: number | null
+          tax_rate_id?: string | null
           type?: string
           updated_at?: string
         }
@@ -5520,6 +5526,13 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "finance_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_transactions_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "finance_tax_rates"
             referencedColumns: ["id"]
           },
         ]
