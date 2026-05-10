@@ -483,59 +483,8 @@ async function handleBusinessMessage(
 }
 
 // ===========================================================================
-// Helpers: системный инбокс-проект и Business-тред
+// Helpers: Business-тред (личный диалог сотрудника, без проекта)
 // ===========================================================================
-
-async function ensureSystemInboxProject(
-  service: SupabaseClient,
-  userId: string,
-  workspaceId: string,
-): Promise<string> {
-  const { data: existing } = await service
-    .from("projects")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .eq("system_inbox_user_id", userId)
-    .eq("system_inbox_kind", "telegram_business")
-    .maybeSingle();
-  if (existing) return existing.id;
-
-  const { data: created, error } = await service
-    .from("projects")
-    .insert({
-      workspace_id: workspaceId,
-      name: "Личные диалоги Telegram",
-      description: "Системный проект: личные диалоги сотрудника через Telegram Business.",
-      system_inbox_kind: "telegram_business",
-      system_inbox_user_id: userId,
-      created_by: userId,
-    })
-    .select("id")
-    .single();
-  if (error || !created) {
-    throw new Error(`Failed to create system inbox: ${error?.message}`);
-  }
-
-  // Добавляем владельца как Администратора в project_participants — иначе
-  // get_workspace_threads (без view_all_projects) не отдаст ему треды
-  // собственного инбокса.
-  const { data: ownerParticipant } = await service
-    .from("participants")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("workspace_id", workspaceId)
-    .eq("is_deleted", false)
-    .maybeSingle();
-  if (ownerParticipant) {
-    await service.from("project_participants").insert({
-      project_id: created.id,
-      participant_id: ownerParticipant.id,
-      project_roles: ["Администратор"],
-    });
-  }
-
-  return created.id;
-}
 
 async function ensureBusinessThread(
   service: SupabaseClient,

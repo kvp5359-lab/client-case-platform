@@ -69,32 +69,9 @@ export function useProjectData(projectId: string | undefined) {
   // избавились от двух параллельных запросов к одному templateId.
   const templateQuery = useProjectTemplate(projectQuery.data?.template_id ?? null)
 
-  // Системный «инбокс»-проект Telegram Business не имеет шаблона, но
-  // должен предоставить вкладку чатов (треды личных диалогов) и задач.
-  // Подменяем projectTemplate на синтетический, чтобы useProjectModules
-  // открыл нужные вкладки без необходимости создавать настоящий шаблон.
-  const project = projectQuery.data
-  const inboxKind = (project as { system_inbox_kind?: string | null } | undefined)?.system_inbox_kind ?? null
-  const isSystemInbox = inboxKind !== null
-  const effectiveTemplate: ProjectTemplateWithRelations | null | undefined = isSystemInbox
-    ? {
-        id: `__system_inbox_${inboxKind}__`,
-        name:
-          inboxKind === 'wazzup'
-            ? 'Wazzup (WhatsApp)'
-            : inboxKind === 'email'
-              ? 'Email'
-              : 'Личные диалоги Telegram',
-        enabled_modules: ['chats', 'tasks'],
-        root_folder_id: null,
-        project_template_document_kits: [],
-        project_template_forms: [],
-      }
-    : templateQuery.data
-
   return {
-    project,
-    projectTemplate: effectiveTemplate,
+    project: projectQuery.data,
+    projectTemplate: templateQuery.data,
     isLoading: projectQuery.isLoading || templateQuery.isLoading,
     error: projectQuery.error || templateQuery.error,
   }

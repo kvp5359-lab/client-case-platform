@@ -461,42 +461,8 @@ async function handleChannelUpdate(
 }
 
 // ===========================================================================
-// Helpers: системный инбокс и тред
+// Helpers: Wazzup-тред (личный диалог сотрудника, без проекта)
 // ===========================================================================
-
-async function ensureSystemInboxProject(
-  service: SupabaseClient,
-  userId: string,
-  workspaceId: string,
-): Promise<string> {
-  const { data: existing } = await service.from("projects")
-    .select("id").eq("workspace_id", workspaceId)
-    .eq("system_inbox_user_id", userId)
-    .eq("system_inbox_kind", "wazzup").maybeSingle();
-  if (existing) return existing.id as string;
-
-  const { data: created, error } = await service.from("projects").insert({
-    workspace_id: workspaceId,
-    name: "Wazzup (WhatsApp)",
-    description: "Системный проект: личные диалоги через Wazzup.",
-    system_inbox_kind: "wazzup",
-    system_inbox_user_id: userId,
-    created_by: userId,
-  }).select("id").single();
-  if (error || !created) throw new Error(`Failed to create wazzup inbox: ${error?.message}`);
-
-  const { data: ownerParticipant } = await service.from("participants")
-    .select("id").eq("user_id", userId)
-    .eq("workspace_id", workspaceId).eq("is_deleted", false).maybeSingle();
-  if (ownerParticipant) {
-    await service.from("project_participants").insert({
-      project_id: created.id,
-      participant_id: ownerParticipant.id,
-      project_roles: ["Администратор"],
-    });
-  }
-  return created.id as string;
-}
 
 async function ensureWazzupThread(
   service: SupabaseClient,

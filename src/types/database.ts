@@ -5665,17 +5665,12 @@ export type Database = {
           google_drive_folder_link: string | null
           id: string
           is_deleted: boolean
-          is_system_business_inbox: boolean
-          is_system_email_inbox: boolean
-          is_system_wazzup_inbox: boolean
           last_activity_at: string
           messenger_link_code: string | null
           name: string
           short_id: number | null
           source_folder_id: string | null
           status_id: string | null
-          system_inbox_kind: string | null
-          system_inbox_user_id: string | null
           template_id: string | null
           updated_at: string | null
           workspace_id: string
@@ -5692,17 +5687,12 @@ export type Database = {
           google_drive_folder_link?: string | null
           id?: string
           is_deleted?: boolean
-          is_system_business_inbox?: boolean
-          is_system_email_inbox?: boolean
-          is_system_wazzup_inbox?: boolean
           last_activity_at?: string
           messenger_link_code?: string | null
           name: string
           short_id?: number | null
           source_folder_id?: string | null
           status_id?: string | null
-          system_inbox_kind?: string | null
-          system_inbox_user_id?: string | null
           template_id?: string | null
           updated_at?: string | null
           workspace_id: string
@@ -5719,17 +5709,12 @@ export type Database = {
           google_drive_folder_link?: string | null
           id?: string
           is_deleted?: boolean
-          is_system_business_inbox?: boolean
-          is_system_email_inbox?: boolean
-          is_system_wazzup_inbox?: boolean
           last_activity_at?: string
           messenger_link_code?: string | null
           name?: string
           short_id?: number | null
           source_folder_id?: string | null
           status_id?: string | null
-          system_inbox_kind?: string | null
-          system_inbox_user_id?: string | null
           template_id?: string | null
           updated_at?: string | null
           workspace_id?: string
@@ -7472,14 +7457,6 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: undefined
       }
-      ensure_personal_email_inbox_project: {
-        Args: {
-          p_account_email: string
-          p_user_id: string
-          p_workspace_id: string
-        }
-        Returns: string
-      }
       fill_folder_slot: {
         Args: { p_document_id: string; p_project_id: string; p_slot_id: string }
         Returns: undefined
@@ -7756,17 +7733,12 @@ export type Database = {
           google_drive_folder_link: string | null
           id: string
           is_deleted: boolean
-          is_system_business_inbox: boolean
-          is_system_email_inbox: boolean
-          is_system_wazzup_inbox: boolean
           last_activity_at: string
           messenger_link_code: string | null
           name: string
           short_id: number | null
           source_folder_id: string | null
           status_id: string | null
-          system_inbox_kind: string | null
-          system_inbox_user_id: string | null
           template_id: string | null
           updated_at: string | null
           workspace_id: string
