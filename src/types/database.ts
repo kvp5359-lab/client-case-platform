@@ -5426,6 +5426,7 @@ export type Database = {
           mtproto_client_tg_user_id: number | null
           mtproto_session_user_id: string | null
           name: string
+          owner_user_id: string | null
           project_id: string | null
           short_id: number | null
           sort_order: number
@@ -5464,6 +5465,7 @@ export type Database = {
           mtproto_client_tg_user_id?: number | null
           mtproto_session_user_id?: string | null
           name: string
+          owner_user_id?: string | null
           project_id?: string | null
           short_id?: number | null
           sort_order?: number
@@ -5502,6 +5504,7 @@ export type Database = {
           mtproto_client_tg_user_id?: number | null
           mtproto_session_user_id?: string | null
           name?: string
+          owner_user_id?: string | null
           project_id?: string | null
           short_id?: number | null
           sort_order?: number
@@ -8405,3 +8408,5 @@ export const Constants = {
     },
   },
 } as const
+A new version of Supabase CLI is available: v2.98.2 (currently installed v2.75.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
