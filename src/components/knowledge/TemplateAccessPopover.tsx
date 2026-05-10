@@ -126,11 +126,12 @@ export function TemplateAccessPopover({
   // Добавить связь
   const addMutation = useMutation({
     mutationFn: async (templateId: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.from(table) as any).insert({
-        [fkColumn]: entityId,
-        project_template_id: templateId,
-      })
+      // table — union из 4 junction-таблиц (см. getAccessConfig). Сгенерированный
+      // тип `.insert()` зависит от конкретной таблицы, и при динамическом union
+      // TypeScript не может вывести единый Insert-тип. `as never` принудительно
+      // подавляет проверку только для payload — само значение table проверяется.
+      const payload = { [fkColumn]: entityId, project_template_id: templateId }
+      const { error } = await supabase.from(table).insert(payload as never)
       if (error) throw error
     },
     onSuccess: () => {

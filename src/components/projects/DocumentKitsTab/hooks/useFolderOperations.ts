@@ -112,8 +112,7 @@ export function useFolderOperations(
             ai_check_prompt: item.ai_check_prompt,
             knowledge_article_id: item.knowledge_article_id,
             // Остальные поля folder_templates не используются в UI — проставляем безопасные значения
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } as any)
+          } as Tables<'folder_templates'>)
         }
       }
 
