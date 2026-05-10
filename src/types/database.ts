@@ -7646,6 +7646,31 @@ export type Database = {
         Returns: number
       }
       get_owner_permissions: { Args: never; Returns: Json }
+      get_personal_dialogs: {
+        Args: { p_target_user_id: string; p_workspace_id: string }
+        Returns: {
+          channel: string
+          email_contact: string
+          email_subject: string
+          last_message_at: string
+          last_message_attachment_count: number
+          last_message_attachment_name: string
+          last_message_text: string
+          last_sender_avatar_url: string
+          last_sender_name: string
+          legacy_channel: string
+          manually_unread: boolean
+          owner_user_id: string
+          project_id: string
+          project_name: string
+          thread_accent_color: string
+          thread_icon: string
+          thread_id: string
+          thread_name: string
+          thread_type: string
+          unread_count: number
+        }[]
+      }
       get_project_admin_module_access: { Args: never; Returns: Json }
       get_project_admin_permissions: { Args: never; Returns: Json }
       get_project_client_module_access: { Args: never; Returns: Json }

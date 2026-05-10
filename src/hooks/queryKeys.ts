@@ -228,6 +228,12 @@ export const inboxKeys = {
   threadsV2: (workspaceId: string) => ['inbox', 'threads-v2', workspaceId] as const,
 }
 
+export const personalDialogsKeys = {
+  all: ['personal-dialogs'] as const,
+  forUser: (workspaceId: string, targetUserId: string) =>
+    ['personal-dialogs', workspaceId, targetUserId] as const,
+}
+
 export const taskKeys = {
   /** Prefix for broad-invalidate: matches all workspaces. */
   allUrgent: ['my-urgent-tasks-count'] as const,
