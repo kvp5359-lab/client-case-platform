@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { Mail } from 'lucide-react'
 import {
   Dialog,
@@ -26,8 +26,11 @@ interface EmailFullViewDialogProps {
  *     плывут.
  *   - sandbox дополнительно изолирует поведение (нет доступа к нашему DOM).
  *
- * Высота iframe подстраивается под содержимое после загрузки и при изменениях
- * (например, после загрузки картинок) через ResizeObserver.
+ * Iframe растягивается на всю высоту контейнера (h-full). Внутренняя
+ * прокрутка контента — нативная у iframe, чтобы не было пустого
+ * пространства внизу модалки при коротких письмах и не нужно было
+ * измерять scrollHeight через JS (раньше делали через ResizeObserver,
+ * получали зазор внизу когда контент короче контейнера).
  *
  * Безопасность: HTML предварительно очищается через DOMPurify (sanitizeHtml).
  * `<base target="_blank">` гарантирует, что клики по ссылкам открываются в
@@ -37,60 +40,11 @@ export function EmailFullViewDialog({ message, open, onOpenChange }: EmailFullVi
   const meta = message?.email_metadata
   const bodyHtml = meta?.body_html
 
-  const iframeRef = useRef<HTMLIFrameElement | null>(null)
-  const [iframeHeight, setIframeHeight] = useState(400)
-
   const srcDoc = useMemo(() => {
     if (!bodyHtml) return null
     const safe = sanitizeHtml(bodyHtml)
     return buildEmailIframeDocument(safe)
   }, [bodyHtml])
-
-  // Подгоняем высоту iframe под содержимое и реагируем на ресайзы (картинки,
-  // динамические элементы). Срабатывает один раз на загрузку и периодически
-  // через ResizeObserver на body документа iframe.
-  useEffect(() => {
-    if (!open || !srcDoc) return
-    const iframe = iframeRef.current
-    if (!iframe) return
-
-    let cancelled = false
-    let resizeObserver: ResizeObserver | null = null
-
-    const measure = () => {
-      if (cancelled) return
-      const doc = iframe.contentDocument
-      if (!doc?.body) return
-      const h = Math.max(
-        doc.body.scrollHeight,
-        doc.documentElement.scrollHeight,
-      )
-      if (h > 0) setIframeHeight(h)
-    }
-
-    const onLoad = () => {
-      measure()
-      const doc = iframe.contentDocument
-      if (!doc) return
-      resizeObserver = new ResizeObserver(measure)
-      resizeObserver.observe(doc.documentElement)
-      // Пере-меряем после загрузки картинок (img.onload не всегда
-      // триггерит ResizeObserver — даём один лишний тик).
-      const imgs = doc.querySelectorAll('img')
-      imgs.forEach((img) => {
-        if (!img.complete) img.addEventListener('load', measure, { once: true })
-      })
-    }
-
-    if (iframe.contentDocument?.readyState === 'complete') onLoad()
-    iframe.addEventListener('load', onLoad)
-
-    return () => {
-      cancelled = true
-      iframe.removeEventListener('load', onLoad)
-      resizeObserver?.disconnect()
-    }
-  }, [open, srcDoc])
 
   if (!message || !meta) return null
 
@@ -131,15 +85,13 @@ export function EmailFullViewDialog({ message, open, onOpenChange }: EmailFullVi
           </div>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto bg-white">
+        <div className="flex-1 min-h-0 bg-white">
           {srcDoc ? (
             <iframe
-              ref={iframeRef}
               srcDoc={srcDoc}
               sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
               title="Содержимое письма"
-              className="w-full block border-0"
-              style={{ height: iframeHeight }}
+              className="w-full h-full block border-0"
             />
           ) : (
             <div className="px-6 py-4 text-sm text-muted-foreground">
