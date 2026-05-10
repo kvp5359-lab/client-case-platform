@@ -11,12 +11,13 @@
  * - Методы для обновления проекта
  */
 
-import { createContext, useContext, ReactNode, useCallback, useMemo } from 'react'
+import { createContext, useContext, ReactNode, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { projectKeys } from '@/hooks/queryKeys'
+import { useDocumentKitUIStore } from '@/store/documentKitUI/store'
 import type { Database } from '@/types/database'
 
 type Project = Database['public']['Tables']['projects']['Row']
@@ -53,6 +54,17 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   const { projectId } = useParams<{ projectId: string }>()
   const queryClient = useQueryClient()
 
+  // При смене проекта сбрасываем UI-стор документного набора — иначе
+  // возвращаясь на старый проект пользователь видит чужие открытые
+  // диалоги/раскрытые папки/editForm из прошлого визита.
+  const prevProjectIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (prevProjectIdRef.current && prevProjectIdRef.current !== projectId) {
+      useDocumentKitUIStore.getState().resetState()
+    }
+    prevProjectIdRef.current = projectId ?? null
+  }, [projectId])
+
   const {
     data: projectData,
     isLoading: loading,
@@ -62,18 +74,13 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     queryFn: async (): Promise<ProjectWithTemplate> => {
       const { data, error } = await supabase
         .from('projects')
-        .select(
-          `
-          *,
-          project_templates (*)
-        `,
-        )
+        .select('*, project_templates (*)')
         .eq('id', projectId ?? '')
-        .maybeSingle()
+        .maybeSingle<ProjectWithTemplate>()
 
       if (error) throw error
       if (!data) throw new Error('Проект не найден или нет доступа')
-      return data as unknown as ProjectWithTemplate
+      return data
     },
     enabled: !!projectId,
   })

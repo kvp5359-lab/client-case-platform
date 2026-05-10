@@ -148,6 +148,17 @@
 - **Хуки**: `src/hooks/useTrash.ts` — `useTrashedProjects`, `useTrashedThreads`, `useRestoreProject`, `useRestoreThread`, `useHardDeleteProject`, `useHardDeleteThread`.
 - **Миграции**: `20260410_trash_feature.sql` (колонки + `get_user_projects`), `20260410_trash_rpc_updates.sql` (остальные RPC).
 
+## Права доступа к модулям проекта
+
+Два независимых слоя, проверяются вместе:
+
+1. **`project_templates.enabled_modules`** (`string[]`) — какие модули в принципе включены в шаблоне проекта (chats/tasks/documents/forms/finance/digest/…). Если модуль не включён в шаблоне — он не существует для проекта ни для кого, включая владельца.
+2. **`project_roles.module_access`** (jsonb `{ module: boolean }`) — для каждой проектной роли: к каким модулям эта роль имеет доступ. Резолвится через `useProjectPermissions.hasModuleAccess(module)` (см. [`src/hooks/permissions/useProjectPermissions.ts`](../../src/hooks/permissions/useProjectPermissions.ts)). У пользователя с несколькими ролями — merge через OR.
+
+**Правило: модуль видим, если** `enabled_modules.includes(module) AND hasModuleAccess(module)`. Сейчас нет автосинхронизации: если модуль отключают в шаблоне, в `module_access` ролей он остаётся `true` — но всё равно скрыт фильтром `enabled_modules`. Это by design, чтобы не терять настройку при временном отключении модуля.
+
+**Куда смотреть при добавлении нового модуля**: реестр `ProjectModule` в `src/types/threadTemplate.ts`, `PROJECT_MODULES`, дефолтные `module_access` в seed-ролях, проверка в `useProjectPermissions.hasModuleAccess`.
+
 ## Статусы проектов (единый справочник + per-template привязка)
 
 - **Хранение**: `projects.status_id` (uuid → `statuses.id`). Текстовая колонка `projects.status` дропнута миграцией `drop_projects_status_text_with_triggers` (2026-04-25).
