@@ -1,82 +1,152 @@
 "use client"
 
 /**
- * ItemListsPage — обзор всех списков воркспейса (общих + личных).
+ * ItemListsPage — контейнер со вкладками всех списков item_lists. Полный
+ * аналог BoardsPage по UX: вкладки сверху + контент активной вкладки внизу.
  *
- * Кнопка «Создать» открывает CreateItemListDialog. После создания —
- * автоматический переход на страницу нового списка.
+ * Роуты:
+ *   /workspaces/[id]/lists           — открывает первый по порядку список
+ *   /workspaces/[id]/lists/[listId]  — открывает конкретный список
+ *
+ * Списков нет → empty state с кнопкой создания.
+ * Запрошенный listId не найден → редирект на первый доступный (как в BoardsPage).
  */
 
 import { useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Plus, ListChecks, FolderOpen, User, Users, Loader2 } from 'lucide-react'
+import { Plus, ListChecks } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { useDialog } from '@/hooks/shared/useDialog'
-import { useItemLists, type ItemList } from '@/hooks/useItemLists'
-import { CreateItemListDialog } from '@/components/itemLists/CreateItemListDialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { usePageTitle } from '@/hooks/usePageTitle'
+import { toast } from 'sonner'
+import { useItemLists, useSoftDeleteItemList, type ItemList } from '@/hooks/useItemLists'
+import { useWorkspacePermissions } from '@/hooks/permissions'
+import { usePinnedItemLists } from '@/components/WorkspaceSidebar/usePinnedItemLists'
+import { CreateItemListDialog } from '@/components/itemLists/CreateItemListDialog'
+import { ItemListSettingsDialog } from '@/components/itemLists/ItemListSettingsDialog'
+import { ItemListTab } from './ItemListTab'
+import { ItemListTabContent } from './ItemListTabContent'
 
 export default function ItemListsPage() {
-  usePageTitle('Списки')
-  const { workspaceId } = useParams<{ workspaceId: string }>()
+  const { workspaceId, listId: listIdFromPath } =
+    useParams<{ workspaceId: string; listId?: string }>()
   const router = useRouter()
   const { user } = useAuth()
   const closePanel = useSidePanelStore((s) => s.closePanel)
-  const createDialog = useDialog()
-  const { data: lists = [], isLoading } = useItemLists(workspaceId)
-
   useEffect(() => { closePanel() }, [closePanel])
+
+  const { data: lists = [], isLoading } = useItemLists(workspaceId)
+  const { isOwner, can } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
+  const { isPinned: isListPinned, togglePin: toggleListPin } = usePinnedItemLists(workspaceId)
+  const softDelete = useSoftDeleteItemList()
+
+  const createDialog = useDialog()
+  const settingsDialog = useDialog()
+
+  // Резолв активной вкладки. Если в пути нет listId — используем первый.
+  // Если listId не найден среди доступных — тоже падаем на первый (как в BoardsPage).
+  const requestedListId = listIdFromPath ?? null
+  const resolvedListId = requestedListId && lists.some((l) => l.id === requestedListId)
+    ? requestedListId
+    : lists[0]?.id ?? null
+  const activeList = lists.find((l) => l.id === resolvedListId) ?? null
+
+  usePageTitle(activeList?.name ?? 'Списки')
+
+  const navigateToList = (id: string | null) => {
+    if (!workspaceId) return
+    const target = id
+      ? `/workspaces/${workspaceId}/lists/${id}`
+      : `/workspaces/${workspaceId}/lists`
+    router.push(target)
+  }
+
+  // Синхронизация URL: если в пути нет listId, но есть резолвнутый список —
+  // переписываем URL для шаринга.
+  useEffect(() => {
+    if (!workspaceId) return
+    if (!resolvedListId) return
+    if (listIdFromPath === resolvedListId) return
+    router.replace(`/workspaces/${workspaceId}/lists/${resolvedListId}`)
+  }, [workspaceId, listIdFromPath, resolvedListId, router])
+
+  const handleDeleteList = (list: ItemList) => {
+    if (!confirm(`Удалить список «${list.name}»?`)) return
+    softDelete.mutate(
+      { id: list.id, workspace_id: workspaceId! },
+      {
+        onSuccess: () => {
+          toast.success('Список перемещён в корзину')
+          if (resolvedListId === list.id) navigateToList(null)
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : 'Не удалось удалить'),
+      },
+    )
+  }
 
   if (!workspaceId || !user) return null
 
-  const personal = lists.filter((l) => l.owner_user_id === user.id)
-  const shared = lists.filter((l) => l.owner_user_id === null)
-
-  const openList = (id: string) => router.push(`/workspaces/${workspaceId}/lists/${id}`)
+  const canPin = isOwner || can('manage_workspace_settings')
 
   return (
     <WorkspaceLayout>
-      <div className="flex flex-col h-full bg-gray-100/60">
-        <div className="px-6 py-4 border-b bg-white flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Списки</h1>
-          <Button size="sm" onClick={createDialog.open}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Создать список
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {isLoading && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Загружаю…
+      <div className="h-full flex flex-col bg-gray-100/60">
+        {/* Строка вкладок */}
+        <div className="flex items-center px-3 py-2 shrink-0">
+          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-1 bg-muted rounded-full p-1 w-fit group/tabs">
+              {isLoading ? (
+                <div className="px-3 py-0.5 text-xs text-muted-foreground">Загрузка...</div>
+              ) : (
+                <>
+                  {lists.map((list) => {
+                    const canManage = list.owner_user_id === user.id || list.owner_user_id === null
+                    return (
+                      <ItemListTab
+                        key={list.id}
+                        list={list}
+                        isActive={resolvedListId === list.id}
+                        isPinned={isListPinned(list.id)}
+                        canPin={canPin}
+                        canManage={canManage}
+                        onSelect={() => navigateToList(list.id)}
+                        onEditSettings={() => {
+                          navigateToList(list.id)
+                          settingsDialog.open()
+                        }}
+                        onDelete={() => handleDeleteList(list)}
+                        onTogglePin={() => toggleListPin(list.id)}
+                      />
+                    )
+                  })}
+                  <button
+                    type="button"
+                    className="p-1 rounded-full shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all opacity-0 group-hover/tabs:opacity-100"
+                    onClick={createDialog.open}
+                    title="Новый список"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              )}
             </div>
-          )}
-
-          {!isLoading && lists.length === 0 && (
-            <EmptyState onCreate={createDialog.open} />
-          )}
-
-          {shared.length > 0 && (
-            <Section title="Общие списки воркспейса" icon={<Users className="h-4 w-4" />}>
-              {shared.map((l) => (
-                <ListCard key={l.id} list={l} onOpen={openList} />
-              ))}
-            </Section>
-          )}
-
-          {personal.length > 0 && (
-            <Section title="Мои личные списки" icon={<User className="h-4 w-4" />}>
-              {personal.map((l) => (
-                <ListCard key={l.id} list={l} onOpen={openList} />
-              ))}
-            </Section>
-          )}
+          </div>
         </div>
+
+        {/* Content */}
+        {!isLoading && lists.length === 0 ? (
+          <EmptyState onCreate={createDialog.open} />
+        ) : activeList ? (
+          <ItemListTabContent
+            key={activeList.id}
+            list={activeList}
+            workspaceId={workspaceId}
+            currentUserId={user.id}
+          />
+        ) : null}
       </div>
 
       <CreateItemListDialog
@@ -84,78 +154,25 @@ export default function ItemListsPage() {
         onClose={createDialog.close}
         workspaceId={workspaceId}
       />
+
+      {activeList && (
+        <ItemListSettingsDialog
+          open={settingsDialog.isOpen}
+          onClose={settingsDialog.close}
+          list={activeList}
+          workspaceId={workspaceId}
+        />
+      )}
     </WorkspaceLayout>
   )
 }
 
-function Section({
-  title,
-  icon,
-  children,
-}: {
-  title: string
-  icon: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        {icon}
-        {title}
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {children}
-      </div>
-    </div>
-  )
-}
-
-function ListCard({ list, onOpen }: { list: ItemList; onOpen: (id: string) => void }) {
-  const Icon = list.entity_type === 'project' ? FolderOpen : ListChecks
-  const rulesCount = list.filter_config?.rules?.length ?? 0
-  return (
-    <Card
-      className="p-4 cursor-pointer hover:border-primary/50 transition-colors"
-      onClick={() => onOpen(list.id)}
-    >
-      <div className="flex items-start gap-3">
-        <div
-          className="h-9 w-9 rounded-md flex items-center justify-center text-white shrink-0"
-          style={{ backgroundColor: list.color ?? '#6B7280' }}
-        >
-          <Icon className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium truncate">{list.name}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">
-            {list.entity_type === 'thread' ? 'Треды' : 'Проекты'}
-            {rulesCount > 0 && ` · ${rulesCount} ${pluralRules(rulesCount)}`}
-          </div>
-        </div>
-      </div>
-    </Card>
-  )
-}
-
-function pluralRules(n: number): string {
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return 'фильтр'
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'фильтра'
-  return 'фильтров'
-}
-
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center mb-4">
-        <ListChecks className="h-6 w-6 text-muted-foreground" />
-      </div>
-      <h3 className="text-sm font-medium mb-1">Списков пока нет</h3>
-      <p className="text-xs text-muted-foreground max-w-sm mb-4">
-        Списки удобны для повседневной работы: один фильтр, табличное представление и пакетные действия.
-      </p>
-      <Button size="sm" onClick={onCreate}>
+    <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
+      <ListChecks className="h-12 w-12 mb-3 opacity-30" />
+      <p className="text-sm">Пока нет списков</p>
+      <Button variant="outline" size="sm" className="mt-3" onClick={onCreate}>
         <Plus className="h-4 w-4 mr-1.5" />
         Создать первый список
       </Button>

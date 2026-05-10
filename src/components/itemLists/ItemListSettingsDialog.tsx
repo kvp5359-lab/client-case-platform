@@ -38,7 +38,7 @@ import {
   getColumnDef,
   getColumnsForEntity,
   type ItemListColumnKey,
-} from '@/page-components/ItemListPage/columns'
+} from '@/page-components/ItemListsPage/columns'
 import type { FilterGroup, SortDir, SortField } from '@/lib/filters/types'
 
 interface Props {

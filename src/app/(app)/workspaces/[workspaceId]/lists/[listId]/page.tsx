@@ -1,7 +1,7 @@
 "use client"
 
-import ItemListPage from '@/page-components/ItemListPage'
+import ItemListsPage from '@/page-components/ItemListsPage'
 
 export default function ListDetailRoute() {
-  return <ItemListPage />
+  return <ItemListsPage />
 }
