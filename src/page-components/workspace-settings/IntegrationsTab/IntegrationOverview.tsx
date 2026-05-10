@@ -8,7 +8,9 @@
  * на странице настроек сразу понимали границы возможностей.
  */
 
-import { CheckCircle2, Info, AlertTriangle, Plug, XCircle } from 'lucide-react'
+import { useState } from 'react'
+import { CheckCircle2, Info, AlertTriangle, Plug, XCircle, ChevronDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export interface IntegrationOverviewProps {
   /** Что это за интеграция — одно-два предложения по делу. */
@@ -30,30 +32,48 @@ export function IntegrationOverview({
   cannot,
   risks,
 }: IntegrationOverviewProps) {
+  const [open, setOpen] = useState(false)
   return (
-    <div className="rounded-lg border bg-white p-4 space-y-3 text-sm">
-      <div className="flex items-start gap-2">
-        <Info className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
-        <p className="text-gray-700">{summary}</p>
-      </div>
+    <div className="rounded-lg border bg-white text-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+        aria-expanded={open}
+      >
+        <Info className="h-4 w-4 text-blue-500 shrink-0" />
+        <p className="text-gray-700 flex-1 min-w-0">{summary}</p>
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 text-gray-400 shrink-0 transition-transform',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-1 space-y-3 border-t">
+          <Block icon={<Plug className="h-3.5 w-3.5 text-gray-500" />} title="Как подключить">
+            {setup}
+          </Block>
 
-      <Block icon={<Plug className="h-3.5 w-3.5 text-gray-500" />} title="Как подключить">
-        {setup}
-      </Block>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Block icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />} title="Что умеет">
+              {can}
+            </Block>
+            <Block icon={<XCircle className="h-3.5 w-3.5 text-gray-400" />} title="Что не умеет">
+              {cannot}
+            </Block>
+          </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Block icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />} title="Что умеет">
-          {can}
-        </Block>
-        <Block icon={<XCircle className="h-3.5 w-3.5 text-gray-400" />} title="Что не умеет">
-          {cannot}
-        </Block>
-      </div>
-
-      {risks && risks.length > 0 && (
-        <Block icon={<AlertTriangle className="h-3.5 w-3.5 text-amber-500" />} title="Особенности и риски">
-          {risks}
-        </Block>
+          {risks && risks.length > 0 && (
+            <Block
+              icon={<AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
+              title="Особенности и риски"
+            >
+              {risks}
+            </Block>
+          )}
+        </div>
       )}
     </div>
   )

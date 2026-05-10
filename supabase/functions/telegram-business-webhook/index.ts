@@ -45,6 +45,24 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const BUSINESS_BOT_TOKEN = Deno.env.get("TELEGRAM_BUSINESS_BOT_TOKEN")!;
 const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_BUSINESS_WEBHOOK_SECRET") ?? "";
 
+/**
+ * Fire-and-forget вызов fetch-telegram-avatar для tg_user_id клиента.
+ * Бот в момент business-сообщения «видит» юзера через активный connection —
+ * это лучшее окно для подтягивания аватара.
+ */
+function triggerAvatarFetch(tgUserId: number): void {
+  fetch(`${SUPABASE_URL}/functions/v1/fetch-telegram-avatar`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+    body: JSON.stringify({ tg_user_id: tgUserId }),
+  }).catch((err) =>
+    console.error("[telegram-business-webhook] avatar fetch failed:", err)
+  );
+}
+
 interface TgUser {
   id: number;
   is_bot?: boolean;
