@@ -20,6 +20,9 @@ const eslintConfig = defineConfig([
     "supabase/functions/**",
     // Утилитарные tsx-скрипты (одноразовые, не в бандле приложения).
     "scripts/**",
+    // Отдельный Docker-сервис (MTProto), свой tsconfig + pipeline. В репе живёт
+    // его `dist/` со скомпилированным кодом — линтить его бессмысленно.
+    "mtproto-service/**",
   ]),
   {
     rules: {
