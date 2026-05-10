@@ -63,6 +63,17 @@ function useFieldOptions(
         return [
           { id: 'task', label: 'Задача' },
           { id: 'chat', label: 'Чат' },
+          { id: 'email', label: 'Email' },
+        ]
+      }
+
+      case 'channel': {
+        return [
+          { id: 'web', label: 'Внутри сервиса' },
+          { id: 'telegram', label: 'Telegram' },
+          { id: 'telegram_business', label: 'Telegram Business' },
+          { id: 'wazzup', label: 'Wazzup (WhatsApp)' },
+          { id: 'email', label: 'Email' },
         ]
       }
 

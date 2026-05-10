@@ -16,9 +16,11 @@ import { FilterValueSelect } from './FilterValueSelect'
 import { FilterDateValue } from './FilterDateValue'
 import { OPERATOR_LABELS } from '@/lib/filters/types'
 import type { FilterCondition } from '@/lib/filters/types'
+import { getApplicableThreadTypes, filterFieldsByThreadTypes } from '@/lib/filters/fieldVisibility'
+import { useFilterRootGroup } from './FilterRootContext'
 
 /** Поля, для которых доступен мультиселект с опциями */
-const SELECTABLE_FIELDS = new Set(['status_id', 'status', 'type', 'template_id', 'created_by', 'assignees', 'participants'])
+const SELECTABLE_FIELDS = new Set(['status_id', 'status', 'type', 'channel', 'template_id', 'created_by', 'assignees', 'participants'])
 
 interface FilterRuleRowProps {
   condition: FilterCondition
@@ -32,7 +34,20 @@ interface FilterRuleRowProps {
 const NO_VALUE_OPERATORS = new Set(['is_null', 'is_not_null', 'today', 'this_week', 'overdue'])
 
 export function FilterRuleRow({ condition, onChange, onRemove, entityType, workspaceId }: FilterRuleRowProps) {
-  const fields = getFieldsForEntity(entityType)
+  const rootGroup = useFilterRootGroup()
+  const allFields = getFieldsForEntity(entityType)
+  // Сужаем список доступных полей под текущее ограничение по type. Текущее
+  // выбранное поле всегда оставляем — даже если оно неприменимо: иначе
+  // селект Field покажется «пустым» при перенастройке фильтра.
+  const visibleFields = entityType === 'thread' && rootGroup
+    ? filterFieldsByThreadTypes(allFields, getApplicableThreadTypes(rootGroup))
+    : allFields
+  const fields = visibleFields.some((f) => f.key === condition.field)
+    ? visibleFields
+    : (() => {
+        const current = allFields.find((f) => f.key === condition.field)
+        return current ? [...visibleFields, current] : visibleFields
+      })()
   const fieldDef = getFieldDef(entityType, condition.field)
   const operators = fieldDef?.operators ?? ['equals']
   const needsValue = !NO_VALUE_OPERATORS.has(condition.operator)

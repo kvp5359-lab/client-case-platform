@@ -27,6 +27,8 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { FilterRuleRow } from './FilterRuleRow'
 import { getFieldsForEntity } from '@/lib/filters/filterDefinitions'
+import { getApplicableThreadTypes, filterFieldsByThreadTypes } from '@/lib/filters/fieldVisibility'
+import { useFilterRootGroup } from './FilterRootContext'
 import {
   type RulePath,
   getRuleByPath,
@@ -39,6 +41,7 @@ import {
 } from '@/lib/filters/filterPathUtils'
 import { DraggableFilterRule, type DropIndicatorState } from './DraggableFilterRule'
 import { FilterDragOverlay } from './FilterDragOverlay'
+import { FilterRootGroupContext } from './FilterRootContext'
 import type { FilterGroup, FilterRule, FilterCondition } from '@/lib/filters/types'
 
 // ── FilterGroupEditor (внутренний, без DndContext) ────────
@@ -66,8 +69,16 @@ function InnerGroupEditor({
   path,
   dropIndicator,
 }: InnerGroupEditorProps) {
-  const fields = getFieldsForEntity(entityType)
-  const defaultField = fields[0]?.key ?? ''
+  const rootGroup = useFilterRootGroup()
+  const allFields = getFieldsForEntity(entityType)
+  const fields =
+    entityType === 'thread' && rootGroup
+      ? filterFieldsByThreadTypes(allFields, getApplicableThreadTypes(rootGroup))
+      : allFields
+  // Если первое доступное поле сменилось из-за сужения по type — defaultField
+  // тоже подстроится. На уровне выбора поля в FilterRuleRow есть отдельная
+  // защита (см. ниже useEffect в FilterRuleRow).
+  const defaultField = fields[0]?.key ?? allFields[0]?.key ?? ''
 
   const toggleLogic = useCallback(() => {
     onChange({ ...group, logic: group.logic === 'and' ? 'or' : 'and' })
@@ -384,6 +395,7 @@ function FilterGroupEditorRoot({
   }, [])
 
   return (
+    <FilterRootGroupContext.Provider value={group}>
     <DndContext
       sensors={sensors}
       onDragStart={handleDragStart}
@@ -405,5 +417,6 @@ function FilterGroupEditorRoot({
         {activeRule && <FilterDragOverlay rule={activeRule} entityType={entityType} />}
       </DragOverlay>
     </DndContext>
+    </FilterRootGroupContext.Provider>
   )
 }
