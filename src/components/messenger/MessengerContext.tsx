@@ -15,6 +15,13 @@ export interface MessengerContextValue {
   isTelegramLinked?: boolean
   /** В треде участвует клиент — включает подсветку сообщений сотрудников. */
   isClientThread?: boolean
+  /**
+   * Тред — почтовый. Все исходящие в нём шлются email'ом, у которого нет
+   * понятия реакции. Управляет видимостью UI быстрых реакций — независимо
+   * от source конкретного сообщения, потому что наши исходящие через
+   * web-форму попадают с source='web', хотя по факту это email.
+   */
+  isEmailThread?: boolean
 
   // Callbacks
   onReply: (msg: ProjectMessage) => void
@@ -65,6 +72,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       isAdmin: value.isAdmin,
       isTelegramLinked: value.isTelegramLinked,
       isClientThread: value.isClientThread,
+      isEmailThread: value.isEmailThread,
       onReply: value.onReply,
       onReact: value.onReact,
       onEdit: value.onEdit,
@@ -93,6 +101,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       value.isAdmin,
       value.isTelegramLinked,
       value.isClientThread,
+      value.isEmailThread,
       value.onReply,
       value.onReact,
       value.onEdit,

@@ -161,6 +161,7 @@ export function MessengerTabContent({
         isAdmin={state.isAdmin}
         isTelegramLinked={state.isLinked}
         isClientThread={hasClientParticipant || state.isLinked || !!state.emailLink}
+        isEmailThread={state.isEmailChat}
         onReply={state.setReplyTo}
         onReact={handleReact}
         onEdit={handlers.handleStartEdit}

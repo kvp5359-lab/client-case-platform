@@ -40,6 +40,10 @@ interface MessageActionsProps {
   onViewEmail?: () => void
   channel?: MessageChannel
   onDeleteDialogOpen: () => void
+  /** Принудительно скрыть UI быстрых реакций — используется для тредов,
+   *  где реакции технически не доставляются получателю (email, business,
+   *  wazzup). По умолчанию false. */
+  reactionsDisabled?: boolean
   moreMenuOpen: boolean
   setMoreMenuOpen: (v: boolean) => void
   reactionPopoverOpen: boolean
@@ -63,6 +67,7 @@ export function MessageActions({
   onEditDraft,
   onViewEmail,
   onDeleteDialogOpen,
+  reactionsDisabled,
   moreMenuOpen,
   setMoreMenuOpen,
   reactionPopoverOpen,
@@ -127,6 +132,7 @@ export function MessageActions({
             onViewEmail,
             onDeleteDialogOpen,
             onCloseMenu: () => setMoreMenuOpen(false),
+            reactionsDisabled,
             reactionPopoverOpen,
             setReactionPopoverOpen,
           })}
@@ -164,6 +170,7 @@ export function MessageContextMenu({
   onEditDraft,
   onViewEmail,
   onDeleteDialogOpen,
+  reactionsDisabled,
   reactionPopoverOpen,
   setReactionPopoverOpen,
 }: MessageContextMenuProps) {
@@ -190,6 +197,7 @@ export function MessageContextMenu({
           onEditDraft,
           onViewEmail,
           onDeleteDialogOpen,
+          reactionsDisabled,
           reactionPopoverOpen,
           setReactionPopoverOpen,
         })}

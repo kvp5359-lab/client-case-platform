@@ -69,6 +69,10 @@ export interface MessageMenuBodyProps {
   onViewEmail?: () => void
   onDeleteDialogOpen: () => void
   onCloseMenu?: () => void
+  /** Принудительно скрыть UI быстрых реакций — для тредов, где реакции
+   *  технически не доставляются (email, business, wazzup). По умолчанию
+   *  решение принимается по message.source. */
+  reactionsDisabled?: boolean
   reactionPopoverOpen: boolean
   setReactionPopoverOpen: (v: boolean) => void
 }
@@ -92,6 +96,7 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
     onViewEmail,
     onDeleteDialogOpen,
     onCloseMenu,
+    reactionsDisabled,
     reactionPopoverOpen,
     setReactionPopoverOpen,
   } = props
@@ -164,7 +169,11 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
   // реакцию получателю, скрываем UI «быстрых реакций» совсем — вместо
   // этого менеджер использует «Ответить» свайпом и шлёт эмодзи как
   // обычное сообщение. См. infrastructure.md → «Мессенджер-каналы».
-  const reactionsAllowed = isReactionSupportedForSource(message.source)
+  //
+  // reactionsDisabled приходит из контекста треда (например, для email-
+  // треда наши исходящие имеют source='web', но реакции там тоже не
+  // работают). Если контекст явно отключил — приоритетнее source-проверки.
+  const reactionsAllowed = !reactionsDisabled && isReactionSupportedForSource(message.source)
 
   return (
     <>
