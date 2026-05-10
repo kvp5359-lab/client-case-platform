@@ -6210,26 +6210,39 @@ export type Database = {
       task_panel_tabs: {
         Row: {
           active_tab_id: string | null
-          project_id: string
+          contact_participant_id: string | null
+          id: string
+          project_id: string | null
           tabs: Json
           updated_at: string
           user_id: string
         }
         Insert: {
           active_tab_id?: string | null
-          project_id: string
+          contact_participant_id?: string | null
+          id?: string
+          project_id?: string | null
           tabs?: Json
           updated_at?: string
           user_id: string
         }
         Update: {
           active_tab_id?: string | null
-          project_id?: string
+          contact_participant_id?: string | null
+          id?: string
+          project_id?: string | null
           tabs?: Json
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "task_panel_tabs_contact_participant_id_fkey"
+            columns: ["contact_participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "task_panel_tabs_project_id_fkey"
             columns: ["project_id"]
@@ -7647,6 +7660,7 @@ export type Database = {
         Args: { p_target_user_id: string; p_workspace_id: string }
         Returns: {
           channel: string
+          contact_participant_id: string
           email_contact: string
           email_subject: string
           last_message_at: string

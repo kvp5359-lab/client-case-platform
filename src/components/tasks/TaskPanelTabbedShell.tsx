@@ -89,6 +89,8 @@ export interface TaskPanelTabbedShellApi {
  */
 export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPanelTabbedShellProps) {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(pageProjectId)
+  /** Активный contactId scope-а (для тредов без проекта). */
+  const [activeContactId, setActiveContactId] = useState<string | null>(null)
   // Hidden — UI-only флаг «панель скрыта». Не трогает вкладки в БД.
   // Сбрасывается на false при любом open*Tab (см. ниже).
   const [hidden, setHidden] = useState(false)
@@ -118,7 +120,10 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     setActiveProjectId(resolvedFromUrl.projectId)
   }, [resolvedFromUrl, activeProjectId, pageProjectId])
 
-  const tabs = useTaskPanelTabs({ projectId: activeProjectId })
+  const tabs = useTaskPanelTabs({
+    projectId: activeProjectId,
+    contactId: activeProjectId ? null : activeContactId,
+  })
 
   // Очередь pending-вкладок: когда нужно сменить projectId перед openTab,
   // ждём готовности хука с новым projectId. ВАЖНО: храним вместе с
@@ -168,6 +173,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   const openThreadTab = useCallback(
     (task: TaskItem) => {
       const targetPid = task.project_id ?? null
+      const targetContactId = targetPid ? null : task.contact_participant_id ?? null
       const tab = buildThreadTab(task.id, task.name, {
         threadType: task.type,
         icon: task.icon,
@@ -175,14 +181,18 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       })
       // Открытие нового треда — гарантированно показываем панель.
       setHidden(false)
-      if (targetPid !== activeProjectId) {
+      const scopeChanged =
+        targetPid !== activeProjectId ||
+        (targetContactId !== null && targetContactId !== activeContactId)
+      if (scopeChanged) {
         setActiveProjectId(targetPid)
+        setActiveContactId(targetContactId)
         setPendingOpen({ tab, projectId: targetPid })
       } else {
         tabsOpenTab(tab)
       }
     },
-    [activeProjectId, tabsOpenTab],
+    [activeProjectId, activeContactId, tabsOpenTab],
   )
 
   const openProjectTab = useCallback(

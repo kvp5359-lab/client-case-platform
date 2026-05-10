@@ -27,4 +27,6 @@ export interface TaskItem {
   contact_emails?: string[]
   /** Тема письма */
   email_subject?: string | null
+  /** Контакт собеседника — используется как scope боковой панели, если project_id=null. */
+  contact_participant_id?: string | null
 }

@@ -61,6 +61,8 @@ interface PersistedRow {
 
 interface UseTaskPanelTabsParams {
   projectId: string | null | undefined
+  /** Если задан, scope вкладок — этот контакт (для тредов без проекта). */
+  contactId?: string | null
 }
 
 interface UseTaskPanelTabsResult {
@@ -89,17 +91,25 @@ interface UseTaskPanelTabsResult {
 
 const EMPTY_STATE: PersistedRow = { tabs: [], active_tab_id: null }
 
-export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTaskPanelTabsResult {
+export function useTaskPanelTabs({ projectId, contactId }: UseTaskPanelTabsParams): UseTaskPanelTabsResult {
   const { user } = useAuth()
   const userId = user?.id
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
 
-  const enabled = !!projectId && !!userId
+  // Один из двух — scope вкладок: project или contact. Project имеет приоритет.
+  const scopeKind: 'project' | 'contact' | null = projectId
+    ? 'project'
+    : contactId
+      ? 'contact'
+      : null
+  const scopeKey = projectId ?? contactId ?? null
+
+  const enabled = !!scopeKey && !!userId
   const queryKey = useMemo(
-    () => taskPanelTabsKeys.byProjectUser(projectId ?? '', userId ?? ''),
-    [projectId, userId],
+    () => taskPanelTabsKeys.byProjectUser(scopeKey ?? '', userId ?? ''),
+    [scopeKey, userId],
   )
 
   // Загрузка из БД
@@ -108,32 +118,33 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
     enabled,
     staleTime: STALE_TIME.LONG,
     queryFn: async () => {
-      if (!projectId || !userId) return EMPTY_STATE
-      // Таблица task_panel_tabs ещё не в сгенерированных Supabase-типах —
-      // используем нестрогий клиент для этого вызова.
-      const { data, error } = await (supabase as unknown as {
-        from: (t: string) => {
-          select: (cols: string) => {
-            eq: (
-              c: string,
-              v: string,
-            ) => {
+      if (!scopeKey || !userId || !scopeKind) return EMPTY_STATE
+      const scopeColumn = scopeKind === 'project' ? 'project_id' : 'contact_participant_id'
+      const { data, error } = await (
+        supabase as unknown as {
+          from: (t: string) => {
+            select: (cols: string) => {
               eq: (
                 c: string,
                 v: string,
               ) => {
-                maybeSingle: () => Promise<{
-                  data: { tabs: unknown; active_tab_id: string | null } | null
-                  error: { message: string } | null
-                }>
+                eq: (
+                  c: string,
+                  v: string,
+                ) => {
+                  maybeSingle: () => Promise<{
+                    data: { tabs: unknown; active_tab_id: string | null } | null
+                    error: { message: string } | null
+                  }>
+                }
               }
             }
           }
         }
-      })
+      )
         .from('task_panel_tabs')
         .select('tabs, active_tab_id')
-        .eq('project_id', projectId)
+        .eq(scopeColumn, scopeKey)
         .eq('user_id', userId)
         .maybeSingle()
       if (error) throw error
@@ -166,9 +177,9 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
   // ВАЖНО: при смене projectId также отменяем in-flight debounced persist,
   // иначе stale-вкладки от старого проекта запишутся в строку нового
   // (race condition наблюдалась ранее: вкладки протекали между проектами).
-  const [lastProjectId, setLastProjectId] = useState(projectId)
-  if (projectId !== lastProjectId) {
-    setLastProjectId(projectId)
+  const [lastScopeKey, setLastScopeKey] = useState(scopeKey)
+  if (scopeKey !== lastScopeKey) {
+    setLastScopeKey(scopeKey)
     setLocalTabs([])
     setHydrated(false)
     if (persistTimerRef.current) {
@@ -215,7 +226,19 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
   // Сохранение в БД (upsert)
   const upsertMutation = useMutation({
     mutationFn: async (next: PersistedRow) => {
-      if (!projectId || !userId) return
+      if (!scopeKey || !userId || !scopeKind) return
+      const onConflict =
+        scopeKind === 'project'
+          ? 'user_id,project_id'
+          : 'user_id,contact_participant_id'
+      const row: Record<string, unknown> = {
+        user_id: userId,
+        project_id: scopeKind === 'project' ? scopeKey : null,
+        contact_participant_id: scopeKind === 'contact' ? scopeKey : null,
+        tabs: next.tabs as unknown,
+        active_tab_id: next.active_tab_id,
+        updated_at: new Date().toISOString(),
+      }
       const { error } = await (supabase as unknown as {
         from: (t: string) => {
           upsert: (
@@ -225,16 +248,7 @@ export function useTaskPanelTabs({ projectId }: UseTaskPanelTabsParams): UseTask
         }
       })
         .from('task_panel_tabs')
-        .upsert(
-          {
-            user_id: userId,
-            project_id: projectId,
-            tabs: next.tabs as unknown,
-            active_tab_id: next.active_tab_id,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id,project_id' },
-        )
+        .upsert(row, { onConflict })
       if (error) throw error
     },
     onSuccess: (_data, vars) => {
