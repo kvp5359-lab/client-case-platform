@@ -106,10 +106,15 @@ function BoardGroupDropZone({
 function BoardListCardsDropZone({
   listId,
   isActive,
+  fullHeight,
   children,
 }: {
   listId: string
   isActive: boolean
+  /** Когда у списка list_height='full' — растягиваемся как flex-item, чтобы
+   *  inner-контейнер с overflow-y-auto получил конечную высоту и реально
+   *  скроллился. Для 'auto'/'medium' inner сам ограничен max-h, flex не нужен. */
+  fullHeight?: boolean
   children: React.ReactNode
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `list-cards:${listId}` })
@@ -122,6 +127,7 @@ function BoardListCardsDropZone({
       ref={setNodeRef}
       className={cn(
         'rounded-lg min-h-[60px] transition-colors',
+        fullHeight && 'flex flex-col flex-1 min-h-0',
         hot && 'bg-blue-100/40 ring-2 ring-blue-400',
       )}
     >
@@ -305,6 +311,7 @@ export function BoardListCard({
       <BoardListCardsDropZone
         listId={list.id}
         isActive={activeListCardsId === `list-cards:${list.id}`}
+        fullHeight={listHeight === 'full'}
       >
         {!collapsed && (
           <div className={cn(heightClass, 'mt-1 overflow-y-auto scrollbar-hide', !isCards && !hasGrouping && 'rounded-lg border border-border/50 bg-white')}>
