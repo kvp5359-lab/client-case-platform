@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from 'react'
 import {
   DndContext,
   PointerSensor,
-  useDroppable,
   useSensor,
   useSensors,
   DragOverlay,
@@ -16,6 +15,7 @@ import {
   type DragOverEvent,
 } from '@dnd-kit/core'
 import { BoardColumn } from './BoardColumn'
+import { ColumnGap, DroppableColumn } from './BoardViewDropTargets'
 import { BoardProjectRow } from './BoardProjectRow'
 import { BoardTaskRow } from './BoardTaskRow'
 import type { BoardCardDndState } from './BoardListCard'
@@ -531,34 +531,5 @@ export function BoardView({
         ) : null}
       </DragOverlay>
     </DndContext>
-  )
-}
-
-function DroppableColumn({ columnIndex, width, isActiveTarget, children }: { columnIndex: number; width: number; isActiveTarget: boolean; children: React.ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `col-drop:${columnIndex}` })
-  return (
-    <div
-      ref={setNodeRef}
-      className={'shrink-0 h-full rounded-lg transition-colors ' + ((isOver || isActiveTarget) ? 'bg-blue-100/40' : '')}
-      style={{ width: `${width}px` }}
-    >
-      {children}
-    </div>
-  )
-}
-
-function ColumnGap({ gapIndex, active, visible, isFirst }: { gapIndex: number; active: boolean; visible: boolean; isFirst?: boolean }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `gap-drop:${gapIndex}` })
-  const hot = active || isOver
-  return (
-    <div
-      ref={setNodeRef}
-      className={'relative shrink-0 h-full transition-all ' + (hot ? 'w-6' : visible ? 'w-4' : isFirst ? 'w-0' : 'w-4')}
-      aria-label={`gap-${gapIndex}`}
-    >
-      {hot && (
-        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1 rounded-full bg-blue-500 pointer-events-none" />
-      )}
-    </div>
   )
 }
