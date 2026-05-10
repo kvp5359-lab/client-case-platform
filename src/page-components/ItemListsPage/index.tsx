@@ -94,28 +94,10 @@ export default function ItemListsPage() {
   return (
     <WorkspaceLayout>
       <div className="h-full flex flex-col bg-gray-100/60">
-        {/* Заголовок страницы — показывает название активного списка
-            (или общий заголовок «Списки», если ни один не выбран). */}
+        {/* Заголовок страницы. Статичный — конкретный активный список и так
+            видно по подсвеченной вкладке ниже. */}
         <div className="px-6 pt-4 pb-2 shrink-0">
-          <h1 className="text-xl font-semibold truncate flex items-center gap-2">
-            {activeList ? (
-              <>
-                <span
-                  className="h-3 w-3 rounded-full inline-block shrink-0"
-                  style={{ backgroundColor: activeList.color ?? '#6B7280' }}
-                />
-                <span className="truncate">{activeList.name}</span>
-              </>
-            ) : (
-              <span>Списки</span>
-            )}
-          </h1>
-          {activeList && (
-            <div className="text-xs text-muted-foreground mt-0.5 ml-5">
-              {activeList.entity_type === 'thread' ? 'Треды' : 'Проекты'}
-              {activeList.owner_user_id ? ' · личный' : ' · общий'}
-            </div>
-          )}
+          <h1 className="text-xl font-semibold">Списки задач и чатов</h1>
         </div>
 
         {/* Строка вкладок */}
