@@ -24,10 +24,13 @@ export function ParticipantAvatars({
   participants,
   maxVisible = 5,
   size = 'md',
+  showTooltip = true,
 }: {
   participants: AvatarParticipant[]
   maxVisible?: number
   size?: AvatarSize
+  /** Показывать ли встроенный tooltip со списком имён при hover. По умолчанию true. */
+  showTooltip?: boolean
 }) {
   const visible = participants.slice(0, maxVisible)
   const overflow = participants.length - maxVisible
@@ -65,16 +68,18 @@ export function ParticipantAvatars({
         </div>
       )}
       {/* Тултип со списком имён */}
-      <div className="absolute top-full left-0 mt-1.5 hidden group-hover/avatars:block z-50">
-        <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg whitespace-nowrap">
-          {participants.map((p) => (
-            <div key={p.id} className="py-0.5">
-              {p.name}
-              {p.last_name ? ` ${p.last_name}` : ''}
-            </div>
-          ))}
+      {showTooltip && (
+        <div className="absolute top-full left-0 mt-1.5 hidden group-hover/avatars:block z-50">
+          <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg whitespace-nowrap">
+            {participants.map((p) => (
+              <div key={p.id} className="py-0.5">
+                {p.name}
+                {p.last_name ? ` ${p.last_name}` : ''}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

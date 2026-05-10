@@ -119,15 +119,43 @@ export function ProjectHeader({
           )}
 
           {hasGroups && (
-            <div className="self-center flex items-center gap-0.5">
-              <div className="w-px h-5 bg-gray-200 shrink-0 mr-0.5" />
-              {participantGroups.map((group, idx) => (
-                <div key={group.role} className="flex items-center gap-0.5 shrink-0">
-                  {idx > 0 && <span className="text-gray-300 text-xs shrink-0">·</span>}
-                  <ParticipantAvatars participants={group.participants} maxVisible={3} size="compact" />
+            <>
+              <div className="self-center w-px h-5 bg-gray-200 shrink-0" />
+              <div className="group/projectAvatars relative self-center flex items-center gap-1">
+                {participantGroups.map((group, idx) => (
+                  <div key={group.role} className="flex items-center gap-0.5 shrink-0">
+                    {idx > 0 && <span className="text-gray-300 text-xs shrink-0">·</span>}
+                    <ParticipantAvatars
+                      participants={group.participants}
+                      maxVisible={3}
+                      size="compact"
+                      showTooltip={false}
+                    />
+                  </div>
+                ))}
+                {/* Сгруппированный tooltip — по ролям */}
+                <div className="absolute top-full left-0 mt-1.5 hidden group-hover/projectAvatars:block z-50 pointer-events-none">
+                  <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg whitespace-nowrap min-w-[160px]">
+                    {participantGroups.map((group, idx) => (
+                      <div
+                        key={group.role}
+                        className={idx > 0 ? 'mt-2 pt-2 border-t border-white/10' : ''}
+                      >
+                        <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">
+                          {group.role}
+                        </div>
+                        {group.participants.map((p) => (
+                          <div key={p.id} className="py-0.5">
+                            {p.name}
+                            {p.last_name ? ` ${p.last_name}` : ''}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            </>
           )}
 
           {workspaceId && onStatusChange && (
