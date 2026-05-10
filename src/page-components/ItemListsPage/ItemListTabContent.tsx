@@ -58,12 +58,12 @@ export function ItemListTabContent({ list, workspaceId, currentUserId }: ItemLis
   }, [list.id, list.columns, list.entity_type])
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const handleColumnResize = (key: string, width: number) => {
-    setColumnConfig((prev) => prev.map((c) => (c.key === key ? { ...c, width } : c)))
-  }
-
-  const handleResizeCommit = () => {
-    updateList.mutate({ id: list.id, workspace_id: workspaceId, columns: columnConfig })
+  // На mouseup коммитим финальную ширину в state + БД одним апдейтом.
+  // Промежуточные кадры drag не идут через React — see ColumnResizeHandle.
+  const handleResizeCommit = (key: string, width: number) => {
+    const next = columnConfig.map((c) => (c.key === key ? { ...c, width } : c))
+    setColumnConfig(next)
+    updateList.mutate({ id: list.id, workspace_id: workspaceId, columns: next })
   }
 
   const columns = columnConfig
@@ -84,7 +84,6 @@ export function ItemListTabContent({ list, workspaceId, currentUserId }: ItemLis
           columns={columns}
           selectedIds={selectedIds}
           onSelectedChange={setSelectedIds}
-          onColumnResize={handleColumnResize}
           onResizeCommit={handleResizeCommit}
         />
       ) : (
@@ -97,7 +96,6 @@ export function ItemListTabContent({ list, workspaceId, currentUserId }: ItemLis
           columns={columns}
           selectedIds={selectedIds}
           onSelectedChange={setSelectedIds}
-          onColumnResize={handleColumnResize}
           onResizeCommit={handleResizeCommit}
         />
       )}
@@ -116,8 +114,7 @@ interface TableViewProps {
   columns: Array<{ key: string; width: number; def: NonNullable<ReturnType<typeof getColumnDef>> }>
   selectedIds: Set<string>
   onSelectedChange: (next: Set<string>) => void
-  onColumnResize: (key: string, width: number) => void
-  onResizeCommit: () => void
+  onResizeCommit: (key: string, width: number) => void
 }
 
 function ThreadTableView({
@@ -129,7 +126,6 @@ function ThreadTableView({
   columns,
   selectedIds,
   onSelectedChange,
-  onColumnResize,
   onResizeCommit,
 }: TableViewProps) {
   const { data: threads = [], isLoading } = useWorkspaceThreads(workspaceId)
@@ -166,7 +162,6 @@ function ThreadTableView({
       selectedIds={selectedIds}
       allItemIds={filtered.map((t) => t.id)}
       onSelectedChange={onSelectedChange}
-      onColumnResize={onColumnResize}
       onResizeCommit={onResizeCommit}
       bulkActions={
         <BulkActionsBar
@@ -215,7 +210,6 @@ function ProjectTableView({
   columns,
   selectedIds,
   onSelectedChange,
-  onColumnResize,
   onResizeCommit,
 }: TableViewProps) {
   const { data: projects = [], isLoading } = useAccessibleProjects(workspaceId)
@@ -253,7 +247,6 @@ function ProjectTableView({
       selectedIds={selectedIds}
       allItemIds={filtered.map((p) => p.id)}
       onSelectedChange={onSelectedChange}
-      onColumnResize={onColumnResize}
       onResizeCommit={onResizeCommit}
       bulkActions={
         <BulkActionsBar
@@ -296,8 +289,7 @@ interface TableShellProps<T extends { id: string }> {
   selectedIds: Set<string>
   allItemIds: string[]
   onSelectedChange: (next: Set<string>) => void
-  onColumnResize: (key: string, width: number) => void
-  onResizeCommit: () => void
+  onResizeCommit: (key: string, width: number) => void
   bulkActions: React.ReactNode
   renderRow: (item: T) => React.ReactNode
   items: T[]
@@ -307,7 +299,7 @@ const CHECKBOX_COL_WIDTH = 36
 
 function TableShell<T extends { id: string }>({
   isLoading, isEmpty, total, columns, selectedIds, allItemIds,
-  onSelectedChange, onColumnResize, onResizeCommit, bulkActions, renderRow, items,
+  onSelectedChange, onResizeCommit, bulkActions, renderRow, items,
 }: TableShellProps<T>) {
   const allChecked = allItemIds.length > 0 && allItemIds.every((id) => selectedIds.has(id))
   const someChecked = !allChecked && allItemIds.some((id) => selectedIds.has(id))
@@ -359,16 +351,16 @@ function TableShell<T extends { id: string }>({
                   onCheckedChange={toggleAll}
                 />
               </th>
-              {columns.map((c) => (
+              {columns.map((c, idx) => (
                 <th
                   key={c.key}
                   className="relative text-left text-xs font-medium text-muted-foreground px-3 py-2 truncate select-none"
                 >
                   {c.def.label}
                   <ColumnResizeHandle
-                    currentWidth={c.width}
+                    columnKey={c.key}
+                    colIndex={idx + 1}
                     minWidth={c.def.minWidth}
-                    onResize={(w) => onColumnResize(c.key, w)}
                     onCommit={onResizeCommit}
                   />
                 </th>
@@ -591,34 +583,57 @@ function ProjectRow({ project, columns, checked, onToggle, onOpen, projectStatus
 // ── Drag-handle для ресайза колонки ────────────────────────
 
 interface ColumnResizeHandleProps {
-  currentWidth: number
+  columnKey: string
+  /** Индекс <col> внутри <colgroup> (с учётом чекбокс-колонки = 0). */
+  colIndex: number
   minWidth: number
-  onResize: (width: number) => void
-  onCommit: () => void
+  onCommit: (key: string, width: number) => void
 }
 
-function ColumnResizeHandle({ currentWidth, minWidth, onResize, onCommit }: ColumnResizeHandleProps) {
-  const startRef = useRef<{ x: number; w: number } | null>(null)
+/**
+ * Drag-ресайз колонки. Чтобы не лагать на каждом mousemove, во время drag
+ * двигаем DOM напрямую (style.width у <col> и у <table>) — React не
+ * перерисовывает строки. На mouseup однократно коммитим финальную ширину
+ * в state + БД через onCommit.
+ */
+function ColumnResizeHandle({ columnKey, colIndex, minWidth, onCommit }: ColumnResizeHandleProps) {
+  const ref = useRef<HTMLDivElement | null>(null)
   const [active, setActive] = useState(false)
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    startRef.current = { x: e.clientX, w: currentWidth }
+
+    const handleEl = ref.current
+    if (!handleEl) return
+    const tableEl = handleEl.closest('table') as HTMLTableElement | null
+    if (!tableEl) return
+    const colEl = tableEl.querySelectorAll('colgroup col')[colIndex] as HTMLTableColElement | undefined
+    if (!colEl) return
+
+    const startX = e.clientX
+    const startWidth = parseFloat(colEl.style.width) || colEl.getBoundingClientRect().width
+    const startTableWidth = parseFloat(tableEl.style.width) || tableEl.getBoundingClientRect().width
+    let lastWidth = startWidth
+
     setActive(true)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
 
     const onMove = (ev: MouseEvent) => {
-      if (!startRef.current) return
-      const dx = ev.clientX - startRef.current.x
-      const next = Math.max(minWidth, Math.round(startRef.current.w + dx))
-      onResize(next)
+      const dx = ev.clientX - startX
+      const next = Math.max(minWidth, Math.round(startWidth + dx))
+      lastWidth = next
+      colEl.style.width = `${next}px`
+      tableEl.style.width = `${startTableWidth + (next - startWidth)}px`
     }
     const onUp = () => {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
-      startRef.current = null
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
       setActive(false)
-      onCommit()
+      onCommit(columnKey, lastWidth)
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
@@ -626,6 +641,7 @@ function ColumnResizeHandle({ currentWidth, minWidth, onResize, onCommit }: Colu
 
   return (
     <div
+      ref={ref}
       onMouseDown={handleMouseDown}
       className={`absolute top-0 right-0 h-full w-1.5 cursor-col-resize z-20 hover:bg-primary/40 ${active ? 'bg-primary/60' : ''}`}
     />

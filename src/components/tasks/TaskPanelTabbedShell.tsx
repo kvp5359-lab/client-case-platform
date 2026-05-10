@@ -19,8 +19,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { TaskPanelTabBar, type SystemTabDef } from './TaskPanelTabBar'
+import { supabase } from '@/lib/supabase'
+import { STALE_TIME } from '@/hooks/queryKeys'
 import { PanelProjectInfoRow } from './PanelProjectInfoRow'
 import { PanelContactInfoRow } from './PanelContactInfoRow'
 import {
@@ -172,15 +175,24 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
 
   const tabsOpenTab = tabs.openTab
   const openThreadTab = useCallback(
-    (task: TaskItem) => {
+    async (task: TaskItem) => {
       const targetPid = task.project_id ?? null
-      const targetContactId = targetPid ? null : task.contact_participant_id ?? null
+      let targetContactId = targetPid ? null : task.contact_participant_id ?? null
+      // Если тред без проекта, а контакт не пришёл — резолвим из БД,
+      // чтобы scope боковой панели стал «контактным».
+      if (!targetPid && !targetContactId) {
+        const { data } = await supabase
+          .from('project_threads')
+          .select('contact_participant_id')
+          .eq('id', task.id)
+          .maybeSingle()
+        targetContactId = (data as { contact_participant_id?: string | null } | null)?.contact_participant_id ?? null
+      }
       const tab = buildThreadTab(task.id, task.name, {
         threadType: task.type,
         icon: task.icon,
         accentColor: task.accent_color,
       })
-      // Открытие нового треда — гарантированно показываем панель.
       setHidden(false)
       const scopeChanged =
         targetPid !== activeProjectId ||
@@ -352,6 +364,36 @@ function TaskPanelTabbedShellRenderer({
   // Видимость системных вкладок по правам пользователя в текущем scope (project).
   const visibleSystemTypes = usePanelTabsVisibility(workspaceId, projectId)
 
+  // Резолвим scope активной thread-вкладки из БД (для корректной шапки даже
+  // когда tab открыт не через openThreadTab, а через activateTab из TabBar).
+  const activeThreadRefId =
+    activeTab?.type === 'thread' ? (activeTab.refId ?? null) : null
+  const { data: activeThreadScope } = useQuery<{
+    project_id: string | null
+    contact_participant_id: string | null
+  } | null>({
+    queryKey: ['thread-scope', activeThreadRefId],
+    enabled: !!activeThreadRefId,
+    staleTime: STALE_TIME.MEDIUM,
+    queryFn: async () => {
+      if (!activeThreadRefId) return null
+      const { data, error } = await supabase
+        .from('project_threads')
+        .select('project_id, contact_participant_id')
+        .eq('id', activeThreadRefId)
+        .maybeSingle()
+      if (error) throw error
+      return (data as { project_id: string | null; contact_participant_id: string | null } | null) ?? null
+    },
+  })
+
+  // Эффективный scope для шапки: если активная вкладка — тред без проекта,
+  // но с контактом → показываем contact chip. Иначе fallback на пропы.
+  const effectiveProjectId = activeThreadScope?.project_id ?? projectId
+  const effectiveContactId = effectiveProjectId
+    ? null
+    : (activeThreadScope?.contact_participant_id ?? contactId)
+
   // Дефолтные вкладки для нового проекта: «Задачи» и «История» — закреплённые.
   // Сеется один раз — при первом открытии панели в проекте, если в БД ещё нет
   // записи task_panel_tabs для этой пары user/project и пользователь имеет доступ
@@ -490,9 +532,10 @@ function TaskPanelTabbedShellRenderer({
 
   // Шапка боковой панели прячется, когда панель открыта на той же странице
   // проекта, что и текущая страница, — иначе она дублирует шапку страницы.
-  // Для contact-scope шапка показывается всегда (страница «Личные диалоги»
-  // не предоставляет своего проекта в pageProjectId).
-  const infoRowVisible = !!contactId || (!!projectId && pageProjectId !== projectId)
+  // Для contact-scope шапка показывается всегда.
+  const infoRowVisible =
+    !!effectiveContactId ||
+    (!!effectiveProjectId && pageProjectId !== effectiveProjectId)
 
   const panel = (
     <div
@@ -507,15 +550,15 @@ function TaskPanelTabbedShellRenderer({
           совпадает с открытой страницей — строку прячем (дубль шапки страницы),
           и тогда «×» уезжает в TabBar. */}
       {infoRowVisible && (
-        contactId ? (
+        effectiveContactId ? (
           <PanelContactInfoRow
-            contactId={contactId}
+            contactId={effectiveContactId}
             workspaceId={workspaceId}
             onHidePanel={onHidePanel}
           />
         ) : (
           <PanelProjectInfoRow
-            projectId={projectId!}
+            projectId={effectiveProjectId!}
             workspaceId={workspaceId}
             onHidePanel={onHidePanel}
           />
