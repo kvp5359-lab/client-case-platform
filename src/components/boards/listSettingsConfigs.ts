@@ -83,7 +83,7 @@ export const PROJECT_VISIBLE_FIELDS: { value: VisibleField; label: string }[] = 
 ]
 
 /** По умолчанию показываемые поля для типа списка. */
-export function defaultVisibleFields(entityType: 'task' | 'project' | 'inbox'): VisibleField[] {
+export function defaultVisibleFields(entityType: 'thread' | 'project' | 'inbox'): VisibleField[] {
   if (entityType === 'inbox') return []
   return entityType === 'project'
     ? ['status', 'template']
@@ -95,25 +95,25 @@ export function defaultVisibleFields(entityType: 'task' | 'project' | 'inbox'): 
 export interface CardFieldDef {
   id: CardFieldId
   label: string
-  entityTypes: Array<'task' | 'project'>
+  entityTypes: Array<'thread' | 'project'>
 }
 
 export const CARD_FIELD_DEFS: CardFieldDef[] = [
-  { id: 'status',    label: 'Статус',        entityTypes: ['task', 'project'] },
+  { id: 'status',    label: 'Статус',        entityTypes: ['thread', 'project'] },
   { id: 'icon',      label: 'Иконка',        entityTypes: ['project'] },
-  { id: 'name',      label: 'Название',      entityTypes: ['task', 'project'] },
-  { id: 'deadline',  label: 'Дедлайн',       entityTypes: ['task', 'project'] },
-  { id: 'assignees', label: 'Исполнители',   entityTypes: ['task'] },
-  { id: 'project',   label: 'Проект',        entityTypes: ['task'] },
+  { id: 'name',      label: 'Название',      entityTypes: ['thread', 'project'] },
+  { id: 'deadline',  label: 'Дедлайн',       entityTypes: ['thread', 'project'] },
+  { id: 'assignees', label: 'Исполнители',   entityTypes: ['thread'] },
+  { id: 'project',   label: 'Проект',        entityTypes: ['thread'] },
   { id: 'template',  label: 'Шаблон',        entityTypes: ['project'] },
   { id: 'next_task', label: 'Ближайшая задача', entityTypes: ['project'] },
   { id: 'created_at', label: 'Дата создания', entityTypes: ['project'] },
   { id: 'created_by', label: 'Автор',         entityTypes: ['project'] },
-  { id: 'unread',    label: 'Непрочитанные', entityTypes: ['task'] },
-  { id: 'spacer',    label: 'Отступ',        entityTypes: ['task', 'project'] },
+  { id: 'unread',    label: 'Непрочитанные', entityTypes: ['thread'] },
+  { id: 'spacer',    label: 'Отступ',        entityTypes: ['thread', 'project'] },
 ]
 
-export function getFieldDefsForEntity(entityType: 'task' | 'project'): CardFieldDef[] {
+export function getFieldDefsForEntity(entityType: 'thread' | 'project'): CardFieldDef[] {
   return CARD_FIELD_DEFS.filter((f) => f.entityTypes.includes(entityType))
 }
 
@@ -131,7 +131,7 @@ function fp(fieldId: CardFieldId, visible: boolean, style: CardFieldStyle): Card
   return { fieldId, visible, style }
 }
 
-export function defaultCardLayout(entityType: 'task' | 'project' | 'inbox'): CardLayout {
+export function defaultCardLayout(entityType: 'thread' | 'project' | 'inbox'): CardLayout {
   if (entityType === 'project') {
     return {
       version: 1,

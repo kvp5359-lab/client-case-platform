@@ -46,7 +46,7 @@ import type { FilterGroup, FilterRule, FilterCondition } from '@/lib/filters/typ
 interface InnerGroupEditorProps {
   group: FilterGroup
   onChange: (group: FilterGroup) => void
-  entityType: 'task' | 'project'
+  entityType: 'thread' | 'project'
   depth: number
   onRemove?: () => void
   workspaceId: string
@@ -218,7 +218,7 @@ function InnerGroupEditor({
 interface FilterGroupEditorProps {
   group: FilterGroup
   onChange: (group: FilterGroup) => void
-  entityType: 'task' | 'project'
+  entityType: 'thread' | 'project'
   depth: number
   onRemove?: () => void
   workspaceId: string
@@ -266,7 +266,7 @@ function FilterGroupEditorRoot({
 }: {
   group: FilterGroup
   onChange: (group: FilterGroup) => void
-  entityType: 'task' | 'project'
+  entityType: 'thread' | 'project'
   workspaceId: string
 }) {
   const instanceId = useId()

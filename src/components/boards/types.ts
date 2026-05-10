@@ -35,13 +35,13 @@ export interface Board {
  */
 export interface BoardGlobalFilter {
   project: FilterGroup
-  task: FilterGroup
+  thread: FilterGroup
 }
 
 /** Дефолтный пустой board.global_filter. */
 export const EMPTY_BOARD_GLOBAL_FILTER: BoardGlobalFilter = {
   project: { logic: 'and', rules: [] },
-  task: { logic: 'and', rules: [] },
+  thread: { logic: 'and', rules: [] },
 }
 
 /** Безопасно достать BoardGlobalFilter из старых/кривых данных — заменяет
@@ -50,7 +50,7 @@ export function normalizeBoardGlobalFilter(value: unknown): BoardGlobalFilter {
   const v = (value ?? {}) as Partial<BoardGlobalFilter>
   return {
     project: v.project ?? { logic: 'and', rules: [] },
-    task: v.task ?? { logic: 'and', rules: [] },
+    thread: v.thread ?? { logic: 'and', rules: [] },
   }
 }
 
@@ -131,7 +131,7 @@ export interface BoardList {
   id: string
   board_id: string
   name: string
-  entity_type: 'task' | 'project' | 'inbox'
+  entity_type: 'thread' | 'project' | 'inbox'
   column_index: number
   sort_order: number
   filters: FilterGroup

@@ -33,7 +33,7 @@ import { DraggableLayoutField } from './DraggableLayoutField'
 import { CardLayoutPreview } from './CardLayoutPreview'
 
 interface ListSettingsAppearanceTabProps {
-  entityType: 'task' | 'project'
+  entityType: 'thread' | 'project'
   cardLayout: CardLayout
   onCardLayoutChange: (layout: CardLayout) => void
   displayMode: DisplayMode

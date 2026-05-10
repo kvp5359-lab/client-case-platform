@@ -9,7 +9,7 @@ import type { FilterGroup, SortField, SortDir } from '@/lib/filters/types'
 interface CreateListParams {
   board_id: string
   name: string
-  entity_type: 'task' | 'project' | 'inbox'
+  entity_type: 'thread' | 'project' | 'inbox'
   column_index?: number
   sort_order?: number
 }
@@ -18,7 +18,7 @@ interface UpdateListParams {
   id: string
   board_id: string
   name?: string
-  entity_type?: 'task' | 'project' | 'inbox'
+  entity_type?: 'thread' | 'project' | 'inbox'
   column_index?: number
   sort_order?: number
   filters?: FilterGroup

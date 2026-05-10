@@ -24,7 +24,7 @@ interface FilterRuleRowProps {
   condition: FilterCondition
   onChange: (updated: FilterCondition) => void
   onRemove: () => void
-  entityType: 'task' | 'project'
+  entityType: 'thread' | 'project'
   workspaceId: string
 }
 

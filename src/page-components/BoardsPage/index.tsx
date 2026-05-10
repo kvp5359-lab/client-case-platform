@@ -114,7 +114,7 @@ export default function BoardsPage() {
                       canPin={isOwner}
                       hasBoardFilter={(() => {
                         const f = normalizeBoardGlobalFilter(board.global_filter)
-                        return f.project.rules.length > 0 || f.task.rules.length > 0
+                        return f.project.rules.length > 0 || f.thread.rules.length > 0
                       })()}
                       onSelect={() => navigateToBoard(board.id)}
                       onEdit={() => {

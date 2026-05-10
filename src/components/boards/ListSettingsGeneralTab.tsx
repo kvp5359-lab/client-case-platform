@@ -53,8 +53,8 @@ interface ListSettingsGeneralTabProps {
   onListHeightChange: (value: ListHeight) => void
 
   // Тип данных
-  entityType: 'task' | 'project' | 'inbox'
-  onEntityTypeChange: (type: 'task' | 'project' | 'inbox') => void
+  entityType: 'thread' | 'project' | 'inbox'
+  onEntityTypeChange: (type: 'thread' | 'project' | 'inbox') => void
 
   // Inbox-specific
   inboxDefaultFilter: 'all' | 'unread'
@@ -166,10 +166,10 @@ export function ListSettingsGeneralTab(props: ListSettingsGeneralTabProps) {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => onEntityTypeChange('task')}
+            onClick={() => onEntityTypeChange('thread')}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
-              entityType === 'task'
+              entityType === 'thread'
                 ? 'border-primary bg-primary/5 text-primary'
                 : 'border-border text-muted-foreground hover:text-foreground',
             )}

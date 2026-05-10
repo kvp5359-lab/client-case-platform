@@ -142,8 +142,8 @@ export function BoardTaskRow({
   const currentStatus = statuses.find((s) => s.id === task.status_id) ?? null
 
   const rows = useMemo(
-    () => resolveCardLayout(cardLayout, 'task')
-      ?? visibleFieldsToLayout(visibleFields, displayMode, 'task'),
+    () => resolveCardLayout(cardLayout, 'thread')
+      ?? visibleFieldsToLayout(visibleFields, displayMode, 'thread'),
     [cardLayout, visibleFields, displayMode],
   )
 

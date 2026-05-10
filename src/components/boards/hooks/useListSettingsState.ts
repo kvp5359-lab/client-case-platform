@@ -12,7 +12,7 @@ import type { FilterGroup, SortField, SortDir } from '@/lib/filters/types'
 
 export interface ListSettingsState {
   name: string
-  entityType: 'task' | 'project' | 'inbox'
+  entityType: 'thread' | 'project' | 'inbox'
   columnIndex: string
   filters: FilterGroup
   sortBy: SortField
@@ -29,8 +29,8 @@ export interface ListSettingsState {
 type Action =
   | { type: 'SET'; field: keyof ListSettingsState; value: unknown }
   | { type: 'RESET_FROM_LIST'; list: BoardList }
-  | { type: 'CHANGE_ENTITY_TYPE'; entityType: 'task' | 'project' | 'inbox' }
-  | { type: 'RESET_ALL'; entityType: 'task' | 'project' | 'inbox' }
+  | { type: 'CHANGE_ENTITY_TYPE'; entityType: 'thread' | 'project' | 'inbox' }
+  | { type: 'RESET_ALL'; entityType: 'thread' | 'project' | 'inbox' }
 
 function parseInboxFilter(list: BoardList): 'all' | 'unread' {
   const raw = list.filters as unknown as { default_filter?: string } | null
@@ -40,7 +40,7 @@ function parseInboxFilter(list: BoardList): 'all' | 'unread' {
 function stateFromList(list: BoardList): ListSettingsState {
   return {
     name: list.name,
-    entityType: list.entity_type as 'task' | 'project' | 'inbox',
+    entityType: list.entity_type as 'thread' | 'project' | 'inbox',
     columnIndex: String(list.column_index),
     filters: list.filters?.rules ? list.filters : { logic: 'and', rules: [] },
     sortBy: list.sort_by ?? 'created_at',

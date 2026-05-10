@@ -56,8 +56,8 @@ export function BoardFilterDialog({ open, onClose, board }: BoardFilterDialogPro
     setDraft((prev) => ({ ...prev, project: next }))
   }
 
-  const handleTaskChange = (next: FilterGroup) => {
-    setDraft((prev) => ({ ...prev, task: next }))
+  const handleThreadChange = (next: FilterGroup) => {
+    setDraft((prev) => ({ ...prev, thread: next }))
   }
 
   const handleSave = () => {
@@ -79,12 +79,12 @@ export function BoardFilterDialog({ open, onClose, board }: BoardFilterDialogPro
     )
   }
 
-  const handleClear = (entity: 'project' | 'task') => {
+  const handleClear = (entity: 'project' | 'thread') => {
     setDraft((prev) => ({ ...prev, [entity]: { logic: 'and', rules: [] } }))
   }
 
   const projectRulesCount = draft.project.rules.length
-  const taskRulesCount = draft.task.rules.length
+  const threadRulesCount = draft.thread.rules.length
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -102,8 +102,8 @@ export function BoardFilterDialog({ open, onClose, board }: BoardFilterDialogPro
             <TabsTrigger value="project">
               Проекты {projectRulesCount > 0 && <span className="ml-1.5 text-xs opacity-70">({projectRulesCount})</span>}
             </TabsTrigger>
-            <TabsTrigger value="task">
-              Задачи {taskRulesCount > 0 && <span className="ml-1.5 text-xs opacity-70">({taskRulesCount})</span>}
+            <TabsTrigger value="thread">
+              Задачи {threadRulesCount > 0 && <span className="ml-1.5 text-xs opacity-70">({threadRulesCount})</span>}
             </TabsTrigger>
           </TabsList>
 
@@ -124,17 +124,17 @@ export function BoardFilterDialog({ open, onClose, board }: BoardFilterDialogPro
             )}
           </TabsContent>
 
-          <TabsContent value="task" className="space-y-2 pt-3 max-h-[60vh] overflow-y-auto">
+          <TabsContent value="thread" className="space-y-2 pt-3 max-h-[60vh] overflow-y-auto">
             <FilterGroupEditor
-              group={draft.task}
-              onChange={handleTaskChange}
-              entityType="task"
+              group={draft.thread}
+              onChange={handleThreadChange}
+              entityType="thread"
               depth={0}
               workspaceId={board.workspace_id}
             />
-            {taskRulesCount > 0 && (
+            {threadRulesCount > 0 && (
               <div className="flex justify-end">
-                <Button type="button" variant="ghost" size="sm" onClick={() => handleClear('task')}>
+                <Button type="button" variant="ghost" size="sm" onClick={() => handleClear('thread')}>
                   Очистить фильтр для задач
                 </Button>
               </div>

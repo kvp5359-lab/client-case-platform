@@ -143,12 +143,12 @@ export const PROJECT_FILTER_FIELDS: FilterFieldDef[] = [
   },
 ]
 
-export function getFieldsForEntity(entityType: 'task' | 'project'): FilterFieldDef[] {
-  return entityType === 'task' ? TASK_FILTER_FIELDS : PROJECT_FILTER_FIELDS
+export function getFieldsForEntity(entityType: 'thread' | 'project'): FilterFieldDef[] {
+  return entityType === 'thread' ? TASK_FILTER_FIELDS : PROJECT_FILTER_FIELDS
 }
 
 export function getFieldDef(
-  entityType: 'task' | 'project',
+  entityType: 'thread' | 'project',
   fieldKey: string,
 ): FilterFieldDef | undefined {
   return getFieldsForEntity(entityType).find((f) => f.key === fieldKey)

@@ -127,7 +127,7 @@ export function ListSettingsDialog({
               <ListSettingsFiltersTab
                 filters={s.filters}
                 onFiltersChange={(v) => set('filters', v)}
-                entityType={s.entityType === 'project' ? 'project' : 'task'}
+                entityType={s.entityType === 'project' ? 'project' : 'thread'}
                 workspaceId={workspaceId}
               />
             </TabsContent>
@@ -136,7 +136,7 @@ export function ListSettingsDialog({
           {!isInbox && (
             <TabsContent value="appearance" className="flex-1 overflow-y-auto pr-1">
               <ListSettingsAppearanceTab
-                entityType={s.entityType === 'project' ? 'project' : 'task'}
+                entityType={s.entityType === 'project' ? 'project' : 'thread'}
                 cardLayout={s.cardLayout}
                 onCardLayoutChange={(v) => set('cardLayout', v)}
                 displayMode={s.displayMode}

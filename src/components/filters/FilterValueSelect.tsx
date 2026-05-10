@@ -30,7 +30,7 @@ interface FilterValueSelectProps {
   value: unknown
   onChange: (value: string[]) => void
   workspaceId: string
-  entityType: 'task' | 'project'
+  entityType: 'thread' | 'project'
 }
 
 /** Хук: возвращает опции в зависимости от поля фильтра.
@@ -39,7 +39,7 @@ interface FilterValueSelectProps {
 function useFieldOptions(
   fieldKey: string,
   workspaceId: string,
-  entityType: 'task' | 'project',
+  entityType: 'thread' | 'project',
 ): FilterValueOption[] {
   const { data: taskStatuses } = useTaskStatuses(workspaceId)
   const { data: projectStatuses } = useAllProjectStatuses(workspaceId)

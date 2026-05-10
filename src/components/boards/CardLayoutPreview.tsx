@@ -7,7 +7,7 @@ import { resolveCardLayout, fieldStyleToClasses } from './cardLayoutUtils'
 
 interface CardLayoutPreviewProps {
   layout: CardLayout
-  entityType: 'task' | 'project'
+  entityType: 'thread' | 'project'
   columnWidth?: number
 }
 
@@ -41,7 +41,7 @@ function PreviewField({
 }: {
   fieldId: CardFieldId
   style: CardFieldStyle
-  entityType: 'task' | 'project'
+  entityType: 'thread' | 'project'
 }) {
   if (fieldId === 'spacer') {
     return (

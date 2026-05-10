@@ -29,7 +29,7 @@ export interface ResolvedRow {
  */
 export function resolveCardLayout(
   layout: CardLayout | null | undefined,
-  entityType: 'task' | 'project',
+  entityType: 'thread' | 'project',
 ): ResolvedRow[] | null {
   if (!layout) return null
   const validFields = new Set(
@@ -297,7 +297,7 @@ export function placeFieldInRow(
 export function visibleFieldsToLayout(
   visibleFields: string[],
   displayMode: 'list' | 'cards',
-  entityType: 'task' | 'project',
+  entityType: 'thread' | 'project',
 ): ResolvedRow[] {
   const S: CardFieldStyle = { fontSize: 'sm', align: 'left', truncate: 'truncate', bold: false }
   const M: CardFieldStyle = { fontSize: 'md', align: 'left', truncate: 'truncate', bold: false }
@@ -346,7 +346,7 @@ export function visibleFieldsToLayout(
 /** Возвращает список полей, не размещённых (visible) ни в одной строке */
 export function getUnplacedFields(
   layout: CardLayout,
-  entityType: 'task' | 'project',
+  entityType: 'thread' | 'project',
 ): CardFieldId[] {
   const validFields = new Set(
     CARD_FIELD_DEFS

@@ -15,7 +15,7 @@ import type { FilterGroup } from '@/lib/filters/types'
 interface ListSettingsFiltersTabProps {
   filters: FilterGroup
   onFiltersChange: (filters: FilterGroup) => void
-  entityType: 'task' | 'project'
+  entityType: 'thread' | 'project'
   workspaceId: string
 }
 

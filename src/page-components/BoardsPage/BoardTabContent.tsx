@@ -33,7 +33,7 @@ export function BoardTabContent({
   useInboxThreadsV2(workspaceId)
   const { data: lists } = useBoardLists(board.id)
 
-  const hasTaskLists = lists?.some((l) => l.entity_type === 'task')
+  const hasTaskLists = lists?.some((l) => l.entity_type === 'thread')
   const hasProjectLists = lists?.some((l) => l.entity_type === 'project')
   const hasInboxLists = lists?.some((l) => l.entity_type === 'inbox')
   // Треды нужны и для task-listов, и для project-listов (поле «Ближайшая задача»

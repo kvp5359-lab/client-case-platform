@@ -28,7 +28,7 @@ export default function BoardPage() {
   const { data: lists } = useBoardLists(boardId)
 
   // Пул данных: задачи + проекты
-  const hasTaskLists = lists?.some((l) => l.entity_type === 'task')
+  const hasTaskLists = lists?.some((l) => l.entity_type === 'thread')
   const hasProjectLists = lists?.some((l) => l.entity_type === 'project')
   const { data: tasks } = useWorkspaceThreads(hasTaskLists ? workspaceId : undefined)
   const { data: projects } = useAccessibleProjects(hasProjectLists ? workspaceId : undefined)

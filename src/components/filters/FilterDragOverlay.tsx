@@ -15,7 +15,7 @@ import type { FilterRule } from '@/lib/filters/types'
 
 interface FilterDragOverlayProps {
   rule: FilterRule
-  entityType: 'task' | 'project'
+  entityType: 'thread' | 'project'
 }
 
 export function FilterDragOverlay({ rule, entityType }: FilterDragOverlayProps) {

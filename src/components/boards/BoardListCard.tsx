@@ -175,8 +175,8 @@ export function BoardListCard({
     const boardSlice =
       list.entity_type === 'project'
         ? boardGlobalFilter.project
-        : list.entity_type === 'task'
-        ? boardGlobalFilter.task
+        : list.entity_type === 'thread'
+        ? boardGlobalFilter.thread
         : null
     if (!boardSlice) return listFilters
     return mergeFilterGroupsAnd(boardSlice, listFilters)
@@ -227,7 +227,7 @@ export function BoardListCard({
   }, [participants])
 
   const filteredTasks = useFilteredTasks(
-    list.entity_type === 'task' ? tasks : [],
+    list.entity_type === 'thread' ? tasks : [],
     safeFilters,
     filterCtx,
     simpleAssigneesMap,
