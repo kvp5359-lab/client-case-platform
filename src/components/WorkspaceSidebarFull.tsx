@@ -8,9 +8,8 @@
 
 import { useEffect, useState, useMemo, startTransition } from 'react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Kanban, PinOff, ListChecks, FolderOpen } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { SidebarNavButton } from './WorkspaceSidebar/SidebarNavButton'
+import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
 import { UserProfile } from './WorkspaceSidebar/UserProfile'
 import { WorkspacePicker } from './WorkspaceSidebar/WorkspacePicker'
@@ -321,144 +320,40 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
       )}
 
       <div className="px-2 pb-2">
-        {topbarSlots.length > 0 && (
-          <nav className="flex items-center justify-between gap-[1px]">
-            {topbarSlots.map((slot) => {
-              const badge = computeBadge(slot.badge_mode)
-              if (slot.type === 'nav') {
-                const key = navKeyFromSlotId(slot.id)!
-                const meta = SIDEBAR_NAV_ITEMS[key]
-                return (
-                  <SidebarNavButton
-                    key={slot.id}
-                    icon={meta.icon}
-                    label={meta.label}
-                    href={buildHref(meta.path)}
-                    isActive={isNavItemActive(key, listSlots)}
-                    badge={badge}
-                    compact
-                  />
-                )
-              }
-              if (slot.type === 'board') {
-                const boardId = boardIdFromSlotId(slot.id)!
-                const board = allBoards?.find((b) => b.id === boardId)
-                if (!board) return null
-                return (
-                  <SidebarNavButton
-                    key={slot.id}
-                    icon={Kanban}
-                    label={board.name}
-                    href={buildHref(`boards/${board.id}`)}
-                    isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
-                    badge={badge}
-                    compact
-                  />
-                )
-              }
-              // type === 'list'
-              const listId = listIdFromSlotId(slot.id)!
-              const list = allItemLists?.find((l) => l.id === listId)
-              if (!list) return null
-              return (
-                <SidebarNavButton
-                  key={slot.id}
-                  icon={list.entity_type === 'project' ? FolderOpen : ListChecks}
-                  label={list.name}
-                  href={buildHref(`lists/${list.id}`)}
-                  isActive={pathname.includes(`/lists/${list.id}`)}
-                  badge={badge}
-                  compact
-                />
-              )
-            })}
-          </nav>
-        )}
+        <SidebarSlotsRow
+          slots={topbarSlots}
+          compact
+          allBoards={allBoards}
+          allItemLists={allItemLists}
+          isOwner={isOwner}
+          pathname={pathname}
+          buildHref={buildHref}
+          computeBadge={computeBadge}
+          isNavActive={isNavActive}
+          isNavItemActive={isNavItemActive}
+          listSlots={listSlots}
+          toggleBoardPin={toggleBoardPin}
+          toggleListPin={toggleListPin}
+        />
 
         {!isClientOnly && (
-          <nav
-            className={topbarSlots.length > 0 ? 'mt-1.5' : ''}
-            style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}
-          >
-            {listSlots.map((slot) => {
-              const badge = computeBadge(slot.badge_mode)
-              if (slot.type === 'nav') {
-                const key = navKeyFromSlotId(slot.id)!
-                const meta = SIDEBAR_NAV_ITEMS[key]
-                return (
-                  <SidebarNavButton
-                    key={slot.id}
-                    icon={meta.icon}
-                    label={meta.label}
-                    href={buildHref(meta.path)}
-                    badge={badge}
-                    isActive={isNavItemActive(key, listSlots)}
-                  />
-                )
-              }
-              if (slot.type === 'board') {
-                const boardId = boardIdFromSlotId(slot.id)!
-                const board = allBoards?.find((b) => b.id === boardId)
-                if (!board) return null
-                const hoverSlot = isOwner ? (
-                  <button
-                    type="button"
-                    className="p-0.5 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
-                    title="Открепить"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      toggleBoardPin(board.id)
-                    }}
-                  >
-                    <PinOff className="h-[14px] w-[14px]" />
-                  </button>
-                ) : undefined
-                return (
-                  <div key={slot.id} className="group/pin">
-                    <SidebarNavButton
-                      icon={Kanban}
-                      label={board.name}
-                      href={buildHref(`boards/${board.id}`)}
-                      badge={badge}
-                      isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
-                      hoverIconSlot={hoverSlot}
-                    />
-                  </div>
-                )
-              }
-              // type === 'list'
-              const listId = listIdFromSlotId(slot.id)!
-              const list = allItemLists?.find((l) => l.id === listId)
-              if (!list) return null
-              const hoverSlot = isOwner ? (
-                <button
-                  type="button"
-                  className="p-0.5 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
-                  title="Открепить"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    toggleListPin(list.id)
-                  }}
-                >
-                  <PinOff className="h-[14px] w-[14px]" />
-                </button>
-              ) : undefined
-              return (
-                <div key={slot.id} className="group/pin">
-                  <SidebarNavButton
-                    icon={list.entity_type === 'project' ? FolderOpen : ListChecks}
-                    label={list.name}
-                    href={buildHref(`lists/${list.id}`)}
-                    badge={badge}
-                    isActive={pathname.includes(`/lists/${list.id}`)}
-                    hoverIconSlot={hoverSlot}
-                  />
-                </div>
-              )
-            })}
-          </nav>
+          <div className={topbarSlots.length > 0 ? 'mt-1.5' : ''}>
+            <SidebarSlotsRow
+              slots={listSlots}
+              compact={false}
+              allBoards={allBoards}
+              allItemLists={allItemLists}
+              isOwner={isOwner}
+              pathname={pathname}
+              buildHref={buildHref}
+              computeBadge={computeBadge}
+              isNavActive={isNavActive}
+              isNavItemActive={isNavItemActive}
+              listSlots={listSlots}
+              toggleBoardPin={toggleBoardPin}
+              toggleListPin={toggleListPin}
+            />
+          </div>
         )}
       </div>
 

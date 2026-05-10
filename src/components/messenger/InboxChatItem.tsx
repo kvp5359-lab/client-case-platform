@@ -145,12 +145,17 @@ export const InboxChatItem = memo(function InboxChatItem({
   // Avatar + name shown in the left slot: normally the message author, but for
   // a newer unread reaction we show the person who reacted instead — otherwise
   // the row reads as "Alice reacted to her own message", which is confusing.
+  const hasCounterpart = !!chat.counterpart_name
   const avatarUrl = reactionIsNewer
     ? chat.last_reaction_sender_avatar_url
-    : chat.last_sender_avatar_url
+    : hasCounterpart
+      ? chat.counterpart_avatar_url
+      : chat.last_sender_avatar_url
   const avatarFallbackName = reactionIsNewer
     ? chat.last_reaction_sender_name
-    : chat.last_sender_name
+    : hasCounterpart
+      ? chat.counterpart_name
+      : chat.last_sender_name
 
   const accent = accentStyles[chat.thread_accent_color] ?? defaultAccent
   const ChannelIcon = channelIcons[chat.channel_type]
@@ -207,9 +212,9 @@ export const InboxChatItem = memo(function InboxChatItem({
                 hasUnreadIndicator ? 'font-semibold text-gray-900' : 'font-medium text-gray-700',
               )}
             >
-              {hideProjectName ? chat.thread_name : chat.project_name}
+              {hideProjectName || !chat.project_name ? chat.thread_name : chat.project_name}
             </span>
-            {!hideProjectName && (
+            {!hideProjectName && chat.project_name && (
               <span className="text-gray-400 font-normal"> ({chat.thread_name})</span>
             )}
           </span>

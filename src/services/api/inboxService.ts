@@ -66,6 +66,14 @@ export interface InboxThreadEntry {
   last_event_status_color: string | null
   /** Audit: count of unread events */
   unread_event_count: number
+  /**
+   * Имя «собеседника» — автора последнего сообщения от не-сотрудника
+   * (роль NOT IN team-ролях). `null`, если в треде писали только сотрудники.
+   * UI использует для аватара/инициала в списке входящих.
+   */
+  counterpart_name: string | null
+  /** Аватар «собеседника» (если есть participant с avatar_url). */
+  counterpart_avatar_url: string | null
 }
 
 export async function getInboxThreadsV2(

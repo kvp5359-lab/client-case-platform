@@ -35,6 +35,16 @@ import { GmailSection } from './IntegrationsTab/GmailSection'
 import { PersonalTelegramSection } from './IntegrationsTab/PersonalTelegramSection'
 import { TelegramSecretarySection } from './IntegrationsTab/TelegramSecretarySection'
 import {
+  IntegrationOverview,
+  OVERVIEW_TELEGRAM_SECRETARY,
+  OVERVIEW_TELEGRAM_EMPLOYEE_BOT,
+  OVERVIEW_GMAIL,
+  OVERVIEW_TELEGRAM_BUSINESS,
+  OVERVIEW_TELEGRAM_MTPROTO,
+  OVERVIEW_WAZZUP,
+  OVERVIEW_EMAIL_RESEND,
+} from './IntegrationsTab/IntegrationOverview'
+import {
   TEAM_ROLES,
   type BotIntegration,
   type DialogState,
@@ -195,6 +205,7 @@ export function IntegrationsTab() {
       <div className="flex-1 min-w-0 space-y-4">
         {section === 'telegram' && (
           <>
+            <IntegrationOverview {...OVERVIEW_TELEGRAM_SECRETARY} />
             <TelegramSecretarySection
               workspaceBots={workspaceBots}
               telegramGroups={telegramGroups}
@@ -202,6 +213,7 @@ export function IntegrationsTab() {
                 setDialog({ title: 'Токен бота-секретаря', bot, createParams: null })
               }
             />
+            <IntegrationOverview {...OVERVIEW_TELEGRAM_EMPLOYEE_BOT} />
             <EmployeeBotsSection
               employees={employees}
               employeeBots={employeeBots}
@@ -214,12 +226,15 @@ export function IntegrationsTab() {
         )}
         {section === 'gmail' && (
           <>
+            <IntegrationOverview {...OVERVIEW_GMAIL} />
             <GmailSection emailAccounts={emailAccounts} participants={participants} />
             <LeadTemplateSetting workspaceId={workspaceId!} source="email" />
           </>
         )}
         {section === 'business' && (
           <>
+            <IntegrationOverview {...OVERVIEW_TELEGRAM_BUSINESS} />
+            <IntegrationOverview {...OVERVIEW_TELEGRAM_MTPROTO} />
             <PersonalTelegramSection workspaceId={workspaceId!} employees={employees} />
             <LeadTemplateSetting workspaceId={workspaceId!} source="telegram_business" />
             <LeadTemplateSetting workspaceId={workspaceId!} source="telegram_mtproto" />
@@ -227,11 +242,17 @@ export function IntegrationsTab() {
         )}
         {section === 'wazzup' && (
           <>
+            <IntegrationOverview {...OVERVIEW_WAZZUP} />
             <WazzupSection workspaceId={workspaceId!} employees={employees} />
             <LeadTemplateSetting workspaceId={workspaceId!} source="wazzup" />
           </>
         )}
-        {section === 'email' && <EmailSection workspaceId={workspaceId!} />}
+        {section === 'email' && (
+          <>
+            <IntegrationOverview {...OVERVIEW_EMAIL_RESEND} />
+            <EmailSection workspaceId={workspaceId!} />
+          </>
+        )}
       </div>
 
       <BotTokenDialog
