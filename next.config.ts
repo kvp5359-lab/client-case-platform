@@ -25,6 +25,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'drive-thirdparty.googleusercontent.com',
       },
+      {
+        protocol: 'https',
+        hostname: '*.wazzup24.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'pps.whatsapp.net',
+      },
     ],
   },
 }

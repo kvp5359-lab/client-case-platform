@@ -403,6 +403,18 @@ async function syncGroupMessage(msg: TgMessage, binding: TgChatBinding, isEdited
     asPersonalBot: null, // v2 webhook всегда секретарский
   });
 
+  // Fire-and-forget: фоновый кэш аватара отправителя (кэш-функция дедуплицирует).
+  if (msg.from?.id && !msg.from.is_bot) {
+    fetch(`${SUPABASE_URL}/functions/v1/fetch-telegram-avatar`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ tg_user_id: msg.from.id }),
+    }).catch(() => {});
+  }
+
   const inserted = sync.rowId ? { id: sync.rowId } : null;
   if (sync.outcome === "error") {
     console.error("[telegram-webhook-v2] sync failed:", sync.error);
