@@ -741,6 +741,9 @@ export const taskPanelTabsKeys = {
 export const projectDigestKeys = {
   all: ['project-digests'] as const,
   byProject: (projectId: string) => ['project-digests', 'by-project', projectId] as const,
+  /** Префикс для broad-invalidate всех периодных срезов одного воркспейса. */
+  byWorkspaceAllPeriods: (workspaceId: string) =>
+    ['project-digests', 'by-workspace-period', workspaceId] as const,
   byWorkspaceForPeriod: (workspaceId: string, periodStart: string, periodEnd: string) =>
     ['project-digests', 'by-workspace-period', workspaceId, periodStart, periodEnd] as const,
   card: (
@@ -757,6 +760,9 @@ export const workspaceDigestSettingsKeys = {
 }
 
 export const projectsWithActivityKeys = {
+  all: ['projects-with-activity'] as const,
+  /** Префикс для broad-invalidate всех периодных срезов одного воркспейса. */
+  byWorkspace: (workspaceId: string) => ['projects-with-activity', workspaceId] as const,
   byWorkspaceForPeriod: (workspaceId: string, periodStart: string, periodEnd: string) =>
     ['projects-with-activity', workspaceId, periodStart, periodEnd] as const,
 }

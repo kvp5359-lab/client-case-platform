@@ -208,12 +208,12 @@ export function useGenerateProjectDigest() {
         queryKey: projectDigestKeys.byProject(vars.projectId),
       })
       queryClient.invalidateQueries({
-        queryKey: ['project-digests', 'by-workspace-period', vars.workspaceId],
+        queryKey: projectDigestKeys.byWorkspaceAllPeriods(vars.workspaceId),
       })
       void result
       // has_digest флаг в списке проектов с активностью — тоже мог измениться.
       queryClient.invalidateQueries({
-        queryKey: ['projects-with-activity', vars.workspaceId],
+        queryKey: projectsWithActivityKeys.byWorkspace(vars.workspaceId),
       })
     },
   })
@@ -242,10 +242,10 @@ export function useDeleteProjectDigest() {
         queryKey: projectDigestKeys.byProject(vars.projectId),
       })
       queryClient.invalidateQueries({
-        queryKey: ['project-digests', 'by-workspace-period', vars.workspaceId],
+        queryKey: projectDigestKeys.byWorkspaceAllPeriods(vars.workspaceId),
       })
       queryClient.invalidateQueries({
-        queryKey: ['projects-with-activity', vars.workspaceId],
+        queryKey: projectsWithActivityKeys.byWorkspace(vars.workspaceId),
       })
     },
   })
