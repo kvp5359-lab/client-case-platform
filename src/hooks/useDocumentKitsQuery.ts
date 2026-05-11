@@ -129,47 +129,61 @@ export function useRenameDocumentKitMutation() {
 }
 
 /**
- * Перемещение набора документов (вверх/вниз)
+ * Перемещение набора документов (вверх/вниз).
+ *
+ * После свопа перенумеровывает sort_order у всех наборов проекта подряд (0..N-1).
+ * Это страхует от коллизий: если у двух наборов случайно совпал sort_order,
+ * простой swap двух значений был бы no-op. Перенумерация всегда даёт детерминированный порядок.
  */
 export function useMoveDocumentKitMutation() {
   return useOptimisticMutation<
     DocumentKitWithDocuments[],
     {
       kitId: string
-      neighborKitId: string
-      kitSortOrder: number
-      neighborSortOrder: number
+      direction: 'up' | 'down'
       projectId: string
     }
   >({
     queryKey: (v) => documentKitKeys.byProject(v.projectId),
-    mutationFn: async ({ kitId, neighborKitId, kitSortOrder, neighborSortOrder }) => {
-      const { error: e1 } = await supabase
+    mutationFn: async ({ kitId, direction, projectId }) => {
+      const { data: kits, error: fetchError } = await supabase
         .from('document_kits')
-        .update({ sort_order: neighborSortOrder })
-        .eq('id', kitId)
-      if (e1) throw e1
-      const { error: e2 } = await supabase
-        .from('document_kits')
-        .update({ sort_order: kitSortOrder })
-        .eq('id', neighborKitId)
-      if (e2) throw e2
+        .select('id, sort_order')
+        .eq('project_id', projectId)
+        .order('sort_order', { ascending: true })
+      if (fetchError) throw fetchError
+      if (!kits) return
+
+      const index = kits.findIndex((k) => k.id === kitId)
+      if (index === -1) return
+      const swapWith = direction === 'up' ? index - 1 : index + 1
+      if (swapWith < 0 || swapWith >= kits.length) return
+
+      const reordered = [...kits]
+      ;[reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]]
+
+      // Записываем только те, у кого sort_order реально изменился.
+      const updates = reordered
+        .map((kit, i) => ({ id: kit.id, newOrder: i, oldOrder: kit.sort_order }))
+        .filter((u) => u.newOrder !== u.oldOrder)
+
+      for (const u of updates) {
+        const { error } = await supabase
+          .from('document_kits')
+          .update({ sort_order: u.newOrder })
+          .eq('id', u.id)
+        if (error) throw error
+      }
     },
-    optimisticUpdate: (old, { kitId, neighborKitId }) => {
+    optimisticUpdate: (old, { kitId, direction }) => {
       if (!old) return old
-      const updated = old.map((kit) => {
-        if (kit.id === kitId) {
-          const neighbor = old.find((k) => k.id === neighborKitId)
-          return { ...kit, sort_order: neighbor?.sort_order ?? kit.sort_order }
-        }
-        if (kit.id === neighborKitId) {
-          const target = old.find((k) => k.id === kitId)
-          return { ...kit, sort_order: target?.sort_order ?? kit.sort_order }
-        }
-        return kit
-      })
-      updated.sort((a, b) => a.sort_order - b.sort_order)
-      return updated
+      const index = old.findIndex((k) => k.id === kitId)
+      if (index === -1) return old
+      const swapWith = direction === 'up' ? index - 1 : index + 1
+      if (swapWith < 0 || swapWith >= old.length) return old
+      const reordered = [...old]
+      ;[reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]]
+      return reordered.map((kit, i) => ({ ...kit, sort_order: i }))
     },
     errorMessage: 'Не удалось переместить набор',
   })

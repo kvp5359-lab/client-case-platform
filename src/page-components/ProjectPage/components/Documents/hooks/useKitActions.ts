@@ -18,29 +18,17 @@ import type { DeleteKitMode } from '@/components/projects/DocumentKitsTab/dialog
 
 interface UseKitActionsParams {
   projectId: string
-  documentKits?: DocumentKitWithDocuments[]
 }
 
-export function useKitActions({ projectId, documentKits = [] }: UseKitActionsParams) {
+export function useKitActions({ projectId }: UseKitActionsParams) {
   // === Переместить набор ===
   const moveMutation = useMoveDocumentKitMutation()
 
   const handleMoveKit = useCallback(
     (kit: DocumentKitWithDocuments, direction: 'up' | 'down') => {
-      const index = documentKits.findIndex((k) => k.id === kit.id)
-      if (index === -1) return
-      const neighborIndex = direction === 'up' ? index - 1 : index + 1
-      if (neighborIndex < 0 || neighborIndex >= documentKits.length) return
-      const neighbor = documentKits[neighborIndex]
-      moveMutation.mutate({
-        kitId: kit.id,
-        neighborKitId: neighbor.id,
-        kitSortOrder: kit.sort_order,
-        neighborSortOrder: neighbor.sort_order,
-        projectId,
-      })
+      moveMutation.mutate({ kitId: kit.id, direction, projectId })
     },
-    [documentKits, moveMutation, projectId],
+    [moveMutation, projectId],
   )
 
   // === Обновить состав набора ===

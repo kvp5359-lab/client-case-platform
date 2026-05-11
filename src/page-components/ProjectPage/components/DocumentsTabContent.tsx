@@ -217,7 +217,7 @@ export function DocumentsTabContent({
     reorderDocuments,
   })
   const kitlessUpload = useKitlessUpload({ projectId, workspaceId, uploadDocument })
-  const kitActions = useKitActions({ projectId, documentKits })
+  const kitActions = useKitActions({ projectId })
   const kitDownload = useKitDownload()
   const compressAnalysis = useCompressAnalysis({ documentKits })
   const { clearHighlightedCompressDocs } = compressAnalysis
