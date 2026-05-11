@@ -275,6 +275,14 @@ export async function handleInbound(supabase: ServiceClient, event: ResendEvent)
   const bodyTextRaw = data.text?.trim() || null
   const fullBodyHtml = bodyHtmlRaw
     ?? (bodyTextRaw ? `<pre style="white-space:pre-wrap">${escapeHtml(bodyTextRaw)}</pre>` : null)
+  // Сохраняем сырой attachments-array (без content) — для диагностики и UI.
+  const attachmentsForMetadata = data.attachments?.map((a) => ({
+    filename: a.filename ?? null,
+    content_type: a.content_type ?? null,
+    size: a.size ?? null,
+    has_inline_content: !!a.content,
+    url: a.url ?? null,
+  })) ?? null
   const emailMetadata = {
     gmail_message_id: messageIdHeader ?? resendId ?? '',
     message_id_header: messageIdHeader,
@@ -284,7 +292,7 @@ export async function handleInbound(supabase: ServiceClient, event: ResendEvent)
     cc_emails: ccList.map((a) => a.address),
     subject: data.subject ?? null,
     body_html: fullBodyHtml,
-    attachments: null,
+    attachments: attachmentsForMetadata,
   }
 
   const { data: inserted, error: insertError } = await supabase
@@ -317,16 +325,48 @@ export async function handleInbound(supabase: ServiceClient, event: ResendEvent)
     .update({ email_last_external_address: realFrom.address })
     .eq('id', threadId)
 
-  // Сохраняем вложения (Resend отдаёт base64 в content). Кладём в Storage bucket
-  // 'files' и связываем с сообщением через message_attachments. Если у треда нет
-  // project_id (personal-диалог) — кладём по пути workspace/<ws>/email-attachments.
+  // Сохраняем вложения. Resend может отдать контент несколькими способами:
+  //   - att.content / att.path — base64 inline (так часто отдают Mailgun/Sendgrid)
+  //   - att.url — отдельный URL, нужно скачать
+  // Кладём в Storage bucket 'files' и связываем с сообщением через
+  // message_attachments. Если у треда нет project_id (personal-диалог) — кладём
+  // по пути workspace/<ws>/email-attachments.
   if (data.attachments && data.attachments.length > 0) {
+    // Логируем для диагностики — какая структура реально пришла.
+    console.log(
+      '[resend-webhook] attachments structure:',
+      data.attachments.map((a) => ({
+        filename: a.filename,
+        content_type: a.content_type,
+        size: a.size,
+        hasContent: !!a.content,
+        hasPath: !!a.path,
+        hasUrl: !!a.url,
+      })),
+    )
     for (const att of data.attachments) {
-      if (!att.content) continue
       try {
-        const bs = atob(att.content)
-        const bytes = new Uint8Array(bs.length)
-        for (let i = 0; i < bs.length; i++) bytes[i] = bs.charCodeAt(i)
+        let bytes: Uint8Array | null = null
+        const base64 = att.content ?? att.path
+        if (base64) {
+          const bs = atob(base64)
+          bytes = new Uint8Array(bs.length)
+          for (let i = 0; i < bs.length; i++) bytes[i] = bs.charCodeAt(i)
+        } else if (att.url) {
+          const r = await fetch(att.url, {
+            headers: process.env.RESEND_API_KEY
+              ? { Authorization: `Bearer ${process.env.RESEND_API_KEY}` }
+              : undefined,
+          })
+          if (r.ok) {
+            const buf = await r.arrayBuffer()
+            bytes = new Uint8Array(buf)
+          }
+        }
+        if (!bytes) {
+          console.warn('[resend-webhook] attachment without content/url:', att.filename)
+          continue
+        }
         const fileName = att.filename ?? 'attachment'
         const dotIdx = fileName.lastIndexOf('.')
         const ext = dotIdx >= 0 ? fileName.slice(dotIdx) : ''

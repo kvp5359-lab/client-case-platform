@@ -94,17 +94,34 @@ async function handleNewMessageInner(
       : null
     : isOutgoing ? ctx.tg_user_id : clientTgUserId
 
-  // Парсим имя/юзернейм клиента из chat (для имени треда). gramjs выдаёт
-  // entity при первом обращении и кеширует; getEntity безопасен.
+  // Парсим имя/юзернейм клиента. Перебираем несколько источников — gramjs
+  // не всегда сразу резолвит peerUser через getEntity (для новых контактов
+  // access_hash может быть ещё не в кеше). Пробуем по убыванию надёжности:
+  //   1) msg.getSender() — gramjs внутри использует кешированный sender, если есть
+  //   2) event.client.getEntity(peerUser) — старый путь
+  //   3) event.client.getEntity(msg.fromId) — если fromId присутствует
   let clientFirstName: string | null = null
   let clientLastName: string | null = null
   let clientUsername: string | null = null
-  try {
-    const entity = await event.client?.getEntity(peerUser)
+  const tryReadUser = (entity: unknown): boolean => {
     if (entity instanceof Api.User) {
       clientFirstName = entity.firstName ?? null
       clientLastName = entity.lastName ?? null
       clientUsername = entity.username ?? null
+      return !!(clientFirstName || clientLastName || clientUsername)
+    }
+    return false
+  }
+  try {
+    const sender = await msg.getSender()
+    if (tryReadUser(sender)) {
+      /* got name */
+    } else if (event.client) {
+      const entity = await event.client.getEntity(peerUser)
+      if (!tryReadUser(entity) && msg.fromId) {
+        const fromEntity = await event.client.getEntity(msg.fromId)
+        tryReadUser(fromEntity)
+      }
     }
   } catch (_) {
     /* peer не зарезолвился — используем fallback ниже */

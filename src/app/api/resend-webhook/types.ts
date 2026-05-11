@@ -22,7 +22,17 @@ export type ResendEmailData = {
   in_reply_to?: string
   references?: string | string[]
   headers?: { name: string; value: string }[] | Record<string, string>
-  attachments?: { filename?: string; content_type?: string; content?: string; size?: number }[]
+  attachments?: {
+    filename?: string
+    content_type?: string
+    /** Base64 content (если Resend отдаёт inline). */
+    content?: string
+    /** URL для скачивания, если Resend отдаёт файлы отдельно. */
+    url?: string
+    /** Resend API v2 может класть base64 под path. */
+    path?: string
+    size?: number
+  }[]
   spam_score?: number
 }
 
