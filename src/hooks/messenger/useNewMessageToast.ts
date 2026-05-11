@@ -93,7 +93,7 @@ export function useNewMessageToast(workspaceId: string | undefined) {
 
           // Единый кеш v2 — читаем один раз, достаём и projectName, и accent_color.
           const cachedThreads = queryClient.getQueryData<InboxThreadEntry[]>(
-            inboxKeys.threadsV2(workspaceId),
+            inboxKeys.threads(workspaceId),
           )
           const projectName =
             cachedThreads?.find((c) => c.project_id === msg.project_id)?.project_name ?? 'Проект'
@@ -190,7 +190,7 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             if (!msg.thread_id) return
             await markAsRead(participant.participantId, msg.project_id, msgChannel, msg.thread_id)
             queryClient.setQueryData(messengerKeys.unreadCountByThreadId(msg.thread_id), 0)
-            queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
+            queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
           }
 
           playIncomingSound()

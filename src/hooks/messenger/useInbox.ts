@@ -10,7 +10,7 @@
  *
  * Миграция с v1 на v2 завершена в рамках аудита 2026-04-11, П5.1.
  *
- * Realtime-инвалидация ключа `inboxKeys.threadsV2(workspaceId)` выполняется
+ * Realtime-инвалидация ключа `inboxKeys.threads(workspaceId)` выполняется
  * в `useWorkspaceMessagesRealtime` (WorkspaceLayoutImpl) — единая
  * workspace-level подписка на `project_messages` / `message_reactions`.
  */
@@ -30,7 +30,7 @@ function useInboxBase<T = InboxThreadEntry[]>(
   const { user } = useAuth()
 
   return useQuery({
-    queryKey: inboxKeys.threadsV2(workspaceId),
+    queryKey: inboxKeys.threads(workspaceId),
     queryFn: () => getInboxThreadsV2(workspaceId, user!.id),
     enabled: !!workspaceId && !!user,
     staleTime: STALE_TIME.SHORT,

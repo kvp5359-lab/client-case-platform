@@ -65,7 +65,7 @@ export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unkno
               // от UPDATE project_threads — они стартуют ДО markAsRead и возвращают
               // ещё не обновлённый unread_count, который иначе перезатрёт наш патч).
               if (old.workspace_id) {
-                const inboxKey = inboxKeys.threadsV2(old.workspace_id)
+                const inboxKey = inboxKeys.threads(old.workspace_id)
                 await queryClient.cancelQueries({ queryKey: inboxKey })
                 queryClient.setQueryData<InboxThreadEntry[]>(inboxKey, (prev) => {
                   if (!prev) return prev

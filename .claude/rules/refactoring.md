@@ -15,7 +15,7 @@
 - Секреты (`NEXT_PUBLIC_*` только для публичных значений)
 - Supabase advisors: security warnings
 - `src/lib/supabase.ts` (anon) vs `src/lib/supabase-server.ts` (SSR) — разделение чёткое
-- Middleware `src/middleware.ts` защищает приватные роуты
+- Middleware `src/proxy.ts` защищает приватные роуты (в Next 16 файл переименован из `middleware.ts`)
 - Нет утечек токенов в логи и в `console.log`
 
 ## Зона 2. 🗄️ БД, миграции, RPC
@@ -27,7 +27,7 @@
 - Нет дубликатов таблиц или устаревших колонок после миграций
 - `search_path` в SECURITY DEFINER функциях
 - Supabase advisors: performance warnings
-- Консистентность: `project_template_tasks` vs `thread_templates` после мерджа модулей
+- `project_template_tasks` дропнута 2026-04-11 (миграция `20260411_drop_project_template_tasks.sql`) — все задачи теперь в `thread_templates`. Проверять, что в коде нет осиротевших ссылок (кроме комментариев)
 
 ## Зона 3. 🔑 Типы и контракты
 

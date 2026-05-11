@@ -57,7 +57,17 @@
 - **⚠️ `--no-verify-jwt` — ОБЯЗАТЕЛЬНО** для функций, которые вызываются без пользовательского JWT: `telegram-webhook` (от Telegram), `telegram-send-message` (от postgres-триггера через `net.http_post`). CLI по умолчанию ставит `verify_jwt = true`, и шлюз Supabase отбивает запросы на уровне инфраструктуры до нашего кода — получаем `UNAUTHORIZED_NO_AUTH_HEADER` в `net._http_response.content`. Если задеплоил без флага — redeploy с `--no-verify-jwt`.
 - **Секреты (env vars)**: управляются через `supabase secrets set KEY=value --project-ref zjatohckcpiqmxkmfxbs`. Если `supabase secrets list` показывает значение, но функция его не видит — принудительно переустановить тем же `secrets set`. Это «оживит» его в рантайме функции.
 - **`x-internal-secret`**: триггер `notify_telegram_on_new_message` шлёт этот header. Его значение должно совпадать с env-переменной `INTERNAL_FUNCTION_SECRET` в Supabase secrets. Если разошлись — все исходящие сообщения из ЛК в Telegram отбиваются с 401 от нашего кода. Для диагностики: `SELECT content, status_code FROM net._http_response ORDER BY created DESC LIMIT 10;`.
-- **Категории функций**: telegram-* (синхронизация с ботом), gmail-* (почта), google-drive-* / google-sheets-* / google-oauth-* / google-docs-export (Google интеграции), chat-* / generate-* / analyze-documents / extract-* / transcribe-audio / knowledge-* (AI), compress-* (сжатие файлов), email-track, fetch-image, fetch-sheets, fix-cyrillic-storage-paths, sandbox-test.
+- **Категории функций** (на 2026-05-11, ~75 шт):
+  - **Telegram (групповой бот)**: `telegram-webhook` (v1, активный), `telegram-webhook-v2` (новый, для bot_version='v2'), `telegram-setup-webhook`, `telegram-register-webhook`, `telegram-send-message`, `telegram-edit-message`, `telegram-delete-message`, `telegram-set-reaction`.
+  - **Telegram Business**: `telegram-business-webhook`, `telegram-business-send`, `telegram-business-react`, `telegram-business-link-init`.
+  - **Telegram MTProto** (личный аккаунт через gramjs-сервис): `telegram-mtproto-auth`, `telegram-mtproto-send`, `telegram-mtproto-react`. Также аватары: `fetch-telegram-avatar`.
+  - **Wazzup** (WhatsApp/IG): `wazzup-webhook`, `wazzup-send`, `wazzup-send-reaction`, `wazzup-mark-read`, `wazzup-fetch-channels`, `wazzup-set-webhook`.
+  - **Email (Gmail OAuth + Resend)**: `gmail-auth`, `gmail-callback`, `gmail-disconnect`, `gmail-webhook`, `gmail-send`, `gmail-watch-refresh`, `email-internal-send`, `email-track`, `provision-email-domain`, `provision-domain`.
+  - **Google**: `google-oauth-start/exchange/refresh`, `google-drive-*` (8 функций), `google-sheets-*` (2), `google-docs-export`.
+  - **AI**: `chat-with-messages`, `chat-with-documents`, `chat-with-uploaded-file`, `generate-block`, `generate-document`, `generate-merge-name`, `generate-conversation-title`, `generate-project-digest`, `translate-block`, `analyze-documents`, `extract-text`, `extract-placeholders`, `extract-form-data`, `extract-form-data-from-file`, `transcribe-audio`, `knowledge-index`, `knowledge-search`, `check-document`, `test-ai-connection`.
+  - **Документы/файлы**: `compress-document`, `compress-pdf`, `compress-pdf-ilovepdf`, `fetch-image`, `fetch-sheets`, `fix-cyrillic-storage-paths`, `export-to-drive`.
+  - **Impersonation**: `impersonate-start`, `impersonate-end`.
+  - **Sandbox**: `sandbox-test` — dev playground, не вызывается из фронта.
 
 ### pg_cron + service_role_key (Gmail watch refresh и подобные)
 
@@ -248,24 +258,33 @@
 - **Что НЕ работает как сигнал**: `MessageChannel` ('client' | 'internal') в типах сервиса — это легаси-разделение для project_messages, не для тредов. Task-треды по умолчанию идут с `channel='client'`, но клиентскими не являются. Не использовать.
 - Флаг пробрасывается через `MessengerContext.isClientThread` → `MessageBubble`. Стили для каждого акцента (`staffBorder` + `staffRing`) — в [`messageStyles.ts`](../../src/components/messenger/utils/messageStyles.ts).
 
+## Личные диалоги (Personal Dialogs)
+
+Реализовано 2026-05-10. **Архитектурный сдвиг** относительно начального дизайна: личные диалоги сотрудника (Telegram Business / Wazzup / личная почта) **больше не лежат внутри фейкового системного проекта**, а живут как треды без `project_id` (NULL) с владельцем `project_threads.owner_user_id`.
+
+- **Модель**: тред личного диалога — `project_threads { project_id = NULL, owner_user_id = <employee>, type ∈ {chat, email}, business_connection_id / wazzup_channel_id / email_account_id }`. Доступ: тред видит только `owner_user_id` + менеджеры воркспейса с `manage_workspace_settings`. Сообщения треда лежат в `project_messages { project_id = NULL, thread_id }`.
+- **Удалены** колонки `projects.is_system_business_inbox`, `projects.is_system_wazzup_inbox`, `projects.is_system_email_inbox`, `projects.system_inbox_user_id`, `projects.system_inbox_kind` (миграция `20260510_drop_system_inbox_projects.sql`). RPC `ensure_personal_*_inbox_project` тоже дропнуты — фейковые проекты больше не создаются.
+- **Страница**: [`/workspaces/[id]/personal-dialogs`](../../src/app/(app)/workspaces/[workspaceId]/personal-dialogs/page.tsx) — единый UI для всех личных диалогов сотрудника (TG Business + Wazzup + Email). Компонент [`PersonalDialogsPage`](../../src/page-components/PersonalDialogsPage/index.tsx).
+- **RPC**: `move_thread_to_project(thread_id, project_id)` — переносит тред из «личных диалогов» в проект и наоборот (NULL = вернуть в личные). RLS-политики тредов проверяют `owner_user_id IS NULL OR owner_user_id = auth.uid()` дополнительно к доступам через `project_participants`.
+- **Что НЕ делаем**: не создавать новые системные инбокс-проекты. Если в коде/миграциях встретилась логика «создать проект под личные диалоги» — это устаревший паттерн.
+
 ## Telegram Business (личные диалоги сотрудников)
 
-Реализовано 2026-05-03. Архитектура «как у Planfix» — один общий бот сервиса `@clientcase_bot` (id `8669511732`), которого все сотрудники подключают как делегата своего личного TG через **Telegram → Settings → Business → Chatbots**. Требует Telegram Premium у сотрудника. Бот «подсматривает» личные диалоги и тянет их в сервис; ответы из сервиса уходят от имени сотрудника, не бота.
+Реализовано 2026-05-03, перевод на новую модель «без проектов» — 2026-05-10. Архитектура «как у Planfix» — один общий бот сервиса `@clientcase_bot` (id `8669511732`), которого все сотрудники подключают как делегата своего личного TG через **Telegram → Settings → Business → Chatbots**. Требует Telegram Premium у сотрудника. Бот «подсматривает» личные диалоги и тянет их в сервис; ответы из сервиса уходят от имени сотрудника, не бота.
 
-- **Бот**: `@clientcase_bot`, токен в Supabase secrets как `TELEGRAM_BUSINESS_BOT_TOKEN`. В BotFather у бота включён **Business Mode** (`/mybots → Bot Settings → Business Mode → Turn on`) — без этого Telegram не показывает бота в списке доступных делегатов.
-- **Webhook**: [`telegram-business-webhook`](../../supabase/functions/telegram-business-webhook/index.ts), деплой `--no-verify-jwt`. Защита — заголовок `X-Telegram-Bot-Api-Secret-Token`, значение в `TELEGRAM_BUSINESS_WEBHOOK_SECRET`. Слушает: `message` (для `/start biz_<token>`), `business_connection`, `business_message`, `edited_business_message`, `deleted_business_messages`.
+- **Бот**: `@clientcase_bot`, токен в Supabase secrets как `TELEGRAM_BUSINESS_BOT_TOKEN`. В BotFather у бота включён **Business Mode**.
+- **Webhook**: [`telegram-business-webhook`](../../supabase/functions/telegram-business-webhook/index.ts), деплой `--no-verify-jwt`. Защита — заголовок `X-Telegram-Bot-Api-Secret-Token`, значение в `TELEGRAM_BUSINESS_WEBHOOK_SECRET`. Слушает: `message` (`/start biz_<token>`), `business_connection`, `business_message`, `edited_business_message`, `deleted_business_messages`.
 - **Двухшаговое подключение**:
-  1. Сотрудник в UI настроек интеграций → вкладка «Telegram Business» → жмёт «Подключить» → фронт вызывает [`telegram-business-link-init`](../../supabase/functions/telegram-business-link-init/index.ts) → возвращается deep-link `t.me/clientcase_bot?start=biz_<uuid>`. TTL токена — 30 мин.
-  2. Сотрудник кликает, в Telegram открывается чат с ботом, жмёт START → webhook ловит `/start biz_<token>` → пишет связку в `user_telegram_links (user_id ↔ tg_user_id)`. Один TG-аккаунт = один user_id (UNIQUE).
-  3. Сотрудник идёт в Telegram → Settings → Business → Chatbots → добавляет `@clientcase_bot` с правом «Reply to messages». Прилетает `business_connection` → webhook по `tg_user_id` находит привязку → создаёт запись в `telegram_business_connections`.
-- **Хранение диалогов**: каждый сотрудник получает системный проект **«Личные диалоги Telegram»** (`projects.is_system_business_inbox = true` + `system_inbox_user_id`). UNIQUE: один такой проект на сотрудника в воркспейсе. Каждый личный диалог с клиентом = один тред в этом проекте, с полями `business_connection_id` + `business_client_tg_user_id` (UNIQUE-индекс по этой паре). Создаётся автоматически при первом сообщении.
-- **Скрытие из общих списков**: системный инбокс **не появляется** в обычном списке проектов и тредов воркспейса. Фильтры в RPC: `get_user_projects` (`p.is_system_business_inbox = false`), `get_workspace_threads` и `get_sidebar_data` (исключают треды через `LEFT JOIN projects` + проверку флага). Доступ к этим тредам — через отдельный экран (TODO).
+  1. UI «Telegram Business» → фронт вызывает [`telegram-business-link-init`](../../supabase/functions/telegram-business-link-init/index.ts) → deep-link `t.me/clientcase_bot?start=biz_<uuid>`. TTL токена — 30 мин.
+  2. Сотрудник кликает, жмёт START → webhook пишет связку в `user_telegram_links (user_id ↔ tg_user_id)`. Один TG-аккаунт = один user_id (UNIQUE).
+  3. Сотрудник в Telegram → Settings → Business → Chatbots добавляет `@clientcase_bot` с правом «Reply to messages» → прилетает `business_connection` → webhook создаёт запись в `telegram_business_connections`.
+- **Хранение диалогов**: тред с `project_id = NULL`, `owner_user_id = <employee>`, `business_connection_id`, `business_client_tg_user_id` (UNIQUE пара). Создаётся автоматически при первом сообщении. Раньше лежал в системном проекте — теперь без проекта.
+- **Скрытие из общих списков**: тред с `project_id=NULL` фильтруется из обычных списков проектов/тредов на уровне RPC (`pt.project_id IS NOT NULL` либо явное условие на personal-dialogs UI).
 - **Таблицы и миграции**:
   - `telegram_business_connections (id, workspace_id, user_id, business_connection_id UNIQUE, tg_user_id, tg_username, tg_first_name, tg_last_name, is_enabled, can_reply, connected_at, disconnected_at)` — миграция `20260503_telegram_business.sql`.
-  - `user_telegram_links (user_id PK, tg_user_id UNIQUE, tg_username, tg_first_name, tg_last_name, linked_at)` — глобальная привязка, миграция `20260503_user_telegram_links.sql`.
+  - `user_telegram_links (user_id PK, tg_user_id UNIQUE, ...)` — миграция `20260503_user_telegram_links.sql`.
   - `telegram_business_link_tokens (token, user_id, workspace_id, expires_at, consumed_at)` — одноразовые токены шага 1.
-  - `projects.is_system_business_inbox` + `projects.system_inbox_user_id` — миграция `20260503_telegram_business.sql`.
-  - `project_threads.business_connection_id` + `project_threads.business_client_tg_user_id` — миграция `20260503_telegram_business.sql`.
+  - `project_threads.business_connection_id` + `business_client_tg_user_id` + `owner_user_id` — миграции `20260503_telegram_business.sql` и `20260510_thread_owner_user_id.sql`.
 - **RLS**: `telegram_business_connections` — сам сотрудник видит свои + менеджеры воркспейса с `manage_workspace_settings` видят все в своём WS. `user_telegram_links` — аналогично. `telegram_business_link_tokens` — только владелец токена. INSERT/UPDATE/DELETE везде — service role.
 - **Источник в сообщениях**: `project_messages.source = 'telegram_business'` (новое значение, в дополнение к `telegram`/`email`/`web`). `telegram_chat_id` хранит id личного чата клиента, `telegram_sender_user_id` — реальный отправитель.
 - **Отправка ответов из сервиса**: Edge Function [`telegram-business-send`](../../supabase/functions/telegram-business-send/index.ts). PG-триггер `notify_telegram_on_new_message` маршрутизирует туда сообщения, у тредов которых заполнен `business_connection_id`. Поддерживается `reply_parameters` (цитата). Контент конвертируется через общий `_shared/htmlFormatting.ts`. После отправки стампится `telegram_chat_id` (равен `tg_user_id` клиента в личке) и `telegram_message_id` — без этого реакции/реплаи не привязываются.
@@ -292,7 +311,7 @@
 - **Подписки**: `messagesAndStatuses` + `channelsUpdates`. Webhook парсит три типа payload'ов: `messages[]`, `statuses[]`, `channelsUpdates[]`, плюс тестовый `{test:true}`.
 - **Отправка**: [`wazzup-send`](../../supabase/functions/wazzup-send/index.ts), вызывается pg-триггером `notify_telegram_on_new_message` (4-я ветка после MTProto/Business/Group). REST: `POST https://api.wazzup24.com/v3/message` с `Authorization: Bearer <api_key>`, payload `{channelId, chatType, chatId, text}`. Сейчас MVP — только текст (HTML из tiptap → plain через `stripHtml`). Файлы, реакции, голосовые — отдельной итерацией.
 - **Загрузка каналов**: [`wazzup-fetch-channels`](../../supabase/functions/wazzup-fetch-channels/index.ts) — ходит `GET /v3/channels` с API-ключом и upsert'ит в `wazzup_channels`. Вызывается из UI кнопкой «Загрузить из Wazzup». Деплой обычный (с JWT) — функция проверяет, что вызывающий = менеджер воркспейса.
-- **Системный инбокс**: `projects.is_system_wazzup_inbox = true` + `system_inbox_user_id`. Аналог Telegram Business. Скрыт из общих списков фильтром в [`useSidebarData.ts`](../../src/components/WorkspaceSidebar/useSidebarData.ts). Один на сотрудника (partial UNIQUE-индекс `uq_projects_system_wazzup_inbox_per_user`).
+- **Хранение треда**: тред `project_id=NULL`, `owner_user_id=<employee>`, `wazzup_channel_id`, `wazzup_chat_id`. Раньше лежал в системном проекте `is_system_wazzup_inbox`, с 2026-05-10 — без проекта (см. раздел «Личные диалоги»).
 - **Тред**: один на клиента в рамках канала. Поля `project_threads.wazzup_channel_id` (наш FK на `wazzup_channels.id`) + `wazzup_chat_id` (id чата в Wazzup — телефон без `+` для WA, username для IG). UNIQUE на пару + `is_deleted=false`.
 - **Сообщение**: `project_messages.source = 'wazzup'`, `wazzup_message_id` (UNIQUE для дедупа), `wazzup_status` (sent/delivered/read/error — обновляется webhook'ом по событиям `statuses[]`). `isEcho=true` от Wazzup — это сообщение, отправленное сотрудником с телефона; webhook привязывает его к participant'у сотрудника, sender_role='Сотрудник'.
 - **Миграции**: `20260503_wazzup_integration.sql` (таблицы + поля + RLS), `20260503_notify_wazzup_branch.sql` (расширение триггера на ветку Wazzup, плюс пропуск source='wazzup' от циклов).
@@ -320,7 +339,7 @@
 - **Галочки доставки в UI**: [`WazzupDeliveryIndicator.tsx`](../../src/components/messenger/WazzupDeliveryIndicator.tsx) — `pending → sent → delivered → read → failed`. Подключён в `MessageBubble.tsx` через расширенный `getDeliveryStatus`.
 - **Имена клиентов**: webhook берёт `contact.name → authorName → username → phone → chatId`, при первом сообщении создаёт тред с реальным именем; если тред уже существовал с именем-телефоном-fallback, апдейтит `name`.
 - **Привязка треда к проекту**: RPC [`move_thread_to_project(thread_id, project_id)`](../../supabase/migrations/20260503_move_thread_to_project_rpc.sql) меняет `project_id` у треда + всех его сообщений (один воркспейс). Хук [`useMoveThreadToProject`](../../src/hooks/messenger/useMoveThreadToProject.ts). UI-точка пока не интегрирована — вызов из дев-консоли работает.
-- **Системный инбокс Wazzup в UI**: `useProjectData` теперь поддерживает `is_system_wazzup_inbox` и подмешивает синтетический template с модулями `chats + tasks` (как у TG Business).
+- **Wazzup в UI**: после ухода от системных проектов (2026-05-10) Wazzup-треды видны в [`/workspaces/[id]/personal-dialogs`](../../src/app/(app)/workspaces/[workspaceId]/personal-dialogs/page.tsx). Атрибуция треда сотруднику — по `project_threads.owner_user_id`.
 
 ### Известные ограничения / не делается
 
@@ -496,9 +515,9 @@ npm run test:watch # Vitest watch mode
 pkill -f "next dev"; rm -rf .next tsconfig.tsbuildinfo
 ```
 
-## Роуты (61)
+## Роуты (62)
 
-Точное число: `find src/app -name page.tsx | wc -l`. На 2026-05-10 — **61**.
+Точное число: `find src/app -name page.tsx | wc -l`. На 2026-05-11 — **62**.
 
 **Root** (1): `/`
 
@@ -506,15 +525,15 @@ pkill -f "next dev"; rm -rf .next tsconfig.tsbuildinfo
 
 **Public** (5): `/lawyers`, `/blog`, `/about`, `/privacy`, `/terms`
 
-**App** — приватные, защищены `(app)/layout.tsx` (36):
-- Top-level: `/profile`, `/dashboard`, `/workspaces`
-- Workspace: `/workspaces/[id]`, `/workspaces/[id]/inbox`, `/workspaces/[id]/tasks`
+**App** — приватные, защищены `(app)/layout.tsx` (52):
+- Top-level: `/app`, `/profile`, `/dashboard`, `/workspaces`, `/select-workspace`
+- Workspace base: `/workspaces/[id]`, `/workspaces/[id]/inbox`, `/workspaces/[id]/inbox/unmatched`, `/workspaces/[id]/tasks`, `/workspaces/[id]/digests`, `/workspaces/[id]/personal-dialogs` (личные диалоги сотрудника TG/Wazzup/Email)
 - Projects: `/workspaces/[id]/projects`, `/workspaces/[id]/projects/[projectId]`
 - Boards: `/workspaces/[id]/boards`, `/workspaces/[id]/boards/[boardId]`
 - Lists: `/workspaces/[id]/lists`, `/workspaces/[id]/lists/[listId]`
-- Settings core: `/workspaces/[id]/settings`, `/workspaces/[id]/settings/general`, `/workspaces/[id]/settings/participants`, `/workspaces/[id]/settings/permissions`, `/workspaces/[id]/settings/sidebar`, `/workspaces/[id]/settings/trash`
-- Settings → directories: `/workspaces/[id]/settings/directories`, `/directories/custom`, `/directories/custom/[directoryId]`, `/directories/project-roles`, `/directories/quick-replies`, `/directories/statuses`, `/directories/workspace-roles`
-- Settings → knowledge base: `/workspaces/[id]/settings/knowledge-base`, `/knowledge-base/[articleId]`, `/knowledge-base/qa/[qaId]`
-- Settings → templates: `/workspaces/[id]/settings/templates`, `/templates/document-kit-templates`, `/templates/document-kit-templates/[kitId]`, `/templates/document-templates`, `/templates/field-templates`, `/templates/folder-templates`, `/templates/form-templates`, `/templates/form-templates/[templateId]`, `/templates/project-templates`, `/templates/project-templates/[templateId]`, `/templates/thread-templates`
+- Settings core: `/workspaces/[id]/settings`, `/settings/general`, `/settings/participants`, `/settings/permissions`, `/settings/sidebar`, `/settings/trash`, `/settings/integrations`, `/settings/domain`, `/settings/digest`
+- Settings → directories: `/settings/directories`, `/directories/custom`, `/directories/custom/[directoryId]`, `/directories/project-roles`, `/directories/quick-replies`, `/directories/statuses`, `/directories/workspace-roles`, `/directories/finance-services`, `/directories/finance-tax-rates`, `/directories/finance-income-categories`, `/directories/finance-expense-categories`
+- Settings → knowledge base: `/settings/knowledge-base`, `/knowledge-base/[articleId]`, `/knowledge-base/qa/[qaId]`
+- Settings → templates: `/settings/templates`, `/templates/document-kit-templates`, `/templates/document-kit-templates/[kitId]`, `/templates/document-templates`, `/templates/field-templates`, `/templates/folder-templates`, `/templates/form-templates`, `/templates/form-templates/[templateId]`, `/templates/project-templates`, `/templates/project-templates/[templateId]`, `/templates/slot-templates`, `/templates/thread-templates`
 
-**API** (2): `/api/payments`, `/api/webhooks` — заглушки 501
+**API** (3 directory с маршрутами): `/api/payments`, `/api/webhooks` (заглушки 501), `/api/resend-webhook` (приём событий Resend для трекинга email).

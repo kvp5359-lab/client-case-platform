@@ -61,7 +61,7 @@ export function BoardInboxList({
 
   /** Оптимистично обновить поля треда в кэше threadsV2 (без рефетча всего списка) */
   const patchThreadInCache = (threadId: string, patch: Partial<InboxThreadEntry>) => {
-    const key = inboxKeys.threadsV2(workspaceId)
+    const key = inboxKeys.threads(workspaceId)
     queryClient.setQueryData<InboxThreadEntry[]>(key, (old) =>
       old?.map((t) => (t.thread_id === threadId ? { ...t, ...patch } : t)),
     )
@@ -99,7 +99,7 @@ export function BoardInboxList({
     },
     onError: () => {
       // При ошибке — рефетч для восстановления актуальных данных
-      queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
       toast.error('Не удалось отметить как прочитанное')
     },
   })
@@ -123,7 +123,7 @@ export function BoardInboxList({
       patchThreadInCache(chat.thread_id, { manually_unread: true })
     },
     onError: () => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
       toast.error('Не удалось отметить как непрочитанное')
     },
   })

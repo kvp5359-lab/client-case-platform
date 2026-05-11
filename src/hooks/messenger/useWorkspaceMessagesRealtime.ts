@@ -33,7 +33,7 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
       // Инвалидируем все ключи, которые зависят от project_messages workspace-level:
       // - threadsV2: единый inbox-кеш (сайдбар, реакции, manually-unread — всё через v2)
       // - projectsBase: сайдбар проектов с last_activity_at
-      queryClient.invalidateQueries({ queryKey: inboxKeys.threadsV2(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
       queryClient.invalidateQueries({ queryKey: sidebarKeys.projectsBase(workspaceId) })
     }
 

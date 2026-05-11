@@ -224,8 +224,6 @@ export const inboxKeys = {
   all: ['inbox'] as const,
   /** Ключ inbox-кеша (thread-level). v1 удалён, остался только v2. */
   threads: (workspaceId: string) => ['inbox', 'threads-v2', workspaceId] as const,
-  /** @deprecated Используй `threads`. Алиас для обратной совместимости. */
-  threadsV2: (workspaceId: string) => ['inbox', 'threads-v2', workspaceId] as const,
 }
 
 export const personalDialogsKeys = {

@@ -1,5 +1,2 @@
 export { useKnowledgeIndex } from './useKnowledgeIndex'
-export { useKnowledgeSearch } from './useKnowledgeSearch'
-export { useKnowledgeConversations } from './useKnowledgeConversations'
-export { useKnowledgeMessages } from './useKnowledgeMessages'
 export { useArticleVersions, useArticleVersion } from './useKnowledgeArticleVersions'

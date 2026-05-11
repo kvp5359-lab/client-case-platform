@@ -52,7 +52,7 @@ export function UnreadBadge({ threadId, workspaceId, accentColor }: UnreadBadgeP
   // while rendering a different component»: getSnapshot возвращает стабильную
   // ссылку на массив тредов, badge выводим через useMemo в render-фазе).
   const queryClient = useQueryClient()
-  const queryKey = useMemo(() => inboxKeys.threadsV2(workspaceId), [workspaceId])
+  const queryKey = useMemo(() => inboxKeys.threads(workspaceId), [workspaceId])
 
   const threads = useSyncExternalStore<InboxThreadEntry[] | undefined>(
     (onChange) => {

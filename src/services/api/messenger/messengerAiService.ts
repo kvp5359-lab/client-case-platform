@@ -12,9 +12,6 @@ import type { SearchSource } from '../knowledge/knowledgeSearchService'
 // Типы
 // =====================================================
 
-/** @deprecated Используй SearchSource из knowledgeSearchService */
-export type KnowledgeSourceInResponse = SearchSource
-
 export interface MessengerAiStreamCallbacks {
   onText: (chunk: string) => void
   onDone: (fullAnswer: string) => void

@@ -74,7 +74,7 @@ export function HistoryTabContent({ projectId, workspaceId }: HistoryTabContentP
   // Если юзер зашёл в историю напрямую, сайдбар (который загружается параллельно)
   // заполнит кэш за несколько сотен мс, и чат-лист обновится автоматически.
   const { data: projectInboxChats = [] } = useQuery({
-    queryKey: inboxKeys.threadsV2(workspaceId),
+    queryKey: inboxKeys.threads(workspaceId),
     queryFn: () => [] as InboxThreadEntry[],
     enabled: false,
     select: (chats: InboxThreadEntry[] | undefined) =>
