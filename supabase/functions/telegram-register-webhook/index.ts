@@ -115,7 +115,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         url: webhookUrl,
         secret_token: integration.id,
-        allowed_updates: ["message", "edited_message", "message_reaction"],
+        allowed_updates: ["message", "edited_message", "message_reaction", "message_reaction_count"],
         drop_pending_updates: true,
       }),
     });

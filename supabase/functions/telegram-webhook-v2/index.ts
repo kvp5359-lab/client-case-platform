@@ -40,7 +40,10 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { syncTelegramReactions } from "../_shared/syncTelegramReactions.ts";
+import {
+  syncTelegramReactions,
+  syncTelegramReactionsAggregated,
+} from "../_shared/syncTelegramReactions.ts";
 import { service, setBotToken } from "./shared.ts";
 import { handleMessage } from "./sync.ts";
 import { handleCallback } from "./callbacks.ts";
@@ -78,10 +81,29 @@ Deno.serve(async (req) => {
   try {
     const update = await req.json();
 
+    // DEBUG: видеть какие update-типы реально присылает Telegram —
+    // нужно для отладки реакций на media-group (см. в БД отсутствие
+    // message_reaction для альбома, хотя на текст реакции прилетают).
+    console.log(JSON.stringify({
+      sub: "telegram-webhook-v2",
+      event: "update.received",
+      update_keys: Object.keys(update),
+      update_id: update.update_id,
+      reaction_message_id: update.message_reaction?.message_id ?? update.message_reaction_count?.message_id ?? null,
+      reaction_chat_id: update.message_reaction?.chat?.id ?? update.message_reaction_count?.chat?.id ?? null,
+      reaction_count_summary: update.message_reaction_count
+        ? { reactions: update.message_reaction_count.reactions }
+        : null,
+    }));
+
     if (update.callback_query) {
       await handleCallback(update.callback_query);
     } else if (update.message_reaction) {
       await syncTelegramReactions(service, update.message_reaction);
+    } else if (update.message_reaction_count) {
+      // Premium-юзер с мульти-реакцией / анонимный админ → приходит
+      // агрегатный count-update без user info. Пишем как «anonymous».
+      await syncTelegramReactionsAggregated(service, update.message_reaction_count);
     } else if (update.edited_message) {
       await handleMessage(update.edited_message, true);
     } else if (update.message) {

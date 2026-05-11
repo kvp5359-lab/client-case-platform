@@ -104,3 +104,71 @@ export async function syncTelegramReactions(
     console.error("[syncTelegramReactions] insert error:", error);
   }
 }
+
+interface TgReactionCountItem {
+  type: TgReactionType;
+  total_count: number;
+}
+
+interface TgMessageReactionCountUpdate {
+  chat: { id: number };
+  message_id: number;
+  date?: number;
+  reactions: TgReactionCountItem[];
+}
+
+/**
+ * Aggregated reaction update — приходит, когда юзеры анонимны (админ
+ * с anonymous=true, мульти-реакции Premium-юзера, реакции в каналах и т.п.)
+ * либо когда Telegram решил не раскрывать конкретного юзера. User info нет,
+ * только эмодзи и общий count.
+ *
+ * Стратегия: сводим к простому состоянию «есть N реакций такого-то эмодзи»
+ * без участника. На фронте отображаются в общем счётчике; для удаления
+ * пользователь сам ставит/снимает свою реакцию.
+ */
+export async function syncTelegramReactionsAggregated(
+  service: SupabaseClient,
+  update: TgMessageReactionCountUpdate,
+): Promise<void> {
+  const chatId = update.chat.id;
+  const telegramMessageId = update.message_id;
+
+  const { data: msg } = await service
+    .from("project_messages")
+    .select("id")
+    .eq("telegram_chat_id", chatId)
+    .contains("telegram_message_ids", [telegramMessageId])
+    .maybeSingle();
+  if (!msg) return;
+
+  // Сносим прежние анонимные строки для этого TG-msg, чтобы не плодить дубли.
+  await service
+    .from("message_reactions")
+    .delete()
+    .eq("message_id", msg.id)
+    .eq("telegram_source_message_id", telegramMessageId)
+    .is("telegram_user_id", null);
+
+  const rows = (update.reactions ?? [])
+    .filter((r) => r.type.type === "emoji" && r.type.emoji && r.total_count > 0)
+    .flatMap((r) =>
+      // Один total_count → один ряд (без user info). UI отрисует это как
+      // обычную реакцию с tg_user_name="Telegram"; для нескольких — multiplier.
+      Array.from({ length: r.total_count }, () => ({
+        message_id: msg.id,
+        participant_id: null,
+        telegram_user_id: null,
+        telegram_user_name: "Telegram",
+        emoji: r.type.emoji!,
+        telegram_source_message_id: telegramMessageId,
+      })),
+    );
+
+  if (rows.length === 0) return;
+
+  const { error } = await service.from("message_reactions").insert(rows);
+  if (error) {
+    console.error("[syncTelegramReactionsAggregated] insert error:", error);
+  }
+}

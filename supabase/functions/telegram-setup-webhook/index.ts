@@ -14,7 +14,7 @@ Deno.serve(async () => {
 
   const payload: Record<string, unknown> = {
     url: webhookUrl,
-    allowed_updates: ["message", "edited_message", "message_reaction"],
+    allowed_updates: ["message", "edited_message", "message_reaction", "message_reaction_count"],
   };
 
   if (TELEGRAM_WEBHOOK_SECRET) {
