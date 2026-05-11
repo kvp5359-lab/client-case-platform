@@ -208,11 +208,20 @@ Deno.serve(async (req: Request) => {
   }
   const attachments: OutboundAttachment[] = [];
   if (m.has_attachments) {
-    const { data: rows } = await service
-      .from("message_attachments")
-      .select("file_name, mime_type, storage_path")
-      .eq("message_id", m.id);
-    for (const row of (rows ?? []) as Array<{ file_name: string; mime_type: string; storage_path: string }>) {
+    // Триггер БД запускает email-internal-send СРАЗУ после INSERT в
+    // project_messages, а uploadAttachments на фронте выполняется ПОСЛЕ.
+    // Поэтому ждём до 8 секунд, пока message_attachments не появятся.
+    let rows: Array<{ file_name: string; mime_type: string; storage_path: string }> = [];
+    for (let i = 0; i < 8; i++) {
+      const { data } = await service
+        .from("message_attachments")
+        .select("file_name, mime_type, storage_path")
+        .eq("message_id", m.id);
+      rows = (data ?? []) as typeof rows;
+      if (rows.length > 0) break;
+      await new Promise((res) => setTimeout(res, 1000));
+    }
+    for (const row of rows) {
       const { data: blob, error: dlErr } = await service.storage
         .from("files")
         .download(row.storage_path);

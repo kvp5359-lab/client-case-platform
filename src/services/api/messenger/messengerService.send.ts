@@ -69,7 +69,18 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
 
   const totalAttachments =
     (params.attachments?.length ?? 0) + (params.forwardedAttachments?.length ?? 0)
-  const shouldSplit = shouldSplitTextAndFiles(params)
+  // Для email-тредов split отключаем — отправляем одно письмо с текстом и
+  // файлами вместе. В UI это рендерится как один баббл (как обычное email-сообщение).
+  let isEmailThread = false
+  if (params.threadId) {
+    const { data: t } = await supabase
+      .from('project_threads')
+      .select('type')
+      .eq('id', params.threadId)
+      .maybeSingle()
+    isEmailThread = (t as { type?: string } | null)?.type === 'email'
+  }
+  const shouldSplit = !isEmailThread && shouldSplitTextAndFiles(params)
 
   const commonFields = {
     ...(params.projectId ? { project_id: params.projectId } : {}),
