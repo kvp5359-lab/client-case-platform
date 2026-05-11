@@ -38,7 +38,9 @@ function ProjectOrCounterpartField({
   const counterpartName = useThreadCounterpartName(task.id, workspaceId)
   const value = task.project_name ?? counterpartName
   if (!value) return null
-  return <span className={cn(classes, 'shrink-0 text-muted-foreground/60')}>{value}</span>
+  return (
+    <span className={cn(classes, 'min-w-0 flex-[2] text-muted-foreground/60')}>{value}</span>
+  )
 }
 
 /** Рендерит одно поле задачи по fieldId с учётом стиля */
@@ -97,8 +99,7 @@ function TaskField({
         <span
           className={cn(
             classes,
-            'min-w-0 leading-snug',
-            stretch && 'flex-1',
+            'min-w-0 leading-snug flex-[3]',
             overdue && 'text-red-500',
           )}
         >
