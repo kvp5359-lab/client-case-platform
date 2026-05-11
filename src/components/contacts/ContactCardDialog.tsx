@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { Mail, Phone, Send, FolderInput, MessagesSquare, X, Search, Pencil, Check, Settings2 } from 'lucide-react'
 import {
   Dialog,
@@ -288,13 +288,15 @@ function RenameInline({ contact }: RenameInlineProps) {
   const [lastName, setLastName] = useState(contact.last_name ?? '')
   const renameMutation = useRenameParticipant()
 
-  // Сбрасываем локальное состояние при смене контакта/при отмене редактирования.
-  useEffect(() => {
-    if (!editing) {
-      setName(contact.name)
-      setLastName(contact.last_name ?? '')
-    }
-  }, [contact.id, contact.name, contact.last_name, editing])
+  // Сброс локального состояния при смене контакта/при отмене редактирования —
+  // render-time pattern из React docs (вместо useEffect + setState):
+  // https://react.dev/learn/you-might-not-need-an-effect#resetting-all-state-when-a-prop-changes
+  const [lastSyncedId, setLastSyncedId] = useState(contact.id)
+  if (!editing && contact.id !== lastSyncedId) {
+    setLastSyncedId(contact.id)
+    setName(contact.name)
+    setLastName(contact.last_name ?? '')
+  }
 
   // Сотрудников переименовывать через эту карточку не даём — у них есть свой
   // профиль; имя может тянуться из user_metadata.

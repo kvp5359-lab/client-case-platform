@@ -88,6 +88,6 @@ export function useMarkThreadReadIfFinal() {
         // Не критично — статус уже обновлён
       }
     },
-    [queryClient, user?.id],
+    [queryClient, user],
   )
 }
