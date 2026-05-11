@@ -114,9 +114,11 @@ function TaskField({
       )
 
     case 'unread':
-      // Рендерится отдельно в BoardTaskRow справа на уровне всей карточки —
-      // см. фильтрацию rows ниже.
-      return null
+      return (
+        <div className={cn('flex items-center shrink-0', style.align === 'right' && 'ml-auto')}>
+          <UnreadBadge threadId={task.id} workspaceId={workspaceId} accentColor={task.accent_color} />
+        </div>
+      )
 
     default:
       return null
@@ -139,25 +141,10 @@ export function BoardTaskRow({
   const overdue = isOverdue(task.deadline)
   const currentStatus = statuses.find((s) => s.id === task.status_id) ?? null
 
-  const rawRows = useMemo(
+  const rows = useMemo(
     () => resolveCardLayout(cardLayout, 'thread')
       ?? visibleFieldsToLayout(visibleFields, displayMode, 'thread'),
     [cardLayout, visibleFields, displayMode],
-  )
-
-  // Unread-бейдж рендерим отдельно справа на уровне всей карточки —
-  // в многострочном режиме (cards) иначе он визуально прибит к первой
-  // строке, а должен быть по центру всей высоты.
-  const showUnread = useMemo(
-    () => rawRows.some((r) => r.fields.some((f) => f.fieldId === 'unread')),
-    [rawRows],
-  )
-  const rows = useMemo(
-    () =>
-      rawRows
-        .map((r) => ({ ...r, fields: r.fields.filter((f) => f.fieldId !== 'unread') }))
-        .filter((r) => r.fields.length > 0),
-    [rawRows],
   )
 
   const handleClick = () => onOpenTask(task.id)
@@ -205,38 +192,25 @@ export function BoardTaskRow({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
-      <div className="flex items-center gap-1.5">
-        <div className="flex-1 min-w-0">
-          {rows.map((row, i) => {
-            const lastLeftIdx = row.fields.reduce(
-              (acc, f, idx) => (f.style.align === 'left' ? idx : acc),
-              -1,
-            )
-            return (
-              <div key={i} className={cn('flex items-center gap-1.5 min-w-0', i > 0 && 'mt-0.5')}>
-                {row.fields.map((f, idx) => (
-                  <TaskField
-                    key={f.fieldId}
-                    fieldId={f.fieldId}
-                    style={f.style}
-                    stretch={idx === lastLeftIdx}
-                    {...fieldProps}
-                  />
-                ))}
-              </div>
-            )
-          })}
-        </div>
-        {showUnread && (
-          <div className="shrink-0">
-            <UnreadBadge
-              threadId={task.id}
-              workspaceId={workspaceId}
-              accentColor={task.accent_color}
-            />
+      {rows.map((row, i) => {
+        const lastLeftIdx = row.fields.reduce(
+          (acc, f, idx) => (f.style.align === 'left' ? idx : acc),
+          -1,
+        )
+        return (
+          <div key={i} className={cn('flex items-center gap-1.5 min-w-0', i > 0 && 'mt-0.5')}>
+            {row.fields.map((f, idx) => (
+              <TaskField
+                key={f.fieldId}
+                fieldId={f.fieldId}
+                style={f.style}
+                stretch={idx === lastLeftIdx}
+                {...fieldProps}
+              />
+            ))}
           </div>
-        )}
-      </div>
+        )
+      })}
     </div>
   )
 }
