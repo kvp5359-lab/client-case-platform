@@ -51,13 +51,15 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   const searchParams = useSearchParams()
   const workspaceId = propsWorkspaceId || params.workspaceId
 
-  // Extract projectId from URL + оптимистичный state для мгновенной анимации.
-  const urlProjectId = pathname.match(/\/projects\/([^/]+)/)?.[1]
-  const [optimisticProjectId, setOptimisticProjectId] = useState<string | undefined>(urlProjectId)
+  // Extract projectId из URL + оптимистичный state для мгновенной анимации.
+  // URL содержит short_id (например `/projects/57`), а нам нужен UUID для
+  // сравнения с `project.id` в сайдбаре. Резолв short_id → UUID делается ниже,
+  // когда подгрузится список проектов.
+  const urlProjectSegment = pathname.match(/\/projects\/([^/]+)/)?.[1]
+  const [optimisticProjectSegment, setOptimisticProjectSegment] = useState<string | undefined>(urlProjectSegment)
   useEffect(() => {
-    setOptimisticProjectId(urlProjectId)
-  }, [urlProjectId])
-  const activeProjectId = optimisticProjectId
+    setOptimisticProjectSegment(urlProjectSegment)
+  }, [urlProjectSegment])
   const { user } = useAuth()
 
   const [rawSearchQuery, setRawSearchQuery] = useState('')
@@ -97,6 +99,18 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
     permissionsResult,
     refreshProjects,
   } = useSidebarData({ workspaceId, searchQuery: debouncedSearchQuery, unreadProjectIds })
+
+  // Резолв URL-сегмента (short_id или UUID) в реальный project.id (UUID).
+  // URL содержит short_id (например `/projects/57`), но `project.id` в
+  // сайдбаре — UUID. Чтобы сравнение в `ProjectListItem` сработало, резолвим
+  // через `projects` list. Старые ссылки с UUID — поддерживаются.
+  const activeProjectId = useMemo(() => {
+    if (!optimisticProjectSegment) return undefined
+    if (optimisticProjectSegment.includes('-')) return optimisticProjectSegment
+    const asNum = Number(optimisticProjectSegment)
+    if (Number.isNaN(asNum)) return optimisticProjectSegment
+    return projects.find((p) => p.short_id === asNum)?.id ?? optimisticProjectSegment
+  }, [optimisticProjectSegment, projects])
 
   const {
     can: hasPermission,
