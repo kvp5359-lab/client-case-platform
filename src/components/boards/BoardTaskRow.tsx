@@ -38,8 +38,16 @@ function ProjectOrCounterpartField({
   const counterpartName = useThreadCounterpartName(task.id, workspaceId)
   const value = task.project_name ?? counterpartName
   if (!value) return null
+  // shrink=1.5 — при нехватке ширины проект сжимается сильнее, чем name (приоритет
+  // на названии треда). Без grow — если места хватает, project прижат к name после
+  // gap, не растягивается на половину карточки.
   return (
-    <span className={cn(classes, 'min-w-0 flex-[2] text-muted-foreground/60')}>{value}</span>
+    <span
+      className={cn(classes, 'min-w-0 text-muted-foreground/60')}
+      style={{ flexShrink: 1.5 }}
+    >
+      {value}
+    </span>
   )
 }
 
@@ -99,7 +107,7 @@ function TaskField({
         <span
           className={cn(
             classes,
-            'min-w-0 leading-snug flex-[3]',
+            'min-w-0 leading-snug',
             overdue && 'text-red-500',
           )}
         >
