@@ -17,7 +17,7 @@
  * Маппинг ProjectThread → TaskItem — в threadToTaskItem.ts.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { type SystemTabDef } from './TaskPanelTabBar'
@@ -97,16 +97,20 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   // Если URL содержит panelTab=thread:<short|uuid> и страница не знает projectId
   // (например, /boards/X) — резолвим тред через RPC, выставляем activeProjectId
   // под scope треда. Это позволяет открывать тред в side panel по shareable-ссылке.
-  // ВАЖНО: применяем только пока activeProjectId === null (первый рендер).
-  // Если пользователь УЖЕ кликнул на тред (activeProjectId стал не-null), URL
-  // ещё не успел обновиться, и эффект бы возвращал scope обратно на тред из
-  // URL — а pendingOpen для нового scope отбрасывался бы (guard ниже),
-  // и панель переставала переключаться.
+  //
+  // ВАЖНО: применяем только если этот URL ещё не применяли. Если пользователь
+  // кликает другой тред с другим scope, activeProjectId ненадолго становится null,
+  // но URL ещё не успел обновиться. Без флага этот эффект тут же возвращал scope
+  // обратно на старый тред — pendingOpen для нового треда отбрасывался guard'ом
+  // ниже, и панель «дёргалась», но оставалась на старом треде.
   const resolvedFromUrl = useThreadFromPanelTab(workspaceId)
+  const appliedUrlThreadRef = useRef<string | null>(null)
   useEffect(() => {
     if (!resolvedFromUrl) return
-    if (activeProjectId !== null) return
     if (pageProjectId) return // на странице проекта scope уже задан
+    if (appliedUrlThreadRef.current === resolvedFromUrl.threadUuid) return
+    appliedUrlThreadRef.current = resolvedFromUrl.threadUuid
+    if (activeProjectId !== null) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- scope-resolver: подхватываем projectId из shareable-ссылки на /boards|/inbox
     setActiveProjectId(resolvedFromUrl.projectId)
   }, [resolvedFromUrl, activeProjectId, pageProjectId])
