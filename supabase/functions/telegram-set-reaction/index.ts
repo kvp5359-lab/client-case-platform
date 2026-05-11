@@ -115,7 +115,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // setMessageReaction идёт через того же бота, который отправил оригинал.
+    // setMessageReaction идёт через того же бота, который отправил оригинал
+    // (если знаем). Если на сообщении нет integration_id — пробуем личный бот
+    // реагирующего пользователя в этом воркспейсе, чтобы реакция шла «от него»,
+    // а не от секретаря. Это важно для групп, где есть и личный бот, и секретарь.
     let TELEGRAM_BOT_TOKEN: string;
     {
       const { data: msgRow } = await supabaseAdmin
@@ -132,8 +135,25 @@ Deno.serve(async (req: Request) => {
       if (fromIntegration) {
         TELEGRAM_BOT_TOKEN = fromIntegration.token;
       } else {
-        const fallback = await resolveBotToken(supabaseAdmin, body.chat_id);
-        TELEGRAM_BOT_TOKEN = fallback.token;
+        // Личный бот реагирующего пользователя в воркспейсе чата.
+        const { data: empBots } = await supabaseAdmin
+          .from("workspace_integrations")
+          .select("id, is_active, config, secrets")
+          .eq("workspace_id", convWorkspaceId)
+          .eq("type", "telegram_employee_bot")
+          .eq("is_active", true);
+        const myBot = (empBots ?? []).find(
+          (r) =>
+            (r.config as { owner_user_id?: string } | null)?.owner_user_id === user.id,
+        );
+        const myBotToken =
+          (myBot?.secrets as { token?: string } | null)?.token ?? null;
+        if (myBotToken) {
+          TELEGRAM_BOT_TOKEN = myBotToken;
+        } else {
+          const fallback = await resolveBotToken(supabaseAdmin, body.chat_id);
+          TELEGRAM_BOT_TOKEN = fallback.token;
+        }
       }
     }
 
