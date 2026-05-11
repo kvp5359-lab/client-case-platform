@@ -109,6 +109,35 @@ export function useContactThreads(participantId: string | null | undefined) {
   })
 }
 
+export function useRenameParticipant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      participantId,
+      name,
+      lastName,
+    }: {
+      participantId: string
+      name: string
+      lastName: string | null
+    }) => {
+      const { error } = await supabase
+        .from('participants')
+        .update({ name, last_name: lastName })
+        .eq('id', participantId)
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: participantKeys.byId(vars.participantId) })
+      qc.invalidateQueries({ queryKey: participantKeys.all })
+      toast.success('Контакт переименован')
+    },
+    onError: (err: Error) => {
+      toast.error(`Не удалось переименовать: ${err.message}`)
+    },
+  })
+}
+
 export function useMergeParticipants(workspaceId: string | undefined) {
   const qc = useQueryClient()
   return useMutation({

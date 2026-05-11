@@ -1,14 +1,19 @@
 "use client"
 
-import { useState, useMemo } from 'react'
-import { Mail, Phone, Send, FolderInput, MessagesSquare, X, Search } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Mail, Phone, Send, FolderInput, MessagesSquare, X, Search, Pencil, Check } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useContactParticipant, useContactThreads, useMergeParticipants } from '@/hooks/useContactCard'
+import {
+  useContactParticipant,
+  useContactThreads,
+  useMergeParticipants,
+  useRenameParticipant,
+} from '@/hooks/useContactCard'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { cn } from '@/lib/utils'
 
@@ -42,7 +47,11 @@ export function ContactCardDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle className="text-base">
-            {contact ? `${contact.name}${contact.last_name ? ' ' + contact.last_name : ''}` : 'Контакт'}
+            {contact ? (
+              <RenameInline contact={contact} />
+            ) : (
+              'Контакт'
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -235,6 +244,107 @@ function MergePicker({ contact, onCancel, onDone }: MergePickerProps) {
           Отмена
         </button>
       </div>
+    </div>
+  )
+}
+
+interface RenameInlineProps {
+  contact: NonNullable<ReturnType<typeof useContactParticipant>['data']>
+}
+
+function RenameInline({ contact }: RenameInlineProps) {
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(contact.name)
+  const [lastName, setLastName] = useState(contact.last_name ?? '')
+  const renameMutation = useRenameParticipant()
+
+  // Сбрасываем локальное состояние при смене контакта/при отмене редактирования.
+  useEffect(() => {
+    if (!editing) {
+      setName(contact.name)
+      setLastName(contact.last_name ?? '')
+    }
+  }, [contact.id, contact.name, contact.last_name, editing])
+
+  // Сотрудников переименовывать через эту карточку не даём — у них есть свой
+  // профиль; имя может тянуться из user_metadata.
+  const canRename = !contact.can_login && !contact.user_id
+
+  if (!editing) {
+    const fullName = `${contact.name}${contact.last_name ? ' ' + contact.last_name : ''}`
+    return (
+      <div className="flex items-center gap-2">
+        <span>{fullName}</span>
+        {canRename && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-gray-400 hover:text-gray-700 p-0.5 rounded"
+            aria-label="Переименовать контакт"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  const save = () => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    renameMutation.mutate(
+      {
+        participantId: contact.id,
+        name: trimmed,
+        lastName: lastName.trim() || null,
+      },
+      { onSuccess: () => setEditing(false) },
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type="text"
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save()
+          if (e.key === 'Escape') setEditing(false)
+        }}
+        placeholder="Имя"
+        className="text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-gray-400 min-w-0 flex-1"
+      />
+      <input
+        type="text"
+        value={lastName}
+        onChange={(e) => setLastName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save()
+          if (e.key === 'Escape') setEditing(false)
+        }}
+        placeholder="Фамилия"
+        className="text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-gray-400 min-w-0 flex-1"
+      />
+      <button
+        type="button"
+        onClick={save}
+        disabled={renameMutation.isPending || !name.trim()}
+        className="p-1 rounded bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
+        aria-label="Сохранить"
+      >
+        <Check className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setEditing(false)}
+        disabled={renameMutation.isPending}
+        className="p-1 rounded text-gray-500 hover:bg-gray-100"
+        aria-label="Отмена"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
     </div>
   )
 }
