@@ -56,6 +56,14 @@ export function useMarkThreadReadIfFinal() {
       try {
         await markAsRead(participant.participantId, projectId ?? undefined, 'client', threadId)
         queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), 0)
+        // Красная полоса «непрочитанного» на конкретных баблах рисуется по last_read_at —
+        // без инвалидации эти ключи остаются на старом значении до перезагрузки.
+        queryClient.invalidateQueries({ queryKey: messengerKeys.lastReadAtByThreadId(threadId) })
+        if (projectId) {
+          queryClient.invalidateQueries({
+            queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),
+          })
+        }
 
         if (workspaceId) {
           const inboxKey = inboxKeys.threads(workspaceId)
