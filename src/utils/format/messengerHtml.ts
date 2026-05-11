@@ -46,13 +46,20 @@ export function stripHtmlKeepNewlines(html: string): string {
     .trim()
 }
 
-/** Санитизация HTML для мессенджера — строгий whitelist тегов */
+/** Санитизация HTML для мессенджера — строгий whitelist тегов.
+ *
+ * div/span включены, потому что email-клиенты (Gmail в первую очередь)
+ * рендерят абзацы как `<div>...</div><div><br></div><div>...</div>`. Без
+ * div'ов после санитизации абзацы слипались в одну строку. Атрибуты
+ * (style, class) всё равно вычищаются — рендерим только семантику. */
 export function sanitizeMessengerHtml(dirty: string): string {
   if (!dirty) return ''
   return DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: [
       'p',
       'br',
+      'div',
+      'span',
       'strong',
       'b',
       'em',

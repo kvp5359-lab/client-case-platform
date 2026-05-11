@@ -317,6 +317,55 @@ export async function handleInbound(supabase: ServiceClient, event: ResendEvent)
     .update({ email_last_external_address: realFrom.address })
     .eq('id', threadId)
 
+  // Сохраняем вложения (Resend отдаёт base64 в content). Кладём в Storage bucket
+  // 'files' и связываем с сообщением через message_attachments. Если у треда нет
+  // project_id (personal-диалог) — кладём по пути workspace/<ws>/email-attachments.
+  if (data.attachments && data.attachments.length > 0) {
+    for (const att of data.attachments) {
+      if (!att.content) continue
+      try {
+        const bs = atob(att.content)
+        const bytes = new Uint8Array(bs.length)
+        for (let i = 0; i < bs.length; i++) bytes[i] = bs.charCodeAt(i)
+        const fileName = att.filename ?? 'attachment'
+        const dotIdx = fileName.lastIndexOf('.')
+        const ext = dotIdx >= 0 ? fileName.slice(dotIdx) : ''
+        const rand = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
+        const sp = projectId
+          ? `${workspaceId}/${projectId}/email-attachments/${rand}`
+          : `${workspaceId}/email-attachments/${rand}`
+        const mime = att.content_type || 'application/octet-stream'
+        const { error: ue } = await supabase.storage
+          .from('files')
+          .upload(sp, bytes, { upsert: false, contentType: mime })
+        if (ue) continue
+        const { data: fr } = await supabase
+          .from('files')
+          .insert({
+            workspace_id: workspaceId,
+            bucket: 'files',
+            storage_path: sp,
+            file_name: fileName,
+            file_size: bytes.length,
+            mime_type: mime,
+          })
+          .select('id')
+          .single()
+        if (!fr) continue
+        await supabase.from('message_attachments').insert({
+          message_id: inserted.id,
+          file_name: fileName,
+          file_size: bytes.length,
+          mime_type: mime,
+          storage_path: sp,
+          file_id: fr.id,
+        })
+      } catch (e) {
+        console.error('[resend-webhook] Attachment error:', att.filename, e)
+      }
+    }
+  }
+
   // Auto-responder: если письмо пришло на виртуальный адрес с включённым
   // auto_reply_enabled — fire-and-forget шлём готовый ответ.
   // Заголовок Auto-Submitted предотвращает ping-pong с другими auto-responder'ами.
