@@ -20,13 +20,13 @@ const accentIconClasses: Record<AccentColor, string> = {
   green: 'text-green-600',
 }
 
-interface ChatEmptyStateProps {
+interface AiChatEmptyStateProps {
   title: string
   description: string
   accent?: AccentColor
 }
 
-export function ChatEmptyState({ title, description, accent = 'purple' }: ChatEmptyStateProps) {
+export function AiChatEmptyState({ title, description, accent = 'purple' }: AiChatEmptyStateProps) {
   return (
     <div className="flex-1 flex items-center justify-center">
       <div className="text-center space-y-3 max-w-md px-4">

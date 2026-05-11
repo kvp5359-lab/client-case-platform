@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
 import { MessageBubble } from './MessageBubble'
-import { ChatEmptyState } from './ChatEmptyState'
+import { MessengerEmptyState } from './MessengerEmptyState'
 import { useMessengerContext } from './MessengerContext'
 import { formatAuditEvent, type ThreadAuditEvent } from '@/hooks/messenger/useThreadAuditEvents'
 import { safeCssColor } from '@/utils/isValidCssColor'
@@ -352,7 +352,7 @@ export function MessageList({
   }
 
   if (messages.length === 0 && auditEvents.length === 0) {
-    return <ChatEmptyState />
+    return <MessengerEmptyState />
   }
 
   return (

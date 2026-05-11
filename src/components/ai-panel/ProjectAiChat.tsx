@@ -23,7 +23,7 @@ import { AiMessageBubble } from './AiMessageBubble'
 import { AiStreamingBubble } from './AiStreamingBubble'
 import { ChatDateSeparator } from '@/components/shared/ChatDateSeparator'
 import { ConversationTabsBar } from '@/components/shared/ConversationTabsBar'
-import { ChatEmptyState } from '@/components/shared/ChatEmptyState'
+import { AiChatEmptyState } from '@/components/shared/AiChatEmptyState'
 import { useProjectAiConversations } from './hooks/useProjectAiConversations'
 import { useProjectAiRestore } from './hooks/useProjectAiRestore'
 import { useProjectAiDocuments } from './hooks/useProjectAiDocuments'
@@ -270,7 +270,7 @@ export function ProjectAiChat({
             <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
           </div>
         ) : isEmpty ? (
-          <ChatEmptyState
+          <AiChatEmptyState
             title={hasProject ? 'AI-ассистент проекта' : 'AI-ассистент базы знаний'}
             description={
               hasProject

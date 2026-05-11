@@ -1,6 +1,6 @@
 import { MessageSquare } from 'lucide-react'
 
-export function ChatEmptyState() {
+export function MessengerEmptyState() {
   return (
     <div className="flex-1 flex items-center justify-center">
       <div className="text-center space-y-3 max-w-md px-4">
