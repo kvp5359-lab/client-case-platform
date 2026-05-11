@@ -199,6 +199,37 @@ Deno.serve(async (req: Request) => {
   const html = wrapEmailHtml(htmlInner + trackingPixel);
   const text = htmlToPlainText(htmlInner);
 
+  // Грузим вложения: filename, mime, bytes (для Gmail RFC2822) и base64 (для Resend).
+  interface OutboundAttachment {
+    filename: string;
+    mime: string;
+    bytes: Uint8Array;
+    base64: string;
+  }
+  const attachments: OutboundAttachment[] = [];
+  if (m.has_attachments) {
+    const { data: rows } = await service
+      .from("message_attachments")
+      .select("file_name, mime_type, storage_path")
+      .eq("message_id", m.id);
+    for (const row of (rows ?? []) as Array<{ file_name: string; mime_type: string; storage_path: string }>) {
+      const { data: blob, error: dlErr } = await service.storage
+        .from("files")
+        .download(row.storage_path);
+      if (dlErr || !blob) {
+        console.error("[email-internal-send] attachment download failed:", row.storage_path, dlErr);
+        continue;
+      }
+      const buf = new Uint8Array(await blob.arrayBuffer());
+      attachments.push({
+        filename: row.file_name,
+        mime: row.mime_type || "application/octet-stream",
+        bytes: buf,
+        base64: uint8ArrayToBase64(buf),
+      });
+    }
+  }
+
   // Метод отправки: явный на сообщении/треде, иначе авто (есть account → Gmail, иначе Resend)
   const tExt = t as unknown as ThreadRowExt;
   const explicitMethod = m.email_send_method ?? tExt.email_send_method ?? null;
@@ -267,6 +298,7 @@ Deno.serve(async (req: Request) => {
       references,
       html,
       text,
+      attachments,
     });
     const raw = uint8ArrayToBase64(new TextEncoder().encode(rfc2822))
       .replace(/\+/g, "-")
@@ -390,7 +422,7 @@ Deno.serve(async (req: Request) => {
   if (inReplyTo) headers["In-Reply-To"] = inReplyTo;
   if (references.length) headers["References"] = references.join(" ");
 
-  const resendBody = {
+  const resendBody: Record<string, unknown> = {
     from: `"${escapeFromName(senderName)}" <${fromAddress}>`,
     to: [t.email_last_external_address],
     subject: subjectRaw,
@@ -398,6 +430,13 @@ Deno.serve(async (req: Request) => {
     text,
     headers,
   };
+  if (attachments.length > 0) {
+    resendBody.attachments = attachments.map((a) => ({
+      filename: a.filename,
+      content: a.base64,
+      content_type: a.mime,
+    }));
+  }
 
   const resp = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -523,8 +562,11 @@ function buildRfc2822(opts: {
   references: string[];
   html: string;
   text: string;
+  attachments?: Array<{ filename: string; mime: string; bytes: Uint8Array; base64: string }>;
 }): string {
   const altBoundary = `alt_${crypto.randomUUID().replace(/-/g, "")}`;
+  const mixedBoundary = `mix_${crypto.randomUUID().replace(/-/g, "")}`;
+  const hasAttachments = (opts.attachments?.length ?? 0) > 0;
   const lines: string[] = [];
   lines.push(`From: ${rfc2047EncodeName(opts.fromName)} <${opts.fromAddress}>`);
   lines.push(`To: ${opts.to}`);
@@ -533,8 +575,19 @@ function buildRfc2822(opts: {
   if (opts.inReplyTo) lines.push(`In-Reply-To: ${opts.inReplyTo}`);
   if (opts.references.length) lines.push(`References: ${opts.references.join(" ")}`);
   lines.push(`MIME-Version: 1.0`);
-  lines.push(`Content-Type: multipart/alternative; boundary="${altBoundary}"`);
-  lines.push(``);
+
+  if (hasAttachments) {
+    lines.push(`Content-Type: multipart/mixed; boundary="${mixedBoundary}"`);
+    lines.push(``);
+    lines.push(`--${mixedBoundary}`);
+    lines.push(`Content-Type: multipart/alternative; boundary="${altBoundary}"`);
+    lines.push(``);
+  } else {
+    lines.push(`Content-Type: multipart/alternative; boundary="${altBoundary}"`);
+    lines.push(``);
+  }
+
+  // Body — text + html alternative
   lines.push(`--${altBoundary}`);
   lines.push(`Content-Type: text/plain; charset=UTF-8`);
   lines.push(`Content-Transfer-Encoding: base64`);
@@ -548,6 +601,23 @@ function buildRfc2822(opts: {
   lines.push(toBase64(opts.html));
   lines.push(``);
   lines.push(`--${altBoundary}--`);
+
+  if (hasAttachments) {
+    for (const att of opts.attachments!) {
+      lines.push(``);
+      lines.push(`--${mixedBoundary}`);
+      lines.push(`Content-Type: ${att.mime}; name="${rfc2047Encode(att.filename)}"`);
+      lines.push(`Content-Disposition: attachment; filename="${rfc2047Encode(att.filename)}"`);
+      lines.push(`Content-Transfer-Encoding: base64`);
+      lines.push(``);
+      // RFC 2045 рекомендует base64 в строках по 76 символов
+      const wrapped = att.base64.replace(/(.{76})/g, "$1\r\n");
+      lines.push(wrapped);
+    }
+    lines.push(``);
+    lines.push(`--${mixedBoundary}--`);
+  }
+
   return lines.join("\r\n");
 }
 
