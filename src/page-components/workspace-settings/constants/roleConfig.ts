@@ -6,7 +6,7 @@
  * лейблы живут здесь, а не подтягиваются динамически из БД.
  */
 
-import { Crown, Users, Link, HandshakeIcon, type LucideIcon } from 'lucide-react'
+import { Crown, Users, Link, HandshakeIcon, Contact, type LucideIcon } from 'lucide-react'
 
 export interface RoleConfigItem {
   key: string
@@ -44,6 +44,13 @@ export const ROLE_CONFIG: RoleConfigItem[] = [
     pluralLabel: 'Клиенты',
     icon: HandshakeIcon,
     statsKey: 'client',
+  },
+  {
+    key: 'Внешний контакт',
+    label: 'Внешний контакт',
+    pluralLabel: 'Внешние контакты',
+    icon: Contact,
+    statsKey: 'external_contact',
   },
 ]
 

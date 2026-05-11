@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Crown, Users, Link, HandshakeIcon, Camera, type LucideIcon } from 'lucide-react'
+import { Crown, Users, Link, HandshakeIcon, Contact, Camera, type LucideIcon } from 'lucide-react'
 import { ParticipantChannelsBlock } from './ParticipantChannelsBlock'
 
 export interface RoleOption {
@@ -44,6 +44,7 @@ const DEFAULT_ROLES: RoleOption[] = [
   { value: 'Сотрудник', label: 'Сотрудник', icon: Users },
   { value: 'Внешний сотрудник', label: 'Внешний сотрудник', icon: Link },
   { value: 'Клиент', label: 'Клиент', icon: HandshakeIcon },
+  { value: 'Внешний контакт', label: 'Внешний контакт', icon: Contact },
 ]
 
 interface EditParticipantDialogProps {

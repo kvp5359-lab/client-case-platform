@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react'
-import { X, ChevronDown, Search, Crown, Users, Link, HandshakeIcon, Plus } from 'lucide-react'
+import { X, ChevronDown, Search, Crown, Users, Link, HandshakeIcon, Contact, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ const ROLE_ICONS: Record<string, React.ElementType> = {
   Сотрудник: Users,
   'Внешний сотрудник': Link,
   Клиент: HandshakeIcon,
+  'Внешний контакт': Contact,
 }
 
 function getInitials(option: MultiSelectOption) {
