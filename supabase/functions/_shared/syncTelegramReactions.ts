@@ -58,12 +58,18 @@ export async function syncTelegramReactions(
     [reaction.user?.first_name, reaction.user?.last_name].filter(Boolean).join(" ") ||
     "Telegram User";
 
-  const { data: msg } = await service
+  // Берём САМУЮ СВЕЖУЮ запись с этим tg_message_id: в basic-группах
+  // message_id может переиспользоваться (мы видели коллизии в DB), а реакция
+  // всегда относится к последнему сообщению с этим id. .maybeSingle() ронял
+  // тихую ошибку при multiple matches → реакция терялась.
+  const { data: msgs } = await service
     .from("project_messages")
     .select("id, workspace_id")
     .eq("telegram_chat_id", chatId)
     .contains("telegram_message_ids", [telegramMessageId])
-    .maybeSingle();
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const msg = msgs && msgs.length > 0 ? msgs[0] : null;
   if (!msg) return;
 
   // Маппинг tg-юзера в participant'а (если он есть в воркспейсе).
@@ -134,12 +140,14 @@ export async function syncTelegramReactionsAggregated(
   const chatId = update.chat.id;
   const telegramMessageId = update.message_id;
 
-  const { data: msg } = await service
+  const { data: msgs } = await service
     .from("project_messages")
     .select("id")
     .eq("telegram_chat_id", chatId)
     .contains("telegram_message_ids", [telegramMessageId])
-    .maybeSingle();
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const msg = msgs && msgs.length > 0 ? msgs[0] : null;
   if (!msg) return;
 
   // Сносим прежние анонимные строки для этого TG-msg, чтобы не плодить дубли.

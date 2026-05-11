@@ -244,19 +244,6 @@ Deno.serve(async (req: Request) => {
   try {
     const update = await req.json();
 
-    // DEBUG: видеть какие update-типы реально присылает Telegram. Особенно
-    // важно для media-group реакций (см. issue с пропавшими реакциями на альбомах).
-    console.log(JSON.stringify({
-      sub: "telegram-webhook",
-      event: "update.received",
-      update_keys: Object.keys(update),
-      update_id: update.update_id,
-      reaction_message_id: update.message_reaction?.message_id ?? update.message_reaction_count?.message_id ?? null,
-      reaction_chat_id: update.message_reaction?.chat?.id ?? update.message_reaction_count?.chat?.id ?? null,
-      reaction_user: update.message_reaction?.user?.id ?? null,
-      reaction_emojis: update.message_reaction?.new_reaction?.map((r: { emoji?: string }) => r.emoji) ?? null,
-    }));
-
     if (update.message_reaction) {
       await syncTelegramReactions(serviceClient, update.message_reaction);
       return new Response("ok", { status: 200 });
