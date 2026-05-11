@@ -214,6 +214,25 @@ describe('setContext', () => {
     useSidePanelStore.getState().setContext({ projectId: 'p-1' }) // тот же
     expect(useSidePanelStore.getState().activeChatId).toBe('manually-set')
   })
+
+  it('A15: при смене workspaceId aiSessions из памяти очищаются', () => {
+    useSidePanelStore.getState().setContext({ workspaceId: 'ws-1' })
+    useSidePanelStore.getState().updateAiSession('p-1', {
+      activeConversationId: 'conv-1',
+      aiMessages: [{ id: 'm-1', role: 'user', content: 'hi', created_at: '' }],
+    })
+    expect(Object.keys(useSidePanelStore.getState().aiSessions)).toContain('p-1')
+
+    useSidePanelStore.getState().setContext({ workspaceId: 'ws-2' })
+    expect(useSidePanelStore.getState().aiSessions).toEqual({})
+  })
+
+  it('A15: повторная установка того же workspaceId не сбрасывает aiSessions', () => {
+    useSidePanelStore.getState().setContext({ workspaceId: 'ws-1' })
+    useSidePanelStore.getState().updateAiSession('p-1', { activeConversationId: 'c-1' })
+    useSidePanelStore.getState().setContext({ workspaceId: 'ws-1', projectId: 'p-1' })
+    expect(useSidePanelStore.getState().aiSessions['p-1']).toBeDefined()
+  })
 })
 
 describe('setChatsEnabled', () => {

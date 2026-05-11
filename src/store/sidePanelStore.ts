@@ -130,6 +130,16 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
         const savedChat = lsGet<string | null>(LS_KEY_ACTIVE_THREAD_PREFIX + ctx.projectId, null)
         next.activeChatId = savedChat
       }
+      // A15: при смене воркспейса — сбрасываем aiSessions из памяти.
+      // Это убирает накопление сессий чужих проектов (memory leak при долгой
+      // навигации). localStorage с activeConversationId и sources остаётся —
+      // при возврате на проект getAiSession() отбилдит сессию из persist'а.
+      if (
+        ctx.workspaceId !== undefined &&
+        ctx.workspaceId !== state.pageContext.workspaceId
+      ) {
+        next.aiSessions = {}
+      }
       return next
     }),
 
