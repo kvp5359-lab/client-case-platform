@@ -27,6 +27,7 @@ import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProjects'
 import { useQueryClient } from '@tanstack/react-query'
 import { workspaceThreadKeys, accessibleProjectKeys } from '@/hooks/queryKeys'
+import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
 
 interface BulkActionsBarProps {
   entityType: 'thread' | 'project'
@@ -48,6 +49,7 @@ export function BulkActionsBar({
   projectStatuses = [],
 }: BulkActionsBarProps) {
   const qc = useQueryClient()
+  const markReadIfFinal = useMarkThreadReadIfFinal()
   const [pending, setPending] = useState(false)
 
   const selectedItems = items.filter((it) => selectedIds.has(it.id))
@@ -69,18 +71,31 @@ export function BulkActionsBar({
   const setThreadStatus = async (statusId: string | null) => {
     setPending(true)
     try {
-      const ids = selectedItems
-        .filter((it) => (it as WorkspaceTask).type !== 'chat')
-        .map((it) => it.id)
-      if (ids.length === 0) {
+      const targets = selectedItems
+        .filter((it) => (it as WorkspaceTask).type !== 'chat') as WorkspaceTask[]
+      if (targets.length === 0) {
         toast.info('Среди выделенных нет задач — статус устанавливать некому')
         return
       }
+      const ids = targets.map((t) => t.id)
       const { error } = await supabase
         .from('project_threads')
         .update({ status_id: statusId } as never)
         .in('id', ids)
       if (error) throw error
+
+      // Если новый статус финальный — помечаем каждый тред прочитанным.
+      // Внутри хелпер сам проверит is_final, но мы делаем это последовательно,
+      // чтобы кэш-патчи на inbox v2 не конкурировали друг с другом.
+      for (const t of targets) {
+        await markReadIfFinal({
+          threadId: t.id,
+          statusId,
+          projectId: t.project_id,
+          workspaceId: t.workspace_id,
+        })
+      }
+
       toast.success(`Статус обновлён у ${ids.length}`)
       refresh()
       onClearSelection()

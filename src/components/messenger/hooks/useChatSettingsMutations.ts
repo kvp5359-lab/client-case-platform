@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { messengerKeys, projectThreadKeys, workspaceTaskKeys } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
+import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
 import type { AccessType } from '../chatSettingsTypes'
 
 interface UseChatSettingsMutationsParams {
@@ -23,6 +24,7 @@ export function useChatSettingsMutations({
   resolvedWorkspaceId,
 }: UseChatSettingsMutationsParams) {
   const queryClient = useQueryClient()
+  const markReadIfFinal = useMarkThreadReadIfFinal()
 
   const updateProjectMutation = useMutation({
     mutationFn: async (newProjectId: string | null) => {
@@ -57,6 +59,12 @@ export function useChatSettingsMutations({
         .update({ status_id: statusId })
         .eq('id', chatId)
       if (error) throw error
+      await markReadIfFinal({
+        threadId: chatId,
+        statusId,
+        projectId: chatProjectId ?? null,
+        workspaceId: resolvedWorkspaceId ?? null,
+      })
     },
     onSuccess: () => {
       if (chatProjectId)

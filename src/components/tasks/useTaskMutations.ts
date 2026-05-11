@@ -13,20 +13,14 @@ import {
   projectThreadKeys,
   accessibleProjectKeys,
   projectKeys,
-  inboxKeys,
-  messengerKeys,
 } from '@/hooks/queryKeys'
-import { useAuth } from '@/contexts/AuthContext'
-import { markAsRead } from '@/services/api/messenger/messengerReadStatusService'
-import { getCurrentProjectParticipant } from '@/services/api/messenger/messengerParticipantService'
-import type { InboxThreadEntry } from '@/services/api/inboxService'
+import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
 
 export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
   const queryClient = useQueryClient()
-  const { user } = useAuth()
+  const markReadIfFinal = useMarkThreadReadIfFinal()
   return useMutation({
     mutationFn: async ({ threadId, statusId }: { threadId: string; statusId: string | null }) => {
-      // Read old value for audit
       const { data: old } = await supabase
         .from('project_threads')
         .select('status_id, name, project_id, workspace_id')
@@ -45,50 +39,12 @@ export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unkno
         new_status: statusId,
       }, old?.project_id ?? undefined)
 
-      // Перевод в финальный статус = тред «закрыт» → помечаем прочитанным,
-      // как при отправке сообщения. Только если есть проект (без проекта нет
-      // participant'а) и реальный пользователь.
-      if (statusId && old?.project_id && user?.id) {
-        const { data: status } = await supabase
-          .from('statuses')
-          .select('is_final')
-          .eq('id', statusId)
-          .maybeSingle()
-        if (status?.is_final) {
-          const participant = await getCurrentProjectParticipant(old.project_id, user.id)
-          if (participant) {
-            try {
-              await markAsRead(participant.participantId, old.project_id, 'client', threadId)
-              queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), 0)
-              // Точечно гасим бейдж этого треда в кэше inbox v2. Перед патчем
-              // отменяем in-flight рефетчи (их триггерит useWorkspaceMessagesRealtime
-              // от UPDATE project_threads — они стартуют ДО markAsRead и возвращают
-              // ещё не обновлённый unread_count, который иначе перезатрёт наш патч).
-              if (old.workspace_id) {
-                const inboxKey = inboxKeys.threads(old.workspace_id)
-                await queryClient.cancelQueries({ queryKey: inboxKey })
-                queryClient.setQueryData<InboxThreadEntry[]>(inboxKey, (prev) => {
-                  if (!prev) return prev
-                  return prev.map((t) =>
-                    t.thread_id === threadId
-                      ? {
-                          ...t,
-                          unread_count: 0,
-                          manually_unread: false,
-                          has_unread_reaction: false,
-                          unread_reaction_count: 0,
-                          unread_event_count: 0,
-                        }
-                      : t,
-                  )
-                })
-              }
-            } catch {
-              // Не критично — статус уже обновлён
-            }
-          }
-        }
-      }
+      await markReadIfFinal({
+        threadId,
+        statusId,
+        projectId: old?.project_id ?? null,
+        workspaceId: old?.workspace_id ?? null,
+      })
     },
     onSuccess: async (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
