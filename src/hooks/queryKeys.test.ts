@@ -20,7 +20,7 @@ import {
   inboxKeys,
   personalDialogsKeys,
   invalidateAfterThreadMove,
-} from './queryKeys'
+} from '@/hooks/queryKeys'
 
 describe('formKitKeys', () => {
   it('all возвращает ["form-kit"]', () => {
