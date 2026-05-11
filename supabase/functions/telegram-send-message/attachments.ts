@@ -206,6 +206,15 @@ export async function sendAttachments(
       try {
         const resolved = await Promise.all(chunk.map((a: Record<string, unknown>) => resolveAttachment(a, supabaseClient)));
 
+        const nullCount = resolved.filter((r) => !r).length;
+        if (nullCount > 0) {
+          allSucceeded = false;
+          await supabaseClient
+            .from("project_messages")
+            .update({ telegram_error_detail: `sendMediaGroup(photo): ${nullCount}/${resolved.length} attachments failed to resolve` })
+            .eq("id", messageId);
+        }
+
         const formData = new FormData();
         formData.append("chat_id", String(chatId));
 
@@ -349,6 +358,7 @@ export async function sendAttachments(
 
         const nullCount = resolved.filter((r) => !r).length;
         if (nullCount > 0) {
+          allSucceeded = false;
           await supabaseClient
             .from("project_messages")
             .update({ telegram_error_detail: `sendMediaGroup(document): ${nullCount}/${resolved.length} attachments failed to resolve` })
