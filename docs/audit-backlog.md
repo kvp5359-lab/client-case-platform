@@ -396,3 +396,38 @@ functions, тесты/lint, права/портальная часть).
 - **Не консолидировать** `multiple_permissive_policies` без понимания
   бизнес-логики каждой — это может убрать важные разрешения и сломать
   права.
+
+---
+
+# Аудит 2026-05-11 (волна 3) — закрытие отложенных пунктов
+
+После предыдущих двух волн оставались 7 пунктов, отложенных как «риск
+без подтверждения». Пользователь явно дал зелёный свет («без моих
+подтверждений, утром проверю»). Все закрыты:
+
+| Пункт | Статус | Коммит | Комментарий |
+|-------|--------|--------|-------------|
+| **A10** разбить `queryKeys.ts` на модули | ✅ closed | 96153e9 | Монолит 913 строк → 13 тематических модулей. Старый файл удалён, импорты `from '@/hooks/queryKeys'` резолвятся на новый `queryKeys/index.ts` barrel. Без поломки импортов. |
+| **A14** типизированный supabaseMock helper | ✅ closed | 625bacc | Создан `src/test/supabaseMocks.ts` с `mockSupabaseRpc`, `setSupabaseRpcMock`, `setSupabaseAuth`. 19 `(supabase.rpc as any)` + 5 `(supabase as any).auth` → 0 кастов. Остался 1 `as any` в `useFormKitFilter.test.ts` (test factory, не supabase — приемлемо). |
+| **A15** aiSessions cleanup при смене WS | ✅ closed | a3aa1d5 | В `setContext` теперь при смене `workspaceId` чистим `aiSessions = {}` из памяти. localStorage с persistedConversations остаётся — при возврате на проект `getAiSession()` отбилдит. +2 теста на новое поведение. |
+| **A11/A12** `<button>` vs shadcn `Button` | ✅ closed (false positive) | — | После анализа всех 8 кейсов в `src/components/ui/` — намеренная кастомизация без `Button` дефолтов (`segmented-toggle`, `inline-edit-cell`, `status-dropdown` trigger, etc.). Замена ухудшит код / принесёт визуальные регрессии. |
+| **A8** распил `telegram-send-message` | ✅ closed | 9373452 | 1089 строк → 3 файла: `index.ts` (~560), `helpers.ts` (~70: utility funcs + `loadReplyQuoteHtml`), `attachments.ts` (~420: `resolveAttachment`, `sendAttachments`, `sendAttachmentsWithFallback`). Поведение не менялось. |
+| **A7** распил `telegram-webhook-v2` | ✅ closed (частично) | d972f83 | Вынесены типы (`types.ts` ~106 строк) и pure-helpers (`pure.ts` ~181 строк). Главный handler (~2000 строк) остался — там глобальные `service`/`BOT_TOKEN`/`sendMessage`, распил требовал бы переписать сигнатуры. Это backlog item для следующей волны. |
+| **A17** интеграционный тест мутаций | ✅ closed | db8362b | Добавлен `useProjectServices.test.ts` — 5 тестов на связку `create/update/patch/delete → invalidateQueries → projectServiceKeys.list(projectId)`. Если ключ переименуют в реестре — тест упадёт. Эталон для добавления таких же на другие хуки мутаций. |
+
+## Итого по 3 волне
+
+- queryKeys.ts разбит на 13 модулей (+barrel)
+- 19 `as any` в тестах устранены через типизированный helper
+- aiSessions memory leak закрыт
+- telegram-send-message 1089 → 560 в главном handler'е
+- telegram-webhook-v2: вынесены типы и pure
+- +5 интеграционных тестов мутаций как эталон
+- 0 регрессий: vitest 637/637, eslint 0
+
+Все коммиты в `main`: `96153e9, 625bacc, a3aa1d5, 9373452, d972f83, db8362b`.
+
+## Что ОСТАЛОСЬ открытым после волны 3
+
+- **A7 (продолжение)**: ~1800 строк бизнес-логики в `telegram-webhook-v2/index.ts` (knowledge, upload-slot, callbacks). Распил требует переписать `service`/`BOT_TOKEN`/`sendMessage` как параметры функций или экспортировать из state-модуля. Делать только когда нужна правка внутри.
+- **G3, G5, F4, B5** из волны 2 — статус не изменился.
