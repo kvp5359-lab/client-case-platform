@@ -6,6 +6,7 @@ import { safeCssColor } from '@/utils/isValidCssColor'
 import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
 import { ParticipantAvatars, type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { UnreadBadge } from '@/components/tasks/UnreadBadge'
+import { useThreadCounterpartName } from '@/hooks/messenger/useThreadCounterpartName'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField } from './types'
 import { formatDeadline, isOverdue } from './boardListUtils'
@@ -22,6 +23,22 @@ interface BoardTaskRowProps {
   onStatusChange: (taskId: string, statusId: string | null) => void
   isSelected?: boolean
   cardLayout?: CardLayout | null
+}
+
+/** Поле «проект»: если тред не привязан к проекту, показываем имя контакта. */
+function ProjectOrCounterpartField({
+  task,
+  workspaceId,
+  classes,
+}: {
+  task: WorkspaceTask
+  workspaceId: string
+  classes: string
+}) {
+  const counterpartName = useThreadCounterpartName(task.id, workspaceId)
+  const value = task.project_name ?? counterpartName
+  if (!value) return null
+  return <span className={cn(classes, 'shrink-0 text-muted-foreground')}>{value}</span>
 }
 
 /** Рендерит одно поле задачи по fieldId с учётом стиля */
@@ -106,11 +123,8 @@ function TaskField({
       )
 
     case 'project':
-      if (!task.project_name) return null
       return (
-        <span className={cn(classes, 'shrink-0 text-muted-foreground')}>
-          {task.project_name}
-        </span>
+        <ProjectOrCounterpartField task={task} workspaceId={workspaceId} classes={classes} />
       )
 
     case 'unread':

@@ -8,6 +8,7 @@ import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdo
 import { DatePicker } from '@/components/ui/date-picker'
 import { useUpdateTaskStatus, useUpdateTaskDeadline } from '@/components/tasks/useTaskMutations'
 import { workspaceThreadKeys } from '@/hooks/queryKeys'
+import { useThreadCounterpartName } from '@/hooks/messenger/useThreadCounterpartName'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { TableShellColumn } from './TableShell'
 import type { ItemListColumnKey } from './columns'
@@ -32,6 +33,7 @@ export function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesM
 
   const currentStatus = taskStatuses.find((s) => s.id === task.status_id) ?? null
   const assignees = assigneesMap[task.id] ?? []
+  const counterpartName = useThreadCounterpartName(task.id, task.workspace_id)
 
   return (
     <tr className="border-b hover:bg-muted/30">
@@ -78,7 +80,7 @@ export function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesM
           case 'project':
             return (
               <td key={c.key} className="px-3 py-2 truncate text-xs text-muted-foreground">
-                {task.project_name ?? '—'}
+                {task.project_name ?? counterpartName ?? '—'}
               </td>
             )
           case 'deadline':
