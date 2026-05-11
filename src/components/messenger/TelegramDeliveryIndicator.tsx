@@ -30,13 +30,20 @@ export function useTelegramDeliveryStatus(
   isOwn: boolean,
   isTelegramLinked?: boolean,
 ): TgDeliveryStatus {
+  // BD-уникальный singular `telegram_message_id` иногда конфликтует со
+  // старыми/тестовыми записями в том же чате и остаётся null, хотя сообщение
+  // в TG доставлено. Массив `telegram_message_ids` заполняется через append-RPC
+  // отдельно и его наличие — надёжный признак доставки.
+  const hasTelegramId =
+    !!message.telegram_message_id ||
+    (Array.isArray(message.telegram_message_ids) && message.telegram_message_ids.length > 0)
+
   // isTelegramLinked покрывает только групповые боты (project_telegram_chats).
   // Для MTProto/Business тредов он false, но сообщение всё равно ушло в TG —
-  // признак этого: уже выставлен telegram_message_id. Показываем индикатор
-  // в любом из двух случаев.
+  // признак этого: уже выставлен telegram_message_id или массив.
   const showTgIndicator =
     isOwn &&
-    (isTelegramLinked || !!message.telegram_message_id) &&
+    (isTelegramLinked || hasTelegramId) &&
     message.source === 'web' &&
     !message.id.startsWith('optimistic-')
 
@@ -77,7 +84,7 @@ export function useTelegramDeliveryStatus(
       return setTimeout(() => setTgFailed(true), remaining)
     }
 
-    if (!message.telegram_message_id) {
+    if (!hasTelegramId) {
       const timer = startTimer()
       return () => clearTimeout(timer)
     }
@@ -86,15 +93,15 @@ export function useTelegramDeliveryStatus(
       const timer = startTimer()
       return () => clearTimeout(timer)
     }
-  }, [showTgIndicator, isOnline, message.telegram_message_id, message.telegram_attachments_delivered, message.created_at, hasAttachments])
+  }, [showTgIndicator, isOnline, hasTelegramId, message.telegram_attachments_delivered, message.created_at, hasAttachments])
 
   if (!showTgIndicator) return null
 
   // Вложения явно не доставлены
   if (hasAttachments && message.telegram_attachments_delivered === false) return 'failed'
 
-  // Текст ещё не доставлен
-  if (!message.telegram_message_id) {
+  // Текст ещё не доставлен (ни singular id, ни массив)
+  if (!hasTelegramId) {
     return tgFailed ? 'failed' : 'pending'
   }
 

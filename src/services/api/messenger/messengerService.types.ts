@@ -81,6 +81,8 @@ export interface ProjectMessage {
   reply_to_message_id: string | null
   reply_to_message: ReplyMessage | null
   telegram_message_id: number | null
+  /** Все TG-message-id для media-group/split (BD-уникальный singular часто конфликтует со старыми тестовыми данными — массив всегда заполняется через append RPC). */
+  telegram_message_ids?: number[] | null
   telegram_chat_id: number | null
   telegram_attachments_delivered: boolean | null
   /** Когда собеседник прочитал это исходящее (заполняется MTProto-сервисом по UpdateReadHistoryOutbox). null — не прочитано или unknown. */
