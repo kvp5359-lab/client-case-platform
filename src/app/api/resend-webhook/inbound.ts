@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { extractOriginalFrom } from '@/lib/resendWebhook'
-import { fetchResendInbound, sendAutoReply } from './api'
+import { fetchResendInbound, fetchResendInboundAttachments, sendAutoReply } from './api'
 import {
   escapeHtml,
   normalizeAddressList,
@@ -325,48 +325,22 @@ export async function handleInbound(supabase: ServiceClient, event: ResendEvent)
     .update({ email_last_external_address: realFrom.address })
     .eq('id', threadId)
 
-  // Сохраняем вложения. Resend может отдать контент несколькими способами:
-  //   - att.content / att.path — base64 inline (так часто отдают Mailgun/Sendgrid)
-  //   - att.url — отдельный URL, нужно скачать
-  // Кладём в Storage bucket 'files' и связываем с сообщением через
-  // message_attachments. Если у треда нет project_id (personal-диалог) — кладём
-  // по пути workspace/<ws>/email-attachments.
-  if (data.attachments && data.attachments.length > 0) {
-    // Логируем для диагностики — какая структура реально пришла.
-    console.log(
-      '[resend-webhook] attachments structure:',
-      data.attachments.map((a) => ({
-        filename: a.filename,
-        content_type: a.content_type,
-        size: a.size,
-        hasContent: !!a.content,
-        hasPath: !!a.path,
-        hasUrl: !!a.url,
-      })),
-    )
-    for (const att of data.attachments) {
+  // Сохраняем вложения. Resend в webhook payload и в /emails/inbound/{id}
+  // отдаёт только метаданные (filename/size/content_type) без контента —
+  // за подписанным download_url нужно ходить отдельно через
+  // /emails/receiving/{id}/attachments. Затем качаем по этому URL и кладём в
+  // Storage bucket 'files'.
+  if (data.attachments && data.attachments.length > 0 && resendId) {
+    const remoteAttachments = await fetchResendInboundAttachments(resendId)
+    for (const att of remoteAttachments) {
       try {
-        let bytes: Uint8Array | null = null
-        const base64 = att.content ?? att.path
-        if (base64) {
-          const bs = atob(base64)
-          bytes = new Uint8Array(bs.length)
-          for (let i = 0; i < bs.length; i++) bytes[i] = bs.charCodeAt(i)
-        } else if (att.url) {
-          const r = await fetch(att.url, {
-            headers: process.env.RESEND_API_KEY
-              ? { Authorization: `Bearer ${process.env.RESEND_API_KEY}` }
-              : undefined,
-          })
-          if (r.ok) {
-            const buf = await r.arrayBuffer()
-            bytes = new Uint8Array(buf)
-          }
-        }
-        if (!bytes) {
-          console.warn('[resend-webhook] attachment without content/url:', att.filename)
+        const r = await fetch(att.download_url)
+        if (!r.ok) {
+          console.warn('[resend-webhook] attachment download failed:', att.filename, r.status)
           continue
         }
+        const buf = await r.arrayBuffer()
+        const bytes = new Uint8Array(buf)
         const fileName = att.filename ?? 'attachment'
         const dotIdx = fileName.lastIndexOf('.')
         const ext = dotIdx >= 0 ? fileName.slice(dotIdx) : ''

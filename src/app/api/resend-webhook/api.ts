@@ -19,6 +19,46 @@ export async function fetchResendInbound(emailId: string): Promise<ResendEmailDa
   }
 }
 
+/**
+ * Список вложений со подписанными download_url. Resend в webhook payload
+ * и в /emails/inbound/{id} отдаёт только метаданные attachments
+ * (filename/size/content_type) — без контента. За контентом нужно ходить
+ * сюда: эндпоинт возвращает download_url (signed CloudFront URL).
+ */
+export async function fetchResendInboundAttachments(
+  emailId: string,
+): Promise<
+  Array<{
+    id: string
+    filename: string
+    size: number
+    content_type: string
+    download_url: string
+  }>
+> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return []
+  try {
+    const res = await fetch(
+      `https://api.resend.com/emails/receiving/${emailId}/attachments?limit=100`,
+      { headers: { Authorization: `Bearer ${apiKey}` } },
+    )
+    if (!res.ok) return []
+    const json = (await res.json()) as {
+      data?: Array<{
+        id: string
+        filename: string
+        size: number
+        content_type: string
+        download_url: string
+      }>
+    }
+    return json.data ?? []
+  } catch {
+    return []
+  }
+}
+
 export async function sendAutoReply(opts: {
   to: string
   subject: string
