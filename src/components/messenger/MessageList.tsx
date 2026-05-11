@@ -304,13 +304,16 @@ export function MessageList({
     e.preventDefault()
   }, [])
 
-  // Индекс первого непрочитанного чужого сообщения — разделитель показывается ровно 1 раз
+  // Индекс первого непрочитанного чужого сообщения — разделитель показывается ровно 1 раз.
+  // Сравниваем через Date.parse — Postgres timestamptz может приходить в разных
+  // форматах (с T или с пробелом, с микросекундами или без), string-compare даёт сюрпризы.
+  const lastReadAtMs = useMemo(() => (lastReadAt ? Date.parse(lastReadAt) : null), [lastReadAt])
   const firstUnreadIndex = useMemo(() => {
-    if (!lastReadAt) return -1
+    if (lastReadAtMs === null) return -1
     return messages.findIndex(
-      (m) => m.created_at > lastReadAt && m.sender_participant_id !== currentParticipantId,
+      (m) => Date.parse(m.created_at) > lastReadAtMs && m.sender_participant_id !== currentParticipantId,
     )
-  }, [messages, lastReadAt, currentParticipantId])
+  }, [messages, lastReadAtMs, currentParticipantId])
 
   // Build a set of audit event timestamps to insert between messages
   // Each event maps to: insert AFTER the last message with created_at <= event.created_at
@@ -376,7 +379,7 @@ export function MessageList({
             const eventIsUnread =
               isLastReadAtLoaded &&
               item.event.user_id !== currentUserId &&
-              (!lastReadAt || item.event.created_at > lastReadAt)
+              (lastReadAtMs === null || Date.parse(item.event.created_at) > lastReadAtMs)
             return (
               <ServiceMessage
                 key={`event-${item.event.id}`}
@@ -399,7 +402,7 @@ export function MessageList({
             isLastReadAtLoaded &&
             !isOwn &&
             msg.sender_participant_id !== currentParticipantId &&
-            (!lastReadAt || msg.created_at > lastReadAt)
+            (lastReadAtMs === null || Date.parse(msg.created_at) > lastReadAtMs)
 
           // Показывать аватарку только для первого сообщения в группе от одного автора
           const prevMsg = messages[i - 1]
