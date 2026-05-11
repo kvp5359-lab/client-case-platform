@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageAttachments } from './MessageAttachment'
 import { isImage } from './utils/attachmentHelpers'
 import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
+import { useContactCardStore } from '@/store/contactCardStore'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import { bubbleStyles } from './utils/messageStyles'
@@ -223,21 +224,35 @@ function MessageBubbleImpl({
       {!isOwn && (
         <div className="w-8 flex-shrink-0 self-start mr-2 mt-1">
           {showAvatar ? (
-            <Avatar
+            <button
+              type="button"
+              onClick={() =>
+                message.sender_participant_id &&
+                useContactCardStore.getState().open(message.sender_participant_id)
+              }
+              disabled={!message.sender_participant_id}
               className={cn(
-                'h-8 w-8',
-                showStaffMark && cn('ring-2 ring-offset-1', colors.staffRing),
+                'rounded-full focus:outline-none',
+                message.sender_participant_id && 'hover:ring-2 hover:ring-offset-1 hover:ring-primary/30 transition-shadow cursor-pointer',
               )}
+              aria-label={`Открыть карточку ${message.sender_name}`}
             >
-              {message.sender?.avatar_url && (
-                <AvatarImage src={message.sender.avatar_url} alt={message.sender_name} />
-              )}
-              <AvatarFallback
-                className={cn('text-xs font-medium', getAvatarColor(message.sender_name))}
+              <Avatar
+                className={cn(
+                  'h-8 w-8',
+                  showStaffMark && cn('ring-2 ring-offset-1', colors.staffRing),
+                )}
               >
-                {getInitials(message.sender_name)}
-              </AvatarFallback>
-            </Avatar>
+                {message.sender?.avatar_url && (
+                  <AvatarImage src={message.sender.avatar_url} alt={message.sender_name} />
+                )}
+                <AvatarFallback
+                  className={cn('text-xs font-medium', getAvatarColor(message.sender_name))}
+                >
+                  {getInitials(message.sender_name)}
+                </AvatarFallback>
+              </Avatar>
+            </button>
           ) : (
             <div className="h-8 w-8" />
           )}

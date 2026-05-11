@@ -17,6 +17,7 @@ import { WorkspaceSidebarFull } from './WorkspaceSidebarFull'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { FloatingPanelButtons } from './FloatingPanelButtons'
+import { GlobalContactCardDialog } from '@/components/contacts/GlobalContactCardDialog'
 import { useNewMessageToast } from '@/hooks/messenger/useNewMessageToast'
 import { useFaviconBadge } from '@/hooks/messenger/useFaviconBadge'
 import { useWorkspaceMessagesRealtime } from '@/hooks/messenger/useWorkspaceMessagesRealtime'
@@ -218,6 +219,9 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
 
         {/* TaskPanel — система вкладок (через portal в #workspace-panel-root) */}
         {taskPanelShell.shellElement}
+
+        {/* Глобальная карточка контакта — открывается из useContactCardStore. */}
+        <GlobalContactCardDialog />
       </div>
     </TaskPanelContext.Provider>
   )

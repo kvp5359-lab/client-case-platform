@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from 'react'
-import { Mail, Phone, Send, FolderInput, MessagesSquare, X, Search, Pencil, Check } from 'lucide-react'
+import { Mail, Phone, Send, FolderInput, MessagesSquare, X, Search, Pencil, Check, Settings2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,9 @@ import {
   useRenameParticipant,
 } from '@/hooks/useContactCard'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { useParticipantsMutations } from '@/page-components/workspace-settings/useParticipantsMutations'
+import { EditParticipantDialog } from '@/components/participants/EditParticipantDialog'
+import type { Participant } from '@/types/entities'
 import { cn } from '@/lib/utils'
 
 interface ContactCardDialogProps {
@@ -41,6 +44,16 @@ export function ContactCardDialog({
   const { data: contact } = useContactParticipant(participantId)
   const { data: threads = [] } = useContactThreads(participantId)
   const [mergeMode, setMergeMode] = useState(false)
+  const [fullEditOpen, setFullEditOpen] = useState(false)
+  const { editMutation } = useParticipantsMutations(contact?.workspace_id)
+
+  const handleSaveFull = (data: Partial<Participant>) => {
+    if (!contact) return
+    editMutation.mutate(
+      { participantId: contact.id, data },
+      { onSuccess: () => setFullEditOpen(false) },
+    )
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -131,9 +144,17 @@ export function ContactCardDialog({
               </div>
             </div>
 
-            {/* Кнопка слияния — только для контактов без логина (нельзя «присоединить» сотрудника) */}
-            {!contact.can_login && !contact.user_id && (
-              <div className="border-t pt-3">
+            <div className="border-t pt-3 flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setFullEditOpen(true)}
+                className="text-xs px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 text-gray-600 inline-flex items-center gap-1.5"
+              >
+                <Settings2 className="h-3 w-3" />
+                Открыть полную карточку
+              </button>
+              {/* Слияние — только для контактов без логина (сотрудника нельзя «присоединить»). */}
+              {!contact.can_login && !contact.user_id && (
                 <button
                   type="button"
                   onClick={() => setMergeMode(true)}
@@ -141,11 +162,20 @@ export function ContactCardDialog({
                 >
                   Объединить с другим контактом…
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </>
         )}
       </DialogContent>
+      {contact && (
+        <EditParticipantDialog
+          participant={contact as unknown as Participant}
+          open={fullEditOpen}
+          onOpenChange={setFullEditOpen}
+          onSave={handleSaveFull}
+          isLoading={editMutation.isPending}
+        />
+      )}
     </Dialog>
   )
 }

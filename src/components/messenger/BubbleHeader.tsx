@@ -5,6 +5,7 @@ import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import type { MessengerAccent } from './utils/messageStyles'
 import { bubbleStyles } from './utils/messageStyles'
+import { useContactCardStore } from '@/store/contactCardStore'
 
 interface BubbleHeaderProps {
   message: ProjectMessage
@@ -20,7 +21,19 @@ export function BubbleHeader({ message, isOwn, showAvatar, accent }: BubbleHeade
       {/* Sender name */}
       {!isOwn && showAvatar && (
         <div className="flex items-center gap-1.5 mb-1">
-          <span className="text-xs font-medium text-foreground">{message.sender_name}</span>
+          {message.sender_participant_id ? (
+            <button
+              type="button"
+              onClick={() =>
+                useContactCardStore.getState().open(message.sender_participant_id!)
+              }
+              className="text-xs font-medium text-foreground hover:text-primary hover:underline transition-colors"
+            >
+              {message.sender_name}
+            </button>
+          ) : (
+            <span className="text-xs font-medium text-foreground">{message.sender_name}</span>
+          )}
           {message.sender_role && (
             <span className="text-xs text-muted-foreground">({message.sender_role})</span>
           )}
