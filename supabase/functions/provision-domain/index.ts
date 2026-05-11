@@ -17,6 +17,7 @@
  */
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { getCorsHeaders } from '../_shared/cors.ts'
 
 const PROVISION_URL = Deno.env.get('PROVISION_SERVICE_URL') ?? 'https://my.clientcase.app/_internal/provision'
 const PROVISION_SECRET = Deno.env.get('PROVISION_SECRET') ?? ''
@@ -30,20 +31,14 @@ interface RequestBody {
   force?: boolean
 }
 
-const corsHeaders: HeadersInit = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-}
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req)
+  const jsonResponse = (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
   if (req.method !== 'POST') return jsonResponse({ error: 'POST only' }, 405)
 

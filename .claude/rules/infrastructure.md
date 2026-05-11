@@ -388,9 +388,34 @@
 ### Edge Functions — общий слой
 
 [`supabase/functions/_shared/edge.ts`](../../supabase/functions/_shared/edge.ts) — единые helpers:
-`corsHeaders`, `preflight()`, `jsonRes(payload, status)`, `okText()`,
+`corsHeadersFor(req)` (динамический CORS-whitelist), `corsHeaders` (статический wildcard, **@deprecated**), `preflight(req?)`, `jsonRes(payload, status, req?)`, `okText()`,
 `requireInternalSecret(req, allowBearer?)`, `getServiceClient()`,
-`getUserClient(req)`, `getUser(req)`. Всем новым функциям использовать.
+`getUserClient(req)`, `getUser(req)`. Всем новым функциям использовать с `req` — это даёт правильный Origin-whitelist из [`_shared/cors.ts`](../../supabase/functions/_shared/cors.ts) (clientcase.app + поддомены + env ALLOWED_ORIGINS). Без `req` остаётся wildcard для back-compat со старыми функциями.
+
+### Распил telegram-webhook-v2 (2026-05-11)
+
+[`supabase/functions/telegram-webhook-v2/`](../../supabase/functions/telegram-webhook-v2/) — главный групповой бот @rs2_support_bot. Раньше был монолитом 2227 строк. После распила:
+
+| Модуль | ~Строк | Что |
+|--------|--------|-----|
+| `index.ts` | 96 | Entry: auth (читает токен из `workspace_integrations`) + маршрутизация update → handler |
+| `shared.ts` | 31 | `service`, `getBotToken()/setBotToken()`, `SUPABASE_URL/KEY`. Токен бота — getter/setter (изначально пустой, `setBotToken()` в entry на каждом запросе) |
+| `types.ts` | 106 | Типы Telegram API + `TgChatBinding`, `TgFileDescriptor`, `BotSession` |
+| `pure.ts` | 181 | Чистые helpers — форматирование, парсинг, без зависимостей |
+| `tg-api.ts` | 68 | `sendMessage`, `editMessage`, `answerCallback`, `tgCall` |
+| `bindings.ts` | 20 | `findChatBinding(chat_id)` |
+| `participants.ts` | 64 | `participantByTgId`, `findOrCreateParticipant` |
+| `media.ts` | 81 | `fetchTelegramFile`, `downloadAttachments` |
+| `session.ts` | 49 | `telegram_bot_sessions` CRUD (многошаговые сценарии) |
+| `knowledge.ts` | 279 | База знаний: `showKbGroups`, `showArticle`, `resolvePrefixId`, `logServiceEvent` |
+| `commands.ts` | 271 | `/start`, `/menu`, `/link`, `/unlink`, `showMainMenu`, `showFolderInfo` |
+| `upload-slot.ts` | 875 | Загрузка документов: `showUploadSlots`, `showUploadFolderSlots`, `showDocStatus`, `showFolderArticle`, `onSlotSelected`, `onFreeUploadSelected`, `uploadDocumentCore`, `handleSlotFileUpload`, `handleFreeFileUpload` |
+| `callbacks.ts` | 111 | `handleCallback` — маршрутизатор inline-кнопок |
+| `sync.ts` | 159 | `handleMessage`, `syncGroupMessage`, `handlePrivateMessage` |
+| `callback-data.ts` | 120 | Кодирование/декодирование `callback_data` (короткий формат для 64-байтового лимита Telegram) |
+| `tiptap.ts` | 186 | Рендер статей `knowledge_articles` в Telegram-HTML с разбиением на чанки 4096 |
+
+При добавлении новых команд/сценариев: команды → `commands.ts`, callback кнопок → `callbacks.ts`, новые экраны загрузок → `upload-slot.ts`. Если новая функция нужна в нескольких файлах — `pure.ts` или соответствующий тематический модуль.
 
 ### Авторизация Edge Functions — матрица
 
