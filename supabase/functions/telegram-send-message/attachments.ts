@@ -16,9 +16,9 @@ export async function resolveAttachment(
   att: Record<string, unknown>,
   supabaseClient: ReturnType<typeof createClient>,
 ): Promise<{ blob: Blob; fileName: string; mimeType: string | null } | null> {
+  let bucket = "message-attachments";
+  let storagePath = att.storage_path as string;
   try {
-    let bucket = "message-attachments";
-    let storagePath = att.storage_path as string;
     if (att.file_id) {
       const { data: fileRecord } = await supabaseClient
         .from("files")
@@ -30,27 +30,38 @@ export async function resolveAttachment(
         storagePath = fileRecord.storage_path;
       }
     }
-
-    const { data: urlData } = await supabaseClient.storage
-      .from(bucket)
-      .createSignedUrl(storagePath, 300);
-
-    if (!urlData?.signedUrl) {
-      console.error("resolveAttachment: no signedUrl for", att.file_name, "bucket:", bucket, "path:", storagePath);
-      return null;
-    }
-
-    const fileRes = await fetch(urlData.signedUrl);
-    if (!fileRes.ok) {
-      console.error("resolveAttachment: fetch failed", fileRes.status, "for", att.file_name);
-      return null;
-    }
-    const blob = await fileRes.blob();
-    return { blob, fileName: att.file_name as string, mimeType: (att.mime_type as string) ?? null };
   } catch (err) {
-    console.error("resolveAttachment error for", att.file_name, ":", err);
-    return null;
+    console.error("resolveAttachment: file lookup failed for", att.file_name, ":", err);
   }
+
+  // Retry до 3 раз с экспоненциальной задержкой: транзиентные сбои Storage/CDN
+  // приводили к «1/N attachments failed to resolve» и потере части файлов в TG.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const { data: urlData } = await supabaseClient.storage
+        .from(bucket)
+        .createSignedUrl(storagePath, 600);
+
+      if (!urlData?.signedUrl) {
+        console.error("resolveAttachment: no signedUrl for", att.file_name, "attempt", attempt + 1);
+      } else {
+        const fileRes = await fetch(urlData.signedUrl);
+        if (fileRes.ok) {
+          const blob = await fileRes.blob();
+          return {
+            blob,
+            fileName: att.file_name as string,
+            mimeType: (att.mime_type as string) ?? null,
+          };
+        }
+        console.error("resolveAttachment: fetch failed", fileRes.status, "for", att.file_name, "attempt", attempt + 1);
+      }
+    } catch (err) {
+      console.error("resolveAttachment error for", att.file_name, "attempt", attempt + 1, ":", err);
+    }
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+  }
+  return null;
 }
 
 /**
