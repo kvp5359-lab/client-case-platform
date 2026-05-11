@@ -29,18 +29,18 @@ interface RequestBody {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return preflight();
+  if (req.method === "OPTIONS") return preflight(req);
   if (req.method !== "POST") return okText();
 
   // Двойная схема auth: триггер шлёт x-internal-secret, фронт — Bearer JWT.
   if (!requireInternalSecret(req, /* allowBearer */ true)) {
-    return jsonRes({ error: "Unauthorized" }, 401);
+    return jsonRes({ error: "Unauthorized" }, 401, req);
   }
 
   let body: RequestBody;
   try { body = await req.json() as RequestBody; }
-  catch { return jsonRes({ error: "Invalid JSON" }, 400); }
-  if (!body.message_id) return jsonRes({ error: "message_id required" }, 400);
+  catch { return jsonRes({ error: "Invalid JSON" }, 400, req); }
+  if (!body.message_id) return jsonRes({ error: "message_id required" }, 400, req);
 
   const service = getServiceClient();
 
@@ -50,8 +50,8 @@ Deno.serve(async (req: Request) => {
     .select("id, thread_id, content, wazzup_message_id, workspace_id, reply_to_message_id, has_attachments")
     .eq("id", body.message_id)
     .maybeSingle();
-  if (!msg || !msg.thread_id) return jsonRes({ skip: "no thread" });
-  if (msg.wazzup_message_id) return jsonRes({ skip: "already sent" });
+  if (!msg || !msg.thread_id) return jsonRes({ skip: "no thread" }, 200, req);
+  if (msg.wazzup_message_id) return jsonRes({ skip: "already sent" }, 200, req);
 
   // 2. Тред
   const { data: thread } = await service
@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
     .eq("id", msg.thread_id)
     .maybeSingle();
   if (!thread || !thread.wazzup_channel_id || !thread.wazzup_chat_id) {
-    return jsonRes({ skip: "not a wazzup thread" });
+    return jsonRes({ skip: "not a wazzup thread" }, 200, req);
   }
 
   // 3. Канал
@@ -69,14 +69,14 @@ Deno.serve(async (req: Request) => {
     .select("channel_id, transport, workspace_id, is_active, state")
     .eq("id", thread.wazzup_channel_id)
     .maybeSingle();
-  if (!channel) return jsonRes({ skip: "channel not found" });
-  if (!channel.is_active) return jsonRes({ skip: "channel disabled in our DB" });
+  if (!channel) return jsonRes({ skip: "channel not found" }, 200, req);
+  if (!channel.is_active) return jsonRes({ skip: "channel disabled in our DB" }, 200, req);
 
   // 4. API-ключ
   const { data: settings } = await service
     .from("wazzup_settings").select("api_key")
     .eq("workspace_id", channel.workspace_id).maybeSingle();
-  if (!settings?.api_key) return jsonRes({ skip: "no api key" });
+  if (!settings?.api_key) return jsonRes({ skip: "no api key" }, 200, req);
 
   let text = stripHtml(msg.content || "");
 
@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
       .eq("message_id", msg.id);
 
     if (!attachments || attachments.length === 0) {
-      return jsonRes({ skip: "has_attachments=true but no rows in message_attachments" });
+      return jsonRes({ skip: "has_attachments=true but no rows in message_attachments" }, 200, req);
     }
 
     // Wazzup НЕ позволяет text + contentUri в одном запросе
@@ -171,7 +171,7 @@ Deno.serve(async (req: Request) => {
     }
   } else {
     // 7. Только текст.
-    if (!text.trim()) return jsonRes({ skip: "empty content" });
+    if (!text.trim()) return jsonRes({ skip: "empty content" }, 200, req);
     const payload: Record<string, unknown> = { ...baseRequest, text };
     if (quotedMessageId) payload.quotedMessageId = quotedMessageId;
 
@@ -186,12 +186,12 @@ Deno.serve(async (req: Request) => {
       wazzup_message_id: firstWazzupMessageId,
       wazzup_status: "sent",
     }).eq("id", msg.id);
-    return jsonRes({ ok: true, wazzup_message_id: firstWazzupMessageId });
+    return jsonRes({ ok: true, wazzup_message_id: firstWazzupMessageId }, 200, req);
   }
 
   console.error(`[wazzup-send] error:`, firstError);
   await service.from("project_messages").update({ wazzup_status: "error" }).eq("id", msg.id);
-  return jsonRes({ ok: false, error: firstError });
+  return jsonRes({ ok: false, error: firstError }, 200, req);
 });
 
 async function sendWazzup(

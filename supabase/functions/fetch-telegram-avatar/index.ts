@@ -27,24 +27,24 @@ const CACHE_HIT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const CACHE_MISS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return preflight();
+  if (req.method === "OPTIONS") return preflight(req);
   if (!requireInternalSecret(req, true)) {
-    return jsonRes({ error: "unauthorized" }, 401);
+    return jsonRes({ error: "unauthorized" }, 401, req);
   }
   if (!BOT_TOKEN) {
-    return jsonRes({ error: "bot_token_missing" }, 500);
+    return jsonRes({ error: "bot_token_missing" }, 500, req);
   }
 
   let payload: { tg_user_id?: number; force?: boolean };
   try {
     payload = await req.json();
   } catch {
-    return jsonRes({ error: "invalid_json" }, 400);
+    return jsonRes({ error: "invalid_json" }, 400, req);
   }
 
   const tgUserId = Number(payload.tg_user_id);
   if (!tgUserId || !Number.isFinite(tgUserId)) {
-    return jsonRes({ error: "tg_user_id_required" }, 400);
+    return jsonRes({ error: "tg_user_id_required" }, 400, req);
   }
 
   const service = getServiceClient();
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
           cached: true,
           avatar_url: cached.avatar_url,
           is_missing: cached.is_missing,
-        });
+        }, 200, req);
       }
     }
   }
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       avatar_url: null,
       is_missing: true,
       reason: photosJson.description ?? "tg_api_error",
-    });
+    }, 200, req);
   }
 
   const photos = photosJson.result?.photos ?? [];
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       is_missing: true,
       fetched_at: new Date().toISOString(),
     });
-    return jsonRes({ avatar_url: null, is_missing: true });
+    return jsonRes({ avatar_url: null, is_missing: true }, 200, req);
   }
 
   // Берём самое крупное фото (последний размер) первого набора.
@@ -122,19 +122,19 @@ Deno.serve(async (req) => {
       avatar_url: null,
       is_missing: true,
       reason: fileJson.description ?? "get_file_failed",
-    });
+    }, 200, req);
   }
 
   const filePath = fileJson.result?.file_path;
   if (!filePath) {
-    return jsonRes({ avatar_url: null, is_missing: true });
+    return jsonRes({ avatar_url: null, is_missing: true }, 200, req);
   }
 
   const dlRes = await fetch(
     `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`,
   );
   if (!dlRes.ok) {
-    return jsonRes({ avatar_url: null, is_missing: true });
+    return jsonRes({ avatar_url: null, is_missing: true }, 200, req);
   }
   const bytes = new Uint8Array(await dlRes.arrayBuffer());
 
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
       upsert: true,
     });
   if (uploadError) {
-    return jsonRes({ error: "storage_upload_failed", detail: uploadError.message }, 500);
+    return jsonRes({ error: "storage_upload_failed", detail: uploadError.message }, 500, req);
   }
 
   const { data: publicUrl } = service.storage
@@ -163,5 +163,5 @@ Deno.serve(async (req) => {
     fetched_at: new Date().toISOString(),
   });
 
-  return jsonRes({ avatar_url: url, is_missing: false });
+  return jsonRes({ avatar_url: url, is_missing: false }, 200, req);
 });

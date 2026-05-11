@@ -19,12 +19,12 @@ import {
 } from "../_shared/edge.ts";
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return preflight();
-  if (req.method !== "POST") return jsonRes({ error: "method not allowed" }, 405);
+  if (req.method === "OPTIONS") return preflight(req);
+  if (req.method !== "POST") return jsonRes({ error: "method not allowed" }, 405, req);
 
   let body: { message_id?: string; emoji?: string };
-  try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400); }
-  if (!body.message_id || !body.emoji) return jsonRes({ error: "message_id and emoji required" }, 400);
+  try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400, req); }
+  if (!body.message_id || !body.emoji) return jsonRes({ error: "message_id and emoji required" }, 400, req);
 
   const service = getServiceClient();
 
@@ -34,8 +34,8 @@ Deno.serve(async (req: Request) => {
     .select("id, thread_id, wazzup_message_id, content")
     .eq("id", body.message_id)
     .maybeSingle();
-  if (!msg || !msg.thread_id) return jsonRes({ skip: "no message" }, 200);
-  if (!msg.wazzup_message_id) return jsonRes({ skip: "not a wazzup message" }, 200);
+  if (!msg || !msg.thread_id) return jsonRes({ skip: "no message" }, 200, req);
+  if (!msg.wazzup_message_id) return jsonRes({ skip: "not a wazzup message" }, 200, req);
 
   // Fallback-цитата в текст: Wazzup quotedMessageId не работает для исходящих,
   // поэтому добавляем «> текст оригинала\nэмодзи». Без этого клиент видит просто
@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
     .eq("id", msg.thread_id)
     .maybeSingle();
   if (!thread || !thread.wazzup_channel_id || !thread.wazzup_chat_id) {
-    return jsonRes({ skip: "not a wazzup thread" }, 200);
+    return jsonRes({ skip: "not a wazzup thread" }, 200, req);
   }
 
   // 3. Канал + ключ
@@ -60,14 +60,14 @@ Deno.serve(async (req: Request) => {
     .select("channel_id, transport, workspace_id, is_active")
     .eq("id", thread.wazzup_channel_id)
     .maybeSingle();
-  if (!channel?.is_active) return jsonRes({ skip: "channel disabled" }, 200);
+  if (!channel?.is_active) return jsonRes({ skip: "channel disabled" }, 200, req);
 
   const { data: settings } = await service
     .from("wazzup_settings")
     .select("api_key")
     .eq("workspace_id", channel.workspace_id)
     .maybeSingle();
-  if (!settings?.api_key) return jsonRes({ skip: "no api key" }, 200);
+  if (!settings?.api_key) return jsonRes({ skip: "no api key" }, 200, req);
 
   // 4. Шлём reply-эмодзи
   const res = await fetch("https://api.wazzup24.com/v3/message", {
@@ -89,8 +89,7 @@ Deno.serve(async (req: Request) => {
     const text = await res.text().catch(() => "");
     return jsonRes(
       { error: "wazzup api error", status: res.status, body: text.slice(0, 500) },
-      502,
-    );
+      502, req);
   }
 
   const json = await res.json().catch(() => ({}));
@@ -103,7 +102,7 @@ Deno.serve(async (req: Request) => {
     await markOutgoingExternal(service, "wazzup", sentMessageId, "reaction");
   }
 
-  return jsonRes({ ok: true, wazzup_message_id: sentMessageId }, 200);
+  return jsonRes({ ok: true, wazzup_message_id: sentMessageId }, 200, req);
 });
 
 function stripHtml(html: string): string {

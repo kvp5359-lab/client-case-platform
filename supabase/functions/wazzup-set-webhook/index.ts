@@ -16,15 +16,15 @@ import {
 } from "../_shared/edge.ts";
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return preflight();
-  if (req.method !== "POST") return jsonRes({ error: "method not allowed" }, 405);
+  if (req.method === "OPTIONS") return preflight(req);
+  if (req.method !== "POST") return jsonRes({ error: "method not allowed" }, 405, req);
 
   const user = await getUser(req);
-  if (!user) return jsonRes({ error: "unauthorized" }, 401);
+  if (!user) return jsonRes({ error: "unauthorized" }, 401, req);
 
   let body: { workspace_id?: string };
-  try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400); }
-  if (!body.workspace_id) return jsonRes({ error: "workspace_id required" }, 400);
+  try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400, req); }
+  if (!body.workspace_id) return jsonRes({ error: "workspace_id required" }, 400, req);
 
   const userClient = getUserClient(req);
   const { data: settings } = await userClient
@@ -32,7 +32,7 @@ Deno.serve(async (req: Request) => {
     .select("api_key, webhook_secret")
     .eq("workspace_id", body.workspace_id)
     .maybeSingle();
-  if (!settings) return jsonRes({ error: "no wazzup settings or no access" }, 403);
+  if (!settings) return jsonRes({ error: "no wazzup settings or no access" }, 403, req);
 
   const webhookUrl = `${SUPABASE_URL}/functions/v1/wazzup-webhook?key=${settings.webhook_secret}`;
 
@@ -56,9 +56,8 @@ Deno.serve(async (req: Request) => {
     const text = await res.text().catch(() => "");
     return jsonRes(
       { error: "wazzup api error", status: res.status, body: text.slice(0, 500) },
-      502,
-    );
+      502, req);
   }
 
-  return jsonRes({ ok: true, webhookUrl });
+  return jsonRes({ ok: true, webhookUrl }, 200, req);
 });

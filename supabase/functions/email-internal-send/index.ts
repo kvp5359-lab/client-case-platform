@@ -58,20 +58,20 @@ interface WorkspaceRow {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return preflight();
-  if (req.method !== "POST") return jsonRes({ error: "method not allowed" }, 405);
+  if (req.method === "OPTIONS") return preflight(req);
+  if (req.method !== "POST") return jsonRes({ error: "method not allowed" }, 405, req);
   if (!requireInternalSecret(req, true)) {
-    return jsonRes({ error: "unauthorized" }, 401);
+    return jsonRes({ error: "unauthorized" }, 401, req);
   }
-  if (!RESEND_API_KEY) return jsonRes({ error: "RESEND_API_KEY missing" }, 500);
+  if (!RESEND_API_KEY) return jsonRes({ error: "RESEND_API_KEY missing" }, 500, req);
 
   let body: { message_id?: string };
   try {
     body = await req.json();
   } catch {
-    return jsonRes({ error: "invalid json" }, 400);
+    return jsonRes({ error: "invalid json" }, 400, req);
   }
-  if (!body.message_id) return jsonRes({ error: "message_id required" }, 400);
+  if (!body.message_id) return jsonRes({ error: "message_id required" }, 400, req);
 
   const service = getServiceClient();
 
@@ -82,9 +82,9 @@ Deno.serve(async (req: Request) => {
     )
     .eq("id", body.message_id)
     .maybeSingle();
-  if (msgErr) return jsonRes({ error: "load_failed", detail: msgErr.message }, 500);
-  if (!msg) return jsonRes({ error: "message not found" }, 404);
-  if (!msg.thread_id) return jsonRes({ error: "message has no thread_id" }, 400);
+  if (msgErr) return jsonRes({ error: "load_failed", detail: msgErr.message }, 500, req);
+  if (!msg) return jsonRes({ error: "message not found" }, 404, req);
+  if (!msg.thread_id) return jsonRes({ error: "message has no thread_id" }, 400, req);
   const m = msg as MessageRow;
 
   const { data: thread, error: threadErr } = await service
@@ -95,12 +95,12 @@ Deno.serve(async (req: Request) => {
     .eq("id", m.thread_id)
     .maybeSingle();
   if (threadErr || !thread) {
-    return jsonRes({ error: "thread not found" }, 404);
+    return jsonRes({ error: "thread not found" }, 404, req);
   }
   const t = thread as ThreadRow;
-  if (t.short_id == null) return jsonRes({ error: "thread has no short_id" }, 400);
+  if (t.short_id == null) return jsonRes({ error: "thread has no short_id" }, 400, req);
   if (!t.email_last_external_address) {
-    return jsonRes({ error: "thread has no recipient (email_last_external_address)" }, 400);
+    return jsonRes({ error: "thread has no recipient (email_last_external_address)" }, 400, req);
   }
 
   const { data: ws, error: wsErr } = await service
@@ -108,12 +108,12 @@ Deno.serve(async (req: Request) => {
     .select("id, slug, email_active")
     .eq("id", m.workspace_id)
     .maybeSingle();
-  if (wsErr || !ws) return jsonRes({ error: "workspace not found" }, 404);
+  if (wsErr || !ws) return jsonRes({ error: "workspace not found" }, 404, req);
   const w = ws as WorkspaceRow;
   if (!w.email_active) {
-    return jsonRes({ error: "workspace email not active" }, 400);
+    return jsonRes({ error: "workspace email not active" }, 400, req);
   }
-  if (!w.slug) return jsonRes({ error: "workspace has no slug" }, 400);
+  if (!w.slug) return jsonRes({ error: "workspace has no slug" }, 400, req);
 
   // Определяем In-Reply-To / References
   // Стратегия:
@@ -222,11 +222,11 @@ Deno.serve(async (req: Request) => {
       .eq("id", sendAccountId)
       .maybeSingle();
     if (accErr || !account) {
-      return jsonRes({ error: "email account not found" }, 404);
+      return jsonRes({ error: "email account not found" }, 404, req);
     }
     const acc = account as GmailAccountData & { is_active: boolean; workspace_id: string };
     if (!acc.is_active) {
-      return jsonRes({ error: "email account inactive" }, 400);
+      return jsonRes({ error: "email account inactive" }, 400, req);
     }
 
     let accessToken: string;
@@ -239,8 +239,7 @@ Deno.serve(async (req: Request) => {
         .eq("id", m.id);
       return jsonRes(
         { error: "gmail_token_failed", detail: e instanceof Error ? e.message : String(e) },
-        502,
-      );
+        502, req);
     }
 
     const messageIdHeader = `<${crypto.randomUUID()}@${acc.email.split("@")[1] ?? "gmail.com"}>`;
@@ -296,8 +295,7 @@ Deno.serve(async (req: Request) => {
         .eq("id", m.id);
       return jsonRes(
         { error: "gmail_send_failed", status: gmailResp.status, detail: errBody.slice(0, 500) },
-        502,
-      );
+        502, req);
     }
     // Сохраняем gmail_thread_id чтобы gmail-webhook смог сматчить
     // ответ клиента (Pub/Sub-уведомление приходит на наш Gmail и
@@ -381,7 +379,7 @@ Deno.serve(async (req: Request) => {
       gmail_thread_id: gmailThreadId,
       from: acc.email,
       to: t.email_last_external_address,
-    });
+    }, 200, req);
   }
 
   // === ВЕТКА 2: system_postmark (через Resend от t+<id>@<slug>) ===
@@ -421,8 +419,7 @@ Deno.serve(async (req: Request) => {
       .eq("id", m.id);
     return jsonRes(
       { error: "resend_send_failed", status: resp.status, detail: errBody.slice(0, 500) },
-      502,
-    );
+      502, req);
   }
 
   const result = await resp.json().catch(() => ({} as Record<string, unknown>));
@@ -456,7 +453,7 @@ Deno.serve(async (req: Request) => {
     message_id_header: messageIdHeader,
     from: fromAddress,
     to: t.email_last_external_address,
-  });
+  }, 200, req);
 });
 
 // =============================================================

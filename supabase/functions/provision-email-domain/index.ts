@@ -46,23 +46,23 @@ interface ResendDomain {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return preflight();
-  if (req.method !== "POST") return jsonRes({ error: "method not allowed" }, 405);
+  if (req.method === "OPTIONS") return preflight(req);
+  if (req.method !== "POST") return jsonRes({ error: "method not allowed" }, 405, req);
 
   if (!RESEND_API_KEY || !CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ZONE_ID) {
-    return jsonRes({ error: "server not configured" }, 500);
+    return jsonRes({ error: "server not configured" }, 500, req);
   }
 
   const user = await getUser(req);
-  if (!user) return jsonRes({ error: "unauthorized" }, 401);
+  if (!user) return jsonRes({ error: "unauthorized" }, 401, req);
 
   let body: { workspace_id?: string };
   try {
     body = await req.json();
   } catch {
-    return jsonRes({ error: "invalid json" }, 400);
+    return jsonRes({ error: "invalid json" }, 400, req);
   }
-  if (!body.workspace_id) return jsonRes({ error: "workspace_id required" }, 400);
+  if (!body.workspace_id) return jsonRes({ error: "workspace_id required" }, 400, req);
 
   const service = getServiceClient();
 
@@ -71,18 +71,18 @@ Deno.serve(async (req: Request) => {
     p_user_id: user.id,
     p_workspace_id: body.workspace_id,
   });
-  if (!isOwner) return jsonRes({ error: "forbidden" }, 403);
+  if (!isOwner) return jsonRes({ error: "forbidden" }, 403, req);
 
   const { data: ws, error: wsErr } = await service
     .from("workspaces")
     .select("id, slug, is_deleted, email_resend_domain_id")
     .eq("id", body.workspace_id)
     .maybeSingle();
-  if (wsErr || !ws) return jsonRes({ error: "workspace not found" }, 404);
-  if (ws.is_deleted) return jsonRes({ error: "workspace deleted" }, 400);
-  if (!ws.slug) return jsonRes({ error: "workspace has no slug" }, 400);
+  if (wsErr || !ws) return jsonRes({ error: "workspace not found" }, 404, req);
+  if (ws.is_deleted) return jsonRes({ error: "workspace deleted" }, 400, req);
+  if (!ws.slug) return jsonRes({ error: "workspace has no slug" }, 400, req);
   if (!/^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$/.test(ws.slug)) {
-    return jsonRes({ error: "slug must be DNS-safe (a-z, 0-9, hyphen)" }, 400);
+    return jsonRes({ error: "slug must be DNS-safe (a-z, 0-9, hyphen)" }, 400, req);
   }
 
   const fullDomain = `${ws.slug}.${ROOT_DOMAIN}`;
@@ -170,7 +170,7 @@ Deno.serve(async (req: Request) => {
       spf_verified: spfVerified,
       mx_verified: mxVerified,
     },
-  });
+  }, 200, req);
 });
 
 // =====================================================================
