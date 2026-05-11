@@ -32,6 +32,34 @@ import {
 } from "../_shared/syncTelegramIncomingMessage.ts";
 import { decode as decodeCb, encode as encodeCb, CallbackAction } from "./callback-data.ts";
 import { renderArticle } from "./tiptap.ts";
+import type {
+  TgUser,
+  TgEntity,
+  TgPhotoSize,
+  TgDocument,
+  TgMessage,
+  TgCallbackQuery,
+  TgReaction,
+  TgInlineButton,
+  TgInlineKeyboard,
+  TgChatBinding,
+  TgFileDescriptor,
+  BotSession,
+} from "./types.ts";
+import {
+  MAX_FILE_SIZE_MB,
+  MENU_REPLY_BUTTON_TEXT,
+  formatUserName,
+  sanitizeFileName,
+  getServiceMessageText,
+  extractForward,
+  collectFiles,
+  helpText,
+  mainMenuInlineKeyboard,
+  menuReplyKeyboard,
+  mapUploadError,
+  escapeHtml,
+} from "./pure.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -46,92 +74,7 @@ const MAX_FILE_SIZE_MB = 20;
 
 const service: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Типы (подмножество Telegram Bot API)
-// ═══════════════════════════════════════════════════════════════════════════
-
-interface TgUser {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  username?: string;
-}
-
-interface TgEntity {
-  type: string;
-  offset: number;
-  length: number;
-  url?: string;
-  user?: TgUser;
-}
-
-interface TgPhotoSize {
-  file_id: string;
-  file_unique_id: string;
-}
-
-interface TgDocument {
-  file_id: string;
-  file_unique_id: string;
-  file_name?: string;
-  mime_type?: string;
-  file_size?: number;
-}
-
-interface TgMessage {
-  chat: { id: number; title?: string; type?: string };
-  message_id: number;
-  from?: TgUser;
-  date: number;
-  media_group_id?: string;
-  text?: string;
-  caption?: string;
-  entities?: TgEntity[];
-  caption_entities?: TgEntity[];
-  reply_to_message?: { message_id: number };
-  photo?: TgPhotoSize[];
-  document?: TgDocument;
-  video?: { file_id: string; file_unique_id: string; mime_type?: string; file_size?: number };
-  voice?: { file_id: string; file_unique_id: string; mime_type?: string; file_size?: number };
-  audio?: { file_id: string; file_unique_id: string; file_name?: string; mime_type?: string; file_size?: number };
-  video_note?: { file_id: string; file_unique_id: string };
-  sticker?: { file_id: string; file_unique_id: string; emoji?: string };
-  new_chat_members?: TgUser[];
-  left_chat_member?: TgUser;
-  new_chat_title?: string;
-  group_chat_created?: boolean;
-  supergroup_chat_created?: boolean;
-  pinned_message?: TgMessage;
-  forward_origin?: {
-    type: string;
-    date: number;
-    sender_user?: TgUser;
-    sender_user_name?: string;
-    sender_chat?: { id: number; title?: string };
-    chat?: { id: number; title?: string };
-  };
-}
-
-interface TgCallbackQuery {
-  id: string;
-  from: TgUser;
-  message?: TgMessage;
-  data?: string;
-}
-
-interface TgReaction {
-  chat: { id: number };
-  message_id: number;
-  user?: TgUser;
-  new_reaction?: { type: "emoji" | "custom_emoji"; emoji?: string }[];
-}
-
-interface TgInlineButton {
-  text: string;
-  callback_data?: string;
-  url?: string;
-}
-type TgInlineKeyboard = TgInlineButton[][];
+// Типы и pure-helpers вынесены в ./types.ts и ./pure.ts.
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Telegram API helpers
@@ -199,32 +142,7 @@ async function answerCallback(id: string, text?: string) {
 // Утилиты
 // ═══════════════════════════════════════════════════════════════════════════
 
-function formatUserName(u: TgUser | undefined): string {
-  if (!u) return "Пользователь";
-  return [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username || "Пользователь";
-}
-
-function sanitizeFileName(name: string): string {
-  const cyr: Record<string, string> = {
-    а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"yo",ж:"zh",з:"z",и:"i",й:"j",
-    к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",
-    х:"kh",ц:"ts",ч:"ch",ш:"sh",щ:"shch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya",
-    А:"A",Б:"B",В:"V",Г:"G",Д:"D",Е:"E",Ё:"Yo",Ж:"Zh",З:"Z",И:"I",Й:"J",
-    К:"K",Л:"L",М:"M",Н:"N",О:"O",П:"P",Р:"R",С:"S",Т:"T",У:"U",Ф:"F",
-    Х:"Kh",Ц:"Ts",Ч:"Ch",Ш:"Sh",Щ:"Shch",Ъ:"",Ы:"Y",Ь:"",Э:"E",Ю:"Yu",Я:"Ya",
-  };
-  const ext = name.includes(".") ? "." + name.split(".").pop() : "";
-  const base = name.includes(".") ? name.slice(0, name.lastIndexOf(".")) : name;
-  const t = base.split("").map((c) => cyr[c] ?? c).join("");
-  return t.replace(/[^a-zA-Z0-9._\-() ]/g, "_").replace(/\s+/g, "_") + ext;
-}
-
-interface TgChatBinding {
-  project_id: string;
-  workspace_id: string;
-  channel: string;
-  thread_id: string | null;
-}
+// formatUserName, sanitizeFileName, TgChatBinding — в ./pure.ts / ./types.ts.
 
 /** Найти привязку группы с фильтром v2. Возвращает null, если группа не привязана или привязана к v1. */
 async function findChatBinding(chatId: number): Promise<TgChatBinding | null> {
@@ -425,45 +343,7 @@ async function syncGroupMessage(msg: TgMessage, binding: TgChatBinding, isEdited
   }
 }
 
-function getServiceMessageText(msg: TgMessage): string | null {
-  const fromName = formatUserName(msg.from);
-  if (msg.group_chat_created || msg.supergroup_chat_created) {
-    return `${fromName} создал(а) группу` + (msg.chat.title ? ` «${msg.chat.title}»` : "");
-  }
-  if (msg.new_chat_members && msg.new_chat_members.length > 0) {
-    const names = msg.new_chat_members.map(formatUserName);
-    if (names.length === 1 && msg.from?.id === msg.new_chat_members[0].id) {
-      return `${names[0]} присоединился(-ась) к группе`;
-    }
-    return `${fromName} добавил(а) ${names.join(", ")}`;
-  }
-  if (msg.left_chat_member) {
-    const left = formatUserName(msg.left_chat_member);
-    return msg.from?.id === msg.left_chat_member.id
-      ? `${left} покинул(а) группу`
-      : `${fromName} удалил(а) ${left}`;
-  }
-  if (msg.new_chat_title) return `${fromName} изменил(а) название на «${msg.new_chat_title}»`;
-  if (msg.pinned_message) return `${fromName} закрепил(а) сообщение`;
-  return null;
-}
-
-function extractForward(msg: TgMessage): { name: string | null; date: string | null } {
-  if (!msg.forward_origin) return { name: null, date: null };
-  const o = msg.forward_origin;
-  const date = new Date(o.date * 1000).toISOString();
-  switch (o.type) {
-    case "user":
-      return { name: o.sender_user ? formatUserName(o.sender_user) : null, date };
-    case "hidden_user":
-      return { name: o.sender_user_name ?? "Скрытый пользователь", date };
-    case "chat":
-    case "channel":
-      return { name: o.sender_chat?.title ?? o.chat?.title ?? null, date };
-    default:
-      return { name: "Переслано", date };
-  }
-}
+// getServiceMessageText, extractForward — в ./pure.ts.
 
 async function findOrCreateParticipant(workspaceId: string, from: TgUser): Promise<string | null> {
   const { data: existing } = await service
@@ -510,52 +390,7 @@ async function findOrCreateParticipant(workspaceId: string, from: TgUser): Promi
 // Вложения (копия v1, упрощена)
 // ═══════════════════════════════════════════════════════════════════════════
 
-interface TgFileDescriptor {
-  fileId: string;
-  originalName: string;
-  safeName: string;
-  mimeType: string;
-}
-
-function collectFiles(msg: TgMessage): TgFileDescriptor[] {
-  const out: TgFileDescriptor[] = [];
-  if (msg.photo && msg.photo.length > 0) {
-    const p = msg.photo[msg.photo.length - 1];
-    const name = `photo_${p.file_unique_id}.jpg`;
-    out.push({ fileId: p.file_id, originalName: name, safeName: name, mimeType: "image/jpeg" });
-  }
-  if (msg.document) {
-    const orig = msg.document.file_name || `document_${msg.document.file_unique_id}`;
-    out.push({
-      fileId: msg.document.file_id,
-      originalName: orig,
-      safeName: sanitizeFileName(orig),
-      mimeType: msg.document.mime_type || "application/octet-stream",
-    });
-  }
-  if (msg.voice) {
-    const name = `voice_${msg.voice.file_unique_id}.ogg`;
-    out.push({ fileId: msg.voice.file_id, originalName: name, safeName: name, mimeType: msg.voice.mime_type || "audio/ogg" });
-  }
-  if (msg.audio) {
-    const orig = msg.audio.file_name || `audio_${msg.audio.file_unique_id}`;
-    out.push({
-      fileId: msg.audio.file_id,
-      originalName: orig,
-      safeName: sanitizeFileName(orig),
-      mimeType: msg.audio.mime_type || "audio/mpeg",
-    });
-  }
-  if (msg.video) {
-    const name = `video_${msg.video.file_unique_id}.mp4`;
-    out.push({ fileId: msg.video.file_id, originalName: name, safeName: name, mimeType: msg.video.mime_type || "video/mp4" });
-  }
-  if (msg.video_note) {
-    const name = `videonote_${msg.video_note.file_unique_id}.mp4`;
-    out.push({ fileId: msg.video_note.file_id, originalName: name, safeName: name, mimeType: "video/mp4" });
-  }
-  return out;
-}
+// TgFileDescriptor, collectFiles — в ./types.ts и ./pure.ts.
 
 async function fetchTelegramFile(fileId: string): Promise<{ buffer: ArrayBuffer; path: string } | null> {
   const info = await tgCall<{ file_path?: string; file_size?: number }>("getFile", { file_id: fileId });
@@ -710,22 +545,7 @@ async function handleCommand(msg: TgMessage, text: string) {
   }
 }
 
-function helpText(): string {
-  return [
-    "<b>Бот проекта ClientCase</b>",
-    "",
-    "Команды в группе проекта:",
-    "• /menu — главное меню",
-    "• /knowledge — полезные материалы",
-    "• /requirements — требования к документам",
-    "• /upload — загрузить документ в слот",
-    "• /status — статус документов",
-    "",
-    "Команды для админа:",
-    "• /link КОД — привязать группу к проекту",
-    "• /unlink — отвязать группу",
-  ].join("\n");
-}
+// helpText — в ./pure.ts.
 
 // ═══════════════════════════════════════════════════════════════════════════
 // /start в личке — deep-link привязка participant
@@ -887,34 +707,7 @@ async function cmdUnlink(chatId: number) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const MAIN_MENU_TEXT = "<b>Главное меню</b>\n\nВыберите раздел:";
-const MENU_REPLY_BUTTON_TEXT = "📋 Меню";
-
-/** Inline-клавиатура главного меню — используется и в /menu, и в callback menu_home. */
-function mainMenuInlineKeyboard(): TgInlineKeyboard {
-  return [
-    [
-      { text: "📚 Полезные материалы", callback_data: encodeCb({ kind: "kb_group", groupId: null, page: 0 }) },
-      { text: "❓ Требования", callback_data: encodeCb({ kind: "folder_info" }) },
-    ],
-    [
-      { text: "📎 Загрузить документ", callback_data: encodeCb({ kind: "upload_start" }) },
-      { text: "📊 Статус документов", callback_data: encodeCb({ kind: "doc_status" }) },
-    ],
-  ];
-}
-
-/**
- * Постоянная reply-клавиатура с одной кнопкой «📋 Меню» — держится в чате
- * всегда, чтобы клиенту не нужно было помнить команды. Тап отправляет текст
- * "📋 Меню", handleMessage перехватывает его и запускает главное меню.
- */
-function menuReplyKeyboard() {
-  return {
-    keyboard: [[{ text: MENU_REPLY_BUTTON_TEXT }]],
-    resize_keyboard: true,
-    is_persistent: true,
-  };
-}
+// MENU_REPLY_BUTTON_TEXT, mainMenuInlineKeyboard, menuReplyKeyboard — в ./pure.ts.
 
 async function showMainMenu(chatId: number) {
   const binding = await findChatBinding(chatId);
@@ -1878,20 +1671,7 @@ async function handleFreeFileUpload(msg: TgMessage, binding: TgChatBinding) {
   );
 }
 
-function mapUploadError(reason: string): string {
-  switch (reason) {
-    case "no_file":
-      return "Не вижу файла в сообщении. Прикрепите документ или фото.";
-    case "multiple_files":
-      return "Пожалуйста, пришлите один файл за раз.";
-    case "too_large":
-      return `⚠️ Файл больше ${MAX_FILE_SIZE_MB} МБ. Загрузите его через веб-интерфейс ClientCase.`;
-    case "download_failed":
-      return `⚠️ Не удалось получить файл (возможно, больше ${MAX_FILE_SIZE_MB} МБ). Загрузите через веб.`;
-    default:
-      return "⚠️ Не удалось загрузить документ.";
-  }
-}
+// mapUploadError — в ./pure.ts.
 
 async function handleSlotFileUpload(msg: TgMessage, binding: TgChatBinding, slotId: string) {
   const chatId = msg.chat.id;
@@ -2180,10 +1960,7 @@ async function handlePrivateMessage(_msg: TgMessage) {
 // Сессии (telegram_bot_sessions)
 // ═══════════════════════════════════════════════════════════════════════════
 
-interface BotSession {
-  state: string;
-  context: Record<string, unknown>;
-}
+// BotSession — в ./types.ts.
 
 async function getSession(chatId: number, userId: number): Promise<BotSession | null> {
   const { data } = await service
@@ -2222,6 +1999,4 @@ async function clearSession(chatId: number, userId: number) {
     .eq("telegram_user_id", userId);
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
+// escapeHtml — в ./pure.ts.
