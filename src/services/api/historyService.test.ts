@@ -10,6 +10,7 @@ import {
 } from './historyService'
 import { supabase } from '@/lib/supabase'
 import { ApiError } from '@/services/errors/AppError'
+import { mockSupabaseRpc, setSupabaseRpcMock, setSupabaseAuth } from '@/test/supabaseMocks'
 
 type SupabaseFrom = ReturnType<typeof supabase.from>
 
@@ -23,9 +24,7 @@ describe('historyService', () => {
   describe('getProjectHistory', () => {
     it('вызывает RPC get_project_history с обязательными параметрами', async () => {
       const rpcMock = vi.fn().mockResolvedValue({ data: [], error: null })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase.rpc as any) = rpcMock
-
+      setSupabaseRpcMock(rpcMock)
       await getProjectHistory('p-1')
 
       expect(rpcMock).toHaveBeenCalledWith('get_project_history', {
@@ -40,9 +39,7 @@ describe('historyService', () => {
 
     it('передаёт фильтры в RPC', async () => {
       const rpcMock = vi.fn().mockResolvedValue({ data: [], error: null })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase.rpc as any) = rpcMock
-
+      setSupabaseRpcMock(rpcMock)
       await getProjectHistory('p-1', 'cursor-abc', 50, {
         resourceTypes: ['document'],
         actions: ['create', 'update'],
@@ -63,30 +60,21 @@ describe('historyService', () => {
       const mockData = [
         { id: 'log-1', action: 'create', resource_type: 'document' },
       ]
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase.rpc as any) = vi
-        .fn()
-        .mockResolvedValue({ data: mockData, error: null })
+      mockSupabaseRpc({ data: mockData, error: null })
 
       const result = await getProjectHistory('p-1')
       expect(result).toEqual(mockData)
     })
 
     it('возвращает пустой массив если data=null', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase.rpc as any) = vi
-        .fn()
-        .mockResolvedValue({ data: null, error: null })
+      mockSupabaseRpc({ data: null, error: null })
 
       const result = await getProjectHistory('p-1')
       expect(result).toEqual([])
     })
 
     it('выбрасывает ApiError при ошибке RPC', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase.rpc as any) = vi
-        .fn()
-        .mockResolvedValue({ data: null, error: { message: 'permission denied' } })
+      mockSupabaseRpc({ data: null, error: { message: 'permission denied' } })
 
       await expect(getProjectHistory('p-1')).rejects.toThrow(ApiError)
       await expect(getProjectHistory('p-1')).rejects.toThrow(/permission denied/)
@@ -96,9 +84,7 @@ describe('historyService', () => {
   describe('getHistoryUnreadCount', () => {
     it('вызывает RPC get_history_unread_count с project_id', async () => {
       const rpcMock = vi.fn().mockResolvedValue({ data: 5, error: null })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase.rpc as any) = rpcMock
-
+      setSupabaseRpcMock(rpcMock)
       const result = await getHistoryUnreadCount('p-1')
 
       expect(rpcMock).toHaveBeenCalledWith('get_history_unread_count', {
@@ -108,20 +94,14 @@ describe('historyService', () => {
     })
 
     it('возвращает 0 если data=null', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase.rpc as any) = vi
-        .fn()
-        .mockResolvedValue({ data: null, error: null })
+      mockSupabaseRpc({ data: null, error: null })
 
       const result = await getHistoryUnreadCount('p-1')
       expect(result).toBe(0)
     })
 
     it('выбрасывает ApiError при ошибке RPC', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase.rpc as any) = vi
-        .fn()
-        .mockResolvedValue({ data: null, error: { message: 'fail' } })
+      mockSupabaseRpc({ data: null, error: { message: 'fail' } })
 
       await expect(getHistoryUnreadCount('p-1')).rejects.toThrow(ApiError)
     })
@@ -129,10 +109,9 @@ describe('historyService', () => {
 
   describe('markHistoryAsRead', () => {
     beforeEach(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase as any).auth = {
+      setSupabaseAuth({
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
-      }
+      })
     })
 
     it('делает upsert с user_id, project_id, last_read_at и onConflict', async () => {
@@ -151,10 +130,9 @@ describe('historyService', () => {
     })
 
     it('тихо выходит без вызовов если пользователь не авторизован', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase as any).auth = {
+      setSupabaseAuth({
         getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
-      }
+      })
       const fromMock = vi.fn()
       vi.mocked(supabase.from).mockImplementation(fromMock)
 

@@ -12,6 +12,7 @@ import {
 } from './projectService'
 import { supabase } from '@/lib/supabase'
 import { ProjectError } from '../errors/AppError'
+import { setSupabaseAuth } from '@/test/supabaseMocks'
 
 type SupabaseFrom = ReturnType<typeof supabase.from>
 
@@ -191,10 +192,9 @@ describe('projectService', () => {
   describe('deleteProject', () => {
     beforeEach(() => {
       // deleteProject теперь делает мягкое удаление и читает текущего пользователя
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase as any).auth = {
+      setSupabaseAuth({
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
-      }
+      })
     })
 
     it('должен пометить проект как удалённый (soft delete)', async () => {
@@ -270,10 +270,9 @@ describe('projectService', () => {
 
   describe('контракт deleteProject (soft delete)', () => {
     beforeEach(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase as any).auth = {
+      setSupabaseAuth({
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-42' } } }),
-      }
+      })
     })
 
     it('выставляет is_deleted=true, deleted_at и deleted_by, фильтрует по id', async () => {
@@ -297,10 +296,9 @@ describe('projectService', () => {
     })
 
     it('записывает deleted_by=null если нет авторизованного пользователя', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase as any).auth = {
+      setSupabaseAuth({
         getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
-      }
+      })
       const eq = vi.fn().mockResolvedValue({ error: null })
       const update = vi.fn().mockReturnValue({ eq })
       vi.mocked(supabase.from).mockReturnValue({ update } as unknown as SupabaseFrom)

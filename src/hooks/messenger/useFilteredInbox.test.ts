@@ -21,8 +21,8 @@ import {
 } from './useFilteredInbox'
 import { useAuth } from '@/contexts/AuthContext'
 import { useInboxThreadsV2 } from './useInbox'
-import { supabase } from '@/lib/supabase'
 import { createQueryWrapper } from '@/test/testUtils'
+import { mockSupabaseRpc } from '@/test/supabaseMocks'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 
 vi.mock('@/contexts/AuthContext', () => ({
@@ -120,8 +120,7 @@ function setupHookMocks(opts: {
   } as unknown as ReturnType<typeof useInboxThreadsV2>)
 
   // RPC get_sidebar_data
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(supabase.rpc as any) = vi.fn().mockResolvedValue({
+  mockSupabaseRpc({
     data: opts.sidebarData,
     error: null,
   })
@@ -408,8 +407,7 @@ describe('useFilteredInbox', () => {
       isLoading: true,
       error: null,
     } as unknown as ReturnType<typeof useInboxThreadsV2>)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(supabase.rpc as any) = vi.fn().mockResolvedValue({ data: null, error: null })
+    mockSupabaseRpc({ data: null, error: null })
 
     const { wrapper } = createQueryWrapper()
     const { result } = renderHook(() => useFilteredInbox('ws-1'), { wrapper })
