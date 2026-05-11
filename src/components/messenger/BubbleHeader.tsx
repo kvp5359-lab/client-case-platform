@@ -19,6 +19,13 @@ export function BubbleHeader({ message, isOwn, showAvatar, accent }: BubbleHeade
   const colors = bubbleStyles[accent]
   const { threadContactParticipantId } = useMessengerContext()
   const senderClickTarget = message.sender_participant_id ?? threadContactParticipantId ?? null
+  // Имя берём из join'нутого participant'а (актуальное) — sender_name это
+  // исторический snapshot на момент создания сообщения. Fallback на snapshot,
+  // если participant уже удалён или не привязан.
+  const participantName = message.sender
+    ? [message.sender.name, message.sender.last_name].filter(Boolean).join(' ')
+    : ''
+  const displayName = participantName || message.sender_name
   return (
     <>
       {/* Sender name */}
@@ -30,10 +37,10 @@ export function BubbleHeader({ message, isOwn, showAvatar, accent }: BubbleHeade
               onClick={() => useContactCardStore.getState().open(senderClickTarget)}
               className="text-xs font-medium text-foreground hover:text-primary hover:underline transition-colors"
             >
-              {message.sender_name}
+              {displayName}
             </button>
           ) : (
-            <span className="text-xs font-medium text-foreground">{message.sender_name}</span>
+            <span className="text-xs font-medium text-foreground">{displayName}</span>
           )}
           {message.sender_role && (
             <span className="text-xs text-muted-foreground">({message.sender_role})</span>

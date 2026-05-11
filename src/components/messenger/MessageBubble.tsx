@@ -87,6 +87,13 @@ function MessageBubbleImpl({
   } = useMessengerContext()
   const colors = bubbleStyles[accent]
   const showStaffMark = !!isClientThread && isTeamSender(message.sender_role)
+  // Имя отправителя берём из join'нутого participant'а (актуальное на момент рендера).
+  // sender_name на сообщении — это исторический snapshot, может быть устаревший
+  // (например, после переименования контакта).
+  const participantDisplayName = message.sender
+    ? [message.sender.name, message.sender.last_name].filter(Boolean).join(' ')
+    : ''
+  const displayName = participantDisplayName || message.sender_name
   const rawDeliveryStatus = useDeliveryStatus(message, isOwn, { isTelegramLinked })
   const deliveryFailed = rawDeliveryStatus === 'failed'
   // Старый getDeliveryStatus возвращал 'pending' | 'sent' | 'read' | null, а
@@ -237,7 +244,7 @@ function MessageBubbleImpl({
                 (message.sender_participant_id || threadContactParticipantId) &&
                   'hover:ring-2 hover:ring-offset-1 hover:ring-primary/30 transition-shadow cursor-pointer',
               )}
-              aria-label={`Открыть карточку ${message.sender_name}`}
+              aria-label={`Открыть карточку ${displayName}`}
             >
               <Avatar
                 className={cn(
@@ -246,12 +253,12 @@ function MessageBubbleImpl({
                 )}
               >
                 {message.sender?.avatar_url && (
-                  <AvatarImage src={message.sender.avatar_url} alt={message.sender_name} />
+                  <AvatarImage src={message.sender.avatar_url} alt={displayName} />
                 )}
                 <AvatarFallback
-                  className={cn('text-xs font-medium', getAvatarColor(message.sender_name))}
+                  className={cn('text-xs font-medium', getAvatarColor(displayName))}
                 >
-                  {getInitials(message.sender_name)}
+                  {getInitials(displayName)}
                 </AvatarFallback>
               </Avatar>
             </button>

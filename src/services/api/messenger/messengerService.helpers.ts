@@ -9,7 +9,7 @@ import type { ProjectMessage, ReplyMessage } from './messengerService.types'
 
 export const MESSAGE_SELECT = `
   *,
-  sender:participants!sender_participant_id(avatar_url),
+  sender:participants!sender_participant_id(name, last_name, avatar_url),
   reactions:message_reactions(*, participant:participants!participant_id(name, last_name, avatar_url)),
   attachments:message_attachments(*)
 `
