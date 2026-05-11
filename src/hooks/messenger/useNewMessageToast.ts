@@ -95,10 +95,11 @@ export function useNewMessageToast(workspaceId: string | undefined) {
           const cachedThreads = queryClient.getQueryData<InboxThreadEntry[]>(
             inboxKeys.threads(workspaceId),
           )
+          const threadEntry = cachedThreads?.find((c) => c.thread_id === msg.thread_id)
+          // У тредов без проекта в скобках показываем имя контакта, а не литерал «Проект».
           const projectName =
-            cachedThreads?.find((c) => c.project_id === msg.project_id)?.project_name ?? 'Проект'
-          let accentColor =
-            cachedThreads?.find((c) => c.thread_id === msg.thread_id)?.thread_accent_color ?? null
+            threadEntry?.project_name ?? threadEntry?.counterpart_name ?? 'Проект'
+          let accentColor = threadEntry?.thread_accent_color ?? null
 
           // Фоллбэк: если цвет не лежит в кеше (например, email-тред ещё не
           // попадал в inbox v2), подгружаем accent_color прямо из project_threads,
@@ -112,7 +113,13 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             accentColor = threadAccent?.accent_color ?? null
           }
 
-          const senderName = msg.sender_name ?? 'Участник'
+          // Если у входящего email sender_participant_id=NULL, sender_name = email.
+          // Подставляем имя контакта из inbox v2, если оно резолвлено через participant.
+          const isEmailLike = !!msg.sender_name && /@/.test(msg.sender_name)
+          const senderName =
+            (isEmailLike && threadEntry?.counterpart_name && !/@/.test(threadEntry.counterpart_name)
+              ? threadEntry.counterpart_name
+              : msg.sender_name) ?? 'Участник'
           const messageId = (payload.new as { id: string }).id
 
           const textLine = await parseTextLine(msg.content, messageId)
