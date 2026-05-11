@@ -63,7 +63,6 @@ function TaskField({
   assignees,
   workspaceId,
   onStatusChange,
-  stretch,
 }: {
   fieldId: CardFieldId
   style: CardFieldStyle
@@ -75,7 +74,6 @@ function TaskField({
   assignees: AvatarParticipant[]
   workspaceId: string
   onStatusChange: (taskId: string, statusId: string | null) => void
-  stretch?: boolean
 }) {
   const classes = fieldStyleToClasses(style)
 
@@ -215,25 +213,18 @@ export function BoardTaskRow({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
-      {rows.map((row, i) => {
-        const lastLeftIdx = row.fields.reduce(
-          (acc, f, idx) => (f.style.align === 'left' ? idx : acc),
-          -1,
-        )
-        return (
-          <div key={i} className={cn('flex items-center gap-1.5 min-w-0', i > 0 && 'mt-0.5')}>
-            {row.fields.map((f, idx) => (
-              <TaskField
-                key={f.fieldId}
-                fieldId={f.fieldId}
-                style={f.style}
-                stretch={idx === lastLeftIdx}
-                {...fieldProps}
-              />
-            ))}
-          </div>
-        )
-      })}
+      {rows.map((row, i) => (
+        <div key={i} className={cn('flex items-center gap-1.5 min-w-0', i > 0 && 'mt-0.5')}>
+          {row.fields.map((f) => (
+            <TaskField
+              key={f.fieldId}
+              fieldId={f.fieldId}
+              style={f.style}
+              {...fieldProps}
+            />
+          ))}
+        </div>
+      ))}
     </div>
   )
 }
