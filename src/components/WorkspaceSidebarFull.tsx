@@ -382,7 +382,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
           badgeColors={badgeColors}
           activeProjectId={activeProjectId}
           onProjectClick={(projectId) => {
-            setOptimisticProjectId(projectId)
+            setOptimisticProjectSegment(projectId)
             handleNavigate(`projects/${projectId}`)
           }}
           getProjectHref={(projectId) => buildHref(`projects/${projectId}`)}
