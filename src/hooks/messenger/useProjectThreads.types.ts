@@ -49,6 +49,8 @@ export interface ProjectThread {
   wazzup_channel_id: string | null
   /** ID чата в Wazzup (телефон без `+` для WA, username для IG). */
   wazzup_chat_id: string | null
+  /** Контакт-собеседник треда (для личных диалогов email/wazzup/telegram). NULL для проектных тредов и тредов между сотрудниками. */
+  contact_participant_id: string | null
   created_at: string
   updated_at: string
 }

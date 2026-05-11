@@ -83,6 +83,7 @@ function MessageBubbleImpl({
     onRetryTelegramSend,
     isSearchActive,
     onJumpToMessage,
+    threadContactParticipantId,
   } = useMessengerContext()
   const colors = bubbleStyles[accent]
   const showStaffMark = !!isClientThread && isTeamSender(message.sender_role)
@@ -226,14 +227,15 @@ function MessageBubbleImpl({
           {showAvatar ? (
             <button
               type="button"
-              onClick={() =>
-                message.sender_participant_id &&
-                useContactCardStore.getState().open(message.sender_participant_id)
-              }
-              disabled={!message.sender_participant_id}
+              onClick={() => {
+                const pid = message.sender_participant_id ?? threadContactParticipantId
+                if (pid) useContactCardStore.getState().open(pid)
+              }}
+              disabled={!message.sender_participant_id && !threadContactParticipantId}
               className={cn(
                 'rounded-full focus:outline-none',
-                message.sender_participant_id && 'hover:ring-2 hover:ring-offset-1 hover:ring-primary/30 transition-shadow cursor-pointer',
+                (message.sender_participant_id || threadContactParticipantId) &&
+                  'hover:ring-2 hover:ring-offset-1 hover:ring-primary/30 transition-shadow cursor-pointer',
               )}
               aria-label={`Открыть карточку ${message.sender_name}`}
             >

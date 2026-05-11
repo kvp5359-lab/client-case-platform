@@ -26,6 +26,13 @@ export interface MessengerContextValue {
   isBusinessThread?: boolean
   /** Тред — Wazzup (WhatsApp/IG). Реакции через шлюз не доставляются. */
   isWazzupThread?: boolean
+  /**
+   * Контакт-собеседник треда (для личных диалогов email/wazzup/telegram).
+   * Используется в баблах входящих сообщений как fallback при клике на аватарку:
+   * у email-сообщений sender_participant_id=NULL, поэтому открываем карточку
+   * контакта треда вместо отсутствующего sender'а.
+   */
+  threadContactParticipantId?: string | null
 
   // Callbacks
   onReply: (msg: ProjectMessage) => void
@@ -79,6 +86,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       isEmailThread: value.isEmailThread,
       isBusinessThread: value.isBusinessThread,
       isWazzupThread: value.isWazzupThread,
+      threadContactParticipantId: value.threadContactParticipantId,
       onReply: value.onReply,
       onReact: value.onReact,
       onEdit: value.onEdit,
@@ -110,6 +118,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       value.isEmailThread,
       value.isBusinessThread,
       value.isWazzupThread,
+      value.threadContactParticipantId,
       value.onReply,
       value.onReact,
       value.onEdit,

@@ -22,7 +22,7 @@ import { EmailSendMethodSelector } from './EmailSendMethodSelector'
 import { useMessengerState } from './hooks/useMessengerState'
 import { useMessengerHandlers } from './hooks/useMessengerHandlers'
 import { useOptimisticEmail } from './hooks/useOptimisticEmail'
-import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
+import { useProjectThreads, useProjectThreadById } from '@/hooks/messenger/useProjectThreads'
 import { useThreadHasClient } from '@/hooks/messenger/useThreadHasClient'
 
 interface MessengerTabContentProps {
@@ -52,7 +52,10 @@ export function MessengerTabContent({
   const [searchOpen, setSearchOpen] = useState(false)
   const [jumpToMessageId, setJumpToMessageId] = useState<string | null>(null)
   const { data: allThreads = [] } = useProjectThreads(projectId)
-  const currentThread = allThreads.find((t) => t.id === threadId)
+  // Тред догружаем напрямую — нужен contact_participant_id (для personal-тредов
+  // его нет в allThreads). React Query дедуплицирует с useProjectThreadById в TaskPanel.
+  const { data: directThread } = useProjectThreadById(threadId, true)
+  const currentThread = allThreads.find((t) => t.id === threadId) ?? directThread ?? undefined
   const hasClientParticipant = useThreadHasClient(currentThread)
 
   const state = useMessengerState({
@@ -164,6 +167,7 @@ export function MessengerTabContent({
         isEmailThread={state.isEmailChat}
         isBusinessThread={!!currentThread?.business_connection_id}
         isWazzupThread={!!currentThread?.wazzup_channel_id}
+        threadContactParticipantId={currentThread?.contact_participant_id ?? null}
         onReply={state.setReplyTo}
         onReact={handleReact}
         onEdit={handlers.handleStartEdit}
