@@ -98,18 +98,21 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   // (например, /boards/X) — резолвим тред через RPC, выставляем activeProjectId
   // под scope треда. Это позволяет открывать тред в side panel по shareable-ссылке.
   //
-  // ВАЖНО: применяем только если этот URL ещё не применяли. Если пользователь
-  // кликает другой тред с другим scope, activeProjectId ненадолго становится null,
-  // но URL ещё не успел обновиться. Без флага этот эффект тут же возвращал scope
-  // обратно на старый тред — pendingOpen для нового треда отбрасывался guard'ом
-  // ниже, и панель «дёргалась», но оставалась на старом треде.
+  // ВАЖНО: применяем ОДИН РАЗ при загрузке страницы. Как только пользователь
+  // открыл любой тред руками (openThreadTab/openProjectTab → userInteractedRef),
+  // больше URL-резолвер scope не трогает. Иначе:
+  //   - юзер кликает тред без project_id (личный диалог)
+  //   - activeProjectId становится null
+  //   - useThreadFromPanelTab асинхронно резолвит СТАРЫЙ panelTab из URL и
+  //     возвращает projectId старого треда
+  //   - эффект возвращает scope обратно, pendingOpen отбрасывается guard'ом —
+  //     панель «дёргается», но остаётся на прежнем треде.
   const resolvedFromUrl = useThreadFromPanelTab(workspaceId)
-  const appliedUrlThreadRef = useRef<string | null>(null)
+  const userInteractedRef = useRef(false)
   useEffect(() => {
     if (!resolvedFromUrl) return
     if (pageProjectId) return // на странице проекта scope уже задан
-    if (appliedUrlThreadRef.current === resolvedFromUrl.threadUuid) return
-    appliedUrlThreadRef.current = resolvedFromUrl.threadUuid
+    if (userInteractedRef.current) return
     if (activeProjectId !== null) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- scope-resolver: подхватываем projectId из shareable-ссылки на /boards|/inbox
     setActiveProjectId(resolvedFromUrl.projectId)
@@ -167,6 +170,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   const tabsOpenTab = tabs.openTab
   const openThreadTab = useCallback(
     async (task: TaskItem) => {
+      userInteractedRef.current = true
       const targetPid = task.project_id ?? null
       let targetContactId = targetPid ? null : task.contact_participant_id ?? null
       // Если тред без проекта, а контакт не пришёл — резолвим из БД,
@@ -201,6 +205,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
 
   const openProjectTab = useCallback(
     (project: ProjectHeaderInfo) => {
+      userInteractedRef.current = true
       const targetPid = project.id
       const tab: TaskPanelTab = {
         id: `tasks:${project.id}`,
