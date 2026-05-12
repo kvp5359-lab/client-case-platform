@@ -86,6 +86,52 @@ export async function getProjectMessagesByChannel(
 }
 
 /**
+ * Догрузить старую историю сообщений через MTProto. Зовётся фронтом, когда
+ * сотрудник прокрутил тред вверх до самого старого сообщения в БД и нажал
+ * «Загрузить ещё из Telegram».
+ *
+ * Под капотом edge function проксирует в mtproto-service, тот делает
+ * `Api.messages.GetHistory` с offset_id = min(telegram_message_id треда),
+ * limit=50, и инсёртит каждое сообщение через ту же логику, что и realtime.
+ *
+ * Возвращает `inserted` — реально вставленных строк (дубли отсеиваются
+ * UNIQUE-индексом), `fetched` — сколько Telegram вернул всего,
+ * `has_more` — true если Telegram отдал полный батч (значит ещё есть, что
+ * листать). На FLOOD_WAIT возвращает 429 с retry_after_seconds — фронт
+ * должен показать соответствующее сообщение.
+ */
+export async function backfillTelegramHistory(
+  threadId: string,
+): Promise<{ inserted: number; fetched: number; hasMore: boolean }> {
+  const { data, error } = await supabase.functions.invoke(
+    'telegram-mtproto-backfill',
+    { body: { thread_id: threadId } },
+  )
+  if (error) {
+    // Edge runtime кладёт текст в error.context.response для не-2xx.
+    type FuncErrCtx = { response?: Response }
+    const ctx = (error as { context?: FuncErrCtx }).context
+    let bodyText: string | undefined
+    if (ctx?.response) {
+      try {
+        bodyText = await ctx.response.clone().text()
+      } catch {
+        /* ignore */
+      }
+    }
+    throw new ConversationError(
+      `Не удалось догрузить историю из Telegram: ${bodyText ?? error.message}`,
+    )
+  }
+  const result = data as { inserted?: number; fetched?: number; has_more?: boolean }
+  return {
+    inserted: result.inserted ?? 0,
+    fetched: result.fetched ?? 0,
+    hasMore: result.has_more ?? false,
+  }
+}
+
+/**
  * Загрузить сообщения проекта по списку тредов (или все треды проекта, если threadIds=null).
  * Используется AI-ассистентом для скоупа поиска по чатам.
  */

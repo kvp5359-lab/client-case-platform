@@ -85,6 +85,8 @@ export const boardKeys = {
    * с другим набором полей (BoardProject vs Project).
    */
   projectsByWorkspace: (workspaceId: string) => ['boards', 'projects', workspaceId] as const,
+  /** Ручной порядок карточек по всем спискам доски (board_list_item_order). */
+  itemOrders: (boardId: string) => ['boards', boardId, 'item-orders'] as const,
 }
 
 export const myTaskCountsKeys = {

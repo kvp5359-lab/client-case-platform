@@ -17,7 +17,13 @@ import {
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
 import { supabase } from '@/lib/supabase'
-import { messengerKeys, invalidateMessengerCaches, STALE_TIME } from '@/hooks/queryKeys'
+import {
+  messengerKeys,
+  inboxKeys,
+  invalidateMessengerCaches,
+  STALE_TIME,
+} from '@/hooks/queryKeys'
+import type { InboxThreadEntry } from '@/services/api/inboxService'
 import { dismissProjectToasts } from './useMessageToastPayload'
 
 /** Resolve participant: project-level if projectId given, else workspace-level */
@@ -62,7 +68,12 @@ export function useUnreadCount(
       if (!pid) return 0
       return getUnreadCount(pid, projectId, channel, threadId)
     },
-    enabled: !!user && !!threadId,
+    // Если participantId ещё не подъехал и нет projectId для fallback'а —
+    // не запускаем queryFn, чтобы не затереть значение, которое сидирует
+    // useChatState. Без этого фикса на холодном reload queryFn возвращал 0,
+    // а позже setQueryData из useChatState клал настоящее значение —
+    // но queryFn мог отрезолвиться позже и перезаписать его нулём.
+    enabled: !!user && !!threadId && (!!participantId || !!projectId),
     staleTime: STALE_TIME.SHORT,
   })
 }
@@ -86,7 +97,12 @@ export function useLastReadAt(
       if (!pid) return null
       return getLastReadAt(pid, projectId, channel, threadId)
     },
-    enabled: !!user && !!threadId,
+    // Та же логика, что в useUnreadCount: пока participantId не подъехал
+    // и нет projectId для fallback'а — не запускаем queryFn. Иначе на
+    // холодном reload queryFn возвращал null, перезаписывая значение,
+    // которое сидировал useChatState. С null'овым lastReadAt MessageList
+    // помечал все чужие сообщения как непрочитанные.
+    enabled: !!user && !!threadId && (!!participantId || !!projectId),
     staleTime: STALE_TIME.SHORT,
   })
 }
@@ -111,8 +127,33 @@ export function useMarkAsRead(
       return markAsRead(pid, projectId, channel, threadId)
     },
     onSuccess: () => {
+      const nowIso = new Date().toISOString()
       queryClient.setQueryData(unreadKey, 0)
+      // Оптимистично выставляем lastReadAt: иначе пока инвалидация перезагружает
+      // значение из БД, MessageList сравнивает с прежним (или null) и подсвечивает
+      // все чужие сообщения красной полосой, хотя счётчик уже 0.
+      queryClient.setQueryData(lastReadKey, nowIso)
       queryClient.invalidateQueries({ queryKey: lastReadKey })
+      // Inbox v2: оптимистично гасим бейдж на этом треде, иначе цифра в шапке
+      // треда переживает mark-as-read до следующей инвалидации/realtime.
+      if (workspaceId) {
+        queryClient.setQueryData<InboxThreadEntry[] | undefined>(
+          inboxKeys.threads(workspaceId),
+          (prev) =>
+            prev?.map((t) =>
+              t.thread_id === threadId
+                ? {
+                    ...t,
+                    unread_count: 0,
+                    manually_unread: false,
+                    has_unread_reaction: false,
+                    unread_reaction_count: 0,
+                    unread_event_count: 0,
+                  }
+                : t,
+            ),
+        )
+      }
       // Агрегированная карта last_read_at в «Всей истории» TaskPanel — тоже надо
       // пересчитать, иначе бабл останется с красной рамкой «непрочитано», пока
       // пользователь не обновит страницу.
@@ -153,8 +194,24 @@ export function useMarkAsUnread(
       }
     },
     onSuccess: () => {
+      const nowIso = new Date().toISOString()
+      // Оптимистично: lastReadAt = NOW, чтобы старые сообщения сразу
+      // потеряли красную полосу (manually_unread даёт бейдж, но конкретные
+      // сообщения не должны считаться непрочитанными).
+      queryClient.setQueryData(lastReadKey, nowIso)
       queryClient.invalidateQueries({ queryKey: unreadKey })
       queryClient.invalidateQueries({ queryKey: lastReadKey })
+      // Inbox v2: оптимистично ставим manually_unread=true, чтобы бейдж
+      // появился до завершения инвалидации.
+      if (workspaceId) {
+        queryClient.setQueryData<InboxThreadEntry[] | undefined>(
+          inboxKeys.threads(workspaceId),
+          (prev) =>
+            prev?.map((t) =>
+              t.thread_id === threadId ? { ...t, manually_unread: true } : t,
+            ),
+        )
+      }
       if (projectId) {
         queryClient.invalidateQueries({
           queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),

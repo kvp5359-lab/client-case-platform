@@ -73,6 +73,17 @@ export function useNewMessageToast(workspaceId: string | undefined) {
           const msgChannel: 'client' | 'internal' =
             msg.channel === 'internal' ? 'internal' : 'client'
 
+          // Игнорируем «исторические» сообщения — пришли в БД из бэкфилла
+          // (MTProto getHistory подтянул старую переписку). Признак: created_at
+          // явно в прошлом. Realtime отдаёт INSERT-payload как любое другое
+          // событие, но это не «новое» сообщение, для которого нужен звук/toast.
+          // Порог 60 секунд — с запасом покрывает clock drift между БД и
+          // клиентом, при этом реальные новые входящие точно проходят.
+          if (msg.created_at) {
+            const ageMs = Date.now() - new Date(msg.created_at).getTime()
+            if (ageMs > 60_000) return
+          }
+
           // Не показываем тост на свои же сообщения. Может быть race —
           // participants ещё не загрузились в ref. Тогда подгружаем синхронно.
           if (msg.sender_participant_id) {
