@@ -5,12 +5,28 @@ import { applyFilters } from '@/lib/filters/filterEngine'
 import type { FilterGroup, FilterContext, SortField, SortDir } from '@/lib/filters/types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 
-function compareTasks(a: WorkspaceTask, b: WorkspaceTask, sortBy: SortField, sortDir: SortDir): number {
+function compareTasks(
+  a: WorkspaceTask,
+  b: WorkspaceTask,
+  sortBy: SortField,
+  sortDir: SortDir,
+  manualPositions?: Record<string, number>,
+): number {
   let cmp = 0
   switch (sortBy) {
-    case 'manual_order':
-      // Ручная сортировка всегда по возрастанию sort_order, direction игнорируется
-      return (a.sort_order ?? 0) - (b.sort_order ?? 0)
+    case 'manual_order': {
+      // Ручная сортировка по позициям из board_list_item_order для данного
+      // списка. Элементы без записи уезжают в конец, между собой — по
+      // created_at desc (свежие наверху, чтобы новая задача сразу была видна).
+      const pa = manualPositions?.[a.id]
+      const pb = manualPositions?.[b.id]
+      if (pa != null && pb != null) return pa - pb
+      if (pa != null) return -1
+      if (pb != null) return 1
+      const ca = new Date(a.created_at).getTime()
+      const cb = new Date(b.created_at).getTime()
+      return cb - ca
+    }
     case 'name':
       cmp = (a.name ?? '').localeCompare(b.name ?? '')
       break
@@ -50,6 +66,7 @@ export function useFilteredTasks(
   assigneesMap: Record<string, { id: string }[]>,
   sortBy: SortField = 'created_at',
   sortDir: SortDir = 'desc',
+  manualPositions?: Record<string, number>,
 ) {
   return useMemo(() => {
     const fieldAccessors: Record<string, (item: unknown) => unknown> = {
@@ -71,8 +88,8 @@ export function useFilteredTasks(
     }
 
     const filtered = applyFilters(tasks, filters, ctx, fieldAccessors, junctionAccessors)
-    return [...filtered].sort((a, b) => compareTasks(a, b, sortBy, sortDir))
-  }, [tasks, filters, ctx, assigneesMap, sortBy, sortDir])
+    return [...filtered].sort((a, b) => compareTasks(a, b, sortBy, sortDir, manualPositions))
+  }, [tasks, filters, ctx, assigneesMap, sortBy, sortDir, manualPositions])
 }
 
 /**
@@ -90,6 +107,7 @@ export function useFilteredProjects<T extends Record<string, unknown> & { id: st
   sortBy: SortField = 'created_at',
   sortDir: SortDir = 'desc',
   nextTaskDeadlineByProjectId: Record<string, string | null> = {},
+  manualPositions?: Record<string, number>,
 ) {
   return useMemo(() => {
     const fieldAccessors: Record<string, (item: unknown) => unknown> = {
@@ -112,6 +130,22 @@ export function useFilteredProjects<T extends Record<string, unknown> & { id: st
     }
 
     const filtered = applyFilters(projects, filters, ctx, fieldAccessors, junctionAccessors)
+
+    if (sortBy === 'manual_order') {
+      // Ручная сортировка по позициям из board_list_item_order. Элементы без
+      // записи — в конец, между собой по created_at desc.
+      const positions = manualPositions ?? {}
+      return [...filtered].sort((a, b) => {
+        const pa = positions[a.id]
+        const pb = positions[b.id]
+        if (pa != null && pb != null) return pa - pb
+        if (pa != null) return -1
+        if (pb != null) return 1
+        const ca = new Date((a.created_at as string | undefined) ?? 0).getTime()
+        const cb = new Date((b.created_at as string | undefined) ?? 0).getTime()
+        return cb - ca
+      })
+    }
 
     const getSortKey = (p: T): string | null => {
       switch (sortBy) {
@@ -139,5 +173,5 @@ export function useFilteredProjects<T extends Record<string, unknown> & { id: st
       if (ka > kb) return 1 * mult
       return 0
     })
-  }, [projects, filters, ctx, participantsMap, sortBy, sortDir, nextTaskDeadlineByProjectId])
+  }, [projects, filters, ctx, participantsMap, sortBy, sortDir, nextTaskDeadlineByProjectId, manualPositions])
 }

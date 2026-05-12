@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   DndContext,
   PointerSensor,
@@ -22,6 +22,11 @@ import type { BoardCardDndState } from './BoardListCard'
 import { usePanDrag } from './hooks/usePanDrag'
 import { useReorderLists } from './hooks/useListMutations'
 import { useUpdateProjectStatusOnBoard } from './hooks/useUpdateProjectStatusOnBoard'
+import {
+  useBoardListItemOrders,
+  useReorderBoardListItems,
+  type BoardItemType,
+} from './hooks/useBoardListItemOrders'
 import { extractStatusIdFromFilter, statusEquals } from './cardDndUtils'
 import {
   DEFAULT_COLUMN_WIDTH,
@@ -39,6 +44,7 @@ import type { TaskItem } from '@/components/tasks/types'
 import { hexToHeaderStyle } from './types'
 
 interface BoardViewProps {
+  boardId: string
   lists: BoardList[]
   tasks: WorkspaceTask[]
   projects: BoardProject[]
@@ -63,6 +69,7 @@ interface BoardViewProps {
 }
 
 export function BoardView({
+  boardId,
   lists,
   tasks,
   projects,
@@ -83,6 +90,24 @@ export function BoardView({
 }: BoardViewProps) {
   const effectiveBoardFilter = boardGlobalFilter ?? EMPTY_BOARD_GLOBAL_FILTER
   const reorderLists = useReorderLists()
+  const reorderItems = useReorderBoardListItems()
+
+  const listIds = useMemo(() => lists.map((l) => l.id), [lists])
+  const { data: itemOrders } = useBoardListItemOrders(boardId, listIds)
+
+  // Регистр текущего отрисованного порядка карточек по каждому списку.
+  // BoardListCard в useEffect публикует сюда свой filteredTasks/filteredProjects.
+  // На drag-end читаем из ref, чтобы пересобрать новый порядок.
+  const orderRegistryRef = useRef<
+    Record<string, { thread: string[]; project: string[] }>
+  >({})
+  const registerListOrder = useCallback(
+    (listId: string, itemType: BoardItemType, ids: string[]) => {
+      const slot = orderRegistryRef.current[listId] ?? { thread: [], project: [] }
+      orderRegistryRef.current[listId] = { ...slot, [itemType]: ids }
+    },
+    [],
+  )
 
   const columns = useMemo(() => {
     const map = new Map<number, BoardList[]>()
@@ -124,6 +149,13 @@ export function BoardView({
     | null
   >(null)
   const [overCardTarget, setOverCardTarget] = useState<string | null>(null)
+  // Подсветка позиции для ручной сортировки (drop на конкретную карточку).
+  const [rowDropIndicator, setRowDropIndicator] = useState<
+    | { kind: BoardItemType; listId: string; itemId: string; position: 'top' | 'bottom' }
+    | null
+  >(null)
+  // TEMP DEBUG — показываем в углу что видит dnd-kit. Удалить когда manual-reorder заработает.
+  const [debugInfo, setDebugInfo] = useState<string>('')
 
   const updateProjectStatus = useUpdateProjectStatusOnBoard()
 
@@ -140,8 +172,11 @@ export function BoardView({
       activeGroupKey: overCardTarget && overCardTarget.startsWith('group:') ? overCardTarget : null,
       activeListCardsId:
         overCardTarget && overCardTarget.startsWith('list-cards:') ? overCardTarget : null,
+      rowDropIndicator,
+      manualOrders: itemOrders ?? {},
+      registerListOrder,
     }),
-    [overCardTarget],
+    [overCardTarget, rowDropIndicator, itemOrders, registerListOrder],
   )
 
   // Кастомный collision detection. При drag списка приоритезируем
@@ -157,6 +192,66 @@ export function BoardView({
       // и rectIntersection ловит исходную позицию. Используем pointerWithin —
       // он работает по координате курсора.
       const collisions = pointerWithin(args)
+      // Приоритет 1: drop на конкретную карточку (ручной reorder) — только если
+      // карточка в списке с sort_by='manual_order'. Иначе игнорируем.
+      const row = collisions.find((c) => {
+        const id = String(c.id)
+        if (!id.startsWith('task-row:') && !id.startsWith('project-row:')) return false
+        const parts = id.split(':')
+        const listId = parts[2]
+        const list = lists.find((l) => l.id === listId)
+        return list?.sort_by === 'manual_order'
+      })
+      if (row) return [row]
+
+      // Указатель в list-cards/group любого manual_order-списка (между
+      // карточками, над/под ними) — ищем ближайшую task-row/project-row того
+      // же списка по Y, чтобы синяя полоска появлялась всегда, а не только
+      // точно над карточкой.
+      const rowPrefix = activeId.startsWith('task:') ? 'task-row:' : 'project-row:'
+      if (args.pointerCoordinates) {
+        // Список, чья list-cards/group зона под курсором сейчас.
+        let targetListId: string | null = null
+        for (const c of collisions) {
+          const id = String(c.id)
+          if (id.startsWith('list-cards:')) {
+            targetListId = id.slice('list-cards:'.length)
+            break
+          }
+          if (id.startsWith('group:')) {
+            const rest = id.slice('group:'.length)
+            const sep = rest.indexOf(':')
+            if (sep !== -1) {
+              targetListId = rest.slice(0, sep)
+              break
+            }
+          }
+        }
+        const targetList = targetListId ? lists.find((l) => l.id === targetListId) : null
+        if (targetList?.sort_by === 'manual_order') {
+          const pointerY = args.pointerCoordinates.y
+          let nearestId: string | null = null
+          let nearestDist = Infinity
+          for (const d of args.droppableContainers) {
+            const id = String(d.id)
+            if (!id.startsWith(rowPrefix)) continue
+            if (!id.endsWith(`:${targetListId}`)) continue
+            const r = d.rect.current
+            if (!r) continue
+            const cy = r.top + r.height / 2
+            const dist = Math.abs(cy - pointerY)
+            if (dist < nearestDist) {
+              nearestDist = dist
+              nearestId = id
+            }
+          }
+          if (nearestId) {
+            const found = args.droppableContainers.find((d) => String(d.id) === nearestId)
+            if (found) return [{ id: found.id, data: found.data }]
+          }
+        }
+      }
+
       const group = collisions.find((c) => String(c.id).startsWith('group:'))
       if (group) return [group]
       const listCards = collisions.find((c) => String(c.id).startsWith('list-cards:'))
@@ -202,7 +297,7 @@ export function BoardView({
       return [colHit]
     }
     return intersections
-  }, [])
+  }, [lists])
 
   const handleDragStart = useCallback((e: DragStartEvent) => {
     const id = String(e.active.id)
@@ -229,8 +324,43 @@ export function BoardView({
       activeId.startsWith('task:') || activeId.startsWith('project:')
 
     if (isCardDrag) {
-      // Card drag — отслеживаем только над group/list-cards droppables.
+      // Card drag — отслеживаем над row/group/list-cards droppables.
       const overId = over ? String(over.id) : null
+      // TEMP DEBUG
+      setDebugInfo(`active=${activeId} | over=${overId ?? 'null'}`)
+      if (overId && (overId.startsWith('task-row:') || overId.startsWith('project-row:'))) {
+        // Парсим `task-row:<itemId>:<listId>` либо `project-row:<itemId>:<listId>`.
+        const kind: BoardItemType = overId.startsWith('task-row:') ? 'thread' : 'project'
+        const prefix = kind === 'thread' ? 'task-row:' : 'project-row:'
+        const rest = overId.slice(prefix.length)
+        const sepIdx = rest.indexOf(':')
+        if (sepIdx !== -1) {
+          const itemId = rest.slice(0, sepIdx)
+          const listId = rest.slice(sepIdx + 1)
+          // Не показываем индикатор поверх самой перетаскиваемой карточки.
+          const draggedId = activeCard
+            ? (activeCard.kind === 'task' ? activeCard.task.id : activeCard.project.id)
+            : null
+          if (draggedId === itemId) {
+            setRowDropIndicator(null)
+          } else {
+            const overRect = over!.rect
+            const pointerY = e.activatorEvent
+              ? (e.activatorEvent as PointerEvent).clientY + (e.delta?.y ?? 0)
+              : 0
+            const midY = overRect.top + overRect.height / 2
+            setRowDropIndicator({
+              kind,
+              listId,
+              itemId,
+              position: pointerY < midY ? 'top' : 'bottom',
+            })
+          }
+          setOverCardTarget(null)
+          return
+        }
+      }
+      setRowDropIndicator(null)
       if (overId && (overId.startsWith('group:') || overId.startsWith('list-cards:'))) {
         setOverCardTarget(overId)
       } else {
@@ -269,7 +399,7 @@ export function BoardView({
       setDropIndicator(null)
       setOverColumnIndex(null)
     }
-  }, [])
+  }, [activeCard])
 
   const handleDragCancel = useCallback(() => {
     setActiveListId(null)
@@ -278,6 +408,8 @@ export function BoardView({
     setGapTarget(null)
     setActiveCard(null)
     setOverCardTarget(null)
+    setRowDropIndicator(null)
+    setDebugInfo('')
   }, [])
 
   const handleDragEnd = useCallback((e: DragEndEvent) => {
@@ -287,9 +419,46 @@ export function BoardView({
     if (activeId.startsWith('task:') || activeId.startsWith('project:')) {
       const card = activeCard
       const target = overCardTarget
+      const rowInd = rowDropIndicator
       setActiveCard(null)
       setOverCardTarget(null)
-      if (!card || !target) return
+      setRowDropIndicator(null)
+      if (!card) return
+
+      // 0) Drop на конкретную карточку в списке с manual_order — ручной reorder.
+      if (rowInd) {
+        if (rowInd.listId !== card.sourceListId) return // cross-list reorder не делаем
+        const sourceList = lists.find((l) => l.id === rowInd.listId)
+        if (!sourceList || sourceList.sort_by !== 'manual_order') return
+        const itemType: BoardItemType = card.kind === 'project' ? 'project' : 'thread'
+        if ((rowInd.kind === 'project') !== (itemType === 'project')) return
+        const draggedId = card.kind === 'project' ? card.project.id : card.task.id
+        if (rowInd.itemId === draggedId) return
+
+        // Текущий порядок берём из регистра, опубликованного BoardListCard.
+        const currentIds = orderRegistryRef.current[rowInd.listId]?.[itemType] ?? []
+        if (currentIds.length === 0) return
+        const without = currentIds.filter((id) => id !== draggedId)
+        const targetIdx = without.indexOf(rowInd.itemId)
+        if (targetIdx === -1) return
+        const insertIdx = rowInd.position === 'bottom' ? targetIdx + 1 : targetIdx
+        const newIds = [...without.slice(0, insertIdx), draggedId, ...without.slice(insertIdx)]
+        if (
+          newIds.length === currentIds.length &&
+          newIds.every((id, i) => id === currentIds[i])
+        ) {
+          return
+        }
+        reorderItems.mutate({
+          board_id: boardId,
+          list_id: rowInd.listId,
+          item_type: itemType,
+          item_ids: newIds,
+        })
+        return
+      }
+
+      if (!target) return
 
       // Drop на конкретный статус-список = смена статуса.
       if (target.startsWith('list-cards:')) {
@@ -440,7 +609,7 @@ export function BoardView({
 
     if (updates.length === 0) return
     reorderLists.mutate({ board_id: dragged.board_id, updates })
-  }, [activeList, dropIndicator, gapTarget, lists, reorderLists, activeCard, overCardTarget, updateProjectStatus, onStatusChange])
+  }, [activeList, dropIndicator, gapTarget, lists, reorderLists, activeCard, overCardTarget, rowDropIndicator, updateProjectStatus, onStatusChange, reorderItems, boardId])
 
   if (lists.length === 0) {
     return (
@@ -506,30 +675,60 @@ export function BoardView({
           }}>
             {activeList.name}
           </div>
-        ) : activeCard?.kind === 'project' ? (
-          <div className="shadow-xl rounded-md opacity-90 bg-white">
-            <BoardProjectRow
-              project={activeCard.project}
-              workspaceId={workspaceId}
-              displayMode="cards"
-              visibleFields={['status', 'template']}
-            />
-          </div>
-        ) : activeCard?.kind === 'task' ? (
-          <div className="shadow-xl rounded-md opacity-90 bg-white">
-            <BoardTaskRow
-              task={activeCard.task}
-              workspaceId={workspaceId}
-              assignees={assigneesMap[activeCard.task.id] ?? []}
-              statuses={statuses ?? []}
-              visibleFields={['status', 'deadline', 'assignees', 'project']}
-              displayMode="cards"
-              onOpenTask={() => {}}
-              onStatusChange={() => {}}
-            />
-          </div>
-        ) : null}
+        ) : activeCard?.kind === 'project' ? (() => {
+          const sourceList = lists.find((l) => l.id === activeCard.sourceListId)
+          return (
+            <div className="shadow-xl rounded-md opacity-90 bg-white">
+              <BoardProjectRow
+                project={activeCard.project}
+                workspaceId={workspaceId}
+                displayMode={sourceList?.display_mode ?? 'list'}
+                visibleFields={sourceList?.visible_fields ?? ['status', 'template']}
+                cardLayout={sourceList?.card_layout ?? null}
+              />
+            </div>
+          )
+        })() : activeCard?.kind === 'task' ? (() => {
+          const sourceList = lists.find((l) => l.id === activeCard.sourceListId)
+          return (
+            <div className="shadow-xl rounded-md opacity-90 bg-white">
+              <BoardTaskRow
+                task={activeCard.task}
+                workspaceId={workspaceId}
+                assignees={assigneesMap[activeCard.task.id] ?? []}
+                statuses={statuses ?? []}
+                visibleFields={sourceList?.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
+                displayMode={sourceList?.display_mode ?? 'list'}
+                cardLayout={sourceList?.card_layout ?? null}
+                onOpenTask={() => {}}
+                onStatusChange={() => {}}
+              />
+            </div>
+          )
+        })() : null}
       </DragOverlay>
+      {/* TEMP DEBUG — удалить когда manual-reorder заработает. */}
+      {debugInfo && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 8,
+            left: 8,
+            zIndex: 9999,
+            background: 'rgba(0,0,0,0.85)',
+            color: '#fff',
+            padding: '6px 10px',
+            borderRadius: 6,
+            fontFamily: 'monospace',
+            fontSize: 11,
+            maxWidth: 600,
+            wordBreak: 'break-all',
+            pointerEvents: 'none',
+          }}
+        >
+          {debugInfo}
+        </div>
+      )}
     </DndContext>
   )
 }

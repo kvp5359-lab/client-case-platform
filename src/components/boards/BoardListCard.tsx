@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
 import { useDialog } from '@/hooks/shared/useDialog'
@@ -24,6 +24,7 @@ import type { StatusOption } from '@/components/ui/status-dropdown'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
+import type { BoardItemType, BoardListOrdersMap } from './hooks/useBoardListItemOrders'
 
 interface BoardListCardProps {
   list: BoardList
@@ -58,6 +59,17 @@ export interface BoardCardDndState {
   activeGroupKey: string | null
   /** Полный ID активного droppable-списка вида `list-cards:<list_id>` или null. */
   activeListCardsId: string | null
+  /** Подсветка позиции для ручной сортировки — над какой карточкой и где. */
+  rowDropIndicator: {
+    kind: BoardItemType
+    listId: string
+    itemId: string
+    position: 'top' | 'bottom'
+  } | null
+  /** Ручной порядок (board_list_item_order) по всем спискам доски. */
+  manualOrders: BoardListOrdersMap
+  /** Регистрация текущего видимого порядка карточек — BoardView читает его на drag-end. */
+  registerListOrder: (listId: string, itemType: BoardItemType, ids: string[]) => void
 }
 
 /**
@@ -232,6 +244,9 @@ export function BoardListCard({
     return map
   }, [participants])
 
+  const manualThreadPositions = boardCardDnd?.manualOrders?.[list.id]?.thread
+  const manualProjectPositions = boardCardDnd?.manualOrders?.[list.id]?.project
+
   const filteredTasks = useFilteredTasks(
     list.entity_type === 'thread' ? tasks : [],
     safeFilters,
@@ -239,6 +254,7 @@ export function BoardListCard({
     simpleAssigneesMap,
     list.sort_by ?? 'created_at',
     list.sort_dir ?? 'desc',
+    manualThreadPositions,
   )
 
   const { data: projectParticipantsMap } = useWorkspaceProjectParticipants(
@@ -254,6 +270,7 @@ export function BoardListCard({
     list.sort_by ?? 'created_at',
     list.sort_dir ?? 'desc',
     nextTaskDeadlineByProjectId,
+    manualProjectPositions,
   )
 
   const count = isInbox ? inboxThreads.length : isProject ? filteredProjects.length : filteredTasks.length
@@ -288,6 +305,28 @@ export function BoardListCard({
   // boardCardDnd, передаются вниз через BoardColumn).
   const activeGroupKey = boardCardDnd?.activeGroupKey ?? null
   const activeListCardsId = boardCardDnd?.activeListCardsId ?? null
+
+  // Публикуем текущий видимый порядок карточек в registry BoardView —
+  // нужен для ручного reorder (sort_by='manual_order'): BoardView в drag-end
+  // читает оттуда, чтобы вычислить новый порядок и записать в БД.
+  const registerListOrder = boardCardDnd?.registerListOrder
+  const filteredTaskIds = useMemo(() => filteredTasks.map((t) => t.id), [filteredTasks])
+  const filteredProjectIds = useMemo(() => filteredProjects.map((p) => p.id), [filteredProjects])
+  useEffect(() => {
+    if (!registerListOrder) return
+    if (list.entity_type === 'thread') registerListOrder(list.id, 'thread', filteredTaskIds)
+    else if (list.entity_type === 'project') registerListOrder(list.id, 'project', filteredProjectIds)
+  }, [registerListOrder, list.id, list.entity_type, filteredTaskIds, filteredProjectIds])
+
+  // Подсказка для drop-indicator конкретной карточки.
+  const rowInd = boardCardDnd?.rowDropIndicator
+  const indicatorForRow = (kind: BoardItemType, itemId: string): 'top' | 'bottom' | null => {
+    if (!rowInd) return null
+    if (rowInd.listId !== list.id) return null
+    if (rowInd.kind !== kind) return null
+    if (rowInd.itemId !== itemId) return null
+    return rowInd.position
+  }
 
   return (
     <div className={cn('rounded-lg', listHeight === 'full' && 'flex flex-col flex-1 min-h-0')}>
@@ -373,6 +412,7 @@ export function BoardListCard({
                             cardLayout={list.card_layout}
                             nextTask={nextTaskByProjectId[project.id]}
                             authorName={project.created_by ? authorNameByUserId[project.created_by] : null}
+                            dropIndicator={indicatorForRow('project', project.id)}
                           />
                         ))}
                       </div>
@@ -419,7 +459,7 @@ export function BoardListCard({
                             onStatusChange={onStatusChange}
                             isSelected={selectedThreadId === task.id}
                             cardLayout={list.card_layout}
-                            dropIndicator={null}
+                            dropIndicator={indicatorForRow('thread', task.id)}
                           />
                         ))}
                       </div>

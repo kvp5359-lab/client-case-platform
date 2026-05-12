@@ -31,6 +31,7 @@ export const DraggableBoardTaskRow = memo(function DraggableBoardTaskRow({
   dropIndicator,
   ...rest
 }: DraggableBoardTaskRowProps) {
+  const isCards = rest.displayMode === 'cards'
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
     // Namespace ID, чтобы один и тот же task не конфликтовал, если показан
     // в нескольких списках на доске.
@@ -58,11 +59,23 @@ export const DraggableBoardTaskRow = memo(function DraggableBoardTaskRow({
       data-board-card
     >
       {dropIndicator === 'top' && (
-        <div className="absolute top-0 left-2 right-2 h-0.5 bg-blue-500 rounded-full z-10 pointer-events-none" />
+        <div
+          className={cn(
+            'absolute left-2 right-2 h-0.5 bg-blue-500 rounded-full z-20 pointer-events-none',
+            // В cards-режиме сама карточка имеет overflow-hidden + rounded —
+            // полоска на top-0 обрезается. Выносим её в зазор сверху.
+            isCards ? '-top-1' : 'top-0',
+          )}
+        />
       )}
       <BoardTaskRow task={task} {...rest} />
       {dropIndicator === 'bottom' && (
-        <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-500 rounded-full z-10 pointer-events-none" />
+        <div
+          className={cn(
+            'absolute left-2 right-2 h-0.5 bg-blue-500 rounded-full z-20 pointer-events-none',
+            isCards ? '-bottom-1' : 'bottom-0',
+          )}
+        />
       )}
     </div>
   )

@@ -70,6 +70,7 @@ export default function BoardPage() {
         {/* Board content */}
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
           <BoardView
+            boardId={boardId}
             lists={lists ?? []}
             tasks={tasks ?? []}
             projects={projects ?? []}

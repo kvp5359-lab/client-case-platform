@@ -1,16 +1,7 @@
 "use client"
 
-/**
- * Обёртка вокруг BoardProjectRow с поддержкой drag-n-drop (этап 4.3 CRM-фрейма).
- * Позволяет перетаскивать карточку проекта между группами (= статусами).
- *
- * Сама перестановка внутри группы не делает ничего — у проектов нет sort_order
- * на доске. Drop в другую группу обрабатывается DndContext'ом в BoardListCard
- * через droppable-обёртку группы (id вида `project-group:<status_id>`).
- */
-
-import { memo } from 'react'
-import { useDraggable } from '@dnd-kit/core'
+import { memo, useCallback } from 'react'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
 import { BoardProjectRow } from './BoardProjectRow'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
@@ -29,28 +20,58 @@ interface DraggableBoardProjectRowProps {
   cardLayout?: CardLayout | null
   nextTask?: WorkspaceTask
   authorName?: string | null
+  /** Подсветка позиции drop'а при ручной сортировке (manual_order). */
+  dropIndicator?: 'top' | 'bottom' | null
 }
 
 export const DraggableBoardProjectRow = memo(function DraggableBoardProjectRow({
   project,
   listId,
+  dropIndicator,
   ...rest
 }: DraggableBoardProjectRowProps) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const isCards = rest.displayMode === 'cards'
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
     // Namespace ID, чтобы не конфликтовало с list-drag и task DnD-IDs.
     id: `project:${project.id}:${listId}`,
     data: { project, kind: 'project' as const, sourceListId: listId },
   })
+  // Цель для ручного reorder (sort_by='manual_order') — обрабатывается в BoardView.
+  const { setNodeRef: setDropRef } = useDroppable({ id: `project-row:${project.id}:${listId}` })
+
+  const mergedRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setDragRef(node)
+      setDropRef(node)
+    },
+    [setDragRef, setDropRef],
+  )
 
   return (
     <div
-      ref={setNodeRef}
+      ref={mergedRef}
       {...attributes}
       {...listeners}
       className={cn('relative min-w-0 touch-none', isDragging && 'opacity-40')}
       data-board-card
     >
+      {dropIndicator === 'top' && (
+        <div
+          className={cn(
+            'absolute left-2 right-2 h-0.5 bg-blue-500 rounded-full z-20 pointer-events-none',
+            isCards ? '-top-1' : 'top-0',
+          )}
+        />
+      )}
       <BoardProjectRow project={project} {...rest} />
+      {dropIndicator === 'bottom' && (
+        <div
+          className={cn(
+            'absolute left-2 right-2 h-0.5 bg-blue-500 rounded-full z-20 pointer-events-none',
+            isCards ? '-bottom-1' : 'bottom-0',
+          )}
+        />
+      )}
     </div>
   )
 })
