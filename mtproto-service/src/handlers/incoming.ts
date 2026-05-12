@@ -12,7 +12,7 @@
  */
 
 import type { NewMessageEvent } from "telegram/events/NewMessage.js"
-import { Api } from "telegram"
+import { Api, TelegramClient } from "telegram"
 import { randomBytes } from "node:crypto"
 import { supabase } from "../db.js"
 import { logger } from "../utils/logger.js"
@@ -82,6 +82,40 @@ async function handleNewMessageInner(
   msg: Api.Message,
   peerUser: Api.PeerUser,
 ): Promise<void> {
+  if (!event.client) return
+  await ingestMtprotoMessage({
+    ctx,
+    client: event.client,
+    msg,
+    peerUser,
+  })
+}
+
+/**
+ * Общая логика «положить одно сообщение Telegram в БД + скачать медиа +
+ * обновить participant'а и аватар». Вызывается из двух мест:
+ *   1) realtime handleNewMessage — на каждый апдейт от gramjs;
+ *   2) backfill endpoint — на каждое сообщение, вернувшееся из getHistory.
+ *
+ * Idempotent через UNIQUE (thread_id, telegram_message_id, source).
+ * При попытке вставить дубль — возвращает { skipped: true }.
+ */
+export async function ingestMtprotoMessage(args: {
+  ctx: SessionContext
+  client: TelegramClient
+  msg: Api.Message
+  /** peer треда (PeerUser клиента); для realtime берётся из event, для backfill — строится */
+  peerUser: Api.PeerUser
+  /**
+   * Если true — это историческое сообщение из бэкфилла. Тогда `created_at`
+   * у новой строки project_messages будет равен `telegram_message_date`,
+   * а не `now()`. Без этого исторические сообщения попадают в конец ленты,
+   * считаются непрочитанными и триггерят тосты — потому что унифицированная
+   * сортировка/непрочитанность/toast — все смотрят на `created_at`.
+   */
+  backfill?: boolean
+}): Promise<{ inserted: boolean; messageId?: string }> {
+  const { ctx, msg, peerUser, client, backfill = false } = args
 
   // 2. Идентификатор клиента (другой стороны) и направление.
   // В личке peerId.userId — это **всегда** id «собеседника», не нашего юзера,
@@ -116,10 +150,10 @@ async function handleNewMessageInner(
     const sender = await msg.getSender()
     if (tryReadUser(sender)) {
       /* got name */
-    } else if (event.client) {
-      const entity = await event.client.getEntity(peerUser)
+    } else {
+      const entity = await client.getEntity(peerUser)
       if (!tryReadUser(entity) && msg.fromId) {
-        const fromEntity = await event.client.getEntity(msg.fromId)
+        const fromEntity = await client.getEntity(msg.fromId)
         tryReadUser(fromEntity)
       }
     }
@@ -158,8 +192,8 @@ async function handleNewMessageInner(
   // Bot API не работает для MTProto — только клиентский gramjs может
   // достать profile photo. Делаем здесь, потому что entity клиента сейчас
   // в gramjs cache (только что сделали getEntity выше).
-  if (clientParticipantId && event.client) {
-    void fetchAndStoreAvatar(event.client, {
+  if (clientParticipantId) {
+    void fetchAndStoreAvatar(client, {
       participantId: clientParticipantId,
       clientTgUserId,
       peerUser,
@@ -223,11 +257,13 @@ async function handleNewMessageInner(
         .update(update)
         .eq("id", existing.id)
       inserted = { id: existing.id as string }
+      // Альбом — это «приклеивание к существующему». Считаем как «вставили»
+      // только если на самом деле добавили telegram_message_id в массив.
     }
   }
 
   if (!inserted) {
-    const payload = {
+    const payload: Record<string, unknown> = {
       workspace_id: ctx.workspace_id,
       project_id: null,
       thread_id: threadId,
@@ -248,6 +284,12 @@ async function handleNewMessageInner(
       reply_to_message_id: replyToMessageId,
       telegram_grouped_id: groupedId,
     }
+    // Backfill: ставим created_at = telegram_message_date, чтобы сообщения
+    // встали в ленту хронологически, не считались непрочитанными и не
+    // дёргали toast/sound через realtime-подписку.
+    if (backfill && messageDateISO) {
+      payload.created_at = messageDateISO
+    }
 
     const { data: row, error } = await supabase
       .from("project_messages")
@@ -256,11 +298,11 @@ async function handleNewMessageInner(
       .single()
     if (error) {
       if ((error as { code?: string }).code === "23505") {
-        // Дубликат — наше же исходящее или повтор апдейта.
-        return
+        // Дубликат — наше же исходящее или повтор апдейта/бэкфилла.
+        return { inserted: false }
       }
       logger.error("[incoming] insert error:", error)
-      return
+      return { inserted: false }
     }
     inserted = row as { id: string } | null
   }
@@ -270,7 +312,7 @@ async function handleNewMessageInner(
   if (mediaInfo && inserted) {
     try {
       await downloadAndStoreMedia({
-        client: event.client,
+        client,
         message: msg,
         info: mediaInfo,
         workspaceId: ctx.workspace_id,
@@ -281,6 +323,8 @@ async function handleNewMessageInner(
       logger.error("[incoming] media download failed:", err)
     }
   }
+
+  return { inserted: !!inserted, messageId: inserted?.id }
 }
 
 interface MediaInfo {
@@ -339,16 +383,13 @@ function mimeExtension(mime: string): string | null {
 }
 
 async function downloadAndStoreMedia(args: {
-  client: NewMessageEvent["client"]
+  client: TelegramClient
   message: Api.Message
   info: MediaInfo
   workspaceId: string
   threadId: string
   messageId: string
 }): Promise<void> {
-  if (!args.client) {
-    throw new Error("client is unavailable")
-  }
   const buffer = await args.client.downloadMedia(args.message)
   if (!buffer || !(buffer instanceof Buffer)) {
     throw new Error("downloadMedia returned no data")

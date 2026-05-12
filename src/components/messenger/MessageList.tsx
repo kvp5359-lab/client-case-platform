@@ -31,6 +31,16 @@ interface MessageListProps {
   jumpToMessageId?: string | null
   /** Коллбек после успешного jump — родитель сбрасывает jumpToMessageId. */
   onJumpComplete?: () => void
+  /**
+   * Колбек «догрузить старую историю из Telegram через MTProto».
+   * Передаётся только для MTProto-тредов (см. MessengerTabContent).
+   * Когда `hasMoreOlder === false`, над лентой показывается кнопка
+   * «Загрузить ещё из Telegram», по клику зовётся этот колбек.
+   * Если не передан — кнопка не рендерится.
+   */
+  onBackfillFromTelegram?: () => void
+  /** Идёт ли сейчас запрос бэкфилла (для дизейбла кнопки и спиннера). */
+  isBackfilling?: boolean
 }
 
 /** Разделитель дат */
@@ -145,6 +155,8 @@ export function MessageList({
   auditEvents = [],
   jumpToMessageId,
   onJumpComplete,
+  onBackfillFromTelegram,
+  isBackfilling = false,
 }: MessageListProps) {
   const {
     currentParticipantId,
@@ -160,7 +172,15 @@ export function MessageList({
   const prevFirstIdRef = useRef<string | null>(null)
   const prevLastIdRef = useRef<string | null>(null)
   const prevMessageCountRef = useRef(0)
-  const sentinelRef = useRef<HTMLDivElement>(null)
+  // Sentinel прикрепляется через callback ref (не useRef), потому что при
+  // первой загрузке isLoading=true и вместо sentinel рендерится скелетон —
+  // sentinel появляется только после перехода isLoading→false. С useRef +
+  // useEffect наблюдатель цеплялся к sentinel === null на первом mount и
+  // больше не переподключался → бесконечная подгрузка вверх не работала
+  // на тредах, где требовалась более одной страницы из БД.
+  // Callback ref пересоздаёт observer автоматически когда sentinel-нода
+  // появляется/исчезает.
+  const observerRef = useRef<IntersectionObserver | null>(null)
   // Высота viewport ДО добавления старых сообщений — нужна для компенсации scrollTop
   const preLoadScrollHeightRef = useRef<number | null>(null)
 
@@ -261,28 +281,43 @@ export function MessageList({
     stateRef.current = { hasMoreOlder, isFetchingOlder, onFetchOlder }
   }, [hasMoreOlder, isFetchingOlder, onFetchOlder])
 
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const s = stateRef.current
-        if (entries[0]?.isIntersecting && s.hasMoreOlder && !s.isFetchingOlder) {
-          // Зафиксировать высоту ДО подгрузки — чтобы компенсировать scrollTop после рендера
-          const viewport = getViewport()
-          if (viewport) {
-            preLoadScrollHeightRef.current = viewport.scrollHeight
+  const sentinelRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      // Снимаем старого observer'а (если был).
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+        observerRef.current = null
+      }
+      if (!node) return
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const s = stateRef.current
+          if (entries[0]?.isIntersecting && s.hasMoreOlder && !s.isFetchingOlder) {
+            // Зафиксировать высоту ДО подгрузки — чтобы компенсировать scrollTop после рендера
+            const viewport = getViewport()
+            if (viewport) {
+              preLoadScrollHeightRef.current = viewport.scrollHeight
+            }
+            s.onFetchOlder()
           }
-          s.onFetchOlder()
-        }
-      },
-      { threshold: 0.1, rootMargin: '200px 0px 0px 0px' },
-    )
-    observer.observe(sentinel)
+        },
+        { threshold: 0.1, rootMargin: '200px 0px 0px 0px' },
+      )
+      observer.observe(node)
+      observerRef.current = observer
+    },
+    [getViewport],
+  )
 
-    return () => observer.disconnect()
-  }, [getViewport])
+  // Финальный cleanup при unmount компонента.
+  useEffect(() => {
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+        observerRef.current = null
+      }
+    }
+  }, [])
 
   // Strip background-color from copied HTML so bubble colors don't leak into paste
   const handleCopy = useCallback((e: React.ClipboardEvent) => {
@@ -372,6 +407,32 @@ export function MessageList({
         {/* Sentinel для подгрузки старых */}
         <div ref={sentinelRef} className="h-1" />
 
+        {/*
+          Кнопка догрузки из Telegram через MTProto. Показывается, когда
+          в БД больше нечего листать (hasMoreOlder=false) и тред — MTProto
+          (родитель передал onBackfillFromTelegram). По клику mtproto-service
+          через gramjs `messages.GetHistory` подтянет 50 старых сообщений
+          в БД, после чего InfiniteQuery перезапросит ленту.
+        */}
+        {!hasMoreOlder && !isLoading && onBackfillFromTelegram && messages.length > 0 && (
+          <div className="flex justify-center py-2">
+            <button
+              type="button"
+              onClick={onBackfillFromTelegram}
+              disabled={isBackfilling}
+              className={cn(
+                'text-xs px-3 py-1.5 rounded-full border border-border bg-muted/40',
+                'hover:bg-muted/70 transition-colors',
+                'disabled:opacity-60 disabled:cursor-not-allowed',
+                'flex items-center gap-2',
+              )}
+            >
+              {isBackfilling && <Loader2 className="h-3 w-3 animate-spin" />}
+              {isBackfilling ? 'Загружаю…' : 'Загрузить ещё 50 из Telegram'}
+            </button>
+          </div>
+        )}
+
         {timeline.map((item, _ti) => {
           if (item.kind === 'event') {
             // Если last_read_at отсутствует — тред никогда не открывался, все чужие события непрочитанные.
@@ -428,7 +489,7 @@ export function MessageList({
                   canDelete={isOwn || isAdmin}
                   isDelayedPending={isDelayedPending?.(msg.id)}
                   delayedExpiresAt={getDelayedExpiresAt?.(msg.id) ?? undefined}
-                  onCancelDelayed={onCancelDelayed ? () => onCancelDelayed(msg.id) : undefined}
+                  onCancelDelayed={onCancelDelayed}
                   isUnread={isUnread}
                   lastReadAt={lastReadAt}
                 />

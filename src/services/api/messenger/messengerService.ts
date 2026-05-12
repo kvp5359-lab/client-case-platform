@@ -33,6 +33,7 @@ export {
   getMessages,
   getProjectMessagesByChannel,
   getProjectMessages,
+  backfillTelegramHistory,
 } from './messengerService.read'
 export {
   sendMessage,

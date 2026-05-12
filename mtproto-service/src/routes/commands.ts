@@ -20,6 +20,26 @@ import { config } from "../config.js"
 import { supabase } from "../db.js"
 import { getClient } from "../sessions/manager.js"
 import { htmlToTelegramHtml, isHtmlContent, escapeHtmlEntities } from "../utils/htmlFormatting.js"
+import { ingestMtprotoMessage } from "../handlers/incoming.js"
+
+/**
+ * Per-session token bucket для backfill — ограничивает темп `getHistory`
+ * запросов, чтобы не выловить FLOOD_WAIT и не светить «нечеловеческий»
+ * паттерн перед антифродом. 1 запрос / 2 секунды × сессия.
+ * Map чистится при graceful shutdown через тот же disconnectAll
+ * (мы просто оставляем устаревшие записи — Map небольшая).
+ */
+const backfillLastCall = new Map<string, number>()
+const BACKFILL_MIN_INTERVAL_MS = 2000
+
+async function throttleBackfill(userId: string): Promise<void> {
+  const last = backfillLastCall.get(userId) ?? 0
+  const wait = BACKFILL_MIN_INTERVAL_MS - (Date.now() - last)
+  if (wait > 0) {
+    await new Promise((r) => setTimeout(r, wait))
+  }
+  backfillLastCall.set(userId, Date.now())
+}
 
 // Telegram sendPhoto / album-photo принимает только эти форматы. Остальное
 // (tiff, heic, bmp, svg, ...) уходит как документ. Зеркалит логику в
@@ -462,6 +482,171 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
     } catch (err) {
       app.log.error({ err }, "users/fetch-avatar failed")
       return reply.code(500).send({ error: humanError(err) })
+    }
+  })
+
+  // ------------------------------------------------------------------
+  // POST /messages/backfill
+  // ------------------------------------------------------------------
+  // Догружает старые сообщения треда через `Api.messages.GetHistory`.
+  // Используется фронтом для подгрузки истории при скролле вверх в треде:
+  // после того как клиент исчерпал имеющиеся в БД сообщения, нажимает
+  // кнопку «Загрузить ещё 50 из Telegram» — фронт зовёт этот эндпоинт.
+  //
+  // Идемпотентно: повторный вызов с тем же offset_id и limit вставит 0
+  // новых строк (UNIQUE (thread_id, telegram_message_id, source) отобьёт
+  // дубли через 23505 в ingestMtprotoMessage).
+  //
+  // Безопасность от FLOOD_WAIT:
+  //   - per-session throttle (2 сек между вызовами),
+  //   - limit зажат до 1..100,
+  //   - на FLOOD_WAIT exception возвращаем 429 с Retry-After.
+  app.post("/messages/backfill", async (req, reply) => {
+    const body = z
+      .object({
+        thread_id: z.string().uuid(),
+      })
+      .safeParse(req.body)
+    if (!body.success) {
+      return reply.code(400).send({ error: "Invalid body", details: body.error.issues })
+    }
+
+    // 1. Достаём тред — нужны session_user_id, peer_tg_user_id, workspace_id.
+    const { data: thread } = await supabase
+      .from("project_threads")
+      .select("id, workspace_id, mtproto_session_user_id, mtproto_client_tg_user_id")
+      .eq("id", body.data.thread_id)
+      .maybeSingle()
+    if (
+      !thread ||
+      !thread.mtproto_session_user_id ||
+      !thread.mtproto_client_tg_user_id
+    ) {
+      return reply.code(400).send({ error: "Not a MTProto thread" })
+    }
+
+    const sessionUserId = thread.mtproto_session_user_id as string
+    const clientTgUserId = Number(thread.mtproto_client_tg_user_id)
+
+    const client = getClient(sessionUserId)
+    if (!client) {
+      return reply.code(409).send({ error: "Session not connected" })
+    }
+
+    // 2. Курсор: самый старый telegram_message_id в этом треде.
+    //    offsetId=0 в gramjs значит «с самого свежего» — тогда возьмём
+    //    последние limit штук. Это случай «пустой тред».
+    const { data: oldest } = await supabase
+      .from("project_messages")
+      .select("telegram_message_id")
+      .eq("thread_id", thread.id)
+      .eq("source", "telegram_mtproto")
+      .not("telegram_message_id", "is", null)
+      .order("telegram_message_id", { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    const offsetId = oldest?.telegram_message_id
+      ? Number(oldest.telegram_message_id)
+      : 0
+    const limit = 50
+
+    // 3. Throttle перед запросом.
+    await throttleBackfill(sessionUserId)
+
+    // 4. Резолв peer — используем тот же путь, что в /messages/send.
+    let peer: Api.TypeInputPeer
+    try {
+      peer = await resolvePeer(client, clientTgUserId)
+    } catch (err) {
+      app.log.error({ err }, "backfill resolvePeer failed")
+      return reply.code(500).send({ error: humanError(err) })
+    }
+
+    // 5. GetHistory: offset_id — exclusive (Telegram отдаёт сообщения
+    //    СТАРШЕ offsetId). Это ровно то, что нам нужно для «листать вверх».
+    let messagesArr: Api.Message[]
+    try {
+      const res = await client.invoke(
+        new Api.messages.GetHistory({
+          peer,
+          offsetId,
+          offsetDate: 0,
+          addOffset: 0,
+          limit,
+          maxId: 0,
+          minId: 0,
+          hash: bigInt(0),
+        }),
+      )
+      // GetHistory возвращает Messages | MessagesSlice | ChannelMessages
+      // или MessagesNotModified. Берём поле messages из всего, кроме
+      // NotModified (которого тут быть не может — мы не передаём hash).
+      const raw = (res as unknown as { messages?: Api.TypeMessage[] }).messages ?? []
+      // Фильтруем служебные (MessageService, MessageEmpty) — нас интересуют
+      // только реальные пользовательские сообщения.
+      messagesArr = raw.filter(
+        (m): m is Api.Message => m instanceof Api.Message,
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      const flood = msg.match(/FLOOD_WAIT_(\d+)/)
+      if (flood) {
+        const seconds = Number(flood[1] ?? "60")
+        return reply
+          .code(429)
+          .header("retry-after", String(seconds))
+          .send({ error: "FLOOD_WAIT", retry_after_seconds: seconds })
+      }
+      app.log.error({ err }, "messages/backfill GetHistory failed")
+      return reply.code(500).send({ error: humanError(err) })
+    }
+
+    // 6. Ingest каждое сообщение через общую функцию. Сортируем по id ASC,
+    //    чтобы reply-цепочки резолвились корректно (оригинал вставится
+    //    раньше реплая → reply_to_message_id найдётся).
+    messagesArr.sort((a, b) => Number(a.id) - Number(b.id))
+
+    const peerUser = new Api.PeerUser({ userId: bigInt(clientTgUserId) })
+    const ctx = {
+      user_id: sessionUserId,
+      workspace_id: thread.workspace_id as string,
+      // tg_user_id — это id СОТРУДНИКА. Достаём из сессии.
+      tg_user_id: 0, // заполним ниже
+    }
+    const { data: session } = await supabase
+      .from("telegram_mtproto_sessions")
+      .select("tg_user_id")
+      .eq("user_id", sessionUserId)
+      .maybeSingle()
+    if (session?.tg_user_id) {
+      ctx.tg_user_id = Number(session.tg_user_id)
+    }
+
+    let inserted = 0
+    for (const msg of messagesArr) {
+      try {
+        const r = await ingestMtprotoMessage({
+          ctx,
+          client,
+          msg,
+          peerUser,
+          backfill: true,
+        })
+        if (r.inserted) inserted++
+      } catch (err) {
+        app.log.warn({ err, telegram_message_id: Number(msg.id) }, "backfill ingest failed")
+      }
+    }
+
+    // has_more = true если Telegram вернул полный батч; если меньше limit —
+    // значит мы добрались до начала истории.
+    const hasMore = messagesArr.length >= limit
+
+    return {
+      ok: true,
+      fetched: messagesArr.length,
+      inserted,
+      has_more: hasMore,
     }
   })
 }

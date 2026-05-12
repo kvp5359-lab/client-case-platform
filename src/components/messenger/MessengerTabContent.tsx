@@ -24,6 +24,10 @@ import { useMessengerHandlers } from './hooks/useMessengerHandlers'
 import { useOptimisticEmail } from './hooks/useOptimisticEmail'
 import { useProjectThreads, useProjectThreadById } from '@/hooks/messenger/useProjectThreads'
 import { useThreadHasClient } from '@/hooks/messenger/useThreadHasClient'
+import {
+  useBackfillTelegramHistory,
+  useIsMtprotoThread,
+} from '@/hooks/messenger/useBackfillTelegramHistory'
 
 interface MessengerTabContentProps {
   projectId?: string
@@ -57,6 +61,12 @@ export function MessengerTabContent({
   const { data: directThread } = useProjectThreadById(threadId, true)
   const currentThread = allThreads.find((t) => t.id === threadId) ?? directThread ?? undefined
   const hasClientParticipant = useThreadHasClient(currentThread)
+
+  // MTProto-бэкфилл истории через `Api.messages.GetHistory`. Кнопка
+  // «Загрузить ещё из Telegram» появляется в MessageList только когда тред
+  // действительно подключён к MTProto-сессии.
+  const isMtprotoThread = useIsMtprotoThread(threadId)
+  const backfillMutation = useBackfillTelegramHistory(threadId)
 
   const state = useMessengerState({
     projectId,
@@ -205,6 +215,10 @@ export function MessengerTabContent({
           auditEvents={state.auditEvents}
           jumpToMessageId={jumpToMessageId}
           onJumpComplete={() => setJumpToMessageId(null)}
+          onBackfillFromTelegram={
+            isMtprotoThread ? () => backfillMutation.mutate() : undefined
+          }
+          isBackfilling={backfillMutation.isPending}
         />
 
         {/* Кнопка Прочитано/Непрочитано — наезжает на список через negative margin */}
