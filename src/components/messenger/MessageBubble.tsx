@@ -41,7 +41,8 @@ interface MessageBubbleProps {
   canDelete?: boolean
   isDelayedPending?: boolean
   delayedExpiresAt?: number
-  onCancelDelayed?: () => void
+  /** Передаём id сообщения внутрь — позволяет родителю не пересоздавать стрелку на каждый рендер. */
+  onCancelDelayed?: (messageId: string) => void
   /** Чужое сообщение, пришедшее после last_read_at — подсветить как непрочитанное. */
   isUnread?: boolean
   /** Нужен ReactionBadges, чтобы определить непрочитанные реакции. */
@@ -462,7 +463,7 @@ function MessageBubbleImpl({
 
         {/* Delayed send countdown */}
         {isDelayedPending && delayedExpiresAt && onCancelDelayed && (
-          <SendCountdown expiresAt={delayedExpiresAt} onCancel={onCancelDelayed} />
+          <SendCountdown expiresAt={delayedExpiresAt} onCancel={() => onCancelDelayed(message.id)} />
         )}
       </div>
 
