@@ -228,6 +228,7 @@ export function useSourceDocumentUpload({
     folderId: string | null,
     showToast = true,
     onPhaseChange?: (phase: 'downloading' | 'uploading' | null) => void,
+    skipRefresh = false,
   ): Promise<string | null> => {
     if (!kit) return null
 
@@ -253,8 +254,10 @@ export function useSourceDocumentUpload({
         session.user.id,
       )
 
-      await fetchDocumentKits(projectId)
-      await loadSourceDocuments()
+      if (!skipRefresh) {
+        await fetchDocumentKits(projectId)
+        await loadSourceDocuments()
+      }
 
       if (newDoc?.id) {
         triggerTextExtraction(newDoc.id)

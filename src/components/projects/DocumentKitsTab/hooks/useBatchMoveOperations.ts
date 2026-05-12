@@ -25,6 +25,7 @@ interface UseBatchMoveOperationsProps {
     folderId: string | null,
     showToast?: boolean,
     onPhaseChange?: (phase: 'downloading' | 'uploading' | null) => void,
+    skipRefresh?: boolean,
   ) => Promise<string | null>
   sourceDocuments: SourceDocument[]
 }
@@ -94,19 +95,25 @@ export function useBatchMoveOperations({
         successCount += regularDocuments.length
       }
 
-      // Перемещаем документы из источника (если есть)
+      // Перемещаем документы из источника (если есть) — параллельно,
+      // skipRefresh=true чтобы не дёргать перезагрузку наборов на каждый файл.
       if (selectedSourceDocuments.length > 0) {
-        for (const sourceDoc of selectedSourceDocuments) {
-          const sourceDocInfo: SourceDocumentInfo = {
-            id: sourceDoc.id,
-            name: sourceDoc.name,
-            sourceDocumentId: sourceDoc.sourceDocumentId || sourceDoc.id,
-          }
-          const success = await uploadSourceDocument(sourceDocInfo, targetFolderId, false)
-          if (success) {
-            successCount++
-          } else {
-            errorCount++
+        const CONCURRENCY = 3
+        for (let i = 0; i < selectedSourceDocuments.length; i += CONCURRENCY) {
+          const chunk = selectedSourceDocuments.slice(i, i + CONCURRENCY)
+          const results = await Promise.all(
+            chunk.map((sourceDoc) => {
+              const sourceDocInfo: SourceDocumentInfo = {
+                id: sourceDoc.id,
+                name: sourceDoc.name,
+                sourceDocumentId: sourceDoc.sourceDocumentId || sourceDoc.id,
+              }
+              return uploadSourceDocument(sourceDocInfo, targetFolderId, false, undefined, true)
+            }),
+          )
+          for (const success of results) {
+            if (success) successCount++
+            else errorCount++
           }
         }
       }

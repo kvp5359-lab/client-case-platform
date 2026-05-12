@@ -94,9 +94,8 @@ export function useSourceDocumentDrop({
             sort_order: idx,
           }))
           await reorderDocuments(updates)
+          await invalidateDocumentKits()
         }
-
-        await invalidateDocumentKits()
       } catch {
         setSourceUploadFolderId(null)
         setSourceUploadPhase(null)

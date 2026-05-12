@@ -144,6 +144,7 @@ export interface UseDocumentKitHandlersProps {
       folderId: string | null,
       showToast?: boolean,
       onPhaseChange?: (phase: 'downloading' | 'uploading' | null) => void,
+      skipRefresh?: boolean,
     ) => Promise<string | null>
     uploadSourceDocumentSilent: (
       file: SourceDocumentInfo,
