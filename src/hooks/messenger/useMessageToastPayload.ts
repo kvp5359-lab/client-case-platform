@@ -13,6 +13,10 @@ export interface RealtimeMessagePayload {
   content: string
   channel: string | null
   thread_id: string | null
+  /** ISO timestamp вставки в БД — нужен, чтобы отличать «настоящие новые»
+   *  сообщения от исторических INSERT'ов (бэкфилл MTProto), которые
+   *  Realtime тоже шлёт. */
+  created_at?: string | null
 }
 
 export type GroupKey = string
