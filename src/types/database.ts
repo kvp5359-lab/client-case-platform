@@ -68,6 +68,38 @@ export type Database = {
           },
         ]
       }
+      board_list_item_order: {
+        Row: {
+          item_id: string
+          item_type: string
+          list_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          item_id: string
+          item_type: string
+          list_id: string
+          position: number
+          updated_at?: string
+        }
+        Update: {
+          item_id?: string
+          item_type?: string
+          list_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_list_item_order_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "board_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       board_lists: {
         Row: {
           board_id: string
@@ -5438,6 +5470,7 @@ export type Database = {
           wazzup_channel_id: string | null
           wazzup_chat_id: string | null
           wazzup_chat_type: string | null
+          wazzup_contact_avatar_url: string | null
           workspace_id: string
         }
         Insert: {
@@ -5478,6 +5511,7 @@ export type Database = {
           wazzup_channel_id?: string | null
           wazzup_chat_id?: string | null
           wazzup_chat_type?: string | null
+          wazzup_contact_avatar_url?: string | null
           workspace_id: string
         }
         Update: {
@@ -5518,6 +5552,7 @@ export type Database = {
           wazzup_channel_id?: string | null
           wazzup_chat_id?: string | null
           wazzup_chat_type?: string | null
+          wazzup_contact_avatar_url?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -6612,6 +6647,27 @@ export type Database = {
           },
         ]
       }
+      telegram_user_avatars: {
+        Row: {
+          avatar_url: string | null
+          fetched_at: string
+          is_missing: boolean
+          tg_user_id: number
+        }
+        Insert: {
+          avatar_url?: string | null
+          fetched_at?: string
+          is_missing?: boolean
+          tg_user_id: number
+        }
+        Update: {
+          avatar_url?: string | null
+          fetched_at?: string
+          is_missing?: boolean
+          tg_user_id?: number
+        }
+        Relationships: []
+      }
       thread_template_assignees: {
         Row: {
           id: string
@@ -7619,6 +7675,8 @@ export type Database = {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: {
           channel_type: string
+          counterpart_avatar_url: string
+          counterpart_name: string
           email_contact: string
           email_subject: string
           has_unread_reaction: boolean
@@ -8002,7 +8060,17 @@ export type Database = {
         Args: { p_entity_type: string; p_workspace_id: string }
         Returns: number
       }
+      reorder_board_list_items: {
+        Args: { p_item_ids: string[]; p_item_type: string; p_list_id: string }
+        Returns: undefined
+      }
       reorder_documents: { Args: { p_updates: Json }; Returns: undefined }
+      resolve_email_thread_assignee: {
+        Args: {
+          p_thread: Database["public"]["Tables"]["project_threads"]["Row"]
+        }
+        Returns: string
+      }
       resolve_inbound_email_address: {
         Args: { p_address: string }
         Returns: {
@@ -8098,6 +8166,7 @@ export type Database = {
         Args: { p_kit_id: string }
         Returns: undefined
       }
+      today_madrid_midnight: { Args: never; Returns: string }
       toggle_message_reaction: {
         Args: {
           p_emoji: string
