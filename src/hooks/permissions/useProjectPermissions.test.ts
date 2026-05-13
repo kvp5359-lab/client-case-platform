@@ -51,6 +51,7 @@ function makeProjectRole(
     ai_project_assistant: false,
     comments: false,
     knowledge_base: false,
+    digest: false,
     ...moduleAccess,
   }
 
