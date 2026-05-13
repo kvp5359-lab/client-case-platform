@@ -454,6 +454,19 @@
 4. **Иконка/цвет тредов**: добавить в `THREAD_ICONS` (если нужна бренд-иконка) и в дефолтах создания тредов внутри webhook.
 5. **Документация**: обновить эту матрицу + добавить раздел канала в infrastructure.md.
 
+## Блокировка участника (`participants.can_login`)
+
+Реализовано 2026-05-13. Раньше `can_login` был чисто внутренним UI-флагом — Supabase Auth-логин не блокировался, активные сессии не сбрасывались, заблокированный сотрудник продолжал работать через старый refresh-token. Теперь — единый пайплайн через Edge Function.
+
+- **Edge Function `set-participant-access`** (verify_jwt=true): принимает `{ participant_id, can_login }`. Проверяет права через `is_workspace_owner` или `has_workspace_permission(..., 'manage_workspace_settings')`. Запрещает блокировать владельца воркспейса и самого себя. После UPDATE `participants.can_login`:
+  - **Блокировка**: если у юзера НЕТ других активных participants (`can_login=true AND is_deleted=false` в других WS) → банит через `auth.admin.updateUserById({ ban_duration: '876000h' })` (~100 лет). В любом случае дёргает RPC `revoke_all_user_sessions(user_id)` — это убивает все его `auth.sessions` и `auth.refresh_tokens`. Текущий access-token живёт ещё до часа, но server-side guard в `[workspaceId]/layout.tsx` отрежет ему доступ.
+  - **Разблокировка**: `auth.admin.updateUserById({ ban_duration: 'none' })`.
+- **RPC `revoke_all_user_sessions(uuid)`** — `SECURITY DEFINER`, GRANT только service_role. `DELETE FROM auth.sessions/auth.refresh_tokens` для юзера. `auth.admin.signOut(jwt)` нам не подходит — он требует access-token самого юзера.
+- **Server-side guard**: `src/app/(app)/workspaces/[workspaceId]/layout.tsx` — server component. На каждом server-render запросе проверяет `participants.can_login` и `is_deleted` для текущего user_id в этом workspace. При отказе — `redirect('/workspaces?blocked=<id>')`. Клиентскую обёртку (`WorkspaceProvider` + `WorkspaceLayoutShell`) выделили в `WorkspaceLayoutClient.tsx`.
+- **Frontend**: `toggleAccessMutation` и `editMutation` в `useParticipantsMutations.ts` ходят через `supabase.functions.invoke('set-participant-access', ...)`. Прямой UPDATE `participants.can_login` с фронта в этой логике больше не используется (RLS-полиция остаётся, она нужна другим сценариям, но через UI флаг меняется только функцией).
+- **Миграция**: `20260513_revoke_user_sessions.sql`.
+- **Известные ограничения**: пока выставлен бан, активный access-token юзера ещё валиден до его естественного истечения (≤1ч). Server-side guard layout'а закрывает доступ к UI воркспейса, но если у юзера остался открытым прямой URL внутри проекта — сервер-рендер всё равно дёрнет редирект (layout вызывается до children). Прямые fetch'и к Supabase под истекающим JWT отработают только для public-данных.
+
 ## Импersonация — «войти под пользователем» (read-only)
 
 Реализовано 2026-05-08. Владелец воркспейса может временно «увидеть глазами» любого активного сотрудника — задачи, чаты, сайдбар, доступы. Режим строго для просмотра: любые DML-операции блокируются на уровне БД.
