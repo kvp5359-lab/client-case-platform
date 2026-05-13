@@ -374,6 +374,18 @@ USING (
 - **Реакции в обе стороны**: WhatsApp Business / Wazzup не отдают reactions как отдельный webhook-event и не дают их ставить через API. Реакция клиента (как видели на тесте) приходит как обычное сообщение с эмодзи в ответ.
 - **Edit/delete сообщений**: Wazzup webhook схема для этого не документирована; пропускаем.
 
+## ⚠️ Дедуп между несколькими ботами в одной Telegram-группе
+
+Если в одной Telegram-группе сидят 2+ бота воркспейса (`telegram_workspace_bot` + `telegram_employee_bot`'ы), при включённом privacy mode Telegram присваивает **каждому боту свой message_id** для одного и того же сообщения клиента — у каждого бота свой локальный счётчик. То есть на одно реальное сообщение наш `/telegram-webhook` получает 2-3 разных update'а с разными `message.message_id`, но с одинаковым `chat.id`, `from.id`, `date`, `text`.
+
+UNIQUE `uq_telegram_message_per_chat (telegram_chat_id, telegram_message_id)` тут **не помогает** — id разные. Дедуп обеспечивает второй UNIQUE: `uq_project_messages_telegram_content_dedup (telegram_chat_id, telegram_sender_user_id, telegram_message_date, md5(content)) WHERE source='telegram'`. Первый webhook записывает сообщение, второй и третий получают 23505 и обрабатываются как `outcome='duplicate'` в `_shared/syncTelegramIncomingMessage.ts`.
+
+**Edge case**: если один и тот же клиент шлёт абсолютно идентичный текст в одну и ту же секунду — второе сообщение будет дедуплено (потеря). На практике не встречается. Если когда-нибудь понадобится — переключить ключ на `(... , telegram_message_id_of_first_bot)` или хранить `bot_received_at` с миллисекундами.
+
+**При добавлении нового типа Telegram-интеграции, которая слушает webhook'и** (`telegram_*_bot`), не предполагать, что message_id уникален на сообщение — это верно только в пределах одного бота. Полагаться на content-based dedup.
+
+См. подробный разбор: [docs/bugs/resolved/2026-05-13-telegram-multibot-message-duplicates.md](../../docs/bugs/resolved/2026-05-13-telegram-multibot-message-duplicates.md).
+
 ## Аватары собеседников во «Входящих»
 
 Реализовано 2026-05-10. В списке тредов аватар = клиент (собеседник), а не последний отправитель. Логика и инфраструктура подтягивания внешних аватаров — здесь.
