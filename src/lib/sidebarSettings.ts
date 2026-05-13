@@ -284,15 +284,20 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
     }
     out.push({ id, type, placement, order, badge_mode: badgeMode })
   }
-  // Перенумеровка order внутри каждой зоны, чтобы значения были подряд.
+  // Перенумеровка order внутри каждой зоны. Сначала сортируем по существующим
+  // order (важно для входа из БД, где JSONB может лежать не в порядке).
+  out.sort((a, b) => a.order - b.order)
   return reorderWithinZones(out)
 }
 
-/** Возвращает массив со сплошной нумерацией order=0..n-1 внутри каждой зоны (порядок сохранён). */
+/**
+ * Перенумеровывает order=0..n-1 внутри каждой зоны, СОХРАНЯЯ текущий порядок
+ * элементов в массиве. Не сортирует — вызывающий код должен передать массив
+ * уже в желаемой последовательности (после swap, filter, push и т.п.).
+ */
 export function reorderWithinZones(slots: SidebarSlot[]): SidebarSlot[] {
-  const sorted = [...slots].sort((a, b) => a.order - b.order)
   const counters: Record<SidebarPlacement, number> = { topbar: 0, list: 0 }
-  return sorted.map((s) => ({ ...s, order: counters[s.placement]++ }))
+  return slots.map((s) => ({ ...s, order: counters[s.placement]++ }))
 }
 
 /** Группирует слоты по зонам в порядке `order` для рендера. */

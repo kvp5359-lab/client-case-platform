@@ -103,16 +103,16 @@ export function ZoneCard({
                 Icon = list?.entity_type === 'project' ? FolderOpen : ListChecks
               }
               return (
-                <div key={slot.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <Icon className="w-4 h-4 shrink-0 text-gray-500" />
-                  <div className="flex-1 min-w-0 text-sm font-medium text-gray-900 truncate">
+                <div key={slot.id} className="flex items-center gap-2 px-3 py-1.5">
+                  <Icon className="w-3.5 h-3.5 shrink-0 text-gray-500" />
+                  <div className="flex-1 min-w-0 text-sm text-gray-900 truncate">
                     {label}
                   </div>
                   <Select
                     value={slot.badge_mode}
                     onValueChange={(v) => onSetBadge(slot.id, v as SidebarBadgeMode)}
                   >
-                    <SelectTrigger className="w-[230px] h-8 text-xs">
+                    <SelectTrigger className="w-[230px] h-7 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -123,48 +123,48 @@ export function ZoneCard({
                       ))}
                     </SelectContent>
                   </Select>
-                  <div className="flex items-center gap-0.5 shrink-0">
+                  <div className="flex items-center gap-0 shrink-0">
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-6 w-6"
                       disabled={!canUp}
                       onClick={() => onMove(slot.id, -1)}
                       title="Выше"
                     >
-                      <ChevronUp className="w-4 h-4" />
+                      <ChevronUp className="w-3.5 h-3.5" />
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-6 w-6"
                       disabled={!canDown}
                       onClick={() => onMove(slot.id, 1)}
                       title="Ниже"
                     >
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className="w-3.5 h-3.5" />
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-6 w-6"
                       onClick={() => onMoveToZone(slot.id, otherZone)}
                       title={`Переместить ${otherZoneLabel}`}
                     >
-                      <OtherZoneIcon className="w-4 h-4" />
+                      <OtherZoneIcon className="w-3.5 h-3.5" />
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-6 w-6"
                       onClick={() => onRemove(slot.id)}
                       title="Убрать в «Доступные»"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 </div>
