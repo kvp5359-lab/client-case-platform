@@ -16,6 +16,7 @@ import { GoogleIcon } from '@/components/ui/google-icon'
 import { useAuthLockout } from './useAuthLockout'
 import { useGoogleAuth } from './useGoogleAuth'
 import { useAuthRedirect } from '@/hooks/shared/useAuthRedirect'
+import { formatAuthError } from '@/lib/authErrors'
 
 export function RegisterForm() {
   const { signUp, signInWithGoogle, loading: authLoading } = useAuth()
@@ -70,7 +71,7 @@ export function RegisterForm() {
       if (locked) {
         setError('Слишком много попыток. Подождите 30 секунд')
       } else {
-        setError(error.message)
+        setError(formatAuthError(error))
       }
       setLoading(false)
     } else {

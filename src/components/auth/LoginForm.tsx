@@ -19,6 +19,7 @@ import { EmailPasswordStep } from './EmailPasswordStep'
 import { useAuthLockout } from './useAuthLockout'
 import { useGoogleAuth } from './useGoogleAuth'
 import { useAuthRedirect } from '@/hooks/shared/useAuthRedirect'
+import { formatAuthError } from '@/lib/authErrors'
 
 export function LoginForm() {
   const { signIn, signInWithGoogle, signInWithOtp, verifyOtp, loading: authLoading } = useAuth()
@@ -82,7 +83,7 @@ export function LoginForm() {
       if (locked) {
         setError('Слишком много попыток. Подождите 30 секунд')
       } else {
-        setError(error.message)
+        setError(formatAuthError(error))
       }
       setLoading(false)
     } else {
@@ -101,7 +102,7 @@ export function LoginForm() {
 
     const { error } = await signInWithOtp(otpEmail)
     if (error) {
-      setError(error.message)
+      setError(formatAuthError(error))
       setLoading(false)
     } else {
       setSuccess('✅ Код отправлен на ваш email!')
@@ -119,7 +120,7 @@ export function LoginForm() {
 
     const { error } = await verifyOtp(otpEmail, otpCode)
     if (error) {
-      setError(error.message)
+      setError(formatAuthError(error))
       setLoading(false)
     } else {
       setSuccess('✅ Успешный вход!')

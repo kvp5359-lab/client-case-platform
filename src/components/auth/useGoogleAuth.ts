@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { formatAuthError } from '@/lib/authErrors'
 
 interface UseGoogleAuthOptions {
   signInWithGoogle: (redirectTo?: string) => Promise<{ error: { message: string } | null }>
@@ -35,7 +36,7 @@ export function useGoogleAuth({
     const savedRedirect = localStorage.getItem('auth_redirect')
     const { error } = await signInWithGoogle(savedRedirect || undefined)
     if (error) {
-      onError?.(error.message)
+      onError?.(formatAuthError(error as Error))
       setGoogleLoading(false)
     } else {
       // Страховочный сброс loading — если редирект на Google не произошёл за 10 сек

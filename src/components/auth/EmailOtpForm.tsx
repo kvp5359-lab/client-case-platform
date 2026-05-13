@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Mail } from 'lucide-react'
 import { AuthAlert } from './AuthAlert'
 import { OtpCodeStep } from './OtpCodeStep'
+import { formatAuthError } from '@/lib/authErrors'
 
 export function EmailOtpForm() {
   const { signInWithOtp, verifyOtp, loading: authLoading } = useAuth()
@@ -53,7 +54,7 @@ export function EmailOtpForm() {
 
     const { error: otpError } = await signInWithOtp(email)
     if (otpError) {
-      setError(otpError.message)
+      setError(formatAuthError(otpError))
     } else {
       setSuccess('Код отправлен на ваш email!')
       setStep('code')
@@ -70,7 +71,7 @@ export function EmailOtpForm() {
 
     const { error: verifyError } = await verifyOtp(email, code)
     if (verifyError) {
-      setError(verifyError.message)
+      setError(formatAuthError(verifyError))
       setLoading(false)
     } else {
       setSuccess('Успешный вход!')
