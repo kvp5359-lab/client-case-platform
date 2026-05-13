@@ -95,9 +95,11 @@ Deno.serve(async (req) => {
       await handleMessage(update.message, false);
     }
   } catch (err) {
+    // Возвращаем 500, чтобы Telegram повторил доставку. Дедуп защищает от
+    // двойной вставки при ретраях (uq_project_messages_telegram_dedup).
     console.error("telegram-webhook-v2 error:", err);
+    return new Response("error", { status: 500 });
   }
 
-  // Telegram всегда ждёт 200 — иначе начнёт ретраить
   return new Response("ok", { status: 200 });
 });

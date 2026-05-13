@@ -397,14 +397,27 @@ Deno.serve(async (req: Request) => {
 
     if (sync.outcome === "inserted" && sync.rowId) {
       await handleAttachments(integrationToken, message, sync.rowId, tgChat.workspace_id, tgChat.project_id);
+    } else if (sync.outcome === "duplicate") {
+      console.warn(
+        "[telegram-webhook] message dropped as duplicate",
+        JSON.stringify({
+          chat_id: chatId,
+          telegram_message_id: telegramMessageId,
+          sender_user_id: from?.id ?? null,
+          message_date: message.date ?? null,
+          has_personal_bot: !!asPersonalBot,
+        }),
+      );
     } else if (sync.outcome === "error") {
       console.error("[telegram-webhook] sync failed:", sync.error);
     }
 
     return new Response("ok", { status: 200 });
   } catch (error) {
+    // Возвращаем 500, чтобы Telegram повторил доставку. Дедуп защищает от
+    // двойной вставки при ретраях (uq_project_messages_telegram_dedup).
     console.error("telegram-webhook error:", error);
-    return new Response("ok", { status: 200 });
+    return new Response("error", { status: 500 });
   }
 });
 

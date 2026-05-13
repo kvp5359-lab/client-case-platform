@@ -145,7 +145,17 @@ async function syncGroupMessage(msg: TgMessage, binding: TgChatBinding, isEdited
   }
 
   const inserted = sync.rowId ? { id: sync.rowId } : null;
-  if (sync.outcome === "error") {
+  if (sync.outcome === "duplicate") {
+    console.warn(
+      "[telegram-webhook-v2] message dropped as duplicate",
+      JSON.stringify({
+        chat_id: chatId,
+        telegram_message_id: telegramMessageId,
+        sender_user_id: msg.from?.id ?? null,
+        message_date: msg.date ?? null,
+      }),
+    );
+  } else if (sync.outcome === "error") {
     console.error("[telegram-webhook-v2] sync failed:", sync.error);
   }
 
