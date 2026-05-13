@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown, ChevronRight, Filter, MoreVertical, Trash2, ArrowUp, ArrowDown, GripVertical } from 'lucide-react'
+import { ChevronDown, ChevronRight, Filter, MoreVertical, Plus, Trash2, ArrowUp, ArrowDown, GripVertical } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +19,8 @@ interface BoardListHeaderProps {
   collapsed: boolean
   onToggleCollapse: () => void
   onOpenSettings: () => void
+  /** Открыть диалог создания треда с preset из фильтра колонки. Null для inbox/project. */
+  onCreateThread?: () => void
   hasFilters: boolean
   isInbox: boolean
   isFirst?: boolean
@@ -32,6 +34,7 @@ export function BoardListHeader({
   collapsed,
   onToggleCollapse,
   onOpenSettings,
+  onCreateThread,
   hasFilters,
   isInbox,
   isFirst,
@@ -69,6 +72,18 @@ export function BoardListHeader({
           <span className="text-sm opacity-60 shrink-0">{count}</span>
         )}
       </button>
+      {onCreateThread && (
+        <button
+          type="button"
+          onClick={onCreateThread}
+          aria-label="Создать в этом списке"
+          title="Создать в этом списке"
+          className="shrink-0 h-6 w-6 inline-flex items-center justify-center rounded-full opacity-0 group-hover/header:opacity-100 transition-opacity hover:brightness-95"
+          style={{ backgroundColor: hs.bg, color: hs.text }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      )}
       <div
         className="flex-1 h-0.5 rounded-full ml-1"
         style={{ backgroundColor: hs.bg }}

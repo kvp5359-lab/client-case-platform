@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react'
 import type { ThreadAccentColor, ProjectThread } from '@/hooks/messenger/useProjectThreads'
-import type { TabMode, ThreadType, AccessType, ChannelType } from '../chatSettingsTypes'
+import type { TabMode, ThreadType, AccessType, ChannelType, ChatCreatePreset } from '../chatSettingsTypes'
 
 export interface UseChatSettingsFormStateParams {
   chat: ProjectThread | null
@@ -13,6 +13,7 @@ export interface UseChatSettingsFormStateParams {
   propWorkspaceId?: string
   defaultThreadType: 'chat' | 'task'
   defaultTabMode?: TabMode
+  initialValues?: ChatCreatePreset
   open: boolean
 }
 
@@ -29,12 +30,15 @@ export function useChatSettingsFormState({
   propProjectId,
   defaultThreadType,
   defaultTabMode,
+  initialValues,
   open,
 }: UseChatSettingsFormStateParams) {
   const isEditMode = !!chat
 
   const resolvedDefaultTab: TabMode =
-    defaultTabMode ?? (defaultThreadType === 'task' ? 'task' : 'chat')
+    initialValues?.tabMode ??
+    defaultTabMode ??
+    (defaultThreadType === 'task' ? 'task' : 'chat')
 
   // ── All useState ──
   const [tabMode, setTabMode] = useState<TabMode>(resolvedDefaultTab)
@@ -109,6 +113,22 @@ export function useChatSettingsFormState({
   // ── Defaults tracking (used by actions hook) ──
   const [defaultsApplied, setDefaultsApplied] = useState(false)
   const [assigneeDefaultApplied, setAssigneeDefaultApplied] = useState(false)
+
+  // ── Apply initialValues preset on dialog open (create mode only) ──
+  useEffect(() => {
+    if (!open || isEditMode || !initialValues) return
+    if (initialValues.projectId) setSelectedProjectId(initialValues.projectId)
+    if (initialValues.statusId) {
+      setTaskStatusId(initialValues.statusId)
+      setDefaultsApplied(true) // блокируем выставление is_default-статуса
+    }
+    if (initialValues.deadline) setTaskDeadline(new Date(initialValues.deadline))
+    if (initialValues.assigneeIds && initialValues.assigneeIds.length > 0) {
+      setTaskAssignees(new Set(initialValues.assigneeIds))
+      setAssigneeDefaultApplied(true) // блокируем дефолт «я как assignee»
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   // ── Computed values ──
   const threadType: ThreadType = tabMode === 'task' ? 'task' : 'chat'

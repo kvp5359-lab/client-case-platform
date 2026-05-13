@@ -54,6 +54,7 @@ export function ChatSettingsDialog({
   defaultThreadType = 'chat',
   defaultTabMode,
   initialTemplate,
+  initialValues,
   open,
   onOpenChange,
   onCreate,
@@ -71,6 +72,7 @@ export function ChatSettingsDialog({
     propWorkspaceId,
     defaultThreadType,
     defaultTabMode,
+    initialValues,
     open,
   })
 

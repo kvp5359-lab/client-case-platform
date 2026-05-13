@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
 import { useDialog } from '@/hooks/shared/useDialog'
@@ -11,9 +11,18 @@ import { DraggableBoardProjectRow } from './DraggableBoardProjectRow'
 import { BoardInboxList } from './BoardInboxList'
 import { BoardListHeader } from './BoardListHeader'
 import { ListSettingsDialog } from './ListSettingsDialog'
+import { useCreateTaskHandler } from '@/components/tasks/useCreateTaskMutation'
+import { extractThreadCreatePreset } from '@/lib/filters/extractPreset'
 import type { BoardGlobalFilter, BoardList, GroupByField } from './types'
 import type { FilterContext } from '@/lib/filters/types'
 import { mergeFilterGroupsAnd } from '@/lib/filters/types'
+
+// Lazy: ChatSettingsDialog тянет Tiptap (~200 KB) через ComposeField.
+const ChatSettingsDialog = lazy(() =>
+  import('@/components/messenger/ChatSettingsDialog').then((m) => ({
+    default: m.ChatSettingsDialog,
+  })),
+)
 import { groupTasks, groupProjects } from './boardListUtils'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
 import { useTaskStatuses } from '@/hooks/useStatuses'
@@ -172,6 +181,7 @@ export function BoardListCard({
 }: BoardListCardProps) {
   const [userCollapsed, setUserCollapsed] = useState<boolean | null>(null)
   const settingsDialog = useDialog()
+  const createDialog = useDialog()
 
   const simpleAssigneesMap = useMemo(() => {
     const result: Record<string, { id: string }[]> = {}
@@ -201,6 +211,20 @@ export function BoardListCard({
   }, [isInbox, boardGlobalFilter, list.filters, list.entity_type])
 
   const hasFilters = safeFilters.rules.length > 0
+
+  // Preset для диалога создания: разворачиваем верхнеуровневые equals-условия
+  // фильтра колонки в дефолтные значения формы. Делается только для thread-
+  // колонок: на project-колонках кнопка не показывается, на inbox — тоже.
+  const createPreset = useMemo(() => {
+    if (list.entity_type !== 'thread') return undefined
+    return extractThreadCreatePreset(safeFilters, filterCtx)
+  }, [list.entity_type, safeFilters, filterCtx])
+
+  const { handleCreate, isPending: createPending } = useCreateTaskHandler({
+    workspaceId,
+    projectId: createPreset?.projectId,
+    onSuccess: () => createDialog.close(),
+  })
 
   // Для списков проектов вычисляем карту «ближайшая незавершённая задача» по project_id.
   // Используем уже загруженный кэш `tasks` (useWorkspaceThreads) — дополнительных запросов нет.
@@ -336,6 +360,7 @@ export function BoardListCard({
         collapsed={collapsed}
         onToggleCollapse={() => setUserCollapsed(!collapsed)}
         onOpenSettings={settingsDialog.open}
+        onCreateThread={list.entity_type === 'thread' ? createDialog.open : undefined}
         hasFilters={hasFilters}
         isInbox={isInbox}
         isFirst={isFirst}
@@ -504,6 +529,22 @@ export function BoardListCard({
         existingColumns={existingColumns}
         columnWidth={columnWidth}
       />
+
+      {createDialog.isOpen && list.entity_type === 'thread' && (
+        <Suspense fallback={null}>
+          <ChatSettingsDialog
+            chat={null}
+            workspaceId={workspaceId}
+            projectId={createPreset?.projectId}
+            defaultTabMode={createPreset?.tabMode ?? 'task'}
+            initialValues={createPreset}
+            open={createDialog.isOpen}
+            onOpenChange={(v) => (v ? createDialog.open() : createDialog.close())}
+            onCreate={handleCreate}
+            isPending={createPending}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

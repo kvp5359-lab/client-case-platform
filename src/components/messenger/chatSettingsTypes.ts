@@ -39,6 +39,14 @@ export interface ChatSettingsResult {
   sourceTemplateId?: string | null
 }
 
+export interface ChatCreatePreset {
+  tabMode?: TabMode
+  projectId?: string
+  statusId?: string
+  deadline?: string
+  assigneeIds?: string[]
+}
+
 export interface ChatSettingsDialogProps {
   /** null = create mode, ProjectThread = edit mode */
   chat: ProjectThread | null
@@ -50,6 +58,11 @@ export interface ChatSettingsDialogProps {
   defaultTabMode?: 'task' | 'chat' | 'email'
   /** Auto-apply template when dialog opens */
   initialTemplate?: ThreadTemplate | null
+  /**
+   * Preset значений для формы в create-режиме. Применяется один раз при open.
+   * Используется для предзаполнения из фильтра колонки доски / списка.
+   */
+  initialValues?: ChatCreatePreset
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreate?: (result: ChatSettingsResult) => void
