@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Users, MoreVertical, Pencil, Trash2, Settings } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -68,7 +68,13 @@ export function WorkspacesPage() {
   usePageTitle('Рабочие пространства')
   const { user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
+
+  // Server-side гард в workspace layout редиректит сюда с ?blocked=<id>,
+  // если у юзера нет доступа к запрошенному WS (нет participant'а или
+  // can_login=false).
+  const blockedWorkspaceId = searchParams?.get('blocked') ?? null
 
   // Загрузка workspaces через React Query
   const {
@@ -210,6 +216,15 @@ export function WorkspacesPage() {
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {blockedWorkspaceId && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>
+              Доступ к этому рабочему пространству заблокирован. Обратитесь к
+              владельцу воркспейса.
+            </AlertDescription>
           </Alert>
         )}
 

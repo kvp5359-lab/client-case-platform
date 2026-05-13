@@ -54,17 +54,32 @@ export function useParticipantsMutations(workspaceId: string | undefined) {
       participantId: string
       canLogin: boolean
     }) => {
-      const { error } = await supabase
-        .from('participants')
-        .update({ can_login: canLogin })
-        .eq('id', participantId)
-      if (error) throw error
+      // Через edge function: внутри она не только меняет флаг can_login,
+      // но и баннит юзера в auth.users + сбрасывает его refresh-токены.
+      // Без этого блокировка оставалась чисто UI-флагом.
+      const { data, error } = await supabase.functions.invoke<{
+        ok?: boolean
+        error?: string
+      }>('set-participant-access', {
+        body: { participant_id: participantId, can_login: canLogin },
+      })
+      if (error || !data?.ok) {
+        const msg =
+          data?.error === 'Cannot block workspace owner'
+            ? 'Нельзя заблокировать владельца воркспейса'
+            : data?.error === 'Cannot block yourself'
+              ? 'Нельзя заблокировать самого себя'
+              : data?.error === 'Forbidden'
+                ? 'Недостаточно прав'
+                : data?.error || error?.message || 'Не удалось изменить доступ участника'
+        throw new Error(msg)
+      }
     },
     onSuccess: () => {
       invalidateParticipants()
     },
-    onError: () => {
-      toast.error('Не удалось изменить доступ участника')
+    onError: (err: Error) => {
+      toast.error(err.message || 'Не удалось изменить доступ участника')
     },
   })
 
@@ -95,7 +110,7 @@ export function useParticipantsMutations(workspaceId: string | undefined) {
     }) => {
       const { data: current, error: fetchErr } = await supabase
         .from('participants')
-        .select('email')
+        .select('email, can_login')
         .eq('id', participantId)
         .single()
       if (fetchErr) throw fetchErr
@@ -122,7 +137,31 @@ export function useParticipantsMutations(workspaceId: string | undefined) {
         }
       }
 
-      const { email: _ignored, ...rest } = data
+      // can_login обрабатывается через set-participant-access (бан в auth.users
+      // + сброс сессий). Прямым UPDATE этот флаг не меняем.
+      const canLoginChanged =
+        typeof data.can_login === 'boolean' && data.can_login !== current.can_login
+      if (canLoginChanged) {
+        const { data: res, error: fnErr } = await supabase.functions.invoke<{
+          ok?: boolean
+          error?: string
+        }>('set-participant-access', {
+          body: { participant_id: participantId, can_login: data.can_login },
+        })
+        if (fnErr || !res?.ok) {
+          const msg =
+            res?.error === 'Cannot block workspace owner'
+              ? 'Нельзя заблокировать владельца воркспейса'
+              : res?.error === 'Cannot block yourself'
+                ? 'Нельзя заблокировать самого себя'
+                : res?.error === 'Forbidden'
+                  ? 'Недостаточно прав'
+                  : res?.error || fnErr?.message || 'Не удалось изменить доступ участника'
+          throw new Error(msg)
+        }
+      }
+
+      const { email: _email, can_login: _canLogin, ...rest } = data
       if (Object.keys(rest).length > 0) {
         const { error } = await supabase
           .from('participants')
