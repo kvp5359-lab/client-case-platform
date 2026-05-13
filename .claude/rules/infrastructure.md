@@ -268,6 +268,34 @@
 - **RPC**: `move_thread_to_project(thread_id, project_id)` — переносит тред из «личных диалогов» в проект и наоборот (NULL = вернуть в личные). RLS-политики тредов проверяют `owner_user_id IS NULL OR owner_user_id = auth.uid()` дополнительно к доступам через `project_participants`.
 - **Что НЕ делаем**: не создавать новые системные инбокс-проекты. Если в коде/миграциях встретилась логика «создать проект под личные диалоги» — это устаревший паттерн.
 
+## ⚠️ RLS на `project_threads` — обязательный short-circuit `created_by`
+
+**Правило**: полиция `project_threads_select` ОБЯЗАНА содержать short-circuit `created_by = (SELECT auth.uid())` **до** вызова `can_user_access_thread(id, …)`. Без него ломается **любое** создание треда через REST API.
+
+**Почему**: `can_user_access_thread` определена как `SECURITY DEFINER STABLE` и перечитывает тред: `SELECT … FROM project_threads WHERE id = p_thread_id`. PostgREST по умолчанию шлёт `Prefer: return=representation`, что транслируется в `INSERT…RETURNING *`. К RETURNING-строке Postgres применяет SELECT-полицию. Внутри SECURITY DEFINER функции свежевставленная строка ещё не видна snapshot'у → `NOT FOUND` → `RETURN false` → RLS отбивает INSERT с 42501 «new row violates RLS». PostgreSQL такой нюанс не документирует явно — это эмпирический факт, проверенный инструментованной функцией.
+
+**Правильный шаблон полиции**:
+
+```sql
+CREATE POLICY project_threads_select ON public.project_threads FOR SELECT TO public
+USING (
+  -- Short-circuit: BEFORE INSERT trigger set_thread_created_by всегда выставляет
+  -- created_by = auth.uid(), поэтому свежая строка пропускается без вызова функции.
+  (created_by = (SELECT auth.uid()))
+  OR
+  can_user_access_thread(id, (SELECT auth.uid()))
+);
+```
+
+**История регрессий** (этот баг уже ловили 3 раза):
+- `20260404191200_fix_thread_select_policy_inline.sql` — первый фикс.
+- `20260426_thread_access_rls.sql` — переписала полицию без short-circuit → сломалось.
+- `20260427_fix_thread_select_returning.sql` — восстановила short-circuit.
+- `20260510_personal_dialogs_rls.sql` — снова переписала, снова сломалось.
+- `20260513083503_fix_thread_select_returning_after_personal_dialogs.sql` — восстановила short-circuit (см. [docs/bugs/resolved/2026-05-13-thread-insert-returning-rls.md](../../docs/bugs/resolved/2026-05-13-thread-insert-returning-rls.md)).
+
+**При следующем рефакторинге `can_user_access_thread` или `project_threads_select`** — обязательно прогнать тест: `INSERT INTO project_threads (project_id, workspace_id, type, name) VALUES (…) RETURNING id` под role authenticated должен пройти. Полная защита от регрессии — переписать функцию на сигнатуру `can_user_access_thread(t project_threads, p_user_id uuid)` и в полиции вызывать `can_user_access_thread(project_threads, …)` (Postgres подставит значения NEW.* напрямую, без перечитывания таблицы). Тогда short-circuit не нужен. На 2026-05-13 это не сделано — функцию зовут ещё `project_messages_*` полиции и т.п., смена сигнатуры тянет более обширную миграцию.
+
 ## Telegram Business (личные диалоги сотрудников)
 
 Реализовано 2026-05-03, перевод на новую модель «без проектов» — 2026-05-10. Архитектура «как у Planfix» — один общий бот сервиса `@clientcase_bot` (id `8669511732`), которого все сотрудники подключают как делегата своего личного TG через **Telegram → Settings → Business → Chatbots**. Требует Telegram Premium у сотрудника. Бот «подсматривает» личные диалоги и тянет их в сервис; ответы из сервиса уходят от имени сотрудника, не бота.

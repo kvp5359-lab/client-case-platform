@@ -23,4 +23,5 @@
 
 | ID | Severity | Область | Название | Решён |
 |---|---|---|---|---|
+| [2026-05-13-thread-insert-returning-rls](resolved/2026-05-13-thread-insert-returning-rls.md) | critical | rls, project_threads, can_user_access_thread | INSERT INTO project_threads ... RETURNING * падает с 42501 (3-я регрессия) | 2026-05-13 |
 | [2026-04-10-telegram-reactions-media-group](resolved/2026-04-10-telegram-reactions-media-group.md) | medium | telegram-webhook, telegram-send-message | Реакции на файлы в Telegram media group приходят как отдельные сообщения | 2026-04-21 |
