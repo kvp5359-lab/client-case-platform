@@ -54,13 +54,24 @@ export function extractThreadCreatePreset(
     }
 
     if (c.field === 'deadline') {
-      if (c.operator === 'today') {
+      // Резолвим пресет-строку (__today__, __this_week__, ...) и абсолютную ISO.
+      const resolvePresetValue = (v: unknown): string | null => {
+        if (typeof v !== 'string') return null
+        if (v === '__today__' || v === '__this_week__') return ctx.now.toISOString()
+        // Любая абсолютная дата возвращается как есть; не пресет — Date.parse уловит.
+        if (v.startsWith('__')) return null
+        return v
+      }
+      if (c.operator === 'today' || c.operator === 'this_week') {
         preset.deadline = ctx.now.toISOString()
       } else if (
-        (c.operator === 'date_eq' || c.operator === 'equals') &&
-        typeof c.value === 'string'
+        c.operator === 'date_eq' ||
+        c.operator === 'equals' ||
+        c.operator === 'before' ||
+        c.operator === 'before_eq'
       ) {
-        preset.deadline = c.value
+        const v = resolvePresetValue(c.value)
+        if (v) preset.deadline = v
       }
       continue
     }
