@@ -8,14 +8,14 @@
  * рендерит подкомпоненты из batch-actions/
  */
 
-import { useState, useEffect, memo } from 'react'
+import { useState, useLayoutEffect, memo } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Loader2, X } from 'lucide-react'
+import { Loader2, X, Bot } from 'lucide-react'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { SendToChatButton } from './SendToChatButton'
 import {
@@ -96,27 +96,37 @@ export const FloatingBatchActions = memo(function FloatingBatchActions({
   const panelTab = useSidePanelStore((s) => s.panelTab)
   const panelOpen = panelTab !== null
 
-  // Вычисляем центр области документов (между левым сайдбаром и правой панелью)
-  const [leftOffset, setLeftOffset] = useState('50%')
-  useEffect(() => {
+  // Вычисляем центр области документов (между левым сайдбаром и правой панелью).
+  // Используем реальные размеры DOM-элементов и ResizeObserver, чтобы ловить
+  // любые изменения: resize окна, ресайз сайдбара, открытие/закрытие правой панели.
+  const [leftOffset, setLeftOffset] = useState<string | null>(null)
+  useLayoutEffect(() => {
+    if (!hasSelection) return
     const compute = () => {
-      const sidebarWidth = parseInt(localStorage.getItem('sidebarWidth') ?? '280', 10) || 280
-      const rightWidth = panelOpen ? window.innerWidth * 0.45 : 0
+      const sidebarEl = document.querySelector('[data-workspace-sidebar]') as HTMLElement | null
+      const sidebarWidth = sidebarEl
+        ? sidebarEl.getBoundingClientRect().width
+        : (parseInt(localStorage.getItem('sidebarWidth') ?? '280', 10) || 280)
+      const sidePanel = document.querySelector('.side-panel') as HTMLElement | null
+      const sidePanelRect = sidePanel?.getBoundingClientRect()
+      // .side-panel при закрытии получает класс hidden (display:none) → rect.width = 0.
+      const rightWidth = sidePanelRect && sidePanelRect.width > 0 ? sidePanelRect.width : 0
       const docAreaCenter = sidebarWidth + (window.innerWidth - sidebarWidth - rightWidth) / 2
       setLeftOffset(`${docAreaCenter}px`)
     }
     compute()
-    let timer: ReturnType<typeof setTimeout>
-    const debouncedCompute = () => {
-      clearTimeout(timer)
-      timer = setTimeout(compute, 150)
-    }
-    window.addEventListener('resize', debouncedCompute)
+    const ro = new ResizeObserver(compute)
+    const sidePanel = document.querySelector('.side-panel') as HTMLElement | null
+    if (sidePanel) ro.observe(sidePanel)
+    const sidebarEl = document.querySelector('[data-workspace-sidebar]') as HTMLElement | null
+    if (sidebarEl) ro.observe(sidebarEl)
+    ro.observe(document.body)
+    window.addEventListener('resize', compute)
     return () => {
-      clearTimeout(timer)
-      window.removeEventListener('resize', debouncedCompute)
+      ro.disconnect()
+      window.removeEventListener('resize', compute)
     }
-  }, [panelOpen])
+  }, [hasSelection, panelOpen])
 
   if (!hasSelection) return null
 
@@ -124,8 +134,8 @@ export const FloatingBatchActions = memo(function FloatingBatchActions({
 
   return (
     <div
-      className="fixed top-2 z-50 -translate-x-1/2 animate-in slide-in-from-top-5 duration-200 transition-[left] ease-in-out"
-      style={{ left: leftOffset }}
+      className="fixed top-2 z-[60] -translate-x-1/2 animate-in slide-in-from-top-5 duration-200 transition-[left] ease-in-out"
+      style={{ left: leftOffset ?? '50%', visibility: leftOffset ? 'visible' : 'hidden' }}
     >
       <div className="bg-background border border-border rounded-xl px-5 py-3 flex items-center gap-4 shadow-[0_4px_24px_-2px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.06)]">
         {/* Текст с количеством выбранных документов */}
@@ -217,7 +227,7 @@ export const FloatingBatchActions = memo(function FloatingBatchActions({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {onSendToChat && (
+          {onSendToChat && panelTab !== 'assistant' && (
             <SendToChatButton
               panelTab={panelTab}
               onSendToChat={onSendToChat}
@@ -225,6 +235,20 @@ export const FloatingBatchActions = memo(function FloatingBatchActions({
             />
           )}
         </div>
+
+        {/* Открыть ассистента с выбранными документами */}
+        {onSendToChat && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onSendToChat('assistant')}
+            className="h-8 w-8 p-0"
+            disabled={isProcessing}
+            title="Открыть ассистента с выбранными документами"
+          >
+            <Bot className="h-4 w-4 text-purple-500" />
+          </Button>
+        )}
 
         {/* Кнопка закрытия */}
         <Button

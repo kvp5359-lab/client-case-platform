@@ -322,6 +322,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   return (
     <aside
       ref={sidebarRef}
+      data-workspace-sidebar
       className="relative bg-[#f7f7f7] flex-shrink-0 flex flex-col h-full overflow-hidden border-r border-gray-200"
       style={{ width: sidebarWidth }}
     >
