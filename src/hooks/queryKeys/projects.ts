@@ -100,6 +100,13 @@ export const projectTemplateKeys = {
   /** Ссылка «какой templateId у проекта» — используется в мессенджере/QuickReplyPicker. */
   idByProject: (projectId: string | null | undefined) =>
     ['project-template-id', projectId] as const,
+  /**
+   * Дефолтные вкладки боковой панели проекта — берётся из шаблона проекта
+   * сеялкой `TaskPanelTabbedShellRenderer`. Отдельный ключ от `idByProject`,
+   * чтобы не конфликтовать с местами, где грузится только `template_id`.
+   */
+  defaultPanelTabsByProject: (projectId: string | null | undefined) =>
+    ['project-template-default-panel-tabs', projectId] as const,
   /** Только имя шаблона по его id (для PanelProjectInfoRow). */
   nameById: (templateId: string | null | undefined) =>
     ['project-template-name', templateId ?? ''] as const,

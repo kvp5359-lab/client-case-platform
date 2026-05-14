@@ -12,6 +12,7 @@ import type {
   KnowledgeArticleWithRelation,
   KnowledgeGroupWithRelation,
 } from './constants'
+import type { DefaultPanelTabItem } from './panelTabsTypes'
 
 interface UseProjectTemplateMutationsParams {
   templateId: string | undefined
@@ -129,6 +130,23 @@ export function useProjectTemplateMutations({
     },
     onError: () => {
       toast.error('Не удалось обновить флаг лида')
+    },
+  })
+
+  // Обновление дефолтных вкладок боковой панели
+  const updateDefaultPanelTabsMutation = useMutation({
+    mutationFn: async (items: DefaultPanelTabItem[]) => {
+      const { error } = await supabase
+        .from('project_templates')
+        .update({ default_panel_tabs: items })
+        .eq('id', templateId ?? '')
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
+    },
+    onError: () => {
+      toast.error('Не удалось сохранить настройки боковой панели')
     },
   })
 
@@ -328,6 +346,7 @@ export function useProjectTemplateMutations({
     updateIconColorMutation,
     updateIsLeadTemplateMutation,
     updateModulesMutation,
+    updateDefaultPanelTabsMutation,
     addFormsMutation,
     removeFormMutation,
     addDocKitsMutation,

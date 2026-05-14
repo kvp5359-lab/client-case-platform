@@ -169,6 +169,20 @@
 
 **Куда смотреть при добавлении нового модуля**: реестр `ProjectModule` в `src/types/threadTemplate.ts`, `PROJECT_MODULES`, дефолтные `module_access` в seed-ролях, проверка в `useProjectPermissions.hasModuleAccess`.
 
+## Дефолтные вкладки боковой панели в шаблоне проекта
+
+Реализовано 2026-05-15. В редакторе шаблона проекта появилась вкладка «Боковая панель» — управляет тем, какие вкладки `TaskPanel` будут закреплены **по умолчанию у новых проектов** этого шаблона.
+
+- **Хранение**: `project_templates.default_panel_tabs jsonb` (миграция [`20260515_project_template_default_panel_tabs.sql`](../../supabase/migrations/20260515_project_template_default_panel_tabs.sql)).
+  - `NULL` → legacy-поведение: сеять `tasks + history` (как было до фичи).
+  - `[]` → ничего не закреплять.
+  - `[{type:'system', key:'tasks'|...} | {type:'thread_template', id:<uuid>}, …]` — закрепить эти вкладки в указанном порядке.
+- **Типы и хелперы**: [`src/components/templates/project-template-editor/panelTabsTypes.ts`](../../src/components/templates/project-template-editor/panelTabsTypes.ts) — `DefaultPanelTabItem`, `SystemPanelTabKey`, `SYSTEM_PANEL_TAB_LABELS`, `isDefaultPanelTabsArray`.
+- **Редактор**: [`PanelTabsSection.tsx`](../../src/components/templates/project-template-editor/PanelTabsSection.tsx) — две группы чекбоксов: системные вкладки (отфильтрованы по `enabled_modules` шаблона) и `thread_templates` шаблона (закрепляем будущие реальные треды по `source_template_id`). На каждое изменение — мутация `updateDefaultPanelTabsMutation`.
+- **Сеялка**: при первом открытии панели в проекте, у которого ещё нет строки в `task_panel_tabs` (`isNewProject=true`), [`TaskPanelTabbedShellRenderer.tsx`](../../src/components/tasks/TaskPanelTabbedShellRenderer.tsx) подгружает `default_panel_tabs` шаблона проекта (через `projects → project_templates`), резолвит `thread_template_id → project_threads.id` через `source_template_id`, формирует массив `TaskPanelTab` с `pinned: true` и вызывает `seedTabs`. Если треды ещё не созданы (создание проекта асинхронно делает треды) — ждём следующего рендера. Только для НОВЫХ проектов: у пользователей с уже существующей записью в `task_panel_tabs` ничего не меняется.
+- **Drag-порядок**: реализован через `@dnd-kit` в той же секции. UI разделён на две зоны: «Закреплено» — список с drag-handle (GripVertical) и кнопкой `×` для открепления; «Доступно» — кликабельные строки с `+` для добавления в конец закреплённого списка. Порядок в БД (`default_panel_tabs`) совпадает с порядком в UI и используется сеялкой как есть, без re-канонизации.
+- **⚠️ Костыль для `task_panel_tabs` upsert**: миграция [`20260510_task_panel_tabs_contact_scope.sql`](../../supabase/migrations/20260510_task_panel_tabs_contact_scope.sql) переделала UNIQUE constraints на **partial** (по scope project/contact). PostgREST `.upsert({ onConflict: 'user_id,project_id' })` с partial unique падает с ошибкой `42P10` — «no unique or exclusion constraint matching». В результате с 10 мая ни одна новая запись в `task_panel_tabs` не писалась. Фикс в [`useTaskPanelTabs.ts`](../../src/components/tasks/useTaskPanelTabs.ts) `upsertMutation`: ручной паттерн SELECT id → UPDATE по id или INSERT. При следующем рефакторинге можно мигрировать на RPC `INSERT … ON CONFLICT (cols) WHERE …` или сменить тип constraint.
+
 ## Статусы проектов (единый справочник + per-template привязка)
 
 - **Хранение**: `projects.status_id` (uuid → `statuses.id`). Текстовая колонка `projects.status` дропнута миграцией `drop_projects_status_text_with_triggers` (2026-04-25).

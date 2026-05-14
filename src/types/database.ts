@@ -5492,6 +5492,7 @@ export type Database = {
           brief_template_sheet_id: string | null
           created_at: string
           created_by: string | null
+          default_panel_tabs: Json | null
           description: string | null
           enabled_modules: string[] | null
           icon: string
@@ -5508,6 +5509,7 @@ export type Database = {
           brief_template_sheet_id?: string | null
           created_at?: string
           created_by?: string | null
+          default_panel_tabs?: Json | null
           description?: string | null
           enabled_modules?: string[] | null
           icon?: string
@@ -5524,6 +5526,7 @@ export type Database = {
           brief_template_sheet_id?: string | null
           created_at?: string
           created_by?: string | null
+          default_panel_tabs?: Json | null
           description?: string | null
           enabled_modules?: string[] | null
           icon?: string

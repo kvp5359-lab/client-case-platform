@@ -12,7 +12,13 @@ import { getBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import { PanelProjectInfoRow } from './PanelProjectInfoRow'
 import { PanelContactInfoRow } from './PanelContactInfoRow'
 import { TaskPanelTabBar, type SystemTabDef } from './TaskPanelTabBar'
-import { buildSystemTab } from './useTaskPanelTabs'
+import { buildSystemTab, buildThreadTab } from './useTaskPanelTabs'
+import {
+  isDefaultPanelTabsArray,
+  SYSTEM_PANEL_TAB_LABELS,
+  type DefaultPanelTabItem,
+} from '@/components/templates/project-template-editor/panelTabsTypes'
+import { projectTemplateKeys } from '@/hooks/queryKeys'
 import {
   ThreadTabContent,
   TasksTabContent,
@@ -100,25 +106,37 @@ function TaskPanelTabbedShellRenderer({
     ? null
     : (activeThreadScope?.contact_participant_id ?? contactId)
 
-  // Дефолтные вкладки для нового проекта: «Задачи» и «История» — закреплённые.
-  // Сеется один раз — при первом открытии панели в проекте, если в БД ещё нет
-  // записи task_panel_tabs для этой пары user/project и пользователь имеет доступ
-  // к этим разделам. После сидинга isNewProject становится false.
+  // Дефолтный набор вкладок берётся из шаблона проекта
+  // (`project_templates.default_panel_tabs`). Если в шаблоне это поле NULL —
+  // legacy-поведение: tasks + history. Если массив — используем как есть,
+  // отфильтровав по правам и отрезолвив thread_template_id → thread.id через
+  // scopeThreads (project_threads.source_template_id).
+  const { data: projectDefaults } = useQuery<{
+    template_id: string | null
+    default_panel_tabs: unknown
+  } | null>({
+    queryKey: projectTemplateKeys.defaultPanelTabsByProject(projectId ?? ''),
+    enabled: !!projectId && isNewProject,
+    staleTime: STALE_TIME.LONG,
+    queryFn: async () => {
+      if (!projectId) return null
+      const { data, error } = await supabase
+        .from('projects')
+        .select('template_id, project_templates(default_panel_tabs)')
+        .eq('id', projectId)
+        .maybeSingle()
+      if (error) throw error
+      if (!data) return null
+      const tpl = (data as { project_templates: { default_panel_tabs: unknown } | null }).project_templates
+      return {
+        template_id: (data as { template_id: string | null }).template_id,
+        default_panel_tabs: tpl?.default_panel_tabs ?? null,
+      }
+    },
+  })
+  // Загружаем треды только если в шаблоне могут быть треды для резолва —
+  // обычный useProjectThreads ниже уже подтянут, переиспользуем его данные.
   const seedDoneRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (!projectId) return
-    if (!isNewProject) return
-    if (tabs.length > 0) return
-    if (seedDoneRef.current === projectId) return
-    const wantsTasks = visibleSystemTypes.has('tasks')
-    const wantsHistory = visibleSystemTypes.has('history')
-    if (!wantsTasks && !wantsHistory) return
-    const seed: TaskPanelTab[] = []
-    if (wantsTasks) seed.push({ ...buildSystemTab('tasks', 'Задачи'), pinned: true })
-    if (wantsHistory) seed.push({ ...buildSystemTab('history', 'История'), pinned: true })
-    seedDoneRef.current = projectId
-    onSeedTabs(seed)
-  }, [projectId, isNewProject, tabs.length, visibleSystemTypes, onSeedTabs])
   // Фильтруем уже открытые вкладки: если user потерял доступ к системному
   // разделу (например, перешёл в проект где модуля нет) — скрываем эту
   // вкладку из бара. Сама запись в БД остаётся: при переключении scope обратно
@@ -132,6 +150,92 @@ function TaskPanelTabbedShellRenderer({
     () => new Map(scopeThreads.map((t) => [t.id, t])),
     [scopeThreads],
   )
+
+  // Сеялка дефолтных вкладок для нового проекта. Вызывается один раз — при
+  // первом открытии панели в проекте, если в БД ещё нет строки task_panel_tabs.
+  // Источник списка — `project_templates.default_panel_tabs` шаблона проекта.
+  // NULL → legacy-дефолт (Задачи + История). Массив → разворачиваем как есть.
+  useEffect(() => {
+    if (!projectId) return
+    if (!isNewProject) return
+    if (tabs.length > 0) return
+    if (seedDoneRef.current === projectId) return
+    if (projectDefaults === undefined) return // ждём загрузку
+    // threads нужны только если в шаблоне есть thread_template — иначе сидим без них.
+    const raw = projectDefaults?.default_panel_tabs
+    const items: DefaultPanelTabItem[] | null = isDefaultPanelTabsArray(raw)
+      ? raw
+      : null
+
+    // Legacy-дефолт когда поле NULL: tasks + history.
+    const effectiveItems: DefaultPanelTabItem[] =
+      items ??
+      [
+        { type: 'system', key: 'tasks' },
+        { type: 'system', key: 'history' },
+      ]
+
+    // Пустой массив [] = пользователь явно сказал «ничего не закреплять».
+    if (effectiveItems.length === 0) {
+      seedDoneRef.current = projectId
+      return
+    }
+
+    // Резолв thread_template_id → существующий thread в проекте.
+    const threadBySourceTemplate = new Map<string, (typeof scopeThreads)[number]>()
+    for (const th of scopeThreads) {
+      if (th.source_template_id) threadBySourceTemplate.set(th.source_template_id, th)
+    }
+
+    // Если для thread-элемента ещё не создан соответствующий тред (создание
+    // проекта асинхронно делает треды) — ждём следующего рендера, не сидим
+    // неполным списком. Это терпимо: после первого появления тредов мы засеем.
+    const hasThreadTpl = effectiveItems.some((i) => i.type === 'thread_template')
+    const allThreadTplsResolved =
+      !hasThreadTpl ||
+      effectiveItems
+        .filter((i): i is { type: 'thread_template'; id: string } => i.type === 'thread_template')
+        .every((i) => threadBySourceTemplate.has(i.id))
+    if (!allThreadTplsResolved) return
+
+    const seed: TaskPanelTab[] = []
+    for (const item of effectiveItems) {
+      if (item.type === 'system') {
+        if (!visibleSystemTypes.has(item.key)) continue
+        seed.push({
+          ...buildSystemTab(item.key, SYSTEM_PANEL_TAB_LABELS[item.key]),
+          pinned: true,
+        })
+      } else {
+        const th = threadBySourceTemplate.get(item.id)
+        if (!th) continue
+        seed.push({
+          ...buildThreadTab(th.id, th.name, {
+            threadType: th.type,
+            icon: th.icon,
+            accentColor: th.accent_color,
+          }),
+          pinned: true,
+        })
+      }
+    }
+
+    if (seed.length === 0) {
+      seedDoneRef.current = projectId
+      return
+    }
+
+    seedDoneRef.current = projectId
+    onSeedTabs(seed)
+  }, [
+    projectId,
+    isNewProject,
+    tabs.length,
+    visibleSystemTypes,
+    onSeedTabs,
+    projectDefaults,
+    scopeThreads,
+  ])
 
   const visibleTabs = useMemo(
     () =>

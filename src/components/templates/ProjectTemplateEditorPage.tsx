@@ -28,6 +28,7 @@ import {
   ModulesSection,
   ProjectTemplateStatusesSection,
   ProjectTemplateFieldsSection,
+  PanelTabsSection,
 } from './project-template-editor'
 import { BriefTemplateSection } from './project-template-editor/BriefTemplateSection'
 import { RootFolderSection } from './project-template-editor/RootFolderSection'
@@ -290,6 +291,7 @@ export function ProjectTemplateEditorPage() {
             <TabsTrigger value="integrations">Интеграции</TabsTrigger>
             <TabsTrigger value="statuses">Статусы</TabsTrigger>
             <TabsTrigger value="fields">Поля</TabsTrigger>
+            <TabsTrigger value="panel-tabs">Боковая панель</TabsTrigger>
           </TabsList>
 
           <TabsContent value="modules" className="mt-4">
@@ -368,6 +370,15 @@ export function ProjectTemplateEditorPage() {
             <ProjectTemplateFieldsSection
               workspaceId={workspaceId}
               projectTemplateId={templateId}
+            />
+          </TabsContent>
+
+          <TabsContent value="panel-tabs" className="mt-4">
+            <PanelTabsSection
+              workspaceId={workspaceId}
+              projectTemplateId={templateId}
+              enabledModules={template.enabled_modules || []}
+              defaultPanelTabs={template.default_panel_tabs}
             />
           </TabsContent>
         </Tabs>
