@@ -190,8 +190,11 @@ export function MessageInput({
       return
     }
     // useDraftMessage гидратирует html синхронно в своём useEffect; к моменту
-    // нашего useEffect editor.getHTML() уже актуальный.
+    // нашего useEffect editor.getHTML() уже актуальный. Синхронизация state
+    // из localStorage на mount — нормальный паттерн, lazy useState тут не
+    // подходит: editor.getHTML() недоступен до коммита эффектов.
     if (editor.getHTML() === parsed.translatedHtml) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTranslation(parsed)
     } else {
       try {
@@ -200,7 +203,6 @@ export function MessageInput({
         /* SSR */
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [translationKey, editor, editingMessage])
 
   // Auto-focus editor when thread changes or component mounts (задержка — анимация панели)
