@@ -1,11 +1,13 @@
 "use client"
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Loader2, Eye, ExternalLink, Sparkles } from 'lucide-react'
+import { Loader2, Eye, ExternalLink, Bot } from 'lucide-react'
 import { NameInput } from '@/components/ui/name-input'
 import {
   Dialog,
@@ -14,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 
 interface Status {
@@ -104,19 +107,86 @@ export function EditDocumentDialog({
     }
   }, [open, documentToEdit?.id, isContentAvailable])
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Параметры документа</DialogTitle>
-          <DialogDescription className="sr-only">
-            Редактирование параметров документа
-          </DialogDescription>
-        </DialogHeader>
+  // Режим «работа рядом с ассистентом»: включается ЯВНО кликом по Bot.
+  // В этом режиме диалог становится не-модальным (без затемнения и блокировки
+  // фокуса) и сдвигается влево, в центр свободной области, чтобы не перекрывать
+  // панель ассистента. Сбрасывается при закрытии диалога.
+  const [assistantMode, setAssistantMode] = useState(false)
+  useEffect(() => {
+    if (!open) setAssistantMode(false)
+  }, [open])
 
-        {/* Кнопки действий в верхней части */}
+  const [leftPx, setLeftPx] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    if (!open || !assistantMode) {
+      setLeftPx(null)
+      return
+    }
+    const compute = () => {
+      const sidebarEl = document.querySelector('[data-workspace-sidebar]') as HTMLElement | null
+      const sidebarWidth = sidebarEl
+        ? sidebarEl.getBoundingClientRect().width
+        : (parseInt(localStorage.getItem('sidebarWidth') ?? '280', 10) || 280)
+      const sidePanel = document.querySelector('.side-panel') as HTMLElement | null
+      const rect = sidePanel?.getBoundingClientRect()
+      const rightWidth = rect && rect.width > 0 ? rect.width : 0
+      const center = sidebarWidth + (window.innerWidth - sidebarWidth - rightWidth) / 2
+      setLeftPx(center)
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    const sp = document.querySelector('.side-panel') as HTMLElement | null
+    if (sp) ro.observe(sp)
+    const sbEl = document.querySelector('[data-workspace-sidebar]') as HTMLElement | null
+    if (sbEl) ro.observe(sbEl)
+    ro.observe(document.body)
+    window.addEventListener('resize', compute)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', compute)
+    }
+  }, [open, assistantMode])
+
+  // В режиме assistantMode — рендерим через Radix-примитивы напрямую (без
+  // shadcn DialogContent, который тащит за собой DialogOverlay).
+  // modal={false} — снимает focus-trap и блокировку прокрутки body.
+  if (assistantMode) {
+    return (
+      <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} modal={false}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Content
+            onInteractOutside={(e) => e.preventDefault()}
+            className={cn(
+              'fixed top-16 z-50 grid w-[calc(100%-2rem)] max-w-2xl gap-4 border bg-background p-6 shadow-lg duration-200 rounded-lg max-h-[calc(100vh-theme(spacing.16)-theme(spacing.8))] overflow-y-auto',
+              'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            )}
+            style={{
+              left: leftPx != null ? `${leftPx}px` : '50%',
+              transform: 'translateX(-50%)',
+              visibility: leftPx != null ? 'visible' : 'hidden',
+            }}
+          >
+            <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">
+              Параметры документа
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Description className="sr-only">
+              Редактирование параметров документа
+            </DialogPrimitive.Description>
+            {renderBody()}
+            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+    )
+  }
+
+  function renderBody() {
+    return (
+      <>
         <div className="flex flex-wrap items-center gap-2 pb-1">
-          {/* Группа: Проверить + Ассистент */}
           <div className="flex rounded-md overflow-hidden border border-yellow-400 h-8">
             <Button
               onClick={onVerify}
@@ -130,12 +200,15 @@ export function EditDocumentDialog({
             {onOpenAIChat && (
               <Button
                 size="sm"
-                onClick={onOpenAIChat}
+                onClick={() => {
+                  onOpenAIChat()
+                  setAssistantMode(true)
+                }}
                 disabled={!documentToEdit || !isContentAvailable}
-                title="Отправить в ассистент"
-                className="rounded-none border-0 border-l border-yellow-500/30 bg-yellow-400 text-black hover:bg-yellow-500 px-2 h-full"
+                title="Открыть ассистента с этим документом"
+                className="rounded-none border-0 border-l border-white bg-yellow-400 text-black hover:bg-yellow-500 px-2 h-full"
               >
-                <Sparkles className="h-4 w-4" />
+                <Bot className="h-4 w-4" />
               </Button>
             )}
           </div>
@@ -158,7 +231,6 @@ export function EditDocumentDialog({
         </div>
 
         <div className="space-y-4 py-4">
-          {/* Название */}
           <div className="space-y-2">
             <NameInput
               id="doc-name"
@@ -167,8 +239,6 @@ export function EditDocumentDialog({
               placeholder="Название документа"
               label=""
             />
-
-            {/* Предложенные названия */}
             {suggestedNames.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-1">
                 {suggestedNames.map((suggestedName, index) => (
@@ -185,7 +255,6 @@ export function EditDocumentDialog({
             )}
           </div>
 
-          {/* Описание */}
           <div className="space-y-2">
             <Label htmlFor="doc-description">Описание</Label>
             <Textarea
@@ -198,7 +267,6 @@ export function EditDocumentDialog({
             />
           </div>
 
-          {/* Статус */}
           <div className="space-y-2">
             <Label>Статус</Label>
             <div className="flex flex-col gap-2.5">
@@ -254,7 +322,6 @@ export function EditDocumentDialog({
           </div>
         </div>
 
-        {/* Кнопки действий */}
         <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
@@ -263,6 +330,20 @@ export function EditDocumentDialog({
             Сохранить
           </Button>
         </div>
+      </>
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Параметры документа</DialogTitle>
+          <DialogDescription className="sr-only">
+            Редактирование параметров документа
+          </DialogDescription>
+        </DialogHeader>
+        {renderBody()}
       </DialogContent>
     </Dialog>
   )
