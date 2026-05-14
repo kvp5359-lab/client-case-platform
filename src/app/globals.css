@@ -401,9 +401,13 @@
 }
 
 /* Общий стиль для правых боковых панелей (без display — чтобы не конфликтовать с hidden).
-   Ширина — через CSS-переменную `--panel-width` (см. useRightPanelResize). */
+   Ширина — через CSS-переменную `--panel-width` (см. useRightPanelResize).
+   `position: fixed` (а не absolute) — нужно, чтобы panel позиционировалась
+   относительно viewport так же, как resize-handle (он fixed). Иначе при
+   видимом scrollbar (Chrome «always show scrollbars» на macOS) panel и handle
+   разъезжаются ровно на ширину scrollbar — handle оказывается внутри panel. */
 .side-panel {
-  @apply absolute top-0 right-0 h-full min-w-[360px] border-l border-gray-200 bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.08)];
+  @apply fixed top-0 right-0 h-screen min-w-[360px] border-l border-gray-200 bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.08)];
   width: var(--panel-width, 600px);
 }
 
