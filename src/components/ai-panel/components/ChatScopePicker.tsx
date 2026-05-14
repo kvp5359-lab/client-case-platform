@@ -70,7 +70,11 @@ export function ChatScopePicker({
           type="button"
           className="flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm hover:bg-muted text-left"
           onClick={() => {
-            setChatScope({ mode: 'all', threadIds: [] })
+            if (isAllChats) {
+              setChatScope({ mode: 'selected', threadIds: [] })
+            } else {
+              setChatScope({ mode: 'all', threadIds: [] })
+            }
             setOpen(false)
           }}
         >
