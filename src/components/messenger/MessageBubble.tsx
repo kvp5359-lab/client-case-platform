@@ -1,4 +1,4 @@
-import { memo, useState, useRef, useCallback, useEffect } from 'react'
+import { memo, useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { CornerDownRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -21,6 +21,9 @@ import { BubbleTextContent, DraftPublishButton, RetrySendButton } from './Bubble
 import { DeleteMessageDialog } from './DeleteMessageDialog'
 import { EmailFullViewDialog } from './EmailFullViewDialog'
 import { useMessengerContext } from './MessengerContext'
+import { useTranslateMessage } from '@/hooks/messenger/useTranslateMessage'
+import { useMyPreferredLanguage } from '@/hooks/useMyPreferredLanguage'
+import { useThreadTranslations } from '@/hooks/messenger/useThreadTranslations'
 
 export type { MessengerAccent } from './utils/messageStyles'
 
@@ -106,8 +109,86 @@ function MessageBubbleImpl({
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [reactionPopoverOpen, setReactionPopoverOpen] = useState(false)
 
+  // ─── Перевод сообщения (унифицированно для двух источников) ───────────
+  // (A) Кэш перевода входящего: message_translations на моём preferred_language.
+  // (B) Отправленный перевод: автор писал на своём языке, в БД ушёл перевод,
+  //     оригинал лежит в message.original_content. Виден только автору.
+  // Источник нормализуется в `translationSource` ниже — и логика toggle/
+  // подмены контента одна на оба случая.
+  const { data: preferredLang } = useMyPreferredLanguage()
+  const { data: threadTranslations } = useThreadTranslations(
+    message.thread_id ?? undefined,
+    preferredLang ?? undefined,
+  )
+  const existingTranslation = useMemo(
+    () => threadTranslations?.find((t) => t.message_id === message.id) ?? null,
+    [threadTranslations, message.id],
+  )
+
+  // Унифицированный «оригинал ↔ перевод» pair.
+  const translationSource = useMemo(() => {
+    // (B) — приоритет, потому что для автора это его собственное намерение
+    // (перевёл и отправил), не зависит от текущего preferred_language.
+    if (isOwn && message.original_content) {
+      return {
+        kind: 'sent' as const,
+        originalContent: message.original_content,
+        originalLanguage: message.original_language ?? null,
+        translatedContent: message.content,
+        // Target language для отправленных не сохраняли — известно только что
+        // это «язык клиента»; в пилюле показываем иконку без кода.
+        targetLanguage: null as string | null,
+      }
+    }
+    if (existingTranslation) {
+      return {
+        kind: 'received' as const,
+        originalContent: message.content,
+        originalLanguage: existingTranslation.source_language ?? null,
+        translatedContent: existingTranslation.translated_content,
+        targetLanguage: existingTranslation.target_language,
+      }
+    }
+    return null
+  }, [isOwn, message.content, message.original_content, message.original_language, existingTranslation])
+
+  // viewMode: какой контент показывать ВНУТРИ баббла.
+  // Дефолт для отправленных — 'translation' (то, что реально ушло клиенту).
+  // Дефолт для входящих — 'original' (как клиент написал).
+  const [viewMode, setViewMode] = useState<'original' | 'translation'>(() =>
+    isOwn && message.original_content ? 'translation' : 'original',
+  )
+  const translateMutation = useTranslateMessage()
+  const handleTranslate = useCallback(() => {
+    const target = preferredLang || 'ru'
+    translateMutation.mutate(
+      { messageId: message.id, targetLanguage: target, threadId: message.thread_id ?? undefined },
+      {
+        onSuccess: () => {
+          // После успешного перевода переключаемся на показ перевода в баббле.
+          setViewMode('translation')
+        },
+      },
+    )
+  }, [preferredLang, translateMutation, message.id, message.thread_id])
+  const handleToggleViewMode = useCallback(() => {
+    setViewMode((m) => (m === 'translation' ? 'original' : 'translation'))
+  }, [])
+
+  // Финальный контент: если есть translationSource — берём из него по viewMode,
+  // иначе обычный message.content.
+  const displayContent = translationSource
+    ? viewMode === 'translation'
+      ? translationSource.translatedContent
+      : translationSource.originalContent
+    : message.content
+  const displayMessage = useMemo(
+    () => (displayContent === message.content ? message : { ...message, content: displayContent }),
+    [message, displayContent],
+  )
+
   const { textRef, isCollapsed, isOverflowing, maxCollapsedHeight, toggleCollapsed } =
-    useCollapsibleText(message.content)
+    useCollapsibleText(displayContent)
 
   // Quote popup on text selection — императивный DOM, чтобы не вызывать re-render бабла
   // и не терять браузерное выделение текста
@@ -287,6 +368,18 @@ function MessageBubbleImpl({
           onPublishDraft={onPublishDraft}
           onEditDraft={onEditDraft}
           onViewEmail={isEmailSource(message.source) ? () => setEmailViewOpen(true) : undefined}
+          onTranslate={handleTranslate}
+          translationToggle={
+            translationSource
+              ? {
+                  currentMode: viewMode,
+                  targetLanguage: translationSource.targetLanguage,
+                  sourceLanguage: translationSource.originalLanguage,
+                  onToggle: handleToggleViewMode,
+                }
+              : undefined
+          }
+          isTranslating={translateMutation.isPending}
           onDeleteDialogOpen={() => setDeleteDialogOpen(true)}
           reactionsDisabled={Boolean(isEmailThread || isBusinessThread || isWazzupThread)}
           reactionPopoverOpen={reactionPopoverOpen}
@@ -337,10 +430,10 @@ function MessageBubbleImpl({
 
             <BubbleHeader message={message} isOwn={isOwn} showAvatar={showAvatar} accent={accent} />
 
-            {/* Text content */}
+            {/* Text content — displayMessage может содержать переведённый content вместо оригинала */}
             {!hasAttachmentsOnly && (
               <BubbleTextContent
-                message={message}
+                message={displayMessage}
                 isOwn={isOwn}
                 accent={accent}
                 hasAttachments={hasAttachments}
@@ -449,6 +542,18 @@ function MessageBubbleImpl({
               onPublishDraft={onPublishDraft}
               onEditDraft={onEditDraft}
               onViewEmail={isEmailSource(message.source) ? () => setEmailViewOpen(true) : undefined}
+              onTranslate={handleTranslate}
+              translationToggle={
+                translationSource
+                  ? {
+                      currentMode: viewMode,
+                      targetLanguage: translationSource.targetLanguage,
+                      sourceLanguage: translationSource.originalLanguage,
+                      onToggle: handleToggleViewMode,
+                    }
+                  : undefined
+              }
+              isTranslating={translateMutation.isPending}
               channel={channel}
               onDeleteDialogOpen={() => setDeleteDialogOpen(true)}
               reactionsDisabled={Boolean(isEmailThread || isBusinessThread || isWazzupThread)}

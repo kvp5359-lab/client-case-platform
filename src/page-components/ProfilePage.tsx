@@ -22,6 +22,7 @@ import { ProfileInfoSection } from './ProfilePage/ProfileInfoSection'
 import { GoogleDriveSection } from './ProfilePage/GoogleDriveSection'
 import { GmailSection } from './ProfilePage/GmailSection'
 import { AppSettingsSection } from './ProfilePage/AppSettingsSection'
+import { TranslationLanguageSection } from './ProfilePage/TranslationLanguageSection'
 import { Database } from '@/types/database'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { toast } from 'sonner'
@@ -357,6 +358,9 @@ export function ProfilePage() {
 
           {/* Gmail */}
           <GmailSection workspaceId={lastWorkspaceId} />
+
+          {/* Перевод сообщений */}
+          <TranslationLanguageSection />
 
           {/* Настройки приложения */}
           <AppSettingsSection

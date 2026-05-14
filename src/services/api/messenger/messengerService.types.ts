@@ -117,6 +117,9 @@ export interface ProjectMessage {
   reactions: MessageReaction[]
   attachments: MessageAttachment[]
   sender: { name: string; last_name: string | null; avatar_url: string | null } | null
+  /** Если пользователь отправил перевод — здесь оригинал (виден только автору). */
+  original_content?: string | null
+  original_language?: string | null
 }
 
 /** Метаданные вложения для пересылки (без повторной загрузки в Storage) */

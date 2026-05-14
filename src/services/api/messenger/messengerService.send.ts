@@ -38,6 +38,10 @@ export interface SendMessageParams {
   channel?: MessageChannel
   /** Тред, в который пишется сообщение. Обязателен — legacy-режим без треда удалён. */
   threadId: string
+  /** Если перед отправкой пользователь нажал «Перевести» — здесь оригинал
+   *  (виден только автору в UI), `content` уходит получателю как перевод. */
+  originalContent?: string | null
+  originalLanguage?: string | null
 }
 
 /**
@@ -105,6 +109,8 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
         content: params.content,
         reply_to_message_id: params.replyToMessageId ?? null,
         has_attachments: false,
+        original_content: params.originalContent ?? null,
+        original_language: params.originalLanguage ?? null,
       })
       .select('*')
       .single()
@@ -132,6 +138,13 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
       // к первой и единственной).
       reply_to_message_id: shouldSplit ? null : params.replyToMessageId ?? null,
       has_attachments: totalAttachments > 0,
+      // Если в split-режиме — оригинал прикрепляем к текстовой записи (см. выше).
+      ...(shouldSplit
+        ? {}
+        : {
+            original_content: params.originalContent ?? null,
+            original_language: params.originalLanguage ?? null,
+          }),
     })
     .select('*')
     .single()

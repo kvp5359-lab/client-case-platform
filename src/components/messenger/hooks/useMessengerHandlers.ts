@@ -25,6 +25,8 @@ interface UseMessengerHandlersParams {
       replyToMessage?: ProjectMessage | null
       attachments?: File[]
       forwardedAttachments?: ForwardedAttachment[]
+      originalContent?: string | null
+      originalLanguage?: string | null
     }) => void
   }
   sendEmail: { mutate: (args: { threadId: string; content: string; files?: File[] }) => void }
@@ -122,7 +124,12 @@ export function useMessengerHandlers({
   const forwardMessageToChannel = useSidePanelStore((s) => s.forwardMessageToChannel)
 
   const handleSend = useCallback(
-    async (content: string, replyToId?: string | null, files?: File[]) => {
+    async (
+      content: string,
+      replyToId?: string | null,
+      files?: File[],
+      options?: { originalContent?: string | null; originalLanguage?: string | null },
+    ) => {
       // Email-чаты теперь идут через обычный sendMessage → INSERT project_messages
       // (source='web') → триггер notify_telegram_on_new_message видит type='email'
       // и зовёт email-internal-send (Gmail OAuth / Resend). Старый прямой путь
@@ -157,6 +164,8 @@ export function useMessengerHandlers({
         replyToMessage: replyTo,
         attachments: files,
         forwardedAttachments: forwardedAttachments.length > 0 ? forwardedAttachments : undefined,
+        originalContent: options?.originalContent ?? null,
+        originalLanguage: options?.originalLanguage ?? null,
       })
       setReplyTo(null)
       setForwardedAttachments([])

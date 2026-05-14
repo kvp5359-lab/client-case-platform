@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button'
-import { X, Pencil } from 'lucide-react'
+import { X, Pencil, Languages } from 'lucide-react'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { stripHtml } from '@/utils/format/messengerHtml'
+import { languageLabel } from '@/hooks/useMyPreferredLanguage'
 
 interface EditingBannerProps {
   editingMessage: ProjectMessage
@@ -26,6 +27,43 @@ export function EditingBanner({ editingMessage, onClearEdit }: EditingBannerProp
         aria-label="Отменить редактирование"
       >
         <X className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  )
+}
+
+interface TranslationBannerProps {
+  originalContent: string
+  originalLanguage: string | null
+  targetLanguage: string
+  onRevert: () => void
+}
+
+export function TranslationBanner({
+  originalContent,
+  originalLanguage,
+  targetLanguage,
+  onRevert,
+}: TranslationBannerProps) {
+  return (
+    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50/50 dark:bg-blue-950/20 border-b">
+      <Languages className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-blue-700 dark:text-blue-400">
+          Переведено на {languageLabel(targetLanguage)}
+          {originalLanguage ? ` (с ${languageLabel(originalLanguage)})` : ''}
+        </p>
+        <p className="text-xs text-muted-foreground line-clamp-1">
+          Оригинал: {stripHtml(originalContent)}
+        </p>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 shrink-0 text-xs"
+        onClick={onRevert}
+      >
+        Вернуть
       </Button>
     </div>
   )

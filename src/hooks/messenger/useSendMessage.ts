@@ -35,18 +35,24 @@ export function useSendMessage(
   const queryClient = useQueryClient()
   const messagesKey = messengerKeys.messagesByThreadId(threadId)
 
-  return useMutation({
+  type SendVars = {
+    content: string
+    replyToMessageId?: string | null
+    replyToMessage?: ProjectMessage | null
+    attachments?: File[]
+    forwardedAttachments?: ForwardedAttachment[]
+    originalContent?: string | null
+    originalLanguage?: string | null
+  }
+
+  return useMutation<ProjectMessage[], Error, SendVars, { previous: unknown }>({
     mutationFn: async ({
       content,
       replyToMessageId,
       attachments,
       forwardedAttachments,
-    }: {
-      content: string
-      replyToMessageId?: string | null
-      replyToMessage?: ProjectMessage | null
-      attachments?: File[]
-      forwardedAttachments?: ForwardedAttachment[]
+      originalContent,
+      originalLanguage,
     }) => {
       if (!user) throw new Error('Не авторизован')
 
@@ -69,10 +75,18 @@ export function useSendMessage(
         forwardedAttachments,
         channel,
         threadId,
+        originalContent,
+        originalLanguage,
       })
     },
     // Оптимистичное обновление
-    onMutate: async ({ content, replyToMessageId, replyToMessage, attachments, forwardedAttachments }) => {
+    onMutate: async ({
+      content,
+      replyToMessageId,
+      replyToMessage,
+      attachments,
+      forwardedAttachments,
+    }) => {
       const qk = messagesKey
       await queryClient.cancelQueries({ queryKey: qk })
       const previous = queryClient.getQueryData(qk)

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { MoreVertical, Eye } from 'lucide-react'
+import { MoreVertical, Eye, Languages, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -38,6 +38,20 @@ interface MessageActionsProps {
   onPublishDraft?: (msg: ProjectMessage) => void
   onEditDraft?: (msg: ProjectMessage) => void
   onViewEmail?: () => void
+  onTranslate?: (msg: ProjectMessage) => void
+  /** Если задан — для сообщения уже есть кэш перевода на текущий язык юзера,
+   *  ИЛИ это отправленное сообщение, где автор сам отправил перевод (оригинал
+   *  лежит в message.original_content). Рендерим кнопку-пилюлю переключения
+   *  «оригинал ↔ перевод» в углу баббла. */
+  translationToggle?: {
+    currentMode: 'original' | 'translation'
+    /** null для отправленных переводов (target = язык клиента, мы не сохраняли). */
+    targetLanguage: string | null
+    sourceLanguage: string | null
+    onToggle: () => void
+  }
+  /** Идёт сетевой запрос перевода — показать спиннер вместо/рядом с три-точками. */
+  isTranslating?: boolean
   channel?: MessageChannel
   onDeleteDialogOpen: () => void
   /** Принудительно скрыть UI быстрых реакций — используется для тредов,
@@ -66,6 +80,9 @@ export function MessageActions({
   onPublishDraft,
   onEditDraft,
   onViewEmail,
+  onTranslate,
+  translationToggle,
+  isTranslating,
   onDeleteDialogOpen,
   reactionsDisabled,
   moreMenuOpen,
@@ -81,6 +98,44 @@ export function MessageActions({
   // галочку/время, если попала на них в коротком бабле.
   const pillClass = isOwn ? colors.own : colors.incoming
 
+  // Пилюля-toggle перевода живёт в том же контейнере, но видна всегда, без
+  // group-hover: иначе юзер не догадается, что у сообщения есть готовый перевод.
+  const renderTranslationToggle = () => {
+    if (isTranslating) {
+      return (
+        <span
+          className={cn(
+            'h-6 px-1.5 rounded-full inline-flex items-center justify-center',
+            pillClass,
+          )}
+          title="Переводим…"
+        >
+          <Loader2 className="h-3 w-3 animate-spin" />
+        </span>
+      )
+    }
+    if (!translationToggle) return null
+    const showingTranslation = translationToggle.currentMode === 'translation'
+    const activeLang = showingTranslation
+      ? translationToggle.targetLanguage
+      : translationToggle.sourceLanguage
+    return (
+      <button
+        type="button"
+        onClick={translationToggle.onToggle}
+        className={cn(
+          'h-6 rounded-full inline-flex items-center gap-1 text-[10px] font-medium uppercase hover:brightness-110 transition-all',
+          activeLang ? 'px-1.5' : 'w-6 justify-center',
+          pillClass,
+        )}
+        title={showingTranslation ? 'Показать оригинал' : 'Показать перевод'}
+      >
+        <Languages className="h-3 w-3" />
+        {activeLang}
+      </button>
+    )
+  }
+
   return (
     <div
       className={cn(
@@ -88,6 +143,7 @@ export function MessageActions({
         (moreMenuOpen || reactionPopoverOpen) && 'opacity-100',
       )}
     >
+      {renderTranslationToggle()}
       {onViewEmail && (
         <Button
           variant="ghost"
@@ -130,6 +186,7 @@ export function MessageActions({
             onPublishDraft,
             onEditDraft,
             onViewEmail,
+            onTranslate,
             onDeleteDialogOpen,
             onCloseMenu: () => setMoreMenuOpen(false),
             reactionsDisabled,
@@ -169,6 +226,7 @@ export function MessageContextMenu({
   onPublishDraft,
   onEditDraft,
   onViewEmail,
+  onTranslate,
   onDeleteDialogOpen,
   reactionsDisabled,
   reactionPopoverOpen,
@@ -196,6 +254,7 @@ export function MessageContextMenu({
           onPublishDraft,
           onEditDraft,
           onViewEmail,
+          onTranslate,
           onDeleteDialogOpen,
           reactionsDisabled,
           reactionPopoverOpen,

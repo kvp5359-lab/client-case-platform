@@ -4117,6 +4117,44 @@ export type Database = {
           },
         ]
       }
+      message_translations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          message_id: string
+          model: string | null
+          source_language: string | null
+          target_language: string
+          translated_content: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          message_id: string
+          model?: string | null
+          source_language?: string | null
+          target_language: string
+          translated_content: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          message_id?: string
+          model?: string | null
+          source_language?: string | null
+          target_language?: string
+          translated_content?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_translations_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "project_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -4243,6 +4281,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          preferred_language: string
           telegram_user_id: number | null
           updated_at: string
           user_id: string | null
@@ -4261,6 +4300,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          preferred_language?: string
           telegram_user_id?: number | null
           updated_at?: string
           user_id?: string | null
@@ -4279,6 +4319,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          preferred_language?: string
           telegram_user_id?: number | null
           updated_at?: string
           user_id?: string | null
@@ -4505,6 +4546,8 @@ export type Database = {
           id: string
           is_draft: boolean
           is_edited: boolean
+          original_content: string | null
+          original_language: string | null
           project_id: string | null
           recipient_read_at: string | null
           reply_to_message_id: string | null
@@ -4549,6 +4592,8 @@ export type Database = {
           id?: string
           is_draft?: boolean
           is_edited?: boolean
+          original_content?: string | null
+          original_language?: string | null
           project_id?: string | null
           recipient_read_at?: string | null
           reply_to_message_id?: string | null
@@ -4593,6 +4638,8 @@ export type Database = {
           id?: string
           is_draft?: boolean
           is_edited?: boolean
+          original_content?: string | null
+          original_language?: string | null
           project_id?: string | null
           recipient_read_at?: string | null
           reply_to_message_id?: string | null
@@ -7246,6 +7293,8 @@ export type Database = {
           notification_toast_duration: number
           send_delay_seconds: number
           slug: string | null
+          translation_model: string | null
+          translation_use_thread_context: boolean
           updated_at: string
           voyageai_api_key_id: string | null
         }
@@ -7276,6 +7325,8 @@ export type Database = {
           notification_toast_duration?: number
           send_delay_seconds?: number
           slug?: string | null
+          translation_model?: string | null
+          translation_use_thread_context?: boolean
           updated_at?: string
           voyageai_api_key_id?: string | null
         }
@@ -7306,6 +7357,8 @@ export type Database = {
           notification_toast_duration?: number
           send_delay_seconds?: number
           slug?: string | null
+          translation_model?: string | null
+          translation_use_thread_context?: boolean
           updated_at?: string
           voyageai_api_key_id?: string | null
         }
@@ -8118,6 +8171,10 @@ export type Database = {
         Returns: string
       }
       retry_undelivered_telegram_messages: { Args: never; Returns: undefined }
+      revoke_all_user_sessions: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       route_incoming_to_project: {
         Args: {
           p_channel_type: string
@@ -8133,6 +8190,10 @@ export type Database = {
           status: string
           thread_id: string
         }[]
+      }
+      set_my_preferred_language: {
+        Args: { p_language: string }
+        Returns: undefined
       }
       set_workspace_api_key: {
         Args: { api_key: string; workspace_uuid: string }

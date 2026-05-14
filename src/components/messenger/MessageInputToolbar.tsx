@@ -8,6 +8,7 @@ import { AttachmentButton } from './AttachmentButton'
 import { QuickReplyPicker } from './QuickReplyPicker'
 import { TaskStatusPicker } from './TaskStatusPicker'
 import type { TaskStatus } from '@/hooks/useStatuses'
+import { TranslateActionButton } from './TranslateActionButton'
 
 export const sendButtonStyles: Record<string, string> = {
   blue: 'bg-blue-500 hover:bg-blue-600 text-white',
@@ -48,6 +49,17 @@ interface MessageInputToolbarProps {
     pendingStatusId: string | null
     onPick: (statusId: string | null) => void
   }
+  /** Если задан — рендерим иконку «Перевести» в тулбаре. */
+  translate?: {
+    threadId?: string
+    getCurrentContent: () => string
+    onTranslated: (input: {
+      originalContent: string
+      translatedContent: string
+      targetLanguage: string
+      sourceLanguage: string | null
+    }) => void
+  }
 }
 
 export function MessageInputToolbar({
@@ -68,6 +80,7 @@ export function MessageInputToolbar({
   onSend,
   onSaveDraft,
   taskStatusPicker,
+  translate,
 }: MessageInputToolbarProps) {
   return (
     <div className="flex items-center pb-2 pt-0">
@@ -103,6 +116,18 @@ export function MessageInputToolbar({
               currentStatusId={taskStatusPicker.currentStatusId}
               pendingStatusId={taskStatusPicker.pendingStatusId}
               onPick={taskStatusPicker.onPick}
+              disabled={isPending}
+            />
+          </>
+        )}
+        {translate && (
+          <>
+            <div className="w-px h-5 bg-border/60 mx-0.5 shrink-0" />
+            <TranslateActionButton
+              workspaceId={workspaceId}
+              threadId={translate.threadId}
+              getCurrentContent={translate.getCurrentContent}
+              onTranslated={translate.onTranslated}
               disabled={isPending}
             />
           </>

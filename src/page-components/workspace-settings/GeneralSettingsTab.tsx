@@ -8,6 +8,7 @@ import { useParams } from 'next/navigation'
 import { WorkspaceInfoSection } from './components/WorkspaceInfoSection'
 import { AISettingsSection } from './components/AISettingsSection'
 import { VoyageAISettingsSection } from './components/VoyageAISettingsSection'
+import { TranslationSettingsSection } from './components/TranslationSettingsSection'
 import { KnowledgeSummaryPromptSection } from './components/KnowledgeSummaryPromptSection'
 import { NotificationSettingsSection } from './components/NotificationSettingsSection'
 import { SendDelaySettingsSection } from './components/SendDelaySettingsSection'
@@ -29,6 +30,7 @@ export function GeneralSettingsTab() {
       <NotificationSettingsSection workspaceId={workspaceId} />
       <SendDelaySettingsSection workspaceId={workspaceId} />
       <AISettingsSection workspaceId={workspaceId} />
+      <TranslationSettingsSection workspaceId={workspaceId} />
       <VoyageAISettingsSection workspaceId={workspaceId} />
       <KnowledgeSummaryPromptSection workspaceId={workspaceId} />
 

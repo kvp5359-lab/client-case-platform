@@ -3,7 +3,7 @@ import type { Editor } from '@tiptap/react'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import type { MessengerAccent } from './MessageBubble'
 import { MinimalTiptapEditor } from './MinimalTiptapEditor'
-import { EditingBanner, ReplyBanner } from './MessageInputBanners'
+import { EditingBanner, ReplyBanner, TranslationBanner } from './MessageInputBanners'
 import { MessageAttachmentsRow } from './MessageAttachmentsRow'
 import { MessageInputToolbar } from './MessageInputToolbar'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
@@ -21,7 +21,12 @@ interface MessageInputProps {
   threadId?: string
   replyTo: ProjectMessage | null
   onClearReply: () => void
-  onSend: (content: string, replyToId?: string | null, files?: File[]) => void
+  onSend: (
+    content: string,
+    replyToId?: string | null,
+    files?: File[],
+    options?: { originalContent?: string | null; originalLanguage?: string | null },
+  ) => void
   isPending: boolean
   onTyping?: () => void
   accent?: MessengerAccent
@@ -78,11 +83,46 @@ export function MessageInput({
   const [hasText, setHasText] = useState(false)
   const [editor, setEditor] = useState<Editor | null>(null)
   const [openQuickReplyPicker, setOpenQuickReplyPicker] = useState(false)
+  // Состояние перевода исходящего: если задано — пользователь нажал «Перевести»,
+  // в редакторе сейчас лежит перевод, оригинал хранится тут и уйдёт в БД
+  // как `original_content` при отправке.
+  //
+  // translatedHtml — html в редакторе сразу после установки перевода (для
+  // сравнения: если юзер начал править — translation сбрасывается). Также
+  // используется при восстановлении состояния после перезагрузки страницы.
+  const [translation, setTranslation] = useState<{
+    originalContent: string
+    translatedHtml: string
+    targetLanguage: string
+    sourceLanguage: string | null
+  } | null>(null)
   const editorRef = useRef<Editor | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const { editorMaxHeight, handleResizerMouseDown } = useEditorResizer()
 
   const draftKey = threadId ? `msg_draft:${threadId}` : `msg_draft:${projectId}:${channel}`
+  const translationKey = threadId
+    ? `msg_translation:${threadId}`
+    : `msg_translation:${projectId}:${channel}`
+
+  // localStorage helpers для persistence плашки «Переведено».
+  const persistTranslation = useCallback(
+    (t: NonNullable<typeof translation>) => {
+      try {
+        localStorage.setItem(translationKey, JSON.stringify(t))
+      } catch {
+        /* quota / SSR */
+      }
+    },
+    [translationKey],
+  )
+  const clearPersistedTranslation = useCallback(() => {
+    try {
+      localStorage.removeItem(translationKey)
+    } catch {
+      /* SSR */
+    }
+  }, [translationKey])
 
   const {
     isTaskThread,
@@ -114,6 +154,54 @@ export function MessageInput({
     editingMessage,
     setHasText,
   )
+
+  // Восстановление плашки «Переведено» после перезагрузки страницы.
+  // useDraftMessage уже вставил html в редактор; здесь проверяем — если он
+  // совпадает с translatedHtml, значит черновик и есть перевод → показываем
+  // банер. Если юзер успел поправить — translation в localStorage устарел,
+  // удаляем. Зависимости совпадают с useDraftMessage, чтобы эффект прошёл
+  // после его восстановления.
+  useEffect(() => {
+    if (!editor || editingMessage) return
+    let saved: string | null
+    try {
+      saved = localStorage.getItem(translationKey)
+    } catch {
+      saved = null
+    }
+    if (!saved) return
+    let parsed: {
+      originalContent: string
+      translatedHtml: string
+      targetLanguage: string
+      sourceLanguage: string | null
+    } | null = null
+    try {
+      parsed = JSON.parse(saved)
+    } catch {
+      /* corrupted */
+    }
+    if (!parsed) {
+      try {
+        localStorage.removeItem(translationKey)
+      } catch {
+        /* SSR */
+      }
+      return
+    }
+    // useDraftMessage гидратирует html синхронно в своём useEffect; к моменту
+    // нашего useEffect editor.getHTML() уже актуальный.
+    if (editor.getHTML() === parsed.translatedHtml) {
+      setTranslation(parsed)
+    } else {
+      try {
+        localStorage.removeItem(translationKey)
+      } catch {
+        /* SSR */
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [translationKey, editor, editingMessage])
 
   // Auto-focus editor when thread changes or component mounts (задержка — анимация панели)
   useEffect(() => {
@@ -225,12 +313,25 @@ export function MessageInput({
           /* quota */
         }
       }
-      onSend(textContent ? htmlContent : '📎', replyTo?.id, files.length > 0 ? files : undefined)
+      const options = translation
+        ? {
+            originalContent: translation.originalContent,
+            originalLanguage: translation.sourceLanguage,
+          }
+        : undefined
+      onSend(
+        textContent ? htmlContent : '📎',
+        replyTo?.id,
+        files.length > 0 ? files : undefined,
+        options,
+      )
       editor.commands.clearContent()
       setHasText(false)
       clearFiles()
       clearDraft()
       onClearReply()
+      setTranslation(null)
+      clearPersistedTranslation()
     }
 
     // Если в пикере выбран новый статус — сначала меняем его, потом (только если
@@ -267,7 +368,45 @@ export function MessageInput({
     effectivePendingStatusId,
     updateStatusMutation,
     clearPending,
+    translation,
+    clearPersistedTranslation,
   ])
+
+  const handleTranslated = useCallback(
+    (input: {
+      originalContent: string
+      translatedContent: string
+      targetLanguage: string
+      sourceLanguage: string | null
+    }) => {
+      const editor = editorRef.current
+      if (!editor) return
+      editor.commands.setContent(input.translatedContent)
+      setHasText(!!editor.getText().trim())
+      // translatedHtml — то, что РЕАЛЬНО лежит в редакторе после setContent
+      // (tiptap может слегка нормализовать html). По этому полю на маунте
+      // мы будем понимать, что текст в редакторе всё ещё перевод, а не правки.
+      const translatedHtml = editor.getHTML()
+      const next = {
+        originalContent: input.originalContent,
+        translatedHtml,
+        targetLanguage: input.targetLanguage,
+        sourceLanguage: input.sourceLanguage,
+      }
+      setTranslation(next)
+      persistTranslation(next)
+    },
+    [persistTranslation],
+  )
+
+  const handleRevertTranslation = useCallback(() => {
+    const editor = editorRef.current
+    if (!editor || !translation) return
+    editor.commands.setContent(translation.originalContent)
+    setHasText(!!editor.getText().trim())
+    setTranslation(null)
+    clearPersistedTranslation()
+  }, [translation, clearPersistedTranslation])
 
   const handleSaveDraft = useCallback(() => {
     const editor = editorRef.current
@@ -343,6 +482,15 @@ export function MessageInput({
 
       {replyTo && !editingMessage && <ReplyBanner replyTo={replyTo} onClearReply={onClearReply} />}
 
+      {translation && !editingMessage && (
+        <TranslationBanner
+          originalContent={translation.originalContent}
+          originalLanguage={translation.sourceLanguage}
+          targetLanguage={translation.targetLanguage}
+          onRevert={handleRevertTranslation}
+        />
+      )}
+
       <div
         className="px-4 pt-2 min-w-0"
         onKeyDown={(e) => {
@@ -360,6 +508,12 @@ export function MessageInput({
             const html = editorRef.current?.getHTML() ?? ''
             setHasText(!!text.trim())
             saveDraft(html, text)
+            // Если плашка перевода активна и юзер начал править перевод —
+            // сбрасываем её: «оригинал» больше не релевантен правленому тексту.
+            if (translation && html !== translation.translatedHtml) {
+              setTranslation(null)
+              clearPersistedTranslation()
+            }
             onTyping?.()
           }}
           onPasteFiles={addFiles}
@@ -406,6 +560,15 @@ export function MessageInput({
                 onPick: handlePickStatus,
               }
             : undefined
+        }
+        translate={
+          editingMessage
+            ? undefined
+            : {
+                threadId,
+                getCurrentContent: () => editorRef.current?.getHTML() ?? '',
+                onTranslated: handleTranslated,
+              }
         }
       />
     </div>

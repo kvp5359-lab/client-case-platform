@@ -11,6 +11,7 @@ import {
   Send,
   ExternalLink,
   Quote,
+  Languages,
 } from 'lucide-react'
 import {
   DropdownMenuItem,
@@ -67,6 +68,7 @@ export interface MessageMenuBodyProps {
   onPublishDraft?: (msg: ProjectMessage) => void
   onEditDraft?: (msg: ProjectMessage) => void
   onViewEmail?: () => void
+  onTranslate?: (msg: ProjectMessage) => void
   onDeleteDialogOpen: () => void
   onCloseMenu?: () => void
   /** Принудительно скрыть UI быстрых реакций — для тредов, где реакции
@@ -94,6 +96,7 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
     onPublishDraft,
     onEditDraft,
     onViewEmail,
+    onTranslate,
     onDeleteDialogOpen,
     onCloseMenu,
     reactionsDisabled,
@@ -256,6 +259,13 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
         <Copy className="h-4 w-4 mr-2" />
         Копировать текст
       </Item>
+
+      {onTranslate && (
+        <Item onClick={() => onTranslate(message)}>
+          <Languages className="h-4 w-4 mr-2" />
+          Перевести
+        </Item>
+      )}
 
       {onViewEmail && isEmailSource(message.source) && message.email_metadata?.body_html && (
         <Item onClick={onViewEmail}>
