@@ -178,6 +178,18 @@ export function TaskPanelTabBar({
     const aid = String(e.active.id)
     const oid = String(e.over.id)
     if (aid === SEPARATOR_ID || aid === oid) return
+
+    // Drop на разделитель: активная вкладка остаётся в своей зоне и встаёт в
+    // её крайнюю позицию (в конец pinned либо в начало unpinned). Без этого
+    // arrayMove кладёт активную после разделителя и логика «позиция относительно
+    // разделителя определяет pinned» ошибочно меняет её сторону на противоположную.
+    if (oid === SEPARATOR_ID) {
+      const wasPinned = !!orderedTabs.find((t) => t.id === aid)?.pinned
+      const firstUnpinnedId = orderedTabs.find((t) => !t.pinned && t.id !== aid)?.id ?? null
+      onReorder(aid, firstUnpinnedId, wasPinned)
+      return
+    }
+
     const oldIndex = sortableItems.indexOf(aid)
     const newIndex = sortableItems.indexOf(oid)
     if (oldIndex === -1 || newIndex === -1) return
@@ -191,7 +203,7 @@ export function TaskPanelTabBar({
       if (next[i] !== SEPARATOR_ID) { insertBeforeId = next[i]; break }
     }
     onReorder(aid, insertBeforeId, pinned)
-  }, [onReorder, sortableItems])
+  }, [onReorder, sortableItems, orderedTabs])
 
   return (
     <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragEnd={handleDragEnd}>

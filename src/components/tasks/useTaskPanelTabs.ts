@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import type { Database } from '@/types/database'
 import { taskPanelTabsKeys, messengerKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useAuth } from '@/contexts/AuthContext'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
@@ -223,33 +224,43 @@ export function useTaskPanelTabs({ projectId, contactId }: UseTaskPanelTabsParam
     [localTabs, activeTabId],
   )
 
-  // Сохранение в БД (upsert)
+  // Сохранение в БД. PostgREST .upsert({onConflict:...}) не работает с
+  // partial unique индексами (миграция 20260510_task_panel_tabs_contact_scope.sql
+  // делает UNIQUE partial по scope=project/contact) — отдаёт 42P10. Делаем
+  // вручную: SELECT id по scope, потом UPDATE по id либо INSERT.
   const upsertMutation = useMutation({
     mutationFn: async (next: PersistedRow) => {
       if (!scopeKey || !userId || !scopeKind) return
-      const onConflict =
-        scopeKind === 'project'
-          ? 'user_id,project_id'
-          : 'user_id,contact_participant_id'
-      const row: Record<string, unknown> = {
-        user_id: userId,
-        project_id: scopeKind === 'project' ? scopeKey : null,
-        contact_participant_id: scopeKind === 'contact' ? scopeKey : null,
-        tabs: next.tabs as unknown,
+      const scopeColumn = scopeKind === 'project' ? 'project_id' : 'contact_participant_id'
+      const oppositeColumn = scopeKind === 'project' ? 'contact_participant_id' : 'project_id'
+      const { data: existing, error: selErr } = await supabase
+        .from('task_panel_tabs')
+        .select('id')
+        .eq('user_id', userId)
+        .eq(scopeColumn, scopeKey)
+        .is(oppositeColumn, null)
+        .maybeSingle()
+      if (selErr) throw selErr
+      const payload = {
+        tabs: next.tabs as unknown as Database['public']['Tables']['task_panel_tabs']['Update']['tabs'],
         active_tab_id: next.active_tab_id,
         updated_at: new Date().toISOString(),
       }
-      const { error } = await (supabase as unknown as {
-        from: (t: string) => {
-          upsert: (
-            row: Record<string, unknown>,
-            opts: { onConflict: string },
-          ) => Promise<{ error: { message: string } | null }>
-        }
-      })
-        .from('task_panel_tabs')
-        .upsert(row, { onConflict })
-      if (error) throw error
+      if (existing?.id) {
+        const { error } = await supabase
+          .from('task_panel_tabs')
+          .update(payload)
+          .eq('id', existing.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('task_panel_tabs').insert({
+          user_id: userId,
+          project_id: scopeKind === 'project' ? scopeKey : null,
+          contact_participant_id: scopeKind === 'contact' ? scopeKey : null,
+          ...payload,
+        })
+        if (error) throw error
+      }
     },
     onSuccess: (_data, vars) => {
       queryClient.setQueryData<PersistedRow>(queryKey, vars)
@@ -397,7 +408,16 @@ export function useTaskPanelTabs({ projectId, contactId }: UseTaskPanelTabsParam
         if (insertIdx === -1) insertIdx = without.length
       }
       const movedTab = { ...tab, pinned }
-      const next = [...without.slice(0, insertIdx), movedTab, ...without.slice(insertIdx)]
+      const inserted = [...without.slice(0, insertIdx), movedTab, ...without.slice(insertIdx)]
+      // Нормализуем: pinned сначала, unpinned потом, сохраняя относительный порядок
+      // в каждой зоне. Иначе drop активной перед unpinned, который случайно
+      // оказался в середине localTabs, не даёт «положить в конец pinned» —
+      // активная встаёт прямо перед этим unpinned, а оставшиеся pinned остаются
+      // правее. Источник смешанного порядка — старые/мерж-записи в БД.
+      const next = [
+        ...inserted.filter((t) => t.pinned),
+        ...inserted.filter((t) => !t.pinned),
+      ]
       setLocalTabs(next)
       persist(next, activeTabId)
     },
