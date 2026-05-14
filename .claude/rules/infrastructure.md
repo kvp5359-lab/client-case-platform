@@ -220,15 +220,18 @@
 
 Состав и порядок верхней части сайдбара (всё кроме списка проектов) — настраиваются на уровне воркспейса. Единая модель: пункты меню, доски и **списки `item_lists`** — это «слоты» одного и того же списка, размещаются в одной из двух зон (топбар/список) или скрываются.
 
-> **Будущий рефакторинг сайдбара** (папки + системные разделы + ссылки + per-role) — backlog: [`docs/feature-backlog/2026-05-10-sidebar-redesign.md`](../../docs/feature-backlog/2026-05-10-sidebar-redesign.md).
+> **Будущий рефакторинг сайдбара** (системные разделы как `link:<path>` + per-role) — backlog: [`docs/feature-backlog/2026-05-10-sidebar-redesign.md`](../../docs/feature-backlog/2026-05-10-sidebar-redesign.md). Папки уже реализованы (см. ниже).
 
 - **Таблица**: `workspace_sidebar_settings (workspace_id PK, slots jsonb, updated_at, updated_by)`. RLS: SELECT — любому участнику; INSERT/UPDATE/DELETE — только владельцу. Если строки нет — фронт берёт дефолт из кода (`DEFAULT_SIDEBAR_SLOTS` в `src/lib/sidebarSettings.ts`).
-- **Структура `slots`** (массив): `{ id, type, placement, order, badge_mode }`.
-  - `id` — `nav:<key>` (пункт меню), `board:<uuid>` (доска) или `list:<uuid>` (список item_lists).
-  - `type` — `nav` | `board` | `list`.
+- **Структура `slots`** (массив): `{ id, type, placement, order, badge_mode, parent_id?, name?, folder_icon? }`.
+  - `id` — `nav:<key>` (пункт меню), `board:<uuid>` (доска), `list:<uuid>` (список item_lists) или `folder:<uuid>` (папка).
+  - `type` — `nav` | `board` | `list` | `folder`.
   - `placement` — `topbar` (иконка в верхней строке) или `list` (полный пункт в основном списке).
-  - `order` — позиция внутри своей зоны.
-  - `badge_mode` — режим счётчика, единый набор для пунктов и досок: `disabled` | `my_active_tasks` | `all_my_tasks` | `overdue_tasks` | `unread_messages` | `unread_threads`. Бейджи глобальные по воркспейсу — содержимое конкретной доски/пункта не учитывается.
+  - `order` — позиция внутри (placement, parent_id) — нумерация per-папка.
+  - `parent_id` — `null`/отсутствует у верхнего уровня; `folder:<uuid>` если слот лежит в папке. **1 уровень вложенности** (папка не может быть в папке — нормализатор сбрасывает `parent_id` у `type='folder'`). Если `parent_id` указывает на несуществующую папку или папку из другой зоны — слот возвращается на верхний уровень.
+  - `name` (только для `folder`) — имя папки, дефолт `'Папка'`.
+  - `folder_icon` (только для `folder`) — имя lucide-иконки, опционально (рендер пока всегда `Folder`).
+  - `badge_mode` — режим счётчика, единый набор для пунктов и досок: `disabled` | `my_active_tasks` | `all_my_tasks` | `overdue_tasks` | `unread_messages` | `unread_threads`. Бейджи глобальные по воркспейсу — содержимое конкретной доски/пункта не учитывается. Для папки бейдж = собственный (если задан) либо **сумма численных бейджей детей**.
 - **Скрытые элементы** не хранятся — они просто отсутствуют в `slots`. На странице настроек выводятся в секции «Доступные» и оттуда переносятся кнопками «в верх» / «в список». Удаление из сайдбара (× у элемента) возвращает его в «Доступные».
 - **Доски в «Доступных»** — все доски воркспейса, которых нет в `slots`. Список рендерится автоматически. Закрепить = добавить в одну из зон, открепить = убрать (× в зоне или PinOff на самой иконке доски в сайдбаре).
 - **Мёртвые слоты** (доски, удалённые из воркспейса) — фильтруются на рендере. На странице настроек владельцу показывается предупреждение и кнопка «Очистить» для физического удаления.
@@ -236,7 +239,9 @@
 - **`hasAccess` фильтр** — даже если пункт меню в `slots`, он скрывается у пользователей без соответствующего permission'а (см. `SIDEBAR_NAV_ITEMS[key].hasAccess`). Например, «Шаблоны» не показываются клиенту.
 - **Скрытые роуты остаются доступными по прямой ссылке** — настройка управляет только сайдбаром, middleware не трогаем.
 - **Хуки**: `useWorkspaceSidebarSettings`, `useUpdateWorkspaceSidebarSettings`, `useMyTaskCounts` в [`src/hooks/useWorkspaceSidebarSettings.ts`](../../src/hooks/useWorkspaceSidebarSettings.ts). `usePinnedBoards` в [`src/components/WorkspaceSidebar/usePinnedBoards.ts`](../../src/components/WorkspaceSidebar/usePinnedBoards.ts) — адаптер над `slots` для досок (`isPinned`, `togglePin`). Зеркальный `usePinnedItemLists` в [`src/components/WorkspaceSidebar/usePinnedItemLists.ts`](../../src/components/WorkspaceSidebar/usePinnedItemLists.ts) — для списков `item_lists`.
-- **UI**: страница `/workspaces/[id]/settings/sidebar` (вкладка «Сайдбар», видна только владельцу). Компонент: [`src/page-components/workspace-settings/SidebarSettingsTab.tsx`](../../src/page-components/workspace-settings/SidebarSettingsTab.tsx). Три зоны: «Верхняя строка», «Список», «Доступные». Перенос между зонами — кнопками (× / стрелка-в-другую-зону), порядок внутри зоны — ↑↓. У каждого размещённого слота свой селектор бейджа. При >6 иконок в топ-баре — мягкое предупреждение.
+- **UI**: страница `/workspaces/[id]/settings/sidebar` (вкладка «Сайдбар», видна только владельцу). Компонент: [`src/page-components/workspace-settings/SidebarSettingsTab.tsx`](../../src/page-components/workspace-settings/SidebarSettingsTab.tsx). Три зоны: «Верхняя строка», «Список», «Доступные». Перенос между зонами — кнопками (× / стрелка-в-другую-зону), порядок внутри зоны — ↑↓ (бывает баг затирания swap — см. ниже). У каждого размещённого слота свой селектор бейджа. При >6 иконок в топ-баре — мягкое предупреждение. **Папки**: кнопка «Папка» в шапке каждой зоны, переименование инлайн (клик по имени), перемещение между папками — попап «⋯» у любого слота. При удалении папки её дети остаются на верхнем уровне той же зоны; при перемещении папки в другую зону дети едут с ней.
+- **Рендер сайдбара**: [`SidebarSlotsRow.tsx`](../../src/components/WorkspaceSidebar/SidebarSlotsRow.tsx) принимает все слоты зоны и сам разворачивает верхний уровень + папки. Папка в `topbar` рендерится как иконка-кнопка → popover снизу; в `list` — как кнопка-строка → popover справа. Бейдж агрегируется по детям (см. выше).
+- **⚠️ `reorderWithinZones`** не сортирует входной массив — нумерует order **по текущему порядку**. Если нужна сортировка из БД — сначала `arr.sort((a,b) => a.order - b.order)`, потом `reorderWithinZones`. Это сделано чтобы `moveWithinZone` (swap двух соседей) не терялся внутри reorder — раньше функция сортировала по old order и перетирала swap (фикс 2026-05-13).
 - **Открепить из самого сайдбара** — кнопка PinOff показывается только владельцу и появляется на месте иконки доски при ховере (через проп `hoverIconSlot` в `SidebarNavButton`). Это сделано чтобы не наезжать на бейдж справа.
 - **Миграции**:
   - `20260427_workspace_sidebar_settings.sql` — исходная таблица (`items` + `board_badges`), RLS, RPC `get_my_task_counts`.
