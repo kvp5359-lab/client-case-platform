@@ -11,6 +11,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useSidePanelStore } from '@/store/sidePanelStore'
+import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useDocumentStatuses, useDocumentKitStatuses } from '@/hooks/useStatuses'
 import { useDocuments } from '@/hooks/useDocuments'
 import { useDocumentKitUIStore, useCompressState } from '@/store/documentKitUI'
@@ -78,7 +79,12 @@ export function DocumentsTabContent({
   const [filterMode, setFilterMode] = useState<'all' | 'action-required'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [generateDocOpen, setGenerateDocOpen] = useState(false)
-  const sidePanelOpen = useSidePanelStore((s) => s.panelTab !== null)
+  // Старая sidePanelStore.panelTab уже не используется новой системой
+  // вкладок панели — берём состояние из TaskPanelContext (видна ли панель).
+  const layoutPanel = useLayoutTaskPanel()
+  const sidePanelOpen =
+    useSidePanelStore((s) => s.panelTab !== null) ||
+    !!(layoutPanel?.hasTabs && !layoutPanel?.isHidden)
   const compact = compactProp ?? sidePanelOpen
   const cardMaxW = !compact ? 'max-w-[789px]' : ''
   const { can } = useProjectPermissions({ projectId })
@@ -120,6 +126,13 @@ export function DocumentsTabContent({
   useEffect(() => {
     clearSelection()
   }, [filterMode, clearSelection])
+
+  // Push-режим правой панели: на странице документов панель отжимает контент
+  // влево, а не накладывается поверх. Атрибут читает CSS в globals.css.
+  useEffect(() => {
+    document.body.setAttribute('data-panel-mode', 'push')
+    return () => document.body.removeAttribute('data-panel-mode')
+  }, [])
 
   // Статусы
   const { data: statuses = [] } = useDocumentStatuses(workspaceId)

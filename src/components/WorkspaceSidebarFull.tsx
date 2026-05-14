@@ -8,6 +8,7 @@
 
 import { useEffect, useState, useMemo, startTransition } from 'react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { PanelLeftClose } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
@@ -42,9 +43,10 @@ import {
 
 interface WorkspaceSidebarFullProps {
   workspaceId?: string
+  onCollapse?: () => void
 }
 
-export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: WorkspaceSidebarFullProps = {}) {
+export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId, onCollapse }: WorkspaceSidebarFullProps = {}) {
   const router = useRouter()
   const params = useParams<{ workspaceId?: string; projectId?: string }>()
   const pathname = usePathname()
@@ -122,6 +124,12 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
   const isClientOnly = !permissionsLoading && isClientOnlyRaw
 
   const { sidebarWidth, sidebarRef, handleMouseDown } = useSidebarResize()
+
+  // CSS-переменная с актуальной шириной сайдбара — нужна для позиционирования
+  // плавающей кнопки сворачивания/разворачивания в WorkspaceLayout.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--sidebar-width', `${sidebarWidth}px`)
+  }, [sidebarWidth])
 
   useEffect(() => {
     if (workspaceId) {
@@ -327,14 +335,27 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
       style={{ width: sidebarWidth }}
     >
       {!isClientOnly && !permissionsLoading && (
-        <WorkspacePicker
-          workspaces={workspaces}
-          currentWorkspace={currentWorkspace}
-          workspaceId={workspaceId}
-          loadingWorkspaces={loadingWorkspaces}
-          isOwner={isOwner}
-          canManageSettings={hasPermission('manage_workspace_settings')}
-        />
+        <div className={onCollapse ? 'relative pr-6' : 'relative'}>
+          <WorkspacePicker
+            workspaces={workspaces}
+            currentWorkspace={currentWorkspace}
+            workspaceId={workspaceId}
+            loadingWorkspaces={loadingWorkspaces}
+            isOwner={isOwner}
+            canManageSettings={hasPermission('manage_workspace_settings')}
+          />
+          {onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              aria-label="Свернуть сайдбар"
+              title="Свернуть сайдбар"
+              className="absolute top-3 right-0 z-10 hidden md:flex items-center justify-center w-5 h-10 rounded-l-md bg-background border border-r-0 shadow-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <PanelLeftClose size={14} />
+            </button>
+          )}
+        </div>
       )}
 
       <div className="px-2 pb-2">

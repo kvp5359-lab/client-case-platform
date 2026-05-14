@@ -12,3 +12,4 @@ export type { WorkspacePickerProps } from './WorkspacePicker'
 
 export { useSidebarData } from './useSidebarData'
 export { useSidebarResize } from './useSidebarResize'
+export { useSidebarCollapsed } from './useSidebarCollapsed'

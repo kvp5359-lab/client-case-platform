@@ -395,9 +395,33 @@
   margin: 0;
 }
 
-/* Общий стиль для правых боковых панелей (без display — чтобы не конфликтовать с hidden) */
+/* Общий стиль для правых боковых панелей (без display — чтобы не конфликтовать с hidden).
+   Ширина — через CSS-переменную `--panel-width` (см. useRightPanelResize). */
 .side-panel {
-  @apply absolute top-0 right-0 h-full w-[50%] min-w-[360px] border-l border-gray-200 bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.08)];
+  @apply absolute top-0 right-0 h-full min-w-[360px] border-l border-gray-200 bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.08)];
+  width: var(--panel-width, 50%);
+}
+
+/* Push-режим правой панели: на страницах с task-списком (data-panel-mode="push")
+   при открытой панели (data-panel-open) основной <main> отжимается влево.
+   На остальных страницах панель остаётся overlay поверх контента. */
+body[data-panel-open][data-panel-mode="push"] main {
+  margin-right: var(--panel-width, 50%);
+}
+
+/* Строка документа в DocumentItem — container query на саму строку.
+   Когда строка становится уже 480px (например, правая панель отжала main),
+   текстовая кнопка статуса «Проверен/Требует перевода» скрывается, чтобы
+   название документа не обрезалось так агрессивно. Иконка статуса слева
+   и размер файла справа остаются. */
+.docs-row {
+  container-type: inline-size;
+  container-name: docs-row;
+}
+@container docs-row (max-width: 480px) {
+  .docs-status-label {
+    display: none;
+  }
 }
 
 /* AI-ассистент: запрет горизонтального скролла в Radix ScrollArea viewport */

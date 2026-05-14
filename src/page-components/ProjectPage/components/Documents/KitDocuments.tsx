@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSidePanelStore } from '@/store/sidePanelStore'
+import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,7 +104,12 @@ export const KitDocuments = memo(function KitDocuments({
   isLast,
 }: KitDocumentsProps) {
   const { statuses } = useDocumentsContext()
-  const sidePanelOpen = useSidePanelStore((s) => s.panelTab !== null)
+  // Старая sidePanelStore.panelTab уже не используется новой системой
+  // вкладок — берём состояние и из TaskPanelContext (видна ли панель).
+  const layoutPanel = useLayoutTaskPanel()
+  const sidePanelOpen =
+    useSidePanelStore((s) => s.panelTab !== null) ||
+    !!(layoutPanel?.hasTabs && !layoutPanel?.isHidden)
   const { onSlotClick, onAddSlot, onSlotDrop, onSlotDelete, onSlotRename } = slotHandlers
   const { onFolderStatusChange, onAddDocument } = documentHandlers
   const folders = useMemo(() => kit.folders || [], [kit.folders])

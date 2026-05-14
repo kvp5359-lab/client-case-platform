@@ -11,9 +11,11 @@
 
 import { useState, useEffect, useMemo, createContext, useContext } from 'react'
 import { useParams } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WorkspaceSidebarFull } from './WorkspaceSidebarFull'
+import { useSidebarCollapsed } from './WorkspaceSidebar/useSidebarCollapsed'
+import { useRightPanelResize } from '@/hooks/useRightPanelResize'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { FloatingPanelButtons } from './FloatingPanelButtons'
@@ -27,7 +29,6 @@ import { useTaskPanelTabbedShell } from '@/components/tasks/TaskPanelTabbedShell
 import { TaskPanelContext, setGlobalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { useScrollIntoViewOnPanel } from '@/hooks/shared/useScrollIntoViewOnPanel'
 
-const PANEL_DEFAULT_WIDTH = '50%'
 
 /**
  * Контекст «shell уже выше по дереву». Устанавливается в Next.js layout —
@@ -66,6 +67,15 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   const { isClientOnly } = useWorkspacePermissions({ workspaceId })
 
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { isCollapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebarCollapsed()
+  const { panelWidth, handlePointerDown: handlePanelResize } = useRightPanelResize()
+
+  // Прокидываем актуальную ширину панели в CSS-переменную — её читают
+  // .side-panel и handle. Во время drag хук обновляет переменную напрямую
+  // через DOM (без ре-рендеров), здесь — синк после mouseup и при mount.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--panel-width', `${panelWidth}px`)
+  }, [panelWidth])
 
   // pageContext.projectId — нужен для синка scope вкладок с текущей страницей.
   // Сам стор используется ещё для chatsEnabled (из ProjectPage), activeChatId
@@ -190,12 +200,30 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
             <div
               className={cn(
                 'fixed inset-y-0 left-0 z-40 md:relative md:z-auto',
-                'transition-transform duration-200 md:translate-x-0',
+                'transition-all duration-200 md:translate-x-0 overflow-hidden',
                 mobileOpen ? 'translate-x-0' : '-translate-x-full',
+                sidebarCollapsed && 'md:w-0',
               )}
             >
-              <WorkspaceSidebarFull workspaceId={workspaceId} />
+              <WorkspaceSidebarFull workspaceId={workspaceId} onCollapse={toggleSidebar} />
             </div>
+
+            {/* Кнопка развернуть сайдбар — видна только когда сайдбар свёрнут (desktop) */}
+            {sidebarCollapsed && (
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                aria-label="Развернуть сайдбар"
+                title="Развернуть сайдбар"
+                className={cn(
+                  'fixed top-3 left-0 z-50 hidden md:flex items-center justify-center',
+                  'w-5 h-10 rounded-r-md bg-background border border-l-0 shadow-sm',
+                  'text-muted-foreground hover:text-foreground hover:bg-accent transition-colors',
+                )}
+              >
+                <PanelLeftOpen size={14} />
+              </button>
+            )}
 
             {/* Overlay для мобильных */}
             {mobileOpen && (
@@ -209,10 +237,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
 
         {/* Main content + right panel root (портал для shell) */}
         <div id="workspace-panel-root" className="flex-1 flex min-w-0 relative overflow-hidden">
-          <main
-            className="flex-1 overflow-y-auto overflow-x-hidden"
-            style={panelVisible ? { marginRight: PANEL_DEFAULT_WIDTH } : undefined}
-          >
+          <main className="flex-1 overflow-y-auto overflow-x-hidden">
             {children}
           </main>
         </div>
@@ -222,6 +247,17 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
 
         {/* TaskPanel — система вкладок (через portal в #workspace-panel-root) */}
         {taskPanelShell.shellElement}
+
+        {/* Resize-handle на левой границе правой панели (только когда панель видна).
+            Позиция — через CSS-переменную, чтобы handle ехал плавно вместе с
+            панелью во время drag (без ре-рендеров React). */}
+        {panelVisible && (
+          <div
+            className="fixed top-0 z-[60] h-full w-1 cursor-col-resize hover:bg-primary/30 transition-colors"
+            style={{ right: 'calc(var(--panel-width, 600px) - 2px)', touchAction: 'none' }}
+            onPointerDown={handlePanelResize}
+          />
+        )}
 
         {/* Глобальная карточка контакта — открывается из useContactCardStore. */}
         <GlobalContactCardDialog />

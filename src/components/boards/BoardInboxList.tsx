@@ -135,13 +135,16 @@ export function BoardInboxList({
 
   const filteredThreads = useMemo(() => {
     let result = threads
-    if (filter === 'unread') {
+    const q = searchQuery.trim().toLowerCase()
+    // При активном поиске unread-фильтр игнорируется — ищем по всему списку,
+    // включая прочитанные. Так пользователь не упустит нужного собеседника
+    // только потому, что сейчас выбрана вкладка «Непрочитанные».
+    if (filter === 'unread' && !q) {
       result = result.filter(
         (c) => c.unread_count > 0 || c.has_unread_reaction || c.manually_unread || (c.unread_event_count ?? 0) > 0,
       )
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim()
+    if (q) {
       result = result.filter(
         (c) =>
           c.thread_name.toLowerCase().includes(q) ||

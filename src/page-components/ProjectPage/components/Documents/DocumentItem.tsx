@@ -181,7 +181,10 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
       </td>
       {/* Контент */}
       <td className={`${cellClass} pl-0.5 pr-2.5`}>
-        <div className="flex items-center gap-2.5 min-w-0" style={{ minHeight: 20, marginTop: -1 }}>
+        <div
+          className="docs-row flex items-center gap-2.5 min-w-0"
+          style={{ minHeight: 20, marginTop: -1 }}
+        >
           <DocumentStatusIconDropdown
             documentId={document.id}
             currentStatus={currentStatus}
@@ -198,13 +201,18 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
           >
             {document.name}
           </span>
-          <DocumentStatusLabelDropdown
-            documentId={document.id}
-            currentStatus={currentStatus}
-            statuses={statuses}
-            statusBgColor={statusBgColor}
-            onStatusChange={onStatusChange}
-          />
+          {/* Текстовая кнопка статуса. Скрывается через CSS container query
+              (см. .docs-status-label в globals.css), когда строка документа
+              становится слишком узкой и место нужно отдать названию. */}
+          <span className="docs-status-label shrink-0 inline-flex">
+            <DocumentStatusLabelDropdown
+              documentId={document.id}
+              currentStatus={currentStatus}
+              statuses={statuses}
+              statusBgColor={statusBgColor}
+              onStatusChange={onStatusChange}
+            />
+          </span>
           {/* Размер файла + иконка сжатия */}
           {hasFile && currentFile && (
             <span className="shrink-0 inline-flex items-center gap-0.5 text-[13px] leading-tight text-gray-300">

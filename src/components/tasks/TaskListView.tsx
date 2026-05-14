@@ -10,7 +10,7 @@
  * Когда передан projectId — автоматически фильтрует по проекту, скрывает фильтр «Проект».
  */
 
-import { useState, useMemo, useCallback, lazy, Suspense, memo } from 'react'
+import { useState, useMemo, useCallback, useEffect, lazy, Suspense, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckSquare, Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -92,6 +92,13 @@ export const TaskListView = memo(function TaskListView({
   // Layout-level TaskPanel: если контекст доступен, используем его
   // и не рендерим свой TaskPanel (панель живёт в WorkspaceLayout и не закрывается при смене вкладки).
   const layoutPanel = useLayoutTaskPanel()
+
+  // Push-режим правой панели: на странице задач панель отжимает контент
+  // влево, а не накладывается поверх. Атрибут читает CSS в globals.css.
+  useEffect(() => {
+    document.body.setAttribute('data-panel-mode', 'push')
+    return () => document.body.removeAttribute('data-panel-mode')
+  }, [])
 
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   // Свежесозданный тред — используется пока он не появится в кеше

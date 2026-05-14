@@ -191,7 +191,7 @@ export const FolderCard = memo(function FolderCard({
         {filteredDocuments.length > 0 || filledSlots.length > 0 || emptySlots.length > 0 ? (
           <>
             {allDocumentRows.length > 0 && (
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse table-fixed">
                 <tbody>
                   {allDocumentRows.map(({ doc, slotId }) => {
                     const showBefore =

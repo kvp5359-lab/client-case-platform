@@ -79,7 +79,7 @@ export const UngroupedCard = memo(function UngroupedCard({ documents }: Ungroupe
         </div>
         {!collapsed && (
           <div className="-mt-1 pr-2 pb-2">
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse table-fixed">
               <tbody>
                 {documents.map((doc) => (
                   <DocumentItem key={doc.id} document={doc} />
