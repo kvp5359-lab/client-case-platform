@@ -55,6 +55,7 @@ export const DEFAULT_AI_SOURCES: AiSources = {
   formData: false,
   documents: false,
   knowledge: null,
+  projectContext: { mode: 'selected', itemIds: [] },
 }
 
 export interface SidePanelStore {

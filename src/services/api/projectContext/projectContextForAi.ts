@@ -36,7 +36,7 @@ export function projectContextItemToAi(item: ProjectContextItemWithFile): Projec
   return {
     id: item.id,
     name: item.name,
-    itemType: item.item_type,
+    itemType: item.item_type as 'text' | 'file' | 'screenshot',
     text: text && text.length > 0 ? text : null,
   }
 }

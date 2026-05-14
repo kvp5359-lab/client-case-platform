@@ -52,6 +52,7 @@ function makeProjectRole(
     comments: false,
     knowledge_base: false,
     digest: false,
+    project_context: false,
     ...moduleAccess,
   }
 

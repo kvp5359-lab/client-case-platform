@@ -137,7 +137,7 @@ export function useMessengerAi(
   const projectContextOptions = (projectContextRaw ?? []).map((r) => ({
     id: r.id,
     name: r.name,
-    itemType: r.item_type,
+    itemType: r.item_type as 'text' | 'file' | 'screenshot',
     hasText:
       r.item_type === 'text'
         ? !!(r.content_html && r.content_html.trim())
