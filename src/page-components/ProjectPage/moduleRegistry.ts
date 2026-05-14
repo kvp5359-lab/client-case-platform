@@ -18,6 +18,7 @@ import {
   FolderOpen,
   BookOpen,
   NotebookText,
+  Lock,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ProjectModule as ProjectModuleKey, WorkspaceFeature } from '@/types/permissions'
@@ -120,6 +121,15 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     order: 5.5,
     templateKey: null,
     permissionKey: 'digest',
+    iconOnly: true,
+  },
+  {
+    id: 'project-context',
+    label: 'Контекст проекта',
+    icon: Lock,
+    order: 5.7,
+    templateKey: 'project_context',
+    permissionKey: 'project_context',
     iconOnly: true,
   },
   {

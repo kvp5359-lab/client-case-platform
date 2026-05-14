@@ -41,6 +41,9 @@ const HistoryTabContent = lazy(() =>
 const DigestTabContent = lazy(() =>
   import('./DigestTabContent').then((m) => ({ default: m.DigestTabContent })),
 )
+const ProjectContextTabContent = lazy(() =>
+  import('./ProjectContextTabContent').then((m) => ({ default: m.ProjectContextTabContent })),
+)
 const FinanceTabContent = lazy(() =>
   import('@/components/projects/finance/FinanceTabContent').then((m) => ({
     default: m.FinanceTabContent,
@@ -236,6 +239,13 @@ export function ProjectTabsContent({
       {activeTab === 'digest' && modules.digest && (
         <div className="mt-2">
           <DigestTabContent projectId={projectId} workspaceId={workspaceId} />
+        </div>
+      )}
+
+      {/* Вкладка "Контекст проекта" — внутренние материалы команды */}
+      {activeTab === 'project-context' && modules.projectContext && (
+        <div className="mt-2">
+          <ProjectContextTabContent projectId={projectId} workspaceId={workspaceId} />
         </div>
       )}
 

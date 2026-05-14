@@ -27,6 +27,7 @@ export function AiPanelContent({ workspaceId, projectId, templateId }: AiPanelCo
           templateId={templateId}
           hasKnowledgeProjectAccess={!!projectId && hasModuleAccess('ai_knowledge_project')}
           hasKnowledgeAllAccess={!projectId || hasModuleAccess('ai_knowledge_all')}
+          hasProjectContextAccess={!!projectId && hasModuleAccess('project_context')}
         />
       </div>
     </div>

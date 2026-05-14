@@ -36,6 +36,7 @@ interface ProjectAiChatProps {
   templateId?: string
   hasKnowledgeProjectAccess?: boolean
   hasKnowledgeAllAccess?: boolean
+  hasProjectContextAccess?: boolean
 }
 
 export function ProjectAiChat({
@@ -44,6 +45,7 @@ export function ProjectAiChat({
   templateId,
   hasKnowledgeProjectAccess,
   hasKnowledgeAllAccess,
+  hasProjectContextAccess,
 }: ProjectAiChatProps) {
   const { user } = useAuth()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -148,6 +150,9 @@ export function ProjectAiChat({
     disableAllSources,
     formKitCount,
     documentCount,
+    projectContextEffectiveCount,
+    projectContextOptions,
+    setProjectContextScope,
     ask,
     stop,
     startNewChat,
@@ -321,6 +326,9 @@ export function ProjectAiChat({
           chatMessagesCount={chatMessages.length}
           formKitCount={formKitCount}
           documentCount={documentCount}
+          projectContextEffectiveCount={projectContextEffectiveCount}
+          projectContextOptions={projectContextOptions}
+          setProjectContextScope={setProjectContextScope}
           isStreaming={isStreaming}
           attachedDocuments={attachedDocuments}
           addAttachedDocument={addAttachedDocument}
@@ -332,6 +340,7 @@ export function ProjectAiChat({
           onDocumentDrop={handleDocumentDrop}
           hasKnowledgeProjectAccess={hasKnowledgeProjectAccess}
           hasKnowledgeAllAccess={hasKnowledgeAllAccess}
+          hasProjectContextAccess={hasProjectContextAccess}
           hasProject={hasProject}
         />
 

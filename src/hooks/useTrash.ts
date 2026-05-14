@@ -53,6 +53,18 @@ export interface TrashedThread {
   created_at: string
 }
 
+export interface TrashedContextItem {
+  id: string
+  name: string
+  item_type: 'text' | 'file' | 'screenshot'
+  project_id: string
+  project_name: string | null
+  deleted_at: string | null
+  deleted_by: string | null
+  deleted_by_name: string | null
+  created_at: string
+}
+
 // ── Чтение корзины ──
 
 /**
@@ -131,6 +143,59 @@ export function useTrashedThreads(workspaceId: string | undefined) {
         id: r.id,
         name: r.name,
         type: r.type,
+        project_id: r.project_id,
+        project_name: r.projects?.name ?? null,
+        deleted_at: r.deleted_at,
+        deleted_by: r.deleted_by,
+        deleted_by_name: r.deleted_by ? (nameByUser.get(r.deleted_by) ?? null) : null,
+        created_at: r.created_at,
+      }))
+    },
+    enabled: !!workspaceId,
+    staleTime: STALE_TIME.SHORT,
+  })
+}
+
+/**
+ * Удалённые записи «Контекста проекта» воркспейса
+ */
+export function useTrashedContextItems(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: workspaceId ? trashKeys.contextItems(workspaceId) : ['trash', 'context-items', 'none'],
+    queryFn: async (): Promise<TrashedContextItem[]> => {
+      if (!workspaceId) return []
+
+      const { data, error } = await supabase
+        .from('project_context_items')
+        .select(
+          'id, name, item_type, project_id, deleted_at, deleted_by, created_at, projects(name)',
+        )
+        .eq('workspace_id', workspaceId)
+        .eq('is_deleted', true)
+        .order('deleted_at', { ascending: false, nullsFirst: false })
+
+      if (error) throw error
+      type Row = {
+        id: string
+        name: string
+        item_type: 'text' | 'file' | 'screenshot'
+        project_id: string
+        deleted_at: string | null
+        deleted_by: string | null
+        created_at: string
+        projects: { name: string } | null
+      }
+      const rows = (data ?? []) as unknown as Row[]
+
+      const userIds = Array.from(
+        new Set(rows.map((r) => r.deleted_by).filter((v): v is string => !!v)),
+      )
+      const nameByUser = await fetchParticipantNames(workspaceId, userIds)
+
+      return rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        item_type: r.item_type,
         project_id: r.project_id,
         project_name: r.projects?.name ?? null,
         deleted_at: r.deleted_at,
@@ -255,6 +320,62 @@ export function useHardDeleteProject(workspaceId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: trashKeys.workspace(workspaceId) })
+    },
+  })
+}
+
+/**
+ * Восстановить запись «Контекста проекта» из корзины
+ */
+export function useRestoreContextItem(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (item: { id: string; name: string; project_id: string }) => {
+      const { error } = await supabase
+        .from('project_context_items')
+        .update({ is_deleted: false, deleted_at: null, deleted_by: null })
+        .eq('id', item.id)
+      if (error) throw error
+
+      logAuditAction(
+        'restore',
+        'context_item' as never,
+        item.id,
+        { name: item.name },
+        item.project_id,
+      )
+
+      return item
+    },
+    onSuccess: (item) => {
+      queryClient.invalidateQueries({ queryKey: trashKeys.contextItems(workspaceId) })
+      queryClient.invalidateQueries({
+        queryKey: ['project-context', 'by-project', item.project_id],
+      })
+    },
+  })
+}
+
+/**
+ * Удалить запись «Контекста проекта» навсегда. Связанный файл в Storage
+ * и запись в files подчищаются службой контекста.
+ */
+export function useHardDeleteContextItem(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (item: { id: string; name: string }) => {
+      // Используем сервис, чтобы удалить также файл из storage и files
+      const { hardDeleteItem } = await import(
+        '@/services/api/projectContext/projectContextService'
+      )
+      await hardDeleteItem(item.id)
+      logAuditAction('hard_delete', 'context_item' as never, item.id, { name: item.name })
+      return item
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: trashKeys.contextItems(workspaceId) })
     },
   })
 }

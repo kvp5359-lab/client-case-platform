@@ -25,6 +25,7 @@ export function usePanelTabsVisibility(
       if (hasModuleAccess('documents')) set.add('documents')
       if (hasModuleAccess('forms')) set.add('forms')
       if (hasModuleAccess('knowledge_base')) set.add('materials')
+      if (hasModuleAccess('project_context')) set.add('project_context')
       if (!isClientOnly) set.add('extra')
     }
     if (

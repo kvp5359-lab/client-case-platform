@@ -19,6 +19,10 @@ import {
   CheckSquare,
   MessageSquare,
   Loader2,
+  Lock,
+  FileText,
+  Image as ImageIcon,
+  FileIcon,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -26,12 +30,16 @@ import { useWorkspacePermissions } from '@/hooks/permissions'
 import {
   useTrashedProjects,
   useTrashedThreads,
+  useTrashedContextItems,
   useRestoreProject,
   useRestoreThread,
+  useRestoreContextItem,
   useHardDeleteProject,
   useHardDeleteThread,
+  useHardDeleteContextItem,
   type TrashedProject,
   type TrashedThread,
+  type TrashedContextItem,
 } from '@/hooks/useTrash'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -67,11 +75,15 @@ export function TrashTab() {
 
   const { data: projects = [], isLoading: loadingProjects } = useTrashedProjects(workspaceId)
   const { data: threads = [], isLoading: loadingThreads } = useTrashedThreads(workspaceId)
+  const { data: contextItems = [], isLoading: loadingContextItems } =
+    useTrashedContextItems(workspaceId)
 
   const restoreProject = useRestoreProject(workspaceId || '')
   const hardDeleteProject = useHardDeleteProject(workspaceId || '')
   const restoreThread = useRestoreThread(workspaceId || '')
   const hardDeleteThread = useHardDeleteThread(workspaceId || '')
+  const restoreContextItem = useRestoreContextItem(workspaceId || '')
+  const hardDeleteContextItem = useHardDeleteContextItem(workspaceId || '')
 
   // ── Guard: только владелец ──
   if (permissions.isLoading) {
@@ -169,8 +181,45 @@ export function TrashTab() {
     }
   }
 
-  const isLoading = loadingProjects || loadingThreads
-  const isEmpty = !isLoading && projects.length === 0 && threads.length === 0
+  // ── Действия над записями контекста ──
+  const onRestoreContextItem = async (c: TrashedContextItem) => {
+    setBusyId(c.id)
+    try {
+      await restoreContextItem.mutateAsync({
+        id: c.id,
+        name: c.name,
+        project_id: c.project_id,
+      })
+      toast.success(`«${c.name}» восстановлена`)
+    } catch {
+      toast.error('Не удалось восстановить')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const onHardDeleteContextItem = async (c: TrashedContextItem) => {
+    const ok = await confirm({
+      title: 'Удалить запись навсегда?',
+      description: `«${c.name}» будет удалена без возможности восстановления.`,
+      variant: 'destructive',
+      confirmText: 'Удалить навсегда',
+    })
+    if (!ok) return
+    setBusyId(c.id)
+    try {
+      await hardDeleteContextItem.mutateAsync({ id: c.id, name: c.name })
+      toast.success('Удалено навсегда')
+    } catch {
+      toast.error('Не удалось удалить')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const isLoading = loadingProjects || loadingThreads || loadingContextItems
+  const isEmpty =
+    !isLoading && projects.length === 0 && threads.length === 0 && contextItems.length === 0
 
   return (
     <div className="space-y-6">
@@ -304,7 +353,74 @@ export function TrashTab() {
         </Card>
       )}
 
+      {/* Контекст проекта */}
+      {!isLoading && contextItems.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Lock className="w-4 h-4" />
+              Контекст проекта{' '}
+              <span className="text-muted-foreground font-normal">({contextItems.length})</span>
+            </CardTitle>
+            <CardDescription>
+              Внутренние материалы команды (заметки, файлы, скриншоты), удалённые из проектов.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {contextItems.map((c) => (
+              <div
+                key={c.id}
+                className="flex items-center gap-3 py-2 px-3 rounded-md border bg-background hover:bg-muted/30 transition-colors"
+              >
+                {contextItemIcon(c.item_type)}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{c.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {contextTypeLabel(c.item_type)}
+                    {c.project_name ? ` · ${c.project_name}` : ''} · удалено{' '}
+                    {formatDeletedAt(c.deleted_at)}
+                    {c.deleted_by_name ? ` · ${c.deleted_by_name}` : ''}
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  disabled={busyId === c.id}
+                  onClick={() => onRestoreContextItem(c)}
+                >
+                  <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                  Восстановить
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-destructive hover:text-destructive"
+                  disabled={busyId === c.id}
+                  onClick={() => onHardDeleteContextItem(c)}
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                  Удалить навсегда
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   )
+}
+
+function contextItemIcon(t: 'text' | 'file' | 'screenshot') {
+  if (t === 'text') return <FileText className="w-4 h-4 text-muted-foreground" />
+  if (t === 'screenshot') return <ImageIcon className="w-4 h-4 text-muted-foreground" />
+  return <FileIcon className="w-4 h-4 text-muted-foreground" />
+}
+
+function contextTypeLabel(t: 'text' | 'file' | 'screenshot'): string {
+  if (t === 'text') return 'Заметка'
+  if (t === 'screenshot') return 'Скриншот'
+  return 'Файл'
 }

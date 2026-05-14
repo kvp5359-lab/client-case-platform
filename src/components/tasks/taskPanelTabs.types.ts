@@ -7,14 +7,15 @@
  */
 
 export type TaskPanelTabType =
-  | 'thread'      // отдельный тред (чат/задача/документ): refId = threadId
-  | 'tasks'       // список задач проекта (Режим 2 старого TaskPanel)
-  | 'documents'   // документы проекта (PanelDocumentsContent)
-  | 'history'     // сквозная история (AllHistoryContent)
-  | 'forms'       // анкеты проекта (заглушка для будущего)
-  | 'materials'   // полезные материалы (заглушка для будущего)
-  | 'assistant'   // AI-ассистент (AiPanelContent)
-  | 'extra'       // дополнительно (ExtraPanelContent)
+  | 'thread'           // отдельный тред (чат/задача/документ): refId = threadId
+  | 'tasks'            // список задач проекта (Режим 2 старого TaskPanel)
+  | 'documents'        // документы проекта (PanelDocumentsContent)
+  | 'history'          // сквозная история (AllHistoryContent)
+  | 'forms'            // анкеты проекта (заглушка для будущего)
+  | 'materials'        // полезные материалы (заглушка для будущего)
+  | 'project_context'  // внутренние материалы команды (ProjectContextTabContent)
+  | 'assistant'        // AI-ассистент (AiPanelContent)
+  | 'extra'            // дополнительно (ExtraPanelContent)
 
 export interface TaskPanelTab {
   /** Стабильный id вкладки. Для thread: `thread:${threadId}`, для системных: тип ('tasks', 'history' и т.д.). */

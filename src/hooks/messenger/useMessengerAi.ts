@@ -9,11 +9,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
 import { streamMessengerAiChat, buildProjectContext } from '@/services/api/messenger/messengerAiService'
+import type { AiSources } from '@/services/api/messenger/messengerAiService'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { useFormKitsForAi } from './useFormKitsForAi'
 import { useDocumentsForAi } from './useDocumentsForAi'
 import { useAiSources } from './useAiSources'
-import type { AiSources } from '@/services/api/messenger/messengerAiService'
+import { useProjectContextItems } from '@/hooks/useProjectContext'
+import { projectContextItemsToAi } from '@/services/api/projectContext/projectContextForAi'
 
 import type { AiMessage } from '@/store/sidePanelStore'
 export type { AiMessage }
@@ -107,7 +109,15 @@ export function useMessengerAi(
   )
 
   // Sources management
-  const { sources, setSources, toggleSource, setKnowledge, setChatScope, disableAllSources } = useAiSources({
+  const {
+    sources,
+    setSources,
+    toggleSource,
+    setKnowledge,
+    setChatScope,
+    setProjectContextScope,
+    disableAllSources,
+  } = useAiSources({
     initialSources: options?.initialSources,
     onSourcesChange: options?.onSourcesChange,
   })
@@ -115,9 +125,32 @@ export function useMessengerAi(
   // Data queries
   const { data: formKits } = useFormKitsForAi(projectId)
   const { data: documents } = useDocumentsForAi(projectId)
+  const { data: projectContextRaw } = useProjectContextItems(projectId)
+  const projectContextItems = projectContextItemsToAi(projectContextRaw)
 
   const formKitCount = formKits?.length ?? 0
   const documentCount = documents?.length ?? 0
+  // Общее число записей в модуле (для бейджа), независимо от того,
+  // у каких есть extracted_text. AI использует только записи с текстом.
+  const projectContextCount = projectContextRaw?.length ?? 0
+  // Опции для picker'а — полный список с флагом hasText
+  const projectContextOptions = (projectContextRaw ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    itemType: r.item_type,
+    hasText:
+      r.item_type === 'text'
+        ? !!(r.content_html && r.content_html.trim())
+        : !!(r.extracted_text && r.extracted_text.trim()),
+  }))
+  // Сколько записей с текстом уйдёт в AI при текущем scope
+  const projectContextEffectiveCount = (() => {
+    const scope = sources.projectContext
+    const items = projectContextItems
+    if (scope.mode === 'all') return items.length
+    if (scope.itemIds.length === 0) return 0
+    return items.filter((i) => scope.itemIds.includes(i.id)).length
+  })()
 
   const addAttachedDocument = useCallback((doc: AttachedDocument) => {
     setAttachedDocuments((prev) => {
@@ -145,6 +178,10 @@ export function useMessengerAi(
       const chatsActive =
         sources.chats.mode === 'all' ||
         (sources.chats.mode === 'selected' && sources.chats.threadIds.length > 0)
+      const projectContextActive =
+        sources.projectContext.mode === 'all' ||
+        (sources.projectContext.mode === 'selected' &&
+          sources.projectContext.itemIds.length > 0)
 
       if (
         !hasAttachments &&
@@ -153,6 +190,7 @@ export function useMessengerAi(
         !chatsActive &&
         !sources.formData &&
         !sources.documents &&
+        !projectContextActive &&
         !sources.knowledge
       ) {
         toast.warning('Выберите хотя бы один источник данных или прикрепите документ')
@@ -173,6 +211,13 @@ export function useMessengerAi(
       }
       if (sources.formData) activeSources.push('Анкеты')
       if (sources.documents) activeSources.push('Документы')
+      if (projectContextActive) {
+        activeSources.push(
+          sources.projectContext.mode === 'all'
+            ? 'Контекст проекта: все'
+            : `Контекст проекта: ${sources.projectContext.itemIds.length} выбрано`,
+        )
+      }
       if (sources.knowledge === 'project') activeSources.push('БЗ проекта')
       if (sources.knowledge === 'all') activeSources.push('Вся БЗ')
       for (const doc of attachedDocuments) {
@@ -196,6 +241,7 @@ export function useMessengerAi(
           chatScopeLabel,
           formKits: formKits ?? undefined,
           documents: documents ?? undefined,
+          projectContextItems,
         })
       } catch (err) {
         setError((err as Error).message)
@@ -311,6 +357,7 @@ export function useMessengerAi(
       sources,
       formKits,
       documents,
+      projectContextItems,
       attachedDocuments,
       clearAttachedDocuments,
       setAiMessages,
@@ -346,6 +393,10 @@ export function useMessengerAi(
     disableAllSources,
     formKitCount,
     documentCount,
+    projectContextCount,
+    projectContextEffectiveCount,
+    projectContextOptions,
+    setProjectContextScope,
     ask,
     stop,
     startNewChat,

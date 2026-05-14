@@ -10,24 +10,34 @@ import { Button } from '@/components/ui/button'
 import { Send, Square } from 'lucide-react'
 import { MinimalTiptapEditor } from '@/components/messenger/MinimalTiptapEditor'
 import { AttachmentButton } from '@/components/messenger/AttachmentButton'
-import type { AiSources, ChatScope } from '@/services/api/messenger/messengerAiService'
+import type {
+  AiSources,
+  ChatScope,
+  ProjectContextScope,
+} from '@/services/api/messenger/messengerAiService'
 import type { AttachedDocument } from '@/hooks/messenger/useMessengerAi'
 import { useChatFileDrop } from './hooks/useChatFileDrop'
 import { ChatScopePicker, type ProjectThreadOption } from './components/ChatScopePicker'
 import { SourceToggles } from './components/SourceToggles'
 import { AttachedDocumentsBadges } from './components/AttachedDocumentsBadges'
+import type { ProjectContextOption } from './components/ProjectContextPicker'
 
 interface AiChatInputProps {
   sources: AiSources
   toggleSource: (key: 'formData' | 'documents') => void
   setKnowledge: (value: 'project' | 'all' | null) => void
   setChatScope: (scope: ChatScope) => void
+  setProjectContextScope: (scope: ProjectContextScope) => void
   /** Список тредов проекта для picker-а скоупа чатов. */
   projectThreads: ProjectThreadOption[]
   /** Сколько сообщений сейчас в активном скоупе (для подписи на чипе). */
   chatMessagesCount: number
   formKitCount: number
   documentCount: number
+  /** Сколько записей с текстом уйдёт в AI при текущем scope (для подписи). */
+  projectContextEffectiveCount?: number
+  /** Полный список записей контекста — для picker'а. */
+  projectContextOptions?: ProjectContextOption[]
   isStreaming: boolean
   attachedDocuments: AttachedDocument[]
   addAttachedDocument: (doc: AttachedDocument) => void
@@ -42,6 +52,8 @@ interface AiChatInputProps {
   hasKnowledgeProjectAccess?: boolean
   /** Доступ ко всей БЗ */
   hasKnowledgeAllAccess?: boolean
+  /** Доступ к модулю «Контекст проекта» */
+  hasProjectContextAccess?: boolean
   /** Есть ли контекст проекта */
   hasProject?: boolean
 }
@@ -51,6 +63,7 @@ export function AiChatInput({
   toggleSource,
   setKnowledge,
   setChatScope,
+  setProjectContextScope,
   projectThreads,
   chatMessagesCount,
   formKitCount,
@@ -66,7 +79,10 @@ export function AiChatInput({
   onDocumentDrop,
   hasKnowledgeProjectAccess,
   hasKnowledgeAllAccess,
+  hasProjectContextAccess,
   hasProject = true,
+  projectContextEffectiveCount = 0,
+  projectContextOptions = [],
 }: AiChatInputProps) {
   const editorRef = useRef<Editor | null>(null)
 
@@ -123,11 +139,15 @@ export function AiChatInput({
           sources={sources}
           toggleSource={toggleSource}
           setKnowledge={setKnowledge}
+          setProjectContextScope={setProjectContextScope}
           formKitCount={formKitCount}
           documentCount={documentCount}
+          projectContextEffectiveCount={projectContextEffectiveCount}
+          projectContextOptions={projectContextOptions}
           hasProject={hasProject}
           hasKnowledgeProjectAccess={hasKnowledgeProjectAccess}
           hasKnowledgeAllAccess={hasKnowledgeAllAccess}
+          hasProjectContextAccess={hasProjectContextAccess}
         />
       </div>
 

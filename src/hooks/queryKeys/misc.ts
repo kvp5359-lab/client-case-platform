@@ -65,6 +65,7 @@ export const trashKeys = {
   workspace: (workspaceId: string) => ['trash', workspaceId] as const,
   projects: (workspaceId: string) => ['trash', workspaceId, 'projects'] as const,
   threads: (workspaceId: string) => ['trash', workspaceId, 'threads'] as const,
+  contextItems: (workspaceId: string) => ['trash', workspaceId, 'context-items'] as const,
 }
 
 export const itemListKeys = {

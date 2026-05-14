@@ -10,6 +10,7 @@ import {
   MessageSquare,
   MessagesSquare,
   BookOpen,
+  Lock,
 } from 'lucide-react'
 import type { Database } from '@/types/database'
 
@@ -56,6 +57,12 @@ export const AVAILABLE_MODULES = [
     label: 'База знаний',
     icon: BookOpen,
     description: 'Полезные материалы для клиентов',
+  },
+  {
+    id: 'project_context',
+    label: 'Контекст проекта',
+    icon: Lock,
+    description: 'Внутренние материалы команды — заметки, файлы, скриншоты. Не видны клиентам.',
   },
 ] as const
 

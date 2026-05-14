@@ -4510,6 +4510,94 @@ export type Database = {
           },
         ]
       }
+      project_context_items: {
+        Row: {
+          content_html: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          extracted_text: string | null
+          extraction_error: string | null
+          extraction_kind: string | null
+          extraction_status: string
+          extraction_updated_at: string | null
+          file_id: string | null
+          id: string
+          is_deleted: boolean
+          item_type: string
+          name: string
+          project_id: string
+          sort_order: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          content_html?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          extracted_text?: string | null
+          extraction_error?: string | null
+          extraction_kind?: string | null
+          extraction_status?: string
+          extraction_updated_at?: string | null
+          file_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          item_type: string
+          name: string
+          project_id: string
+          sort_order?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          content_html?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          extracted_text?: string | null
+          extraction_error?: string | null
+          extraction_kind?: string | null
+          extraction_status?: string
+          extraction_updated_at?: string | null
+          file_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          item_type?: string
+          name?: string
+          project_id?: string
+          sort_order?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_context_items_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_context_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_context_items_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_digests: {
         Row: {
           content: string

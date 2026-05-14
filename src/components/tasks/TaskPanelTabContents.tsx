@@ -36,6 +36,12 @@ const ExtraPanelContent = lazy(() =>
   })),
 )
 
+const ProjectContextTabContent = lazy(() =>
+  import('@/page-components/ProjectPage/components/ProjectContextTabContent').then((m) => ({
+    default: m.ProjectContextTabContent,
+  })),
+)
+
 export function LoadingBody() {
   return (
     <div className="flex-1 flex items-center justify-center">
@@ -249,6 +255,20 @@ function SystemTabContent({ tab, projectId, workspaceId, onOpenThread }: SystemT
         <div className="p-4 text-sm text-muted-foreground">
           Полезные материалы в боковой панели — в разработке.
         </div>
+      )
+    case 'project_context':
+      return (
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          }
+        >
+          <div className="p-3 overflow-y-auto h-full">
+            <ProjectContextTabContent projectId={projectId} workspaceId={workspaceId} />
+          </div>
+        </Suspense>
       )
     default:
       return null

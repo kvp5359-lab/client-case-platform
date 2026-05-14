@@ -73,6 +73,7 @@ export interface ProjectModuleAccess {
   comments: boolean
   knowledge_base: boolean
   digest: boolean
+  project_context: boolean
   // Будущие модули — optional т.к. не все workspace имеют эти модули включенными
   finance?: boolean
 }

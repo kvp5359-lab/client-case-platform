@@ -190,6 +190,16 @@ export const projectDigestKeys = {
   ) => ['project-digests', 'card', projectId, periodStart, periodEnd, digestType] as const,
 }
 
+/**
+ * Контекст проекта: внутренние материалы команды (заметки, файлы, скриншоты).
+ */
+export const projectContextKeys = {
+  all: ['project-context'] as const,
+  byProject: (projectId: string) => ['project-context', 'by-project', projectId] as const,
+  byWorkspaceTrash: (workspaceId: string) =>
+    ['project-context', 'trash', workspaceId] as const,
+}
+
 export const projectsWithActivityKeys = {
   all: ['projects-with-activity'] as const,
   /** Префикс для broad-invalidate всех периодных срезов одного воркспейса. */

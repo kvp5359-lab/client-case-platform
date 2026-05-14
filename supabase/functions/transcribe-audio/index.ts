@@ -49,13 +49,25 @@ Deno.serve(async (req: Request) => {
     }
 
     const body = await req.json();
-    const { attachment_id } = body;
-    console.log("[transcribe-audio] attachment_id:", attachment_id);
+    const { attachment_id, file_id } = body as { attachment_id?: string; file_id?: string };
+    console.log("[transcribe-audio] attachment_id:", attachment_id, "file_id:", file_id);
 
-    if (!attachment_id || !isValidUUID(attachment_id)) {
+    if (!attachment_id && !file_id) {
+      return safeErrorResponse(req, getCorsHeaders, {
+        status: 400,
+        publicMessage: "Either attachment_id or file_id is required",
+      });
+    }
+    if (attachment_id && !isValidUUID(attachment_id)) {
       return safeErrorResponse(req, getCorsHeaders, {
         status: 400,
         publicMessage: "Invalid attachment_id",
+      });
+    }
+    if (file_id && !isValidUUID(file_id)) {
+      return safeErrorResponse(req, getCorsHeaders, {
+        status: 400,
+        publicMessage: "Invalid file_id",
       });
     }
 
@@ -75,6 +87,77 @@ Deno.serve(async (req: Request) => {
 
     // Service client для операций с данными
     const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Ветка file_id — расшифровка произвольного файла из таблицы files,
+    // без записи результата (вызывающий сам сохранит).
+    if (file_id) {
+      const { data: fileRecord, error: fileErr } = await serviceClient
+        .from("files")
+        .select("id, workspace_id, bucket, storage_path, mime_type, file_name")
+        .eq("id", file_id)
+        .single();
+
+      if (fileErr || !fileRecord) {
+        return safeErrorResponse(req, getCorsHeaders, {
+          status: 404,
+          publicMessage: "Файл не найден",
+        });
+      }
+
+      const isMember = await checkWorkspaceMembership(serviceClient, user.id, fileRecord.workspace_id);
+      if (!isMember) {
+        return safeErrorResponse(req, getCorsHeaders, {
+          status: 403,
+          publicMessage: "Нет доступа",
+        });
+      }
+
+      const mt: string = fileRecord.mime_type || "";
+      if (!mt.startsWith("audio/") && !mt.startsWith("video/")) {
+        return safeErrorResponse(req, getCorsHeaders, {
+          status: 400,
+          publicMessage: "Файл не является аудио или видео",
+        });
+      }
+
+      const { data: blob, error: dlErr } = await serviceClient.storage
+        .from(fileRecord.bucket)
+        .download(fileRecord.storage_path);
+      if (dlErr || !blob) {
+        return safeErrorResponse(req, getCorsHeaders, {
+          status: 500,
+          publicMessage: "Не удалось скачать файл",
+          internalError: dlErr,
+        });
+      }
+
+      const ext = fileRecord.file_name?.split(".").pop() || (mt.startsWith("audio/") ? "ogg" : "mp4");
+      const form = new FormData();
+      form.append("file", new File([blob], `audio.${ext}`, { type: mt }));
+      form.append("model", "whisper-1");
+      form.append("language", "ru");
+
+      const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+        body: form,
+      });
+      if (!whisperRes.ok) {
+        const errText = await whisperRes.text();
+        return safeErrorResponse(req, getCorsHeaders, {
+          status: 502,
+          publicMessage: "Ошибка распознавания речи",
+          internalError: `Whisper API ${whisperRes.status}: ${errText}`,
+        });
+      }
+      const wResult = await whisperRes.json();
+      const text: string = wResult.text || "";
+
+      return new Response(
+        JSON.stringify({ text }),
+        { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+      );
+    }
 
     // Получаем информацию о вложении + workspace через message
     const { data: attachment, error: attError } = await serviceClient

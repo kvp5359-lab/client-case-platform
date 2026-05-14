@@ -40,16 +40,53 @@ export interface ChatScope {
   threadIds: string[]
 }
 
+/**
+ * Скоуп выбора для модуля «Контекст проекта».
+ * mode 'all' → все записи модуля (отключение тогла = `mode: 'selected', itemIds: []`).
+ * mode 'selected' → только перечисленные id.
+ */
+export interface ProjectContextScope {
+  mode: 'all' | 'selected'
+  itemIds: string[]
+}
+
 export interface ConversationSources {
   /** Где искать переписку (треды проекта). */
   chats: ChatScope
   formData: boolean
   documents: boolean
+  /** Внутренние материалы команды (модуль project_context). */
+  projectContext: ProjectContextScope
   knowledge: 'project' | 'all' | null
   /** @deprecated старый формат — оставлено для совместимости при чтении из БД */
   clientMessages?: boolean
   /** @deprecated старый формат — оставлено для совместимости при чтении из БД */
   teamMessages?: boolean
+}
+
+const DEFAULT_PROJECT_CONTEXT_SCOPE: ProjectContextScope = {
+  mode: 'selected',
+  itemIds: [],
+}
+
+/**
+ * Нормализует поле projectContext из БД (может быть boolean — старый формат,
+ * либо ProjectContextScope — новый).
+ */
+function normalizeProjectContext(
+  raw: Partial<ConversationSources>['projectContext'] | boolean | undefined,
+): ProjectContextScope {
+  if (!raw) return { ...DEFAULT_PROJECT_CONTEXT_SCOPE }
+  if (typeof raw === 'boolean') {
+    return raw ? { mode: 'all', itemIds: [] } : { ...DEFAULT_PROJECT_CONTEXT_SCOPE }
+  }
+  if (typeof raw === 'object' && 'mode' in raw) {
+    return {
+      mode: raw.mode === 'all' ? 'all' : 'selected',
+      itemIds: Array.isArray(raw.itemIds) ? raw.itemIds : [],
+    }
+  }
+  return { ...DEFAULT_PROJECT_CONTEXT_SCOPE }
 }
 
 /**
@@ -64,6 +101,7 @@ export function migrateLegacySources(
       chats: { mode: 'all', threadIds: [] },
       formData: false,
       documents: false,
+      projectContext: { ...DEFAULT_PROJECT_CONTEXT_SCOPE },
       knowledge: null,
     }
   }
@@ -74,6 +112,9 @@ export function migrateLegacySources(
       chats: raw.chats,
       formData: !!raw.formData,
       documents: !!raw.documents,
+      projectContext: normalizeProjectContext(
+        raw.projectContext as Partial<ConversationSources>['projectContext'] | boolean | undefined,
+      ),
       knowledge: raw.knowledge ?? null,
     }
   }
@@ -87,6 +128,9 @@ export function migrateLegacySources(
       : { mode: 'selected', threadIds: [] },
     formData: !!raw.formData,
     documents: !!raw.documents,
+    projectContext: normalizeProjectContext(
+      raw.projectContext as Partial<ConversationSources>['projectContext'] | boolean | undefined,
+    ),
     knowledge: raw.knowledge ?? null,
   }
 }

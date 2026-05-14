@@ -1,26 +1,43 @@
 import { BookOpen } from 'lucide-react'
-import type { AiSources } from '@/services/api/messenger/messengerAiService'
+import type {
+  AiSources,
+  ProjectContextScope,
+} from '@/services/api/messenger/messengerAiService'
+import {
+  ProjectContextPicker,
+  type ProjectContextOption,
+} from './ProjectContextPicker'
 
 interface Props {
   sources: AiSources
   toggleSource: (key: 'formData' | 'documents') => void
   setKnowledge: (value: 'project' | 'all' | null) => void
+  setProjectContextScope: (scope: ProjectContextScope) => void
   formKitCount: number
   documentCount: number
+  /** Сколько записей с текстом уйдёт в AI при текущем scope. Для подписи. */
+  projectContextEffectiveCount?: number
+  /** Полный список доступных записей контекста — для picker'а. */
+  projectContextOptions?: ProjectContextOption[]
   hasProject: boolean
   hasKnowledgeProjectAccess?: boolean
   hasKnowledgeAllAccess?: boolean
+  hasProjectContextAccess?: boolean
 }
 
 export function SourceToggles({
   sources,
   toggleSource,
   setKnowledge,
+  setProjectContextScope,
   formKitCount,
   documentCount,
+  projectContextEffectiveCount = 0,
+  projectContextOptions = [],
   hasProject,
   hasKnowledgeProjectAccess,
   hasKnowledgeAllAccess,
+  hasProjectContextAccess,
 }: Props) {
   return (
     <>
@@ -53,6 +70,15 @@ export function SourceToggles({
             Документы <span className="opacity-70">{documentCount}</span>
           </button>
         </div>
+      )}
+
+      {hasProject && hasProjectContextAccess && (
+        <ProjectContextPicker
+          scope={sources.projectContext}
+          items={projectContextOptions}
+          effectiveCount={projectContextEffectiveCount}
+          setScope={setProjectContextScope}
+        />
       )}
 
       {(hasKnowledgeProjectAccess || hasKnowledgeAllAccess) && (

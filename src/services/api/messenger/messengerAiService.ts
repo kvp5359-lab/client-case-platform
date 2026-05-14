@@ -41,7 +41,22 @@ export interface DocumentForAi {
   statusId?: string | null
 }
 
-export type { ChatScope } from '../knowledge/knowledgeSearchService.types'
+/**
+ * Запись из «Контекст проекта» — внутренние материалы команды.
+ * Текст для AI: для item_type='text' — content_html (без HTML-тегов),
+ * для file/screenshot — extracted_text (если есть, иначе пропускается).
+ */
+export interface ProjectContextItemForAi {
+  id: string
+  name: string
+  itemType: 'text' | 'file' | 'screenshot'
+  text: string | null
+}
+
+export type {
+  ChatScope,
+  ProjectContextScope,
+} from '../knowledge/knowledgeSearchService.types'
 export type { ConversationSources as AiSources } from '../knowledge/knowledgeSearchService.types'
 import type { ConversationSources as AiSources } from '../knowledge/knowledgeSearchService.types'
 
@@ -135,6 +150,26 @@ export function formatDocumentsForAi(documents: DocumentForAi[]): string {
 }
 
 /**
+ * Форматирует записи «Контекста проекта» для AI.
+ * По требованию пользователя — без обрезки. Заголовок = name записи,
+ * пометка типа (заметка/файл/скриншот) — в скобках после.
+ */
+export function formatProjectContextForAi(items: ProjectContextItemForAi[]): string {
+  const parts: string[] = []
+  for (const item of items) {
+    if (!item.text || !item.text.trim()) continue
+    const typeLabel =
+      item.itemType === 'text'
+        ? 'заметка'
+        : item.itemType === 'screenshot'
+          ? 'скриншот'
+          : 'файл'
+    parts.push(`--- ${item.name} (${typeLabel}) ---\n${item.text}`)
+  }
+  return parts.join('\n\n')
+}
+
+/**
  * Собирает итоговый контекст из выбранных источников.
  * Обрезает до MAX_CONTEXT_LENGTH.
  */
@@ -146,8 +181,11 @@ export function buildProjectContext(options: {
   chatScopeLabel?: string
   formKits?: FormKitForAi[]
   documents?: DocumentForAi[]
+  /** Записи модуля «Контекст проекта» (внутренние материалы). */
+  projectContextItems?: ProjectContextItemForAi[]
 }): string {
-  const { sources, chatMessages, chatScopeLabel, formKits, documents } = options
+  const { sources, chatMessages, chatScopeLabel, formKits, documents, projectContextItems } =
+    options
   const blocks: string[] = []
 
   const chatsEnabled =
@@ -175,6 +213,27 @@ export function buildProjectContext(options: {
       const formatted = formatDocumentsForAi(docsWithText)
       if (formatted) {
         blocks.push(`== ДОКУМЕНТЫ (${docsWithText.length} шт.) ==\n${formatted}`)
+      }
+    }
+  }
+
+  // projectContext: либо all (все записи проекта), либо selected (отфильтровать по id)
+  const pcScope = sources.projectContext
+  const pcActive =
+    pcScope.mode === 'all' ||
+    (pcScope.mode === 'selected' && pcScope.itemIds.length > 0)
+  if (pcActive && projectContextItems && projectContextItems.length > 0) {
+    const filtered =
+      pcScope.mode === 'all'
+        ? projectContextItems
+        : projectContextItems.filter((i) => pcScope.itemIds.includes(i.id))
+    const withText = filtered.filter((i) => i.text && i.text.trim())
+    if (withText.length > 0) {
+      const formatted = formatProjectContextForAi(withText)
+      if (formatted) {
+        blocks.push(
+          `== КОНТЕКСТ ПРОЕКТА (внутренние материалы команды, ${withText.length} шт.) ==\n${formatted}`,
+        )
       }
     }
   }

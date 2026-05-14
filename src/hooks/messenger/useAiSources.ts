@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { AiSources, ChatScope } from '@/services/api/messenger/messengerAiService'
+import type { ProjectContextScope } from '@/services/api/knowledge/knowledgeSearchService.types'
 
 export interface UseAiSourcesOptions {
   initialSources?: AiSources
@@ -12,6 +13,7 @@ const DEFAULT_SOURCES: AiSources = {
   chats: { mode: 'all', threadIds: [] },
   formData: false,
   documents: false,
+  projectContext: { mode: 'selected', itemIds: [] },
   knowledge: null,
 }
 
@@ -57,11 +59,17 @@ export function useAiSources(options?: UseAiSourcesOptions) {
     setSources((prev) => ({ ...prev, chats: scope }))
   }, [setSources])
 
+  /** Заменить скоуп «Контекста проекта» целиком. */
+  const setProjectContextScope = useCallback((scope: ProjectContextScope) => {
+    setSources((prev) => ({ ...prev, projectContext: scope }))
+  }, [setSources])
+
   const disableAllSources = useCallback(() => {
     setSources({
       chats: { mode: 'selected', threadIds: [] },
       formData: false,
       documents: false,
+      projectContext: { mode: 'selected', itemIds: [] },
       knowledge: null,
     })
   }, [setSources])
@@ -72,6 +80,7 @@ export function useAiSources(options?: UseAiSourcesOptions) {
     toggleSource,
     setKnowledge,
     setChatScope,
+    setProjectContextScope,
     disableAllSources,
   }
 }

@@ -43,10 +43,23 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { document_id } = await req.json() as { document_id: string };
-    if (!document_id || !isValidUUID(document_id)) {
+    const body = await req.json() as { document_id?: string; file_id?: string };
+    const { document_id, file_id } = body;
+    if (!document_id && !file_id) {
+      return new Response(
+        JSON.stringify({ error: "Either document_id or file_id is required" }),
+        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      );
+    }
+    if (document_id && !isValidUUID(document_id)) {
       return new Response(
         JSON.stringify({ error: "document_id must be a valid UUID" }),
+        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      );
+    }
+    if (file_id && !isValidUUID(file_id)) {
+      return new Response(
+        JSON.stringify({ error: "file_id must be a valid UUID" }),
         { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
@@ -59,6 +72,249 @@ Deno.serve(async (req: Request) => {
       supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // ─── Ветка file_id: извлечение текста из произвольного файла ──────────
+    // Минимальный pipeline: PDF через unpdf. Для остальных типов — ошибка.
+    // Используется модулем «Контекст проекта». Результат не сохраняется в БД —
+    // возвращается вызывающему, который сам обновляет свою таблицу.
+    if (file_id && !document_id) {
+      if (!authHeader && !isInternalCall) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+      const userClient = isInternalCall
+        ? supabaseServiceRole
+        : createClient(supabaseUrl, supabaseKey, {
+            global: { headers: { Authorization: authHeader! } },
+          });
+      let actorUserId: string | null = null;
+      if (!isInternalCall) {
+        const { data: { user }, error: uErr } = await userClient.auth.getUser();
+        if (uErr || !user) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized" }),
+            { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          );
+        }
+        actorUserId = user.id;
+      }
+
+      const { data: fileRec, error: fErr } = await supabaseServiceRole
+        .from("files")
+        .select("id, workspace_id, bucket, storage_path, mime_type, file_name")
+        .eq("id", file_id)
+        .single();
+      if (fErr || !fileRec) {
+        return new Response(
+          JSON.stringify({ error: "Файл не найден" }),
+          { status: 404, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+
+      if (actorUserId) {
+        const isMember = await checkWorkspaceMembership(supabaseServiceRole, actorUserId, fileRec.workspace_id);
+        if (!isMember) {
+          return new Response(
+            JSON.stringify({ error: "Нет доступа" }),
+            { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      const mt: string = fileRec.mime_type || "";
+      const isPdfFile = mt === "application/pdf";
+      const isImageFile = mt.startsWith("image/");
+      if (!isPdfFile && !isImageFile) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "Поддерживается только PDF и изображения. Для аудио/видео используйте transcribe-audio.",
+          }),
+          { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: blob, error: dlErr } = await supabaseServiceRole.storage
+        .from(fileRec.bucket)
+        .download(fileRec.storage_path);
+      if (dlErr || !blob) {
+        return new Response(
+          JSON.stringify({ error: "Не удалось скачать файл" }),
+          { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+
+      // PDF → unpdf
+      if (isPdfFile) {
+        try {
+          const pdfBuffer = new Uint8Array(await blob.arrayBuffer());
+          const pdf = await getDocumentProxy(pdfBuffer);
+          const { text } = await extractText(pdf, { mergePages: true });
+          const out = (text as string).trim();
+          if (!out) {
+            return new Response(
+              JSON.stringify({
+                error:
+                  "В PDF не найден текстовый слой. Скан/изображение PDF пока не обрабатывается.",
+              }),
+              { status: 422, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+            );
+          }
+          return new Response(
+            JSON.stringify({ text: out }),
+            { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          );
+        } catch (err) {
+          console.error("[EXTRACT-TEXT][file_id] unpdf error:", err);
+          return new Response(
+            JSON.stringify({ error: "Не удалось извлечь текст из PDF" }),
+            { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      // Image → пытаемся Google Vision (если ключ есть), иначе Gemini Vision (если workspace на Gemini)
+      try {
+        const fileBuffer = new Uint8Array(await blob.arrayBuffer());
+        const CHUNK = 0x8000;
+        const b64parts: string[] = [];
+        for (let i = 0; i < fileBuffer.length; i += CHUNK) {
+          b64parts.push(String.fromCharCode(...fileBuffer.subarray(i, i + CHUNK)));
+        }
+        const base64Content = btoa(b64parts.join(""));
+
+        // 1) Google Vision OCR
+        const gvKey = Deno.env.get("GOOGLE_VISION_API_KEY");
+        if (gvKey) {
+          const gvResp = await fetch(
+            `https://vision.googleapis.com/v1/images:annotate?key=${gvKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                requests: [{
+                  image: { content: base64Content },
+                  features: [{ type: "DOCUMENT_TEXT_DETECTION" }],
+                }],
+              }),
+            },
+          );
+          if (gvResp.ok) {
+            const r = await gvResp.json();
+            const gvText: string =
+              r.responses?.[0]?.fullTextAnnotation?.text?.trim() || "";
+            if (gvText) {
+              return new Response(
+                JSON.stringify({ text: gvText }),
+                { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+              );
+            }
+          } else {
+            const errBody = await gvResp.text();
+            console.error(`[EXTRACT-TEXT][file_id] GV ${gvResp.status}: ${errBody.substring(0,200)}`);
+          }
+        }
+
+        // 2) Vision-fallback по AI-модели воркспейса (Gemini или Claude)
+        const { data: wsData } = await supabaseServiceRole
+          .from("workspaces")
+          .select("ai_model")
+          .eq("id", fileRec.workspace_id)
+          .single();
+        const wsModel = wsData?.ai_model || "claude-haiku-4-5-20251001";
+        const useGemini = isGeminiModel(wsModel);
+        const rpcName = useGemini ? "get_workspace_google_api_key" : "get_workspace_api_key";
+        const { data: keyResult } = await supabaseServiceRole.rpc(
+          rpcName,
+          { workspace_uuid: fileRec.workspace_id },
+        );
+
+        if (keyResult) {
+          try {
+            if (useGemini) {
+              const out = await callGeminiApi({
+                apiKey: keyResult as string,
+                model: wsModel,
+                contents: [{
+                  role: "user",
+                  parts: [
+                    geminiImagePart(base64Content, mt),
+                    geminiTextPart("Извлеки весь текст с изображения. Верни только текст, без комментариев."),
+                  ],
+                }],
+                thinkingBudget: 0,
+              });
+              const trimmed = (out || "").trim();
+              if (trimmed) {
+                return new Response(
+                  JSON.stringify({ text: trimmed }),
+                  { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+                );
+              }
+            } else {
+              // Claude Vision — image как inline base64
+              const resp = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-api-key": keyResult as string,
+                  "anthropic-version": "2023-06-01",
+                },
+                body: JSON.stringify({
+                  model: EXTRACTION_MODEL,
+                  max_tokens: 8192,
+                  messages: [{
+                    role: "user",
+                    content: [
+                      {
+                        type: "image",
+                        source: { type: "base64", media_type: mt, data: base64Content },
+                      },
+                      {
+                        type: "text",
+                        text: "Извлеки весь текст с изображения. Верни только текст, без комментариев.",
+                      },
+                    ],
+                  }],
+                }),
+              });
+              if (resp.ok) {
+                const r = await resp.json();
+                const claudeText = (r.content?.[0]?.text || "").trim();
+                if (claudeText) {
+                  return new Response(
+                    JSON.stringify({ text: claudeText }),
+                    { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+                  );
+                }
+              } else {
+                const errBody = await resp.text();
+                console.error(`[EXTRACT-TEXT][file_id] Claude ${resp.status}: ${errBody.substring(0,200)}`);
+              }
+            }
+          } catch (err) {
+            console.error("[EXTRACT-TEXT][file_id] AI vision error:", err);
+          }
+        }
+
+        return new Response(
+          JSON.stringify({
+            error:
+              "Не удалось извлечь текст: нет ни GOOGLE_VISION_API_KEY, ни AI-ключа воркспейса. Попросите администратора настроить один из них.",
+          }),
+          { status: 422, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        );
+      } catch (err) {
+        console.error("[EXTRACT-TEXT][file_id] image error:", err);
+        return new Response(
+          JSON.stringify({ error: "Не удалось извлечь текст из изображения" }),
+          { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     // User client — для проверки доступа через RLS. При внутреннем вызове
     // используем service-role, тк userа нет, а проверки membership мы пропускаем.
