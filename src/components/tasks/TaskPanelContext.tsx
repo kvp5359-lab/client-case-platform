@@ -21,7 +21,7 @@
 import { createContext, useContext } from 'react'
 import type { TaskItem } from './types'
 import type { ProjectHeaderInfo } from './TaskPanel'
-import type { TaskPanelTab } from './taskPanelTabs.types'
+import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
 
 interface TaskPanelContextValue {
   openThread: (task: TaskItem) => void
@@ -38,6 +38,8 @@ interface TaskPanelContextValue {
   /** Положить проект поверх стека (внутренняя навигация).
    *  Используется кнопкой «Другие задачи» в открытой задаче. */
   pushProject?: (project: ProjectHeaderInfo) => void
+  /** Открыть системную вкладку (assistant / documents / forms / materials / history / extra). */
+  openSystemTab?: (type: Exclude<TaskPanelTabType, 'thread' | 'tasks'>, title: string) => void
   /** true, если дерево рендерится внутри открытой TaskPanel */
   isInsidePanel?: boolean
   /** id треда из активной вкладки — для подсветки в BoardView/списках. */

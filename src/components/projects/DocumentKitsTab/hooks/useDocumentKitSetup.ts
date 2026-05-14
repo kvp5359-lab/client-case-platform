@@ -11,7 +11,8 @@
  * Эффекты и мемоизация — в useDocumentKitEffects.
  */
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
+import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useQueryClient } from '@tanstack/react-query'
 import { useDocumentKitsQuery, useDeleteDocumentKitMutation } from '@/hooks/useDocumentKitsQuery'
 import { documentKitKeys, folderSlotKeys } from '@/hooks/queryKeys'
@@ -52,6 +53,15 @@ export function useDocumentKitSetup({
   sourceFolderId,
   exportFolderId,
 }: UseDocumentKitSetupParams) {
+  const layoutTaskPanel = useLayoutTaskPanel()
+  const openAssistantTab = useMemo(
+    () =>
+      layoutTaskPanel?.openSystemTab
+        ? () => layoutTaskPanel.openSystemTab!('assistant', 'Ассистент')
+        : undefined,
+    [layoutTaskPanel],
+  )
+
   // React Query вместо Zustand store (B-54)
   const { data: documentKits = [], isLoading } = useDocumentKitsQuery(projectId)
   // Документы без набора (document_kit_id IS NULL) — для вкладки «Новые»
@@ -454,6 +464,7 @@ export function useDocumentKitSetup({
       handlers,
       clearSelection,
       sourceOps,
+      openAssistantTab,
     }),
 
     // Dialogs props
@@ -476,6 +487,7 @@ export function useDocumentKitSetup({
       clearSelection,
       projectId,
       workspaceId,
+      openAssistantTab,
     }),
 
     // Folder sections

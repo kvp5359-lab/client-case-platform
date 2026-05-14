@@ -13,6 +13,8 @@
 
 import { useCallback } from 'react'
 import { toast } from 'sonner'
+import { useSidePanelStore } from '@/store/sidePanelStore'
+import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import type { DocumentKitWithDocuments, DocumentStatus } from '@/components/documents/types'
 import {
   useDocumentKitUIStore,
@@ -116,6 +118,19 @@ export function useDocumentsDialogsProps({
     await docActions.handleOpenDocumentById(documentToEdit.id)
   }, [documentToEdit, docActions])
 
+  const layoutTaskPanel = useLayoutTaskPanel()
+  const handleOpenAIChat = useCallback(() => {
+    if (!documentToEdit) return
+    useSidePanelStore.getState().openAssistantWithDocuments([
+      {
+        id: documentToEdit.id,
+        name: documentToEdit.name,
+        textContent: documentToEdit.text_content ?? null,
+      },
+    ])
+    layoutTaskPanel?.openSystemTab?.('assistant', 'Ассистент')
+  }, [documentToEdit, layoutTaskPanel])
+
   const handleMergeDocuments = useCallback(() => {
     const allDocs = documentKits.flatMap((kit) => kit.documents ?? [])
     const kitForMerge = documentKits.find((kit) =>
@@ -148,6 +163,7 @@ export function useDocumentsDialogsProps({
       onVerify: documentVerify.handleVerifyDocument,
       onViewContent: documentEdit.handleViewContent,
       onOpenDocument: handleOpenDocument,
+      onOpenAIChat: documentToEdit?.text_content ? handleOpenAIChat : undefined,
     },
     contentViewDialog: {
       open: contentViewDialogOpen,

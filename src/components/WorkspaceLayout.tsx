@@ -107,6 +107,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   const {
     openThreadTab,
     openProjectTab,
+    openSystemTab,
     closeTab,
     openTabs,
     closeAll: closeAllTabs,
@@ -125,6 +126,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
       pushThread: openThreadTab,
       openProject: openProjectTab,
       pushProject: openProjectTab,
+      openSystemTab,
       closeThread: closeAllTabs,
       closeTab,
       openTabs,
@@ -139,6 +141,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
     [
       openThreadTab,
       openProjectTab,
+      openSystemTab,
       closeAllTabs,
       closeTab,
       openTabs,

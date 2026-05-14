@@ -28,7 +28,7 @@ import {
 } from './useTaskPanelTabs'
 import { useThreadFromPanelTab } from './useThreadFromPanelTab'
 import { TaskPanelTabbedShellRenderer } from './TaskPanelTabbedShellRenderer'
-import type { TaskPanelTab } from './taskPanelTabs.types'
+import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
 import type { TaskItem } from './types'
 import type { ProjectHeaderInfo } from './TaskPanel'
 
@@ -48,6 +48,8 @@ export interface TaskPanelTabbedShellApi {
   openThreadTab: (task: TaskItem) => void
   /** Открыть «список задач проекта» во вкладке (Mode 2 старого TaskPanel). */
   openProjectTab: (project: ProjectHeaderInfo) => void
+  /** Открыть системную вкладку (assistant / documents / forms / materials / history / extra). */
+  openSystemTab: (type: Exclude<TaskPanelTabType, 'thread' | 'tasks'>, title: string) => void
   /** Закрыть конкретную вкладку по id. */
   closeTab: (id: string) => void
   /** Открытые сейчас вкладки (per-project, DB-backed). */
@@ -238,10 +240,20 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   const togglePanel = useCallback(() => setHidden((h) => !h), [])
   const hasTabs = tabs.tabs.length > 0
 
+  const openSystemTab = useCallback<TaskPanelTabbedShellApi['openSystemTab']>(
+    (type, title) => {
+      userInteractedRef.current = true
+      setHidden(false)
+      tabsOpenTab(buildSystemTab(type, title))
+    },
+    [tabsOpenTab],
+  )
+
   const api: TaskPanelTabbedShellApi = useMemo(
     () => ({
       openThreadTab,
       openProjectTab,
+      openSystemTab,
       closeTab: tabs.closeTab,
       openTabs: tabs.tabs,
       closeAll: tabs.closeAll,
@@ -256,6 +268,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     [
       openThreadTab,
       openProjectTab,
+      openSystemTab,
       tabs.closeTab,
       tabs.tabs,
       tabs.closeAll,

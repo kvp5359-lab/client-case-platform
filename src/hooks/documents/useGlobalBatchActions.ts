@@ -25,6 +25,7 @@ import {
   clearAllSelections,
 } from './useDocumentSelection'
 import { useSidePanelStore } from '@/store/sidePanelStore'
+import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useDocumentKitUIStore, useCompressState } from '@/store/documentKitUI'
 import { useDocumentCompress } from '@/components/projects/DocumentKitsTab/hooks/useDocumentCompress'
 import {
@@ -62,6 +63,7 @@ export function useGlobalBatchActions({
 
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
+  const layoutTaskPanel = useLayoutTaskPanel()
 
   const addCompressingDoc = useDocumentKitUIStore((s) => s.addCompressingDoc)
   const removeCompressingDoc = useDocumentKitUIStore((s) => s.removeCompressingDoc)
@@ -186,6 +188,8 @@ export function useGlobalBatchActions({
       if (selectedDocs.length === 0) return
       const store = useSidePanelStore.getState()
       if (target === 'assistant') {
+        // Кладём документы в pendingAiDocuments — их подхватит AI-панель
+        // через useProjectAiDocuments при монтировании.
         store.openAssistantWithDocuments(
           selectedDocs.map((d) => ({
             id: d.id,
@@ -193,6 +197,8 @@ export function useGlobalBatchActions({
             textContent: d.text_content ?? null,
           })),
         )
+        // Открываем вкладку ассистента в новой системе табов правой панели.
+        layoutTaskPanel?.openSystemTab?.('assistant', 'Ассистент')
       } else {
         store.sendDocumentsToMessenger(
           selectedDocs.map((d) => d.id),
@@ -200,7 +206,7 @@ export function useGlobalBatchActions({
         )
       }
     },
-    [selectedDocs],
+    [selectedDocs, layoutTaskPanel],
   )
 
   // Проверяем, есть ли среди selected docs удалённые

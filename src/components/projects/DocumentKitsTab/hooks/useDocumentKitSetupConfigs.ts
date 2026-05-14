@@ -87,6 +87,8 @@ interface BatchActionsParams {
   handlers: DocumentKitHandlers
   clearSelection: () => void
   sourceOps: { toggleSourceDocumentHidden: (fileId: string, isHidden: boolean) => Promise<void> }
+  /** Открыть вкладку «Ассистент» в правой панели (новая система табов). */
+  openAssistantTab?: () => void
 }
 
 export function buildBatchActionsConfig(p: BatchActionsParams) {
@@ -124,6 +126,7 @@ export function buildBatchActionsConfig(p: BatchActionsParams) {
           }))
         if (docs.length > 0) {
           useSidePanelStore.getState().openAssistantWithDocuments(docs)
+          p.openAssistantTab?.()
         }
       },
       onBatchToggleHidden: async (hide: boolean) => {
@@ -182,6 +185,8 @@ interface DialogsParams {
   clearSelection: () => void
   projectId: string
   workspaceId: string
+  /** Открыть вкладку «Ассистент» в правой панели (новая система табов). */
+  openAssistantTab?: () => void
 }
 
 export function buildDialogsConfig(p: DialogsParams) {
@@ -212,6 +217,7 @@ export function buildDialogsConfig(p: DialogsParams) {
                 textContent: p.documentToEdit!.text_content ?? null,
               },
             ])
+            p.openAssistantTab?.()
           }
         : undefined,
       onClearContent: p.documentEdit.handleClearContent,
