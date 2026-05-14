@@ -11,6 +11,7 @@ export function useSidebarCollapsed() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage недоступен на сервере; читаем после mount чтобы избежать SSR/CSR-mismatch
       if (saved === '1') setIsCollapsed(true)
     } catch {
       /* ignore */

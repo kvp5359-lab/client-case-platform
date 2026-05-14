@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useMemo, createContext, useContext } from 'react'
 import { useParams } from 'next/navigation'
-import { Menu, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Menu, X, PanelLeftOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WorkspaceSidebarFull } from './WorkspaceSidebarFull'
 import { useSidebarCollapsed } from './WorkspaceSidebar/useSidebarCollapsed'

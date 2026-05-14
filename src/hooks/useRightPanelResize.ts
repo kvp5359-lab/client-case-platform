@@ -37,6 +37,7 @@ export function useRightPanelResize() {
         const w = parseInt(saved, 10)
         if (!Number.isNaN(w)) {
           const clamped = clampWidth(w)
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage недоступен на сервере; читаем после mount чтобы избежать SSR/CSR-mismatch
           setPanelWidth(clamped)
           widthRef.current = clamped
           document.documentElement.style.setProperty('--panel-width', `${clamped}px`)
