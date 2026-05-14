@@ -22,6 +22,7 @@ import {
   preflight, jsonRes, okText, requireInternalSecret, getServiceClient,
   markOutgoingExternal,
 } from "../_shared/edge.ts";
+import { logServerSendFailure } from "../_shared/sendFailureLog.ts";
 
 interface RequestBody {
   message_id: string;
@@ -191,6 +192,13 @@ Deno.serve(async (req: Request) => {
 
   console.error(`[wazzup-send] error:`, firstError);
   await service.from("project_messages").update({ wazzup_status: "error" }).eq("id", msg.id);
+  await logServerSendFailure(service, {
+    message_id: msg.id,
+    error_text: firstError ?? "Wazzup send failed",
+    error_code: "wazzup_send_failed",
+    source: "wazzup",
+    metadata: { stage: "send" },
+  });
   return jsonRes({ ok: false, error: firstError }, 200, req);
 });
 

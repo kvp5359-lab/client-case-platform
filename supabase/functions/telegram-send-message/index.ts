@@ -13,6 +13,7 @@ import { resolveBotToken, findEmployeeBot } from "../_shared/telegramBotToken.ts
 import { detectChatMigration } from "../_shared/telegramMigration.ts";
 import { isReplyNotFoundError, loadReplyQuoteHtml } from "./helpers.ts";
 import { sendAttachmentsWithFallback } from "./attachments.ts";
+import { logServerSendFailure } from "../_shared/sendFailureLog.ts";
 
 interface RequestBody {
   message_id: string;
@@ -384,6 +385,19 @@ Deno.serve(async (req: Request) => {
           .eq("id", body.message_id);
       } else {
         console.error("Telegram API error:", tgData);
+        // Финальный фейл текстовой отправки (после всех retry/fallback) —
+        // логируем в message_send_failures, чтобы фронт получил sticky-toast
+        // через realtime даже у юзера, который ушёл из чата/закрыл вкладку.
+        await logServerSendFailure(serviceClient, {
+          message_id: body.message_id,
+          error_text: tgData.description ?? `Telegram API: ${tgResponse.status}`,
+          error_code: tgData.error_code != null
+            ? `tg_${tgData.error_code}`
+            : `http_${tgResponse.status}`,
+          source: "telegram",
+          integration_id: activeIntegrationId ?? null,
+          metadata: { stage: "text", chat_id: activeChatId },
+        });
       }
 
       // (только для устранения unused-warn'ов)
@@ -512,6 +526,19 @@ Deno.serve(async (req: Request) => {
               .from("project_messages")
               .update({ telegram_message_id: tgData.result.message_id, telegram_chat_id: activeChatId })
               .eq("id", body.message_id);
+          } else if (!tgData.ok) {
+            // Финальный фейл split-text-ветки (caption + альбом). Логируем
+            // отдельно от вложений: текст и файлы в этой ветке шлются разными
+            // запросами, и пользователю важно знать что именно текст не дошёл.
+            await logServerSendFailure(serviceClient, {
+              message_id: body.message_id,
+              error_text: tgData.description ?? `Telegram API: ${tgRes.status}`,
+              error_code: tgData.error_code != null
+                ? `tg_${tgData.error_code}`
+                : `http_${tgRes.status}`,
+              source: "telegram",
+              metadata: { stage: "split_text", chat_id: activeChatId },
+            });
           }
 
           attachmentsOk = await sendAttachmentsWithFallback({
@@ -541,6 +568,15 @@ Deno.serve(async (req: Request) => {
         .update({ telegram_attachments_delivered: attachmentsOk })
         .eq("id", body.message_id);
       trace("attachments.done", { ok: attachmentsOk });
+      if (!attachmentsOk) {
+        await logServerSendFailure(serviceClient, {
+          message_id: body.message_id,
+          error_text: "Не удалось отправить вложения в Telegram",
+          error_code: "attachments_failed",
+          source: "telegram",
+          metadata: { stage: "attachments", chat_id: body.telegram_chat_id },
+        });
+      }
     }
 
     trace("request.end", { total_ms: Date.now() - T0 });

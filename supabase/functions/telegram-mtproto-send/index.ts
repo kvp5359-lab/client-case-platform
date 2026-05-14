@@ -16,6 +16,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { logServerSendFailure } from "../_shared/sendFailureLog.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -118,11 +119,33 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify(payload),
     });
     const text = await res.text();
+    if (!res.ok) {
+      // MTProto-сервис вернул не-2xx — лог в журнал, фронт получит sticky-toast.
+      let parsedErr: string = text.slice(0, 500);
+      try {
+        const j = JSON.parse(text);
+        parsedErr = (j?.error as string) ?? parsedErr;
+      } catch { /* keep text */ }
+      await logServerSendFailure(service, {
+        message_id: msg.id,
+        error_text: parsedErr,
+        error_code: `mtproto_${res.status}`,
+        source: "telegram_mtproto",
+        metadata: { stage: "send" },
+      });
+    }
     return new Response(text, {
       status: res.status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    await logServerSendFailure(service, {
+      message_id: msg.id,
+      error_text: `MTProto service unreachable: ${err}`.slice(0, 500),
+      error_code: "mtproto_unreachable",
+      source: "telegram_mtproto",
+      metadata: { stage: "fetch" },
+    });
     return jsonResponse({ error: `service unreachable: ${err}` }, 502, corsHeaders);
   }
 });

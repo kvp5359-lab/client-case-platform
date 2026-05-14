@@ -19,6 +19,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { logServerSendFailure } from "../_shared/sendFailureLog.ts";
 import {
   isHtmlContent,
   htmlToTelegramHtml,
@@ -161,6 +162,13 @@ Deno.serve(async (req: Request) => {
       .from("project_messages")
       .update({ telegram_error_detail: tgJson.description ?? "send failed" })
       .eq("id", msg.id);
+    await logServerSendFailure(service, {
+      message_id: msg.id,
+      error_text: tgJson.description ?? `Telegram API: ${tgRes.status}`,
+      error_code: `http_${tgRes.status}`,
+      source: "telegram_business",
+      metadata: { stage: "send" },
+    });
     return jsonOk({ ok: false, error: tgJson.description });
   }
 
