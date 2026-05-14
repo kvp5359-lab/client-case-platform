@@ -3,24 +3,35 @@
 /**
  * SidebarSlotsRow — общий рендерер ряда слотов сайдбара (топбар-иконки
  * или полные пункты списка). Один компонент покрывает оба режима через
- * `compact` — раньше эти ~150 строк копипастились двумя `<nav>` блоками
- * внутри WorkspaceSidebarFull.
+ * `compact`. Папки (`type='folder'`) рендерятся как кнопка/строка; клик
+ * открывает popover со списком вложенных слотов. Внутри папки —
+ * 1 уровень, гнездование запрещено на уровне типа.
  */
 
-import { FolderOpen, Kanban, ListChecks, PinOff } from 'lucide-react'
+import { useState } from 'react'
+import { Folder as FolderIcon, FolderOpen, Kanban, ListChecks, PinOff } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { SidebarNavButton } from './SidebarNavButton'
 import type { ItemList } from '@/hooks/useItemLists'
 import {
   SIDEBAR_NAV_ITEMS,
   boardIdFromSlotId,
+  childrenOfFolder,
   listIdFromSlotId,
   navKeyFromSlotId,
+  topLevelSlots,
   type SidebarBadgeMode,
   type SidebarNavKey,
   type SidebarSlot,
 } from '@/lib/sidebarSettings'
 
 interface SidebarSlotsRowProps {
+  /** ВСЕ слоты зоны (топбар или список), включая папки и их детей. */
   slots: SidebarSlot[]
   compact: boolean
   allBoards: { id: string; name: string }[] | undefined
@@ -37,8 +48,32 @@ interface SidebarSlotsRowProps {
   toggleListPin: (listId: string) => void
 }
 
-export function SidebarSlotsRow({
-  slots,
+export function SidebarSlotsRow(props: SidebarSlotsRowProps) {
+  const { slots, compact } = props
+  const top = topLevelSlots(slots)
+  if (top.length === 0) return null
+
+  const wrapperClass = compact ? 'flex items-center justify-between gap-[1px]' : ''
+  const wrapperStyle = compact
+    ? undefined
+    : { display: 'flex', flexDirection: 'column' as const, gap: '1px' }
+
+  return (
+    <nav className={wrapperClass} style={wrapperStyle}>
+      {top.map((slot) => {
+        if (slot.type === 'folder') {
+          return <FolderSlot key={slot.id} folder={slot} allSlots={slots} {...props} />
+        }
+        return <SingleSlot key={slot.id} slot={slot} {...props} />
+      })}
+    </nav>
+  )
+}
+
+// ── Renderer одного «не-папочного» слота (nav / board / list) ────────
+
+function SingleSlot({
+  slot,
   compact,
   allBoards,
   allItemLists,
@@ -51,118 +86,175 @@ export function SidebarSlotsRow({
   listSlots,
   toggleBoardPin,
   toggleListPin,
-}: SidebarSlotsRowProps) {
-  if (slots.length === 0) return null
+}: { slot: SidebarSlot } & SidebarSlotsRowProps) {
+  const badge = computeBadge(slot.badge_mode)
 
-  const wrapperClass = compact
-    ? 'flex items-center justify-between gap-[1px]'
-    : ''
-  const wrapperStyle = compact
-    ? undefined
-    : { display: 'flex', flexDirection: 'column' as const, gap: '1px' }
+  if (slot.type === 'nav') {
+    const key = navKeyFromSlotId(slot.id)!
+    const meta = SIDEBAR_NAV_ITEMS[key]
+    return (
+      <SidebarNavButton
+        icon={meta.icon}
+        label={meta.label}
+        href={buildHref(meta.path)}
+        badge={badge}
+        isActive={isNavItemActive(key, listSlots)}
+        compact={compact || undefined}
+      />
+    )
+  }
+
+  if (slot.type === 'board') {
+    const boardId = boardIdFromSlotId(slot.id)!
+    const board = allBoards?.find((b) => b.id === boardId)
+    if (!board) return null
+    const hoverSlot =
+      !compact && isOwner ? (
+        <button
+          type="button"
+          className="p-0.5 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
+          title="Открепить"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            toggleBoardPin(board.id)
+          }}
+        >
+          <PinOff className="h-[14px] w-[14px]" />
+        </button>
+      ) : undefined
+    const button = (
+      <SidebarNavButton
+        icon={Kanban}
+        label={board.name}
+        href={buildHref(`boards/${board.id}`)}
+        badge={badge}
+        isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
+        compact={compact || undefined}
+        hoverIconSlot={hoverSlot}
+      />
+    )
+    return compact ? <div>{button}</div> : <div className="group/pin">{button}</div>
+  }
+
+  // type === 'list'
+  const listId = listIdFromSlotId(slot.id)!
+  const list = allItemLists?.find((l) => l.id === listId)
+  if (!list) return null
+  const hoverSlot =
+    !compact && isOwner ? (
+      <button
+        type="button"
+        className="p-0.5 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
+        title="Открепить"
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          toggleListPin(list.id)
+        }}
+      >
+        <PinOff className="h-[14px] w-[14px]" />
+      </button>
+    ) : undefined
+  const Icon = list.entity_type === 'project' ? FolderOpen : ListChecks
+  const button = (
+    <SidebarNavButton
+      icon={Icon}
+      label={list.name}
+      href={buildHref(`lists/${list.id}`)}
+      badge={badge}
+      isActive={pathname.includes(`/lists/${list.id}`)}
+      compact={compact || undefined}
+      hoverIconSlot={hoverSlot}
+    />
+  )
+  return compact ? <div>{button}</div> : <div className="group/pin">{button}</div>
+}
+
+// ── Renderer папки: кнопка + popover со вложенными ──────────────────
+
+function FolderSlot({
+  folder,
+  allSlots,
+  ...rest
+}: { folder: SidebarSlot; allSlots: SidebarSlot[] } & SidebarSlotsRowProps) {
+  const [open, setOpen] = useState(false)
+  const { compact } = rest
+  const children_ = childrenOfFolder(allSlots, folder.id)
+
+  // Бейдж папки — сумма численных бейджей детей (или собственный, если задан).
+  const folderBadge = (() => {
+    const own = rest.computeBadge(folder.badge_mode)
+    if (own) return own
+    const childBadges = children_
+      .map((c) => rest.computeBadge(c.badge_mode))
+      .filter((b): b is string => !!b && /^\d+$/.test(b))
+      .map(Number)
+    if (childBadges.length === 0) return undefined
+    const total = childBadges.reduce((a, b) => a + b, 0)
+    return total > 0 ? String(total) : undefined
+  })()
+
+  const triggerLabel = folder.name ?? 'Папка'
 
   return (
-    <nav className={wrapperClass} style={wrapperStyle}>
-      {slots.map((slot) => {
-        const badge = computeBadge(slot.badge_mode)
-
-        if (slot.type === 'nav') {
-          const key = navKeyFromSlotId(slot.id)!
-          const meta = SIDEBAR_NAV_ITEMS[key]
-          return (
-            <SidebarNavButton
-              key={slot.id}
-              icon={meta.icon}
-              label={meta.label}
-              href={buildHref(meta.path)}
-              badge={badge}
-              isActive={isNavItemActive(key, listSlots)}
-              compact={compact || undefined}
-            />
-          )
-        }
-
-        if (slot.type === 'board') {
-          const boardId = boardIdFromSlotId(slot.id)!
-          const board = allBoards?.find((b) => b.id === boardId)
-          if (!board) return null
-          // Pin-off hover-хэндл показываем только в «полном» режиме (compact-
-          // иконки в топбаре слишком маленькие, а для них pin-off дублирует
-          // × в настройках сайдбара).
-          const hoverSlot =
-            !compact && isOwner ? (
-              <button
-                type="button"
-                className="p-0.5 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
-                title="Открепить"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  toggleBoardPin(board.id)
-                }}
-              >
-                <PinOff className="h-[14px] w-[14px]" />
-              </button>
-            ) : undefined
-          const button = (
-            <SidebarNavButton
-              icon={Kanban}
-              label={board.name}
-              href={buildHref(`boards/${board.id}`)}
-              badge={badge}
-              isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
-              compact={compact || undefined}
-              hoverIconSlot={hoverSlot}
-            />
-          )
-          return compact ? (
-            <div key={slot.id}>{button}</div>
-          ) : (
-            <div key={slot.id} className="group/pin">
-              {button}
-            </div>
-          )
-        }
-
-        // type === 'list'
-        const listId = listIdFromSlotId(slot.id)!
-        const list = allItemLists?.find((l) => l.id === listId)
-        if (!list) return null
-        const hoverSlot =
-          !compact && isOwner ? (
-            <button
-              type="button"
-              className="p-0.5 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
-              title="Открепить"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                toggleListPin(list.id)
-              }}
-            >
-              <PinOff className="h-[14px] w-[14px]" />
-            </button>
-          ) : undefined
-        const Icon = list.entity_type === 'project' ? FolderOpen : ListChecks
-        const button = (
-          <SidebarNavButton
-            icon={Icon}
-            label={list.name}
-            href={buildHref(`lists/${list.id}`)}
-            badge={badge}
-            isActive={pathname.includes(`/lists/${list.id}`)}
-            compact={compact || undefined}
-            hoverIconSlot={hoverSlot}
-          />
-        )
-        return compact ? (
-          <div key={slot.id}>{button}</div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        {compact ? (
+          <button
+            type="button"
+            title={triggerLabel}
+            className={cn(
+              'relative flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] transition-colors',
+              open
+                ? 'bg-gray-200 text-gray-900'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50',
+            )}
+          >
+            <FolderIcon className="h-[18px] w-[18px] shrink-0" />
+            {folderBadge && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[11px] font-bold leading-none flex items-center justify-center">
+                {folderBadge}
+              </span>
+            )}
+          </button>
         ) : (
-          <div key={slot.id} className="group/pin">
-            {button}
+          <button
+            type="button"
+            className={cn(
+              'w-full flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] transition-colors font-medium',
+              open ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100/50',
+            )}
+          >
+            <span className="relative shrink-0 w-[22px] h-[22px] flex items-center justify-center">
+              <FolderIcon className="h-[18px] w-[18px]" />
+            </span>
+            <span className="flex-1 truncate text-left">{triggerLabel}</span>
+            {folderBadge && (
+              <span className="min-w-[18px] h-[18px] px-[3px] rounded-[4px] bg-red-100 text-red-600 text-[11px] font-semibold leading-none flex items-center justify-center">
+                {folderBadge}
+              </span>
+            )}
+          </button>
+        )}
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        side={compact ? 'bottom' : 'right'}
+        className="w-64 p-1"
+        onClick={() => setOpen(false)}
+      >
+        <div className="text-xs text-gray-500 px-2 py-1">{triggerLabel}</div>
+        {children_.length === 0 ? (
+          <div className="text-xs text-gray-400 px-2 py-2">Папка пустая</div>
+        ) : (
+          <div className="flex flex-col gap-[1px]">
+            {children_.map((child) => (
+              <SingleSlot key={child.id} slot={child} {...rest} compact={false} />
+            ))}
           </div>
-        )
-      })}
-    </nav>
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }

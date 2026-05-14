@@ -186,17 +186,18 @@ function SidebarSettingsView({
     const idx = next.findIndex((s) => s.id === slotId)
     if (idx < 0) return
     const target = next[idx]
+    const targetParent = target.parent_id ?? null
     let swap = -1
     if (delta === -1) {
       for (let i = idx - 1; i >= 0; i--) {
-        if (next[i].placement === target.placement) {
+        if (next[i].placement === target.placement && (next[i].parent_id ?? null) === targetParent) {
           swap = i
           break
         }
       }
     } else {
       for (let i = idx + 1; i < next.length; i++) {
-        if (next[i].placement === target.placement) {
+        if (next[i].placement === target.placement && (next[i].parent_id ?? null) === targetParent) {
           swap = i
           break
         }
@@ -207,20 +208,68 @@ function SidebarSettingsView({
     onChange(reorderWithinZones(next))
   }
 
+  const createFolder = (placement: SidebarPlacement) => {
+    const uuid =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    const slot: SidebarSlot = {
+      id: `folder:${uuid}`,
+      type: 'folder',
+      placement,
+      order: 0,
+      badge_mode: 'disabled',
+      name: 'Новая папка',
+      parent_id: null,
+    }
+    onChange(reorderWithinZones([...slots, slot]))
+  }
+
+  const renameFolder = (slotId: string, name: string) => {
+    onChange(slots.map((s) => (s.id === slotId ? { ...s, name } : s)))
+  }
+
+  const moveToFolder = (slotId: string, folderId: string | null) => {
+    const target = slots.find((s) => s.id === slotId)
+    if (!target) return
+    // Папка не может быть в папке.
+    if (target.type === 'folder' && folderId) return
+    // Папка-получатель должна быть той же зоны.
+    if (folderId) {
+      const folder = slots.find((s) => s.id === folderId)
+      if (!folder || folder.type !== 'folder' || folder.placement !== target.placement) return
+    }
+    onChange(
+      reorderWithinZones(
+        slots.map((s) => (s.id === slotId ? { ...s, parent_id: folderId } : s)),
+      ),
+    )
+  }
+
   const setBadge = (slotId: string, mode: SidebarBadgeMode) => {
     onChange(slots.map((s) => (s.id === slotId ? { ...s, badge_mode: mode } : s)))
   }
 
   const moveToZone = (slotId: string, placement: SidebarPlacement) => {
-    const idx = slots.findIndex((s) => s.id === slotId)
-    if (idx < 0) return
-    if (slots[idx].placement === placement) return
-    const next = slots.map((s) => (s.id === slotId ? { ...s, placement } : s))
+    const target = slots.find((s) => s.id === slotId)
+    if (!target || target.placement === placement) return
+    // Если перемещаем папку — тащим её детей в новую зону.
+    const next = slots.map((s) => {
+      if (s.id === slotId) return { ...s, placement, parent_id: null }
+      if (target.type === 'folder' && s.parent_id === slotId) return { ...s, placement }
+      return s
+    })
     onChange(reorderWithinZones(next))
   }
 
   const removeFromSidebar = (slotId: string) => {
-    onChange(reorderWithinZones(slots.filter((s) => s.id !== slotId)))
+    const target = slots.find((s) => s.id === slotId)
+    if (!target) return
+    // При удалении папки её дети остаются в той же зоне, но на верхнем уровне.
+    const cleared = slots
+      .filter((s) => s.id !== slotId)
+      .map((s) => (target.type === 'folder' && s.parent_id === slotId ? { ...s, parent_id: null } : s))
+    onChange(reorderWithinZones(cleared))
   }
 
   const addToZone = (entry: AvailableEntry, placement: SidebarPlacement) => {
@@ -269,6 +318,9 @@ function SidebarSettingsView({
         onSetBadge={setBadge}
         onMoveToZone={moveToZone}
         onRemove={removeFromSidebar}
+        onCreateFolder={createFolder}
+        onRenameFolder={renameFolder}
+        onMoveToFolder={moveToFolder}
         warning={
           topbar.length > TOPBAR_SOFT_LIMIT
             ? `В верхней строке ${topbar.length} иконок. Рекомендуется не больше ${TOPBAR_SOFT_LIMIT}.`
@@ -288,6 +340,9 @@ function SidebarSettingsView({
         onSetBadge={setBadge}
         onMoveToZone={moveToZone}
         onRemove={removeFromSidebar}
+        onCreateFolder={createFolder}
+        onRenameFolder={renameFolder}
+        onMoveToFolder={moveToFolder}
         warning={null}
       />
 

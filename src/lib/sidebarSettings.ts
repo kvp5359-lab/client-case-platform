@@ -50,11 +50,21 @@ export type SidebarBadgeMode =
   | 'unread_personal_dialogs'
 
 export interface SidebarSlot {
-  id: string // 'nav:<key>' | 'board:<uuid>' | 'list:<uuid>'
-  type: 'nav' | 'board' | 'list'
+  id: string // 'nav:<key>' | 'board:<uuid>' | 'list:<uuid>' | 'folder:<uuid>'
+  type: 'nav' | 'board' | 'list' | 'folder'
   placement: SidebarPlacement
   order: number
   badge_mode: SidebarBadgeMode
+  /**
+   * Если задано — слот вложен в папку (значение = id слота-папки). 1 уровень
+   * вложенности: папка не может быть в папке. Для слотов верхнего уровня
+   * не задано (undefined/null).
+   */
+  parent_id?: string | null
+  /** Имя папки (только для type='folder'). */
+  name?: string
+  /** Имя lucide-иконки для папки (опционально, дефолт — Folder). */
+  folder_icon?: string
 }
 
 export interface SidebarSettingsRow {
@@ -261,7 +271,9 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
     const obj = item as Record<string, unknown>
     const id = typeof obj.id === 'string' ? obj.id : null
     const type =
-      obj.type === 'nav' || obj.type === 'board' || obj.type === 'list' ? obj.type : null
+      obj.type === 'nav' || obj.type === 'board' || obj.type === 'list' || obj.type === 'folder'
+        ? obj.type
+        : null
     const placement =
       obj.placement === 'topbar' || obj.placement === 'list' ? obj.placement : null
     const order = typeof obj.order === 'number' ? obj.order : out.length
@@ -277,27 +289,65 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
     } else if (type === 'board') {
       const uuid = id.startsWith('board:') ? id.slice(6) : null
       if (!uuid || !UUID_RE.test(uuid)) continue
-    } else {
-      // type === 'list'
+    } else if (type === 'list') {
       const uuid = id.startsWith('list:') ? id.slice(5) : null
       if (!uuid || !UUID_RE.test(uuid)) continue
+    } else {
+      // type === 'folder'
+      const uuid = id.startsWith('folder:') ? id.slice(7) : null
+      if (!uuid || !UUID_RE.test(uuid)) continue
     }
-    out.push({ id, type, placement, order, badge_mode: badgeMode })
+    const slot: SidebarSlot = { id, type, placement, order, badge_mode: badgeMode }
+    if (typeof obj.parent_id === 'string' && obj.parent_id.startsWith('folder:')) {
+      slot.parent_id = obj.parent_id
+    }
+    if (type === 'folder') {
+      slot.name = typeof obj.name === 'string' && obj.name.trim() ? obj.name : 'Папка'
+      if (typeof obj.folder_icon === 'string') slot.folder_icon = obj.folder_icon
+      // Папка не может быть в папке — гарантируем.
+      slot.parent_id = null
+    }
+    out.push(slot)
   }
-  // Перенумеровка order внутри каждой зоны. Сначала сортируем по существующим
-  // order (важно для входа из БД, где JSONB может лежать не в порядке).
+  // Втора стадия: parent_id должен указывать на существующий слот type='folder'
+  // ровно той же placement (зоны). Иначе сбрасываем в верхний уровень.
+  const folderIds = new Set(out.filter((s) => s.type === 'folder').map((s) => s.id))
+  const folderPlacement = new Map(out.filter((s) => s.type === 'folder').map((s) => [s.id, s.placement]))
+  for (const s of out) {
+    if (!s.parent_id) continue
+    if (!folderIds.has(s.parent_id) || folderPlacement.get(s.parent_id) !== s.placement) {
+      s.parent_id = null
+    }
+  }
+  // Сортируем по существующим order (важно для JSONB) и перенумеровываем.
   out.sort((a, b) => a.order - b.order)
   return reorderWithinZones(out)
 }
 
 /**
- * Перенумеровывает order=0..n-1 внутри каждой зоны, СОХРАНЯЯ текущий порядок
- * элементов в массиве. Не сортирует — вызывающий код должен передать массив
- * уже в желаемой последовательности (после swap, filter, push и т.п.).
+ * Перенумеровывает order=0..n-1 внутри каждой группы (placement + parent_id),
+ * СОХРАНЯЯ текущий порядок элементов в массиве. Не сортирует — вызывающий
+ * код должен передать массив уже в желаемой последовательности (после swap,
+ * filter, push и т.п.).
  */
 export function reorderWithinZones(slots: SidebarSlot[]): SidebarSlot[] {
-  const counters: Record<SidebarPlacement, number> = { topbar: 0, list: 0 }
-  return slots.map((s) => ({ ...s, order: counters[s.placement]++ }))
+  const counters = new Map<string, number>()
+  return slots.map((s) => {
+    const key = `${s.placement}:${s.parent_id ?? ''}`
+    const next = (counters.get(key) ?? 0)
+    counters.set(key, next + 1)
+    return { ...s, order: next }
+  })
+}
+
+/** Слоты верхнего уровня (не вложенные в папку). */
+export function topLevelSlots(slots: SidebarSlot[]): SidebarSlot[] {
+  return slots.filter((s) => !s.parent_id)
+}
+
+/** Дети указанной папки. */
+export function childrenOfFolder(slots: SidebarSlot[], folderId: string): SidebarSlot[] {
+  return slots.filter((s) => s.parent_id === folderId)
 }
 
 /** Группирует слоты по зонам в порядке `order` для рендера. */

@@ -265,9 +265,12 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId }: Workspac
         const boardId = boardIdFromSlotId(s.id)
         return boardId ? Boolean(allBoards?.find((b) => b.id === boardId)) : false
       }
-      // type === 'list'
-      const listId = listIdFromSlotId(s.id)
-      return listId ? Boolean(allItemLists?.find((l) => l.id === listId)) : false
+      if (s.type === 'list') {
+        const listId = listIdFromSlotId(s.id)
+        return listId ? Boolean(allItemLists?.find((l) => l.id === listId)) : false
+      }
+      // type === 'folder' — папки доступны всегда (дочерние элементы фильтруются по доступу выше).
+      return true
     })
     const sorted = [...accessible].sort((a, b) => a.order - b.order)
     return {
