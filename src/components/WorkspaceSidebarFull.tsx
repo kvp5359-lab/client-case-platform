@@ -19,6 +19,7 @@ import { useSidebarResize } from './WorkspaceSidebar/useSidebarResize'
 import { useSidebarInboxCounts } from '@/hooks/messenger/useFilteredInbox'
 import { supabase } from '@/lib/supabase'
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
+import { SendFailuresIndicator } from '@/components/messenger/SendFailuresIndicator'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { usePinnedBoards } from './WorkspaceSidebar/usePinnedBoards'
@@ -357,6 +358,10 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId, onCollapse
           )}
         </div>
       )}
+
+      {/* Индикатор «N не отправлено» — показывается только при наличии
+          незакрытых ошибок отправки у текущего юзера в этом воркспейсе. */}
+      <SendFailuresIndicator workspaceId={workspaceId} />
 
       <div className="px-2 pb-2">
         <SidebarSlotsRow

@@ -25,6 +25,7 @@ const SETTINGS_TAB_TITLES: Record<string, string> = {
   sidebar: 'Сайдбар',
   domain: 'Домен',
   trash: 'Корзина',
+  'send-failures': 'Журнал неотправленных',
 }
 
 const ParticipantsTab = React.lazy(() =>
@@ -53,6 +54,9 @@ const IntegrationsTab = React.lazy(() =>
 )
 const DomainSettingsTab = React.lazy(() =>
   import('./workspace-settings/DomainSettingsTab').then((m) => ({ default: m.DomainSettingsTab })),
+)
+const SendFailuresTab = React.lazy(() =>
+  import('./workspace-settings/SendFailuresTab').then((m) => ({ default: m.SendFailuresTab })),
 )
 
 export function WorkspaceSettingsPage() {
@@ -93,6 +97,7 @@ export function WorkspaceSettingsPage() {
     if (pathname.includes('/digest')) return 'digest'
     if (pathname.includes('/sidebar')) return 'sidebar'
     if (pathname.includes('/domain')) return 'domain'
+    if (pathname.includes('/send-failures')) return 'send-failures'
     if (pathname.includes('/trash')) return 'trash'
     return 'general'
   }
@@ -212,6 +217,14 @@ export function WorkspaceSettingsPage() {
                   Корзина
                 </TabsTrigger>
               )}
+              {(permissions.isOwner || permissions.can('manage_workspace_settings')) && (
+                <TabsTrigger
+                  value="send-failures"
+                  onClick={() => handleTabChange('send-failures')}
+                >
+                  Не отправленные
+                </TabsTrigger>
+              )}
             </TabsList>
           </Tabs>
 
@@ -228,6 +241,7 @@ export function WorkspaceSettingsPage() {
             {activeTab === 'sidebar' && <SidebarSettingsTab />}
             {activeTab === 'domain' && permissions.isOwner && <DomainSettingsTab />}
             {activeTab === 'trash' && <TrashTab />}
+            {activeTab === 'send-failures' && <SendFailuresTab />}
           </Suspense>
         </div>
       </main>

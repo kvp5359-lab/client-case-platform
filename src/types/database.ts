@@ -4117,6 +4117,99 @@ export type Database = {
           },
         ]
       }
+      message_send_failures: {
+        Row: {
+          attachment_names: string[] | null
+          content: string | null
+          created_at: string
+          error_code: string | null
+          error_text: string
+          id: string
+          integration_id: string | null
+          metadata: Json | null
+          participant_id: string | null
+          project_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          source: string | null
+          thread_id: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          attachment_names?: string[] | null
+          content?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_text: string
+          id?: string
+          integration_id?: string | null
+          metadata?: Json | null
+          participant_id?: string | null
+          project_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source?: string | null
+          thread_id?: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          attachment_names?: string[] | null
+          content?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_text?: string
+          id?: string
+          integration_id?: string | null
+          metadata?: Json | null
+          participant_id?: string | null
+          project_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source?: string | null
+          thread_id?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_send_failures_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_send_failures_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_send_failures_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_send_failures_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "project_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_send_failures_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_translations: {
         Row: {
           created_at: string

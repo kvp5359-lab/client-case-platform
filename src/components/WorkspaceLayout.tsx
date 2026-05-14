@@ -20,6 +20,7 @@ import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { FloatingPanelButtons } from './FloatingPanelButtons'
 import { GlobalContactCardDialog } from '@/components/contacts/GlobalContactCardDialog'
+import { SendFailureToasts } from '@/components/messenger/SendFailureToasts'
 import { useNewMessageToast } from '@/hooks/messenger/useNewMessageToast'
 import { useFaviconBadge } from '@/hooks/messenger/useFaviconBadge'
 import { useWorkspaceMessagesRealtime } from '@/hooks/messenger/useWorkspaceMessagesRealtime'
@@ -261,6 +262,11 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
 
         {/* Глобальная карточка контакта — открывается из useContactCardStore. */}
         <GlobalContactCardDialog />
+
+        {/* Sticky-toast'ы про неотправленные сообщения. Подписан на realtime
+            таблицы message_send_failures (фильтр user_id=auth.uid()). Видит
+            ошибки с любого устройства, переживает перезагрузку страницы. */}
+        {workspaceId && <SendFailureToasts workspaceId={workspaceId} />}
       </div>
     </TaskPanelContext.Provider>
   )

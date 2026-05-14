@@ -14,6 +14,19 @@ export const inboxKeys = {
   threads: (workspaceId: string) => ['inbox', 'threads-v2', workspaceId] as const,
 }
 
+/**
+ * Журнал ошибок отправки сообщений (`message_send_failures`).
+ * `myUnresolved` — мои незакрытые ошибки в воркспейсе (для бейджа и тоста).
+ * `workspaceAll` — все ошибки воркспейса (для страницы менеджера).
+ */
+export const sendFailureKeys = {
+  all: ['send-failures'] as const,
+  myUnresolved: (workspaceId: string) =>
+    ['send-failures', 'my-unresolved', workspaceId] as const,
+  workspaceAll: (workspaceId: string, includeResolved: boolean) =>
+    ['send-failures', 'workspace-all', workspaceId, includeResolved] as const,
+}
+
 export const personalDialogsKeys = {
   all: ['personal-dialogs'] as const,
   forUser: (workspaceId: string, targetUserId: string) =>

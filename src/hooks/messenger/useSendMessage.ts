@@ -23,6 +23,7 @@ import {
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
 import { dismissProjectToasts } from './useMessageToastPayload'
+import { logSendFailure } from '@/services/api/messenger/logSendFailure'
 
 export function useSendMessage(
   projectId: string | undefined,
@@ -185,7 +186,7 @@ export function useSendMessage(
 
       return { previous }
     },
-    onError: (_err, vars, context) => {
+    onError: (err, vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(messagesKey, context.previous)
       }
@@ -203,7 +204,35 @@ export function useSendMessage(
           /* quota / SSR */
         }
       }
+      // Локальный toast — для текущего юзера в текущей вкладке.
+      // Глобальный sticky-toast поверх всего воркспейса (с кнопкой
+      // «Открыть чат») приедет из realtime-подписки на message_send_failures
+      // — он переживёт смену вкладки/перезагрузку, придёт на любое устройство.
       toast.error('Не удалось отправить — текст возвращён в поле ввода')
+
+      // Серверный лог — fire-and-forget, не блокируем UI и не падаем дополнительно.
+      void logSendFailure({
+        workspace_id: workspaceId,
+        project_id: projectId ?? null,
+        thread_id: threadId,
+        participant_id: currentParticipant?.participantId ?? null,
+        content: vars.content ?? null,
+        attachment_names:
+          (vars.attachments ?? []).map((f) => f.name).concat(
+            (vars.forwardedAttachments ?? []).map((a) => a.fileName ?? 'file'),
+          ) ?? null,
+        error_text: err instanceof Error ? err.message : String(err),
+        source: channel === 'internal' ? 'web' : 'web',
+        metadata: {
+          channel,
+          has_reply: !!vars.replyToMessageId,
+          has_attachments:
+            (vars.attachments?.length ?? 0) + (vars.forwardedAttachments?.length ?? 0) > 0,
+        },
+      }).catch((logErr) => {
+        // Если даже логирование упало — пишем в консоль для дев-диагностики.
+        console.warn('[log-send-failure] failed:', logErr)
+      })
     },
     onSuccess: (result, variables) => {
       // Сообщение точно ушло — outbox-копия больше не нужна.
