@@ -16,7 +16,7 @@
  *    мутации, выставляют `resolved_at + resolved_by`.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useId } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -49,11 +49,17 @@ export function useMyUnresolvedSendFailures(workspaceId: string | undefined) {
     staleTime: 30_000,
   })
 
+  // Уникальное имя канала per-instance хука — иначе если хук используется
+  // в двух компонентах сразу (SendFailureToasts + SendFailuresIndicator),
+  // supabase возвращает один и тот же channel и второй `.on(...).subscribe()`
+  // кидает «cannot add postgres_changes callbacks ... after subscribe()».
+  const channelInstanceId = useId()
+
   // Realtime: новые failures (от других вкладок/устройств) + resolve-апдейты.
   useEffect(() => {
     if (!enabled || !workspaceId || !user) return
     const channel = supabase
-      .channel(`send-failures:${workspaceId}:${user.id}`)
+      .channel(`send-failures:${workspaceId}:${user.id}:${channelInstanceId}`)
       .on(
         'postgres_changes',
         {
@@ -101,7 +107,7 @@ export function useMyUnresolvedSendFailures(workspaceId: string | undefined) {
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [enabled, workspaceId, user, queryClient])
+  }, [enabled, workspaceId, user, queryClient, channelInstanceId])
 
   return query
 }
