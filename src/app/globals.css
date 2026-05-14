@@ -7,6 +7,11 @@
 
 @layer base {
   :root {
+    /* Дефолтная ширина правой панели — синхронизирована с DEFAULT_WIDTH в
+       useRightPanelResize. Переменная устанавливается ДО hydration React,
+       поэтому .side-panel и resize-handle читают одно и то же значение и
+       не «разъезжаются» в момент между mount и первым useEffect. */
+    --panel-width: 600px;
     --background: 0 0% 100%;
     --foreground: 20 14.3% 4.1%;
     --card: 0 0% 100%;
@@ -399,14 +404,14 @@
    Ширина — через CSS-переменную `--panel-width` (см. useRightPanelResize). */
 .side-panel {
   @apply absolute top-0 right-0 h-full min-w-[360px] border-l border-gray-200 bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.08)];
-  width: var(--panel-width, 50%);
+  width: var(--panel-width, 600px);
 }
 
 /* Push-режим правой панели: на страницах с task-списком (data-panel-mode="push")
    при открытой панели (data-panel-open) основной <main> отжимается влево.
    На остальных страницах панель остаётся overlay поверх контента. */
 body[data-panel-open][data-panel-mode="push"] main {
-  margin-right: var(--panel-width, 50%);
+  margin-right: var(--panel-width, 600px);
 }
 
 /* Строка документа в DocumentItem — container query на саму строку.
