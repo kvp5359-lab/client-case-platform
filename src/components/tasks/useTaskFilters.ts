@@ -17,6 +17,9 @@ import { groupTasks } from './taskListConstants'
 
 export type TaskPreset = 'my_active' | 'active' | 'all' | 'control'
 
+// Sentinel-id для виртуальной опции «Без проекта» в фильтре по проектам.
+const NO_PROJECT_ID = '__no_project__'
+
 interface UseTaskFiltersParams {
   allTasks: TaskItem[]
   membersMap: Record<string, AvatarParticipant[]>
@@ -106,14 +109,18 @@ export function useTaskFilters({
   const projectOptions = useMemo(() => {
     if (isProjectMode) return []
     const map = new Map<string, string>()
+    let hasOrphan = false
     for (const t of allTasks) {
       if (t.project_id && t.project_name && !map.has(t.project_id)) {
         map.set(t.project_id, t.project_name)
+      } else if (!t.project_id) {
+        hasOrphan = true
       }
     }
-    return Array.from(map.entries())
+    const sorted = Array.from(map.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+    return hasOrphan ? [{ id: NO_PROJECT_ID, name: 'Без проекта' }, ...sorted] : sorted
   }, [allTasks, isProjectMode])
 
   const filteredTasks = useMemo(() => {
@@ -155,9 +162,13 @@ export function useTaskFilters({
       })
     }
 
-    // Фильтр по проектам (только в workspace-режиме)
+    // Фильтр по проектам (только в workspace-режиме). NO_PROJECT_ID — задачи без проекта.
     if (!isProjectMode && projectFilterIds.size > 0) {
-      result = result.filter((t) => t.project_id && projectFilterIds.has(t.project_id))
+      result = result.filter((t) =>
+        t.project_id
+          ? projectFilterIds.has(t.project_id)
+          : projectFilterIds.has(NO_PROJECT_ID),
+      )
     }
 
     // Поиск

@@ -240,6 +240,7 @@ export function ChatSettingsDialog({
             onSetAccessType={form.setAccessType}
             onSetSelectedMemberIds={form.setSelectedMemberIds}
             onSetSelectedRoles={form.setSelectedRoles}
+            hasProject={!!(form.selectedProjectId ?? propProjectId)}
           />
 
           {/* Каналы */}

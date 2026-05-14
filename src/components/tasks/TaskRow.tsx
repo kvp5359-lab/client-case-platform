@@ -142,9 +142,12 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
             })}
           </span>
         )}
-        {showProject && task.project_name && (
-          <span className="text-sm text-muted-foreground/60 truncate shrink-0">
-            · {task.project_name}
+        {showProject && (task.project_name || !task.project_id) && (
+          <span className={cn(
+            'text-sm truncate shrink-0',
+            task.project_name ? 'text-muted-foreground/60' : 'text-muted-foreground/40 italic',
+          )}>
+            · {task.project_name ?? 'Без проекта'}
           </span>
         )}
         {/* Исполнители — сразу после названия */}

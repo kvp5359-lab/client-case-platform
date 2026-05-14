@@ -3,7 +3,7 @@
  * Supports three modes: all / roles / custom (individual participants).
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { Users, Shield, Search, X, Check } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -30,6 +30,12 @@ interface ChatSettingsAccessProps {
   onSetAccessType: (t: AccessType) => void
   onSetSelectedMemberIds: React.Dispatch<React.SetStateAction<Set<string>>>
   onSetSelectedRoles: React.Dispatch<React.SetStateAction<Set<string>>>
+  /**
+   * Задача/чат привязан к проекту? Если false — режимы 'all' и 'roles'
+   * не имеют смысла (нет проектных ролей), показываем только список сотрудников
+   * и форсируем accessType='custom'.
+   */
+  hasProject?: boolean
 }
 
 export function ChatSettingsAccess({
@@ -46,8 +52,22 @@ export function ChatSettingsAccess({
   onSetAccessType,
   onSetSelectedMemberIds,
   onSetSelectedRoles,
+  hasProject = true,
 }: ChatSettingsAccessProps) {
   const [search, setSearch] = useState('')
+
+  // Orphan-задача (без проекта): принудительно работаем в режиме 'custom'.
+  // 'all' и 'roles' без проекта не имеют смысла — резолвить их нечем.
+  useEffect(() => {
+    if (hasProject) return
+    if (accessType === 'custom') return
+    if (isEditMode) {
+      onAccessChange('custom')
+    } else {
+      onSetAccessType('custom')
+      onSetSelectedRoles(new Set())
+    }
+  }, [hasProject, accessType, isEditMode, onAccessChange, onSetAccessType, onSetSelectedRoles])
 
   const filtered = participants
     .filter((p) => {
@@ -216,9 +236,12 @@ export function ChatSettingsAccess({
             </div>
           </div>
 
-          <div className="max-h-[300px] overflow-y-auto py-1">
+          <div
+            className="max-h-[300px] overflow-y-auto overscroll-contain py-1"
+            onWheel={(e) => e.stopPropagation()}
+          >
             {/* Все участники */}
-            {!search.trim() && (
+            {hasProject && !search.trim() && (
               <button
                 type="button"
                 onClick={() => {
@@ -251,7 +274,7 @@ export function ChatSettingsAccess({
             )}
 
             {/* Роли проекта */}
-            {!search.trim() && (
+            {hasProject && !search.trim() && (
               <>
                 <div className="border-t my-1" />
                 <p className="px-3 py-1 text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">
