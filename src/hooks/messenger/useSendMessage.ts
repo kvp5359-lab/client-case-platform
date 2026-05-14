@@ -219,7 +219,7 @@ export function useSendMessage(
         content: vars.content ?? null,
         attachment_names:
           (vars.attachments ?? []).map((f) => f.name).concat(
-            (vars.forwardedAttachments ?? []).map((a) => a.fileName ?? 'file'),
+            (vars.forwardedAttachments ?? []).map((a) => a.file_name ?? 'file'),
           ) ?? null,
         error_text: err instanceof Error ? err.message : String(err),
         source: channel === 'internal' ? 'web' : 'web',
