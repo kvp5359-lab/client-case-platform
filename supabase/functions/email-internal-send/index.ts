@@ -21,6 +21,7 @@ import {
 } from "../_shared/edge.ts";
 import { ensureValidGmailToken, type GmailAccountData } from "../_shared/gmailToken.ts";
 import { uint8ArrayToBase64 } from "../_shared/encoding.ts";
+import { logServerSendFailure } from "../_shared/sendFailureLog.ts";
 
 const ROOT_DOMAIN = "clientcase.app";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
@@ -334,6 +335,13 @@ Deno.serve(async (req: Request) => {
         .from("project_messages")
         .update({ email_delivery_status: "failed", email_send_method: "employee_mailbox" })
         .eq("id", m.id);
+      await logServerSendFailure(service, {
+        message_id: m.id,
+        error_text: errBody.slice(0, 500) || `Gmail API ${gmailResp.status}`,
+        error_code: `gmail_${gmailResp.status}`,
+        source: "email",
+        metadata: { stage: "gmail_send" },
+      });
       return jsonRes(
         { error: "gmail_send_failed", status: gmailResp.status, detail: errBody.slice(0, 500) },
         502, req);
@@ -465,6 +473,13 @@ Deno.serve(async (req: Request) => {
         email_send_method: "system_postmark",
       })
       .eq("id", m.id);
+    await logServerSendFailure(service, {
+      message_id: m.id,
+      error_text: errBody.slice(0, 500) || `Resend API ${resp.status}`,
+      error_code: `resend_${resp.status}`,
+      source: "email",
+      metadata: { stage: "resend_send" },
+    });
     return jsonRes(
       { error: "resend_send_failed", status: resp.status, detail: errBody.slice(0, 500) },
       502, req);

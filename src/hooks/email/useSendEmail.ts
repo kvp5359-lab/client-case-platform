@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
 import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
+import { logSendFailure } from '@/services/api/messenger/logSendFailure'
 
 interface SendEmailParams {
   threadId: string
@@ -156,10 +157,26 @@ export function useSendEmail(projectId: string, workspaceId: string, threadId: s
 
       return result
     },
-    onError: (_err) => {
+    onError: (_err, vars) => {
       const raw = _err instanceof Error ? _err.message : ''
       const msg = translateEmailError(raw)
       toast.error(msg, { duration: 6000 })
+
+      // Серверный лог — fire-and-forget. Дальше realtime принесёт sticky-toast
+      // и пилюлю в сайдбаре, видно с любого устройства.
+      void logSendFailure({
+        workspace_id: workspaceId,
+        project_id: projectId,
+        thread_id: vars.threadId,
+        content: vars.content ?? null,
+        attachment_names: (vars.files ?? []).map((f) => f.name),
+        error_text: raw || msg,
+        error_code: 'gmail_send_failed',
+        source: 'email',
+        metadata: { stage: 'gmail_send' },
+      }).catch((logErr) => {
+        logger.warn('[log-send-failure email] failed:', logErr)
+      })
     },
     onSuccess: () => {
       // Refetch messages to pick up the real message from DB
