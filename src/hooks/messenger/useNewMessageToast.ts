@@ -107,21 +107,27 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             inboxKeys.threads(workspaceId),
           )
           const threadEntry = cachedThreads?.find((c) => c.thread_id === msg.thread_id)
-          // У тредов без проекта в скобках показываем имя контакта, а не литерал «Проект».
-          const projectName =
-            threadEntry?.project_name ?? threadEntry?.counterpart_name ?? 'Проект'
+          // Личные диалоги (project_id=NULL) — суффикс в скобках не показываем,
+          // имя отправителя само по себе достаточно. Для проектных тредов —
+          // имя проекта, fallback на «Проект» если по какой-то причине не догрузилось.
+          const isPersonal = !msg.project_id
+          const projectName = isPersonal
+            ? null
+            : (threadEntry?.project_name ?? 'Проект')
           let accentColor = threadEntry?.thread_accent_color ?? null
+          let threadIcon: string | null = threadEntry?.thread_icon ?? null
 
-          // Фоллбэк: если цвет не лежит в кеше (например, email-тред ещё не
-          // попадал в inbox v2), подгружаем accent_color прямо из project_threads,
-          // чтобы рамка тоста совпала с цветом треда.
-          if (!accentColor && msg.thread_id) {
+          // Фоллбэк: если цвет/иконка не лежат в кеше (например, email-тред
+          // ещё не попадал в inbox v2), подгружаем напрямую из project_threads.
+          if ((!accentColor || !threadIcon) && msg.thread_id) {
             const { data: threadAccent } = await supabase
               .from('project_threads')
-              .select('accent_color')
+              .select('accent_color, icon')
               .eq('id', msg.thread_id)
               .maybeSingle()
-            accentColor = threadAccent?.accent_color ?? null
+            accentColor = accentColor ?? (threadAccent?.accent_color ?? null)
+            threadIcon =
+              threadIcon ?? ((threadAccent as { icon?: string | null } | null)?.icon ?? null)
           }
 
           // Если у входящего email sender_participant_id=NULL, sender_name = email.
@@ -225,6 +231,7 @@ export function useNewMessageToast(workspaceId: string | undefined) {
                 doMarkAsRead,
                 dismissGroup,
                 accentColor,
+                threadIcon,
               ),
             {
               id: groupKey,

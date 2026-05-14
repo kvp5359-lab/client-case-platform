@@ -8,15 +8,39 @@ export function isHtmlContent(content: string): boolean {
   return /<[a-z][\s\S]*?>/i.test(content)
 }
 
+/**
+ * Декодирует HTML entities (&nbsp;, &amp;, &lt;, &#39; и т.п.) в plain text.
+ * В браузере — через DOMParser/textarea; на сервере (SSR) — fallback на
+ * ручной replace основных entities. Иначе превью email'ов в тостах/списках
+ * показывает «&nbsp;&nbsp;Estimado cliente…».
+ */
+function decodeHtmlEntities(text: string): string {
+  if (!text || !text.includes('&')) return text
+  if (typeof document !== 'undefined') {
+    const el = document.createElement('textarea')
+    el.innerHTML = text
+    return el.value
+  }
+  // SSR fallback: декодируем самые частые entities + numeric refs
+  return text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)))
+}
+
 /** Убирает все HTML-теги, оставляя только текст (блочные теги → пробел) */
 export function stripHtml(html: string): string {
   if (!html) return ''
-  return html
+  const noTags = html
     .replace(/<br\s*\/?>/gi, ' ')
     .replace(/<\/(?:p|div|li|blockquote|h[1-6])>/gi, ' ')
     .replace(/<[^>]*>/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
+  return decodeHtmlEntities(noTags).replace(/\s+/g, ' ').trim()
 }
 
 /**

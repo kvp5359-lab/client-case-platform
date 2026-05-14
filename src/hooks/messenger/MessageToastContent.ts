@@ -7,6 +7,7 @@
 import { createElement } from 'react'
 import Image from 'next/image'
 import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
+import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 
 // SVG icons (inline, no lucide dependency in module scope)
 const iconClose = createElement(
@@ -40,25 +41,45 @@ const iconCheck = createElement(
   createElement('polyline', { points: '20 6 9 17 4 12' }),
 )
 
-/** Avatar: Image if URL available, otherwise colored circle with initials */
-function buildAvatar(senderName: string, avatarUrl: string | null) {
-  const size = 'w-8 h-8 rounded-full shrink-0'
-  if (avatarUrl) {
-    return createElement(Image, {
-      src: avatarUrl,
-      alt: senderName,
-      width: 32,
-      height: 32,
-      className: `${size} object-cover`,
-    })
+/** Avatar: Image if URL available, otherwise colored circle with initials.
+ *  Если задана иконка треда — рисуем маленький бейдж в правом нижнем углу. */
+function buildAvatar(
+  senderName: string,
+  avatarUrl: string | null,
+  threadIcon?: string | null,
+) {
+  const size = 'w-8 h-8 rounded-full'
+  const inner = avatarUrl
+    ? createElement(Image, {
+        src: avatarUrl,
+        alt: senderName,
+        width: 32,
+        height: 32,
+        className: `${size} object-cover`,
+      })
+    : createElement(
+        'div',
+        {
+          className: `${size} flex items-center justify-center text-xs font-medium ${getAvatarColor(senderName)}`,
+        },
+        getInitials(senderName),
+      )
+
+  if (!threadIcon) {
+    return createElement('div', { className: 'shrink-0' }, inner)
   }
-  return createElement(
+
+  const IconComp = getChatIconComponent(threadIcon)
+  const badge = createElement(
     'div',
     {
-      className: `${size} flex items-center justify-center text-xs font-medium ${getAvatarColor(senderName)}`,
+      className:
+        'absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white border border-border flex items-center justify-center text-foreground/80',
     },
-    getInitials(senderName),
+    createElement(IconComp, { width: 10, height: 10, className: 'w-2.5 h-2.5' }),
   )
+
+  return createElement('div', { className: 'relative shrink-0' }, inner, badge)
 }
 
 /** Маппинг accent_color чата → Tailwind border-цвет */
@@ -78,7 +99,8 @@ const ACCENT_BORDER: Record<string, string> = {
 /** Build toast content: avatar + message lines + action buttons */
 export function buildToastContent(
   lines: string[],
-  projectName: string,
+  /** null/пустая строка — личный диалог, суффикс в скобках не показываем. */
+  projectName: string | null,
   senderName: string,
   avatarUrl: string | null,
   channel: 'client' | 'internal',
@@ -86,6 +108,7 @@ export function buildToastContent(
   onMarkRead: () => void,
   onDismiss: () => void,
   accentColor?: string | null,
+  threadIcon?: string | null,
 ) {
   const borderColor = accentColor
     ? (ACCENT_BORDER[accentColor] ?? 'border-blue-400')
@@ -99,7 +122,7 @@ export function buildToastContent(
       style: { width: 420 },
       onClick: onOpen,
     },
-    buildAvatar(senderName, avatarUrl),
+    buildAvatar(senderName, avatarUrl, threadIcon),
     createElement(
       'div',
       { className: 'flex-1 min-w-0' },
@@ -107,11 +130,13 @@ export function buildToastContent(
         'div',
         { className: 'font-medium text-sm' },
         senderName,
-        createElement(
-          'span',
-          { className: 'font-normal text-muted-foreground ml-1' },
-          `(${projectName})`,
-        ),
+        projectName
+          ? createElement(
+              'span',
+              { className: 'font-normal text-muted-foreground ml-1' },
+              `(${projectName})`,
+            )
+          : null,
       ),
       createElement(
         'div',
