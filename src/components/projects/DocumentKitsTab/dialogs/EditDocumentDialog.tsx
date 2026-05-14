@@ -112,16 +112,21 @@ export function EditDocumentDialog({
   // фокуса) и сдвигается влево, в центр свободной области, чтобы не перекрывать
   // панель ассистента. Сбрасывается при закрытии диалога.
   const [assistantMode, setAssistantMode] = useState(false)
-  useEffect(() => {
-    if (!open) setAssistantMode(false)
-  }, [open])
+  // Render-time pattern: сбрасываем флаг при закрытии диалога, без useEffect
+  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  if (!open && assistantMode) {
+    setAssistantMode(false)
+  }
 
   const [leftPx, setLeftPx] = useState<number | null>(null)
+  // Render-time сброс позиции, когда режим выключен — иначе ResizeObserver
+  // в useLayoutEffect ниже стартует со старым leftPx и виден один кадр
+  // в старой позиции до первого пересчёта.
+  if ((!open || !assistantMode) && leftPx !== null) {
+    setLeftPx(null)
+  }
   useLayoutEffect(() => {
-    if (!open || !assistantMode) {
-      setLeftPx(null)
-      return
-    }
+    if (!open || !assistantMode) return
     const compute = () => {
       const sidebarEl = document.querySelector('[data-workspace-sidebar]') as HTMLElement | null
       const sidebarWidth = sidebarEl
