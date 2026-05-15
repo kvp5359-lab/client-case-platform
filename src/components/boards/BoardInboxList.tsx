@@ -13,7 +13,7 @@ import {
   markAsUnread,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
-import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
+import { messengerKeys, inboxKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
 
@@ -79,7 +79,7 @@ export function BoardInboxList({
       if (!chat.project_id) return
       const participant = await getCurrentProjectParticipant(chat.project_id, user.id)
       if (!participant) throw new Error('Участник не найден')
-      return markAsRead(
+      await markAsRead(
         participant.participantId,
         chat.project_id,
         getChannel(chat),
@@ -87,7 +87,10 @@ export function BoardInboxList({
       )
     },
     onMutate: (chat) => {
-      // Оптимистичное обновление — мгновенно убираем непрочитанность
+      // Оптимистичное обновление — мгновенно убираем непрочитанность.
+      // Сохраняем prev для отката в onError.
+      const key = inboxKeys.threads(workspaceId)
+      const prev = queryClient.getQueryData<InboxThreadEntry[]>(key)
       patchThreadInCache(chat.thread_id, {
         unread_count: 0,
         manually_unread: false,
@@ -96,11 +99,25 @@ export function BoardInboxList({
         unread_event_count: 0,
       })
       queryClient.setQueryData(messengerKeys.unreadCountByThreadId(chat.thread_id), 0)
+      return { prev }
     },
-    onError: () => {
-      // При ошибке — рефетч для восстановления актуальных данных
+    // Без onSuccess + invalidateMessengerCaches кэш inbox оставался с
+    // оптимистичным патчем до полного reload страницы. Если БД-upsert
+    // молча не записал (например, RLS вернул 0 строк, которые мы не
+    // ловили в supabase-js) — пользователь не видел этого до reload.
+    // Теперь после успешного upsert делаем broad-invalidate, чтобы
+    // следующий рефетч принёс реальное состояние из БД.
+    onSuccess: () => {
+      invalidateMessengerCaches(queryClient, workspaceId)
+    },
+    onError: (err, _chat, context) => {
+      // Откатываем оптимистичный патч и рефетчим, чтобы UI отразил реальное состояние.
+      if (context?.prev) {
+        queryClient.setQueryData(inboxKeys.threads(workspaceId), context.prev)
+      }
       queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-      toast.error('Не удалось отметить как прочитанное')
+      const desc = err instanceof Error ? err.message : undefined
+      toast.error('Не удалось отметить как прочитанное', desc ? { description: desc } : undefined)
     },
   })
 
@@ -111,7 +128,7 @@ export function BoardInboxList({
       if (!chat.project_id) return
       const participant = await getCurrentProjectParticipant(chat.project_id, user.id)
       if (!participant) throw new Error('Участник не найден')
-      return markAsUnread(
+      await markAsUnread(
         participant.participantId,
         chat.project_id,
         getChannel(chat),
@@ -119,12 +136,21 @@ export function BoardInboxList({
       )
     },
     onMutate: (chat) => {
-      // Оптимистичное обновление — мгновенно помечаем как непрочитанный
+      const key = inboxKeys.threads(workspaceId)
+      const prev = queryClient.getQueryData<InboxThreadEntry[]>(key)
       patchThreadInCache(chat.thread_id, { manually_unread: true })
+      return { prev }
     },
-    onError: () => {
+    onSuccess: () => {
+      invalidateMessengerCaches(queryClient, workspaceId)
+    },
+    onError: (err, _chat, context) => {
+      if (context?.prev) {
+        queryClient.setQueryData(inboxKeys.threads(workspaceId), context.prev)
+      }
       queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-      toast.error('Не удалось отметить как непрочитанное')
+      const desc = err instanceof Error ? err.message : undefined
+      toast.error('Не удалось отметить как непрочитанное', desc ? { description: desc } : undefined)
     },
   })
 
