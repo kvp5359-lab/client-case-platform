@@ -96,6 +96,8 @@ export function AllHistoryContent({
           threadLastReadAt={threadLastReadAt}
           statusMap={statusMap}
           clientThreadIds={clientThreadIds}
+          projectId={projectId}
+          workspaceId={workspaceId}
           onOpenChat={onOpenChat}
         />
       </div>

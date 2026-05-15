@@ -7,14 +7,20 @@
  */
 
 import { useMemo, useCallback, useRef, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { getChatIconComponent } from '@/components/messenger/ChatSettingsDialog'
 import { MessageBubble } from '@/components/messenger/MessageBubble'
 import { MessengerProvider } from '@/components/messenger/MessengerContext'
+import { ServiceMessage } from '@/components/messenger/ServiceMessage'
 import { AuditPill } from './AuditPill'
 import type { AuditLogEntry } from '@/types/history'
 import type { TimelineMessageEntry } from '@/hooks/useTimelineMessages'
 import type { MessengerAccent } from '@/components/messenger/utils/messageStyles'
+import { deleteMessage } from '@/services/api/messenger/messengerService'
+import { messengerKeys, timelineKeys } from '@/hooks/queryKeys'
+import { useWorkspacePermissions } from '@/hooks/permissions'
 
 type TimelineEntry =
   | { kind: 'audit'; data: AuditLogEntry }
@@ -33,6 +39,10 @@ interface TimelineFeedProps {
   /** Set thread_id, у которых есть участник-«Клиент» / линк на TG/Email — для
    *  подсветки сообщений сотрудников (как в обычном режиме треда). */
   clientThreadIds?: Set<string>
+  /** Нужны для инвалидации таймлайн-кэша после удаления служебных сообщений
+   *  TG (добавил/удалил участника) — кнопка «×» доступна владельцу воркспейса. */
+  projectId?: string
+  workspaceId?: string
   onOpenChat?: (threadId: string) => void
 }
 
@@ -90,10 +100,30 @@ export function TimelineFeed({
   threadLastReadAt,
   statusMap,
   clientThreadIds,
+  projectId,
+  workspaceId,
   onOpenChat,
 }: TimelineFeedProps) {
   const merged = useMemo(() => mergeTimeline(auditEntries, messages), [auditEntries, messages])
   const grouped = useMemo(() => groupByDay(merged), [merged])
+
+  const queryClient = useQueryClient()
+  const { isOwner } = useWorkspacePermissions({ workspaceId: workspaceId ?? '' })
+  const handleDeleteServiceMessage = useCallback(
+    async (messageId: string) => {
+      try {
+        await deleteMessage(messageId)
+        // Инвалидируем все возможные кэши, где сообщение могло отражаться:
+        // лента таймлайна (этой страницы), список сообщений треда (если открыт
+        // в правой панели), inbox-агрегаты.
+        queryClient.invalidateQueries({ queryKey: timelineKeys.messages(projectId ?? '', []), exact: false })
+        queryClient.invalidateQueries({ queryKey: messengerKeys.all })
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Не удалось удалить сообщение')
+      }
+    },
+    [queryClient, projectId],
+  )
 
   // Set of message IDs, перед которыми нужен ChatDivider. Вычисляется плоским
   // проходом по всей ленте, поэтому смена дня (внутри того же треда) НЕ добавляет
@@ -195,6 +225,17 @@ export function TimelineFeed({
                       entry={entry.data}
                       isUnread={!!lastReadAt && entry.data.created_at > lastReadAt}
                       statusMap={statusMap}
+                    />
+                  ) : entry.entry.message.source === 'telegram_service' ||
+                    entry.entry.message.source === 'bot_event' ? (
+                    // Служебные TG-сообщения (добавил/удалил/переименовал) —
+                    // та же визуальная пилюля, что и в чате, без больших баблов.
+                    <ServiceMessage
+                      text={entry.entry.message.content}
+                      time={entry.entry.message.created_at}
+                      messageId={entry.entry.message.id}
+                      canDelete={isOwner}
+                      onDelete={handleDeleteServiceMessage}
                     />
                   ) : (
                     (() => {
