@@ -187,40 +187,87 @@ export function TiptapEditor({
         ),
         style: `min-height: ${minHeight}`,
       },
+      // Notion/Confluence отдают строки как <div>...</div> без <p>, и Tiptap
+      // схлопывает всё в один параграф. Приводим <div>/<br> к <p>, чтобы
+      // строки превращались в отдельные параграфы.
+      transformPastedHTML: (html: string) => {
+        if (!html) return html
+        if (/<p\b/i.test(html)) return html
+        let out = html
+        // <br><br> → конец параграфа + новый параграф
+        out = out.replace(/(<br\s*\/?>\s*){2,}/gi, '</p><p>')
+        // одиночный <br> → новый параграф (для построчных вставок)
+        out = out.replace(/<br\s*\/?>/gi, '</p><p>')
+        // <div>...</div> → <p>...</p>
+        out = out.replace(/<div(\s[^>]*)?>/gi, '<p>').replace(/<\/div>/gi, '</p>')
+        return out
+      },
       handlePaste: (view, event) => {
+        // 1) изображения через clipboard → ImageBlock
         const config = imageUploadRef.current
-        if (!config) return false
         const items = event.clipboardData?.items
-        if (!items) return false
-        for (const item of items) {
-          if (item.type.startsWith('image/')) {
-            event.preventDefault()
-            const file = item.getAsFile()
-            if (!file) return false
-            const saved = (() => {
-              try {
-                return JSON.parse(localStorage.getItem('imageBlock:lastStyle') || '{}')
-              } catch {
-                return {}
-              }
-            })()
-            uploadImageToStorage(file, config)
-              .then((url) => {
-                const { state, dispatch } = view
-                const node = state.schema.nodes.imageBlock.create({
-                  src: url,
-                  alt: file.name,
-                  rounded: saved.rounded || 'lg',
-                  borderWidth: saved.borderWidth || 'none',
-                  borderColor: saved.borderColor || '#d1d5db',
-                  shadow: saved.shadow || 'none',
+        if (config && items) {
+          for (const item of items) {
+            if (item.type.startsWith('image/')) {
+              event.preventDefault()
+              const file = item.getAsFile()
+              if (!file) return false
+              const saved = (() => {
+                try {
+                  return JSON.parse(localStorage.getItem('imageBlock:lastStyle') || '{}')
+                } catch {
+                  return {}
+                }
+              })()
+              uploadImageToStorage(file, config)
+                .then((url) => {
+                  const { state, dispatch } = view
+                  const node = state.schema.nodes.imageBlock.create({
+                    src: url,
+                    alt: file.name,
+                    rounded: saved.rounded || 'lg',
+                    borderWidth: saved.borderWidth || 'none',
+                    borderColor: saved.borderColor || '#d1d5db',
+                    shadow: saved.shadow || 'none',
+                  })
+                  dispatch(state.tr.replaceSelectionWith(node))
                 })
-                dispatch(state.tr.replaceSelectionWith(node))
-              })
-              .catch(() => toast.error('Не удалось загрузить изображение'))
+                .catch(() => toast.error('Не удалось загрузить изображение'))
+              return true
+            }
+          }
+        }
+
+        // 2) Если plain-text имеет переводы строк, а HTML их не отражает
+        //    (нет <p>/<br>/<div>, или всего один <p>) — приоритет за plain-text.
+        //    Источники: Notion часто отдаёт «слипшийся» HTML + переносы только в text/plain.
+        const html = event.clipboardData?.getData('text/html') || ''
+        const text = event.clipboardData?.getData('text/plain') || ''
+        if (text.includes('\n')) {
+          const lineCount = text.split(/\r?\n/).filter((s) => s.trim()).length
+          const pCount = (html.match(/<p\b/gi) || []).length
+          const brCount = (html.match(/<br\b/gi) || []).length
+          const divCount = (html.match(/<div\b/gi) || []).length
+          const htmlReflectsLines = pCount > 1 || brCount > 0 || divCount > 1
+          if (lineCount > 1 && !htmlReflectsLines) {
+            event.preventDefault()
+            const lines = text.split(/\r?\n/)
+            const { state, dispatch } = view
+            const { schema } = state
+            const paragraphs = lines.map((line) => {
+              const t = line.trim()
+              return schema.nodes.paragraph.create(null, t ? schema.text(t) : null)
+            })
+            let tr = state.tr.deleteSelection()
+            for (let i = 0; i < paragraphs.length; i++) {
+              const insertPos = tr.selection.from
+              tr = tr.insert(insertPos, paragraphs[i])
+            }
+            dispatch(tr)
             return true
           }
         }
+
         return false
       },
       handleDrop: (view, event) => {

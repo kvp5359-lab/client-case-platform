@@ -13,7 +13,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { TiptapEditor } from '@/components/tiptap-editor/tiptap-editor'
 import {
   Dialog,
   DialogContent,
@@ -135,6 +135,7 @@ export function ProjectContextTabContent({
               key={item.id}
               item={item}
               projectId={projectId}
+              workspaceId={workspaceId}
               onDelete={() => setConfirmDeleteId(item.id)}
             />
           ))}
@@ -240,7 +241,7 @@ function AddTextDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Новая заметка</DialogTitle>
           <DialogDescription>
@@ -254,13 +255,15 @@ function AddTextDialog({
             onChange={(e) => setName(e.target.value)}
             autoFocus
           />
-          <Textarea
-            placeholder="Текст заметки..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={10}
-            className="resize-y"
-          />
+          <div className="border rounded-md">
+            <TiptapEditor
+              content={text}
+              onChange={setText}
+              placeholder="Текст заметки. Доступно форматирование, списки, заголовки, картинки..."
+              minHeight="280px"
+              imageUpload={{ workspaceId, articleId: `new-${projectId}` }}
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={close}>

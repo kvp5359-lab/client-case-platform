@@ -25,7 +25,6 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,38 +34,35 @@ import {
 import { supabase } from '@/lib/supabase'
 import {
   useRenameContextItem,
-  useUpdateContextText,
   useRunContextExtraction,
 } from '@/hooks/useProjectContext'
 import type { ProjectContextItemWithFile } from '@/services/api/projectContext/projectContextService'
+import { ContextTextDialog } from './ContextTextDialog'
 
 interface ProjectContextItemCardProps {
   item: ProjectContextItemWithFile
   projectId: string
+  workspaceId: string
   onDelete: () => void
 }
 
 export function ProjectContextItemCard({
   item,
   projectId,
+  workspaceId,
   onDelete,
 }: ProjectContextItemCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState(item.name)
-  const [editingText, setEditingText] = useState(false)
-  const [textDraft, setTextDraft] = useState(item.content_html ?? '')
+  const [textDialogOpen, setTextDialogOpen] = useState(false)
 
   const renameMutation = useRenameContextItem(projectId)
-  const updateTextMutation = useUpdateContextText(projectId)
   const extractMutation = useRunContextExtraction(projectId)
 
   useEffect(() => {
     setNameDraft(item.name)
   }, [item.name])
-  useEffect(() => {
-    setTextDraft(item.content_html ?? '')
-  }, [item.content_html])
 
   const Icon = pickIcon(item)
 
@@ -85,18 +81,6 @@ export function ProjectContextItemCard({
       })
     } finally {
       setEditingName(false)
-    }
-  }
-
-  const handleSaveText = async () => {
-    try {
-      await updateTextMutation.mutateAsync({ id: item.id, contentHtml: textDraft })
-      toast.success('Сохранено')
-      setEditingText(false)
-    } catch (err) {
-      toast.error('Не удалось сохранить', {
-        description: err instanceof Error ? err.message : undefined,
-      })
     }
   }
 
@@ -207,50 +191,33 @@ export function ProjectContextItemCard({
 
       {/* preview / body */}
       {item.item_type === 'text' && (
-        <div className="text-xs">
-          {editingText ? (
-            <div className="space-y-2">
-              <Textarea
-                value={textDraft}
-                onChange={(e) => setTextDraft(e.target.value)}
-                rows={8}
-                className="text-xs resize-y"
+        <>
+          <button
+            type="button"
+            onClick={() => setTextDialogOpen(true)}
+            className="w-full text-left rounded-md border bg-muted/30 p-2 hover:bg-muted/50 transition-colors text-xs"
+            title="Открыть редактор"
+          >
+            {item.content_html?.trim() ? (
+              <div
+                className="prose prose-xs max-w-none line-clamp-6 dark:prose-invert [&_*]:!my-0 [&_*]:!leading-snug"
+                dangerouslySetInnerHTML={{ __html: item.content_html }}
               />
-              <div className="flex gap-2 justify-end">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setTextDraft(item.content_html ?? '')
-                    setEditingText(false)
-                  }}
-                >
-                  Отмена
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSaveText}
-                  disabled={updateTextMutation.isPending}
-                >
-                  {updateTextMutation.isPending && (
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                  )}
-                  Сохранить
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setEditingText(true)}
-              className="w-full text-left rounded-md border bg-muted/30 p-2 hover:bg-muted/50 transition-colors whitespace-pre-wrap break-words line-clamp-6"
-            >
-              {item.content_html?.trim() || (
-                <span className="text-muted-foreground italic">Пусто. Нажмите, чтобы добавить текст.</span>
-              )}
-            </button>
+            ) : (
+              <span className="text-muted-foreground italic">
+                Пусто. Нажмите, чтобы добавить текст.
+              </span>
+            )}
+          </button>
+          {textDialogOpen && (
+            <ContextTextDialog
+              item={item}
+              projectId={projectId}
+              workspaceId={workspaceId}
+              onClose={() => setTextDialogOpen(false)}
+            />
           )}
-        </div>
+        </>
       )}
 
       {item.item_type === 'screenshot' && item.file && (
