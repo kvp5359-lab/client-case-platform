@@ -202,8 +202,14 @@ function TaskPanelTabbedShellRenderer({
     for (const item of effectiveItems) {
       if (item.type === 'system') {
         if (!visibleSystemTypes.has(item.key)) continue
+        // Системная вкладка 'tasks' должна нести refId = projectId, иначе
+        // рендер не сможет показать список задач (требуется projectId для
+        // загрузки проекта). Остальные системные типы рендерятся через
+        // SystemTabBody и refId им не нужен.
+        const base = buildSystemTab(item.key, SYSTEM_PANEL_TAB_LABELS[item.key])
         seed.push({
-          ...buildSystemTab(item.key, SYSTEM_PANEL_TAB_LABELS[item.key]),
+          ...base,
+          ...(item.key === 'tasks' && projectId ? { id: `tasks:${projectId}`, refId: projectId } : {}),
           pinned: true,
         })
       } else {
@@ -317,11 +323,14 @@ function TaskPanelTabbedShellRenderer({
           onClose={onHidePanel}
         />
       )
-    } else if (activeTab.type === 'tasks' && activeTab.refId) {
+    } else if (activeTab.type === 'tasks' && (activeTab.refId || projectId)) {
+      // Фолбэк на projectId scope-а для legacy-записей в БД, где сеялка
+      // (до фикса 2026-05-15) сохраняла tasks-вкладку без refId.
+      const tasksProjectId = activeTab.refId ?? projectId!
       activeContent = (
         <TasksTabContent
-          key={`tasks:${activeTab.refId}`}
-          projectId={activeTab.refId}
+          key={`tasks:${tasksProjectId}`}
+          projectId={tasksProjectId}
           workspaceId={workspaceId}
           onClose={onHidePanel}
           onOpenThreadInTab={onOpenThreadTab}
