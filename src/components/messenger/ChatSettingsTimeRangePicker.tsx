@@ -249,19 +249,7 @@ export function ChatSettingsTimeRangePicker({
           onInteractOutside={(e) => e.preventDefault()}
         >
           <div className="p-3 space-y-2.5">
-            {/* Ряд полей показываем только в режиме длительности.
-                Без длительности — работаем напрямую с календарём. */}
-            {showDuration && (
-              <div className="flex items-center gap-1 flex-nowrap">
-                {fieldBtn('startDate', formatDateShort(date), '—', 72)}
-                {fieldBtn('startTime', startTime, '--:--', 52)}
-                <span className="text-xs text-muted-foreground px-0.5">—</span>
-                {fieldBtn('endTime', endTime, '--:--', 52)}
-                {fieldBtn('endDate', formatDateShort(effectiveEndDate), '—', 72)}
-              </div>
-            )}
-
-            {/* Чекбокс «Указать длительность» сразу под полями */}
+            {/* Чекбокс «Указать длительность» сверху */}
             <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -279,6 +267,17 @@ export function ChatSettingsTimeRangePicker({
               />
               <span>Указать длительность</span>
             </label>
+
+            {/* Ряд полей под чекбоксом — только в режиме длительности */}
+            {showDuration && (
+              <div className="flex items-center gap-1 flex-nowrap">
+                {fieldBtn('startDate', formatDateShort(date), '—', 72)}
+                {fieldBtn('startTime', startTime, '--:--', 52)}
+                <span className="text-xs text-muted-foreground px-0.5">—</span>
+                {fieldBtn('endTime', endTime, '--:--', 52)}
+                {fieldBtn('endDate', formatDateShort(effectiveEndDate), '—', 72)}
+              </div>
+            )}
 
             {/* Тело попапа: календарь или time-list */}
             <div className="flex justify-center">{popoverBody}</div>
