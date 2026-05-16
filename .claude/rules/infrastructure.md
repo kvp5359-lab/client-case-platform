@@ -148,6 +148,56 @@
 - Таблицы: service_categories, lawyer_profiles, lawyer_services, orders, payments, payouts, reviews, blog_posts, blog_categories, custom_domains
 - API Routes: `/api/payments`, `/api/webhooks` (заглушки)
 
+## Календарь (time-grid задач)
+
+Реализовано 2026-05-16. Страница `/workspaces/[id]/calendar` + новый режим
+`display_mode='calendar'` у `board_lists`.
+
+- **Модель**: у `project_threads` добавлены `start_at` и `end_at` (timestamptz).
+  Задача попадает в календарь только при заполненных ОБОИХ полях. Индекс
+  `idx_project_threads_calendar` partial по `(workspace_id, start_at, end_at)
+  WHERE start_at IS NOT NULL AND end_at IS NOT NULL AND is_deleted = false`.
+- **⚠️ Синхронизация `deadline` ↔ `end_at`** (миграция
+  `20260516_sync_thread_deadline_end_at.sql`): триггер
+  `sync_thread_deadline_end_at` BEFORE INSERT OR UPDATE автоматически
+  поддерживает равенство. Семантика «вариант А» из обсуждения с юзером:
+  - INSERT с `end_at NOT NULL` → `deadline := end_at`
+  - UPDATE меняет `end_at` → `deadline := end_at` синхронно
+  - UPDATE меняет `deadline` у задачи в календаре (есть start_at и end_at)
+    → двигаем интервал, сохраняя длительность; `start_at := new deadline -
+    (old end_at - old start_at)`, `end_at := new deadline`
+  - UPDATE меняет `deadline` у задачи БЕЗ календаря (start_at=NULL) →
+    триггер не трогает start_at/end_at (старая семантика «срок без слота»)
+  - Если `deadline` снимается у задачи в календаре → `start_at` и `end_at`
+    обнуляются (задача уезжает из календаря).
+  Это временное решение. **Долгосрочно**: убрать `deadline` совсем, везде
+  читать `end_at` — см. [`docs/feature-backlog/2026-05-16-drop-deadline-merge-with-end-at.md`](../../docs/feature-backlog/2026-05-16-drop-deadline-merge-with-end-at.md).
+- **Страница календаря**: [`src/page-components/CalendarPage/index.tsx`](../../src/page-components/CalendarPage/index.tsx).
+  Использует `react-big-calendar` + `withDragAndDrop` + `momentLocalizer`.
+  Виды: День / Будни / Неделя / Список. 30-минутные слоты. Drag/resize
+  меняют start_at/end_at через хук `useUpdateThreadTime`. Создание задачи
+  кликом по пустому слоту — через shadcn Dialog (Next.js 16 запрещает
+  `window.prompt()`).
+- **Режим календаря в `board_lists`**: `display_mode = 'calendar'` (третий
+  вариант наряду с 'list'/'cards'). Компонент
+  [`BoardListCalendarView`](../../src/components/boards/BoardListCalendarView.tsx)
+  принимает уже отфильтрованные задачи списка и дозапрашивает их
+  start_at/end_at отдельным запросом по taskIds (чтобы не модифицировать
+  RPC `get_workspace_threads`). При следующем рефакторинге RPC — добавить
+  поля туда, убрать дозапрос.
+- **Хуки**: [`useCalendarThreads`](../../src/hooks/useCalendarThreads.ts) —
+  выборка задач в диапазоне; `useUpdateThreadTime` — мутация для drag/resize.
+- **Query key**: `calendarKeys.byWorkspaceRange(workspaceId, fromIso, toIso)`.
+- **Sidebar nav**: `'calendar'` — доступен всем кроме клиентов.
+- **Известные ограничения**:
+  - Drag задач из обычных списков (`@dnd-kit`) → в календарь (внутри
+    `react-big-calendar` своя HTML5 DnD): два движка не интегрированы.
+    Внутри календаря всё работает.
+  - Создание через кликовый Dialog — минимальная форма (только название).
+    Полная форма с исполнителями/проектом/статусом — отдельная итерация.
+  - Часовой пояс — системный браузера. Поле `participants.time_zone` ещё
+    не добавлено.
+
 ## Корзина (мягкое удаление проектов и тредов)
 
 - **Таблицы**: `projects` и `project_threads` имеют `is_deleted` (BOOLEAN NOT NULL DEFAULT false), `deleted_at`, `deleted_by`.
