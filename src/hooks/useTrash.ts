@@ -22,6 +22,7 @@ import {
   sidebarKeys,
   boardKeys,
   workspaceTaskKeys,
+  workspaceThreadKeys,
   trashKeys,
   myTaskCountsKeys,
 STALE_TIME,
@@ -294,6 +295,7 @@ export function useRestoreThread(workspaceId: string) {
       if (thread.project_id) {
         queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(thread.project_id) })
       }
+      queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
       queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
       queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })

@@ -9,6 +9,7 @@ import {
   taskKeys,
   trashKeys,
   workspaceTaskKeys,
+  workspaceThreadKeys,
 } from '@/hooks/queryKeys'
 import { logAuditAction } from '@/services/auditService'
 import type { ProjectThread, ThreadAccentColor } from './useProjectThreads.types'
@@ -145,6 +146,11 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
       if (projectId && projectId !== effectivePid) {
         queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(projectId) })
       }
+      // ВАЖНО: useWorkspaceThreads (источник «Мои задачи» и task-колонок досок)
+      // живёт под ключом workspaceThreadKeys.forUser — отдельная иерархия от
+      // workspaceTaskKeys.byWorkspace. Без явной инвалидации workspaceThreadKeys
+      // новая задача не появлялась в досках до полного reload страницы.
+      queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.assigneesMap })
       queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
@@ -206,12 +212,17 @@ export function useDeleteThread(workspaceId?: string) {
     onSuccess: (thread) => {
       queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(thread.project_id ?? '') })
       if (workspaceId) {
+        // workspaceThreadKeys — реальный источник «Мои задачи» / task-колонок
+        // на досках (см. useWorkspaceThreads). Без него удалённая задача
+        // оставалась в досках до полного reload.
+        queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
         queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
         queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
         queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })
       } else {
         // Fallback: старые вызовы без workspaceId — partial-match инвалидация
         // по префиксу. Работает, но задевает все воркспейсы пользователя.
+        queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.all })
         queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.all })
         queryClient.invalidateQueries({ queryKey: taskKeys.allUrgent })
         queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.all })

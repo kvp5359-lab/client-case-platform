@@ -5,7 +5,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { messengerKeys, projectThreadKeys, workspaceTaskKeys } from '@/hooks/queryKeys'
+import { messengerKeys, projectThreadKeys, workspaceTaskKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
 import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
 import type { AccessType } from '../chatSettingsTypes'
@@ -45,6 +45,9 @@ export function useChatSettingsMutations({
         queryClient.invalidateQueries({
           queryKey: messengerKeys.projectThreads(selectedProjectId),
         })
+      }
+      if (resolvedWorkspaceId) {
+        queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(resolvedWorkspaceId) })
       }
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(resolvedWorkspaceId) })
     },
