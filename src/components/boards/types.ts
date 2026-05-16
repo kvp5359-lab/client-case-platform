@@ -68,7 +68,7 @@ export interface BoardMember {
   added_at: string
 }
 
-export type DisplayMode = 'list' | 'cards'
+export type DisplayMode = 'list' | 'cards' | 'calendar'
 
 /** Поля, которые можно показывать/скрывать в строке */
 export type VisibleField = 'status' | 'deadline' | 'assignees' | 'project' | 'template'

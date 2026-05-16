@@ -296,7 +296,7 @@ export function placeFieldInRow(
  */
 export function visibleFieldsToLayout(
   visibleFields: string[],
-  displayMode: 'list' | 'cards',
+  displayMode: 'list' | 'cards' | 'calendar',
   entityType: 'thread' | 'project',
 ): ResolvedRow[] {
   const S: CardFieldStyle = { fontSize: 'sm', align: 'left', truncate: 'truncate', bold: false }

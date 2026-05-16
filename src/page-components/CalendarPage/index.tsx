@@ -10,14 +10,26 @@
 
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
+import { calendarKeys } from '@/hooks/queryKeys'
 import { Calendar, momentLocalizer, Views, type View } from 'react-big-calendar'
+import withDragAndDrop, {
+  type withDragAndDropProps,
+} from 'react-big-calendar/lib/addons/dragAndDrop'
 import moment from 'moment-timezone'
 import 'moment/locale/ru'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { usePageTitle } from '@/hooks/usePageTitle'
-import { useCalendarThreads, type CalendarThread } from '@/hooks/useCalendarThreads'
+import {
+  useCalendarThreads,
+  useUpdateThreadTime,
+  type CalendarThread,
+} from '@/hooks/useCalendarThreads'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import type { TaskItem } from '@/components/tasks/types'
 import { COLOR_BG } from '@/components/messenger/threadConstants'
@@ -25,6 +37,8 @@ import { cn } from '@/lib/utils'
 
 moment.locale('ru')
 const localizer = momentLocalizer(moment)
+
+const DnDCalendar = withDragAndDrop<CalendarEvent>(Calendar)
 
 interface CalendarEvent {
   id: string
@@ -39,6 +53,8 @@ export default function CalendarPage() {
   usePageTitle('Календарь')
   const closePanel = useSidePanelStore((s) => s.closePanel)
   const layoutPanel = useLayoutTaskPanel()
+  const updateTime = useUpdateThreadTime()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     closePanel()
@@ -114,6 +130,66 @@ export default function CalendarPage() {
     [layoutPanel],
   )
 
+  const handleEventDrop: NonNullable<withDragAndDropProps<CalendarEvent>['onEventDrop']> =
+    useCallback(
+      ({ event, start, end }) => {
+        const startDate = start instanceof Date ? start : new Date(start)
+        const endDate = end instanceof Date ? end : new Date(end)
+        updateTime.mutate({
+          threadId: event.resource.id,
+          projectId: event.resource.project_id,
+          workspaceId: event.resource.workspace_id,
+          start_at: startDate.toISOString(),
+          end_at: endDate.toISOString(),
+        })
+      },
+      [updateTime],
+    )
+
+  const handleEventResize: NonNullable<withDragAndDropProps<CalendarEvent>['onEventResize']> =
+    useCallback(
+      ({ event, start, end }) => {
+        const startDate = start instanceof Date ? start : new Date(start)
+        const endDate = end instanceof Date ? end : new Date(end)
+        updateTime.mutate({
+          threadId: event.resource.id,
+          projectId: event.resource.project_id,
+          workspaceId: event.resource.workspace_id,
+          start_at: startDate.toISOString(),
+          end_at: endDate.toISOString(),
+        })
+      },
+      [updateTime],
+    )
+
+  // Создание задачи кликом по пустому слоту. Минимальная реализация — prompt
+  // для названия + сразу INSERT в project_threads с start_at/end_at. Полная
+  // форма (исполнители, проект и т.п.) — отдельная итерация.
+  const handleSelectSlot = useCallback(
+    async ({ start, end }: { start: Date; end: Date }) => {
+      if (!workspaceId) return
+      const name = window.prompt('Название задачи')?.trim()
+      if (!name) return
+      const { error } = await supabase
+        .from('project_threads')
+        .insert({
+          workspace_id: workspaceId,
+          name,
+          type: 'task',
+          start_at: start.toISOString(),
+          end_at: end.toISOString(),
+        })
+      if (error) {
+        toast.error(`Не удалось создать: ${error.message}`)
+        return
+      }
+      queryClient.invalidateQueries({ queryKey: calendarKeys.all })
+    },
+    [workspaceId, queryClient],
+  )
+
+  const scrollToTime = useMemo(() => moment().subtract(1, 'hour').toDate(), [])
+
   if (!workspaceId) return null
 
   return (
@@ -123,7 +199,7 @@ export default function CalendarPage() {
           <h1 className="text-xl font-semibold">Календарь</h1>
         </div>
         <div className="flex-1 overflow-hidden px-6 py-4">
-          <Calendar
+          <DnDCalendar
             localizer={localizer}
             events={events}
             view={view}
@@ -138,6 +214,12 @@ export default function CalendarPage() {
             max={moment().startOf('day').hour(22).toDate()}
             eventPropGetter={eventPropGetter}
             onSelectEvent={handleSelectEvent}
+            onEventDrop={handleEventDrop}
+            onEventResize={handleEventResize}
+            onSelectSlot={handleSelectSlot}
+            selectable
+            resizable
+            scrollToTime={scrollToTime}
             culture="ru"
             messages={{
               today: 'Сегодня',

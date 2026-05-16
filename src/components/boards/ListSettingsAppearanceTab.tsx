@@ -11,7 +11,7 @@ import {
   useDroppable,
 } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
-import { Plus, Trash2, AlignLeft, AlignRight, LayoutList, LayoutGrid } from 'lucide-react'
+import { Plus, Trash2, AlignLeft, AlignRight, LayoutList, LayoutGrid, CalendarDays } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -396,6 +396,19 @@ export default function ListSettingsAppearanceTab({
           >
             <LayoutGrid className="h-3.5 w-3.5" />
             Карточки
+          </button>
+          <button
+            type="button"
+            onClick={() => onDisplayModeChange('calendar')}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs border transition-colors',
+              displayMode === 'calendar'
+                ? 'border-primary bg-primary/5 text-primary'
+                : 'border-border text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            Календарь
           </button>
         </div>
       </div>

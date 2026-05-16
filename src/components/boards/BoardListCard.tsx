@@ -10,6 +10,7 @@ import { DraggableBoardTaskRow } from './DraggableBoardTaskRow'
 import { DraggableBoardProjectRow } from './DraggableBoardProjectRow'
 import { BoardInboxList } from './BoardInboxList'
 import { BoardListHeader } from './BoardListHeader'
+import { BoardListCalendarView } from './BoardListCalendarView'
 import { ListSettingsDialog } from './ListSettingsDialog'
 import { useCreateTaskHandler } from '@/components/tasks/useCreateTaskMutation'
 import { extractThreadCreatePreset } from '@/lib/filters/extractPreset'
@@ -307,6 +308,7 @@ export function BoardListCard({
   const collapsed = userCollapsed ?? (!isInbox && count === 0)
 
   const isCards = (list.display_mode ?? 'list') === 'cards'
+  const isCalendar = list.display_mode === 'calendar'
   const groupByField = (list.group_by ?? 'none') as GroupByField
   const listHeight = list.list_height ?? 'auto'
 
@@ -455,6 +457,12 @@ export function BoardListCard({
                   {hasFilters ? 'Нет элементов по фильтру' : 'Пусто'}
                 </div>
               )
+            ) : isCalendar ? (
+              <BoardListCalendarView
+                workspaceId={workspaceId}
+                tasks={filteredTasks}
+                onOpenTask={(task) => onOpenTask(task.id)}
+              />
             ) : filteredTasks.length > 0 ? (
               hasGrouping ? (
                 <div className={cn(isCards ? 'grid gap-1' : 'flex flex-col gap-2')}>
