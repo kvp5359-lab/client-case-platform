@@ -56,6 +56,11 @@ function htmlToPlain(html: string): string {
   s = s.replace(/<li[^>]*>/gi, "• ");
   s = s.replace(/<[^>]+>/g, "");
   s = s.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  // Email-HTML часто содержит декоративные table-cells, пустые <p>, &nbsp;,
+  // <img> для брендинга → после strip остаются строки только из пробелов.
+  // Превращаем такие в чистые \n, иначе LLM сохранит их как «параграфы»
+  // и в выводе появятся пустые баблы между блоками.
+  s = s.split("\n").map((line) => (line.trim() ? line : "")).join("\n");
   s = s.replace(/\n{3,}/g, "\n\n").trim();
   return s;
 }
@@ -66,6 +71,11 @@ function plainToSimpleHtml(plain: string, originalWasHtml: boolean): string {
     t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return plain
     .split(/\n{2,}/)
+    .map((para) => para.trim())
+    // Фильтруем пустые параграфы — иначе пустые <p></p> рендерятся как
+    // широкие визуальные «дыры» в баббле перевода (видно особенно на
+    // переводах email с декоративными table-cells / <img/>).
+    .filter((para) => para.length > 0)
     .map((para) => `<p>${escape(para).replace(/\n/g, "<br>")}</p>`)
     .join("");
 }
