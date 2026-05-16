@@ -54,18 +54,20 @@ export function useChatSettingsSave({
   onUpdate,
 }: UseChatSettingsSaveParams) {
   return useCallback(() => {
-    // Срок: три кейса
-    //   1) Весь день, одна дата → только deadline, без слота в календаре
-    //   2) Весь день, диапазон дат → start_at = date 00:00, end_at = endDate 23:59
-    //      (многодневная all-day задача типа «отпуск 16-18 мая»)
-    //   3) С временем (одна дата) → start_at = date+startTime, end_at = date+endTime
-    // Триггер БД sync_thread_deadline_end_at автоматически проставит
+    // Срок: «весь день» определяется по отсутствию времени.
+    //   - оба времени пустые + одна дата → только deadline
+    //   - оба времени пустые + диапазон дат → start_at=date 00:00,
+    //     end_at=endDate 23:59 (многодневная all-day)
+    //   - оба времени заполнены → start_at=startDate+startTime,
+    //     end_at=(endDate ?? startDate)+endTime (м.б. встреча через ночь)
+    // Триггер БД sync_thread_deadline_end_at автоматически синхронизирует
     // deadline = end_at когда задан интервал.
+    const hasTime = Boolean(form.taskStartTime && form.taskEndTime)
     let startAtIso: string | null = null
     let endAtIso: string | null = null
     let deadlineIso: string | null = null
 
-    if (form.taskAllDay) {
+    if (!hasTime) {
       if (form.taskEndDate && form.taskDeadline) {
         startAtIso = buildIsoFromDateAndTime(form.taskDeadline, '00:00')
         endAtIso = buildIsoFromDateAndTime(form.taskEndDate, '23:59')
@@ -74,8 +76,6 @@ export function useChatSettingsSave({
         deadlineIso = form.taskDeadline ? formatDateToString(form.taskDeadline) : null
       }
     } else {
-      // С временем: end_at может быть на той же дате или на другой (встреча
-      // через ночь). taskEndDate=undefined → конец на дате начала.
       startAtIso = buildIsoFromDateAndTime(form.taskDeadline, form.taskStartTime)
       endAtIso = buildIsoFromDateAndTime(
         form.taskEndDate ?? form.taskDeadline,

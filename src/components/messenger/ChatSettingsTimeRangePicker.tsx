@@ -1,14 +1,16 @@
 /**
- * Time-range picker для задачи — паттерн Google Calendar.
+ * Time-range picker для задачи — паттерн Google Calendar, упрощённый.
  *
- * Четыре поля в ряд: [startDate] [startTime] — [endTime] [endDate].
- * Клик на любое поле → попап под ним: календарь для дат, список 15-мин
- * слотов для времени. Под полями — чекбокс «Весь день» (прячет time-поля).
+ * В карточке — одна кнопка-сводка. По клику открывается попап:
+ *   - сверху ряд: [startDate] [startTime] — [endTime] [endDate]
+ *   - календарь — клик меняет активное поле даты (start или end)
+ *   - кнопка «Очистить» снизу
  *
- * Семантика для родителя:
- *   - allDay = true + endDate == startDate → deadline = date, без слота в календаре
- *   - allDay = true + endDate > startDate  → start_at = startDate 00:00, end_at = endDate 23:59
- *   - allDay = false                       → start_at = startDate + startTime, end_at = endDate + endTime
+ * Семантика:
+ *   - startTime и endTime пустые → задача «весь день» (без слота в календаре)
+ *   - оба заполнены → задача со слотом в календаре
+ *   - endDate undefined → конец = startDate (одна дата)
+ *   - endDate задано и > startDate → диапазон
  */
 
 import { useMemo, useState } from 'react'
@@ -24,18 +26,14 @@ import { ru } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 
 interface Props {
-  /** Дата начала (всегда задана, если задача имеет срок). */
   date: Date | undefined
-  /** false → видны time-поля, true → только даты. */
-  allDay: boolean
-  /** Начало в HH:mm (используется при !allDay). */
+  /** Время начала HH:mm или пустая строка = «весь день» */
   startTime: string
-  /** Конец в HH:mm (используется при !allDay). */
+  /** Время конца HH:mm или пустая строка */
   endTime: string
-  /** Если undefined — конец = начало (одна дата). Иначе — другая дата конца. */
+  /** undefined = тот же день, что и date */
   endDate: Date | undefined
   onDateChange: (date: Date | undefined) => void
-  onAllDayChange: (allDay: boolean) => void
   onStartTimeChange: (time: string) => void
   onEndTimeChange: (time: string) => void
   onEndDateChange: (date: Date | undefined) => void
@@ -54,7 +52,6 @@ const TIME_OPTIONS = (() => {
 
 function formatDateShort(d: Date | undefined): string {
   if (!d) return ''
-  // 16.05.26 — компактно, помещается в кнопку 90px
   return d.toLocaleDateString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
@@ -62,99 +59,87 @@ function formatDateShort(d: Date | undefined): string {
   })
 }
 
+function parseHM(time: string): { h: number; m: number } | null {
+  if (!time) return null
+  const [hStr, mStr] = time.split(':')
+  const h = Number.parseInt(hStr, 10)
+  const m = Number.parseInt(mStr, 10)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null
+  return { h, m }
+}
+
+function addMinutes(time: string, addMin: number): string {
+  const t = parseHM(time)
+  if (!t) return ''
+  const total = t.h * 60 + t.m + addMin
+  const norm = ((total % 1440) + 1440) % 1440
+  const h = Math.floor(norm / 60)
+  const m = norm % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
 type ActiveField = 'startDate' | 'startTime' | 'endDate' | 'endTime' | null
 
 export function ChatSettingsTimeRangePicker({
   date,
-  allDay,
   startTime,
   endTime,
   endDate,
   onDateChange,
-  onAllDayChange,
   onStartTimeChange,
   onEndTimeChange,
   onEndDateChange,
   onClear,
 }: Props) {
+  const [popoverOpen, setPopoverOpen] = useState(false)
   const [active, setActive] = useState<ActiveField>(null)
 
-  // Эффективная дата конца (== начало, если endDate не задано)
   const effectiveEndDate = endDate ?? date
+  const hasTime = Boolean(startTime || endTime)
 
+  /** Сводка для кнопки в карточке. */
   const summary = useMemo(() => {
     if (!date) return 'Не указан'
     const d1 = formatDateShort(date)
-    if (allDay) {
-      const d2 = effectiveEndDate ? formatDateShort(effectiveEndDate) : null
-      if (!d2 || d2 === d1) return d1
-      return `${d1} → ${d2}`
-    }
     const d2 = formatDateShort(effectiveEndDate ?? date)
-    if (d1 === d2) return `${d1}, ${startTime}–${endTime}`
+    const sameDay = d1 === d2
+    if (!hasTime) {
+      return sameDay ? d1 : `${d1} — ${d2}`
+    }
+    if (sameDay) return `${d1}, ${startTime}–${endTime}`
     return `${d1} ${startTime} → ${d2} ${endTime}`
-  }, [date, allDay, startTime, endTime, effectiveEndDate])
+  }, [date, hasTime, startTime, endTime, effectiveEndDate])
 
-  const closePopover = () => setActive(null)
+  const openPopover = () => {
+    if (!date) {
+      onDateChange(new Date())
+      setActive('startDate')
+    }
+    setPopoverOpen(true)
+  }
+
+  const closePopover = () => {
+    setPopoverOpen(false)
+    setActive(null)
+  }
+
+  const handleStartTimeChange = (t: string) => {
+    onStartTimeChange(t)
+    // Авто-дополнение: если end_time пустое — выставляем start + 30 мин
+    if (!endTime) onEndTimeChange(addMinutes(t, 30))
+  }
+  const handleEndTimeChange = (t: string) => {
+    onEndTimeChange(t)
+    if (!startTime) onStartTimeChange(addMinutes(t, -30))
+  }
 
   const setEndDateMaybe = (d: Date) => {
-    // Если новая дата конца совпала со startDate — сбрасываем endDate
-    // в undefined (нормальная форма для однодневной задачи)
     if (date && d.toDateString() === date.toDateString()) {
       onEndDateChange(undefined)
     } else {
       onEndDateChange(d)
     }
   }
-
-  const popoverContent = (() => {
-    if (active === 'startDate' || active === 'endDate') {
-      const selected = active === 'startDate' ? date : effectiveEndDate
-      return (
-        <CalendarUI
-          mode="single"
-          selected={selected}
-          onSelect={(d) => {
-            if (!d) return
-            if (active === 'startDate') {
-              onDateChange(d)
-              // Если endDate была раньше startDate — сдвинуть
-              if (endDate && endDate < d) onEndDateChange(d)
-            } else {
-              setEndDateMaybe(d)
-            }
-            closePopover()
-          }}
-          locale={ru}
-        />
-      )
-    }
-    if (active === 'startTime' || active === 'endTime') {
-      const current = active === 'startTime' ? startTime : endTime
-      return (
-        <div className="max-h-[280px] w-[100px] overflow-y-auto py-1">
-          {TIME_OPTIONS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => {
-                if (active === 'startTime') onStartTimeChange(t)
-                else onEndTimeChange(t)
-                closePopover()
-              }}
-              className={cn(
-                'block w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors',
-                t === current && 'bg-accent font-medium',
-              )}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      )
-    }
-    return null
-  })()
 
   const fieldBtn = (
     field: ActiveField,
@@ -176,37 +161,79 @@ export function ChatSettingsTimeRangePicker({
     </button>
   )
 
+  // Содержимое для активного time-поля или (если активна дата / ничего) — календарь
+  const popoverBody = (() => {
+    if (active === 'startTime' || active === 'endTime') {
+      const current = active === 'startTime' ? startTime : endTime
+      return (
+        <div className="max-h-[260px] w-[90px] overflow-y-auto py-1">
+          {TIME_OPTIONS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => {
+                if (active === 'startTime') handleStartTimeChange(t)
+                else handleEndTimeChange(t)
+                setActive(null)
+              }}
+              className={cn(
+                'block w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors',
+                t === current && 'bg-accent font-medium',
+              )}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )
+    }
+    // По умолчанию (нет активного поля или активно поле даты) — календарь
+    const activeDateField: 'startDate' | 'endDate' =
+      active === 'endDate' ? 'endDate' : 'startDate'
+    const selected = activeDateField === 'startDate' ? date : effectiveEndDate
+    return (
+      <CalendarUI
+        mode="single"
+        selected={selected}
+        onSelect={(d) => {
+          if (!d) return
+          if (activeDateField === 'startDate') {
+            onDateChange(d)
+            // Если endDate была раньше — сдвинуть к новой start
+            if (endDate && endDate < d) onEndDateChange(d)
+          } else {
+            setEndDateMaybe(d)
+          }
+        }}
+        locale={ru}
+      />
+    )
+  })()
+
   return (
-    <div className="flex flex-col gap-1 shrink-0" style={{ width: 280 }}>
+    <div className="flex flex-col gap-1 shrink-0" style={{ width: 200 }}>
       <Label className="text-sm text-muted-foreground">Срок</Label>
 
       <Popover
-        open={active !== null}
-        onOpenChange={(open) => !open && closePopover()}
+        open={popoverOpen}
+        onOpenChange={(open) => {
+          if (!open) closePopover()
+          else setPopoverOpen(true)
+        }}
         modal
       >
         <PopoverAnchor asChild>
-          {!date ? (
-            <button
-              type="button"
-              onClick={() => {
-                onDateChange(new Date())
-                setActive('startDate')
-              }}
-              className="flex items-center gap-2 h-9 px-2 rounded-md border border-input bg-background text-sm hover:bg-accent w-full text-gray-400"
-            >
-              <Calendar className="w-3.5 h-3.5 shrink-0" />
-              <span>Не указан</span>
-            </button>
-          ) : (
-            <div className="flex items-center gap-1 flex-nowrap">
-              {fieldBtn('startDate', formatDateShort(date), '—', 72)}
-              {!allDay && fieldBtn('startTime', startTime, '00:00', 50)}
-              <span className="text-xs text-muted-foreground px-0.5">—</span>
-              {!allDay && fieldBtn('endTime', endTime, '00:00', 50)}
-              {fieldBtn('endDate', formatDateShort(effectiveEndDate), '—', 72)}
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={openPopover}
+            className={cn(
+              'flex items-center gap-2 h-9 px-2 rounded-md border border-input bg-background text-sm transition-colors hover:bg-accent text-left w-full',
+              !date && 'text-gray-400',
+            )}
+          >
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{summary}</span>
+          </button>
         </PopoverAnchor>
         <PopoverContent
           className="w-auto p-0 z-[100]"
@@ -215,39 +242,38 @@ export function ChatSettingsTimeRangePicker({
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
-          {popoverContent}
+          <div className="p-3 space-y-3">
+            {/* Ряд из 4 полей */}
+            <div className="flex items-center gap-1 flex-nowrap">
+              {fieldBtn('startDate', formatDateShort(date), '—', 72)}
+              {fieldBtn('startTime', startTime, '--:--', 52)}
+              <span className="text-xs text-muted-foreground px-0.5">—</span>
+              {fieldBtn('endTime', endTime, '--:--', 52)}
+              {fieldBtn('endDate', formatDateShort(effectiveEndDate), '—', 72)}
+            </div>
+
+            {/* Тело попапа: календарь или time-list */}
+            <div className="border-t pt-2 flex justify-center">
+              {popoverBody}
+            </div>
+
+            {/* Очистить */}
+            <div className="border-t pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  onClear()
+                  closePopover()
+                }}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-3 h-3" />
+                <span>Очистить</span>
+              </button>
+            </div>
+          </div>
         </PopoverContent>
       </Popover>
-
-      {/* Сводка под полями */}
-      {date && (
-        <div className="text-[11px] text-muted-foreground mt-0.5 truncate" title={summary}>
-          {summary}
-        </div>
-      )}
-
-      {/* Чекбокс «Весь день» + очистить */}
-      {date && (
-        <div className="flex items-center gap-3 mt-1">
-          <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={allDay}
-              onChange={(e) => onAllDayChange(e.target.checked)}
-              className="cursor-pointer"
-            />
-            <span>Весь день</span>
-          </label>
-          <button
-            type="button"
-            onClick={onClear}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="w-3 h-3" />
-            <span>Очистить</span>
-          </button>
-        </div>
-      )}
     </div>
   )
 }

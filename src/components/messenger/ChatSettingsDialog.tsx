@@ -197,12 +197,10 @@ export function ChatSettingsDialog({
 
             <ChatSettingsTimeRangePicker
               date={form.currentDlDate}
-              allDay={form.taskAllDay}
               startTime={form.taskStartTime}
               endTime={form.taskEndTime}
               endDate={form.taskEndDate}
               onDateChange={actions.handleDeadlineSelect}
-              onAllDayChange={form.setTaskAllDay}
               onStartTimeChange={form.setTaskStartTime}
               onEndTimeChange={form.setTaskEndTime}
               onEndDateChange={form.setTaskEndDate}

@@ -62,11 +62,11 @@ export function useChatSettingsFormState({
   const [taskDeadline, setTaskDeadline] = useState<Date | undefined>(
     defaultThreadType === 'task' ? new Date() : undefined,
   )
-  /** false = задача с временным слотом (start_at/end_at). true = только дата (legacy «срок»). */
-  const [taskAllDay, setTaskAllDay] = useState<boolean>(true)
-  const [taskStartTime, setTaskStartTime] = useState<string>('10:00')
-  const [taskEndTime, setTaskEndTime] = useState<string>('10:30')
-  /** Если задано — конец на ДРУГОЙ дате (многодневная задача). NULL = тот же день что и taskDeadline. */
+  /** Время начала в HH:mm. Пустая строка = «весь день» (нет временного слота). */
+  const [taskStartTime, setTaskStartTime] = useState<string>('')
+  /** Время конца. Пустая строка = «весь день». */
+  const [taskEndTime, setTaskEndTime] = useState<string>('')
+  /** Дата конца. Если undefined → конец = дата начала (однодневная). */
   const [taskEndDate, setTaskEndDate] = useState<Date | undefined>(undefined)
   const [taskStatusId, setTaskStatusId] = useState<string | null>(null)
   const [taskAssignees, setTaskAssignees] = useState<Set<string>>(new Set())
@@ -100,25 +100,24 @@ export function useChatSettingsFormState({
           s.getFullYear() === e.getFullYear() &&
           s.getMonth() === e.getMonth() &&
           s.getDate() === e.getDate()
-        // Распознаём «многодневная all-day»: start 00:00 + end 23:59 на разных датах
+        // Многодневная all-day: start 00:00 + end 23:59 → время не показываем
         const isMultiDayAllDay =
           !sameDay &&
           s.getHours() === 0 && s.getMinutes() === 0 &&
           e.getHours() === 23 && e.getMinutes() === 59
+        setTaskDeadline(s)
+        setTaskEndDate(sameDay ? undefined : e)
         if (isMultiDayAllDay) {
-          setTaskAllDay(true)
-          setTaskDeadline(s)
-          setTaskEndDate(e)
+          setTaskStartTime('')
+          setTaskEndTime('')
         } else {
-          setTaskAllDay(false)
           setTaskStartTime(`${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`)
           setTaskEndTime(`${String(e.getHours()).padStart(2, '0')}:${String(e.getMinutes()).padStart(2, '0')}`)
-          setTaskDeadline(s)
-          setTaskEndDate(sameDay ? undefined : e)
         }
       } else {
-        setTaskAllDay(true)
         setTaskEndDate(undefined)
+        setTaskStartTime('')
+        setTaskEndTime('')
         if (chat.deadline) setTaskDeadline(new Date(chat.deadline))
       }
     } else {
@@ -198,9 +197,8 @@ export function useChatSettingsFormState({
     setSelectedMemberIds(new Set())
     setSelectedRoles(new Set())
     setTaskDeadline(defaultThreadType === 'task' ? new Date() : undefined)
-    setTaskAllDay(true)
-    setTaskStartTime('10:00')
-    setTaskEndTime('10:30')
+    setTaskStartTime('')
+    setTaskEndTime('')
     setTaskEndDate(undefined)
     setTaskStatusId(null)
     setTaskAssignees(new Set())
@@ -258,8 +256,6 @@ export function useChatSettingsFormState({
     setChannelExpanded,
     taskDeadline,
     setTaskDeadline,
-    taskAllDay,
-    setTaskAllDay,
     taskStartTime,
     setTaskStartTime,
     taskEndTime,
