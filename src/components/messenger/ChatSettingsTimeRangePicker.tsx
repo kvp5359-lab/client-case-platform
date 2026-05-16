@@ -62,10 +62,8 @@ export function ChatSettingsTimeRangePicker({
     const fmt = (d: Date) =>
       d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })
     const d1 = fmt(date)
-    if (allDay) return fmt(date).replace(/\.(\d{2})$/, '.$1')
-    if (endDate) {
-      const d2 = fmt(endDate)
-      return `${d1} ${startTime} → ${d2} ${endTime}`
+    if (allDay) {
+      return endDate ? `${d1} → ${fmt(endDate)}` : d1
     }
     return `${d1}, ${startTime}–${endTime}`
   }, [date, allDay, startTime, endTime, endDate])
@@ -116,33 +114,34 @@ export function ChatSettingsTimeRangePicker({
               <span>Весь день</span>
             </label>
             {!allDay && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="time"
+                  value={startTime}
+                  step={1800}
+                  onChange={(e) => onStartTimeChange(e.target.value)}
+                  className="border border-input rounded px-2 py-1 text-xs"
+                  aria-label="Начало"
+                />
+                <span className="text-xs text-muted-foreground">–</span>
+                <input
+                  type="time"
+                  value={endTime}
+                  step={1800}
+                  onChange={(e) => onEndTimeChange(e.target.value)}
+                  className="border border-input rounded px-2 py-1 text-xs"
+                  aria-label="Конец"
+                />
+              </div>
+            )}
+            {allDay && (
               <>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="time"
-                    value={startTime}
-                    step={1800}
-                    onChange={(e) => onStartTimeChange(e.target.value)}
-                    className="border border-input rounded px-2 py-1 text-xs"
-                    aria-label="Начало"
-                  />
-                  <span className="text-xs text-muted-foreground">–</span>
-                  <input
-                    type="time"
-                    value={endTime}
-                    step={1800}
-                    onChange={(e) => onEndTimeChange(e.target.value)}
-                    className="border border-input rounded px-2 py-1 text-xs"
-                    aria-label="Конец"
-                  />
-                </div>
                 <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={endDate !== undefined}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        // По умолчанию — следующий день после начала
                         const next = date ? new Date(date) : new Date()
                         next.setDate(next.getDate() + 1)
                         onEndDateChange(next)

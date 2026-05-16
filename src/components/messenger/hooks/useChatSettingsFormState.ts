@@ -94,18 +94,28 @@ export function useChatSettingsFormState({
       const startAt = (chat as { start_at?: string | null }).start_at
       const endAt = (chat as { end_at?: string | null }).end_at
       if (startAt && endAt) {
-        setTaskAllDay(false)
         const s = new Date(startAt)
         const e = new Date(endAt)
-        setTaskStartTime(`${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`)
-        setTaskEndTime(`${String(e.getHours()).padStart(2, '0')}:${String(e.getMinutes()).padStart(2, '0')}`)
-        setTaskDeadline(s)
-        // Если дата конца отличается от даты начала — это многодневная задача
         const sameDay =
           s.getFullYear() === e.getFullYear() &&
           s.getMonth() === e.getMonth() &&
           s.getDate() === e.getDate()
-        setTaskEndDate(sameDay ? undefined : e)
+        // Распознаём «многодневная all-day»: start 00:00 + end 23:59 на разных датах
+        const isMultiDayAllDay =
+          !sameDay &&
+          s.getHours() === 0 && s.getMinutes() === 0 &&
+          e.getHours() === 23 && e.getMinutes() === 59
+        if (isMultiDayAllDay) {
+          setTaskAllDay(true)
+          setTaskDeadline(s)
+          setTaskEndDate(e)
+        } else {
+          setTaskAllDay(false)
+          setTaskStartTime(`${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`)
+          setTaskEndTime(`${String(e.getHours()).padStart(2, '0')}:${String(e.getMinutes()).padStart(2, '0')}`)
+          setTaskDeadline(s)
+          setTaskEndDate(sameDay ? undefined : e)
+        }
       } else {
         setTaskAllDay(true)
         setTaskEndDate(undefined)

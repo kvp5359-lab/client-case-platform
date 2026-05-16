@@ -54,22 +54,30 @@ export function useChatSettingsSave({
   onUpdate,
 }: UseChatSettingsSaveParams) {
   return useCallback(() => {
-    // Срок: либо «весь день» (только deadline-дата без времени), либо
-    // интервал start_at/end_at. Триггер БД sync_thread_deadline_end_at
-    // следит за тем, что deadline = end_at когда задан интервал.
-    // Если задан taskEndDate — конец на другой дате (многодневная задача).
-    const startAtIso = form.taskAllDay
-      ? null
-      : buildIsoFromDateAndTime(form.taskDeadline, form.taskStartTime)
-    const endAtIso = form.taskAllDay
-      ? null
-      : buildIsoFromDateAndTime(
-          form.taskEndDate ?? form.taskDeadline,
-          form.taskEndTime,
-        )
-    const deadlineIso = form.taskAllDay
-      ? form.taskDeadline ? formatDateToString(form.taskDeadline) : null
-      : endAtIso
+    // Срок: три кейса
+    //   1) Весь день, одна дата → только deadline, без слота в календаре
+    //   2) Весь день, диапазон дат → start_at = date 00:00, end_at = endDate 23:59
+    //      (многодневная all-day задача типа «отпуск 16-18 мая»)
+    //   3) С временем (одна дата) → start_at = date+startTime, end_at = date+endTime
+    // Триггер БД sync_thread_deadline_end_at автоматически проставит
+    // deadline = end_at когда задан интервал.
+    let startAtIso: string | null = null
+    let endAtIso: string | null = null
+    let deadlineIso: string | null = null
+
+    if (form.taskAllDay) {
+      if (form.taskEndDate && form.taskDeadline) {
+        startAtIso = buildIsoFromDateAndTime(form.taskDeadline, '00:00')
+        endAtIso = buildIsoFromDateAndTime(form.taskEndDate, '23:59')
+        deadlineIso = endAtIso
+      } else {
+        deadlineIso = form.taskDeadline ? formatDateToString(form.taskDeadline) : null
+      }
+    } else {
+      startAtIso = buildIsoFromDateAndTime(form.taskDeadline, form.taskStartTime)
+      endAtIso = buildIsoFromDateAndTime(form.taskDeadline, form.taskEndTime)
+      deadlineIso = endAtIso
+    }
 
     if (form.isEditMode) {
       if (!form.name.trim()) return
