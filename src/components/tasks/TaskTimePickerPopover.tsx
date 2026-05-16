@@ -375,7 +375,7 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
         <span>{trigger({ open, isOpen: popoverOpen })}</span>
       </PopoverAnchor>
       <PopoverContent className="w-auto p-0 z-[100]" align="start" sideOffset={4}>
-        <div className="p-3 space-y-2.5">
+        <div className="p-3 space-y-1">
           <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
             <input
               type="checkbox"
