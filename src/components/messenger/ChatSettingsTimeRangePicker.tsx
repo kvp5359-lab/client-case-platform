@@ -275,7 +275,8 @@ export function ChatSettingsTimeRangePicker({
                 {fieldBtn('startTime', startTime, '--:--', 52)}
                 <span className="text-xs text-muted-foreground px-0.5">—</span>
                 {fieldBtn('endTime', endTime, '--:--', 52)}
-                {fieldBtn('endDate', formatDateShort(effectiveEndDate), '—', 72)}
+                {/* endDate показываем только если отличается от startDate */}
+                {fieldBtn('endDate', endDate ? formatDateShort(endDate) : '', '—', 72)}
               </div>
             )}
 
