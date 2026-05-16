@@ -20,6 +20,40 @@ import { cn } from '@/lib/utils'
 import { formatShortDate, formatDateToString } from '@/utils/format/dateFormat'
 import { TaskTimePickerPopover, type TaskTimeValue } from './TaskTimePickerPopover'
 
+function formatHM(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+/**
+ * Сводка для chip: учитывает start_at/end_at если они есть.
+ *   - "17 мая" — только deadline
+ *   - "17 мая — 19 мая" — многодневная all-day (start 00:00 / end 23:59)
+ *   - "17 мая 09:00" — с временем (одна дата)
+ *   - "17 мая 22:00 → 18 мая 06:00" — встреча через ночь
+ */
+function buildChipSummary(deadline: string, startAt: string | null, endAt: string | null): string {
+  if (startAt && endAt) {
+    const s = new Date(startAt)
+    const e = new Date(endAt)
+    const sameDay =
+      s.getFullYear() === e.getFullYear() &&
+      s.getMonth() === e.getMonth() &&
+      s.getDate() === e.getDate()
+    const isMultiDayAllDay =
+      !sameDay &&
+      s.getHours() === 0 && s.getMinutes() === 0 &&
+      e.getHours() === 23 && e.getMinutes() === 59
+    if (isMultiDayAllDay) {
+      return `${formatShortDate(formatDateToString(s))} — ${formatShortDate(formatDateToString(e))}`
+    }
+    if (sameDay) {
+      return `${formatShortDate(formatDateToString(s))} ${formatHM(s)}–${formatHM(e)}`
+    }
+    return `${formatShortDate(formatDateToString(s))} ${formatHM(s)} → ${formatShortDate(formatDateToString(e))} ${formatHM(e)}`
+  }
+  return formatShortDate(formatDateToString(new Date(deadline)))
+}
+
 interface DeadlinePopoverProps {
   deadline: string | null
   /** Запланированное начало — для отображения в попапе. */
@@ -91,7 +125,9 @@ export function DeadlinePopover({
           title="Срок выполнения"
         >
           <Calendar className="w-3 h-3" />
-          {d ? formatShortDate(formatDateToString(d)) : 'Срок'}
+          {deadline
+            ? buildChipSummary(deadline, startAt ?? null, endAt ?? null)
+            : 'Срок'}
         </button>
       )}
     />
