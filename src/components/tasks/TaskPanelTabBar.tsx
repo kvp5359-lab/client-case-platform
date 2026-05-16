@@ -344,7 +344,7 @@ function DraggableTab({
           className={cn(
             'group relative flex items-center gap-1 rounded-full text-xs cursor-pointer min-w-0',
             // Закреплённые компактные: только иконка (+ бейдж/крестик), без текста.
-            tab.pinned ? 'px-1.5 h-6 w-7 justify-center shrink-0' : 'pl-2 pr-0.5 h-6 min-w-[80px]',
+            tab.pinned ? 'px-1.5 h-6 w-7 justify-center shrink-0' : 'pl-2 pr-2 h-6 min-w-[80px]',
             !tab.pinned && (isActive ? 'shrink-0' : 'shrink'),
             isActive
               ? cn(
