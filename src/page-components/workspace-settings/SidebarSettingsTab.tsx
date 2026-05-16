@@ -38,6 +38,7 @@ import {
   SIDEBAR_NAV_KEYS,
   TOPBAR_SOFT_LIMIT,
   type SidebarBadgeMode,
+  type SidebarBadgeColor,
   type SidebarPlacement,
   type SidebarSlot,
 } from '@/lib/sidebarSettings'
@@ -250,6 +251,18 @@ function SidebarSettingsView({
     onChange(slots.map((s) => (s.id === slotId ? { ...s, badge_mode: mode } : s)))
   }
 
+  const setBadgeColor = (slotId: string, color: SidebarBadgeColor) => {
+    onChange(
+      slots.map((s) =>
+        s.id === slotId
+          ? color === 'default'
+            ? { ...s, badge_color: undefined }
+            : { ...s, badge_color: color }
+          : s,
+      ),
+    )
+  }
+
   const moveToZone = (slotId: string, placement: SidebarPlacement) => {
     const target = slots.find((s) => s.id === slotId)
     if (!target || target.placement === placement) return
@@ -316,6 +329,7 @@ function SidebarSettingsView({
         zone="topbar"
         onMove={moveWithinZone}
         onSetBadge={setBadge}
+        onSetBadgeColor={setBadgeColor}
         onMoveToZone={moveToZone}
         onRemove={removeFromSidebar}
         onCreateFolder={createFolder}
@@ -338,6 +352,7 @@ function SidebarSettingsView({
         zone="list"
         onMove={moveWithinZone}
         onSetBadge={setBadge}
+        onSetBadgeColor={setBadgeColor}
         onMoveToZone={moveToZone}
         onRemove={removeFromSidebar}
         onCreateFolder={createFolder}

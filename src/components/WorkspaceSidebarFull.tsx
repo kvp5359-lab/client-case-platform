@@ -7,8 +7,8 @@
  */
 
 import { useEffect, useState, useMemo, startTransition } from 'react'
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { PanelLeftClose } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
@@ -47,9 +47,18 @@ import {
 interface WorkspaceSidebarFullProps {
   workspaceId?: string
   onCollapse?: () => void
+  /** Сжатый режим — только иконки (без выбора воркспейса, проектов, пользователя). */
+  compact?: boolean
+  /** Кнопка-«развернуть» в сжатом режиме. */
+  onExpand?: () => void
 }
 
-export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId, onCollapse }: WorkspaceSidebarFullProps = {}) {
+export function WorkspaceSidebarFull({
+  workspaceId: propsWorkspaceId,
+  onCollapse,
+  compact = false,
+  onExpand,
+}: WorkspaceSidebarFullProps = {}) {
   const router = useRouter()
   const params = useParams<{ workspaceId?: string; projectId?: string }>()
   const pathname = usePathname()
@@ -370,6 +379,77 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId, onCollapse
     router.push('/login')
   }
 
+  if (compact) {
+    const wsName = currentWorkspace?.name ?? ''
+    return (
+      <aside
+        data-workspace-sidebar
+        className="relative bg-[#f7f7f7] flex-shrink-0 flex flex-col h-full overflow-hidden border-r border-gray-200 w-12"
+      >
+        <div className="flex justify-center pt-2">
+          <button
+            type="button"
+            onClick={onExpand}
+            aria-label="Развернуть сайдбар"
+            title="Развернуть сайдбар"
+            className="flex items-center justify-center h-8 w-8 rounded-md bg-background border shadow-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <PanelLeftOpen size={14} />
+          </button>
+        </div>
+        <div className="flex justify-center pt-2">
+          {currentWorkspace && (
+            <div
+              className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium"
+              title={wsName}
+            >
+              {wsName.charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
+        <div className="px-1 pt-1 pb-2 flex flex-col gap-1.5 overflow-y-auto">
+          <SidebarSlotsRow
+            slots={topbarSlots}
+            compact
+            direction="column"
+            allBoards={allBoards}
+            allItemLists={allItemLists}
+            isOwner={isOwner}
+            pathname={pathname}
+            buildHref={buildHref}
+            computeBadge={computeBadge}
+            isNavActive={isNavActive}
+            isNavItemActive={isNavItemActive}
+            listSlots={listSlots}
+            toggleBoardPin={toggleBoardPin}
+            toggleListPin={toggleListPin}
+          />
+          {!isClientOnly && topbarSlots.length > 0 && listSlots.length > 0 && (
+            <div className="mx-2 h-px bg-gray-300/70" />
+          )}
+          {!isClientOnly && (
+            <SidebarSlotsRow
+              slots={listSlots}
+              compact
+              direction="column"
+              allBoards={allBoards}
+              allItemLists={allItemLists}
+              isOwner={isOwner}
+              pathname={pathname}
+              buildHref={buildHref}
+              computeBadge={computeBadge}
+              isNavActive={isNavActive}
+              isNavItemActive={isNavItemActive}
+              listSlots={listSlots}
+              toggleBoardPin={toggleBoardPin}
+              toggleListPin={toggleListPin}
+            />
+          )}
+        </div>
+      </aside>
+    )
+  }
+
   return (
     <aside
       ref={sidebarRef}
@@ -378,7 +458,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId, onCollapse
       style={{ width: sidebarWidth }}
     >
       {!isClientOnly && !permissionsLoading && (
-        <div className={onCollapse ? 'relative pr-6' : 'relative'}>
+        <div className={onCollapse ? 'relative pr-10' : 'relative'}>
           <WorkspacePicker
             workspaces={workspaces}
             currentWorkspace={currentWorkspace}
@@ -393,7 +473,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId, onCollapse
               onClick={onCollapse}
               aria-label="Свернуть сайдбар"
               title="Свернуть сайдбар"
-              className="absolute top-3 right-0 z-10 hidden md:flex items-center justify-center w-5 h-10 rounded-l-md bg-background border border-r-0 shadow-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="absolute top-2 right-2 z-10 hidden md:flex items-center justify-center h-8 w-8 rounded-md bg-background border shadow-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               <PanelLeftClose size={14} />
             </button>

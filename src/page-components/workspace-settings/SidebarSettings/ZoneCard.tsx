@@ -33,13 +33,16 @@ import {
 } from '@/components/ui/select'
 import type { ItemList } from '@/hooks/useItemLists'
 import {
+  BADGE_COLORS,
   BADGE_MODES,
   boardIdFromSlotId,
   childrenOfFolder,
+  getBadgeColorMeta,
   listIdFromSlotId,
   navKeyFromSlotId,
   SIDEBAR_NAV_ITEMS,
   topLevelSlots,
+  type SidebarBadgeColor,
   type SidebarBadgeMode,
   type SidebarPlacement,
   type SidebarSlot,
@@ -57,12 +60,58 @@ interface ZoneCardProps {
   zone: SidebarPlacement
   onMove: (id: string, delta: -1 | 1) => void
   onSetBadge: (id: string, mode: SidebarBadgeMode) => void
+  onSetBadgeColor: (id: string, color: SidebarBadgeColor) => void
   onMoveToZone: (id: string, placement: SidebarPlacement) => void
   onRemove: (id: string) => void
   onCreateFolder: (placement: SidebarPlacement) => void
   onRenameFolder: (slotId: string, name: string) => void
   onMoveToFolder: (slotId: string, folderId: string | null) => void
   warning: string | null
+}
+
+/** Маленький круглый swatch-селектор цвета бейджа. */
+function BadgeColorPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: SidebarBadgeColor | undefined
+  onChange: (color: SidebarBadgeColor) => void
+  disabled?: boolean
+}) {
+  const current = getBadgeColorMeta(value)
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          title={disabled ? 'Сначала выбери тип бейджа' : `Цвет: ${current.label}`}
+          className="h-6 w-6 shrink-0 rounded-full border border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-shadow hover:shadow"
+          style={{ backgroundColor: current.swatch }}
+        />
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-2" align="end">
+        <div className="grid grid-cols-4 gap-1.5">
+          {BADGE_COLORS.map((c) => {
+            const isSelected = (value ?? 'default') === c.value
+            return (
+              <button
+                key={c.value}
+                type="button"
+                title={c.label}
+                onClick={() => onChange(c.value)}
+                className={`h-7 w-7 rounded-full border-2 transition-all ${
+                  isSelected ? 'border-gray-900 scale-110' : 'border-gray-200 hover:border-gray-400'
+                }`}
+                style={{ backgroundColor: c.swatch }}
+              />
+            )
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 interface SlotMeta {
@@ -104,6 +153,7 @@ export function ZoneCard({
   zone,
   onMove,
   onSetBadge,
+  onSetBadgeColor,
   onMoveToZone,
   onRemove,
   onCreateFolder,
@@ -174,6 +224,7 @@ export function ZoneCard({
                     folderOptions={folderOptions}
                     onMove={onMove}
                     onSetBadge={onSetBadge}
+                    onSetBadgeColor={onSetBadgeColor}
                     onMoveToZone={onMoveToZone}
                     onRemove={onRemove}
                     onRenameFolder={onRenameFolder}
@@ -194,6 +245,7 @@ export function ZoneCard({
                   folderOptions={folderOptions}
                   onMove={onMove}
                   onSetBadge={onSetBadge}
+                  onSetBadgeColor={onSetBadgeColor}
                   onMoveToZone={onMoveToZone}
                   onRemove={onRemove}
                   onMoveToFolder={onMoveToFolder}
@@ -220,6 +272,7 @@ interface SlotRowProps {
   folderOptions: { id: string; name: string }[]
   onMove: (id: string, delta: -1 | 1) => void
   onSetBadge: (id: string, mode: SidebarBadgeMode) => void
+  onSetBadgeColor: (id: string, color: SidebarBadgeColor) => void
   onMoveToZone: (id: string, placement: SidebarPlacement) => void
   onRemove: (id: string) => void
   onMoveToFolder: (slotId: string, folderId: string | null) => void
@@ -237,6 +290,7 @@ function SlotRow({
   folderOptions,
   onMove,
   onSetBadge,
+  onSetBadgeColor,
   onMoveToZone,
   onRemove,
   onMoveToFolder,
@@ -262,6 +316,11 @@ function SlotRow({
           ))}
         </SelectContent>
       </Select>
+      <BadgeColorPicker
+        value={slot.badge_color}
+        onChange={(c) => onSetBadgeColor(slot.id, c)}
+        disabled={slot.badge_mode === 'disabled'}
+      />
       <div className="flex items-center gap-0 shrink-0">
         <Button
           type="button"
@@ -364,6 +423,7 @@ interface FolderRowProps {
   folderOptions: { id: string; name: string }[]
   onMove: (id: string, delta: -1 | 1) => void
   onSetBadge: (id: string, mode: SidebarBadgeMode) => void
+  onSetBadgeColor: (id: string, color: SidebarBadgeColor) => void
   onMoveToZone: (id: string, placement: SidebarPlacement) => void
   onRemove: (id: string) => void
   onRenameFolder: (slotId: string, name: string) => void
@@ -383,6 +443,7 @@ function FolderRow({
   folderOptions,
   onMove,
   onSetBadge,
+  onSetBadgeColor,
   onMoveToZone,
   onRemove,
   onRenameFolder,
@@ -458,6 +519,11 @@ function FolderRow({
             ))}
           </SelectContent>
         </Select>
+        <BadgeColorPicker
+          value={folder.badge_color}
+          onChange={(c) => onSetBadgeColor(folder.id, c)}
+          disabled={folder.badge_mode === 'disabled'}
+        />
         <div className="flex items-center gap-0 shrink-0">
           <Button
             type="button"
@@ -518,6 +584,7 @@ function FolderRow({
               folderOptions={folderOptions}
               onMove={onMove}
               onSetBadge={onSetBadge}
+              onSetBadgeColor={onSetBadgeColor}
               onMoveToZone={onMoveToZone}
               onRemove={onRemove}
               onMoveToFolder={onMoveToFolder}

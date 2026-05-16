@@ -204,18 +204,6 @@ export function BoardInboxList({
           <>
             <button
               type="button"
-              onClick={() => setFilter('all')}
-              className={cn(
-                'text-[10px] px-2 py-0.5 rounded-full transition-colors',
-                filter === 'all'
-                  ? 'bg-blue-100 text-blue-700 font-medium'
-                  : 'text-gray-500 hover:bg-gray-100',
-              )}
-            >
-              Все
-            </button>
-            <button
-              type="button"
               onClick={() => setFilter('unread')}
               className={cn(
                 'text-[10px] px-2 py-0.5 rounded-full transition-colors flex items-center gap-1',
@@ -233,6 +221,18 @@ export function BoardInboxList({
                   {unreadCount}
                 </span>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter('all')}
+              className={cn(
+                'text-[10px] px-2 py-0.5 rounded-full transition-colors',
+                filter === 'all'
+                  ? 'bg-blue-100 text-blue-700 font-medium'
+                  : 'text-gray-500 hover:bg-gray-100',
+              )}
+            >
+              Все
             </button>
             <button
               type="button"

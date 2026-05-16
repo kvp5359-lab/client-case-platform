@@ -47,12 +47,25 @@ export type SidebarBadgeMode =
   | 'unread_threads'
   | 'unread_personal_dialogs'
 
+export type SidebarBadgeColor =
+  | 'default'
+  | 'red'
+  | 'orange'
+  | 'amber'
+  | 'green'
+  | 'blue'
+  | 'violet'
+  | 'gray'
+
 export interface SidebarSlot {
   id: string // 'nav:<key>' | 'board:<uuid>' | 'list:<uuid>' | 'folder:<uuid>'
   type: 'nav' | 'board' | 'list' | 'folder'
   placement: SidebarPlacement
   order: number
   badge_mode: SidebarBadgeMode
+  /** Цветовой акцент бейджа. Если не задан или 'default' — используется
+   *  исторический красный (`bg-red-500` / `bg-red-100 text-red-600`). */
+  badge_color?: SidebarBadgeColor
   /**
    * Если задано — слот вложен в папку (значение = id слота-папки). 1 уровень
    * вложенности: папка не может быть в папке. Для слотов верхнего уровня
@@ -247,6 +260,86 @@ export const BADGE_MODES: BadgeModeMeta[] = [
   },
 ]
 
+/** Палитра цветовых акцентов для бейджей в сайдбаре. */
+export interface BadgeColorMeta {
+  value: SidebarBadgeColor
+  label: string
+  /** HEX swatch для отображения в селекторе цвета. */
+  swatch: string
+  /** Tailwind-классы для round-бейджа на иконке (топбар, compact). */
+  roundClasses: string
+  /** Tailwind-классы для прямоугольного бейджа в строке (список). */
+  pillClasses: string
+}
+
+export const BADGE_COLORS: BadgeColorMeta[] = [
+  {
+    value: 'default',
+    label: 'По умолчанию',
+    swatch: '#ef4444',
+    roundClasses: 'bg-red-500 text-white',
+    pillClasses: 'bg-red-100 text-red-600',
+  },
+  {
+    value: 'red',
+    label: 'Красный',
+    swatch: '#ef4444',
+    roundClasses: 'bg-red-500 text-white',
+    pillClasses: 'bg-red-100 text-red-600',
+  },
+  {
+    value: 'orange',
+    label: 'Оранжевый',
+    swatch: '#f97316',
+    roundClasses: 'bg-orange-500 text-white',
+    pillClasses: 'bg-orange-100 text-orange-600',
+  },
+  {
+    value: 'amber',
+    label: 'Жёлтый',
+    swatch: '#f59e0b',
+    roundClasses: 'bg-amber-500 text-white',
+    pillClasses: 'bg-amber-100 text-amber-700',
+  },
+  {
+    value: 'green',
+    label: 'Зелёный',
+    swatch: '#22c55e',
+    roundClasses: 'bg-green-500 text-white',
+    pillClasses: 'bg-green-100 text-green-700',
+  },
+  {
+    value: 'blue',
+    label: 'Синий',
+    swatch: '#3b82f6',
+    roundClasses: 'bg-blue-500 text-white',
+    pillClasses: 'bg-blue-100 text-blue-600',
+  },
+  {
+    value: 'violet',
+    label: 'Фиолетовый',
+    swatch: '#8b5cf6',
+    roundClasses: 'bg-violet-500 text-white',
+    pillClasses: 'bg-violet-100 text-violet-700',
+  },
+  {
+    value: 'gray',
+    label: 'Серый',
+    swatch: '#6b7280',
+    roundClasses: 'bg-gray-500 text-white',
+    pillClasses: 'bg-gray-200 text-gray-700',
+  },
+]
+
+const BADGE_COLOR_MAP = new Map<SidebarBadgeColor, BadgeColorMeta>(
+  BADGE_COLORS.map((c) => [c.value, c]),
+)
+
+export function getBadgeColorMeta(color: SidebarBadgeColor | undefined): BadgeColorMeta {
+  return BADGE_COLOR_MAP.get(color ?? 'default') ?? BADGE_COLORS[0]
+}
+
+const VALID_BADGE_COLORS = new Set<string>(BADGE_COLORS.map((c) => c.value))
 const VALID_BADGE_MODES = new Set<string>(BADGE_MODES.map((m) => m.value))
 const VALID_NAV_KEYS = new Set<string>(SIDEBAR_NAV_KEYS)
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
@@ -287,6 +380,9 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
       if (!uuid || !UUID_RE.test(uuid)) continue
     }
     const slot: SidebarSlot = { id, type, placement, order, badge_mode: badgeMode }
+    if (typeof obj.badge_color === 'string' && VALID_BADGE_COLORS.has(obj.badge_color)) {
+      slot.badge_color = obj.badge_color as SidebarBadgeColor
+    }
     if (typeof obj.parent_id === 'string' && obj.parent_id.startsWith('folder:')) {
       slot.parent_id = obj.parent_id
     }

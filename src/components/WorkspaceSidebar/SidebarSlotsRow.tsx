@@ -22,6 +22,7 @@ import {
   SIDEBAR_NAV_ITEMS,
   boardIdFromSlotId,
   childrenOfFolder,
+  getBadgeColorMeta,
   listIdFromSlotId,
   navKeyFromSlotId,
   topLevelSlots,
@@ -34,6 +35,8 @@ interface SidebarSlotsRowProps {
   /** ВСЕ слоты зоны (топбар или список), включая папки и их детей. */
   slots: SidebarSlot[]
   compact: boolean
+  /** Направление рендера. По умолчанию: compact='row', обычный='column'. */
+  direction?: 'row' | 'column'
   allBoards: { id: string; name: string }[] | undefined
   allItemLists: ItemList[] | undefined
   isOwner: boolean
@@ -49,14 +52,17 @@ interface SidebarSlotsRowProps {
 }
 
 export function SidebarSlotsRow(props: SidebarSlotsRowProps) {
-  const { slots, compact } = props
+  const { slots, compact, direction } = props
   const top = topLevelSlots(slots)
   if (top.length === 0) return null
 
-  const wrapperClass = compact ? 'flex items-center justify-between gap-[1px]' : ''
-  const wrapperStyle = compact
-    ? undefined
-    : { display: 'flex', flexDirection: 'column' as const, gap: '1px' }
+  const effectiveDir = direction ?? (compact ? 'row' : 'column')
+  const wrapperClass =
+    effectiveDir === 'row' ? 'flex items-center justify-between gap-[1px]' : ''
+  const wrapperStyle =
+    effectiveDir === 'row'
+      ? undefined
+      : { display: 'flex', flexDirection: 'column' as const, gap: '1px' }
 
   return (
     <nav className={wrapperClass} style={wrapperStyle}>
@@ -98,6 +104,7 @@ function SingleSlot({
         label={meta.label}
         href={buildHref(meta.path)}
         badge={badge}
+        badgeColor={slot.badge_color}
         isActive={isNavItemActive(key, listSlots)}
         compact={compact || undefined}
       />
@@ -129,6 +136,7 @@ function SingleSlot({
         label={board.name}
         href={buildHref(`boards/${board.id}`)}
         badge={badge}
+        badgeColor={slot.badge_color}
         isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
         compact={compact || undefined}
         hoverIconSlot={hoverSlot}
@@ -195,6 +203,7 @@ function FolderSlot({
     return total > 0 ? String(total) : undefined
   })()
 
+  const folderBadgeMeta = getBadgeColorMeta(folder.badge_color)
   const triggerLabel = folder.name ?? 'Папка'
 
   return (
@@ -213,7 +222,10 @@ function FolderSlot({
           >
             <FolderIcon className="h-[18px] w-[18px] shrink-0" />
             {folderBadge && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[11px] font-bold leading-none flex items-center justify-center">
+              <span className={cn(
+                'absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-bold leading-none flex items-center justify-center',
+                folderBadgeMeta.roundClasses,
+              )}>
                 {folderBadge}
               </span>
             )}
@@ -231,7 +243,10 @@ function FolderSlot({
             </span>
             <span className="flex-1 truncate text-left">{triggerLabel}</span>
             {folderBadge && (
-              <span className="min-w-[18px] h-[18px] px-[3px] rounded-[4px] bg-red-100 text-red-600 text-[11px] font-semibold leading-none flex items-center justify-center">
+              <span className={cn(
+                'min-w-[18px] h-[18px] px-[3px] rounded-[4px] text-[11px] font-semibold leading-none flex items-center justify-center',
+                folderBadgeMeta.pillClasses,
+              )}>
                 {folderBadge}
               </span>
             )}

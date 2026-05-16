@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useMemo, createContext, useContext } from 'react'
 import { useParams } from 'next/navigation'
-import { Menu, X, PanelLeftOpen } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WorkspaceSidebarFull } from './WorkspaceSidebarFull'
 import { useSidebarCollapsed } from './WorkspaceSidebar/useSidebarCollapsed'
@@ -203,28 +203,18 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
                 'fixed inset-y-0 left-0 z-40 md:relative md:z-auto',
                 'transition-all duration-200 md:translate-x-0 overflow-hidden',
                 mobileOpen ? 'translate-x-0' : '-translate-x-full',
-                sidebarCollapsed && 'md:w-0',
               )}
             >
-              <WorkspaceSidebarFull workspaceId={workspaceId} onCollapse={toggleSidebar} />
+              {sidebarCollapsed ? (
+                <WorkspaceSidebarFull
+                  workspaceId={workspaceId}
+                  compact
+                  onExpand={toggleSidebar}
+                />
+              ) : (
+                <WorkspaceSidebarFull workspaceId={workspaceId} onCollapse={toggleSidebar} />
+              )}
             </div>
-
-            {/* Кнопка развернуть сайдбар — видна только когда сайдбар свёрнут (desktop) */}
-            {sidebarCollapsed && (
-              <button
-                type="button"
-                onClick={toggleSidebar}
-                aria-label="Развернуть сайдбар"
-                title="Развернуть сайдбар"
-                className={cn(
-                  'fixed top-3 left-0 z-50 hidden md:flex items-center justify-center',
-                  'w-5 h-10 rounded-r-md bg-background border border-l-0 shadow-sm',
-                  'text-muted-foreground hover:text-foreground hover:bg-accent transition-colors',
-                )}
-              >
-                <PanelLeftOpen size={14} />
-              </button>
-            )}
 
             {/* Overlay для мобильных */}
             {mobileOpen && (

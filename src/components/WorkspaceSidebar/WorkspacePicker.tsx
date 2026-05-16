@@ -93,10 +93,10 @@ export const WorkspacePicker = memo(function WorkspacePicker({
   }
 
   return (
-    <div className="px-2 pt-3 pb-2">
+    <div className="px-2 py-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-full justify-between h-10">
+          <Button variant="outline" className="w-full justify-between h-8 px-2">
             <div className="flex items-center gap-2 min-w-0">
               {currentWorkspace ? (
                 <>

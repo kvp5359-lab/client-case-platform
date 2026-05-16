@@ -78,7 +78,7 @@ export function BoardListHeader({
           onClick={onCreateThread}
           aria-label="Создать в этом списке"
           title="Создать в этом списке"
-          className="shrink-0 h-6 w-6 inline-flex items-center justify-center rounded-full opacity-0 group-hover/header:opacity-100 transition-opacity hover:brightness-95"
+          className="shrink-0 h-6 w-6 hidden group-hover/header:inline-flex items-center justify-center rounded-full hover:brightness-95"
           style={{ backgroundColor: hs.bg, color: hs.text }}
         >
           <Plus className="h-3.5 w-3.5" />

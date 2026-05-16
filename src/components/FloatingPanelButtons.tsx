@@ -19,13 +19,11 @@ import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 export function FloatingPanelButtons() {
   const ctx = useLayoutTaskPanel()
   const isHidden = ctx?.isHidden ?? false
-  const hasTabs = ctx?.hasTabs ?? false
   const togglePanel = ctx?.togglePanel
 
-  // Кнопка не нужна если: нет вкладок (нечего показывать) ИЛИ панель уже видна
-  // (внутри неё свой ✕ для скрытия). Показываем только когда панель скрыта,
-  // но вкладки есть — чтобы можно было её вернуть.
-  if (!hasTabs || !isHidden || !togglePanel) return null
+  // Показываем всегда, когда панель скрыта — чтобы можно было её вернуть.
+  // Когда панель открыта, у неё внутри свой ✕.
+  if (!isHidden || !togglePanel) return null
 
   return (
     <TooltipProvider>
