@@ -29,6 +29,7 @@ import { AiPanelContent } from '@/components/ai-panel'
 import { PanelDocumentsContent } from '@/components/documents/PanelDocumentsContent'
 import { AllHistoryContent } from '@/components/history/AllHistoryContent'
 import { useAuth } from '@/contexts/AuthContext'
+import { useWorkspacePermissions } from '@/hooks/permissions'
 
 const ExtraPanelContent = lazy(() =>
   import('@/components/extra-panel/ExtraPanelContent').then((m) => ({
@@ -78,6 +79,8 @@ export function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabCo
   const renameTask = useRenameTask(invalidateKeys)
   const updateSettings = useUpdateTaskSettings(invalidateKeys)
   const deleteThread = useDeleteThread(workspaceId)
+  // Удаление в шапке боковой панели — только владельцу воркспейса.
+  const { isOwner: isWorkspaceOwner } = useWorkspacePermissions({ workspaceId })
 
   // Тред не найден после загрузки — либо удалён, либо RLS не пускает
   // (нет доступа к проекту/треду). Показываем заглушку.
@@ -104,13 +107,17 @@ export function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabCo
       onDeadlineClear={() => updateDeadline.mutate({ threadId: task.id, deadline: null })}
       onRename={(name) => renameTask.mutate({ threadId: task.id, name })}
       onSettingsSave={(p) => updateSettings.mutate({ threadId: task.id, ...p })}
-      onRequestDelete={() => {
-        if (!confirm(`Удалить «${task.name}»? Можно восстановить из корзины.`)) return
-        deleteThread.mutate(
-          { id: task.id, name: task.name, type: task.type ?? 'task', project_id: task.project_id },
-          { onSuccess: () => onClose() },
-        )
-      }}
+      onRequestDelete={
+        isWorkspaceOwner
+          ? () => {
+              if (!confirm(`Удалить «${task.name}»? Можно восстановить из корзины.`)) return
+              deleteThread.mutate(
+                { id: task.id, name: task.name, type: task.type ?? 'task', project_id: task.project_id },
+                { onSuccess: () => onClose() },
+              )
+            }
+          : undefined
+      }
       deadlinePending={updateDeadline.isPending}
       settingsPending={updateSettings.isPending}
       showProjectLink

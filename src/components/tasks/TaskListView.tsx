@@ -49,6 +49,7 @@ import { TaskPanel } from './TaskPanel'
 import { useLayoutTaskPanel } from './TaskPanelContext'
 import { useTaskAssigneesMap } from './useTaskAssignees'
 import { useCurrentParticipantId } from '@/hooks/shared/useCurrentParticipantId'
+import { useWorkspacePermissions } from '@/hooks/permissions'
 import {
   useUpdateTaskStatus,
   useUpdateTaskDeadline,
@@ -235,6 +236,10 @@ export const TaskListView = memo(function TaskListView({
   const updateSettings = useUpdateTaskSettings(invalidateKeys)
   const reorderTasks = useReorderTasks(invalidateKeys)
   const deleteThread = useDeleteThread(workspaceId)
+  // Удаление задачи — только владельцу воркспейса. RLS на стороне БД пускает
+  // любого с доступом к треду, но клиент гейтит UI чтобы не показывать кнопку
+  // клиентам/исполнителям (иначе они тыкают и БД пропускает мягкое удаление).
+  const { isOwner: isWorkspaceOwner } = useWorkspacePermissions({ workspaceId })
 
   const handleConfirmDelete = useCallback(() => {
     if (!deletingTask) return
@@ -348,7 +353,7 @@ export const TaskListView = memo(function TaskListView({
           }
           onDeadlineClear={(taskId) => updateDeadline.mutate({ threadId: taskId, deadline: null })}
           onReorder={(updates) => reorderTasks.mutate(updates)}
-          onRequestDeleteTask={(task) => setDeletingTask(task)}
+          onRequestDeleteTask={isWorkspaceOwner ? (task) => setDeletingTask(task) : undefined}
           deadlinePending={updateDeadline.isPending}
           finalStatusIds={new Set(taskStatuses.filter((s) => s.is_final).map((s) => s.id))}
         />

@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useUpdateTaskStatus, useUpdateTaskDeadline } from '@/components/tasks/useTaskMutations'
 import { useDeleteThread } from '@/hooks/messenger/useProjectThreads'
+import { useWorkspacePermissions } from '@/hooks/permissions'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { BoardView } from '@/components/boards/BoardView'
@@ -71,6 +72,9 @@ export function BoardTabContent({
   const updateStatus = useUpdateTaskStatus(boardInvalidateKeys)
   const updateDeadline = useUpdateTaskDeadline(boardInvalidateKeys)
   const deleteThreadMutation = useDeleteThread(workspaceId)
+  // Гейтим «Удалить» в карточном меню — только владельцу воркспейса (см.
+  // комментарий в TaskListView.tsx — RLS пропускает любого с access к треду).
+  const { isOwner: isWorkspaceOwner } = useWorkspacePermissions({ workspaceId })
 
   const handleDeleteTask = useCallback(
     (t: WorkspaceTask) => {
@@ -142,7 +146,7 @@ export function BoardTabContent({
           onOpenTask={handleOpenTask}
           onOpenThread={handleOpenThread}
           onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}
-          onDeleteTask={handleDeleteTask}
+          onDeleteTask={isWorkspaceOwner ? handleDeleteTask : undefined}
           onDeadlineChange={handleDeadlineChange}
           selectedThreadId={layoutPanel?.activeThreadId ?? null}
           selectedProjectId={layoutPanel?.activeProjectId ?? null}
