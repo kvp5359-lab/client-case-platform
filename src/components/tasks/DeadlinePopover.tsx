@@ -1,28 +1,52 @@
 "use client"
 
 /**
- * DeadlinePopover — попап выбора срока задачи (переиспользуемый).
+ * DeadlinePopover — компактный chip-триггер для срока задачи.
+ *
+ * Сам попап (с длительностью, временем, диапазоном дат) общий —
+ * TaskTimePickerPopover. Здесь только chip-стилизация и подсветка
+ * просрочки.
+ *
+ * API: поддерживает два варианта (backward-compat):
+ *   - НОВЫЙ: onChange({ deadline, startAt, endAt }) — все три поля.
+ *   - СТАРЫЙ: onSet(date) + onClear() — только deadline. Конвертируется
+ *     внутрь onChange (start_at/end_at теряются — в местах где старый
+ *     API, расширенный режим попапа всё равно работает в UI, но при
+ *     сохранении уйдёт только deadline).
  */
 
-import { useState } from 'react'
-import { Calendar, X } from 'lucide-react'
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
-import { Calendar as CalendarUI } from '@/components/ui/calendar'
-import { ru } from 'date-fns/locale'
+import { Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatShortDate, formatDateToString } from '@/utils/format/dateFormat'
+import { TaskTimePickerPopover, type TaskTimeValue } from './TaskTimePickerPopover'
 
 interface DeadlinePopoverProps {
   deadline: string | null
-  onSet: (date: Date) => void
-  onClear: () => void
+  /** Запланированное начало — для отображения в попапе. */
+  startAt?: string | null
+  /** Запланированный конец. */
+  endAt?: string | null
+  /** Новый API. Если передан — приоритет. */
+  onChange?: (v: TaskTimeValue) => void
+  /** Старый API. Используется если onChange не передан. */
+  onSet?: (date: Date) => void
+  /** Старый API. Используется если onChange не передан. */
+  onClear?: () => void
   isPending: boolean
   /** Задача завершена/отменена — не подсвечивать просрочку */
   isFinal?: boolean
 }
 
-export function DeadlinePopover({ deadline, onSet, onClear, isPending, isFinal }: DeadlinePopoverProps) {
-  const [open, setOpen] = useState(false)
+export function DeadlinePopover({
+  deadline,
+  startAt,
+  endAt,
+  onChange,
+  onSet,
+  onClear,
+  isPending,
+  isFinal,
+}: DeadlinePopoverProps) {
   const d = deadline ? new Date(deadline) : undefined
   const isOverdue =
     !isFinal &&
@@ -30,12 +54,30 @@ export function DeadlinePopover({ deadline, onSet, onClear, isPending, isFinal }
     new Date(d.getFullYear(), d.getMonth(), d.getDate()) <
       new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())
 
+  const handleChange = (v: TaskTimeValue) => {
+    if (onChange) {
+      onChange(v)
+      return
+    }
+    // Fallback на старый API: пробрасываем только deadline.
+    if (v.deadline === null) {
+      onClear?.()
+    } else {
+      onSet?.(new Date(v.deadline))
+    }
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <TaskTimePickerPopover
+      value={{ deadline, startAt: startAt ?? null, endAt: endAt ?? null }}
+      onChange={handleChange}
+      trigger={({ open }) => (
         <button
           type="button"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            open()
+          }}
           className={cn(
             'flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0',
             isOverdue
@@ -51,36 +93,7 @@ export function DeadlinePopover({ deadline, onSet, onClear, isPending, isFinal }
           <Calendar className="w-3 h-3" />
           {d ? formatShortDate(formatDateToString(d)) : 'Срок'}
         </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start" onClick={(e) => e.stopPropagation()}>
-        <CalendarUI
-          mode="single"
-          selected={d}
-          onSelect={(date) => {
-            if (date) {
-              onSet(date)
-              setOpen(false)
-            }
-          }}
-          locale={ru}
-        />
-        {d && (
-          <div className="border-t px-3 pb-3 pt-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onClear()
-                setOpen(false)
-              }}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-3 h-3" />
-              Очистить срок
-            </button>
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
+      )}
+    />
   )
 }

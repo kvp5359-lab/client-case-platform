@@ -72,16 +72,32 @@ export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unkno
 export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ threadId, deadline }: { threadId: string; deadline: string | null }) => {
+    mutationFn: async ({
+      threadId,
+      deadline,
+      start_at,
+      end_at,
+    }: {
+      threadId: string
+      deadline: string | null
+      /** Запланированное начало (для слота в календаре). */
+      start_at?: string | null
+      /** Запланированный конец. Триггер БД синхронизирует с deadline. */
+      end_at?: string | null
+    }) => {
       const { data: old } = await supabase
         .from('project_threads')
         .select('deadline, name, project_id')
         .eq('id', threadId)
         .single()
 
+      const update: Record<string, unknown> = { deadline }
+      if (start_at !== undefined) update.start_at = start_at
+      if (end_at !== undefined) update.end_at = end_at
+
       const { error } = await supabase
         .from('project_threads')
-        .update({ deadline })
+        .update(update)
         .eq('id', threadId)
       if (error) throw error
 
