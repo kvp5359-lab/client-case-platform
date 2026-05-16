@@ -144,7 +144,7 @@ export function useMessengerState({
   const pid = currentParticipant?.participantId
   const markAsRead = useMarkAsRead(projectId, workspaceId, channel, pid, threadId)
   const markAsUnread = useMarkAsUnread(projectId, workspaceId, channel, pid, threadId)
-  const { data: unreadCount = 0 } = useUnreadCount(projectId, channel, pid, threadId)
+  const { data: unreadCount = 0 } = useUnreadCount(workspaceId, threadId)
   // Если тред Wazzup'овский — синхронизируем «прочитано» с WhatsApp.
   // Хук сам проверит wazzup_channel_id и не пойдёт во внешний invoke
   // для не-Wazzup тредов (Зона 8 рефакторинга).
@@ -163,9 +163,7 @@ export function useMessengerState({
   )
   const { data: unreadEventCount = 0 } = useUnreadEventCount(workspaceId, threadId)
   const { data: lastReadAt, isPending: isLastReadAtPending } = useLastReadAt(
-    projectId,
-    channel,
-    pid,
+    workspaceId,
     threadId,
   )
   const toggleReaction = useToggleReaction(projectId, channel, pid, workspaceId, threadId)

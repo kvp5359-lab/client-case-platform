@@ -5,11 +5,9 @@
  * После audit S1 cleanup: threadId обязательный, legacy-режим удалён.
  */
 
-import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import {
-  getUnreadCount,
-  getLastReadAt,
   markAsRead,
   markAsUnread,
   getCurrentProjectParticipant,
@@ -21,9 +19,9 @@ import {
   messengerKeys,
   inboxKeys,
   invalidateMessengerCaches,
-  STALE_TIME,
 } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
+import { useInboxThreadsV2 } from './useInbox'
 import { dismissProjectToasts } from './useMessageToastPayload'
 
 /** Resolve participant: project-level if projectId given, else workspace-level */
@@ -134,69 +132,42 @@ export function applyOptimisticMarkUnread(queryClient: QueryClient, params: Cach
 }
 
 /**
- * useUnreadCount / useLastReadAt — read-only query-хуки.
+ * useUnreadCount / useLastReadAt — read-only хуки, читают из ОДНОГО источника
+ * правды: `inboxKeys.threads(workspaceId)` (RPC `get_inbox_threads_v2`).
  *
- * threadId опциональный, потому что в нескольких местах (например,
- * useMessengerPanelData) они вызываются для client/internal-треда проекта,
- * а тред может ещё не существовать. В этом случае query отключается через
- * enabled. Мутации (useMarkAsRead, useMarkAsUnread) требуют threadId строго.
+ * До унификации 2026-05-16 каждый хук дёргал свой RPC (`get_unread_messages_count`
+ * и select по `message_read_status`). Из-за этого разные части UI расходились —
+ * бейдж списка говорил «всё прочитано», а кнопка «Прочитано/Непрочитано»
+ * в чате считала иначе. Теперь и бейдж, и кнопка, и красные контуры бабблов
+ * читают из одной строки inbox v2 → расхождение невозможно.
+ *
+ * Мутации в `useMarkAsRead`/`useMarkAsUnread` / list-кликах `✓✓` патчат ту
+ * же строку через `patchCachesForMarkRead/Unread` → визуальная синхронность
+ * мгновенно. Инвалидация после upsert гарантирует, что мы сходимся с БД.
+ *
+ * `participantId` и `channel` остались в сигнатуре для обратной совместимости
+ * с мутациями, но в read-хуках больше не используются (всё уже посчитано в RPC).
  */
 export function useUnreadCount(
-  projectId: string | undefined,
-  channel: MessageChannel,
-  participantId: string | undefined,
+  workspaceId: string,
   threadId: string | undefined,
 ) {
-  const { user } = useAuth()
-
-  return useQuery({
-    queryKey: threadId
-      ? messengerKeys.unreadCountByThreadId(threadId)
-      : ['messenger', 'unread-count', 'no-thread'],
-    queryFn: async () => {
-      if (!user || !threadId) return 0
-      const pid =
-        participantId ?? (await getCurrentProjectParticipant(projectId!, user.id))?.participantId
-      if (!pid) return 0
-      return getUnreadCount(pid, projectId, channel, threadId)
-    },
-    // Если participantId ещё не подъехал и нет projectId для fallback'а —
-    // не запускаем queryFn, чтобы не затереть значение, которое сидирует
-    // useChatState. Без этого фикса на холодном reload queryFn возвращал 0,
-    // а позже setQueryData из useChatState клал настоящее значение —
-    // но queryFn мог отрезолвиться позже и перезаписать его нулём.
-    enabled: !!user && !!threadId && (!!participantId || !!projectId),
-    staleTime: STALE_TIME.SHORT,
-  })
+  const query = useInboxThreadsV2(workspaceId)
+  const value = threadId
+    ? query.data?.find((t) => t.thread_id === threadId)?.unread_count ?? 0
+    : 0
+  return { ...query, data: value }
 }
 
 export function useLastReadAt(
-  projectId: string | undefined,
-  channel: MessageChannel,
-  participantId: string | undefined,
+  workspaceId: string,
   threadId: string | undefined,
 ) {
-  const { user } = useAuth()
-
-  return useQuery({
-    queryKey: threadId
-      ? messengerKeys.lastReadAtByThreadId(threadId)
-      : ['messenger', 'last-read-at', 'no-thread'],
-    queryFn: async () => {
-      if (!user || !threadId) return null
-      const pid =
-        participantId ?? (await getCurrentProjectParticipant(projectId!, user.id))?.participantId
-      if (!pid) return null
-      return getLastReadAt(pid, projectId, channel, threadId)
-    },
-    // Та же логика, что в useUnreadCount: пока participantId не подъехал
-    // и нет projectId для fallback'а — не запускаем queryFn. Иначе на
-    // холодном reload queryFn возвращал null, перезаписывая значение,
-    // которое сидировал useChatState. С null'овым lastReadAt MessageList
-    // помечал все чужие сообщения как непрочитанные.
-    enabled: !!user && !!threadId && (!!participantId || !!projectId),
-    staleTime: STALE_TIME.SHORT,
-  })
+  const query = useInboxThreadsV2(workspaceId)
+  const value: string | null = threadId
+    ? query.data?.find((t) => t.thread_id === threadId)?.last_read_at ?? null
+    : null
+  return { ...query, data: value, isPending: query.isPending }
 }
 
 export function useMarkAsRead(

@@ -68,6 +68,7 @@ function inboxThread(overrides: Partial<InboxThreadEntry> = {}): InboxThreadEntr
     last_message_attachment_count: 0,
     counterpart_name: null,
     counterpart_avatar_url: null,
+    last_read_at: null,
     ...overrides,
   }
 }

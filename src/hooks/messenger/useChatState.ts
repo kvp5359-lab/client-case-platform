@@ -3,16 +3,19 @@
 /**
  * useChatState — предзагрузка состояния чата через единый RPC get_chat_state.
  *
- * Один HTTP-запрос вместо 5-6:
+ * Один HTTP-запрос вместо нескольких:
  *   1. participant (project or workspace level)
  *   2. telegram link
  *   3. email link
- *   4. unread count
- *   5. last_read_at + manually_unread
  *
- * Результат записывается в кэш React Query по существующим ключам,
- * чтобы useUnreadCount, useLastReadAt, useTelegramLink, useEmailLink
- * брали данные из кэша без собственных HTTP-запросов.
+ * **С 2026-05-16** unread_count и last_read_at БОЛЬШЕ НЕ сидируются отсюда:
+ * `useUnreadCount`/`useLastReadAt` теперь читают эти поля из единой строки
+ * inbox v2 (`inboxKeys.threads(workspaceId)`), которая всегда загружена
+ * на уровне WorkspaceLayout. Дублирование убрано.
+ *
+ * Сам RPC `get_chat_state` пока продолжает возвращать unread/lastReadAt
+ * для обратной совместимости и других потенциальных потребителей; при
+ * следующем рефакторинге можно упростить RPC и тип `ChatStateResult`.
  */
 
 import { useEffect } from 'react'
@@ -83,8 +86,8 @@ export function useChatState(
 
     queryClient.setQueryData(messengerKeys.telegramLinkByThreadId(threadId), data.telegramLink)
     queryClient.setQueryData(emailAccountKeys.emailLink(threadId), data.emailLink)
-    queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), data.unreadCount)
-    queryClient.setQueryData(messengerKeys.lastReadAtByThreadId(threadId), data.lastReadAt)
+    // unread/lastReadAt больше не сидируем — useUnreadCount/useLastReadAt
+    // читают из inbox v2 (см. JSDoc к этому модулю).
 
     // Current participant cache
     const participantKey = messengerParticipantKeys.current(projectId ?? workspaceId, user?.id)

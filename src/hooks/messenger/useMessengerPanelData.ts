@@ -76,14 +76,9 @@ export function useMessengerPanelData(projectId: string, workspaceId: string) {
     threadsLoading: chatsLoading,
   } = useAccessibleThreadIds(projectId)
 
-  // Unread counts for legacy channels
-  const { data: clientUnread = 0 } = useUnreadCount(projectId, 'client', undefined, clientChatId)
-  const { data: internalUnread = 0 } = useUnreadCount(
-    projectId,
-    'internal',
-    undefined,
-    internalChatId,
-  )
+  // Unread counts for legacy channels — читаем из inbox v2 кэша (унификация).
+  const { data: clientUnread = 0 } = useUnreadCount(workspaceId, clientChatId)
+  const { data: internalUnread = 0 } = useUnreadCount(workspaceId, internalChatId)
 
   // Reactions / manually unread
   const { data: hasClientReaction = false } = useHasUnreadReaction(workspaceId, projectId, 'client')

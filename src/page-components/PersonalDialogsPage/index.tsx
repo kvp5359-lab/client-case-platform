@@ -87,6 +87,10 @@ function toInboxEntry(d: PersonalDialogEntry): InboxThreadEntry {
     // fallback на last_sender_name/avatar когда counterpart_* пустые.
     counterpart_name: null,
     counterpart_avatar_url: null,
+    // PersonalDialogEntry не отдельно несёт last_read_at; PersonalDialogsPage
+    // не отображает красные контуры непрочитанных у бабблов в этом списке
+    // (он чисто навигационный → клик открывает тред). null = «не открывалось».
+    last_read_at: null,
   }
 }
 

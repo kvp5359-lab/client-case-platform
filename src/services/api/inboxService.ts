@@ -74,6 +74,13 @@ export interface InboxThreadEntry {
   counterpart_name: string | null
   /** Аватар «собеседника» (если есть participant с avatar_url). */
   counterpart_avatar_url: string | null
+  /**
+   * `last_read_at` пользователя для этого треда (из message_read_status).
+   * `null` если тред никогда не открывался. Используется MessageBubble для
+   * красного контура непрочитанных сообщений — сравнение с created_at.
+   * Источник правды: единая строка inbox v2 для всех мест UI.
+   */
+  last_read_at: string | null
 }
 
 export async function getInboxThreadsV2(
