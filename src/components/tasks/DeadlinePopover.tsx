@@ -117,7 +117,7 @@ export function DeadlinePopover({
             isOverdue
               ? 'text-red-600 bg-red-50 font-medium hover:bg-red-100'
               : d
-                ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                ? 'text-muted-foreground bg-gray-100 hover:text-foreground hover:bg-gray-200'
                 : 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50',
             isFinal && 'opacity-20 hover:opacity-100',
           )}
