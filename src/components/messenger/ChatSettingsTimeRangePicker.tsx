@@ -13,7 +13,7 @@
  *   - endDate задано и > startDate → диапазон
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Calendar as CalendarUI } from '@/components/ui/calendar'
 import {
   Popover,
@@ -82,6 +82,66 @@ function addMinutes(time: string, addMin: number): string {
 }
 
 type ActiveField = 'startDate' | 'startTime' | 'endDate' | 'endTime' | null
+
+/**
+ * Куда автоскроллить список времени при открытии.
+ * - Если есть выбранное значение — на него
+ * - Для endTime — startTime + 30 мин
+ * - Иначе — текущее время округлённое вниз до 15 мин, не раньше 09:00
+ */
+function getInitialScrollTarget(
+  field: 'startTime' | 'endTime',
+  current: string,
+  startTime: string,
+): string {
+  if (current) return current
+  if (field === 'endTime' && startTime) {
+    return addMinutes(startTime, 30)
+  }
+  const now = new Date()
+  const h = now.getHours()
+  const m = now.getMinutes()
+  const rounded = `${String(h).padStart(2, '0')}:${String(Math.floor(m / 15) * 15).padStart(2, '0')}`
+  return rounded < '09:00' ? '09:00' : rounded
+}
+
+interface TimeListProps {
+  options: string[]
+  current: string
+  highlight: string
+  onSelect: (t: string) => void
+}
+
+function TimeList({ options, current, highlight, onSelect }: TimeListProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = ref.current?.querySelector<HTMLButtonElement>(
+      `[data-time="${highlight}"]`,
+    )
+    if (el) {
+      el.scrollIntoView({ block: 'center' })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  return (
+    <div ref={ref} className="max-h-[260px] w-[90px] overflow-y-auto py-1">
+      {options.map((t) => (
+        <button
+          key={t}
+          type="button"
+          data-time={t}
+          onClick={() => onSelect(t)}
+          className={cn(
+            'block w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors',
+            t === current && 'bg-accent font-medium',
+          )}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 export function ChatSettingsTimeRangePicker({
   date,
@@ -171,33 +231,22 @@ export function ChatSettingsTimeRangePicker({
   const popoverBody = (() => {
     if (active === 'startTime' || active === 'endTime') {
       const current = active === 'startTime' ? startTime : endTime
-      // Для endTime, если задано startTime и конец в тот же день,
-      // прячем слоты <= startTime — нельзя закончить раньше или одновременно с началом.
       const sameDayAsStart = !endDate
       const options =
         active === 'endTime' && startTime && sameDayAsStart
           ? TIME_OPTIONS.filter((t) => t > startTime)
           : TIME_OPTIONS
       return (
-        <div className="max-h-[260px] w-[90px] overflow-y-auto py-1">
-          {options.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => {
-                if (active === 'startTime') handleStartTimeChange(t)
-                else handleEndTimeChange(t)
-                setActive(null)
-              }}
-              className={cn(
-                'block w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors',
-                t === current && 'bg-accent font-medium',
-              )}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        <TimeList
+          options={options}
+          current={current}
+          highlight={getInitialScrollTarget(active, current, startTime)}
+          onSelect={(t) => {
+            if (active === 'startTime') handleStartTimeChange(t)
+            else handleEndTimeChange(t)
+            setActive(null)
+          }}
+        />
       )
     }
     // По умолчанию (нет активного поля или активно поле даты) — календарь
