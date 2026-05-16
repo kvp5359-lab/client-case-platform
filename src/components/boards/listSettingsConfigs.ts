@@ -111,6 +111,7 @@ export const CARD_FIELD_DEFS: CardFieldDef[] = [
   { id: 'created_by', label: 'Автор',         entityTypes: ['project'] },
   { id: 'unread',    label: 'Непрочитанные', entityTypes: ['thread'] },
   { id: 'spacer',    label: 'Отступ',        entityTypes: ['thread', 'project'] },
+  { id: 'menu',      label: 'Меню',          entityTypes: ['thread'] },
 ]
 
 export function getFieldDefsForEntity(entityType: 'thread' | 'project'): CardFieldDef[] {

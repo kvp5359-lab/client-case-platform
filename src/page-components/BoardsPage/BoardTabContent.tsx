@@ -9,7 +9,9 @@ import { useCurrentParticipantId } from '@/hooks/shared/useCurrentParticipantId'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTaskStatuses } from '@/hooks/useStatuses'
-import { useUpdateTaskStatus } from '@/components/tasks/useTaskMutations'
+import { useUpdateTaskStatus, useUpdateTaskDeadline } from '@/components/tasks/useTaskMutations'
+import { useDeleteThread } from '@/hooks/messenger/useProjectThreads'
+import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { BoardView } from '@/components/boards/BoardView'
 import { CreateListDialog } from '@/components/boards/CreateListDialog'
@@ -67,6 +69,28 @@ export function BoardTabContent({
     [workspaceId],
   )
   const updateStatus = useUpdateTaskStatus(boardInvalidateKeys)
+  const updateDeadline = useUpdateTaskDeadline(boardInvalidateKeys)
+  const deleteThreadMutation = useDeleteThread(workspaceId)
+
+  const handleDeleteTask = useCallback(
+    (t: WorkspaceTask) => {
+      if (!confirm(`Удалить «${t.name}»? Можно восстановить из корзины.`)) return
+      deleteThreadMutation.mutate({
+        id: t.id,
+        name: t.name,
+        type: (t.type as 'chat' | 'task') ?? 'task',
+        project_id: t.project_id,
+      })
+    },
+    [deleteThreadMutation],
+  )
+
+  const handleDeadlineChange = useCallback(
+    (taskId: string, deadline: string | null) => {
+      updateDeadline.mutate({ threadId: taskId, deadline })
+    },
+    [updateDeadline],
+  )
 
   // TaskPanel — единая layout-уровневая через TaskPanelContext.
   // BoardTabContent больше не держит свой локальный TaskPanel — все клики
@@ -118,6 +142,8 @@ export function BoardTabContent({
           onOpenTask={handleOpenTask}
           onOpenThread={handleOpenThread}
           onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}
+          onDeleteTask={handleDeleteTask}
+          onDeadlineChange={handleDeadlineChange}
           selectedThreadId={layoutPanel?.activeThreadId ?? null}
           selectedProjectId={layoutPanel?.activeProjectId ?? null}
         />

@@ -95,6 +95,7 @@ export type CardFieldId =
   | 'created_at'
   | 'created_by'
   | 'spacer'
+  | 'menu'
 
 export type CardFontSize = 'sm' | 'md' | 'lg'
 export type CardAlign = 'left' | 'right'

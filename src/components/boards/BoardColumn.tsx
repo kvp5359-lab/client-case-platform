@@ -30,6 +30,8 @@ interface BoardColumnProps {
   onOpenTask: (taskId: string) => void
   onOpenThread: (task: TaskItem) => void
   onStatusChange: (taskId: string, statusId: string | null) => void
+  onDeleteTask?: (task: WorkspaceTask) => void
+  onDeadlineChange?: (taskId: string, deadline: string | null) => void
   selectedThreadId?: string | null
   selectedProjectId?: string | null
   existingColumns?: number
@@ -52,6 +54,8 @@ export function BoardColumn({
   onOpenTask,
   onOpenThread,
   onStatusChange,
+  onDeleteTask,
+  onDeadlineChange,
   selectedThreadId,
   selectedProjectId,
   existingColumns,
@@ -84,6 +88,8 @@ export function BoardColumn({
             onOpenTask={onOpenTask}
             onOpenThread={onOpenThread}
             onStatusChange={onStatusChange}
+            onDeleteTask={onDeleteTask}
+            onDeadlineChange={onDeadlineChange}
             selectedThreadId={selectedThreadId}
             selectedProjectId={selectedProjectId}
             existingColumns={existingColumns}

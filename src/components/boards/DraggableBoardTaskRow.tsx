@@ -20,6 +20,8 @@ interface DraggableBoardTaskRowProps {
   displayMode: DisplayMode
   onOpenTask: (taskId: string) => void
   onStatusChange: (taskId: string, statusId: string | null) => void
+  onDeleteTask?: (task: WorkspaceTask) => void
+  onDeadlineChange?: (taskId: string, deadline: string | null) => void
   isSelected?: boolean
   cardLayout?: CardLayout | null
   dropIndicator: 'top' | 'bottom' | null

@@ -63,6 +63,10 @@ interface BoardViewProps {
   onOpenTask?: (taskId: string) => void
   onOpenThread?: (task: TaskItem) => void
   onStatusChange?: (taskId: string, statusId: string | null) => void
+  /** Удалить задачу — для поля `menu` в карточке. */
+  onDeleteTask?: (task: WorkspaceTask) => void
+  /** Сменить дедлайн — для поля `menu` в карточке. */
+  onDeadlineChange?: (taskId: string, deadline: string | null) => void
   selectedThreadId?: string | null
   /** id проекта, открытого в боковой панели — соответствующая строка подсвечивается. */
   selectedProjectId?: string | null
@@ -85,6 +89,8 @@ export function BoardView({
   onOpenTask,
   onOpenThread,
   onStatusChange,
+  onDeleteTask,
+  onDeadlineChange,
   selectedThreadId,
   selectedProjectId,
 }: BoardViewProps) {
@@ -654,6 +660,8 @@ export function BoardView({
                 onOpenTask={onOpenTask ?? (() => {})}
                 onOpenThread={onOpenThread ?? (() => {})}
                 onStatusChange={onStatusChange ?? (() => {})}
+                onDeleteTask={onDeleteTask}
+                onDeadlineChange={onDeadlineChange}
                 selectedThreadId={selectedThreadId}
                 selectedProjectId={selectedProjectId}
                 existingColumns={columns.length}

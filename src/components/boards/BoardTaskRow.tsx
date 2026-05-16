@@ -6,6 +6,7 @@ import { safeCssColor } from '@/utils/isValidCssColor'
 import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
 import { ParticipantAvatars, type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { UnreadBadge } from '@/components/tasks/UnreadBadge'
+import { TaskActionsMenu } from '@/components/tasks/TaskActionsMenu'
 import { useThreadCounterpartName } from '@/hooks/messenger/useThreadCounterpartName'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField } from './types'
@@ -21,6 +22,10 @@ interface BoardTaskRowProps {
   displayMode: DisplayMode
   onOpenTask: (taskId: string) => void
   onStatusChange: (taskId: string, statusId: string | null) => void
+  /** Удалить задачу (мягко в корзину) — используется полем `menu`. */
+  onDeleteTask?: (task: WorkspaceTask) => void
+  /** Изменить дедлайн — используется полем `menu`. */
+  onDeadlineChange?: (taskId: string, deadline: string | null) => void
   isSelected?: boolean
   cardLayout?: CardLayout | null
 }
@@ -63,6 +68,9 @@ function TaskField({
   assignees,
   workspaceId,
   onStatusChange,
+  onOpenTask,
+  onDeleteTask,
+  onDeadlineChange,
 }: {
   fieldId: CardFieldId
   style: CardFieldStyle
@@ -74,6 +82,9 @@ function TaskField({
   assignees: AvatarParticipant[]
   workspaceId: string
   onStatusChange: (taskId: string, statusId: string | null) => void
+  onOpenTask: (taskId: string) => void
+  onDeleteTask?: (task: WorkspaceTask) => void
+  onDeadlineChange?: (taskId: string, deadline: string | null) => void
 }) {
   const classes = fieldStyleToClasses(style)
 
@@ -141,6 +152,30 @@ function TaskField({
         </div>
       )
 
+    case 'menu':
+      return (
+        <div className={cn('shrink-0', style.align === 'right' && 'ml-auto')}>
+          <TaskActionsMenu
+            onOpen={() => onOpenTask(task.id)}
+            statuses={statuses}
+            currentStatusId={task.status_id}
+            onStatusChange={(sid) => onStatusChange(task.id, sid)}
+            deadline={task.deadline}
+            onDeadlineSet={
+              onDeadlineChange
+                ? (d) => onDeadlineChange(task.id, d.toISOString())
+                : undefined
+            }
+            onDeadlineClear={
+              onDeadlineChange ? () => onDeadlineChange(task.id, null) : undefined
+            }
+            onRequestDelete={onDeleteTask ? () => onDeleteTask(task) : undefined}
+            triggerClassName="opacity-0 group-hover/board-row:opacity-100"
+            align="end"
+          />
+        </div>
+      )
+
     default:
       return null
   }
@@ -155,6 +190,8 @@ export function BoardTaskRow({
   displayMode,
   onOpenTask,
   onStatusChange,
+  onDeleteTask,
+  onDeadlineChange,
   isSelected,
   cardLayout,
 }: BoardTaskRowProps) {
@@ -185,6 +222,9 @@ export function BoardTaskRow({
     assignees,
     workspaceId,
     onStatusChange,
+    onOpenTask,
+    onDeleteTask,
+    onDeadlineChange,
   }
 
   const isCards = displayMode === 'cards'
@@ -196,7 +236,7 @@ export function BoardTaskRow({
   return (
     <div
       className={cn(
-        'cursor-pointer overflow-hidden transition-colors',
+        'group/board-row cursor-pointer overflow-hidden transition-colors',
         isCards
           ? cn(
               'rounded-md border px-2.5 py-1 hover:shadow-sm',

@@ -47,6 +47,10 @@ interface BoardListCardProps {
   onOpenTask: (taskId: string) => void
   onOpenThread: (task: TaskItem) => void
   onStatusChange: (taskId: string, statusId: string | null) => void
+  /** Удалить задачу (мягко в корзину) — для поля `menu` в карточке. */
+  onDeleteTask?: (task: WorkspaceTask) => void
+  /** Сменить дедлайн задачи — для поля `menu`. */
+  onDeadlineChange?: (taskId: string, deadline: string | null) => void
   selectedThreadId?: string | null
   selectedProjectId?: string | null
   existingColumns?: number
@@ -169,6 +173,8 @@ export function BoardListCard({
   onOpenTask,
   onOpenThread,
   onStatusChange,
+  onDeleteTask,
+  onDeadlineChange,
   selectedThreadId,
   selectedProjectId,
   existingColumns,
@@ -482,6 +488,8 @@ export function BoardListCard({
                             displayMode={list.display_mode ?? 'list'}
                             onOpenTask={onOpenTask}
                             onStatusChange={onStatusChange}
+                            onDeleteTask={onDeleteTask}
+                            onDeadlineChange={onDeadlineChange}
                             isSelected={selectedThreadId === task.id}
                             cardLayout={list.card_layout}
                             dropIndicator={indicatorForRow('thread', task.id)}
@@ -505,6 +513,8 @@ export function BoardListCard({
                       displayMode={list.display_mode ?? 'list'}
                       onOpenTask={onOpenTask}
                       onStatusChange={onStatusChange}
+                      onDeleteTask={onDeleteTask}
+                      onDeadlineChange={onDeadlineChange}
                       isSelected={selectedThreadId === task.id}
                       cardLayout={list.card_layout}
                       dropIndicator={null}

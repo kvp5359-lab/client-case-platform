@@ -32,6 +32,9 @@ const MOCK: Record<CardFieldId, React.ReactNode> = {
   created_by: 'Иван Петров',
   unread: <div className="h-2 w-2 rounded-full bg-primary shrink-0" />,
   spacer: null,
+  // Меню действий — в превью показываем именно иконку, чтобы было видно, где
+  // оно расположится; никаких обработчиков подключать не нужно.
+  menu: <div className="h-4 w-4 flex items-center justify-center text-muted-foreground/60">⋮</div>,
 }
 
 function PreviewField({

@@ -5,15 +5,8 @@
  */
 
 import { useMemo, createElement, forwardRef } from 'react'
-import { CheckSquare, GripVertical, MoreVertical, ExternalLink, Trash2 } from 'lucide-react'
+import { CheckSquare, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { DraggableAttributes } from '@dnd-kit/core'
@@ -25,6 +18,7 @@ import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'
 import { UnreadBadge } from './UnreadBadge'
+import { TaskActionsMenu } from './TaskActionsMenu'
 import type { TaskItem } from './types'
 
 interface TaskRowProps {
@@ -163,36 +157,20 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
 
         <UnreadBadge threadId={task.id} workspaceId={workspaceId} accentColor={task.accent_color} />
 
-        {/* Меню «три точки» — сразу после исполнителей */}
-        {onRequestDelete && (
-          <span className="shrink-0" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 transition-opacity"
-                  aria-label="Меню задачи"
-                >
-                  <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={onOpen} className="text-xs cursor-pointer">
-                  <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                  Открыть
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={onRequestDelete}
-                  className="text-xs cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="mr-2 h-3.5 w-3.5" />
-                  Удалить
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </span>
-        )}
+        {/* Меню «три точки» — единый компонент для всех мест UI.
+            Если onRequestDelete не передан — внутри сам решит, что показать. */}
+        <TaskActionsMenu
+          onOpen={onOpen}
+          statuses={statuses}
+          currentStatusId={task.status_id}
+          onStatusChange={onStatusChange}
+          deadline={task.deadline}
+          onDeadlineSet={onDeadlineSet}
+          onDeadlineClear={onDeadlineClear}
+          deadlinePending={deadlinePending}
+          onRequestDelete={onRequestDelete}
+          triggerClassName="opacity-0 group-hover/row:opacity-100"
+        />
       </div>
 
       {/* Срок */}
