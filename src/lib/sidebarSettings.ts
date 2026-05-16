@@ -19,6 +19,7 @@ import {
   ListChecks,
   NotebookText,
   MailQuestion,
+  CalendarDays,
   type LucideIcon,
 } from 'lucide-react'
 import type { WorkspacePermission } from '@/types/permissions'
@@ -28,6 +29,7 @@ export type SidebarNavKey =
   | 'inbox'
   | 'inbox_unmatched'
   | 'tasks'
+  | 'calendar'
   | 'boards'
   | 'lists'
   | 'knowledge_base'
@@ -130,6 +132,13 @@ export const SIDEBAR_NAV_ITEMS: Record<SidebarNavKey, SidebarItemMeta> = {
     path: 'tasks',
     hasAccess: ({ isClientOnly }) => !isClientOnly,
   },
+  calendar: {
+    key: 'calendar',
+    label: 'Календарь',
+    icon: CalendarDays,
+    path: 'calendar',
+    hasAccess: ({ isClientOnly }) => !isClientOnly,
+  },
   boards: {
     key: 'boards',
     label: 'Доски',
@@ -194,6 +203,7 @@ export const SIDEBAR_NAV_KEYS: SidebarNavKey[] = [
   'inbox',
   'inbox_unmatched',
   'tasks',
+  'calendar',
   'boards',
   'lists',
   'knowledge_base',

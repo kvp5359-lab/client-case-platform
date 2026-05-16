@@ -106,3 +106,13 @@ export const historyKeys = {
   byProject: (projectId: string) => ['history', projectId] as const,
   unreadCount: (projectId: string) => ['history', 'unread-count', projectId] as const,
 }
+
+/**
+ * Календарь: треды-задачи с заполненными start_at/end_at, видимые в time-grid.
+ * Ключ зависит от диапазона дат, чтобы кэш не путал «эта неделя» и «следующая».
+ */
+export const calendarKeys = {
+  all: ['calendar'] as const,
+  byWorkspaceRange: (workspaceId: string, fromIso: string, toIso: string) =>
+    ['calendar', workspaceId, fromIso, toIso] as const,
+}

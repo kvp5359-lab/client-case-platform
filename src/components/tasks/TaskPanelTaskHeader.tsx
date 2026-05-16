@@ -194,7 +194,7 @@ export function TaskPanelTaskHeader({
             </PopoverTrigger>
             <PopoverContent align="start" className="w-[240px] p-3" sideOffset={4}>
               <ChatIconColorGrid
-                accentColor={task.accent_color}
+                accentColor={task.accent_color as ThreadAccentColor}
                 icon={task.icon}
                 onAccentColorChange={(color: ThreadAccentColor) =>
                   updateThread.mutate({
