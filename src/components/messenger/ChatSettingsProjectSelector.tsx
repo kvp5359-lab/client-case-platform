@@ -53,8 +53,8 @@ export function ChatSettingsProjectSelector({
           className={cn(
             'flex items-center gap-1.5 text-sm rounded px-2 py-1 transition-colors shrink-0',
             selectedProjectId
-              ? 'text-brand-600 bg-brand-50 hover:bg-brand-100'
-              : 'text-brand-500/70 hover:text-brand-600 hover:bg-brand-50',
+              ? 'text-brand-700 bg-brand-100 hover:bg-brand-200'
+              : 'text-brand-500/70 hover:text-brand-600 hover:bg-brand-100',
           )}
         >
           <FolderOpen className="w-3.5 h-3.5" />
