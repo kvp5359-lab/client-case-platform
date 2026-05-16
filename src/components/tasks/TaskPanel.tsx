@@ -71,6 +71,8 @@ export interface TaskPanelProps {
   canGoBack?: boolean
   onOpenThreadInStack?: (task: TaskItem) => void
   onOpenProjectInStack?: (project: ProjectHeaderInfo) => void
+  /** Удалить тред (мягко в корзину) — пункт в меню «⋮» в шапке. */
+  onRequestDelete?: () => void
   /** Слот, который рендерится сверху панели (над шапкой). Используется для системы вкладок. */
   topSlot?: React.ReactNode
   /**
@@ -102,6 +104,7 @@ export function TaskPanel({
   canGoBack = false,
   onOpenThreadInStack,
   onOpenProjectInStack,
+  onRequestDelete,
   topSlot,
   bare = false,
 }: TaskPanelProps) {
@@ -356,6 +359,7 @@ export function TaskPanel({
               ? () => setViewMode((m) => (m === 'documents' ? 'thread' : 'documents'))
               : undefined
           }
+          onRequestDelete={onRequestDelete}
         />
 
         <div className="flex-1 min-h-0 overflow-hidden relative flex flex-col">

@@ -14,7 +14,7 @@ import type { ProjectHeaderInfo } from './TaskPanel'
 import { threadToTaskItem } from './threadToTaskItem'
 import type { TaskItem } from './types'
 import type { TaskPanelTab } from './taskPanelTabs.types'
-import { useProjectThreadById, useProjectThreads } from '@/hooks/messenger/useProjectThreads'
+import { useProjectThreadById, useProjectThreads, useDeleteThread } from '@/hooks/messenger/useProjectThreads'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useTaskAssigneesMap } from './useTaskAssignees'
 import {
@@ -77,6 +77,7 @@ export function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabCo
   const updateDeadline = useUpdateTaskDeadline(invalidateKeys)
   const renameTask = useRenameTask(invalidateKeys)
   const updateSettings = useUpdateTaskSettings(invalidateKeys)
+  const deleteThread = useDeleteThread(workspaceId)
 
   // Тред не найден после загрузки — либо удалён, либо RLS не пускает
   // (нет доступа к проекту/треду). Показываем заглушку.
@@ -103,6 +104,13 @@ export function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabCo
       onDeadlineClear={() => updateDeadline.mutate({ threadId: task.id, deadline: null })}
       onRename={(name) => renameTask.mutate({ threadId: task.id, name })}
       onSettingsSave={(p) => updateSettings.mutate({ threadId: task.id, ...p })}
+      onRequestDelete={() => {
+        if (!confirm(`Удалить «${task.name}»? Можно восстановить из корзины.`)) return
+        deleteThread.mutate(
+          { id: task.id, name: task.name, type: task.type ?? 'task', project_id: task.project_id },
+          { onSuccess: () => onClose() },
+        )
+      }}
       deadlinePending={updateDeadline.isPending}
       settingsPending={updateSettings.isPending}
       showProjectLink

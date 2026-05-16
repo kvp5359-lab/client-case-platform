@@ -18,6 +18,7 @@ import { type AvatarParticipant } from '@/components/participants/ParticipantAva
 import { cn } from '@/lib/utils'
 import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'
+import { TaskActionsMenu } from './TaskActionsMenu'
 import type { ProjectHeaderInfo } from './TaskPanel'
 import type { TaskItem } from './types'
 
@@ -47,6 +48,8 @@ interface TaskPanelTaskHeaderProps {
   onToggleHistory?: () => void
   /** Переключатель «Документы» — undefined прячет кнопку (у треда без проекта) */
   onToggleDocuments?: () => void
+  /** Удалить тред (мягко в корзину). Пункт в меню «⋮» рядом с дедлайном. */
+  onRequestDelete?: () => void
 }
 
 export function TaskPanelTaskHeader({
@@ -70,6 +73,7 @@ export function TaskPanelTaskHeader({
   viewMode = 'thread',
   onToggleHistory,
   onToggleDocuments,
+  onRequestDelete,
 }: TaskPanelTaskHeaderProps) {
   const router = useRouter()
   const isTask = task.type === 'task'
@@ -105,7 +109,7 @@ export function TaskPanelTaskHeader({
   }, [editingName])
 
   return (
-    <div className={cn('border-b shrink-0 flex flex-col', hideToolsRow ? 'h-10' : 'h-[65px]')}>
+    <div className={cn('group/panel-header border-b shrink-0 flex flex-col', hideToolsRow ? 'h-10' : 'h-[65px]')}>
       {/* Строка 1: статус/иконка + название + действия (жёсткая высота 30px,
           в bare-режиме растягивается на всю шапку h-9). */}
       <div className={cn('flex items-center gap-2 px-4 shrink-0', hideToolsRow ? 'h-full' : 'h-[30px]')}>
@@ -219,6 +223,23 @@ export function TaskPanelTaskHeader({
             onSet={onDeadlineSet}
             onClear={onDeadlineClear}
             isPending={deadlinePending}
+          />
+        )}
+
+        {/* Меню «⋮» сразу после дедлайна — те же действия, что и в строке
+            задачи, кроме «Открыть» (тред уже открыт в этой панели). */}
+        {viewMode === 'thread' && (
+          <TaskActionsMenu
+            statuses={statuses}
+            currentStatusId={task.status_id}
+            onStatusChange={onStatusChange}
+            deadline={task.deadline}
+            onDeadlineSet={onDeadlineSet}
+            onDeadlineClear={onDeadlineClear}
+            deadlinePending={deadlinePending}
+            onRequestDelete={onRequestDelete}
+            triggerClassName="opacity-0 group-hover/panel-header:opacity-100"
+            align="end"
           />
         )}
 
