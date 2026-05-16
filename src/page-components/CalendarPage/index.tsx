@@ -26,6 +26,15 @@ import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import {
   useCalendarThreads,
   useUpdateThreadTime,
   type CalendarThread,
@@ -162,31 +171,40 @@ export default function CalendarPage() {
       [updateTime],
     )
 
-  // Создание задачи кликом по пустому слоту. Минимальная реализация — prompt
-  // для названия + сразу INSERT в project_threads с start_at/end_at. Полная
-  // форма (исполнители, проект и т.п.) — отдельная итерация.
-  const handleSelectSlot = useCallback(
-    async ({ start, end }: { start: Date; end: Date }) => {
-      if (!workspaceId) return
-      const name = window.prompt('Название задачи')?.trim()
-      if (!name) return
-      const { error } = await supabase
-        .from('project_threads')
-        .insert({
-          workspace_id: workspaceId,
-          name,
-          type: 'task',
-          start_at: start.toISOString(),
-          end_at: end.toISOString(),
-        })
-      if (error) {
-        toast.error(`Не удалось создать: ${error.message}`)
-        return
-      }
-      queryClient.invalidateQueries({ queryKey: calendarKeys.all })
-    },
-    [workspaceId, queryClient],
-  )
+  // Создание задачи кликом по пустому слоту. Минимальный диалог только с
+  // названием — полная форма (исполнители/проект/статус) отдельная итерация.
+  const [createSlot, setCreateSlot] = useState<{ start: Date; end: Date } | null>(null)
+  const [createName, setCreateName] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  const handleSelectSlot = useCallback(({ start, end }: { start: Date; end: Date }) => {
+    setCreateName('')
+    setCreateSlot({ start, end })
+  }, [])
+
+  const submitCreate = useCallback(async () => {
+    if (!workspaceId || !createSlot) return
+    const name = createName.trim()
+    if (!name) return
+    setCreating(true)
+    const { error } = await supabase
+      .from('project_threads')
+      .insert({
+        workspace_id: workspaceId,
+        name,
+        type: 'task',
+        start_at: createSlot.start.toISOString(),
+        end_at: createSlot.end.toISOString(),
+      })
+    setCreating(false)
+    if (error) {
+      toast.error(`Не удалось создать: ${error.message}`)
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: calendarKeys.all })
+    setCreateSlot(null)
+    setCreateName('')
+  }, [workspaceId, createSlot, createName, queryClient])
 
   const scrollToTime = useMemo(() => moment().subtract(1, 'hour').toDate(), [])
 
@@ -240,6 +258,43 @@ export default function CalendarPage() {
           />
         </div>
       </div>
+
+      <Dialog
+        open={createSlot !== null}
+        onOpenChange={(open) => !open && setCreateSlot(null)}
+      >
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Новая задача</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              autoFocus
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && createName.trim()) submitCreate()
+              }}
+              placeholder="Название задачи"
+              disabled={creating}
+            />
+            {createSlot && (
+              <p className="text-xs text-muted-foreground">
+                {moment(createSlot.start).format('dd, D MMM, HH:mm')} —{' '}
+                {moment(createSlot.end).format('HH:mm')}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCreateSlot(null)} disabled={creating}>
+              Отмена
+            </Button>
+            <Button onClick={submitCreate} disabled={creating || !createName.trim()}>
+              {creating ? 'Создание…' : 'Создать'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </WorkspaceLayout>
   )
 }
