@@ -10,6 +10,8 @@ export function threadToTaskItem(
     workspace_id: string
     status_id: string | null
     deadline: string | null
+    start_at?: string | null
+    end_at?: string | null
     accent_color: string
     icon: string
     is_pinned: boolean
@@ -25,6 +27,8 @@ export function threadToTaskItem(
     workspace_id: thread.workspace_id,
     status_id: thread.status_id,
     deadline: thread.deadline,
+    start_at: thread.start_at ?? null,
+    end_at: thread.end_at ?? null,
     accent_color: thread.accent_color,
     icon: thread.icon,
     is_pinned: thread.is_pinned,

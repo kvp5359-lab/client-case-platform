@@ -180,8 +180,8 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
       {/* Срок */}
       <DeadlinePopover
         deadline={task.deadline}
-        startAt={(task as { start_at?: string | null }).start_at}
-        endAt={(task as { end_at?: string | null }).end_at}
+        startAt={task.start_at}
+        endAt={task.end_at}
         onChange={onTimeChange}
         onSet={onDeadlineSet}
         onClear={onDeadlineClear}

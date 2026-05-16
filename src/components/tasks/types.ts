@@ -11,6 +11,10 @@ export interface TaskItem {
   workspace_id: string
   status_id: string | null
   deadline: string | null
+  /** Запланированное начало (для слота в календаре). */
+  start_at?: string | null
+  /** Запланированный конец. */
+  end_at?: string | null
   accent_color: string
   icon: string
   is_pinned: boolean

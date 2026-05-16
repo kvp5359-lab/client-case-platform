@@ -23,6 +23,10 @@ export interface WorkspaceTask {
   status_order: number | null
   status_show_to_creator: boolean
   deadline: string | null
+  /** Запланированное начало (для слота в календаре). */
+  start_at: string | null
+  /** Запланированный конец. */
+  end_at: string | null
   accent_color: string
   icon: string
   is_pinned: boolean
