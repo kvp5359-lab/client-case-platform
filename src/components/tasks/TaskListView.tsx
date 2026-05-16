@@ -362,6 +362,14 @@ export const TaskListView = memo(function TaskListView({
             updateDeadline.mutate({ threadId: taskId, deadline: date.toISOString() })
           }
           onDeadlineClear={(taskId) => updateDeadline.mutate({ threadId: taskId, deadline: null })}
+          onTimeChange={(taskId, v) =>
+            updateDeadline.mutate({
+              threadId: taskId,
+              deadline: v.deadline,
+              start_at: v.startAt,
+              end_at: v.endAt,
+            })
+          }
           onReorder={(updates) => reorderTasks.mutate(updates)}
           onRequestDeleteTask={isWorkspaceOwner ? (task) => setDeletingTask(task) : undefined}
           deadlinePending={updateDeadline.isPending}
@@ -386,6 +394,15 @@ export const TaskListView = memo(function TaskListView({
           }
           onDeadlineClear={() =>
             openTask && updateDeadline.mutate({ threadId: openTask.id, deadline: null })
+          }
+          onTimeChange={(v) =>
+            openTask &&
+            updateDeadline.mutate({
+              threadId: openTask.id,
+              deadline: v.deadline,
+              start_at: v.startAt,
+              end_at: v.endAt,
+            })
           }
           onRename={(name) => openTask && renameTask.mutate({ threadId: openTask.id, name })}
           onSettingsSave={(params) =>

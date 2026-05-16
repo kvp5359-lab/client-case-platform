@@ -81,6 +81,8 @@ interface TaskGroupListProps {
   onStatusChange: (taskId: string, statusId: string | null) => void
   onDeadlineSet: (taskId: string, date: Date) => void
   onDeadlineClear: (taskId: string) => void
+  /** Новый API: пробрасывает все три поля. */
+  onTimeChange?: (taskId: string, v: import('./TaskTimePickerPopover').TaskTimeValue) => void
   onReorder: (updates: { id: string; sort_order: number }[]) => void
   onRequestDeleteTask?: (task: TaskItem) => void
   deadlinePending: boolean
@@ -101,6 +103,7 @@ export function TaskGroupList({
   onStatusChange,
   onDeadlineSet,
   onDeadlineClear,
+  onTimeChange,
   onReorder,
   onRequestDeleteTask,
   deadlinePending,
@@ -320,6 +323,7 @@ export function TaskGroupList({
                         onStatusChange={onStatusChange}
                         onDeadlineSet={onDeadlineSet}
                         onDeadlineClear={onDeadlineClear}
+                        onTimeChange={onTimeChange}
                         deadlinePending={deadlinePending}
                         finalStatusIds={finalStatusIds}
                         showProject={showProject}
@@ -347,6 +351,7 @@ export function TaskGroupList({
                 onStatusChange={onStatusChange}
                 onDeadlineSet={onDeadlineSet}
                 onDeadlineClear={onDeadlineClear}
+                onTimeChange={onTimeChange}
                 deadlinePending={deadlinePending}
                 finalStatusIds={finalStatusIds}
                 showProject={showProject}
@@ -390,6 +395,7 @@ export function TaskGroupList({
                     onStatusChange={(statusId) => onStatusChange(task.id, statusId)}
                     onDeadlineSet={(date) => onDeadlineSet(task.id, date)}
                     onDeadlineClear={() => onDeadlineClear(task.id)}
+                    onTimeChange={onTimeChange ? (v) => onTimeChange(task.id, v) : undefined}
                     deadlinePending={deadlinePending}
                     finalStatusIds={finalStatusIds}
                     showProject={showProject}

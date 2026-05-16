@@ -27,6 +27,8 @@ export interface DraggableTaskRowProps {
   onStatusChange: (taskId: string, statusId: string | null) => void
   onDeadlineSet: (taskId: string, date: Date) => void
   onDeadlineClear: (taskId: string) => void
+  /** Новый API. */
+  onTimeChange?: (taskId: string, v: import('./TaskTimePickerPopover').TaskTimeValue) => void
   deadlinePending: boolean
   finalStatusIds: Set<string>
   showProject: boolean
@@ -43,6 +45,7 @@ export const DraggableTaskRow = memo(function DraggableTaskRow({
   onStatusChange,
   onDeadlineSet,
   onDeadlineClear,
+  onTimeChange,
   deadlinePending,
   finalStatusIds,
   showProject,
@@ -79,6 +82,12 @@ export const DraggableTaskRow = memo(function DraggableTaskRow({
     () => onDeadlineClear(task.id),
     [onDeadlineClear, task.id],
   )
+  const handleTimeChange = useCallback(
+    (v: import('./TaskTimePickerPopover').TaskTimeValue) => {
+      onTimeChange?.(task.id, v)
+    },
+    [onTimeChange, task.id],
+  )
   const handleRequestDelete = useMemo(
     () => (onRequestDelete ? () => onRequestDelete(task) : undefined),
     [onRequestDelete, task],
@@ -99,6 +108,7 @@ export const DraggableTaskRow = memo(function DraggableTaskRow({
         onStatusChange={handleStatusChange}
         onDeadlineSet={handleDeadlineSet}
         onDeadlineClear={handleDeadlineClear}
+        onTimeChange={onTimeChange ? handleTimeChange : undefined}
         deadlinePending={deadlinePending}
         finalStatusIds={finalStatusIds}
         showProject={showProject}

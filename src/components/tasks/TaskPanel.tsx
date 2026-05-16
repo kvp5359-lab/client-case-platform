@@ -61,6 +61,7 @@ export interface TaskPanelProps {
   onStatusChange?: (statusId: string | null) => void
   onDeadlineSet?: (date: Date) => void
   onDeadlineClear?: () => void
+  onTimeChange?: (v: import('./TaskTimePickerPopover').TaskTimeValue) => void
   onRename: (name: string) => void
   onSettingsSave: (params: { name: string; accent_color: string; icon: string; deadline?: string | null; start_at?: string | null; end_at?: string | null }) => void
   deadlinePending?: boolean
@@ -95,6 +96,7 @@ export function TaskPanel({
   onStatusChange,
   onDeadlineSet,
   onDeadlineClear,
+  onTimeChange,
   onRename,
   onSettingsSave,
   deadlinePending = false,
@@ -338,6 +340,7 @@ export function TaskPanel({
           onStatusChange={onStatusChange}
           onDeadlineSet={onDeadlineSet}
           onDeadlineClear={onDeadlineClear}
+          onTimeChange={onTimeChange}
           deadlinePending={deadlinePending}
           onRename={onRename}
           onSettingsOpen={() => setSettingsOpen(true)}

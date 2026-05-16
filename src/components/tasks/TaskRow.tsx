@@ -16,6 +16,7 @@ import { getDeadlineGroup } from '@/utils/deadlineUtils'
 import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { DeadlinePopover } from './DeadlinePopover'
+import type { TaskTimeValue } from './TaskTimePickerPopover'
 import { AssigneesPopover } from './AssigneesPopover'
 import { UnreadBadge } from './UnreadBadge'
 import { TaskActionsMenu } from './TaskActionsMenu'
@@ -30,6 +31,8 @@ interface TaskRowProps {
   onStatusChange: (statusId: string | null) => void
   onDeadlineSet: (date: Date) => void
   onDeadlineClear: () => void
+  /** Новый API: пробрасывает все три поля (deadline, startAt, endAt). */
+  onTimeChange?: (v: TaskTimeValue) => void
   deadlinePending: boolean
   /** ID статусов с is_final — для отключения подсветки просрочки */
   finalStatusIds?: Set<string>
@@ -57,6 +60,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
   onStatusChange,
   onDeadlineSet,
   onDeadlineClear,
+  onTimeChange,
   deadlinePending,
   finalStatusIds,
   showProject,
@@ -176,6 +180,9 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
       {/* Срок */}
       <DeadlinePopover
         deadline={task.deadline}
+        startAt={(task as { start_at?: string | null }).start_at}
+        endAt={(task as { end_at?: string | null }).end_at}
+        onChange={onTimeChange}
         onSet={onDeadlineSet}
         onClear={onDeadlineClear}
         isPending={deadlinePending}

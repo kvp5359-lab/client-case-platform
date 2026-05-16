@@ -32,6 +32,7 @@ interface TaskDialogProps {
   onStatusChange: (statusId: string | null) => void
   onDeadlineSet: (date: Date) => void
   onDeadlineClear: () => void
+  onTimeChange?: (v: import('./TaskTimePickerPopover').TaskTimeValue) => void
   onRename: (name: string) => void
   onSettingsSave: (params: { name: string; accent_color: string; icon: string; deadline?: string | null; start_at?: string | null; end_at?: string | null }) => void
   deadlinePending: boolean
@@ -52,6 +53,7 @@ export function TaskDialog({
   onStatusChange,
   onDeadlineSet,
   onDeadlineClear,
+  onTimeChange,
   onRename,
   onSettingsSave,
   deadlinePending,
@@ -168,6 +170,9 @@ export function TaskDialog({
 
               <DeadlinePopover
                 deadline={task.deadline}
+                startAt={(task as { start_at?: string | null }).start_at}
+                endAt={(task as { end_at?: string | null }).end_at}
+                onChange={onTimeChange}
                 onSet={onDeadlineSet}
                 onClear={onDeadlineClear}
                 isPending={deadlinePending}

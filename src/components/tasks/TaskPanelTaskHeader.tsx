@@ -34,6 +34,7 @@ interface TaskPanelTaskHeaderProps {
   onStatusChange?: (statusId: string | null) => void
   onDeadlineSet?: (date: Date) => void
   onDeadlineClear?: () => void
+  onTimeChange?: (v: import('./TaskTimePickerPopover').TaskTimeValue) => void
   deadlinePending: boolean
   onRename: (name: string) => void
   onSettingsOpen: () => void
@@ -64,6 +65,7 @@ export function TaskPanelTaskHeader({
   onStatusChange,
   onDeadlineSet,
   onDeadlineClear,
+  onTimeChange,
   deadlinePending,
   onRename,
   onSettingsOpen,
@@ -253,6 +255,9 @@ export function TaskPanelTaskHeader({
         {onDeadlineSet && onDeadlineClear && (
           <DeadlinePopover
             deadline={task.deadline}
+            startAt={(task as { start_at?: string | null }).start_at}
+            endAt={(task as { end_at?: string | null }).end_at}
+            onChange={onTimeChange}
             onSet={onDeadlineSet}
             onClear={onDeadlineClear}
             isPending={deadlinePending}
