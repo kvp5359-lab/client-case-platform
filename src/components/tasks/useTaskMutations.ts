@@ -176,11 +176,20 @@ export function useUpdateTaskSettings(invalidateKeys: ReadonlyArray<readonly unk
       name,
       accent_color,
       icon,
+      deadline,
+      start_at,
+      end_at,
     }: {
       threadId: string
       name: string
       accent_color: string
       icon: string
+      /** Срок задачи. Триггер БД синхронизирует с end_at. */
+      deadline?: string | null
+      /** Запланированное начало (для календаря). */
+      start_at?: string | null
+      /** Запланированный конец. */
+      end_at?: string | null
     }) => {
       const { data: old } = await supabase
         .from('project_threads')
@@ -188,9 +197,14 @@ export function useUpdateTaskSettings(invalidateKeys: ReadonlyArray<readonly unk
         .eq('id', threadId)
         .single()
 
+      const update: Record<string, unknown> = { name, accent_color, icon }
+      if (deadline !== undefined) update.deadline = deadline
+      if (start_at !== undefined) update.start_at = start_at
+      if (end_at !== undefined) update.end_at = end_at
+
       const { error } = await supabase
         .from('project_threads')
-        .update({ name, accent_color, icon })
+        .update(update)
         .eq('id', threadId)
       if (error) throw error
 

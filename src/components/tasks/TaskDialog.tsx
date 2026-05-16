@@ -33,7 +33,7 @@ interface TaskDialogProps {
   onDeadlineSet: (date: Date) => void
   onDeadlineClear: () => void
   onRename: (name: string) => void
-  onSettingsSave: (params: { name: string; accent_color: string; icon: string }) => void
+  onSettingsSave: (params: { name: string; accent_color: string; icon: string; deadline?: string | null; start_at?: string | null; end_at?: string | null }) => void
   deadlinePending: boolean
   settingsPending: boolean
   /** Показывать ссылку на проект (на странице «Все задачи») */

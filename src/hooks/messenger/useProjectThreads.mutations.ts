@@ -33,6 +33,11 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
       accessRoles?: string[]
       // Task-specific
       deadline?: string | null
+      /** Запланированное начало (для календаря). Если задано — start_at NOT NULL. */
+      startAt?: string | null
+      /** Запланированный конец. БД-триггер sync_thread_deadline_end_at
+       *  автоматически проставит deadline = end_at. */
+      endAt?: string | null
       statusId?: string | null
       assigneeIds?: string[]
       // Project override (если пользователь сменил проект в диалоге)
@@ -93,6 +98,8 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
           ...(params.accentColor && { accent_color: params.accentColor }),
           ...(params.icon && { icon: params.icon }),
           ...(params.deadline !== undefined && { deadline: params.deadline }),
+          ...(params.startAt !== undefined && { start_at: params.startAt }),
+          ...(params.endAt !== undefined && { end_at: params.endAt }),
           ...(params.statusId !== undefined && { status_id: params.statusId }),
           ...(params.sourceTemplateId && { source_template_id: params.sourceTemplateId }),
           ...(isEmailChannel && {
@@ -315,6 +322,11 @@ export function useUpdateThread() {
       icon?: string
       type?: string
       project_id?: string | null
+      deadline?: string | null
+      /** Запланированное начало (для календаря). */
+      start_at?: string | null
+      /** Запланированный конец. Триггер БД синхронизирует с deadline. */
+      end_at?: string | null
     }) => {
       const update: Record<string, unknown> = {}
       if (params.name !== undefined) update.name = params.name
@@ -322,6 +334,9 @@ export function useUpdateThread() {
       if (params.icon !== undefined) update.icon = params.icon
       if (params.type !== undefined) update.type = params.type
       if (params.project_id !== undefined) update.project_id = params.project_id
+      if (params.deadline !== undefined) update.deadline = params.deadline
+      if (params.start_at !== undefined) update.start_at = params.start_at
+      if (params.end_at !== undefined) update.end_at = params.end_at
 
       const { data: old } = await supabase
         .from('project_threads')

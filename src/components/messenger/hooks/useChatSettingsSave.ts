@@ -27,7 +27,23 @@ interface UseChatSettingsSaveParams {
     accent_color: ThreadAccentColor
     icon: string
     type?: string
+    deadline?: string | null
+    start_at?: string | null
+    end_at?: string | null
   }) => void
+}
+
+/**
+ * Собирает start_at/end_at в ISO из date + HH:mm. Возвращает null если
+ * data отсутствует или time невалиден.
+ */
+function buildIsoFromDateAndTime(date: Date | undefined, time: string): string | null {
+  if (!date) return null
+  const [hh, mm] = time.split(':').map((s) => Number.parseInt(s, 10))
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null
+  const d = new Date(date)
+  d.setHours(hh, mm, 0, 0)
+  return d.toISOString()
 }
 
 export function useChatSettingsSave({
@@ -38,6 +54,19 @@ export function useChatSettingsSave({
   onUpdate,
 }: UseChatSettingsSaveParams) {
   return useCallback(() => {
+    // Срок: либо «весь день» (только deadline-дата без времени), либо
+    // интервал start_at/end_at. Триггер БД sync_thread_deadline_end_at
+    // следит за тем, что deadline = end_at когда задан интервал.
+    const startAtIso = form.taskAllDay
+      ? null
+      : buildIsoFromDateAndTime(form.taskDeadline, form.taskStartTime)
+    const endAtIso = form.taskAllDay
+      ? null
+      : buildIsoFromDateAndTime(form.taskDeadline, form.taskEndTime)
+    const deadlineIso = form.taskAllDay
+      ? form.taskDeadline ? formatDateToString(form.taskDeadline) : null
+      : endAtIso
+
     if (form.isEditMode) {
       if (!form.name.trim()) return
       onUpdate?.({
@@ -45,6 +74,9 @@ export function useChatSettingsSave({
         accent_color: form.accentColor,
         icon: form.icon,
         type: form.threadType,
+        deadline: deadlineIso,
+        start_at: startAtIso,
+        end_at: endAtIso,
       })
       return
     }
@@ -65,7 +97,9 @@ export function useChatSettingsSave({
         channelType: 'none',
         memberIds: form.accessType === 'custom' ? Array.from(form.selectedMemberIds) : undefined,
         accessRoles: form.accessType === 'roles' ? Array.from(form.selectedRoles) : undefined,
-        deadline: form.taskDeadline ? formatDateToString(form.taskDeadline) : null,
+        deadline: deadlineIso,
+        startAt: startAtIso,
+        endAt: endAtIso,
         statusId: form.taskStatusId,
         assigneeIds: Array.from(form.taskAssignees),
         projectId: form.selectedProjectId,

@@ -36,7 +36,7 @@ import { ChatSettingsProjectSelector } from './ChatSettingsProjectSelector'
 import { ChatSettingsAssignees } from './ChatSettingsAssignees'
 import { ChatSettingsAccess } from './ChatSettingsAccess'
 import { ChatSettingsChannels } from './ChatSettingsChannels'
-import { ChatSettingsDeadlinePicker } from './ChatSettingsDeadlinePicker'
+import { ChatSettingsTimeRangePicker } from './ChatSettingsTimeRangePicker'
 import { ChatSettingsStatusPopover } from './ChatSettingsStatusPopover'
 import { useChatSettingsFormState } from './hooks/useChatSettingsFormState'
 import { useChatSettingsActions } from './hooks/useChatSettingsActions'
@@ -195,13 +195,17 @@ export function ChatSettingsDialog({
               </div>
             </div>
 
-            <ChatSettingsDeadlinePicker
-              currentDl={form.currentDl}
-              currentDlDate={form.currentDlDate}
-              isEditMode={form.isEditMode}
-              deadlinePopoverOpen={form.deadlinePopoverOpen}
-              onOpenChange={form.setDeadlinePopoverOpen}
-              onSelect={actions.handleDeadlineSelect}
+            <ChatSettingsTimeRangePicker
+              date={form.currentDlDate}
+              allDay={form.taskAllDay}
+              startTime={form.taskStartTime}
+              endTime={form.taskEndTime}
+              popoverOpen={form.deadlinePopoverOpen}
+              onPopoverOpenChange={form.setDeadlinePopoverOpen}
+              onDateChange={actions.handleDeadlineSelect}
+              onAllDayChange={form.setTaskAllDay}
+              onStartTimeChange={form.setTaskStartTime}
+              onEndTimeChange={form.setTaskEndTime}
               onClear={actions.handleDeadlineClear}
             />
           </div>

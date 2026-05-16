@@ -25,7 +25,13 @@ export interface ChatSettingsResult {
   memberIds?: string[]
   accessRoles?: string[]
   // Task-specific
+  /** Срок задачи. Для задач с интервалом времени совпадает с endAt
+   *  (БД-триггер sync_thread_deadline_end_at следит за равенством). */
   deadline?: string | null
+  /** Запланированное начало. NULL = задача без слота в календаре. */
+  startAt?: string | null
+  /** Запланированный конец. Триггер БД синхронизирует deadline = endAt. */
+  endAt?: string | null
   statusId?: string | null
   assigneeIds?: string[]
   // Project

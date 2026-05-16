@@ -62,6 +62,10 @@ export function useChatSettingsFormState({
   const [taskDeadline, setTaskDeadline] = useState<Date | undefined>(
     defaultThreadType === 'task' ? new Date() : undefined,
   )
+  /** false = задача с временным слотом (start_at/end_at). true = только дата (legacy «срок»). */
+  const [taskAllDay, setTaskAllDay] = useState<boolean>(true)
+  const [taskStartTime, setTaskStartTime] = useState<string>('10:00')
+  const [taskEndTime, setTaskEndTime] = useState<string>('10:30')
   const [taskStatusId, setTaskStatusId] = useState<string | null>(null)
   const [taskAssignees, setTaskAssignees] = useState<Set<string>>(new Set())
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(propProjectId ?? null)
@@ -84,6 +88,20 @@ export function useChatSettingsFormState({
       setLocalDeadline(chat.deadline)
       setLocalStatusId(chat.status_id)
       setSelectedProjectId(chat.project_id)
+      // Чтение start_at/end_at из текущего треда — задача может быть уже в календаре
+      const startAt = (chat as { start_at?: string | null }).start_at
+      const endAt = (chat as { end_at?: string | null }).end_at
+      if (startAt && endAt) {
+        setTaskAllDay(false)
+        const s = new Date(startAt)
+        const e = new Date(endAt)
+        setTaskStartTime(`${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`)
+        setTaskEndTime(`${String(e.getHours()).padStart(2, '0')}:${String(e.getMinutes()).padStart(2, '0')}`)
+        setTaskDeadline(s)
+      } else {
+        setTaskAllDay(true)
+        if (chat.deadline) setTaskDeadline(new Date(chat.deadline))
+      }
     } else {
       setName('')
       setAccentColor(getDefaultAccent(resolvedDefaultTab))
@@ -161,6 +179,9 @@ export function useChatSettingsFormState({
     setSelectedMemberIds(new Set())
     setSelectedRoles(new Set())
     setTaskDeadline(defaultThreadType === 'task' ? new Date() : undefined)
+    setTaskAllDay(true)
+    setTaskStartTime('10:00')
+    setTaskEndTime('10:30')
     setTaskStatusId(null)
     setTaskAssignees(new Set())
     setChannelExpanded(false)
@@ -217,6 +238,12 @@ export function useChatSettingsFormState({
     setChannelExpanded,
     taskDeadline,
     setTaskDeadline,
+    taskAllDay,
+    setTaskAllDay,
+    taskStartTime,
+    setTaskStartTime,
+    taskEndTime,
+    setTaskEndTime,
     taskStatusId,
     setTaskStatusId,
     taskAssignees,

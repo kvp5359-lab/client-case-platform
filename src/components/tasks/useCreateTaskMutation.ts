@@ -41,6 +41,8 @@ export function useCreateTaskHandler({
           memberIds: result.memberIds,
           accessRoles: result.accessRoles,
           deadline: result.deadline,
+          startAt: result.startAt,
+          endAt: result.endAt,
           statusId: result.statusId,
           assigneeIds: result.assigneeIds,
           projectIdOverride: result.projectId !== undefined ? result.projectId : undefined,
