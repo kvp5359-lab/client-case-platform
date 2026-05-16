@@ -5680,6 +5680,7 @@ export type Database = {
           email_send_account_id: string | null
           email_send_method: string
           email_subject_root: string | null
+          end_at: string | null
           icon: string
           id: string
           is_default: boolean
@@ -5695,6 +5696,7 @@ export type Database = {
           short_id: number | null
           sort_order: number
           source_template_id: string | null
+          start_at: string | null
           status_id: string | null
           type: string
           updated_at: string
@@ -5721,6 +5723,7 @@ export type Database = {
           email_send_account_id?: string | null
           email_send_method?: string
           email_subject_root?: string | null
+          end_at?: string | null
           icon?: string
           id?: string
           is_default?: boolean
@@ -5736,6 +5739,7 @@ export type Database = {
           short_id?: number | null
           sort_order?: number
           source_template_id?: string | null
+          start_at?: string | null
           status_id?: string | null
           type?: string
           updated_at?: string
@@ -5762,6 +5766,7 @@ export type Database = {
           email_send_account_id?: string | null
           email_send_method?: string
           email_subject_root?: string | null
+          end_at?: string | null
           icon?: string
           id?: string
           is_default?: boolean
@@ -5777,6 +5782,7 @@ export type Database = {
           short_id?: number | null
           sort_order?: number
           source_template_id?: string | null
+          start_at?: string | null
           status_id?: string | null
           type?: string
           updated_at?: string
