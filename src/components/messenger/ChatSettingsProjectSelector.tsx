@@ -51,13 +51,13 @@ export function ChatSettingsProjectSelector({
         <button
           type="button"
           className={cn(
-            'flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0',
+            'flex items-center gap-1.5 text-sm rounded px-2 py-1 transition-colors shrink-0',
             selectedProjectId
               ? 'text-brand-600 bg-brand-50 hover:bg-brand-100'
               : 'text-brand-500/70 hover:text-brand-600 hover:bg-brand-50',
           )}
         >
-          <FolderOpen className="w-3 h-3" />
+          <FolderOpen className="w-3.5 h-3.5" />
           {selectedProjectId
             ? (workspaceProjects.find((p) => p.id === selectedProjectId)?.name ?? 'Проект')
             : 'Выбрать проект'}

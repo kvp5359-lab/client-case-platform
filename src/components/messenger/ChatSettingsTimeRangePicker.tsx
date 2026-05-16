@@ -150,13 +150,13 @@ export function ChatSettingsTimeRangePicker({
           type="button"
           onClick={open}
           className={cn(
-            'flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0',
+            'flex items-center gap-1.5 text-sm rounded px-2 py-1 transition-colors shrink-0',
             date
               ? 'text-muted-foreground bg-gray-100 hover:text-foreground hover:bg-gray-200'
               : 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-gray-100',
           )}
         >
-          <Calendar className="w-3 h-3" />
+          <Calendar className="w-3.5 h-3.5" />
           {date ? summary : 'Срок'}
         </button>
       )}
