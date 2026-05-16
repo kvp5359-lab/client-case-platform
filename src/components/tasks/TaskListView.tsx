@@ -76,6 +76,12 @@ interface TaskListViewProps {
   showProject?: boolean
   /** Показывать ссылку на проект в диалоге задачи */
   showProjectLink?: boolean
+  /** Стартовый projectFilter — переопределяет дефолт useTaskFilters.
+   *  Используется на странице /tasks?filter=no_project для пресета «Без проекта». */
+  initialProjectFilterIds?: Set<string>
+  /** Стартовый preset — по умолчанию my_active в workspace-режиме.
+   *  Для «Без проекта» лучше 'all' чтобы не отсекать постановщиком. */
+  initialPreset?: 'all' | 'my_active' | 'active' | 'control'
 }
 
 export const TaskListView = memo(function TaskListView({
@@ -83,6 +89,8 @@ export const TaskListView = memo(function TaskListView({
   projectId,
   showProject: showProjectProp,
   showProjectLink: showProjectLinkProp,
+  initialProjectFilterIds,
+  initialPreset,
 }: TaskListViewProps) {
   const router = useRouter()
 
@@ -172,6 +180,8 @@ export const TaskListView = memo(function TaskListView({
     taskStatuses,
     currentParticipantId,
     isProjectMode,
+    initialProjectFilterIds,
+    initialPreset,
   })
 
   // ── Создание задачи ──

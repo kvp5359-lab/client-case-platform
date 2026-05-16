@@ -20,6 +20,7 @@ import {
   FolderClosed,
   FolderCheck,
   FolderSearch,
+  FolderMinus,
   // Документы
   File,
   FileText,
@@ -143,6 +144,7 @@ export const PROJECT_ICONS: StatusIconDef[] = [
   { id: 'folder-heart', icon: FolderHeart, label: 'Папка с сердцем' },
   { id: 'folder-kanban', icon: FolderKanban, label: 'Папка канбан' },
   { id: 'folder-archive', icon: FolderArchive, label: 'Папка архив' },
+  { id: 'folder-minus', icon: FolderMinus, label: 'Папка без проекта' },
   // Документы
   { id: 'file-text', icon: FileText, label: 'Документ' },
   { id: 'file', icon: File, label: 'Файл' },

@@ -144,6 +144,10 @@ export function useSidebarInboxCounts(workspaceId: string) {
     const badgeColors = new Map<string, string>()
     let unreadThreadsCount = 0
     let unreadPersonalDialogsCount = 0
+    // Треды без project_id — для виртуальной записи «Без проекта» в сайдбаре.
+    const noProjectThreads: typeof threads = []
+    /** Максимум last_message_at среди тредов без project_id — для сортировки виртуала среди проектов. */
+    let noProjectLastActivityMs = 0
 
     for (const t of threads) {
       const isClient = t.legacy_channel === 'client'
@@ -151,9 +155,14 @@ export function useSidebarInboxCounts(workspaceId: string) {
       const count = calcThreadUnread(t)
       const hasAny = count !== 0
       if (hasAny) unreadThreadsCount += 1
-      // Личные диалоги — отдельный счётчик (project_id=NULL).
+      // Личные диалоги — отдельный счётчик + копим список для bage виртуала.
       if (!t.project_id) {
         if (hasAny) unreadPersonalDialogsCount += 1
+        noProjectThreads.push(t)
+        if (t.last_message_at) {
+          const ms = Date.parse(t.last_message_at)
+          if (Number.isFinite(ms) && ms > noProjectLastActivityMs) noProjectLastActivityMs = ms
+        }
         continue
       }
       const pid = t.project_id
@@ -197,10 +206,20 @@ export function useSidebarInboxCounts(workspaceId: string) {
       badgeDisplays.set(pid, getAggregateBadgeDisplay(projectThreads))
     }
 
+    // Badge для виртуальной записи «Без проекта» — той же функцией.
+    const noProjectBadgeDisplay: BadgeDisplay = noProjectThreads.length > 0
+      ? getAggregateBadgeDisplay(noProjectThreads)
+      : { type: 'none' }
+    const noProjectLastActivityAt = noProjectLastActivityMs > 0
+      ? new Date(noProjectLastActivityMs).toISOString()
+      : null
+
     return {
       totalUnread,
       unreadThreadsCount,
       unreadPersonalDialogsCount,
+      noProjectBadgeDisplay,
+      noProjectLastActivityAt,
       projectData: {
         badgeDisplays,
         clientUnreadCounts,

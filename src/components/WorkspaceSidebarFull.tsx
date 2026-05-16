@@ -27,6 +27,8 @@ import { usePinnedItemLists } from './WorkspaceSidebar/usePinnedItemLists'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useItemLists } from '@/hooks/useItemLists'
 import { useProjectTemplate, useProjectModules } from '@/page-components/ProjectPage/hooks'
+import { NO_PROJECT_ID as NO_PROJECT_VIRTUAL_ID } from '@/components/tasks/useTaskFilters'
+import type { Project } from './WorkspaceSidebar/useSidebarData'
 import {
   useWorkspaceSidebarSettings,
   useMyTaskCounts,
@@ -77,13 +79,21 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId, onCollapse
     totalUnread,
     unreadThreadsCount,
     unreadPersonalDialogsCount,
+    noProjectBadgeDisplay,
+    noProjectLastActivityAt,
     projectData: projectUnreadData,
   } = useSidebarInboxCounts(workspaceId ?? '')
-  const badgeDisplays = projectUnreadData.badgeDisplays
+  const badgeColors = projectUnreadData.badgeColors
   const clientUnreadCounts = projectUnreadData.clientUnreadCounts
   const internalUnreadCounts = projectUnreadData.internalUnreadCounts
   const projectThreadIds = projectUnreadData.threadIds
-  const badgeColors = projectUnreadData.badgeColors
+  // Подмешиваем badge для виртуальной записи «Без проекта» — чтобы
+  // ProjectsList корректно учёл её в сортировке (есть/нет непрочитанных).
+  const badgeDisplays = useMemo(() => {
+    const next = new Map(projectUnreadData.badgeDisplays)
+    next.set(NO_PROJECT_VIRTUAL_ID, noProjectBadgeDisplay)
+    return next
+  }, [projectUnreadData.badgeDisplays, noProjectBadgeDisplay])
 
   const unreadProjectIds = useMemo(() => {
     const ids: string[] = []
@@ -95,7 +105,7 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId, onCollapse
 
   const {
     workspaces,
-    projects,
+    projects: rawProjects,
     loadingWorkspaces,
     loadingProjects,
     currentWorkspace,
@@ -103,17 +113,49 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId, onCollapse
     refreshProjects,
   } = useSidebarData({ workspaceId, searchQuery: debouncedSearchQuery, unreadProjectIds })
 
+  // Виртуальная запись «Без проекта» — рендерится как обычный проект в списке.
+  // Клик → `/tasks?filter=no_project`. Сортировка обеспечена через badgeDisplays
+  // (есть непрочитанные → ProjectsList ставит наверх) и last_activity_at.
+  const projects: Project[] = useMemo(() => {
+    if (!workspaceId) return rawProjects
+    const virtual = {
+      // Минимально необходимые поля Project (Database.projects.Row + iconId/iconColor).
+      // Поля используются только в ProjectListItem для рендера: id/name/iconId/iconColor.
+      // Остальное не читается (нет template/status/...), TS требует — заполняем заглушками.
+      id: NO_PROJECT_VIRTUAL_ID,
+      name: 'Без проекта',
+      workspace_id: workspaceId,
+      template_id: null,
+      status_id: null,
+      is_deleted: false,
+      created_at: null,
+      updated_at: null,
+      created_by: null,
+      description: null,
+      deadline: null,
+      short_id: null,
+      last_activity_at: noProjectLastActivityAt,
+      iconId: 'folder-minus',
+      iconColor: '#6b7280',
+    } as unknown as Project
+    return [...rawProjects, virtual]
+  }, [rawProjects, workspaceId, noProjectLastActivityAt])
+
   // Резолв URL-сегмента (short_id или UUID) в реальный project.id (UUID).
   // URL содержит short_id (например `/projects/57`), но `project.id` в
   // сайдбаре — UUID. Чтобы сравнение в `ProjectListItem` сработало, резолвим
   // через `projects` list. Старые ссылки с UUID — поддерживаются.
   const activeProjectId = useMemo(() => {
+    // Спецслучай: страница /tasks?filter=no_project → подсветить виртуал «Без проекта».
+    if (pathname.endsWith('/tasks') && searchParams?.get('filter') === 'no_project') {
+      return NO_PROJECT_VIRTUAL_ID
+    }
     if (!optimisticProjectSegment) return undefined
     if (optimisticProjectSegment.includes('-')) return optimisticProjectSegment
     const asNum = Number(optimisticProjectSegment)
     if (Number.isNaN(asNum)) return optimisticProjectSegment
     return projects.find((p) => p.short_id === asNum)?.id ?? optimisticProjectSegment
-  }, [optimisticProjectSegment, projects])
+  }, [optimisticProjectSegment, projects, pathname, searchParams])
 
   const {
     can: hasPermission,
@@ -412,10 +454,19 @@ export function WorkspaceSidebarFull({ workspaceId: propsWorkspaceId, onCollapse
           badgeColors={badgeColors}
           activeProjectId={activeProjectId}
           onProjectClick={(projectId) => {
+            // Виртуальная запись «Без проекта» → /tasks?filter=no_project
+            if (projectId === NO_PROJECT_VIRTUAL_ID) {
+              handleNavigate('tasks?filter=no_project')
+              return
+            }
             setOptimisticProjectSegment(projectId)
             handleNavigate(`projects/${projectId}`)
           }}
-          getProjectHref={(projectId) => buildHref(`projects/${projectId}`)}
+          getProjectHref={(projectId) =>
+            projectId === NO_PROJECT_VIRTUAL_ID
+              ? buildHref('tasks?filter=no_project')
+              : buildHref(`projects/${projectId}`)
+          }
           onBadgeClick={handleBadgeClick}
           onCreateProject={isClientOnly ? undefined : createProjectDialog.open}
           onTitleClick={() => handleNavigate('projects')}

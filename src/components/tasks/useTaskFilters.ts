@@ -18,7 +18,7 @@ import { groupTasks } from './taskListConstants'
 export type TaskPreset = 'my_active' | 'active' | 'all' | 'control'
 
 // Sentinel-id для виртуальной опции «Без проекта» в фильтре по проектам.
-const NO_PROJECT_ID = '__no_project__'
+export const NO_PROJECT_ID = '__no_project__'
 
 interface UseTaskFiltersParams {
   allTasks: TaskItem[]
@@ -26,6 +26,10 @@ interface UseTaskFiltersParams {
   taskStatuses: TaskStatus[]
   currentParticipantId: string | null
   isProjectMode: boolean
+  /** Начальный набор id проектов в фильтре (например, NO_PROJECT_ID из URL). */
+  initialProjectFilterIds?: Set<string>
+  /** Начальный пресет — переопределяет дефолт (my_active в workspace-режиме). */
+  initialPreset?: TaskPreset
 }
 
 export function useTaskFilters({
@@ -34,15 +38,25 @@ export function useTaskFilters({
   taskStatuses,
   currentParticipantId,
   isProjectMode,
+  initialProjectFilterIds,
+  initialPreset,
 }: UseTaskFiltersParams) {
   const { user } = useAuth()
 
-  const [preset, setPreset] = useState<TaskPreset>(isProjectMode ? 'all' : 'my_active')
-  const [filtersModified, setFiltersModified] = useState(false)
+  const [preset, setPreset] = useState<TaskPreset>(
+    initialPreset ?? (isProjectMode ? 'all' : 'my_active'),
+  )
+  // Если задан стартовый projectFilter (например, «Без проекта» из URL) —
+  // считаем фильтр «изменённым вручную», иначе applyPreset тут же его очистит.
+  const [filtersModified, setFiltersModified] = useState(
+    !!initialProjectFilterIds && initialProjectFilterIds.size > 0,
+  )
   const [searchQuery, setSearchQuery] = useState('')
   const [assigneeFilterIds, setAssigneeFilterIds] = useState<Set<string> | null>(null)
   const [deadlineFilter, setDeadlineFilter] = useState<Set<DeadlineFilterValue> | null>(null)
-  const [projectFilterIds, setProjectFilterIds] = useState<Set<string>>(new Set())
+  const [projectFilterIds, setProjectFilterIds] = useState<Set<string>>(
+    () => initialProjectFilterIds ?? new Set(),
+  )
   const [statusFilterIds, setStatusFilterIds] = useState<Set<string> | null>(null)
   const [groupByDeadline, setGroupByDeadline] = useState(!isProjectMode)
 
