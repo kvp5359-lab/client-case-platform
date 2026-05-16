@@ -57,12 +57,16 @@ export function useChatSettingsSave({
     // Срок: либо «весь день» (только deadline-дата без времени), либо
     // интервал start_at/end_at. Триггер БД sync_thread_deadline_end_at
     // следит за тем, что deadline = end_at когда задан интервал.
+    // Если задан taskEndDate — конец на другой дате (многодневная задача).
     const startAtIso = form.taskAllDay
       ? null
       : buildIsoFromDateAndTime(form.taskDeadline, form.taskStartTime)
     const endAtIso = form.taskAllDay
       ? null
-      : buildIsoFromDateAndTime(form.taskDeadline, form.taskEndTime)
+      : buildIsoFromDateAndTime(
+          form.taskEndDate ?? form.taskDeadline,
+          form.taskEndTime,
+        )
     const deadlineIso = form.taskAllDay
       ? form.taskDeadline ? formatDateToString(form.taskDeadline) : null
       : endAtIso
