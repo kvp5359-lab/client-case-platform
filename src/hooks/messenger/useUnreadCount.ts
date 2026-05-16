@@ -5,7 +5,7 @@
  * После audit S1 cleanup: threadId обязательный, legacy-режим удалён.
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   getUnreadCount,
@@ -27,7 +27,7 @@ import type { InboxThreadEntry } from '@/services/api/inboxService'
 import { dismissProjectToasts } from './useMessageToastPayload'
 
 /** Resolve participant: project-level if projectId given, else workspace-level */
-async function resolveParticipant(
+export async function resolveParticipant(
   projectId: string | undefined,
   workspaceId: string | undefined,
   userId: string,
@@ -39,6 +39,98 @@ async function resolveParticipant(
     return (await getCurrentWorkspaceParticipant(workspaceId, userId))?.participantId ?? null
   }
   return null
+}
+
+interface CachePatchParams {
+  threadId: string
+  projectId?: string | undefined
+  workspaceId?: string | undefined
+}
+
+/**
+ * Pure-патч кэшей React Query, описывающий состояние «всё прочитано» в треде.
+ * НЕ инвалидирует — это делает caller.
+ *
+ * Обновляет ОДНИМ махом ТРИ кэша, на которых живёт UI:
+ *   1. `messengerKeys.unreadCountByThreadId`  — кнопка «Прочитано/Непрочитано»
+ *   2. `messengerKeys.lastReadAtByThreadId`   — красный контур у бабблов
+ *   3. `inboxKeys.threads(workspaceId)`       — бейдж списка «Входящие»
+ *
+ * Без этой общей функции список (✓✓-клик) патчил только #1 и #3, а #2
+ * оставался старым → у уже открытого треда контуры держались до рефетча.
+ */
+export function patchCachesForMarkRead(queryClient: QueryClient, params: CachePatchParams) {
+  const { threadId, workspaceId } = params
+  const nowIso = new Date().toISOString()
+  queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), 0)
+  queryClient.setQueryData(messengerKeys.lastReadAtByThreadId(threadId), nowIso)
+  if (workspaceId) {
+    queryClient.setQueryData<InboxThreadEntry[] | undefined>(
+      inboxKeys.threads(workspaceId),
+      (prev) =>
+        prev?.map((t) =>
+          t.thread_id === threadId
+            ? {
+                ...t,
+                unread_count: 0,
+                manually_unread: false,
+                has_unread_reaction: false,
+                unread_reaction_count: 0,
+                unread_event_count: 0,
+              }
+            : t,
+        ),
+    )
+  }
+}
+
+/** Зеркало `patchCachesForMarkRead` для «отметить непрочитанным» */
+export function patchCachesForMarkUnread(queryClient: QueryClient, params: CachePatchParams) {
+  const { threadId, workspaceId } = params
+  const nowIso = new Date().toISOString()
+  // lastReadAt = NOW: сообщения теряют красный контур (manually_unread даёт
+  // бейдж списка, но конкретные сообщения не должны быть «непрочитанными»).
+  queryClient.setQueryData(messengerKeys.lastReadAtByThreadId(threadId), nowIso)
+  if (workspaceId) {
+    queryClient.setQueryData<InboxThreadEntry[] | undefined>(
+      inboxKeys.threads(workspaceId),
+      (prev) =>
+        prev?.map((t) =>
+          t.thread_id === threadId ? { ...t, manually_unread: true } : t,
+        ),
+    )
+  }
+}
+
+/**
+ * Полный апдейт после успешного mark-as-read: optimistic patch + инвалидации.
+ * Используется в `useMarkAsRead` (вызывается в `onSuccess` после upsert).
+ */
+export function applyOptimisticMarkRead(queryClient: QueryClient, params: CachePatchParams) {
+  const { threadId, projectId, workspaceId } = params
+  patchCachesForMarkRead(queryClient, params)
+  queryClient.invalidateQueries({ queryKey: messengerKeys.lastReadAtByThreadId(threadId) })
+  if (projectId) {
+    queryClient.invalidateQueries({
+      queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),
+    })
+  }
+  if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
+  if (projectId) dismissProjectToasts(projectId)
+}
+
+/** Зеркало `applyOptimisticMarkRead` для «отметить непрочитанным» */
+export function applyOptimisticMarkUnread(queryClient: QueryClient, params: CachePatchParams) {
+  const { threadId, projectId, workspaceId } = params
+  patchCachesForMarkUnread(queryClient, params)
+  queryClient.invalidateQueries({ queryKey: messengerKeys.unreadCountByThreadId(threadId) })
+  queryClient.invalidateQueries({ queryKey: messengerKeys.lastReadAtByThreadId(threadId) })
+  if (projectId) {
+    queryClient.invalidateQueries({
+      queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),
+    })
+  }
+  if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
 }
 
 /**
@@ -116,8 +208,6 @@ export function useMarkAsRead(
 ) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const unreadKey = messengerKeys.unreadCountByThreadId(threadId)
-  const lastReadKey = messengerKeys.lastReadAtByThreadId(threadId)
 
   return useMutation({
     mutationFn: async () => {
@@ -127,43 +217,7 @@ export function useMarkAsRead(
       return markAsRead(pid, projectId, channel, threadId)
     },
     onSuccess: () => {
-      const nowIso = new Date().toISOString()
-      queryClient.setQueryData(unreadKey, 0)
-      // Оптимистично выставляем lastReadAt: иначе пока инвалидация перезагружает
-      // значение из БД, MessageList сравнивает с прежним (или null) и подсвечивает
-      // все чужие сообщения красной полосой, хотя счётчик уже 0.
-      queryClient.setQueryData(lastReadKey, nowIso)
-      queryClient.invalidateQueries({ queryKey: lastReadKey })
-      // Inbox v2: оптимистично гасим бейдж на этом треде, иначе цифра в шапке
-      // треда переживает mark-as-read до следующей инвалидации/realtime.
-      if (workspaceId) {
-        queryClient.setQueryData<InboxThreadEntry[] | undefined>(
-          inboxKeys.threads(workspaceId),
-          (prev) =>
-            prev?.map((t) =>
-              t.thread_id === threadId
-                ? {
-                    ...t,
-                    unread_count: 0,
-                    manually_unread: false,
-                    has_unread_reaction: false,
-                    unread_reaction_count: 0,
-                    unread_event_count: 0,
-                  }
-                : t,
-            ),
-        )
-      }
-      // Агрегированная карта last_read_at в «Всей истории» TaskPanel — тоже надо
-      // пересчитать, иначе бабл останется с красной рамкой «непрочитано», пока
-      // пользователь не обновит страницу.
-      if (projectId) {
-        queryClient.invalidateQueries({
-          queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),
-        })
-      }
-      if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
-      if (projectId) dismissProjectToasts(projectId)
+      applyOptimisticMarkRead(queryClient, { threadId, projectId, workspaceId })
     },
   })
 }
@@ -177,8 +231,6 @@ export function useMarkAsUnread(
 ) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const unreadKey = messengerKeys.unreadCountByThreadId(threadId)
-  const lastReadKey = messengerKeys.lastReadAtByThreadId(threadId)
 
   return useMutation({
     mutationFn: async () => {
@@ -194,30 +246,7 @@ export function useMarkAsUnread(
       }
     },
     onSuccess: () => {
-      const nowIso = new Date().toISOString()
-      // Оптимистично: lastReadAt = NOW, чтобы старые сообщения сразу
-      // потеряли красную полосу (manually_unread даёт бейдж, но конкретные
-      // сообщения не должны считаться непрочитанными).
-      queryClient.setQueryData(lastReadKey, nowIso)
-      queryClient.invalidateQueries({ queryKey: unreadKey })
-      queryClient.invalidateQueries({ queryKey: lastReadKey })
-      // Inbox v2: оптимистично ставим manually_unread=true, чтобы бейдж
-      // появился до завершения инвалидации.
-      if (workspaceId) {
-        queryClient.setQueryData<InboxThreadEntry[] | undefined>(
-          inboxKeys.threads(workspaceId),
-          (prev) =>
-            prev?.map((t) =>
-              t.thread_id === threadId ? { ...t, manually_unread: true } : t,
-            ),
-        )
-      }
-      if (projectId) {
-        queryClient.invalidateQueries({
-          queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),
-        })
-      }
-      if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
+      applyOptimisticMarkUnread(queryClient, { threadId, projectId, workspaceId })
     },
   })
 }

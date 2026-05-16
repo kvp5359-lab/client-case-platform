@@ -21,7 +21,11 @@ import {
   markAsUnread,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
-import { messengerKeys, invalidateMessengerCaches, projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { invalidateMessengerCaches, projectTemplateKeys, STALE_TIME, inboxKeys } from '@/hooks/queryKeys'
+import {
+  patchCachesForMarkRead,
+  patchCachesForMarkUnread,
+} from '@/hooks/messenger/useUnreadCount'
 import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { useCreateThread, useProjectThreads } from '@/hooks/messenger/useProjectThreads'
@@ -205,51 +209,85 @@ export default function InboxPage() {
   const getChannel = (chat: InboxThreadEntry): MessageChannel =>
     (chat.legacy_channel as MessageChannel) ?? 'client'
 
+  /** Резолв participant: проектный (если у треда есть project_id) или
+   *  workspace-уровневый (личные диалоги TG/Email/Wazzup, у которых project_id = null). */
+  const resolveParticipantId = async (chat: InboxThreadEntry): Promise<string | null> => {
+    if (!user) return null
+    if (chat.project_id) {
+      return (await getCurrentProjectParticipant(chat.project_id, user.id))?.participantId ?? null
+    }
+    return (await getCurrentWorkspaceParticipant(workspaceId, user.id))?.participantId ?? null
+  }
+
+  // Мутации идентичны кнопке «Прочитано/Непрочитано» внутри чата:
+  // patchCachesForMarkRead/Unread из useUnreadCount.ts патчит ВСЕ три кэша
+  // (бейдж списка + кнопка чата + контуры бабблов) одинаково.
+
   const markReadMutation = useMutation({
     mutationFn: async (chat: InboxThreadEntry) => {
       if (!user) throw new Error('Не авторизован')
-      // Workspace-level треды (project_id=null) пока не поддерживаются
-      // mark-as-read из InboxPage — у них нет project-участника.
-      if (!chat.project_id) return
-      const participant = await getCurrentProjectParticipant(chat.project_id, user.id)
-      if (!participant) throw new Error('Участник не найден')
+      const participantId = await resolveParticipantId(chat)
+      if (!participantId) throw new Error('Участник не найден')
       return markAsRead(
-        participant.participantId,
-        chat.project_id,
+        participantId,
+        chat.project_id ?? undefined,
         getChannel(chat),
         chat.thread_id,
       )
     },
-    onSuccess: (_, chat) => {
-      queryClient.setQueryData(messengerKeys.unreadCountByThreadId(chat.thread_id), 0)
+    onMutate: (chat) => {
+      const prev = queryClient.getQueryData<InboxThreadEntry[]>(inboxKeys.threads(workspaceId))
+      patchCachesForMarkRead(queryClient, {
+        threadId: chat.thread_id,
+        projectId: chat.project_id ?? undefined,
+        workspaceId,
+      })
+      return { prev }
+    },
+    onSuccess: () => {
       invalidateInbox()
     },
-    onError: () => {
-      toast.error('Не удалось отметить как прочитанное')
+    onError: (err, _chat, context) => {
+      if (context?.prev) {
+        queryClient.setQueryData(inboxKeys.threads(workspaceId), context.prev)
+      }
+      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+      const desc = err instanceof Error ? err.message : undefined
+      toast.error('Не удалось отметить как прочитанное', desc ? { description: desc } : undefined)
     },
   })
 
   const markUnreadMutation = useMutation({
     mutationFn: async (chat: InboxThreadEntry) => {
       if (!user) throw new Error('Не авторизован')
-      if (!chat.project_id) return
-      const participant = await getCurrentProjectParticipant(chat.project_id, user.id)
-      if (!participant) throw new Error('Участник не найден')
+      const participantId = await resolveParticipantId(chat)
+      if (!participantId) throw new Error('Участник не найден')
       return markAsUnread(
-        participant.participantId,
-        chat.project_id,
+        participantId,
+        chat.project_id ?? undefined,
         getChannel(chat),
         chat.thread_id,
       )
     },
-    onSuccess: (_, chat) => {
-      queryClient.invalidateQueries({
-        queryKey: messengerKeys.unreadCountByThreadId(chat.thread_id),
+    onMutate: (chat) => {
+      const prev = queryClient.getQueryData<InboxThreadEntry[]>(inboxKeys.threads(workspaceId))
+      patchCachesForMarkUnread(queryClient, {
+        threadId: chat.thread_id,
+        projectId: chat.project_id ?? undefined,
+        workspaceId,
       })
+      return { prev }
+    },
+    onSuccess: () => {
       invalidateInbox()
     },
-    onError: () => {
-      toast.error('Не удалось отметить как непрочитанное')
+    onError: (err, _chat, context) => {
+      if (context?.prev) {
+        queryClient.setQueryData(inboxKeys.threads(workspaceId), context.prev)
+      }
+      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+      const desc = err instanceof Error ? err.message : undefined
+      toast.error('Не удалось отметить как непрочитанное', desc ? { description: desc } : undefined)
     },
   })
 

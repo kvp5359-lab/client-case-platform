@@ -9,11 +9,16 @@ import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   getCurrentProjectParticipant,
+  getCurrentWorkspaceParticipant,
   markAsRead,
   markAsUnread,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
-import { messengerKeys, inboxKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
+import { inboxKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
+import {
+  patchCachesForMarkRead,
+  patchCachesForMarkUnread,
+} from '@/hooks/messenger/useUnreadCount'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
 
@@ -59,59 +64,50 @@ export function BoardInboxList({
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
 
-  /** Оптимистично обновить поля треда в кэше threadsV2 (без рефетча всего списка) */
-  const patchThreadInCache = (threadId: string, patch: Partial<InboxThreadEntry>) => {
-    const key = inboxKeys.threads(workspaceId)
-    queryClient.setQueryData<InboxThreadEntry[]>(key, (old) =>
-      old?.map((t) => (t.thread_id === threadId ? { ...t, ...patch } : t)),
-    )
-  }
-
   const getChannel = (chat: InboxThreadEntry): MessageChannel =>
     (chat.legacy_channel as MessageChannel) ?? 'client'
+
+  /** Резолв participant: проектный (если есть project_id) или workspace-уровневый
+   *  (для личных диалогов TG/Email/Wazzup, у которых project_id = null). */
+  const resolveParticipantId = async (chat: InboxThreadEntry): Promise<string | null> => {
+    if (!user) return null
+    if (chat.project_id) {
+      return (await getCurrentProjectParticipant(chat.project_id, user.id))?.participantId ?? null
+    }
+    return (await getCurrentWorkspaceParticipant(workspaceId, user.id))?.participantId ?? null
+  }
+
+  // Мутации полностью идентичны кнопке «Прочитано/Непрочитано» внутри чата:
+  // переиспользуют те же patchCachesForMarkRead/Unread helper'ы из
+  // useUnreadCount.ts. Это гарантирует, что бейдж списка, кнопка чата
+  // и красные контуры бабблов обновляются одним и тем же образом.
 
   const markReadMutation = useMutation({
     mutationFn: async (chat: InboxThreadEntry) => {
       if (!user) throw new Error('Не авторизован')
-      // Workspace-level треды (project_id === null) пока не поддерживаются
-      // для mark-as-read из BoardInboxList — там нет project-участника.
-      // Пропускаем молча, иначе оптимистичное обновление UI уже сработало.
-      if (!chat.project_id) return
-      const participant = await getCurrentProjectParticipant(chat.project_id, user.id)
-      if (!participant) throw new Error('Участник не найден')
+      const participantId = await resolveParticipantId(chat)
+      if (!participantId) throw new Error('Участник не найден')
       await markAsRead(
-        participant.participantId,
-        chat.project_id,
+        participantId,
+        chat.project_id ?? undefined,
         getChannel(chat),
         chat.thread_id,
       )
     },
     onMutate: (chat) => {
-      // Оптимистичное обновление — мгновенно убираем непрочитанность.
-      // Сохраняем prev для отката в onError.
-      const key = inboxKeys.threads(workspaceId)
-      const prev = queryClient.getQueryData<InboxThreadEntry[]>(key)
-      patchThreadInCache(chat.thread_id, {
-        unread_count: 0,
-        manually_unread: false,
-        has_unread_reaction: false,
-        unread_reaction_count: 0,
-        unread_event_count: 0,
+      // Snapshot для rollback + оптимистичный патч всех трёх кэшей.
+      const prev = queryClient.getQueryData<InboxThreadEntry[]>(inboxKeys.threads(workspaceId))
+      patchCachesForMarkRead(queryClient, {
+        threadId: chat.thread_id,
+        projectId: chat.project_id ?? undefined,
+        workspaceId,
       })
-      queryClient.setQueryData(messengerKeys.unreadCountByThreadId(chat.thread_id), 0)
       return { prev }
     },
-    // Без onSuccess + invalidateMessengerCaches кэш inbox оставался с
-    // оптимистичным патчем до полного reload страницы. Если БД-upsert
-    // молча не записал (например, RLS вернул 0 строк, которые мы не
-    // ловили в supabase-js) — пользователь не видел этого до reload.
-    // Теперь после успешного upsert делаем broad-invalidate, чтобы
-    // следующий рефетч принёс реальное состояние из БД.
     onSuccess: () => {
       invalidateMessengerCaches(queryClient, workspaceId)
     },
     onError: (err, _chat, context) => {
-      // Откатываем оптимистичный патч и рефетчим, чтобы UI отразил реальное состояние.
       if (context?.prev) {
         queryClient.setQueryData(inboxKeys.threads(workspaceId), context.prev)
       }
@@ -124,21 +120,22 @@ export function BoardInboxList({
   const markUnreadMutation = useMutation({
     mutationFn: async (chat: InboxThreadEntry) => {
       if (!user) throw new Error('Не авторизован')
-      // Workspace-level треды — см. markReadMutation выше.
-      if (!chat.project_id) return
-      const participant = await getCurrentProjectParticipant(chat.project_id, user.id)
-      if (!participant) throw new Error('Участник не найден')
+      const participantId = await resolveParticipantId(chat)
+      if (!participantId) throw new Error('Участник не найден')
       await markAsUnread(
-        participant.participantId,
-        chat.project_id,
+        participantId,
+        chat.project_id ?? undefined,
         getChannel(chat),
         chat.thread_id,
       )
     },
     onMutate: (chat) => {
-      const key = inboxKeys.threads(workspaceId)
-      const prev = queryClient.getQueryData<InboxThreadEntry[]>(key)
-      patchThreadInCache(chat.thread_id, { manually_unread: true })
+      const prev = queryClient.getQueryData<InboxThreadEntry[]>(inboxKeys.threads(workspaceId))
+      patchCachesForMarkUnread(queryClient, {
+        threadId: chat.thread_id,
+        projectId: chat.project_id ?? undefined,
+        workspaceId,
+      })
       return { prev }
     },
     onSuccess: () => {
