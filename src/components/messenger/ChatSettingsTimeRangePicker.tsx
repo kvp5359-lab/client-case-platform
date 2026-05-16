@@ -248,7 +248,7 @@ export function ChatSettingsTimeRangePicker({
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
-          <div className="p-3 space-y-3">
+          <div className="p-3 space-y-2.5">
             {/* Ряд полей: одна дата или 4 поля */}
             {showDuration ? (
               <div className="flex items-center gap-1 flex-nowrap">
@@ -264,35 +264,30 @@ export function ChatSettingsTimeRangePicker({
               </div>
             )}
 
-            {/* Тело попапа: календарь или time-list */}
-            <div className="border-t pt-2 flex justify-center">
-              {popoverBody}
-            </div>
+            {/* Чекбокс «Указать длительность» сразу под полями */}
+            <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showDuration}
+                onChange={(e) => {
+                  onShowDurationChange(e.target.checked)
+                  if (!e.target.checked) {
+                    onStartTimeChange('')
+                    onEndTimeChange('')
+                    onEndDateChange(undefined)
+                  }
+                  setActive('startDate')
+                }}
+                className="cursor-pointer"
+              />
+              <span>Указать длительность</span>
+            </label>
 
-            {/* Чекбокс «Указать длительность» */}
-            <div className="border-t pt-2">
-              <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={showDuration}
-                  onChange={(e) => {
-                    onShowDurationChange(e.target.checked)
-                    if (!e.target.checked) {
-                      // Очищаем время и endDate при выключении
-                      onStartTimeChange('')
-                      onEndTimeChange('')
-                      onEndDateChange(undefined)
-                    }
-                    setActive('startDate')
-                  }}
-                  className="cursor-pointer"
-                />
-                <span>Указать длительность</span>
-              </label>
-            </div>
+            {/* Тело попапа: календарь или time-list */}
+            <div className="flex justify-center">{popoverBody}</div>
 
             {/* Очистить */}
-            <div className="border-t pt-2 flex justify-end">
+            <div className="flex justify-end">
               <button
                 type="button"
                 onClick={() => {
