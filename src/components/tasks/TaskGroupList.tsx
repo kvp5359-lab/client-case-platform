@@ -6,7 +6,7 @@
  * Перестановка внутри группы + перенос между группами (меняет дедлайн).
  */
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import {
   DndContext,
@@ -110,6 +110,40 @@ export function TaskGroupList({
   const [completedExpanded, setCompletedExpanded] = useState(false)
   const [activeTask, setActiveTask] = useState<TaskItem | null>(null)
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorState | null>(null)
+
+  // Свёрнутые deadline-группы. По дефолту 'later' и 'no_deadline' свёрнуты —
+  // на странице «Задачи» / «Без проекта» эти группы обычно самые большие и
+  // оттягивают фокус от актуального. Состояние сохраняется в localStorage,
+  // чтобы переход между страницами/reload не сбрасывал выбор пользователя.
+  const COLLAPSED_LS_KEY = 'cc:task-groups-collapsed-v1'
+  const DEFAULT_COLLAPSED: DeadlineGroup[] = ['later', 'no_deadline']
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<DeadlineGroup>>(() => {
+    if (typeof window === 'undefined') return new Set(DEFAULT_COLLAPSED)
+    try {
+      const raw = localStorage.getItem(COLLAPSED_LS_KEY)
+      if (!raw) return new Set(DEFAULT_COLLAPSED)
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return new Set(DEFAULT_COLLAPSED)
+      return new Set(parsed as DeadlineGroup[])
+    } catch {
+      return new Set(DEFAULT_COLLAPSED)
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLLAPSED_LS_KEY, JSON.stringify(Array.from(collapsedGroups)))
+    } catch {
+      /* ignore quota errors */
+    }
+  }, [collapsedGroups])
+  const toggleGroup = useCallback((group: DeadlineGroup) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(group)) next.delete(group)
+      else next.add(group)
+      return next
+    })
+  }, [])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -247,10 +281,21 @@ export function TaskGroupList({
           GROUP_ORDER.map((group) => {
             const items = grouped.get(group)
             if (!items || items.length === 0) return null
+            const isCollapsed = collapsedGroups.has(group)
 
             return (
               <div key={group}>
-                <div className="flex items-center gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group)}
+                  className="flex items-center gap-2 mb-2 group/header"
+                  aria-expanded={!isCollapsed}
+                >
+                  {isCollapsed ? (
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover/header:text-foreground transition-colors" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover/header:text-foreground transition-colors" />
+                  )}
                   <h2
                     className={cn(
                       'text-xs font-semibold uppercase tracking-wider',
@@ -260,30 +305,32 @@ export function TaskGroupList({
                     {GROUP_LABELS[group]}
                   </h2>
                   <span className="text-xs text-muted-foreground">{items.length}</span>
-                </div>
+                </button>
 
-                <div>
-                  {items.map((task) => (
-                    <DraggableTaskRow
-                      key={task.id}
-                      task={task}
-                      workspaceId={workspaceId}
-                      statuses={taskStatuses}
-                      members={membersMap[task.id] ?? []}
-                      onOpen={onOpenTask}
-                      onStatusChange={onStatusChange}
-                      onDeadlineSet={onDeadlineSet}
-                      onDeadlineClear={onDeadlineClear}
-                      deadlinePending={deadlinePending}
-                      finalStatusIds={finalStatusIds}
-                      showProject={showProject}
-                      dropIndicator={
-                        dropIndicator?.taskId === task.id ? dropIndicator.position : null
-                      }
-                      onRequestDelete={onRequestDeleteTask}
-                    />
-                  ))}
-                </div>
+                {!isCollapsed && (
+                  <div>
+                    {items.map((task) => (
+                      <DraggableTaskRow
+                        key={task.id}
+                        task={task}
+                        workspaceId={workspaceId}
+                        statuses={taskStatuses}
+                        members={membersMap[task.id] ?? []}
+                        onOpen={onOpenTask}
+                        onStatusChange={onStatusChange}
+                        onDeadlineSet={onDeadlineSet}
+                        onDeadlineClear={onDeadlineClear}
+                        deadlinePending={deadlinePending}
+                        finalStatusIds={finalStatusIds}
+                        showProject={showProject}
+                        dropIndicator={
+                          dropIndicator?.taskId === task.id ? dropIndicator.position : null
+                        }
+                        onRequestDelete={onRequestDeleteTask}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })
