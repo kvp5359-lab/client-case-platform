@@ -179,14 +179,21 @@ export function TaskPanelTabBar({
     const oid = String(e.over.id)
     if (aid === SEPARATOR_ID || aid === oid) return
 
-    // Drop на разделитель: активная вкладка остаётся в своей зоне и встаёт в
-    // её крайнюю позицию (в конец pinned либо в начало unpinned). Без этого
-    // arrayMove кладёт активную после разделителя и логика «позиция относительно
-    // разделителя определяет pinned» ошибочно меняет её сторону на противоположную.
+    // Drop на разделитель = пользователь намеренно тащит таб через границу
+    // зон, ожидая поменять зону. Переключаем pinned:
+    //   • Был unpinned → становится pinned (в конец pinned).
+    //   • Был pinned   → становится unpinned (в начало unpinned).
+    // (До этого было «оставить в своей зоне» — выглядело как «вкладка
+    //  отпружинила обратно», пользователь не понимал.)
     if (oid === SEPARATOR_ID) {
       const wasPinned = !!orderedTabs.find((t) => t.id === aid)?.pinned
-      const firstUnpinnedId = orderedTabs.find((t) => !t.pinned && t.id !== aid)?.id ?? null
-      onReorder(aid, firstUnpinnedId, wasPinned)
+      const becomePinned = !wasPinned
+      if (becomePinned) {
+        onReorder(aid, null, true) // null = в конец pinned после нормализации в reorderTab
+      } else {
+        const firstUnpinnedId = orderedTabs.find((t) => !t.pinned && t.id !== aid)?.id ?? null
+        onReorder(aid, firstUnpinnedId, false)
+      }
       return
     }
 
