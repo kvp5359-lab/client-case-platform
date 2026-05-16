@@ -42,6 +42,12 @@ export default function TasksPage() {
         <div className="max-w-[789px] px-6 py-6">
           <h1 className="text-xl font-semibold mb-4">{isNoProject ? 'Без проекта' : 'Задачи'}</h1>
           <TaskListView
+            // Key завязан на фильтр — при переходе между /tasks и
+            // /tasks?filter=no_project компонент перемонтируется и
+            // useTaskFilters берёт новые initial-значения. Без этого
+            // фильтр оставался прежним, потому что useState инициализируется
+            // один раз и не реагирует на изменение пропа.
+            key={isNoProject ? 'no-project' : 'all'}
             workspaceId={workspaceId}
             initialProjectFilterIds={initialProjectFilterIds}
             // Для «Без проекта» пресет 'all' — иначе фильтр my_active отсечёт
