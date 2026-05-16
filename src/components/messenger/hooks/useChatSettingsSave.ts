@@ -74,8 +74,13 @@ export function useChatSettingsSave({
         deadlineIso = form.taskDeadline ? formatDateToString(form.taskDeadline) : null
       }
     } else {
+      // С временем: end_at может быть на той же дате или на другой (встреча
+      // через ночь). taskEndDate=undefined → конец на дате начала.
       startAtIso = buildIsoFromDateAndTime(form.taskDeadline, form.taskStartTime)
-      endAtIso = buildIsoFromDateAndTime(form.taskDeadline, form.taskEndTime)
+      endAtIso = buildIsoFromDateAndTime(
+        form.taskEndDate ?? form.taskDeadline,
+        form.taskEndTime,
+      )
       deadlineIso = endAtIso
     }
 

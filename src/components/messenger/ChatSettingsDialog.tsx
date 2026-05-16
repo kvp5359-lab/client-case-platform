@@ -201,8 +201,6 @@ export function ChatSettingsDialog({
               startTime={form.taskStartTime}
               endTime={form.taskEndTime}
               endDate={form.taskEndDate}
-              popoverOpen={form.deadlinePopoverOpen}
-              onPopoverOpenChange={form.setDeadlinePopoverOpen}
               onDateChange={actions.handleDeadlineSelect}
               onAllDayChange={form.setTaskAllDay}
               onStartTimeChange={form.setTaskStartTime}
