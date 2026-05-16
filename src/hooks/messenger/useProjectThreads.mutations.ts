@@ -6,6 +6,7 @@ import {
   accessibleProjectKeys,
   messengerKeys,
   myTaskCountsKeys,
+  projectThreadKeys,
   taskKeys,
   trashKeys,
   workspaceTaskKeys,
@@ -345,6 +346,7 @@ export function useUpdateThread() {
     },
     onSuccess: (params) => {
       queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(params.projectId) })
+      queryClient.invalidateQueries({ queryKey: projectThreadKeys.byId(params.threadId) })
       // Если проект сменился — инвалидируем и новый проект
       if (
         params.project_id !== undefined &&

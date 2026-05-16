@@ -12,6 +12,10 @@ import {
 } from 'lucide-react'
 import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import { ChatIconColorGrid } from '@/components/messenger/ChatSettingsIconColorPicker'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useUpdateThread } from '@/hooks/messenger/useProjectThreads'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { Button } from '@/components/ui/button'
 import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
@@ -78,6 +82,7 @@ export function TaskPanelTaskHeader({
   const router = useRouter()
   const isTask = task.type === 'task'
   const ThreadIcon = getChatIconComponent(task.icon)
+  const updateThread = useUpdateThread()
 
   // Inline-редактирование
   const [editingName, setEditingName] = useState(false)
@@ -175,11 +180,39 @@ export function TaskPanelTaskHeader({
         )}
 
         {viewMode === 'thread' && !isTask && !editingName && (
-          <span className="shrink-0 flex items-center justify-center w-5 h-5" title="Тип треда">
-            {createElement(ThreadIcon, {
-              className: cn('w-4 h-4', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
-            })}
-          </span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                title="Изменить иконку и цвет"
+                className="shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-muted/60 transition-colors"
+              >
+                {createElement(ThreadIcon, {
+                  className: cn('w-4 h-4', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
+                })}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-[240px] p-3" sideOffset={4}>
+              <ChatIconColorGrid
+                accentColor={task.accent_color}
+                icon={task.icon}
+                onAccentColorChange={(color: ThreadAccentColor) =>
+                  updateThread.mutate({
+                    threadId: task.id,
+                    projectId: task.project_id ?? '',
+                    accent_color: color,
+                  })
+                }
+                onIconChange={(icon: string) =>
+                  updateThread.mutate({
+                    threadId: task.id,
+                    projectId: task.project_id ?? '',
+                    icon,
+                  })
+                }
+              />
+            </PopoverContent>
+          </Popover>
         )}
 
         {/* Проект в строке треда: в bare-режиме скрыт — он показан в верхней
