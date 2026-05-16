@@ -249,18 +249,15 @@ export function ChatSettingsTimeRangePicker({
           onInteractOutside={(e) => e.preventDefault()}
         >
           <div className="p-3 space-y-2.5">
-            {/* Ряд полей: одна дата или 4 поля */}
-            {showDuration ? (
+            {/* Ряд полей показываем только в режиме длительности.
+                Без длительности — работаем напрямую с календарём. */}
+            {showDuration && (
               <div className="flex items-center gap-1 flex-nowrap">
                 {fieldBtn('startDate', formatDateShort(date), '—', 72)}
                 {fieldBtn('startTime', startTime, '--:--', 52)}
                 <span className="text-xs text-muted-foreground px-0.5">—</span>
                 {fieldBtn('endTime', endTime, '--:--', 52)}
                 {fieldBtn('endDate', formatDateShort(effectiveEndDate), '—', 72)}
-              </div>
-            ) : (
-              <div className="flex items-center gap-1">
-                {fieldBtn('startDate', formatDateShort(date), '—', 100)}
               </div>
             )}
 
