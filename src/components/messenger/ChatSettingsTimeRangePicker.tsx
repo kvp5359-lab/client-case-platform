@@ -171,9 +171,16 @@ export function ChatSettingsTimeRangePicker({
   const popoverBody = (() => {
     if (active === 'startTime' || active === 'endTime') {
       const current = active === 'startTime' ? startTime : endTime
+      // Для endTime, если задано startTime и конец в тот же день,
+      // прячем слоты <= startTime — нельзя закончить раньше или одновременно с началом.
+      const sameDayAsStart = !endDate
+      const options =
+        active === 'endTime' && startTime && sameDayAsStart
+          ? TIME_OPTIONS.filter((t) => t > startTime)
+          : TIME_OPTIONS
       return (
         <div className="max-h-[260px] w-[90px] overflow-y-auto py-1">
-          {TIME_OPTIONS.map((t) => (
+          {options.map((t) => (
             <button
               key={t}
               type="button"
