@@ -111,10 +111,10 @@ export function ChatSettingsTimeRangePicker({
   }, [date, hasTime, startTime, endTime, effectiveEndDate])
 
   const openPopover = () => {
-    if (!date) {
-      onDateChange(new Date())
-      setActive('startDate')
-    }
+    if (!date) onDateChange(new Date())
+    // Активным сразу становится startDate — чтобы юзеру было ясно, что
+    // календарь меняет именно эту дату.
+    setActive('startDate')
     setPopoverOpen(true)
   }
 
