@@ -68,6 +68,12 @@ export function useChatSettingsFormState({
   const [taskEndTime, setTaskEndTime] = useState<string>('')
   /** Дата конца. Если undefined → конец = дата начала (однодневная). */
   const [taskEndDate, setTaskEndDate] = useState<Date | undefined>(undefined)
+  /**
+   * false → у задачи только одна дата (deadline без слота в календаре).
+   * true → 4 поля: дата+время начала и дата+время конца. Любое из времён
+   * может остаться пустым = «весь день».
+   */
+  const [taskShowDuration, setTaskShowDuration] = useState<boolean>(false)
   const [taskStatusId, setTaskStatusId] = useState<string | null>(null)
   const [taskAssignees, setTaskAssignees] = useState<Set<string>>(new Set())
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(propProjectId ?? null)
@@ -94,13 +100,13 @@ export function useChatSettingsFormState({
       const startAt = (chat as { start_at?: string | null }).start_at
       const endAt = (chat as { end_at?: string | null }).end_at
       if (startAt && endAt) {
+        // Задача с интервалом → автоматически показываем «длительность»
         const s = new Date(startAt)
         const e = new Date(endAt)
         const sameDay =
           s.getFullYear() === e.getFullYear() &&
           s.getMonth() === e.getMonth() &&
           s.getDate() === e.getDate()
-        // Многодневная all-day: start 00:00 + end 23:59 → время не показываем
         const isMultiDayAllDay =
           !sameDay &&
           s.getHours() === 0 && s.getMinutes() === 0 &&
@@ -114,10 +120,12 @@ export function useChatSettingsFormState({
           setTaskStartTime(`${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`)
           setTaskEndTime(`${String(e.getHours()).padStart(2, '0')}:${String(e.getMinutes()).padStart(2, '0')}`)
         }
+        setTaskShowDuration(true)
       } else {
         setTaskEndDate(undefined)
         setTaskStartTime('')
         setTaskEndTime('')
+        setTaskShowDuration(false)
         if (chat.deadline) setTaskDeadline(new Date(chat.deadline))
       }
     } else {
@@ -200,6 +208,7 @@ export function useChatSettingsFormState({
     setTaskStartTime('')
     setTaskEndTime('')
     setTaskEndDate(undefined)
+    setTaskShowDuration(false)
     setTaskStatusId(null)
     setTaskAssignees(new Set())
     setChannelExpanded(false)
@@ -262,6 +271,8 @@ export function useChatSettingsFormState({
     setTaskEndTime,
     taskEndDate,
     setTaskEndDate,
+    taskShowDuration,
+    setTaskShowDuration,
     taskStatusId,
     setTaskStatusId,
     taskAssignees,

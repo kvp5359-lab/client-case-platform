@@ -54,34 +54,40 @@ export function useChatSettingsSave({
   onUpdate,
 }: UseChatSettingsSaveParams) {
   return useCallback(() => {
-    // Срок: «весь день» определяется по отсутствию времени.
-    //   - оба времени пустые + одна дата → только deadline
-    //   - оба времени пустые + диапазон дат → start_at=date 00:00,
-    //     end_at=endDate 23:59 (многодневная all-day)
-    //   - оба времени заполнены → start_at=startDate+startTime,
-    //     end_at=(endDate ?? startDate)+endTime (м.б. встреча через ночь)
+    // Срок: режим определяется чекбоксом «Указать длительность».
+    //   showDuration=false → только deadline без слота в календаре
+    //   showDuration=true + оба времени пустые + одна дата → deadline
+    //   showDuration=true + оба времени пустые + диапазон дат →
+    //     start_at=date 00:00, end_at=endDate 23:59 (отпуск 16-18)
+    //   showDuration=true + время заполнено →
+    //     start_at = startDate+startTime, end_at = (endDate??startDate)+endTime
     // Триггер БД sync_thread_deadline_end_at автоматически синхронизирует
     // deadline = end_at когда задан интервал.
-    const hasTime = Boolean(form.taskStartTime && form.taskEndTime)
     let startAtIso: string | null = null
     let endAtIso: string | null = null
     let deadlineIso: string | null = null
 
-    if (!hasTime) {
-      if (form.taskEndDate && form.taskDeadline) {
-        startAtIso = buildIsoFromDateAndTime(form.taskDeadline, '00:00')
-        endAtIso = buildIsoFromDateAndTime(form.taskEndDate, '23:59')
-        deadlineIso = endAtIso
-      } else {
-        deadlineIso = form.taskDeadline ? formatDateToString(form.taskDeadline) : null
-      }
+    if (!form.taskShowDuration) {
+      // Простой режим: только deadline
+      deadlineIso = form.taskDeadline ? formatDateToString(form.taskDeadline) : null
     } else {
-      startAtIso = buildIsoFromDateAndTime(form.taskDeadline, form.taskStartTime)
-      endAtIso = buildIsoFromDateAndTime(
-        form.taskEndDate ?? form.taskDeadline,
-        form.taskEndTime,
-      )
-      deadlineIso = endAtIso
+      const hasTime = Boolean(form.taskStartTime && form.taskEndTime)
+      if (!hasTime) {
+        if (form.taskEndDate && form.taskDeadline) {
+          startAtIso = buildIsoFromDateAndTime(form.taskDeadline, '00:00')
+          endAtIso = buildIsoFromDateAndTime(form.taskEndDate, '23:59')
+          deadlineIso = endAtIso
+        } else {
+          deadlineIso = form.taskDeadline ? formatDateToString(form.taskDeadline) : null
+        }
+      } else {
+        startAtIso = buildIsoFromDateAndTime(form.taskDeadline, form.taskStartTime)
+        endAtIso = buildIsoFromDateAndTime(
+          form.taskEndDate ?? form.taskDeadline,
+          form.taskEndTime,
+        )
+        deadlineIso = endAtIso
+      }
     }
 
     if (form.isEditMode) {

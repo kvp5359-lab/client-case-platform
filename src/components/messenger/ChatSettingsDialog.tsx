@@ -200,10 +200,12 @@ export function ChatSettingsDialog({
               startTime={form.taskStartTime}
               endTime={form.taskEndTime}
               endDate={form.taskEndDate}
+              showDuration={form.taskShowDuration}
               onDateChange={actions.handleDeadlineSelect}
               onStartTimeChange={form.setTaskStartTime}
               onEndTimeChange={form.setTaskEndTime}
               onEndDateChange={form.setTaskEndDate}
+              onShowDurationChange={form.setTaskShowDuration}
               onClear={actions.handleDeadlineClear}
             />
           </div>

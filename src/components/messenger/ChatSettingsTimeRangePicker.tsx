@@ -33,10 +33,13 @@ interface Props {
   endTime: string
   /** undefined = тот же день, что и date */
   endDate: Date | undefined
+  /** false → одна дата; true → 4 поля (дата+время начала и конца) */
+  showDuration: boolean
   onDateChange: (date: Date | undefined) => void
   onStartTimeChange: (time: string) => void
   onEndTimeChange: (time: string) => void
   onEndDateChange: (date: Date | undefined) => void
+  onShowDurationChange: (show: boolean) => void
   onClear: () => void
 }
 
@@ -85,10 +88,12 @@ export function ChatSettingsTimeRangePicker({
   startTime,
   endTime,
   endDate,
+  showDuration,
   onDateChange,
   onStartTimeChange,
   onEndTimeChange,
   onEndDateChange,
+  onShowDurationChange,
   onClear,
 }: Props) {
   const [popoverOpen, setPopoverOpen] = useState(false)
@@ -101,6 +106,7 @@ export function ChatSettingsTimeRangePicker({
   const summary = useMemo(() => {
     if (!date) return 'Не указан'
     const d1 = formatDateShort(date)
+    if (!showDuration) return d1
     const d2 = formatDateShort(effectiveEndDate ?? date)
     const sameDay = d1 === d2
     if (!hasTime) {
@@ -108,7 +114,7 @@ export function ChatSettingsTimeRangePicker({
     }
     if (sameDay) return `${d1}, ${startTime}–${endTime}`
     return `${d1} ${startTime} → ${d2} ${endTime}`
-  }, [date, hasTime, startTime, endTime, effectiveEndDate])
+  }, [date, showDuration, hasTime, startTime, endTime, effectiveEndDate])
 
   const openPopover = () => {
     if (!date) onDateChange(new Date())
@@ -243,18 +249,46 @@ export function ChatSettingsTimeRangePicker({
           onInteractOutside={(e) => e.preventDefault()}
         >
           <div className="p-3 space-y-3">
-            {/* Ряд из 4 полей */}
-            <div className="flex items-center gap-1 flex-nowrap">
-              {fieldBtn('startDate', formatDateShort(date), '—', 72)}
-              {fieldBtn('startTime', startTime, '--:--', 52)}
-              <span className="text-xs text-muted-foreground px-0.5">—</span>
-              {fieldBtn('endTime', endTime, '--:--', 52)}
-              {fieldBtn('endDate', formatDateShort(effectiveEndDate), '—', 72)}
-            </div>
+            {/* Ряд полей: одна дата или 4 поля */}
+            {showDuration ? (
+              <div className="flex items-center gap-1 flex-nowrap">
+                {fieldBtn('startDate', formatDateShort(date), '—', 72)}
+                {fieldBtn('startTime', startTime, '--:--', 52)}
+                <span className="text-xs text-muted-foreground px-0.5">—</span>
+                {fieldBtn('endTime', endTime, '--:--', 52)}
+                {fieldBtn('endDate', formatDateShort(effectiveEndDate), '—', 72)}
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                {fieldBtn('startDate', formatDateShort(date), '—', 100)}
+              </div>
+            )}
 
             {/* Тело попапа: календарь или time-list */}
             <div className="border-t pt-2 flex justify-center">
               {popoverBody}
+            </div>
+
+            {/* Чекбокс «Указать длительность» */}
+            <div className="border-t pt-2">
+              <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showDuration}
+                  onChange={(e) => {
+                    onShowDurationChange(e.target.checked)
+                    if (!e.target.checked) {
+                      // Очищаем время и endDate при выключении
+                      onStartTimeChange('')
+                      onEndTimeChange('')
+                      onEndDateChange(undefined)
+                    }
+                    setActive('startDate')
+                  }}
+                  className="cursor-pointer"
+                />
+                <span>Указать длительность</span>
+              </label>
             </div>
 
             {/* Очистить */}
