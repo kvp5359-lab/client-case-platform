@@ -9,7 +9,6 @@
  */
 
 import { useMemo } from 'react'
-import { Label } from '@/components/ui/label'
 import { Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -143,25 +142,24 @@ export function ChatSettingsTimeRangePicker({
   }
 
   return (
-    <div className="flex flex-col gap-1 shrink-0" style={{ width: 200 }}>
-      <Label className="text-sm text-muted-foreground">Срок</Label>
-      <TaskTimePickerPopover
-        value={value}
-        onChange={handleChange}
-        trigger={({ open }) => (
-          <button
-            type="button"
-            onClick={open}
-            className={cn(
-              'flex items-center gap-2 h-9 px-2 rounded-md border border-input bg-background text-sm transition-colors hover:bg-accent text-left w-full',
-              !date && 'text-gray-400',
-            )}
-          >
-            <Calendar className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{summary}</span>
-          </button>
-        )}
-      />
-    </div>
+    <TaskTimePickerPopover
+      value={value}
+      onChange={handleChange}
+      trigger={({ open }) => (
+        <button
+          type="button"
+          onClick={open}
+          className={cn(
+            'flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0',
+            date
+              ? 'text-muted-foreground bg-gray-100 hover:text-foreground hover:bg-gray-200'
+              : 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-gray-100',
+          )}
+        >
+          <Calendar className="w-3 h-3" />
+          {date ? summary : 'Срок'}
+        </button>
+      )}
+    />
   )
 }

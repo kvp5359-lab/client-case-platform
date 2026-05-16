@@ -146,55 +146,56 @@ export function ChatSettingsDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-3 py-2">
-          {/* Название + Срок */}
-          <div className="flex items-end gap-2">
-            <div className="flex flex-col gap-1 flex-1 min-w-0">
-              <Label htmlFor="chat-name" className="text-sm text-muted-foreground">
-                Название
-                {!form.isEditMode && form.channelType === 'email' && (
-                  <span className="text-muted-foreground font-normal ml-1">(опционально)</span>
-                )}
-              </Label>
-              <div className="flex items-center rounded-md border border-input bg-background">
-                <ChatSettingsStatusPopover
-                  taskStatuses={actions.taskStatuses}
-                  currentStatusId={form.currentStatusId}
-                  currentStatus={actions.currentStatus}
-                  statusPopoverOpen={form.statusPopoverOpen}
-                  onOpenChange={form.setStatusPopoverOpen}
-                  onSelect={actions.handleStatusSelect}
-                />
-                <input
-                  id="chat-name"
-                  value={form.name}
-                  onChange={(e) => {
-                    form.setName(e.target.value)
-                    if (form.channelType === 'email' && !form.subjectTouched) {
-                      form.setEmailSubject(e.target.value)
-                    }
-                  }}
-                  placeholder={
-                    !form.isEditMode && form.channelType === 'email'
-                      ? 'По умолчанию: тема или email'
-                      : form.isTask
-                        ? 'Название задачи'
-                        : 'Название чата'
+          {/* Название */}
+          <div className="flex flex-col gap-1 min-w-0">
+            <Label htmlFor="chat-name" className="text-sm text-muted-foreground">
+              Название
+              {!form.isEditMode && form.channelType === 'email' && (
+                <span className="text-muted-foreground font-normal ml-1">(опционально)</span>
+              )}
+            </Label>
+            <div className="flex items-center rounded-md border border-input bg-background">
+              <ChatSettingsStatusPopover
+                taskStatuses={actions.taskStatuses}
+                currentStatusId={form.currentStatusId}
+                currentStatus={actions.currentStatus}
+                statusPopoverOpen={form.statusPopoverOpen}
+                onOpenChange={form.setStatusPopoverOpen}
+                onSelect={actions.handleStatusSelect}
+              />
+              <input
+                id="chat-name"
+                value={form.name}
+                onChange={(e) => {
+                  form.setName(e.target.value)
+                  if (form.channelType === 'email' && !form.subjectTouched) {
+                    form.setEmailSubject(e.target.value)
                   }
-                  autoFocus={form.isEditMode || form.channelType !== 'email'}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && form.canSave) actions.handleSave()
-                  }}
-                  className="flex-1 min-w-0 h-9 pl-1 pr-2 py-1 text-[15px] font-semibold bg-transparent outline-none placeholder:text-muted-foreground/40 placeholder:font-normal"
-                />
-                <ChatSettingsIconColorPicker
-                  accentColor={form.accentColor}
-                  icon={form.icon}
-                  onAccentColorChange={form.setAccentColor}
-                  onIconChange={form.setIcon}
-                />
-              </div>
+                }}
+                placeholder={
+                  !form.isEditMode && form.channelType === 'email'
+                    ? 'По умолчанию: тема или email'
+                    : form.isTask
+                      ? 'Название задачи'
+                      : 'Название чата'
+                }
+                autoFocus={form.isEditMode || form.channelType !== 'email'}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && form.canSave) actions.handleSave()
+                }}
+                className="flex-1 min-w-0 h-9 pl-1 pr-2 py-1 text-[15px] font-semibold bg-transparent outline-none placeholder:text-muted-foreground/40 placeholder:font-normal"
+              />
+              <ChatSettingsIconColorPicker
+                accentColor={form.accentColor}
+                icon={form.icon}
+                onAccentColorChange={form.setAccentColor}
+                onIconChange={form.setIcon}
+              />
             </div>
+          </div>
 
+          {/* Срок + Проект — одной строкой chip-ами */}
+          <div className="flex items-center gap-2 flex-wrap">
             <ChatSettingsTimeRangePicker
               date={form.currentDlDate}
               startTime={form.taskStartTime}
@@ -208,15 +209,13 @@ export function ChatSettingsDialog({
               onShowDurationChange={form.setTaskShowDuration}
               onClear={actions.handleDeadlineClear}
             />
+            <ChatSettingsProjectSelector
+              workspaceProjects={actions.workspaceProjects}
+              selectedProjectId={form.selectedProjectId}
+              isEditMode={form.isEditMode}
+              onSelect={actions.handleProjectSelect}
+            />
           </div>
-
-          {/* Проект */}
-          <ChatSettingsProjectSelector
-            workspaceProjects={actions.workspaceProjects}
-            selectedProjectId={form.selectedProjectId}
-            isEditMode={form.isEditMode}
-            onSelect={actions.handleProjectSelect}
-          />
 
           {/* Исполнители (для задач, чатов, email) */}
           <ChatSettingsAssignees
