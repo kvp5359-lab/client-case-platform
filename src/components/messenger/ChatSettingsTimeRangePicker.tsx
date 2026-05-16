@@ -245,8 +245,6 @@ export function ChatSettingsTimeRangePicker({
           className="w-auto p-0 z-[100]"
           align="start"
           sideOffset={4}
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
         >
           <div className="p-3 space-y-2.5">
             {/* Чекбокс «Указать длительность» сверху */}
