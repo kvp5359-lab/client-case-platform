@@ -50,6 +50,10 @@ export interface ChatCreatePreset {
   projectId?: string
   statusId?: string
   deadline?: string
+  /** Запланированное начало (ISO). Если передано вместе с endAt — форма
+   *  открывается с включённой длительностью и временем из slot. */
+  startAt?: string
+  endAt?: string
   assigneeIds?: string[]
 }
 

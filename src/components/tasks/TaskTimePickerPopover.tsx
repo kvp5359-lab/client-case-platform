@@ -101,6 +101,17 @@ function formatDateOnly(date: Date | undefined): string | null {
   return `${year}-${month}-${day}`
 }
 
+/** Сравнение двух ISO/date-only строк по фактическому моменту времени.
+ *  Учитывает разные форматы ('+00:00' vs 'Z'), считает обе null равными. */
+function isoEqual(a: string | null, b: string | null): boolean {
+  if (a === b) return true
+  if (a == null || b == null) return false
+  const ta = Date.parse(a)
+  const tb = Date.parse(b)
+  if (Number.isNaN(ta) || Number.isNaN(tb)) return a === b
+  return ta === tb
+}
+
 type ActiveField = 'startDate' | 'startTime' | 'endDate' | 'endTime' | null
 
 function getInitialScrollTarget(
@@ -252,7 +263,7 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
   const effectiveEndDate = endDate ?? date
 
   const open = () => {
-    if (!date) setDate(new Date())
+    // Не пред-выбираем сегодня — calendar просто подсветит today как ориентир.
     setActive('startDate')
     setPopoverOpen(true)
   }
@@ -260,13 +271,16 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
   const closePopover = () => {
     setPopoverOpen(false)
     setActive(null)
-    // При закрытии — отправляем изменения наверх
+    // При закрытии — отправляем изменения наверх, но только если они
+    // ЛОГИЧЕСКИ отличаются. Сравнение строк ломалось из-за разных форматов
+    // ISO у БД ('+00:00') и new Date().toISOString() ('Z'): открыл попап
+    // → просто закрыл → фиксировалась «изменение дедлайна» с одинаковой
+    // датой. Сравниваем по эпохе через Date.parse, NaN-флаг = «дата не
+    // задана».
     const v = buildValue(date, endDate, startTime, endTime, showDuration)
-    if (
-      v.deadline !== value.deadline ||
-      v.startAt !== value.startAt ||
-      v.endAt !== value.endAt
-    ) {
+    if (!isoEqual(v.deadline, value.deadline) ||
+        !isoEqual(v.startAt, value.startAt) ||
+        !isoEqual(v.endAt, value.endAt)) {
       onChange(v)
     }
   }
@@ -381,11 +395,13 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
               type="checkbox"
               checked={showDuration}
               onChange={(e) => {
-                setShowDuration(e.target.checked)
-                if (!e.target.checked) {
+                const checked = e.target.checked
+                setShowDuration(checked)
+                if (!checked) {
                   setStartTime('')
                   setEndTime('')
                   setEndDate(undefined)
+                  onChange(buildValue(date, undefined, '', '', false))
                 }
                 setActive('startDate')
               }}

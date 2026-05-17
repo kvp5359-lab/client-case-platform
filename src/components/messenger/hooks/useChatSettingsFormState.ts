@@ -166,7 +166,31 @@ export function useChatSettingsFormState({
       setTaskStatusId(initialValues.statusId)
       setDefaultsApplied(true) // блокируем выставление is_default-статуса
     }
-    if (initialValues.deadline) setTaskDeadline(new Date(initialValues.deadline))
+    // Если есть startAt + endAt — настраиваем интервал (как в edit-mode).
+    if (initialValues.startAt && initialValues.endAt) {
+      const s = new Date(initialValues.startAt)
+      const e = new Date(initialValues.endAt)
+      const sameDay =
+        s.getFullYear() === e.getFullYear() &&
+        s.getMonth() === e.getMonth() &&
+        s.getDate() === e.getDate()
+      const isMultiDayAllDay =
+        !sameDay &&
+        s.getHours() === 0 && s.getMinutes() === 0 &&
+        e.getHours() === 23 && e.getMinutes() === 59
+      setTaskDeadline(s)
+      setTaskEndDate(sameDay ? undefined : e)
+      if (isMultiDayAllDay) {
+        setTaskStartTime('')
+        setTaskEndTime('')
+      } else {
+        setTaskStartTime(`${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`)
+        setTaskEndTime(`${String(e.getHours()).padStart(2, '0')}:${String(e.getMinutes()).padStart(2, '0')}`)
+      }
+      setTaskShowDuration(true)
+    } else if (initialValues.deadline) {
+      setTaskDeadline(new Date(initialValues.deadline))
+    }
     if (initialValues.assigneeIds && initialValues.assigneeIds.length > 0) {
       setTaskAssignees(new Set(initialValues.assigneeIds))
       setAssigneeDefaultApplied(true) // блокируем дефолт «я как assignee»

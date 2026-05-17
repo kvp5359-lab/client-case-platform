@@ -193,6 +193,37 @@ export function useTaskPanelSetup({ workspaceId, extraInvalidateKeys = [] }: Use
         ),
       )
     },
+    /**
+     * Полный API срока — deadline + start_at + end_at одной мутацией.
+     * Используется TaskTimePickerPopover (флажок «Указать длительность»,
+     * range-режим). Без этого callback'а DeadlinePopover откатывался на
+     * старый onSet, который не очищал start_at/end_at — после снятия
+     * чекбокса время в БД оставалось прежним.
+     */
+    onTimeChange: (v) => {
+      if (!openThread) return
+      updateDeadline.mutate({
+        threadId: openThread.id,
+        deadline: v.deadline,
+        start_at: v.startAt,
+        end_at: v.endAt,
+      })
+      setStack((prev) =>
+        prev.map((item, i) =>
+          i === prev.length - 1 && item.kind === 'task'
+            ? {
+                kind: 'task',
+                task: {
+                  ...item.task,
+                  deadline: v.deadline,
+                  start_at: v.startAt,
+                  end_at: v.endAt,
+                },
+              }
+            : item,
+        ),
+      )
+    },
     onRename: (name) => {
       if (!openThread) return
       renameTask.mutate({ threadId: openThread.id, name })

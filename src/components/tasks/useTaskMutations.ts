@@ -13,6 +13,7 @@ import {
   projectThreadKeys,
   accessibleProjectKeys,
   projectKeys,
+  calendarKeys,
 } from '@/hooks/queryKeys'
 import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
 
@@ -107,6 +108,28 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
         new_deadline: deadline,
       }, old?.project_id ?? undefined)
     },
+    onMutate: async ({ threadId, start_at, end_at }) => {
+      // Optimistic update для board-list-times — чтобы блок в календаре
+      // менялся синхронно с дедлайн-чипом (без ожидания network round-trip).
+      // start_at/end_at могут быть undefined (мутация только меняет deadline)
+      // — в этом случае ничего не оптимистируем.
+      if (start_at === undefined && end_at === undefined) return
+      await queryClient.cancelQueries({ queryKey: calendarKeys.all })
+      queryClient.setQueriesData(
+        { queryKey: calendarKeys.all },
+        (old: unknown) => {
+          if (!old || Array.isArray(old) || typeof old !== 'object') return old
+          // start/end null → удаляем entry; иначе апсёртим.
+          const next = { ...(old as Record<string, unknown>) }
+          if (start_at === null && end_at === null) {
+            delete next[threadId]
+          } else {
+            next[threadId] = { start_at, end_at }
+          }
+          return next
+        },
+      )
+    },
     onSuccess: (_, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: projectThreadKeys.byId(threadId) })
@@ -114,6 +137,9 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
       // Появление/исчезновение дедлайна меняет has_active_deadline_task у проекта
       // (используется в фильтрах на доске).
       queryClient.invalidateQueries({ queryKey: accessibleProjectKeys.all })
+      // Календарные виды читают start_at/end_at отдельным запросом
+      // (useCalendarThreads + board-list-times внутри BoardListCalendarView).
+      queryClient.invalidateQueries({ queryKey: calendarKeys.all })
     },
     onError: () => toast.error('Не удалось обновить срок'),
   })

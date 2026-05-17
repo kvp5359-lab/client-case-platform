@@ -105,6 +105,14 @@ export function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabCo
       onStatusChange={(statusId) => updateStatus.mutate({ threadId: task.id, statusId })}
       onDeadlineSet={(d) => updateDeadline.mutate({ threadId: task.id, deadline: d.toISOString() })}
       onDeadlineClear={() => updateDeadline.mutate({ threadId: task.id, deadline: null })}
+      onTimeChange={(v) =>
+        updateDeadline.mutate({
+          threadId: task.id,
+          deadline: v.deadline,
+          start_at: v.startAt,
+          end_at: v.endAt,
+        })
+      }
       onRename={(name) => renameTask.mutate({ threadId: task.id, name })}
       onSettingsSave={(p) => updateSettings.mutate({ threadId: task.id, ...p })}
       onRequestDelete={
