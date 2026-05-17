@@ -36,10 +36,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        # npm ci падает на platform-specific optional deps (e.g. @emnapi/*),
-        # которых нет в lock сгенерированном на macOS — но они нужны на linux.
-        # npm install --no-save толерантнее и работает кросс-платформенно.
-        run: npm install --no-save --legacy-peer-deps
+        run: npm ci --legacy-peer-deps
 
       - name: Run ESLint
         run: npm run lint

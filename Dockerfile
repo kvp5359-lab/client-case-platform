@@ -8,9 +8,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-# npm ci падает на platform-specific optional deps (e.g. @emnapi/*),
-# которых нет в lock сгенерированном на macOS, но нужны на linux/alpine.
-RUN npm install --no-save --legacy-peer-deps
+RUN npm ci --legacy-peer-deps
 
 # ============================================
 # Stage 2: Builder
