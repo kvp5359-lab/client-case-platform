@@ -63,31 +63,35 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
         nextSortOrder = (maxRow?.sort_order ?? 0) + 10
       }
 
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+
       // Если тред email — определяем выставляемые поля для нового унифицированного канала.
       const isEmailChannel = !!params.emailData && params.emailData.contactEmails.length > 0
       let emailSendAccountId: string | null = null
-      if (isEmailChannel) {
+      if (isEmailChannel && currentUser) {
         // Берём первый активный email_account текущего пользователя — отправлять будем
         // от его имени. Если нет — null, и trigger пойдёт через Resend (system_postmark).
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data: acc } = await supabase
-            .from('email_accounts')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('is_active', true)
-            .limit(1)
-            .maybeSingle()
-          emailSendAccountId = acc?.id ?? null
-        }
+        const { data: acc } = await supabase
+          .from('email_accounts')
+          .select('id')
+          .eq('user_id', currentUser.id)
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle()
+        emailSendAccountId = acc?.id ?? null
       }
 
       const threadType = isEmailChannel ? 'email' : (params.type ?? 'chat')
+
+      // Треды без project_id (личные диалоги, email/чат, созданный с доски вне проекта)
+      // должны иметь owner_user_id — иначе get_workspace_threads не отдаст их даже создателю.
+      const ownerUserId = !effectiveProjectId && currentUser ? currentUser.id : null
 
       const { data, error } = await supabase
         .from('project_threads')
         .insert({
           ...(effectiveProjectId && { project_id: effectiveProjectId }),
+          ...(ownerUserId && { owner_user_id: ownerUserId }),
           workspace_id: workspaceId,
           name: params.name,
           access_type: params.accessType,

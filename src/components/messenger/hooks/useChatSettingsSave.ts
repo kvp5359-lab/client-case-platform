@@ -153,6 +153,13 @@ export function useChatSettingsSave({
       emailSubject: isEmail ? form.emailSubject.trim() || undefined : undefined,
       memberIds: form.accessType === 'custom' ? Array.from(form.selectedMemberIds) : undefined,
       accessRoles: form.accessType === 'roles' ? Array.from(form.selectedRoles) : undefined,
+      // Email-треды поддерживают «как задача»: дедлайн, исполнители, статус.
+      // Чат-треды эти поля игнорируют на бэке, но передавать их безопасно.
+      deadline: deadlineIso,
+      startAt: startAtIso,
+      endAt: endAtIso,
+      statusId: form.taskStatusId,
+      assigneeIds: Array.from(form.taskAssignees),
       projectId: form.selectedProjectId,
       initialMessage,
       sourceTemplateId: appliedTemplateId,
