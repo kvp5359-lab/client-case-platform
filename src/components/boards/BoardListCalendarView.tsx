@@ -56,12 +56,27 @@ import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 moment.locale('ru')
 const localizer = momentLocalizer(moment)
 
+/**
+ * Унифицированный тип события календарной сетки. Может быть либо задачей
+ * (kind='task' — наша project_threads), либо внешним событием из подключённого
+ * календаря (kind='external' — Google и т.п. через external_calendar_events).
+ * Для kind='external' resize/drag отключены (read-only).
+ */
 interface CalEvent {
   id: string
   title: string
   start: Date
   end: Date
-  resource: WorkspaceTask & { start_at: string; end_at: string }
+  kind: 'task' | 'external'
+  /** Для kind='task' — данные задачи. */
+  resource?: WorkspaceTask & { start_at: string; end_at: string }
+  /** Для kind='external' — мета внешнего события. */
+  external?: {
+    calendar_id: string
+    color: string
+    html_link?: string | null
+    location?: string | null
+  }
 }
 
 const DnDCalendar = withDragAndDrop<CalEvent>(Calendar)
@@ -182,7 +197,7 @@ export function BoardListCalendarView({
     },
   })
 
-  const events: CalEvent[] = useMemo(
+  const taskEvents: CalEvent[] = useMemo(
     () =>
       tasks
         .map((t) => {
@@ -193,6 +208,7 @@ export function BoardListCalendarView({
             title: t.name,
             start: new Date(time.start_at),
             end: new Date(time.end_at),
+            kind: 'task' as const,
             resource: { ...t, start_at: time.start_at, end_at: time.end_at },
           } as CalEvent
         })
@@ -200,9 +216,66 @@ export function BoardListCalendarView({
     [tasks, times],
   )
 
+  // Внешние события (Google Calendar и т.п.) из выбранных календарей-источников.
+  const calendarIds = settings?.calendar_ids ?? []
+  const calendarIdsKey = [...calendarIds].sort().join(',')
+  const { data: externalEvents = [] } = useQuery({
+    queryKey: ['external-calendar-events', workspaceId, calendarIdsKey],
+    enabled: calendarIds.length > 0,
+    queryFn: async (): Promise<CalEvent[]> => {
+      if (calendarIds.length === 0) return []
+      // Берём календари (для цвета) одним запросом.
+      const { data: cals } = await supabase
+        .from('calendars')
+        .select('id, color')
+        .in('id', calendarIds)
+      const colorById = new Map<string, string>(
+        ((cals ?? []) as Array<{ id: string; color: string }>).map((c) => [c.id, c.color]),
+      )
+      // События в окне [now-30d, now+90d] для производительности.
+      const fromIso = new Date(Date.now() - 30 * 86400000).toISOString()
+      const toIso = new Date(Date.now() + 90 * 86400000).toISOString()
+      const { data, error } = await supabase
+        .from('external_calendar_events')
+        .select('id, calendar_id, title, start_at, end_at, html_link, location')
+        .in('calendar_id', calendarIds)
+        .lte('start_at', toIso)
+        .gte('end_at', fromIso)
+      if (error) throw error
+      return (data ?? []).map((r) => {
+        const row = r as { id: string; calendar_id: string; title: string; start_at: string; end_at: string; html_link: string | null; location: string | null }
+        return {
+          id: `ext:${row.id}`,
+          title: row.title,
+          start: new Date(row.start_at),
+          end: new Date(row.end_at),
+          kind: 'external' as const,
+          external: {
+            calendar_id: row.calendar_id,
+            color: colorById.get(row.calendar_id) ?? '#6b7280',
+            html_link: row.html_link,
+            location: row.location,
+          },
+        } as CalEvent
+      })
+    },
+  })
+
+  const events: CalEvent[] = useMemo(
+    () => [...taskEvents, ...externalEvents],
+    [taskEvents, externalEvents],
+  )
+
   const updateTime = useUpdateThreadTime()
 
   const eventPropGetter = useCallback((event: CalEvent) => {
+    if (event.kind === 'external') {
+      // Внешнее событие — цвет от его календаря.
+      return {
+        style: { backgroundColor: event.external?.color ?? '#6b7280' },
+        className: 'text-white rounded text-xs px-1.5 py-0.5',
+      }
+    }
     // event.resource может быть undefined у preview-ивента (dragFromOutsideItem
     // возвращает только {title}) — берём дефолт.
     const accent = event.resource?.accent_color
@@ -213,15 +286,26 @@ export function BoardListCalendarView({
     }
   }, [])
 
+  /** Для внешних событий запрещаем drag/resize (read-only). */
+  const draggableAccessor = useCallback((event: CalEvent) => event.kind !== 'external', [])
+  const resizableAccessor = useCallback((event: CalEvent) => event.kind !== 'external', [])
+
   const handleSelectEvent = useCallback(
     (event: CalEvent) => {
-      onOpenTask?.(event.resource)
+      if (event.kind === 'external') {
+        if (event.external?.html_link) {
+          window.open(event.external.html_link, '_blank', 'noopener')
+        }
+        return
+      }
+      if (event.resource) onOpenTask?.(event.resource)
     },
     [onOpenTask],
   )
 
   const handleEventDrop: NonNullable<withDragAndDropProps<CalEvent>['onEventDrop']> = useCallback(
     ({ event, start, end }) => {
+      if (event.kind === 'external' || !event.resource) return
       const s = start instanceof Date ? start : new Date(start)
       const e = end instanceof Date ? end : new Date(end)
       updateTime.mutate({
@@ -238,6 +322,7 @@ export function BoardListCalendarView({
   const handleEventResize: NonNullable<withDragAndDropProps<CalEvent>['onEventResize']> =
     useCallback(
       ({ event, start, end }) => {
+        if (event.kind === 'external' || !event.resource) return
         const s = start instanceof Date ? start : new Date(start)
         const e = end instanceof Date ? end : new Date(end)
         updateTime.mutate({
@@ -430,6 +515,8 @@ export function BoardListCalendarView({
           onEventDrop={handleEventDrop}
           onEventResize={handleEventResize}
           onSelectSlot={handleSelectSlot}
+          draggableAccessor={draggableAccessor}
+          resizableAccessor={resizableAccessor}
           selectable
           resizable
           culture="ru"

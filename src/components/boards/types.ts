@@ -80,6 +80,10 @@ export interface CalendarSettings {
   max_hour: number
   /** Количество дней для режима 'next_n'. Игнорируется в других режимах. */
   next_n_days?: number
+  /** ID календарей нашей системы (`calendars.id`), события которых
+   *  показывать в сетке вместе с задачами из фильтра. Пусто = только
+   *  задачи (текущее legacy-поведение). */
+  calendar_ids?: string[]
 }
 export const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
   default_view: 'week',

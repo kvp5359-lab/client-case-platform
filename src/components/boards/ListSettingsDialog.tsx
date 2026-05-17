@@ -149,6 +149,7 @@ export function ListSettingsDialog({
                 columnWidth={columnWidth}
                 calendarSettings={s.calendarSettings}
                 onCalendarSettingsChange={(v) => set('calendarSettings', v)}
+                workspaceId={workspaceId}
               />
             </TabsContent>
           )}

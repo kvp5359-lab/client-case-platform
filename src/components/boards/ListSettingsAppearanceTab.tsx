@@ -15,7 +15,9 @@ import { Plus, Trash2, AlignLeft, AlignRight, LayoutList, LayoutGrid } from 'luc
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
+import { useWorkspaceCalendars } from '@/hooks/useGoogleCalendar'
 import {
   type CardLayout,
   type CardFieldId,
@@ -55,6 +57,8 @@ interface ListSettingsAppearanceTabProps {
   columnWidth?: number
   calendarSettings: CalendarSettings
   onCalendarSettingsChange: (v: CalendarSettings) => void
+  /** Нужен для мультиселекта источников-календарей в режиме calendar. */
+  workspaceId: string
 }
 
 const ALIGNS: { value: 'left' | 'right'; icon: React.ElementType }[] = [
@@ -274,6 +278,7 @@ export default function ListSettingsAppearanceTab({
   columnWidth,
   calendarSettings,
   onCalendarSettingsChange,
+  workspaceId,
 }: ListSettingsAppearanceTabProps) {
   const cs = calendarSettings ?? DEFAULT_CALENDAR_SETTINGS
   const isCalendar = displayMode === 'calendar'
@@ -512,6 +517,12 @@ export default function ListSettingsAppearanceTab({
           <p className="text-[11px] text-muted-foreground">
             Календарь показывает только задачи с заполненными «началом» и «концом». Высота — из «Высоты» во вкладке «Основное».
           </p>
+
+          <CalendarSourcesPicker
+            workspaceId={workspaceId}
+            value={cs.calendar_ids ?? []}
+            onChange={(ids) => onCalendarSettingsChange({ ...cs, calendar_ids: ids })}
+          />
         </div>
       )}
 
@@ -579,6 +590,74 @@ export default function ListSettingsAppearanceTab({
       </div>
       </>
       )}
+    </div>
+  )
+}
+
+/**
+ * CalendarSourcesPicker — мультиселект внешних календарей для
+ * календарного списка board_lists.
+ *
+ * Логика: пусто = «по умолчанию» (только задачи воркспейса из фильтра).
+ * Если выбран хотя бы один — события из этих календарей мёржатся в
+ * сетку вместе с задачами.
+ */
+function CalendarSourcesPicker({
+  workspaceId,
+  value,
+  onChange,
+}: {
+  workspaceId: string
+  value: string[]
+  onChange: (ids: string[]) => void
+}) {
+  const { data: calendars = [], isLoading } = useWorkspaceCalendars(workspaceId)
+  const selected = new Set(value)
+
+  if (isLoading) {
+    return <p className="text-[11px] text-muted-foreground">Загрузка календарей…</p>
+  }
+
+  if (calendars.length === 0) {
+    return (
+      <p className="text-[11px] text-muted-foreground">
+        Источников ещё нет. Подключите Google Calendar в Настройки → Интеграции.
+      </p>
+    )
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-[11px] text-muted-foreground">Источники-календари</Label>
+      <div className="space-y-1">
+        {calendars.map((cal) => (
+          <label
+            key={cal.id}
+            className="flex items-center gap-2 cursor-pointer select-none text-xs"
+          >
+            <Checkbox
+              checked={selected.has(cal.id)}
+              onCheckedChange={(v) => {
+                const next = new Set(selected)
+                if (v) next.add(cal.id)
+                else next.delete(cal.id)
+                onChange(Array.from(next))
+              }}
+            />
+            <span
+              className="w-2.5 h-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: cal.color }}
+            />
+            <span className="truncate">{cal.name}</span>
+            <span className="ml-auto text-[10px] text-muted-foreground/70">
+              {cal.source === 'google' ? 'Google' : 'внутренний'}
+            </span>
+          </label>
+        ))}
+      </div>
+      <p className="text-[10px] text-muted-foreground/70">
+        Если ничего не выбрано — показываются только задачи из фильтра.
+      </p>
     </div>
   )
 }

@@ -113,7 +113,7 @@ export function DeadlinePopover({
             open()
           }}
           className={cn(
-            'flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0',
+            'flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0 whitespace-nowrap',
             isOverdue
               ? 'text-red-600 bg-red-50 font-medium hover:bg-red-100'
               : d
