@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Mail, MessageCircle, MessageSquare, Sparkles } from 'lucide-react'
+import { Calendar as CalendarIcon, Mail, MessageCircle, MessageSquare, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { integrationsKeys } from '@/hooks/queryKeys'
 import {
@@ -33,6 +33,7 @@ import { EmailSection } from './EmailSection'
 import { BotTokenDialog } from './IntegrationsTab/BotTokenDialog'
 import { EmployeeBotsSection } from './IntegrationsTab/EmployeeBotsSection'
 import { GmailSection } from './IntegrationsTab/GmailSection'
+import { GoogleCalendarSection } from './IntegrationsTab/GoogleCalendarSection'
 import { PersonalTelegramSection } from './IntegrationsTab/PersonalTelegramSection'
 import { TelegramSecretarySection } from './IntegrationsTab/TelegramSecretarySection'
 import {
@@ -180,6 +181,7 @@ export function IntegrationsTab() {
     { id: 'business', label: 'Личный Telegram сотрудника', icon: Sparkles },
     { id: 'wazzup', label: 'WhatsApp (Wazzup)', icon: MessageSquare },
     { id: 'email', label: 'Email (Resend)', icon: Mail },
+    { id: 'google_calendar', label: 'Google Calendar', icon: CalendarIcon },
   ]
 
   return (
@@ -253,6 +255,9 @@ export function IntegrationsTab() {
             <IntegrationOverview {...OVERVIEW_EMAIL_RESEND} />
             <EmailSection workspaceId={workspaceId!} />
           </>
+        )}
+        {section === 'google_calendar' && (
+          <GoogleCalendarSection />
         )}
       </div>
 

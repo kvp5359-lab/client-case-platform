@@ -103,6 +103,7 @@ export type Database = {
       board_lists: {
         Row: {
           board_id: string
+          calendar_settings: Json | null
           card_layout: Json | null
           column_index: number | null
           created_at: string | null
@@ -122,6 +123,7 @@ export type Database = {
         }
         Insert: {
           board_id: string
+          calendar_settings?: Json | null
           card_layout?: Json | null
           column_index?: number | null
           created_at?: string | null
@@ -141,6 +143,7 @@ export type Database = {
         }
         Update: {
           board_id?: string
+          calendar_settings?: Json | null
           card_layout?: Json | null
           column_index?: number | null
           created_at?: string | null
@@ -253,6 +256,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "boards_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendars: {
+        Row: {
+          color: string
+          created_at: string
+          google_account_user_id: string | null
+          google_calendar_id: string | null
+          id: string
+          is_deleted: boolean
+          is_visible: boolean
+          name: string
+          owner_user_id: string | null
+          source: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          google_account_user_id?: string | null
+          google_calendar_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          is_visible?: boolean
+          name: string
+          owner_user_id?: string | null
+          source?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          google_account_user_id?: string | null
+          google_calendar_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          is_visible?: boolean
+          name?: string
+          owner_user_id?: string | null
+          source?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendars_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -2083,6 +2139,59 @@ export type Database = {
           },
         ]
       }
+      external_calendar_events: {
+        Row: {
+          all_day: boolean
+          calendar_id: string
+          description: string | null
+          end_at: string
+          external_id: string
+          html_link: string | null
+          id: string
+          location: string | null
+          start_at: string
+          synced_at: string
+          title: string | null
+          updated_at_external: string | null
+        }
+        Insert: {
+          all_day?: boolean
+          calendar_id: string
+          description?: string | null
+          end_at: string
+          external_id: string
+          html_link?: string | null
+          id?: string
+          location?: string | null
+          start_at: string
+          synced_at?: string
+          title?: string | null
+          updated_at_external?: string | null
+        }
+        Update: {
+          all_day?: boolean
+          calendar_id?: string
+          description?: string | null
+          end_at?: string
+          external_id?: string
+          html_link?: string | null
+          id?: string
+          location?: string | null
+          start_at?: string
+          synced_at?: string
+          title?: string | null
+          updated_at_external?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_calendar_events_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "calendars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       external_outgoing_dedup: {
         Row: {
           channel: string
@@ -3132,6 +3241,39 @@ export type Database = {
           },
         ]
       }
+      google_calendar_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string
+          google_email: string | null
+          id: string
+          refresh_token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at: string
+          google_email?: string | null
+          id?: string
+          refresh_token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string
+          google_email?: string | null
+          id?: string
+          refresh_token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       google_drive_tokens: {
         Row: {
           access_token: string
@@ -4113,6 +4255,38 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_send_dispatch: {
+        Row: {
+          dispatched_at: string
+          function_name: string
+          message_id: string
+          processed_at: string | null
+          request_id: number
+        }
+        Insert: {
+          dispatched_at?: string
+          function_name: string
+          message_id: string
+          processed_at?: string | null
+          request_id: number
+        }
+        Update: {
+          dispatched_at?: string
+          function_name?: string
+          message_id?: string
+          processed_at?: string | null
+          request_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_send_dispatch_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "project_messages"
             referencedColumns: ["id"]
           },
         ]
@@ -7765,6 +7939,15 @@ export type Database = {
         Args: { workspace_uuid: string }
         Returns: boolean
       }
+      dispatch_send_http: {
+        Args: {
+          p_body: Json
+          p_function_name: string
+          p_message_id: string
+          p_url: string
+        }
+        Returns: number
+      }
       docbuilder_has_project_access: {
         Args: { p_project_id: string }
         Returns: boolean
@@ -7857,6 +8040,7 @@ export type Database = {
         Args: { p_board_id: string }
         Returns: {
           board_id: string
+          calendar_settings: Json
           card_layout: Json
           column_index: number
           created_at: string
@@ -7935,6 +8119,7 @@ export type Database = {
           last_reaction_message_preview: string
           last_reaction_sender_avatar_url: string
           last_reaction_sender_name: string
+          last_read_at: string
           last_sender_avatar_url: string
           last_sender_name: string
           legacy_channel: string
@@ -8125,6 +8310,7 @@ export type Database = {
           created_at: string
           created_by: string
           deadline: string
+          end_at: string
           icon: string
           id: string
           is_pinned: boolean
@@ -8132,6 +8318,7 @@ export type Database = {
           project_id: string
           project_name: string
           sort_order: number
+          start_at: string
           status_color: string
           status_id: string
           status_name: string
@@ -8381,6 +8568,7 @@ export type Database = {
           thread_id: string
         }[]
       }
+      scan_dispatch_failures: { Args: never; Returns: number }
       set_my_preferred_language: {
         Args: { p_language: string }
         Returns: undefined

@@ -38,4 +38,4 @@ export interface EmailAccount {
   watch_expires_at: string | null
 }
 
-export type SectionKey = 'telegram' | 'gmail' | 'business' | 'wazzup' | 'email'
+export type SectionKey = 'telegram' | 'gmail' | 'business' | 'wazzup' | 'email' | 'google_calendar'
