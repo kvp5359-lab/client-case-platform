@@ -87,7 +87,10 @@ export function useChatSettingsFormState({
   if (currentChatId !== prevChatId) {
     setPrevChatId(currentChatId)
     if (chat) {
-      setTabMode(chat.type === 'task' ? 'task' : chat.type === 'email' ? 'email' : 'chat')
+      // ProjectThread.type типизирован как 'chat'|'task' (устаревшее ограничение),
+      // но в БД встречается также 'email'. Cast в string чтобы TS-strict пропустил.
+      const t = chat.type as string
+      setTabMode(t === 'task' ? 'task' : t === 'email' ? 'email' : 'chat')
       setName(chat.name)
       setAccentColor(chat.accent_color)
       setIcon(chat.icon)
