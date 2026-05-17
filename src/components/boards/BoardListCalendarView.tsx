@@ -267,8 +267,9 @@ export function BoardListCalendarView({
   )
 
   // Внешние события (Google Calendar и т.п.) из выбранных календарей-источников.
-  const calendarIds = settings?.calendar_ids ?? []
-  const calendarIdsKey = [...calendarIds].sort().join(',')
+  // Мемоизация — иначе новый массив на каждый рендер ломает deps useCallback/useMemo ниже.
+  const calendarIds = useMemo(() => settings?.calendar_ids ?? [], [settings?.calendar_ids])
+  const calendarIdsKey = useMemo(() => [...calendarIds].sort().join(','), [calendarIds])
   const { data: externalEvents = [] } = useQuery({
     queryKey: ['external-calendar-events', workspaceId, calendarIdsKey],
     enabled: calendarIds.length > 0,
