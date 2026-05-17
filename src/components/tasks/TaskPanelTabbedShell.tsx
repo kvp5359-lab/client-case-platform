@@ -235,9 +235,27 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   const activeProjectRefId =
     !hidden && tabs.activeTab?.type === 'tasks' ? (tabs.activeTab.refId ?? null) : null
 
-  const hidePanel = useCallback(() => setHidden(true), [])
-  const showPanel = useCallback(() => setHidden(false), [])
-  const togglePanel = useCallback(() => setHidden((h) => !h), [])
+  const hidePanel = useCallback(() => {
+    setHidden(true)
+    // Чистим ?panelTab=… из URL, чтобы скопированная ссылка не открывала
+    // тред у получателя. Сама вкладка в табах остаётся — можно открыть
+    // снова кликом, если пользователь захочет.
+    tabs.clearUrlActive()
+  }, [tabs])
+  const showPanel = useCallback(() => {
+    setHidden(false)
+    // Восстанавливаем ?panelTab=… при показе панели обратно (после hidePanel
+    // мы его чистили) — иначе URL и UI расходятся.
+    if (tabs.activeTabId) tabs.activateTab(tabs.activeTabId)
+  }, [tabs])
+  const togglePanel = useCallback(() => {
+    setHidden((h) => {
+      const next = !h
+      if (next === false && tabs.activeTabId) tabs.activateTab(tabs.activeTabId)
+      else if (next === true) tabs.clearUrlActive()
+      return next
+    })
+  }, [tabs])
   const hasTabs = tabs.tabs.length > 0
 
   const openSystemTab = useCallback<TaskPanelTabbedShellApi['openSystemTab']>(

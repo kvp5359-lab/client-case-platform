@@ -88,6 +88,8 @@ interface UseTaskPanelTabsResult {
   reorderTab: (activeId: string, overId: string | null, pinned: boolean) => void
   /** Засеять набор вкладок (используется один раз для новых проектов). */
   seedTabs: (seed: TaskPanelTab[], activeId?: string | null) => void
+  /** Очистить ?panelTab= из URL без изменения активной вкладки. */
+  clearUrlActive: () => void
 }
 
 const EMPTY_STATE: PersistedRow = { tabs: [], active_tab_id: null }
@@ -424,6 +426,11 @@ export function useTaskPanelTabs({ projectId, contactId }: UseTaskPanelTabsParam
     [localTabs, activeTabId, persist],
   )
 
+  /** Очистить query-параметр ?panelTab=, не трогая активную вкладку.
+   *  Нужно для «закрыть панель» (hidePanel): юзер не хочет видеть тред
+   *  в URL, но при следующем открытии панели вкладка должна остаться. */
+  const clearUrlActive = useCallback(() => setUrlActive(null), [setUrlActive])
+
   return {
     tabs: localTabs,
     activeTabId,
@@ -437,6 +444,7 @@ export function useTaskPanelTabs({ projectId, contactId }: UseTaskPanelTabsParam
     togglePin,
     reorderTab,
     seedTabs,
+    clearUrlActive,
   }
 }
 
