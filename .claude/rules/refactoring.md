@@ -6,6 +6,43 @@
 
 ---
 
+## 🚫 Карантинные зоны (НЕ трогать при полном аудите)
+
+Эти части проекта **работают и оттестированы боем**, но содержат много неявных контрактов между БД-триггерами, edge functions и фронтом. Любая «оптимизация» или «упрощение» в этих местах исторически ломала переписку с клиентами (логировано: 3+ инцидента с RLS на `project_threads`, регулярные сбои отправки сообщений после рефакторинга общих хелперов).
+
+**Правило**: при команде «полный аудит» / «рефакторинг» эти зоны **пропускаются**. В отчёте указать одной строкой: «Карантинные зоны не аудировались». Трогать **только** если пользователь явно сказал «отрефактори телегу / wazzup / мессенджер / email / mtproto».
+
+### Что в карантине
+
+**Edge Functions** (мессенджер-каналы):
+- `supabase/functions/telegram-webhook*`, `telegram-send-message`, `telegram-edit-message`, `telegram-delete-message`, `telegram-set-reaction`
+- `supabase/functions/telegram-business-*`
+- `supabase/functions/telegram-mtproto-*`
+- `supabase/functions/wazzup-*`
+- `supabase/functions/gmail-*`, `email-internal-send`, `email-track`, `provision-email-domain`, `provision-domain`
+- `supabase/functions/_shared/syncTelegramIncomingMessage.ts`, `syncTelegramReactions.ts`, `htmlFormatting.ts`, `edge.ts`, `cors.ts`, `ai-chat-setup.ts`
+
+**Сервис MTProto** (отдельный Node-сервис на VPS):
+- `mtproto-service/` целиком
+
+**Фронт мессенджера**:
+- `src/components/messenger/`
+- `src/hooks/messenger/`
+- `src/services/messengerService.ts`, `messengerReactionService.ts` (если есть)
+
+**Критичные места в БД** (только смотреть, менять — только по явному запросу):
+- Триггер `notify_telegram_on_new_message` и связанные функции (`dispatch_send_http`, `retry_undelivered_telegram_messages`)
+- RLS-полиция `project_threads_select` (требование short-circuit `created_by = auth.uid()` — см. infrastructure.md)
+- UNIQUE-индексы дедупликации сообщений (`uq_telegram_message_per_chat`, `uq_project_messages_telegram_content_dedup` и т.п.)
+
+### Если пользователь явно просит трогать карантин
+
+1. Перед изменениями — прочитать соответствующие разделы [`infrastructure.md`](./infrastructure.md): «Telegram Business», «Wazzup», «Мессенджер-каналы — единая справка», «RLS на `project_threads`», «Дедуп между несколькими ботами».
+2. После изменений — обязательный смок-тест: отправка из сервиса (TG group / Business / MTProto / Wazzup / Email), приём входящего, реплай, реакция, дедуп при двойном приёме.
+3. Не трогать общие хелперы в `_shared/` ради рефакторинга — только точечные правки под конкретную задачу.
+
+---
+
 ## Зона 1. 🔒 Безопасность и RLS
 
 **Что проверяем:**
