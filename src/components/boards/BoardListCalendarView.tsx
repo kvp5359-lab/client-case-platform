@@ -33,6 +33,10 @@ import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { supabase } from '@/lib/supabase'
 import { calendarKeys } from '@/hooks/queryKeys'
 import { useUpdateThreadTime } from '@/hooks/useCalendarThreads'
+import { useSyncCalendar, useWriteExternalEvent } from '@/hooks/useGoogleCalendar'
+import { useQueryClient } from '@tanstack/react-query'
+import { RefreshCw } from 'lucide-react'
+import type { ToolbarProps } from 'react-big-calendar'
 // Hex-карта акцентов для inline style (Tailwind-классы не работают —
 // .rbc-event имеет жёсткий background-color дефолтом, перебить класс
 // без !important на всех bg-* не выйдет, а inline style побеждает по
@@ -51,6 +55,7 @@ const ACCENT_HEX: Record<string, string> = {
 }
 import { cn } from '@/lib/utils'
 import { DEFAULT_CALENDAR_SETTINGS, type CalendarSettings, type ListHeight } from './types'
+import { ConvertExternalEventDialog } from './ConvertExternalEventDialog'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 
 moment.locale('ru')
@@ -73,6 +78,7 @@ interface CalEvent {
   /** Для kind='external' — мета внешнего события. */
   external?: {
     calendar_id: string
+    external_id: string
     color: string
     html_link?: string | null
     location?: string | null
@@ -96,7 +102,51 @@ function CalendarEventContent({ event }: { event: CalEvent }) {
   )
 }
 
-const calendarComponents = { event: CalendarEventContent }
+/** Кастомный toolbar — копирует дефолтное поведение RBC + добавляет кнопку
+ *  «Синхронизировать» справа (если в настройках списка выбраны календари). */
+function makeCalendarToolbar(
+  calendarIds: string[],
+  onSync: () => void,
+  syncing: boolean,
+) {
+  return function CalendarToolbar(props: ToolbarProps<CalEvent>) {
+    const { label, onNavigate, onView, view, views } = props
+    const viewsList = Array.isArray(views) ? views : Object.keys(views)
+    return (
+      <div className="rbc-toolbar">
+        <span className="rbc-btn-group">
+          <button type="button" onClick={() => onNavigate('TODAY')}>Сегодня</button>
+          <button type="button" onClick={() => onNavigate('PREV')}>←</button>
+          <button type="button" onClick={() => onNavigate('NEXT')}>→</button>
+        </span>
+        <span className="rbc-toolbar-label">{label}</span>
+        <span className="rbc-btn-group">
+          {viewsList.map((name) => (
+            <button
+              key={name}
+              type="button"
+              className={view === name ? 'rbc-active' : ''}
+              onClick={() => onView(name as View)}
+            >
+              {props.localizer.messages[name as keyof typeof props.localizer.messages] as string}
+            </button>
+          ))}
+          {calendarIds.length > 0 && (
+            <button
+              type="button"
+              onClick={onSync}
+              disabled={syncing}
+              title="Синхронизировать Google-календари"
+              className="!px-2"
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
+            </button>
+          )}
+        </span>
+      </div>
+    )
+  }
+}
 
 interface Props {
   /** ID board_list — используется в id @dnd-kit Droppable для фильтрации
@@ -232,18 +282,33 @@ export function BoardListCalendarView({
       const colorById = new Map<string, string>(
         ((cals ?? []) as Array<{ id: string; color: string }>).map((c) => [c.id, c.color]),
       )
+      // Сначала — какие external-события уже превращены в задачи (или
+      // примирорены из задач). Их прячем, чтобы не было дублей.
+      const { data: maps } = await supabase
+        .from('task_google_event_map')
+        .select('calendar_id, google_event_id')
+        .in('calendar_id', calendarIds)
+      const mappedSet = new Set<string>(
+        ((maps ?? []) as Array<{ calendar_id: string; google_event_id: string }>)
+          .map((m) => `${m.calendar_id}::${m.google_event_id}`),
+      )
       // События в окне [now-30d, now+90d] для производительности.
       const fromIso = new Date(Date.now() - 30 * 86400000).toISOString()
       const toIso = new Date(Date.now() + 90 * 86400000).toISOString()
       const { data, error } = await supabase
         .from('external_calendar_events')
-        .select('id, calendar_id, title, start_at, end_at, html_link, location')
+        .select('id, calendar_id, external_id, title, start_at, end_at, html_link, location')
         .in('calendar_id', calendarIds)
         .lte('start_at', toIso)
         .gte('end_at', fromIso)
       if (error) throw error
-      return (data ?? []).map((r) => {
-        const row = r as { id: string; calendar_id: string; title: string; start_at: string; end_at: string; html_link: string | null; location: string | null }
+      return (data ?? [])
+        .filter((r) => {
+          const row = r as { calendar_id: string; external_id: string }
+          return !mappedSet.has(`${row.calendar_id}::${row.external_id}`)
+        })
+        .map((r) => {
+        const row = r as { id: string; calendar_id: string; title: string; start_at: string; end_at: string; html_link: string | null; location: string | null; external_id: string }
         return {
           id: `ext:${row.id}`,
           title: row.title,
@@ -252,6 +317,7 @@ export function BoardListCalendarView({
           kind: 'external' as const,
           external: {
             calendar_id: row.calendar_id,
+            external_id: row.external_id,
             color: colorById.get(row.calendar_id) ?? '#6b7280',
             html_link: row.html_link,
             location: row.location,
@@ -267,6 +333,25 @@ export function BoardListCalendarView({
   )
 
   const updateTime = useUpdateThreadTime()
+  const writeExternal = useWriteExternalEvent()
+  const syncCal = useSyncCalendar()
+  const queryClient = useQueryClient()
+  const [convertEvent, setConvertEvent] = useState<CalEvent | null>(null)
+
+  const handleManualSync = useCallback(async () => {
+    if (calendarIds.length === 0) return
+    await Promise.all(calendarIds.map((id) => syncCal.mutateAsync(id).catch(() => null)))
+  }, [calendarIds, syncCal])
+
+  const ToolbarComponent = useMemo(
+    () => makeCalendarToolbar(calendarIds, handleManualSync, syncCal.isPending),
+    [calendarIds, handleManualSync, syncCal.isPending],
+  )
+
+  const components = useMemo(
+    () => ({ event: CalendarEventContent, toolbar: ToolbarComponent }),
+    [ToolbarComponent],
+  )
 
   const eventPropGetter = useCallback((event: CalEvent) => {
     if (event.kind === 'external') {
@@ -286,16 +371,14 @@ export function BoardListCalendarView({
     }
   }, [])
 
-  /** Для внешних событий запрещаем drag/resize (read-only). */
-  const draggableAccessor = useCallback((event: CalEvent) => event.kind !== 'external', [])
-  const resizableAccessor = useCallback((event: CalEvent) => event.kind !== 'external', [])
+  /** Drag/resize разрешены и для внешних событий (write-back в Google). */
+  const draggableAccessor = useCallback(() => true, [])
+  const resizableAccessor = useCallback(() => true, [])
 
   const handleSelectEvent = useCallback(
     (event: CalEvent) => {
       if (event.kind === 'external') {
-        if (event.external?.html_link) {
-          window.open(event.external.html_link, '_blank', 'noopener')
-        }
+        setConvertEvent(event)
         return
       }
       if (event.resource) onOpenTask?.(event.resource)
@@ -303,11 +386,44 @@ export function BoardListCalendarView({
     [onOpenTask],
   )
 
+  // Оптимистичный апдейт external_calendar_events в кэше React Query —
+  // блок визуально едет сразу, не дожидаясь ответа edge-функции.
+  const optimisticUpdateExternal = useCallback(
+    (eventId: string, newStart: Date, newEnd: Date) => {
+      const id = eventId.replace(/^ext:/, '')
+      queryClient.setQueriesData<CalEvent[]>(
+        { queryKey: ['external-calendar-events', workspaceId] },
+        (old) => {
+          if (!old) return old
+          return old.map((e) =>
+            e.kind === 'external' && e.id === eventId
+              ? { ...e, start: newStart, end: newEnd }
+              : e,
+          )
+        },
+      )
+      return id
+    },
+    [queryClient, workspaceId],
+  )
+
   const handleEventDrop: NonNullable<withDragAndDropProps<CalEvent>['onEventDrop']> = useCallback(
     ({ event, start, end }) => {
-      if (event.kind === 'external' || !event.resource) return
       const s = start instanceof Date ? start : new Date(start)
       const e = end instanceof Date ? end : new Date(end)
+      if (event.kind === 'external') {
+        if (!event.external) return
+        optimisticUpdateExternal(event.id, s, e)
+        writeExternal.mutate({
+          action: 'update',
+          calendar_id: event.external.calendar_id,
+          external_id: event.external.external_id,
+          start_at: s.toISOString(),
+          end_at: e.toISOString(),
+        })
+        return
+      }
+      if (!event.resource) return
       updateTime.mutate({
         threadId: event.resource.id,
         projectId: event.resource.project_id,
@@ -316,15 +432,27 @@ export function BoardListCalendarView({
         end_at: e.toISOString(),
       })
     },
-    [updateTime],
+    [updateTime, writeExternal, optimisticUpdateExternal],
   )
 
   const handleEventResize: NonNullable<withDragAndDropProps<CalEvent>['onEventResize']> =
     useCallback(
       ({ event, start, end }) => {
-        if (event.kind === 'external' || !event.resource) return
         const s = start instanceof Date ? start : new Date(start)
         const e = end instanceof Date ? end : new Date(end)
+        if (event.kind === 'external') {
+          if (!event.external) return
+          optimisticUpdateExternal(event.id, s, e)
+          writeExternal.mutate({
+            action: 'update',
+            calendar_id: event.external.calendar_id,
+            external_id: event.external.external_id,
+            start_at: s.toISOString(),
+            end_at: e.toISOString(),
+          })
+          return
+        }
+        if (!event.resource) return
         updateTime.mutate({
           threadId: event.resource.id,
           projectId: event.resource.project_id,
@@ -333,7 +461,7 @@ export function BoardListCalendarView({
           end_at: e.toISOString(),
         })
       },
-      [updateTime],
+      [updateTime, writeExternal, optimisticUpdateExternal],
     )
 
   // Создание задачи кликом по пустому слоту — поднимаем наверх
@@ -510,7 +638,7 @@ export function BoardListCalendarView({
           min={moment().startOf('day').hour(minHour).toDate()}
           max={moment().startOf('day').hour(maxHour).toDate()}
           eventPropGetter={eventPropGetter}
-          components={calendarComponents}
+          components={components}
           onSelectEvent={handleSelectEvent}
           onEventDrop={handleEventDrop}
           onEventResize={handleEventResize}
@@ -555,6 +683,20 @@ export function BoardListCalendarView({
           </div>,
           document.body,
         )}
+      {convertEvent && convertEvent.external && (
+        <ConvertExternalEventDialog
+          open={!!convertEvent}
+          onClose={() => setConvertEvent(null)}
+          workspaceId={workspaceId}
+          externalRowId={convertEvent.id.replace(/^ext:/, '')}
+          externalEventId={convertEvent.external.external_id}
+          calendarId={convertEvent.external.calendar_id}
+          initialTitle={convertEvent.title}
+          startAt={convertEvent.start.toISOString()}
+          endAt={convertEvent.end.toISOString()}
+          htmlLink={convertEvent.external.html_link}
+        />
+      )}
     </>
   )
 }

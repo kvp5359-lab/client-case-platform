@@ -27,8 +27,11 @@ import {
   useGoogleCalendarToken,
   useRemoteGoogleCalendars,
   useSyncCalendar,
+  useUpdateUserCalendarMirror,
+  useUserCalendarMirror,
   useWorkspaceCalendars,
 } from '@/hooks/useGoogleCalendar'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export function GoogleCalendarSection() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -41,6 +44,8 @@ export function GoogleCalendarSection() {
   const createCal = useCreateCalendar()
   const deleteCal = useDeleteCalendar()
   const syncCal = useSyncCalendar()
+  const mirror = useUserCalendarMirror(workspaceId)
+  const updateMirror = useUpdateUserCalendarMirror()
   const [busy, setBusy] = useState(false)
 
   // Какие Google-календари уже добавлены в нашу систему.
@@ -105,15 +110,30 @@ export function GoogleCalendarSection() {
               <p className="text-sm text-muted-foreground">
                 Доступные календари из Google
               </p>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => disconnect.mutate()}
-                disabled={disconnect.isPending}
-              >
-                Отключить
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => connect()}
+                  title="Запросить доступ заново (нужно после обновления прав)"
+                >
+                  Переподключить
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => disconnect.mutate()}
+                  disabled={disconnect.isPending}
+                >
+                  Отключить
+                </Button>
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground -mt-2">
+              События календаря видны только вам. Чтобы редактировать события
+              из сервиса, нажмите «Переподключить» — потребуется выдать новое
+              разрешение на запись.
+            </p>
 
             {remoteCalendars.isLoading && (
               <p className="text-sm text-muted-foreground">Загружаю список календарей…</p>
@@ -203,6 +223,41 @@ export function GoogleCalendarSection() {
                       </div>
                     </div>
                   ))}
+
+                {/* Зеркалирование: задачи сервиса → Google Calendar */}
+                <div className="pt-3 mt-3 border-t space-y-2">
+                  <p className="text-sm font-medium">Зеркалить мои задачи в Google Calendar</p>
+                  <p className="text-xs text-muted-foreground">
+                    Все задачи, где вы создатель или участник, автоматически появятся
+                    как события в выбранном Google-календаре. One-way: правки в Google
+                    не подтягиваются обратно.
+                  </p>
+                  <Select
+                    value={mirror.data?.target_calendar_id ?? 'off'}
+                    onValueChange={(value) => {
+                      if (!workspaceId) return
+                      updateMirror.mutate({
+                        workspace_id: workspaceId,
+                        target_calendar_id: value === 'off' ? null : value,
+                      })
+                    }}
+                    disabled={updateMirror.isPending}
+                  >
+                    <SelectTrigger className="w-full sm:w-[320px]">
+                      <SelectValue placeholder="Выключено" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="off">Выключено</SelectItem>
+                      {(workspaceCalendars.data ?? [])
+                        .filter((c) => c.source === 'google' && c.owner_user_id === token?.user_id)
+                        .map((cal) => (
+                          <SelectItem key={cal.id} value={cal.id}>
+                            {cal.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
           </>

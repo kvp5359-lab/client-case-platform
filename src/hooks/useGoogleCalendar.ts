@@ -23,6 +23,8 @@ export const googleCalendarKeys = {
   remoteList: () => [...googleCalendarKeys.all, 'remote-list'] as const,
   calendars: (workspaceId: string | undefined) =>
     [...googleCalendarKeys.all, 'calendars', workspaceId] as const,
+  mirror: (workspaceId: string | undefined) =>
+    [...googleCalendarKeys.all, 'mirror', workspaceId] as const,
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -223,6 +225,107 @@ export function useDeleteCalendar() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: googleCalendarKeys.all })
     },
+  })
+}
+
+/** Write-back в Google Calendar (create/update/delete event). После
+ *  успеха external_calendar_events инвалидируется. */
+export function useWriteExternalEvent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (params: {
+      action: 'create' | 'update' | 'delete'
+      calendar_id: string
+      external_id?: string
+      title?: string
+      description?: string | null
+      start_at?: string
+      end_at?: string
+      location?: string | null
+    }) => {
+      const { data, error } = await supabase.functions.invoke('google-calendar-write', {
+        body: params,
+      })
+      if (error) throw error
+      if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error)
+      return data as { event?: unknown; ok?: boolean }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['external-calendar-events'] })
+    },
+    onError: (e) => toast.error(`Не удалось сохранить в Google Calendar: ${e instanceof Error ? e.message : 'ошибка'}`),
+  })
+}
+
+// ── Mirror settings (наши задачи → Google Calendar) ───────────────────────
+
+export interface UserCalendarMirrorSettings {
+  id: string
+  workspace_id: string
+  user_id: string
+  target_calendar_id: string
+  enabled: boolean
+}
+
+/** Получить настройку зеркалирования задач текущего юзера в этом воркспейсе. */
+export function useUserCalendarMirror(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: googleCalendarKeys.mirror(workspaceId),
+    enabled: !!workspaceId,
+    queryFn: async (): Promise<UserCalendarMirrorSettings | null> => {
+      if (!workspaceId) return null
+      const { data, error } = await supabase
+        .from('user_calendar_mirror_settings')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .maybeSingle()
+      if (error) throw error
+      return (data as UserCalendarMirrorSettings | null) ?? null
+    },
+  })
+}
+
+/** Включить/выключить или сменить target-календарь зеркалирования. */
+export function useUpdateUserCalendarMirror() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (params: {
+      workspace_id: string
+      target_calendar_id: string | null  // null → выключить
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      if (params.target_calendar_id === null) {
+        // Выключаем: удаляем запись.
+        const { error } = await supabase
+          .from('user_calendar_mirror_settings')
+          .delete()
+          .eq('workspace_id', params.workspace_id)
+          .eq('user_id', user.id)
+        if (error) throw error
+        return null
+      }
+
+      // Upsert с включением.
+      const { data, error } = await supabase
+        .from('user_calendar_mirror_settings')
+        .upsert({
+          workspace_id: params.workspace_id,
+          user_id: user.id,
+          target_calendar_id: params.target_calendar_id,
+          enabled: true,
+        }, { onConflict: 'workspace_id,user_id' })
+        .select()
+        .single()
+      if (error) throw error
+      return data as UserCalendarMirrorSettings
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: googleCalendarKeys.mirror(vars.workspace_id) })
+      toast.success('Настройка зеркалирования обновлена')
+    },
+    onError: (e) => toast.error(`Ошибка: ${e instanceof Error ? e.message : 'неизвестно'}`),
   })
 }
 
