@@ -189,6 +189,9 @@ export function BoardListCard({
   const [userCollapsed, setUserCollapsed] = useState<boolean | null>(null)
   const settingsDialog = useDialog()
   const createDialog = useDialog()
+  // Слот календаря, выбранный пользователем кликом по пустому месту.
+  // Подмешивается в initialValues create-диалога как startAt/endAt.
+  const [calendarSlot, setCalendarSlot] = useState<{ start: string; end: string } | null>(null)
 
   const simpleAssigneesMap = useMemo(() => {
     const result: Record<string, { id: string }[]> = {}
@@ -459,9 +462,16 @@ export function BoardListCard({
               )
             ) : isCalendar ? (
               <BoardListCalendarView
+                listId={list.id}
                 workspaceId={workspaceId}
                 tasks={filteredTasks}
                 onOpenTask={(task) => onOpenTask(task.id)}
+                settings={list.calendar_settings}
+                listHeight={listHeight}
+                onCreateAtSlot={(start, end) => {
+                  setCalendarSlot({ start: start.toISOString(), end: end.toISOString() })
+                  createDialog.open()
+                }}
               />
             ) : filteredTasks.length > 0 ? (
               hasGrouping ? (
@@ -555,9 +565,19 @@ export function BoardListCard({
             workspaceId={workspaceId}
             projectId={createPreset?.projectId}
             defaultTabMode={createPreset?.tabMode ?? 'task'}
-            initialValues={createPreset}
+            initialValues={
+              calendarSlot
+                ? { ...(createPreset ?? {}), startAt: calendarSlot.start, endAt: calendarSlot.end }
+                : createPreset
+            }
             open={createDialog.isOpen}
-            onOpenChange={(v) => (v ? createDialog.open() : createDialog.close())}
+            onOpenChange={(v) => {
+              if (v) createDialog.open()
+              else {
+                createDialog.close()
+                setCalendarSlot(null)
+              }
+            }}
             onCreate={handleCreate}
             isPending={createPending}
           />

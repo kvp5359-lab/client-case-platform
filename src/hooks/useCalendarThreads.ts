@@ -112,6 +112,38 @@ export function useUpdateThreadTime() {
 
       return params
     },
+    onMutate: async (params) => {
+      // Optimistic update: меняем кэш до ответа сервера, иначе на resize
+      // граница визуально «возвращается» на старое место до завершения
+      // network round-trip. Покрываем два формата кэша:
+      //  - CalendarThread[] (useCalendarThreads) — для уже видимых задач
+      //  - Record<id, {start_at,end_at}> (board-list-times внутри
+      //    BoardListCalendarView) — апсёртим всегда, в т.ч. для новых
+      //    дропнутых задач (entry ещё не было).
+      await queryClient.cancelQueries({ queryKey: calendarKeys.all })
+      queryClient.setQueriesData(
+        { queryKey: calendarKeys.all },
+        (old: unknown) => {
+          if (!old) return old
+          if (Array.isArray(old)) {
+            // Если задача уже в массиве — обновляем; если нет — пропускаем
+            // (без полной CalendarThread не сможем добавить корректно).
+            return old.map((t: { id: string }) =>
+              t.id === params.threadId
+                ? { ...t, start_at: params.start_at, end_at: params.end_at }
+                : t,
+            )
+          }
+          if (typeof old === 'object') {
+            return {
+              ...(old as Record<string, unknown>),
+              [params.threadId]: { start_at: params.start_at, end_at: params.end_at },
+            }
+          }
+          return old
+        },
+      )
+    },
     onSuccess: (params) => {
       // Календарь и обычные представления тредов могут показывать одну и ту
       // же задачу — инвалидируем оба слоя.

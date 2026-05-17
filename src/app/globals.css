@@ -511,3 +511,126 @@ body[data-task-panel-open] [data-sonner-toaster][data-x-position='right'] {
     opacity: 0;
   }
 }
+
+/* react-big-calendar — компактный time-grid:
+   - step=10, timeslots=6 → resize кратен 10 мин, но внутренние тики
+     скрываем (видны только границы часов через .rbc-timeslot-group)
+   - Высота часовой группы ~48px (≈8px на 10 мин), компактно но событие
+     длиной 10-30 мин остаётся читаемым */
+.rbc-timeslot-group {
+  min-height: 48px;
+}
+.rbc-time-slot {
+  border-top: none !important;
+}
+/* Курсор на пустых слотах — обычная стрелка вместо «руки» */
+.rbc-day-slot,
+.rbc-time-slot,
+.rbc-timeslot-group {
+  cursor: default;
+}
+/* Подсветка точки старта при наведении: тонкая линия по ширине дня,
+   привязана к 10-минутному слоту (шаг резайза). Срабатывает только в
+   day-slot (time-grid), не в month/agenda.
+   .rbc-events-container лежит поверх и ловит hover — отключаем
+   pointer-events на нём, возвращаем на самих событиях, чтобы
+   click/drag по событию остались рабочими. Select-to-create (onSelectSlot)
+   живёт на .rbc-day-slot, его не ломает. */
+.rbc-day-slot .rbc-events-container {
+  pointer-events: none;
+}
+.rbc-day-slot .rbc-events-container .rbc-event {
+  pointer-events: auto;
+}
+.rbc-day-slot .rbc-time-slot:hover {
+  box-shadow: inset 0 2px 0 0 hsl(var(--primary) / 0.7);
+}
+/* Цвет события задаём inline-стилем из eventPropGetter (специфичность
+   выше дефолтного .rbc-event{background-color:#3174AD}). Здесь убираем
+   дефолтный бордер и добавляем тонкий белый контур, чтобы соседние
+   события (особенно одного цвета) визуально разделялись. */
+.rbc-event {
+  border: 0 !important;
+  outline: 2px solid white;
+  outline-offset: -1px;
+}
+/* В today-колонке фон голубоватый (rgb(234,246,255) у RBC) — контур
+   подгоняем под него, чтобы блок «выписывался» в свою колонку, а не
+   терял края на цветной подложке. */
+.rbc-day-slot.rbc-today .rbc-event {
+  outline-color: rgb(234, 246, 255);
+}
+/* Хит-зона resize в RBC по умолчанию ~3px — расширяем до 14px и
+   делаем иконку всегда видимой (а не только на :hover), чтобы было
+   очевидно где можно тащить. */
+.rbc-addons-dnd .rbc-addons-dnd-resize-ns-anchor {
+  height: 14px;
+  cursor: ns-resize;
+  z-index: 1;
+}
+/* Иконка-индикатор не нужна: хит-зона 14px достаточно ощутима по
+   курсору ns-resize, лишние полоски на каждом событии шумят. */
+.rbc-addons-dnd .rbc-addons-dnd-resize-ns-anchor .rbc-addons-dnd-resize-ns-icon {
+  display: none !important;
+}
+/* Индикатор текущего времени — в стиле Google Calendar:
+   красная горизонтальная линия с кругом на левом краю. */
+.rbc-current-time-indicator {
+  background-color: #ea4335 !important;
+  height: 2px !important;
+  z-index: 3;
+}
+.rbc-current-time-indicator::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #ea4335;
+}
+
+/* Компактнее: тулбар и подписи времени на ~2pt меньше дефолтного RBC. */
+.rbc-toolbar {
+  font-size: 12px;
+}
+.rbc-toolbar button {
+  font-size: 12px;
+  padding: 4px 8px;
+}
+.rbc-toolbar-label {
+  font-size: 12px;
+}
+.rbc-time-gutter .rbc-label,
+.rbc-time-gutter .rbc-time-slot {
+  font-size: 11px;
+}
+/* DnD-аддон оборачивает содержимое в .rbc-addons-dnd-resizable —
+   flex и порядок навешиваем на него (или на .rbc-event, если addon не
+   используется). */
+.rbc-event,
+.rbc-addons-dnd-resizable {
+  display: flex;
+  flex-direction: column;
+}
+/* Меняем порядок: сверху название, СРАЗУ под ним время.
+   .rbc-event-content по дефолту flex:1 (растягивается) — обнуляем grow,
+   чтобы label прилип к названию, а не уезжал в низ блока. */
+.rbc-event-content {
+  order: 1;
+  /* 0 1 auto: не растягиваемся (нет «дыры» в высоких блоках),
+     но можем сжаться, освобождая место для label в коротких блоках.
+     height:auto перебивает дефолтные RBC height:100%, иначе блок
+     одна строка текста растягивается на всё доступное пространство. */
+  flex: 0 1 auto !important;
+  height: auto !important;
+  min-height: 0;
+  overflow: hidden;
+}
+.rbc-event-label {
+  order: 2;
+  opacity: 0.85;
+  flex: 0 0 auto;
+}

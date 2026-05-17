@@ -155,6 +155,9 @@ export function BoardView({
     | null
   >(null)
   const [overCardTarget, setOverCardTarget] = useState<string | null>(null)
+  // Курсор над календарным списком — прячем DragOverlay, чтобы не
+  // дублировать призрак, который рисует сам календарь.
+  const [isOverCalendar, setIsOverCalendar] = useState(false)
   // Подсветка позиции для ручной сортировки (drop на конкретную карточку).
   const [rowDropIndicator, setRowDropIndicator] = useState<
     | { kind: BoardItemType; listId: string; itemId: string; position: 'top' | 'bottom' }
@@ -258,6 +261,10 @@ export function BoardView({
         }
       }
 
+      // Календарный drop-таргет — приоритет выше list-cards, потому что
+      // календарь вложен в list-cards и pointerWithin вернёт оба.
+      const calendar = collisions.find((c) => String(c.id).startsWith('calendar-drop:'))
+      if (calendar) return [calendar]
       const group = collisions.find((c) => String(c.id).startsWith('group:'))
       if (group) return [group]
       const listCards = collisions.find((c) => String(c.id).startsWith('list-cards:'))
@@ -334,6 +341,7 @@ export function BoardView({
       const overId = over ? String(over.id) : null
       // TEMP DEBUG
       setDebugInfo(`active=${activeId} | over=${overId ?? 'null'}`)
+      setIsOverCalendar(!!overId && overId.startsWith('calendar-drop:'))
       if (overId && (overId.startsWith('task-row:') || overId.startsWith('project-row:'))) {
         // Парсим `task-row:<itemId>:<listId>` либо `project-row:<itemId>:<listId>`.
         const kind: BoardItemType = overId.startsWith('task-row:') ? 'thread' : 'project'
@@ -429,7 +437,15 @@ export function BoardView({
       setActiveCard(null)
       setOverCardTarget(null)
       setRowDropIndicator(null)
+      setIsOverCalendar(false)
       if (!card) return
+
+      // Drop задачи в календарный список обрабатывается ВНУТРИ
+      // BoardListCalendarView через useDndMonitor — здесь только
+      // ранний return, чтобы не сработала status-логика для
+      // calendar-drop:* over-таргетов.
+      const overId = e.over ? String(e.over.id) : null
+      if (overId && overId.startsWith('calendar-drop:')) return
 
       // 0) Drop на конкретную карточку в списке с manual_order — ручной reorder.
       if (rowInd) {
@@ -676,7 +692,7 @@ export function BoardView({
         <div className="shrink-0 w-[45vw]" aria-hidden />
       </div>
       <DragOverlay dropAnimation={null}>
-        {activeList ? (
+        {isOverCalendar ? null : activeList ? (
           <div className="px-3 py-1 rounded-full text-sm font-medium shadow-lg" style={{
             backgroundColor: hexToHeaderStyle(activeList.header_color).bg,
             color: hexToHeaderStyle(activeList.header_color).text,
