@@ -11,12 +11,26 @@ import {
   useDroppable,
 } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
-import { Plus, Trash2, AlignLeft, AlignRight, LayoutList, LayoutGrid, CalendarDays } from 'lucide-react'
+import { Plus, Trash2, AlignLeft, AlignRight, LayoutList, LayoutGrid } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode } from './types'
+import {
+  type CardLayout,
+  type CardFieldId,
+  type CardFieldStyle,
+  type DisplayMode,
+  type CalendarSettings,
+  DEFAULT_CALENDAR_SETTINGS,
+} from './types'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { getFieldLabel, CARD_FONT_SIZES, CARD_TRUNCATES } from './listSettingsConfigs'
 import {
   updateFieldStyle,
@@ -39,6 +53,8 @@ interface ListSettingsAppearanceTabProps {
   displayMode: DisplayMode
   onDisplayModeChange: (mode: DisplayMode) => void
   columnWidth?: number
+  calendarSettings: CalendarSettings
+  onCalendarSettingsChange: (v: CalendarSettings) => void
 }
 
 const ALIGNS: { value: 'left' | 'right'; icon: React.ElementType }[] = [
@@ -256,7 +272,11 @@ export default function ListSettingsAppearanceTab({
   displayMode,
   onDisplayModeChange,
   columnWidth,
+  calendarSettings,
+  onCalendarSettingsChange,
 }: ListSettingsAppearanceTabProps) {
+  const cs = calendarSettings ?? DEFAULT_CALENDAR_SETTINGS
+  const isCalendar = displayMode === 'calendar'
   const [activeFieldId, setActiveFieldId] = useState<CardFieldId | null>(null)
 
   const unplacedIds = useMemo(
@@ -365,7 +385,8 @@ export default function ListSettingsAppearanceTab({
 
   return (
     <div className="py-1">
-      {/* Режим отображения */}
+      {/* Режим отображения — скрыт в календарном режиме (выбор там же в Тип данных) */}
+      {!isCalendar && (
       <div className="flex items-center gap-3">
         <Label className="text-xs text-muted-foreground shrink-0">
           Режим
@@ -397,23 +418,106 @@ export default function ListSettingsAppearanceTab({
             <LayoutGrid className="h-3.5 w-3.5" />
             Карточки
           </button>
-          <button
-            type="button"
-            onClick={() => onDisplayModeChange('calendar')}
-            className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs border transition-colors',
-              displayMode === 'calendar'
-                ? 'border-primary bg-primary/5 text-primary'
-                : 'border-border text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <CalendarDays className="h-3.5 w-3.5" />
-            Календарь
-          </button>
         </div>
       </div>
+      )}
 
-      {/* Расположение полей */}
+      {/* Настройки календаря — только когда display_mode='calendar' */}
+      {isCalendar && (
+        <div className="mt-5 space-y-3">
+          <Label className="text-xs text-muted-foreground">Календарь</Label>
+          <div className="flex gap-3">
+            <div className="space-y-1.5 flex-1">
+              <Label className="text-[11px] text-muted-foreground">Вид по умолчанию</Label>
+              <Select
+                value={cs.default_view}
+                onValueChange={(v) =>
+                  onCalendarSettingsChange({ ...cs, default_view: v as CalendarSettings['default_view'] })
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="day">День</SelectItem>
+                  <SelectItem value="work_week">Будни</SelectItem>
+                  <SelectItem value="week">Неделя</SelectItem>
+                  <SelectItem value="next_n">Следующие N дней</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {cs.default_view === 'next_n' && (
+              <div className="space-y-1.5 w-[90px] shrink-0">
+                <Label className="text-[11px] text-muted-foreground">N (дней)</Label>
+                <Select
+                  value={String(cs.next_n_days ?? 7)}
+                  onValueChange={(v) =>
+                    onCalendarSettingsChange({ ...cs, next_n_days: parseInt(v, 10) })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[3, 4, 5, 7, 10, 14, 21, 30].map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-1.5 w-[110px] shrink-0">
+              <Label className="text-[11px] text-muted-foreground">С (час)</Label>
+              <Select
+                value={String(cs.min_hour)}
+                onValueChange={(v) =>
+                  onCalendarSettingsChange({ ...cs, min_hour: parseInt(v, 10) })
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <SelectItem key={h} value={String(h)}>
+                      {String(h).padStart(2, '0')}:00
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5 w-[110px] shrink-0">
+              <Label className="text-[11px] text-muted-foreground">До (час)</Label>
+              <Select
+                value={String(cs.max_hour)}
+                onValueChange={(v) =>
+                  onCalendarSettingsChange({ ...cs, max_hour: parseInt(v, 10) })
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 24 }, (_, h) => h + 1).map((h) => (
+                    <SelectItem key={h} value={String(h)}>
+                      {String(h).padStart(2, '0')}:00
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Календарь показывает только задачи с заполненными «началом» и «концом». Высота — из «Высоты» во вкладке «Основное».
+          </p>
+        </div>
+      )}
+
+      {/* Расположение полей — скрыто в календарном режиме */}
+      {!isCalendar && (
+      <>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -473,6 +577,8 @@ export default function ListSettingsAppearanceTab({
         {/* Превью */}
         <CardLayoutPreview layout={cardLayout} entityType={entityType} columnWidth={columnWidth} />
       </div>
+      </>
+      )}
     </div>
   )
 }

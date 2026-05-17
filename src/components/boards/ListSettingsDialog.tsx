@@ -39,6 +39,7 @@ export function ListSettingsDialog({
   const { state: s, set, dispatch } = useListSettingsState(list, open)
 
   const isInbox = s.entityType === 'inbox'
+  const isCalendar = s.displayMode === 'calendar'
 
   const handleSave = () => {
     updateList.mutate(
@@ -46,7 +47,8 @@ export function ListSettingsDialog({
         id: list.id,
         board_id: list.board_id,
         name: s.name.trim() || list.name,
-        entity_type: s.entityType,
+        // Календарь применим только к тредам (нужны start_at/end_at).
+        entity_type: isCalendar ? 'thread' : s.entityType,
         column_index: parseInt(s.columnIndex, 10),
         filters: isInbox
           ? ({ default_filter: s.inboxDefaultFilter } as unknown as FilterGroup)
@@ -58,7 +60,8 @@ export function ListSettingsDialog({
         group_by: s.groupBy,
         list_height: s.listHeight,
         header_color: s.headerColor,
-        card_layout: isInbox ? null : s.cardLayout,
+        card_layout: isInbox || isCalendar ? null : s.cardLayout,
+        calendar_settings: isCalendar ? s.calendarSettings : null,
       },
       { onSuccess: onClose },
     )
@@ -111,6 +114,7 @@ export function ListSettingsDialog({
               onListHeightChange={(v) => set('listHeight', v)}
               entityType={s.entityType}
               onEntityTypeChange={(t) => dispatch({ type: 'CHANGE_ENTITY_TYPE', entityType: t })}
+              onPickCalendar={() => dispatch({ type: 'PICK_CALENDAR' })}
               inboxDefaultFilter={s.inboxDefaultFilter}
               onInboxDefaultFilterChange={(v) => set('inboxDefaultFilter', v)}
               sortBy={s.sortBy}
@@ -119,6 +123,7 @@ export function ListSettingsDialog({
               onSortDirChange={(v) => set('sortDir', v)}
               groupBy={s.groupBy}
               onGroupByChange={(v) => set('groupBy', v)}
+              isCalendar={isCalendar}
             />
           </TabsContent>
 
@@ -142,6 +147,8 @@ export function ListSettingsDialog({
                 displayMode={s.displayMode}
                 onDisplayModeChange={(v) => set('displayMode', v)}
                 columnWidth={columnWidth}
+                calendarSettings={s.calendarSettings}
+                onCalendarSettingsChange={(v) => set('calendarSettings', v)}
               />
             </TabsContent>
           )}

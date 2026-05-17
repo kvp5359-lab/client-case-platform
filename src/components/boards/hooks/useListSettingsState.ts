@@ -1,12 +1,14 @@
 import { useReducer, useEffect } from 'react'
 import { defaultVisibleFields, defaultCardLayout } from '../listSettingsConfigs'
-import type {
-  BoardList,
-  CardLayout,
-  DisplayMode,
-  VisibleField,
-  GroupByField,
-  ListHeight,
+import {
+  DEFAULT_CALENDAR_SETTINGS,
+  type BoardList,
+  type CardLayout,
+  type CalendarSettings,
+  type DisplayMode,
+  type VisibleField,
+  type GroupByField,
+  type ListHeight,
 } from '../types'
 import type { FilterGroup, SortField, SortDir } from '@/lib/filters/types'
 
@@ -23,6 +25,7 @@ export interface ListSettingsState {
   listHeight: ListHeight
   headerColor: string
   cardLayout: CardLayout
+  calendarSettings: CalendarSettings
   inboxDefaultFilter: 'all' | 'unread'
 }
 
@@ -30,6 +33,7 @@ type Action =
   | { type: 'SET'; field: keyof ListSettingsState; value: unknown }
   | { type: 'RESET_FROM_LIST'; list: BoardList }
   | { type: 'CHANGE_ENTITY_TYPE'; entityType: 'thread' | 'project' | 'inbox' }
+  | { type: 'PICK_CALENDAR' }
   | { type: 'RESET_ALL'; entityType: 'thread' | 'project' | 'inbox' }
 
 function parseInboxFilter(list: BoardList): 'all' | 'unread' {
@@ -51,6 +55,7 @@ function stateFromList(list: BoardList): ListSettingsState {
     listHeight: list.list_height ?? 'auto',
     headerColor: list.header_color ?? '#6B7280',
     cardLayout: list.card_layout ?? defaultCardLayout(list.entity_type),
+    calendarSettings: list.calendar_settings ?? DEFAULT_CALENDAR_SETTINGS,
     inboxDefaultFilter: parseInboxFilter(list),
   }
 }
@@ -67,11 +72,21 @@ function reducer(state: ListSettingsState, action: Action): ListSettingsState {
       return {
         ...state,
         entityType: action.entityType,
+        // Выход из календаря: если был календарный режим — сбрасываем display_mode.
+        displayMode: state.displayMode === 'calendar' ? 'list' : state.displayMode,
         filters: { logic: 'and', rules: [] },
         visibleFields: defaultVisibleFields(action.entityType),
         cardLayout: defaultCardLayout(action.entityType),
         sortBy: 'created_at',
         groupBy: 'none',
+      }
+
+    case 'PICK_CALENDAR':
+      return {
+        ...state,
+        entityType: 'thread',
+        displayMode: 'calendar',
+        calendarSettings: state.calendarSettings ?? DEFAULT_CALENDAR_SETTINGS,
       }
 
     case 'RESET_ALL':
@@ -83,6 +98,7 @@ function reducer(state: ListSettingsState, action: Action): ListSettingsState {
         displayMode: 'list',
         visibleFields: defaultVisibleFields(action.entityType),
         cardLayout: defaultCardLayout(action.entityType),
+        calendarSettings: DEFAULT_CALENDAR_SETTINGS,
         groupBy: 'none',
         listHeight: 'auto',
         headerColor: 'gray',

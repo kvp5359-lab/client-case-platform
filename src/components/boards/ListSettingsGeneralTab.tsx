@@ -16,6 +16,7 @@ import {
   Group,
   ListChecks,
   FolderOpen,
+  CalendarDays,
 } from 'lucide-react'
 import {
   Select,
@@ -55,6 +56,8 @@ interface ListSettingsGeneralTabProps {
   // Тип данных
   entityType: 'thread' | 'project' | 'inbox'
   onEntityTypeChange: (type: 'thread' | 'project' | 'inbox') => void
+  /** Включить календарный режим (entity_type='thread' + display_mode='calendar') */
+  onPickCalendar: () => void
 
   // Inbox-specific
   inboxDefaultFilter: 'all' | 'unread'
@@ -69,6 +72,9 @@ interface ListSettingsGeneralTabProps {
   // Группировка
   groupBy: GroupByField
   onGroupByChange: (value: GroupByField) => void
+
+  /** Календарный режим — скрывает сортировку/группировку и блокирует «Проекты» */
+  isCalendar?: boolean
 }
 
 export function ListSettingsGeneralTab(props: ListSettingsGeneralTabProps) {
@@ -84,6 +90,7 @@ export function ListSettingsGeneralTab(props: ListSettingsGeneralTabProps) {
     onListHeightChange,
     entityType,
     onEntityTypeChange,
+    onPickCalendar,
     inboxDefaultFilter,
     onInboxDefaultFilterChange,
     sortBy,
@@ -92,6 +99,7 @@ export function ListSettingsGeneralTab(props: ListSettingsGeneralTabProps) {
     onSortDirChange,
     groupBy,
     onGroupByChange,
+    isCalendar = false,
   } = props
 
   const isInbox = entityType === 'inbox'
@@ -169,7 +177,7 @@ export function ListSettingsGeneralTab(props: ListSettingsGeneralTabProps) {
             onClick={() => onEntityTypeChange('thread')}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
-              entityType === 'thread'
+              entityType === 'thread' && !isCalendar
                 ? 'border-primary bg-primary/5 text-primary'
                 : 'border-border text-muted-foreground hover:text-foreground',
             )}
@@ -202,6 +210,19 @@ export function ListSettingsGeneralTab(props: ListSettingsGeneralTabProps) {
           >
             <Inbox className="h-3.5 w-3.5" />
             Входящие
+          </button>
+          <button
+            type="button"
+            onClick={onPickCalendar}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
+              isCalendar
+                ? 'border-primary bg-primary/5 text-primary'
+                : 'border-border text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            Календарь
           </button>
         </div>
       </div>
@@ -239,8 +260,8 @@ export function ListSettingsGeneralTab(props: ListSettingsGeneralTabProps) {
         </div>
       )}
 
-      {/* Настройки ниже скрыты для типа «Входящие» */}
-      {!isInbox && (
+      {/* Настройки ниже скрыты для типа «Входящие» и для календарного режима */}
+      {!isInbox && !isCalendar && (
         <>
           {/* Сортировка и группировка */}
           <div className="flex gap-4">

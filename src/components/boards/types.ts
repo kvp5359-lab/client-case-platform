@@ -70,6 +70,24 @@ export interface BoardMember {
 
 export type DisplayMode = 'list' | 'cards' | 'calendar'
 
+/** Настройки календарного режима списка (board_lists.calendar_settings) */
+export type CalendarDefaultView = 'day' | 'work_week' | 'week' | 'next_n'
+export interface CalendarSettings {
+  default_view: CalendarDefaultView
+  /** Час начала рабочей сетки (0–23) */
+  min_hour: number
+  /** Час окончания рабочей сетки (1–24) */
+  max_hour: number
+  /** Количество дней для режима 'next_n'. Игнорируется в других режимах. */
+  next_n_days?: number
+}
+export const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
+  default_view: 'week',
+  min_hour: 8,
+  max_hour: 21,
+  next_n_days: 7,
+}
+
 /** Поля, которые можно показывать/скрывать в строке */
 export type VisibleField = 'status' | 'deadline' | 'assignees' | 'project' | 'template'
 
@@ -144,6 +162,7 @@ export interface BoardList {
   list_height: ListHeight
   header_color: string | null
   card_layout: CardLayout | null
+  calendar_settings: CalendarSettings | null
   created_at: string
   updated_at: string
 }

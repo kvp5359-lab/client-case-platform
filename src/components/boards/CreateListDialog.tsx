@@ -35,24 +35,27 @@ export function CreateListDialog({
 }: CreateListDialogProps) {
   const createList = useCreateList()
   const [name, setName] = useState('')
-  const [entityType, setEntityType] = useState<'thread' | 'project' | 'inbox'>('thread')
+  // 'calendar' — псевдо-вариант: создаёт список тредов с display_mode='calendar'.
+  const [kind, setKind] = useState<'thread' | 'project' | 'inbox' | 'calendar'>('thread')
   const [columnIndex, setColumnIndex] = useState('0')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
 
+    const isCalendar = kind === 'calendar'
     createList.mutate(
       {
         board_id: boardId,
         name: name.trim(),
-        entity_type: entityType,
+        entity_type: isCalendar ? 'thread' : kind,
+        display_mode: isCalendar ? 'calendar' : undefined,
         column_index: parseInt(columnIndex, 10),
       },
       {
         onSuccess: () => {
           setName('')
-          setEntityType('thread')
+          setKind('thread')
           setColumnIndex('0')
           onClose()
         },
@@ -83,14 +86,15 @@ export function CreateListDialog({
             </div>
             <div className="space-y-2">
               <Label>Что показывать</Label>
-              <Select value={entityType} onValueChange={(v) => setEntityType(v as 'thread' | 'project' | 'inbox')}>
+              <Select value={kind} onValueChange={(v) => setKind(v as typeof kind)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="task">Задачи</SelectItem>
+                  <SelectItem value="thread">Задачи</SelectItem>
                   <SelectItem value="project">Проекты</SelectItem>
                   <SelectItem value="inbox">Входящие</SelectItem>
+                  <SelectItem value="calendar">Календарь</SelectItem>
                 </SelectContent>
               </Select>
             </div>
