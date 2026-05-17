@@ -58,7 +58,7 @@ BEGIN
     ),
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'x-internal-secret', 'c62e08cdca71914b1468c609813de6ed9bed5e997dc5aa391f2472bd4fb4b809'
+      'x-internal-secret', '__INTERNAL_FUNCTION_SECRET__'
     )
   );
 

@@ -56,7 +56,7 @@ BEGIN
         body := jsonb_build_object('message_id', NEW.id),
         headers := jsonb_build_object(
           'Content-Type', 'application/json',
-          'x-internal-secret', '097e79a971f850687012b96537d389b6b734b4538d29cf25cc7b58234dadcdab'
+          'x-internal-secret', '__INTERNAL_FUNCTION_SECRET__'
         )
       );
       RETURN NEW;
@@ -88,7 +88,7 @@ BEGIN
         ),
         headers := jsonb_build_object(
           'Content-Type', 'application/json',
-          'x-internal-secret', '097e79a971f850687012b96537d389b6b734b4538d29cf25cc7b58234dadcdab'
+          'x-internal-secret', '__INTERNAL_FUNCTION_SECRET__'
         )
       );
       RETURN NEW;
@@ -104,7 +104,7 @@ BEGIN
         body := jsonb_build_object('message_id', NEW.id),
         headers := jsonb_build_object(
           'Content-Type', 'application/json',
-          'x-internal-secret', '097e79a971f850687012b96537d389b6b734b4538d29cf25cc7b58234dadcdab'
+          'x-internal-secret', '__INTERNAL_FUNCTION_SECRET__'
         )
       );
       RETURN NEW;
@@ -120,7 +120,7 @@ BEGIN
         body := jsonb_build_object('message_id', NEW.id),
         headers := jsonb_build_object(
           'Content-Type', 'application/json',
-          'x-internal-secret', '097e79a971f850687012b96537d389b6b734b4538d29cf25cc7b58234dadcdab'
+          'x-internal-secret', '__INTERNAL_FUNCTION_SECRET__'
         )
       );
       RETURN NEW;
@@ -157,7 +157,7 @@ BEGIN
       ),
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'x-internal-secret', '097e79a971f850687012b96537d389b6b734b4538d29cf25cc7b58234dadcdab'
+        'x-internal-secret', '__INTERNAL_FUNCTION_SECRET__'
       )
     );
   END IF;
