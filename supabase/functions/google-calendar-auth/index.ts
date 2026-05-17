@@ -71,12 +71,12 @@ Deno.serve(async (req: Request) => {
     authUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('response_type', 'code');
-    // calendar.readonly — все календари юзера (read-only)
+    // calendar — полный доступ (read+write) ко всем календарям юзера
     // calendar.calendarlist.readonly — метаданные списка календарей
     // userinfo.email — чтобы знать какой Google-аккаунт подключили
     authUrl.searchParams.set(
       'scope',
-      'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/userinfo.email',
     );
     authUrl.searchParams.set('access_type', 'offline');
     authUrl.searchParams.set('prompt', 'consent');
