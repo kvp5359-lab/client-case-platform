@@ -6653,6 +6653,45 @@ export type Database = {
           },
         ]
       }
+      task_google_event_map: {
+        Row: {
+          calendar_id: string
+          google_event_id: string
+          last_pushed_at: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          calendar_id: string
+          google_event_id: string
+          last_pushed_at?: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          calendar_id?: string
+          google_event_id?: string
+          last_pushed_at?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_google_event_map_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "calendars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_google_event_map_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "project_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_panel_tabs: {
         Row: {
           active_tab_id: string | null
@@ -7209,6 +7248,51 @@ export type Database = {
           },
           {
             foreignKeyName: "thread_templates_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_calendar_mirror_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          target_calendar_id: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          target_calendar_id: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          target_calendar_id?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_calendar_mirror_settings_target_calendar_id_fkey"
+            columns: ["target_calendar_id"]
+            isOneToOne: false
+            referencedRelation: "calendars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_calendar_mirror_settings_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -7803,6 +7887,18 @@ export type Database = {
       }
       cleanup_expired_oauth_states: { Args: never; Returns: undefined }
       cleanup_old_export_progress: { Args: never; Returns: undefined }
+      convert_external_event_to_task: {
+        Args: {
+          p_calendar_id: string
+          p_end_at: string
+          p_google_event_id: string
+          p_name: string
+          p_project_id: string
+          p_start_at: string
+          p_workspace_id: string
+        }
+        Returns: string
+      }
       copy_form_template: {
         Args: {
           p_new_name: string
@@ -8951,3 +9047,4 @@ export const Constants = {
     },
   },
 } as const
+

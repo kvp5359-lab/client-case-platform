@@ -86,7 +86,7 @@ export function ConvertExternalEventDialog({
       // target_calendar.
       const { data, error } = await supabase.rpc('convert_external_event_to_task', {
         p_workspace_id: workspaceId,
-        p_project_id: projectId || null,
+        p_project_id: (projectId || null) as string,
         p_name: name.trim() || initialTitle,
         p_start_at: startAt,
         p_end_at: endAt,
