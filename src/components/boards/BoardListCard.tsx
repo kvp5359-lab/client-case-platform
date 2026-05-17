@@ -13,6 +13,11 @@ import { BoardListHeader } from './BoardListHeader'
 import { BoardListCalendarView } from './BoardListCalendarView'
 import { ListSettingsDialog } from './ListSettingsDialog'
 import { useCreateTaskHandler } from '@/components/tasks/useCreateTaskMutation'
+import { useQueueThreadInitialMessage } from '@/components/tasks/useQueueThreadInitialMessage'
+import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
+import { newThreadToTaskItem } from '@/components/tasks/taskListConstants'
+import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
+import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
 import { extractThreadCreatePreset } from '@/lib/filters/extractPreset'
 import type { BoardGlobalFilter, BoardList, GroupByField } from './types'
 import type { FilterContext } from '@/lib/filters/types'
@@ -230,10 +235,17 @@ export function BoardListCard({
     return extractThreadCreatePreset(safeFilters, filterCtx)
   }, [list.entity_type, safeFilters, filterCtx])
 
+  const queueInitialMessage = useQueueThreadInitialMessage(workspaceId)
+  const layoutPanel = useLayoutTaskPanel()
+
   const { handleCreate, isPending: createPending } = useCreateTaskHandler({
     workspaceId,
     projectId: createPreset?.projectId,
-    onSuccess: () => createDialog.close(),
+    onSuccess: async (newThread: ProjectThread, result: ChatSettingsResult) => {
+      await queueInitialMessage(newThread, result)
+      layoutPanel?.openThread(newThreadToTaskItem(newThread, result))
+      createDialog.close()
+    },
   })
 
   // Для списков проектов вычисляем карту «ближайшая незавершённая задача» по project_id.

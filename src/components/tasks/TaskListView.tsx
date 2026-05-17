@@ -27,10 +27,8 @@ import { useProjectThreads, useDeleteThread } from '@/hooks/messenger/useProject
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { DeleteThreadDialog } from '@/components/messenger/DeleteThreadDialog'
 import { useAccessibleThreadIds } from '@/hooks/messenger/useAccessibleThreadIds'
-import { useAuth } from '@/contexts/AuthContext'
-import { useSidePanelStore } from '@/store/sidePanelStore'
-import { getCurrentWorkspaceParticipant } from '@/services/api/messenger/messengerService'
 import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
+import { useQueueThreadInitialMessage } from './useQueueThreadInitialMessage'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import { useThreadTemplatesForProject, useThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
 import { useQuery } from '@tanstack/react-query'
@@ -186,27 +184,11 @@ export const TaskListView = memo(function TaskListView({
 
   // ── Создание задачи ──
 
-  const { user } = useAuth()
-  const setPendingInitialMessage = useSidePanelStore((s) => s.setPendingInitialMessage)
+  const queueInitialMessage = useQueueThreadInitialMessage(workspaceId)
 
   const handleCreateSuccess = useCallback(
     async (newThread: ProjectThread, result: ChatSettingsResult) => {
-      // Обработка первого сообщения / email
-      if (result.initialMessage && user) {
-        let senderName = 'Вы'
-        try {
-          const p = await getCurrentWorkspaceParticipant(workspaceId, user.id)
-          if (p) senderName = p.name
-        } catch { /* fallback */ }
-
-        setPendingInitialMessage({
-          threadId: newThread.id,
-          html: result.initialMessage.html,
-          files: result.initialMessage.files,
-          isEmail: result.channelType === 'email',
-          senderName,
-        })
-      }
+      await queueInitialMessage(newThread, result)
 
       setCreateOpen(false)
       const taskItem = newThreadToTaskItem(newThread, result)
@@ -217,7 +199,7 @@ export const TaskListView = memo(function TaskListView({
         setOpenTaskId(newThread.id)
       }
     },
-    [workspaceId, user, setPendingInitialMessage, layoutPanel],
+    [queueInitialMessage, layoutPanel],
   )
 
   const { handleCreate, isPending: createPending } = useCreateTaskHandler({
