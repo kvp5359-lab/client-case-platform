@@ -53,6 +53,7 @@ export const taskKeys = {
 }
 
 export const taskPanelTabsKeys = {
+  all: ['task-panel-tabs'] as const,
   byProjectUser: (projectId: string, userId: string) =>
     ['task-panel-tabs', projectId, userId] as const,
 }

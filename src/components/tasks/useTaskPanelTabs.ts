@@ -152,8 +152,33 @@ export function useTaskPanelTabs({ projectId, contactId }: UseTaskPanelTabsParam
         .maybeSingle()
       if (error) throw error
       if (!data) return { ...EMPTY_STATE, isNew: true }
+
+      const rawTabs: TaskPanelTab[] = Array.isArray(data.tabs) ? (data.tabs as TaskPanelTab[]) : []
+
+      // Отфильтровываем вкладки-треды, у которых сам тред уже удалён
+      // (is_deleted = true) или вовсе не существует. Иначе в правой панели
+      // остаются «мёртвые» табы после soft-delete треда.
+      const threadRefIds = rawTabs
+        .filter((t) => t.type === 'thread' && t.refId)
+        .map((t) => t.refId as string)
+
+      let aliveThreadIds = new Set<string>()
+      if (threadRefIds.length > 0) {
+        const { data: alive, error: threadsErr } = await supabase
+          .from('project_threads')
+          .select('id')
+          .in('id', threadRefIds)
+          .eq('is_deleted', false)
+        if (threadsErr) throw threadsErr
+        aliveThreadIds = new Set((alive ?? []).map((r) => r.id))
+      }
+
+      const tabs = rawTabs.filter(
+        (t) => t.type !== 'thread' || (t.refId && aliveThreadIds.has(t.refId)),
+      )
+
       return {
-        tabs: Array.isArray(data.tabs) ? (data.tabs as TaskPanelTab[]) : [],
+        tabs,
         active_tab_id: data.active_tab_id ?? null,
         isNew: false,
       }

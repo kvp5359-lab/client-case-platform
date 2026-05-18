@@ -8,6 +8,7 @@ import {
   myTaskCountsKeys,
   projectThreadKeys,
   taskKeys,
+  taskPanelTabsKeys,
   trashKeys,
   workspaceTaskKeys,
   workspaceThreadKeys,
@@ -240,6 +241,9 @@ export function useDeleteThread(workspaceId?: string) {
         queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.all })
       }
       queryClient.invalidateQueries({ queryKey: trashKeys.all })
+      // task_panel_tabs кэширует ссылки на треды; удалённый тред должен исчезнуть
+      // из открытых вкладок правой панели на всех scope (project / contact).
+      queryClient.invalidateQueries({ queryKey: taskPanelTabsKeys.all })
       // Удаление любого треда с дедлайном (task / chat / email) может сбросить
       // has_active_deadline_task у проекта. У нас нет deadline в аргументе
       // мутации — инвалидируем безусловно, цена пересчёта незначительная.
