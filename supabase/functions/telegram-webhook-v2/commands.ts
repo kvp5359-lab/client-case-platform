@@ -10,6 +10,7 @@ import { helpText, menuReplyKeyboard, mainMenuInlineKeyboard } from "./pure.ts";
 import { encode as encodeCb } from "./callback-data.ts";
 import { showKbGroups } from "./knowledge.ts";
 import { showUploadSlots, showDocStatus } from "./upload-slot.ts";
+import { escapeHtmlEntities } from "../_shared/htmlFormatting.ts";
 import type { TgInlineKeyboard, TgMessage, TgUser } from "./types.ts";
 
 const MAIN_MENU_TEXT = "<b>Главное меню</b>\n\nВыберите раздел:";
@@ -185,10 +186,17 @@ async function cmdLink(chatId: number, codeArg: string | undefined, msg: TgMessa
     bot_version: BOT_VERSION,
   };
 
-  if (existing) {
-    await service.from("project_telegram_chats").update(payload).eq("id", existing.id);
-  } else {
-    await service.from("project_telegram_chats").insert(payload);
+  const { error: linkError } = existing
+    ? await service.from("project_telegram_chats").update(payload).eq("id", existing.id)
+    : await service.from("project_telegram_chats").insert(payload);
+
+  if (linkError) {
+    console.error("[/link] insert/update failed:", linkError);
+    await sendMessage(
+      chatId,
+      `⚠️ Не удалось привязать группу к «${thread.name}».\nПричина: <code>${escapeHtmlEntities(linkError.message ?? "unknown error")}</code>`,
+    );
+    return;
   }
 
   // Приветствие с постоянной кнопкой «📋 Меню» внизу
