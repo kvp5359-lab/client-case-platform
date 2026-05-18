@@ -225,22 +225,33 @@ export function BoardListCalendarView({
 
   // Подгрузка start_at/end_at — отдельно от основного RPC, чтобы не менять
   // get_workspace_threads. На больших списках это запрос «in (uuid[])» по
-  // индексированному project_threads.id — дёшево.
+  // индексированному project_threads.id — дёшево. Бьём на чанки по 40, чтобы
+  // GET-URL не упирался в лимит PostgREST.
   const { data: times = {} } = useQuery({
     queryKey: [...calendarKeys.all, 'board-list-times', workspaceId, idsKey],
     enabled: taskIds.length > 0,
     queryFn: async (): Promise<Record<string, { start_at: string; end_at: string }>> => {
-      const { data, error } = await supabase
-        .from('project_threads')
-        .select('id, start_at, end_at')
-        .in('id', taskIds)
-        .not('start_at', 'is', null)
-        .not('end_at', 'is', null)
-      if (error) throw error
+      const chunks: string[][] = []
+      for (let i = 0; i < taskIds.length; i += 40) chunks.push(taskIds.slice(i, i + 40))
+
+      const results = await Promise.all(
+        chunks.map((chunk) =>
+          supabase
+            .from('project_threads')
+            .select('id, start_at, end_at')
+            .in('id', chunk)
+            .not('start_at', 'is', null)
+            .not('end_at', 'is', null),
+        ),
+      )
+
       const map: Record<string, { start_at: string; end_at: string }> = {}
-      for (const row of data ?? []) {
-        if (row.start_at && row.end_at) {
-          map[row.id] = { start_at: row.start_at, end_at: row.end_at }
+      for (const { data, error } of results) {
+        if (error) throw error
+        for (const row of data ?? []) {
+          if (row.start_at && row.end_at) {
+            map[row.id] = { start_at: row.start_at, end_at: row.end_at }
+          }
         }
       }
       return map
