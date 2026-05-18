@@ -11,6 +11,7 @@ import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
+import { SidebarGlobalSearch } from './WorkspaceSidebar/SidebarGlobalSearch'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
 import { UserProfile } from './WorkspaceSidebar/UserProfile'
 import { WorkspacePicker } from './WorkspaceSidebar/WorkspacePicker'
@@ -407,6 +408,9 @@ export function WorkspaceSidebarFull({
             </div>
           )}
         </div>
+        <div className="flex justify-center pt-2">
+          <SidebarGlobalSearch workspaceId={workspaceId} compact />
+        </div>
         <div className="px-1 pt-1 pb-2 flex flex-col gap-1.5 overflow-y-auto">
           <SidebarSlotsRow
             slots={topbarSlots}
@@ -485,7 +489,13 @@ export function WorkspaceSidebarFull({
           незакрытых ошибок отправки у текущего юзера в этом воркспейсе. */}
       <SendFailuresIndicator workspaceId={workspaceId} />
 
-      <div className="px-2 pb-2">
+      {!isClientOnly && (
+        <div className="px-2 pt-2">
+          <SidebarGlobalSearch workspaceId={workspaceId} />
+        </div>
+      )}
+
+      <div className="px-2 pt-2 pb-2">
         <SidebarSlotsRow
           slots={topbarSlots}
           compact

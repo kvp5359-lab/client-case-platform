@@ -31,6 +31,7 @@ import {
 } from '@/hooks/permissions'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { usePageTitle } from '@/hooks/usePageTitle'
+import { useAutoTrackRecentView } from '@/hooks/useGlobalSearch'
 
 // Рефакторенные компоненты и хуки
 import {
@@ -66,6 +67,9 @@ export default function ProjectPage() {
   // Данные проекта
   const { project, projectTemplate, isLoading } = useProjectData(projectId)
   const { data: participantGroups = [] } = useProjectHeaderParticipants(projectId, workspaceId)
+
+  // «Недавнее» — фиксируем открытие проекта (после резолва short_id → UUID).
+  useAutoTrackRecentView(workspaceId, 'project', project?.id)
 
   // Проверка доступа
   const { hasAccess: hasProjectAccess, isLoading: checkingAccess } = useProjectAccess(

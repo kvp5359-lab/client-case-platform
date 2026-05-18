@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
+import { useTrackRecentView } from '@/hooks/useGlobalSearch'
 import { type SystemTabDef } from './TaskPanelTabBar'
 import {
   useTaskPanelTabs,
@@ -234,6 +235,20 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     !hidden && tabs.activeTab?.type === 'thread' ? (tabs.activeTab.refId ?? null) : null
   const activeProjectRefId =
     !hidden && tabs.activeTab?.type === 'tasks' ? (tabs.activeTab.refId ?? null) : null
+
+  // Фиксируем открытие треда в «Недавнее». Покрывает ВСЕ способы открытия:
+  // клик в списке внутри проекта, на доске, из инбокса, из тоста, из глобального
+  // поиска, переход по вкладкам панели. Хук сам инвалидирует кэш «Недавнего» —
+  // без этого список обновляется только после reload.
+  const { mutate: trackRecentView } = useTrackRecentView()
+  useEffect(() => {
+    if (!activeThreadId || !workspaceId) return
+    trackRecentView({
+      workspaceId,
+      entityType: 'thread',
+      entityId: activeThreadId,
+    })
+  }, [activeThreadId, workspaceId, trackRecentView])
 
   const hidePanel = useCallback(() => {
     setHidden(true)

@@ -6,8 +6,10 @@
  * - Группы обновляются мгновенно (delete all + insert)
  */
 
+import { useParams } from 'next/navigation'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
+import { useAutoTrackRecentView } from '@/hooks/useGlobalSearch'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -24,6 +26,8 @@ import { ArticleMetadataSection } from './KnowledgeBasePage/components/ArticleMe
 
 export default function KnowledgeBaseArticleEditorPage() {
   const editor = useArticleEditor()
+  const { workspaceId, articleId } = useParams<{ workspaceId: string; articleId: string }>()
+  useAutoTrackRecentView(workspaceId, 'knowledge_article', articleId)
 
   return (
     <WorkspaceLayout>

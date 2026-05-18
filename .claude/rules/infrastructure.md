@@ -643,6 +643,34 @@ UNIQUE `uq_telegram_message_per_chat (telegram_chat_id, telegram_message_id)` т
 - **Закрепить в сайдбар**: `usePinnedItemLists` (см. раздел про сайдбар выше) → слот `list:<uuid>` с иконкой по `entity_type`.
 - **Миграции**: `20260510_item_lists.sql` (таблица + RLS + триггер `touch_item_lists_updated_at`), `20260510_rename_task_to_thread_in_board_lists.sql` (миграция `entity_type='task'`→`'thread'` в досках для согласования с item_lists).
 
+## Глобальный поиск и «Недавнее»
+
+Реализовано 2026-05-18. Единая строка поиска в верхней части сайдбара — ищет одновременно по тредам, проектам, статьям базы знаний, участникам и содержимому переписки. Пустая строка показывает список недавно открытых элементов.
+
+- **Постгрес**: расширения `pg_trgm` и `unaccent`. Поисковая инфраструктура — generated `search_vector tsvector` колонки + GIN-индексы на пяти таблицах: `project_threads`, `projects`, `knowledge_articles`, `participants`, `project_messages`. Дополнительно — GIN trigram индексы по `name`/`title` для fuzzy.
+- **Конфиг FTS**: `russian` (морфология русских склонений). Для `participants` поля name/email/phone — `simple` (без стеммера), `notes` — `russian`. У `knowledge_articles` HTML-контент стрипается regex'ом до индексации.
+- **Веса tsvector**: A — name/title (самый значимый), B — description/summary, C — content/notes.
+- **RPC `global_search(workspace_id, query, limit)`**: возвращает union по 5 типам (`thread`, `project`, `knowledge_article`, `participant`, `message`). Ранкинг — `GREATEST(ts_rank, word_similarity)`. Fuzzy-порог — `word_similarity > 0.4` (опечатка в одну букву даёт ~0.43). Минимум 2 символа в запросе. Использует `websearch_to_tsquery` — терпит любой пользовательский ввод. `ts_headline` для сниппетов сообщений и статей с тегами `<mark>`. SECURITY INVOKER — фильтрация через RLS исходных таблиц.
+- **`message` как результат**: показывает имя треда как title, имя проекта как subtitle, сниппет с подсветкой. Клик открывает родительский тред в `TaskPanel`.
+- **Таблица `recently_viewed`** (`user_id`, `workspace_id`, `entity_type`, `entity_id`, `opened_at`, PK по 4 первым полям). Enum `recent_entity_type ∈ {thread, project, knowledge_article, participant}`. RLS: own-rows only.
+- **RPC `track_recent_view(workspace_id, entity_type, entity_id)`**: UPSERT по PK с обновлением `opened_at = now()`. Дополнительно режет хвост до последних 100 записей на (user, workspace) — чтобы таблица не разрасталась.
+- **RPC `get_recently_viewed(workspace_id, limit)`**: JOIN'ит в исходные таблицы, фильтрует `is_deleted = false`. Берёт `limit * 3` записей в base CTE — запас на отфильтрованные удалённые.
+- **Фронт**:
+  - Хуки: [`useGlobalSearch`, `useRecentlyViewed`, `useTrackRecentView`, `useAutoTrackRecentView`, `useDebouncedValue`](../../src/hooks/useGlobalSearch.ts).
+  - Компонент: [`SidebarGlobalSearch`](../../src/components/WorkspaceSidebar/SidebarGlobalSearch.tsx) — два режима: `input` (full sidebar) и `compact` (иконка лупы → popover, для свернутого сайдбара).
+  - Монтаж: в [`WorkspaceSidebarFull.tsx`](../../src/components/WorkspaceSidebarFull.tsx) — над `SidebarSlotsRow`. Скрыто для `isClientOnly`.
+- **Трекинг просмотров**:
+  - Тред: `useEffect` на `activeThreadId` в [`TaskPanelTabbedShell.tsx`](../../src/components/tasks/TaskPanelTabbedShell.tsx) — срабатывает при ЛЮБОМ открытии треда (клик в списке проекта, на доске, из инбокса, из тоста, переход по вкладкам панели, из глобального поиска). UPSERT идемпотентен.
+  - Проект: `useAutoTrackRecentView` в [`ProjectPage.tsx`](../../src/page-components/ProjectPage.tsx) — срабатывает после резолва short_id → UUID.
+  - Статья KB: `useAutoTrackRecentView` в [`KnowledgeBaseArticleEditorPage.tsx`](../../src/page-components/KnowledgeBaseArticleEditorPage.tsx).
+  - Участник: пока не трекается (нет отдельной страницы участника — карточка контакта открывается popover'ом).
+- **Существующий локальный поиск проектов** в `ProjectsList.tsx` оставлен как есть (фильтрует только список проектов). Глобальный поиск работает параллельно.
+- **Миграция**: `20260518_global_search_and_recent.sql`.
+- **Известные ограничения**:
+  - Сообщения в участниках/комментариях не индексируются (только `project_messages`).
+  - Поиск по `project_messages` фильтруется только по `workspace_id` — доступ к конкретному треду на уровне RLS треда (`can_user_access_thread`). На объёмах MVP (7к сообщений) — мгновенно. Если БД вырастет до сотен тысяч сообщений, добавить отсечение по доступу прямо в RPC.
+  - Префиксный поиск (ввод первых 3 букв) полагается на FTS lexeme matching — слово «прив» не найдёт «приветствие» без `:*` суффикса. На MVP терпимо. Долгосрочно — переключить на `to_tsquery` с auto-prefix или добавить отдельную ветку с `LIKE 'query%'`.
+
 ## Локальная разработка
 
 ```bash

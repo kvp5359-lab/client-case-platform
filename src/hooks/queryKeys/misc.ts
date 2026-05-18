@@ -9,6 +9,17 @@ export const userSettingsKeys = {
   byUser: (userId: string) => ['user-settings', userId] as const,
 }
 
+export const globalSearchKeys = {
+  all: ['global-search'] as const,
+  byWorkspaceQuery: (workspaceId: string, query: string) =>
+    ['global-search', workspaceId, query] as const,
+}
+
+export const recentlyViewedKeys = {
+  all: ['recently-viewed'] as const,
+  byWorkspace: (workspaceId: string) => ['recently-viewed', workspaceId] as const,
+}
+
 export const googleDriveKeys = {
   all: ['google-drive'] as const,
   connection: (userId: string) => ['google-drive', 'connection', userId] as const,
