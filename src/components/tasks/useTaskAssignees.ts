@@ -22,7 +22,10 @@ export const assigneeKeys = {
 
 /** Batch-загрузка исполнителей для списка задач.
  *  keepPreviousData — при добавлении/удалении задачи показываем старую карту исполнителей,
- *  пока грузится новая. Иначе UI мигает (все аватарки пропадают на момент загрузки). */
+ *  пока грузится новая. Иначе UI мигает (все аватарки пропадают на момент загрузки).
+ *  Chunking — IN-фильтр PostgREST бьётся об URL-лимит при ~50+ UUID. Бьём на чанки. */
+const ASSIGNEE_CHUNK_SIZE = 40
+
 export function useTaskAssigneesMap(threadIds: string[]) {
   const key = [...threadIds].sort().join(',')
   return useQuery({
@@ -30,14 +33,27 @@ export function useTaskAssigneesMap(threadIds: string[]) {
     queryFn: async () => {
       if (threadIds.length === 0) return {} as Record<string, AvatarParticipant[]>
 
-      const { data, error } = await supabase
-        .from('task_assignees')
-        .select('thread_id, participants!inner(id, name, last_name, avatar_url)')
-        .in('thread_id', threadIds)
+      const chunks: string[][] = []
+      for (let i = 0; i < threadIds.length; i += ASSIGNEE_CHUNK_SIZE) {
+        chunks.push(threadIds.slice(i, i + ASSIGNEE_CHUNK_SIZE))
+      }
 
-      if (error) throw error
+      const results = await Promise.all(
+        chunks.map((chunk) =>
+          supabase
+            .from('task_assignees')
+            .select('thread_id, participants!inner(id, name, last_name, avatar_url)')
+            .in('thread_id', chunk),
+        ),
+      )
 
-      return buildParticipantMap(data ?? [])
+      const merged: Array<{ thread_id: string; participants: unknown }> = []
+      for (const { data, error } of results) {
+        if (error) throw error
+        if (data) merged.push(...(data as typeof merged))
+      }
+
+      return buildParticipantMap(merged)
     },
     enabled: threadIds.length > 0,
     staleTime: STALE_TIME.SHORT,
