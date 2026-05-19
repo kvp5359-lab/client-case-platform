@@ -90,7 +90,10 @@ export function useDocumentKitEffects({
     setSourceFolderName,
     setExportFolderConnected,
     setExportFolderName,
-    // TODO(blocked): требует настройки Google OAuth credentials
+    // Заглушка: имя папки тянется отдельным React Query в UnassignedTabContent
+    // (см. useDriveFolderName). Текущий хук-кеш `useFolderNamesCache` имеет
+    // баг с cancelled-флагом и не сохраняет результат в стор — поэтому не
+    // используем его для имени.
     getFolderName: async () => null,
   })
 
