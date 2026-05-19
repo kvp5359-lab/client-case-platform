@@ -161,6 +161,70 @@ export function useReorderLists() {
   })
 }
 
+/**
+ * Дублирует board_list со всеми настройками отображения, фильтрами, layout-ом.
+ * Копия встаёт в самый низ той же колонки. К имени добавляется « (копия)».
+ */
+export function useDuplicateList() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, board_id }: { id: string; board_id: string }) => {
+      void board_id // used in onSuccess
+      // 1) читаем исходный список целиком
+      const { data: src, error: srcErr } = await supabase
+        .from('board_lists')
+        .select('*')
+        .eq('id', id)
+        .single()
+      if (srcErr || !src) throw srcErr ?? new Error('Список не найден')
+      const source = src as unknown as BoardList
+
+      // 2) считаем sort_order для копии — в конец той же колонки
+      const { data: maxRow } = await supabase
+        .from('board_lists')
+        .select('sort_order')
+        .eq('board_id', source.board_id)
+        .eq('column_index', source.column_index)
+        .order('sort_order', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      const nextSortOrder = maxRow
+        ? (maxRow as { sort_order: number }).sort_order + 1
+        : 0
+
+      // 3) вставляем копию со всеми параметрами оригинала
+      const copyPayload: Record<string, unknown> = {
+        board_id: source.board_id,
+        name: `${source.name} (копия)`,
+        entity_type: source.entity_type,
+        column_index: source.column_index,
+        sort_order: nextSortOrder,
+        filters: source.filters as unknown,
+        sort_by: source.sort_by,
+        sort_dir: source.sort_dir,
+        display_mode: source.display_mode,
+        visible_fields: source.visible_fields as unknown,
+        group_by: source.group_by,
+        list_height: source.list_height,
+        header_color: source.header_color,
+        card_layout: source.card_layout as unknown,
+        calendar_settings: source.calendar_settings as unknown,
+      }
+      const { data, error } = await supabase
+        .from('board_lists')
+        .insert(copyPayload as never)
+        .select()
+        .single()
+      if (error) throw error
+      return data as unknown as BoardList
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: boardKeys.lists(vars.board_id) })
+    },
+  })
+}
+
 export function useDeleteList() {
   const qc = useQueryClient()
 

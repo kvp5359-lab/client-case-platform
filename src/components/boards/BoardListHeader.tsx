@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown, ChevronRight, Filter, MoreVertical, Plus, Trash2, ArrowUp, ArrowDown, GripVertical } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Filter, MoreVertical, Plus, Trash2, ArrowUp, ArrowDown, GripVertical } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { Button } from '@/components/ui/button'
 import {
@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useDeleteList, useSwapListOrder } from './hooks/useListMutations'
+import { useDeleteList, useDuplicateList, useSwapListOrder } from './hooks/useListMutations'
 import type { BoardList } from './types'
 import { hexToHeaderStyle } from './types'
 
@@ -43,6 +43,7 @@ export function BoardListHeader({
 }: BoardListHeaderProps) {
   const swapOrder = useSwapListOrder()
   const deleteList = useDeleteList()
+  const duplicateList = useDuplicateList()
   const CollapseIcon = collapsed ? ChevronRight : ChevronDown
   const hs = hexToHeaderStyle(list.header_color)
   const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
@@ -121,6 +122,17 @@ export function BoardListHeader({
               <Filter className="h-3.5 w-3.5 mr-2" />
               Настройки
             </DropdownMenuItem>
+            {!isInbox && (
+              <DropdownMenuItem
+                onClick={() =>
+                  duplicateList.mutate({ id: list.id, board_id: list.board_id })
+                }
+                disabled={duplicateList.isPending}
+              >
+                <Copy className="h-3.5 w-3.5 mr-2" />
+                Дублировать
+              </DropdownMenuItem>
+            )}
             {siblingLists && siblingLists.length > 1 && !isFirst && (
               <DropdownMenuItem onClick={() => handleSwap('up')}>
                 <ArrowUp className="h-3.5 w-3.5 mr-2" />
