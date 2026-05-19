@@ -19,6 +19,7 @@ const MOCK: Record<CardFieldId, React.ReactNode> = {
   icon: <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
   name: 'Пример записи для превью',
   deadline: '15 апр',
+  time: '14:00–15:30',
   assignees: (
     <div className="flex -space-x-1 shrink-0">
       <div className="w-[18px] h-[18px] rounded-full bg-blue-200 border-2 border-background" />
