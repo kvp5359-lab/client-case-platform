@@ -194,7 +194,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       setHidden(false)
       const scopeChanged =
         targetPid !== activeProjectId ||
-        (targetContactId !== null && targetContactId !== activeContactId)
+        targetContactId !== activeContactId
       if (scopeChanged) {
         setActiveProjectId(targetPid)
         setActiveContactId(targetContactId)
