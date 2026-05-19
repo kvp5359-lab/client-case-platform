@@ -20,6 +20,32 @@ export function formatDeadline(deadline: string | null): string | null {
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }
 
+// ── Форматирование интервала времени (start_at—end_at) ─────
+//
+// Используется полем «Время» в карточке задачи. В отличие от `deadline`,
+// которое показывает дату («Сегодня», «15 апр»), это поле выводит только
+// часы:минуты — компактный интервал слота из календаря.
+//
+// • start_at + end_at в один день → 'HH:MM–HH:MM'
+// • start_at + end_at в разные дни → 'HH:MM–HH:MM' (всё равно только часы,
+//   дату пользователь видит в колонке/группировке)
+// • только start_at → 'HH:MM'
+// • только end_at  → 'до HH:MM'
+// • ничего → null
+export function formatTimeRange(
+  startAt: string | null,
+  endAt: string | null,
+): string | null {
+  const fmt = (iso: string) => {
+    const d = new Date(iso)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+  if (startAt && endAt) return `${fmt(startAt)}–${fmt(endAt)}`
+  if (startAt) return fmt(startAt)
+  if (endAt) return `до ${fmt(endAt)}`
+  return null
+}
+
 export function isOverdue(deadline: string | null): boolean {
   if (!deadline) return false
   return new Date(deadline) < new Date(new Date().toDateString())

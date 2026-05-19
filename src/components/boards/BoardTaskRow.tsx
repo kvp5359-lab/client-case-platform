@@ -10,7 +10,7 @@ import { TaskActionsMenu } from '@/components/tasks/TaskActionsMenu'
 import { useThreadCounterpartName } from '@/hooks/messenger/useThreadCounterpartName'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField } from './types'
-import { formatDeadline, isOverdue } from './boardListUtils'
+import { formatDeadline, formatTimeRange, isOverdue } from './boardListUtils'
 import { resolveCardLayout, fieldStyleToClasses, visibleFieldsToLayout } from './cardLayoutUtils'
 
 interface BoardTaskRowProps {
@@ -131,6 +131,16 @@ function TaskField({
           {deadline}
         </span>
       )
+
+    case 'time': {
+      const timeRange = formatTimeRange(task.start_at, task.end_at)
+      if (!timeRange) return null
+      return (
+        <span className={cn(classes, 'shrink-0 tabular-nums text-muted-foreground')}>
+          {timeRange}
+        </span>
+      )
+    }
 
     case 'assignees':
       if (assignees.length === 0) return null

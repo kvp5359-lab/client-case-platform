@@ -108,6 +108,7 @@ export type CardFieldId =
   | 'status'
   | 'name'
   | 'deadline'
+  | 'time'
   | 'assignees'
   | 'project'
   | 'unread'

@@ -103,6 +103,7 @@ export const CARD_FIELD_DEFS: CardFieldDef[] = [
   { id: 'icon',      label: 'Иконка',        entityTypes: ['project'] },
   { id: 'name',      label: 'Название',      entityTypes: ['thread', 'project'] },
   { id: 'deadline',  label: 'Дедлайн',       entityTypes: ['thread', 'project'] },
+  { id: 'time',      label: 'Время',         entityTypes: ['thread'] },
   { id: 'assignees', label: 'Исполнители',   entityTypes: ['thread'] },
   { id: 'project',   label: 'Проект',        entityTypes: ['thread'] },
   { id: 'template',  label: 'Шаблон',        entityTypes: ['project'] },
