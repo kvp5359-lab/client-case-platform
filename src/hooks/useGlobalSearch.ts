@@ -9,10 +9,15 @@
  * (резолвит сущности, фильтрует is_deleted).
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { globalSearchKeys, recentlyViewedKeys } from '@/hooks/queryKeys'
+import {
+  globalSearchKeys,
+  recentlyViewedKeys,
+  sidebarMetaKeys,
+  STALE_TIME,
+} from '@/hooks/queryKeys'
 
 export type GlobalSearchEntityType =
   | 'thread'
@@ -35,6 +40,12 @@ export interface GlobalSearchRow {
   thread_type: string | null
   /** Для message — id треда (чтобы открыть нужный тред). Для thread — равен entity_id. */
   thread_id: string | null
+  /** Цвет треда (только для thread/message). Для остального — null. */
+  accent_color: string | null
+  /** template_id проекта (для резолва иконки/цвета проекта-результата и проекта-родителя треда). */
+  project_template_id: string | null
+  /** status_id проекта (для режима icon_color_mode='status'). */
+  project_status_id: string | null
 }
 
 export interface RecentlyViewedRow {
@@ -44,24 +55,35 @@ export interface RecentlyViewedRow {
   subtitle: string | null
   project_id: string | null
   thread_type: string | null
+  /** Цвет треда (только для thread). Для остального — null. */
+  accent_color: string | null
+  project_template_id: string | null
+  project_status_id: string | null
   opened_at: string
 }
 
 /**
  * Глобальный поиск. Включается при query.length >= 2.
  * Debounce делайте на стороне вызывающего (см. useDebouncedValue в компоненте).
+ *
+ * `limit` — сколько результатов на ТИП сущности (RPC возвращает union из 5 типов).
+ * Дефолт 8 — для popover в сайдбаре. Страница /search использует ~40.
  */
-export function useGlobalSearch(workspaceId: string | undefined, debouncedQuery: string) {
+export function useGlobalSearch(
+  workspaceId: string | undefined,
+  debouncedQuery: string,
+  limit = 8,
+) {
   const query = debouncedQuery.trim()
   return useQuery({
-    queryKey: globalSearchKeys.byWorkspaceQuery(workspaceId ?? '', query),
+    queryKey: [...globalSearchKeys.byWorkspaceQuery(workspaceId ?? '', query), limit] as const,
     enabled: Boolean(workspaceId) && query.length >= 2,
     staleTime: 30_000,
     queryFn: async (): Promise<GlobalSearchRow[]> => {
       const { data, error } = await supabase.rpc('global_search' as never, {
         p_workspace_id: workspaceId!,
         p_query: query,
-        p_limit: 8,
+        p_limit: limit,
       } as never)
       if (error) throw error
       return (data as GlobalSearchRow[] | null) ?? []
@@ -131,6 +153,95 @@ export function useAutoTrackRecentView(
     if (!workspaceId || !entityId) return
     mutate({ workspaceId, entityType, entityId })
   }, [workspaceId, entityType, entityId, mutate])
+}
+
+/** template_id → {icon, icon_color_mode, icon_color}. */
+export interface ProjectTemplateMeta {
+  icon: string | null
+  icon_color_mode: 'status' | 'fixed'
+  icon_color: string
+}
+
+/**
+ * Карта `template_id → meta`. Использует тот же queryKey, что и сайдбар —
+ * кэш переиспользуется (без второго похода в БД).
+ */
+export function useProjectTemplateIcons(workspaceId: string | undefined) {
+  return useQuery<Record<string, ProjectTemplateMeta>>({
+    queryKey: sidebarMetaKeys.templatesIcons(workspaceId ?? ''),
+    enabled: !!workspaceId,
+    staleTime: STALE_TIME.MEDIUM,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('project_templates')
+        .select('id, icon, icon_color_mode, icon_color')
+        .eq('workspace_id', workspaceId!)
+      if (error) throw error
+      const map: Record<string, ProjectTemplateMeta> = {}
+      for (const row of data ?? []) {
+        map[row.id] = {
+          icon: row.icon,
+          icon_color_mode: row.icon_color_mode === 'fixed' ? 'fixed' : 'status',
+          icon_color: row.icon_color,
+        }
+      }
+      return map
+    },
+  })
+}
+
+/**
+ * Карта `status_id → color` для project-статусов. Тот же queryKey, что у сайдбара.
+ */
+export function useProjectStatusColors(workspaceId: string | undefined) {
+  return useQuery<Record<string, { color: string }>>({
+    queryKey: sidebarMetaKeys.statusesColors(workspaceId ?? ''),
+    enabled: !!workspaceId,
+    staleTime: STALE_TIME.MEDIUM,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('statuses')
+        .select('id, color')
+        .eq('workspace_id', workspaceId!)
+        .eq('entity_type', 'project')
+      if (error) throw error
+      const map: Record<string, { color: string }> = {}
+      for (const row of data ?? []) map[row.id] = { color: row.color }
+      return map
+    },
+  })
+}
+
+/**
+ * Резолвит {iconId, iconColor} проекта по тем же правилам, что useSidebarData:
+ * icon — из template; цвет — fixed (template.icon_color) или from-status
+ * (statuses.color по project.status_id), fallback чёрный.
+ */
+export function resolveProjectIcon(
+  templateId: string | null,
+  statusId: string | null,
+  templatesById: Record<string, ProjectTemplateMeta> | undefined,
+  statusesById: Record<string, { color: string }> | undefined,
+): { iconId: string | null; iconColor: string } {
+  const tpl = templateId ? templatesById?.[templateId] : undefined
+  if (!tpl) return { iconId: null, iconColor: '#000000' }
+  const iconColor =
+    tpl.icon_color_mode === 'fixed'
+      ? tpl.icon_color
+      : (statusId && statusesById?.[statusId]?.color) || '#000000'
+  return { iconId: tpl.icon, iconColor }
+}
+
+/** Обёртка: подгружает обе карты и возвращает резолвер для текущего workspace. */
+export function useProjectIconResolver(workspaceId: string | undefined) {
+  const { data: templatesById } = useProjectTemplateIcons(workspaceId)
+  const { data: statusesById } = useProjectStatusColors(workspaceId)
+  return useMemo(
+    () =>
+      (templateId: string | null, statusId: string | null) =>
+        resolveProjectIcon(templateId, statusId, templatesById, statusesById),
+    [templatesById, statusesById],
+  )
 }
 
 /**
