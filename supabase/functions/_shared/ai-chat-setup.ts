@@ -166,10 +166,11 @@ export async function callAiApi(
       return { answer };
     } catch (err) {
       console.error("Gemini API error:", err);
-      return new Response(JSON.stringify({ error: "AI service error" }), {
-        status: 500,
-        headers: jsonHeaders,
-      });
+      const raw = err instanceof Error ? err.message : String(err);
+      return new Response(
+        JSON.stringify({ error: humanizeProviderError("google", raw), provider_error: raw }),
+        { status: 502, headers: jsonHeaders },
+      );
     }
   }
 
@@ -195,11 +196,15 @@ export async function callAiApi(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Claude API error:", errorText);
-    return new Response(JSON.stringify({ error: "AI service error" }), {
-      status: 500,
-      headers: jsonHeaders,
-    });
+    console.error("Claude API error:", response.status, errorText);
+    return new Response(
+      JSON.stringify({
+        error: humanizeProviderError("anthropic", errorText, response.status),
+        provider_error: errorText,
+        provider_status: response.status,
+      }),
+      { status: 502, headers: jsonHeaders },
+    );
   }
 
   const result = await response.json();
@@ -209,6 +214,60 @@ export async function callAiApi(
 
 // Keep backward-compatible aliases
 export { callAiApi as callClaudeApi };
+
+/**
+ * Превращает сырую ошибку провайдера в короткое человеческое объяснение.
+ * Используется в callAiApi, чтобы фронт показывал юзеру «перегружено», а не
+ * абстрактное «Edge Function returned a non-2xx status code».
+ */
+function humanizeProviderError(
+  provider: AiProvider,
+  raw: string,
+  status?: number,
+): string {
+  const providerName = provider === "google" ? "Google" : "Anthropic";
+  const lower = raw.toLowerCase();
+
+  // Попытка распарсить JSON-формат Anthropic: {"error":{"type":"...","message":"..."}}
+  let parsedType: string | undefined;
+  let parsedMessage: string | undefined;
+  try {
+    const j = JSON.parse(raw);
+    parsedType = j?.error?.type ?? j?.type;
+    parsedMessage = j?.error?.message ?? j?.message;
+  } catch { /* not json — ok */ }
+
+  const type = (parsedType ?? "").toLowerCase();
+
+  if (type === "overloaded_error" || lower.includes("overloaded")) {
+    return `${providerName} перегружен. Попробуй через минуту.`;
+  }
+  if (type === "rate_limit_error" || status === 429 || lower.includes("rate_limit") || lower.includes("rate limit")) {
+    return `${providerName}: превышен лимит запросов. Попробуй чуть позже.`;
+  }
+  if (type === "authentication_error" || status === 401 || lower.includes("invalid api key") || lower.includes("api key")) {
+    return `${providerName}: неверный или отсутствующий API-ключ. Проверь настройки воркспейса.`;
+  }
+  if (type === "permission_error" || status === 403) {
+    return `${providerName}: нет доступа (модель недоступна для ключа или регион).`;
+  }
+  if (type === "not_found_error" || status === 404 || lower.includes("model") && lower.includes("not found")) {
+    return `${providerName}: модель не найдена. Проверь, что выбранная модель ещё доступна.`;
+  }
+  if (type === "invalid_request_error" || status === 400) {
+    return `${providerName}: неверный запрос${parsedMessage ? ` — ${parsedMessage}` : ""}.`;
+  }
+  if (status === 529 || lower.includes("service unavailable")) {
+    return `${providerName}: сервис временно недоступен. Попробуй через минуту.`;
+  }
+  if (lower.includes("billing") || lower.includes("credit") || lower.includes("quota")) {
+    return `${providerName}: закончился баланс / квота на ключе.`;
+  }
+
+  // Fallback: показываем сообщение от провайдера если оно есть
+  if (parsedMessage) return `${providerName}: ${parsedMessage}`;
+  return `${providerName} вернул ошибку${status ? ` (${status})` : ""}.`;
+}
 
 /**
  * Converts a Blob/File to base64 using chunk-based approach (B-90: safe for large files).

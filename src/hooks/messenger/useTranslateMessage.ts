@@ -15,6 +15,27 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { threadTranslationsKey } from './useThreadTranslations'
 
+/**
+ * supabase.functions.invoke на non-2xx бросает FunctionsHttpError, в котором
+ * сырое тело лежит в .context (Response). Достаём оттуда поле `error`,
+ * которое edge function отдаёт человеческим текстом.
+ */
+async function extractFunctionError(err: unknown, fallback: string): Promise<string> {
+  const ctx = (err as { context?: Response } | null)?.context
+  if (ctx && typeof ctx.json === 'function') {
+    try {
+      const body = await ctx.clone().json()
+      if (body && typeof body.error === 'string' && body.error.trim()) return body.error
+    } catch { /* not json */ }
+    try {
+      const text = await ctx.clone().text()
+      if (text.trim()) return text
+    } catch { /* ignore */ }
+  }
+  if (err instanceof Error && err.message) return err.message
+  return fallback
+}
+
 export interface TranslateMessageResult {
   translated_content: string
   target_language: string
@@ -38,8 +59,11 @@ export function useTranslateMessage() {
           target_language: input.targetLanguage,
         },
       })
-      if (error) throw error
-      if (!data) throw new Error('Empty translation response')
+      if (error) {
+        const msg = await extractFunctionError(error, 'Ошибка перевода')
+        throw new Error(msg)
+      }
+      if (!data) throw new Error('Пустой ответ от перевода')
       return data
     },
     onSuccess: (_data, vars) => {
@@ -73,8 +97,11 @@ export function useTranslatePreview() {
           thread_id: input.threadId,
         },
       })
-      if (error) throw error
-      if (!data) throw new Error('Empty translation response')
+      if (error) {
+        const msg = await extractFunctionError(error, 'Ошибка перевода')
+        throw new Error(msg)
+      }
+      if (!data) throw new Error('Пустой ответ от перевода')
       return data
     },
     onError: (e: unknown) => {
