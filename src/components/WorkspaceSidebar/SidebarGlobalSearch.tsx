@@ -34,8 +34,6 @@ import {
   useDebouncedValue,
   useProjectIconResolver,
   type GlobalSearchEntityType,
-  type GlobalSearchRow,
-  type RecentlyViewedRow,
 } from '@/hooks/useGlobalSearch'
 import { supabase } from '@/lib/supabase'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
@@ -483,8 +481,7 @@ function EntityIcon({
   }
   if (type === 'project') {
     // muted (для шапки секции «Проекты») — без template, ставим базовую папку с серым.
-    const Icon = getProjectIcon(null)
-    return <Icon size={size} className={cls} />
+    return createElement(getProjectIcon(null), { size, className: cls })
   }
   if (type === 'knowledge_article') return <BookOpen size={size} className={cls} />
   if (type === 'participant') return <User size={size} className={cls} />
