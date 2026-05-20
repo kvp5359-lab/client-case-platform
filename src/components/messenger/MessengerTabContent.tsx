@@ -28,6 +28,8 @@ import {
   useBackfillTelegramHistory,
   useIsMtprotoThread,
 } from '@/hooks/messenger/useBackfillTelegramHistory'
+import { useScheduleMessage } from '@/hooks/messenger/useScheduleMessage'
+import { toast } from 'sonner'
 
 interface MessengerTabContentProps {
   projectId?: string
@@ -102,6 +104,82 @@ export function MessengerTabContent({
     setSendTrigger: state.setSendTrigger,
     editingMessage: state.editingMessage,
   })
+
+  const scheduling = useScheduleMessage({
+    projectId,
+    workspaceId,
+    channel,
+    threadId,
+  })
+
+  const handleSchedule = useCallback(
+    async (
+      sendAt: Date,
+      content: string,
+      replyToId?: string | null,
+      files?: File[],
+    ) => {
+      if (!state.currentParticipant) return
+      try {
+        await scheduling.schedule({
+          content,
+          sendAt,
+          attachments: files,
+          replyToId: replyToId ?? null,
+          senderParticipantId: state.currentParticipant.participantId,
+          senderName: state.currentParticipant.name,
+          senderRole: state.currentParticipant.role,
+        })
+        state.setReplyTo(null)
+        state.setSendTrigger((prev) => prev + 1)
+        toast.success(
+          `Запланировано на ${sendAt.toLocaleString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}`,
+        )
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Не удалось запланировать')
+      }
+    },
+    [scheduling, state],
+  )
+
+  const handleCancelScheduled = useCallback(
+    async (messageId: string) => {
+      try {
+        await scheduling.cancel(messageId)
+      } catch {
+        toast.error('Не удалось отменить')
+      }
+    },
+    [scheduling],
+  )
+
+  const handleSendScheduledNow = useCallback(
+    async (messageId: string) => {
+      try {
+        await scheduling.sendNow(messageId)
+        toast.success('Отправлено')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Не удалось отправить')
+      }
+    },
+    [scheduling],
+  )
+
+  const handleReschedule = useCallback(
+    async (messageId: string, sendAt: Date) => {
+      try {
+        await scheduling.reschedule({ messageId, sendAt })
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Не удалось перепланировать')
+      }
+    },
+    [scheduling],
+  )
 
   const handleReact = useCallback(
     (msgId: string, emoji: string) => state.toggleReaction.mutate({ messageId: msgId, emoji }),
@@ -192,6 +270,9 @@ export function MessengerTabContent({
         isDelayedPending={state.isDelayedPending}
         getDelayedExpiresAt={state.getExpiresAt}
         onCancelDelayed={handlers.handleCancelDelayed}
+        onCancelScheduled={handleCancelScheduled}
+        onSendScheduledNow={handleSendScheduledNow}
+        onReschedule={handleReschedule}
         isSearchActive={state.isSearchActive}
         onJumpToMessage={handleJumpToMessage}
       >
@@ -266,6 +347,7 @@ export function MessengerTabContent({
           }
           onSaveDraft={handlers.handleSaveDraft}
           isSavingDraft={state.saveDraftMutation.isPending}
+          onSchedule={handleSchedule}
           threadType={currentThread?.type}
           threadStatusId={currentThread?.status_id ?? null}
         />

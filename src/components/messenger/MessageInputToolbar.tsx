@@ -9,6 +9,7 @@ import { QuickReplyPicker } from './QuickReplyPicker'
 import { TaskStatusPicker } from './TaskStatusPicker'
 import type { TaskStatus } from '@/hooks/useStatuses'
 import { TranslateActionButton } from './TranslateActionButton'
+import { ScheduleSendButton } from './ScheduleSendButton'
 
 export const sendButtonStyles: Record<string, string> = {
   blue: 'bg-blue-500 hover:bg-blue-600 text-white',
@@ -49,6 +50,8 @@ interface MessageInputToolbarProps {
     pendingStatusId: string | null
     onPick: (statusId: string | null) => void
   }
+  /** Если задан — рендерим кнопку «Отправить позже». */
+  onSchedule?: (sendAt: Date) => void
   /** Если задан — рендерим иконку «Перевести» в тулбаре. */
   translate?: {
     threadId?: string
@@ -81,6 +84,7 @@ export function MessageInputToolbar({
   onSaveDraft,
   taskStatusPicker,
   translate,
+  onSchedule,
 }: MessageInputToolbarProps) {
   return (
     <div className="flex items-center pb-2 pt-0">
@@ -146,6 +150,12 @@ export function MessageInputToolbar({
           >
             <Save className="h-4 w-4" />
           </Button>
+        )}
+        {onSchedule && (
+          <ScheduleSendButton
+            disabled={!hasContent || isPending}
+            onSchedule={onSchedule}
+          />
         )}
         <Button
           size="icon"

@@ -124,7 +124,7 @@ export function BubbleTextContent({
                 deliveryFailed={deliveryFailed}
               />
             )}
-            {message.is_draft && onPublishDraft && (
+            {message.is_draft && !message.scheduled_send_at && onPublishDraft && (
               <DraftPublishButton
                 message={message}
                 accent={accent}

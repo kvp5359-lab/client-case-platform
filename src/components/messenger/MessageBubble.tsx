@@ -18,6 +18,7 @@ import { SendCountdown } from './SendCountdown'
 import { BubbleHeader } from './BubbleHeader'
 import { BubbleTimestamp } from './BubbleTimestamp'
 import { BubbleTextContent, DraftPublishButton, RetrySendButton } from './BubbleTextContent'
+import { ScheduledControls, formatScheduledTime } from './ScheduledControls'
 import { DeleteMessageDialog } from './DeleteMessageDialog'
 import { EmailFullViewDialog } from './EmailFullViewDialog'
 import { useMessengerContext } from './MessengerContext'
@@ -85,10 +86,14 @@ function MessageBubbleImpl({
     onPublishDraft,
     onEditDraft,
     onRetryTelegramSend,
+    onCancelScheduled,
+    onSendScheduledNow,
+    onReschedule,
     isSearchActive,
     onJumpToMessage,
     threadContactParticipantId,
   } = useMessengerContext()
+  const isScheduled = !!message.is_draft && !!message.scheduled_send_at
   const colors = bubbleStyles[accent]
   const showStaffMark = !!isClientThread && isTeamSender(message.sender_role)
   // Имя отправителя берём из join'нутого participant'а (актуальное на момент рендера).
@@ -388,6 +393,24 @@ function MessageBubbleImpl({
         <div className="relative max-w-full" ref={contentRef} onMouseUp={handleMouseUp}>
           {/* Quote popup рендерится императивно через DOM — см. handleMouseUp */}
 
+          {/* Draft / Scheduled label — вынесен наружу бабла, чтобы overflow-hidden не обрезал */}
+          {message.is_draft && (
+            <span
+              className={cn(
+                'absolute -top-1.5 right-3 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider bg-white inline-flex items-center gap-1 z-10 whitespace-nowrap',
+                isScheduled
+                  ? 'text-amber-600'
+                  : accent === 'dark'
+                    ? 'text-stone-500'
+                    : 'text-blue-500',
+              )}
+            >
+              {isScheduled
+                ? `⏱ На ${formatScheduledTime(message.scheduled_send_at!)}`
+                : 'Черновик'}
+            </span>
+          )}
+
           <div
             id={`msg-${message.id}`}
             className={cn(
@@ -403,9 +426,11 @@ function MessageBubbleImpl({
               // картинки, и лишний отступ снизу не нужен.
               hasNonImageAttachments && !hasImages && 'pb-6',
               message.is_draft
-                ? accent === 'dark'
-                  ? 'bg-white border-2 border-stone-600 text-gray-900'
-                  : 'bg-white border-2 border-blue-500 text-gray-900'
+                ? isScheduled
+                  ? 'bg-white border-2 border-dashed border-amber-500 text-gray-900'
+                  : accent === 'dark'
+                    ? 'bg-white border-2 border-stone-600 text-gray-900'
+                    : 'bg-white border-2 border-blue-500 text-gray-900'
                 : isOwn
                   ? deliveryFailed
                     ? 'bg-transparent border-2 border-red-500 text-red-600'
@@ -413,18 +438,6 @@ function MessageBubbleImpl({
                   : cn(colors.incoming, showAvatar && 'rounded-tl-md'),
             )}
           >
-            {/* Draft label */}
-            {message.is_draft && (
-              <span
-                className={cn(
-                  'absolute -top-2.5 right-3 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider bg-white',
-                  accent === 'dark' ? 'text-stone-500' : 'text-blue-500',
-                )}
-              >
-                Черновик
-              </span>
-            )}
-
             {/* Failed delivery badge */}
             {deliveryFailed && !message.is_draft && <DeliveryFailedBadge />}
 
@@ -482,7 +495,7 @@ function MessageBubbleImpl({
                 чтобы его позиция не менялась при появлении/исчезновении реакций. */}
 
             {/* Send now button for short drafts */}
-            {message.is_draft && onPublishDraft && !isOverflowing && (
+            {message.is_draft && !isScheduled && onPublishDraft && !isOverflowing && (
               <div className="flex justify-end mt-1.5">
                 <DraftPublishButton
                   message={message}
@@ -490,6 +503,16 @@ function MessageBubbleImpl({
                   onPublishDraft={onPublishDraft}
                 />
               </div>
+            )}
+
+            {/* Controls for scheduled messages */}
+            {isScheduled && !isOverflowing && (
+              <ScheduledControls
+                messageId={message.id}
+                onSendNow={onSendScheduledNow}
+                onCancel={onCancelScheduled}
+                onReschedule={onReschedule}
+              />
             )}
 
             {/* Retry send button for failed Telegram delivery */}

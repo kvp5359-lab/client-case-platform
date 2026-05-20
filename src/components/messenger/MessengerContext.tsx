@@ -52,6 +52,11 @@ export interface MessengerContextValue {
   getDelayedExpiresAt?: (messageId: string) => number | null
   onCancelDelayed?: (messageId: string) => void
 
+  // Запланированная отправка (scheduled_send_at в будущем)
+  onCancelScheduled?: (messageId: string) => void
+  onSendScheduledNow?: (messageId: string) => void
+  onReschedule?: (messageId: string, sendAt: Date) => void
+
   // Search: jump to message from a search result
   isSearchActive?: boolean
   onJumpToMessage?: (messageId: string) => void
@@ -101,6 +106,9 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       isDelayedPending: value.isDelayedPending,
       getDelayedExpiresAt: value.getDelayedExpiresAt,
       onCancelDelayed: value.onCancelDelayed,
+      onCancelScheduled: value.onCancelScheduled,
+      onSendScheduledNow: value.onSendScheduledNow,
+      onReschedule: value.onReschedule,
       isSearchActive: value.isSearchActive,
       onJumpToMessage: value.onJumpToMessage,
     }),
@@ -133,6 +141,9 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       value.isDelayedPending,
       value.getDelayedExpiresAt,
       value.onCancelDelayed,
+      value.onCancelScheduled,
+      value.onSendScheduledNow,
+      value.onReschedule,
       value.isSearchActive,
       value.onJumpToMessage,
     ],

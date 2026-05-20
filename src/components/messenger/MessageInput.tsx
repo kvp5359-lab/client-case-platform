@@ -47,6 +47,12 @@ interface MessageInputProps {
   onRemoveForwardedAttachment?: (index: number) => void
   onSaveDraft?: (content: string, files?: File[]) => void
   isSavingDraft?: boolean
+  onSchedule?: (
+    sendAt: Date,
+    content: string,
+    replyToId?: string | null,
+    files?: File[],
+  ) => void
   /** Тип треда. Если 'task' — показываем переключатель статуса. */
   threadType?: 'chat' | 'task'
   /** Текущий статус задачи (nullable). */
@@ -77,6 +83,7 @@ export function MessageInput({
   onRemoveForwardedAttachment,
   onSaveDraft,
   isSavingDraft,
+  onSchedule,
   threadType,
   threadStatusId,
 }: MessageInputProps) {
@@ -410,6 +417,30 @@ export function MessageInput({
     clearPersistedTranslation()
   }, [translation, clearPersistedTranslation])
 
+  const handleSchedule = useCallback(
+    (sendAt: Date) => {
+      const editor = editorRef.current
+      if (!editor || !onSchedule) return
+      const textContent = editor.getText().trim()
+      const htmlContent = editor.getHTML()
+      if (!textContent && files.length === 0) return
+
+      onSchedule(
+        sendAt,
+        textContent ? htmlContent : '📎',
+        replyTo?.id ?? null,
+        files.length > 0 ? files : undefined,
+      )
+
+      editor.commands.clearContent()
+      setHasText(false)
+      clearFiles()
+      clearDraft()
+      onClearReply()
+    },
+    [onSchedule, files, replyTo, clearFiles, clearDraft, onClearReply],
+  )
+
   const handleSaveDraft = useCallback(() => {
     const editor = editorRef.current
     if (!editor) return
@@ -553,6 +584,9 @@ export function MessageInput({
         onQuickReplyPickerHandled={() => setOpenQuickReplyPicker(false)}
         onSend={handleSend}
         onSaveDraft={handleSaveDraft}
+        onSchedule={
+          onSchedule && !editingMessage ? handleSchedule : undefined
+        }
         taskStatusPicker={
           isTaskThread
             ? {
