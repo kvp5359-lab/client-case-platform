@@ -5,6 +5,36 @@ import { applyFilters } from '@/lib/filters/filterEngine'
 import type { FilterGroup, FilterContext, SortField, SortDir } from '@/lib/filters/types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 
+// Статичные accessors — выносим на уровень модуля, чтобы не пересоздавать их
+// в useMemo при изменении сортировки/фильтров. Это были «горячие» аллокации:
+// при каждом сдвиге слайдера сортировки или вводе в фильтр-форму
+// пересоздавались два объекта с 10+ замыканиями.
+const TASK_FIELD_ACCESSORS: Record<string, (item: unknown) => unknown> = {
+  name: (item) => (item as WorkspaceTask).name,
+  type: (item) => (item as WorkspaceTask).type,
+  status_id: (item) => (item as WorkspaceTask).status_id,
+  project_id: (item) => (item as WorkspaceTask).project_id,
+  deadline: (item) => (item as WorkspaceTask).deadline,
+  accent_color: (item) => (item as WorkspaceTask).accent_color,
+  is_pinned: (item) => (item as WorkspaceTask).is_pinned,
+  created_by: (item) => (item as WorkspaceTask).created_by,
+  created_at: (item) => (item as WorkspaceTask).created_at,
+  updated_at: (item) => (item as WorkspaceTask).updated_at,
+}
+
+const PROJECT_FIELD_ACCESSORS: Record<string, (item: unknown) => unknown> = {
+  status_id: (item) => (item as Record<string, unknown>).status_id,
+  template_id: (item) => (item as Record<string, unknown>).template_id,
+  deadline: (item) => (item as Record<string, unknown>).deadline,
+  created_by: (item) => (item as Record<string, unknown>).created_by,
+  created_at: (item) => (item as Record<string, unknown>).created_at,
+  updated_at: (item) => (item as Record<string, unknown>).updated_at,
+  has_active_deadline_task: (item) => (item as Record<string, unknown>).has_active_deadline_task,
+  is_lead_template: (item) => (item as Record<string, unknown>).is_lead_template,
+  final_kind: (item) => (item as Record<string, unknown>).final_kind,
+  contact_participant_id: (item) => (item as Record<string, unknown>).contact_participant_id,
+}
+
 function compareTasks(
   a: WorkspaceTask,
   b: WorkspaceTask,
@@ -68,28 +98,27 @@ export function useFilteredTasks(
   sortDir: SortDir = 'desc',
   manualPositions?: Record<string, number>,
 ) {
+  // Junction accessor мемоизируем по assigneesMap: кэш id → массив id
+  // исполнителей. Без этого .map(a => a.id) выполнялся бы заново для
+  // каждой задачи на каждом прогоне фильтра — лишние аллокации на доске
+  // с сотнями задач.
+  const taskJunctionAccessors = useMemo(() => {
+    const cache: Record<string, string[]> = {}
+    return {
+      assignees: (id: string): string[] => {
+        const cached = cache[id]
+        if (cached) return cached
+        const arr = (assigneesMap[id] ?? []).map((a) => a.id)
+        cache[id] = arr
+        return arr
+      },
+    } as Record<string, (id: string) => string[]>
+  }, [assigneesMap])
+
   return useMemo(() => {
-    const fieldAccessors: Record<string, (item: unknown) => unknown> = {
-      name: (item) => (item as WorkspaceTask).name,
-      type: (item) => (item as WorkspaceTask).type,
-      status_id: (item) => (item as WorkspaceTask).status_id,
-      project_id: (item) => (item as WorkspaceTask).project_id,
-      deadline: (item) => (item as WorkspaceTask).deadline,
-      accent_color: (item) => (item as WorkspaceTask).accent_color,
-      is_pinned: (item) => (item as WorkspaceTask).is_pinned,
-      created_by: (item) => (item as WorkspaceTask).created_by,
-      created_at: (item) => (item as WorkspaceTask).created_at,
-      updated_at: (item) => (item as WorkspaceTask).updated_at,
-    }
-
-    const junctionAccessors: Record<string, (id: string) => string[]> = {
-      assignees: (id) =>
-        (assigneesMap[id] ?? []).map((a) => a.id),
-    }
-
-    const filtered = applyFilters(tasks, filters, ctx, fieldAccessors, junctionAccessors)
+    const filtered = applyFilters(tasks, filters, ctx, TASK_FIELD_ACCESSORS, taskJunctionAccessors)
     return [...filtered].sort((a, b) => compareTasks(a, b, sortBy, sortDir, manualPositions))
-  }, [tasks, filters, ctx, assigneesMap, sortBy, sortDir, manualPositions])
+  }, [tasks, filters, ctx, taskJunctionAccessors, sortBy, sortDir, manualPositions])
 }
 
 /**
@@ -109,27 +138,21 @@ export function useFilteredProjects<T extends Record<string, unknown> & { id: st
   nextTaskDeadlineByProjectId: Record<string, string | null> = {},
   manualPositions?: Record<string, number>,
 ) {
+  const projectJunctionAccessors = useMemo(() => {
+    const cache: Record<string, string[]> = {}
+    return {
+      participants: (id: string): string[] => {
+        const cached = cache[id]
+        if (cached) return cached
+        const arr = (participantsMap[id] ?? []).map((p) => p.id)
+        cache[id] = arr
+        return arr
+      },
+    } as Record<string, (id: string) => string[]>
+  }, [participantsMap])
+
   return useMemo(() => {
-    const fieldAccessors: Record<string, (item: unknown) => unknown> = {
-      status_id: (item) => (item as T).status_id,
-      template_id: (item) => (item as T).template_id,
-      deadline: (item) => (item as T).deadline,
-      created_by: (item) => (item as T).created_by,
-      created_at: (item) => (item as T).created_at,
-      updated_at: (item) => (item as T).updated_at,
-      has_active_deadline_task: (item) => (item as T).has_active_deadline_task,
-      // Этап 4.2: новые поля для фильтров (приходят денормализованно из RPC).
-      is_lead_template: (item) => (item as T).is_lead_template,
-      final_kind: (item) => (item as T).final_kind,
-      contact_participant_id: (item) => (item as T).contact_participant_id,
-    }
-
-    const junctionAccessors: Record<string, (id: string) => string[]> = {
-      participants: (id) =>
-        (participantsMap[id] ?? []).map((p) => p.id),
-    }
-
-    const filtered = applyFilters(projects, filters, ctx, fieldAccessors, junctionAccessors)
+    const filtered = applyFilters(projects, filters, ctx, PROJECT_FIELD_ACCESSORS, projectJunctionAccessors)
 
     if (sortBy === 'manual_order') {
       // Ручная сортировка по позициям из board_list_item_order. Элементы без
@@ -173,5 +196,5 @@ export function useFilteredProjects<T extends Record<string, unknown> & { id: st
       if (ka > kb) return 1 * mult
       return 0
     })
-  }, [projects, filters, ctx, participantsMap, sortBy, sortDir, nextTaskDeadlineByProjectId, manualPositions])
+  }, [projects, filters, ctx, projectJunctionAccessors, sortBy, sortDir, nextTaskDeadlineByProjectId, manualPositions])
 }

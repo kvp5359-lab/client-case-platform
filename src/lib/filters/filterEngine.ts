@@ -166,12 +166,60 @@ function resolveArray(arr: unknown, field: string, ctx: FilterContext, item?: un
 type FieldAccessor = (item: unknown) => unknown
 type JunctionAccessor = (itemId: string) => string[]
 
+/**
+ * Кэш разрешённых правых частей дата-условий в пределах одного вызова
+ * applyFilters. Ключ — объект условия (стабильный по reference в пределах
+ * одного прогона). Значение — { range, scalar } — оба резолва, лениво.
+ *
+ * Без кэша: для доски с 300 задач и 3 дата-фильтрами `new Date(value)`
+ * вызывался 900 раз — все 900 с одинаковым результатом, потому что value
+ * у каждого условия одно.
+ */
+interface DateValueCache {
+  range: [Date, Date] | null | undefined
+  scalar: Date | null | undefined
+  rangeFrom: [Date, Date] | null | undefined
+  scalarFrom: Date | null | undefined
+  rangeTo: [Date, Date] | null | undefined
+  scalarTo: Date | null | undefined
+}
+type DateCacheMap = Map<FilterCondition, DateValueCache>
+
+function getCacheEntry(cache: DateCacheMap, cond: FilterCondition): DateValueCache {
+  let entry = cache.get(cond)
+  if (!entry) {
+    entry = {
+      range: undefined,
+      scalar: undefined,
+      rangeFrom: undefined,
+      scalarFrom: undefined,
+      rangeTo: undefined,
+      scalarTo: undefined,
+    }
+    cache.set(cond, entry)
+  }
+  return entry
+}
+
+function cachedRange(cache: DateCacheMap, cond: FilterCondition, v: unknown, now: Date): [Date, Date] | null {
+  const e = getCacheEntry(cache, cond)
+  if (e.range === undefined) e.range = resolveDateRange(v, now)
+  return e.range
+}
+
+function cachedScalar(cache: DateCacheMap, cond: FilterCondition, v: unknown, now: Date): Date | null {
+  const e = getCacheEntry(cache, cond)
+  if (e.scalar === undefined) e.scalar = resolveDateValue(v, now)
+  return e.scalar
+}
+
 function evaluateCondition(
   condition: FilterCondition,
   item: unknown,
   ctx: FilterContext,
   fieldAccessors: Record<string, FieldAccessor>,
   junctionAccessors: Record<string, JunctionAccessor>,
+  dateCache: DateCacheMap,
 ): boolean {
   const { field, operator, value } = condition
 
@@ -257,41 +305,44 @@ function evaluateCondition(
     case 'before': {
       const d = parseDate(actual)
       if (!d) return false
-      const range = resolveDateRange(value, ctx.now)
-      return range ? d < range[0] : d < (resolveDateValue(value, ctx.now) ?? d)
+      const range = cachedRange(dateCache, condition, value, ctx.now)
+      return range ? d < range[0] : d < (cachedScalar(dateCache, condition, value, ctx.now) ?? d)
     }
     case 'before_eq': {
       const d = parseDate(actual)
       if (!d) return false
-      const range = resolveDateRange(value, ctx.now)
-      return range ? d <= range[1] : d <= (resolveDateValue(value, ctx.now) ?? d)
+      const range = cachedRange(dateCache, condition, value, ctx.now)
+      return range ? d <= range[1] : d <= (cachedScalar(dateCache, condition, value, ctx.now) ?? d)
     }
     case 'after': {
       const d = parseDate(actual)
       if (!d) return false
-      const range = resolveDateRange(value, ctx.now)
-      return range ? d > range[1] : d > (resolveDateValue(value, ctx.now) ?? d)
+      const range = cachedRange(dateCache, condition, value, ctx.now)
+      return range ? d > range[1] : d > (cachedScalar(dateCache, condition, value, ctx.now) ?? d)
     }
     case 'after_eq': {
       const d = parseDate(actual)
       if (!d) return false
-      const range = resolveDateRange(value, ctx.now)
-      return range ? d >= range[0] : d >= (resolveDateValue(value, ctx.now) ?? d)
+      const range = cachedRange(dateCache, condition, value, ctx.now)
+      return range ? d >= range[0] : d >= (cachedScalar(dateCache, condition, value, ctx.now) ?? d)
     }
     case 'date_eq': {
       const d = parseDate(actual)
       if (!d) return false
-      const range = resolveDateRange(value, ctx.now)
+      const range = cachedRange(dateCache, condition, value, ctx.now)
       return range ? d >= range[0] && d <= range[1] : false
     }
     case 'between': {
       const d = parseDate(actual)
       if (!d) return false
       const arr = value as [unknown, unknown]
-      const fromRange = resolveDateRange(arr[0], ctx.now)
-      const toRange = resolveDateRange(arr[1], ctx.now)
-      const dFrom = fromRange ? fromRange[0] : resolveDateValue(arr[0], ctx.now)
-      const dTo = toRange ? toRange[1] : resolveDateValue(arr[1], ctx.now)
+      const entry = getCacheEntry(dateCache, condition)
+      if (entry.rangeFrom === undefined) entry.rangeFrom = resolveDateRange(arr[0], ctx.now)
+      if (entry.rangeTo === undefined) entry.rangeTo = resolveDateRange(arr[1], ctx.now)
+      if (entry.scalarFrom === undefined) entry.scalarFrom = resolveDateValue(arr[0], ctx.now)
+      if (entry.scalarTo === undefined) entry.scalarTo = resolveDateValue(arr[1], ctx.now)
+      const dFrom = entry.rangeFrom ? entry.rangeFrom[0] : entry.scalarFrom
+      const dTo = entry.rangeTo ? entry.rangeTo[1] : entry.scalarTo
       return dFrom != null && dTo != null && d >= dFrom && d <= dTo
     }
     case 'today': {
@@ -322,12 +373,13 @@ function evaluateRule(
   ctx: FilterContext,
   fieldAccessors: Record<string, FieldAccessor>,
   junctionAccessors: Record<string, JunctionAccessor>,
+  dateCache: DateCacheMap,
 ): boolean {
   if (rule.type === 'condition') {
-    return evaluateCondition(rule, item, ctx, fieldAccessors, junctionAccessors)
+    return evaluateCondition(rule, item, ctx, fieldAccessors, junctionAccessors, dateCache)
   }
   // type === 'group'
-  return evaluateGroup(rule.group, item, ctx, fieldAccessors, junctionAccessors)
+  return evaluateGroup(rule.group, item, ctx, fieldAccessors, junctionAccessors, dateCache)
 }
 
 function evaluateGroup(
@@ -336,17 +388,18 @@ function evaluateGroup(
   ctx: FilterContext,
   fieldAccessors: Record<string, FieldAccessor>,
   junctionAccessors: Record<string, JunctionAccessor>,
+  dateCache: DateCacheMap,
 ): boolean {
   if (group.rules.length === 0) return true
 
   if (group.logic === 'and') {
     return group.rules.every((r) =>
-      evaluateRule(r, item, ctx, fieldAccessors, junctionAccessors),
+      evaluateRule(r, item, ctx, fieldAccessors, junctionAccessors, dateCache),
     )
   }
   // 'or'
   return group.rules.some((r) =>
-    evaluateRule(r, item, ctx, fieldAccessors, junctionAccessors),
+    evaluateRule(r, item, ctx, fieldAccessors, junctionAccessors, dateCache),
   )
 }
 
@@ -369,7 +422,10 @@ export function applyFilters<T>(
   junctionAccessors: Record<string, JunctionAccessor> = {},
 ): T[] {
   if (filters.rules.length === 0) return items
+  // Кэш разрешённых правых частей дата-условий — один на весь прогон,
+  // переиспользуется на каждой итерации items.
+  const dateCache: DateCacheMap = new Map()
   return items.filter((item) =>
-    evaluateGroup(filters, item, ctx, fieldAccessors, junctionAccessors),
+    evaluateGroup(filters, item, ctx, fieldAccessors, junctionAccessors, dateCache),
   )
 }
