@@ -76,7 +76,7 @@ function toInboxEntry(d: PersonalDialogEntry): InboxThreadEntry {
     last_reaction_sender_name: null,
     last_reaction_sender_avatar_url: null,
     last_reaction_message_preview: null,
-    contact_email: d.email_contact,
+    email_contact: d.email_contact,
     email_subject: d.email_subject,
     last_event_at: null,
     last_event_text: null,

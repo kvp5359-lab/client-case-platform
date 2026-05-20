@@ -56,7 +56,8 @@ export interface InboxThreadEntry {
   last_reaction_sender_avatar_url: string | null
   /** Raw HTML content of the message that was reacted to — needs stripping before display. */
   last_reaction_message_preview: string | null
-  contact_email: string | null
+  /** Email-адрес собеседника треда (из RPC поле `email_contact`). */
+  email_contact: string | null
   email_subject: string | null
   /** Audit: timestamp of last event (status change, rename, etc.) */
   last_event_at: string | null

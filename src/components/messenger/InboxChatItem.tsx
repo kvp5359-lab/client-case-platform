@@ -145,17 +145,26 @@ export const InboxChatItem = memo(function InboxChatItem({
   // Avatar + name shown in the left slot: normally the message author, but for
   // a newer unread reaction we show the person who reacted instead — otherwise
   // the row reads as "Alice reacted to her own message", which is confusing.
+  // Для email-тредов без counterpart (например, исходящее без ответа) НЕ
+  // показываем аватар отправителя — иначе в инбоксе у получателя стоит
+  // аватарка самого юзера. Берём инициал по email_contact.
   const hasCounterpart = !!chat.counterpart_name
+  const isEmailWithoutCounterpart =
+    !hasCounterpart && chat.channel_type === 'email' && !!chat.email_contact
   const avatarUrl = reactionIsNewer
     ? chat.last_reaction_sender_avatar_url
     : hasCounterpart
       ? chat.counterpart_avatar_url
-      : chat.last_sender_avatar_url
+      : isEmailWithoutCounterpart
+        ? null
+        : chat.last_sender_avatar_url
   const avatarFallbackName = reactionIsNewer
     ? chat.last_reaction_sender_name
     : hasCounterpart
       ? chat.counterpart_name
-      : chat.last_sender_name
+      : isEmailWithoutCounterpart
+        ? chat.email_contact
+        : chat.last_sender_name
 
   const accent = accentStyles[chat.thread_accent_color] ?? defaultAccent
   const ChannelIcon = channelIcons[chat.channel_type]

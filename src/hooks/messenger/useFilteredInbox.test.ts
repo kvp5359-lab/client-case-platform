@@ -58,7 +58,7 @@ function inboxThread(overrides: Partial<InboxThreadEntry> = {}): InboxThreadEntr
     last_reaction_sender_name: null,
     last_reaction_sender_avatar_url: null,
     last_reaction_message_preview: null,
-    contact_email: null,
+    email_contact: null,
     email_subject: null,
     last_event_at: null,
     last_event_text: null,
