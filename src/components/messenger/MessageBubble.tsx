@@ -11,6 +11,7 @@ import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import { bubbleStyles } from './utils/messageStyles'
 import { useCollapsibleText } from './hooks/useCollapsibleText'
 import { DeliveryFailedBadge, useDeliveryStatus } from './DeliveryIndicator'
+import { isSoftTelegramError } from './TelegramDeliveryIndicator'
 // QuotePopup рендерится императивно (DOM) — см. handleMouseUp в MessageBubble
 import { ReactionBadges } from './ReactionBadges'
 import { MessageActions, MessageContextMenu } from './MessageActions'
@@ -104,7 +105,11 @@ function MessageBubbleImpl({
     : ''
   const displayName = participantDisplayName || message.sender_name
   const rawDeliveryStatus = useDeliveryStatus(message, isOwn, { isTelegramLinked })
-  const deliveryFailed = rawDeliveryStatus === 'failed'
+  // Soft-fail: сообщение доставлено (есть telegram_message_id), но
+  // потерялась только цитата / fallback на бота-секретаря.
+  // UI не красит такой бабл, рисует тонкую метку.
+  const softTelegramError = isSoftTelegramError(message)
+  const deliveryFailed = rawDeliveryStatus === 'failed' && !softTelegramError
   // Старый getDeliveryStatus возвращал 'pending' | 'sent' | 'read' | null, а
   // 'failed' рендерится отдельным бейджем. Маппим, чтобы не трогать DeliveryIcon.
   const deliveryStatus = rawDeliveryStatus === 'failed' ? null : rawDeliveryStatus
@@ -519,6 +524,16 @@ function MessageBubbleImpl({
             {!message.is_draft && deliveryFailed && onRetryTelegramSend && !isOverflowing && (
               <div className="flex justify-end mt-1.5">
                 <RetrySendButton message={message} onRetrySend={onRetryTelegramSend} />
+              </div>
+            )}
+
+            {/* Soft-fail плашка: сообщение доставлено, но цитата не ушла */}
+            {softTelegramError && !message.is_draft && (
+              <div
+                className="mt-1 text-[10px] text-muted-foreground/80 italic"
+                title="Telegram отклонил цитирование оригинала. Сообщение отправлено как обычный текст."
+              >
+                📎 без цитаты
               </div>
             )}
           </div>

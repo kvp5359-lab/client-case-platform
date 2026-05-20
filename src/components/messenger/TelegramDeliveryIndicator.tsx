@@ -115,3 +115,21 @@ export function useTelegramDeliveryStatus(
 
   return 'delivered'
 }
+
+/**
+ * Сообщение доставлено в Telegram (есть message_id), но триггер при отправке
+ * записал «диагностическую» ошибку: цитата не нашлась в чате (`reply_dropped:`)
+ * или личный бот сотрудника не в чате и fallback ушёл через секретаря
+ * (`employee_bot_send_failed: ... via=text`). По факту клиент сообщение
+ * получил — UI не должен красить бабл красным.
+ */
+export function isSoftTelegramError(message: ProjectMessage): boolean {
+  const hasId =
+    !!message.telegram_message_id ||
+    (Array.isArray(message.telegram_message_ids) && message.telegram_message_ids.length > 0)
+  if (!hasId) return false
+  const detail = (message as unknown as { telegram_error_detail?: string | null })
+    .telegram_error_detail
+  if (!detail) return false
+  return detail.startsWith('reply_dropped:') || detail.includes('via=text')
+}

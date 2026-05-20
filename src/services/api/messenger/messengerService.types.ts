@@ -85,6 +85,11 @@ export interface ProjectMessage {
   telegram_message_ids?: number[] | null
   telegram_chat_id: number | null
   telegram_attachments_delivered: boolean | null
+  /** Диагностика последней отправки в TG. Если есть telegram_message_id и
+   *  error начинается с `reply_dropped:` или содержит `via=text` — сообщение
+   *  доставлено, потерялась только цитата (или личный бот не в чате и
+   *  fallback ушёл через бота-секретаря). UI не красит такие баблы красным. */
+  telegram_error_detail?: string | null
   /** Когда собеседник прочитал это исходящее (заполняется MTProto-сервисом по UpdateReadHistoryOutbox). null — не прочитано или unknown. */
   recipient_read_at?: string | null
   /** Wazzup messageId — стампится при отправке/приёме. */
