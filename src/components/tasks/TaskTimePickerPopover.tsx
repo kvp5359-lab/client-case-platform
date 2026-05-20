@@ -24,7 +24,7 @@ import {
   PopoverAnchor,
   PopoverContent,
 } from '@/components/ui/popover'
-import { X } from 'lucide-react'
+import { Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ru } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 
@@ -59,10 +59,9 @@ const TIME_OPTIONS = (() => {
 function formatDateShort(d: Date | undefined): string {
   if (!d) return ''
   return d.toLocaleDateString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  })
+    day: 'numeric',
+    month: 'short',
+  }).replace(/\.$/, '')
 }
 
 function parseHM(time: string): { h: number; m: number } | null {
@@ -146,7 +145,10 @@ function TimeList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   return (
-    <div ref={ref} className="max-h-[260px] w-[90px] overflow-y-auto py-1">
+    <div
+      ref={ref}
+      className="max-h-[220px] w-full overflow-y-auto py-1 grid grid-cols-4 gap-0.5"
+    >
       {options.map((t) => (
         <button
           key={t}
@@ -154,7 +156,7 @@ function TimeList({
           data-time={t}
           onClick={() => onSelect(t)}
           className={cn(
-            'block w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors',
+            'text-center px-1 py-1 text-xs rounded hover:bg-accent transition-colors',
             t === current && 'bg-accent font-medium',
           )}
         >
@@ -238,6 +240,7 @@ function buildValue(
 export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [active, setActive] = useState<ActiveField>(null)
+  const [displayMonth, setDisplayMonth] = useState<Date>(() => new Date())
 
   // Локальный state формы — инициализируется из value при открытии и при
   // каждом изменении value снаружи.
@@ -265,6 +268,7 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
   const open = () => {
     // Не пред-выбираем сегодня — calendar просто подсветит today как ориентир.
     setActive('startDate')
+    setDisplayMonth(date ?? new Date())
     setPopoverOpen(true)
   }
 
@@ -361,6 +365,9 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
       <CalendarUI
         mode="single"
         selected={selected}
+        month={displayMonth}
+        onMonthChange={setDisplayMonth}
+        hideNavigation
         onSelect={(d) => {
           if (!d) return
           if (activeDateField === 'startDate') {
@@ -371,10 +378,18 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
           }
         }}
         locale={ru}
+        className="[--cell-size:2.2rem] p-0 w-full"
+        classNames={{
+          month_caption: 'hidden',
+          months: 'flex flex-col gap-0 w-full',
+          month: 'flex w-full flex-col gap-1.5',
+          week: 'mt-0.5 flex w-full',
+          outside: 'text-muted-foreground/30 aria-selected:text-muted-foreground/30',
+        }}
       />
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, date, endDate, startTime, endTime, effectiveEndDate])
+  }, [active, date, endDate, startTime, endTime, effectiveEndDate, displayMonth])
 
   return (
     <Popover
@@ -388,9 +403,51 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
       <PopoverAnchor asChild>
         <span>{trigger({ open, isOpen: popoverOpen })}</span>
       </PopoverAnchor>
-      <PopoverContent className="w-auto p-0 z-[100]" align="start" sideOffset={4}>
-        <div className="p-3 space-y-1">
-          <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+      <PopoverContent
+        className="w-[17rem] p-0 z-[100]"
+        align="start"
+        sideOffset={4}
+      >
+        <div className="p-2.5 space-y-2">
+          {/* Header: prev / month / next + корзина в одной строке */}
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setDisplayMonth((m) => {
+                const d = new Date(m); d.setMonth(d.getMonth() - 1); return d
+              })}
+              className="p-0.5 rounded text-muted-foreground hover:bg-accent transition-colors"
+              aria-label="Предыдущий месяц"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm font-medium select-none px-1">
+              {displayMonth.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}
+            </span>
+            <button
+              type="button"
+              onClick={() => setDisplayMonth((m) => {
+                const d = new Date(m); d.setMonth(d.getMonth() + 1); return d
+              })}
+              className="p-0.5 rounded text-muted-foreground hover:bg-accent transition-colors"
+              aria-label="Следующий месяц"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleClear}
+              title="Очистить сроки"
+              className="ml-auto p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="flex justify-start">{popoverBody}</div>
+
+          {/* Чекбокс «Указать длительность» — под календарём, выровнен под первой колонкой */}
+          <label className="flex items-center gap-2 text-xs cursor-pointer select-none pl-2 pt-1 pb-1.5">
             <input
               type="checkbox"
               checked={showDuration}
@@ -410,28 +467,18 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
             <span>Указать длительность</span>
           </label>
 
+          {/* Поля длительности — под чекбоксом */}
           {showDuration && (
-            <div className="flex items-center gap-1 flex-nowrap">
-              {fieldBtn('startDate', formatDateShort(date), '—', 72)}
-              {fieldBtn('startTime', startTime, '--:--', 52)}
-              <span className="text-xs text-muted-foreground px-0.5">—</span>
-              {fieldBtn('endTime', endTime, '--:--', 52)}
-              {fieldBtn('endDate', endDate ? formatDateShort(endDate) : '', '—', 72)}
+            <div className="flex items-center justify-between gap-1 flex-nowrap">
+              {fieldBtn('startDate', formatDateShort(date), '—', 68)}
+              <div className="flex items-center gap-0">
+                {fieldBtn('startTime', startTime, '--:--', 44)}
+                <span className="text-xs text-muted-foreground px-0.5">–</span>
+                {fieldBtn('endTime', endTime, '--:--', 44)}
+              </div>
+              {fieldBtn('endDate', endDate ? formatDateShort(endDate) : '', '—', 68)}
             </div>
           )}
-
-          <div className="flex justify-center">{popoverBody}</div>
-
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={handleClear}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-3 h-3" />
-              <span>Очистить</span>
-            </button>
-          </div>
         </div>
       </PopoverContent>
     </Popover>
