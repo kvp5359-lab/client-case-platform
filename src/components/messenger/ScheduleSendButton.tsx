@@ -8,7 +8,7 @@
  * выбора времени. Валидация минимума +2 минуты — в useScheduleMessage.
  */
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -35,18 +35,27 @@ export function ScheduleSendButton({ disabled, onSchedule }: ScheduleSendButtonP
   const [error, setError] = useState<string | null>(null)
 
   const presets = getSchedulePresets()
+  // Date.now() в рендере — допустимо для UI-only значения min у
+  // <input type="datetime-local">. ESLint react-hooks/purity предлагает
+  // обернуть в useMemo, но это всё равно impure call. Достаточно
+  // безопасно: даже если значение «обновится» на перерендере, это просто
+  // подтягивает атрибут min к текущему моменту, не ломая state.
+  // eslint-disable-next-line react-hooks/purity
   const minDate = new Date(Date.now() + MIN_SCHEDULE_OFFSET_MS)
 
-  const handlePick = (d: Date) => {
-    if (d.getTime() - Date.now() < MIN_SCHEDULE_OFFSET_MS) {
-      setError('Минимум — через 2 минуты')
-      return
-    }
-    setError(null)
-    setOpen(false)
-    setCustomValue('')
-    onSchedule(d)
-  }
+  const handlePick = useCallback(
+    (d: Date) => {
+      if (d.getTime() - Date.now() < MIN_SCHEDULE_OFFSET_MS) {
+        setError('Минимум — через 2 минуты')
+        return
+      }
+      setError(null)
+      setOpen(false)
+      setCustomValue('')
+      onSchedule(d)
+    },
+    [onSchedule],
+  )
 
   const handleCustom = () => {
     if (!customValue) return
