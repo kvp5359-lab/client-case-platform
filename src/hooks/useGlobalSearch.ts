@@ -142,6 +142,10 @@ export function useTrackRecentView() {
 /**
  * Удобная обёртка: автоматически фиксирует просмотр при маунте/смене id.
  * Сама обрабатывает enabled=false для случая отсутствия id или workspace.
+ *
+ * Debounce 600ms: при быстром переключении между тредами (или быстрой
+ * навигации между проектами/статьями) запись делается только для того,
+ * на котором юзер реально задержался. Иначе пачка RPC на каждый клик.
  */
 export function useAutoTrackRecentView(
   workspaceId: string | undefined,
@@ -151,7 +155,10 @@ export function useAutoTrackRecentView(
   const { mutate } = useTrackRecentView()
   useEffect(() => {
     if (!workspaceId || !entityId) return
-    mutate({ workspaceId, entityType, entityId })
+    const t = setTimeout(() => {
+      mutate({ workspaceId, entityType, entityId })
+    }, 600)
+    return () => clearTimeout(t)
   }, [workspaceId, entityType, entityId, mutate])
 }
 
