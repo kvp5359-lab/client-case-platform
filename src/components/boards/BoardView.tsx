@@ -164,7 +164,6 @@ export function BoardView({
     | null
   >(null)
   // TEMP DEBUG — показываем в углу что видит dnd-kit. Удалить когда manual-reorder заработает.
-  const [debugInfo, setDebugInfo] = useState<string>('')
 
   const updateProjectStatus = useUpdateProjectStatusOnBoard()
 
@@ -339,8 +338,6 @@ export function BoardView({
     if (isCardDrag) {
       // Card drag — отслеживаем над row/group/list-cards droppables.
       const overId = over ? String(over.id) : null
-      // TEMP DEBUG
-      setDebugInfo(`active=${activeId} | over=${overId ?? 'null'}`)
       setIsOverCalendar(!!overId && overId.startsWith('calendar-drop:'))
       if (overId && (overId.startsWith('task-row:') || overId.startsWith('project-row:'))) {
         // Парсим `task-row:<itemId>:<listId>` либо `project-row:<itemId>:<listId>`.
@@ -423,7 +420,6 @@ export function BoardView({
     setActiveCard(null)
     setOverCardTarget(null)
     setRowDropIndicator(null)
-    setDebugInfo('')
   }, [])
 
   const handleDragEnd = useCallback((e: DragEndEvent) => {
@@ -731,28 +727,6 @@ export function BoardView({
           )
         })() : null}
       </DragOverlay>
-      {/* TEMP DEBUG — удалить когда manual-reorder заработает. */}
-      {debugInfo && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 8,
-            left: 8,
-            zIndex: 9999,
-            background: 'rgba(0,0,0,0.85)',
-            color: '#fff',
-            padding: '6px 10px',
-            borderRadius: 6,
-            fontFamily: 'monospace',
-            fontSize: 11,
-            maxWidth: 600,
-            wordBreak: 'break-all',
-            pointerEvents: 'none',
-          }}
-        >
-          {debugInfo}
-        </div>
-      )}
     </DndContext>
   )
 }

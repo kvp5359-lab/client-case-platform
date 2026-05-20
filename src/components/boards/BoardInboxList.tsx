@@ -246,13 +246,41 @@ export function BoardInboxList({
       </div>
 
       {/* Thread list */}
-      <div className="divide-y divide-border/50 border-b border-border/50">
+      <div className="border-b border-border/50">
         {filteredThreads.length === 0 ? (
           <div className="px-3 py-4 text-xs text-muted-foreground text-center">
             {filter === 'unread' ? 'Нет непрочитанных' : searchQuery ? 'Ничего не найдено' : 'Пусто'}
           </div>
-        ) : (
-          filteredThreads.map((chat) => (
+        ) : (() => {
+          const isUnread = (c: InboxThreadEntry) =>
+            c.unread_count > 0 ||
+            c.has_unread_reaction ||
+            c.manually_unread ||
+            (c.unread_event_count ?? 0) > 0
+
+          // На вкладке «Все» (и без активного поиска) — разделяем на
+          // непрочитанные сверху и прочитанные снизу с подписью.
+          const groupSections = filter === 'all' && !searchQuery.trim()
+          if (!groupSections) {
+            return (
+              <div className="divide-y divide-border/50">
+                {filteredThreads.map((chat) => (
+                  <InboxChatItem
+                    key={chat.thread_id}
+                    chat={chat}
+                    isSelected={selectedThreadId === chat.thread_id}
+                    onClick={() => onOpenThread(threadToTaskItem(chat))}
+                    onMarkAsRead={() => markReadMutation.mutate(chat)}
+                    onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
+                  />
+                ))}
+              </div>
+            )
+          }
+
+          const unread = filteredThreads.filter(isUnread)
+          const read = filteredThreads.filter((c) => !isUnread(c))
+          const renderItem = (chat: InboxThreadEntry) => (
             <InboxChatItem
               key={chat.thread_id}
               chat={chat}
@@ -261,8 +289,25 @@ export function BoardInboxList({
               onMarkAsRead={() => markReadMutation.mutate(chat)}
               onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
             />
-          ))
-        )}
+          )
+          return (
+            <>
+              {unread.length > 0 && (
+                <div className="divide-y divide-border/50">{unread.map(renderItem)}</div>
+              )}
+              {read.length > 0 && (
+                <>
+                  {unread.length > 0 && (
+                    <div className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground bg-muted/30">
+                      Прочитанные
+                    </div>
+                  )}
+                  <div className="divide-y divide-border/50">{read.map(renderItem)}</div>
+                </>
+              )}
+            </>
+          )
+        })()}
       </div>
     </div>
   )
