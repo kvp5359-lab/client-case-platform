@@ -444,10 +444,12 @@ body[data-panel-open][data-panel-mode="push"] main {
   transition: right 0.3s ease !important;
 }
 
-/* Когда боковая панель открыта — сдвигаем тосты */
+/* Когда правая панель открыта — прижимаем тосты к её левой границе.
+   --panel-width устанавливается в WorkspaceLayout (drag-resize handle),
+   так что тосты следуют за реальной шириной панели. */
 body[data-panel-open] [data-sonner-toaster][data-x-position='right'],
 body[data-task-panel-open] [data-sonner-toaster][data-x-position='right'] {
-  right: 46% !important;
+  right: calc(var(--panel-width, 600px) + 16px) !important;
 }
 
 /* Sonner toast: крестик закрытия — верхний правый угол */
