@@ -128,12 +128,11 @@ export async function ingestMtprotoMessage(args: {
       : null
     : isOutgoing ? ctx.tg_user_id : clientTgUserId
 
-  // Парсим имя/юзернейм клиента. Перебираем несколько источников — gramjs
-  // не всегда сразу резолвит peerUser через getEntity (для новых контактов
-  // access_hash может быть ещё не в кеше). Пробуем по убыванию надёжности:
-  //   1) msg.getSender() — gramjs внутри использует кешированный sender, если есть
-  //   2) event.client.getEntity(peerUser) — старый путь
-  //   3) event.client.getEntity(msg.fromId) — если fromId присутствует
+  // Парсим имя/юзернейм клиента. Для **личного диалога** клиент = peerUser
+  // (другая сторона). Важно: `msg.getSender()` для исходящих возвращает
+  // САМОГО юзера сессии, поэтому использовать его как fallback нельзя —
+  // иначе тред получит имя сотрудника-владельца. Берём sender только для
+  // входящих, иначе сразу идём через getEntity(peerUser).
   let clientFirstName: string | null = null
   let clientLastName: string | null = null
   let clientUsername: string | null = null
@@ -147,12 +146,19 @@ export async function ingestMtprotoMessage(args: {
     return false
   }
   try {
-    const sender = await msg.getSender()
-    if (tryReadUser(sender)) {
-      /* got name */
-    } else {
+    // 1) Для входящих msg.getSender() возвращает собеседника — самый
+    //    быстрый путь. Для исходящих он возвращает self, пропускаем.
+    if (!isOutgoing) {
+      const sender = await msg.getSender()
+      if (tryReadUser(sender)) {
+        /* got name */
+      }
+    }
+    if (!clientFirstName && !clientLastName && !clientUsername) {
+      // 2) Резолвим непосредственно собеседника по peerUser — работает
+      //    для обоих направлений.
       const entity = await client.getEntity(peerUser)
-      if (!tryReadUser(entity) && msg.fromId) {
+      if (!tryReadUser(entity) && !isOutgoing && msg.fromId) {
         const fromEntity = await client.getEntity(msg.fromId)
         tryReadUser(fromEntity)
       }
@@ -426,12 +432,25 @@ async function downloadAndStoreMedia(args: {
   }
 }
 
+/** Минимальный интервал между попытками рефреша аватара (24ч). */
+const AVATAR_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000
+
 /**
  * Качает profile photo клиента через gramjs и сохраняет URL в participants.
- * Идемпотентно: пропускает, если у participant'а уже есть avatar_url.
- * Вызывается fire-and-forget из handleNewMessage.
+ *
+ * Логика «когда пробовать»:
+ *   - avatar_url IS NULL → всегда пробовать.
+ *   - avatar_fetched_at IS NULL → пробовать (никогда не пытались).
+ *   - avatar_fetched_at старше 24ч → пробовать (рефреш).
+ *   - Иначе — пропустить, чтобы не спамить Telegram при каждом сообщении.
+ *
+ * Storage overwrite через upsert: при смене аватара клиентом URL остаётся
+ * прежний (та же path `tg/<id>.jpg`), но мы обновляем `?v=<timestamp>` —
+ * это инвалидирует CDN-кеш у получателя.
+ *
+ * Экспортируется, чтобы /messages/send (commands.ts) тоже мог дёргать.
  */
-async function fetchAndStoreAvatar(
+export async function fetchAndStoreAvatar(
   client: import("telegram").TelegramClient,
   args: {
     participantId: string
@@ -441,18 +460,38 @@ async function fetchAndStoreAvatar(
 ): Promise<void> {
   const { data: row } = await supabase
     .from("participants")
-    .select("avatar_url")
+    .select("avatar_url, avatar_fetched_at")
     .eq("id", args.participantId)
     .maybeSingle()
-  if (row?.avatar_url) return // уже есть
+
+  const fetchedAt = row?.avatar_fetched_at ? new Date(row.avatar_fetched_at as string).getTime() : null
+  const isFresh =
+    !!row?.avatar_url &&
+    fetchedAt !== null &&
+    Date.now() - fetchedAt < AVATAR_REFRESH_INTERVAL_MS
+  if (isFresh) return
 
   const entity = await client.getEntity(args.peerUser)
   const hasPhoto = entity && "photo" in entity &&
     entity.photo && entity.photo.className !== "UserProfilePhotoEmpty"
-  if (!hasPhoto) return
+  if (!hasPhoto) {
+    // Стампим попытку даже при отсутствии фото — иначе будем долбить
+    // getEntity на каждое сообщение клиента без аватарки.
+    await supabase
+      .from("participants")
+      .update({ avatar_fetched_at: new Date().toISOString() })
+      .eq("id", args.participantId)
+    return
+  }
 
   const buf = await client.downloadProfilePhoto(entity, { isBig: true })
-  if (!buf || (buf as Buffer).length === 0) return
+  if (!buf || (buf as Buffer).length === 0) {
+    await supabase
+      .from("participants")
+      .update({ avatar_fetched_at: new Date().toISOString() })
+      .eq("id", args.participantId)
+    return
+  }
 
   const path = `tg/${args.clientTgUserId}.jpg`
   const { error: upErr } = await supabase.storage
@@ -472,6 +511,6 @@ async function fetchAndStoreAvatar(
 
   await supabase
     .from("participants")
-    .update({ avatar_url: avatarUrl })
+    .update({ avatar_url: avatarUrl, avatar_fetched_at: new Date().toISOString() })
     .eq("id", args.participantId)
 }

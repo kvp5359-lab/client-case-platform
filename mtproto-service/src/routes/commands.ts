@@ -20,7 +20,8 @@ import { config } from "../config.js"
 import { supabase } from "../db.js"
 import { getClient } from "../sessions/manager.js"
 import { htmlToTelegramHtml, isHtmlContent, escapeHtmlEntities } from "../utils/htmlFormatting.js"
-import { ingestMtprotoMessage } from "../handlers/incoming.js"
+import { ingestMtprotoMessage, fetchAndStoreAvatar } from "../handlers/incoming.js"
+import { ensureClientParticipant } from "../handlers/inbox.js"
 
 /**
  * Per-session token bucket для backfill — ограничивает темп `getHistory`
@@ -224,6 +225,51 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
           })
           .eq("id", body.data.message_id_internal)
       }
+
+      // Fire-and-forget: пробуем подтянуть аватарку собеседника. Если это
+      // первое сообщение из веба клиенту, который ещё не присылал нам
+      // ничего, его participant либо отсутствует, либо без avatar_url.
+      // ensureClientParticipant идемпотентен по telegram_user_id.
+      void (async () => {
+        try {
+          const { data: session } = await supabase
+            .from("mtproto_sessions")
+            .select("workspace_id")
+            .eq("user_id", body.data.user_id)
+            .maybeSingle()
+          if (!session?.workspace_id) return
+
+          const peerUser = new Api.PeerUser({ userId: bigInt(body.data.client_tg_user_id) })
+
+          let firstName: string | null = null
+          let lastName: string | null = null
+          try {
+            const entity = await client.getEntity(peerUser)
+            if (entity instanceof Api.User) {
+              firstName = entity.firstName ?? null
+              lastName = entity.lastName ?? null
+            }
+          } catch {
+            /* peer не зарезолвился — participant может уже существовать, пробуем upsert */
+          }
+
+          const participantId = await ensureClientParticipant({
+            workspace_id: session.workspace_id as string,
+            telegram_user_id: body.data.client_tg_user_id,
+            first_name: firstName,
+            last_name: lastName,
+          })
+          if (!participantId) return
+
+          await fetchAndStoreAvatar(client, {
+            participantId,
+            clientTgUserId: body.data.client_tg_user_id,
+            peerUser,
+          })
+        } catch (err) {
+          app.log.warn({ err }, "post-send avatar fetch failed")
+        }
+      })()
 
       return {
         ok: true,
