@@ -8,7 +8,7 @@
  * выбора времени. Валидация минимума +2 минуты — в useScheduleMessage.
  */
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,6 +26,10 @@ interface ScheduleSendButtonProps {
    *  где рядом стоят кнопки той же высоты. По умолчанию h-8 — для тулбара
    *  редактора. */
   compact?: boolean
+  /** Изначальное значение поля «Своё время» — подставляется при открытии
+   *  попапа. Для reschedule передаём текущее scheduled_send_at, чтобы юзер
+   *  мог быстро подправить время, не вводя его с нуля. */
+  initialValue?: string | null
 }
 
 function toLocalInputValue(d: Date): string {
@@ -33,10 +37,25 @@ function toLocalInputValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export function ScheduleSendButton({ disabled, onSchedule, compact }: ScheduleSendButtonProps) {
+export function ScheduleSendButton({ disabled, onSchedule, compact, initialValue }: ScheduleSendButtonProps) {
   const [open, setOpen] = useState(false)
   const [customValue, setCustomValue] = useState('')
   const [error, setError] = useState<string | null>(null)
+
+  // При каждом открытии попапа подставляем initialValue (если есть) —
+  // удобно для reschedule: видишь текущее время и правишь его, а не
+  // вводишь заново.
+  useEffect(() => {
+    if (!open) return
+    if (initialValue) {
+      const d = new Date(initialValue)
+      if (!Number.isNaN(d.getTime())) {
+        setCustomValue(toLocalInputValue(d))
+        return
+      }
+    }
+    setCustomValue('')
+  }, [open, initialValue])
 
   const presets = getSchedulePresets()
   // Date.now() в рендере — допустимо для UI-only значения min у

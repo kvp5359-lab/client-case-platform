@@ -519,6 +519,7 @@ function MessageBubbleImpl({
             {isScheduled && !isOverflowing && (
               <ScheduledControls
                 messageId={message.id}
+                scheduledSendAt={message.scheduled_send_at}
                 onSendNow={onSendScheduledNow}
                 onCancel={onCancelScheduled}
                 onReschedule={onReschedule}

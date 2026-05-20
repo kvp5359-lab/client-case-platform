@@ -11,6 +11,9 @@ import { ScheduleSendButton } from './ScheduleSendButton'
 
 interface ScheduledControlsProps {
   messageId: string
+  /** Текущее scheduled_send_at — подставится в input «Своё время» при
+   *  открытии пикера, чтобы юзер мог быстро его подправить. */
+  scheduledSendAt?: string | null
   onSendNow?: (messageId: string) => void
   onCancel?: (messageId: string) => void
   onReschedule?: (messageId: string, sendAt: Date) => void
@@ -18,6 +21,7 @@ interface ScheduledControlsProps {
 
 export function ScheduledControls({
   messageId,
+  scheduledSendAt,
   onSendNow,
   onCancel,
   onReschedule,
@@ -37,7 +41,11 @@ export function ScheduledControls({
         </Button>
       )}
       {onReschedule && (
-        <ScheduleSendButton compact onSchedule={(d) => onReschedule(messageId, d)} />
+        <ScheduleSendButton
+          compact
+          initialValue={scheduledSendAt}
+          onSchedule={(d) => onReschedule(messageId, d)}
+        />
       )}
       {onCancel && (
         <Button
