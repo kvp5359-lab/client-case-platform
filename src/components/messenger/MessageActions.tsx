@@ -92,11 +92,23 @@ export function MessageActions({
 }: MessageActionsProps) {
   const quickReactions = useQuickReactions()
   const colors = bubbleStyles[accent] ?? bubbleStyles.blue
+  const isScheduled = !!message.is_draft && !!message.scheduled_send_at
   // Фон пилюли — цвет бабла. Для своих — солид (bg-blue-500 text-white),
   // для входящих — лёгкий тинт (bg-blue-100/70 ...). В обоих случаях цвет
   // совпадает с баблом — кнопка не выглядит «чужеродным» кружком и перекрывает
   // галочку/время, если попала на них в коротком бабле.
-  const pillClass = isOwn ? colors.own : colors.incoming
+  //
+  // Drafts/scheduled — бабл белый с цветным dashed-бордером (amber/blue), поэтому
+  // accent-пилюля выглядит чужеродно (синий кружок на белом). Подбираем
+  // нейтральный фон под цвет бордера бабла.
+  const draftPillClass = isScheduled
+    ? 'bg-amber-100 text-amber-700'
+    : 'bg-gray-100 text-gray-600'
+  const pillClass = message.is_draft
+    ? draftPillClass
+    : isOwn
+      ? colors.own
+      : colors.incoming
 
   // Пилюля-toggle перевода живёт в том же контейнере, но видна всегда, без
   // group-hover: иначе юзер не догадается, что у сообщения есть готовый перевод.

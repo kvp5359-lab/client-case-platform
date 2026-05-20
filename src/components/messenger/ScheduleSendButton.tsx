@@ -22,6 +22,10 @@ import { getSchedulePresets, MIN_SCHEDULE_OFFSET_MS } from '@/hooks/messenger/us
 interface ScheduleSendButtonProps {
   disabled?: boolean
   onSchedule: (sendAt: Date) => void
+  /** Компактный вариант (h-7) — для строки контролов под scheduled-баблом,
+   *  где рядом стоят кнопки той же высоты. По умолчанию h-8 — для тулбара
+   *  редактора. */
+  compact?: boolean
 }
 
 function toLocalInputValue(d: Date): string {
@@ -29,7 +33,7 @@ function toLocalInputValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export function ScheduleSendButton({ disabled, onSchedule }: ScheduleSendButtonProps) {
+export function ScheduleSendButton({ disabled, onSchedule, compact }: ScheduleSendButtonProps) {
   const [open, setOpen] = useState(false)
   const [customValue, setCustomValue] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -73,11 +77,11 @@ export function ScheduleSendButton({ disabled, onSchedule }: ScheduleSendButtonP
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8"
+          className={compact ? 'h-7 w-7' : 'h-8 w-8'}
           disabled={disabled}
           title="Отправить позже"
         >
-          <Clock className="h-4 w-4" />
+          <Clock className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2" align="end">

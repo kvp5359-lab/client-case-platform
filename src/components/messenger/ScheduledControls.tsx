@@ -37,7 +37,7 @@ export function ScheduledControls({
         </Button>
       )}
       {onReschedule && (
-        <ScheduleSendButton onSchedule={(d) => onReschedule(messageId, d)} />
+        <ScheduleSendButton compact onSchedule={(d) => onReschedule(messageId, d)} />
       )}
       {onCancel && (
         <Button

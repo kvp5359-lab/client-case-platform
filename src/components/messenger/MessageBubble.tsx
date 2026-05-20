@@ -109,7 +109,12 @@ function MessageBubbleImpl({
   // потерялась только цитата / fallback на бота-секретаря.
   // UI не красит такой бабл, рисует тонкую метку.
   const softTelegramError = isSoftTelegramError(message)
-  const deliveryFailed = rawDeliveryStatus === 'failed' && !softTelegramError
+  // Drafts/scheduled — ещё не отправлены, поэтому таймер «не доставлено»
+  // (90 сек у useTelegramDeliveryStatus) для них не имеет смысла. Иначе
+  // через 1.5 минуты UI красит вложения и иконку в красный, хотя
+  // сообщение и не должно было уйти.
+  const deliveryFailed =
+    rawDeliveryStatus === 'failed' && !softTelegramError && !message.is_draft
   // Старый getDeliveryStatus возвращал 'pending' | 'sent' | 'read' | null, а
   // 'failed' рендерится отдельным бейджем. Маппим, чтобы не трогать DeliveryIcon.
   const deliveryStatus = rawDeliveryStatus === 'failed' ? null : rawDeliveryStatus
