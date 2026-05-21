@@ -47,7 +47,7 @@ export function ParticipantsTable({
               {participant.name || '—'}
               {participant.last_name && ` ${participant.last_name}`}
             </TableCell>
-            <TableCell className="text-sm text-gray-500">{participant.email}</TableCell>
+            <TableCell className="text-sm text-gray-500 max-w-[260px] truncate" title={participant.email ?? undefined}>{participant.email}</TableCell>
             <TableCell className="text-sm text-gray-600">{participant.phone || '—'}</TableCell>
             <TableCell>
               <div className="flex flex-wrap gap-1">

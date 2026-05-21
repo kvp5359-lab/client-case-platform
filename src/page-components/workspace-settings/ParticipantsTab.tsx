@@ -132,7 +132,7 @@ export function ParticipantsTab() {
       />
 
       {/* Контент с таблицей участников */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 min-w-0 p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-1 flex items-center gap-2">
@@ -168,7 +168,7 @@ export function ParticipantsTab() {
           )}
         </div>
 
-        <div className="bg-white border rounded-lg">
+        <div className="bg-white border rounded-lg overflow-x-auto">
           {loading ? (
             <div className="text-center py-8 text-gray-500">Загрузка...</div>
           ) : filteredParticipants.length === 0 ? (
