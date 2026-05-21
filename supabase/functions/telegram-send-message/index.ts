@@ -124,6 +124,45 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Идемпотентность: до отправки читаем уже зафиксированные результаты
+    // прошлых попыток. Если эта функция уже отправляла этот message_id и
+    // часть/всё ушло в Telegram, повторный вызов (от cron
+    // retry_undelivered_telegram_messages или от двойного клика юзера)
+    // пропускает уже сделанные шаги — текст и/или вложения.
+    //
+    // Флаги в БД:
+    //   - telegram_message_id != null → текст (или caption+первая медиа) ушли
+    //   - telegram_attachments_delivered === true → файлы доставлены
+    const { data: existingState } = await serviceClient
+      .from("project_messages")
+      .select("telegram_message_id, telegram_attachments_delivered")
+      .eq("id", body.message_id)
+      .maybeSingle();
+    const skipText = (existingState?.telegram_message_id ?? null) != null;
+    const skipAttachments = existingState?.telegram_attachments_delivered === true;
+    trace("idempotent.check", { skipText, skipAttachments });
+
+    // Заранее вычисляем «что должны были сделать в этом вызове».
+    const isAttachmentsOnlyContent = body.content === "📎";
+    const wantTextOnly = !body.attachments_only && !isAttachmentsOnlyContent;
+    const wantAttachmentsOnly =
+      body.attachments_only === true && (isAttachmentsOnlyContent || !body.content);
+    const wantTextAndAttachments =
+      body.attachments_only === true && !!body.content && !isAttachmentsOnlyContent;
+
+    // Если для текущего сценария всё уже сделано — выходим без отправки.
+    if (
+      (wantTextOnly && skipText) ||
+      (wantAttachmentsOnly && skipAttachments) ||
+      (wantTextAndAttachments && skipText && skipAttachments)
+    ) {
+      trace("idempotent.skip", { reason: "already_delivered" });
+      return new Response(
+        JSON.stringify({ ok: true, skipped: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // Резолв бота: сначала пробуем личный бот сотрудника-отправителя; если
     // его нет — fallback на бота-секретаря (resolveBotToken).
     // Личный бот = настоящая аватарка/имя в Telegram → префикс "(Имя):" не нужен.
@@ -255,8 +294,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const isAttachmentsOnlyContent = body.content === "\ud83d\udcce";
-    if (!body.attachments_only && !isAttachmentsOnlyContent) {
+    if (wantTextOnly) {
       const contentForTelegram = isHtmlContent(body.content)
         ? htmlToTelegramHtml(body.content)
         : escapeHtmlEntities(body.content);
@@ -427,8 +465,15 @@ Deno.serve(async (req: Request) => {
           .select("id", { count: "exact", head: true })
           .eq("message_id", body.message_id);
 
+        // Идемпотентность: если уже доставлен ТОЛЬКО текст или ТОЛЬКО файлы,
+        // вынужденно разделяем отправку (forceSeparate), чтобы пропустить
+        // ровно ту часть, что уже сделана. Combined-режим (caption + альбом
+        // одним запросом) допустим только когда ничего ещё не отправлено.
+        const forceSeparate = skipText || skipAttachments;
         const sendTextAsSeparateMessage =
-          formattedCaption.length > 1024 || (attachmentsCount ?? 0) >= 2;
+          forceSeparate ||
+          formattedCaption.length > 1024 ||
+          (attachmentsCount ?? 0) >= 2;
 
         if (!sendTextAsSeparateMessage) {
           attachmentsOk = await sendAttachmentsWithFallback({
@@ -443,6 +488,9 @@ Deno.serve(async (req: Request) => {
           });
         } else {
           let activeChatId = body.telegram_chat_id;
+
+          // Текстовая часть отправляется только если её ещё не было.
+          if (!skipText) {
           const payload: Record<string, unknown> = {
             chat_id: activeChatId,
             text: formattedCaption,
@@ -540,18 +588,22 @@ Deno.serve(async (req: Request) => {
               metadata: { stage: "split_text", chat_id: activeChatId },
             });
           }
+          } // конец if (!skipText)
 
-          attachmentsOk = await sendAttachmentsWithFallback({
-            messageId: body.message_id,
-            chatId: activeChatId,
-            supabaseClient: serviceClient,
-            primaryToken: TELEGRAM_BOT_TOKEN,
-            skipIdUpdate: true,
-            isEmployeeBot,
-            senderName: body.sender_name,
-          });
+          // Файлы отправляем только если они ещё не доставлены.
+          if (!skipAttachments) {
+            attachmentsOk = await sendAttachmentsWithFallback({
+              messageId: body.message_id,
+              chatId: activeChatId,
+              supabaseClient: serviceClient,
+              primaryToken: TELEGRAM_BOT_TOKEN,
+              skipIdUpdate: true,
+              isEmployeeBot,
+              senderName: body.sender_name,
+            });
+          }
         }
-      } else {
+      } else if (!skipAttachments) {
         attachmentsOk = await sendAttachmentsWithFallback({
           messageId: body.message_id,
           chatId: body.telegram_chat_id,
@@ -563,20 +615,22 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      await serviceClient
-        .from("project_messages")
-        .update({ telegram_attachments_delivered: attachmentsOk })
-        .eq("id", body.message_id);
-      trace("attachments.done", { ok: attachmentsOk });
-      if (!attachmentsOk) {
-        await logServerSendFailure(serviceClient, {
-          message_id: body.message_id,
-          error_text: "Не удалось отправить вложения в Telegram",
-          error_code: "attachments_failed",
-          source: "telegram",
-          metadata: { stage: "attachments", chat_id: body.telegram_chat_id },
-        });
-      }
+      if (!skipAttachments) {
+        await serviceClient
+          .from("project_messages")
+          .update({ telegram_attachments_delivered: attachmentsOk })
+          .eq("id", body.message_id);
+        trace("attachments.done", { ok: attachmentsOk });
+        if (!attachmentsOk) {
+          await logServerSendFailure(serviceClient, {
+            message_id: body.message_id,
+            error_text: "Не удалось отправить вложения в Telegram",
+            error_code: "attachments_failed",
+            source: "telegram",
+            metadata: { stage: "attachments", chat_id: body.telegram_chat_id },
+          });
+        }
+      } // конец if (!skipAttachments)
     }
 
     trace("request.end", { total_ms: Date.now() - T0 });
