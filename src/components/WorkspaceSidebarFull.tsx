@@ -108,6 +108,10 @@ export function WorkspaceSidebarFull({
   const unreadProjectIds = useMemo(() => {
     const ids: string[] = []
     badgeDisplays.forEach((badge, projectId) => {
+      // Исключаем виртуальный «Без проекта» — это не UUID, а sentinel-маркер;
+      // если оставить, он попадёт в `.in('id', ...)` запросе к projects и
+      // PostgREST вернёт 400 (не парсится как UUID).
+      if (projectId === NO_PROJECT_VIRTUAL_ID) return
       if (badge.type !== 'none') ids.push(projectId)
     })
     return ids

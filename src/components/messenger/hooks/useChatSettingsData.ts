@@ -83,26 +83,20 @@ export function useEmailSuggestions(workspaceId: string | undefined) {
         .eq('is_deleted', false)
         .not('email', 'is', null)
 
-      // 2. Thread IDs for this workspace
-      const { data: threads } = await supabase
-        .from('project_threads')
-        .select('id')
-        .eq('workspace_id', workspaceId!)
-        .eq('is_deleted', false)
-      const threadIds = (threads ?? []).map((t) => t.id)
-
-      // 3. Previously used contact emails with frequency count
+      // 2. Previously used contact emails with frequency count.
+      // INNER JOIN на project_threads сразу фильтрует по workspace_id —
+      // не нужно тянуть тысячи thread_id в URL (раньше упирались в лимит
+      // длины URL у PostgREST → 400).
       const emailFrequency = new Map<string, number>()
-      if (threadIds.length > 0) {
-        const { data } = await supabase
-          .from('project_thread_email_links')
-          .select('contact_email')
-          .in('thread_id', threadIds)
-          .eq('is_active', true)
-        for (const link of data ?? []) {
-          const key = link.contact_email.toLowerCase()
-          emailFrequency.set(key, (emailFrequency.get(key) ?? 0) + 1)
-        }
+      const { data } = await supabase
+        .from('project_thread_email_links')
+        .select('contact_email, project_threads!inner(workspace_id, is_deleted)')
+        .eq('is_active', true)
+        .eq('project_threads.workspace_id', workspaceId!)
+        .eq('project_threads.is_deleted', false)
+      for (const link of data ?? []) {
+        const key = (link as { contact_email: string }).contact_email.toLowerCase()
+        emailFrequency.set(key, (emailFrequency.get(key) ?? 0) + 1)
       }
 
       const map = new Map<string, { email: string; label: string; freq: number }>()
