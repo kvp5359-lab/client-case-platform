@@ -29,7 +29,7 @@ export type DeliveryStatus = 'pending' | 'sent' | 'read' | 'failed' | null
 export function useDeliveryStatus(
   message: ProjectMessage,
   isOwn: boolean,
-  opts?: { isTelegramLinked?: boolean },
+  opts?: { isTelegramLinked?: boolean; isEmailChat?: boolean },
 ): DeliveryStatus {
   // Хуки нельзя вызывать условно. Внутри каждого свои early-return для
   // не-своих/не-привязанных сообщений — лишних запросов не делают.
@@ -52,7 +52,7 @@ export function useDeliveryStatus(
   // окончательный признак email-сообщения.
   const ds = (message as unknown as { email_delivery_status?: string | null }).email_delivery_status
   const sm = (message as unknown as { email_send_method?: string | null }).email_send_method
-  if (isOwn && (isEmailSource(message.source) || ds || sm)) {
+  if (isOwn && (isEmailSource(message.source) || ds || sm || opts?.isEmailChat)) {
     if (message.id.startsWith('optimistic-')) return 'pending'
     // Resend bounce/complaint/failed → красный «не доставлено»
     if (ds === 'bounced' || ds === 'complaint' || ds === 'failed') return 'failed'
@@ -60,6 +60,10 @@ export function useDeliveryStatus(
     if (ds === 'opened' || ds === 'clicked') return 'read'
     const meta = message.email_metadata as Record<string, unknown> | null
     if (meta?.read_at) return 'read'
+    // Email-тред, источник 'web', но email-флаги ещё не выставлены —
+    // edge function только что получила message_id и работает над
+    // отправкой. Это нормальное «pending» состояние, не «sent».
+    if (opts?.isEmailChat && !sm && !ds) return 'pending'
     return 'sent'
   }
 

@@ -16,7 +16,11 @@
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useCallback, useId } from 'react'
 import { supabase } from '@/lib/supabase'
-import { getMessages, type MessageChannel } from '@/services/api/messenger/messengerService'
+import {
+  getMessages,
+  type MessageChannel,
+  type ProjectMessage,
+} from '@/services/api/messenger/messengerService'
 import { messengerKeys, projectAiKeys } from '@/hooks/queryKeys'
 import { logger } from '@/utils/logger'
 
@@ -33,8 +37,35 @@ export function useProjectMessages(
 
   const query = useInfiniteQuery({
     queryKey: messagesKey ?? ['messenger', 'messages', 'no-thread'],
-    queryFn: ({ pageParam }) =>
-      getMessages(threadId!, { before: pageParam as string | undefined }),
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await getMessages(threadId!, { before: pageParam as string | undefined, signal })
+
+      // Только для первой страницы (pageParam=undefined): если идёт активная
+      // мутация sendMessage, забираем оптимистики из кэша и мержим в результат —
+      // иначе react-query запишет fresh data, стирая optimistic.
+      // (cancelQueries не успевает: fetch обычно уже завершился к моменту вызова.)
+      if (!pageParam && threadId) {
+        const isMut = queryClient.isMutating({ mutationKey: ['sendMessage', threadId] })
+        if (isMut > 0) {
+          const cached = queryClient.getQueryData<{
+            pages: { messages: ProjectMessage[]; hasMore: boolean }[]
+          }>(messengerKeys.messagesByThreadId(threadId))
+          const lastPage = cached?.pages?.[cached.pages.length - 1]
+          const optimistics =
+            lastPage?.messages?.filter((m) => m.id.startsWith('optimistic-')) ?? []
+          if (optimistics.length > 0) {
+            // Optimistic'и идут после реальных (по времени).
+            // Финальный порядок: [реальные..., optimistics...]
+            return {
+              ...result,
+              messages: [...result.messages, ...optimistics],
+            }
+          }
+        }
+      }
+
+      return result
+    },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (firstPage) => {
       if (!firstPage.hasMore || firstPage.messages.length === 0) return undefined
@@ -46,10 +77,14 @@ export function useProjectMessages(
   // Flatten в хронологическом порядке
   const messages = [...(query.data?.pages ?? [])].reverse().flatMap((p) => p.messages)
 
-  // При открытии чата — всегда подгружать свежие данные
+  // При открытии чата — подгружать свежие данные, НО не если идёт активная
+  // мутация (sendMessage). Иначе refetch стёр бы optimistic bubble до того,
+  // как mutationFn успел поставить настоящее сообщение из БД с attachments.
   useEffect(() => {
     if (!threadId) return
-    queryClient.invalidateQueries({ queryKey: messengerKeys.messagesByThreadId(threadId) })
+    const key = messengerKeys.messagesByThreadId(threadId)
+    if (queryClient.isMutating({ mutationKey: ['sendMessage', threadId] }) > 0) return
+    queryClient.invalidateQueries({ queryKey: key })
   }, [threadId, queryClient])
 
   // Realtime подписка
@@ -75,16 +110,11 @@ export function useProjectMessages(
         },
         (payload) => {
           if ((payload.new as { thread_id?: string }).thread_id !== threadId) return
-          // Если в кэше есть оптимистичное сообщение — это наш INSERT, не рефетчим:
-          // вложения ещё не записаны, рефетч вернёт сообщение без файлов.
-          // Рефетч придёт позже через событие message_attachments.
-          const cachedData = queryClient.getQueryData<{
-            pages: { messages: { id: string }[] }[]
-          }>(key)
-          const hasOptimistic = cachedData?.pages?.some((p) =>
-            p.messages.some((m) => m.id.startsWith('optimistic-')),
-          )
-          if (hasOptimistic) return
+          // Если для этого треда идёт активная мутация sendMessage —
+          // пропускаем: mutationFn сам поставит финальную версию через
+          // setQueryData в onSuccess, refetch здесь только всё испортил бы
+          // (стёр optimistic, потом получил данные без attachments).
+          if (queryClient.isMutating({ mutationKey: ['sendMessage', threadId] }) > 0) return
           // Если новое сообщение имеет вложения — рефетч сейчас вернёт его без файлов
           // (вложения пишутся чуть позже). Пропускаем — событие message_attachments придёт отдельно.
           const newMsg = payload.new as { has_attachments?: boolean }
@@ -169,6 +199,11 @@ export function useProjectMessages(
             cachedData?.pages?.flatMap((p) => p.messages.map((m) => m.id)) ?? [],
           )
 
+          // Активная мутация sendMessage для этого треда — пропускаем
+          // refetch. mutationFn сам поставит финальное состояние с
+          // вложениями через onSuccess.
+          if (queryClient.isMutating({ mutationKey: ['sendMessage', threadId] }) > 0) return
+
           if (knownIds.has(messageId)) {
             // Сообщение уже в кэше — рефетчим сразу
             queryClient.refetchQueries({ queryKey: key })
@@ -176,6 +211,9 @@ export function useProjectMessages(
             // Сообщение ещё не в кэше (Telegram: attachment приходит сразу после message INSERT).
             // Рефетчим с задержкой, чтобы сообщение успело попасть в кэш.
             const timer = setTimeout(() => {
+              // Повторная проверка перед самим refetch'ем — мутация
+              // могла стартовать за время таймера.
+              if (queryClient.isMutating({ mutationKey: ['sendMessage', threadId] }) > 0) return
               queryClient.refetchQueries({ queryKey: key })
             }, 1000)
             pendingTimers.push(timer)

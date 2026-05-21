@@ -16,6 +16,7 @@ import { QuickReplyPicker } from './QuickReplyPicker'
 import { ImageLightbox } from './ImageLightbox'
 import { getAttachmentUrl, downloadAttachmentBlob } from '@/services/api/messenger/messengerService'
 import { getFileIcon, middleTruncate } from '@/utils/files/fileIcons'
+import { formatSize } from '@/utils/files/formatSize'
 import { toast } from 'sonner'
 
 // Реэкспорт — для обратной совместимости с другими модулями, импортирующими из ComposeField
@@ -40,6 +41,7 @@ export function FileChipRow({
   storagePath,
   fileId,
   localFile,
+  size,
 }: {
   name: string
   Icon: LucideIcon
@@ -48,6 +50,8 @@ export function FileChipRow({
   storagePath?: string
   fileId?: string | null
   localFile?: File
+  /** Размер файла в байтах — отображается рядом с именем (e.g. «1.2 МБ»). */
+  size?: number | null
 }) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
@@ -111,6 +115,11 @@ export function FileChipRow({
         <span className="flex-1 min-w-0 whitespace-nowrap text-gray-700">
           {middleTruncate(name)}
         </span>
+        {typeof size === 'number' && size > 0 && (
+          <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
+            {formatSize(size)}
+          </span>
+        )}
         {onRemove && (
           <button
             type="button"
@@ -162,6 +171,10 @@ interface ComposeFieldProps {
   projectDocumentsCount?: number
   /** Callback on any content change */
   onChange?: (hasContent: boolean) => void
+  /** Callback on files list change (add/remove). Используется в
+   *  ChatSettingsDialog для подсчёта суммарного размера и блокировки
+   *  «Создать» при превышении лимита email-вложений. */
+  onFilesChange?: (files: File[]) => void
   /** Callback on Ctrl+Enter */
   onSubmit?: () => void
   className?: string
@@ -180,6 +193,7 @@ export const ComposeField = forwardRef<ComposeFieldHandle, ComposeFieldProps>(fu
     onOpenDocPicker,
     projectDocumentsCount = 0,
     onChange,
+    onFilesChange,
     onSubmit,
     className,
   },
@@ -228,6 +242,11 @@ export const ComposeField = forwardRef<ComposeFieldHandle, ComposeFieldProps>(fu
   useEffect(() => {
     onChange?.(hasContent)
   }, [hasContent, onChange])
+
+  // Notify parent about file list changes (для UI-проверок лимита).
+  useEffect(() => {
+    onFilesChange?.(files)
+  }, [files, onFilesChange])
 
   // Apply initialHtml once editor is ready (fixes race with Tiptap's async init).
   // Re-applies when initialHtml reference changes (e.g. user picks another template).
@@ -308,6 +327,7 @@ export const ComposeField = forwardRef<ComposeFieldHandle, ComposeFieldProps>(fu
                 iconColor={fi.color}
                 onRemove={() => removeFile(i)}
                 localFile={file}
+                size={file.size}
               />
             )
           })}

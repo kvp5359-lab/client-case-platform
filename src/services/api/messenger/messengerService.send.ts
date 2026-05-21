@@ -194,21 +194,44 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
   }
 
   if (hasAnyAttachments && params.threadId) {
-    // Для Wazzup / MTProto-тредов триггер БД пропускает сообщения с
+    // Для Email / Wazzup / MTProto-тредов триггер БД пропускает сообщения с
     // has_attachments=true (как и для группового TG). Поэтому здесь сами
     // инициируем отправку — соответствующая edge function подтянет файлы из
     // message_attachments и создаст signed URLs / зальёт через MTProto.
+    //
+    // Email добавлен в этот блок, потому что иначе была race: триггер
+    // запускал email-internal-send до того, как фронт успевал загрузить
+    // файлы → письмо уходило с неполным набором вложений (или с одним).
     const { data: extThread } = await supabase
       .from('project_threads')
-      .select('wazzup_channel_id, mtproto_session_user_id')
+      .select('type, wazzup_channel_id, mtproto_session_user_id, email_send_account_id')
       .eq('id', params.threadId)
       .maybeSingle()
 
     const extRow = extThread as
-      | { wazzup_channel_id?: string | null; mtproto_session_user_id?: string | null }
+      | {
+          type?: string | null
+          wazzup_channel_id?: string | null
+          mtproto_session_user_id?: string | null
+          email_send_account_id?: string | null
+        }
       | null
 
-    if (extRow?.wazzup_channel_id) {
+    // Email-тред определяется так же, как в SQL-триггере: либо тред типа
+    // 'email', либо есть привязка к gmail-аккаунту (email_send_account_id).
+    // Дополнительная проверка по входящим email_internal-сообщениям здесь
+    // не нужна — на момент исходящего ответа тред уже либо type='email',
+    // либо имеет email_send_account_id (по факту это уже email-тред).
+    const isEmailThread = extRow?.type === 'email' || !!extRow?.email_send_account_id
+
+    if (isEmailThread) {
+      await supabase.auth.getSession()
+      supabase.functions
+        .invoke('email-internal-send', { body: { message_id: message.id } })
+        .catch((err) => {
+          logger.error('Failed to send email with attachments:', err)
+        })
+    } else if (extRow?.wazzup_channel_id) {
       await supabase.auth.getSession()
       supabase.functions
         .invoke('wazzup-send', { body: { message_id: message.id, attachments_only: true } })

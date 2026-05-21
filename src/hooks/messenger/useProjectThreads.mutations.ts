@@ -150,11 +150,22 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
 
       return thread
     },
-    onSuccess: (_data, params) => {
+    onSuccess: (data, params) => {
       const effectivePid =
         params.projectIdOverride !== undefined ? params.projectIdOverride : projectId
+
+      // Синхронно патчим кэш списка тредов проекта — чтобы cleanup-эффект
+      // в TaskPanelTabbedShell сразу видел новый thread в scope и не
+      // закрывал только что открытую вкладку. invalidateQueries ниже
+      // запускает refetch как backup, но не блокирует UI.
       if (effectivePid) {
-        queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(effectivePid) })
+        const key = messengerKeys.projectThreads(effectivePid)
+        queryClient.setQueryData<ProjectThread[]>(key, (old) => {
+          if (!old) return [data]
+          if (old.some((t) => t.id === data.id)) return old
+          return [...old, data]
+        })
+        queryClient.invalidateQueries({ queryKey: key })
       }
       if (projectId && projectId !== effectivePid) {
         queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(projectId) })

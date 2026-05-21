@@ -7,7 +7,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { TablesInsert } from '@/types/database'
-import { documentKitKeys, kitlessDocumentKeys } from '@/hooks/queryKeys'
+import { documentKitKeys, kitlessDocumentKeys, messengerAiKeys } from '@/hooks/queryKeys'
 import { triggerTextExtraction } from '@/services/documents/textExtractionService'
 
 export interface UploadDocumentParams {
@@ -30,9 +30,14 @@ export function useDocumentUpload(projectId?: string) {
     if (pid) {
       queryClient.invalidateQueries({ queryKey: documentKitKeys.byProject(pid) })
       queryClient.invalidateQueries({ queryKey: kitlessDocumentKeys.byProject(pid) })
+      // Список документов для пикера в треде («Выбрать из проекта»).
+      // Без этой инвалидации только что загруженные документы не
+      // появлялись в диалоге пока юзер не сделает hard reload.
+      queryClient.invalidateQueries({ queryKey: messengerAiKeys.documents(pid) })
     } else {
       queryClient.invalidateQueries({ queryKey: documentKitKeys.all })
       queryClient.invalidateQueries({ queryKey: kitlessDocumentKeys.all })
+      queryClient.invalidateQueries({ queryKey: messengerAiKeys.all })
     }
   }
 

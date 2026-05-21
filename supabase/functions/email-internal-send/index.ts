@@ -209,34 +209,39 @@ Deno.serve(async (req: Request) => {
   }
   const attachments: OutboundAttachment[] = [];
   if (m.has_attachments) {
-    // Триггер БД запускает email-internal-send СРАЗУ после INSERT в
-    // project_messages, а uploadAttachments на фронте выполняется ПОСЛЕ.
-    // Поэтому ждём до 8 секунд, пока message_attachments не появятся.
-    let rows: Array<{ file_name: string; mime_type: string; storage_path: string }> = [];
-    for (let i = 0; i < 8; i++) {
-      const { data } = await service
-        .from("message_attachments")
-        .select("file_name, mime_type, storage_path")
-        .eq("message_id", m.id);
-      rows = (data ?? []) as typeof rows;
-      if (rows.length > 0) break;
-      await new Promise((res) => setTimeout(res, 1000));
-    }
-    for (const row of rows) {
-      const { data: blob, error: dlErr } = await service.storage
-        .from("files")
-        .download(row.storage_path);
-      if (dlErr || !blob) {
-        console.error("[email-internal-send] attachment download failed:", row.storage_path, dlErr);
-        continue;
-      }
-      const buf = new Uint8Array(await blob.arrayBuffer());
-      attachments.push({
-        filename: row.file_name,
-        mime: row.mime_type || "application/octet-stream",
-        bytes: buf,
-        base64: uint8ArrayToBase64(buf),
-      });
+    // Триггер БД с has_attachments=true делает early-return (см. миграцию
+    // 20260521_email_attachments_race_fix.sql). Эту функцию зовёт сам
+    // фронт после uploadAttachments — данные в message_attachments уже
+    // гарантированно записаны, polling не нужен.
+    const { data } = await service
+      .from("message_attachments")
+      .select("file_name, mime_type, storage_path")
+      .eq("message_id", m.id);
+    const rows = (data ?? []) as Array<{ file_name: string; mime_type: string; storage_path: string }>;
+
+    // Параллельная загрузка: вместо последовательного цикла гоняем все
+    // downloads через Promise.all. На 9 файлах из Storage экономит секунды
+    // wall-time и снижает риск WORKER_RESOURCE_LIMIT по таймауту.
+    const downloaded = await Promise.all(
+      rows.map(async (row) => {
+        const { data: blob, error: dlErr } = await service.storage
+          .from("files")
+          .download(row.storage_path);
+        if (dlErr || !blob) {
+          console.error("[email-internal-send] attachment download failed:", row.storage_path, dlErr);
+          return null;
+        }
+        const buf = new Uint8Array(await blob.arrayBuffer());
+        return {
+          filename: row.file_name,
+          mime: row.mime_type || "application/octet-stream",
+          bytes: buf,
+          base64: uint8ArrayToBase64(buf),
+        };
+      }),
+    );
+    for (const a of downloaded) {
+      if (a) attachments.push(a);
     }
   }
 

@@ -1,5 +1,5 @@
 import { memo, useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { CornerDownRight } from 'lucide-react'
+import { CornerDownRight, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageAttachments } from './MessageAttachment'
@@ -95,6 +95,12 @@ function MessageBubbleImpl({
     threadContactParticipantId,
   } = useMessengerContext()
   const isScheduled = !!message.is_draft && !!message.scheduled_send_at
+  // «В процессе отправки» — приглушённый бабл + лейбл «Отправляется».
+  // Состояние включает:
+  //  - optimistic (только что INSERT, в БД ещё нет)
+  //  - real в БД, но Edge Function (Gmail/Telegram/Wazzup) ещё не подтвердила доставку
+  // Визуальный эффект непрерывный: бабл засветлён до финальной галочки.
+  const isOptimisticId = message.id.startsWith('optimistic-')
   const colors = bubbleStyles[accent]
   const showStaffMark = !!isClientThread && isTeamSender(message.sender_role)
   // Имя отправителя берём из join'нутого participant'а (актуальное на момент рендера).
@@ -104,7 +110,10 @@ function MessageBubbleImpl({
     ? [message.sender.name, message.sender.last_name].filter(Boolean).join(' ')
     : ''
   const displayName = participantDisplayName || message.sender_name
-  const rawDeliveryStatus = useDeliveryStatus(message, isOwn, { isTelegramLinked })
+  const rawDeliveryStatus = useDeliveryStatus(message, isOwn, {
+    isTelegramLinked,
+    isEmailChat: isEmailThread,
+  })
   // Soft-fail: сообщение доставлено (есть telegram_message_id), но
   // потерялась только цитата / fallback на бота-секретаря.
   // UI не красит такой бабл, рисует тонкую метку.
@@ -118,6 +127,12 @@ function MessageBubbleImpl({
   // Старый getDeliveryStatus возвращал 'pending' | 'sent' | 'read' | null, а
   // 'failed' рендерится отдельным бейджем. Маппим, чтобы не трогать DeliveryIcon.
   const deliveryStatus = rawDeliveryStatus === 'failed' ? null : rawDeliveryStatus
+
+  // Финальный флаг «в процессе отправки»: оптимистик ИЛИ ожидание доставки
+  // (для исходящих, ещё не подтверждённых каналом). Используется и для
+  // приглушения, и для лейбла «Отправляется».
+  const isOptimistic =
+    isOptimisticId || (isOwn && deliveryStatus === 'pending' && !message.is_draft)
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [emailViewOpen, setEmailViewOpen] = useState(false)
@@ -403,6 +418,15 @@ function MessageBubbleImpl({
         <div className="relative max-w-full" ref={contentRef} onMouseUp={handleMouseUp}>
           {/* Quote popup рендерится императивно через DOM — см. handleMouseUp */}
 
+          {/* Оптимистический лейбл «Отправляется» — для свежих исходящих,
+              которые ещё не вернулись из БД через realtime. */}
+          {isOptimistic && !message.is_draft && (
+            <span className="absolute -top-1.5 right-3 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider bg-white inline-flex items-center gap-1 z-10 whitespace-nowrap text-blue-500">
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+              Отправляется
+            </span>
+          )}
+
           {/* Draft / Scheduled label — вынесен наружу бабла, чтобы overflow-hidden не обрезал */}
           {message.is_draft && (
             <span
@@ -425,6 +449,8 @@ function MessageBubbleImpl({
             id={`msg-${message.id}`}
             className={cn(
               'relative rounded-2xl px-4 py-2.5 min-w-[10rem] overflow-hidden transition-all duration-500',
+              // Оптимистическое сообщение — приглушаем до возврата из БД.
+              isOptimistic && 'opacity-70',
               // Левый индикатор бабла:
               //  - 4px красный — непрочитанное (приоритет, перебивает «сотрудник»);
               //  - 2px цвета акцента — прочитанное от сотрудника в клиентском чате.

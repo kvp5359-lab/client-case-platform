@@ -4,7 +4,10 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { checkEmailAttachmentsLimit } from './useMessengerHandlers'
 import { messengerParticipantKeys } from '@/hooks/queryKeys'
 import {
   useProjectMessages,
@@ -90,7 +93,25 @@ export function useMessengerState({
   )
 
   const { data: emailLink } = useEmailLink(threadId)
-  const isEmailChat = !!emailLink
+  // Тип треда — нужен чтобы знать, что это email до того, как появится
+  // запись в project_thread_email_links (она создаётся только после первого
+  // обмена). Без этого свежесозданный email-тред считался не-email,
+  // и optimistic-сообщение разбивалось на 2 бабла (текст + файлы).
+  const { data: threadRow } = useQuery({
+    queryKey: ['project-thread-type', threadId],
+    queryFn: async () => {
+      if (!threadId) return null
+      const { data } = await supabase
+        .from('project_threads')
+        .select('type')
+        .eq('id', threadId)
+        .maybeSingle()
+      return (data as { type?: string } | null) ?? null
+    },
+    enabled: !!threadId,
+    staleTime: 60_000,
+  })
+  const isEmailChat = !!emailLink || threadRow?.type === 'email'
 
   const { data: currentParticipant } = useQuery({
     queryKey: messengerParticipantKeys.current(projectId ?? workspaceId, user?.id),
@@ -119,6 +140,7 @@ export function useMessengerState({
     currentParticipant ?? undefined,
     channel,
     threadId,
+    { isEmailChat },
   )
   const sendEmail = useSendEmail(projectId ?? '', workspaceId, threadId)
 
@@ -195,13 +217,35 @@ export function useMessengerState({
     const pending = pendingInitialMessage
     setPendingInitialMessage(null)
 
+    // Лимит вложений для email (тот же, что в handleSend). Этот путь
+    // обходит handleSend (вызывается напрямую при создании треда через
+    // шаблон), поэтому проверка здесь продублирована — иначе тяжёлые
+    // вложения падают в edge function по WORKER_RESOURCE_LIMIT.
+    if (pending.isEmail && pending.files.length > 0) {
+      const check = checkEmailAttachmentsLimit(pending.files)
+      if (!check.ok) {
+        toast.error(
+          `Слишком большой объём вложений: ${check.totalMb} МБ. За одно письмо принимается не больше 15 МБ. Разбейте на несколько писем.`,
+          { duration: 8000 },
+        )
+        // initialSendStartedRef уже выставлен — намеренно. Не пытаемся
+        // отправить повторно с теми же файлами; юзер сам решит, что делать.
+        return
+      }
+    }
+
     // Унифицированный путь: всё (включая email) идёт через INSERT в project_messages.
     // БД-триггер сам разрулит — если тред type='email' / есть email-история /
     // привязан email_send_account_id, дёрнет email-internal-send Edge Function,
     // которая роутит между Gmail сотрудника и Resend.
+    //
+    // isEmailChat передаём явно из pending — на момент маунта свежесозданного
+    // треда useEmailLink/thread.type ещё не успели загрузиться. Без явного
+    // флага optimistic split'ился на 2 баббла (текст + файлы).
     sendMessage.mutate({
       content: pending.html,
       attachments: pending.files.length > 0 ? pending.files : undefined,
+      isEmailChat: pending.isEmail,
     })
   }, [pendingInitialMessage, threadId, sendMessage, setPendingInitialMessage])
 

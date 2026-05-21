@@ -31,7 +31,9 @@ export function useSendMessage(
   currentParticipant: { participantId: string; name: string; role: string | null } | undefined,
   channel: MessageChannel,
   threadId: string,
+  opts?: { isEmailChat?: boolean },
 ) {
+  const isEmailChat = !!opts?.isEmailChat
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const messagesKey = messengerKeys.messagesByThreadId(threadId)
@@ -44,9 +46,18 @@ export function useSendMessage(
     forwardedAttachments?: ForwardedAttachment[]
     originalContent?: string | null
     originalLanguage?: string | null
+    /** Явный override isEmailChat — для свежесозданных тредов, где
+     *  useEmailLink/threadRow ещё не успели загрузиться (race). */
+    isEmailChat?: boolean
   }
 
   return useMutation<ProjectMessage[], Error, SendVars, { previous: unknown }>({
+    // mutationKey используется в useProjectMessages для блокировки
+    // конкурирующих refetch'ей (через queryClient.isMutating). Без этого
+    // realtime message_attachments / project_messages триггерил refetch
+    // до того, как mutationFn успевал поставить настоящее сообщение —
+    // optimistic мигал и пропадал.
+    mutationKey: ['sendMessage', threadId],
     mutationFn: async ({
       content,
       replyToMessageId,
@@ -87,6 +98,7 @@ export function useSendMessage(
       replyToMessage,
       attachments,
       forwardedAttachments,
+      isEmailChat: isEmailChatOverride,
     }) => {
       const qk = messagesKey
       await queryClient.cancelQueries({ queryKey: qk })
@@ -102,7 +114,14 @@ export function useSendMessage(
       }
 
       const now = new Date().toISOString()
-      const willSplit = shouldSplitTextAndFiles({ content, attachments, forwardedAttachments })
+      // Для email-тредов split отключаем (как и в sendMessage server-side):
+      // одно письмо с текстом и файлами вместе → один баббл в UI.
+      // Per-call override приоритетнее opts (нужен для свежесозданных тредов,
+      // где useEmailLink/thread.type ещё не успели загрузиться к моменту mutate).
+      const effectiveIsEmailChat = isEmailChatOverride ?? isEmailChat
+      const willSplit =
+        !effectiveIsEmailChat &&
+        shouldSplitTextAndFiles({ content, attachments, forwardedAttachments })
 
       const makeOptimistic = (
         suffix: 'text' | 'files' | 'single',
@@ -174,7 +193,15 @@ export function useSendMessage(
         const typed = old as
           | { pages: { messages: ProjectMessage[]; hasMore: boolean }[]; pageParams: unknown[] }
           | undefined
-        if (!typed) return typed
+        // Свежесозданный тред — кэша ещё нет. Инициализируем пустую
+        // структуру, чтобы оптимистический бабл показался мгновенно,
+        // а не ждал первого fetch'а useProjectMessages.
+        if (!typed) {
+          return {
+            pages: [{ messages: optimisticList, hasMore: false }],
+            pageParams: [undefined],
+          }
+        }
         const pages = [...typed.pages]
         const last = pages[pages.length - 1]
         pages[pages.length - 1] = {

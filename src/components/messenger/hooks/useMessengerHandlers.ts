@@ -3,7 +3,31 @@
  */
 
 import { useCallback } from 'react'
+import { toast } from 'sonner'
 import { playSendSound } from '@/hooks/messenger'
+
+/**
+ * Gmail API ограничивает raw email размером 25 МБ. С учётом base64-кодировки
+ * (×1.33), памяти edge function (держит и bytes и base64 одновременно) и
+ * самого raw email в памяти — практический потолок суммарного binary ~15 МБ.
+ * Выше — функция падает по WORKER_RESOURCE_LIMIT, и письмо не уходит.
+ */
+const EMAIL_ATTACHMENTS_MAX_BYTES = 15 * 1024 * 1024
+
+export function totalAttachmentsSize(files: File[]): number {
+  return files.reduce((sum, f) => sum + f.size, 0)
+}
+
+export function checkEmailAttachmentsLimit(files: File[]): {
+  ok: boolean
+  totalMb: string
+} {
+  const totalBytes = totalAttachmentsSize(files)
+  return {
+    ok: totalBytes <= EMAIL_ATTACHMENTS_MAX_BYTES,
+    totalMb: (totalBytes / 1024 / 1024).toFixed(1),
+  }
+}
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
 import { type ProjectMessage } from '@/services/api/messenger/messengerService'
 import { useSidePanelStore } from '@/store/sidePanelStore'
@@ -138,6 +162,19 @@ export function useMessengerHandlers({
       // клиента отделялись в новый тред.
       void isEmailChat
       void sendEmail
+
+      // Лимит email-вложений (15 МБ). Без проверки edge function падает по
+      // WORKER_RESOURCE_LIMIT, и письмо вообще не уходит.
+      if (isEmailChat && files && files.length > 0) {
+        const check = checkEmailAttachmentsLimit(files)
+        if (!check.ok) {
+          toast.error(
+            `Слишком большой объём вложений: ${check.totalMb} МБ. За одно письмо принимается не больше 15 МБ. Разбейте на несколько писем.`,
+            { duration: 8000 },
+          )
+          return
+        }
+      }
 
       if (sendDelay > 0 && currentParticipant && !replyToId && forwardedAttachments.length === 0) {
         const delayed = await sendWithDelay({

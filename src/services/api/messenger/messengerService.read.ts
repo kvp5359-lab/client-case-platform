@@ -23,7 +23,7 @@ import type { MessageChannel, ProjectMessage } from './messengerService.types'
  */
 export async function getMessages(
   threadId: string,
-  options: { before?: string; limit?: number } = {},
+  options: { before?: string; limit?: number; signal?: AbortSignal } = {},
 ): Promise<{ messages: ProjectMessage[]; hasMore: boolean }> {
   const limit = options.limit ?? 50
 
@@ -36,6 +36,13 @@ export async function getMessages(
 
   if (options.before) {
     query = query.lt('created_at', options.before)
+  }
+
+  // AbortSignal от react-query: без него cancelQueries в onMutate
+  // не может прервать запрос, и его результат перетирает optimistic.
+  // Это и было причиной мигания «бабл → пусто → бабл».
+  if (options.signal) {
+    query = query.abortSignal(options.signal)
   }
 
   const { data, error } = await query

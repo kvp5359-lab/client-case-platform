@@ -14,7 +14,9 @@
  *  - hooks/useChatSettingsActions — все хендлеры и запросы данных
  */
 
-import { useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { AlertCircle } from 'lucide-react'
+import { checkEmailAttachmentsLimit } from './hooks/useMessengerHandlers'
 import {
   Dialog,
   DialogContent,
@@ -65,6 +67,14 @@ export function ChatSettingsDialog({
   const resolvedWorkspaceId = chat ? chat.workspace_id : propWorkspaceId
   const composeRef = useRef<ComposeFieldHandle>(null)
 
+  // Файлы первого сообщения — для UI-проверки лимита email-вложений.
+  // ComposeField пушит изменения через onFilesChange.
+  const [composeFiles, setComposeFiles] = useState<File[]>([])
+  const attachmentsLimitCheck = useMemo(
+    () => checkEmailAttachmentsLimit(composeFiles),
+    [composeFiles],
+  )
+
   // ── Form state ──
   const form = useChatSettingsFormState({
     chat,
@@ -75,6 +85,11 @@ export function ChatSettingsDialog({
     initialValues,
     open,
   })
+
+  // Превышение актуально только для email-вкладки. Чат/задача — без лимита,
+  // там вложения уходят в storage и не упираются в Gmail.
+  const emailAttachmentsTooBig =
+    form.tabMode === 'email' && !attachmentsLimitCheck.ok && composeFiles.length > 0
 
   // ── Actions, data queries, handlers ──
   const actions = useChatSettingsActions({
@@ -297,12 +312,25 @@ export function ChatSettingsDialog({
               editorMaxHeight={150}
               initialHtml={actions.pendingInitialHtml}
               onChange={form.setHasInitialMessage}
-              onSubmit={form.canSave ? actions.handleSave : undefined}
+              onFilesChange={setComposeFiles}
+              onSubmit={form.canSave && !emailAttachmentsTooBig ? actions.handleSave : undefined}
               projectId={form.selectedProjectId ?? propProjectId}
               workspaceId={resolvedWorkspaceId}
               onOpenDocPicker={actions.composeProjectId ? actions.handleOpenDocPicker : undefined}
               projectDocumentsCount={actions.projectDocuments.length}
             />
+            {/* Предупреждение о превышении лимита email-вложений — показываем
+                под полем ввода в момент превышения, не после отправки. */}
+            {emailAttachmentsTooBig && (
+              <div className="flex items-start gap-2 px-2 py-1.5 mt-1 text-xs rounded-md bg-red-50 text-red-700 border border-red-200">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>
+                  Слишком большой объём вложений: {attachmentsLimitCheck.totalMb} МБ. За одно
+                  письмо принимается не больше 15 МБ. Удалите часть файлов или отправьте
+                  оставшиеся отдельным письмом.
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -310,7 +338,10 @@ export function ChatSettingsDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {form.isEditMode ? 'Закрыть' : 'Отмена'}
           </Button>
-          <Button onClick={actions.handleSave} disabled={!form.canSave || isPending}>
+          <Button
+            onClick={actions.handleSave}
+            disabled={!form.canSave || isPending || emailAttachmentsTooBig}
+          >
             {form.isEditMode
               ? 'Сохранить'
               : form.hasInitialMessage
