@@ -87,11 +87,7 @@ interface UseMessengerHandlersParams {
     }) => void
   }
   retryTelegramSendMutation: {
-    mutate: (args: {
-      message: ProjectMessage
-      senderName: string
-      senderRole: string | null
-    }) => void
+    mutate: (args: { message: ProjectMessage }) => void
   }
   sendDelay: number
   sendWithDelay: (args: {
@@ -333,14 +329,9 @@ export function useMessengerHandlers({
 
   const handleRetryTelegramSend = useCallback(
     (msg: ProjectMessage) => {
-      if (!currentParticipant) return
-      retryTelegramSendMutation.mutate({
-        message: msg,
-        senderName: currentParticipant.name,
-        senderRole: currentParticipant.role,
-      })
+      retryTelegramSendMutation.mutate({ message: msg })
     },
-    [currentParticipant, retryTelegramSendMutation],
+    [retryTelegramSendMutation],
   )
 
   const handleCancelDelayed = useCallback(

@@ -3614,6 +3614,7 @@ export type Database = {
           indexing_error: string | null
           indexing_status: string | null
           is_published: boolean
+          search_vector: unknown
           status_id: string | null
           summary: string | null
           title: string
@@ -3632,6 +3633,7 @@ export type Database = {
           indexing_error?: string | null
           indexing_status?: string | null
           is_published?: boolean
+          search_vector?: unknown
           status_id?: string | null
           summary?: string | null
           title: string
@@ -3650,6 +3652,7 @@ export type Database = {
           indexing_error?: string | null
           indexing_status?: string | null
           is_published?: boolean
+          search_vector?: unknown
           status_id?: string | null
           summary?: string | null
           title?: string
@@ -4537,6 +4540,7 @@ export type Database = {
       }
       participants: {
         Row: {
+          avatar_fetched_at: string | null
           avatar_url: string | null
           can_login: boolean
           created_at: string
@@ -4549,6 +4553,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           preferred_language: string
+          search_vector: unknown
           telegram_user_id: number | null
           updated_at: string
           user_id: string | null
@@ -4556,6 +4561,7 @@ export type Database = {
           workspace_roles: string[]
         }
         Insert: {
+          avatar_fetched_at?: string | null
           avatar_url?: string | null
           can_login?: boolean
           created_at?: string
@@ -4568,6 +4574,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           preferred_language?: string
+          search_vector?: unknown
           telegram_user_id?: number | null
           updated_at?: string
           user_id?: string | null
@@ -4575,6 +4582,7 @@ export type Database = {
           workspace_roles?: string[]
         }
         Update: {
+          avatar_fetched_at?: string | null
           avatar_url?: string | null
           can_login?: boolean
           created_at?: string
@@ -4587,6 +4595,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           preferred_language?: string
+          search_vector?: unknown
           telegram_user_id?: number | null
           updated_at?: string
           user_id?: string | null
@@ -4907,6 +4916,10 @@ export type Database = {
           recipient_read_at: string | null
           reply_to_message_id: string | null
           scheduled_send_at: string | null
+          search_vector: unknown
+          send_attempted_at: string | null
+          send_failed_reason: string | null
+          send_status: Database["public"]["Enums"]["outgoing_send_status"]
           sender_name: string
           sender_participant_id: string | null
           sender_role: string | null
@@ -4919,7 +4932,6 @@ export type Database = {
           telegram_message_date: string | null
           telegram_message_id: number | null
           telegram_message_ids: number[]
-          telegram_retry_count: number
           telegram_sender_user_id: number | null
           thread_id: string | null
           updated_at: string
@@ -4953,6 +4965,10 @@ export type Database = {
           recipient_read_at?: string | null
           reply_to_message_id?: string | null
           scheduled_send_at?: string | null
+          search_vector?: unknown
+          send_attempted_at?: string | null
+          send_failed_reason?: string | null
+          send_status?: Database["public"]["Enums"]["outgoing_send_status"]
           sender_name: string
           sender_participant_id?: string | null
           sender_role?: string | null
@@ -4965,7 +4981,6 @@ export type Database = {
           telegram_message_date?: string | null
           telegram_message_id?: number | null
           telegram_message_ids?: number[]
-          telegram_retry_count?: number
           telegram_sender_user_id?: number | null
           thread_id?: string | null
           updated_at?: string
@@ -4999,6 +5014,10 @@ export type Database = {
           recipient_read_at?: string | null
           reply_to_message_id?: string | null
           scheduled_send_at?: string | null
+          search_vector?: unknown
+          send_attempted_at?: string | null
+          send_failed_reason?: string | null
+          send_status?: Database["public"]["Enums"]["outgoing_send_status"]
           sender_name?: string
           sender_participant_id?: string | null
           sender_role?: string | null
@@ -5011,7 +5030,6 @@ export type Database = {
           telegram_message_date?: string | null
           telegram_message_id?: number | null
           telegram_message_ids?: number[]
-          telegram_retry_count?: number
           telegram_sender_user_id?: number | null
           thread_id?: string | null
           updated_at?: string
@@ -5433,7 +5451,7 @@ export type Database = {
           id: string
           integration_id: string | null
           is_active: boolean
-          project_id: string
+          project_id: string | null
           telegram_chat_id: number
           telegram_chat_title: string | null
           thread_id: string | null
@@ -5447,7 +5465,7 @@ export type Database = {
           id?: string
           integration_id?: string | null
           is_active?: boolean
-          project_id: string
+          project_id?: string | null
           telegram_chat_id: number
           telegram_chat_title?: string | null
           thread_id?: string | null
@@ -5461,7 +5479,7 @@ export type Database = {
           id?: string
           integration_id?: string | null
           is_active?: boolean
-          project_id?: string
+          project_id?: string | null
           telegram_chat_id?: number
           telegram_chat_title?: string | null
           thread_id?: string | null
@@ -5867,6 +5885,7 @@ export type Database = {
           name: string
           owner_user_id: string | null
           project_id: string | null
+          search_vector: unknown
           short_id: number | null
           sort_order: number
           source_template_id: string | null
@@ -5910,6 +5929,7 @@ export type Database = {
           name: string
           owner_user_id?: string | null
           project_id?: string | null
+          search_vector?: unknown
           short_id?: number | null
           sort_order?: number
           source_template_id?: string | null
@@ -5953,6 +5973,7 @@ export type Database = {
           name?: string
           owner_user_id?: string | null
           project_id?: string | null
+          search_vector?: unknown
           short_id?: number | null
           sort_order?: number
           source_template_id?: string | null
@@ -6124,6 +6145,7 @@ export type Database = {
           last_activity_at: string
           messenger_link_code: string | null
           name: string
+          search_vector: unknown
           short_id: number | null
           source_folder_id: string | null
           status_id: string | null
@@ -6146,6 +6168,7 @@ export type Database = {
           last_activity_at?: string
           messenger_link_code?: string | null
           name: string
+          search_vector?: unknown
           short_id?: number | null
           source_folder_id?: string | null
           status_id?: string | null
@@ -6168,6 +6191,7 @@ export type Database = {
           last_activity_at?: string
           messenger_link_code?: string | null
           name?: string
+          search_vector?: unknown
           short_id?: number | null
           source_folder_id?: string | null
           status_id?: string | null
@@ -6373,6 +6397,38 @@ export type Database = {
             columns: ["reply_id"]
             isOneToOne: false
             referencedRelation: "quick_replies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recently_viewed: {
+        Row: {
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["recent_entity_type"]
+          opened_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["recent_entity_type"]
+          opened_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["recent_entity_type"]
+          opened_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recently_viewed_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -8044,6 +8100,11 @@ export type Database = {
         Args: { workspace_uuid: string }
         Returns: boolean
       }
+      dispatch_message_to_channels: {
+        Args: { p_force_attachments?: boolean; p_message_id: string }
+        Returns: undefined
+      }
+      dispatch_scheduled_messages: { Args: never; Returns: number }
       dispatch_send_http: {
         Args: {
           p_body: Json
@@ -8315,6 +8376,21 @@ export type Database = {
           project_name: string
         }[]
       }
+      get_recently_viewed: {
+        Args: { p_limit?: number; p_workspace_id: string }
+        Returns: {
+          accent_color: string
+          entity_id: string
+          entity_type: string
+          opened_at: string
+          project_id: string
+          project_status_id: string
+          project_template_id: string
+          subtitle: string
+          thread_type: string
+          title: string
+        }[]
+      }
       get_short_id_by_uuid: {
         Args: { p_entity_type: string; p_uuid: string }
         Returns: number
@@ -8361,6 +8437,7 @@ export type Database = {
           last_activity_at: string
           messenger_link_code: string | null
           name: string
+          search_vector: unknown
           short_id: number | null
           source_folder_id: string | null
           status_id: string | null
@@ -8443,6 +8520,23 @@ export type Database = {
         Returns: {
           participants_count: number
           workspace_id: string
+        }[]
+      }
+      global_search: {
+        Args: { p_limit?: number; p_query: string; p_workspace_id: string }
+        Returns: {
+          accent_color: string
+          entity_id: string
+          entity_type: string
+          project_id: string
+          project_status_id: string
+          project_template_id: string
+          rank: number
+          snippet: string
+          subtitle: string
+          thread_id: string
+          thread_type: string
+          title: string
         }[]
       }
       has_project_module_access: {
@@ -8595,6 +8689,10 @@ export type Database = {
         Args: { p_entity_type: string; p_workspace_id: string }
         Returns: number
       }
+      publish_scheduled_message: {
+        Args: { p_message_id: string }
+        Returns: undefined
+      }
       reorder_board_list_items: {
         Args: { p_item_ids: string[]; p_item_type: string; p_list_id: string }
         Returns: undefined
@@ -8652,7 +8750,6 @@ export type Database = {
         Args: { p_document_id: string; p_version_id: string }
         Returns: string
       }
-      retry_undelivered_telegram_messages: { Args: never; Returns: undefined }
       revoke_all_user_sessions: {
         Args: { p_user_id: string }
         Returns: undefined
@@ -8690,6 +8787,8 @@ export type Database = {
         Args: { api_key: string; workspace_uuid: string }
         Returns: string
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       start_impersonation_session: {
         Args: {
           p_expires_at: string
@@ -8719,6 +8818,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      track_recent_view: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: Database["public"]["Enums"]["recent_entity_type"]
+          p_workspace_id: string
+        }
+        Returns: undefined
+      }
+      unaccent: { Args: { "": string }; Returns: string }
       update_article_groups: {
         Args: { p_article_id: string; p_group_ids: string[] }
         Returns: undefined
@@ -8860,6 +8968,12 @@ export type Database = {
         | "telegram_mtproto"
         | "wazzup"
         | "email_internal"
+      outgoing_send_status: "pending" | "sent" | "failed"
+      recent_entity_type:
+        | "thread"
+        | "project"
+        | "knowledge_article"
+        | "participant"
       status_final_kind: "won" | "lost" | "abandoned"
     }
     CompositeTypes: {
@@ -9052,8 +9166,14 @@ export const Constants = {
         "wazzup",
         "email_internal",
       ],
+      outgoing_send_status: ["pending", "sent", "failed"],
+      recent_entity_type: [
+        "thread",
+        "project",
+        "knowledge_article",
+        "participant",
+      ],
       status_final_kind: ["won", "lost", "abandoned"],
     },
   },
 } as const
-

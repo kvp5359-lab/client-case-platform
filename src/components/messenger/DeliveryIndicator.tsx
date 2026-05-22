@@ -1,78 +1,83 @@
 /**
- * Единый индикатор доставки для всех мессенджер-каналов.
+ * Единый индикатор доставки исходящих сообщений по всем каналам.
  *
- * Заменяет старые TelegramDeliveryIndicator + WazzupDeliveryIndicator
- * + getDeliveryStatus в bubbleUtils.ts — там на 80% был дублированный код.
+ * Источник правды — `project_messages.send_status` ('pending'/'sent'/'failed').
+ * Его проставляет backend в одной точке за канал (см. _shared/messageSendStatus.ts).
  *
- * Возвращает один из четырёх статусов (`pending` / `sent` / `read` / `failed` / null)
- * вне зависимости от канала — UI рисует одинаково: clock/check/double-check/!.
+ * Поверх этого добавляется тонкий слой read-семантики, потому что «прочитано
+ * клиентом» — канал-специфичная информация и не везде доступна:
+ *   - Telegram MTProto:   `recipient_read_at`     → 'read'
+ *   - Wazzup (WhatsApp):  `wazzup_status='read'`  → 'read'
+ *   - Email (Resend):     `email_delivery_status ∈ {opened,clicked}` ИЛИ
+ *                         `email_metadata.read_at` → 'read'
  *
- * Канал-специфичные правила:
- *  - Telegram: ждём `telegram_message_id` + (для вложений) `telegram_attachments_delivered`,
- *    через 90s без id показываем `failed`. `recipient_read_at` (от MTProto) → `read`.
- *  - Wazzup: смотрим на строковое поле `wazzup_status` (sent/delivered/read/error).
- *  - Email: оптимистичное `pending`, наличие read_at в метаданных → `read`.
+ * Дополнительно — клиентский таймер на зависший `pending`. Если статус
+ * не обновился за CLIENT_TIMEOUT_MS, фронт локально показывает 'failed'.
+ * Это страховка на случай, когда pg_net тихо не дёрнул edge function и
+ * watchdog `scan_dispatch_failures` ещё не догнал ситуацию.
  */
 
+import { useEffect, useState } from 'react'
 import { AlertCircle } from 'lucide-react'
-import { useTelegramDeliveryStatus } from './TelegramDeliveryIndicator'
-import { useWazzupDeliveryStatus } from './WazzupDeliveryIndicator'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
-import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 
 export type DeliveryStatus = 'pending' | 'sent' | 'read' | 'failed' | null
 
+const CLIENT_TIMEOUT_MS = 60_000
+
 /**
- * Унифицированный хук статуса доставки. В одном месте решает, какой канал
- * у сообщения и какую логику применить.
+ * Унифицированный хук статуса доставки.
+ *
+ * Возвращает null для:
+ *  - входящих (isOwn=false)
+ *  - сообщений не из веба (source !== 'web' — это входящие, системные, draft).
  */
-export function useDeliveryStatus(
-  message: ProjectMessage,
-  isOwn: boolean,
-  opts?: { isTelegramLinked?: boolean; isEmailChat?: boolean },
-): DeliveryStatus {
-  // Хуки нельзя вызывать условно. Внутри каждого свои early-return для
-  // не-своих/не-привязанных сообщений — лишних запросов не делают.
-  const tg = useTelegramDeliveryStatus(message, isOwn, opts?.isTelegramLinked)
-  const wazzup = useWazzupDeliveryStatus(message, isOwn)
+export function useDeliveryStatus(message: ProjectMessage, isOwn: boolean): DeliveryStatus {
+  // Optimistic-вставка фронта (до INSERT) — всегда pending.
+  const isOptimistic = message.id.startsWith('optimistic-')
 
-  if (tg === 'failed') return 'failed'
-  if (tg === 'pending') return 'pending'
-  if (tg === 'read') return 'read'
-  if (tg === 'delivered') return 'sent'
+  // Локальный таймер для зависшего pending — стартует только при необходимости.
+  const [timedOut, setTimedOut] = useState(false)
+  useEffect(() => {
+    setTimedOut(false)
+    if (!isOwn) return
+    if (isOptimistic) return
+    if (message.send_status !== 'pending') return
 
-  if (wazzup === 'failed') return 'failed'
-  if (wazzup === 'pending') return 'pending'
-  if (wazzup === 'read') return 'read'
-  if (wazzup === 'delivered' || wazzup === 'sent') return 'sent'
+    const startedAt = message.send_attempted_at
+      ? new Date(message.send_attempted_at).getTime()
+      : new Date(message.created_at).getTime()
+    const elapsed = Date.now() - startedAt
+    const remaining = Math.max(0, CLIENT_TIMEOUT_MS - elapsed) + 500
+    const timer = setTimeout(() => setTimedOut(true), remaining)
+    return () => clearTimeout(timer)
+  }, [isOwn, isOptimistic, message.send_status, message.send_attempted_at, message.created_at])
 
-  // После email-унификации исходящие пишутся с source='web', а email-флаги
-  // (email_send_method / email_delivery_status) проставляет триггер БД +
-  // email-internal-send. Поэтому сначала проверяем эти поля — они
-  // окончательный признак email-сообщения.
-  const ds = (message as unknown as { email_delivery_status?: string | null }).email_delivery_status
-  const sm = (message as unknown as { email_send_method?: string | null }).email_send_method
-  if (isOwn && (isEmailSource(message.source) || ds || sm || opts?.isEmailChat)) {
-    if (message.id.startsWith('optimistic-')) return 'pending'
-    // Resend bounce/complaint/failed → красный «не доставлено»
-    if (ds === 'bounced' || ds === 'complaint' || ds === 'failed') return 'failed'
-    if (ds === 'queued') return 'pending'
-    if (ds === 'opened' || ds === 'clicked') return 'read'
-    const meta = message.email_metadata as Record<string, unknown> | null
-    if (meta?.read_at) return 'read'
-    // Email-тред, источник 'web', но email-флаги ещё не выставлены —
-    // edge function только что получила message_id и работает над
-    // отправкой. Это нормальное «pending» состояние, не «sent».
-    if (opts?.isEmailChat && !sm && !ds) return 'pending'
-    return 'sent'
+  if (!isOwn) return null
+  if (isOptimistic) return 'pending'
+
+  // send_status — основной сигнал.
+  if (message.send_status === 'failed') return 'failed'
+  if (message.send_status === 'pending') {
+    return timedOut ? 'failed' : 'pending'
   }
 
-  return null
+  // send_status === 'sent' — может перерасти в 'read' если канал предоставил
+  // read-receipt. Иначе остаёмся в 'sent'.
+  if (message.recipient_read_at) return 'read'
+  if (message.wazzup_status === 'read') return 'read'
+
+  const emailStatus = (message as unknown as { email_delivery_status?: string | null })
+    .email_delivery_status
+  if (emailStatus === 'opened' || emailStatus === 'clicked') return 'read'
+
+  const emailMeta = message.email_metadata as Record<string, unknown> | null
+  if (emailMeta?.read_at) return 'read'
+
+  return 'sent'
 }
 
-/**
- * Единый бейдж «не доставлено» — заменяет TelegramFailedBadge + WazzupFailedBadge.
- */
+/** Бейдж «не доставлено» — оверлей в правом верхнем углу баббла. */
 export function DeliveryFailedBadge({ title = 'Не доставлено' }: { title?: string }) {
   return (
     <div

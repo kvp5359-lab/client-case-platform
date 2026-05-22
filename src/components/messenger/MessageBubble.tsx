@@ -110,10 +110,7 @@ function MessageBubbleImpl({
     ? [message.sender.name, message.sender.last_name].filter(Boolean).join(' ')
     : ''
   const displayName = participantDisplayName || message.sender_name
-  const rawDeliveryStatus = useDeliveryStatus(message, isOwn, {
-    isTelegramLinked,
-    isEmailChat: isEmailThread,
-  })
+  const rawDeliveryStatus = useDeliveryStatus(message, isOwn)
   // Soft-fail: сообщение доставлено (есть telegram_message_id), но
   // потерялась только цитата / fallback на бота-секретаря.
   // UI не красит такой бабл, рисует тонкую метку.

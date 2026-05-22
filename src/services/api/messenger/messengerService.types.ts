@@ -117,6 +117,16 @@ export interface ProjectMessage {
     | 'clicked'
     | 'failed'
     | null
+  /**
+   * Единый статус отправки исходящего сообщения по всем каналам.
+   * Источник правды: pending → sent / failed. UI рисует индикатор только по нему.
+   * Подробнее — миграция 20260522_unified_send_status.sql.
+   */
+  send_status: 'pending' | 'sent' | 'failed'
+  /** Текст причины, если send_status='failed'. Показывается юзеру в тосте/тултипе. */
+  send_failed_reason?: string | null
+  /** Когда стартовала отправка (для client-side таймера зависшего pending). */
+  send_attempted_at?: string | null
   created_at: string
   updated_at: string
   reactions: MessageReaction[]

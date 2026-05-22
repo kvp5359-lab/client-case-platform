@@ -2,30 +2,48 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import {
-  retryTelegramSend,
-  type ProjectMessage,
-} from '@/services/api/messenger/messengerService'
+import { supabase } from '@/lib/supabase'
+import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
 
+/**
+ * Кнопка «Повторить» под красным баблом «не доставлено».
+ *
+ * Раньше — отдельная edge function `retryTelegramSend`. После унификации
+ * send_status (миграция 20260522_unified_send_status.sql) ретрай — это
+ * просто перевод сообщения в `send_status='pending'`. БД-триггер
+ * `notify_on_send_status_retry` ловит переход failed → pending и дёргает
+ * `dispatch_message_to_channels`, который сам выбирает нужный канал
+ * (Telegram group / business / mtproto / Wazzup / email).
+ *
+ * Имя сохранено как `useRetryTelegramSend` для совместимости с местами
+ * вызова — фактически универсально для всех каналов.
+ */
 export function useRetryTelegramSend(threadId: string) {
   const queryClient = useQueryClient()
   const messagesKey = messengerKeys.messagesByThreadId(threadId)
 
   return useMutation({
-    mutationFn: (params: {
-      message: ProjectMessage
-      senderName: string
-      senderRole: string | null
-    }) => retryTelegramSend(params.message, params.senderName, params.senderRole),
+    mutationFn: async (params: { message: ProjectMessage }) => {
+      const nowIso = new Date().toISOString()
+      const { error } = await supabase
+        .from('project_messages')
+        .update({
+          send_status: 'pending',
+          send_failed_reason: null,
+          send_attempted_at: nowIso,
+        })
+        .eq('id', params.message.id)
+      if (error) throw error
+    },
 
-    // Оптимистично "перезапускаем" сообщение: обнуляем признаки неудачи,
-    // чтобы индикатор failed сбросился и появился pending на 30 секунд.
+    // Оптимистично: локально сразу гасим красный бейдж, ставим pending.
+    // Realtime-подписка догонит реальным send_status, когда edge function
+    // запишет результат.
     onMutate: async ({ message }) => {
       await queryClient.cancelQueries({ queryKey: messagesKey })
       const previous = queryClient.getQueryData(messagesKey)
-
-      const resetCreatedAt = new Date().toISOString()
+      const resetAt = new Date().toISOString()
 
       queryClient.setQueryData(messagesKey, (old: unknown) => {
         const typed = old as
@@ -38,18 +56,15 @@ export function useRetryTelegramSend(threadId: string) {
             msg.id === message.id
               ? {
                   ...msg,
-                  telegram_attachments_delivered:
-                    msg.attachments && msg.attachments.length > 0 ? null : msg.telegram_attachments_delivered,
-                  // сдвигаем "точку отсчёта" таймера failed — чтобы useTelegramDeliveryStatus
-                  // снова отсчитал 30 секунд и не показывал failed сразу же
-                  created_at: resetCreatedAt,
+                  send_status: 'pending' as const,
+                  send_failed_reason: null,
+                  send_attempted_at: resetAt,
                 }
               : msg,
           ),
         }))
         return { ...typed, pages }
       })
-
       return { previous }
     },
 
@@ -57,13 +72,11 @@ export function useRetryTelegramSend(threadId: string) {
       if (context?.previous) {
         queryClient.setQueryData(messagesKey, context.previous)
       }
-      toast.error('Не удалось отправить сообщение в Telegram')
+      toast.error('Не удалось запустить повторную отправку')
     },
 
     onSuccess: () => {
-      toast.success('Отправка в Telegram запущена')
-      // Рефетч обновит telegram_message_id / telegram_attachments_delivered,
-      // когда edge function запишет результат.
+      toast.success('Отправка запущена')
       queryClient.invalidateQueries({ queryKey: messagesKey })
     },
   })

@@ -142,6 +142,7 @@ export function useSendMessage(
           telegram_message_id: null,
           telegram_chat_id: null,
           telegram_attachments_delivered: null,
+          send_status: 'pending',
           is_edited: false,
           is_draft: false,
           forwarded_from_name: null,
