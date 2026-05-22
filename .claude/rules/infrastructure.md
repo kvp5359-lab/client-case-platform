@@ -475,6 +475,21 @@ UNIQUE `uq_telegram_message_per_chat (telegram_chat_id, telegram_message_id)` т
 - **Миграции**: `20260510_client_avatars_infra.sql` (таблица + колонка), `20260510_inbox_v2_counterpart_avatar.sql` (расширение RPC).
 - **Backfill**: при сбое сессии MTProto или непрогретом Bot API — записи остаются с `is_missing=true` до следующего сообщения. После рестарта mtproto-сервиса аватары начинают подтягиваться автоматически при первом же сообщении в треде.
 
+## Унифицированный send_status (2026-05-22)
+
+Единый статус доставки исходящего сообщения по всем каналам — в колонке `project_messages.send_status` (enum `outgoing_send_status`: `pending`/`sent`/`failed`). Это **единственный** источник правды для UI и для глобальных тостов. Раньше «доставлено / нет» вычислялось косвенно (по наличию `telegram_message_id`, `wazzup_status`, `email_delivery_status`, через 90-сек таймер на фронте) — это плодило баги и расхождения между каналами.
+
+- **Жизненный цикл**: INSERT исходящего → `send_status='pending'` (триггер `set_initial_send_status`). Edge function канала после `fetch` → `markMessageSent` или `markMessageFailed` (см. [`supabase/functions/_shared/messageSendStatus.ts`](../../supabase/functions/_shared/messageSendStatus.ts)). Все UPDATE'ы под `.throwOnError()` — нет молчаливых фейлов.
+- **Кнопка «Повторить»** на фронте = UPDATE `send_status='failed' → 'pending'`. Триггер `notify_on_send_status_retry` ловит переход и снова дёргает `dispatch_message_to_channels` (тот же путь, что INSERT).
+- **Cron `retry-undelivered-telegram` УДАЛЁН** (источник дублей). Колонка `telegram_retry_count` тоже. Авторетраев в принципе **нет** — это осознанное архитектурное решение: Bot API не поддерживает idempotency keys, и любой автоматический повтор при таймауте даёт риск дубля. Управление повтором — на стороне юзера (кнопка под красным баблом + тост).
+- **Watchdog `scan_dispatch_failures`** (cron каждую минуту) подстраховывает: при не-2xx ответе edge function переводит `send_status` в `failed` (только если ещё `pending`, чтобы не перетереть `sent`). Это закрывает случай «edge function упала с throw до того, как успела отметить статус».
+- **Client-side таймер 60 сек** в [`DeliveryIndicator.tsx`](../../src/components/messenger/DeliveryIndicator.tsx) — локально показывает `failed`, если `pending` зависло (защита от тихого сбоя pg_net до watchdog'а).
+- **Глобальный тост** [`SendFailureToasts`](../../src/components/messenger/SendFailureToasts.tsx) подписан на `message_send_failures` (через `useMyUnresolvedSendFailures`). Кнопка «Повторить» прямо в тосте.
+
+При добавлении нового канала отправки:
+1. В edge function — `markMessageSent({ channelFields: { имя_канала_message_id, ... } })` на успехе и `markMessageFailed(reason, { failureSource })` на фейле.
+2. UI само получит индикатор по `send_status` без правок.
+
 ## Мессенджер-каналы — единая справка
 
 ### Матрица возможностей

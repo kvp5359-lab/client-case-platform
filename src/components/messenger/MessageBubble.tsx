@@ -11,7 +11,7 @@ import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import { bubbleStyles } from './utils/messageStyles'
 import { useCollapsibleText } from './hooks/useCollapsibleText'
 import { DeliveryFailedBadge, useDeliveryStatus } from './DeliveryIndicator'
-import { isSoftTelegramError } from './TelegramDeliveryIndicator'
+import { isSoftTelegramError } from './DeliveryIndicator'
 // QuotePopup рендерится императивно (DOM) — см. handleMouseUp в MessageBubble
 import { ReactionBadges } from './ReactionBadges'
 import { MessageActions, MessageContextMenu } from './MessageActions'
@@ -116,9 +116,7 @@ function MessageBubbleImpl({
   // UI не красит такой бабл, рисует тонкую метку.
   const softTelegramError = isSoftTelegramError(message)
   // Drafts/scheduled — ещё не отправлены, поэтому таймер «не доставлено»
-  // (90 сек у useTelegramDeliveryStatus) для них не имеет смысла. Иначе
-  // через 1.5 минуты UI красит вложения и иконку в красный, хотя
-  // сообщение и не должно было уйти.
+  // в useDeliveryStatus для них не имеет смысла.
   const deliveryFailed =
     rawDeliveryStatus === 'failed' && !softTelegramError && !message.is_draft
   // Старый getDeliveryStatus возвращал 'pending' | 'sent' | 'read' | null, а

@@ -10,8 +10,8 @@
  *   - messengerService.read.ts     — getMessages / getProjectMessages*
  *   - messengerService.send.ts     — sendMessage + shouldSplitTextAndFiles
  *                                    + SendMessageParams
- *   - messengerService.edit.ts     — deleteMessage / editMessage /
- *                                    retryTelegramSend
+
+ *   - messengerService.edit.ts     — deleteMessage / editMessage
  *
  * Под-сервисы (attachments / reactions / read-status / participant / draft)
  * — отдельные файлы в этой же папке, реэкспортятся ниже.
@@ -43,7 +43,6 @@ export {
 export {
   deleteMessage,
   editMessage,
-  retryTelegramSend,
 } from './messengerService.edit'
 
 // Sub-services (already separate files)

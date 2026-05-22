@@ -88,3 +88,24 @@ export function DeliveryFailedBadge({ title = 'Не доставлено' }: { t
     </div>
   )
 }
+
+/**
+ * Сообщение доставлено в Telegram (есть message_id), но триггер при отправке
+ * записал диагностику: цитата не нашлась в чате (`reply_dropped:`). По факту
+ * клиент сообщение получил, но без цитаты — отправителю полезно знать.
+ *
+ * Случай `employee_bot_send_failed: ... via=text` — fallback на бота-секретаря —
+ * сюда НЕ относится: в некоторых чатах личного бота сотрудника нет by
+ * design, отправка через секретаря — штатное поведение, никакой ошибки
+ * нет, бейдж только вводил бы пользователя в заблуждение.
+ */
+export function isSoftTelegramError(message: ProjectMessage): boolean {
+  const hasId =
+    !!message.telegram_message_id ||
+    (Array.isArray(message.telegram_message_ids) && message.telegram_message_ids.length > 0)
+  if (!hasId) return false
+  const detail = (message as unknown as { telegram_error_detail?: string | null })
+    .telegram_error_detail
+  if (!detail) return false
+  return detail.startsWith('reply_dropped:')
+}
