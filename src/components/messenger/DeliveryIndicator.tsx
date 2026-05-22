@@ -39,6 +39,7 @@ export function useDeliveryStatus(message: ProjectMessage, isOwn: boolean): Deli
   // Локальный таймер для зависшего pending — стартует только при необходимости.
   const [timedOut, setTimedOut] = useState(false)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- сброс таймера при изменении входящих условий
     setTimedOut(false)
     if (!isOwn) return
     if (isOptimistic) return

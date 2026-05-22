@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
 import { uploadAttachments } from './messengerAttachmentService'
+import { logSendFailure } from './logSendFailure'
 import {
   MESSAGE_SELECT,
   castToProjectMessage,
@@ -225,12 +226,33 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     const isEmailThread = extRow?.type === 'email' || !!extRow?.email_send_account_id
 
     if (isEmailThread) {
-      await supabase.auth.getSession()
-      supabase.functions
-        .invoke('email-internal-send', { body: { message_id: message.id } })
-        .catch((err) => {
-          logger.error('Failed to send email with attachments:', err)
+      // Refresh session — но не блокируем invoke если что-то пошло не так
+      // (вид сессии гонит свою цепочку обновления, иначе пользовательские
+      // jpg-апроверы могли подвиснуть).
+      void supabase.auth.getSession().catch(() => {})
+      try {
+        const { error } = await supabase.functions.invoke('email-internal-send', {
+          body: { message_id: message.id },
         })
+        if (error) throw error
+      } catch (err) {
+        logger.error('Failed to send email with attachments:', err)
+        // Серверный лог — sticky-toast прилетит пользователю даже если он
+        // закрыл вкладку. Раньше catch проглатывал ошибку и пользователь
+        // не понимал почему сообщение «зависло» на «Отправляется».
+        void logSendFailure({
+          workspace_id: params.workspaceId,
+          project_id: params.projectId ?? null,
+          thread_id: params.threadId,
+          participant_id: params.senderParticipantId,
+          content: params.content ?? null,
+          attachment_names: (params.attachments ?? []).map((f) => f.name),
+          error_text: err instanceof Error ? err.message : String(err),
+          error_code: 'email_send_invoke_failed',
+          source: 'email',
+          metadata: { stage: 'email_internal_send_invoke' },
+        })
+      }
     } else if (extRow?.wazzup_channel_id) {
       await supabase.auth.getSession()
       supabase.functions
