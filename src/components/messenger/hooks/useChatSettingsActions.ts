@@ -14,7 +14,12 @@
 import { useCallback, useEffect, type RefObject } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { useEmailLink, useCreateEmailLink, useRemoveEmailLink } from '@/hooks/email/useEmailLink'
+import {
+  useEmailLink,
+  useCreateEmailLink,
+  useRemoveEmailLink,
+  useUpdateEmailLink,
+} from '@/hooks/email/useEmailLink'
 import { useTelegramLink } from '@/hooks/messenger/useTelegramLink'
 import { toast } from 'sonner'
 import type { ThreadTemplate } from '@/types/threadTemplate'
@@ -110,7 +115,32 @@ export function useChatSettingsActions({
   // ── Email link (edit mode) ──
   const { data: emailLink } = useEmailLink(chat?.id)
   const createEmailLink = useCreateEmailLink(chat?.id)
+  const updateEmailLink = useUpdateEmailLink(chat?.id)
   const removeEmailLink = useRemoveEmailLink(chat?.id)
+
+  // ── Sync form fields with current email link ──
+  // Когда тред уже привязан к email, поля «Email клиента» / «Тема письма»
+  // показывают текущие значения (а не пустые, как раньше). Так пользователь
+  // видит, что именно сейчас закреплено за тредом, и может отредактировать.
+  useEffect(() => {
+    if (!open || !form.isEditMode) return
+    if (emailLink) {
+      // Только если ещё не вводил вручную (не перезаписываем правки пользователя).
+      if (form.selectedEmails.length === 0 && !form.emailInput) {
+        form.setSelectedEmails([
+          { email: emailLink.contact_email, label: emailLink.contact_email },
+        ])
+      }
+      if (!form.emailSubject && !form.subjectTouched) {
+        form.setEmailSubject(emailLink.subject ?? '')
+      }
+    } else {
+      // Привязки нет → очищаем поля, чтобы можно было ввести новую.
+      if (form.selectedEmails.length > 0) form.setSelectedEmails([])
+      if (form.emailSubject && !form.subjectTouched) form.setEmailSubject('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emailLink?.id, open, chat?.id])
 
   // ── Telegram link (edit mode) ──
   const {
@@ -274,19 +304,41 @@ export function useChatSettingsActions({
   }, [form, updateDeadlineMutation])
 
   const handleLinkEmail = useCallback(() => {
-    if (!form.emailInput.trim()) return
-    createEmailLink.mutate(
-      { contactEmail: form.emailInput.trim(), subject: form.emailSubject.trim() || undefined },
-      {
-        onSuccess: () => {
-          toast.success('Email привязан')
-          form.setEmailInput('')
-          form.setEmailSubject('')
+    // Целевой адрес: либо то, что юзер набирает в input, либо уже выбранный чип
+    // (когда обновляем существующую привязку и input пустой).
+    const targetEmail =
+      form.emailInput.trim() ||
+      (form.selectedEmails.length > 0 ? form.selectedEmails[0].email : '')
+    if (!targetEmail) return
+    const subject = form.emailSubject.trim() || undefined
+
+    if (emailLink) {
+      // Привязка уже есть → UPDATE (меняем email или тему).
+      updateEmailLink.mutate(
+        { linkId: emailLink.id, contactEmail: targetEmail, subject: subject ?? null },
+        {
+          onSuccess: () => {
+            toast.success('Email-канал обновлён')
+            form.setEmailInput('')
+            form.setSubjectTouched(false)
+          },
+          onError: () => toast.error('Не удалось обновить email-канал'),
         },
-        onError: () => toast.error('Не удалось привязать email'),
-      },
-    )
-  }, [form, createEmailLink])
+      )
+    } else {
+      createEmailLink.mutate(
+        { contactEmail: targetEmail, subject },
+        {
+          onSuccess: () => {
+            toast.success('Email привязан')
+            form.setEmailInput('')
+            form.setSubjectTouched(false)
+          },
+          onError: () => toast.error('Не удалось привязать email'),
+        },
+      )
+    }
+  }, [form, createEmailLink, updateEmailLink, emailLink])
 
   const handleUnlinkEmail = useCallback(() => {
     if (!emailLink) return
@@ -329,7 +381,7 @@ export function useChatSettingsActions({
     telegramCopied,
     handleCopyTelegramCode,
     // Email link
-    isLinkingEmail: createEmailLink.isPending,
+    isLinkingEmail: createEmailLink.isPending || updateEmailLink.isPending,
     isUnlinkingEmail: removeEmailLink.isPending,
     // Document picker
     projectDocuments,

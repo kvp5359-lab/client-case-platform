@@ -58,15 +58,80 @@ export function useCreateEmailLink(threadId: string | undefined) {
         .single()
 
       if (error) throw error
+
+      // Привязка email-канала к треду — автоматически переключаем тип треда
+      // на 'email' (если был 'chat'). Это синхронизирует UI-сегмент и логику
+      // отображения. Также backfill'им email_subject_root если задан subject
+      // и в треде ещё пусто — чтобы первое исходящее уходило с правильной темой.
+      const threadUpdates: Record<string, unknown> = { type: 'email' }
+      if (params.subject) {
+        const { data: t } = await supabase
+          .from('project_threads')
+          .select('email_subject_root')
+          .eq('id', threadId)
+          .maybeSingle()
+        const current = (t as { email_subject_root?: string | null } | null)?.email_subject_root
+        if (!current || !current.trim()) {
+          threadUpdates.email_subject_root = params.subject
+        }
+      }
+      await supabase.from('project_threads').update(threadUpdates).eq('id', threadId)
+
       return data as EmailLink
     },
     onSuccess: () => {
       if (threadId) {
         queryClient.invalidateQueries({ queryKey: emailAccountKeys.emailLink(threadId) })
+        // Тред мог сменить type → инвалидируем кеш тредов
+        queryClient.invalidateQueries({ queryKey: ['threads'] })
+        queryClient.invalidateQueries({ queryKey: ['thread', threadId] })
       }
     },
     onError: () => {
       toast.error('Не удалось привязать email')
+    },
+  })
+}
+
+/**
+ * UPDATE существующей привязки — для редактирования email клиента / темы
+ * без отвязки-привязки заново. Используется когда тред уже подключён к email.
+ */
+export function useUpdateEmailLink(threadId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (params: { linkId: string; contactEmail: string; subject?: string | null }) => {
+      const { data, error } = await supabase
+        .from('project_thread_email_links')
+        .update({
+          contact_email: params.contactEmail,
+          subject: params.subject || null,
+        })
+        .eq('id', params.linkId)
+        .select('*')
+        .single()
+      if (error) throw error
+
+      // Если меняли тему — синкаем email_subject_root треда тоже,
+      // чтобы следующее исходящее ушло с новой темой.
+      if (threadId && params.subject) {
+        await supabase
+          .from('project_threads')
+          .update({ email_subject_root: params.subject })
+          .eq('id', threadId)
+      }
+
+      return data as EmailLink
+    },
+    onSuccess: () => {
+      if (threadId) {
+        queryClient.invalidateQueries({ queryKey: emailAccountKeys.emailLink(threadId) })
+        queryClient.invalidateQueries({ queryKey: ['thread', threadId] })
+      }
+    },
+    onError: () => {
+      toast.error('Не удалось обновить email-канал')
     },
   })
 }

@@ -95,7 +95,7 @@ export const ChatSettingsChannels = memo(function ChatSettingsChannels({
   selectedEmails,
   emailInput,
   emailSubject,
-  subjectTouched: _subjectTouched,
+  subjectTouched,
   emailSuggestions,
   filteredSuggestions,
   emailDropdownOpen,
@@ -351,11 +351,22 @@ export const ChatSettingsChannels = memo(function ChatSettingsChannels({
               size="sm"
               variant="outline"
               onClick={onLinkEmail}
-              disabled={!emailInput.trim() || isLinkingEmail}
+              disabled={
+                isLinkingEmail ||
+                // Кнопка активна когда есть что отправить:
+                // — для новой привязки: нужен ввод адреса;
+                // — для обновления существующей: достаточно изменения темы или
+                //   текущего выбранного chip'а.
+                (!emailLink && !emailInput.trim()) ||
+                (!!emailLink &&
+                  !emailInput.trim() &&
+                  selectedEmails.length === 0 &&
+                  !subjectTouched)
+              }
               className="self-start"
             >
               {isLinkingEmail && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-              Привязать
+              {emailLink ? 'Сохранить' : 'Привязать'}
             </Button>
           )}
         </div>

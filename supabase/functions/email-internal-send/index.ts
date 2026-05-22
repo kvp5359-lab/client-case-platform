@@ -100,9 +100,54 @@ Deno.serve(async (req: Request) => {
   }
   const t = thread as ThreadRow;
   if (t.short_id == null) return jsonRes({ error: "thread has no short_id" }, 400, req);
-  if (!t.email_last_external_address) {
+  // Fallback: тред мог быть создан без явного email_last_external_address
+  // (например, исходящий email сделан из chat-треда коллегой). Тогда
+  // достаём адрес получателя из email_metadata последнего email-сообщения.
+  // Направление определяем по sender_participant_id: NOT NULL → исходящее
+  // (отправлено сотрудником), берём to_emails[0]; NULL → входящее, берём
+  // from_email. Полагаться на source нельзя: старые исходящие пишутся как
+  // source='email' (через gmail-send), новые — source='web'/'email_internal'.
+  let recipientEmail: string | null = t.email_last_external_address;
+  if (!recipientEmail) {
+    const { data: lastEmailMsg } = await service
+      .from("project_messages")
+      .select("email_metadata, sender_participant_id")
+      .eq("thread_id", m.thread_id)
+      .not("email_metadata", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    for (const row of (lastEmailMsg ?? []) as Array<{ email_metadata: Record<string, unknown> | null; sender_participant_id: string | null }>) {
+      const meta = row.email_metadata;
+      if (!meta) continue;
+      const isOutgoing = row.sender_participant_id !== null;
+      if (isOutgoing) {
+        const to = meta["to_emails"];
+        if (Array.isArray(to) && typeof to[0] === "string" && to[0]) {
+          recipientEmail = to[0];
+          break;
+        }
+      } else {
+        const from = meta["from_email"];
+        if (typeof from === "string" && from) {
+          recipientEmail = from;
+          break;
+        }
+      }
+    }
+    if (recipientEmail) {
+      // Подкладываем в тред, чтобы следующие отправки шли быстрым путём.
+      await service
+        .from("project_threads")
+        .update({ email_last_external_address: recipientEmail })
+        .eq("id", m.thread_id);
+      console.log(`[email-internal-send] backfilled email_last_external_address for thread ${m.thread_id}: ${recipientEmail}`);
+    }
+  }
+  if (!recipientEmail) {
     return jsonRes({ error: "thread has no recipient (email_last_external_address)" }, 400, req);
   }
+  // Подменяем для остальной части функции.
+  (t as { email_last_external_address: string }).email_last_external_address = recipientEmail;
 
   const { data: ws, error: wsErr } = await service
     .from("workspaces")
@@ -188,7 +233,49 @@ Deno.serve(async (req: Request) => {
   const hasInboundFromClient = chainList.some((row) => row.source === "email_internal")
   const isReply = hasInboundFromClient
 
-  const subjectRoot = (t.email_subject_root ?? m.email_subject ?? "").trim() || "(без темы)"
+  // Fallback на subject из email_metadata: тред мог быть создан без явного
+  // email_subject_root (отправка из chat-треда коллегой). Тогда берём
+  // тему из последнего email-сообщения треда и backfillим в тред.
+  // Считаем «пустыми» темами литералы (без темы)/(no subject) — раньше они
+  // могли попадать в БД при отправке без явной темы и блокировать fallback.
+  const isBlankSubject = (s: string | null | undefined): boolean => {
+    const v = (s ?? "").trim();
+    if (!v) return true;
+    return /^\(?\s*(без\s+темы|no\s+subject)\s*\)?$/i.test(v);
+  };
+  let resolvedSubjectRoot = isBlankSubject(t.email_subject_root)
+    ? (isBlankSubject(m.email_subject) ? "" : (m.email_subject ?? "").trim())
+    : (t.email_subject_root ?? "").trim();
+  if (!resolvedSubjectRoot) {
+    const { data: lastSubjMsg } = await service
+      .from("project_messages")
+      .select("email_metadata")
+      .eq("thread_id", m.thread_id)
+      .not("email_metadata", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    for (const row of (lastSubjMsg ?? []) as Array<{ email_metadata: Record<string, unknown> | null }>) {
+      const meta = row.email_metadata;
+      if (!meta) continue;
+      const subj = typeof meta["subject"] === "string" ? (meta["subject"] as string) : null;
+      if (!subj) continue;
+      const cleaned = subj.trim().replace(/^\s*Re:\s*/i, "").trim();
+      // Игнорируем «пустые» темы — раньше в metadata могло прийти буквально "(без темы)"
+      // или "(no subject)"; такие тоже считаем мусором, иначе backfill закрепит их в треде.
+      if (!cleaned) continue;
+      if (/^\(?\s*(без\s+темы|no\s+subject)\s*\)?$/i.test(cleaned)) continue;
+      resolvedSubjectRoot = cleaned;
+      break;
+    }
+    if (resolvedSubjectRoot) {
+      await service
+        .from("project_threads")
+        .update({ email_subject_root: resolvedSubjectRoot })
+        .eq("id", m.thread_id);
+      console.log(`[email-internal-send] backfilled email_subject_root for thread ${m.thread_id}: ${resolvedSubjectRoot}`);
+    }
+  }
+  const subjectRoot = resolvedSubjectRoot || "(без темы)"
   const subjectRaw = isReply ? `Re: ${subjectRoot.replace(/^\s*Re:\s*/i, "")}` : subjectRoot
   const htmlInner = wrapPlainAsHtmlIfNeeded(m.content ?? "");
   // 1×1 tracking pixel — клиент-почтовик скачает картинку при открытии,
@@ -329,7 +416,7 @@ Deno.serve(async (req: Request) => {
     const sendBody: { raw: string; threadId?: string } = { raw };
     if (existingGmailThreadId) sendBody.threadId = existingGmailThreadId;
 
-    const gmailResp = await fetch(
+    let gmailResp = await fetch(
       "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
       {
         method: "POST",
@@ -340,6 +427,28 @@ Deno.serve(async (req: Request) => {
         body: JSON.stringify(sendBody),
       },
     );
+
+    // Fallback на 404 при наличии threadId: Gmail Кирилла не знает thread
+    // от Дениса (тред принадлежит другому Gmail-аккаунту). Повторяем без
+    // threadId — Gmail создаст новую ветку у себя, но клиенту письмо
+    // сгруппируется по нашим In-Reply-To/References (RFC-стандарт).
+    if (!gmailResp.ok && gmailResp.status === 404 && sendBody.threadId) {
+      console.warn(
+        `[email-internal-send] Gmail 404 for threadId ${sendBody.threadId} — retrying without threadId`,
+      );
+      const fallbackBody = { raw: sendBody.raw };
+      gmailResp = await fetch(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(fallbackBody),
+        },
+      );
+    }
     if (!gmailResp.ok) {
       const errBody = await gmailResp.text().catch(() => "");
       await markMessageFailed(
