@@ -16,7 +16,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
-import { logServerSendFailure } from "../_shared/sendFailureLog.ts";
+import { markMessageFailed } from "../_shared/messageSendStatus.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -126,12 +126,14 @@ Deno.serve(async (req: Request) => {
         const j = JSON.parse(text);
         parsedErr = (j?.error as string) ?? parsedErr;
       } catch { /* keep text */ }
-      await logServerSendFailure(service, {
-        message_id: msg.id,
-        error_text: parsedErr,
-        error_code: `mtproto_${res.status}`,
-        source: "telegram_mtproto",
-        metadata: { stage: "send" },
+      // mtproto-service сам уже выставил send_status='failed' внутри.
+      // На случай если он этого не успел (например, ответ был 500 ещё до
+      // его post-error UPDATE) — дублируем безопасно: повторный markFailed
+      // идемпотентен и не сломает уже выставленный статус.
+      await markMessageFailed(service, msg.id, parsedErr, {
+        failureSource: "telegram_mtproto",
+        failureCode: `mtproto_${res.status}`,
+        failureMetadata: { stage: "send" },
       });
     }
     return new Response(text, {
@@ -139,13 +141,18 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    await logServerSendFailure(service, {
-      message_id: msg.id,
-      error_text: `MTProto service unreachable: ${err}`.slice(0, 500),
-      error_code: "mtproto_unreachable",
-      source: "telegram_mtproto",
-      metadata: { stage: "fetch" },
-    });
+    // Сервис вообще unreachable — mtproto-service не успел поставить статус,
+    // выставляем сами.
+    await markMessageFailed(
+      service,
+      msg.id,
+      `MTProto service unreachable: ${err}`.slice(0, 500),
+      {
+        failureSource: "telegram_mtproto",
+        failureCode: "mtproto_unreachable",
+        failureMetadata: { stage: "fetch" },
+      },
+    );
     return jsonResponse({ error: `service unreachable: ${err}` }, 502, corsHeaders);
   }
 });

@@ -211,9 +211,11 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       const telegramMessageId = sentIds[0]
 
       if (body.data.message_id_internal) {
-        await supabase
+        const { error: updErr } = await supabase
           .from("project_messages")
           .update({
+            send_status: "sent",
+            send_failed_reason: null,
             telegram_message_id: telegramMessageId,
             telegram_message_ids: sentIds,
             telegram_chat_id: body.data.client_tg_user_id,
@@ -224,6 +226,10 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
             telegram_error_detail: null,
           })
           .eq("id", body.data.message_id_internal)
+        if (updErr) {
+          app.log.error({ err: updErr }, "messages/send post-update failed")
+          throw new Error(`post-send update failed: ${updErr.message}`)
+        }
       }
 
       // Fire-and-forget: пробуем подтянуть аватарку собеседника. Если это
@@ -280,10 +286,13 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
     } catch (err) {
       app.log.error({ err }, "messages/send failed")
       if (body.data.message_id_internal) {
+        const reason = humanError(err).slice(0, 500)
         await supabase
           .from("project_messages")
           .update({
-            telegram_error_detail: humanError(err),
+            send_status: "failed",
+            send_failed_reason: reason,
+            telegram_error_detail: reason,
             telegram_attachments_delivered: body.data.has_attachments ? false : null,
           })
           .eq("id", body.data.message_id_internal)

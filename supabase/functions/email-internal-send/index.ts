@@ -21,7 +21,7 @@ import {
 } from "../_shared/edge.ts";
 import { ensureValidGmailToken, type GmailAccountData } from "../_shared/gmailToken.ts";
 import { uint8ArrayToBase64 } from "../_shared/encoding.ts";
-import { logServerSendFailure } from "../_shared/sendFailureLog.ts";
+import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
 
 const ROOT_DOMAIN = "clientcase.app";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
@@ -279,12 +279,18 @@ Deno.serve(async (req: Request) => {
     try {
       accessToken = await ensureValidGmailToken(service, acc);
     } catch (e) {
-      await service
-        .from("project_messages")
-        .update({ email_delivery_status: "failed", email_send_method: "employee_mailbox" })
-        .eq("id", m.id);
+      const detail = e instanceof Error ? e.message : String(e);
+      await markMessageFailed(service, m.id, `Не удалось получить токен Gmail: ${detail}`, {
+        channelFields: {
+          email_delivery_status: "failed",
+          email_send_method: "employee_mailbox",
+        },
+        failureSource: "email",
+        failureCode: "gmail_token_failed",
+        failureMetadata: { stage: "gmail_token" },
+      });
       return jsonRes(
-        { error: "gmail_token_failed", detail: e instanceof Error ? e.message : String(e) },
+        { error: "gmail_token_failed", detail },
         502, req);
     }
 
@@ -336,17 +342,20 @@ Deno.serve(async (req: Request) => {
     );
     if (!gmailResp.ok) {
       const errBody = await gmailResp.text().catch(() => "");
-      await service
-        .from("project_messages")
-        .update({ email_delivery_status: "failed", email_send_method: "employee_mailbox" })
-        .eq("id", m.id);
-      await logServerSendFailure(service, {
-        message_id: m.id,
-        error_text: errBody.slice(0, 500) || `Gmail API ${gmailResp.status}`,
-        error_code: `gmail_${gmailResp.status}`,
-        source: "email",
-        metadata: { stage: "gmail_send" },
-      });
+      await markMessageFailed(
+        service,
+        m.id,
+        errBody.slice(0, 500) || `Gmail API ${gmailResp.status}`,
+        {
+          channelFields: {
+            email_delivery_status: "failed",
+            email_send_method: "employee_mailbox",
+          },
+          failureSource: "email",
+          failureCode: `gmail_${gmailResp.status}`,
+          failureMetadata: { stage: "gmail_send" },
+        },
+      );
       return jsonRes(
         { error: "gmail_send_failed", status: gmailResp.status, detail: errBody.slice(0, 500) },
         502, req);
@@ -385,16 +394,15 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    await service
-      .from("project_messages")
-      .update({
+    await markMessageSent(service, m.id, {
+      channelFields: {
         email_message_id: actualMessageId,
         email_send_method: "employee_mailbox",
         email_send_account_id: sendAccountId,
         email_delivery_status: "sent",
         email_subject: subjectRaw,
-      })
-      .eq("id", m.id);
+      },
+    });
 
     if (!t.email_subject_root) {
       const root = subjectRaw.replace(/^\s*Re:\s*/i, "").trim();
@@ -471,20 +479,20 @@ Deno.serve(async (req: Request) => {
 
   if (!resp.ok) {
     const errBody = await resp.text().catch(() => "");
-    await service
-      .from("project_messages")
-      .update({
-        email_delivery_status: "failed",
-        email_send_method: "system_postmark",
-      })
-      .eq("id", m.id);
-    await logServerSendFailure(service, {
-      message_id: m.id,
-      error_text: errBody.slice(0, 500) || `Resend API ${resp.status}`,
-      error_code: `resend_${resp.status}`,
-      source: "email",
-      metadata: { stage: "resend_send" },
-    });
+    await markMessageFailed(
+      service,
+      m.id,
+      errBody.slice(0, 500) || `Resend API ${resp.status}`,
+      {
+        channelFields: {
+          email_delivery_status: "failed",
+          email_send_method: "system_postmark",
+        },
+        failureSource: "email",
+        failureCode: `resend_${resp.status}`,
+        failureMetadata: { stage: "resend_send" },
+      },
+    );
     return jsonRes(
       { error: "resend_send_failed", status: resp.status, detail: errBody.slice(0, 500) },
       502, req);
@@ -493,16 +501,15 @@ Deno.serve(async (req: Request) => {
   const result = await resp.json().catch(() => ({} as Record<string, unknown>));
   const resendId = (result as { id?: string }).id ?? null;
 
-  await service
-    .from("project_messages")
-    .update({
+  await markMessageSent(service, m.id, {
+    channelFields: {
       email_message_id: messageIdHeader,
       email_resend_id: resendId,
       email_send_method: "system_postmark",
       email_delivery_status: "sent",
       email_subject: subjectRaw,
-    })
-    .eq("id", m.id);
+    },
+  });
 
   // Запоминаем тему как «корень» переписки, если ещё нет
   if (!t.email_subject_root) {

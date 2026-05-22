@@ -13,7 +13,7 @@ import { resolveBotToken, findEmployeeBot } from "../_shared/telegramBotToken.ts
 import { detectChatMigration } from "../_shared/telegramMigration.ts";
 import { isReplyNotFoundError, loadReplyQuoteHtml } from "./helpers.ts";
 import { sendAttachmentsWithFallback } from "./attachments.ts";
-import { logServerSendFailure } from "../_shared/sendFailureLog.ts";
+import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
 
 interface RequestBody {
   message_id: string;
@@ -124,44 +124,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Идемпотентность: до отправки читаем уже зафиксированные результаты
-    // прошлых попыток. Если эта функция уже отправляла этот message_id и
-    // часть/всё ушло в Telegram, повторный вызов (от cron
-    // retry_undelivered_telegram_messages или от двойного клика юзера)
-    // пропускает уже сделанные шаги — текст и/или вложения.
-    //
-    // Флаги в БД:
-    //   - telegram_message_id != null → текст (или caption+первая медиа) ушли
-    //   - telegram_attachments_delivered === true → файлы доставлены
-    const { data: existingState } = await serviceClient
-      .from("project_messages")
-      .select("telegram_message_id, telegram_attachments_delivered")
-      .eq("id", body.message_id)
-      .maybeSingle();
-    const skipText = (existingState?.telegram_message_id ?? null) != null;
-    const skipAttachments = existingState?.telegram_attachments_delivered === true;
-    trace("idempotent.check", { skipText, skipAttachments });
-
-    // Заранее вычисляем «что должны были сделать в этом вызове».
     const isAttachmentsOnlyContent = body.content === "📎";
     const wantTextOnly = !body.attachments_only && !isAttachmentsOnlyContent;
-    const wantAttachmentsOnly =
-      body.attachments_only === true && (isAttachmentsOnlyContent || !body.content);
-    const wantTextAndAttachments =
-      body.attachments_only === true && !!body.content && !isAttachmentsOnlyContent;
-
-    // Если для текущего сценария всё уже сделано — выходим без отправки.
-    if (
-      (wantTextOnly && skipText) ||
-      (wantAttachmentsOnly && skipAttachments) ||
-      (wantTextAndAttachments && skipText && skipAttachments)
-    ) {
-      trace("idempotent.skip", { reason: "already_delivered" });
-      return new Response(
-        JSON.stringify({ ok: true, skipped: true }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
 
     // Резолв бота: сначала пробуем личный бот сотрудника-отправителя; если
     // его нет — fallback на бота-секретаря (resolveBotToken).
@@ -205,7 +169,8 @@ Deno.serve(async (req: Request) => {
       await serviceClient
         .from("project_messages")
         .update({ telegram_bot_integration_id: resolved.integrationId })
-        .eq("id", body.message_id);
+        .eq("id", body.message_id)
+        .throwOnError();
     }
 
     if (authenticatedUserId) {
@@ -373,7 +338,8 @@ Deno.serve(async (req: Request) => {
             .update({
               telegram_error_detail: `reply_dropped: original message_id=${body.reply_to_telegram_message_id} not in chat (likely supergroup migration); via=text`,
             })
-            .eq("id", body.message_id);
+            .eq("id", body.message_id)
+            .throwOnError();
         }
       }
 
@@ -410,32 +376,35 @@ Deno.serve(async (req: Request) => {
         await serviceClient
           .from("project_messages")
           .update({ telegram_bot_integration_id: null, telegram_error_detail: fallbackDetail })
-          .eq("id", body.message_id);
+          .eq("id", body.message_id)
+          .throwOnError();
       }
 
       if (tgData.ok && tgData.result?.message_id) {
-        await serviceClient
-          .from("project_messages")
-          .update({
+        await markMessageSent(serviceClient, body.message_id, {
+          channelFields: {
             telegram_message_id: tgData.result.message_id,
             telegram_chat_id: activeChatId,
-          })
-          .eq("id", body.message_id);
+          },
+        });
       } else {
         console.error("Telegram API error:", tgData);
         // Финальный фейл текстовой отправки (после всех retry/fallback) —
-        // логируем в message_send_failures, чтобы фронт получил sticky-toast
-        // через realtime даже у юзера, который ушёл из чата/закрыл вкладку.
-        await logServerSendFailure(serviceClient, {
-          message_id: body.message_id,
-          error_text: tgData.description ?? `Telegram API: ${tgResponse.status}`,
-          error_code: tgData.error_code != null
-            ? `tg_${tgData.error_code}`
-            : `http_${tgResponse.status}`,
-          source: "telegram",
-          integration_id: activeIntegrationId ?? null,
-          metadata: { stage: "text", chat_id: activeChatId },
-        });
+        // переводим сообщение в failed и пишем в message_send_failures
+        // (для глобального тоста у юзера, который ушёл из треда).
+        await markMessageFailed(
+          serviceClient,
+          body.message_id,
+          tgData.description ?? `Telegram API: ${tgResponse.status}`,
+          {
+            failureSource: "telegram",
+            failureCode: tgData.error_code != null
+              ? `tg_${tgData.error_code}`
+              : `http_${tgResponse.status}`,
+            integrationId: activeIntegrationId ?? null,
+            failureMetadata: { stage: "text", chat_id: activeChatId },
+          },
+        );
       }
 
       // (только для устранения unused-warn'ов)
@@ -465,13 +434,9 @@ Deno.serve(async (req: Request) => {
           .select("id", { count: "exact", head: true })
           .eq("message_id", body.message_id);
 
-        // Идемпотентность: если уже доставлен ТОЛЬКО текст или ТОЛЬКО файлы,
-        // вынужденно разделяем отправку (forceSeparate), чтобы пропустить
-        // ровно ту часть, что уже сделана. Combined-режим (caption + альбом
-        // одним запросом) допустим только когда ничего ещё не отправлено.
-        const forceSeparate = skipText || skipAttachments;
+        // Combined-режим (caption + альбом одним запросом) допустим только при
+        // 1 файле и caption ≤ 1024. Иначе разделяем на отдельный текст + альбом.
         const sendTextAsSeparateMessage =
-          forceSeparate ||
           formattedCaption.length > 1024 ||
           (attachmentsCount ?? 0) >= 2;
 
@@ -488,9 +453,6 @@ Deno.serve(async (req: Request) => {
           });
         } else {
           let activeChatId = body.telegram_chat_id;
-
-          // Текстовая часть отправляется только если её ещё не было.
-          if (!skipText) {
           const payload: Record<string, unknown> = {
             chat_id: activeChatId,
             text: formattedCaption,
@@ -537,7 +499,8 @@ Deno.serve(async (req: Request) => {
                 .update({
                   telegram_error_detail: `reply_dropped: original message_id=${body.reply_to_telegram_message_id} not in chat (likely supergroup migration); via=split-text`,
                 })
-                .eq("id", body.message_id);
+                .eq("id", body.message_id)
+                .throwOnError();
             }
           }
 
@@ -566,44 +529,55 @@ Deno.serve(async (req: Request) => {
             await serviceClient
               .from("project_messages")
               .update({ telegram_bot_integration_id: null, telegram_error_detail: fallbackDetail })
-              .eq("id", body.message_id);
+              .eq("id", body.message_id)
+              .throwOnError();
           }
 
           if (tgData.ok && tgData.result?.message_id) {
-            await serviceClient
+            // Текст ушёл — фиксируем message_id. send_status выставим позже,
+            // вместе с итогом по attachments (там и решается итоговый статус).
+            const { error: textUpdateErr } = await serviceClient
               .from("project_messages")
-              .update({ telegram_message_id: tgData.result.message_id, telegram_chat_id: activeChatId })
+              .update({
+                telegram_message_id: tgData.result.message_id,
+                telegram_chat_id: activeChatId,
+              })
               .eq("id", body.message_id);
+            if (textUpdateErr) {
+              throw new Error(
+                `split_text update failed: ${textUpdateErr.message} (${textUpdateErr.code})`,
+              );
+            }
           } else if (!tgData.ok) {
             // Финальный фейл split-text-ветки (caption + альбом). Логируем
             // отдельно от вложений: текст и файлы в этой ветке шлются разными
             // запросами, и пользователю важно знать что именно текст не дошёл.
-            await logServerSendFailure(serviceClient, {
-              message_id: body.message_id,
-              error_text: tgData.description ?? `Telegram API: ${tgRes.status}`,
-              error_code: tgData.error_code != null
-                ? `tg_${tgData.error_code}`
-                : `http_${tgRes.status}`,
-              source: "telegram",
-              metadata: { stage: "split_text", chat_id: activeChatId },
-            });
+            await markMessageFailed(
+              serviceClient,
+              body.message_id,
+              tgData.description ?? `Telegram API: ${tgRes.status}`,
+              {
+                failureSource: "telegram",
+                failureCode: tgData.error_code != null
+                  ? `tg_${tgData.error_code}`
+                  : `http_${tgRes.status}`,
+                failureMetadata: { stage: "split_text", chat_id: activeChatId },
+              },
+            );
           }
-          } // конец if (!skipText)
 
-          // Файлы отправляем только если они ещё не доставлены.
-          if (!skipAttachments) {
-            attachmentsOk = await sendAttachmentsWithFallback({
-              messageId: body.message_id,
-              chatId: activeChatId,
-              supabaseClient: serviceClient,
-              primaryToken: TELEGRAM_BOT_TOKEN,
-              skipIdUpdate: true,
-              isEmployeeBot,
-              senderName: body.sender_name,
-            });
-          }
+          attachmentsOk = await sendAttachmentsWithFallback({
+            messageId: body.message_id,
+            chatId: activeChatId,
+            supabaseClient: serviceClient,
+            primaryToken: TELEGRAM_BOT_TOKEN,
+            skipIdUpdate: true,
+            isEmployeeBot,
+            senderName: body.sender_name,
+          });
         }
-      } else if (!skipAttachments) {
+      } else {
+        // Только вложения, без caption.
         attachmentsOk = await sendAttachmentsWithFallback({
           messageId: body.message_id,
           chatId: body.telegram_chat_id,
@@ -615,22 +589,25 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      if (!skipAttachments) {
-        await serviceClient
-          .from("project_messages")
-          .update({ telegram_attachments_delivered: attachmentsOk })
-          .eq("id", body.message_id);
-        trace("attachments.done", { ok: attachmentsOk });
-        if (!attachmentsOk) {
-          await logServerSendFailure(serviceClient, {
-            message_id: body.message_id,
-            error_text: "Не удалось отправить вложения в Telegram",
-            error_code: "attachments_failed",
-            source: "telegram",
-            metadata: { stage: "attachments", chat_id: body.telegram_chat_id },
-          });
-        }
-      } // конец if (!skipAttachments)
+      trace("attachments.done", { ok: attachmentsOk });
+      if (attachmentsOk) {
+        // Текст уже отметился telegram_message_id (если был); финальный send_status='sent'.
+        await markMessageSent(serviceClient, body.message_id, {
+          channelFields: { telegram_attachments_delivered: true },
+        });
+      } else {
+        await markMessageFailed(
+          serviceClient,
+          body.message_id,
+          "Не удалось отправить вложения в Telegram",
+          {
+            channelFields: { telegram_attachments_delivered: false },
+            failureSource: "telegram",
+            failureCode: "attachments_failed",
+            failureMetadata: { stage: "attachments", chat_id: body.telegram_chat_id },
+          },
+        );
+      }
     }
 
     trace("request.end", { total_ms: Date.now() - T0 });

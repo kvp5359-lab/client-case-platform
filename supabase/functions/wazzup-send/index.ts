@@ -22,7 +22,7 @@ import {
   preflight, jsonRes, okText, requireInternalSecret, getServiceClient,
   markOutgoingExternal,
 } from "../_shared/edge.ts";
-import { logServerSendFailure } from "../_shared/sendFailureLog.ts";
+import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
 
 interface RequestBody {
   message_id: string;
@@ -48,11 +48,13 @@ Deno.serve(async (req: Request) => {
   // 1. Сообщение
   const { data: msg } = await service
     .from("project_messages")
-    .select("id, thread_id, content, wazzup_message_id, workspace_id, reply_to_message_id, has_attachments")
+    .select("id, thread_id, content, wazzup_message_id, send_status, workspace_id, reply_to_message_id, has_attachments")
     .eq("id", body.message_id)
     .maybeSingle();
   if (!msg || !msg.thread_id) return jsonRes({ skip: "no thread" }, 200, req);
-  if (msg.wazzup_message_id) return jsonRes({ skip: "already sent" }, 200, req);
+  if (msg.send_status === "sent" || msg.wazzup_message_id) {
+    return jsonRes({ skip: "already sent" }, 200, req);
+  }
 
   // 2. Тред
   const { data: thread } = await service
@@ -183,22 +185,27 @@ Deno.serve(async (req: Request) => {
 
   // 8. Стамп результата.
   if (firstWazzupMessageId) {
-    await service.from("project_messages").update({
-      wazzup_message_id: firstWazzupMessageId,
-      wazzup_status: "sent",
-    }).eq("id", msg.id);
+    await markMessageSent(service, msg.id, {
+      channelFields: {
+        wazzup_message_id: firstWazzupMessageId,
+        wazzup_status: "sent",
+      },
+    });
     return jsonRes({ ok: true, wazzup_message_id: firstWazzupMessageId }, 200, req);
   }
 
   console.error(`[wazzup-send] error:`, firstError);
-  await service.from("project_messages").update({ wazzup_status: "error" }).eq("id", msg.id);
-  await logServerSendFailure(service, {
-    message_id: msg.id,
-    error_text: firstError ?? "Wazzup send failed",
-    error_code: "wazzup_send_failed",
-    source: "wazzup",
-    metadata: { stage: "send" },
-  });
+  await markMessageFailed(
+    service,
+    msg.id,
+    firstError ?? "Wazzup send failed",
+    {
+      channelFields: { wazzup_status: "error" },
+      failureSource: "wazzup",
+      failureCode: "wazzup_send_failed",
+      failureMetadata: { stage: "send" },
+    },
+  );
   return jsonRes({ ok: false, error: firstError }, 200, req);
 });
 

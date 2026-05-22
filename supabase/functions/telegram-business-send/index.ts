@@ -19,7 +19,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { logServerSendFailure } from "../_shared/sendFailureLog.ts";
+import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
 import {
   isHtmlContent,
   htmlToTelegramHtml,
@@ -67,13 +67,13 @@ Deno.serve(async (req: Request) => {
   // 1. Сообщение
   const { data: msg } = await service
     .from("project_messages")
-    .select("id, thread_id, content, telegram_message_id, reply_to_message_id")
+    .select("id, thread_id, content, telegram_message_id, send_status, reply_to_message_id")
     .eq("id", body.message_id)
     .maybeSingle();
   if (!msg || !msg.thread_id) {
     return jsonOk({ skip: "no thread" });
   }
-  if (msg.telegram_message_id) {
+  if (msg.send_status === "sent" || msg.telegram_message_id) {
     return jsonOk({ skip: "already sent" });
   }
 
@@ -158,17 +158,17 @@ Deno.serve(async (req: Request) => {
 
   if (!tgJson.ok) {
     console.error(`[telegram-business-send] Telegram API error:`, tgJson);
-    await service
-      .from("project_messages")
-      .update({ telegram_error_detail: tgJson.description ?? "send failed" })
-      .eq("id", msg.id);
-    await logServerSendFailure(service, {
-      message_id: msg.id,
-      error_text: tgJson.description ?? `Telegram API: ${tgRes.status}`,
-      error_code: `http_${tgRes.status}`,
-      source: "telegram_business",
-      metadata: { stage: "send" },
-    });
+    await markMessageFailed(
+      service,
+      msg.id,
+      tgJson.description ?? `Telegram API: ${tgRes.status}`,
+      {
+        channelFields: { telegram_error_detail: tgJson.description ?? "send failed" },
+        failureSource: "telegram_business",
+        failureCode: `http_${tgRes.status}`,
+        failureMetadata: { stage: "send" },
+      },
+    );
     return jsonOk({ ok: false, error: tgJson.description });
   }
 
@@ -176,9 +176,8 @@ Deno.serve(async (req: Request) => {
   //    - не отправить повторно при ретраях,
   //    - фронт мог отправлять реакции на это сообщение в TG (он берёт
   //      telegram_chat_id из БД и без него скипает запрос к set-reaction).
-  await service
-    .from("project_messages")
-    .update({
+  await markMessageSent(service, msg.id, {
+    channelFields: {
       telegram_message_id: tgJson.result?.message_id ?? null,
       telegram_message_ids: tgJson.result?.message_id ? [tgJson.result.message_id] : null,
       telegram_chat_id: thread.business_client_tg_user_id,
@@ -186,8 +185,8 @@ Deno.serve(async (req: Request) => {
         ? new Date(tgJson.result.date * 1000).toISOString()
         : null,
       telegram_error_detail: null,
-    })
-    .eq("id", msg.id);
+    },
+  });
 
   return jsonOk({ ok: true, telegram_message_id: tgJson.result?.message_id });
 });
