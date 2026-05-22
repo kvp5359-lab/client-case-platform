@@ -43,13 +43,15 @@ function ProjectOrCounterpartField({
   const counterpartName = useThreadCounterpartName(task.id, workspaceId)
   const value = task.project_name ?? counterpartName
   if (!value) return null
-  // shrink=1.5 — при нехватке ширины проект сжимается сильнее, чем name (приоритет
-  // на названии треда). Без grow — если места хватает, project прижат к name после
-  // gap, не растягивается на половину карточки.
+  // grow=1 → поле забирает свободное место первым (иначе ml-auto у time/deadline
+  // съедает пространство в пустой зазор и контакт обрезается до 4 символов).
+  // shrink=0.7 → при нехватке ширины контакт/проект сжимается слабее, чем name,
+  // т.к. в name обычно общий префикс «Re: Вакансия…», а в контакте — уникальная
+  // часть, важнее для распознавания строки.
   return (
     <span
       className={cn(classes, 'min-w-0 text-muted-foreground/60')}
-      style={{ flexShrink: 1.5 }}
+      style={{ flex: '1 0.7 auto' }}
     >
       {value}
     </span>
@@ -163,8 +165,13 @@ function TaskField({
       )
 
     case 'menu':
+      // Меню — поверх контента справа, абсолютным позиционированием.
+      // НЕ участвует в flex-распределении (иначе `shrink-0`+`ml-auto`
+      // съедает свободное место и сжимает соседнее поле, см. case с
+      // длинным контактом справа). Видно только на hover, появляется
+      // поверх правого края (контент за ним всё равно затемнён ховером).
       return (
-        <div className={cn('shrink-0', style.align === 'right' && 'ml-auto')}>
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 bg-background rounded opacity-0 group-hover/board-row:opacity-100 transition-opacity">
           <TaskActionsMenu
             onOpen={() => onOpenTask(task.id)}
             statuses={statuses}
@@ -180,7 +187,6 @@ function TaskField({
               onDeadlineChange ? () => onDeadlineChange(task.id, null) : undefined
             }
             onRequestDelete={onDeleteTask ? () => onDeleteTask(task) : undefined}
-            triggerClassName="opacity-0 group-hover/board-row:opacity-100"
             align="end"
           />
         </div>
@@ -246,7 +252,7 @@ export function BoardTaskRow({
   return (
     <div
       className={cn(
-        'group/board-row cursor-pointer overflow-hidden transition-colors',
+        'group/board-row relative cursor-pointer overflow-hidden transition-colors',
         isCards
           ? cn(
               'rounded-md border px-2.5 py-1 hover:shadow-sm',
