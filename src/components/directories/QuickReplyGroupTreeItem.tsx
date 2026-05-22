@@ -3,28 +3,18 @@
  * По паттерну GroupTreeItem из базы знаний (те же отступы и коннекторы).
  */
 
-import { useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, Folder, FolderOpen, FolderPlus, Pencil, Trash2, LayoutTemplate } from 'lucide-react'
-import {
-  TemplateAccessPopover,
-  TemplateAccessBadge,
-} from '@/components/knowledge/TemplateAccessPopover'
-import {
-  DndContext,
-  closestCenter,
-  type DragEndEvent,
-  type SensorDescriptor,
-  type SensorOptions,
-} from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { Plus, Folder, FolderOpen, FolderPlus, Pencil, Trash2 } from 'lucide-react'
+import { TemplateAccessButton } from '@/components/knowledge/TemplateAccessPopover'
+import { useDroppable } from '@dnd-kit/core'
 import type { QuickReplyGroup } from '@/hooks/useQuickReplyGroups'
 import type { useQuickRepliesPage } from '@/hooks/useQuickRepliesPage'
 import { INDENT, BASE_PAD, getLineX } from '@/components/shared/tree/TreeConstants'
 import { TreeConnector } from '@/components/shared/tree/TreeConnector'
 import { TreeEditingInput } from '@/components/shared/tree/TreeEditingInput'
 import { AddSubgroupInput } from '@/components/shared/tree/AddSubgroupInput'
-import { SortableReplyRow } from './QuickReplyRows'
+import { DraggableReplyRow } from './QuickReplyRows'
+import { GROUP_DROP_PREFIX, type DropIndicatorState } from './useQuickReplyDnd'
 
 export { ReplyRow } from './QuickReplyRows'
 
@@ -39,8 +29,9 @@ export function QuickReplyGroupTreeItem({
   page,
   collapsedGroups,
   toggleCollapse,
+  overGroupId,
+  dropIndicator,
   isLast = false,
-  sensors,
 }: {
   group: QuickReplyGroup
   groups: QuickReplyGroup[]
@@ -48,8 +39,9 @@ export function QuickReplyGroupTreeItem({
   page: PageReturn
   collapsedGroups: Set<string>
   toggleCollapse: (id: string) => void
+  overGroupId: string | null
+  dropIndicator: DropIndicatorState | null
   isLast?: boolean
-  sensors: SensorDescriptor<SensorOptions>[]
 }) {
   const children = groups.filter((g) => g.parent_id === group.id)
   const replies = page.getRepliesForGroup(group.id)
@@ -61,25 +53,11 @@ export function QuickReplyGroupTreeItem({
 
   const FolderIcon = isCollapsed ? Folder : FolderOpen
 
-  const reorderMutate = page.reorderRepliesMutation.mutate
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event
-      if (!over || active.id === over.id) return
-
-      const oldIndex = replies.findIndex((r) => r.id === active.id)
-      const newIndex = replies.findIndex((r) => r.id === over.id)
-      if (oldIndex === -1 || newIndex === -1) return
-
-      const reordered = arrayMove(replies, oldIndex, newIndex)
-      reorderMutate({
-        groupId: group.id,
-        replyIds: reordered.map((r) => r.id),
-      })
-    },
-    [replies, group.id, reorderMutate],
-  )
+  // Droppable-зона для «бросить шаблон в группу»
+  const { setNodeRef: setDropRef } = useDroppable({
+    id: `${GROUP_DROP_PREFIX}${group.id}`,
+  })
+  const isOver = overGroupId === group.id
 
   return (
     <div>
@@ -89,10 +67,13 @@ export function QuickReplyGroupTreeItem({
           <TreeConnector depth={depth} isLast={isLast && (!hasContent || isCollapsed)} />
         )}
         <div
+          ref={setDropRef}
           role="button"
           tabIndex={0}
           aria-expanded={!isCollapsed}
-          className="flex items-center gap-1.5 h-7 px-2 hover:bg-muted/50 rounded-sm group cursor-pointer select-none"
+          className={`flex items-center gap-1.5 h-7 px-2 hover:bg-muted/50 rounded-sm group cursor-pointer select-none ${
+            isOver ? 'bg-amber-100/70 dark:bg-amber-900/20 ring-1 ring-amber-400' : ''
+          }`}
           style={{ paddingLeft: `${BASE_PAD + depth * INDENT}px` }}
           onClick={() => toggleCollapse(group.id)}
           onKeyDown={(e) => {
@@ -113,73 +94,68 @@ export function QuickReplyGroupTreeItem({
             />
           ) : (
             <>
-              <span className="text-sm font-medium truncate flex-1">
-                {group.name}
-                {totalReplies > 0 && (
-                  <span className="text-muted-foreground font-normal ml-1">({totalReplies})</span>
-                )}
-              </span>
-              <TemplateAccessBadge entityId={group.id} entityType="qr-group" />
-              <div
-                className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <TemplateAccessPopover
-                  entityId={group.id}
-                  entityType="qr-group"
-                  workspaceId={page.workspaceId ?? ''}
+              {/* Колонка 1: название + иконки (фиксированная ширина — выровнена с шаблонами) */}
+              <div className="flex items-center gap-0.5 w-[280px] flex-shrink-0">
+                <span className="text-sm font-medium truncate">
+                  {group.name}
+                  {totalReplies > 0 && (
+                    <span className="text-muted-foreground font-normal ml-1">
+                      ({totalReplies})
+                    </span>
+                  )}
+                </span>
+                <div
+                  className="flex items-center flex-shrink-0"
+                  onClick={(e) => e.stopPropagation()}
                 >
+                  <TemplateAccessButton
+                    entityId={group.id}
+                    entityType="qr-group"
+                    workspaceId={page.workspaceId ?? ''}
+                  />
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0"
-                    title="Доступ для типов проектов"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground"
+                    title="Добавить шаблон"
+                    onClick={() => page.openCreateReplyDialog(group.id)}
                   >
-                    <LayoutTemplate className="w-3 h-3" />
+                    <Plus className="w-3.5 h-3.5" />
                   </Button>
-                </TemplateAccessPopover>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  title="Добавить шаблон"
-                  onClick={() => page.openCreateReplyDialog(group.id)}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  title="Добавить подгруппу"
-                  onClick={() => {
-                    page.setAddingGroupParentId(group.id)
-                    page.setNewGroupName('')
-                  }}
-                >
-                  <FolderPlus className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  title="Переименовать"
-                  onClick={() => {
-                    page.setEditingGroupId(group.id)
-                    page.setEditingGroupName(group.name)
-                  }}
-                >
-                  <Pencil className="w-3 h-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  title="Удалить"
-                  onClick={() => page.handleDeleteGroup(group.id, group.name)}
-                >
-                  <Trash2 className="w-3 h-3 text-red-500" />
-                </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground"
+                    title="Добавить подгруппу"
+                    onClick={() => {
+                      page.setAddingGroupParentId(group.id)
+                      page.setNewGroupName('')
+                    }}
+                  >
+                    <FolderPlus className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground"
+                    title="Переименовать"
+                    onClick={() => {
+                      page.setEditingGroupId(group.id)
+                      page.setEditingGroupName(group.name)
+                    }}
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500"
+                    title="Удалить"
+                    onClick={() => page.handleDeleteGroup(group.id, group.name)}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
             </>
           )}
@@ -218,33 +194,24 @@ export function QuickReplyGroupTreeItem({
                 page={page}
                 collapsedGroups={collapsedGroups}
                 toggleCollapse={toggleCollapse}
+                overGroupId={overGroupId}
+                dropIndicator={dropIndicator}
                 isLast={isLastChild}
-                sensors={sensors}
               />
             )
           })}
-          {replies.length > 0 && (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={replies.map((r) => r.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {replies.map((reply, i) => (
-                  <SortableReplyRow
-                    key={reply.id}
-                    reply={reply}
-                    depth={depth + 1}
-                    page={page}
-                    isLast={i === replies.length - 1}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          )}
+          {replies.map((reply, i) => (
+            <DraggableReplyRow
+              key={reply.id}
+              reply={reply}
+              depth={depth + 1}
+              page={page}
+              isLast={i === replies.length - 1}
+              dropIndicator={
+                dropIndicator?.replyId === reply.id ? dropIndicator.position : null
+              }
+            />
+          ))}
         </div>
       )}
     </div>

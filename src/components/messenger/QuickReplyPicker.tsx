@@ -210,7 +210,7 @@ export function QuickReplyPicker({
               </div>
             </div>
 
-            <div className="max-h-[300px] overflow-y-auto overflow-x-hidden">
+            <div className="max-h-[450px] overflow-y-auto overflow-x-hidden">
               {isLoading ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">Загрузка...</div>
               ) : !hasReplies ? (

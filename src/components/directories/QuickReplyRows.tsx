@@ -1,16 +1,14 @@
 /**
  * QuickReplyRows — компоненты строк быстрых ответов в дереве.
- * Извлечены из QuickReplyGroupTreeItem для декомпозиции.
+ * DnD по паттерну базы знаний: useDraggable + useDroppable, без SortableContext.
+ * При перетаскивании дерево не сдвигается; место вставки показывает голубая полоса.
  */
 
+import { useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Pencil, Trash2, GripVertical, LayoutTemplate, FileText } from 'lucide-react'
-import {
-  TemplateAccessPopover,
-  TemplateAccessBadge,
-} from '@/components/knowledge/TemplateAccessPopover'
-import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { Pencil, Trash2, GripVertical, FileText } from 'lucide-react'
+import { TemplateAccessButton } from '@/components/knowledge/TemplateAccessPopover'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 import type { QuickReply } from '@/hooks/useQuickReplies'
 import type { useQuickRepliesPage } from '@/hooks/useQuickRepliesPage'
 import { INDENT, BASE_PAD, ARTICLE_EXTRA } from '@/components/shared/tree/TreeConstants'
@@ -18,7 +16,7 @@ import { TreeConnector } from '@/components/shared/tree/TreeConnector'
 
 type PageReturn = ReturnType<typeof useQuickRepliesPage>
 
-/** Убирает HTML-теги для превью (DOMParser безопаснее innerHTML — не загружает ресурсы) */
+/** Убирает HTML-теги для превью */
 function stripHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   return doc.body.textContent || ''
@@ -26,7 +24,6 @@ function stripHtml(html: string): string {
 
 // ---------- Shared reply row content ----------
 
-/** Общий контент строки ответа — переиспользуется в SortableReplyRow и ReplyRow */
 function ReplyRowContent({
   reply,
   page,
@@ -39,88 +36,98 @@ function ReplyRowContent({
   return (
     <>
       <FileText className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-      <span className="text-sm truncate flex-1">{reply.name}</span>
-      {preview && (
-        <span className="text-xs text-muted-foreground truncate max-w-[400px] hidden sm:inline">
-          {preview}
-        </span>
-      )}
 
-      <TemplateAccessBadge entityId={reply.id} entityType="qr-reply" />
-
-      <div
-        className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <TemplateAccessPopover
-          entityId={reply.id}
-          entityType="qr-reply"
-          workspaceId={page.workspaceId ?? ''}
+      {/* Колонка 1: название + иконки (фиксированная ширина → описания выровнены) */}
+      <div className="flex items-center gap-0.5 w-[280px] flex-shrink-0">
+        <span className="text-sm truncate">{reply.name}</span>
+        <div
+          className="flex items-center flex-shrink-0"
+          onClick={(e) => e.stopPropagation()}
         >
+          <TemplateAccessButton
+            entityId={reply.id}
+            entityType="qr-reply"
+            workspaceId={page.workspaceId ?? ''}
+          />
           <Button
             variant="ghost"
             size="sm"
-            className="h-5 w-5 p-0"
-            title="Доступ для типов проектов"
+            className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground"
+            title="Редактировать"
+            onClick={() => page.openEditReply(reply)}
           >
-            <LayoutTemplate className="w-3 h-3" />
+            <Pencil className="w-3 h-3" />
           </Button>
-        </TemplateAccessPopover>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-5 w-5 p-0"
-          title="Редактировать"
-          onClick={() => page.openEditReply(reply)}
-        >
-          <Pencil className="w-3 h-3" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-5 w-5 p-0"
-          title="Удалить"
-          onClick={() => page.handleDeleteReply(reply.id, reply.name)}
-        >
-          <Trash2 className="w-3 h-3 text-red-500" />
-        </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500"
+            title="Удалить"
+            onClick={() => page.handleDeleteReply(reply.id, reply.name)}
+          >
+            <Trash2 className="w-3 h-3" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Колонка 2: описание */}
+      <div className="flex-1 min-w-0 hidden sm:block">
+        {preview && (
+          <span className="text-xs text-muted-foreground/60 truncate block">{preview}</span>
+        )}
       </div>
     </>
   )
 }
 
-// ---------- Sortable reply row ----------
+// ---------- Draggable + droppable reply row ----------
 
-export function SortableReplyRow({
+export function DraggableReplyRow({
   reply,
   depth,
   page,
   isLast,
+  dropIndicator,
 }: {
   reply: QuickReply
   depth: number
   page: PageReturn
   isLast: boolean
+  dropIndicator?: 'top' | 'bottom' | null
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: reply.id,
-  })
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDragRef,
+    isDragging,
+  } = useDraggable({ id: reply.id })
+  const { setNodeRef: setDropRef } = useDroppable({ id: reply.id })
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  }
+  const mergedRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setDragRef(node)
+      setDropRef(node)
+    },
+    [setDragRef, setDropRef],
+  )
 
   const preview = stripHtml(reply.content).slice(0, 60)
 
   return (
-    <div ref={setNodeRef} style={style} className="relative">
+    <div ref={mergedRef} className={`relative ${isDragging ? 'opacity-40' : ''}`}>
+      {dropIndicator === 'top' && (
+        <div className="absolute top-0 left-2 right-2 h-0.5 bg-blue-500 rounded-full z-10" />
+      )}
+      {dropIndicator === 'bottom' && (
+        <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-500 rounded-full z-10" />
+      )}
       {depth > 0 && <TreeConnector depth={depth} isLast={isLast} />}
       <div
         role="button"
         tabIndex={0}
-        className="flex items-center gap-1.5 h-7 px-2 hover:bg-muted/50 rounded-sm group cursor-pointer"
+        className={`flex items-center gap-1.5 h-7 px-2 hover:bg-muted/50 rounded-sm group cursor-pointer ${
+          dropIndicator ? 'bg-blue-50/40' : ''
+        }`}
         style={{ paddingLeft: `${BASE_PAD + depth * INDENT + ARTICLE_EXTRA}px` }}
         onClick={() => page.openEditReply(reply)}
         onKeyDown={(e) => {
@@ -145,7 +152,7 @@ export function SortableReplyRow({
   )
 }
 
-// ---------- Non-sortable reply row (ungrouped) ----------
+// ---------- Non-draggable reply row (для read-only сценариев, если понадобится) ----------
 
 export function ReplyRow({
   reply,

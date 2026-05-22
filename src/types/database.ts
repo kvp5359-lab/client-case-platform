@@ -6208,32 +6208,38 @@ export type Database = {
       }
       quick_replies: {
         Row: {
+          access_inherits: boolean
           content: string
           created_at: string
           group_id: string | null
           id: string
           name: string
           order_index: number
+          personal_only: boolean
           updated_at: string
           workspace_id: string
         }
         Insert: {
+          access_inherits?: boolean
           content?: string
           created_at?: string
           group_id?: string | null
           id?: string
           name: string
           order_index?: number
+          personal_only?: boolean
           updated_at?: string
           workspace_id: string
         }
         Update: {
+          access_inherits?: boolean
           content?: string
           created_at?: string
           group_id?: string | null
           id?: string
           name?: string
           order_index?: number
+          personal_only?: boolean
           updated_at?: string
           workspace_id?: string
         }
@@ -6297,6 +6303,7 @@ export type Database = {
           name: string
           order_index: number
           parent_id: string | null
+          personal_only: boolean
           updated_at: string
           workspace_id: string
         }
@@ -6306,6 +6313,7 @@ export type Database = {
           name: string
           order_index?: number
           parent_id?: string | null
+          personal_only?: boolean
           updated_at?: string
           workspace_id: string
         }
@@ -6315,6 +6323,7 @@ export type Database = {
           name?: string
           order_index?: number
           parent_id?: string | null
+          personal_only?: boolean
           updated_at?: string
           workspace_id?: string
         }

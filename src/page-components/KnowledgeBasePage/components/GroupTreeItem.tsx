@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
-import { Plus, Folder, FolderOpen, FolderPlus, Pencil, Trash2, LayoutTemplate } from 'lucide-react'
-import { TemplateAccessPopover, TemplateAccessBadge } from '@/components/knowledge/TemplateAccessPopover'
+import { Plus, Folder, FolderOpen, FolderPlus, Pencil, Trash2 } from 'lucide-react'
+import { TemplateAccessButton } from '@/components/knowledge/TemplateAccessPopover'
 import { useDroppable } from '@dnd-kit/core'
 import type {
   KnowledgeGroup,
@@ -135,21 +135,11 @@ export function GroupTreeItem({
             className="flex items-center gap-0.5 invisible group-hover:visible transition-all flex-shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <TemplateAccessBadge entityId={group.id} entityType="group" />
-            <TemplateAccessPopover
+            <TemplateAccessButton
               entityId={group.id}
               entityType="group"
               workspaceId={page.workspaceId!}
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 text-muted-foreground/50 hover:text-foreground hover:bg-muted"
-                title="Доступ для типов проектов"
-              >
-                <LayoutTemplate className="w-3 h-3" />
-              </Button>
-            </TemplateAccessPopover>
+            />
             <Button
               variant="ghost"
               size="sm"

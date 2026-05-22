@@ -1,8 +1,8 @@
 import { useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { StatusDropdown } from '@/components/ui/status-dropdown'
-import { GripVertical, LayoutTemplate, Pencil, Trash2 } from 'lucide-react'
-import { TemplateAccessPopover, TemplateAccessBadge } from '@/components/knowledge/TemplateAccessPopover'
+import { GripVertical, Pencil, Trash2 } from 'lucide-react'
+import { TemplateAccessButton } from '@/components/knowledge/TemplateAccessPopover'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import type { KnowledgeArticle, useKnowledgeBasePage } from '../useKnowledgeBasePage'
 import { INDENT, BASE_PAD, ARTICLE_EXTRA } from '@/components/shared/tree/TreeConstants'
@@ -108,26 +108,16 @@ export function SortableArticleRow({
 
         <ArticleTags article={article} />
         <IndexingStatusIcon status={(article as KnowledgeArticle).indexing_status} />
-        <TemplateAccessBadge entityId={article.id} entityType="article" />
+        <TemplateAccessButton
+          entityId={article.id}
+          entityType="article"
+          workspaceId={page.workspaceId!}
+        />
 
         <div
           className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={(e) => e.stopPropagation()}
         >
-          <TemplateAccessPopover
-            entityId={article.id}
-            entityType="article"
-            workspaceId={page.workspaceId!}
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 w-5 p-0"
-              title="Доступ для типов проектов"
-            >
-              <LayoutTemplate className="w-3 h-3" />
-            </Button>
-          </TemplateAccessPopover>
           <Button
             variant="ghost"
             size="sm"
@@ -201,26 +191,16 @@ export function ArticleRow({
 
         <ArticleTags article={article} />
         <IndexingStatusIcon status={article.indexing_status} />
-        <TemplateAccessBadge entityId={article.id} entityType="article" />
+        <TemplateAccessButton
+          entityId={article.id}
+          entityType="article"
+          workspaceId={page.workspaceId!}
+        />
 
         <div
           className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={(e) => e.stopPropagation()}
         >
-          <TemplateAccessPopover
-            entityId={article.id}
-            entityType="article"
-            workspaceId={page.workspaceId!}
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 w-5 p-0"
-              title="Доступ для типов проектов"
-            >
-              <LayoutTemplate className="w-3 h-3" />
-            </Button>
-          </TemplateAccessPopover>
           <Button
             variant="ghost"
             size="sm"

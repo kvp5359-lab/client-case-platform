@@ -15,6 +15,7 @@ import {
   useUpdateQuickReply,
   useDeleteQuickReply,
   useReorderQuickReplies,
+  useMoveQuickReply,
   type QuickReply,
 } from './useQuickReplies'
 
@@ -29,6 +30,8 @@ export function useQuickRepliesPage() {
   // Editing quick reply (dialog)
   const [editingReply, setEditingReply] = useState<QuickReply | null>(null)
   const [replyDialogOpen, setReplyDialogOpen] = useState(false)
+  // Создание нового шаблона: id группы по умолчанию (null = «без группы»)
+  const [creatingInGroupId, setCreatingInGroupId] = useState<string | null>(null)
 
   // Sub-hooks
   const groupsHook = useQuickReplyGroups(workspaceId)
@@ -37,6 +40,7 @@ export function useQuickRepliesPage() {
   const updateReplyMutation = useUpdateQuickReply(workspaceId)
   const deleteReplyMutation = useDeleteQuickReply(workspaceId)
   const reorderRepliesMutation = useReorderQuickReplies(workspaceId)
+  const moveReplyMutation = useMoveQuickReply(workspaceId)
 
   // Filtering
   const filteredReplies = replies.filter((r) => {
@@ -86,8 +90,10 @@ export function useQuickRepliesPage() {
   }
 
   const openCreateReplyDialog = (groupId?: string | null) => {
-    // Создаём шаблон сразу в БД (как в Knowledge Base), а не через диалог
-    createReplyMutation.mutate({ name: 'Новый шаблон', groupId: groupId ?? undefined })
+    // Открываем пустой диалог; запись в БД создаётся только при «Сохранить»
+    setEditingReply(null)
+    setCreatingInGroupId(groupId ?? null)
+    setReplyDialogOpen(true)
   }
 
   return {
@@ -105,6 +111,7 @@ export function useQuickRepliesPage() {
     updateReplyMutation,
     deleteReplyMutation,
     reorderRepliesMutation,
+    moveReplyMutation,
     handleCreateReply,
     handleDeleteReply,
     // Edit dialog
@@ -112,6 +119,8 @@ export function useQuickRepliesPage() {
     setEditingReply,
     replyDialogOpen,
     setReplyDialogOpen,
+    creatingInGroupId,
+    setCreatingInGroupId,
     openEditReply,
     openCreateReplyDialog,
     // Groups (from sub-hook)
