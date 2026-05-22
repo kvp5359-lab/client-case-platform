@@ -179,6 +179,13 @@ async function processGmailMessage(sc: SupabaseClient, accessToken: string, gmai
     }
   }
   const inReplyTo = getHeader(hdrs, "In-Reply-To");
+  // References — цепочка Message-ID всех предыдущих писем треда (через пробел
+  // или запятую). RFC 5322. Нужно для матчинга треда, когда In-Reply-To
+  // указывает не на наше письмо (например, цепочка форвардов).
+  const referencesRaw = getHeader(hdrs, "References");
+  const referencesIds = referencesRaw
+    ? referencesRaw.match(/<[^>]+>/g) ?? []
+    : [];
   const fromEmail = extractEmail(fromHeader);
   const fromName = extractName(fromHeader);
   const toEmails = parseEmailList(getHeader(hdrs, "To"));
@@ -199,6 +206,55 @@ async function processGmailMessage(sc: SupabaseClient, accessToken: string, gmai
     if (elc) { threadId = elc.thread_id; await sc.from("project_thread_email_links").update({ gmail_thread_id: msg.threadId }).eq("thread_id", threadId); }
   }
   if (threadId) { const { data: t } = await sc.from("project_threads").select("project_id").eq("id", threadId).single(); projectId = t?.project_id || null; }
+
+  // ── Шаг 1.5: RFC-матчинг по In-Reply-To / References ──
+  // Стандартный путь email-цепочек: получатель ставит наш Message-ID в
+  // In-Reply-To (а всю цепочку — в References). Ищем наше исходящее с
+  // таким Message-ID через RPC match_inbound_email — она проверяет два
+  // места хранения (email_message_id и email_metadata.message_id_header)
+  // и используется также в resend-webhook (единый алгоритм).
+  //
+  // Покрывает кейсы, когда:
+  //  - gmail_thread_id у нас не сохранён (старая отправка через gmail-send)
+  //  - contact_email у нас привязан к другому треду
+  //  - письмо переслали и адрес отправителя изменился
+  //  - сотрудник А отправил, ответ пришёл сотруднику Б
+  if (!threadId && (inReplyTo || referencesIds.length > 0)) {
+    const { data: matchRows } = await sc.rpc("match_inbound_email", {
+      p_workspace_id: account.workspace_id,
+      p_from_address: fromEmail.toLowerCase(),
+      p_in_reply_to: inReplyTo,
+      p_references: referencesIds,
+    });
+    const m = (matchRows as Array<{ thread_id: string | null; project_id: string | null; match_method: string }> | null)?.[0];
+    if (m && (m.match_method === "in_reply_to" || m.match_method === "references") && m.thread_id) {
+      threadId = m.thread_id;
+      projectId = m.project_id;
+      console.log(`[gmail-webhook] RFC-matched thread via ${m.match_method}: ${threadId}`);
+      // Апсёртим email-link, чтобы следующие письма этой ветки
+      // резолвились быстрее на Шаге 1 (по gmail_thread_id / contact_email).
+      const { data: existingLink } = await sc
+        .from("project_thread_email_links")
+        .select("id")
+        .eq("thread_id", threadId)
+        .eq("contact_email", fromEmail.toLowerCase())
+        .maybeSingle();
+      if (existingLink) {
+        await sc
+          .from("project_thread_email_links")
+          .update({ gmail_thread_id: msg.threadId, is_active: true })
+          .eq("id", (existingLink as { id: string }).id);
+      } else {
+        await sc.from("project_thread_email_links").insert({
+          thread_id: threadId,
+          gmail_thread_id: msg.threadId,
+          contact_email: fromEmail.toLowerCase(),
+          subject: subject || null,
+          is_active: true,
+        });
+      }
+    }
+  }
 
   // ── Шаг 2: если не нашли по email-link — пытаемся через CRM-маршрутизацию ──
   // (этап 9 CRM-фрейма). RPC ищет participant по каналу, ищет его активные
