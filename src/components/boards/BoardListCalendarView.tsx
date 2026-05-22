@@ -482,14 +482,36 @@ export function BoardListCalendarView({
   // при step=10 мин RBC по умолчанию даёт 10-минутный слот, что слишком
   // мало для типичной задачи.
   const handleSelectSlot = useCallback(
-    ({ start, end }: { start: Date; end: Date }) => {
+    (info: { start: Date; end: Date; action?: string; box?: { clientX: number; clientY: number } }) => {
+      let s = info.start
+      let e = info.end
+      // На click пересчитываем время сами по реальным координатам клика —
+      // тем же расчётом, что использует hover-полоска. Гарантирует, что
+      // start события == время на полоске под курсором. RBC внутри
+      // считает иначе (closestSlotFromPoint от offsetHeight вместо
+      // нашей метрики по timeslot-group), из-за этого без override'а
+      // время могло разойтись на одну ступень.
+      if ((info.action === 'click' || info.action === 'doubleClick') && info.box) {
+        const slot = findDaySlotAtPoint(info.box.clientX, info.box.clientY)
+        if (slot) {
+          const computed = computeTimeFromCoords(
+            info.box.clientX,
+            info.box.clientY,
+            view,
+            date,
+            slot,
+          )
+          if (computed) {
+            s = computed
+            e = new Date(computed.getTime() + 30 * 60 * 1000)
+          }
+        }
+      }
       const MIN_MS = 30 * 60 * 1000
-      const e = end.getTime() - start.getTime() < MIN_MS
-        ? new Date(start.getTime() + MIN_MS)
-        : end
-      onCreateAtSlot?.(start, e)
+      if (e.getTime() - s.getTime() < MIN_MS) e = new Date(s.getTime() + MIN_MS)
+      onCreateAtSlot?.(s, e)
     },
-    [onCreateAtSlot],
+    [onCreateAtSlot, view, date],
   )
 
   const minHour = Math.max(0, Math.min(23, cs.min_hour))
@@ -515,6 +537,20 @@ export function BoardListCalendarView({
   const droppableId = `calendar-drop:${listId}`
   const { setNodeRef: setDroppableRef } = useDroppable({ id: droppableId })
   const containerRef = useRef<HTMLDivElement | null>(null)
+
+  // Плавающий лейбл со временем под курсором (вне drag) — чтобы не
+  // приходилось «на глаз» отсчитывать минуты от часовой линии. Показывает
+  // ровно то время, которое попадёт в start нового события при клике.
+  const [hoverTime, setHoverTime] = useState<
+    | {
+        stripeLeft: number
+        stripeTop: number
+        stripeWidth: number
+        labelLeft: number
+        label: string
+      }
+    | null
+  >(null)
 
   // Превью под курсором — фиксированно-позиционированный «призрак» блока,
   // показывает куда упадёт задача при отпускании мыши.
@@ -550,6 +586,49 @@ export function BoardListCalendarView({
     },
     [setDroppableRef],
   )
+
+  // Mousemove на контейнере календаря — считаем время по той же формуле,
+  // что использует click-to-create, и кладём лейбл рядом с курсором.
+  // Уходит при leave/во время drag (превью drag и так показывает время).
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (previewRect) return
+    // Пока кнопка мыши зажата — RBC ведёт выбор диапазона, наш индикатор
+    // только мешает. Прячем до отпускания.
+    if (e.buttons > 0) {
+      if (hoverTime) setHoverTime(null)
+      return
+    }
+    const slot = findDaySlotAtPoint(e.clientX, e.clientY)
+    if (!slot) {
+      setHoverTime(null)
+      return
+    }
+    const time = computeTimeFromCoords(e.clientX, e.clientY, viewRef.current, dateRef.current, slot)
+    if (!time) {
+      setHoverTime(null)
+      return
+    }
+    // Полоску и лейбл рисуем по computed-времени, а не по границе DOM-слота.
+    // Так стрипа всегда стоит ровно на той же высоте, что соответствует
+    // времени, которое попадёт в onSelectSlot. Микродвижения мыши не
+    // двигают полоску, пока время не сменилось.
+    const slotRect = slot.getBoundingClientRect()
+    const ppm = pxPerMinute(slot)
+    const minHour = getMinHourFromGutter(slot)
+    const minutesFromTop = time.getHours() * 60 + time.getMinutes() - minHour * 60
+    const stripeTop = slotRect.top + minutesFromTop * ppm
+    const hh = String(time.getHours()).padStart(2, '0')
+    const mm = String(time.getMinutes()).padStart(2, '0')
+    setHoverTime({
+      stripeLeft: slotRect.left,
+      stripeTop,
+      stripeWidth: slotRect.width,
+      labelLeft: slotRect.right - 4,
+      label: `${hh}:${mm}`,
+    })
+  }, [previewRect, hoverTime])
+
+  const handleMouseLeave = useCallback(() => setHoverTime(null), [])
 
   // Размер 30-минутного блока в пикселях по текущей сетке.
   const pxPerMinute = (daySlotEl: HTMLElement) => {
@@ -635,7 +714,13 @@ export function BoardListCalendarView({
 
   return (
     <>
-      <div ref={setContainerRef} className={cn(heightClass)}>
+      <div
+        ref={setContainerRef}
+        className={cn(heightClass)}
+        onMouseMove={handleMouseMove}
+        onMouseDown={handleMouseLeave}
+        onMouseLeave={handleMouseLeave}
+      >
         <DnDCalendar
           localizer={localizer}
           events={events}
@@ -677,6 +762,33 @@ export function BoardListCalendarView({
           }}
         />
       </div>
+      {hoverTime && !previewRect &&
+        createPortal(
+          <>
+            <div
+              className="fixed z-[9998] pointer-events-none"
+              style={{
+                left: hoverTime.stripeLeft,
+                top: hoverTime.stripeTop,
+                width: hoverTime.stripeWidth,
+                height: 2,
+                backgroundColor: 'hsl(var(--primary) / 0.95)',
+              }}
+            />
+            <div
+              className="fixed z-[9999] pointer-events-none text-[12px] font-medium leading-none px-1 bg-white"
+              style={{
+                left: hoverTime.labelLeft,
+                top: hoverTime.stripeTop,
+                transform: 'translate(-100%, -50%)',
+                color: 'hsl(var(--primary) / 0.95)',
+              }}
+            >
+              {hoverTime.label}
+            </div>
+          </>,
+          document.body,
+        )}
       {previewRect &&
         createPortal(
           <div
@@ -793,7 +905,11 @@ function computeTimeFromCoords(
   const minHour = parseInt(firstLabel.split(':')[0] ?? '0', 10) || 0
 
   const rawMin = minHour * 60 + ratio * totalMinutes
-  const snappedMin = Math.round(rawMin / 10) * 10
+  // floor (а не round) → полоска всегда у верхнего края слота, в котором
+  // находится курсор. Это совпадает с тем, как RBC внутренне считает
+  // click-to-slot (Math.floor в closestSlotToPosition), и интуитивно:
+  // мышь не может «обогнать» полоску вниз.
+  const snappedMin = Math.floor(rawMin / 10) * 10
   const h = Math.floor(snappedMin / 60)
   const m = snappedMin % 60
 
