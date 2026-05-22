@@ -50,20 +50,54 @@ export function SendFailureToasts({ workspaceId }: SendFailureToastsProps) {
     for (const f of failures) {
       if (shownRef.current.has(f.id)) continue
       shownRef.current.add(f.id)
-      const tid = showFailureToast(f, async () => {
-        // «Открыть чат»: пытаемся открыть тред в правой панели и помечаем
-        // failure как resolved. Если треда нет (удалён) — просто резолвим.
-        if (f.thread_id) {
-          await openThread(f.thread_id)
-        }
-        try {
-          await resolve.mutateAsync(f.id)
-        } catch (err) {
-          logger.warn('resolve send failure:', err)
-        }
-        toast.dismiss(tid)
-        toastIdRef.current.delete(f.id)
-      })
+      const tid = showFailureToast(
+        f,
+        async () => {
+          // «Открыть чат»: пытаемся открыть тред в правой панели и помечаем
+          // failure как resolved. Если треда нет (удалён) — просто резолвим.
+          if (f.thread_id) {
+            await openThread(f.thread_id)
+          }
+          try {
+            await resolve.mutateAsync(f.id)
+          } catch (err) {
+            logger.warn('resolve send failure:', err)
+          }
+          toast.dismiss(tid)
+          toastIdRef.current.delete(f.id)
+        },
+        async () => {
+          // «Повторить»: переключаем send_status сообщения обратно в pending,
+          // БД-триггер notify_on_send_status_retry дёргает диспетчер канала.
+          const meta = (f.metadata as Record<string, unknown> | null) ?? {}
+          const messageId = (meta.project_message_id as string | undefined) ??
+            (meta.message_id as string | undefined)
+          if (!messageId) {
+            toast.error('Не удалось найти сообщение для повтора')
+            return
+          }
+          const { error: retryErr } = await supabase
+            .from('project_messages')
+            .update({
+              send_status: 'pending',
+              send_failed_reason: null,
+              send_attempted_at: new Date().toISOString(),
+            })
+            .eq('id', messageId)
+          if (retryErr) {
+            toast.error('Не удалось запустить повтор')
+            return
+          }
+          try {
+            await resolve.mutateAsync(f.id)
+          } catch (err) {
+            logger.warn('resolve send failure after retry:', err)
+          }
+          toast.success('Повторная отправка запущена')
+          toast.dismiss(tid)
+          toastIdRef.current.delete(f.id)
+        },
+      )
       toastIdRef.current.set(f.id, tid)
     }
 
@@ -109,17 +143,28 @@ async function openThread(threadId: string): Promise<void> {
   })
 }
 
-function showFailureToast(f: SendFailureRow, onOpen: () => void) {
+function showFailureToast(
+  f: SendFailureRow,
+  onOpen: () => void,
+  onRetry: () => void,
+) {
   const preview = (f.content ?? '').replace(/<[^>]+>/g, '').trim().slice(0, 80)
   const title = 'Не удалось отправить сообщение'
   const description = preview
     ? `«${preview}${preview.length === 80 ? '…' : ''}»`
     : f.error_text
+  const meta = (f.metadata as Record<string, unknown> | null) ?? {}
+  const hasMessageId = !!(meta.project_message_id || meta.message_id)
   return toast.error(title, {
     description,
     duration: Infinity,
-    action: f.thread_id
-      ? { label: 'Открыть чат', onClick: onOpen }
+    action: hasMessageId
+      ? { label: 'Повторить', onClick: onRetry }
+      : f.thread_id
+        ? { label: 'Открыть чат', onClick: onOpen }
+        : undefined,
+    cancel: hasMessageId && f.thread_id
+      ? { label: 'Открыть', onClick: onOpen }
       : undefined,
   })
 }
