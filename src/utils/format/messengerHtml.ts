@@ -70,6 +70,27 @@ export function stripHtmlKeepNewlines(html: string): string {
     .trim()
 }
 
+/**
+ * Схлопывает «пустые строки» в email-HTML: пустые блоки `<div></div>` /
+ * `<p><br></p>` (Gmail и Outlook щедро вставляют их между абзацами) и подряд
+ * идущие `<br>`. На выходе — максимум одна пустая строка подряд.
+ */
+function collapseEmptyLines(html: string): string {
+  let prev: string
+  let curr = html
+  // Пустые блоки → один <br>. Повторяем, пока находятся вложенные пустые.
+  do {
+    prev = curr
+    curr = curr.replace(
+      /<(div|p)(?:\s[^>]*)?>\s*(?:<br\s*\/?>\s*)*<\/\1>/gi,
+      '<br>',
+    )
+  } while (curr !== prev)
+  // 3+ подряд <br> → 2 (= одна пустая строка).
+  curr = curr.replace(/(<br\s*\/?>\s*){3,}/gi, '<br><br>')
+  return curr
+}
+
 /** Санитизация HTML для мессенджера — строгий whitelist тегов.
  *
  * div/span включены, потому что email-клиенты (Gmail в первую очередь)
@@ -78,7 +99,7 @@ export function stripHtmlKeepNewlines(html: string): string {
  * (style, class) всё равно вычищаются — рендерим только семантику. */
 export function sanitizeMessengerHtml(dirty: string): string {
   if (!dirty) return ''
-  return DOMPurify.sanitize(dirty, {
+  const clean = DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: [
       'p',
       'br',
@@ -100,6 +121,7 @@ export function sanitizeMessengerHtml(dirty: string): string {
     FORBID_ATTR: [],
     ALLOW_UNKNOWN_PROTOCOLS: false,
   })
+  return collapseEmptyLines(clean)
 }
 
 /** Регулярка для URL в тексте */
