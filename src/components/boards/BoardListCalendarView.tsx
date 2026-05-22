@@ -598,6 +598,16 @@ export function BoardListCalendarView({
       if (hoverTime) setHoverTime(null)
       return
     }
+    // Если курсор поверх существующего события — прячем полоску, чтобы не
+    // мешала видеть и нажимать на событие. Создать новое поверх существующего
+    // всё равно нельзя (RBC ловит клик на событие).
+    const overEvent = document.elementsFromPoint(e.clientX, e.clientY).some(
+      (el) => (el as HTMLElement).classList?.contains('rbc-event'),
+    )
+    if (overEvent) {
+      if (hoverTime) setHoverTime(null)
+      return
+    }
     const slot = findDaySlotAtPoint(e.clientX, e.clientY)
     if (!slot) {
       setHoverTime(null)

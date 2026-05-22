@@ -562,16 +562,21 @@ body[data-task-panel-open] [data-sonner-toaster][data-x-position='right'] {
 .rbc-day-slot.rbc-today .rbc-event {
   outline-color: rgb(234, 246, 255);
 }
-/* Хит-зона resize в RBC по умолчанию ~3px — расширяем до 14px и
-   делаем иконку всегда видимой (а не только на :hover), чтобы было
-   очевидно где можно тащить. */
+/* Хит-зона resize в RBC по умолчанию ~3px. Расширяем до 6px — этого
+   достаточно, чтобы попасть курсором, но не съедает середину короткого
+   30-минутного события (~24px высоты): остаётся 12px на клик-открытие.
+   Раньше было 14px — две зоны перекрывались и середины под клик не было. */
 .rbc-addons-dnd .rbc-addons-dnd-resize-ns-anchor {
-  height: 14px;
+  height: 6px;
   cursor: ns-resize;
   z-index: 1;
 }
-/* Иконка-индикатор не нужна: хит-зона 14px достаточно ощутима по
-   курсору ns-resize, лишние полоски на каждом событии шумят. */
+/* На hover — подсвечиваем сам resize-край белой полоской, чтобы было
+   видно, какую границу события сейчас потянешь. */
+.rbc-addons-dnd .rbc-addons-dnd-resize-ns-anchor:hover {
+  background-color: rgba(255, 255, 255, 0.6);
+}
+/* Иконка-индикатор не нужна: подсветка края на hover достаточно ощутима. */
 .rbc-addons-dnd .rbc-addons-dnd-resize-ns-anchor .rbc-addons-dnd-resize-ns-icon {
   display: none !important;
 }
