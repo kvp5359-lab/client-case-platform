@@ -42,6 +42,7 @@ import {
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import type { TaskItem } from '@/components/tasks/types'
 import { COLOR_BG } from '@/components/messenger/threadConstants'
+import { useTaskStatuses } from '@/hooks/useStatuses'
 import { cn } from '@/lib/utils'
 
 moment.locale('ru')
@@ -96,6 +97,12 @@ export default function CalendarPage() {
   }, [view, date])
 
   const { data: threads = [], isLoading } = useCalendarThreads(workspaceId, from, to)
+  const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)
+  const finalStatusIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const s of taskStatuses) if (s.is_final) set.add(s.id)
+    return set
+  }, [taskStatuses])
 
   const events: CalendarEvent[] = useMemo(
     () =>
@@ -111,10 +118,17 @@ export default function CalendarPage() {
 
   const eventPropGetter = useCallback((event: CalendarEvent) => {
     const bg = COLOR_BG[event.resource.accent_color] ?? 'bg-blue-500'
+    const isPast = event.end.getTime() < Date.now()
+    const isFinal = !!event.resource.status_id && finalStatusIds.has(event.resource.status_id)
     return {
-      className: cn(bg, 'border-0 text-white rounded text-xs px-1.5 py-0.5'),
+      className: cn(
+        bg,
+        'border-0 text-white rounded text-xs px-1.5 py-0.5',
+        isFinal && 'line-through',
+      ),
+      style: isPast ? { opacity: 0.55 } : undefined,
     }
-  }, [])
+  }, [finalStatusIds])
 
   const handleSelectEvent = useCallback(
     (event: CalendarEvent) => {

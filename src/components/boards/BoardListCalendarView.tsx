@@ -33,6 +33,7 @@ import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { supabase } from '@/lib/supabase'
 import { calendarKeys } from '@/hooks/queryKeys'
 import { useUpdateThreadTime } from '@/hooks/useCalendarThreads'
+import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useSyncCalendar, useWriteExternalEvent } from '@/hooks/useGoogleCalendar'
 import { useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
@@ -365,11 +366,22 @@ export function BoardListCalendarView({
     [ToolbarComponent],
   )
 
+  const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)
+  const finalStatusIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const s of taskStatuses) if (s.is_final) set.add(s.id)
+    return set
+  }, [taskStatuses])
+
   const eventPropGetter = useCallback((event: CalEvent) => {
     if (event.kind === 'external') {
       // Внешнее событие — цвет от его календаря.
+      const isPast = event.end.getTime() < Date.now()
       return {
-        style: { backgroundColor: event.external?.color ?? '#6b7280' },
+        style: {
+          backgroundColor: event.external?.color ?? '#6b7280',
+          ...(isPast ? { opacity: 0.55 } : {}),
+        },
         className: 'text-white rounded text-xs px-1.5 py-0.5',
       }
     }
@@ -377,11 +389,17 @@ export function BoardListCalendarView({
     // возвращает только {title}) — берём дефолт.
     const accent = event.resource?.accent_color
     const bg = (accent && ACCENT_HEX[accent]) || ACCENT_HEX.blue
+    const isPast = event.end.getTime() < Date.now()
+    const statusId = event.resource?.status_id
+    const isFinal = !!statusId && finalStatusIds.has(statusId)
     return {
-      style: { backgroundColor: bg },
-      className: 'text-white rounded text-xs px-1.5 py-0.5',
+      style: { backgroundColor: bg, ...(isPast ? { opacity: 0.55 } : {}) },
+      className: cn(
+        'text-white rounded text-xs px-1.5 py-0.5',
+        isFinal && 'line-through',
+      ),
     }
-  }, [])
+  }, [finalStatusIds])
 
   /** Drag/resize разрешены и для внешних событий (write-back в Google). */
   const draggableAccessor = useCallback(() => true, [])
