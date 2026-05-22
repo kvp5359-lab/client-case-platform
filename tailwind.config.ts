@@ -103,6 +103,10 @@ const config: Config = {
           from: { height: 'var(--radix-collapsible-content-height)' },
           to: { height: '0' },
         },
+        'drop-flash': {
+          '0%': { backgroundColor: 'rgb(59 130 246 / 0.25)', boxShadow: '0 0 0 2px rgb(59 130 246 / 0.5)' },
+          '100%': { backgroundColor: 'transparent', boxShadow: '0 0 0 0 transparent' },
+        },
       },
       animation: {
         slideDown: 'slideDown 0.25s ease-out',
@@ -110,6 +114,7 @@ const config: Config = {
         'progress-indeterminate': 'progress-indeterminate 1.5s ease-in-out infinite',
         'collapsible-down': 'collapsible-down 0.22s ease-out',
         'collapsible-up': 'collapsible-up 0.2s ease-in',
+        'drop-flash': 'drop-flash 0.7s ease-out',
       },
     },
   },

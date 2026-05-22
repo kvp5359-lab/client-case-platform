@@ -1,7 +1,9 @@
 "use client"
 
 import { memo, useCallback } from 'react'
-import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { useDroppable } from '@dnd-kit/core'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
 import { BoardTaskRow } from './BoardTaskRow'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
@@ -25,39 +27,59 @@ interface DraggableBoardTaskRowProps {
   isSelected?: boolean
   cardLayout?: CardLayout | null
   dropIndicator: 'top' | 'bottom' | null
+  /** Только что отпущена сюда — кратко подсвечиваем фон. */
+  justDropped?: boolean
 }
 
 export const DraggableBoardTaskRow = memo(function DraggableBoardTaskRow({
   task,
   listId,
   dropIndicator,
+  justDropped,
   ...rest
 }: DraggableBoardTaskRowProps) {
   const isCards = rest.displayMode === 'cards'
-  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setSortableRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     // Namespace ID, чтобы один и тот же task не конфликтовал, если показан
     // в нескольких списках на доске.
     id: `task:${task.id}:${listId}`,
     data: { task, kind: 'task' as const, sourceListId: listId },
   })
-  // Сам task становится droppable-целью только для manual_sort reorder
-  // (этап 4.5 — лифтинг DnD; manual_sort обработка в BoardView).
+  // Параллельный droppable для индикатора позиции и manual_sort reorder
+  // (этап 4.5 — обработка в BoardView через collisionDetection по `task-row:`).
   const { setNodeRef: setDropRef } = useDroppable({ id: `task-row:${task.id}:${listId}` })
 
   const mergedRef = useCallback(
     (node: HTMLDivElement | null) => {
-      setDragRef(node)
+      setSortableRef(node)
       setDropRef(node)
     },
-    [setDragRef, setDropRef],
+    [setSortableRef, setDropRef],
   )
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
 
   return (
     <div
       ref={mergedRef}
+      style={style}
       {...attributes}
       {...listeners}
-      className={cn('relative min-w-0 touch-none', isDragging && 'opacity-40')}
+      className={cn(
+        'relative min-w-0 touch-none rounded-md',
+        isDragging && 'opacity-40',
+        justDropped && 'animate-drop-flash',
+      )}
       data-board-card
     >
       {dropIndicator === 'top' && (

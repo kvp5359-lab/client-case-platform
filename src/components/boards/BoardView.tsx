@@ -1,18 +1,20 @@
 "use client"
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DndContext,
   PointerSensor,
   useSensor,
   useSensors,
   DragOverlay,
+  defaultDropAnimationSideEffects,
   rectIntersection,
   pointerWithin,
   type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
   type DragOverEvent,
+  type DropAnimation,
 } from '@dnd-kit/core'
 import { BoardColumn } from './BoardColumn'
 import { ColumnGap, DroppableColumn } from './BoardViewDropTargets'
@@ -163,6 +165,19 @@ export function BoardView({
     | { kind: BoardItemType; listId: string; itemId: string; position: 'top' | 'bottom' }
     | null
   >(null)
+  // ID карточки, только что отпущенной — для краткой подсветки «приземления».
+  // Формат: `thread:<uuid>` или `project:<uuid>` (без listId — карточка могла
+  // переехать в другой список при смене статуса).
+  const [recentlyDroppedId, setRecentlyDroppedId] = useState<string | null>(null)
+  const recentlyDroppedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const flashDrop = useCallback((kind: 'thread' | 'project', id: string) => {
+    if (recentlyDroppedTimerRef.current) clearTimeout(recentlyDroppedTimerRef.current)
+    setRecentlyDroppedId(`${kind}:${id}`)
+    recentlyDroppedTimerRef.current = setTimeout(() => setRecentlyDroppedId(null), 700)
+  }, [])
+  useEffect(() => () => {
+    if (recentlyDroppedTimerRef.current) clearTimeout(recentlyDroppedTimerRef.current)
+  }, [])
   // TEMP DEBUG — показываем в углу что видит dnd-kit. Удалить когда manual-reorder заработает.
 
   const updateProjectStatus = useUpdateProjectStatusOnBoard()
@@ -172,6 +187,19 @@ export function BoardView({
   )
 
   const activeList = activeListId ? lists.find((l) => l.id === activeListId) ?? null : null
+
+  // Анимация «приземления»: overlay плавно встаёт на финальную позицию карточки.
+  // Для drag списков — не нужна (там нет overlay-движения), оставляем null.
+  const cardDropAnimation: DropAnimation = useMemo(
+    () => ({
+      duration: 220,
+      easing: 'cubic-bezier(0.2, 0, 0, 1)',
+      sideEffects: defaultDropAnimationSideEffects({
+        styles: { active: { opacity: '0.4' } },
+      }),
+    }),
+    [],
+  )
 
   // Снимок состояния card-DnD, передаём вниз через BoardColumn → BoardListCard
   // для подсветки активной группы/списка.
@@ -183,8 +211,9 @@ export function BoardView({
       rowDropIndicator,
       manualOrders: itemOrders ?? {},
       registerListOrder,
+      recentlyDroppedId,
     }),
-    [overCardTarget, rowDropIndicator, itemOrders, registerListOrder],
+    [overCardTarget, rowDropIndicator, itemOrders, registerListOrder, recentlyDroppedId],
   )
 
   // Кастомный collision detection. При drag списка приоритезируем
@@ -270,7 +299,16 @@ export function BoardView({
       if (listCards) return [listCards]
       return collisions.filter((c) => {
         const id = String(c.id)
-        return !id.startsWith('gap-drop:') && !id.startsWith('list-drop:') && !id.startsWith('col-drop:')
+        // `task:`/`project:` — id самих sortable-нод (useSortable создаёт droppable
+        // с тем же id, что и draggable). Это самосовпадение, drop-таргетом быть
+        // не должен — иначе перебивает приоритет list-cards/group.
+        return (
+          !id.startsWith('gap-drop:') &&
+          !id.startsWith('list-drop:') &&
+          !id.startsWith('col-drop:') &&
+          !id.startsWith('task:') &&
+          !id.startsWith('project:')
+        )
       })
     }
 
@@ -473,6 +511,7 @@ export function BoardView({
           item_type: itemType,
           item_ids: newIds,
         })
+        flashDrop(itemType, draggedId)
         return
       }
 
@@ -489,9 +528,11 @@ export function BoardView({
         if (card.kind === 'project') {
           if (statusEquals(card.project.status_id, newStatusId)) return
           updateProjectStatus.mutate({ projectId: card.project.id, statusId: newStatusId })
+          flashDrop('project', card.project.id)
         } else {
           if (statusEquals(card.task.status_id, newStatusId)) return
           if (onStatusChange) onStatusChange(card.task.id, newStatusId)
+          flashDrop('thread', card.task.id)
         }
         return
       }
@@ -509,9 +550,11 @@ export function BoardView({
         if (card.kind === 'project') {
           if (statusEquals(card.project.status_id, newStatusId)) return
           updateProjectStatus.mutate({ projectId: card.project.id, statusId: newStatusId })
+          flashDrop('project', card.project.id)
         } else {
           if (statusEquals(card.task.status_id, newStatusId)) return
           if (onStatusChange) onStatusChange(card.task.id, newStatusId)
+          flashDrop('thread', card.task.id)
         }
         return
       }
@@ -627,7 +670,7 @@ export function BoardView({
 
     if (updates.length === 0) return
     reorderLists.mutate({ board_id: dragged.board_id, updates })
-  }, [activeList, dropIndicator, gapTarget, lists, reorderLists, activeCard, overCardTarget, rowDropIndicator, updateProjectStatus, onStatusChange, reorderItems, boardId])
+  }, [activeList, dropIndicator, gapTarget, lists, reorderLists, activeCard, overCardTarget, rowDropIndicator, updateProjectStatus, onStatusChange, reorderItems, boardId, flashDrop])
 
   if (lists.length === 0) {
     return (
@@ -687,7 +730,7 @@ export function BoardView({
         {/* Распорка: при открытой боковой панели (45% ширины) контент можно доскроллить */}
         <div className="shrink-0 w-[45vw]" aria-hidden />
       </div>
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay dropAnimation={activeList ? null : cardDropAnimation}>
         {isOverCalendar ? null : activeList ? (
           <div className="px-3 py-1 rounded-full text-sm font-medium shadow-lg" style={{
             backgroundColor: hexToHeaderStyle(activeList.header_color).bg,

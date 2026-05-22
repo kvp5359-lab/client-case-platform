@@ -2,6 +2,7 @@
 
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { cn } from '@/lib/utils'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useFilteredTasks, useFilteredProjects } from './hooks/useFilteredListData'
@@ -89,6 +90,9 @@ export interface BoardCardDndState {
   manualOrders: BoardListOrdersMap
   /** Регистрация текущего видимого порядка карточек — BoardView читает его на drag-end. */
   registerListOrder: (listId: string, itemType: BoardItemType, ids: string[]) => void
+  /** Только что отпущенная карточка — для краткой подсветки места приземления.
+   *  Формат `thread:<uuid>` или `project:<uuid>`. */
+  recentlyDroppedId: string | null
 }
 
 /**
@@ -441,29 +445,35 @@ export function BoardListCard({
                           </span>
                         </div>
                       )}
-                      <div className={cn(
-                        isCards
-                          ? 'grid grid-cols-1 gap-1'
-                          : hasGrouping
-                            ? 'divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden'
-                            : 'divide-y divide-border/50'
-                      )}>
-                        {group.projects.map((project) => (
-                          <DraggableBoardProjectRow
-                            key={project.id}
-                            listId={list.id}
-                            project={project}
-                            workspaceId={workspaceId}
-                            displayMode={list.display_mode ?? 'list'}
-                            visibleFields={list.visible_fields ?? ['status', 'template']}
-                            isSelected={selectedProjectId === project.id}
-                            cardLayout={list.card_layout}
-                            nextTask={nextTaskByProjectId[project.id]}
-                            authorName={project.created_by ? authorNameByUserId[project.created_by] : null}
-                            dropIndicator={indicatorForRow('project', project.id)}
-                          />
-                        ))}
-                      </div>
+                      <SortableContext
+                        items={group.projects.map((p) => `project:${p.id}:${list.id}`)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className={cn(
+                          isCards
+                            ? 'grid grid-cols-1 gap-1'
+                            : hasGrouping
+                              ? 'divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden'
+                              : 'divide-y divide-border/50'
+                        )}>
+                          {group.projects.map((project) => (
+                            <DraggableBoardProjectRow
+                              key={project.id}
+                              listId={list.id}
+                              project={project}
+                              workspaceId={workspaceId}
+                              displayMode={list.display_mode ?? 'list'}
+                              visibleFields={list.visible_fields ?? ['status', 'template']}
+                              isSelected={selectedProjectId === project.id}
+                              cardLayout={list.card_layout}
+                              nextTask={nextTaskByProjectId[project.id]}
+                              authorName={project.created_by ? authorNameByUserId[project.created_by] : null}
+                              dropIndicator={indicatorForRow('project', project.id)}
+                              justDropped={boardCardDnd?.recentlyDroppedId === `project:${project.id}`}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
                     </BoardGroupDropZone>
                   ))}
                 </div>
@@ -501,56 +511,68 @@ export function BoardListCard({
                           <span className="opacity-50">{group.tasks.length}</span>
                         </span>
                       </div>
-                      <div className={cn(
-                        isCards
-                          ? 'grid grid-cols-1 gap-1'
-                          : 'divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden'
-                      )}>
-                        {group.tasks.map((task) => (
-                          <DraggableBoardTaskRow
-                            key={task.id}
-                            listId={list.id}
-                            task={task}
-                            workspaceId={workspaceId}
-                            assignees={assigneesMap[task.id] ?? []}
-                            statuses={statuses}
-                            visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
-                            displayMode={list.display_mode ?? 'list'}
-                            onOpenTask={onOpenTask}
-                            onStatusChange={onStatusChange}
-                            onDeleteTask={onDeleteTask}
-                            onDeadlineChange={onDeadlineChange}
-                            isSelected={selectedThreadId === task.id}
-                            cardLayout={list.card_layout}
-                            dropIndicator={indicatorForRow('thread', task.id)}
-                          />
-                        ))}
-                      </div>
+                      <SortableContext
+                        items={group.tasks.map((t) => `task:${t.id}:${list.id}`)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className={cn(
+                          isCards
+                            ? 'grid grid-cols-1 gap-1'
+                            : 'divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden'
+                        )}>
+                          {group.tasks.map((task) => (
+                            <DraggableBoardTaskRow
+                              key={task.id}
+                              listId={list.id}
+                              task={task}
+                              workspaceId={workspaceId}
+                              assignees={assigneesMap[task.id] ?? []}
+                              statuses={statuses}
+                              visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
+                              displayMode={list.display_mode ?? 'list'}
+                              onOpenTask={onOpenTask}
+                              onStatusChange={onStatusChange}
+                              onDeleteTask={onDeleteTask}
+                              onDeadlineChange={onDeadlineChange}
+                              isSelected={selectedThreadId === task.id}
+                              cardLayout={list.card_layout}
+                              dropIndicator={indicatorForRow('thread', task.id)}
+                              justDropped={boardCardDnd?.recentlyDroppedId === `thread:${task.id}`}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
                     </BoardGroupDropZone>
                   ))}
                 </div>
               ) : (
-                <div className={cn(isCards ? 'grid grid-cols-1 gap-1' : 'divide-y divide-border/50')}>
-                  {filteredTasks.map((task) => (
-                    <DraggableBoardTaskRow
-                      key={task.id}
-                      listId={list.id}
-                      task={task}
-                      workspaceId={workspaceId}
-                      assignees={assigneesMap[task.id] ?? []}
-                      statuses={statuses}
-                      visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
-                      displayMode={list.display_mode ?? 'list'}
-                      onOpenTask={onOpenTask}
-                      onStatusChange={onStatusChange}
-                      onDeleteTask={onDeleteTask}
-                      onDeadlineChange={onDeadlineChange}
-                      isSelected={selectedThreadId === task.id}
-                      cardLayout={list.card_layout}
-                      dropIndicator={null}
-                    />
-                  ))}
-                </div>
+                <SortableContext
+                  items={filteredTasks.map((t) => `task:${t.id}:${list.id}`)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className={cn(isCards ? 'grid grid-cols-1 gap-1' : 'divide-y divide-border/50')}>
+                    {filteredTasks.map((task) => (
+                      <DraggableBoardTaskRow
+                        key={task.id}
+                        listId={list.id}
+                        task={task}
+                        workspaceId={workspaceId}
+                        assignees={assigneesMap[task.id] ?? []}
+                        statuses={statuses}
+                        visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
+                        displayMode={list.display_mode ?? 'list'}
+                        onOpenTask={onOpenTask}
+                        onStatusChange={onStatusChange}
+                        onDeleteTask={onDeleteTask}
+                        onDeadlineChange={onDeadlineChange}
+                        isSelected={selectedThreadId === task.id}
+                        cardLayout={list.card_layout}
+                        dropIndicator={indicatorForRow('thread', task.id)}
+                        justDropped={boardCardDnd?.recentlyDroppedId === `thread:${task.id}`}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
               )
             ) : (
               <div className="px-3 py-4 text-xs text-muted-foreground text-center">
