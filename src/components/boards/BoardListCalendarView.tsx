@@ -640,12 +640,6 @@ export function BoardListCalendarView({
 
   const handleMouseLeave = useCallback(() => setHoverTime(null), [])
 
-  // Размер 30-минутного блока в пикселях по текущей сетке.
-  const pxPerMinute = (daySlotEl: HTMLElement) => {
-    const groups = daySlotEl.querySelectorAll('.rbc-timeslot-group').length
-    if (groups === 0) return 0
-    return daySlotEl.getBoundingClientRect().height / (groups * 60)
-  }
 
   // Обработчик dnd: на каждый move/over пересчитываем превью; на drop
   // ставим время. Фильтруем по `over.id === нашему droppableId` чтобы
@@ -837,6 +831,13 @@ export function BoardListCalendarView({
 
 /** Находит .rbc-day-slot под точкой (через elementsFromPoint — обходит
  *  overlay'и dnd-kit, которые на короткий момент могут перекрывать слот). */
+// Размер 30-минутного блока в пикселях по текущей сетке.
+function pxPerMinute(daySlotEl: HTMLElement): number {
+  const groups = daySlotEl.querySelectorAll('.rbc-timeslot-group').length
+  if (groups === 0) return 0
+  return daySlotEl.getBoundingClientRect().height / (groups * 60)
+}
+
 function findDaySlotAtPoint(clientX: number, clientY: number): HTMLElement | null {
   const elements = document.elementsFromPoint(clientX, clientY)
   for (const el of elements) {

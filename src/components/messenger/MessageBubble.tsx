@@ -71,7 +71,6 @@ function MessageBubbleImpl({
     projectId,
     workspaceId,
     channel,
-    isTelegramLinked,
     isClientThread,
     isEmailThread,
     isBusinessThread,
