@@ -64,6 +64,16 @@ interface UseTaskPanelTabsParams {
   projectId: string | null | undefined
   /** Если задан, scope вкладок — этот контакт (для тредов без проекта). */
   contactId?: string | null
+  /** Если задан И НЕТ projectId/contactId — scope «knowledge»: глобальный
+   *  per-user-per-workspace пул для статей KB, открываемых вне проекта. */
+  knowledgeWorkspaceId?: string | null
+}
+
+type ScopeKind = 'project' | 'contact' | 'knowledge'
+const SCOPE_COLUMN: Record<ScopeKind, 'project_id' | 'contact_participant_id' | 'workspace_id'> = {
+  project: 'project_id',
+  contact: 'contact_participant_id',
+  knowledge: 'workspace_id',
 }
 
 interface UseTaskPanelTabsResult {
@@ -94,20 +104,26 @@ interface UseTaskPanelTabsResult {
 
 const EMPTY_STATE: PersistedRow = { tabs: [], active_tab_id: null }
 
-export function useTaskPanelTabs({ projectId, contactId }: UseTaskPanelTabsParams): UseTaskPanelTabsResult {
+export function useTaskPanelTabs({
+  projectId,
+  contactId,
+  knowledgeWorkspaceId,
+}: UseTaskPanelTabsParams): UseTaskPanelTabsResult {
   const { user } = useAuth()
   const userId = user?.id
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
 
-  // Один из двух — scope вкладок: project или contact. Project имеет приоритет.
-  const scopeKind: 'project' | 'contact' | null = projectId
+  // Один из трёх — scope вкладок. Project > contact > knowledge по приоритету.
+  const scopeKind: ScopeKind | null = projectId
     ? 'project'
     : contactId
       ? 'contact'
-      : null
-  const scopeKey = projectId ?? contactId ?? null
+      : knowledgeWorkspaceId
+        ? 'knowledge'
+        : null
+  const scopeKey = projectId ?? contactId ?? knowledgeWorkspaceId ?? null
 
   const enabled = !!scopeKey && !!userId
   const queryKey = useMemo(
@@ -122,7 +138,7 @@ export function useTaskPanelTabs({ projectId, contactId }: UseTaskPanelTabsParam
     staleTime: STALE_TIME.LONG,
     queryFn: async () => {
       if (!scopeKey || !userId || !scopeKind) return EMPTY_STATE
-      const scopeColumn = scopeKind === 'project' ? 'project_id' : 'contact_participant_id'
+      const scopeColumn = SCOPE_COLUMN[scopeKind]
       const { data, error } = await (
         supabase as unknown as {
           from: (t: string) => {
@@ -258,15 +274,18 @@ export function useTaskPanelTabs({ projectId, contactId }: UseTaskPanelTabsParam
   const upsertMutation = useMutation({
     mutationFn: async (next: PersistedRow) => {
       if (!scopeKey || !userId || !scopeKind) return
-      const scopeColumn = scopeKind === 'project' ? 'project_id' : 'contact_participant_id'
-      const oppositeColumn = scopeKind === 'project' ? 'contact_participant_id' : 'project_id'
-      const { data: existing, error: selErr } = await supabase
+      const scopeColumn = SCOPE_COLUMN[scopeKind]
+      // Все остальные scope-колонки должны быть NULL — это требование CHECK
+      // constraint'а (один scope за раз) и условие partial unique индексов.
+      const otherColumns = (['project_id', 'contact_participant_id', 'workspace_id'] as const)
+        .filter((c) => c !== scopeColumn)
+      let selectQuery = supabase
         .from('task_panel_tabs')
         .select('id')
         .eq('user_id', userId)
         .eq(scopeColumn, scopeKey)
-        .is(oppositeColumn, null)
-        .maybeSingle()
+      for (const col of otherColumns) selectQuery = selectQuery.is(col, null)
+      const { data: existing, error: selErr } = await selectQuery.maybeSingle()
       if (selErr) throw selErr
       const payload = {
         tabs: next.tabs as unknown as Database['public']['Tables']['task_panel_tabs']['Update']['tabs'],
@@ -284,6 +303,7 @@ export function useTaskPanelTabs({ projectId, contactId }: UseTaskPanelTabsParam
           user_id: userId,
           project_id: scopeKind === 'project' ? scopeKey : null,
           contact_participant_id: scopeKind === 'contact' ? scopeKey : null,
+          workspace_id: scopeKind === 'knowledge' ? scopeKey : null,
           ...payload,
         })
         if (error) throw error
@@ -483,6 +503,19 @@ export function buildThreadTab(
 }
 
 /** Хелпер для системных вкладок (tasks/history/documents/forms/materials/assistant/extra). */
-export function buildSystemTab(type: Exclude<TaskPanelTabType, 'thread'>, title: string): TaskPanelTab {
+export function buildSystemTab(
+  type: Exclude<TaskPanelTabType, 'thread' | 'knowledge_article'>,
+  title: string,
+): TaskPanelTab {
   return { id: makeTabId(type), type, title }
+}
+
+/** Хелпер для вкладки статьи базы знаний. refId = articleId. */
+export function buildKnowledgeArticleTab(articleId: string, title: string): TaskPanelTab {
+  return {
+    id: makeTabId('knowledge_article', articleId),
+    type: 'knowledge_article',
+    refId: articleId,
+    title,
+  }
 }

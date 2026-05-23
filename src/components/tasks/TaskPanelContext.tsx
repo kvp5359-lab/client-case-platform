@@ -39,7 +39,9 @@ interface TaskPanelContextValue {
    *  Используется кнопкой «Другие задачи» в открытой задаче. */
   pushProject?: (project: ProjectHeaderInfo) => void
   /** Открыть системную вкладку (assistant / documents / forms / materials / history / extra). */
-  openSystemTab?: (type: Exclude<TaskPanelTabType, 'thread' | 'tasks'>, title: string) => void
+  openSystemTab?: (type: Exclude<TaskPanelTabType, 'thread' | 'tasks' | 'knowledge_article'>, title: string) => void
+  /** Открыть статью базы знаний во вкладке текущего scope. */
+  openKnowledgeArticleTab?: (articleId: string, title: string) => void
   /** true, если дерево рендерится внутри открытой TaskPanel */
   isInsidePanel?: boolean
   /** id треда из активной вкладки — для подсветки в BoardView/списках. */

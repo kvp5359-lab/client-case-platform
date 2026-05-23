@@ -24,6 +24,7 @@ import {
   TasksTabContent,
   SystemTabBody,
 } from './TaskPanelTabContents'
+import { KnowledgeArticleTabContent } from './KnowledgeArticleTabContent'
 import { usePanelTabsVisibility } from './usePanelTabsVisibility'
 import type { TaskPanelTab } from './taskPanelTabs.types'
 import type { TaskItem } from './types'
@@ -51,6 +52,11 @@ export interface RendererProps {
   contactId: string | null
   /** projectId страницы, на которой находится пользователь. */
   pageProjectId: string | null
+  /** Standalone-режим: тред без project_id и без contact_participant_id.
+   *  Если задан — рендерим ОДИН тред без TabBar и без info-row; tabs/activeTab
+   *  игнорируются. Это нужно чтобы «внутренние задачи» (без проекта и контакта)
+   *  не сваливались в общий глобальный pool task_panel_tabs. */
+  standaloneThread: TaskItem | null
 }
 
 export
@@ -72,6 +78,7 @@ function TaskPanelTabbedShellRenderer({
   projectId,
   contactId,
   pageProjectId,
+  standaloneThread,
 }: RendererProps) {
   // Видимость системных вкладок по правам пользователя в текущем scope (project).
   const visibleSystemTypes = usePanelTabsVisibility(workspaceId, projectId)
@@ -247,7 +254,9 @@ function TaskPanelTabbedShellRenderer({
     () =>
       tabs
         .filter((t) => {
-          if (t.type === 'thread' || t.type === 'tasks') return true // RLS отрулит
+          // RLS отрулит права на тред/проект/статью. Системные вкладки
+          // фильтруются по модулям проекта.
+          if (t.type === 'thread' || t.type === 'tasks' || t.type === 'knowledge_article') return true
           return visibleSystemTypes.has(t.type)
         })
         .map((t) => {
@@ -279,7 +288,7 @@ function TaskPanelTabbedShellRenderer({
   // при первом появлении (tabs.length: 0 → >0). Переключение между вкладками
   // не размонтирует контейнер — меняется только содержимое.
   // hidden=true прячет панель UI, но не трогает вкладки в БД.
-  const open = tabs.length > 0 && !hidden
+  const open = (tabs.length > 0 || !!standaloneThread) && !hidden
   const [painted, setPainted] = useState(false)
   useEffect(() => {
     if (!open) {
@@ -305,9 +314,20 @@ function TaskPanelTabbedShellRenderer({
     !activeTab ||
     activeTab.type === 'thread' ||
     activeTab.type === 'tasks' ||
+    activeTab.type === 'knowledge_article' ||
     visibleSystemTypes.has(activeTab.type)
   let activeContent: React.ReactNode = null
-  if (activeTab && !activeTabAccessible) {
+  if (standaloneThread) {
+    // Standalone-режим: единственный тред без TabBar, без info-row, без вкладок.
+    activeContent = (
+      <ThreadTabContent
+        key={`standalone:${standaloneThread.id}`}
+        threadId={standaloneThread.id}
+        workspaceId={workspaceId}
+        onClose={onHidePanel}
+      />
+    )
+  } else if (activeTab && !activeTabAccessible) {
     activeContent = (
       <div className="flex-1 flex items-center justify-center p-6 text-sm text-muted-foreground text-center">
         Нет доступа к этому разделу.
@@ -320,6 +340,14 @@ function TaskPanelTabbedShellRenderer({
           key={`thread:${activeTab.refId}`}
           threadId={activeTab.refId}
           workspaceId={workspaceId}
+          onClose={onHidePanel}
+        />
+      )
+    } else if (activeTab.type === 'knowledge_article' && activeTab.refId) {
+      activeContent = (
+        <KnowledgeArticleTabContent
+          key={`knowledge_article:${activeTab.refId}`}
+          articleId={activeTab.refId}
           onClose={onHidePanel}
         />
       )
@@ -353,8 +381,9 @@ function TaskPanelTabbedShellRenderer({
   // проекта, что и текущая страница, — иначе она дублирует шапку страницы.
   // Для contact-scope шапка показывается всегда.
   const infoRowVisible =
-    !!effectiveContactId ||
-    (!!effectiveProjectId && pageProjectId !== effectiveProjectId)
+    !standaloneThread &&
+    (!!effectiveContactId ||
+      (!!effectiveProjectId && pageProjectId !== effectiveProjectId))
 
   const panel = (
     <div
@@ -385,19 +414,23 @@ function TaskPanelTabbedShellRenderer({
       )}
       {/* Строка 2: ряд открытых вкладок + меню добавления + (если шапки нет)
           кнопка «скрыть панель». Учтена видимость по правам — недоступные
-          системные вкладки скрываются из бара и из меню. */}
-      <TaskPanelTabBar
-        tabs={visibleTabs}
-        activeTabId={activeTabId}
-        onActivate={onActivate}
-        onClose={onCloseTab}
-        onOpenSystem={onOpenSystem}
-        badgeByThreadId={badgeByThreadId}
-        visibleSystemTypes={visibleSystemTypes}
-        onHidePanel={infoRowVisible ? undefined : onHidePanel}
-        onTogglePin={onTogglePin}
-        onReorder={onReorderTab}
-      />
+          системные вкладки скрываются из бара и из меню.
+          В standalone-режиме TabBar не показываем — там одна изолированная
+          вкладка, выбирать не из чего. */}
+      {!standaloneThread && (
+        <TaskPanelTabBar
+          tabs={visibleTabs}
+          activeTabId={activeTabId}
+          onActivate={onActivate}
+          onClose={onCloseTab}
+          onOpenSystem={onOpenSystem}
+          badgeByThreadId={badgeByThreadId}
+          visibleSystemTypes={visibleSystemTypes}
+          onHidePanel={infoRowVisible ? undefined : onHidePanel}
+          onTogglePin={onTogglePin}
+          onReorder={onReorderTab}
+        />
+      )}
       {/* Строка 3+: содержимое активной вкладки (со своей шапкой).
           Рендерим только когда панель открыта — иначе Tiptap-редактор
           (ComposeField) инициализируется в hidden-контейнере с display:none,

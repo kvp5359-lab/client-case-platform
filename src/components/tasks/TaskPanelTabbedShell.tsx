@@ -26,6 +26,7 @@ import {
   useTaskPanelTabs,
   buildSystemTab,
   buildThreadTab,
+  buildKnowledgeArticleTab,
 } from './useTaskPanelTabs'
 import { useThreadFromPanelTab } from './useThreadFromPanelTab'
 import { TaskPanelTabbedShellRenderer } from './TaskPanelTabbedShellRenderer'
@@ -50,7 +51,9 @@ export interface TaskPanelTabbedShellApi {
   /** Открыть «список задач проекта» во вкладке (Mode 2 старого TaskPanel). */
   openProjectTab: (project: ProjectHeaderInfo) => void
   /** Открыть системную вкладку (assistant / documents / forms / materials / history / extra). */
-  openSystemTab: (type: Exclude<TaskPanelTabType, 'thread' | 'tasks'>, title: string) => void
+  openSystemTab: (type: Exclude<TaskPanelTabType, 'thread' | 'tasks' | 'knowledge_article'>, title: string) => void
+  /** Открыть статью базы знаний во вкладке текущего scope (project/contact). */
+  openKnowledgeArticleTab: (articleId: string, title: string) => void
   /** Закрыть конкретную вкладку по id. */
   closeTab: (id: string) => void
   /** Открытые сейчас вкладки (per-project, DB-backed). */
@@ -85,6 +88,15 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   const [activeProjectId, setActiveProjectId] = useState<string | null>(pageProjectId)
   /** Активный contactId scope-а (для тредов без проекта). */
   const [activeContactId, setActiveContactId] = useState<string | null>(null)
+  /** Standalone-режим: тред без project_id и без contact_participant_id. Открывается
+   *  изолированно, без TabBar и без записи в task_panel_tabs — потому что
+   *  глобальный pool (project_id=null, contact_id=null) смешивал бы все такие
+   *  «внутренние» треды воркспейса в одной панели с одинаковыми вкладками. */
+  const [standaloneThread, setStandaloneThread] = useState<TaskItem | null>(null)
+  /** Knowledge-scope: вкладки статей KB, открытых вне project/contact контекста.
+   *  Ключ — workspaceId. Активируется при вызове openKnowledgeArticleTab, когда
+   *  нет активного project/contact. См. миграцию 20260523_task_panel_tabs_knowledge_scope. */
+  const [knowledgeMode, setKnowledgeMode] = useState(false)
   // Hidden — UI-only флаг «панель скрыта». Не трогает вкладки в БД.
   // Сбрасывается на false при любом open*Tab (см. ниже).
   const [hidden, setHidden] = useState(false)
@@ -124,6 +136,8 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   const tabs = useTaskPanelTabs({
     projectId: activeProjectId,
     contactId: activeProjectId ? null : activeContactId,
+    knowledgeWorkspaceId:
+      !activeProjectId && !activeContactId && knowledgeMode ? workspaceId : null,
   })
 
   // Очередь pending-вкладок: когда нужно сменить projectId перед openTab,
@@ -186,12 +200,24 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
           .maybeSingle()
         targetContactId = (data as { contact_participant_id?: string | null } | null)?.contact_participant_id ?? null
       }
+      setHidden(false)
+      // Standalone-режим: нет ни проекта, ни контакта → открываем изолированно
+      // без TabBar и без записи в task_panel_tabs.
+      if (!targetPid && !targetContactId) {
+        setStandaloneThread(task)
+        setActiveProjectId(null)
+        setActiveContactId(null)
+        setPendingOpen(null)
+        return
+      }
+      // Иначе — обычный scope. Сбрасываем standalone и knowledge-mode, если был.
+      setStandaloneThread(null)
+      setKnowledgeMode(false)
       const tab = buildThreadTab(task.id, task.name, {
         threadType: task.type,
         icon: task.icon,
         accentColor: task.accent_color,
       })
-      setHidden(false)
       const scopeChanged =
         targetPid !== activeProjectId ||
         targetContactId !== activeContactId
@@ -219,6 +245,8 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
         title: 'Задачи',
       }
       setHidden(false)
+      setStandaloneThread(null)
+      setKnowledgeMode(false)
       if (targetPid !== activeProjectId) {
         setActiveProjectId(targetPid)
         setPendingOpen({ tab, projectId: targetPid })
@@ -231,8 +259,13 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
 
   // Активный thread/project из текущей активной вкладки — для подсветки карточек на доске.
   // Когда панель скрыта, подсветку убираем — иначе обводка карточки остаётся после закрытия.
-  const activeThreadId =
-    !hidden && tabs.activeTab?.type === 'thread' ? (tabs.activeTab.refId ?? null) : null
+  const activeThreadId = hidden
+    ? null
+    : standaloneThread
+      ? standaloneThread.id
+      : tabs.activeTab?.type === 'thread'
+        ? (tabs.activeTab.refId ?? null)
+        : null
   const activeProjectRefId =
     !hidden && tabs.activeTab?.type === 'tasks' ? (tabs.activeTab.refId ?? null) : null
 
@@ -256,6 +289,9 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     // тред у получателя. Сама вкладка в табах остаётся — можно открыть
     // снова кликом, если пользователь захочет.
     tabs.clearUrlActive()
+    // Standalone-тред нигде не персистится — при закрытии панели его не к чему
+    // возвращать. Очищаем, иначе скрытая панель «помнит» тред до перезагрузки.
+    setStandaloneThread(null)
   }, [tabs])
   const showPanel = useCallback(() => {
     setHidden(false)
@@ -271,15 +307,47 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       return next
     })
   }, [tabs])
-  const hasTabs = tabs.tabs.length > 0
+  const hasTabs = tabs.tabs.length > 0 || !!standaloneThread
+
+  const closeAll = useCallback(() => {
+    tabs.closeAll()
+    setStandaloneThread(null)
+  }, [tabs])
 
   const openSystemTab = useCallback<TaskPanelTabbedShellApi['openSystemTab']>(
     (type, title) => {
       userInteractedRef.current = true
       setHidden(false)
+      setStandaloneThread(null)
+      setKnowledgeMode(false)
       tabsOpenTab(buildSystemTab(type, title))
     },
     [tabsOpenTab],
+  )
+
+  const openKnowledgeArticleTab = useCallback<TaskPanelTabbedShellApi['openKnowledgeArticleTab']>(
+    (articleId, title) => {
+      userInteractedRef.current = true
+      setHidden(false)
+      setStandaloneThread(null)
+      const tab = buildKnowledgeArticleTab(articleId, title)
+      // Если уже активен project/contact scope (открыта боковая панель проекта/треда) —
+      // статья встраивается туда (вариант D). Если scope пустой (например, открыта
+      // общая страница KB без проекта) — переключаемся в knowledge-scope воркспейса
+      // (вариант A): пул статей виден везде, где scope также пустой.
+      if (activeProjectId || activeContactId) {
+        setKnowledgeMode(false)
+        tabsOpenTab(tab)
+        return
+      }
+      if (!knowledgeMode) {
+        setKnowledgeMode(true)
+        setPendingOpen({ tab, projectId: null })
+      } else {
+        tabsOpenTab(tab)
+      }
+    },
+    [tabsOpenTab, activeProjectId, activeContactId, knowledgeMode],
   )
 
   const api: TaskPanelTabbedShellApi = useMemo(
@@ -287,9 +355,10 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       openThreadTab,
       openProjectTab,
       openSystemTab,
+      openKnowledgeArticleTab,
       closeTab: tabs.closeTab,
       openTabs: tabs.tabs,
-      closeAll: tabs.closeAll,
+      closeAll,
       hidePanel,
       showPanel,
       togglePanel,
@@ -302,9 +371,10 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       openThreadTab,
       openProjectTab,
       openSystemTab,
+      openKnowledgeArticleTab,
       tabs.closeTab,
       tabs.tabs,
-      tabs.closeAll,
+      closeAll,
       hidePanel,
       showPanel,
       togglePanel,
@@ -353,6 +423,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       projectId={activeProjectId}
       contactId={activeProjectId ? null : activeContactId}
       pageProjectId={pageProjectId}
+      standaloneThread={standaloneThread}
     />
   )
 

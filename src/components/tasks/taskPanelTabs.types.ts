@@ -7,15 +7,16 @@
  */
 
 export type TaskPanelTabType =
-  | 'thread'           // отдельный тред (чат/задача/документ): refId = threadId
-  | 'tasks'            // список задач проекта (Режим 2 старого TaskPanel)
-  | 'documents'        // документы проекта (PanelDocumentsContent)
-  | 'history'          // сквозная история (AllHistoryContent)
-  | 'forms'            // анкеты проекта (заглушка для будущего)
-  | 'materials'        // полезные материалы (заглушка для будущего)
-  | 'project_context'  // внутренние материалы команды (ProjectContextTabContent)
-  | 'assistant'        // AI-ассистент (AiPanelContent)
-  | 'extra'            // дополнительно (ExtraPanelContent)
+  | 'thread'             // отдельный тред (чат/задача/документ): refId = threadId
+  | 'tasks'              // список задач проекта (Режим 2 старого TaskPanel)
+  | 'documents'          // документы проекта (PanelDocumentsContent)
+  | 'history'            // сквозная история (AllHistoryContent)
+  | 'forms'              // анкеты проекта (заглушка для будущего)
+  | 'materials'          // полезные материалы (заглушка для будущего)
+  | 'knowledge_article'  // открытая статья базы знаний: refId = articleId
+  | 'project_context'    // внутренние материалы команды (ProjectContextTabContent)
+  | 'assistant'          // AI-ассистент (AiPanelContent)
+  | 'extra'              // дополнительно (ExtraPanelContent)
 
 export interface TaskPanelTab {
   /** Стабильный id вкладки. Для thread: `thread:${threadId}`, для системных: тип ('tasks', 'history' и т.д.). */
@@ -40,5 +41,7 @@ export interface TaskPanelTab {
 
 /** Канонический id для вкладки заданного типа/refId. */
 export function makeTabId(type: TaskPanelTabType, refId?: string): string {
-  return type === 'thread' && refId ? `thread:${refId}` : type
+  if (type === 'thread' && refId) return `thread:${refId}`
+  if (type === 'knowledge_article' && refId) return `knowledge_article:${refId}`
+  return type
 }

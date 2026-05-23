@@ -15,7 +15,6 @@ import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search, BookOpen, Loader2, Sparkles, X } from 'lucide-react'
-import { KnowledgeBaseArticleView } from './KnowledgeBaseArticleView'
 import {
   ReadOnlyGroupTreeItem,
   ReadOnlyArticleRow,
@@ -24,6 +23,7 @@ import {
 } from '@/page-components/KnowledgeBasePage/components/GroupTreeItem'
 import { FeatureGate } from '@/components/permissions/PermissionGate'
 import { useSidePanelStore } from '@/store/sidePanelStore'
+import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 
 interface KnowledgeBaseTabContentProps {
   projectId: string
@@ -37,9 +37,20 @@ export function KnowledgeBaseTabContent({
   templateId,
 }: KnowledgeBaseTabContentProps) {
   const [search, setSearch] = useState('')
-  const [selectedArticle, setSelectedArticle] = useState<TreeArticle | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const openAI = useSidePanelStore((s) => s.openAI)
+  const layoutPanel = useLayoutTaskPanel()
+
+  // Открыть статью KB в боковой панели как отдельную вкладку.
+  // Если контекст TaskPanel недоступен (например, страница без панели) —
+  // тихо ничего не делаем; в проекте контекст всегда есть.
+  const openArticle = useCallback(
+    (article: TreeArticle) => {
+      if (!layoutPanel?.openKnowledgeArticleTab) return
+      layoutPanel.openKnowledgeArticleTab(article.id, article.title)
+    },
+    [layoutPanel],
+  )
 
   const handleOpenAI = () => {
     openAI()
@@ -270,7 +281,7 @@ export function KnowledgeBaseTabContent({
               depth={0}
               collapsedGroups={collapsedGroups}
               toggleCollapse={toggleCollapse}
-              onArticleClick={setSelectedArticle}
+              onArticleClick={openArticle}
               getArticlesForGroup={getArticlesForGroup}
             />
           ))}
@@ -289,7 +300,7 @@ export function KnowledgeBaseTabContent({
               article={article}
               depth={0}
               isLast={i === ungroupedArticles.length - 1}
-              onArticleClick={setSelectedArticle}
+              onArticleClick={openArticle}
             />
           ))}
         </div>
@@ -302,12 +313,6 @@ export function KnowledgeBaseTabContent({
         </div>
       )}
 
-      {/* Просмотр статьи */}
-      <KnowledgeBaseArticleView
-        article={selectedArticle}
-        open={!!selectedArticle}
-        onClose={() => setSelectedArticle(null)}
-      />
     </div>
   )
 }

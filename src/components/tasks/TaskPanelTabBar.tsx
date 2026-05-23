@@ -69,7 +69,7 @@ import type { BadgeDisplay } from '@/utils/inboxUnread'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
 
 interface SystemTabDef {
-  type: Exclude<TaskPanelTabType, 'thread'>
+  type: Exclude<TaskPanelTabType, 'thread' | 'knowledge_article'>
   title: string
   icon: React.ComponentType<{ className?: string }>
 }
@@ -119,6 +119,7 @@ function getTabIcon(tab: TaskPanelTab): React.ComponentType<{ className?: string
     if (tt === 'email') return Mail
     return MessageSquare
   }
+  if (tab.type === 'knowledge_article') return BookOpen
   return SYSTEM_TAB_BY_TYPE.get(tab.type)?.icon ?? MessageSquare
 }
 

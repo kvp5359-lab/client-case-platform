@@ -6766,6 +6766,7 @@ export type Database = {
           tabs: Json
           updated_at: string
           user_id: string
+          workspace_id: string | null
         }
         Insert: {
           active_tab_id?: string | null
@@ -6775,6 +6776,7 @@ export type Database = {
           tabs?: Json
           updated_at?: string
           user_id: string
+          workspace_id?: string | null
         }
         Update: {
           active_tab_id?: string | null
@@ -6784,6 +6786,7 @@ export type Database = {
           tabs?: Json
           updated_at?: string
           user_id?: string
+          workspace_id?: string | null
         }
         Relationships: [
           {
@@ -6798,6 +6801,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_panel_tabs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]

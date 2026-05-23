@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react'
-import { KnowledgeBaseArticleView } from '@/page-components/ProjectPage/components/KnowledgeBaseArticleView'
+import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FolderPlus, Check, X } from 'lucide-react'
@@ -33,8 +33,16 @@ type PageReturn = ReturnType<typeof useKnowledgeBasePage>
 export function KnowledgeTreeView({ page }: { page: PageReturn }) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [showFilters, setShowFilters] = useState(false)
-  const [previewArticle, setPreviewArticle] = useState<KnowledgeArticle | null>(null)
   const [isReindexing, setIsReindexing] = useState(false)
+  const layoutPanel = useLayoutTaskPanel()
+  // Открытие статьи KB в боковой панели через knowledge-scope (вариант A).
+  const openArticleInPanel = useCallback(
+    (article: KnowledgeArticle) => {
+      if (!layoutPanel?.openKnowledgeArticleTab) return
+      layoutPanel.openKnowledgeArticleTab(article.id, article.title)
+    },
+    [layoutPanel],
+  )
   const isReindexingRef = useRef(false)
   const [editingGroup, setEditingGroup] = useState<KnowledgeGroup | null>(null)
 
@@ -209,7 +217,7 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
                 overGroupId={dnd.overGroupId}
                 dropIndicator={dnd.dropIndicator}
                 onEditGroup={setEditingGroup}
-                onArticleClick={setPreviewArticle}
+                onArticleClick={openArticleInPanel}
                 filterChildren={isSearchActive ? groupHasMatches : undefined}
               />
             ))}
@@ -228,7 +236,7 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
                     article={article}
                     depth={0}
                     page={page}
-                    onArticleClick={setPreviewArticle}
+                    onArticleClick={openArticleInPanel}
                   />
                 ))}
               </UngroupedDropZone>
@@ -254,22 +262,6 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
           {page.groups.length > 0 && ` • ${page.groups.length} групп`}
         </div>
       )}
-
-      {/* Article preview dialog */}
-      <KnowledgeBaseArticleView
-        article={
-          previewArticle
-            ? {
-                id: previewArticle.id,
-                title: previewArticle.title,
-                content: previewArticle.content ?? '',
-                access_mode: previewArticle.access_mode,
-              }
-            : null
-        }
-        open={!!previewArticle}
-        onClose={() => setPreviewArticle(null)}
-      />
 
       {/* Edit group dialog */}
       <EditGroupDialog
