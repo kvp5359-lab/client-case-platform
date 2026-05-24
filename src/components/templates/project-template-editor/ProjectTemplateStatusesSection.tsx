@@ -22,16 +22,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Checkbox } from '@/components/ui/checkbox'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { StatusLibraryDialog } from './StatusLibraryDialog'
 import { supabase } from '@/lib/supabase'
 import {
   useAllProjectStatuses,
@@ -399,72 +391,15 @@ export function ProjectTemplateStatusesSection({
         isPending={reassignAndUnlinkMutation.isPending}
       />
 
-      {/* Диалог выбора из справочника */}
-      <Dialog open={isLibraryOpen} onOpenChange={setIsLibraryOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Добавить статусы из справочника</DialogTitle>
-            <DialogDescription>
-              Отметьте статусы, которые нужно подключить к шаблону. Их можно потом
-              переупорядочить и пометить дефолтными/финальными именно в этом шаблоне.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto py-2">
-            {libraryCandidates.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">
-                Все статусы воркспейса уже добавлены в этот шаблон.
-              </p>
-            ) : (
-              <div className="space-y-1">
-                {libraryCandidates.map((s) => {
-                  const checked = librarySelected.has(s.id)
-                  return (
-                    <label
-                      key={s.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/40 cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={() => {
-                          setLibrarySelected((prev) => {
-                            const next = new Set(prev)
-                            if (next.has(s.id)) next.delete(s.id)
-                            else next.add(s.id)
-                            return next
-                          })
-                        }}
-                      />
-                      <span
-                        className="inline-block w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: s.color }}
-                      />
-                      <span className="text-sm">{s.name}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setIsLibraryOpen(false)
-                setLibrarySelected(new Set())
-              }}
-              disabled={linkMutation.isPending}
-            >
-              Отмена
-            </Button>
-            <Button
-              onClick={() => linkMutation.mutate(Array.from(librarySelected))}
-              disabled={linkMutation.isPending || librarySelected.size === 0}
-            >
-              {linkMutation.isPending ? 'Добавление…' : `Добавить (${librarySelected.size})`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <StatusLibraryDialog
+        open={isLibraryOpen}
+        onOpenChange={setIsLibraryOpen}
+        candidates={libraryCandidates}
+        selected={librarySelected}
+        onSelectedChange={setLibrarySelected}
+        onSubmit={() => linkMutation.mutate(Array.from(librarySelected))}
+        isPending={linkMutation.isPending}
+      />
 
       <StatusFormDialog
         open={isFormOpen}
