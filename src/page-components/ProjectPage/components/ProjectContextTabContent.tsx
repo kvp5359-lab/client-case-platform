@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { FileText, Image as ImageIcon, Loader2, Lock, Paperclip } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -121,9 +122,7 @@ export function ProjectContextTabContent({
       </p>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-        </div>
+        <PageLoader />
       ) : items.length === 0 ? (
         <div className="rounded-lg border border-dashed bg-muted/30 px-6 py-12 text-center text-sm text-muted-foreground">
           <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
