@@ -10,7 +10,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { ColorPickerInline } from './ColorPickerInline'
-import { hashString, TAG_COLOR_PALETTE } from '@/utils/notionPill'
+import { hashString } from '@/utils/notionPill'
+import { TAG_PALETTE as TAG_COLOR_PALETTE } from '@/lib/palette'
 import { ArticleTreePicker } from '@/components/templates/ArticleTreePicker'
 import type { KnowledgeGroup, useKnowledgeBasePage } from '../useKnowledgeBasePage'
 

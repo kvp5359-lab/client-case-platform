@@ -6,13 +6,10 @@
 
 import { safeCssColor } from '@/utils/isValidCssColor'
 
-import { TAG_PALETTE, NOTION_PILL_PAIRS } from '@/lib/palette'
+import { NOTION_PILL_PAIRS } from '@/lib/palette'
 
-/** @deprecated Импортируй TAG_PALETTE из @/lib/palette. */
-export const TAG_COLOR_PALETTE = TAG_PALETTE
-
-/** @deprecated Импортируй NOTION_PILL_PAIRS из @/lib/palette. */
-export const NOTION_COLORS = NOTION_PILL_PAIRS
+// Внутренние имена для getTagColors/getGroupColor — оставлены для читабельности.
+const NOTION_COLORS = NOTION_PILL_PAIRS
 
 /** Простой hash строки → неотрицательное число */
 export function hashString(str: string): number {

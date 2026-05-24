@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { knowledgeBaseKeys, knowledgeListKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
-import { TAG_COLOR_PALETTE } from '@/utils/notionPill'
+import { TAG_PALETTE as TAG_COLOR_PALETTE } from '@/lib/palette'
 import type { EditorKnowledgeArticle } from './useArticleEditor.types'
 
 interface UseArticleEditorMutationsParams {

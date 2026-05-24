@@ -1,5 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { TAG_COLOR_PALETTE } from '@/utils/notionPill'
+import { TAG_PALETTE as TAG_COLOR_PALETTE } from '@/lib/palette'
 
 export function ColorPickerInline({
   color,

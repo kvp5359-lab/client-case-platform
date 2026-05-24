@@ -105,12 +105,10 @@ export function getAggregateBadgeDisplay(threads: ThreadUnreadFields[]): BadgeDi
   return { type: 'none' }
 }
 
-// --- Обратная совместимость (используется в useFilteredInbox, useFaviconBadge) ---
+// --- Числовые счётчики (для расчётов; UI-индикаторы — getBadgeDisplay) ---
+// Используются в useInbox для арифметики (суммы по тредам, фильтры).
 
-/**
- * Количество непрочитанных для одного треда.
- * @deprecated Используй getBadgeDisplay для визуала. Эта функция — для подсчёта числа.
- */
+/** Количество непрочитанных для одного треда. UI — через getBadgeDisplay. */
 export function calcThreadUnread(thread: ThreadUnreadFields): number {
   const count = thread.unread_count + (thread.unread_event_count ?? 0) + reactionCount(thread)
   if (count > 0) return count
@@ -119,8 +117,8 @@ export function calcThreadUnread(thread: ThreadUnreadFields): number {
 }
 
 /**
- * Суммарное кол-во непрочитанных по списку тредов (для favicon, бейджа сайдбара).
- * @deprecated Используй getAggregateBadgeDisplay для визуала. Эта функция — для чисел.
+ * Суммарное кол-во непрочитанных по списку тредов.
+ * UI — через getAggregateBadgeDisplay.
  */
 export function calcTotalUnread(threads: ThreadUnreadFields[]): number {
   let total = 0
