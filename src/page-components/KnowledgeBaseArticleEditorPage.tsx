@@ -6,6 +6,7 @@
  * - Группы обновляются мгновенно (delete all + insert)
  */
 
+import { lazy, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
@@ -18,7 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { TiptapEditor } from '@/components/tiptap-editor'
+// Lazy: Tiptap (~8 МБ модулей) грузим, только когда статья реально открыта на редактирование.
+const TiptapEditor = lazy(() =>
+  import('@/components/tiptap-editor').then((m) => ({ default: m.TiptapEditor })),
+)
 import { ArrowLeft, Save, Loader2, History } from 'lucide-react'
 import { ArticleVersionHistoryDialog } from '@/components/knowledge'
 import { useArticleEditor } from './KnowledgeBasePage/useArticleEditor'
@@ -100,17 +104,19 @@ export default function KnowledgeBaseArticleEditorPage() {
 
               {/* Content editor — монтируется только когда контент загружен, чтобы избежать двойного рендера */}
               {editor.isContentReady && (
-                <TiptapEditor
-                  content={editor.content}
-                  onChange={editor.handleContentChange}
-                  placeholder="Начните писать содержание статьи..."
-                  className="flex-1 min-h-0"
-                  imageUpload={
-                    editor.workspaceId && editor.articleId
-                      ? { workspaceId: editor.workspaceId, articleId: editor.articleId }
-                      : undefined
-                  }
-                />
+                <Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+                  <TiptapEditor
+                    content={editor.content}
+                    onChange={editor.handleContentChange}
+                    placeholder="Начните писать содержание статьи..."
+                    className="flex-1 min-h-0"
+                    imageUpload={
+                      editor.workspaceId && editor.articleId
+                        ? { workspaceId: editor.workspaceId, articleId: editor.articleId }
+                        : undefined
+                    }
+                  />
+                </Suspense>
               )}
             </>
           )}

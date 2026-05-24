@@ -2,7 +2,7 @@
  * Диалог создания/редактирования быстрого ответа (название + текст с Tiptap + группа)
  */
 
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,7 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { TiptapEditor } from '@/components/tiptap-editor/tiptap-editor'
+// Lazy: TiptapEditor подтягивает все extensions (~8 МБ). Диалог открывается редко.
+const TiptapEditor = lazy(() =>
+  import('@/components/tiptap-editor/tiptap-editor').then((m) => ({ default: m.TiptapEditor })),
+)
 import type { QuickReply } from '@/hooks/useQuickReplies'
 import type { QuickReplyGroup } from '@/hooks/useQuickReplyGroups'
 
@@ -132,13 +135,15 @@ export function QuickReplyFormDialog({
           <div className="space-y-2">
             <Label>Текст ответа</Label>
             <div className="border rounded-md">
-              <TiptapEditor
-                content={content}
-                onChange={setContent}
-                placeholder="Введите текст шаблона..."
-                minHeight="150px"
-                showMenuBar
-              />
+              <Suspense fallback={<div className="h-[150px] flex items-center justify-center text-sm text-muted-foreground">Загружаю редактор…</div>}>
+                <TiptapEditor
+                  content={content}
+                  onChange={setContent}
+                  placeholder="Введите текст шаблона..."
+                  minHeight="150px"
+                  showMenuBar
+                />
+              </Suspense>
             </div>
           </div>
         </div>

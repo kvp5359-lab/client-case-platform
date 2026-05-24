@@ -24,7 +24,11 @@ import {
 } from './useTaskMutations'
 import { workspaceThreadKeys, projectKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { getProjectById } from '@/services/api/projectService'
-import { AiPanelContent } from '@/components/ai-panel'
+// Lazy: AI-панель тянет Tiptap (~8 МБ модулей). Не грузим, пока юзер
+// не открыл вкладку «Ассистент».
+const AiPanelContent = lazy(() =>
+  import('@/components/ai-panel').then((m) => ({ default: m.AiPanelContent })),
+)
 import { PanelDocumentsContent } from '@/components/documents/PanelDocumentsContent'
 import { AllHistoryContent } from '@/components/history/AllHistoryContent'
 import { useAuth } from '@/contexts/AuthContext'
@@ -248,7 +252,11 @@ function SystemTabContent({
   // Остальные системные разделы требуют проекта.
   if (!projectId) {
     if (tab.type === 'assistant' && standaloneThreadId) {
-      return <AiPanelContent workspaceId={workspaceId} threadId={standaloneThreadId} />
+      return (
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+          <AiPanelContent workspaceId={workspaceId} threadId={standaloneThreadId} />
+        </Suspense>
+      )
     }
     return (
       <div className="p-4 text-sm text-muted-foreground">
@@ -275,7 +283,11 @@ function SystemTabContent({
     case 'documents':
       return <PanelDocumentsContent projectId={projectId} workspaceId={workspaceId} />
     case 'assistant':
-      return <AiPanelContent workspaceId={workspaceId} projectId={projectId} />
+      return (
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+          <AiPanelContent workspaceId={workspaceId} projectId={projectId} />
+        </Suspense>
+      )
     case 'extra':
       return (
         <Suspense
