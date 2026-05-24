@@ -6,35 +6,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
+import { FULL_PALETTE } from '@/lib/palette'
 
-const PRESET_COLORS = [
-  // Ряд 1 — яркие
-  '#EF4444',
-  '#F97316',
-  '#F59E0B',
-  '#EAB308',
-  '#84CC16',
-  '#22C55E',
-  '#10B981',
-  '#14B8A6',
-  '#06B6D4',
-  '#0EA5E9',
-  '#3B82F6',
-  '#6366F1',
-  // Ряд 2 — глубокие / пастельные / нейтральные
-  '#8B5CF6',
-  '#A855F7',
-  '#D946EF',
-  '#EC4899',
-  '#F43F5E',
-  '#FB923C',
-  '#1E3A5F',
-  '#1F2937',
-  '#4B5563',
-  '#6B7280',
-  '#9CA3AF',
-  '#D1D5DB',
-]
+const PRESET_COLORS = FULL_PALETTE
 
 interface ColorPickerProps {
   value: string

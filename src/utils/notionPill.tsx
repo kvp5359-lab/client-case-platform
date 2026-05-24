@@ -6,30 +6,13 @@
 
 import { safeCssColor } from '@/utils/isValidCssColor'
 
-/** Палитра цветов для тегов и групп */
-export const TAG_COLOR_PALETTE = [
-  '#6B7280', // gray
-  '#EF4444', // red
-  '#F97316', // orange
-  '#EAB308', // yellow
-  '#22C55E', // green
-  '#14B8A6', // teal
-  '#3B82F6', // blue
-  '#8B5CF6', // purple
-  '#EC4899', // pink
-]
+import { TAG_PALETTE, NOTION_PILL_PAIRS } from '@/lib/palette'
 
-/** Палитра Notion для групп (стабильный цвет по хешу имени) */
-export const NOTION_COLORS = [
-  { bg: '#F3E8FF', text: '#6B21A8' }, // purple
-  { bg: '#DBEAFE', text: '#1E40AF' }, // blue
-  { bg: '#D1FAE5', text: '#065F46' }, // green
-  { bg: '#FEF3C7', text: '#92400E' }, // yellow
-  { bg: '#FFE4E6', text: '#9F1239' }, // pink
-  { bg: '#E0E7FF', text: '#3730A3' }, // indigo
-  { bg: '#FFEDD5', text: '#9A3412' }, // orange
-  { bg: '#F1F5F9', text: '#334155' }, // gray
-]
+/** @deprecated Импортируй TAG_PALETTE из @/lib/palette. */
+export const TAG_COLOR_PALETTE = TAG_PALETTE
+
+/** @deprecated Импортируй NOTION_PILL_PAIRS из @/lib/palette. */
+export const NOTION_COLORS = NOTION_PILL_PAIRS
 
 /** Простой hash строки → неотрицательное число */
 export function hashString(str: string): number {

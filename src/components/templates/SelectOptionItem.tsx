@@ -10,16 +10,7 @@ import { Database } from '@/types/database'
 
 type SelectOption = Database['public']['Tables']['field_definition_select_options']['Row']
 
-export const PRESET_COLORS = [
-  '#6B7280', // Серый
-  '#EF4444', // Красный
-  '#F59E0B', // Оранжевый
-  '#10B981', // Зелёный
-  '#3B82F6', // Синий
-  '#8B5CF6', // Фиолетовый
-  '#EC4899', // Розовый
-  '#14B8A6', // Бирюзовый
-]
+import { SELECT_OPTION_PALETTE as PRESET_COLORS } from '@/lib/palette'
 
 // --- ColorPickerPopover ---
 

@@ -11,7 +11,8 @@ import { logger } from '@/utils/logger'
 import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
-import { OptionItem, PRESET_COLORS } from './SelectOptionItem'
+import { OptionItem } from './SelectOptionItem'
+import { SELECT_OPTION_PALETTE as PRESET_COLORS } from '@/lib/palette'
 import { fieldDefinitionKeys } from '@/hooks/queryKeys'
 
 type SelectOption = Database['public']['Tables']['field_definition_select_options']['Row']
