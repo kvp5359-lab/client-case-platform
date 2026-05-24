@@ -14,10 +14,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import type { Database } from '@/types/database'
 import { taskPanelTabsKeys, messengerKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useAuth } from '@/contexts/AuthContext'
+import {
+  fetchTaskPanelTabs,
+  upsertTaskPanelTabs,
+  type TaskPanelScopeKind,
+  type TaskPanelPersistedRow,
+} from '@/services/taskPanelTabsService'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
 import { makeTabId } from './taskPanelTabs.types'
 
@@ -53,12 +57,7 @@ function shortenTabId(tabId: string | null, threads: ThreadShortIdInfo[]): strin
   return tabId
 }
 
-interface PersistedRow {
-  tabs: TaskPanelTab[]
-  active_tab_id: string | null
-  /** true если строки для пары user/project в БД ещё нет. */
-  isNew?: boolean
-}
+type PersistedRow = TaskPanelPersistedRow
 
 interface UseTaskPanelTabsParams {
   projectId: string | null | undefined
@@ -69,12 +68,7 @@ interface UseTaskPanelTabsParams {
   knowledgeWorkspaceId?: string | null
 }
 
-type ScopeKind = 'project' | 'contact' | 'knowledge'
-const SCOPE_COLUMN: Record<ScopeKind, 'project_id' | 'contact_participant_id' | 'workspace_id'> = {
-  project: 'project_id',
-  contact: 'contact_participant_id',
-  knowledge: 'workspace_id',
-}
+type ScopeKind = TaskPanelScopeKind
 
 interface UseTaskPanelTabsResult {
   tabs: TaskPanelTab[]
@@ -131,73 +125,14 @@ export function useTaskPanelTabs({
     [scopeKey, userId],
   )
 
-  // Загрузка из БД
+  // Загрузка из БД — data layer в services/taskPanelTabsService.ts
   const { data: persisted, isSuccess } = useQuery<PersistedRow>({
     queryKey,
     enabled,
     staleTime: STALE_TIME.LONG,
     queryFn: async () => {
       if (!scopeKey || !userId || !scopeKind) return EMPTY_STATE
-      const scopeColumn = SCOPE_COLUMN[scopeKind]
-      const { data, error } = await (
-        supabase as unknown as {
-          from: (t: string) => {
-            select: (cols: string) => {
-              eq: (
-                c: string,
-                v: string,
-              ) => {
-                eq: (
-                  c: string,
-                  v: string,
-                ) => {
-                  maybeSingle: () => Promise<{
-                    data: { tabs: unknown; active_tab_id: string | null } | null
-                    error: { message: string } | null
-                  }>
-                }
-              }
-            }
-          }
-        }
-      )
-        .from('task_panel_tabs')
-        .select('tabs, active_tab_id')
-        .eq(scopeColumn, scopeKey)
-        .eq('user_id', userId)
-        .maybeSingle()
-      if (error) throw error
-      if (!data) return { ...EMPTY_STATE, isNew: true }
-
-      const rawTabs: TaskPanelTab[] = Array.isArray(data.tabs) ? (data.tabs as TaskPanelTab[]) : []
-
-      // Отфильтровываем вкладки-треды, у которых сам тред уже удалён
-      // (is_deleted = true) или вовсе не существует. Иначе в правой панели
-      // остаются «мёртвые» табы после soft-delete треда.
-      const threadRefIds = rawTabs
-        .filter((t) => t.type === 'thread' && t.refId)
-        .map((t) => t.refId as string)
-
-      let aliveThreadIds = new Set<string>()
-      if (threadRefIds.length > 0) {
-        const { data: alive, error: threadsErr } = await supabase
-          .from('project_threads')
-          .select('id')
-          .in('id', threadRefIds)
-          .eq('is_deleted', false)
-        if (threadsErr) throw threadsErr
-        aliveThreadIds = new Set((alive ?? []).map((r) => r.id))
-      }
-
-      const tabs = rawTabs.filter(
-        (t) => t.type !== 'thread' || (t.refId && aliveThreadIds.has(t.refId)),
-      )
-
-      return {
-        tabs,
-        active_tab_id: data.active_tab_id ?? null,
-        isNew: false,
-      }
+      return fetchTaskPanelTabs({ scopeKind, scopeId: scopeKey, userId })
     },
   })
 
@@ -267,47 +202,18 @@ export function useTaskPanelTabs({
     [localTabs, activeTabId],
   )
 
-  // Сохранение в БД. PostgREST .upsert({onConflict:...}) не работает с
-  // partial unique индексами (миграция 20260510_task_panel_tabs_contact_scope.sql
-  // делает UNIQUE partial по scope=project/contact) — отдаёт 42P10. Делаем
-  // вручную: SELECT id по scope, потом UPDATE по id либо INSERT.
+  // Сохранение в БД — data layer в services/taskPanelTabsService.ts.
+  // Костыль вокруг partial unique инкапсулирован там.
   const upsertMutation = useMutation({
     mutationFn: async (next: PersistedRow) => {
       if (!scopeKey || !userId || !scopeKind) return
-      const scopeColumn = SCOPE_COLUMN[scopeKind]
-      // Все остальные scope-колонки должны быть NULL — это требование CHECK
-      // constraint'а (один scope за раз) и условие partial unique индексов.
-      const otherColumns = (['project_id', 'contact_participant_id', 'workspace_id'] as const)
-        .filter((c) => c !== scopeColumn)
-      let selectQuery = supabase
-        .from('task_panel_tabs')
-        .select('id')
-        .eq('user_id', userId)
-        .eq(scopeColumn, scopeKey)
-      for (const col of otherColumns) selectQuery = selectQuery.is(col, null)
-      const { data: existing, error: selErr } = await selectQuery.maybeSingle()
-      if (selErr) throw selErr
-      const payload = {
-        tabs: next.tabs as unknown as Database['public']['Tables']['task_panel_tabs']['Update']['tabs'],
-        active_tab_id: next.active_tab_id,
-        updated_at: new Date().toISOString(),
-      }
-      if (existing?.id) {
-        const { error } = await supabase
-          .from('task_panel_tabs')
-          .update(payload)
-          .eq('id', existing.id)
-        if (error) throw error
-      } else {
-        const { error } = await supabase.from('task_panel_tabs').insert({
-          user_id: userId,
-          project_id: scopeKind === 'project' ? scopeKey : null,
-          contact_participant_id: scopeKind === 'contact' ? scopeKey : null,
-          workspace_id: scopeKind === 'knowledge' ? scopeKey : null,
-          ...payload,
-        })
-        if (error) throw error
-      }
+      await upsertTaskPanelTabs({
+        scopeKind,
+        scopeId: scopeKey,
+        userId,
+        tabs: next.tabs,
+        activeTabId: next.active_tab_id,
+      })
     },
     onSuccess: (_data, vars) => {
       queryClient.setQueryData<PersistedRow>(queryKey, vars)
