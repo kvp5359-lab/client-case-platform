@@ -198,6 +198,7 @@ export function useFormKitData({ formKitId, enabled: enabledProp = true }: UseFo
           description: section.description,
           fields: sectionFields,
           sort_order: section.sort_order,
+          header_color: (section as { header_color?: string | null }).header_color ?? null,
           status: section.status,
           status_data:
             'status_data' in section

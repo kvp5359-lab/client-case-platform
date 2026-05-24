@@ -34,6 +34,7 @@ export interface FormSectionWithFields {
   description: string | null
   fields: FormField[]
   sort_order: number
+  header_color?: string | null // HEX-цвет фона заголовка (NULL = дефолтный)
   status?: string | null // ID статуса секции
   status_data?: Status | null // Данные статуса (загружаются через join)
 }

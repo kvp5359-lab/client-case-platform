@@ -83,7 +83,7 @@ export const FieldsGrid = memo(function FieldsGrid({
         type: 'other',
         field,
         node: (
-          <div key={field.id} className="col-span-full flex flex-wrap gap-2">
+          <div key={field.id} className="col-span-full flex flex-wrap gap-x-3 gap-y-4">
             {items.map((item) => {
               const nf = item.nested_field
               if (!nf) return null
@@ -250,7 +250,7 @@ export const FieldsGrid = memo(function FieldsGrid({
       elements.push(
         <div
           key={`textarea-group-${group[0].field.id}`}
-          className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-2"
+          className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-4"
         >
           {group.map((g) => g.node)}
         </div>,
@@ -261,5 +261,5 @@ export const FieldsGrid = memo(function FieldsGrid({
     }
   }
 
-  return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">{elements}</div>
+  return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-4">{elements}</div>
 })

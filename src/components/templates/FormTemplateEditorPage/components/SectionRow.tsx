@@ -1,15 +1,16 @@
 /**
- * Строка секции в таблице с inline-редактированием
- * Использует FieldsTableContext для drag/drop и обработчиков (без prop drilling)
+ * Строка секции в таблице.
+ * Редактирование (имя/описание/цвет) открывается в SectionSettingsDialog.
  */
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { NativeTableRow, NativeTableCell } from '@/components/ui/native-table'
-import { GripVertical, Plus, Pencil, Trash2, Check, X } from 'lucide-react'
+import { GripVertical, Plus, Pencil, Trash2 } from 'lucide-react'
 import { FormSectionWithDetails, FormFieldWithDefinition } from '../types'
 import { DraggableFieldRow } from './DraggableFieldRow'
 import { useFieldsTableContext } from './FieldsTableContext'
+import { SectionSettingsDialog } from './SectionSettingsDialog'
 
 interface SectionRowProps {
   section: FormSectionWithDetails
@@ -31,46 +32,11 @@ export function SectionRow({
   isSectionDragOver,
 }: SectionRowProps) {
   const ctx = useFieldsTableContext()
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedName, setEditedName] = useState(section.name)
-  const [editedDescription, setEditedDescription] = useState(section.description || '')
-  const nameInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (isEditing && nameInputRef.current) {
-      nameInputRef.current.focus()
-      nameInputRef.current.select()
-    }
-  }, [isEditing])
-
-  const handleStartEditing = () => {
-    setEditedName(section.name)
-    setEditedDescription(section.description || '')
-    setIsEditing(true)
-  }
-
-  const handleSave = () => {
-    if (!editedName.trim()) return
-    ctx.onUpdateSection(section.id, {
-      name: editedName.trim(),
-      description: editedDescription.trim(),
-    })
-    setIsEditing(false)
-  }
-
-  const handleCancel = () => {
-    setIsEditing(false)
-    setEditedName(section.name)
-    setEditedDescription(section.description || '')
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSave()
-    } else if (e.key === 'Escape') {
-      handleCancel()
-    }
+  const handleSave = (data: { name: string; description: string; headerColor: string | null }) => {
+    ctx.onUpdateSection(section.id, { name: data.name, description: data.description })
+    ctx.onUpdateSectionColor(section.id, data.headerColor)
   }
 
   return (
@@ -87,7 +53,7 @@ export function SectionRow({
                 : 'bg-blue-100 border-b-2 border-b-blue-500'
               : ''
         }`}
-        draggable={!isEditing}
+        draggable
         onDragStart={(e) => ctx.onSectionDragStart(e, section.id)}
         onDragOver={(e) => ctx.onSectionDragOver(e, section.id)}
         onDragLeave={ctx.onSectionDragLeave}
@@ -99,85 +65,56 @@ export function SectionRow({
         </NativeTableCell>
         <NativeTableCell className="text-base font-semibold">
           <div className="flex items-center justify-between">
-            {isEditing ? (
-              <div className="flex items-center gap-2 flex-1">
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="flex-1 px-2 py-1 text-base font-semibold border rounded bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                  onClick={handleSave}
-                >
-                  <Check className="w-3.5 h-3.5" />
-                </Button>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleCancel}>
-                  <X className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            ) : (
-              <>
-                <span
-                  className="cursor-pointer hover:text-primary"
-                  onDoubleClick={handleStartEditing}
-                >
-                  {section.name}{' '}
-                  <span className="text-muted-foreground font-normal">
-                    ({sectionFields.length})
-                  </span>
-                </span>
-                <div className="flex items-center gap-0.5 opacity-0 group-hover/section:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 px-1.5 text-xs"
-                    onClick={() => ctx.onAddField(section.id)}
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    добавить поле
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0"
-                    onClick={handleStartEditing}
-                  >
-                    <Pencil className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => ctx.onRemoveSection(section.id)}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              </>
-            )}
+            <span
+              className="cursor-pointer hover:text-primary"
+              onDoubleClick={() => setIsDialogOpen(true)}
+            >
+              {section.name}{' '}
+              <span className="text-muted-foreground font-normal">({sectionFields.length})</span>
+            </span>
+            <div className="flex items-center gap-0.5 opacity-0 group-hover/section:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 px-1.5 text-xs"
+                onClick={() => ctx.onAddField(section.id)}
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                добавить поле
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 p-0"
+                onClick={() => setIsDialogOpen(true)}
+                title="Настройки секции"
+              >
+                <Pencil className="w-3 h-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={() => ctx.onRemoveSection(section.id)}
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
           </div>
         </NativeTableCell>
-        <NativeTableCell className="text-base">
-          {isEditing ? (
-            <input
-              type="text"
-              value={editedDescription}
-              onChange={(e) => setEditedDescription(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Описание секции"
-              className="w-full px-2 py-1 text-base border rounded bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          ) : (
-            section.description || '—'
-          )}
+        <NativeTableCell className="text-xs text-muted-foreground">
+          <div className="truncate" title={section.description || ''}>
+            {section.description || '—'}
+          </div>
         </NativeTableCell>
       </NativeTableRow>
+
+      <SectionSettingsDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        section={section}
+        onSave={handleSave}
+      />
 
       {/* Поля секции */}
       {!isCollapsed &&

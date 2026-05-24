@@ -46,6 +46,7 @@ function FormTemplateEditorContent() {
     createSection,
     isCreatingSection,
     updateSection,
+    updateSectionColor,
     removeSection,
   } = useFormSections(templateId)
   const {
@@ -271,6 +272,9 @@ function FormTemplateEditorContent() {
                   sectionDragOverPosition={sectionDragDrop.sectionDragOverPosition}
                   onCreateSection={handleCreateSection}
                   onUpdateSection={(sectionId, data) => updateSection({ sectionId, ...data })}
+                  onUpdateSectionColor={(sectionId, headerColor) =>
+                    updateSectionColor({ sectionId, headerColor })
+                  }
                   onAddFields={handleAddFields}
                   onRemoveSection={handleRemoveSection}
                   onFieldEdit={handleEditField}

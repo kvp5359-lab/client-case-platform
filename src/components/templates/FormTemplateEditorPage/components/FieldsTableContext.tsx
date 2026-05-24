@@ -29,6 +29,7 @@ interface FieldsTableContextValue {
   // Section actions
   onAddField: (sectionId: string) => void
   onUpdateSection: (sectionId: string, data: { name: string; description: string }) => void
+  onUpdateSectionColor: (sectionId: string, headerColor: string | null) => void
   onRemoveSection: (sectionId: string) => void
   // Empty section drag
   onEmptySectionDragOver: (e: React.DragEvent, sectionId: string) => void
@@ -70,6 +71,7 @@ export function FieldsTableProvider({ children, ...value }: FieldsTableProviderP
       value.onSectionDragEnd,
       value.onAddField,
       value.onUpdateSection,
+      value.onUpdateSectionColor,
       value.onRemoveSection,
       value.onEmptySectionDragOver,
       value.onEmptySectionDragLeave,

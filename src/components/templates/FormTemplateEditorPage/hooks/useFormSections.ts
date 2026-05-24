@@ -98,6 +98,27 @@ export function useFormSections(templateId: string | undefined) {
     },
   })
 
+  // Обновление цвета фона заголовка секции (NULL = дефолтный светло-серый)
+  const updateSectionColorMutation = useMutation({
+    mutationFn: async ({
+      sectionId,
+      headerColor,
+    }: {
+      sectionId: string
+      headerColor: string | null
+    }) => {
+      const { error } = await supabase
+        .from('form_template_sections')
+        .update({ header_color: headerColor })
+        .eq('id', sectionId)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: formTemplateKeys.sections(templateId) })
+    },
+  })
+
   // Удаление секции
   const removeSectionMutation = useMutation({
     mutationFn: async (formSectionId: string) => {
@@ -195,6 +216,7 @@ export function useFormSections(templateId: string | undefined) {
     createSection: createSectionMutation.mutate,
     isCreatingSection: createSectionMutation.isPending,
     updateSection: updateSectionMutation.mutate,
+    updateSectionColor: updateSectionColorMutation.mutate,
     removeSection: removeSectionMutation.mutate,
     reorderSection: reorderSectionMutation.mutate,
     moveSectionByDrag: moveSectionByDragMutation.mutate,

@@ -2994,6 +2994,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           form_kit_id: string
+          header_color: string | null
           id: string
           name: string
           sort_order: number
@@ -3004,6 +3005,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           form_kit_id: string
+          header_color?: string | null
           id?: string
           name: string
           sort_order?: number
@@ -3014,6 +3016,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           form_kit_id?: string
+          header_color?: string | null
           id?: string
           name?: string
           sort_order?: number
@@ -3164,6 +3167,7 @@ export type Database = {
           created_at: string
           description: string | null
           form_template_id: string
+          header_color: string | null
           id: string
           name: string
           sort_order: number
@@ -3173,6 +3177,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           form_template_id: string
+          header_color?: string | null
           id?: string
           name: string
           sort_order?: number
@@ -3182,6 +3187,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           form_template_id?: string
+          header_color?: string | null
           id?: string
           name?: string
           sort_order?: number
@@ -9187,3 +9193,5 @@ export const Constants = {
     },
   },
 } as const
+A new version of Supabase CLI is available: v2.101.0 (currently installed v2.75.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

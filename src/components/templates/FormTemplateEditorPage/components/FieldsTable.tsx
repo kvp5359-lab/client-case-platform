@@ -46,6 +46,7 @@ interface FieldsTableProps {
   onSectionDragOver: (e: React.DragEvent, sectionId: string) => void
   onSectionDragLeave: () => void
   onUpdateSection: (sectionId: string, data: { name: string; description: string }) => void
+  onUpdateSectionColor: (sectionId: string, headerColor: string | null) => void
   onSectionDrop: (e: React.DragEvent, section: FormSectionWithDetails) => void
   onSectionDragEnd: () => void
 }
@@ -64,6 +65,7 @@ export function FieldsTable({
   onCreateSection,
   onAddFields,
   onUpdateSection,
+  onUpdateSectionColor,
   onRemoveSection,
   onFieldEdit,
   onFieldRemove,
@@ -124,6 +126,7 @@ export function FieldsTable({
       onSectionDragEnd={onSectionDragEnd}
       onAddField={(sectionId) => onAddFields(sectionId)}
       onUpdateSection={onUpdateSection}
+      onUpdateSectionColor={onUpdateSectionColor}
       onRemoveSection={onRemoveSection}
       onEmptySectionDragOver={onEmptySectionDragOver}
       onEmptySectionDragLeave={onEmptySectionDragLeave}
