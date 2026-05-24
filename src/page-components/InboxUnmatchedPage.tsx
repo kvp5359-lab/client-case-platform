@@ -14,7 +14,8 @@
 
 import { useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Mail, RefreshCw, Loader2 } from 'lucide-react'
+import { Mail, RefreshCw } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
@@ -49,9 +50,7 @@ export default function InboxUnmatchedPage() {
   if (permsLoading) {
     return (
       <WorkspaceLayout>
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+        <PageLoader />
       </WorkspaceLayout>
     )
   }
@@ -97,9 +96,7 @@ export default function InboxUnmatchedPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex h-32 items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
+          <PageLoader />
         ) : emails.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-sm text-muted-foreground">

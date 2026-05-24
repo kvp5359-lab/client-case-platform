@@ -22,6 +22,7 @@ import {
   Copy,
   RefreshCcw,
 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -69,11 +70,7 @@ export function EmailSection({ workspaceId }: Props) {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex h-32 items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   return (

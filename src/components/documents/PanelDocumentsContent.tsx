@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { DocumentsTabContent } from '@/page-components/ProjectPage/components/DocumentsTabContent'
 import { AddDocumentKitDialog } from '@/components/projects/AddDocumentKitDialog'
 import { useDocumentKitsQuery } from '@/hooks/documents/useDocumentKitsQuery'
@@ -48,9 +48,7 @@ export function PanelDocumentsContent({ projectId, workspaceId }: PanelDocuments
     <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="pl-8 pr-4 py-3 space-y-6">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <PageLoader />
         ) : (
           <DocumentsTabContent
             documentKits={documentKits}

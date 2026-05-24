@@ -14,7 +14,8 @@ import { supabase } from '@/lib/supabase'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, BookOpen, Loader2, Sparkles, X } from 'lucide-react'
+import { Search, BookOpen, Sparkles, X } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import {
   ReadOnlyGroupTreeItem,
   ReadOnlyArticleRow,
@@ -192,11 +193,7 @@ export function KnowledgeBaseTabContent({
 
   // Загрузка
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   // Ошибка

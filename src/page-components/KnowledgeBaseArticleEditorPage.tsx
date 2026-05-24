@@ -24,6 +24,7 @@ const TiptapEditor = lazy(() =>
   import('@/components/tiptap-editor').then((m) => ({ default: m.TiptapEditor })),
 )
 import { ArrowLeft, Save, Loader2, History } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { ArticleVersionHistoryDialog } from '@/components/knowledge'
 import { useArticleEditor } from './KnowledgeBasePage/useArticleEditor'
 import { ArticleMetadataSection } from './KnowledgeBasePage/components/ArticleMetadataSection'
@@ -104,7 +105,7 @@ export default function KnowledgeBaseArticleEditorPage() {
 
               {/* Content editor — монтируется только когда контент загружен, чтобы избежать двойного рендера */}
               {editor.isContentReady && (
-                <Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+                <Suspense fallback={<PageLoader />}>
                   <TiptapEditor
                     content={editor.content}
                     onChange={editor.handleContentChange}

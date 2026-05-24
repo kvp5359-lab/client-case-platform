@@ -9,7 +9,7 @@
  */
 
 import { lazy, Suspense } from 'react'
-import { Loader2 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { ProjectParticipants } from '@/components/projects/ProjectParticipants'
 import { GoogleDriveSection } from './GoogleDriveSection'
 import { ProjectSettingsSection } from './ProjectSettingsSection'
@@ -51,11 +51,7 @@ const FinanceTabContent = lazy(() =>
 )
 
 function TabLoading() {
-  return (
-    <div className="flex items-center justify-center py-12">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  )
+  return <PageLoader />
 }
 
 type GoogleDriveState = {
