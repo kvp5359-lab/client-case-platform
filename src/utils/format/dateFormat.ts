@@ -107,3 +107,37 @@ export function formatShortDate(dateStr: string | null | undefined): string {
   const date = new Date(dateStr)
   return `${date.getDate()} ${MONTHS_SHORT_RU[date.getMonth()]}`
 }
+
+const MONTHS_LONG_RU = [
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
+]
+
+/**
+ * Длинная дата: "15 мая 2026"
+ * Используется в карточках/детальных вьюхах, где важна точность.
+ */
+export function formatLongDate(dateStr: string | Date | null | undefined): string {
+  if (!dateStr) return ''
+  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr
+  return `${date.getDate()} ${MONTHS_LONG_RU[date.getMonth()]} ${date.getFullYear()}`
+}
+
+/**
+ * Числовая дата: "15.05.2026" (как `Date.toLocaleDateString('ru-RU')` дефолт).
+ */
+export function formatNumericDate(dateStr: string | Date | null | undefined): string {
+  if (!dateStr) return ''
+  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr
+  return date.toLocaleDateString('ru-RU')
+}

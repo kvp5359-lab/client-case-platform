@@ -4,6 +4,7 @@
 
 import type { AuditLogEntry } from '@/types/history'
 import { ActivityItem } from './ActivityItem'
+import { formatLongDate } from '@/utils/format/dateFormat'
 
 interface ActivityFeedProps {
   entries: AuditLogEntry[]
@@ -21,7 +22,7 @@ function formatDayHeader(dateStr: string): string {
 
   if (diffDays === 0) return 'Сегодня'
   if (diffDays === 1) return 'Вчера'
-  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+  return formatLongDate(date)
 }
 
 function groupByDay(entries: AuditLogEntry[]): Map<string, AuditLogEntry[]> {

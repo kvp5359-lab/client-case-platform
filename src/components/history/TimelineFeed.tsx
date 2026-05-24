@@ -16,6 +16,7 @@ import { MessengerProvider } from '@/components/messenger/MessengerContext'
 import { ServiceMessage } from '@/components/messenger/ServiceMessage'
 import { AuditPill } from './AuditPill'
 import type { AuditLogEntry } from '@/types/history'
+import { formatLongDate } from '@/utils/format/dateFormat'
 import type { TimelineMessageEntry } from '@/hooks/useTimelineMessages'
 import type { MessengerAccent } from '@/components/messenger/utils/messageStyles'
 import { deleteMessage } from '@/services/api/messenger/messengerService'
@@ -55,7 +56,7 @@ function formatDayHeader(dateStr: string): string {
 
   if (diffDays === 0) return 'Сегодня'
   if (diffDays === 1) return 'Вчера'
-  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+  return formatLongDate(date)
 }
 
 function getDayKey(dateStr: string): string {

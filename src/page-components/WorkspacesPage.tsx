@@ -7,6 +7,7 @@ import { Users, MoreVertical, Pencil, Trash2, Settings } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePageTitle } from '@/hooks/usePageTitle'
+import { formatNumericDate } from '@/utils/format/dateFormat'
 import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -367,7 +368,7 @@ export function WorkspacesPage() {
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
                       <div className="text-sm text-gray-500">
-                        Создан: {new Date(workspace.created_at).toLocaleDateString('ru-RU')}
+                        Создан: {formatNumericDate(workspace.created_at)}
                       </div>
                       <Badge variant="secondary" className="gap-1">
                         <Users className="h-3 w-3" />
