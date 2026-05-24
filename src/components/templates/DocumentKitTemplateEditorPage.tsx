@@ -20,6 +20,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { PageLoader } from '@/components/ui/loaders'
 import { NativeTable, NativeTableBody } from '@/components/ui/native-table'
 import { ArrowLeft, Plus, Folder } from 'lucide-react'
 
@@ -141,7 +142,7 @@ export function DocumentKitTemplateEditorPage() {
           </div>
 
           {isLoading ? (
-            <div className="text-center py-12 text-muted-foreground">Загрузка...</div>
+            <PageLoader />
           ) : !kit ? (
             <div className="text-center py-12 text-muted-foreground">Шаблон набора не найден</div>
           ) : (

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import type { FieldDefinition } from '@/types/formKit'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PageLoader } from '@/components/ui/loaders'
 import {
   Table,
   TableBody,
@@ -160,7 +161,7 @@ export function FieldTemplatesContent({ workspaceId }: FieldTemplatesContentProp
       {/* Таблица полей */}
       <div className="border rounded-lg overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
+          <PageLoader />
         ) : filteredFields.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             {searchQuery || selectedType !== 'all'

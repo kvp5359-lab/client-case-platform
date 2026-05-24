@@ -3,6 +3,7 @@
  */
 
 import { Button } from '@/components/ui/button'
+import { PageLoader } from '@/components/ui/loaders'
 import {
   Table,
   TableBody,
@@ -40,7 +41,7 @@ export function SlotTemplatesTable({
   isDeleting,
 }: SlotTemplatesTableProps) {
   if (isLoading) {
-    return <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
+    return <PageLoader />
   }
 
   if (templates.length === 0) {

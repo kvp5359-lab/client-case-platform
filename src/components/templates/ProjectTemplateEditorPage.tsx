@@ -16,6 +16,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PageLoader } from '@/components/ui/loaders'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ArrowLeft, Pencil, Check, X, Target } from 'lucide-react'
@@ -135,7 +136,7 @@ export function ProjectTemplateEditorPage() {
   if (isLoading) {
     return (
       <WorkspaceLayout>
-        <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
+        <PageLoader />
       </WorkspaceLayout>
     )
   }

@@ -9,6 +9,7 @@ import { useQueryClient, useMutation } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { PageLoader } from '@/components/ui/loaders'
 import { Plus, Search, Copy, Pencil, Trash2, MessageSquare, CheckSquare, Mail } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
@@ -207,7 +208,7 @@ export function ThreadTemplatesContent() {
 
       {/* List */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">Загрузка...</p>
+        <PageLoader />
       ) : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">
           {templates.length === 0 ? 'Шаблонов пока нет' : 'Ничего не найдено'}

@@ -11,6 +11,7 @@ import { logger } from '@/utils/logger'
 import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PageLoader } from '@/components/ui/loaders'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
@@ -166,7 +167,7 @@ export function DocumentKitTemplatesContent() {
       {/* Таблица наборов */}
       <div className="border rounded-lg overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
+          <PageLoader />
         ) : filteredKits.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             {searchQuery ? 'Ничего не найдено' : 'Пока нет наборов документов. Создайте первый!'}

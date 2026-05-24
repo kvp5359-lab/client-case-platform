@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { PageLoader } from '@/components/ui/loaders'
 import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -134,7 +135,7 @@ export function FormTemplatesContent() {
       {/* Таблица шаблонов */}
       <div className="border rounded-lg overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
+          <PageLoader />
         ) : filteredTemplates.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             {searchQuery ? 'Ничего не найдено' : 'Пока нет шаблонов анкет. Создайте первый!'}
