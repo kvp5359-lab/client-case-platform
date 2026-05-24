@@ -26,7 +26,7 @@ import {
 } from './board-view/cardDragHandlers'
 import { planGapDrop, planListMove } from './board-view/listDragHandlers'
 import { analyzeDragOver } from './board-view/dragOverAnalysis'
-import type { BoardCardDndState } from './BoardListCard'
+import type { BoardCardDndState } from './types'
 import { usePanDrag } from './hooks/usePanDrag'
 import { useReorderLists } from './hooks/useListMutations'
 import { useUpdateProjectStatusOnBoard } from './hooks/useUpdateProjectStatusOnBoard'

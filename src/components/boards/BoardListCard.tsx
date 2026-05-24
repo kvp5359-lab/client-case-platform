@@ -1,12 +1,10 @@
 "use client"
 
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense } from 'react'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { cn } from '@/lib/utils'
 import { BoardGroupDropZone, BoardListCardsDropZone } from './board-list/BoardListDropZones'
-import { useDialog } from '@/hooks/shared/useDialog'
-import { useFilteredTasks, useFilteredProjects } from './hooks/useFilteredListData'
-import { useWorkspaceProjectParticipants } from './hooks/useWorkspaceProjectParticipants'
+import { useBoardListCardSetup } from './hooks/useBoardListCardSetup'
 import { DraggableBoardTaskRow } from './DraggableBoardTaskRow'
 import { DraggableBoardProjectRow } from './DraggableBoardProjectRow'
 import { BoardInboxList } from './BoardInboxList'
@@ -17,34 +15,20 @@ const BoardListCalendarView = lazy(() =>
   import('./BoardListCalendarView').then((m) => ({ default: m.BoardListCalendarView })),
 )
 import { ListSettingsDialog } from './ListSettingsDialog'
-import { useCreateTaskHandler } from '@/components/tasks/useCreateTaskMutation'
-import { useQueueThreadInitialMessage } from '@/components/tasks/useQueueThreadInitialMessage'
-import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
-import { newThreadToTaskItem } from '@/components/tasks/taskListConstants'
-import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
-import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
-import { extractThreadCreatePreset } from '@/lib/filters/extractPreset'
-import type { BoardGlobalFilter, BoardList, GroupByField } from './types'
-import type { FilterContext } from '@/lib/filters/types'
-import { mergeFilterGroupsAnd } from '@/lib/filters/types'
-
 // Lazy: ChatSettingsDialog тянет Tiptap (~200 KB) через ComposeField.
 const ChatSettingsDialog = lazy(() =>
   import('@/components/messenger/ChatSettingsDialog').then((m) => ({
     default: m.ChatSettingsDialog,
   })),
 )
-import { groupTasks, groupProjects } from './boardListUtils'
-import { useAllProjectStatuses } from '@/hooks/useStatuses'
-import { useTaskStatuses } from '@/hooks/useStatuses'
-import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import type { BoardCardDndState, BoardGlobalFilter, BoardList } from './types'
+import type { FilterContext } from '@/lib/filters/types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/common/status-dropdown'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
-import type { BoardItemType, BoardListOrdersMap } from './hooks/useBoardListItemOrders'
 
 type BoardListCardProps = {
   list: BoardList
@@ -77,30 +61,6 @@ type BoardListCardProps = {
   boardCardDnd?: BoardCardDndState
 }
 
-/** Снимок состояния card-DnD, который BoardView пробрасывает в каждый список. */
-export type BoardCardDndState = {
-  /** Полный ID активной droppable-группы вида `group:<list_id>:<key>` или null. */
-  activeGroupKey: string | null
-  /** Полный ID активного droppable-списка вида `list-cards:<list_id>` или null. */
-  activeListCardsId: string | null
-  /** Подсветка позиции для ручной сортировки — над какой карточкой и где. */
-  rowDropIndicator: {
-    kind: BoardItemType
-    listId: string
-    itemId: string
-    position: 'top' | 'bottom'
-  } | null
-  /** Ручной порядок (board_list_item_order) по всем спискам доски. */
-  manualOrders: BoardListOrdersMap
-  /** Регистрация текущего видимого порядка карточек — BoardView читает его на drag-end. */
-  registerListOrder: (listId: string, itemType: BoardItemType, ids: string[]) => void
-  /** Только что отпущенная карточка — для краткой подсветки места приземления.
-   *  Формат `thread:<uuid>` или `project:<uuid>`. */
-  recentlyDroppedId: string | null
-}
-
-// BoardGroupDropZone и BoardListCardsDropZone вынесены в ./board-list/BoardListDropZones
-
 export function BoardListCard({
   list,
   tasks,
@@ -125,189 +85,47 @@ export function BoardListCard({
   boardGlobalFilter,
   boardCardDnd,
 }: BoardListCardProps) {
-  const [userCollapsed, setUserCollapsed] = useState<boolean | null>(null)
-  const settingsDialog = useDialog()
-  const createDialog = useDialog()
-  // Слот календаря, выбранный пользователем кликом по пустому месту.
-  // Подмешивается в initialValues create-диалога как startAt/endAt.
-  const [calendarSlot, setCalendarSlot] = useState<{ start: string; end: string } | null>(null)
-
-  const simpleAssigneesMap = useMemo(() => {
-    const result: Record<string, { id: string }[]> = {}
-    for (const [key, val] of Object.entries(assigneesMap)) {
-      result[key] = val.map((a) => ({ id: a.id }))
-    }
-    return result
-  }, [assigneesMap])
-
-  const isProject = list.entity_type === 'project'
-  const isInbox = list.entity_type === 'inbox'
-
-  // Базовый фильтр списка + наложение board-level фильтра того же entity_type
-  // через AND. Inbox имеет свою логику (default_filter) и по соглашению
-  // игнорирует board.global_filter — у него обычных rules нет.
-  const safeFilters = useMemo(() => {
-    const listFilters = isInbox ? { logic: 'and' as const, rules: [] } : list.filters
-    if (isInbox || !boardGlobalFilter) return listFilters
-    const boardSlice =
-      list.entity_type === 'project'
-        ? boardGlobalFilter.project
-        : list.entity_type === 'thread'
-        ? boardGlobalFilter.thread
-        : null
-    if (!boardSlice) return listFilters
-    return mergeFilterGroupsAnd(boardSlice, listFilters)
-  }, [isInbox, boardGlobalFilter, list.filters, list.entity_type])
-
-  const hasFilters = safeFilters.rules.length > 0
-
-  // Preset для диалога создания: разворачиваем верхнеуровневые equals-условия
-  // фильтра колонки в дефолтные значения формы. Делается только для thread-
-  // колонок: на project-колонках кнопка не показывается, на inbox — тоже.
-  const createPreset = useMemo(() => {
-    if (list.entity_type !== 'thread') return undefined
-    return extractThreadCreatePreset(safeFilters, filterCtx)
-  }, [list.entity_type, safeFilters, filterCtx])
-
-  const queueInitialMessage = useQueueThreadInitialMessage(workspaceId)
-  const layoutPanel = useLayoutTaskPanel()
-
-  const { handleCreate, isPending: createPending } = useCreateTaskHandler({
-    workspaceId,
-    projectId: createPreset?.projectId,
-    onSuccess: async (newThread: ProjectThread, result: ChatSettingsResult) => {
-      await queueInitialMessage(newThread, result)
-      layoutPanel?.openThread(newThreadToTaskItem(newThread, result))
-      createDialog.close()
-    },
-  })
-
-  // Для списков проектов вычисляем карту «ближайшая незавершённая задача» по project_id.
-  // Используем уже загруженный кэш `tasks` (useWorkspaceThreads) — дополнительных запросов нет.
-  // Загружаем is_final из taskStatuses только если это project-list, чтобы не дёргать в task-списках.
-  const { data: fullStatuses = [] } = useTaskStatuses(isProject ? workspaceId : undefined)
-  const nextTaskByProjectId = useMemo(() => {
-    if (!isProject) return {}
-    const finalStatusIds = new Set(fullStatuses.filter((s) => s.is_final).map((s) => s.id))
-    const byProject: Record<string, WorkspaceTask> = {}
-    for (const t of tasks) {
-      if (t.type !== 'task') continue
-      if (!t.project_id || !t.deadline) continue
-      if (t.status_id && finalStatusIds.has(t.status_id)) continue
-      const existing = byProject[t.project_id]
-      if (!existing || new Date(t.deadline).getTime() < new Date(existing.deadline!).getTime()) {
-        byProject[t.project_id] = t
-      }
-    }
-    return byProject
-  }, [isProject, tasks, fullStatuses])
-
-  // Карта project_id → deadline ближайшей задачи (для сортировки в useFilteredProjects).
-  const nextTaskDeadlineByProjectId = useMemo(() => {
-    const map: Record<string, string | null> = {}
-    for (const [pid, t] of Object.entries(nextTaskByProjectId)) {
-      map[pid] = t.deadline
-    }
-    return map
-  }, [nextTaskByProjectId])
-
-  // Карта user_id (created_by) → имя участника для поля «Автор» в project-листах.
-  // Участники воркспейса уже кэшируются на уровне WorkspaceLayout, так что
-  // дополнительного запроса не будет — заглядываем в тот же кэш.
-  const { data: participants = [] } = useWorkspaceParticipants(isProject ? workspaceId : undefined)
-  const authorNameByUserId = useMemo(() => {
-    const map: Record<string, string> = {}
-    for (const p of participants) {
-      if (!p.user_id) continue
-      map[p.user_id] = p.last_name ? `${p.name} ${p.last_name}` : p.name
-    }
-    return map
-  }, [participants])
-
-  const manualThreadPositions = boardCardDnd?.manualOrders?.[list.id]?.thread
-  const manualProjectPositions = boardCardDnd?.manualOrders?.[list.id]?.project
-
-  const filteredTasks = useFilteredTasks(
-    list.entity_type === 'thread' ? tasks : [],
-    safeFilters,
-    filterCtx,
-    simpleAssigneesMap,
-    list.sort_by ?? 'created_at',
-    list.sort_dir ?? 'desc',
-    manualThreadPositions,
-  )
-
-  const { data: projectParticipantsMap } = useWorkspaceProjectParticipants(
-    workspaceId,
+  const {
+    userCollapsed,
+    setUserCollapsed,
+    settingsDialog,
+    createDialog,
+    calendarSlot,
+    setCalendarSlot,
     isProject,
-  )
-
-  const filteredProjects = useFilteredProjects(
-    isProject ? projects : [],
-    safeFilters,
+    isInbox,
+    isCards,
+    isCalendar,
+    listHeight,
+    heightClass,
+    hasGrouping,
+    hasFilters,
+    createPreset,
+    handleCreate,
+    createPending,
+    nextTaskByProjectId,
+    authorNameByUserId,
+    filteredTasks,
+    filteredProjects,
+    groups,
+    projectGroups,
+    activeGroupKey,
+    activeListCardsId,
+    indicatorForRow,
+  } = useBoardListCardSetup({
+    list,
+    tasks,
+    projects,
+    assigneesMap,
     filterCtx,
-    projectParticipantsMap ?? {},
-    list.sort_by ?? 'created_at',
-    list.sort_dir ?? 'desc',
-    nextTaskDeadlineByProjectId,
-    manualProjectPositions,
-  )
+    workspaceId,
+    statuses,
+    boardGlobalFilter,
+    boardCardDnd,
+  })
 
   const count = isInbox ? inboxThreads.length : isProject ? filteredProjects.length : filteredTasks.length
   const collapsed = userCollapsed ?? (!isInbox && count === 0)
-
-  const isCards = (list.display_mode ?? 'list') === 'cards'
-  const isCalendar = list.display_mode === 'calendar'
-  const groupByField = (list.group_by ?? 'none') as GroupByField
-  const listHeight = list.list_height ?? 'auto'
-
-  const heightClass =
-    listHeight === 'full' ? 'flex-1 min-h-0' :
-    listHeight === 'medium' ? 'max-h-[600px]' :
-    'max-h-[400px]'
-
-  const groups = useMemo(
-    () => groupTasks(filteredTasks, groupByField, assigneesMap, statuses),
-    [filteredTasks, groupByField, assigneesMap, statuses],
-  )
-
-  // Project-статусы воркспейса нужны только для группировки списка проектов
-  // по статусу. Запрашиваются всегда — кэш единый и переиспользуется
-  // ProjectStatusFilter, BoardProjectRow и другими.
-  const { data: projectStatuses = [] } = useAllProjectStatuses(isProject ? workspaceId : undefined)
-  const projectGroups = useMemo(
-    () => groupProjects(filteredProjects, groupByField, projectStatuses),
-    [filteredProjects, groupByField, projectStatuses],
-  )
-  const hasGrouping = groupByField !== 'none'
-
-  // DnD логика теперь живёт на уровне BoardView (этап 4.5). Здесь — только
-  // визуал: какая группа/список «горячие» во время drag (из props
-  // boardCardDnd, передаются вниз через BoardColumn).
-  const activeGroupKey = boardCardDnd?.activeGroupKey ?? null
-  const activeListCardsId = boardCardDnd?.activeListCardsId ?? null
-
-  // Публикуем текущий видимый порядок карточек в registry BoardView —
-  // нужен для ручного reorder (sort_by='manual_order'): BoardView в drag-end
-  // читает оттуда, чтобы вычислить новый порядок и записать в БД.
-  const registerListOrder = boardCardDnd?.registerListOrder
-  const filteredTaskIds = useMemo(() => filteredTasks.map((t) => t.id), [filteredTasks])
-  const filteredProjectIds = useMemo(() => filteredProjects.map((p) => p.id), [filteredProjects])
-  useEffect(() => {
-    if (!registerListOrder) return
-    if (list.entity_type === 'thread') registerListOrder(list.id, 'thread', filteredTaskIds)
-    else if (list.entity_type === 'project') registerListOrder(list.id, 'project', filteredProjectIds)
-  }, [registerListOrder, list.id, list.entity_type, filteredTaskIds, filteredProjectIds])
-
-  // Подсказка для drop-indicator конкретной карточки.
-  const rowInd = boardCardDnd?.rowDropIndicator
-  const indicatorForRow = (kind: BoardItemType, itemId: string): 'top' | 'bottom' | null => {
-    if (!rowInd) return null
-    if (rowInd.listId !== list.id) return null
-    if (rowInd.kind !== kind) return null
-    if (rowInd.itemId !== itemId) return null
-    return rowInd.position
-  }
 
   return (
     <div className={cn('rounded-lg', listHeight === 'full' && 'flex flex-col flex-1 min-h-0')}>
@@ -552,4 +370,3 @@ export function BoardListCard({
     </div>
   )
 }
-

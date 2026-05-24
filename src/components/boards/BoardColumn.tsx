@@ -2,8 +2,8 @@
 
 import { useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
-import { BoardListCard, type BoardCardDndState } from './BoardListCard'
-import type { BoardGlobalFilter, BoardList } from './types'
+import { BoardListCard } from './BoardListCard'
+import type { BoardCardDndState, BoardGlobalFilter, BoardList } from './types'
 import type { FilterContext } from '@/lib/filters/types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'

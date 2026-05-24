@@ -8,6 +8,7 @@
  */
 
 import type { FilterGroup, SortField, SortDir } from '@/lib/filters/types'
+import type { BoardItemType, BoardListOrdersMap } from './hooks/useBoardListItemOrders'
 
 // ── Сущности БД ─────────────────────────────────────────
 
@@ -170,6 +171,33 @@ export type BoardList = {
   calendar_settings: CalendarSettings | null
   created_at: string
   updated_at: string
+}
+
+/**
+ * Снимок состояния card-DnD, который BoardView пробрасывает в каждый список.
+ * Сама DnD-логика обрабатывается на уровне BoardView (этап 4.5) — здесь
+ * только данные для подсветки группы/списка во время drag и регистрации
+ * текущего видимого порядка карточек.
+ */
+export type BoardCardDndState = {
+  /** Полный ID активной droppable-группы вида `group:<list_id>:<key>` или null. */
+  activeGroupKey: string | null
+  /** Полный ID активного droppable-списка вида `list-cards:<list_id>` или null. */
+  activeListCardsId: string | null
+  /** Подсветка позиции для ручной сортировки — над какой карточкой и где. */
+  rowDropIndicator: {
+    kind: BoardItemType
+    listId: string
+    itemId: string
+    position: 'top' | 'bottom'
+  } | null
+  /** Ручной порядок (board_list_item_order) по всем спискам доски. */
+  manualOrders: BoardListOrdersMap
+  /** Регистрация текущего видимого порядка карточек — BoardView читает его на drag-end. */
+  registerListOrder: (listId: string, itemType: BoardItemType, ids: string[]) => void
+  /** Только что отпущенная карточка — для краткой подсветки места приземления.
+   *  Формат `thread:<uuid>` или `project:<uuid>`. */
+  recentlyDroppedId: string | null
 }
 
 /** Предустановленные цвета для шапки списка (как в Notion) */
