@@ -17,9 +17,7 @@ import {
   FOLDER_ICON_COLOR,
 } from '@/components/WorkspaceSidebar/projectListConstants'
 import { formatBadgeCount } from '@/utils/inboxUnread'
-import type { Tables } from '@/types/database'
-
-type Project = Tables<'projects'>
+import type { Project } from '@/types/entities'
 
 type BadgeDisplay =
   | { type: 'number'; value: number }

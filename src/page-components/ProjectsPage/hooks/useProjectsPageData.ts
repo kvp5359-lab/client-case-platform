@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import type { Tables } from '@/types/database'
 import { projectKeys, projectTemplateKeys, trashKeys } from '@/hooks/queryKeys'
+import type { Project } from '@/types/entities'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type {
   ProjectAssigneeOption,
@@ -10,7 +10,6 @@ import type {
 } from '@/components/projects/filters'
 import type { WorkspacePermissionsResult } from '@/hooks/permissions/useWorkspacePermissions'
 
-type Project = Tables<'projects'>
 
 export interface ProjectParticipantsData {
   byProject: Record<string, string[]>

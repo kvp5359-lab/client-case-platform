@@ -34,7 +34,8 @@ import { Database } from '@/types/database'
 import { workspaceKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
 
-type Workspace = Database['public']['Tables']['workspaces']['Row']
+import type { Workspace } from '@/types/entities'
+
 type WorkspaceInsert = Database['public']['Tables']['workspaces']['Insert']
 type WorkspaceWithCount = Workspace & { participants_count?: number }
 
