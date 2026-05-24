@@ -149,14 +149,6 @@ export const qrFlagsKeys = {
 }
 
 /**
- * «Контекст проекта» — внутренние материалы команды.
- */
-export const projectContextKeys = {
-  all: ['project-context'] as const,
-  byProject: (projectId: string) => ['project-context', 'by-project', projectId] as const,
-}
-
-/**
  * Google Drive — имя папки по ID (cache friendly).
  */
 export const driveFolderKeys = {

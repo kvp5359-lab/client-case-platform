@@ -7,7 +7,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateProject } from '@/services/api/projectService'
 import { useErrorHandler } from '@/hooks/shared'
-import { projectKeys, accessibleProjectKeys } from '@/hooks/queryKeys'
+import { projectKeys, accessibleProjectKeys, sidebarKeys } from '@/hooks/queryKeys'
 import type { ProjectUpdate } from '@/types/entities'
 
 export function useProjectMutations(projectId: string | undefined) {
@@ -40,9 +40,10 @@ export function useProjectMutations(projectId: string | undefined) {
       // Списки на /projects и /boards (группировка по статусу пересчитается).
       queryClient.invalidateQueries({ queryKey: projectKeys.all })
       queryClient.invalidateQueries({ queryKey: accessibleProjectKeys.all })
-      // Сайдбар (точки статусов). projectsBase даёт prefix-инвалидацию
-      // на все варианты sidebarKeys.projects/searchProjects.
-      queryClient.invalidateQueries({ queryKey: ['sidebar', 'projects'] as const })
+      // Сайдбар (точки статусов). projectsAll — broad-prefix на все
+      // варианты sidebarKeys.projects/projectsSearch/projectsByIds во всех
+      // воркспейсах (workspaceId здесь недоступен).
+      queryClient.invalidateQueries({ queryKey: sidebarKeys.projectsAll })
     },
     onError: (error) => {
       handleError(error, 'Не удалось обновить статус проекта')

@@ -27,6 +27,8 @@ export const projectKeys = {
   /** Кэш «участники проектов воркспейса» для фильтра в /projects. */
   participantsFilter: (workspaceId: string | null | undefined) =>
     ['project-participants-filter', workspaceId ?? ''] as const,
+  /** Лёгкий список `{id, name}` активных проектов для select'а в ConvertExternalEventDialog. */
+  forConvertDialog: (workspaceId: string) => ['projects-for-convert', workspaceId] as const,
 }
 
 export const accessibleProjectKeys = {

@@ -9,6 +9,12 @@ export const workspaceKeys = {
 }
 
 export const sidebarKeys = {
+  /**
+   * Префикс для broad-invalidate сайдбарных списков проектов во ВСЕХ воркспейсах.
+   * Используется когда workspaceId недоступен в месте инвалидации (например
+   * в useProjectMutations, работающем по projectId).
+   */
+  projectsAll: ['sidebar', 'projects'] as const,
   /** All sidebar project lists for a workspace (any canViewAll value) */
   projectsBase: (workspaceId: string) => ['sidebar', 'projects', workspaceId] as const,
   projects: (workspaceId: string, canViewAll: boolean) =>

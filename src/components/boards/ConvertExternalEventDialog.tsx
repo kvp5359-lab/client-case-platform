@@ -13,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ExternalLink } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { externalCalendarKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
+import { externalCalendarKeys, projectKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
 import {
   Dialog,
   DialogContent,
@@ -65,7 +65,7 @@ export function ConvertExternalEventDialog({
   const [projectId, setProjectId] = useState<string>('')
 
   const { data: projects = [] } = useQuery({
-    queryKey: ['projects-for-convert', workspaceId],
+    queryKey: projectKeys.forConvertDialog(workspaceId),
     enabled: open && !!workspaceId,
     queryFn: async () => {
       const { data, error } = await supabase

@@ -24,6 +24,7 @@ import { supabase } from '../lib/supabase'
 import { safeInternalPath } from '@/hooks/shared/useAuthRedirect'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useDocumentKitUIStore } from '@/store/documentKitUI/store'
+import { useContactCardStore } from '@/store/contactCardStore'
 
 // Типы для контекста
 type AuthContextType = {
@@ -108,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // (AI-сессии, контекст страницы, состояние документ-кита, открытые чаты и т.п.)
     useSidePanelStore.getState().reset()
     useDocumentKitUIStore.getState().resetState()
+    useContactCardStore.getState().close()
   }, [queryClient])
 
   const value = useMemo(
