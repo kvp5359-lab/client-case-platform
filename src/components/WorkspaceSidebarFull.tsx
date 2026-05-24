@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState, useMemo, startTransition } from 'react'
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { PanelLeftClose } from 'lucide-react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
@@ -16,6 +16,7 @@ import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
 import { UserProfile } from './WorkspaceSidebar/UserProfile'
 import { WorkspacePicker } from './WorkspaceSidebar/WorkspacePicker'
 import { useSidebarData } from './WorkspaceSidebar/useSidebarData'
+import { WorkspaceSidebarCompact } from './WorkspaceSidebar/WorkspaceSidebarCompact'
 import { useSidebarResize } from './WorkspaceSidebar/useSidebarResize'
 import { useSidebarInboxCounts } from '@/hooks/messenger/useFilteredInbox'
 import { supabase } from '@/lib/supabase'
@@ -385,76 +386,25 @@ export function WorkspaceSidebarFull({
   }
 
   if (compact) {
-    const wsName = currentWorkspace?.name ?? ''
     return (
-      <aside
-        data-workspace-sidebar
-        className="relative bg-[#f7f7f7] flex-shrink-0 flex flex-col h-full overflow-hidden border-r border-gray-200 w-12"
-      >
-        <div className="flex justify-center pt-2">
-          <button
-            type="button"
-            onClick={onExpand}
-            aria-label="Развернуть сайдбар"
-            title="Развернуть сайдбар"
-            className="flex items-center justify-center h-8 w-8 rounded-md bg-background border shadow-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <PanelLeftOpen size={14} />
-          </button>
-        </div>
-        <div className="flex justify-center pt-2">
-          {currentWorkspace && (
-            <div
-              className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium"
-              title={wsName}
-            >
-              {wsName.charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
-        <div className="flex justify-center pt-2">
-          <SidebarGlobalSearch workspaceId={workspaceId} compact />
-        </div>
-        <div className="px-1 pt-1 pb-2 flex flex-col gap-1.5 overflow-y-auto">
-          <SidebarSlotsRow
-            slots={topbarSlots}
-            compact
-            direction="column"
-            allBoards={allBoards}
-            allItemLists={allItemLists}
-            isOwner={isOwner}
-            pathname={pathname}
-            buildHref={buildHref}
-            computeBadge={computeBadge}
-            isNavActive={isNavActive}
-            isNavItemActive={isNavItemActive}
-            listSlots={listSlots}
-            toggleBoardPin={toggleBoardPin}
-            toggleListPin={toggleListPin}
-          />
-          {!isClientOnly && topbarSlots.length > 0 && listSlots.length > 0 && (
-            <div className="mx-2 h-px bg-gray-300/70" />
-          )}
-          {!isClientOnly && (
-            <SidebarSlotsRow
-              slots={listSlots}
-              compact
-              direction="column"
-              allBoards={allBoards}
-              allItemLists={allItemLists}
-              isOwner={isOwner}
-              pathname={pathname}
-              buildHref={buildHref}
-              computeBadge={computeBadge}
-              isNavActive={isNavActive}
-              isNavItemActive={isNavItemActive}
-              listSlots={listSlots}
-              toggleBoardPin={toggleBoardPin}
-              toggleListPin={toggleListPin}
-            />
-          )}
-        </div>
-      </aside>
+      <WorkspaceSidebarCompact
+        onExpand={onExpand}
+        workspaceId={workspaceId}
+        currentWorkspace={currentWorkspace}
+        topbarSlots={topbarSlots}
+        listSlots={listSlots}
+        allBoards={allBoards}
+        allItemLists={allItemLists}
+        isOwner={isOwner}
+        isClientOnly={isClientOnly}
+        pathname={pathname}
+        buildHref={buildHref}
+        computeBadge={computeBadge}
+        isNavActive={isNavActive}
+        isNavItemActive={isNavItemActive}
+        toggleBoardPin={toggleBoardPin}
+        toggleListPin={toggleListPin}
+      />
     )
   }
 
