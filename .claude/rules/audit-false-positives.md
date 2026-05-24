@@ -150,6 +150,97 @@ Wazzup) — создаются впервые. `IF NOT EXISTS` имеет смы
 
 ---
 
+---
+
+## Edge Functions
+
+### `getCorsHeaders` ≠ legacy
+
+Ложно. `getCorsHeaders(req)` из `_shared/cors.ts` — правильная **базовая** функция с динамическим Origin-whitelist. Это **не** legacy.
+
+Legacy паттерн — это:
+- объект `corsHeaders` (статический wildcard `*`) — удалён 2026-05-24;
+- хардкод `'Access-Control-Allow-Origin': '*'` — только в `sandbox-test`, исправлено 2026-05-24.
+
+После 2026-05-24 все функции мигрированы на `corsHeadersFor(req)` из `_shared/edge.ts` (супер-обёртка с `x-internal-secret` в Allow-Headers). `const corsHeaders = getCorsHeaders(req)` (локальная переменная) — норма.
+
+---
+
+## Роли — НЕ дубли
+
+### `STAFF_ROLES` / `TEAM_ROLES` — 4 разных определения by design
+
+Ложно как репорт «дубликация ролей». Все 4 — разные сущности с разной семантикой, **специально не унифицированы**.
+
+| Файл | Что это |
+|------|---------|
+| `src/types/permissions.ts → STAFF_ROLES` | Канон. `['Владелец','Администратор','Сотрудник','Исполнитель']`. Для фильтра «кому назначить задачу». Включает project-роль «Исполнитель». |
+| `src/components/messenger/chatSettingsTypes.ts → STAFF_ROLES` | Только workspace-роли (без «Исполнитель»). Для классификации участника чата в 4 группы. |
+| `src/page-components/workspace-settings/IntegrationsTab/types.ts → TEAM_ROLES` | Включает «Внешний сотрудник» вместо «Исполнитель». Для фильтра доступа к персональному боту. |
+| `src/components/messenger/MessageBubble.tsx → isTeamSender` | Импортирует `isStaffRole` из `permissions.ts`. Уже унифицирован 2026-05-24. |
+
+Если хочется унифицировать — поломает поведение в одном из мест.
+
+---
+
+## RLS
+
+### Short-circuit `created_by` в `project_threads_select` — **больше не нужен**
+
+Ложно как репорт «политика должна содержать `created_by = auth.uid()` OR». До 2026-05-24 — да. После миграции `20260524_can_user_access_thread_row_overload.sql` — нет. Функция переписана на row-overload, INSERT...RETURNING работает без костыля.
+
+Если кто-то «исправит, вернув short-circuit» — это регрессия. Подробно — `gotchas.md` раздел «RLS на project_threads — закрыто 2026-05-24».
+
+### Старая сигнатура `can_user_access_thread(uuid, uuid)` — НЕ мёртвая
+
+Ложно как «можно удалить устаревший overload». Её используют 8 политик на смежных таблицах (`message_*`, `project_messages` SELECT/UPDATE/DELETE, `project_threads` UPDATE/DELETE). Там нет проблемы перечитывания. Удаление сломает доступ к сообщениям.
+
+Проверка: `SELECT polname FROM pg_policy WHERE pg_get_expr(polqual, polrelid) LIKE '%can_user_access_thread(%, %';`
+
+---
+
+## Realtime
+
+### Утечки `supabase.channel()` без `removeChannel`
+
+Часто ложно. На 2026-05-24 все 7 хуков с realtime подписками имеют корректный cleanup:
+`useTelegramLink`, `useProjectMessages`, `useNewMessageToast`, `useThreadAuditEvents`, `useTypingIndicator`, `useSendFailures`, `useWorkspaceMessagesRealtime`.
+
+Перед репортом проверить:
+```bash
+for f in $(grep -rln "\.channel(" src/hooks); do
+  echo "$f: ch=$(grep -c '\.channel(' $f) rm=$(grep -c 'removeChannel' $f)"
+done
+```
+
+Если `ch == rm` (или `rm > ch` при множественных cleanup-местах) — норма.
+
+---
+
+## База данных
+
+### `project_template_tasks` — давно дропнута
+
+Ложно как «ещё ссылка на дропнутую таблицу». Таблица удалена 2026-04-11. Все упоминания в коде — комментарии и changelog, **игнорировать**. Все задачи живут в `thread_templates`.
+
+### `task_panel_tabs` upsert через ручной SELECT+UPDATE — НЕ костыль ради костыля
+
+Ложно как «странный костыль вместо `.upsert()`». Это **обязательный** обход — partial UNIQUE constraints не поддерживаются `PostgREST.upsert({ onConflict: ... })` (ошибка 42P10). Документировано в `gotchas.md`.
+
+---
+
+## Файлы 400-450 строк — оркестраторы
+
+Дополняет «Большой файл = плохой файл» выше. Конкретные кандидаты, которые НЕ нужно дальше дробить (после распила 2026-05-24):
+
+- `BoardView.tsx` (411 строк) — оркестратор `@dnd-kit` DragContext, все хэндлеры зависят от единого стейта.
+- `BoardListCalendarView.tsx` (435) — оркестратор react-big-calendar + DnD, ровно та же причина.
+- `WorkspaceSidebarFull.tsx` (551) — корневой layout сайдбара.
+
+Дальше дробить = пробрасывать 5+ параметров между мелкими файлами. **Если новый агент предлагает «разбить» — отказать.**
+
+---
+
 ## Что считается **реальной** находкой
 
 | Признак | Почему серьёзно |
