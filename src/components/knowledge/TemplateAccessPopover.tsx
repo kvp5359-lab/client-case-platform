@@ -19,87 +19,24 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { knowledgeBaseKeys, quickReplyKeys, projectTemplateKeys, templateAccessKeys, qrFlagsKeys } from '@/hooks/queryKeys'
+import { quickReplyKeys, projectTemplateKeys, qrFlagsKeys } from '@/hooks/queryKeys'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Button } from '@/components/ui/button'
-import { Loader2, Eye, UserCircle2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-export type TemplateAccessEntityType = 'group' | 'article' | 'qr-group' | 'qr-reply'
+import {
+  getAccessConfig,
+  isQuickReply,
+  fetchQrFlags,
+  type TemplateAccessEntityType,
+} from './template-access/helpers'
+
+// Реэкспорт типа для обратной совместимости (entityType используется снаружи).
+export type { TemplateAccessEntityType } from './template-access/helpers'
 
 type AccessMode = 'inherit' | 'everywhere' | 'selected' | 'personal_only'
-
-// Маппинг entityType → { table, fkColumn, accessQueryKey, badgeQueryKey }
-function getAccessConfig(entityType: TemplateAccessEntityType, entityId: string) {
-  switch (entityType) {
-    case 'group':
-      return {
-        table: 'knowledge_group_templates' as const,
-        fkColumn: 'group_id',
-        queryKey: [...knowledgeBaseKeys.groupAccess(entityId), 'ids'],
-        badgeQueryKey: knowledgeBaseKeys.groupAccess(entityId),
-      }
-    case 'article':
-      return {
-        table: 'knowledge_article_templates' as const,
-        fkColumn: 'article_id',
-        queryKey: [...knowledgeBaseKeys.articleAccess(entityId), 'ids'],
-        badgeQueryKey: knowledgeBaseKeys.articleAccess(entityId),
-      }
-    case 'qr-group':
-      return {
-        table: 'quick_reply_group_templates' as const,
-        fkColumn: 'group_id',
-        queryKey: [...quickReplyKeys.groupAccess(entityId), 'ids'],
-        badgeQueryKey: quickReplyKeys.groupAccess(entityId),
-      }
-    case 'qr-reply':
-      return {
-        table: 'quick_reply_templates' as const,
-        fkColumn: 'reply_id',
-        queryKey: [...quickReplyKeys.replyAccess(entityId), 'ids'],
-        badgeQueryKey: quickReplyKeys.replyAccess(entityId),
-      }
-  }
-}
-
-function isQuickReply(t: TemplateAccessEntityType) {
-  return t === 'qr-group' || t === 'qr-reply'
-}
-
-type QrFlags = {
-  personal_only: boolean
-  access_inherits: boolean
-  group_id: string | null
-}
-
-/** Единая загрузка флагов qr-* — общий queryKey + shape для Popover и Badge */
-async function fetchQrFlags(
-  entityType: TemplateAccessEntityType,
-  entityId: string,
-): Promise<QrFlags | null> {
-  if (entityType === 'qr-group') {
-    const { data, error } = await supabase
-      .from('quick_reply_groups')
-      .select('personal_only')
-      .eq('id', entityId)
-      .single()
-    if (error) throw error
-    return { personal_only: data.personal_only, access_inherits: false, group_id: null }
-  }
-  if (entityType === 'qr-reply') {
-    const { data, error } = await supabase
-      .from('quick_replies')
-      .select('personal_only, access_inherits, group_id')
-      .eq('id', entityId)
-      .single()
-    if (error) throw error
-    return data as QrFlags
-  }
-  return null
-}
 
 type TemplateAccessPopoverProps = {
   entityId: string
@@ -376,159 +313,8 @@ export function TemplateAccessPopover({
   )
 }
 
-/**
- * Хук для пакетной загрузки счётчиков привязанных шаблонов.
- */
-export function useTemplateAccessCounts(entityIds: string[], entityType: TemplateAccessEntityType) {
-  const config = entityIds.length > 0 ? getAccessConfig(entityType, entityIds[0]) : null
-  const table = config?.table
-  const fkColumn = config?.fkColumn
-
-  return useQuery({
-    queryKey: templateAccessKeys.counts(entityType, entityIds),
-    queryFn: async () => {
-      if (entityIds.length === 0 || !table || !fkColumn) return {} as Record<string, number>
-      const { data, error } = await supabase.from(table).select(fkColumn).in(fkColumn, entityIds)
-      if (error) throw error
-
-      const counts: Record<string, number> = {}
-      for (const row of data || []) {
-        const id = (row as unknown as Record<string, string>)[fkColumn]
-        counts[id] = (counts[id] || 0) + 1
-      }
-      return counts
-    },
-    enabled: entityIds.length > 0,
-  })
-}
-
-/**
- * Бейдж-счётчик привязанных шаблонов. Для qr-* также показывает иконку
- * «только в личных» при personal_only=true.
- */
-export function TemplateAccessBadge({
-  entityId,
-  entityType,
-  preloadedCount,
-}: {
-  entityId: string
-  entityType: TemplateAccessEntityType
-  preloadedCount?: number
-}) {
-  const { table, fkColumn, badgeQueryKey } = getAccessConfig(entityType, entityId)
-  const isQR = isQuickReply(entityType)
-
-  const { data: fetchedCount = 0 } = useQuery({
-    queryKey: badgeQueryKey,
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from(table)
-        .select('id', { count: 'exact', head: true })
-        .eq(fkColumn, entityId)
-      if (error) throw error
-      return count ?? 0
-    },
-    enabled: preloadedCount === undefined,
-  })
-
-  // Тот же queryKey и фетчер, что в TemplateAccessPopover — чтобы кэш был согласован
-  const { data: qrFlags } = useQuery({
-    queryKey: qrFlagsKeys.byEntity(entityType, entityId),
-    queryFn: () => fetchQrFlags(entityType, entityId),
-    enabled: isQR,
-  })
-
-  const count = preloadedCount ?? fetchedCount
-
-  if (qrFlags?.personal_only) {
-    return (
-      <span
-        className="inline-flex items-center text-[10px] text-muted-foreground"
-        title="Доступен только в личных диалогах"
-      >
-        <UserCircle2 className="w-3 h-3" />
-      </span>
-    )
-  }
-
-  if (count === 0) return null
-
-  return (
-    <span
-      className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground"
-      title={`Доступна в ${count} типах проектов`}
-    >
-      <Eye className="w-3 h-3" />
-      {count}
-    </span>
-  )
-}
-
-/**
- * Единый компонент: кнопка-триггер popover'а доступа + индикатор состояния.
- * Заменяет связку TemplateAccessBadge + отдельной кнопки в строках дерева.
- *
- * Видимость:
- * - Есть индикатор (personal_only, count > 0) → виден всегда.
- * - Иначе → виден только при ховере родителя с классом `group`.
- */
-export function TemplateAccessButton({
-  entityId,
-  entityType,
-  workspaceId,
-  preloadedCount,
-}: {
-  entityId: string
-  entityType: TemplateAccessEntityType
-  workspaceId: string
-  preloadedCount?: number
-}) {
-  const { table, fkColumn, badgeQueryKey } = getAccessConfig(entityType, entityId)
-  const isQR = isQuickReply(entityType)
-
-  const { data: fetchedCount = 0 } = useQuery({
-    queryKey: badgeQueryKey,
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from(table)
-        .select('id', { count: 'exact', head: true })
-        .eq(fkColumn, entityId)
-      if (error) throw error
-      return count ?? 0
-    },
-    enabled: preloadedCount === undefined,
-  })
-
-  const { data: qrFlags } = useQuery({
-    queryKey: qrFlagsKeys.byEntity(entityType, entityId),
-    queryFn: () => fetchQrFlags(entityType, entityId),
-    enabled: isQR,
-  })
-
-  const count = preloadedCount ?? fetchedCount
-  const isPersonal = !!qrFlags?.personal_only
-  const hasIndicator = isPersonal || count > 0
-
-  const title = isPersonal
-    ? 'Доступен только в личных диалогах'
-    : count > 0
-      ? `Доступна в ${count} типах проектов`
-      : 'Доступ для типов проектов'
-
-  return (
-    <TemplateAccessPopover entityId={entityId} entityType={entityType} workspaceId={workspaceId}>
-      <Button
-        variant="ghost"
-        size="sm"
-        title={title}
-        className={`h-6 px-1 gap-0.5 text-muted-foreground/50 hover:text-foreground ${
-          hasIndicator ? '' : 'opacity-0 group-hover:opacity-100 transition-opacity'
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {isPersonal ? <UserCircle2 className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-        {!isPersonal && count > 0 && <span className="text-[10px]">{count}</span>}
-      </Button>
-    </TemplateAccessPopover>
-  )
-}
+// useTemplateAccessCounts, TemplateAccessBadge, TemplateAccessButton
+// вынесены в ./template-access/. Реэкспорт для обратной совместимости:
+export { useTemplateAccessCounts } from './template-access/useTemplateAccessCounts'
+export { TemplateAccessBadge } from './template-access/TemplateAccessBadge'
+export { TemplateAccessButton } from './template-access/TemplateAccessButton'
