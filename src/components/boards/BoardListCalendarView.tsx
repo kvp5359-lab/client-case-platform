@@ -220,8 +220,10 @@ export function BoardListCalendarView({
     [queryClient, workspaceId],
   )
 
-  const handleEventDrop: NonNullable<withDragAndDropProps<CalEvent>['onEventDrop']> = useCallback(
-    ({ event, start, end }) => {
+  // Drop и resize отличаются только триггером — действие одно:
+  // двинуть интервал события (внешнего или нашей задачи).
+  const handleEventChange = useCallback(
+    ({ event, start, end }: { event: CalEvent; start: Date | string; end: Date | string }) => {
       const s = start instanceof Date ? start : new Date(start)
       const e = end instanceof Date ? end : new Date(end)
       if (event.kind === 'external') {
@@ -248,34 +250,8 @@ export function BoardListCalendarView({
     [updateTime, writeExternal, optimisticUpdateExternal],
   )
 
-  const handleEventResize: NonNullable<withDragAndDropProps<CalEvent>['onEventResize']> =
-    useCallback(
-      ({ event, start, end }) => {
-        const s = start instanceof Date ? start : new Date(start)
-        const e = end instanceof Date ? end : new Date(end)
-        if (event.kind === 'external') {
-          if (!event.external) return
-          optimisticUpdateExternal(event.id, s, e)
-          writeExternal.mutate({
-            action: 'update',
-            calendar_id: event.external.calendar_id,
-            external_id: event.external.external_id,
-            start_at: s.toISOString(),
-            end_at: e.toISOString(),
-          })
-          return
-        }
-        if (!event.resource) return
-        updateTime.mutate({
-          threadId: event.resource.id,
-          projectId: event.resource.project_id,
-          workspaceId: event.resource.workspace_id,
-          start_at: s.toISOString(),
-          end_at: e.toISOString(),
-        })
-      },
-      [updateTime, writeExternal, optimisticUpdateExternal],
-    )
+  const handleEventDrop: NonNullable<withDragAndDropProps<CalEvent>['onEventDrop']> = handleEventChange
+  const handleEventResize: NonNullable<withDragAndDropProps<CalEvent>['onEventResize']> = handleEventChange
 
   // Создание задачи кликом по пустому слоту — поднимаем наверх
   // (BoardListCard), он откроет ChatSettingsDialog с предзаполненным

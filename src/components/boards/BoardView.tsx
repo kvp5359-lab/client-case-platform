@@ -25,6 +25,7 @@ import {
   type CardDrag,
 } from './board-view/cardDragHandlers'
 import { planGapDrop, planListMove } from './board-view/listDragHandlers'
+import { analyzeDragOver } from './board-view/dragOverAnalysis'
 import type { BoardCardDndState } from './BoardListCard'
 import { usePanDrag } from './hooks/usePanDrag'
 import { useReorderLists } from './hooks/useListMutations'
@@ -240,85 +241,15 @@ export function BoardView({
   }, [])
 
   const handleDragOver = useCallback((e: DragOverEvent) => {
-    const { over, active } = e
-    const activeId = active ? String(active.id) : ''
-    const isCardDrag =
-      activeId.startsWith('task:') || activeId.startsWith('project:')
-
-    if (isCardDrag) {
-      // Card drag — отслеживаем над row/group/list-cards droppables.
-      const overId = over ? String(over.id) : null
-      setIsOverCalendar(!!overId && overId.startsWith('calendar-drop:'))
-      if (overId && (overId.startsWith('task-row:') || overId.startsWith('project-row:'))) {
-        // Парсим `task-row:<itemId>:<listId>` либо `project-row:<itemId>:<listId>`.
-        const kind: BoardItemType = overId.startsWith('task-row:') ? 'thread' : 'project'
-        const prefix = kind === 'thread' ? 'task-row:' : 'project-row:'
-        const rest = overId.slice(prefix.length)
-        const sepIdx = rest.indexOf(':')
-        if (sepIdx !== -1) {
-          const itemId = rest.slice(0, sepIdx)
-          const listId = rest.slice(sepIdx + 1)
-          // Не показываем индикатор поверх самой перетаскиваемой карточки.
-          const draggedId = activeCard
-            ? (activeCard.kind === 'task' ? activeCard.task.id : activeCard.project.id)
-            : null
-          if (draggedId === itemId) {
-            setRowDropIndicator(null)
-          } else {
-            const overRect = over!.rect
-            const pointerY = e.activatorEvent
-              ? (e.activatorEvent as PointerEvent).clientY + (e.delta?.y ?? 0)
-              : 0
-            const midY = overRect.top + overRect.height / 2
-            setRowDropIndicator({
-              kind,
-              listId,
-              itemId,
-              position: pointerY < midY ? 'top' : 'bottom',
-            })
-          }
-          setOverCardTarget(null)
-          return
-        }
-      }
-      setRowDropIndicator(null)
-      if (overId && (overId.startsWith('group:') || overId.startsWith('list-cards:'))) {
-        setOverCardTarget(overId)
-      } else {
-        setOverCardTarget(null)
-      }
-      return
-    }
-
-    // List drag — существующая логика (без изменений).
-    if (!over) {
-      setDropIndicator(null)
-      setOverColumnIndex(null)
-      setGapTarget(null)
-      return
-    }
-    const overId = String(over.id)
-    if (overId.startsWith('gap-drop:')) {
-      setDropIndicator(null)
-      setOverColumnIndex(null)
-      setGapTarget(parseInt(overId.slice('gap-drop:'.length), 10))
-      return
-    }
-    setGapTarget(null)
-    if (overId.startsWith('list-drop:')) {
-      const overListId = overId.slice('list-drop:'.length)
-      const overRect = over.rect
-      const pointerY = e.activatorEvent ? (e.activatorEvent as PointerEvent).clientY + (e.delta?.y ?? 0) : 0
-      const midY = overRect.top + overRect.height / 2
-      setDropIndicator({ overListId, position: pointerY < midY ? 'top' : 'bottom' })
-      const colIdx = (over.data.current as { columnIndex?: number } | undefined)?.columnIndex
-      setOverColumnIndex(typeof colIdx === 'number' ? colIdx : null)
-    } else if (overId.startsWith('col-drop:')) {
-      setDropIndicator(null)
-      setOverColumnIndex(parseInt(overId.slice('col-drop:'.length), 10))
+    const result = analyzeDragOver(e, activeCard)
+    if (result.type === 'card') {
+      setIsOverCalendar(result.isOverCalendar)
+      setRowDropIndicator(result.rowDropIndicator)
+      setOverCardTarget(result.overCardTarget)
     } else {
-      setDropIndicator(null)
-      setOverColumnIndex(null)
+      setDropIndicator(result.dropIndicator)
+      setOverColumnIndex(result.overColumnIndex)
+      setGapTarget(result.gapTarget)
     }
   }, [activeCard])
 
