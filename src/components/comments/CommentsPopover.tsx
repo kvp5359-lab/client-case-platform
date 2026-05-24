@@ -4,7 +4,7 @@
  * Содержимое попапа комментариев
  */
 
-import { Loader2 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { useComments, useCreateComment } from '@/hooks/comments'
 import { useProjectPermissions } from '@/hooks/permissions/useProjectPermissions'
 import { CommentThread } from './CommentThread'
@@ -51,9 +51,7 @@ export function CommentsPopover({
       {/* Список тредов */}
       <div className="flex-1 overflow-y-auto min-h-0">
         {isLoading ? (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          </div>
+          <PageLoader />
         ) : !threads || threads.length === 0 ? (
           <div className="px-3 py-6 text-center text-xs text-muted-foreground">
             Нет комментариев

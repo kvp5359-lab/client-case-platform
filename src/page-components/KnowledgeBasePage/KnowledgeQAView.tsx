@@ -34,11 +34,11 @@ import {
   Trash2,
   MoreVertical,
   RefreshCw,
-  Loader2,
   Upload,
   Filter,
   MessageCircleQuestion,
 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { useSearchParams, usePathname } from 'next/navigation'
 import { QAEditDialog } from '@/components/knowledge/QAEditDialog'
 import { QAImportDialog } from '@/components/knowledge/QAImportDialog'
@@ -206,10 +206,7 @@ export function KnowledgeQAView({ workspaceId }: KnowledgeQAViewProps) {
 
       {/* Table */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Загрузка...
-        </div>
+        <PageLoader label="Загрузка..." />
       ) : qaItems.length === 0 ? (
         <Card className="p-12">
           <div className="text-center">

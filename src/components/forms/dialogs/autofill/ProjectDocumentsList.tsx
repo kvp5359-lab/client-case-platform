@@ -6,6 +6,7 @@ import { autofillKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FileText, Image as ImageIcon, ArrowLeft, Loader2 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { formatSize } from '@/utils/files/formatSize'
 import { Tables } from '@/types/database'
 import { AUTOFILL_SUPPORTED_MIME_TYPES } from '@/utils/files/fileValidation'
@@ -75,11 +76,7 @@ export function ProjectDocumentsList({
   const supportedDocuments = documents.filter((doc) => getSupportedFile(doc))
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   if (error) {

@@ -8,6 +8,7 @@
 
 import { useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { Button } from '@/components/ui/button'
 import { TimelineFeed } from './TimelineFeed'
 import { useProjectHistory } from '@/hooks/projects/useProjectHistory'
@@ -59,11 +60,7 @@ export function AllHistoryContent({
   const clientThreadIds = useProjectClientThreadIds(projectId, visibleThreads)
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16 flex-1">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   return (

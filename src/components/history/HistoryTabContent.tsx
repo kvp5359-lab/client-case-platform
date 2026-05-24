@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { PageLoader } from '@/components/ui/loaders'
 import { ActivityFeed } from './ActivityFeed'
 import { AllHistoryContent } from './AllHistoryContent'
 import { useProjectHistory, useMarkHistoryAsRead } from '@/hooks/projects/useProjectHistory'
@@ -250,11 +251,7 @@ function ResourceHistoryContent({
   )
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16 flex-1">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   return (

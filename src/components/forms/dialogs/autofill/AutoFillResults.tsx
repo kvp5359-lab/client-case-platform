@@ -7,6 +7,7 @@ import { formKitKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle2, Loader2 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import type { ExtractionResult } from './types'
 
 type AutoFillResultsProps = {
@@ -97,11 +98,7 @@ export function AutoFillResults({
   }, [fieldsData?.fields, result.extracted_data])
 
   if (fieldsLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   return (

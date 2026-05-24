@@ -25,6 +25,7 @@ import {
 import { toast } from 'sonner'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
+import { PageLoader } from '@/components/ui/loaders'
 import { QAEditDialog } from '@/components/knowledge/QAEditDialog'
 import type { KnowledgeQA } from '@/services/api/knowledge/knowledgeSearchService'
 import { getTagColors } from '@/utils/notionPill'
@@ -135,12 +136,7 @@ export default function KnowledgeQADetailPage() {
           </div>
 
           {/* Loading */}
-          {qaQuery.isLoading && (
-            <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Загрузка...
-            </div>
-          )}
+          {qaQuery.isLoading && <PageLoader label="Загрузка..." />}
 
           {/* Error */}
           {qaQuery.isError && (
