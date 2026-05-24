@@ -2,37 +2,31 @@
 
 Места, где интуиция обманывает. Перед изменением одного из этих узлов — прочитать соответствующий раздел.
 
-## ⚠️ RLS на `project_threads` — обязательный short-circuit `created_by`
+## ✅ RLS на `project_threads` — закрыто 2026-05-24
 
-**Правило**: полиция `project_threads_select` ОБЯЗАНА содержать `created_by = (SELECT auth.uid())` **до** вызова `can_user_access_thread(id, …)`. Без него ломается **любое** создание треда через REST API.
-
-**Почему**: `can_user_access_thread` — `SECURITY DEFINER STABLE`, перечитывает тред: `SELECT … FROM project_threads WHERE id = p_thread_id`. PostgREST по умолчанию шлёт `Prefer: return=representation` → `INSERT…RETURNING *`. К RETURNING-строке применяется SELECT-полиция. Внутри SECURITY DEFINER функции свежевставленная строка ещё не видна snapshot'у → `NOT FOUND` → `RETURN false` → RLS отбивает INSERT с 42501. PostgreSQL это явно не документирует — эмпирический факт.
-
-**Правильный шаблон**:
+**Фикс применён**: миграция `20260524_can_user_access_thread_row_overload.sql`. Добавлен overload `can_user_access_thread(t project_threads, p_user_id uuid)` — функция получает row через тип, не перечитывает таблицу. Полиция `project_threads_select` теперь одна строка:
 
 ```sql
-CREATE POLICY project_threads_select ON public.project_threads FOR SELECT TO public
-USING (
-  -- Short-circuit: BEFORE INSERT trigger set_thread_created_by всегда выставляет
-  -- created_by = auth.uid(), поэтому свежая строка пропускается без вызова функции.
-  (created_by = (SELECT auth.uid()))
-  OR
-  can_user_access_thread(id, (SELECT auth.uid()))
-);
+CREATE POLICY project_threads_select ON public.project_threads
+  FOR SELECT TO public
+  USING (can_user_access_thread(project_threads, (SELECT auth.uid())));
 ```
 
-**История регрессий** (баг ловили 3 раза):
+Short-circuit `created_by = auth.uid()` больше **не нужен**. При следующем рефакторинге RLS его восстанавливать не надо — функция терпима к INSERT...RETURNING сама.
+
+Старая сигнатура `(uuid, uuid)` оставлена — её используют 8 политик на смежных таблицах (message_*, project_messages, project_threads delete/update), где перечитывание не вызывает проблему.
+
+### История (зачем держали костыль до 2026-05-24)
+
+**Почему ломалось**: `can_user_access_thread(uuid, uuid)` — `SECURITY DEFINER STABLE`, перечитывал тред: `SELECT … FROM project_threads WHERE id = p_thread_id`. PostgREST шлёт `Prefer: return=representation` → `INSERT…RETURNING *`. К RETURNING-строке применяется SELECT-полиция. Внутри SECURITY DEFINER функции свежевставленная строка ещё не видна snapshot'у → `NOT FOUND` → `RETURN false` → RLS отбивал INSERT с 42501.
+
+**Регрессии** (баг ловили 5 раз):
 - `20260404191200_fix_thread_select_policy_inline.sql` — первый фикс.
 - `20260426_thread_access_rls.sql` — переписала без short-circuit → сломалось.
 - `20260427_fix_thread_select_returning.sql` — восстановила.
 - `20260510_personal_dialogs_rls.sql` — снова переписала → сломалось.
 - `20260513083503_fix_thread_select_returning_after_personal_dialogs.sql` — восстановила.
-
-**При рефакторинге `can_user_access_thread` или `project_threads_select`** — прогнать тест: `INSERT INTO project_threads (...) RETURNING id` под role authenticated должен пройти.
-
-**Полная защита** — переписать функцию на сигнатуру `can_user_access_thread(t project_threads, p_user_id uuid)` и вызывать в полиции `can_user_access_thread(project_threads, …)`. Postgres подставит NEW.* напрямую, без перечитывания. Тогда short-circuit не нужен.
-
-**План фикса**: [docs/feature-backlog/2026-05-24-can-user-access-thread-rls-permanent-fix.md](../../docs/feature-backlog/2026-05-24-can-user-access-thread-rls-permanent-fix.md). Миграция не применена — ждёт явного «да» владельца.
+- `20260524_can_user_access_thread_row_overload.sql` — **постоянный фикс**, цикл закрыт.
 
 Подробно: [docs/bugs/resolved/2026-05-13-thread-insert-returning-rls.md](../../docs/bugs/resolved/2026-05-13-thread-insert-returning-rls.md).
 
