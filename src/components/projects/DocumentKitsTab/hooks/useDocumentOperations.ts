@@ -1,6 +1,6 @@
 import { toast } from 'sonner'
 import { useErrorHandler } from '@/hooks/shared/useErrorHandler'
-import { useDocuments } from '@/hooks/useDocuments'
+import { useDocuments } from '@/hooks/documents/useDocuments'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { openDocumentInNewTab, downloadDocumentFile } from '@/services/documents'
 import type { DocumentWithFiles } from '@/components/documents'

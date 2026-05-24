@@ -21,7 +21,7 @@ import {
   useGenerateProjectDigest,
   useDeleteProjectDigest,
   type ProjectDigest,
-} from '@/hooks/useProjectDigests'
+} from '@/hooks/projects/useProjectDigests'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {

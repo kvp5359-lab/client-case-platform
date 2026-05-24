@@ -14,8 +14,8 @@ import {
   downloadDocumentsAsZip,
   type DownloadGroupMode,
 } from '@/services/documents/downloadDocumentsAsZip'
-import { useDocuments } from '@/hooks/useDocuments'
-import { useDocumentKitsQuery } from '@/hooks/useDocumentKitsQuery'
+import { useDocuments } from '@/hooks/documents/useDocuments'
+import { useDocumentKitsQuery } from '@/hooks/documents/useDocumentKitsQuery'
 import { useDocumentStatuses } from '@/hooks/useStatuses'
 import { useProjectPermissions, useWorkspaceFeatures } from '@/hooks/permissions'
 import { documentKitKeys } from '@/hooks/queryKeys'

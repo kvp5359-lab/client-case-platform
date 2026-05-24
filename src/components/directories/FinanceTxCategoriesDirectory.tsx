@@ -28,7 +28,7 @@ import {
   useDeleteFinanceTxCategory,
   type FinanceTxCategory,
   type FinanceTxCategoryKind,
-} from '@/hooks/useFinanceTransactionCategories'
+} from '@/hooks/finance/useFinanceTransactionCategories'
 
 interface Props {
   kind: FinanceTxCategoryKind

@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { FinanceService, FinanceServiceFormData } from '@/hooks/useFinanceServices'
+import type { FinanceService, FinanceServiceFormData } from '@/hooks/finance/useFinanceServices'
 
 interface Props {
   open: boolean

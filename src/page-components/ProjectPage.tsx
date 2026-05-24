@@ -20,8 +20,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreVertical, Plus } from 'lucide-react'
-import { useDocumentKitsQuery } from '@/hooks/useDocumentKitsQuery'
-import { useFormKitsQuery } from '@/hooks/useFormKitsQuery'
+import { useDocumentKitsQuery } from '@/hooks/documents/useDocumentKitsQuery'
+import { useFormKitsQuery } from '@/hooks/forms/useFormKitsQuery'
 import { projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import {

@@ -25,8 +25,8 @@ import {
 const TiptapEditor = lazy(() =>
   import('@/components/tiptap-editor/tiptap-editor').then((m) => ({ default: m.TiptapEditor })),
 )
-import type { QuickReply } from '@/hooks/useQuickReplies'
-import type { QuickReplyGroup } from '@/hooks/useQuickReplyGroups'
+import type { QuickReply } from '@/hooks/quick-replies/useQuickReplies'
+import type { QuickReplyGroup } from '@/hooks/quick-replies/useQuickReplyGroups'
 
 const NO_GROUP_VALUE = '__none__'
 

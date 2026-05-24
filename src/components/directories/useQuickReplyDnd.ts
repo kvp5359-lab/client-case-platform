@@ -14,8 +14,8 @@ import {
   type DragStartEvent,
   type DragOverEvent,
 } from '@dnd-kit/core'
-import type { useQuickRepliesPage } from '@/hooks/useQuickRepliesPage'
-import type { QuickReply } from '@/hooks/useQuickReplies'
+import type { useQuickRepliesPage } from '@/hooks/quick-replies/useQuickRepliesPage'
+import type { QuickReply } from '@/hooks/quick-replies/useQuickReplies'
 
 type PageReturn = ReturnType<typeof useQuickRepliesPage>
 

@@ -35,7 +35,7 @@ import { supabase } from '@/lib/supabase'
 import {
   useRenameContextItem,
   useRunContextExtraction,
-} from '@/hooks/useProjectContext'
+} from '@/hooks/projects/useProjectContext'
 import { formatBytes } from '@/utils/files/formatBytes'
 import type { ProjectContextItemWithFile } from '@/services/api/projectContext/projectContextService'
 import { ContextTextDialog } from './ContextTextDialog'

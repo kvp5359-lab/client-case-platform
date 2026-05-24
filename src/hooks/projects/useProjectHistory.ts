@@ -5,7 +5,7 @@
  */
 
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { historyKeys } from './queryKeys'
+import { historyKeys } from '@/hooks/queryKeys'
 import {
   getProjectHistory,
   getHistoryUnreadCount,

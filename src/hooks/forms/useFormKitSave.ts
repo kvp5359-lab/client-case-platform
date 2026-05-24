@@ -12,7 +12,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { formKitKeys } from './queryKeys'
+import { formKitKeys } from '@/hooks/queryKeys'
 
 interface UseFormKitSaveParams {
   formKitId: string

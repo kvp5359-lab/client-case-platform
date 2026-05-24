@@ -37,7 +37,7 @@ import {
   useCreateContextText,
   useCreateContextFile,
   useDeleteContextItem,
-} from '@/hooks/useProjectContext'
+} from '@/hooks/projects/useProjectContext'
 import { formatBytes } from '@/utils/files/formatBytes'
 import { ProjectContextItemCard } from './ProjectContextItemCard'
 

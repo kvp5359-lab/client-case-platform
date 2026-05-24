@@ -10,9 +10,9 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
-import { useFinanceTxCategories } from '@/hooks/useFinanceTransactionCategories'
-import { useFinanceTaxRates } from '@/hooks/useFinanceTaxRates'
-import { useProjectServices } from '@/hooks/useProjectServices'
+import { useFinanceTxCategories } from '@/hooks/finance/useFinanceTransactionCategories'
+import { useFinanceTaxRates } from '@/hooks/finance/useFinanceTaxRates'
+import { useProjectServices } from '@/hooks/projects/useProjectServices'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import {
   useProjectTransactions,
@@ -24,7 +24,7 @@ import {
   type ProjectTransactionFormData,
   type ProjectTransactionPatch,
   type TransactionType,
-} from '@/hooks/useProjectTransactions'
+} from '@/hooks/projects/useProjectTransactions'
 import { InlineEditCell } from '@/components/ui/inline-edit-cell'
 import { InlineEditSelect } from '@/components/ui/inline-edit-select'
 import { ProjectTransactionFormDialog } from './ProjectTransactionFormDialog'

@@ -20,7 +20,7 @@ import {
   useUpdateFinanceTaxRate,
   useDeleteFinanceTaxRate,
   type FinanceTaxRate,
-} from '@/hooks/useFinanceTaxRates'
+} from '@/hooks/finance/useFinanceTaxRates'
 import { FinanceTaxRateFormDialog } from './FinanceTaxRateFormDialog'
 
 const formatRate = (rate: number): string =>

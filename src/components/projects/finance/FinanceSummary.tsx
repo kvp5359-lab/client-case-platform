@@ -5,8 +5,8 @@
  */
 
 import { useMemo } from 'react'
-import { useProjectServices } from '@/hooks/useProjectServices'
-import { useProjectTransactions } from '@/hooks/useProjectTransactions'
+import { useProjectServices } from '@/hooks/projects/useProjectServices'
+import { useProjectTransactions } from '@/hooks/projects/useProjectTransactions'
 
 const fmt = (value: number): string =>
   new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(

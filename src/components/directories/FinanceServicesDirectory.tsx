@@ -19,7 +19,7 @@ import {
   useUpdateFinanceService,
   useDeleteFinanceService,
   type FinanceService,
-} from '@/hooks/useFinanceServices'
+} from '@/hooks/finance/useFinanceServices'
 import { FinanceServiceFormDialog } from './FinanceServiceFormDialog'
 
 const formatPrice = (value: number): string =>

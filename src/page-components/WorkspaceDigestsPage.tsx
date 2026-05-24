@@ -36,7 +36,7 @@ import {
   useGenerateProjectDigest,
   type ProjectWithActivity,
   type ProjectDigest,
-} from '@/hooks/useProjectDigests'
+} from '@/hooks/projects/useProjectDigests'
 
 const CONCURRENCY = 2
 

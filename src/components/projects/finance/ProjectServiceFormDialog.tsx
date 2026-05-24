@@ -21,13 +21,13 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import {
   useFinanceServices,
   useCreateFinanceService,
-} from '@/hooks/useFinanceServices'
-import { useFinanceTaxRates } from '@/hooks/useFinanceTaxRates'
+} from '@/hooks/finance/useFinanceServices'
+import { useFinanceTaxRates } from '@/hooks/finance/useFinanceTaxRates'
 import { FinanceServiceFormDialog } from '@/components/directories/FinanceServiceFormDialog'
 import type {
   ProjectService,
   ProjectServiceFormData,
-} from '@/hooks/useProjectServices'
+} from '@/hooks/projects/useProjectServices'
 
 interface Props {
   open: boolean

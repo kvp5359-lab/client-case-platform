@@ -12,7 +12,7 @@ import {
   useDeleteDocumentKitMutation,
   useSyncDocumentKitMutation,
   useMoveDocumentKitMutation,
-} from '@/hooks/useDocumentKitsQuery'
+} from '@/hooks/documents/useDocumentKitsQuery'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import type { DeleteKitMode } from '@/components/projects/DocumentKitsTab/dialogs/DeleteKitDialog'
 

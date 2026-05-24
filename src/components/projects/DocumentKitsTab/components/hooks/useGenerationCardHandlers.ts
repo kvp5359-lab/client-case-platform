@@ -14,7 +14,7 @@ import {
   base64ToFile,
 } from '@/hooks/documents/useDocumentGenerations'
 import { useDocumentTemplates } from '@/hooks/documents/useDocumentTemplates'
-import { useDocuments } from '@/hooks/useDocuments'
+import { useDocuments } from '@/hooks/documents/useDocuments'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { toast } from 'sonner'
 import type { DocumentGeneration } from '@/services/api/documents/documentGenerationService'

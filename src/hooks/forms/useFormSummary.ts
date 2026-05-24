@@ -10,7 +10,7 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getCommentsByEntity } from '@/services/api/commentService'
-import { getSectionProgress } from '@/hooks/useFormKitProgress'
+import { getSectionProgress } from '@/hooks/forms/useFormKitProgress'
 import type { FormSectionWithFields, CompositeFieldItem, FormData } from '@/components/forms/types'
 
 interface UseFormSummaryParams {

@@ -17,7 +17,7 @@ import { ProjectFieldsSection } from './ProjectFieldsSection'
 import { ProjectContactSection } from './ProjectContactSection'
 import type { Project } from '../types'
 import type { UseDialogReturn } from '@/hooks/shared/useDialog'
-import type { FormKit } from '@/hooks/useFormKitsQuery'
+import type { FormKit } from '@/hooks/forms/useFormKitsQuery'
 import type { DocumentKit } from '@/services/api/documents/documentKitService'
 
 // Lazy-loaded tab contents (code splitting)

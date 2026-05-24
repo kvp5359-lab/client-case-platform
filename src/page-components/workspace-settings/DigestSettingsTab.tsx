@@ -40,7 +40,7 @@ import {
   useGenerateProjectDigest,
   todayInMadrid,
   type ProjectDigest,
-} from '@/hooks/useProjectDigests'
+} from '@/hooks/projects/useProjectDigests'
 import { AI_MODELS } from './components/useAISettings'
 import { DEFAULT_DIGEST_SYSTEM_PROMPT } from '@/lib/digestDefaults'
 

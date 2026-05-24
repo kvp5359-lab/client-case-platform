@@ -10,10 +10,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { useQuickRepliesForPicker, useUpdateQuickReply } from '@/hooks/useQuickReplies'
+import { useQuickRepliesForPicker, useUpdateQuickReply } from '@/hooks/quick-replies/useQuickReplies'
 import { QuickReplyFormDialog } from '@/components/directories/QuickReplyFormDialog'
 import { projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
-import type { QuickReply } from '@/hooks/useQuickReplies'
+import type { QuickReply } from '@/hooks/quick-replies/useQuickReplies'
 import type { Editor } from '@tiptap/react'
 
 interface QuickReplyPickerProps {

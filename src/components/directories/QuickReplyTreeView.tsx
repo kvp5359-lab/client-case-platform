@@ -12,7 +12,7 @@ import { DndContext, DragOverlay, pointerWithin, useDroppable } from '@dnd-kit/c
 import { QuickReplyGroupTreeItem } from './QuickReplyGroupTreeItem'
 import { DraggableReplyRow } from './QuickReplyRows'
 import { useQuickReplyDnd, UNGROUPED_ID } from './useQuickReplyDnd'
-import type { useQuickRepliesPage } from '@/hooks/useQuickRepliesPage'
+import type { useQuickRepliesPage } from '@/hooks/quick-replies/useQuickRepliesPage'
 
 type PageReturn = ReturnType<typeof useQuickRepliesPage>
 

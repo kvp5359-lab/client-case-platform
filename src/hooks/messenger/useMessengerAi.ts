@@ -14,7 +14,7 @@ import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { useFormKitsForAi } from './useFormKitsForAi'
 import { useDocumentsForAi } from './useDocumentsForAi'
 import { useAiSources } from './useAiSources'
-import { useProjectContextItems } from '@/hooks/useProjectContext'
+import { useProjectContextItems } from '@/hooks/projects/useProjectContext'
 import { projectContextItemsToAi } from '@/services/api/projectContext/projectContextForAi'
 
 import type { AiMessage } from '@/store/sidePanelStore'

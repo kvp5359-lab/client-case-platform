@@ -3,7 +3,7 @@
  * Обёртка: useQuickRepliesPage + QuickReplyTreeView + QuickReplyFormDialog.
  */
 
-import { useQuickRepliesPage } from '@/hooks/useQuickRepliesPage'
+import { useQuickRepliesPage } from '@/hooks/quick-replies/useQuickRepliesPage'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { QuickReplyTreeView } from './QuickReplyTreeView'
 import { QuickReplyFormDialog } from './QuickReplyFormDialog'

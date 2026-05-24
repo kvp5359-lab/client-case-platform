@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useCreateDocumentKitMutation } from '@/hooks/useDocumentKitsQuery'
+import { useCreateDocumentKitMutation } from '@/hooks/documents/useDocumentKitsQuery'
 import { logger } from '@/utils/logger'
 import { toast } from 'sonner'
 import {

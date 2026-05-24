@@ -2,7 +2,7 @@
  * Бейдж непрочитанных записей истории для вкладки проекта.
  */
 
-import { useHistoryUnreadCount } from '@/hooks/useProjectHistory'
+import { useHistoryUnreadCount } from '@/hooks/projects/useProjectHistory'
 
 export function HistoryUnreadBadge({ projectId }: { projectId: string }) {
   const { data: count } = useHistoryUnreadCount(projectId)

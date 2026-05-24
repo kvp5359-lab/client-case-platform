@@ -17,7 +17,7 @@ import { useDocumentSummary } from '@/hooks/documents/useDocumentSummary'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import type { SourceDocument } from '@/components/documents'
 import type { FolderSlotWithDocument as FolderSlot } from '@/components/documents/types'
-import type { UploadDocumentFn, SoftDeleteDocumentFn } from '@/hooks/useDocuments.types'
+import type { UploadDocumentFn, SoftDeleteDocumentFn } from '@/hooks/documents/useDocuments.types'
 import type { useSourceDocumentDrop } from './useSourceDocumentDrop'
 
 interface UseDocumentsDialogActionsProps {

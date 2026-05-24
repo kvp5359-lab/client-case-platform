@@ -17,14 +17,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import { useFinanceTxCategories } from '@/hooks/useFinanceTransactionCategories'
-import { useFinanceTaxRates } from '@/hooks/useFinanceTaxRates'
+import { useFinanceTxCategories } from '@/hooks/finance/useFinanceTransactionCategories'
+import { useFinanceTaxRates } from '@/hooks/finance/useFinanceTaxRates'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import type {
   ProjectTransaction,
   ProjectTransactionFormData,
   TransactionType,
-} from '@/hooks/useProjectTransactions'
+} from '@/hooks/projects/useProjectTransactions'
 
 const TYPE_LABELS: Record<TransactionType, { full: string; subject: string }> = {
   income: { full: 'доход', subject: 'От кого' },

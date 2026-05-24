@@ -21,7 +21,7 @@ import type {
   FieldDefinitionSelectOption,
 } from '@/components/forms/types'
 import { logger } from '@/utils/logger'
-import { formKitKeys } from './queryKeys'
+import { formKitKeys } from '@/hooks/queryKeys'
 
 type FieldType = Database['public']['Enums']['field_type']
 

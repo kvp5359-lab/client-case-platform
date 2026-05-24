@@ -35,8 +35,8 @@ import {
   type ProjectService,
   type ProjectServiceFormData,
   type ProjectServicePatch,
-} from '@/hooks/useProjectServices'
-import { useFinanceTaxRates } from '@/hooks/useFinanceTaxRates'
+} from '@/hooks/projects/useProjectServices'
+import { useFinanceTaxRates } from '@/hooks/finance/useFinanceTaxRates'
 import { projectServiceKeys } from '@/hooks/queryKeys'
 import { InlineEditCell } from '@/components/ui/inline-edit-cell'
 import { InlineEditSelect } from '@/components/ui/inline-edit-select'

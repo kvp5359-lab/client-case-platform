@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useFormKitSync } from '@/hooks/useFormKitSync'
+import { useFormKitSync } from '@/hooks/forms/useFormKitSync'
 
 interface KitMenuProps {
   formKitId: string

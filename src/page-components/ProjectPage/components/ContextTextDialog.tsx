@@ -19,7 +19,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { TiptapEditor } from '@/components/tiptap-editor/tiptap-editor'
-import { useRenameContextItem, useUpdateContextText } from '@/hooks/useProjectContext'
+import { useRenameContextItem, useUpdateContextText } from '@/hooks/projects/useProjectContext'
 import type { ProjectContextItemWithFile } from '@/services/api/projectContext/projectContextService'
 
 interface Props {
