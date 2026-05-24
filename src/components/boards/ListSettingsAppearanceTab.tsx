@@ -8,20 +8,13 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-  useDroppable,
 } from '@dnd-kit/core'
-import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
-import { Plus, Trash2, AlignLeft, AlignRight, LayoutList, LayoutGrid } from 'lucide-react'
+import { Plus, LayoutList, LayoutGrid } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Checkbox } from '@/components/ui/checkbox'
-import { cn } from '@/lib/utils'
-import { useWorkspaceCalendars } from '@/hooks/useGoogleCalendar'
 import {
   type CardLayout,
   type CardFieldId,
-  type CardFieldStyle,
   type DisplayMode,
   type CalendarSettings,
   DEFAULT_CALENDAR_SETTINGS,
@@ -33,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getFieldLabel, CARD_FONT_SIZES, CARD_TRUNCATES } from './listSettingsConfigs'
 import {
   updateFieldStyle,
   addRow,
@@ -45,8 +37,11 @@ import {
   DEFAULT_FIELD_STYLE,
   moveField,
 } from './cardLayoutUtils'
-import { DraggableLayoutField } from './DraggableLayoutField'
 import { CardLayoutPreview } from './CardLayoutPreview'
+import { FieldBank, BANK_ID } from './list-settings/FieldBank'
+import { LayoutRow } from './list-settings/LayoutRow'
+import { FieldStyleEditor } from './list-settings/FieldStyleEditor'
+import { CalendarSourcesPicker } from './list-settings/CalendarSourcesPicker'
 
 type ListSettingsAppearanceTabProps = {
   entityType: 'thread' | 'project'
@@ -61,213 +56,7 @@ type ListSettingsAppearanceTabProps = {
   workspaceId: string
 }
 
-const ALIGNS: { value: 'left' | 'right'; icon: React.ElementType }[] = [
-  { value: 'left', icon: AlignLeft },
-  { value: 'right', icon: AlignRight },
-]
-
-const BANK_ID = '__bank__'
-
-/** Банк неразмещённых полей (droppable + sortable items) */
-function FieldBank({
-  unplacedIds,
-  onAddToRow,
-}: {
-  unplacedIds: CardFieldId[]
-  onAddToRow: (fieldId: CardFieldId) => void
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: BANK_ID })
-  const sortableIds = unplacedIds.map((fid) => `${BANK_ID}::${fid}`)
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        'flex flex-wrap items-center gap-1.5 min-h-[36px] px-2 py-1.5 rounded-md border border-dashed transition-colors',
-        isOver ? 'border-primary bg-primary/5' : 'border-border/60 bg-muted/30',
-      )}
-    >
-      {unplacedIds.length === 0 ? (
-        <span className="text-[11px] text-muted-foreground/50">Все поля размещены</span>
-      ) : (
-        <>
-          <span className="text-[11px] text-muted-foreground mr-1">Доступные:</span>
-          <SortableContext items={sortableIds} strategy={horizontalListSortingStrategy}>
-            {unplacedIds.map((fid) => (
-              <DraggableLayoutField
-                key={fid}
-                fieldId={fid}
-                rowId={BANK_ID}
-                onClick={() => onAddToRow(fid)}
-              />
-            ))}
-          </SortableContext>
-        </>
-      )}
-    </div>
-  )
-}
-
-/** Строка с полями (droppable) */
-function LayoutRow({
-  rowId,
-  rowIndex,
-  totalRows,
-  fieldIds,
-  activeFieldId,
-  onFieldClick,
-  onRemoveRow,
-  onRemoveField,
-}: {
-  rowId: string
-  rowIndex: number
-  totalRows: number
-  fieldIds: CardFieldId[]
-  activeFieldId: CardFieldId | null
-  onFieldClick: (fieldId: CardFieldId) => void
-  onRemoveRow: () => void
-  onRemoveField: (fieldId: CardFieldId) => void
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: rowId })
-  const sortableIds = fieldIds.map((fid) => `${rowId}::${fid}`)
-
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-muted-foreground">Строка {rowIndex + 1}</span>
-        <div className="flex-1" />
-        {totalRows > 1 && (
-          <button
-            type="button"
-            onClick={onRemoveRow}
-            className="text-muted-foreground hover:text-destructive transition-colors"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
-        )}
-      </div>
-      <div
-        ref={setNodeRef}
-        className={cn(
-          'flex flex-wrap items-center gap-1.5 min-h-[36px] px-2 py-1.5 rounded-md border border-dashed transition-colors',
-          isOver ? 'border-primary bg-primary/5' : 'border-border',
-          fieldIds.length === 0 && 'justify-center',
-        )}
-      >
-        <SortableContext items={sortableIds} strategy={horizontalListSortingStrategy}>
-          {fieldIds.length === 0 && (
-            <span className="text-[11px] text-muted-foreground/50">Перетащите поля сюда</span>
-          )}
-          {fieldIds.map((fid) => (
-            <DraggableLayoutField
-              key={fid}
-              fieldId={fid}
-              rowId={rowId}
-              isActive={activeFieldId === fid}
-              onClick={() => onFieldClick(fid)}
-              onRemove={() => onRemoveField(fid)}
-            />
-          ))}
-        </SortableContext>
-      </div>
-    </div>
-  )
-}
-
-/** Инлайн-панель настроек выбранного поля */
-function FieldStyleEditor({
-  fieldId,
-  style,
-  onStyleChange,
-  onClose,
-}: {
-  fieldId: CardFieldId
-  style: CardFieldStyle
-  onStyleChange: (patch: Partial<CardFieldStyle>) => void
-  onClose: () => void
-}) {
-  return (
-    <div className="rounded-md border bg-muted/30 p-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium">{getFieldLabel(fieldId)}</span>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-xs text-muted-foreground hover:text-foreground"
-        >
-          Закрыть
-        </button>
-      </div>
-
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-1">
-          <Label className="text-[11px] text-muted-foreground mr-1">Размер</Label>
-          {CARD_FONT_SIZES.map((fs) => (
-            <button
-              key={fs.value}
-              type="button"
-              onClick={() => onStyleChange({ fontSize: fs.value })}
-              className={cn(
-                'h-7 w-7 rounded text-xs border transition-colors',
-                style.fontSize === fs.value
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border hover:border-primary/50',
-              )}
-            >
-              {fs.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-1">
-          <Label className="text-[11px] text-muted-foreground mr-1">Выр.</Label>
-          {ALIGNS.map((a) => (
-            <button
-              key={a.value}
-              type="button"
-              onClick={() => onStyleChange({ align: a.value })}
-              className={cn(
-                'h-7 w-7 flex items-center justify-center rounded border transition-colors',
-                style.align === a.value
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border text-muted-foreground hover:border-primary/50',
-              )}
-            >
-              <a.icon className="h-3.5 w-3.5" />
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-1">
-          <Label className="text-[11px] text-muted-foreground mr-1">Текст</Label>
-          {CARD_TRUNCATES.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => onStyleChange({ truncate: t.value })}
-              className={cn(
-                'h-7 px-2 rounded text-xs border transition-colors',
-                style.truncate === t.value
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border hover:border-primary/50',
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <Label className="text-[11px] text-muted-foreground">Жирный</Label>
-          <Switch
-            checked={style.bold}
-            onCheckedChange={(checked) => onStyleChange({ bold: checked })}
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
+// FieldBank, LayoutRow, FieldStyleEditor вынесены в ./list-settings/
 
 export default function ListSettingsAppearanceTab({
   entityType,
@@ -594,70 +383,4 @@ export default function ListSettingsAppearanceTab({
   )
 }
 
-/**
- * CalendarSourcesPicker — мультиселект внешних календарей для
- * календарного списка board_lists.
- *
- * Логика: пусто = «по умолчанию» (только задачи воркспейса из фильтра).
- * Если выбран хотя бы один — события из этих календарей мёржатся в
- * сетку вместе с задачами.
- */
-function CalendarSourcesPicker({
-  workspaceId,
-  value,
-  onChange,
-}: {
-  workspaceId: string
-  value: string[]
-  onChange: (ids: string[]) => void
-}) {
-  const { data: calendars = [], isLoading } = useWorkspaceCalendars(workspaceId)
-  const selected = new Set(value)
-
-  if (isLoading) {
-    return <p className="text-[11px] text-muted-foreground">Загрузка календарей…</p>
-  }
-
-  if (calendars.length === 0) {
-    return (
-      <p className="text-[11px] text-muted-foreground">
-        Источников ещё нет. Подключите Google Calendar в Настройки → Интеграции.
-      </p>
-    )
-  }
-
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-[11px] text-muted-foreground">Источники-календари</Label>
-      <div className="space-y-1">
-        {calendars.map((cal) => (
-          <label
-            key={cal.id}
-            className="flex items-center gap-2 cursor-pointer select-none text-xs"
-          >
-            <Checkbox
-              checked={selected.has(cal.id)}
-              onCheckedChange={(v) => {
-                const next = new Set(selected)
-                if (v) next.add(cal.id)
-                else next.delete(cal.id)
-                onChange(Array.from(next))
-              }}
-            />
-            <span
-              className="w-2.5 h-2.5 rounded-full shrink-0"
-              style={{ backgroundColor: cal.color }}
-            />
-            <span className="truncate">{cal.name}</span>
-            <span className="ml-auto text-[10px] text-muted-foreground/70">
-              {cal.source === 'google' ? 'Google' : 'внутренний'}
-            </span>
-          </label>
-        ))}
-      </div>
-      <p className="text-[10px] text-muted-foreground/70">
-        Если ничего не выбрано — показываются только задачи из фильтра.
-      </p>
-    </div>
-  )
-}
+// CalendarSourcesPicker вынесен в ./list-settings/CalendarSourcesPicker
