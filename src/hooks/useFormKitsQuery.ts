@@ -8,7 +8,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
-import { formKitKeys } from '@/hooks/queryKeys'
+import { formKitKeys, STALE_TIME } from '@/hooks/queryKeys'
 import {
   getFormKitsByProject,
   createFormKitFromTemplate,
@@ -27,6 +27,7 @@ export function useFormKitsQuery(projectId: string | undefined, enabled = true) 
     queryKey: formKitKeys.byProject(projectId ?? ''),
     queryFn: () => getFormKitsByProject(projectId!),
     enabled: !!projectId && enabled,
+    staleTime: STALE_TIME.MEDIUM,
   })
 }
 

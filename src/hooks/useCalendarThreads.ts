@@ -15,6 +15,7 @@ import {
   projectThreadKeys,
   taskKeys,
   workspaceTaskKeys,
+  STALE_TIME,
 } from '@/hooks/queryKeys'
 import { logAuditAction } from '@/services/auditService'
 
@@ -64,6 +65,7 @@ export function useCalendarThreads(
       if (error) throw error
       return (data ?? []) as CalendarThread[]
     },
+    staleTime: STALE_TIME.MEDIUM,
   })
 }
 

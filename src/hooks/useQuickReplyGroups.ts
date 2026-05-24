@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { quickReplyKeys } from '@/hooks/queryKeys'
+import { quickReplyKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
 import { safeFetchOrThrow, safeInsertVoidOrThrow, safeUpdateVoidOrThrow, safeDeleteOrThrow } from '@/services/supabase/queryHelpers'
 import type { Database } from '@/types/database'
@@ -31,6 +31,7 @@ export function useQuickReplyGroups(workspaceId: string | undefined) {
         'Не удалось загрузить группы быстрых ответов',
       ),
     enabled: !!workspaceId,
+    staleTime: STALE_TIME.LONG,
   })
 
   const createGroupMutation = useMutation({

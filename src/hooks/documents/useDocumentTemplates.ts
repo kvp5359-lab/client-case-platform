@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { documentTemplateKeys } from '../queryKeys'
+import { documentTemplateKeys, STALE_TIME } from '../queryKeys'
 import {
   getDocumentTemplates,
   uploadDocumentTemplate,
@@ -19,6 +19,7 @@ export function useDocumentTemplates(workspaceId: string | undefined) {
     queryKey: documentTemplateKeys.byWorkspace(workspaceId!),
     queryFn: () => getDocumentTemplates(workspaceId!),
     enabled: !!workspaceId,
+    staleTime: STALE_TIME.LONG,
   })
 }
 

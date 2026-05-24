@@ -9,7 +9,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { folderSlotKeys, documentKitKeys, kitlessDocumentKeys } from '@/hooks/queryKeys'
+import { folderSlotKeys, documentKitKeys, kitlessDocumentKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { FolderSlotWithDocument } from '@/components/documents/types'
 
 export function useFolderSlots(projectId: string) {
@@ -48,6 +48,7 @@ export function useFolderSlots(projectId: string) {
       })
     },
     enabled: !!projectId,
+    staleTime: STALE_TIME.MEDIUM,
   })
 
   // Создание слота

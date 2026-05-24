@@ -8,7 +8,7 @@ import { useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { useWorkspaceContext } from '../../contexts/WorkspaceContext'
-import { permissionKeys } from '../queryKeys'
+import { permissionKeys, STALE_TIME } from '../queryKeys'
 import type { WorkspaceFeature, WorkspaceFeatures } from '../../types/permissions'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 
@@ -58,6 +58,7 @@ export function useWorkspaceFeatures(
       return data?.features ? fromSupabaseJson<WorkspaceFeatures>(data.features) : null
     },
     enabled: !!workspaceId,
+    staleTime: STALE_TIME.LONG,
   })
 
   const isEnabled = useCallback(

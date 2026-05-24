@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useWorkspaceContext } from '../../contexts/WorkspaceContext'
-import { permissionKeys } from '../queryKeys'
+import { permissionKeys, STALE_TIME } from '../queryKeys'
 import { SYSTEM_WORKSPACE_ROLES, type WorkspacePermission, type WorkspacePermissions } from '../../types/permissions'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 
@@ -71,6 +71,7 @@ export function useWorkspacePermissions(
       return data
     },
     enabled: !!workspaceId && !!user?.id,
+    staleTime: STALE_TIME.LONG,
   })
 
   // Загружаем все роли workspace с их разрешениями
@@ -93,6 +94,7 @@ export function useWorkspacePermissions(
       return data
     },
     enabled: !!workspaceId,
+    staleTime: STALE_TIME.LONG,
   })
 
   const userRoles = useMemo(() => participantData?.workspace_roles ?? [], [participantData])

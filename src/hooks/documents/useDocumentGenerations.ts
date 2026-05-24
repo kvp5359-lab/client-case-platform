@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { documentGenerationKeys } from '../queryKeys'
+import { documentGenerationKeys, STALE_TIME } from '../queryKeys'
 import {
   getDocumentGenerations,
   createDocumentGeneration,
@@ -20,6 +20,7 @@ export function useDocumentGenerations(projectId: string | undefined) {
     queryKey: documentGenerationKeys.byProject(projectId!),
     queryFn: () => getDocumentGenerations(projectId!),
     enabled: !!projectId,
+    staleTime: STALE_TIME.MEDIUM,
   })
 }
 
