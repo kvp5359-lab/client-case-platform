@@ -8,7 +8,6 @@ export {
   useGlobalSelectedIds,
   clearAllSelections,
 } from './useDocumentSelection'
-export { useGlobalBatchActions } from './useGlobalBatchActions'
 export { useDocumentDragDrop } from './useDocumentDragDrop'
 export { useSystemSectionTabs } from './useSystemSectionTabs'
 export { useGroupedDocuments } from './useGroupedDocuments'

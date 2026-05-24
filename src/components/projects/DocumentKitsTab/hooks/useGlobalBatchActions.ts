@@ -23,15 +23,12 @@ import {
   useGlobalSelectionCount,
   useGlobalSelectedIds,
   clearAllSelections,
-} from './useDocumentSelection'
+} from '@/hooks/documents/useDocumentSelection'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useDocumentKitUIStore, useCompressState } from '@/store/documentKitUI'
-import { useDocumentCompress } from '@/components/projects/DocumentKitsTab/hooks/useDocumentCompress'
-import {
-  useBatchDelete,
-  useBatchHardDelete,
-} from '@/components/projects/DocumentKitsTab/hooks/batch'
+import { useDocumentCompress } from './useDocumentCompress'
+import { useBatchDelete, useBatchHardDelete } from './batch'
 import type { FloatingBatchActionsProps } from '@/components/documents/FloatingBatchActions'
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
 import { useGlobalBatchMerge } from './useGlobalBatchMerge'
