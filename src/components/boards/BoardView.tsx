@@ -18,6 +18,13 @@ import { BoardColumn } from './BoardColumn'
 import { ColumnGap, DroppableColumn } from './BoardViewDropTargets'
 import { BoardDragOverlayContent } from './board-view/BoardDragOverlayContent'
 import { makeBoardCollisionDetection } from './board-view/collisionDetection'
+import {
+  planManualReorder,
+  planListCardsDrop,
+  planGroupDrop,
+  type CardDrag,
+} from './board-view/cardDragHandlers'
+import { planGapDrop, planListMove } from './board-view/listDragHandlers'
 import type { BoardCardDndState } from './BoardListCard'
 import { usePanDrag } from './hooks/usePanDrag'
 import { useReorderLists } from './hooks/useListMutations'
@@ -27,7 +34,6 @@ import {
   useReorderBoardListItems,
   type BoardItemType,
 } from './hooks/useBoardListItemOrders'
-import { extractStatusIdFromFilter, statusEquals } from './cardDndUtils'
 import {
   DEFAULT_COLUMN_WIDTH,
   EMPTY_BOARD_GLOBAL_FILTER,
@@ -148,11 +154,7 @@ export function BoardView({
 
   // Этап 4.5: card DnD состояние. Лежит здесь чтобы один контекст обслуживал
   // все списки сразу (cross-list drag).
-  const [activeCard, setActiveCard] = useState<
-    | { kind: 'project'; project: BoardProject; sourceListId: string }
-    | { kind: 'task'; task: WorkspaceTask; sourceListId: string }
-    | null
-  >(null)
+  const [activeCard, setActiveCard] = useState<CardDrag | null>(null)
   const [overCardTarget, setOverCardTarget] = useState<string | null>(null)
   // Курсор над календарным списком — прячем DragOverlay, чтобы не
   // дублировать призрак, который рисует сам календарь.
@@ -345,93 +347,46 @@ export function BoardView({
       if (!card) return
 
       // Drop задачи в календарный список обрабатывается ВНУТРИ
-      // BoardListCalendarView через useDndMonitor — здесь только
-      // ранний return, чтобы не сработала status-логика для
-      // calendar-drop:* over-таргетов.
+      // BoardListCalendarView через useDndMonitor.
       const overId = e.over ? String(e.over.id) : null
       if (overId && overId.startsWith('calendar-drop:')) return
 
-      // 0) Drop на конкретную карточку в списке с manual_order — ручной reorder.
+      // Pure-планировщики возвращают action, который применяем здесь.
+      let action: ReturnType<typeof planManualReorder> = { type: 'noop' }
       if (rowInd) {
-        if (rowInd.listId !== card.sourceListId) return // cross-list reorder не делаем
-        const sourceList = lists.find((l) => l.id === rowInd.listId)
-        if (!sourceList || sourceList.sort_by !== 'manual_order') return
         const itemType: BoardItemType = card.kind === 'project' ? 'project' : 'thread'
-        if ((rowInd.kind === 'project') !== (itemType === 'project')) return
-        const draggedId = card.kind === 'project' ? card.project.id : card.task.id
-        if (rowInd.itemId === draggedId) return
-
-        // Текущий порядок берём из регистра, опубликованного BoardListCard.
         const currentIds = orderRegistryRef.current[rowInd.listId]?.[itemType] ?? []
-        if (currentIds.length === 0) return
-        const without = currentIds.filter((id) => id !== draggedId)
-        const targetIdx = without.indexOf(rowInd.itemId)
-        if (targetIdx === -1) return
-        const insertIdx = rowInd.position === 'bottom' ? targetIdx + 1 : targetIdx
-        const newIds = [...without.slice(0, insertIdx), draggedId, ...without.slice(insertIdx)]
-        if (
-          newIds.length === currentIds.length &&
-          newIds.every((id, i) => id === currentIds[i])
-        ) {
+        action = planManualReorder({ card, rowInd, lists, currentIds })
+      } else if (target?.startsWith('list-cards:')) {
+        action = planListCardsDrop(card, target.slice('list-cards:'.length), lists)
+      } else if (target?.startsWith('group:')) {
+        action = planGroupDrop(card, target)
+      }
+
+      switch (action.type) {
+        case 'reorder':
+          reorderItems.mutate({
+            board_id: boardId,
+            list_id: action.listId,
+            item_type: action.itemType,
+            item_ids: action.itemIds,
+          })
+          flashDrop(action.flashKind, action.flashId)
           return
-        }
-        reorderItems.mutate({
-          board_id: boardId,
-          list_id: rowInd.listId,
-          item_type: itemType,
-          item_ids: newIds,
-        })
-        flashDrop(itemType, draggedId)
-        return
+        case 'change_project_status':
+          updateProjectStatus.mutate({ projectId: action.projectId, statusId: action.statusId })
+          flashDrop('project', action.projectId)
+          return
+        case 'change_task_status':
+          onStatusChange?.(action.taskId, action.statusId)
+          flashDrop('thread', action.taskId)
+          return
+        case 'noop':
+          return
       }
-
-      if (!target) return
-
-      // Drop на конкретный статус-список = смена статуса.
-      if (target.startsWith('list-cards:')) {
-        const targetListId = target.slice('list-cards:'.length)
-        if (targetListId === card.sourceListId) return // дроп в свой же список — no-op
-        const targetList = lists.find((l) => l.id === targetListId)
-        if (!targetList) return
-        const newStatusId = extractStatusIdFromFilter(targetList.filters as never)
-        if (newStatusId === null) return // нет status_id-фильтра — drop не имеет смысла
-        if (card.kind === 'project') {
-          if (statusEquals(card.project.status_id, newStatusId)) return
-          updateProjectStatus.mutate({ projectId: card.project.id, statusId: newStatusId })
-          flashDrop('project', card.project.id)
-        } else {
-          if (statusEquals(card.task.status_id, newStatusId)) return
-          if (onStatusChange) onStatusChange(card.task.id, newStatusId)
-          flashDrop('thread', card.task.id)
-        }
-        return
-      }
-
-      // Drop на группу внутри списка — формат `group:<list_id>:<status_id>`.
-      if (target.startsWith('group:')) {
-        const rest = target.slice('group:'.length)
-        const sep = rest.indexOf(':')
-        if (sep === -1) return
-        const targetListIdInGroup = rest.slice(0, sep)
-        const targetGroupKey = rest.slice(sep + 1)
-        // Drop в группу другого списка не делаем (используется list-cards для cross-list).
-        if (targetListIdInGroup !== card.sourceListId) return
-        const newStatusId = targetGroupKey === '__none__' ? null : targetGroupKey
-        if (card.kind === 'project') {
-          if (statusEquals(card.project.status_id, newStatusId)) return
-          updateProjectStatus.mutate({ projectId: card.project.id, statusId: newStatusId })
-          flashDrop('project', card.project.id)
-        } else {
-          if (statusEquals(card.task.status_id, newStatusId)) return
-          if (onStatusChange) onStatusChange(card.task.id, newStatusId)
-          flashDrop('thread', card.task.id)
-        }
-        return
-      }
-      return
     }
 
-    // ── List drag (существующая логика, без изменений) ─────────────
+    // ── List drag ───────────────────────────────────────────────────
     const ind = dropIndicator
     const gap = gapTarget
     const dragged = activeList
@@ -441,102 +396,11 @@ export function BoardView({
     setGapTarget(null)
     if (!dragged || !e.over) return
 
-    // 1) Дроп в зазор между колонками — создаём новую колонку.
-    if (gap !== null) {
-      const newColumnIndex = gap
-      const updates: Array<{ id: string; column_index: number; sort_order: number }> = []
-      // Сдвигаем все списки с column_index >= newColumnIndex (кроме перетаскиваемого) на +1
-      for (const l of lists) {
-        if (l.id === dragged.id) continue
-        if (l.column_index >= newColumnIndex) {
-          updates.push({ id: l.id, column_index: l.column_index + 1, sort_order: l.sort_order })
-        }
-      }
-      // Перенумеровываем sort_order в исходной колонке (без перетаскиваемого) с шагом 10
-      const sourceColLists = lists
-        .filter((l) => l.column_index === dragged.column_index && l.id !== dragged.id)
-        .sort((a, b) => a.sort_order - b.sort_order)
-      sourceColLists.forEach((l, i) => {
-        const newSort = i * 10
-        // Если этот список уже был сдвинут по column_index — обновим запись с правильным sort.
-        const existing = updates.find((u) => u.id === l.id)
-        const newColIdx = dragged.column_index >= newColumnIndex ? dragged.column_index + 1 : dragged.column_index
-        if (existing) {
-          existing.sort_order = newSort
-        } else if (l.sort_order !== newSort) {
-          updates.push({ id: l.id, column_index: newColIdx, sort_order: newSort })
-        }
-      })
-      // Перетаскиваемый — в новую колонку.
-      updates.push({ id: dragged.id, column_index: newColumnIndex, sort_order: 0 })
-      reorderLists.mutate({ board_id: dragged.board_id, updates })
-      return
-    }
-
-    // 2) Дроп на список или в колонку (стандартное перемещение).
     const overId = String(e.over.id)
-    let targetColumnIndex: number
-    let insertBeforeListId: string | null = null
-
-    if (ind && ind.overListId) {
-      const overList = lists.find((l) => l.id === ind.overListId)
-      if (!overList) return
-      targetColumnIndex = overList.column_index
-      const targetColLists = lists
-        .filter((l) => l.column_index === targetColumnIndex && l.id !== dragged.id)
-        .sort((a, b) => a.sort_order - b.sort_order)
-      const overIdx = targetColLists.findIndex((l) => l.id === ind.overListId)
-      if (overIdx === -1) return
-      const insertIdx = ind.position === 'bottom' ? overIdx + 1 : overIdx
-      insertBeforeListId = targetColLists[insertIdx]?.id ?? null
-    } else if (overId.startsWith('col-drop:')) {
-      targetColumnIndex = parseInt(overId.slice('col-drop:'.length), 10)
-      insertBeforeListId = null
-    } else {
-      return
-    }
-
-    const sourceColumnIndex = dragged.column_index
-    const sourceColLists = lists
-      .filter((l) => l.column_index === sourceColumnIndex && l.id !== dragged.id)
-      .sort((a, b) => a.sort_order - b.sort_order)
-    const targetColListsRaw = targetColumnIndex === sourceColumnIndex
-      ? sourceColLists
-      : lists
-          .filter((l) => l.column_index === targetColumnIndex && l.id !== dragged.id)
-          .sort((a, b) => a.sort_order - b.sort_order)
-
-    const insertIdx = insertBeforeListId
-      ? targetColListsRaw.findIndex((l) => l.id === insertBeforeListId)
-      : targetColListsRaw.length
-    const newTargetCol = [
-      ...targetColListsRaw.slice(0, insertIdx),
-      dragged,
-      ...targetColListsRaw.slice(insertIdx),
-    ]
-
-    const sameColumn = sourceColumnIndex === targetColumnIndex
-    if (sameColumn) {
-      const before = lists.filter((l) => l.column_index === targetColumnIndex).sort((a, b) => a.sort_order - b.sort_order)
-      const same = before.length === newTargetCol.length && before.every((l, i) => l.id === newTargetCol[i].id)
-      if (same) return
-    }
-
-    const updates: Array<{ id: string; column_index: number; sort_order: number }> = []
-    newTargetCol.forEach((l, i) => {
-      const newSort = i * 10
-      if (l.column_index !== targetColumnIndex || l.sort_order !== newSort) {
-        updates.push({ id: l.id, column_index: targetColumnIndex, sort_order: newSort })
-      }
-    })
-    if (!sameColumn) {
-      sourceColLists.forEach((l, i) => {
-        const newSort = i * 10
-        if (l.sort_order !== newSort) {
-          updates.push({ id: l.id, column_index: sourceColumnIndex, sort_order: newSort })
-        }
-      })
-    }
+    const updates =
+      gap !== null
+        ? planGapDrop(dragged, lists, gap)
+        : planListMove({ dragged, lists, dropIndicator: ind, overId })
 
     if (updates.length === 0) return
     reorderLists.mutate({ board_id: dragged.board_id, updates })
