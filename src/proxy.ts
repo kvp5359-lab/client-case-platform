@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import {
+  resolveWorkspaceByHost,
+  getWorkspaceById,
+  getShortIdByUuid,
+  resolveShortId,
+} from '@/lib/middleware/resolvers'
 
 /**
  * Middleware: auth + резолв воркспейса по host (поддомен / custom-домен).
@@ -325,134 +331,6 @@ async function handleWorkspaceHost(
   return await handleAuthOnly(request, host, isPublicPath(pathname))
 }
 
-/**
- * Резолв воркспейса по host через RPC. Использует service-role-like anon ключ
- * (RPC объявлен SECURITY DEFINER + GRANT EXECUTE TO anon).
- */
-async function resolveWorkspaceByHost(
-  host: string,
-): Promise<{ id: string; slug: string | null; custom_domain: string | null } | null> {
-  try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!url || !anonKey) return null
-
-    const cleanHost = host.split(':')[0].toLowerCase()
-
-    const res = await fetch(`${url}/rest/v1/rpc/resolve_workspace_by_host`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-      },
-      body: JSON.stringify({ p_host: cleanHost }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (!Array.isArray(data) || data.length === 0) return null
-    const row = data[0]
-    return { id: row.id, slug: row.slug, custom_domain: row.custom_domain }
-  } catch {
-    return null
-  }
-}
-
-/**
- * Резолв воркспейса по UUID через RPC. Используется для legacy-редиректов
- * со старого домена /workspaces/<uuid>/... → <slug>.clientcase.app/...
- */
-async function getWorkspaceById(
-  workspaceId: string,
-): Promise<{ id: string; slug: string | null; custom_domain: string | null } | null> {
-  try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!url || !anonKey) return null
-
-    const res = await fetch(`${url}/rest/v1/rpc/get_workspace_slug_by_id`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-      },
-      body: JSON.stringify({ p_id: workspaceId }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (!Array.isArray(data) || data.length === 0) return null
-    const row = data[0]
-    return { id: row.id, slug: row.slug, custom_domain: row.custom_domain }
-  } catch {
-    return null
-  }
-}
-
-/**
- * Обратный резолв: UUID → short_id. Используется для редиректа /projects/<uuid> → /projects/<short>.
- */
-async function getShortIdByUuid(
-  entityType: 'project' | 'thread' | 'board',
-  uuid: string,
-): Promise<number | null> {
-  try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!url || !anonKey) return null
-
-    const res = await fetch(`${url}/rest/v1/rpc/get_short_id_by_uuid`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-      },
-      body: JSON.stringify({ p_entity_type: entityType, p_uuid: uuid }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (typeof data === 'number') return data
-    return null
-  } catch {
-    return null
-  }
-}
-
-/**
- * Резолв short_id → UUID для коротких ссылок (как у Planfix: /projects/15).
- */
-async function resolveShortId(
-  workspaceId: string,
-  entityType: 'project' | 'thread' | 'board',
-  shortId: number,
-): Promise<string | null> {
-  try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!url || !anonKey) return null
-
-    const res = await fetch(`${url}/rest/v1/rpc/resolve_short_id`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-      },
-      body: JSON.stringify({
-        p_workspace_id: workspaceId,
-        p_entity_type: entityType,
-        p_short_id: shortId,
-      }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (typeof data === 'string') return data
-    return null
-  } catch {
-    return null
-  }
-}
 
 /**
  * Auth-проверка + опциональный rewrite на новый pathname.
