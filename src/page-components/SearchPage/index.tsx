@@ -15,7 +15,8 @@
 
 import { createElement, useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Loader2, Search, X, ListChecks, Mail, MessageSquare, BookOpen, User, Quote } from 'lucide-react'
+import { Search, X, ListChecks, Mail, MessageSquare, BookOpen, User, Quote } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import {
   useGlobalSearch,
@@ -167,9 +168,7 @@ export default function SearchPage() {
                 Введите минимум 2 символа
               </div>
             ) : isFetching && (!results || results.length === 0) ? (
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-500 py-16">
-                <Loader2 size={16} className="animate-spin" /> Ищу…
-              </div>
+              <PageLoader label="Ищу…" />
             ) : !results || results.length === 0 ? (
               <div className="text-center text-sm text-gray-500 py-16">
                 Ничего не найдено
