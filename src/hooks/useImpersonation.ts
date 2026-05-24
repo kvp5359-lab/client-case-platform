@@ -36,18 +36,7 @@ export interface ImpersonationState {
   end: () => Promise<void>
 }
 
-interface StartResponse {
-  access_token: string
-  expires_at: string
-  expires_in: number
-  session_id: string
-  target: {
-    id: string
-    email: string
-    name: string | null
-    last_name: string | null
-  }
-}
+import type { ImpersonateStartResponse as StartResponse } from '@/types/edgeContracts'
 
 export function useImpersonation(): ImpersonationState {
   const { session } = useAuth()
