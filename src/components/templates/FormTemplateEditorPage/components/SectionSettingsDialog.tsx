@@ -2,7 +2,7 @@
  * Диалог настроек секции шаблона анкеты: имя, описание, цвет заголовка.
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -28,7 +28,17 @@ interface SectionSettingsDialogProps {
   onSave: (data: { name: string; description: string; headerColor: string | null }) => void
 }
 
-export function SectionSettingsDialog({
+export function SectionSettingsDialog(props: SectionSettingsDialogProps) {
+  // key по section.id + флагу open — пересоздаёт внутренний стейт при открытии
+  // и смене секции, без useEffect-каскадов.
+  const { open, onOpenChange } = props
+  if (!open) {
+    return <Dialog open={open} onOpenChange={onOpenChange} />
+  }
+  return <SectionSettingsDialogInner key={props.section.id} {...props} />
+}
+
+function SectionSettingsDialogInner({
   open,
   onOpenChange,
   section,
@@ -37,14 +47,6 @@ export function SectionSettingsDialog({
   const [name, setName] = useState(section.name)
   const [description, setDescription] = useState(section.description || '')
   const [color, setColor] = useState(section.header_color || DEFAULT_SECTION_HEADER_COLOR)
-
-  useEffect(() => {
-    if (open) {
-      setName(section.name)
-      setDescription(section.description || '')
-      setColor(section.header_color || DEFAULT_SECTION_HEADER_COLOR)
-    }
-  }, [open, section.name, section.description, section.header_color])
 
   const handleSave = () => {
     if (!name.trim()) return
