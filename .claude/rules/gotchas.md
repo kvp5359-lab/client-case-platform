@@ -30,7 +30,9 @@ USING (
 
 **При рефакторинге `can_user_access_thread` или `project_threads_select`** — прогнать тест: `INSERT INTO project_threads (...) RETURNING id` под role authenticated должен пройти.
 
-**Полная защита** — переписать функцию на сигнатуру `can_user_access_thread(t project_threads, p_user_id uuid)` и вызывать в полиции `can_user_access_thread(project_threads, …)`. Postgres подставит NEW.* напрямую, без перечитывания. Тогда short-circuit не нужен. На 2026-05-13 не сделано — функцию зовут ещё `project_messages_*` полиции.
+**Полная защита** — переписать функцию на сигнатуру `can_user_access_thread(t project_threads, p_user_id uuid)` и вызывать в полиции `can_user_access_thread(project_threads, …)`. Postgres подставит NEW.* напрямую, без перечитывания. Тогда short-circuit не нужен.
+
+**План фикса**: [docs/feature-backlog/2026-05-24-can-user-access-thread-rls-permanent-fix.md](../../docs/feature-backlog/2026-05-24-can-user-access-thread-rls-permanent-fix.md). Миграция не применена — ждёт явного «да» владельца.
 
 Подробно: [docs/bugs/resolved/2026-05-13-thread-insert-returning-rls.md](../../docs/bugs/resolved/2026-05-13-thread-insert-returning-rls.md).
 
