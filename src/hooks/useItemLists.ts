@@ -20,6 +20,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { itemListKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { FilterGroup, SortDir, SortField } from '@/lib/filters/types'
+import type { Json } from '@/types/database'
 
 export type ItemListEntityType = 'thread' | 'project'
 
@@ -134,10 +135,10 @@ export function useCreateItemList() {
         name: params.name.trim(),
         icon: params.icon ?? null,
         color: params.color ?? null,
-        filter_config: (params.filter_config ?? { logic: 'and', rules: [] }) as unknown as never,
+        filter_config: (params.filter_config ?? { logic: 'and', rules: [] }) as unknown as Json,
         sort_by: params.sort_by ?? null,
         sort_dir: params.sort_dir ?? null,
-        columns: (params.columns ?? []) as unknown as never,
+        columns: (params.columns ?? []) as unknown as Json,
         created_by: userId,
       }
 
@@ -210,7 +211,7 @@ export function useSoftDeleteItemList() {
           is_deleted: true,
           deleted_at: new Date().toISOString(),
           deleted_by: userId,
-        } as never)
+        })
         .eq('id', id)
       if (error) throw error
     },

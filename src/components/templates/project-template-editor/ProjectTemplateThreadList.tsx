@@ -109,11 +109,11 @@ export function ProjectTemplateThreadList({
       const { assignee_ids, ...templateData } = data
 
       if (templateId) {
-        const { error } = await supabase.rpc('update_thread_template_with_assignees' as never, {
+        const { error } = await supabase.rpc('update_thread_template_with_assignees', {
           p_template_id: templateId,
           p_updates: templateData,
           p_assignee_ids: assignee_ids,
-        } as never)
+        })
         if (error) throw error
       } else {
         const nextSort = templates.length
@@ -165,9 +165,9 @@ export function ProjectTemplateThreadList({
 
   const copyMutation = useMutation({
     mutationFn: async (item: ThreadTemplate) => {
-      const { error } = await supabase.rpc('copy_thread_template' as never, {
+      const { error } = await supabase.rpc('copy_thread_template', {
         p_template_id: item.id,
-      } as never)
+      })
       if (error) throw error
     },
     onSuccess: () => {

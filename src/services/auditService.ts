@@ -41,7 +41,7 @@ type AuditAction =
   | 'restore'
   | 'hard_delete'
 
-type ResourceType = 'document' | 'document_kit' | 'folder' | 'project' | 'task' | 'form_kit' | 'thread'
+type ResourceType = 'document' | 'document_kit' | 'folder' | 'project' | 'task' | 'form_kit' | 'thread' | 'context_item'
 
 /**
  * Записывает аудит-лог через RPC-функцию в БД.

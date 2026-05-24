@@ -46,7 +46,7 @@ export function useUpdateTranslationSettings(workspaceId: string | undefined) {
       if (!workspaceId) throw new Error('workspaceId required')
       const { error } = await supabase
         .from('workspaces')
-        .update(patch as never)
+        .update(patch)
         .eq('id', workspaceId)
       if (error) throw error
     },

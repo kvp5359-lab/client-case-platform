@@ -20,10 +20,10 @@ export function useAccessibleProjects(workspaceId: string | undefined) {
   return useQuery({
     queryKey: accessibleProjectKeys.forUser(workspaceId ?? '', user?.id),
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_accessible_projects' as never, {
+      const { data, error } = await supabase.rpc('get_accessible_projects', {
         p_workspace_id: workspaceId!,
         p_user_id: user!.id,
-      } as never)
+      })
       if (error) throw error
       return (data ?? []) as BoardProject[]
     },

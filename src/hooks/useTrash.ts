@@ -342,7 +342,7 @@ export function useRestoreContextItem(workspaceId: string) {
 
       logAuditAction(
         'restore',
-        'context_item' as never,
+        'context_item',
         item.id,
         { name: item.name },
         item.project_id,
@@ -373,7 +373,7 @@ export function useHardDeleteContextItem(workspaceId: string) {
         '@/services/api/projectContext/projectContextService'
       )
       await hardDeleteItem(item.id)
-      logAuditAction('hard_delete', 'context_item' as never, item.id, { name: item.name })
+      logAuditAction('hard_delete', 'context_item', item.id, { name: item.name })
       return item
     },
     onSuccess: () => {

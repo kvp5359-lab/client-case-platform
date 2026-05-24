@@ -80,11 +80,11 @@ export function useGlobalSearch(
     enabled: Boolean(workspaceId) && query.length >= 2,
     staleTime: 30_000,
     queryFn: async (): Promise<GlobalSearchRow[]> => {
-      const { data, error } = await supabase.rpc('global_search' as never, {
+      const { data, error } = await supabase.rpc('global_search', {
         p_workspace_id: workspaceId!,
         p_query: query,
         p_limit: limit,
-      } as never)
+      })
       if (error) throw error
       return (data as GlobalSearchRow[] | null) ?? []
     },
@@ -100,10 +100,10 @@ export function useRecentlyViewed(workspaceId: string | undefined, limit = 20) {
     enabled: Boolean(workspaceId),
     staleTime: 60_000,
     queryFn: async (): Promise<RecentlyViewedRow[]> => {
-      const { data, error } = await supabase.rpc('get_recently_viewed' as never, {
+      const { data, error } = await supabase.rpc('get_recently_viewed', {
         p_workspace_id: workspaceId!,
         p_limit: limit,
-      } as never)
+      })
       if (error) throw error
       return (data as RecentlyViewedRow[] | null) ?? []
     },
@@ -124,11 +124,11 @@ export function useTrackRecentView() {
       entityType: RecentEntityType
       entityId: string
     }) => {
-      const { error } = await supabase.rpc('track_recent_view' as never, {
+      const { error } = await supabase.rpc('track_recent_view', {
         p_workspace_id: params.workspaceId,
         p_entity_type: params.entityType,
         p_entity_id: params.entityId,
-      } as never)
+      })
       if (error) throw error
     },
     onSuccess: (_, params) => {

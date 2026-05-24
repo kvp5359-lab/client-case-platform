@@ -42,10 +42,10 @@ export function useWorkspaceThreads(workspaceId: string | undefined) {
   return useQuery({
     queryKey: workspaceThreadKeys.forUser(workspaceId ?? '', user?.id),
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_workspace_threads' as never, {
+      const { data, error } = await supabase.rpc('get_workspace_threads', {
         p_workspace_id: workspaceId!,
         p_user_id: user!.id,
-      } as never)
+      })
       if (error) throw error
       return (data ?? []) as WorkspaceTask[]
     },
