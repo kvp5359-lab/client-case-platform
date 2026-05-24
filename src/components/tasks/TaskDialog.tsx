@@ -21,6 +21,7 @@ import { type AvatarParticipant } from '@/components/participants/ParticipantAva
 import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'
 import type { TaskItem } from './types'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 
 type TaskDialogProps = {
   task: TaskItem | null
@@ -205,7 +206,7 @@ export function TaskDialog({
               projectId={task.project_id ?? undefined}
               workspaceId={workspaceId}
               threadId={task.id}
-              accent={task.accent_color as never}
+              accent={task.accent_color as ThreadAccentColor}
               toolbarPortalContainer={toolbarContainer}
             />
           </div>
