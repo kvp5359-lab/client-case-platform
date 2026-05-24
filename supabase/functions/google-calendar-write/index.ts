@@ -12,7 +12,7 @@
  * UI обновился без ожидания следующего sync-цикла.
  */
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { ensureValidCalendarToken, type GoogleCalendarTokenData } from "../_shared/googleCalendarToken.ts";
 
 interface WriteBody {
@@ -28,7 +28,7 @@ interface WriteBody {
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
     const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
@@ -48,14 +48,14 @@ Deno.serve(async (req: Request) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
     const body = await req.json() as WriteBody;
     if (!body.action || !body.calendar_id) {
       return new Response(JSON.stringify({ error: "action and calendar_id are required" }), {
-        status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -70,17 +70,17 @@ Deno.serve(async (req: Request) => {
 
     if (calError || !cal) {
       return new Response(JSON.stringify({ error: "Calendar not found" }), {
-        status: 404, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        status: 404, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
     if (cal.source !== 'google' || !cal.google_calendar_id) {
       return new Response(JSON.stringify({ error: "Not a Google calendar" }), {
-        status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
     if (cal.owner_user_id !== user.id) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        status: 403, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -93,7 +93,7 @@ Deno.serve(async (req: Request) => {
 
     if (tokenError || !tokenData) {
       return new Response(JSON.stringify({ error: "Google account not connected" }), {
-        status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -103,7 +103,7 @@ Deno.serve(async (req: Request) => {
     if (body.action === 'delete') {
       if (!body.external_id) {
         return new Response(JSON.stringify({ error: "external_id required for delete" }), {
-          status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+          status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
       const res = await fetch(`${baseUrl}/${encodeURIComponent(body.external_id)}`, {
@@ -113,7 +113,7 @@ Deno.serve(async (req: Request) => {
       if (!res.ok && res.status !== 410) {
         const txt = await res.text();
         return new Response(JSON.stringify({ error: `Google delete failed: ${res.status} — ${txt.slice(0, 200)}` }), {
-          status: 502, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+          status: 502, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
       await supabaseAdmin
@@ -122,14 +122,14 @@ Deno.serve(async (req: Request) => {
         .eq('calendar_id', cal.id)
         .eq('external_id', body.external_id);
       return new Response(JSON.stringify({ ok: true }), {
-        status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        status: 200, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
     // create / update: payload Google
     if (!body.start_at || !body.end_at) {
       return new Response(JSON.stringify({ error: "start_at/end_at required" }), {
-        status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -152,7 +152,7 @@ Deno.serve(async (req: Request) => {
       // update
       if (!body.external_id) {
         return new Response(JSON.stringify({ error: "external_id required for update" }), {
-          status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+          status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
       res = await fetch(`${baseUrl}/${encodeURIComponent(body.external_id)}`, {
@@ -165,7 +165,7 @@ Deno.serve(async (req: Request) => {
     if (!res.ok) {
       const txt = await res.text();
       return new Response(JSON.stringify({ error: `Google ${body.action} failed: ${res.status} — ${txt.slice(0, 300)}` }), {
-        status: 502, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        status: 502, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -193,12 +193,12 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(JSON.stringify({ event: ev }), {
-      status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      status: 200, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Error in google-calendar-write:', error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Write failed' }), {
-      status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      status: 500, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
     });
   }
 });

@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import {
   safeErrorResponse,
   checkWorkspaceMembership,
@@ -16,14 +16,14 @@ import PizZip from "npm:pizzip@3";
  */
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: getCorsHeaders(req) });
+    return new Response("ok", { headers: corsHeadersFor(req) });
   }
 
   try {
     // Auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 401,
         publicMessage: "Missing authorization header",
       });
@@ -33,7 +33,7 @@ Deno.serve(async (req: Request) => {
     const { file_base64, workspace_id } = body;
 
     if (!file_base64 || typeof file_base64 !== "string") {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 400,
         publicMessage: "file_base64 is required",
       });
@@ -42,14 +42,14 @@ Deno.serve(async (req: Request) => {
     // Limit base64 size (~50 MB decoded = ~67 MB base64)
     const MAX_BASE64_LENGTH = 67_000_000;
     if (file_base64.length > MAX_BASE64_LENGTH) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 400,
         publicMessage: "File is too large. Maximum 50 MB allowed.",
       });
     }
 
     if (!workspace_id || !isValidUUID(workspace_id)) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 400,
         publicMessage: "Valid workspace_id is required",
       });
@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
       data: { user },
     } = await supabaseUser.auth.getUser();
     if (!user) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 401,
         publicMessage: "Unauthorized",
       });
@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
       workspace_id,
     );
     if (!isMember) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 403,
         publicMessage: "Access denied",
       });
@@ -127,10 +127,10 @@ Deno.serve(async (req: Request) => {
 
     return new Response(JSON.stringify({ placeholders }), {
       status: 200,
-      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
     });
   } catch (error) {
-    return safeErrorResponse(req, getCorsHeaders, {
+    return safeErrorResponse(req, corsHeadersFor, {
       status: 500,
       publicMessage: "Failed to extract placeholders",
       internalError: error,

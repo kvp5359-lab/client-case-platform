@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { safeJsonParse, isValidUUID } from "../_shared/validation.ts";
 import {
   setupAiChat,
@@ -13,7 +13,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
-      headers: getCorsHeaders(req)
+      headers: corsHeadersFor(req)
     });
   }
 
@@ -23,7 +23,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -43,28 +43,28 @@ Deno.serve(async (req: Request) => {
     if (!file) {
       return new Response(
         JSON.stringify({ error: "file is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
     if (!question || question.trim().length === 0) {
       return new Response(
         JSON.stringify({ error: "question is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
     if (!workspace_id) {
       return new Response(
         JSON.stringify({ error: "workspace_id is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
     if (!isValidUUID(workspace_id)) {
       return new Response(
         JSON.stringify({ error: "workspace_id must be a valid UUID" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -75,7 +75,7 @@ Deno.serve(async (req: Request) => {
     if (!isPdf && !isImage) {
       return new Response(
         JSON.stringify({ error: `Unsupported file type: ${file.type}. Only PDF and images are supported.` }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -163,14 +163,14 @@ Deno.serve(async (req: Request) => {
         file_name: file.name,
         file_type: file.type,
       }),
-      { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
 
   } catch (error) {
     console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
   }
 });

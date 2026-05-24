@@ -6,7 +6,7 @@
  */
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { findInvalidUUID } from "../_shared/validation.ts";
 import { getValidAccessTokenForUser } from "../_shared/googleDriveToken.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
@@ -25,7 +25,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
-      headers: getCorsHeaders(req),
+      headers: corsHeadersFor(req),
     });
   }
 
@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
     if (!user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
       });
     }
 
@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
     if (!formKitId || !projectId) {
       return new Response(JSON.stringify({ error: "formKitId and projectId are required" }), {
         status: 400,
-        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
       });
     }
 
@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
     if (invalidField) {
       return new Response(JSON.stringify({ error: `${invalidField} must be a valid UUID` }), {
         status: 400,
-        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
       });
     }
 
@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
     if (!isMember) {
       return new Response(JSON.stringify({ error: "Access denied" }), {
         status: 403,
-        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
       });
     }
 
@@ -235,7 +235,7 @@ Deno.serve(async (req: Request) => {
       }),
       {
         status: 200,
-        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
       },
     );
   } catch (error) {
@@ -245,7 +245,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({ error: "Failed to sync form to Google Sheets" }),
       {
         status: 500,
-        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
       },
     );
   }

@@ -1,13 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: getCorsHeaders(req) })
+    return new Response('ok', { headers: corsHeadersFor(req) })
   }
 
   try {
@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     if (!file) {
       return new Response(
         JSON.stringify({ success: false, error: 'No file provided' }),
-        { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     if (file.size > MAX_FILE_SIZE) {
       return new Response(
         JSON.stringify({ success: false, error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024} MB` }),
-        { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
         }),
         {
           status: 400,
-          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' }
+          headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' }
         }
       )
     }
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
       compressedBytes,
       {
         headers: {
-          ...getCorsHeaders(req),
+          ...corsHeadersFor(req),
           'Content-Type': 'application/pdf',
           'X-Original-Size': originalSize.toString(),
           'X-Compressed-Size': compressedSize.toString(),
@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
       }),
       {
         status: 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' }
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' }
       }
     )
   }

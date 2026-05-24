@@ -7,7 +7,7 @@
  * вызывает Calendar API calendarList.list.
  */
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { ensureValidCalendarToken, type GoogleCalendarTokenData } from "../_shared/googleCalendarToken.ts";
 
 interface GoogleCalendarListItem {
@@ -22,7 +22,7 @@ interface GoogleCalendarListItem {
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -30,7 +30,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } },
+        { status: 401, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } },
       );
     }
 
@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } },
+        { status: 401, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } },
       );
     }
 
@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
     if (tokenError || !tokenData) {
       return new Response(
         JSON.stringify({ error: 'Google Calendar not connected' }),
-        { status: 404, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } },
+        { status: 404, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } },
       );
     }
 
@@ -75,7 +75,7 @@ Deno.serve(async (req: Request) => {
       console.error('calendarList.list failed:', errText);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch calendar list', details: errText }),
-        { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } },
+        { status: 500, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } },
       );
     }
 
@@ -93,13 +93,13 @@ Deno.serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({ calendars }),
-      { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' }, status: 200 },
+      { headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' }, status: 200 },
     );
   } catch (error) {
     console.error('Error in google-calendar-list:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to list calendars' }),
-      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } },
+      { status: 500, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } },
     );
   }
 });

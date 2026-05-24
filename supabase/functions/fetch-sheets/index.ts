@@ -1,4 +1,4 @@
-import { getCorsHeaders } from '../_shared/cors.ts'
+import { corsHeadersFor } from "../_shared/edge.ts"
 
 interface RowMetadata {
   hiddenByFilter?: boolean
@@ -11,7 +11,7 @@ interface SheetData {
 }
 
 Deno.serve(async (req: Request) => {
-  const corsHeaders = getCorsHeaders(req)
+  const corsHeaders = corsHeadersFor(req)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }

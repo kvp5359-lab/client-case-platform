@@ -1,13 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { ensureValidAccessToken } from "../_shared/googleDriveToken.ts";
 import { isValidGoogleDriveId, isValidUUID } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -15,7 +15,7 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -41,7 +41,7 @@ serve(async (req) => {
         JSON.stringify({ error: "Unauthorized" }),
         {
           status: 401,
-          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+          headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
         }
       );
     }
@@ -53,7 +53,7 @@ serve(async (req) => {
         JSON.stringify({ error: "Invalid or missing folderId" }),
         {
           status: 400,
-          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+          headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
         }
       );
     }
@@ -62,7 +62,7 @@ serve(async (req) => {
     if (!workspaceId || !isValidUUID(workspaceId)) {
       return new Response(
         JSON.stringify({ error: "workspaceId is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -70,7 +70,7 @@ serve(async (req) => {
     if (!isMember) {
       return new Response(
         JSON.stringify({ error: "Access denied" }),
-        { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -86,7 +86,7 @@ serve(async (req) => {
         JSON.stringify({ error: "Google Drive not connected", code: "NOT_CONNECTED" }),
         {
           status: 401,
-          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+          headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
         }
       );
     }
@@ -114,7 +114,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ exists: false, error: "Folder not found" }),
           {
-            headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+            headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
           }
         );
       }
@@ -124,7 +124,7 @@ serve(async (req) => {
         JSON.stringify({ error: "Failed to get folder info from Google Drive" }),
         {
           status: 502,
-          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+          headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
         }
       );
     }
@@ -139,7 +139,7 @@ serve(async (req) => {
         isFolder: folderData.mimeType === "application/vnd.google-apps.folder",
       }),
       {
-        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
       }
     );
   } catch (error) {
@@ -150,7 +150,7 @@ serve(async (req) => {
       }),
       {
         status: 500,
-        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
       }
     );
   }

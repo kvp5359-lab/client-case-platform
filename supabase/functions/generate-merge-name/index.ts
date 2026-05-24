@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { isValidUUID } from "../_shared/validation.ts";
 import { isGeminiModel, callGeminiApi } from "../_shared/gemini-client.ts";
@@ -18,7 +18,7 @@ interface WorkspaceData {
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -27,7 +27,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -37,7 +37,7 @@ Deno.serve(async (req: Request) => {
     if (!workspace_id || !document_names) {
       return new Response(
         JSON.stringify({ error: "workspace_id and document_names are required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
     if (!isValidUUID(workspace_id)) {
       return new Response(
         JSON.stringify({ error: "workspace_id must be a valid UUID" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
     if (typeof document_names === "string" && document_names.length > MAX_NAMES_LENGTH) {
       return new Response(
         JSON.stringify({ error: `document_names exceeds maximum of ${MAX_NAMES_LENGTH} characters` }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
     if (!isMember) {
       return new Response(
         JSON.stringify({ error: "Access denied" }),
-        { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
       const providerName = useGemini ? "Google" : "Anthropic";
       return new Response(
         JSON.stringify({ error: `${providerName} API key not configured for this workspace` }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -143,7 +143,7 @@ Deno.serve(async (req: Request) => {
         console.error("Gemini API error:", err);
         return new Response(
           JSON.stringify({ error: "AI service error" }),
-          { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
     } else {
@@ -166,7 +166,7 @@ Deno.serve(async (req: Request) => {
         console.error("Claude API error:", errorText);
         return new Response(
           JSON.stringify({ error: "AI service error" }),
-          { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
 
@@ -185,14 +185,14 @@ Deno.serve(async (req: Request) => {
         success: true,
         name: cleanName || `Объединённый документ (${count})`,
       }),
-      { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
 
   } catch (error) {
     console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
   }
 });

@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { isValidUUID, isValidGoogleDriveId } from "../_shared/validation.ts";
 import { getValidAccessTokenForUser } from "../_shared/googleDriveToken.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
@@ -25,7 +25,7 @@ interface ExportRequest {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -33,7 +33,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -58,14 +58,14 @@ Deno.serve(async (req: Request) => {
     if (!folder_id || !documents || documents.length === 0) {
       return new Response(
         JSON.stringify({ error: "folder_id and documents are required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
     if (typeof folder_id !== "string" || !isValidGoogleDriveId(folder_id)) {
       return new Response(
         JSON.stringify({ error: "Invalid folder_id format" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -73,14 +73,14 @@ Deno.serve(async (req: Request) => {
     if (documents.length > MAX_DOCUMENTS) {
       return new Response(
         JSON.stringify({ error: `Too many documents. Maximum ${MAX_DOCUMENTS} allowed per export.` }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
     if (session_id && !isValidUUID(session_id)) {
       return new Response(
         JSON.stringify({ error: "session_id must be a valid UUID" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -88,7 +88,7 @@ Deno.serve(async (req: Request) => {
     if (!workspace_id || !isValidUUID(workspace_id)) {
       return new Response(
         JSON.stringify({ error: "workspace_id is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
     if (!isMember) {
       return new Response(
         JSON.stringify({ error: "Access denied" }),
-        { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -114,20 +114,20 @@ Deno.serve(async (req: Request) => {
       if (folderCheckResponse.status === 404) {
         return new Response(
           JSON.stringify({ error: "Folder not found" }),
-          { status: 404, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 404, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
       if (folderCheckResponse.status === 403) {
         return new Response(
           JSON.stringify({ error: "No access to the specified folder" }),
-          { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
       const errorText = await folderCheckResponse.text();
       console.error("Failed to check folder access:", errorText);
       return new Response(
         JSON.stringify({ error: "Failed to check folder access" }),
-        { status: folderCheckResponse.status, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: folderCheckResponse.status, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -135,7 +135,7 @@ Deno.serve(async (req: Request) => {
     if (folderData.capabilities?.canAddChildren !== true) {
       return new Response(
         JSON.stringify({ error: "No write access to the specified folder" }),
-        { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -312,13 +312,13 @@ Deno.serve(async (req: Request) => {
         success_count: successCount,
         total_count: documents.length,
       }),
-      { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("[EXPORT-DOCUMENTS] Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
   }
 });

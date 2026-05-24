@@ -15,7 +15,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { getValidAccessTokenForUser } from "../_shared/googleDriveToken.ts";
 import { isValidUUID, isValidGoogleDriveId } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
@@ -121,7 +121,7 @@ async function shareWithEmail(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
     if (!user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
     if (!workspaceId || !isValidUUID(workspaceId)) {
       return new Response(
         JSON.stringify({ error: "workspaceId is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
     if (!isMember) {
       return new Response(
         JSON.stringify({ error: "Access denied" }),
-        { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -184,14 +184,14 @@ Deno.serve(async (req) => {
       if (!briefSheetId || !isValidGoogleDriveId(briefSheetId)) {
         return new Response(
           JSON.stringify({ error: "Invalid briefSheetId" }),
-          { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+          { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
         );
       }
 
       if (!email || typeof email !== "string") {
         return new Response(
           JSON.stringify({ error: "Email is required" }),
-          { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+          { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
         );
       }
 
@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: shared }),
-        { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
       if (!formKitId || !isValidUUID(formKitId)) {
         return new Response(
           JSON.stringify({ error: "Invalid formKitId" }),
-          { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+          { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
         );
       }
 
@@ -225,13 +225,13 @@ Deno.serve(async (req) => {
         console.error(`${LOG_PREFIX} Failed to disconnect brief:`, error);
         return new Response(
           JSON.stringify({ error: "Failed to disconnect brief" }),
-          { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+          { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
         );
       }
 
       return new Response(
         JSON.stringify({ success: true }),
-        { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -244,28 +244,28 @@ Deno.serve(async (req) => {
     if (!templateSheetId || !isValidGoogleDriveId(templateSheetId)) {
       return new Response(
         JSON.stringify({ error: "Invalid templateSheetId" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
     if (!formKitId || !isValidUUID(formKitId)) {
       return new Response(
         JSON.stringify({ error: "Invalid formKitId" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
     if (!projectId || !isValidUUID(projectId)) {
       return new Response(
         JSON.stringify({ error: "Invalid projectId" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
     if (!briefName || typeof briefName !== "string" || briefName.trim().length === 0) {
       return new Response(
         JSON.stringify({ error: "briefName is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -316,7 +316,7 @@ Deno.serve(async (req) => {
       console.error(`${LOG_PREFIX} Failed to save brief_sheet_id:`, updateError);
       return new Response(
         JSON.stringify({ error: "Brief created but failed to save reference" }),
-        { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -326,7 +326,7 @@ Deno.serve(async (req) => {
         briefSheetId: newSheetId,
         sharedWith: sharedCount,
       }),
-      { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+      { headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
     );
   } catch (error) {
     console.error(`${LOG_PREFIX} Error:`, error);
@@ -339,7 +339,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ error: message }),
-      { status, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+      { status, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
     );
   }
 });

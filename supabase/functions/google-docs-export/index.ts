@@ -1,4 +1,4 @@
-import { getCorsHeaders } from '../_shared/cors.ts'
+import { corsHeadersFor } from "../_shared/edge.ts"
 
 // Edge Function: экспорт проекта в Google Doc.
 
@@ -477,7 +477,7 @@ async function collapseEmptyParagraphsBeforeTables(documentId: string, accessTok
 }
 
 Deno.serve(async (req: Request) => {
-  const corsHeaders = getCorsHeaders(req)
+  const corsHeaders = corsHeadersFor(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {

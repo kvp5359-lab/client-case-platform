@@ -7,11 +7,11 @@
  * в `google_calendar_tokens` и шлёт postMessage обратно в opener.
  */
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -19,7 +19,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ authUrl: authUrl.toString() }),
       {
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         status: 200,
       },
     );
@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ error: "Failed to initiate Google Calendar authorization" }),
       {
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         status: 500,
       },
     );

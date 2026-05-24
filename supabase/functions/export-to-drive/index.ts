@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { getValidAccessTokenForUser } from "../_shared/googleDriveToken.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { findInvalidUUID, isValidGoogleDriveId } from "../_shared/validation.ts";
@@ -23,7 +23,7 @@ interface ExportToDriveRequest {
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -32,7 +32,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
     if (!documentKitId || !workspaceId || !exportFolderId) {
       return new Response(
         JSON.stringify({ error: "documentKitId, workspaceId, and exportFolderId are required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -68,14 +68,14 @@ Deno.serve(async (req: Request) => {
     if (invalidField) {
       return new Response(
         JSON.stringify({ error: `${invalidField} must be a valid UUID` }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
     if (!isValidGoogleDriveId(exportFolderId)) {
       return new Response(
         JSON.stringify({ error: "Invalid exportFolderId format" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
     if (!isMember) {
       return new Response(
         JSON.stringify({ error: "Access denied" }),
-        { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -116,7 +116,7 @@ Deno.serve(async (req: Request) => {
       console.error("Failed to fetch documents:", docsError);
       return new Response(
         JSON.stringify({ error: "Failed to fetch documents" }),
-        { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -132,7 +132,7 @@ Deno.serve(async (req: Request) => {
       console.error("Failed to fetch folders:", foldersError);
       return new Response(
         JSON.stringify({ error: "Failed to fetch folders" }),
-        { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -270,13 +270,13 @@ Deno.serve(async (req: Request) => {
         files: uploadedCount,
         message: `Sync complete: cleared ${deletedCount} items, created ${createdFoldersCount} folders and uploaded ${uploadedCount} files`,
       }),
-      { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Export error:", error);
     return new Response(
       JSON.stringify({ error: "Export failed" }),
-      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
   }
 });

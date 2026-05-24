@@ -9,7 +9,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { getValidAccessTokenForUser } from "../_shared/googleDriveToken.ts";
 import { createDriveFolder, listFilesInFolder } from "../_shared/googleDriveHelpers.ts";
 import { isValidUUID, isValidGoogleDriveId } from "../_shared/validation.ts";
@@ -19,7 +19,7 @@ const LOG_PREFIX = "[google-drive-create-folder]";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     if (!user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     if (!workspaceId || !isValidUUID(workspaceId)) {
       return new Response(
         JSON.stringify({ error: "workspaceId is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     if (!isMember) {
       return new Response(
         JSON.stringify({ error: "Access denied" }),
-        { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
       if (!folderId || !isValidGoogleDriveId(folderId)) {
         return new Response(
           JSON.stringify({ error: "Invalid folderId" }),
-          { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+          { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
         );
       }
 
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ folders }),
-        { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -112,14 +112,14 @@ Deno.serve(async (req) => {
       if (!parentFolderId || !isValidGoogleDriveId(parentFolderId)) {
         return new Response(
           JSON.stringify({ error: "Invalid parentFolderId" }),
-          { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+          { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
         );
       }
 
       if (!Array.isArray(subfolderNames) || subfolderNames.length === 0) {
         return new Response(
           JSON.stringify({ error: "subfolderNames must be a non-empty array" }),
-          { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+          { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
         );
       }
 
@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
           targetFolderLink: `https://drive.google.com/drive/folders/${targetFolderId}`,
           created,
         }),
-        { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -165,14 +165,14 @@ Deno.serve(async (req) => {
     if (!parentFolderId || !isValidGoogleDriveId(parentFolderId)) {
       return new Response(
         JSON.stringify({ error: "Invalid parentFolderId" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
     if (!folderName || typeof folderName !== "string" || folderName.trim().length === 0) {
       return new Response(
         JSON.stringify({ error: "folderName is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
         folderId: newFolderId,
         folderLink: `https://drive.google.com/drive/folders/${newFolderId}`,
       }),
-      { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+      { headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
     );
   } catch (error) {
     console.error(`${LOG_PREFIX} Error:`, error);
@@ -201,7 +201,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ error: message }),
-      { status, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+      { status, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
     );
   }
 });

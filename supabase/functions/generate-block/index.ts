@@ -1,5 +1,5 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0'
-import { getCorsHeaders } from '../_shared/cors.ts'
+import { corsHeadersFor } from "../_shared/edge.ts"
 
 const SUPABASE_URL = 'https://zjatohckcpiqmxkmfxbs.supabase.co'
 
@@ -345,7 +345,7 @@ async function buildUserContent(req: GenerateRequest): Promise<ContentBlock[]> {
 }
 
 Deno.serve(async (req: Request) => {
-  const corsHeaders = getCorsHeaders(req)
+  const corsHeaders = corsHeadersFor(req)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }

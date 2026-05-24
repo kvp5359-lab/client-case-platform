@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { isValidUUID } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { resolveFileLocation } from "../_shared/storageHelpers.ts";
@@ -44,7 +44,7 @@ interface DocumentFileData {
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -64,14 +64,14 @@ Deno.serve(async (req: Request) => {
     if (!document_id) {
       return new Response(
         JSON.stringify({ error: "document_id is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
     if (!isValidUUID(document_id)) {
       return new Response(
         JSON.stringify({ error: "document_id must be a valid UUID" }),
-        { status: 400, headers: getCorsHeaders(req) }
+        { status: 400, headers: corsHeadersFor(req) }
       );
     }
 
@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
     if (docError || !document) {
       return new Response(
         JSON.stringify({ error: "Document not found" }),
-        { status: 404, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 404, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -118,7 +118,7 @@ Deno.serve(async (req: Request) => {
     if (!isMember) {
       return new Response(
         JSON.stringify({ error: "Access denied" }),
-        { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -179,7 +179,7 @@ Deno.serve(async (req: Request) => {
           checked_at: new Date().toISOString(),
           text_content: document.text_content,
         }),
-        { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -199,7 +199,7 @@ Deno.serve(async (req: Request) => {
       const providerName = useGemini ? "Google" : "Anthropic";
       return new Response(
         JSON.stringify({ error: `${providerName} API key not configured for this workspace` }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -504,14 +504,14 @@ Deno.serve(async (req: Request) => {
         checked_at: new Date().toISOString(),
         text_content: updateData.text_content,
       }),
-      { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
 
   } catch (error) {
     console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
   }
 });

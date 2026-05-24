@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { isValidUUID } from "../_shared/validation.ts";
 import {
@@ -18,11 +18,11 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
-      headers: getCorsHeaders(req),
+      headers: corsHeadersFor(req),
     });
   }
 
-  const headers = { ...getCorsHeaders(req), "Content-Type": "application/json" };
+  const headers = { ...corsHeadersFor(req), "Content-Type": "application/json" };
 
   try {
     const authHeader = req.headers.get("Authorization");

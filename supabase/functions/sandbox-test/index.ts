@@ -1,16 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Content-Type": "application/json",
-};
+import { jsonRes, preflight } from "../_shared/edge.ts";
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: CORS_HEADERS });
-  }
+  if (req.method === "OPTIONS") return preflight(req);
 
   try {
     const t_start = performance.now();
@@ -18,10 +10,7 @@ Deno.serve(async (req: Request) => {
     const { api_key, file_base64, mime_type, model } = await req.json();
 
     if (!api_key || !file_base64 || !mime_type) {
-      return new Response(
-        JSON.stringify({ error: "api_key, file_base64, mime_type are required" }),
-        { status: 400, headers: CORS_HEADERS }
-      );
+      return jsonRes({ error: "api_key, file_base64, mime_type are required" }, 400, req);
     }
 
     const useModel = model || "claude-haiku-4-5-20251001";
@@ -29,10 +18,7 @@ Deno.serve(async (req: Request) => {
     const isImage = mime_type.startsWith("image/");
 
     if (!isPdf && !isImage) {
-      return new Response(
-        JSON.stringify({ error: "Only PDF and images are supported" }),
-        { status: 400, headers: CORS_HEADERS }
-      );
+      return jsonRes({ error: "Only PDF and images are supported" }, 400, req);
     }
 
     // Build content block
@@ -68,40 +54,31 @@ Deno.serve(async (req: Request) => {
 
     if (!resp.ok) {
       const errorText = await resp.text();
-      return new Response(
-        JSON.stringify({
-          error: `Claude API error ${resp.status}`,
-          details: errorText,
-          timing: { prep_ms: Math.round(t_prep), api_ms: Math.round(t_api_ms) },
-        }),
-        { status: 502, headers: CORS_HEADERS }
-      );
+      return jsonRes({
+        error: `Claude API error ${resp.status}`,
+        details: errorText,
+        timing: { prep_ms: Math.round(t_prep), api_ms: Math.round(t_api_ms) },
+      }, 502, req);
     }
 
     const result = await resp.json();
     const text = result.content?.[0]?.text || "";
     const t_total = performance.now() - t_start;
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        model: useModel,
-        text_length: text.length,
-        text_preview: text.substring(0, 500),
-        usage: result.usage,
-        timing: {
-          prep_ms: Math.round(t_prep),
-          api_ms: Math.round(t_api_ms),
-          total_ms: Math.round(t_total),
-        },
-      }),
-      { status: 200, headers: CORS_HEADERS }
-    );
+    return jsonRes({
+      success: true,
+      model: useModel,
+      text_length: text.length,
+      text_preview: text.substring(0, 500),
+      usage: result.usage,
+      timing: {
+        prep_ms: Math.round(t_prep),
+        api_ms: Math.round(t_api_ms),
+        total_ms: Math.round(t_total),
+      },
+    }, 200, req);
 
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: String(error) }),
-      { status: 500, headers: CORS_HEADERS }
-    );
+    return jsonRes({ error: String(error) }, 500, req);
   }
 });

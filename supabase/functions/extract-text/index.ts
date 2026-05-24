@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { isValidUUID } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { extractText, getDocumentProxy } from "npm:unpdf";
@@ -25,7 +25,7 @@ const MIN_CHARS_PER_PAGE = 50;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader && !isInternalCall) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -48,19 +48,19 @@ Deno.serve(async (req: Request) => {
     if (!document_id && !file_id) {
       return new Response(
         JSON.stringify({ error: "Either document_id or file_id is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
     if (document_id && !isValidUUID(document_id)) {
       return new Response(
         JSON.stringify({ error: "document_id must be a valid UUID" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
     if (file_id && !isValidUUID(file_id)) {
       return new Response(
         JSON.stringify({ error: "file_id must be a valid UUID" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
       if (!authHeader && !isInternalCall) {
         return new Response(
           JSON.stringify({ error: "Unauthorized" }),
-          { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
       const userClient = isInternalCall
@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
         if (uErr || !user) {
           return new Response(
             JSON.stringify({ error: "Unauthorized" }),
-            { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+            { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
           );
         }
         actorUserId = user.id;
@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
       if (fErr || !fileRec) {
         return new Response(
           JSON.stringify({ error: "Файл не найден" }),
-          { status: 404, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 404, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
 
@@ -118,7 +118,7 @@ Deno.serve(async (req: Request) => {
         if (!isMember) {
           return new Response(
             JSON.stringify({ error: "Нет доступа" }),
-            { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+            { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
           );
         }
       }
@@ -132,7 +132,7 @@ Deno.serve(async (req: Request) => {
             error:
               "Поддерживается только PDF и изображения. Для аудио/видео используйте transcribe-audio.",
           }),
-          { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
 
@@ -142,7 +142,7 @@ Deno.serve(async (req: Request) => {
       if (dlErr || !blob) {
         return new Response(
           JSON.stringify({ error: "Не удалось скачать файл" }),
-          { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
 
@@ -159,18 +159,18 @@ Deno.serve(async (req: Request) => {
                 error:
                   "В PDF не найден текстовый слой. Скан/изображение PDF пока не обрабатывается.",
               }),
-              { status: 422, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+              { status: 422, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
             );
           }
           return new Response(
             JSON.stringify({ text: out }),
-            { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+            { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
           );
         } catch (err) {
           console.error("[EXTRACT-TEXT][file_id] unpdf error:", err);
           return new Response(
             JSON.stringify({ error: "Не удалось извлечь текст из PDF" }),
-            { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+            { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
           );
         }
       }
@@ -208,7 +208,7 @@ Deno.serve(async (req: Request) => {
             if (gvText) {
               return new Response(
                 JSON.stringify({ text: gvText }),
-                { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+                { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
               );
             }
           } else {
@@ -250,7 +250,7 @@ Deno.serve(async (req: Request) => {
               if (trimmed) {
                 return new Response(
                   JSON.stringify({ text: trimmed }),
-                  { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+                  { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
                 );
               }
             } else {
@@ -286,7 +286,7 @@ Deno.serve(async (req: Request) => {
                 if (claudeText) {
                   return new Response(
                     JSON.stringify({ text: claudeText }),
-                    { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+                    { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
                   );
                 }
               } else {
@@ -304,13 +304,13 @@ Deno.serve(async (req: Request) => {
             error:
               "Не удалось извлечь текст: нет ни GOOGLE_VISION_API_KEY, ни AI-ключа воркспейса. Попросите администратора настроить один из них.",
           }),
-          { status: 422, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+          { status: 422, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
         );
       } catch (err) {
         console.error("[EXTRACT-TEXT][file_id] image error:", err);
         return new Response(
           JSON.stringify({ error: "Не удалось извлечь текст из изображения" }),
-          { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
     }
@@ -331,7 +331,7 @@ Deno.serve(async (req: Request) => {
       if (userError || !user) {
         return new Response(
           JSON.stringify({ error: "Unauthorized" }),
-          { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
       userId = user.id;
@@ -348,7 +348,7 @@ Deno.serve(async (req: Request) => {
       console.log(`[EXTRACT-TEXT] Document not found: ${document_id}`);
       return new Response(
         JSON.stringify({ skipped: true, reason: "document_not_found" }),
-        { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -358,7 +358,7 @@ Deno.serve(async (req: Request) => {
       if (!isMember) {
         return new Response(
           JSON.stringify({ error: "Access denied" }),
-          { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
     }
@@ -368,7 +368,7 @@ Deno.serve(async (req: Request) => {
       console.log(`[EXTRACT-TEXT] Already has text_content, skipping: ${document_id}`);
       return new Response(
         JSON.stringify({ skipped: true, reason: "already_extracted" }),
-        { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -384,7 +384,7 @@ Deno.serve(async (req: Request) => {
       console.log(`[EXTRACT-TEXT] No file found for document: ${document_id}`);
       return new Response(
         JSON.stringify({ skipped: true, reason: "no_file" }),
-        { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -396,7 +396,7 @@ Deno.serve(async (req: Request) => {
       console.log(`[EXTRACT-TEXT] Unsupported mime type: ${mimeType}`);
       return new Response(
         JSON.stringify({ skipped: true, reason: "unsupported_type" }),
-        { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -420,7 +420,7 @@ Deno.serve(async (req: Request) => {
       console.log(`[EXTRACT-TEXT] No ${providerName} API key for workspace: ${document.workspace_id}`);
       return new Response(
         JSON.stringify({ skipped: true, reason: "no_api_key" }),
-        { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -454,7 +454,7 @@ Deno.serve(async (req: Request) => {
       console.error("[EXTRACT-TEXT] Failed to create signed URL:", signedError);
       return new Response(
         JSON.stringify({ skipped: true, reason: "signed_url_failed" }),
-        { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -629,7 +629,7 @@ Deno.serve(async (req: Request) => {
           console.error("[EXTRACT-TEXT] Failed to download file for Gemini:", dlError);
           return new Response(
             JSON.stringify({ skipped: true, reason: "download_error" }),
-            { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+            { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
           );
         }
 
@@ -664,7 +664,7 @@ Deno.serve(async (req: Request) => {
           console.error("[EXTRACT-TEXT] Gemini Vision error:", err);
           return new Response(
             JSON.stringify({ skipped: true, reason: "api_error" }),
-            { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+            { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
           );
         }
       } else {
@@ -699,7 +699,7 @@ Deno.serve(async (req: Request) => {
           console.error(`[EXTRACT-TEXT] Claude API error ${resp.status}: ${errorText}`);
           return new Response(
             JSON.stringify({ skipped: true, reason: "api_error" }),
-            { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+            { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
           );
         }
 
@@ -714,7 +714,7 @@ Deno.serve(async (req: Request) => {
     if (!extractedText) {
       return new Response(
         JSON.stringify({ skipped: true, reason: "empty_text" }),
-        { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -728,7 +728,7 @@ Deno.serve(async (req: Request) => {
       console.error("[EXTRACT-TEXT] Failed to save text_content:", updateError);
       return new Response(
         JSON.stringify({ skipped: true, reason: "save_failed" }),
-        { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -744,14 +744,14 @@ Deno.serve(async (req: Request) => {
         timing: { total_ms: totalMs },
         // Z8-01: gv_debug убран из ответа клиенту — только в серверных логах
       }),
-      { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
 
   } catch (error) {
     console.error("[EXTRACT-TEXT] Unexpected error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
   }
 });

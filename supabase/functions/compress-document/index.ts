@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { findInvalidUUID } from "../_shared/validation.ts";
 import { resolveFileLocation, uploadFile } from "../_shared/storageHelpers.ts";
@@ -9,7 +9,7 @@ import { compressPdf, type CompressionQuality } from "../_shared/ilovepdfService
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     if (!supabaseServiceKey) {
       return new Response(JSON.stringify({ error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing' }), {
         status: 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
     
@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
         status: 401,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -58,14 +58,14 @@ Deno.serve(async (req) => {
     if (!ALLOWED_QUALITY.includes(quality)) {
       return new Response(JSON.stringify({ error: `Invalid quality. Allowed: ${ALLOWED_QUALITY.join(', ')}` }), {
         status: 400,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
     if (!documentId) {
       return new Response(JSON.stringify({ error: 'Document ID is required' }), {
         status: 400,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     if (invalidField) {
       return new Response(JSON.stringify({ error: 'documentId must be a valid UUID' }), {
         status: 400,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       console.error('Document not found:', docError);
       return new Response(JSON.stringify({ error: 'Document not found' }), {
         status: 404,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
     if (!isMember) {
       return new Response(JSON.stringify({ error: 'Access denied' }), {
         status: 403,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
     if (!currentFile) {
       return new Response(JSON.stringify({ error: 'Document file not found' }), {
         status: 404,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
     if (currentFile.is_compressed) {
       return new Response(JSON.stringify({ error: 'File is already compressed' }), {
         status: 400,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
     if (currentFile.mime_type !== 'application/pdf') {
       return new Response(JSON.stringify({ error: 'Only PDF files can be compressed' }), {
         status: 400,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
       console.error('Failed to download from storage:', downloadError);
       return new Response(JSON.stringify({ error: 'Failed to download file from storage' }), {
         status: 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
     if (!publicKey) {
       return new Response(JSON.stringify({ error: 'iLovePDF API key not configured' }), {
         status: 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
       const errMsg = compressErr instanceof Error ? compressErr.message : 'Compression failed';
       return new Response(JSON.stringify({ error: errMsg }), {
         status: 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
       console.error('Failed to upload to storage:', uploadErr);
       return new Response(JSON.stringify({ error: 'Failed to upload compressed file to storage' }), {
         status: 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -228,7 +228,7 @@ Deno.serve(async (req) => {
       await supabaseService.storage.from('files').remove([filePath]);
       return new Response(JSON.stringify({ error: 'Failed to create file record' }), {
         status: 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -257,7 +257,7 @@ Deno.serve(async (req) => {
       await supabaseService.from('files').delete().eq('id', newFileRecord.id);
       return new Response(JSON.stringify({ error: 'Failed to create version record' }), {
         status: 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -273,7 +273,7 @@ Deno.serve(async (req) => {
         versionId: newVersionData.id,
       }),
       {
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       }
     );
   } catch (error) {
@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ error: 'Compression failed' }),
       {
         status: 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       }
     );
   }

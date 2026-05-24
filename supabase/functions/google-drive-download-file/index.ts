@@ -1,13 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { getValidAccessTokenForUser } from "../_shared/googleDriveToken.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { findInvalidUUID, isValidGoogleDriveId } from "../_shared/validation.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     if (!fileId || !documentKitId || !documentId || !workspaceId) {
       return new Response(
         JSON.stringify({ error: "fileId, documentKitId, documentId and workspaceId are required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     if (!isValidGoogleDriveId(fileId)) {
       return new Response(
         JSON.stringify({ error: "Invalid Google Drive file ID" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     if (invalidField) {
       return new Response(
         JSON.stringify({ error: `${invalidField} must be a valid UUID` }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     if (!isMember) {
       return new Response(
         JSON.stringify({ error: "Access denied" }),
-        { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       console.error('Failed to get file metadata:', errorText);
       return new Response(
         JSON.stringify({ error: "Failed to get file metadata from Google Drive" }),
-        { status: 502, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 502, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
       console.error('Failed to download file:', errorText);
       return new Response(
         JSON.stringify({ error: "Failed to download file from Google Drive" }),
-        { status: 502, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 502, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
         documentFile,
       }),
       {
-        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
       }
     );
   } catch (error) {
@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ error: "Internal server error" }),
       {
         status: 500,
-        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
       }
     );
   }

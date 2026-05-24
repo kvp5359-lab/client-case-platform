@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { isValidUUID } from "../_shared/validation.ts";
 import { isGeminiModel, callGeminiApi } from "../_shared/gemini-client.ts";
@@ -13,7 +13,7 @@ interface GenerateTitleRequest {
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -22,7 +22,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -32,14 +32,14 @@ Deno.serve(async (req: Request) => {
     if (!workspace_id || !question) {
       return new Response(
         JSON.stringify({ error: "workspace_id and question are required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
     if (!isValidUUID(workspace_id)) {
       return new Response(
         JSON.stringify({ error: "workspace_id must be a valid UUID" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
     if (typeof question === "string" && question.length > MAX_QUESTION_LENGTH) {
       return new Response(
         JSON.stringify({ error: `question exceeds maximum of ${MAX_QUESTION_LENGTH} characters` }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
     if (!isMember) {
       return new Response(
         JSON.stringify({ error: "Access denied" }),
-        { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -103,7 +103,7 @@ Deno.serve(async (req: Request) => {
           success: true,
           title: question.length > 50 ? question.slice(0, 47) + '...' : question
         }),
-        { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -139,7 +139,7 @@ Deno.serve(async (req: Request) => {
             success: true,
             title: question.length > 50 ? question.slice(0, 47) + '...' : question
           }),
-          { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
     } else {
@@ -167,7 +167,7 @@ Deno.serve(async (req: Request) => {
             success: true,
             title: question.length > 50 ? question.slice(0, 47) + '...' : question
           }),
-          { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
 
@@ -185,14 +185,14 @@ Deno.serve(async (req: Request) => {
         success: true,
         title: cleanTitle || (question.length > 50 ? question.slice(0, 47) + '...' : question),
       }),
-      { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
 
   } catch (error) {
     console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
   }
 });

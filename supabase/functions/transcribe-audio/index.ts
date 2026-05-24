@@ -8,7 +8,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { safeErrorResponse, checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { isValidUUID } from "../_shared/validation.ts";
 
@@ -19,7 +19,7 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: getCorsHeaders(req) });
+    return new Response("ok", { headers: corsHeadersFor(req) });
   }
 
   if (req.method !== "POST") {
@@ -29,7 +29,7 @@ Deno.serve(async (req: Request) => {
   // Проверка авторизации
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return safeErrorResponse(req, getCorsHeaders, {
+    return safeErrorResponse(req, corsHeadersFor, {
       status: 401,
       publicMessage: "Missing authorization header",
     });
@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
 
     if (!OPENAI_API_KEY) {
       console.error("[transcribe-audio] OPENAI_API_KEY is NOT set!");
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 500,
         publicMessage: "Распознавание речи не настроено",
         logPrefix: "OPENAI_API_KEY not configured",
@@ -53,19 +53,19 @@ Deno.serve(async (req: Request) => {
     console.log("[transcribe-audio] attachment_id:", attachment_id, "file_id:", file_id);
 
     if (!attachment_id && !file_id) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 400,
         publicMessage: "Either attachment_id or file_id is required",
       });
     }
     if (attachment_id && !isValidUUID(attachment_id)) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 400,
         publicMessage: "Invalid attachment_id",
       });
     }
     if (file_id && !isValidUUID(file_id)) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 400,
         publicMessage: "Invalid file_id",
       });
@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
     // Проверяем, что пользователь авторизован
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 401,
         publicMessage: "Unauthorized",
       });
@@ -98,7 +98,7 @@ Deno.serve(async (req: Request) => {
         .single();
 
       if (fileErr || !fileRecord) {
-        return safeErrorResponse(req, getCorsHeaders, {
+        return safeErrorResponse(req, corsHeadersFor, {
           status: 404,
           publicMessage: "Файл не найден",
         });
@@ -106,7 +106,7 @@ Deno.serve(async (req: Request) => {
 
       const isMember = await checkWorkspaceMembership(serviceClient, user.id, fileRecord.workspace_id);
       if (!isMember) {
-        return safeErrorResponse(req, getCorsHeaders, {
+        return safeErrorResponse(req, corsHeadersFor, {
           status: 403,
           publicMessage: "Нет доступа",
         });
@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
 
       const mt: string = fileRecord.mime_type || "";
       if (!mt.startsWith("audio/") && !mt.startsWith("video/")) {
-        return safeErrorResponse(req, getCorsHeaders, {
+        return safeErrorResponse(req, corsHeadersFor, {
           status: 400,
           publicMessage: "Файл не является аудио или видео",
         });
@@ -124,7 +124,7 @@ Deno.serve(async (req: Request) => {
         .from(fileRecord.bucket)
         .download(fileRecord.storage_path);
       if (dlErr || !blob) {
-        return safeErrorResponse(req, getCorsHeaders, {
+        return safeErrorResponse(req, corsHeadersFor, {
           status: 500,
           publicMessage: "Не удалось скачать файл",
           internalError: dlErr,
@@ -144,7 +144,7 @@ Deno.serve(async (req: Request) => {
       });
       if (!whisperRes.ok) {
         const errText = await whisperRes.text();
-        return safeErrorResponse(req, getCorsHeaders, {
+        return safeErrorResponse(req, corsHeadersFor, {
           status: 502,
           publicMessage: "Ошибка распознавания речи",
           internalError: `Whisper API ${whisperRes.status}: ${errText}`,
@@ -155,7 +155,7 @@ Deno.serve(async (req: Request) => {
 
       return new Response(
         JSON.stringify({ text }),
-        { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -167,7 +167,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (attError || !attachment) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 404,
         publicMessage: "Вложение не найдено",
       });
@@ -178,7 +178,7 @@ Deno.serve(async (req: Request) => {
     if (wsId) {
       const isMember = await checkWorkspaceMembership(serviceClient, user.id, wsId);
       if (!isMember) {
-        return safeErrorResponse(req, getCorsHeaders, {
+        return safeErrorResponse(req, corsHeadersFor, {
           status: 403,
           publicMessage: "Нет доступа",
         });
@@ -189,14 +189,14 @@ Deno.serve(async (req: Request) => {
     if (attachment.transcription) {
       return new Response(
         JSON.stringify({ transcription: attachment.transcription }),
-        { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
     // Проверяем, что это аудио
     const mimeType: string = attachment.mime_type || "";
     if (!mimeType.startsWith("audio/")) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 400,
         publicMessage: "Вложение не является аудиофайлом",
       });
@@ -221,7 +221,7 @@ Deno.serve(async (req: Request) => {
       .download(storagePath);
 
     if (downloadError || !fileData) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 500,
         publicMessage: "Не удалось скачать аудиофайл",
         internalError: downloadError,
@@ -248,7 +248,7 @@ Deno.serve(async (req: Request) => {
 
     if (!whisperRes.ok) {
       const errText = await whisperRes.text();
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 502,
         publicMessage: "Ошибка распознавания речи",
         internalError: `Whisper API ${whisperRes.status}: ${errText}`,
@@ -267,10 +267,10 @@ Deno.serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({ transcription }),
-      { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+      { headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
     );
   } catch (error) {
-    return safeErrorResponse(req, getCorsHeaders, {
+    return safeErrorResponse(req, corsHeadersFor, {
       status: 500,
       publicMessage: "Внутренняя ошибка сервера",
       internalError: error,

@@ -7,11 +7,11 @@
  * Body: { accountId: string }
  */
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -19,7 +19,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
     if (!accountId) {
       return new Response(
         JSON.stringify({ error: "accountId is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -61,7 +61,7 @@ Deno.serve(async (req: Request) => {
     if (accountError || !account) {
       return new Response(
         JSON.stringify({ error: "Account not found" }),
-        { status: 404, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 404, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -103,7 +103,7 @@ Deno.serve(async (req: Request) => {
       console.error("[gmail-disconnect] DB error:", updateError);
       return new Response(
         JSON.stringify({ error: "Failed to disconnect account" }),
-        { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -111,13 +111,13 @@ Deno.serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({ success: true }),
-      { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+      { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
     );
   } catch (error) {
     console.error("[gmail-disconnect] Error:", error);
     return new Response(
       JSON.stringify({ error: "Failed to disconnect Gmail" }),
-      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+      { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
     );
   }
 });

@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import {
   safeErrorResponse,
   checkWorkspaceMembership,
@@ -22,14 +22,14 @@ interface Placeholder {
  */
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: getCorsHeaders(req) });
+    return new Response("ok", { headers: corsHeadersFor(req) });
   }
 
   try {
     // Auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 401,
         publicMessage: "Missing authorization header",
       });
@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
       "workspace_id",
     ]);
     if (missing) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 400,
         publicMessage: `Missing required field: ${missing}`,
       });
@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
       "workspace_id",
     ]);
     if (invalidUUID) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 400,
         publicMessage: `Invalid UUID: ${invalidUUID}`,
       });
@@ -87,7 +87,7 @@ Deno.serve(async (req: Request) => {
       data: { user },
     } = await supabaseUser.auth.getUser();
     if (!user) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 401,
         publicMessage: "Unauthorized",
       });
@@ -99,7 +99,7 @@ Deno.serve(async (req: Request) => {
       workspace_id,
     );
     if (!isMember) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 403,
         publicMessage: "Access denied",
       });
@@ -113,7 +113,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (templateError || !template) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 404,
         publicMessage: "Template not found",
         internalError: templateError,
@@ -127,7 +127,7 @@ Deno.serve(async (req: Request) => {
       .download(template.file_path);
 
     if (downloadError || !fileData) {
-      return safeErrorResponse(req, getCorsHeaders, {
+      return safeErrorResponse(req, corsHeadersFor, {
         status: 500,
         publicMessage: "Failed to download template file",
         internalError: downloadError,
@@ -231,7 +231,7 @@ Deno.serve(async (req: Request) => {
       const gotenbergToken = Deno.env.get("GOTENBERG_TOKEN");
 
       if (!gotenbergUrl || !gotenbergToken) {
-        return safeErrorResponse(req, getCorsHeaders, {
+        return safeErrorResponse(req, corsHeadersFor, {
           status: 500,
           publicMessage: "PDF conversion is not configured",
           logPrefix: "[GENERATE-DOC]",
@@ -263,7 +263,7 @@ Deno.serve(async (req: Request) => {
         console.error(
           `[GENERATE-DOC] Gotenberg error: ${gotenbergResponse.status} ${errorText}`,
         );
-        return safeErrorResponse(req, getCorsHeaders, {
+        return safeErrorResponse(req, corsHeadersFor, {
           status: 500,
           publicMessage: "Failed to convert document to PDF",
           logPrefix: "[GENERATE-DOC]",
@@ -300,13 +300,13 @@ Deno.serve(async (req: Request) => {
       {
         status: 200,
         headers: {
-          ...getCorsHeaders(req),
+          ...corsHeadersFor(req),
           "Content-Type": "application/json",
         },
       },
     );
   } catch (error) {
-    return safeErrorResponse(req, getCorsHeaders, {
+    return safeErrorResponse(req, corsHeadersFor, {
       status: 500,
       publicMessage: "Failed to generate document",
       internalError: error,

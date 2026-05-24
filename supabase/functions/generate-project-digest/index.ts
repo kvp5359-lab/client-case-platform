@@ -9,7 +9,7 @@
 // Тайм-зона: Europe/Madrid (если period_start/period_end не переданы — считаем "сегодня по Мадриду").
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { isValidUUID } from "../_shared/validation.ts";
 import { setupAiChat, callAiApi } from "../_shared/ai-chat-setup.ts";
 
@@ -53,7 +53,7 @@ interface CollectedEvent {
 function jsonResponse(req: Request, body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
   });
 }
 
@@ -108,7 +108,7 @@ function madridDateToUtc(date: string, time: string): string {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {

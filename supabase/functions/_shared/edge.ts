@@ -24,21 +24,10 @@ export const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 export const INTERNAL_FUNCTION_SECRET = Deno.env.get("INTERNAL_FUNCTION_SECRET") ?? "";
 
 /**
- * @deprecated Используй `corsHeadersFor(req)` — статический wildcard
- * `Access-Control-Allow-Origin: *` небезопасен при использовании credentials.
- * Оставлен для обратной совместимости со старыми функциями; новые
- * функции должны брать заголовки через `corsHeadersFor(req)`.
- */
-export const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-internal-secret",
-};
-
-/**
  * Динамический CORS — проверяет Origin по whitelist'у из _shared/cors.ts.
  * Добавляет наш специфичный header `x-internal-secret` к базовым.
+ * Allow-Methods оставляем широким (GET/POST/OPTIONS) — функции с GET-эндпоинтами
+ * (например, email-track pixel) тоже должны проходить preflight.
  */
 export function corsHeadersFor(req: Request): Record<string, string> {
   const base = getCorsHeaders(req);
@@ -46,25 +35,18 @@ export function corsHeadersFor(req: Request): Record<string, string> {
     ...base,
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type, x-internal-secret",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   };
 }
 
-/**
- * Ответ на CORS preflight. Если передан `req` — использует динамический
- * CORS-whitelist. Без `req` — wildcard (deprecated).
- */
-export function preflight(req?: Request): Response {
-  const headers = req ? corsHeadersFor(req) : corsHeaders;
-  return new Response(null, { status: 204, headers });
+/** Ответ на CORS preflight. */
+export function preflight(req: Request): Response {
+  return new Response(null, { status: 204, headers: corsHeadersFor(req) });
 }
 
-/**
- * Стандартный JSON-ответ с CORS-заголовками. Передавай `req` для
- * динамического CORS — без него возвращается небезопасный wildcard.
- */
+/** Стандартный JSON-ответ с динамическими CORS-заголовками. */
 export function jsonRes(payload: unknown, status = 200, req?: Request): Response {
-  const cors = req ? corsHeadersFor(req) : corsHeaders;
+  const cors = req ? corsHeadersFor(req) : getCorsHeaders(new Request("https://internal"));
   return new Response(JSON.stringify(payload), {
     status,
     headers: { "Content-Type": "application/json", ...cors },

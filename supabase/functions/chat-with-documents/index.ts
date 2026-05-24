@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { safeJsonParse, findInvalidUUID, isValidUUID } from "../_shared/validation.ts";
 import {
   setupAiChat,
@@ -33,7 +33,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
-      headers: getCorsHeaders(req)
+      headers: corsHeadersFor(req)
     });
   }
 
@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
     if (parsed === null) {
       return new Response(
         JSON.stringify({ error: "Invalid JSON in request body" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
     const { document_ids, question, workspace_id, conversation_history } = parsed;
@@ -62,14 +62,14 @@ Deno.serve(async (req: Request) => {
     if (document_ids !== undefined && (!Array.isArray(document_ids))) {
       return new Response(
         JSON.stringify({ error: "document_ids must be an array" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
     if (!question || typeof question !== "string" || question.trim().length === 0) {
       return new Response(
         JSON.stringify({ error: "question is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -77,14 +77,14 @@ Deno.serve(async (req: Request) => {
     if (question.length > 10000) {
       return new Response(
         JSON.stringify({ error: "Question is too long. Maximum 10000 characters allowed." }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
     if (!workspace_id) {
       return new Response(
         JSON.stringify({ error: "workspace_id is required" }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -92,7 +92,7 @@ Deno.serve(async (req: Request) => {
     if (invalidUUID) {
       return new Response(
         JSON.stringify({ error: `Invalid UUID format for field: ${invalidUUID}` }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
       if (invalidDocId) {
         return new Response(
           JSON.stringify({ error: "Invalid UUID format in document_ids" }),
-          { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
     }
@@ -112,7 +112,7 @@ Deno.serve(async (req: Request) => {
     if (conversation_history && conversation_history.length > MAX_HISTORY_MESSAGES) {
       return new Response(
         JSON.stringify({ error: `conversation_history exceeds maximum of ${MAX_HISTORY_MESSAGES} messages` }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -142,7 +142,7 @@ Deno.serve(async (req: Request) => {
       if (docsError || !documents || documents.length === 0) {
         return new Response(
           JSON.stringify({ error: "Documents not found" }),
-          { status: 404, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 404, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
 
@@ -233,7 +233,7 @@ Deno.serve(async (req: Request) => {
       if (documentsWithContent.length === 0 && documentFiles.length === 0) {
         return new Response(
           JSON.stringify({ error: "None of the selected documents have extracted text content or supported files. Please check the documents first or select documents with PDF/image files." }),
-          { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+          { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
         );
       }
 
@@ -345,14 +345,14 @@ Deno.serve(async (req: Request) => {
         total_documents: document_ids?.length || 0,
         used_files: documentFiles.length > 0,
       }),
-      { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
 
   } catch (error) {
     console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
     );
   }
 });

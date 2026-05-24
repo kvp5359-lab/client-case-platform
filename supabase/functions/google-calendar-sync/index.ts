@@ -16,7 +16,7 @@
  * за окном — удаляем (см. ниже про deleted=true / cancelled).
  */
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/edge.ts";
 import { ensureValidCalendarToken, type GoogleCalendarTokenData } from "../_shared/googleCalendarToken.ts";
 
 interface GoogleEvent {
@@ -178,7 +178,7 @@ async function syncOneCalendar(
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeadersFor(req) });
   }
 
   try {
@@ -204,14 +204,14 @@ Deno.serve(async (req: Request) => {
       if (error || !user) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401,
-          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+          headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
       userId = user.id;
     } else {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -236,14 +236,14 @@ Deno.serve(async (req: Request) => {
     if (calError) {
       return new Response(JSON.stringify({ error: calError.message }), {
         status: 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
     if (!calendars || calendars.length === 0) {
       return new Response(JSON.stringify({ results: [] }), {
         status: 200,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -258,13 +258,13 @@ Deno.serve(async (req: Request) => {
 
     return new Response(JSON.stringify({ results }), {
       status: 200,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Error in google-calendar-sync:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Sync failed' }),
-      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } },
+      { status: 500, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } },
     );
   }
 });
