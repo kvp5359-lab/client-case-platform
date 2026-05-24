@@ -183,6 +183,7 @@ export function shortenModel(model: string | null): string {
  *    workspace_digest_settings.system_prompt не задан.
  *
  * При изменении синхронизировать с supabase/functions/generate-project-digest/index.ts.
+ * Тест-страж digestDefaults.test.ts уронит билд при рассинхроне.
  */
 export const DEFAULT_DIGEST_SYSTEM_PROMPT = `Ты — помощник, который делает короткие деловые сводки дня по проекту в юридической CRM.
 Тебе передадут:
