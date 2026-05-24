@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Upload, FileText, ArrowLeft, X } from 'lucide-react'
 import { formatSize } from '@/utils/files/formatSize'
 import { AUTOFILL_SUPPORTED_MIME_TYPES } from '@/utils/files/fileValidation'
+import { FORM_AUTOFILL_MAX_BYTES } from '@/utils/files/limits'
 import { AUTOFILL_AI_WARNING } from './types'
 
 interface FileUploadZoneProps {
@@ -26,8 +27,7 @@ export function FileUploadZone({ file, onFileSelect, onAnalyze, onBack }: FileUp
         return
       }
 
-      const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
-      if (selectedFile.size > MAX_FILE_SIZE) {
+      if (selectedFile.size > FORM_AUTOFILL_MAX_BYTES) {
         toast.error('Файл слишком большой. Максимальный размер: 10 МБ')
         return
       }

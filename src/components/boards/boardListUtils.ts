@@ -3,22 +3,9 @@ import type { AvatarParticipant } from '@/components/participants/ParticipantAva
 import type { StatusOption } from '@/components/ui/status-dropdown'
 import type { GroupByField } from './types'
 
-// ── Форматирование дедлайна ─────────────────────────────
-
-export function formatDeadline(deadline: string | null): string | null {
-  if (!deadline) return null
-  const d = new Date(deadline)
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const taskDate = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-  const diffDays = Math.round((taskDate.getTime() - today.getTime()) / 86400000)
-
-  if (diffDays === 0) return 'Сегодня'
-  if (diffDays === 1) return 'Завтра'
-  if (diffDays === -1) return 'Вчера'
-
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
-}
+// ── Форматирование дедлайна (re-export из общего модуля) ────
+export { formatDeadline, isOverdue, formatDeadlineGroup } from '@/utils/deadlineUtils'
+import { formatDeadlineGroup } from '@/utils/deadlineUtils'
 
 // ── Форматирование интервала времени (start_at—end_at) ─────
 //
@@ -46,32 +33,12 @@ export function formatTimeRange(
   return null
 }
 
-export function isOverdue(deadline: string | null): boolean {
-  if (!deadline) return false
-  return new Date(deadline) < new Date(new Date().toDateString())
-}
-
 // ── Группировка ─────────────────────────────────────────
 
 export interface TaskGroup {
   key: string
   label: string
   tasks: WorkspaceTask[]
-}
-
-export function formatDeadlineGroup(deadline: string | null): string {
-  if (!deadline) return 'Без дедлайна'
-  const d = new Date(deadline)
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const taskDate = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-  const diffDays = Math.round((taskDate.getTime() - today.getTime()) / 86400000)
-
-  if (diffDays < 0) return 'Просрочено'
-  if (diffDays === 0) return 'Сегодня'
-  if (diffDays === 1) return 'Завтра'
-  if (diffDays <= 7) return 'На этой неделе'
-  return 'Позже'
 }
 
 export function groupTasks(

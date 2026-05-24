@@ -36,6 +36,7 @@ import {
   useRenameContextItem,
   useRunContextExtraction,
 } from '@/hooks/useProjectContext'
+import { formatBytes } from '@/utils/files/formatBytes'
 import type { ProjectContextItemWithFile } from '@/services/api/projectContext/projectContextService'
 import { ContextTextDialog } from './ContextTextDialog'
 
@@ -328,8 +329,3 @@ function pickIcon(item: ProjectContextItemWithFile) {
   return FileIcon
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} Б`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
-}

@@ -38,6 +38,7 @@ import {
   useCreateContextFile,
   useDeleteContextItem,
 } from '@/hooks/useProjectContext'
+import { formatBytes } from '@/utils/files/formatBytes'
 import { ProjectContextItemCard } from './ProjectContextItemCard'
 
 interface ProjectContextTabContentProps {
@@ -468,9 +469,4 @@ function AddScreenshotDialog({
   )
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} Б`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
-}
 

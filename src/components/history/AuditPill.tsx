@@ -32,6 +32,8 @@ const ACTION_LABELS: Record<string, string> = {
 }
 
 function formatDeadline(iso: string | null | undefined): string {
+  // В аудите даты показываем буквально (без «Сегодня/Завтра») — у записи в логе
+  // нет смысла относительности к «сейчас» (через неделю «Завтра» путает).
   if (!iso) return 'без срока'
   const d = new Date(iso)
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
