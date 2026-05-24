@@ -1,9 +1,9 @@
 "use client"
 
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { cn } from '@/lib/utils'
+import { BoardGroupDropZone, BoardListCardsDropZone } from './board-list/BoardListDropZones'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useFilteredTasks, useFilteredProjects } from './hooks/useFilteredListData'
 import { useWorkspaceProjectParticipants } from './hooks/useWorkspaceProjectParticipants'
@@ -99,81 +99,7 @@ export type BoardCardDndState = {
   recentlyDroppedId: string | null
 }
 
-/**
- * Droppable-обёртка вокруг группы (статуса) на доске. id вида
- * `group:<list_id>:<status_id>` (с listId-namespace, чтобы у разных списков
- * группы с одинаковым status_id не конфликтовали — это критично после
- * лифтинга DnD на уровень BoardView в этапе 4.5).
- *
- * Объявляется ДО BoardListCard — webpack-bundler не всегда корректно
- * хойстит function-declaration в eval()-режиме HMR.
- */
-function BoardGroupDropZone({
-  listId,
-  groupKey,
-  isActive,
-  children,
-}: {
-  listId: string
-  groupKey: string
-  isActive: boolean
-  children: React.ReactNode
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: `group:${listId}:${groupKey}` })
-  const hot = isOver || isActive
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        'rounded-lg transition-colors',
-        hot && 'bg-blue-100/40 ring-1 ring-blue-300',
-      )}
-    >
-      {children}
-    </div>
-  )
-}
-
-/**
- * Droppable-обёртка вокруг тела всего списка (этап 4.5). При drop карточки
- * сюда — статус карточки меняется на тот, что прописан в фильтре списка
- * (см. extractStatusIdFromFilter в cardDndUtils). Если фильтр не содержит
- * status_id — drop игнорируется в BoardView.
- *
- * id: `list-cards:<list_id>`.
- */
-function BoardListCardsDropZone({
-  listId,
-  isActive,
-  fullHeight,
-  children,
-}: {
-  listId: string
-  isActive: boolean
-  /** Когда у списка list_height='full' — растягиваемся как flex-item, чтобы
-   *  inner-контейнер с overflow-y-auto получил конечную высоту и реально
-   *  скроллился. Для 'auto'/'medium' inner сам ограничен max-h, flex не нужен. */
-  fullHeight?: boolean
-  children: React.ReactNode
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: `list-cards:${listId}` })
-  const hot = isOver || isActive
-  // min-h обязателен: иначе у пустого списка droppable-зона имеет нулевую
-  // высоту и pointerWithin никогда не срабатывает — карточки не дотащить
-  // до пустой колонки воронки.
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        'rounded-lg min-h-[60px] transition-colors',
-        fullHeight && 'flex flex-col flex-1 min-h-0',
-        hot && 'bg-blue-100/40 ring-2 ring-blue-400',
-      )}
-    >
-      {children}
-    </div>
-  )
-}
+// BoardGroupDropZone и BoardListCardsDropZone вынесены в ./board-list/BoardListDropZones
 
 export function BoardListCard({
   list,
