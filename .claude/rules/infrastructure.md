@@ -35,7 +35,7 @@
 | Tiptap | 3.x | Rich text editor |
 | @dnd-kit | latest | Drag & drop |
 | Supabase JS | 2.x | БД, Auth, Storage, Realtime |
-| Vitest | 4.x | Тесты (620+ кейсов) |
+| Vitest | 4.x | Тесты (~640 кейсов) |
 
 ## Архитектура
 
@@ -69,7 +69,7 @@ supabase gen types typescript --project-id zjatohckcpiqmxkmfxbs > src/types/data
 
 ### Edge Functions
 
-- Исходники: `supabase/functions/` — ~75 функций + `_shared/` + `types/deno.d.ts` + `tsconfig.json`.
+- Исходники: `supabase/functions/` — ~87 функций + `_shared/` + `types/deno.d.ts` + `tsconfig.json`.
 - Конфиг: `supabase/config.toml` (локальная разработка).
 - **Перенесены из старого репо `ClientCase` 2026-04-18** (`feat/migrate-edge-functions`, коммит `c03f0dc`). Скачаны через `supabase functions download` — исходники в репо ровно соответствуют тому, что задеплоено в проде. Старый репо `ClientCase` как источник правды больше не используется.
 
@@ -91,7 +91,7 @@ supabase secrets list --project-ref zjatohckcpiqmxkmfxbs   # значения н
 supabase functions logs <name> --project-ref zjatohckcpiqmxkmfxbs
 ```
 
-**Категории функций** (на 2026-05-11, ~75 шт) — мессенджер-функции в [`channels.md`](./channels.md). Прочие:
+**Категории функций** (на 2026-05-24, ~87 шт) — мессенджер-функции в [`channels.md`](./channels.md). Прочие:
 - **Google**: `google-oauth-start/exchange/refresh`, `google-drive-*` (8), `google-sheets-*` (2), `google-docs-export`.
 - **AI**: `chat-with-messages`, `chat-with-documents`, `chat-with-uploaded-file`, `generate-block`, `generate-document`, `generate-merge-name`, `generate-conversation-title`, `generate-project-digest`, `translate-block`, `analyze-documents`, `extract-text`, `extract-placeholders`, `extract-form-data*`, `transcribe-audio`, `knowledge-index`, `knowledge-search`, `check-document`, `test-ai-connection`.
 - **Документы/файлы**: `compress-document`, `compress-pdf`, `compress-pdf-ilovepdf`, `fetch-image`, `fetch-sheets`, `fix-cyrillic-storage-paths`, `export-to-drive`.
@@ -196,7 +196,7 @@ npm install
 npm run dev          # http://localhost:8080 (Webpack, не Turbopack — см. gotchas)
 npm run build        # production build
 npm run lint         # ESLint, --max-warnings 0
-npm test             # Vitest run (620+ кейсов)
+npm test             # Vitest run (~640 кейсов)
 npm run test:watch   # Vitest watch
 npm test -- path/to/file.test.ts   # один файл
 npm test -- -t "имя теста"         # один кейс

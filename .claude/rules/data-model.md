@@ -236,9 +236,9 @@
 
 **Миграция**: `20260524_slot_ai_prompts.sql`.
 
-## Роуты (62)
+## Роуты (65)
 
-`find src/app -name page.tsx | wc -l`. На 2026-05-11 — **62**.
+`find src/app -name page.tsx | wc -l`. На 2026-05-24 — **65**.
 
 **Root** (1): `/`
 
