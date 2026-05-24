@@ -267,6 +267,26 @@ export const SYSTEM_PROJECT_ROLES = {
   PARTICIPANT: 'Участник',
 } as const
 
+/**
+ * «Сотрудники» — все роли, кроме клиентов и участников.
+ * Используется для фильтрации списков (кому назначить задачу, кого включить в чат
+ * сотрудников и т.п.). Источник правды для всех фильтров типа «is staff».
+ *
+ * Включает workspace-роль «Сотрудник» и проектную «Исполнитель» — обе означают
+ * команду по отношению к клиенту.
+ */
+export const STAFF_ROLES = [
+  SYSTEM_WORKSPACE_ROLES.OWNER,
+  SYSTEM_WORKSPACE_ROLES.ADMIN,
+  SYSTEM_WORKSPACE_ROLES.EMPLOYEE,
+  SYSTEM_PROJECT_ROLES.EXECUTOR,
+] as const
+
+export type StaffRole = (typeof STAFF_ROLES)[number]
+
+export const isStaffRole = (role: string | null | undefined): boolean =>
+  !!role && (STAFF_ROLES as readonly string[]).includes(role)
+
 // =====================================================
 // Вспомогательные типы
 // =====================================================

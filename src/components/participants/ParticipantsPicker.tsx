@@ -11,14 +11,14 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { ParticipantAvatar } from './ParticipantAvatar'
+import { isStaffRole } from '@/types/permissions'
 
-const STAFF_ROLES = ['Владелец', 'Администратор', 'Сотрудник']
 const EXTERNAL_ROLES = ['Внешний сотрудник']
 const CLIENT_ROLES = ['Клиент']
 
 function getRoleGroup(roles?: string[]): 'staff' | 'external' | 'client' | 'other' {
   if (!roles) return 'other'
-  if (roles.some((r) => STAFF_ROLES.includes(r))) return 'staff'
+  if (roles.some((r) => isStaffRole(r))) return 'staff'
   if (roles.some((r) => EXTERNAL_ROLES.includes(r))) return 'external'
   if (roles.some((r) => CLIENT_ROLES.includes(r))) return 'client'
   return 'other'

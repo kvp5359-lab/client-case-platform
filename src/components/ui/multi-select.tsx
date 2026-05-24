@@ -12,9 +12,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { STAFF_ROLES as STAFF_ROLES_LIST } from '@/types/permissions'
 
-/** Роли сотрудников workspace (не клиенты/внешние) — вынесен из компонента для стабильности */
-const STAFF_ROLES = new Set(['Администратор', 'Сотрудник'])
+/** Роли сотрудников workspace (не клиенты/внешние) — Set для O(1) lookup. */
+const STAFF_ROLES = new Set<string>(STAFF_ROLES_LIST)
 
 /** Маппинг ролей на иконки — вынесен из компонента для стабильности ссылки */
 const ROLE_ICONS: Record<string, React.ElementType> = {
