@@ -30,26 +30,15 @@ import { TaskPanelProjectView } from './TaskPanelProjectView'
 import { TaskPanelTaskHeader } from './TaskPanelTaskHeader'
 import type { StatusOption } from '@/components/ui/status-dropdown'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
-import type { TaskItem } from './types'
+import type { TaskItem, ProjectHeaderInfo, PanelStackItem } from './types'
+
+export type { ProjectHeaderInfo, PanelStackItem } from './types'
 
 const ChatSettingsDialog = lazy(() =>
   import('@/components/messenger/ChatSettingsDialog').then((m) => ({
     default: m.ChatSettingsDialog,
   })),
 )
-
-/** Минимальная информация о проекте для шапки Режима 2. */
-export interface ProjectHeaderInfo {
-  id: string
-  name: string
-  created_at?: string | null
-  description?: string | null
-}
-
-/** Элемент стека панели: либо задача, либо проект. */
-export type PanelStackItem =
-  | { kind: 'task'; task: TaskItem }
-  | { kind: 'project'; project: ProjectHeaderInfo }
 
 export interface TaskPanelProps {
   stackTop: PanelStackItem | null

@@ -19,8 +19,7 @@
  */
 
 import { createContext, useContext } from 'react'
-import type { TaskItem } from './types'
-import type { ProjectHeaderInfo } from './TaskPanel'
+import type { TaskItem, ProjectHeaderInfo } from './types'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
 
 interface TaskPanelContextValue {

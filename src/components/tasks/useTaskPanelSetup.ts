@@ -45,8 +45,8 @@ import {
   useUpdateTaskSettings,
 } from './useTaskMutations'
 import { workspaceThreadKeys } from '@/hooks/queryKeys'
-import type { TaskItem } from './types'
-import type { TaskPanelProps, ProjectHeaderInfo, PanelStackItem } from './TaskPanel'
+import type { TaskItem, ProjectHeaderInfo, PanelStackItem } from './types'
+import type { TaskPanelProps } from './TaskPanel'
 
 const MAX_STACK = 7
 

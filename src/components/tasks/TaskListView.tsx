@@ -43,7 +43,11 @@ const ChatSettingsDialog = lazy(() =>
   })),
 )
 
-import { TaskPanel } from './TaskPanel'
+// Lazy-импорт TaskPanel — рвём цикл TaskListView → TaskPanel → TaskPanelProjectView → TaskListView.
+// Панель здесь — fallback на случай отсутствия layout-level TaskPanel.
+const TaskPanel = lazy(() =>
+  import('./TaskPanel').then((m) => ({ default: m.TaskPanel })),
+)
 import { useLayoutTaskPanel } from './TaskPanelContext'
 import { useTaskAssigneesMap } from './useTaskAssignees'
 import { useCurrentParticipantId } from '@/hooks/shared/useCurrentParticipantId'
@@ -361,6 +365,7 @@ export const TaskListView = memo(function TaskListView({
 
       {/* Панель задачи (правая боковая) — только если нет layout-level панели */}
       {!hasLayoutPanel && (
+        <Suspense fallback={null}>
         <TaskPanel
           stackTop={openTask ? { kind: 'task', task: openTask } : null}
           open={!!openTaskId}
@@ -400,6 +405,7 @@ export const TaskListView = memo(function TaskListView({
             }
           }}
         />
+        </Suspense>
       )}
 
       {/* Диалог создания задачи — монтируется только когда открыт */}

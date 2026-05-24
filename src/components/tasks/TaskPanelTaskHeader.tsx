@@ -23,8 +23,7 @@ import { cn } from '@/lib/utils'
 import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'
 import { TaskActionsMenu } from './TaskActionsMenu'
-import type { ProjectHeaderInfo } from './TaskPanel'
-import type { TaskItem } from './types'
+import type { ProjectHeaderInfo, TaskItem } from './types'
 
 interface TaskPanelTaskHeaderProps {
   task: TaskItem

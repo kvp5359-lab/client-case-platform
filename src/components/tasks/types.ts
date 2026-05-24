@@ -34,3 +34,16 @@ export interface TaskItem {
   /** Контакт собеседника — используется как scope боковой панели, если project_id=null. */
   contact_participant_id?: string | null
 }
+
+/** Минимальная информация о проекте для шапки Режима 2 TaskPanel. */
+export interface ProjectHeaderInfo {
+  id: string
+  name: string
+  created_at?: string | null
+  description?: string | null
+}
+
+/** Элемент стека TaskPanel: либо задача, либо проект. */
+export type PanelStackItem =
+  | { kind: 'task'; task: TaskItem }
+  | { kind: 'project'; project: ProjectHeaderInfo }

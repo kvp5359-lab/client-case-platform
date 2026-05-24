@@ -32,8 +32,7 @@ import { useStandaloneTabs } from './useStandaloneTabs'
 import { useThreadFromPanelTab } from './useThreadFromPanelTab'
 import { TaskPanelTabbedShellRenderer } from './TaskPanelTabbedShellRenderer'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
-import type { TaskItem } from './types'
-import type { ProjectHeaderInfo } from './TaskPanel'
+import type { TaskItem, ProjectHeaderInfo } from './types'
 
 interface TaskPanelTabbedShellProps {
   workspaceId: string

@@ -11,8 +11,7 @@ import { ArrowLeft, ExternalLink, FolderOpen, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatSmartDate } from '@/utils/format/dateFormat'
 import { TaskPanelContext, useLayoutTaskPanel } from './TaskPanelContext'
-import type { ProjectHeaderInfo } from './TaskPanel'
-import type { TaskItem } from './types'
+import type { ProjectHeaderInfo, TaskItem } from './types'
 
 const TaskListView = lazy(() =>
   import('./TaskListView').then((m) => ({ default: m.TaskListView })),
