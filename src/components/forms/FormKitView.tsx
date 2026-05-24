@@ -7,7 +7,8 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Loader2, ChevronRight, ChevronLeft, Info } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Info } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { FieldsGrid } from './FieldsGrid'
@@ -136,11 +137,7 @@ export function FormKitView({
   }, [hasNext, filteredSections, activeIndex])
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   if (error) {

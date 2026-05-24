@@ -18,7 +18,8 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Search, Package, BookOpen, HelpCircle, Loader2 } from 'lucide-react'
+import { Search, Package, BookOpen, HelpCircle } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import type { Database } from '@/types/database'
 
 type SlotTemplate = Database['public']['Tables']['slot_templates']['Row']
@@ -105,9 +106,7 @@ export function SlotTemplatePickerDialog({
 
         <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
           {isLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
+            <PageLoader />
           ) : filtered.length === 0 ? (
             <div className="text-center py-10 text-sm text-muted-foreground">
               {searchQuery

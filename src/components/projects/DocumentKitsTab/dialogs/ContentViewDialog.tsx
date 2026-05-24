@@ -1,7 +1,8 @@
 "use client"
 
 import { Button } from '@/components/ui/button'
-import { Loader2, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import {
   Dialog,
   DialogContent,
@@ -37,9 +38,7 @@ export function ContentViewDialog({
 
         <div className="py-4">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            <PageLoader />
           ) : (
             <div className="border rounded-lg p-4 bg-muted/30 max-h-[60vh] overflow-y-auto">
               {content ? (

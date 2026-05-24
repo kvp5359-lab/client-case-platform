@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Loader2 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { useDocumentKitSetup } from './DocumentKitsTab/hooks'
 import { DocumentKitProvider } from './DocumentKitsTab/context'
 import { DocumentKitDialogs } from './DocumentKitsTab/components'
@@ -126,11 +127,7 @@ function DocumentKitsTabContent(props: DocumentKitsTabProps) {
   // === РЕНДЕРИНГ ===
 
   if (isLoading && !kit) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   if (!kit) {

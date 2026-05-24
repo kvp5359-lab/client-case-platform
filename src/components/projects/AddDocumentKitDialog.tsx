@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { PageLoader } from '@/components/ui/loaders'
 import { supabase } from '@/lib/supabase'
 
 type AddDocumentKitDialogProps = {
@@ -236,9 +237,7 @@ export function AddDocumentKitDialog({
 
         <div className="flex-1 overflow-auto">
           {loadingTemplates ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            <PageLoader />
           ) : templates.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">Нет доступных шаблонов наборов документов</p>

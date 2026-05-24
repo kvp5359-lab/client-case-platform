@@ -11,7 +11,8 @@
 
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, X } from 'lucide-react'
+import { X } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { supabase } from '@/lib/supabase'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -69,11 +70,7 @@ export function KnowledgeArticleTabContent({ articleId, onClose }: Props) {
   }, [isReadOnly])
 
   if (isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   if (error || !article) {

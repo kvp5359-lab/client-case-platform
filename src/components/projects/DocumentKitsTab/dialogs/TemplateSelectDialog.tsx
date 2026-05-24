@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Loader2 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import {
   Dialog,
   DialogContent,
@@ -56,9 +56,7 @@ export function TemplateSelectDialog({
 
         <div className="py-4">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            <PageLoader />
           ) : templates.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>Нет доступных шаблонов папок для этого набора документов</p>

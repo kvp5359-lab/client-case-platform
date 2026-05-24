@@ -7,7 +7,7 @@
  */
 
 import { useMemo, lazy, Suspense } from 'react'
-import { Loader2 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { useQuery } from '@tanstack/react-query'
 import { TaskPanel } from './TaskPanel'
 import { threadToTaskItem } from './threadToTaskItem'
@@ -47,11 +47,7 @@ const ProjectContextTabContent = lazy(() =>
 )
 
 export function LoadingBody() {
-  return (
-    <div className="flex-1 flex items-center justify-center">
-      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-    </div>
-  )
+  return <PageLoader />
 }
 
 // ─── Thread tab content (bare) ─────────────────────────────────
@@ -253,7 +249,7 @@ function SystemTabContent({
   if (!projectId) {
     if (tab.type === 'assistant' && standaloneThreadId) {
       return (
-        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+        <Suspense fallback={<PageLoader />}>
           <AiPanelContent workspaceId={workspaceId} threadId={standaloneThreadId} />
         </Suspense>
       )
@@ -284,19 +280,13 @@ function SystemTabContent({
       return <PanelDocumentsContent projectId={projectId} workspaceId={workspaceId} />
     case 'assistant':
       return (
-        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+        <Suspense fallback={<PageLoader />}>
           <AiPanelContent workspaceId={workspaceId} projectId={projectId} />
         </Suspense>
       )
     case 'extra':
       return (
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          }
-        >
+        <Suspense fallback={<PageLoader />}>
           <ExtraPanelContent projectId={projectId} workspaceId={workspaceId} />
         </Suspense>
       )
@@ -314,13 +304,7 @@ function SystemTabContent({
       )
     case 'project_context':
       return (
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          }
-        >
+        <Suspense fallback={<PageLoader />}>
           <div className="p-3 overflow-y-auto h-full">
             <ProjectContextTabContent projectId={projectId} workspaceId={workspaceId} />
           </div>

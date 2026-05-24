@@ -12,7 +12,8 @@
 
 import { useState, useMemo, useCallback, useEffect, lazy, Suspense, memo } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckSquare, Loader2, Plus } from 'lucide-react'
+import { CheckSquare, Plus } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { Button } from '@/components/ui/button'
 import { useWorkspaceThreads } from '@/hooks/tasks/useWorkspaceThreads'
 import { useTaskStatuses } from '@/hooks/useStatuses'
@@ -313,9 +314,7 @@ export const TaskListView = memo(function TaskListView({
 
       {/* Контент */}
       {isLoading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-        </div>
+        <PageLoader />
       ) : allTasks.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <CheckSquare className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />

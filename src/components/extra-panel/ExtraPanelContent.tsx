@@ -4,7 +4,7 @@
  * Переиспользует DocumentKitsTab с showSystemSection=true, без папок и тулбара.
  */
 
-import { Loader2 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { projectKeys, documentKitKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { getProjectById } from '@/services/api/projectService'
@@ -58,11 +58,7 @@ export function ExtraPanelContent({ projectId, workspaceId }: ExtraPanelContentP
   const kitId = documentKits[0]?.id
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   if (!kitId) {

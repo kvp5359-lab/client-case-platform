@@ -1,6 +1,7 @@
 "use client"
 
-import { Loader2, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { TemplateWithFields } from './useAddFormKit'
@@ -66,11 +67,7 @@ export function TemplateStep({
   onToggle,
 }: TemplateStepProps) {
   if (loadingTemplates) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   if (templates.length === 0) {

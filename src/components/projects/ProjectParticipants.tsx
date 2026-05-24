@@ -5,7 +5,7 @@
  * Управление участниками проекта с назначением ролей
  */
 
-import { Loader2 } from 'lucide-react'
+import { PageLoader } from '@/components/ui/loaders'
 import { ParticipantsPicker } from '@/components/participants/ParticipantsPicker'
 import { EditParticipantDialog } from '@/components/participants/EditParticipantDialog'
 import { ClientConfirmDialog } from './ClientConfirmDialog'
@@ -63,11 +63,7 @@ export function ProjectParticipants({
   })
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   // Переводим роли на множественное число
