@@ -13,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | [`.claude/rules/channels.md`](.claude/rules/channels.md) | **Карантин.** Мессенджер: матрица каналов, общий слой Edge, авторизация, send_status. TG group/Business/MTProto, Wazzup, Email, личные диалоги, аватары |
 | [`.claude/rules/gotchas.md`](.claude/rules/gotchas.md) | **Читать перед правкой.** RLS short-circuit, multi-bot dedup, Webpack dev, --no-verify-jwt, INTERNAL_FUNCTION_SECRET, pg_cron service_role, nginx-буферы, partial-unique upsert, reorderWithinZones, маршрутизация триггера |
 | [`.claude/rules/refactoring.md`](.claude/rules/refactoring.md) | 10 зон аудита + карантинные зоны (мессенджер/email/mtproto), формат отчёта |
+| [`.claude/rules/audit-false-alarms.md`](.claude/rules/audit-false-alarms.md) | **Читать перед аудитом.** Места, которые выглядят как баги/дубли/legacy, но на самом деле by design — чтобы не тратить часы на их «починку» |
 
 ## Decision tree — какой файл когда читать
 
