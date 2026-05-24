@@ -34,7 +34,6 @@ const INITIAL_FORM: FolderFormData = {
 
 export function FolderTemplatesContent() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
-  const [activeTab, setActiveTab] = useState('description')
   const [defaultPromptsOpen, setDefaultPromptsOpen] = useState(false)
 
   const {
@@ -186,14 +185,11 @@ export function FolderTemplatesContent() {
     enabled: !!workspaceId,
   })
 
-  // Обёртки с управлением activeTab
   const handleCreate = () => {
-    setActiveTab('description')
     baseHandleCreate()
   }
 
   const handleEdit = (template: FolderTemplate) => {
-    setActiveTab('description')
     setFormData({
       name: template.name,
       description: template.description || '',
@@ -205,7 +201,6 @@ export function FolderTemplatesContent() {
   }
 
   const handleCloseDialog = () => {
-    setActiveTab('description')
     baseHandleCloseDialog()
   }
 
@@ -256,8 +251,6 @@ export function FolderTemplatesContent() {
         setFormData={setFormData}
         onSubmit={handleSubmit}
         isSaving={isSaving}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
         articles={articles}
         groups={groups}
         articleGroups={articleGroups}

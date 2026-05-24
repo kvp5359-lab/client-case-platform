@@ -3,68 +3,69 @@
  *
  * Шаблоны слотов — переиспользуемые «заготовки» (например, «Загранпаспорт»,
  * «Диплом»). Подключаются в шаблон папки или инлайн-слоты шаблона набора
- * документов путём копирования полей (name/description/knowledge_article_id).
- * Не live-reference — изменения в справочнике не затрагивают ранее созданные
- * места использования.
+ * документов путём копирования полей (name/description/knowledge_article_id/
+ * ai_naming_prompt/ai_check_prompt). Не live-reference — изменения
+ * в справочнике не затрагивают ранее созданные места использования.
  */
 
+import { useState } from 'react'
 import { useParams } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Search, Plus } from 'lucide-react'
+import { toast } from 'sonner'
+import { logger } from '@/utils/logger'
 import { knowledgeBaseKeys, knowledgeListKeys } from '@/hooks/queryKeys'
 import { getArticlesByWorkspace } from '@/services/api/knowledge/knowledgeBaseService'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { useTemplateList } from './useTemplateList'
-import { SlotTemplateDialog, type SlotTemplateFormData } from './SlotTemplateDialog'
+import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { EditSlotDialog, type SlotDialogValue } from './EditSlotDialog'
 import { SlotTemplatesTable } from './SlotTemplatesTable'
 
 type SlotTemplate = Database['public']['Tables']['slot_templates']['Row']
 
-const INITIAL_FORM: SlotTemplateFormData = {
-  name: '',
-  description: '',
-  knowledge_article_id: null,
-}
-
 export function SlotTemplatesContent() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
+  const queryClient = useQueryClient()
+  const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
-  const {
-    filteredItems: filteredTemplates,
-    isLoading,
-    searchQuery,
-    setSearchQuery,
-    isDialogOpen,
-    editingItem: editingTemplate,
-    formData,
-    setFormData,
-    handleCreate,
-    handleEdit: baseHandleEdit,
-    handleCloseDialog,
-    handleSubmit,
-    handleCopy,
-    handleDelete,
-    isSaving,
-    isDeleting,
-    isCopying,
-    confirmDialogProps,
-  } = useTemplateList<SlotTemplate, SlotTemplateFormData>({
-    tableName: 'slot_templates',
-    queryKey: 'slot-templates',
-    workspaceId,
-    initialFormData: INITIAL_FORM,
-    customCreateFn: async (data) => {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [editingTemplate, setEditingTemplate] = useState<SlotTemplate | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+  const queryKey = ['slot-templates', workspaceId]
+
+  const { data: templates = [], isLoading } = useQuery<SlotTemplate[]>({
+    queryKey,
+    queryFn: async () => {
+      if (!workspaceId) return []
+      const { data, error } = await supabase
+        .from('slot_templates')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data ?? []
+    },
+    enabled: !!workspaceId,
+  })
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey })
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: SlotDialogValue) => {
       if (editingTemplate) {
         const { error } = await supabase
           .from('slot_templates')
           .update({
             name: data.name,
-            description: data.description || null,
-            knowledge_article_id: data.knowledge_article_id || null,
+            description: data.description,
+            knowledge_article_id: data.knowledge_article_id,
+            ai_naming_prompt: data.ai_naming_prompt,
+            ai_check_prompt: data.ai_check_prompt,
           })
           .eq('id', editingTemplate.id)
         if (error) throw error
@@ -72,30 +73,83 @@ export function SlotTemplatesContent() {
         const { error } = await supabase.from('slot_templates').insert({
           workspace_id: workspaceId ?? '',
           name: data.name,
-          description: data.description || null,
-          knowledge_article_id: data.knowledge_article_id || null,
+          description: data.description,
+          knowledge_article_id: data.knowledge_article_id,
+          ai_naming_prompt: data.ai_naming_prompt,
+          ai_check_prompt: data.ai_check_prompt,
         })
         if (error) throw error
       }
     },
-    customCopyFn: async (template) => {
+    onSuccess: () => {
+      invalidate()
+      setIsDialogOpen(false)
+      setEditingTemplate(null)
+    },
+    onError: (error) => {
+      logger.error('Ошибка сохранения шаблона слота:', error)
+      toast.error('Не удалось сохранить шаблон слота')
+    },
+  })
+
+  const copyMutation = useMutation({
+    mutationFn: async (template: SlotTemplate) => {
       const { error } = await supabase.from('slot_templates').insert({
         workspace_id: workspaceId ?? '',
         name: `${template.name} (копия)`,
         description: template.description,
         knowledge_article_id: template.knowledge_article_id,
+        ai_naming_prompt: template.ai_naming_prompt,
+        ai_check_prompt: template.ai_check_prompt,
       })
       if (error) throw error
     },
+    onSuccess: invalidate,
+    onError: (error) => {
+      logger.error('Ошибка копирования шаблона слота:', error)
+      toast.error('Не удалось скопировать шаблон')
+    },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('slot_templates').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: invalidate,
+    onError: (error) => {
+      logger.error('Ошибка удаления шаблона слота:', error)
+      toast.error('Не удалось удалить шаблон')
+    },
+  })
+
+  const filteredTemplates = templates.filter((t) => {
+    const q = searchQuery.toLowerCase()
+    return (
+      t.name.toLowerCase().includes(q) ||
+      (t.description?.toLowerCase().includes(q) ?? false)
+    )
+  })
+
+  const handleCreate = () => {
+    setEditingTemplate(null)
+    setIsDialogOpen(true)
+  }
+
   const handleEdit = (template: SlotTemplate) => {
-    setFormData({
-      name: template.name,
-      description: template.description || '',
-      knowledge_article_id: template.knowledge_article_id || null,
+    setEditingTemplate(template)
+    setIsDialogOpen(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: 'Подтвердите удаление',
+      description: 'Удалить шаблон слота? Уже созданные слоты не изменятся.',
+      confirmText: 'Удалить',
+      variant: 'destructive',
     })
-    baseHandleEdit(template)
+    if (!ok) return
+    await deleteMutation.mutateAsync(id)
   }
 
   // Данные для ArticleTreePicker — статьи/группы БЗ
@@ -157,27 +211,42 @@ export function SlotTemplatesContent() {
           isLoading={isLoading}
           searchQuery={searchQuery}
           onEdit={handleEdit}
-          onCopy={handleCopy}
-          onDelete={(id) => handleDelete(id, 'Удалить шаблон слота? Уже созданные слоты не изменятся.')}
-          isCopying={isCopying}
-          isDeleting={isDeleting}
+          onCopy={(t) => copyMutation.mutate(t)}
+          onDelete={handleDelete}
+          isCopying={copyMutation.isPending}
+          isDeleting={deleteMutation.isPending}
         />
       </div>
 
-      <SlotTemplateDialog
+      <EditSlotDialog
         open={isDialogOpen}
-        onClose={handleCloseDialog}
-        editingTemplate={editingTemplate}
-        formData={formData}
-        setFormData={setFormData}
-        onSubmit={handleSubmit}
-        isSaving={isSaving}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsDialogOpen(false)
+            setEditingTemplate(null)
+          }
+        }}
+        instanceKey={editingTemplate?.id}
+        title={editingTemplate ? 'Редактировать шаблон слота' : 'Создать шаблон слота'}
+        value={
+          editingTemplate
+            ? {
+                name: editingTemplate.name,
+                description: editingTemplate.description,
+                knowledge_article_id: editingTemplate.knowledge_article_id,
+                ai_naming_prompt: editingTemplate.ai_naming_prompt,
+                ai_check_prompt: editingTemplate.ai_check_prompt,
+              }
+            : null
+        }
+        isPending={saveMutation.isPending}
         articles={articles}
         groups={groups}
         articleGroups={articleGroups}
+        onSubmit={(data) => saveMutation.mutate(data)}
       />
 
-      <ConfirmDialog {...confirmDialogProps} />
+      <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </>
   )
 }

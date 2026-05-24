@@ -27,6 +27,8 @@ export interface PickedSlotTemplate {
   name: string
   description: string | null
   knowledge_article_id: string | null
+  ai_naming_prompt: string | null
+  ai_check_prompt: string | null
 }
 
 interface SlotTemplatePickerDialogProps {
@@ -73,6 +75,8 @@ export function SlotTemplatePickerDialog({
       name: t.name,
       description: t.description,
       knowledge_article_id: t.knowledge_article_id,
+      ai_naming_prompt: t.ai_naming_prompt,
+      ai_check_prompt: t.ai_check_prompt,
     })
     onOpenChange(false)
   }

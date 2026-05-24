@@ -1,9 +1,11 @@
 /**
- * FolderTemplateDialog — диалог создания/редактирования шаблона папки
+ * FolderTemplateDialog — диалог создания/редактирования шаблона папки.
  *
- * Извлечён из FolderTemplatesContent (B-68 SRP refactoring).
+ * Все поля на одном экране (без вкладок), переключатель «Текст / Статья БЗ»
+ * для источника описания — обычные радио. Слоты, AI-промпты — секциями ниже.
  */
 
+import { useState } from 'react'
 import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +19,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { SlotsEditor } from './SlotsEditor'
 import { folderTemplateSlotKeys } from '@/hooks/queryKeys'
 import {
@@ -44,8 +45,6 @@ interface FolderTemplateDialogProps {
   setFormData: (data: FolderFormData) => void
   onSubmit: (e: React.FormEvent) => void
   isSaving: boolean
-  activeTab: string
-  setActiveTab: (tab: string) => void
   articles: Array<{ id: string; title: string }>
   groups: ArticleTreePickerGroup[]
   articleGroups: ArticleTreePickerLink[]
@@ -60,13 +59,17 @@ export function FolderTemplateDialog({
   setFormData,
   onSubmit,
   isSaving,
-  activeTab,
-  setActiveTab,
   articles,
   groups,
   articleGroups,
   workspaceId,
 }: FolderTemplateDialogProps) {
+  // Локальный режим — независим от formData.knowledge_article_id, чтобы
+  // переключение на «Статья БЗ» работало даже когда статья ещё не выбрана.
+  const [descriptionMode, setDescriptionMode] = useState<'text' | 'article'>(
+    formData.knowledge_article_id ? 'article' : 'text',
+  )
+
   return (
     <Dialog
       open={open}
@@ -74,7 +77,7 @@ export function FolderTemplateDialog({
         if (!isOpen) onClose()
       }}
     >
-      <DialogContent className="max-w-4xl max-h-[85vh]">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingTemplate ? 'Редактировать шаблон папки' : 'Создать шаблон папки'}
@@ -87,7 +90,7 @@ export function FolderTemplateDialog({
         </DialogHeader>
 
         <form onSubmit={onSubmit}>
-          <div className="space-y-4 py-4">
+          <div className="space-y-5 py-2">
             <div className="space-y-2">
               <Label htmlFor="name">Название *</Label>
               <Input
@@ -95,106 +98,100 @@ export function FolderTemplateDialog({
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Например: Паспорта, Договоры, Банковские документы"
-                className="text-2xl font-bold !text-2xl h-12 py-2"
+                className="text-lg font-semibold h-11"
                 required
               />
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="w-auto">
-                <TabsTrigger value="description">Описание</TabsTrigger>
-                {editingTemplate && <TabsTrigger value="slots">Слоты</TabsTrigger>}
-                <TabsTrigger value="naming-prompt">AI промпт для названия</TabsTrigger>
-                <TabsTrigger value="check-prompt">AI промпт для проверки</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="description" className="mt-4">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Статья базы знаний</Label>
-                    <ArticleTreePicker
-                      articles={articles}
-                      groups={groups}
-                      articleGroups={articleGroups}
-                      selectedId={formData.knowledge_article_id}
-                      onSelect={(id) => setFormData({ ...formData, knowledge_article_id: id })}
+            <div className="space-y-2">
+              <Label>Описание для клиента</Label>
+              {articles.length > 0 && (
+                <div className="flex items-center gap-4 text-sm">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="folder-description-mode"
+                      checked={descriptionMode === 'text'}
+                      onChange={() => {
+                        setDescriptionMode('text')
+                        setFormData({ ...formData, knowledge_article_id: null })
+                      }}
                     />
-                    {formData.knowledge_article_id && (
-                      <p className="text-xs text-muted-foreground">
-                        Привязанная статья будет отображаться как описание папки
-                      </p>
-                    )}
-                  </div>
-                  {!formData.knowledge_article_id && (
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Текстовое описание</Label>
-                      <Textarea
-                        id="description"
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="Краткое описание назначения папки"
-                        rows={10}
-                        className="min-h-[300px]"
-                      />
-                    </div>
-                  )}
+                    Текст
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="folder-description-mode"
+                      checked={descriptionMode === 'article'}
+                      onChange={() => setDescriptionMode('article')}
+                    />
+                    Статья базы знаний
+                  </label>
                 </div>
-              </TabsContent>
-
-              {editingTemplate && workspaceId && (
-                <TabsContent value="slots" className="mt-4">
-                  <SlotsEditor
-                    config={{
-                      table: 'folder_template_slots',
-                      foreignKey: 'folder_template_id',
-                      foreignKeyValue: editingTemplate.id,
-                      queryKey: folderTemplateSlotKeys.byTemplate(editingTemplate.id),
-                      extraInsertFields: { workspace_id: workspaceId },
-                    }}
-                    workspaceId={workspaceId}
-                    description="Слоты — это предопределённые места для документов. При создании папки из шаблона слоты будут автоматически добавлены."
-                  />
-                </TabsContent>
               )}
 
-              <TabsContent value="naming-prompt" className="mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="ai_naming_prompt">
-                    AI промпт для названия документа (опционально)
-                  </Label>
-                  <Textarea
-                    id="ai_naming_prompt"
-                    value={formData.ai_naming_prompt}
-                    onChange={(e) => setFormData({ ...formData, ai_naming_prompt: e.target.value })}
-                    placeholder="Промпт для генерации вариантов названия документа"
-                    rows={10}
-                    className="min-h-[300px]"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Укажите, как AI должен формировать название документа на основе его содержимого
-                  </p>
-                </div>
-              </TabsContent>
+              {descriptionMode === 'text' ? (
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Краткое описание назначения папки"
+                  rows={4}
+                />
+              ) : (
+                <ArticleTreePicker
+                  articles={articles}
+                  groups={groups}
+                  articleGroups={articleGroups}
+                  selectedId={formData.knowledge_article_id}
+                  onSelect={(id) => setFormData({ ...formData, knowledge_article_id: id })}
+                />
+              )}
+            </div>
 
-              <TabsContent value="check-prompt" className="mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="ai_check_prompt">
-                    AI промпт для проверки документа (опционально)
-                  </Label>
-                  <Textarea
-                    id="ai_check_prompt"
-                    value={formData.ai_check_prompt}
-                    onChange={(e) => setFormData({ ...formData, ai_check_prompt: e.target.value })}
-                    placeholder="Промпт для проверки содержимого документа"
-                    rows={10}
-                    className="min-h-[300px]"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Укажите, как AI должен проверять и анализировать содержимое документа
-                  </p>
-                </div>
-              </TabsContent>
-            </Tabs>
+            {editingTemplate && workspaceId && (
+              <div className="space-y-2">
+                <Label>Слоты документов</Label>
+                <SlotsEditor
+                  config={{
+                    table: 'folder_template_slots',
+                    foreignKey: 'folder_template_id',
+                    foreignKeyValue: editingTemplate.id,
+                    queryKey: folderTemplateSlotKeys.byTemplate(editingTemplate.id),
+                    extraInsertFields: { workspace_id: workspaceId },
+                  }}
+                  workspaceId={workspaceId}
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="ai_naming_prompt">AI-промпт для именования</Label>
+                <Textarea
+                  id="ai_naming_prompt"
+                  value={formData.ai_naming_prompt}
+                  onChange={(e) =>
+                    setFormData({ ...formData, ai_naming_prompt: e.target.value })
+                  }
+                  placeholder="Как AI должен формировать название документа"
+                  rows={6}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ai_check_prompt">AI-промпт для проверки</Label>
+                <Textarea
+                  id="ai_check_prompt"
+                  value={formData.ai_check_prompt}
+                  onChange={(e) =>
+                    setFormData({ ...formData, ai_check_prompt: e.target.value })
+                  }
+                  placeholder="Как AI должен проверять содержимое документа"
+                  rows={6}
+                />
+              </div>
+            </div>
           </div>
 
           <DialogFooter>

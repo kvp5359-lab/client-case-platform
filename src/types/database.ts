@@ -1480,6 +1480,8 @@ export type Database = {
       }
       document_kit_template_folder_slots: {
         Row: {
+          ai_check_prompt: string | null
+          ai_naming_prompt: string | null
           created_at: string
           description: string | null
           id: string
@@ -1489,6 +1491,8 @@ export type Database = {
           sort_order: number
         }
         Insert: {
+          ai_check_prompt?: string | null
+          ai_naming_prompt?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -1498,6 +1502,8 @@ export type Database = {
           sort_order?: number
         }
         Update: {
+          ai_check_prompt?: string | null
+          ai_naming_prompt?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -2530,6 +2536,8 @@ export type Database = {
       }
       folder_slots: {
         Row: {
+          ai_check_prompt: string | null
+          ai_naming_prompt: string | null
           assignee_id: string | null
           created_at: string
           deadline: string | null
@@ -2547,6 +2555,8 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          ai_check_prompt?: string | null
+          ai_naming_prompt?: string | null
           assignee_id?: string | null
           created_at?: string
           deadline?: string | null
@@ -2564,6 +2574,8 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          ai_check_prompt?: string | null
+          ai_naming_prompt?: string | null
           assignee_id?: string | null
           created_at?: string
           deadline?: string | null
@@ -2641,6 +2653,8 @@ export type Database = {
       }
       folder_template_slots: {
         Row: {
+          ai_check_prompt: string | null
+          ai_naming_prompt: string | null
           created_at: string
           description: string | null
           folder_template_id: string
@@ -2652,6 +2666,8 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          ai_check_prompt?: string | null
+          ai_naming_prompt?: string | null
           created_at?: string
           description?: string | null
           folder_template_id: string
@@ -2663,6 +2679,8 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          ai_check_prompt?: string | null
+          ai_naming_prompt?: string | null
           created_at?: string
           description?: string | null
           folder_template_id?: string
@@ -6489,6 +6507,8 @@ export type Database = {
       }
       slot_templates: {
         Row: {
+          ai_check_prompt: string | null
+          ai_naming_prompt: string | null
           created_at: string
           description: string | null
           id: string
@@ -6499,6 +6519,8 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          ai_check_prompt?: string | null
+          ai_naming_prompt?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -6509,6 +6531,8 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          ai_check_prompt?: string | null
+          ai_naming_prompt?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -9193,5 +9217,3 @@ export const Constants = {
     },
   },
 } as const
-A new version of Supabase CLI is available: v2.101.0 (currently installed v2.75.0)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

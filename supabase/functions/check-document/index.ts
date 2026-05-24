@@ -23,6 +23,11 @@ interface FolderData {
   ai_check_prompt: string | null;
 }
 
+interface SlotData {
+  ai_naming_prompt: string | null;
+  ai_check_prompt: string | null;
+}
+
 interface WorkspaceData {
   ai_model: string | null;
   default_ai_naming_prompt: string | null;
@@ -117,11 +122,25 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get AI prompts from folder
+    // Получаем AI-промпты по иерархии: слот → папка → дефолт воркспейса.
+    // Уровень слота: документ привязан к folder_slot через folder_slots.document_id.
     let aiNamingPrompt: string | null = null;
     let aiCheckPrompt: string | null = null;
 
-    if (document.folder_id) {
+    const { data: slot } = await supabase
+      .from("folder_slots")
+      .select("ai_naming_prompt, ai_check_prompt")
+      .eq("document_id", document_id)
+      .limit(1)
+      .maybeSingle<SlotData>();
+
+    if (slot) {
+      aiNamingPrompt = slot.ai_naming_prompt || null;
+      aiCheckPrompt = slot.ai_check_prompt || null;
+    }
+
+    // Уровень папки: добиваем недостающие промпты с папки.
+    if ((!aiNamingPrompt || !aiCheckPrompt) && document.folder_id) {
       const { data: folder } = await supabase
         .from("folders")
         .select("ai_naming_prompt, ai_check_prompt")
@@ -129,19 +148,18 @@ Deno.serve(async (req: Request) => {
         .single<FolderData>();
 
       if (folder) {
-        aiNamingPrompt = folder.ai_naming_prompt || null;
-        aiCheckPrompt = folder.ai_check_prompt || null;
+        if (!aiNamingPrompt) aiNamingPrompt = folder.ai_naming_prompt || null;
+        if (!aiCheckPrompt) aiCheckPrompt = folder.ai_check_prompt || null;
       }
     }
 
-    // Get workspace settings (AI model + default prompts)
+    // Воркспейс: настройки модели + дефолтные промпты как последний фолбэк.
     const { data: workspace } = await supabase
       .from("workspaces")
       .select("ai_model, default_ai_naming_prompt, default_ai_check_prompt")
       .eq("id", document.workspace_id)
       .single<WorkspaceData>();
 
-    // Fallback: if folder has no prompts, use workspace defaults
     if (!aiNamingPrompt && workspace?.default_ai_naming_prompt) {
       aiNamingPrompt = workspace.default_ai_naming_prompt;
     }

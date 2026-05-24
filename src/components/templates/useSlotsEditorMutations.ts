@@ -13,6 +13,8 @@ export interface Slot {
   name: string
   description: string | null
   knowledge_article_id: string | null
+  ai_naming_prompt: string | null
+  ai_check_prompt: string | null
   sort_order: number
 }
 
@@ -20,6 +22,17 @@ export interface CreateSlotInput {
   name: string
   description?: string | null
   knowledge_article_id?: string | null
+  ai_naming_prompt?: string | null
+  ai_check_prompt?: string | null
+}
+
+export interface UpdateSlotInput {
+  id: string
+  name: string
+  description: string | null
+  knowledge_article_id: string | null
+  ai_naming_prompt: string | null
+  ai_check_prompt: string | null
 }
 
 export interface SlotTableConfig {
@@ -48,6 +61,8 @@ export function useSlotsEditorMutations(config: SlotTableConfig, slots: Slot[]) 
         name: data.name,
         description: data.description ?? null,
         knowledge_article_id: data.knowledge_article_id ?? null,
+        ai_naming_prompt: data.ai_naming_prompt ?? null,
+        ai_check_prompt: data.ai_check_prompt ?? null,
         sort_order: maxOrder + 1,
       } as never)
 
@@ -72,15 +87,25 @@ export function useSlotsEditorMutations(config: SlotTableConfig, slots: Slot[]) 
     },
   })
 
-  const updateDescriptionMutation = useMutation({
-    mutationFn: async ({ id, description }: { id: string; description: string | null }) => {
-      const { error } = await supabase.from(config.table).update({ description }).eq('id', id)
+  const updateMutation = useMutation({
+    mutationFn: async (input: UpdateSlotInput) => {
+      const { id, ...rest } = input
+      const { error } = await supabase
+        .from(config.table)
+        .update({
+          name: rest.name,
+          description: rest.description,
+          knowledge_article_id: rest.knowledge_article_id,
+          ai_naming_prompt: rest.ai_naming_prompt,
+          ai_check_prompt: rest.ai_check_prompt,
+        } as never)
+        .eq('id', id)
       if (error) throw error
     },
     onSuccess: invalidateSlots,
     onError: (error) => {
-      logger.error('Ошибка обновления описания слота:', error)
-      toast.error('Не удалось обновить описание')
+      logger.error('Ошибка обновления слота:', error)
+      toast.error('Не удалось обновить слот')
     },
   })
 
@@ -116,7 +141,7 @@ export function useSlotsEditorMutations(config: SlotTableConfig, slots: Slot[]) 
   return {
     createMutation,
     renameMutation,
-    updateDescriptionMutation,
+    updateMutation,
     deleteMutation,
     reorderMutation,
   }

@@ -218,6 +218,24 @@
 - Таблицы: service_categories, lawyer_profiles, lawyer_services, orders, payments, payouts, reviews, blog_posts, blog_categories, custom_domains.
 - API Routes: `/api/payments`, `/api/webhooks` (заглушки 501).
 
+## AI-проверка документов — иерархия промптов
+
+Реализовано 2026-05-24. Edge function `check-document` берёт промпты `ai_naming_prompt` и `ai_check_prompt` по трём уровням, сверху вниз:
+
+1. **Слот** — `folder_slots.ai_*_prompt`. Резолв: ищем `folder_slots` где `document_id = X`, и если у привязанного слота заполнен соответствующий промпт — он побеждает.
+2. **Папка** — `folders.ai_*_prompt`. Используется если у слота промпт пустой ИЛИ документ загружен напрямую в папку без привязки к слоту.
+3. **Дефолт воркспейса** — `workspaces.default_ai_*_prompt`. Последний фолбэк.
+
+Каждый промпт резолвится независимо: можно переопределить на слоте только `ai_check_prompt`, а `ai_naming_prompt` унаследовать от папки.
+
+**Где задаётся**:
+- Папка — `EditKitFolderDialog` / `FolderTemplateDialog`, вкладка «AI-промпты».
+- Слот — `EditSlotDialog` (унифицированный диалог), вкладка «AI-промпты». Используется в трёх местах: `SlotsEditor` (внутри шаблона папки и набора документов), `SlotTemplatesContent` (справочник).
+
+**Цепочка копирования полей** (slot_templates / folder_template_slots / document_kit_template_folder_slots → folder_slots): `name`, `description`, `knowledge_article_id`, `ai_naming_prompt`, `ai_check_prompt`. Не live-reference — изменения в справочнике не затрагивают уже созданные слоты.
+
+**Миграция**: `20260524_slot_ai_prompts.sql`.
+
 ## Роуты (62)
 
 `find src/app -name page.tsx | wc -l`. На 2026-05-11 — **62**.
