@@ -8,7 +8,7 @@ import {
   type ProjectContextOption,
 } from './ProjectContextPicker'
 
-interface Props {
+type Props = {
   sources: AiSources
   toggleSource: (key: 'formData' | 'documents') => void
   setKnowledge: (value: 'project' | 'all' | null) => void

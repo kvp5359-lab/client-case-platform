@@ -25,7 +25,7 @@ import { FeatureGate } from '@/components/permissions/PermissionGate'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 
-interface KnowledgeBaseTabContentProps {
+type KnowledgeBaseTabContentProps = {
   projectId: string
   workspaceId: string
   templateId: string | null

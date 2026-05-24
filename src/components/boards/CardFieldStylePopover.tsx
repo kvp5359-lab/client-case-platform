@@ -13,7 +13,7 @@ const ALIGNS: { value: 'left' | 'right'; icon: React.ElementType }[] = [
   { value: 'right', icon: AlignRight },
 ]
 
-interface CardFieldStylePopoverProps {
+type CardFieldStylePopoverProps = {
   fieldId: CardFieldId
   style: CardFieldStyle
   open: boolean

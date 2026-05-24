@@ -4,7 +4,7 @@ import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { stripHtml } from '@/utils/format/messengerHtml'
 import { languageLabel } from '@/hooks/useMyPreferredLanguage'
 
-interface EditingBannerProps {
+type EditingBannerProps = {
   editingMessage: ProjectMessage
   onClearEdit: () => void
 }
@@ -32,7 +32,7 @@ export function EditingBanner({ editingMessage, onClearEdit }: EditingBannerProp
   )
 }
 
-interface TranslationBannerProps {
+type TranslationBannerProps = {
   originalContent: string
   originalLanguage: string | null
   targetLanguage: string
@@ -69,7 +69,7 @@ export function TranslationBanner({
   )
 }
 
-interface ReplyBannerProps {
+type ReplyBannerProps = {
   replyTo: ProjectMessage
   onClearReply: () => void
 }

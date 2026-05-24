@@ -6,7 +6,7 @@ import type { AuditLogEntry } from '@/types/history'
 import { ActivityItem } from './ActivityItem'
 import { formatLongDate } from '@/utils/format/dateFormat'
 
-interface ActivityFeedProps {
+type ActivityFeedProps = {
   entries: AuditLogEntry[]
   lastReadAt?: string
   statusNames?: Map<string, string>

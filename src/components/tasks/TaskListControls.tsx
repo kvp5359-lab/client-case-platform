@@ -17,7 +17,7 @@ import { TaskPresetPopover } from './TaskPresetPopover'
 import { AssigneeFilter, DeadlineFilter, StatusFilter, ProjectFilter } from './filters'
 import { CreateThreadButtonGroup, type ThreadKind } from './CreateThreadButtonGroup'
 
-interface TaskListControlsProps {
+type TaskListControlsProps = {
   filters: ReturnType<typeof useTaskFilters>
   filtersOpen: boolean
   onToggleFilters: () => void

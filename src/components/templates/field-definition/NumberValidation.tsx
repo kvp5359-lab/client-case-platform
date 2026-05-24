@@ -5,7 +5,7 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-interface NumberValidationProps {
+type NumberValidationProps = {
   minValue: string
   maxValue: string
   step: string

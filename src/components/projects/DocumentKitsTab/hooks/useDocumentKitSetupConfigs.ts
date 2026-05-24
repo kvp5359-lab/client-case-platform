@@ -8,7 +8,7 @@ import type { DocumentWithFiles, SourceDocument, Folder, DocumentStatus } from '
 import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 import type { DocumentKitHandlers } from './documentKitHandlerTypes'
 
-interface ToolbarParams {
+type ToolbarParams = {
   allSelected: boolean
   showOnlyUnverified: boolean
   isUploading: boolean
@@ -59,7 +59,7 @@ export function buildToolbarConfig(p: ToolbarParams) {
   }
 }
 
-interface BatchActionsParams {
+type BatchActionsParams = {
   hasSelection: boolean
   selectedDocuments: Set<string>
   hasTrashDocumentsSelected: boolean
@@ -142,13 +142,13 @@ export function buildBatchActionsConfig(p: BatchActionsParams) {
 
 // Confirm dialog props — прокидываются as-is, не инспектируются
 import type { ConfirmDialogState } from '@/hooks/dialogs/useConfirmDialog'
-interface ConfirmDialogLike {
+type ConfirmDialogLike = {
   state: ConfirmDialogState
   onConfirm: () => void
   onCancel: () => void
 }
 
-interface DialogsParams {
+type DialogsParams = {
   documentOps: { confirmDialogProps: ConfirmDialogLike; handleOpen: (documentId: string) => void }
   folderOps: {
     confirmDialogProps: ConfirmDialogLike

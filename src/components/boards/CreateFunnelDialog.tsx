@@ -40,7 +40,7 @@ import { useProjectStatusesForTemplate } from '@/hooks/useStatuses'
 import { boardKeys, templatesForRoutingKeys } from '@/hooks/queryKeys'
 import type { FilterGroup } from '@/lib/filters/types'
 
-interface Props {
+type Props = {
   open: boolean
   onClose: () => void
   workspaceId: string
@@ -50,7 +50,7 @@ interface Props {
   existingColumnsCount: number
 }
 
-interface ProjectTemplateRow {
+type ProjectTemplateRow = {
   id: string
   name: string
   is_lead_template: boolean

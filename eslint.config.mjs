@@ -39,6 +39,7 @@ const eslintConfig = defineConfig([
         },
       ],
       "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/consistent-type-definitions": ["error", "type"],
       "@typescript-eslint/no-require-imports": "error",
       "react-hooks/exhaustive-deps": "error",
       "@next/next/no-img-element": "error",

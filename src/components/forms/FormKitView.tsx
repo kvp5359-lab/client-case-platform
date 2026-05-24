@@ -22,7 +22,7 @@ import { hexWithAlpha } from './sectionColors'
 import { useFormFieldSaveHandlers } from '@/hooks/forms/useFormFieldSaveHandlers'
 import { useProjectPermissions } from '@/hooks/permissions'
 
-interface FormKitViewProps {
+type FormKitViewProps = {
   formKitId: string
   projectId: string
   workspaceId: string

@@ -32,7 +32,7 @@ import {
 } from './types'
 import type { FilterGroup } from '@/lib/filters/types'
 
-interface BoardFilterDialogProps {
+type BoardFilterDialogProps = {
   open: boolean
   onClose: () => void
   board: Board

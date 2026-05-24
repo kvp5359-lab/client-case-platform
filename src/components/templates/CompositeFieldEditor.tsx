@@ -19,7 +19,7 @@ import {
 import { Plus, Trash2, GripVertical, Search } from 'lucide-react'
 import { useCompositeFieldMutations, FIELD_TYPE_LABELS } from './useCompositeFieldMutations'
 
-interface CompositeFieldEditorProps {
+type CompositeFieldEditorProps = {
   fieldId: string
   onChangesDetected?: (hasChanges: boolean) => void
 }

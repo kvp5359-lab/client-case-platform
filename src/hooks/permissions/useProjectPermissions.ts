@@ -31,11 +31,11 @@ function mergeByOr<T extends object>(target: T, source: Partial<T> | null | unde
   }
 }
 
-interface UseProjectPermissionsOptions {
+type UseProjectPermissionsOptions = {
   projectId: string
 }
 
-export interface ProjectPermissionsResult {
+export type ProjectPermissionsResult = {
   /** Загрузка данных */
   isLoading: boolean
   /** Ошибка загрузки */

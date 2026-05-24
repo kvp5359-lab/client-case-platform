@@ -10,7 +10,7 @@ import { DocumentRow } from '../DocumentRow'
 import { SystemSectionTable } from '../SystemSectionTable'
 import type { DocumentWithFiles } from '../types'
 
-interface UnassignedSectionProps {
+type UnassignedSectionProps = {
   documents: DocumentWithFiles[]
   isCollapsed: boolean
   draggedDocId: string | null

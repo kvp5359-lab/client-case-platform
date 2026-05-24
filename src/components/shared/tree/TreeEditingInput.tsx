@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Check, X } from 'lucide-react'
 
-interface TreeEditingInputProps {
+type TreeEditingInputProps = {
   value: string
   onChange: (value: string) => void
   onSave: () => void

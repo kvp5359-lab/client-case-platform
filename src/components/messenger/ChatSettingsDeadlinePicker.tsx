@@ -9,7 +9,7 @@ import { Calendar, X } from 'lucide-react'
 import { ru } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 
-interface ChatSettingsDeadlinePickerProps {
+type ChatSettingsDeadlinePickerProps = {
   currentDl: string | null
   currentDlDate: Date | undefined
   isEditMode: boolean

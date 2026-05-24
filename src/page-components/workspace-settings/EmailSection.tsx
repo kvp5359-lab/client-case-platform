@@ -31,7 +31,7 @@ import {
   useProvisionEmailDomain,
 } from '@/hooks/useWorkspaceEmail'
 
-interface Props {
+type Props = {
   workspaceId: string
 }
 
@@ -165,7 +165,7 @@ export function EmailSection({ workspaceId }: Props) {
   )
 }
 
-interface GridProps {
+type GridProps = {
   status: NonNullable<ReturnType<typeof useWorkspaceEmailStatus>['data']>
 }
 

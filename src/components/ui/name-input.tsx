@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
-interface NameInputProps {
+type NameInputProps = {
   value: string
   onChange: (value: string) => void
   placeholder?: string

@@ -20,7 +20,7 @@ const FULL_MESSAGE_SELECT = `
 `
 
 /** Сообщение, обогащённое информацией о треде */
-export interface TimelineMessageEntry {
+export type TimelineMessageEntry = {
   message: ProjectMessage
   thread: {
     id: string

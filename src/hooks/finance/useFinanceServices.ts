@@ -9,7 +9,7 @@ const STALE_TIME = 5 * 60_000
 
 export type FinanceService = Tables<'finance_services'>
 
-export interface FinanceServiceFormData {
+export type FinanceServiceFormData = {
   name: string
   base_price: number
 }

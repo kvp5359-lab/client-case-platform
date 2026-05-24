@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/react'
 import { List, ListOrdered } from 'lucide-react'
 import { ToolbarPlainButton } from './toolbar-button'
 
-interface ListsGroupProps {
+type ListsGroupProps = {
   editor: Editor
 }
 

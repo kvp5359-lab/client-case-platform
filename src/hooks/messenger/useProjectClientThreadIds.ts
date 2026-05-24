@@ -19,7 +19,7 @@ import { CLIENT_ROLES } from '@/components/messenger/chatSettingsTypes'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { STALE_TIME, projectClientThreadKeys } from '@/hooks/queryKeys'
 
-interface ProjectClientRow {
+type ProjectClientRow = {
   participant_id: string
   project_roles: string[] | null
 }

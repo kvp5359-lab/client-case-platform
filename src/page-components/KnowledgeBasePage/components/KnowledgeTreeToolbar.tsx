@@ -11,7 +11,7 @@ import type { useKnowledgeBasePage } from '../useKnowledgeBasePage'
 
 type PageReturn = ReturnType<typeof useKnowledgeBasePage>
 
-interface KnowledgeTreeToolbarProps {
+type KnowledgeTreeToolbarProps = {
   page: PageReturn
   showFilters: boolean
   onToggleFilters: () => void

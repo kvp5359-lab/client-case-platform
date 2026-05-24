@@ -10,7 +10,7 @@ import { Pencil, Check, X } from 'lucide-react'
 import { FormTemplate } from '../types'
 import { Textarea } from '@/components/ui/textarea'
 
-interface TemplateHeaderProps {
+type TemplateHeaderProps = {
   template: FormTemplate
   isEditing: boolean
   editedName: string

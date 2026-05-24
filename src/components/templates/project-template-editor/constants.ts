@@ -75,14 +75,14 @@ export type ProjectTemplateDocumentKit =
   Database['public']['Tables']['project_template_document_kits']['Row']
 
 // Шаблон анкеты с данными
-export interface FormTemplateWithRelation extends ProjectTemplateForm {
+export type FormTemplateWithRelation = {
   form_template: FormTemplate
-}
+} & ProjectTemplateForm
 
 // Шаблон набора документов с данными
-export interface DocumentKitTemplateWithRelation extends ProjectTemplateDocumentKit {
+export type DocumentKitTemplateWithRelation = {
   document_kit_template: DocumentKitTemplate
-}
+} & ProjectTemplateDocumentKit
 
 // Типы для базы знаний
 export type KnowledgeArticle = Database['public']['Tables']['knowledge_articles']['Row']
@@ -93,11 +93,11 @@ export type KnowledgeGroupTemplate =
   Database['public']['Tables']['knowledge_group_templates']['Row']
 
 // Статья базы знаний с данными связи
-export interface KnowledgeArticleWithRelation extends KnowledgeArticleTemplate {
+export type KnowledgeArticleWithRelation = {
   knowledge_article: KnowledgeArticle
-}
+} & KnowledgeArticleTemplate
 
 // Группа базы знаний с данными связи
-export interface KnowledgeGroupWithRelation extends KnowledgeGroupTemplate {
+export type KnowledgeGroupWithRelation = {
   knowledge_group: KnowledgeGroup
-}
+} & KnowledgeGroupTemplate

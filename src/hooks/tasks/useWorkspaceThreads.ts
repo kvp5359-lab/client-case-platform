@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { workspaceThreadKeys, STALE_TIME } from '@/hooks/queryKeys'
 
-export interface WorkspaceTask {
+export type WorkspaceTask = {
   id: string
   name: string
   type?: 'chat' | 'task'

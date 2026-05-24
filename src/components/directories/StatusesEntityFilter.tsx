@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { ENTITY_TYPE_LABELS, type EntityType } from './hooks/useStatusesDirectory'
 
-interface StatusesEntityFilterProps {
+type StatusesEntityFilterProps = {
   selectedEntityType: EntityType
   onEntityTypeChange: (type: EntityType) => void
 }

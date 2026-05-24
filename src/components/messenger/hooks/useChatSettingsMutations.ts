@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
 import type { AccessType } from '../chatSettingsTypes'
 
-interface UseChatSettingsMutationsParams {
+type UseChatSettingsMutationsParams = {
   chatId: string | undefined
   chatProjectId: string | null | undefined
   selectedProjectId: string | null

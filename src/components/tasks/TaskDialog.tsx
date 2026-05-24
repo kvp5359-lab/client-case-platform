@@ -22,7 +22,7 @@ import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'
 import type { TaskItem } from './types'
 
-interface TaskDialogProps {
+type TaskDialogProps = {
   task: TaskItem | null
   open: boolean
   onOpenChange: (open: boolean) => void

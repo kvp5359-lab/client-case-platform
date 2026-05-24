@@ -16,7 +16,7 @@ import type { Database } from '@/types/database'
 export type ParticipantChannel = Database['public']['Tables']['participant_channels']['Row']
 export type ChannelType = 'telegram' | 'email' | 'phone' | string
 
-interface UpsertChannelInput {
+type UpsertChannelInput = {
   participant_id: string
   workspace_id: string
   channel_type: ChannelType
@@ -25,7 +25,7 @@ interface UpsertChannelInput {
   is_primary?: boolean
 }
 
-interface UpdateChannelInput {
+type UpdateChannelInput = {
   id: string
   label?: string | null
   is_primary?: boolean

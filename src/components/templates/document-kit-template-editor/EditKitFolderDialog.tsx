@@ -27,7 +27,7 @@ import {
   type ArticleTreePickerLink,
 } from '../ArticleTreePicker'
 
-interface EditKitFolderDialogProps {
+type EditKitFolderDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   folder?: KitFolder | null

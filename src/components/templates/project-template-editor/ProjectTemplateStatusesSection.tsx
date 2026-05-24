@@ -47,7 +47,7 @@ import type { Database } from '@/types/database'
 type Status = Database['public']['Tables']['statuses']['Row']
 type StatusInsert = Database['public']['Tables']['statuses']['Insert']
 
-interface ProjectTemplateStatusesSectionProps {
+type ProjectTemplateStatusesSectionProps = {
   workspaceId: string
   projectTemplateId: string
 }

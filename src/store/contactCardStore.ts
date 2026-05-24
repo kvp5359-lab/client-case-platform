@@ -8,7 +8,7 @@
 
 import { create } from 'zustand'
 
-interface ContactCardStore {
+type ContactCardStore = {
   participantId: string | null
   open: (participantId: string) => void
   close: () => void

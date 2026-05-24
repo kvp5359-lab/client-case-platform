@@ -27,7 +27,7 @@ const ACCENT_BADGE: Record<string, string> = {
   indigo: 'bg-indigo-500',
 }
 
-interface UnreadBadgeProps {
+type UnreadBadgeProps = {
   threadId: string
   workspaceId: string
   accentColor?: string

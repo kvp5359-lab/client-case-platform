@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-interface SourceSettingsDialogProps {
+type SourceSettingsDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   isConnected: boolean

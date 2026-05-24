@@ -12,7 +12,7 @@ const FILTER_DEFS: Record<FilterType, { label: string }> = {
   tag: { label: 'Тег' },
 }
 
-interface FilterChipProps {
+type FilterChipProps = {
   type: FilterType
   selectedIds: string[]
   onToggle: (id: string) => void

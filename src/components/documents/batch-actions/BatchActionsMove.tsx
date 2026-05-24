@@ -10,7 +10,7 @@ import {
 import { Folder as FolderIcon, FolderInput } from 'lucide-react'
 import type { Folder } from '../types'
 
-interface BatchActionsMoveProps {
+type BatchActionsMoveProps = {
   canMove: boolean
   selectedCount: number
   isProcessing: boolean

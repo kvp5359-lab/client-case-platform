@@ -17,7 +17,7 @@ const TaskListView = lazy(() =>
   import('./TaskListView').then((m) => ({ default: m.TaskListView })),
 )
 
-interface TaskPanelProjectViewProps {
+type TaskPanelProjectViewProps = {
   project: ProjectHeaderInfo
   workspaceId: string
   visible: boolean

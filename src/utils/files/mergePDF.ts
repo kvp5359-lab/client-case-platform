@@ -5,11 +5,11 @@ import { logger } from '@/utils/logger'
 // во внутренние функции через параметр PDFDocCtor. Type-only import выше нужен для типизации.
 type PDFDocumentCtor = typeof PDFDocumentClass
 
-export interface MergeOptions {
+export type MergeOptions = {
   onProgress?: (current: number, total: number) => void
 }
 
-export interface MergeResult {
+export type MergeResult = {
   blob: Blob
   failedFiles: Array<{ name: string; error: string }>
 }

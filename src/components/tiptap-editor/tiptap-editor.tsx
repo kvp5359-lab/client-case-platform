@@ -29,14 +29,14 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
 /** Настройки загрузки изображений в Storage */
-interface ImageUploadConfig {
+type ImageUploadConfig = {
   /** Workspace ID для пути в Storage */
   workspaceId: string
   /** ID статьи для пути в Storage */
   articleId: string
 }
 
-interface TiptapEditorProps {
+type TiptapEditorProps = {
   content: string
   onChange: (content: string) => void
   placeholder?: string

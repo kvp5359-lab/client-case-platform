@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { FolderPlus, Check, X } from 'lucide-react'
 import { BASE_PAD, INDENT } from './TreeConstants'
 
-interface AddSubgroupInputProps {
+type AddSubgroupInputProps = {
   depth: number
   value: string
   onChange: (value: string) => void

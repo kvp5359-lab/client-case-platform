@@ -19,7 +19,7 @@ import type {
   KnowledgeGroupWithRelation,
 } from './constants'
 
-interface ModulesSectionProps {
+type ModulesSectionProps = {
   workspaceId: string
   projectTemplateId: string
   enabledModules: string[]

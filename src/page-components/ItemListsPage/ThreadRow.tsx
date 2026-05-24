@@ -13,7 +13,7 @@ import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { TableShellColumn } from './TableShell'
 import type { ItemListColumnKey } from './columns'
 
-interface ThreadRowProps {
+type ThreadRowProps = {
   task: WorkspaceTask
   columns: TableShellColumn[]
   checked: boolean

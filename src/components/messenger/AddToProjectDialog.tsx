@@ -11,7 +11,7 @@ import { documentKitKeys } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
 import { triggerTextExtraction } from '@/services/documents/textExtractionService'
 
-interface AddToProjectDialogProps {
+type AddToProjectDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   attachment: MessageAttachment

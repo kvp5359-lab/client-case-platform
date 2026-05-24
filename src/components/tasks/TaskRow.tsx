@@ -22,7 +22,7 @@ import { UnreadBadge } from './UnreadBadge'
 import { TaskActionsMenu } from './TaskActionsMenu'
 import type { TaskItem } from './types'
 
-interface TaskRowProps {
+type TaskRowProps = {
   task: TaskItem
   workspaceId: string
   statuses: StatusOption[]

@@ -13,13 +13,13 @@ import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { parseDateString, formatDateToString } from '@/utils/format/dateFormat'
 
-interface TableColumn {
+type TableColumn = {
   name: string
   type: 'text' | 'number' | 'email' | 'phone' | 'date'
   width?: number
 }
 
-interface KeyValueTableFieldProps {
+type KeyValueTableFieldProps = {
   value: string
   onChange: (value: string) => void
   onBlur?: () => void

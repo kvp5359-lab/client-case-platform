@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 
-interface ColumnResizeHandleProps {
+type ColumnResizeHandleProps = {
   columnKey: string
   /** Индекс <col> внутри <colgroup> (с учётом чекбокс-колонки = 0). */
   colIndex: number

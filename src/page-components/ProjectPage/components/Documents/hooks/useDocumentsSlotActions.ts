@@ -7,7 +7,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 
-interface UseDocumentsSlotActionsParams {
+type UseDocumentsSlotActionsParams = {
   projectId: string
   workspaceId: string
   createSlot: (params: {

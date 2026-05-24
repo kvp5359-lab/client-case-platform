@@ -29,11 +29,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-interface Props {
+type Props = {
   threadId: string
 }
 
-interface ThreadEmailContext {
+type ThreadEmailContext = {
   type: string | null
   short_id: number | null
   email_send_method: string | null

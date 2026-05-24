@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { KeyRound } from 'lucide-react'
 import { AuthAlert } from './AuthAlert'
 
-interface OtpCodeStepProps {
+type OtpCodeStepProps = {
   code: string
   email: string
   onCodeChange: (code: string) => void

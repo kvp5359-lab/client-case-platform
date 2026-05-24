@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { DocumentItem } from './DocumentItem'
 import type { DocumentWithFiles } from '@/components/documents/types'
 
-export interface UngroupedCardProps {
+export type UngroupedCardProps = {
   documents: DocumentWithFiles[]
 }
 

@@ -17,7 +17,7 @@ import {
 import { MoreVertical, Unlink } from 'lucide-react'
 
 /** Объект прав доступа для действий с документом */
-export interface DocumentActionPermissions {
+export type DocumentActionPermissions = {
   canEdit?: boolean
   canView?: boolean
   canDownload?: boolean
@@ -28,7 +28,7 @@ export interface DocumentActionPermissions {
 }
 
 /** Объект callback-обработчиков действий с документом */
-export interface DocumentActionHandlers {
+export type DocumentActionHandlers = {
   onOpenEdit: (docId: string) => void
   onOpenDocument: (docId: string) => void
   onDownload: (docId: string) => void
@@ -39,7 +39,7 @@ export interface DocumentActionHandlers {
   onSlotUnlink?: (slotId: string) => void
 }
 
-export interface DocumentActionsMenuProps {
+export type DocumentActionsMenuProps = {
   /** ID документа */
   docId: string
   /** Текущий файл документа (для проверки mime_type) */

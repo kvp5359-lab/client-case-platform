@@ -21,7 +21,7 @@ import { useDocumentsContext } from './DocumentsContext'
 import { DocumentStatusIconDropdown, DocumentStatusLabelDropdown } from './DocumentStatusDropdown'
 import type { DocumentWithFiles } from '@/components/documents/types'
 
-export interface DocumentItemProps {
+export type DocumentItemProps = {
   document: DocumentWithFiles
   slotId?: string
 }

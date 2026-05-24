@@ -41,7 +41,7 @@ import {
 import { formatBytes } from '@/utils/files/formatBytes'
 import { ProjectContextItemCard } from './ProjectContextItemCard'
 
-interface ProjectContextTabContentProps {
+type ProjectContextTabContentProps = {
   projectId: string
   workspaceId: string
 }

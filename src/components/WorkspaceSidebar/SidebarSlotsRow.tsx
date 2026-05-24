@@ -31,7 +31,7 @@ import {
   type SidebarSlot,
 } from '@/lib/sidebarSettings'
 
-interface SidebarSlotsRowProps {
+type SidebarSlotsRowProps = {
   /** ВСЕ слоты зоны (топбар или список), включая папки и их детей. */
   slots: SidebarSlot[]
   compact: boolean

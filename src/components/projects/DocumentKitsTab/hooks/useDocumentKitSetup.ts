@@ -38,7 +38,7 @@ import { useDocumentKitStoreState } from './useDocumentKitStoreState'
 import { useDocumentKitMemos } from './useDocumentKitMemos'
 import type { DocumentKitContextValue } from '../context/DocumentKitContext'
 
-interface UseDocumentKitSetupParams {
+type UseDocumentKitSetupParams = {
   projectId: string
   workspaceId: string
   kitId: string

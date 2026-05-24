@@ -13,7 +13,7 @@ import { getCommentsByEntity } from '@/services/api/commentService'
 import { getSectionProgress } from '@/hooks/forms/useFormKitProgress'
 import type { FormSectionWithFields, CompositeFieldItem, FormData } from '@/components/forms/types'
 
-interface UseFormSummaryParams {
+type UseFormSummaryParams = {
   workspaceId: string
 }
 

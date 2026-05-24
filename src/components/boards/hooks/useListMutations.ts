@@ -6,7 +6,7 @@ import { boardKeys } from '@/hooks/queryKeys'
 import type { BoardList, DisplayMode, VisibleField, GroupByField, ListHeight, CardLayout, CalendarSettings } from '../types'
 import type { FilterGroup, SortField, SortDir } from '@/lib/filters/types'
 
-interface CreateListParams {
+type CreateListParams = {
   board_id: string
   name: string
   entity_type: 'thread' | 'project' | 'inbox'
@@ -15,7 +15,7 @@ interface CreateListParams {
   sort_order?: number
 }
 
-interface UpdateListParams {
+type UpdateListParams = {
   id: string
   board_id: string
   name?: string
@@ -118,7 +118,7 @@ export function useSwapListOrder() {
   })
 }
 
-interface ReorderListsParams {
+type ReorderListsParams = {
   board_id: string
   updates: Array<{ id: string; column_index: number; sort_order: number }>
 }

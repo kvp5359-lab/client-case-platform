@@ -25,7 +25,7 @@ type BadgeDisplay =
   | { type: 'dot' }
   | { type: 'none' }
 
-interface Props {
+type Props = {
   project: Project
   workspaceId: string
   templateName: string | null

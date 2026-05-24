@@ -16,11 +16,11 @@ import type { Workspace, Participant } from '@/types/entities'
 
 const ROOT_DOMAIN = 'clientcase.app'
 
-interface WorkspaceWithParticipant extends Workspace {
+type WorkspaceWithParticipant = {
   participant?: Participant
-}
+} & Workspace
 
-export interface WorkspacePickerProps {
+export type WorkspacePickerProps = {
   workspaces: WorkspaceWithParticipant[]
   currentWorkspace?: WorkspaceWithParticipant
   workspaceId?: string

@@ -12,7 +12,7 @@ import {
 } from '../types'
 import type { FilterGroup, SortField, SortDir } from '@/lib/filters/types'
 
-export interface ListSettingsState {
+export type ListSettingsState = {
   name: string
   entityType: 'thread' | 'project' | 'inbox'
   columnIndex: string

@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { FilterGroupEditor } from '@/components/filters/FilterGroupEditor'
 import type { FilterGroup } from '@/lib/filters/types'
 
-interface ListSettingsFiltersTabProps {
+type ListSettingsFiltersTabProps = {
   filters: FilterGroup
   onFiltersChange: (filters: FilterGroup) => void
   entityType: 'thread' | 'project'

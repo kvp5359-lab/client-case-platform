@@ -18,7 +18,7 @@ import {
 import { DIRECTORY_PRESET_COLORS } from '@/types/customDirectories'
 import type { CustomDirectory } from '@/types/customDirectories'
 
-interface DirectoryFormDialogProps {
+type DirectoryFormDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   editing: CustomDirectory | null

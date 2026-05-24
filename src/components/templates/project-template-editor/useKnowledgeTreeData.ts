@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { knowledgeListKeys } from '@/hooks/queryKeys'
 import type { GroupNode } from './GroupTreeNode'
 
-interface TreeData {
+type TreeData = {
   roots: GroupNode[]
   ungroupedArticles: { id: string; title: string }[]
 }

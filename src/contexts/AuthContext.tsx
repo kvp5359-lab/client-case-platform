@@ -26,7 +26,7 @@ import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useDocumentKitUIStore } from '@/store/documentKitUI/store'
 
 // Типы для контекста
-interface AuthContextType {
+type AuthContextType = {
   user: User | null
   session: Session | null
   loading: boolean

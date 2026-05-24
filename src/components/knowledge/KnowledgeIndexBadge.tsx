@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge'
 import { Loader2, Check, AlertCircle, Clock } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-interface KnowledgeIndexBadgeProps {
+type KnowledgeIndexBadgeProps = {
   status: string | null
   indexedAt?: string | null
   error?: string | null

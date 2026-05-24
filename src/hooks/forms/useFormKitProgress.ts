@@ -16,13 +16,13 @@ import type {
   CompositeFieldItem,
 } from '@/components/forms/types'
 
-interface UseFormKitProgressParams {
+type UseFormKitProgressParams = {
   structure: FormStructure | null | undefined
   formData: FormData
   compositeItems?: CompositeFieldItem[]
 }
 
-export interface SectionProgress {
+export type SectionProgress = {
   total: number
   filled: number
   isComplete: boolean

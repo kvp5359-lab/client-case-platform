@@ -13,7 +13,7 @@ import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField
 import { formatDeadline, formatTimeRange, isOverdue } from './boardListUtils'
 import { resolveCardLayout, fieldStyleToClasses, visibleFieldsToLayout } from './cardLayoutUtils'
 
-interface BoardTaskRowProps {
+type BoardTaskRowProps = {
   task: WorkspaceTask
   workspaceId: string
   assignees: AvatarParticipant[]

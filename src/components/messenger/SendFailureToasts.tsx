@@ -29,7 +29,7 @@ import {
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { logger } from '@/utils/logger'
 
-interface SendFailureToastsProps {
+type SendFailureToastsProps = {
   workspaceId: string
 }
 

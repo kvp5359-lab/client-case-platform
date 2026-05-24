@@ -7,7 +7,7 @@
 
 import type { ReactNode } from 'react'
 
-interface SystemSectionTableProps {
+type SystemSectionTableProps = {
   children: ReactNode
 }
 

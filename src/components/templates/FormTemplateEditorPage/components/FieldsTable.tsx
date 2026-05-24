@@ -13,7 +13,7 @@ import { DraggableFieldRow } from './DraggableFieldRow'
 import { SectionRow } from './SectionRow'
 import { FieldsTableProvider, useFieldsTableContext } from './FieldsTableContext'
 
-interface FieldsTableProps {
+type FieldsTableProps = {
   sections: FormSectionWithDetails[]
   groupedFields: Record<string, FormFieldWithDefinition[]>
   collapsedSections: Set<string>
@@ -146,7 +146,7 @@ export function FieldsTable({
   )
 }
 
-interface FieldsTableContentProps {
+type FieldsTableContentProps = {
   sections: FormSectionWithDetails[]
   groupedFields: Record<string, FormFieldWithDefinition[]>
   collapsedSections: Set<string>

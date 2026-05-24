@@ -24,7 +24,7 @@ export type ItemListColumnKey =
   | 'next_task_deadline'
   | 'participants'
 
-export interface ColumnDef {
+export type ColumnDef = {
   key: ItemListColumnKey
   label: string
   defaultWidth: number

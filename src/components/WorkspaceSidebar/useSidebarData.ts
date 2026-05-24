@@ -9,9 +9,9 @@ import { workspaceKeys, sidebarKeys, sidebarMetaKeys, STALE_TIME } from '@/hooks
 import type { Workspace, Participant } from '@/types/entities'
 import type { Database } from '@/types/database'
 
-interface WorkspaceWithParticipant extends Workspace {
+type WorkspaceWithParticipant = {
   participant?: Participant
-}
+} & Workspace
 
 type ProjectRow = Database['public']['Tables']['projects']['Row']
 
@@ -32,7 +32,7 @@ export type Project = ProjectRow & {
   iconColor?: string
 }
 
-interface UseSidebarDataOptions {
+type UseSidebarDataOptions = {
   workspaceId?: string
   /** Строка поиска из сайдбара (уже дебаунснутая). Если ≥ 2 символов — активирует серверный поиск. */
   searchQuery?: string

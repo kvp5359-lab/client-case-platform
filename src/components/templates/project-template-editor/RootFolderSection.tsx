@@ -13,7 +13,7 @@ import { FolderOpen, ExternalLink, Trash2, Check, X } from 'lucide-react'
 import { extractGoogleDriveFolderId, buildGoogleDriveFolderUrl } from '@/utils/googleDrive'
 import { projectTemplateKeys } from '@/hooks/queryKeys'
 
-interface RootFolderSectionProps {
+type RootFolderSectionProps = {
   templateId: string | undefined
   rootFolderId: string | null | undefined
   workspaceId: string | undefined

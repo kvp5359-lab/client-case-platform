@@ -11,7 +11,7 @@ import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTempl
 
 export type TabMode = 'task' | 'chat' | 'email'
 
-interface UseThreadTemplateFormParams {
+type UseThreadTemplateFormParams = {
   template: ThreadTemplate | null
   onSave: (data: ThreadTemplateFormData) => void
   taskStatuses: { id: string; is_default: boolean }[]

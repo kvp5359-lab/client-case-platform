@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils'
 import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 import { knowledgeBaseKeys, STALE_TIME } from '@/hooks/queryKeys'
 
-interface Props {
+type Props = {
   articleId: string
   onClose: () => void
 }
@@ -29,7 +29,7 @@ const ACCESS_MODE_LABELS: Record<string, string> = {
   read_copy: 'Чтение и копирование',
 }
 
-interface KnowledgeArticleRow {
+type KnowledgeArticleRow = {
   id: string
   title: string
   content: string | null

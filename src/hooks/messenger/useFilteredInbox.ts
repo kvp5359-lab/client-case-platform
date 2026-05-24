@@ -18,7 +18,7 @@ import { canAccessThread, type ThreadAccessInfo } from '@/utils/threadAccess'
 import { useInboxThreadsV2 } from './useInbox'
 import { sidebarDataKeys, STALE_TIME } from '@/hooks/queryKeys'
 
-interface MyProjectRole {
+type MyProjectRole = {
   project_id: string
   participant_id: string
   project_roles: string[]

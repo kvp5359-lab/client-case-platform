@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { GoogleIcon } from '@/components/ui/google-icon'
 import { AuthAlert } from './AuthAlert'
 
-interface OtpEmailStepProps {
+type OtpEmailStepProps = {
   email: string
   onEmailChange: (email: string) => void
   onSubmit: (e: FormEvent) => void

@@ -5,7 +5,7 @@
 import { useState } from 'react'
 import { KitFolder } from './types'
 
-interface UseFolderDragDropProps {
+type UseFolderDragDropProps = {
   kitFolders: KitFolder[]
   onReorder: (updates: { id: string; order_index: number }[]) => void
 }

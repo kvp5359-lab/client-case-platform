@@ -8,7 +8,7 @@ import { useState, useRef, useCallback } from 'react'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-interface CommentInputProps {
+type CommentInputProps = {
   onSubmit: (content: string) => void
   onCancel?: () => void
   placeholder?: string

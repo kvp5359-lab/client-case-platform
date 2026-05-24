@@ -8,12 +8,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { formatAuthError } from '@/lib/authErrors'
 
-interface UseGoogleAuthOptions {
+type UseGoogleAuthOptions = {
   signInWithGoogle: (redirectTo?: string) => Promise<{ error: { message: string } | null }>
   onError?: (message: string) => void
 }
 
-interface UseGoogleAuthReturn {
+type UseGoogleAuthReturn = {
   handleGoogleLogin: () => Promise<void>
   googleLoading: boolean
 }

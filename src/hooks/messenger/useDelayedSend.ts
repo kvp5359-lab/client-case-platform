@@ -21,7 +21,7 @@ import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
-interface PendingMessage {
+type PendingMessage = {
   messageId: string
   content: string
   expiresAt: number // Date.now() + delay

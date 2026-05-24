@@ -8,7 +8,7 @@ import { logAuditAction } from '@/services/auditService'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import type { ProjectPermissionCode } from '@/types/permissions'
 
-interface UseBatchHardDeleteProps {
+type UseBatchHardDeleteProps = {
   projectId: string
   fetchDocumentKits: (projectId: string) => Promise<void>
   clearSelection: () => void

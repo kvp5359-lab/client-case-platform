@@ -8,7 +8,7 @@ export { COLUMN_BG_COLORS } from './columns-types'
 import type { ColumnCount } from './columns-types'
 
 declare module '@tiptap/core' {
-  interface Commands<ReturnType> {
+  type Commands<ReturnType> = {
     columns: {
       setColumns: (count?: ColumnCount) => ReturnType
     }

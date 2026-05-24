@@ -22,7 +22,7 @@ import { ThreadTableView } from './ThreadTableView'
 import { ProjectTableView } from './ProjectTableView'
 import type { TableShellColumn } from './TableShell'
 
-interface ItemListTabContentProps {
+type ItemListTabContentProps = {
   list: ItemList
   workspaceId: string
   currentUserId: string

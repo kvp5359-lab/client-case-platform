@@ -9,7 +9,7 @@ import { logger } from '@/utils/logger'
 const handleServiceError = createServiceErrorHandler(DocumentKitError)
 
 /** Тип записи из document_kit_template_folders (с инлайн-данными) */
-interface KitTemplateFolder {
+type KitTemplateFolder = {
   id: string
   folder_template_id: string | null
   order_index: number

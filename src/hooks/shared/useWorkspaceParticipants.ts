@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { participantKeys, STALE_TIME } from '@/hooks/queryKeys'
 
-export interface WorkspaceParticipant {
+export type WorkspaceParticipant = {
   id: string
   name: string
   last_name: string | null

@@ -12,25 +12,25 @@ import type { SearchSource } from '../knowledge/knowledgeSearchService'
 // Типы
 // =====================================================
 
-export interface MessengerAiStreamCallbacks {
+export type MessengerAiStreamCallbacks = {
   onText: (chunk: string) => void
   onDone: (fullAnswer: string) => void
   onError: (error: string) => void
   onSources?: (sources: SearchSource[]) => void
 }
 
-export interface FormFieldForAi {
+export type FormFieldForAi = {
   sectionName: string | null
   fieldName: string
   value: string | null
 }
 
-export interface FormKitForAi {
+export type FormKitForAi = {
   name: string
   fields: FormFieldForAi[]
 }
 
-export interface DocumentForAi {
+export type DocumentForAi = {
   id: string
   name: string
   textContent: string | null
@@ -46,7 +46,7 @@ export interface DocumentForAi {
  * Текст для AI: для item_type='text' — content_html (без HTML-тегов),
  * для file/screenshot — extracted_text (если есть, иначе пропускается).
  */
-export interface ProjectContextItemForAi {
+export type ProjectContextItemForAi = {
   id: string
   name: string
   itemType: 'text' | 'file' | 'screenshot'

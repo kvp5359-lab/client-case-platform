@@ -4,7 +4,7 @@
 
 export type OperationProgress = { current: number; total: number } | null
 
-export interface BatchOperations {
+export type BatchOperations = {
   isMerging: boolean
   isCompressing: boolean
   isCheckingBatch: boolean
@@ -14,7 +14,7 @@ export interface BatchOperations {
   exportProgress: OperationProgress
 }
 
-export interface BatchPermissions {
+export type BatchPermissions = {
   canBatchCheck?: boolean
   canCompress?: boolean
   canMove?: boolean
@@ -22,7 +22,7 @@ export interface BatchPermissions {
   canDownload?: boolean
 }
 
-export interface BatchHandlers {
+export type BatchHandlers = {
   onClearSelection: () => void
   onBatchCheck: () => void
   onMerge: () => void

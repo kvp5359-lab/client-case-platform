@@ -2,7 +2,7 @@ import { Node, mergeAttributes } from '@tiptap/core'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 import { ImageBlockView } from '../node-views/image-block-view'
 
-export interface ImageBlockOptions {
+export type ImageBlockOptions = {
   HTMLAttributes: Record<string, string>
 }
 
@@ -23,7 +23,7 @@ import type {
 } from './image-block-types'
 
 declare module '@tiptap/core' {
-  interface Commands<ReturnType> {
+  type Commands<ReturnType> = {
     imageBlock: {
       setImageBlock: (attrs: {
         src: string

@@ -16,7 +16,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { TaskPanelTab } from './taskPanelTabs.types'
 
-export interface StandaloneTabsApi {
+export type StandaloneTabsApi = {
   tabs: TaskPanelTab[]
   activeTabId: string | null
   activeTab: TaskPanelTab | null

@@ -18,17 +18,17 @@ export type Status = Database['public']['Tables']['statuses']['Row']
 /**
  * Поле с метаданными для отображения в форме
  */
-export interface FormField extends FieldDefinition {
+export type FormField = {
   is_required: boolean
   sort_order: number
   section_id: string | null
   field_definition_id: string // ID определения поля
-}
+} & FieldDefinition
 
 /**
  * Секция с полями для отображения
  */
-export interface FormSectionWithFields {
+export type FormSectionWithFields = {
   id: string
   name: string
   description: string | null
@@ -42,7 +42,7 @@ export interface FormSectionWithFields {
 /**
  * Структура формы с секциями и полями
  */
-export interface FormStructure {
+export type FormStructure = {
   template: FormTemplate
   sections: FormSectionWithFields[]
 }
@@ -55,7 +55,7 @@ export type FormData = Record<string, string>
 /**
  * Статистика заполнения формы
  */
-export interface FormProgress {
+export type FormProgress = {
   total: number
   filled: number
   percentage: number
@@ -66,7 +66,7 @@ export interface FormProgress {
 /**
  * Элемент составного поля (связь composite_field → nested_field)
  */
-export interface CompositeFieldItem {
+export type CompositeFieldItem = {
   id: string
   composite_field_id: string
   nested_field_id: string

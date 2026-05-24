@@ -8,7 +8,7 @@ import { Toggle } from '@/components/ui/toggle'
 import { cn } from '@/lib/utils'
 import { CODE_BG_COLORS, CODE_TEXT_COLORS } from './constants'
 
-interface CodeColorPickerProps {
+type CodeColorPickerProps = {
   editor: Editor
 }
 

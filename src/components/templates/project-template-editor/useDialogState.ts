@@ -4,7 +4,7 @@
 
 import { useState, useCallback } from 'react'
 
-interface DialogState {
+type DialogState = {
   isOpen: boolean
   selectedIds: string[]
 }

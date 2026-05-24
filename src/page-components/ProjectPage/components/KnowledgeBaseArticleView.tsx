@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 
-interface KnowledgeBaseArticleViewProps {
+type KnowledgeBaseArticleViewProps = {
   article: {
     id: string
     title: string

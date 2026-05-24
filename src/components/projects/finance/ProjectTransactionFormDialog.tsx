@@ -36,7 +36,7 @@ const todayISO = (): string => new Date().toISOString().slice(0, 10)
 const fullName = (p: { name: string; last_name: string | null }): string =>
   [p.name, p.last_name].filter(Boolean).join(' ') || p.name
 
-interface Props {
+type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string

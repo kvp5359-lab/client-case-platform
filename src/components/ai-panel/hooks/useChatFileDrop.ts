@@ -4,7 +4,7 @@ import type { AttachedDocument } from '@/hooks/messenger/useMessengerAi'
 
 const MAX_CHAT_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
 
-interface Options {
+type Options = {
   addAttachedDocument: (doc: AttachedDocument) => void
   onDocumentDrop?: (documentId: string) => void
   onAfterDrop?: () => void

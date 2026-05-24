@@ -14,7 +14,7 @@ import {
 import { Plus, Trash2 } from 'lucide-react'
 import { COLUMN_TYPES, type TableColumn } from './constants'
 
-interface TableColumnsEditorProps {
+type TableColumnsEditorProps = {
   columns: TableColumn[]
   onChange: (columns: TableColumn[]) => void
 }

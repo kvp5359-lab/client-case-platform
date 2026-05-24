@@ -7,7 +7,7 @@ import { useErrorHandler } from '@/hooks/shared/useErrorHandler'
 import type { DocumentWithFiles } from '@/components/documents'
 import { formatSize } from '@/utils/files/formatSize'
 
-interface UseDocumentCompressProps {
+type UseDocumentCompressProps = {
   projectId: string
   fetchDocumentKits: (projectId: string) => Promise<void>
   clearSelection: () => void

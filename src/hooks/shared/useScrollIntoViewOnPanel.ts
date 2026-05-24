@@ -30,7 +30,7 @@ const CLICK_FRESHNESS_MS = 1000
 // Ждём после появления атрибута, чтобы панель доехала translate-x анимацию
 const POST_APPEAR_DELAY_MS = 240
 
-interface LastClick {
+type LastClick = {
   el: HTMLElement
   ts: number
 }

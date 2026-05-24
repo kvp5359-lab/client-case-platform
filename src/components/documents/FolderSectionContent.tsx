@@ -14,7 +14,7 @@ import type { DocumentWithFiles, FolderSlotWithDocument } from './types'
 const DOC_VIRTUALIZATION_THRESHOLD = 30
 const ESTIMATED_DOC_ROW_HEIGHT = 28
 
-interface FolderSectionContentProps {
+type FolderSectionContentProps = {
   folderDocuments: DocumentWithFiles[]
   filledSlots: FolderSlotWithDocument[]
   allSlots: FolderSlotWithDocument[]

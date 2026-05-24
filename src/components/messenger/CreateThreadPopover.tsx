@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { getChatIconComponent } from '@/components/messenger/ChatSettingsDialog'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
-interface CreateThreadPopoverProps {
+type CreateThreadPopoverProps = {
   threadTemplates: ThreadTemplate[]
   onCreateChat: (defaultTab?: 'task' | 'chat' | 'email', template?: ThreadTemplate) => void
   /** "empty" — показывает текстовую кнопку «Добавить чат» вместо иконки «+» */

@@ -28,7 +28,7 @@ import {
 } from '@/services/api/knowledge/knowledgeSearchService'
 import { cn } from '@/lib/utils'
 
-interface QAEditDialogProps {
+type QAEditDialogProps = {
   workspaceId: string
   qa: KnowledgeQA | null
   open: boolean

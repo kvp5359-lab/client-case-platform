@@ -3,7 +3,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import type { ArticleTreePickerGroup } from './types'
 
-interface TreeGroupProps {
+type TreeGroupProps = {
   group: ArticleTreePickerGroup
   depth: number
   mode: 'single-article' | 'single-group' | 'multiple-groups'

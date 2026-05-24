@@ -11,7 +11,7 @@
 
 import { StateCreator } from 'zustand'
 
-export interface GoogleDriveState {
+export type GoogleDriveState = {
   // Source documents (Google Drive папка-источник)
   connectSourceDialogOpen: boolean
   sourceFolderLink: string
@@ -31,7 +31,7 @@ export interface GoogleDriveState {
   hasExported: boolean
 }
 
-export interface GoogleDriveActions {
+export type GoogleDriveActions = {
   // Source documents
   openConnectSourceDialog: () => void
   closeConnectSourceDialog: () => void

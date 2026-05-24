@@ -30,7 +30,7 @@ import {
   type FinanceTxCategoryKind,
 } from '@/hooks/finance/useFinanceTransactionCategories'
 
-interface Props {
+type Props = {
   kind: FinanceTxCategoryKind
 }
 

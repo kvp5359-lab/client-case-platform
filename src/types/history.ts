@@ -2,7 +2,7 @@
  * Типы для вкладки «История» (лента аудит-событий + переписка)
  */
 
-export interface AuditLogEntry {
+export type AuditLogEntry = {
   id: string
   action: string
   resource_type: string
@@ -14,7 +14,7 @@ export interface AuditLogEntry {
   actor_name: string | null
 }
 
-export interface HistoryFilters {
+export type HistoryFilters = {
   resourceTypes?: string[]
   actions?: string[]
   userId?: string
@@ -25,7 +25,7 @@ export type TimelineEntry =
   | { kind: 'audit'; data: AuditLogEntry }
   | { kind: 'message'; data: TimelineMessage }
 
-export interface TimelineMessage {
+export type TimelineMessage = {
   id: string
   thread_id: string
   thread_name: string
@@ -43,7 +43,7 @@ export interface TimelineMessage {
 }
 
 /** Набор включённых фильтров timeline */
-export interface TimelineFilterState {
+export type TimelineFilterState = {
   /** Включённые типы ресурсов аудита (пустой set = все выключены) */
   auditResourceTypes: Set<string>
   /** Включённые thread IDs для переписки */

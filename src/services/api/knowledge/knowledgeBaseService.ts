@@ -75,7 +75,7 @@ export async function deleteArticle(articleId: string): Promise<void> {
 // Версии статей
 // =====================================================
 
-interface VersionHistoryRow {
+type VersionHistoryRow = {
   id: string
   version: number
   title: string
@@ -186,12 +186,12 @@ export async function setArticleGroups(articleId: string, groupIds: string[]): P
 // Статьи для проекта (через шаблон)
 // =====================================================
 
-export interface ArticleWithGroups extends KnowledgeArticle {
+export type ArticleWithGroups = {
   knowledge_article_groups: Array<{
     group_id: string
     knowledge_groups: KnowledgeGroup
   }>
-}
+} & KnowledgeArticle
 
 export async function getArticlesForProject(
   projectTemplateId: string,

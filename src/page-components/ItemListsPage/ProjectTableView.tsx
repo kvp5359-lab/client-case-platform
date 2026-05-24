@@ -11,7 +11,7 @@ import { TableShell, type TableShellColumn } from './TableShell'
 import { ProjectRow } from './ProjectRow'
 import { BulkActionsBar } from './BulkActionsBar'
 
-export interface ProjectTableViewProps {
+export type ProjectTableViewProps = {
   workspaceId: string
   currentUserId: string
   filters: FilterGroup

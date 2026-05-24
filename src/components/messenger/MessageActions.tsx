@@ -22,7 +22,7 @@ import {
   CONTEXT_COMPONENTS,
 } from './MessageMenuBody'
 
-interface MessageActionsProps {
+type MessageActionsProps = {
   message: ProjectMessage
   isOwn: boolean
   accent?: MessengerAccent
@@ -211,11 +211,10 @@ export function MessageActions({
   )
 }
 
-interface MessageContextMenuProps
-  extends Omit<MessageActionsProps, 'moreMenuOpen' | 'setMoreMenuOpen' | 'channel'> {
+type MessageContextMenuProps = {
   children: ReactNode
   disabled?: boolean
-}
+} & Omit<MessageActionsProps, 'moreMenuOpen' | 'setMoreMenuOpen' | 'channel'>
 
 /**
  * Оборачивает содержимое бабла. Правая кнопка мыши открывает то же меню,

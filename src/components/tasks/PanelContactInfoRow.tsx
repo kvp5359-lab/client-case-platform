@@ -11,7 +11,7 @@ import { User, X } from 'lucide-react'
 import { useContactParticipant } from '@/hooks/useContactCard'
 import { ContactCardDialog } from '@/components/contacts/ContactCardDialog'
 
-interface PanelContactInfoRowProps {
+type PanelContactInfoRowProps = {
   contactId: string
   workspaceId: string
   onHidePanel?: () => void

@@ -17,7 +17,7 @@ export type PersonalDialogChannel =
   | 'email'
   | 'other'
 
-export interface PersonalDialogEntry {
+export type PersonalDialogEntry = {
   thread_id: string
   thread_name: string
   thread_icon: string

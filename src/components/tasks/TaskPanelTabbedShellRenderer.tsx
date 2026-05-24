@@ -30,7 +30,7 @@ import { usePanelTabsVisibility } from './usePanelTabsVisibility'
 import type { TaskPanelTab } from './taskPanelTabs.types'
 import type { TaskItem } from './types'
 
-export interface RendererProps {
+export type RendererProps = {
   tabs: TaskPanelTab[]
   activeTab: TaskPanelTab | null
   activeTabId: string | null

@@ -11,14 +11,14 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ChevronDown, ChevronRight, FolderOpen, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface GroupItem {
+type GroupItem = {
   id: string
   name: string
   parent_id: string | null
   sort_order: number
 }
 
-interface GroupTreeFilterContentProps {
+type GroupTreeFilterContentProps = {
   groups: GroupItem[]
   selectedIds: string[]
   onToggle: (groupId: string) => void

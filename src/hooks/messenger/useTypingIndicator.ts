@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
 
-interface TypingUser {
+type TypingUser = {
   participantId: string
   name: string
 }

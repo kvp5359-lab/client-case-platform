@@ -13,7 +13,7 @@
 
 import { supabase } from '@/lib/supabase'
 
-export interface SendFailurePayload {
+export type SendFailurePayload = {
   workspace_id: string
   project_id?: string | null
   thread_id?: string | null

@@ -29,7 +29,7 @@ export type WorkspacePermission =
 /**
  * Объект разрешений workspace
  */
-export interface WorkspacePermissions {
+export type WorkspacePermissions = {
   manage_workspace_settings: boolean
   delete_workspace: boolean
   manage_participants: boolean
@@ -58,7 +58,7 @@ export interface WorkspacePermissions {
  * Разделены 2026-04-13 из единого `threads`, чтобы можно было давать
  * роли доступ к чатам без задач и наоборот.
  */
-export interface ProjectModuleAccess {
+export type ProjectModuleAccess = {
   settings: boolean
   forms: boolean
   documents: boolean
@@ -91,7 +91,7 @@ export type ProjectModule = keyof ProjectModuleAccess
 /**
  * Разрешения модуля Settings
  */
-export interface SettingsPermissions {
+export type SettingsPermissions = {
   edit_project_info: boolean // Редактировать информацию
   manage_project_participants: boolean // Управлять участниками
   manage_google_drive: boolean // Настройка Google Drive
@@ -101,7 +101,7 @@ export interface SettingsPermissions {
 /**
  * Разрешения модуля Forms
  */
-export interface FormsPermissions {
+export type FormsPermissions = {
   add_forms: boolean // Добавлять анкеты
   fill_forms: boolean // Заполнять анкеты
   edit_own_form_answers: boolean // Редактировать свои ответы
@@ -111,7 +111,7 @@ export interface FormsPermissions {
 /**
  * Разрешения модуля Documents
  */
-export interface DocumentsPermissions {
+export type DocumentsPermissions = {
   add_documents: boolean // Добавлять документы
   view_documents: boolean // Просматривать документы
   edit_documents: boolean // Редактировать документы
@@ -127,7 +127,7 @@ export interface DocumentsPermissions {
 /**
  * Разрешения модуля Comments
  */
-export interface CommentsPermissions {
+export type CommentsPermissions = {
   view_comments: boolean // Просматривать комментарии
   edit_comments: boolean // Создавать и редактировать свои
   manage_comments: boolean // Удалять чужие, полное управление
@@ -136,7 +136,7 @@ export interface CommentsPermissions {
 /**
  * Все разрешения внутри модулей проекта
  */
-export interface ProjectPermissions {
+export type ProjectPermissions = {
   settings: SettingsPermissions
   forms: FormsPermissions
   documents: DocumentsPermissions
@@ -193,7 +193,7 @@ export type WorkspaceFeature =
 /**
  * Объект возможностей workspace
  */
-export interface WorkspaceFeatures {
+export type WorkspaceFeatures = {
   ai_document_check: boolean
   ai_form_autofill: boolean
   ai_chat_assistant: boolean
@@ -212,7 +212,7 @@ export interface WorkspaceFeatures {
 /**
  * Роль workspace
  */
-export interface WorkspaceRole {
+export type WorkspaceRole = {
   id: string
   workspace_id: string
   name: string
@@ -229,7 +229,7 @@ export interface WorkspaceRole {
 /**
  * Роль проекта
  */
-export interface ProjectRole {
+export type ProjectRole = {
   id: string
   workspace_id: string
   name: string

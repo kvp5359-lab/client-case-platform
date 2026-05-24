@@ -19,7 +19,7 @@ import { TableColgroup } from './TableColgroup'
 import type { DocumentStatus, Folder as FolderType } from './types'
 import { CommentBadge } from '@/components/comments'
 
-interface FolderSectionHeaderProps {
+type FolderSectionHeaderProps = {
   folder: FolderType
   folderIndex?: number
   documentsCount: number

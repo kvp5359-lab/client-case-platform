@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { KnowledgeBaseError } from '../../errors'
 import { safeFetchOrThrow, safeDeleteOrThrow } from '../../supabase/queryHelpers'
 
-export interface KnowledgeQA {
+export type KnowledgeQA = {
   id: string
   workspace_id: string
   question: string

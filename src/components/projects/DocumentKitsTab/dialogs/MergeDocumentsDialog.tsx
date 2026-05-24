@@ -22,19 +22,19 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-interface MergeDocItem {
+type MergeDocItem = {
   id: string
   name: string
   size: number
   order: number
 }
 
-interface Folder {
+type Folder = {
   id: string
   name: string
 }
 
-interface MergeDocumentsDialogProps {
+type MergeDocumentsDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   // Данные

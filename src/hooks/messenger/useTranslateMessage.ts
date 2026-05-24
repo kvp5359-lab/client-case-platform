@@ -36,7 +36,7 @@ async function extractFunctionError(err: unknown, fallback: string): Promise<str
   return fallback
 }
 
-export interface TranslateMessageResult {
+export type TranslateMessageResult = {
   translated_content: string
   target_language: string
   source_language: string | null

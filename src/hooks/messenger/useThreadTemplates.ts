@@ -129,7 +129,7 @@ export function useThreadTemplatesByProjectTemplate(
 
 // ── Placeholder replacement ──
 
-interface PlaceholderContext {
+type PlaceholderContext = {
   projectName?: string
 }
 
@@ -142,7 +142,7 @@ export function replacePlaceholders(text: string, ctx: PlaceholderContext): stri
 
 // ── Apply template ──
 
-interface ApplyTemplateContext {
+type ApplyTemplateContext = {
   projectName?: string
   /** Участники текущего проекта (id → { name, last_name }) */
   projectParticipantIds: Set<string>
@@ -152,7 +152,7 @@ interface ApplyTemplateContext {
   taskStatusIds: Set<string>
 }
 
-export interface AppliedTemplate {
+export type AppliedTemplate = {
   tabMode: 'task' | 'chat' | 'email'
   name: string
   accentColor: ThreadAccentColor

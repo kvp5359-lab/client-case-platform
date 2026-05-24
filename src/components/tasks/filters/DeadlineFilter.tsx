@@ -27,7 +27,7 @@ const DEADLINE_FILTER_OPTIONS: { value: DeadlineFilterValue; label: string }[] =
   { value: 'no_deadline', label: 'Без срока' },
 ]
 
-interface DeadlineFilterProps {
+type DeadlineFilterProps = {
   selectedValues: Set<DeadlineFilterValue>
   onToggle: (v: DeadlineFilterValue) => void
   onClear: () => void

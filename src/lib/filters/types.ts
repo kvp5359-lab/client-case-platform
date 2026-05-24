@@ -7,7 +7,7 @@
 // ── Дерево фильтра ──────────────────────────────────────────
 
 /** Одно условие фильтра */
-export interface FilterCondition {
+export type FilterCondition = {
   type: 'condition'
   field: string
   operator: string
@@ -15,7 +15,7 @@ export interface FilterCondition {
 }
 
 /** Группа условий (AND / OR), может содержать вложенные группы */
-export interface FilterGroup {
+export type FilterGroup = {
   logic: 'and' | 'or'
   rules: FilterRule[]
 }
@@ -52,7 +52,7 @@ export type FieldType = 'uuid' | 'date' | 'boolean' | 'text' | 'junction'
  * типам тредов (task/chat/email). Если не задано — поле применимо ко всем.
  * Для `project` это поле не используется.
  */
-export interface FilterFieldDef {
+export type FilterFieldDef = {
   key: string
   label: string
   type: FieldType
@@ -70,7 +70,7 @@ export type ThreadType = 'task' | 'chat' | 'email'
 
 // ── Контекст фильтрации ─────────────────────────────────────
 
-export interface FilterContext {
+export type FilterContext = {
   currentParticipantId: string | null
   currentUserId: string | null
   now: Date

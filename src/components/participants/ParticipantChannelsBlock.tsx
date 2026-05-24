@@ -32,7 +32,7 @@ import {
   type ParticipantChannel,
 } from '@/hooks/useParticipantChannels'
 
-interface Props {
+type Props = {
   participantId: string
   workspaceId: string
 }

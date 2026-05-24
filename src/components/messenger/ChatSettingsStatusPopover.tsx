@@ -5,7 +5,7 @@
 
 import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
 
-interface TaskStatus {
+type TaskStatus = {
   id: string
   name: string
   color: string
@@ -13,7 +13,7 @@ interface TaskStatus {
   is_default: boolean
 }
 
-interface ChatSettingsStatusPopoverProps {
+type ChatSettingsStatusPopoverProps = {
   taskStatuses: TaskStatus[]
   currentStatusId: string | null
   currentStatus: TaskStatus | undefined

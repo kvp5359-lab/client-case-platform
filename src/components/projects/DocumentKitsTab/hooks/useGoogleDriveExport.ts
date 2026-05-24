@@ -16,13 +16,13 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 
 // === ТИПЫ ===
 
-interface ExportResultItem {
+type ExportResultItem = {
   success: boolean
   document_id: string
   error?: string
 }
 
-interface DocumentToExport {
+type DocumentToExport = {
   document_id: string
   file_path: string
   file_name: string
@@ -30,13 +30,13 @@ interface DocumentToExport {
   folder_name?: string
 }
 
-interface FolderInfo {
+type FolderInfo = {
   id: string
   name: string
   sort_order?: number | null
 }
 
-interface UseGoogleDriveExportProps {
+type UseGoogleDriveExportProps = {
   workspaceId: string
   clearSelection: () => void
   setExportPhase: (phase: 'idle' | 'cleaning' | 'uploading' | 'completed') => void

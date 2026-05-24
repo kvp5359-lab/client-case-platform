@@ -29,7 +29,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { workspaceThreadKeys, accessibleProjectKeys } from '@/hooks/queryKeys'
 import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
 
-interface BulkActionsBarProps {
+type BulkActionsBarProps = {
   entityType: 'thread' | 'project'
   selectedIds: Set<string>
   onClearSelection: () => void

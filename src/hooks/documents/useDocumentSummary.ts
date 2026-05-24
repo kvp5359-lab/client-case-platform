@@ -15,7 +15,7 @@ import type {
   FolderSlotWithDocument,
 } from '@/components/documents/types'
 
-interface DocumentKitWithFolders extends DocumentKit {
+type DocumentKitWithFolders = {
   folders?: Array<{
     id: string
     name: string
@@ -29,9 +29,9 @@ interface DocumentKitWithFolders extends DocumentKit {
     folder_id: string | null
     is_deleted?: boolean
   }>
-}
+} & DocumentKit
 
-interface UseDocumentSummaryParams {
+type UseDocumentSummaryParams = {
   folderSlots: FolderSlotWithDocument[]
   folderStatuses: DocumentStatus[]
   workspaceId: string

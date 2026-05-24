@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase'
 import { triggerTextExtraction } from '@/services/documents/textExtractionService'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 
-interface UseMessengerAttachmentDropParams {
+type UseMessengerAttachmentDropParams = {
   documentKits: DocumentKitWithDocuments[]
   projectId: string
   workspaceId: string

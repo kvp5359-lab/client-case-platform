@@ -33,7 +33,7 @@ import {
 import { Crown, Users, Link, HandshakeIcon, Contact, Camera, type LucideIcon } from 'lucide-react'
 import { ParticipantChannelsBlock } from './ParticipantChannelsBlock'
 
-export interface RoleOption {
+export type RoleOption = {
   value: string
   label: string
   icon: LucideIcon
@@ -47,7 +47,7 @@ const DEFAULT_ROLES: RoleOption[] = [
   { value: 'Внешний контакт', label: 'Внешний контакт', icon: Contact },
 ]
 
-interface EditParticipantDialogProps {
+type EditParticipantDialogProps = {
   participant: Participant | null
   open: boolean
   onOpenChange: (open: boolean) => void

@@ -9,7 +9,7 @@ import { logger } from '@/utils/logger'
 import { documentKitTemplateKeys } from '@/hooks/queryKeys'
 import { KitFolder } from './types'
 
-interface UseDocumentKitTemplateMutationsProps {
+type UseDocumentKitTemplateMutationsProps = {
   kitId: string | undefined
   kitFolders: KitFolder[]
   onAddFoldersSuccess?: () => void

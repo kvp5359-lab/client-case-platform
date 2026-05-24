@@ -18,7 +18,7 @@ import { useFolderAndUIHandlers } from './useFolderAndUIHandlers'
 
 // ============== Типы параметров ==============
 
-interface UseDocumentKitContextHandlersParams {
+type UseDocumentKitContextHandlersParams = {
   // Handlers из useDocumentKitHandlers
   handlers: {
     handleOpenEditDialog: (documentId: string) => void

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { TAG_PALETTE as TAG_COLOR_PALETTE } from '@/lib/palette'
 import type { EditorKnowledgeArticle } from './useArticleEditor.types'
 
-interface UseArticleEditorMutationsParams {
+type UseArticleEditorMutationsParams = {
   articleId: string | undefined
   workspaceId: string | undefined
   setIsContentDirty: (dirty: boolean) => void

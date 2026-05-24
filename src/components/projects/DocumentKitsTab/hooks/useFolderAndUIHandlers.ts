@@ -9,7 +9,7 @@ import { useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { SourceDocument, Folder } from '@/components/documents/types'
 
-interface UseFolderAndUIHandlersParams {
+type UseFolderAndUIHandlersParams = {
   handlers: {
     handleExportToGoogleDrive: () => void
   }

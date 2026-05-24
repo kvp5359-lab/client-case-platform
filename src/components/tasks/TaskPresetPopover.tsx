@@ -10,7 +10,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { PRESET_LABELS } from './taskListConstants'
 import type { TaskPreset } from './useTaskFilters'
 
-interface TaskPresetPopoverProps {
+type TaskPresetPopoverProps = {
   preset: TaskPreset
   filtersModified: boolean
   filtersOpen: boolean

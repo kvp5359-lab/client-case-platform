@@ -52,7 +52,7 @@ import { truncate, IndexingStatusIcon, COLUMNS, DeleteConfirmDialog } from './Kn
 
 // ---------- Main component ----------
 
-interface KnowledgeQAViewProps {
+type KnowledgeQAViewProps = {
   workspaceId: string
 }
 

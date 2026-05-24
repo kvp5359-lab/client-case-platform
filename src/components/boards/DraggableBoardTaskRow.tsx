@@ -11,7 +11,7 @@ import type { AvatarParticipant } from '@/components/participants/ParticipantAva
 import type { StatusOption } from '@/components/ui/status-dropdown'
 import type { CardLayout, DisplayMode, VisibleField } from './types'
 
-interface DraggableBoardTaskRowProps {
+type DraggableBoardTaskRowProps = {
   task: WorkspaceTask
   /** Список, в котором карточка показана. Нужен для cross-list DnD (этап 4.5). */
   listId: string

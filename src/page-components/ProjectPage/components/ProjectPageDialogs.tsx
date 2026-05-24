@@ -9,7 +9,7 @@ import { AddFormKitDialog } from '@/components/projects/AddFormKitDialog'
 import type { UseDialogReturn } from '@/hooks/shared/useDialog'
 import type { ProjectTemplateWithRelations } from '../types'
 
-interface ProjectPageDialogsProps {
+type ProjectPageDialogsProps = {
   projectId: string
   workspaceId: string
   projectTemplate: ProjectTemplateWithRelations | null | undefined

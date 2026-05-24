@@ -34,7 +34,7 @@ const FIELD_TYPE_COLORS: Record<string, string> = {
   select: 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400',
 }
 
-interface FieldTemplatesContentProps {
+type FieldTemplatesContentProps = {
   workspaceId: string
 }
 

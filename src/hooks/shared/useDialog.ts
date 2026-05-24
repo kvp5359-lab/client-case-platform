@@ -16,7 +16,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 
-export interface UseDialogReturn {
+export type UseDialogReturn = {
   /** Открыт ли диалог */
   isOpen: boolean
   /** Открыть диалог */
@@ -66,14 +66,14 @@ export function useDialog(defaultOpen = false): UseDialogReturn {
  * />
  * ```
  */
-export interface UseDialogWithDataReturn<T> extends Omit<UseDialogReturn, 'open'> {
+export type UseDialogWithDataReturn<T> = {
   /** Данные переданные в диалог */
   data: T | null
   /** Открыть диалог с данными */
   open: (data: T) => void
   /** Закрыть диалог и очистить данные */
   close: () => void
-}
+} & Omit<UseDialogReturn, 'open'>
 
 export function useDialogWithData<T = unknown>(
   defaultOpen = false,

@@ -2,7 +2,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Bot } from 'lucide-react'
 
-interface AiStreamingBubbleProps {
+type AiStreamingBubbleProps = {
   content: string | null
 }
 

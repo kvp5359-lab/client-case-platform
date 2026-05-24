@@ -9,7 +9,7 @@ import type { SourceDocument } from '@/components/documents/types'
 
 type DragOverPosition = 'top' | 'bottom'
 
-interface UseDocumentDragDropReturn {
+type UseDocumentDragDropReturn = {
   /** ID перетаскиваемого документа */
   draggedDocId: string | null
   /** ID документа, над которым находится перетаскиваемый */

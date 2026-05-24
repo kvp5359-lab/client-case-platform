@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Eye } from 'lucide-react'
 import { useImpersonation } from '@/hooks/useImpersonation'
 
-interface StartImpersonationDialogProps {
+type StartImpersonationDialogProps = {
   open: boolean
   onOpenChange: (v: boolean) => void
   workspaceId: string

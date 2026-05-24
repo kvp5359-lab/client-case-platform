@@ -12,7 +12,7 @@ import { useDocumentKitUIStore } from '@/store/documentKitUI'
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
 import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 
-interface UseGlobalBatchMergeParams {
+type UseGlobalBatchMergeParams = {
   workspaceId: string
   documentKits: DocumentKitWithDocuments[]
   globalSelectedIds: Set<string>

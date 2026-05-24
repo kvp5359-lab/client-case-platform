@@ -92,7 +92,7 @@ export function defaultVisibleFields(entityType: 'thread' | 'project' | 'inbox')
 
 // ── Card Layout: определения полей ──────────────────────
 
-export interface CardFieldDef {
+export type CardFieldDef = {
   id: CardFieldId
   label: string
   entityTypes: Array<'thread' | 'project'>

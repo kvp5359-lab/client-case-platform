@@ -10,7 +10,7 @@ import {
   STALE_TIME,
 } from '@/hooks/queryKeys'
 
-export interface ContactParticipant {
+export type ContactParticipant = {
   id: string
   workspace_id: string
   user_id: string | null
@@ -25,7 +25,7 @@ export interface ContactParticipant {
   workspace_roles: string[]
 }
 
-export interface ContactThread {
+export type ContactThread = {
   id: string
   name: string
   type: string

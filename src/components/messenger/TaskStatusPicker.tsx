@@ -12,7 +12,7 @@ import { safeCssColor } from '@/utils/isValidCssColor'
 import { getStatusIcon } from '@/components/ui/status-icons'
 import type { TaskStatus } from '@/hooks/useStatuses'
 
-interface TaskStatusPickerProps {
+type TaskStatusPickerProps = {
   statuses: TaskStatus[]
   currentStatusId: string | null
   pendingStatusId: string | null

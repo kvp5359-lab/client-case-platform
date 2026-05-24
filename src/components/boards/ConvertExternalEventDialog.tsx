@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-interface Props {
+type Props = {
   open: boolean
   onClose: () => void
   workspaceId: string

@@ -16,7 +16,7 @@ import {
 import { Folder } from 'lucide-react'
 import { FolderTemplate } from './types'
 
-interface AddFoldersDialogProps {
+type AddFoldersDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   availableFolders: FolderTemplate[]

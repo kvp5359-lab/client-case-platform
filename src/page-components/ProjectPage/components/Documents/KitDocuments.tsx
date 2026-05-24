@@ -35,7 +35,7 @@ import type { DocumentKitWithDocuments } from '@/components/documents/types'
 
 const EMPTY_SLOTS: FolderSlotWithDocument[] = []
 
-export interface KitSlotHandlers {
+export type KitSlotHandlers = {
   onSlotClick: (slotId: string, folderId: string) => void
   onAddSlot?: (folderId: string) => void
   onSlotDrop: (slotId: string, documentId: string) => void
@@ -43,7 +43,7 @@ export interface KitSlotHandlers {
   onSlotRename: (slotId: string, name: string) => void
 }
 
-export interface KitDocumentHandlers {
+export type KitDocumentHandlers = {
   onStatusChange: (docId: string, status: string | null) => void
   onFolderStatusChange: (folderId: string, status: string | null) => void
   onOpenEdit: (docId: string) => void
@@ -54,7 +54,7 @@ export interface KitDocumentHandlers {
   onCompressDocument: (docId: string) => void
 }
 
-export interface KitDocumentsProps {
+export type KitDocumentsProps = {
   kit: DocumentKitWithDocuments
   kitName: string
   onToggleKit: () => void

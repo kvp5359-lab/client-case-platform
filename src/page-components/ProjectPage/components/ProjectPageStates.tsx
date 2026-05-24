@@ -7,16 +7,16 @@
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 
-interface LoadingStateProps {
+type LoadingStateProps = {
   type: 'loading'
 }
 
-interface AccessDeniedStateProps {
+type AccessDeniedStateProps = {
   type: 'access-denied'
   onBack: () => void
 }
 
-interface NotFoundStateProps {
+type NotFoundStateProps = {
   type: 'not-found'
   onBack: () => void
 }

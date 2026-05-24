@@ -58,7 +58,7 @@ const TYPE_CONFIG: Record<
   },
 }
 
-interface Props {
+type Props = {
   projectId: string
   workspaceId: string
   type: TransactionType

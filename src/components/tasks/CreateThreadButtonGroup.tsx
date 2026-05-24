@@ -23,7 +23,7 @@ import type { ThreadTemplate } from '@/types/threadTemplate'
 
 export type ThreadKind = 'task' | 'chat' | 'email'
 
-interface Props {
+type Props = {
   threadTemplates: ThreadTemplate[]
   onCreate: (kind: ThreadKind, template?: ThreadTemplate) => void
   /** Тип action'а при клике на основную кнопку. По умолчанию 'task'. */

@@ -14,11 +14,11 @@ import type { Participant } from '@/types/entities'
 type ProjectParticipant = Database['public']['Tables']['project_participants']['Row']
 type ProjectRole = Database['public']['Tables']['project_roles']['Row']
 
-export interface ParticipantWithUser extends ProjectParticipant {
+export type ParticipantWithUser = {
   participant: Participant
-}
+} & ProjectParticipant
 
-interface UseProjectParticipantsDataParams {
+type UseProjectParticipantsDataParams = {
   projectId: string
   workspaceId: string
   createdBy: string | null

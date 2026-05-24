@@ -24,14 +24,14 @@ import { ParticipantAvatar } from '@/components/participants/ParticipantAvatar'
 import { projectKeys, projectFieldsKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { cn } from '@/lib/utils'
 
-interface Props {
+type Props = {
   projectId: string
   workspaceId: string
   contactParticipantId: string | null
   disabled?: boolean
 }
 
-interface ContactCandidate {
+type ContactCandidate = {
   id: string
   name: string
   last_name: string | null

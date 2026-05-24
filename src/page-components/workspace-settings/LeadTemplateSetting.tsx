@@ -29,12 +29,12 @@ import { Label } from '@/components/ui/label'
 
 export type LeadSource = 'email' | 'telegram' | 'telegram_business' | 'telegram_mtproto' | 'wazzup'
 
-interface Props {
+type Props = {
   workspaceId: string
   source: LeadSource
 }
 
-interface ProjectTemplateRow {
+type ProjectTemplateRow = {
   id: string
   name: string
   is_lead_template: boolean

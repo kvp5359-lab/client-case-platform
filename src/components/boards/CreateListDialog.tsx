@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select'
 import { useCreateList } from './hooks/useListMutations'
 
-interface CreateListDialogProps {
+type CreateListDialogProps = {
   open: boolean
   onClose: () => void
   boardId: string

@@ -1,10 +1,10 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-export interface FieldGroupProps extends React.HTMLAttributes<HTMLDivElement> {
+export type FieldGroupProps = {
   label: string
   children: React.ReactNode
-}
+} & React.HTMLAttributes<HTMLDivElement>
 
 const FieldGroup = React.forwardRef<HTMLDivElement, FieldGroupProps>(
   ({ label, children, className, ...props }, ref) => {

@@ -16,7 +16,7 @@ import type { Database } from '@/types/database'
 
 type FolderTemplate = Database['public']['Tables']['folder_templates']['Row']
 
-interface FolderTemplatesTableProps {
+type FolderTemplatesTableProps = {
   templates: FolderTemplate[]
   slotCounts: Record<string, number>
   isLoading: boolean

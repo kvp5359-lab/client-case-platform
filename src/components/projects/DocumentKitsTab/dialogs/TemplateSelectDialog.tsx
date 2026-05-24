@@ -12,18 +12,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-interface FolderTemplate {
+type FolderTemplate = {
   id: string
   name: string
   description?: string
 }
 
-interface Folder {
+type Folder = {
   id: string
   folder_template_id?: string
 }
 
-interface TemplateSelectDialogProps {
+type TemplateSelectDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   templates: FolderTemplate[]

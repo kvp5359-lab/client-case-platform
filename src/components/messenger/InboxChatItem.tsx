@@ -98,7 +98,7 @@ const channelIcons: Record<InboxChannelType, typeof Send> = {
   web: MessageSquare,
 }
 
-interface InboxChatItemProps {
+type InboxChatItemProps = {
   chat: InboxThreadEntry
   isSelected: boolean
   onClick: () => void

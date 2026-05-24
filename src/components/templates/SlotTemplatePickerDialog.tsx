@@ -23,7 +23,7 @@ import type { Database } from '@/types/database'
 
 type SlotTemplate = Database['public']['Tables']['slot_templates']['Row']
 
-export interface PickedSlotTemplate {
+export type PickedSlotTemplate = {
   name: string
   description: string | null
   knowledge_article_id: string | null
@@ -31,7 +31,7 @@ export interface PickedSlotTemplate {
   ai_check_prompt: string | null
 }
 
-interface SlotTemplatePickerDialogProps {
+type SlotTemplatePickerDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string

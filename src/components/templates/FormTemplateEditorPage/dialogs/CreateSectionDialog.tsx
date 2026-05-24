@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-interface CreateSectionDialogProps {
+type CreateSectionDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   isCreating: boolean

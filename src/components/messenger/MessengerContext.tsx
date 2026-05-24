@@ -3,7 +3,7 @@ import type { ProjectMessage, MessageChannel } from '@/services/api/messenger/me
 import type { MessengerAccent } from './utils/messageStyles'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 
-export interface MessengerContextValue {
+export type MessengerContextValue = {
   // Static per chat session
   currentParticipantId: string | null
   viewerRole?: string | null
@@ -72,9 +72,9 @@ export function useMessengerContext(): MessengerContextValue {
   return ctx
 }
 
-interface MessengerProviderProps extends MessengerContextValue {
+type MessengerProviderProps = {
   children: React.ReactNode
-}
+} & MessengerContextValue
 
 export function MessengerProvider({ children, ...value }: MessengerProviderProps) {
   const ctx = useMemo<MessengerContextValue>(

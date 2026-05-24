@@ -14,7 +14,7 @@ import { useAddFormKit } from './add-form-kit/useAddFormKit'
 import { TemplateStep } from './add-form-kit/TemplateStep'
 import { GoogleSheetStep } from './add-form-kit/GoogleSheetStep'
 
-interface AddFormKitDialogProps {
+type AddFormKitDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   projectId: string

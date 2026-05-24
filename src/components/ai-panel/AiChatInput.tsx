@@ -22,7 +22,7 @@ import { SourceToggles } from './components/SourceToggles'
 import { AttachedDocumentsBadges } from './components/AttachedDocumentsBadges'
 import type { ProjectContextOption } from './components/ProjectContextPicker'
 
-interface AiChatInputProps {
+type AiChatInputProps = {
   sources: AiSources
   toggleSource: (key: 'formData' | 'documents') => void
   setKnowledge: (value: 'project' | 'all' | null) => void

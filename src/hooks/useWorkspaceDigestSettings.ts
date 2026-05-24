@@ -35,7 +35,7 @@ export function useWorkspaceDigestSettings(workspaceId: string | undefined) {
   })
 }
 
-export interface UpdateSettingsParams {
+export type UpdateSettingsParams = {
   workspaceId: string
   systemPrompt?: string | null
   minEventsForLlm?: number

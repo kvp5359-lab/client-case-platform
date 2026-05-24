@@ -18,7 +18,7 @@ import { Loader2, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { supabase } from '@/lib/supabase'
 
-interface AddDocumentKitDialogProps {
+type AddDocumentKitDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   projectId: string
@@ -27,7 +27,7 @@ interface AddDocumentKitDialogProps {
   templateDocumentKitIds?: string[] // ID наборов, которые добавлены в тип проекта
 }
 
-interface TemplateWithFolders {
+type TemplateWithFolders = {
   id: string
   name: string
   description: string | null

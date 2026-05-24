@@ -95,16 +95,16 @@ export { clearAllSelections }
 
 // ==================== Основной хук ====================
 
-interface Document {
+type Document = {
   id: string
 }
 
-interface UseDocumentSelectionOptions {
+type UseDocumentSelectionOptions = {
   /** Все документы для подсчёта "выбрать все" */
   allDocuments?: Document[]
 }
 
-interface UseDocumentSelectionReturn {
+type UseDocumentSelectionReturn = {
   /** Множество ID выбранных документов */
   selectedDocuments: Set<string>
   /** Есть ли выбранные документы */

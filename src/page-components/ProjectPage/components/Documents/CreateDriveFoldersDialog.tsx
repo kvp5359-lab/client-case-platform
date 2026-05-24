@@ -31,12 +31,12 @@ import { SelectedFolderBadge, ExistingFoldersList } from './CreateDriveFoldersDi
 
 type TargetMode = 'new' | 'existing' | 'root'
 
-interface DriveFolder {
+type DriveFolder = {
   id: string
   name: string
 }
 
-interface CreateDriveFoldersDialogProps {
+type CreateDriveFoldersDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   kit: DocumentKitWithDocuments | null

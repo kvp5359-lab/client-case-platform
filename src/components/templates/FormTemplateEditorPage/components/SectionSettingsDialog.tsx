@@ -21,7 +21,7 @@ import {
 } from '@/components/forms/sectionColors'
 import type { FormSectionWithDetails } from '../types'
 
-interface SectionSettingsDialogProps {
+type SectionSettingsDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   section: FormSectionWithDetails

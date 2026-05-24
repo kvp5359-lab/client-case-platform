@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { formatSize } from '@/utils/files/formatSize'
 
-export interface CompressAnalysisItem {
+export type CompressAnalysisItem = {
   docId: string
   docName: string
   currentSize: number
@@ -27,7 +27,7 @@ export interface CompressAnalysisItem {
   folderName: string | null
 }
 
-interface CompressAnalysisDialogProps {
+type CompressAnalysisDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   items: CompressAnalysisItem[]

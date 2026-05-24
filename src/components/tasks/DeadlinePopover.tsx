@@ -54,7 +54,7 @@ function buildChipSummary(deadline: string, startAt: string | null, endAt: strin
   return formatShortDate(formatDateToString(new Date(deadline)))
 }
 
-interface DeadlinePopoverProps {
+type DeadlinePopoverProps = {
   deadline: string | null
   /** Запланированное начало — для отображения в попапе. */
   startAt?: string | null

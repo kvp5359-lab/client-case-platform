@@ -9,7 +9,7 @@ const STALE_TIME = 5 * 60_000
 
 export type FinanceTaxRate = Tables<'finance_tax_rates'>
 
-export interface FinanceTaxRateFormData {
+export type FinanceTaxRateFormData = {
   name: string
   /** Процент 0..100, например 21 для НДС 21%. */
   rate: number

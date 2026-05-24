@@ -7,7 +7,7 @@ import { getKitIdForFolder } from '@/services/documents/documentKitUtils'
 import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 import type { DocumentWithFiles, SourceDocument, SourceDocumentInfo } from '@/components/documents'
 
-interface UseBatchMoveOperationsProps {
+type UseBatchMoveOperationsProps = {
   projectId: string
   allKits: DocumentKitWithDocuments[]
   fetchDocumentKits: (projectId: string) => Promise<void>

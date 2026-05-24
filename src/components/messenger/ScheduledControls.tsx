@@ -9,7 +9,7 @@ import { Send, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScheduleSendButton } from './ScheduleSendButton'
 
-interface ScheduledControlsProps {
+type ScheduledControlsProps = {
   messageId: string
   /** Текущее scheduled_send_at — подставится в input «Своё время» при
    *  открытии пикера, чтобы юзер мог быстро его подправить. */

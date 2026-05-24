@@ -6,7 +6,7 @@ import { Table as TableIcon } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
-interface TablePopoverProps {
+type TablePopoverProps = {
   editor: Editor
   open: boolean
   onOpenChange: (open: boolean) => void

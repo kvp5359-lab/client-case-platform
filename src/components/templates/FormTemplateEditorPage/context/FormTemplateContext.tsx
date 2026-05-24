@@ -7,7 +7,7 @@ import { FormFieldWithDefinition, FormSectionWithDetails } from '../types'
 import type { TemplateFieldOptions } from '@/types/formKit'
 
 // Состояние
-interface FormTemplateState {
+type FormTemplateState = {
   // Редактирование названия
   isEditingName: boolean
   editedName: string
@@ -252,7 +252,7 @@ function formTemplateReducer(
 }
 
 // Контекст
-interface FormTemplateContextValue {
+type FormTemplateContextValue = {
   state: FormTemplateState
   dispatch: React.Dispatch<FormTemplateAction>
 }

@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import { fromSupabaseJson, toSupabaseJson } from './supabaseJson'
 
-interface TestType {
+type TestType = {
   name: string
   value: number
 }

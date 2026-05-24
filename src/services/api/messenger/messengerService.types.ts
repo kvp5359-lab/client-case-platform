@@ -18,7 +18,7 @@ export function isEmailSource(source: string | null | undefined): boolean {
   return source === 'email' || source === 'email_internal'
 }
 
-export interface MessageReaction {
+export type MessageReaction = {
   id: string
   message_id: string
   participant_id: string | null
@@ -29,13 +29,13 @@ export interface MessageReaction {
   participant: { name: string; last_name: string | null; avatar_url: string | null } | null
 }
 
-export interface ReplyMessage {
+export type ReplyMessage = {
   id: string
   content: string
   sender_name: string
 }
 
-export interface EmailMetadata {
+export type EmailMetadata = {
   gmail_message_id: string
   message_id_header: string | null
   in_reply_to: string | null
@@ -47,7 +47,7 @@ export interface EmailMetadata {
   attachments: { name: string; size: number; mimeType: string; gmailAttachmentId: string }[] | null
 }
 
-export interface MessageAttachment {
+export type MessageAttachment = {
   id: string
   message_id: string
   file_name: string
@@ -60,7 +60,7 @@ export interface MessageAttachment {
   created_at: string
 }
 
-export interface ProjectMessage {
+export type ProjectMessage = {
   id: string
   project_id: string | null
   workspace_id: string
@@ -138,7 +138,7 @@ export interface ProjectMessage {
 }
 
 /** Метаданные вложения для пересылки (без повторной загрузки в Storage) */
-export interface ForwardedAttachment {
+export type ForwardedAttachment = {
   file_id: string
   file_name: string
   file_size: number | null

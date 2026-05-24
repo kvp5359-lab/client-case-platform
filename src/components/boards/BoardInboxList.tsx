@@ -43,7 +43,7 @@ function threadToTaskItem(thread: InboxThreadEntry): TaskItem {
   }
 }
 
-interface BoardInboxListProps {
+type BoardInboxListProps = {
   threads: InboxThreadEntry[]
   onOpenThread: (task: TaskItem) => void
   selectedThreadId?: string | null

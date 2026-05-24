@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { ACCENT_COLORS, THREAD_ICONS } from '@/components/messenger/threadConstants'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 
-interface IconColorPickerProps {
+type IconColorPickerProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   accentColor: ThreadAccentColor

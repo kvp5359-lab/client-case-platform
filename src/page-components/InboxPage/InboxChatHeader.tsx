@@ -60,7 +60,7 @@ const THREAD_TYPES = [
   { tab: 'email' as const, label: 'Email', icon: Mail },
 ] as const
 
-interface InboxChatHeaderProps {
+type InboxChatHeaderProps = {
   chat: InboxThreadEntry
   workspaceId: string
   participants: AvatarParticipant[]

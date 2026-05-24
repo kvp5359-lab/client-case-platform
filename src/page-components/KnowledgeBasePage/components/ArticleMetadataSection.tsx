@@ -21,7 +21,7 @@ import type { useArticleEditor } from '../useArticleEditor'
 
 type Editor = ReturnType<typeof useArticleEditor>
 
-interface ArticleMetadataSectionProps {
+type ArticleMetadataSectionProps = {
   editor: Editor
 }
 

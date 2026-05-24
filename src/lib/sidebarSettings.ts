@@ -59,7 +59,7 @@ export type SidebarBadgeColor =
   | 'violet'
   | 'gray'
 
-export interface SidebarSlot {
+export type SidebarSlot = {
   id: string // 'nav:<key>' | 'board:<uuid>' | 'list:<uuid>' | 'folder:<uuid>'
   type: 'nav' | 'board' | 'list' | 'folder'
   placement: SidebarPlacement
@@ -80,14 +80,14 @@ export interface SidebarSlot {
   folder_icon?: string
 }
 
-export interface SidebarSettingsRow {
+export type SidebarSettingsRow = {
   workspace_id: string
   slots: SidebarSlot[]
   updated_at: string
   updated_by: string | null
 }
 
-export interface SidebarItemMeta {
+export type SidebarItemMeta = {
   key: SidebarNavKey
   label: string
   icon: LucideIcon
@@ -96,7 +96,7 @@ export interface SidebarItemMeta {
   hasAccess: (ctx: SidebarPermissionsCtx) => boolean
 }
 
-export interface SidebarPermissionsCtx {
+export type SidebarPermissionsCtx = {
   isOwner: boolean
   isClientOnly: boolean
   hasPermission: (perm: WorkspacePermission) => boolean
@@ -230,7 +230,7 @@ export const DEFAULT_SIDEBAR_SLOTS: SidebarSlot[] = [
 /** Мягкий лимит на количество иконок в топ-баре. Превышение — только предупреждение. */
 export const TOPBAR_SOFT_LIMIT = 6
 
-export interface BadgeModeMeta {
+export type BadgeModeMeta = {
   value: SidebarBadgeMode
   label: string
   description: string
@@ -271,7 +271,7 @@ export const BADGE_MODES: BadgeModeMeta[] = [
 ]
 
 /** Палитра цветовых акцентов для бейджей в сайдбаре. */
-export interface BadgeColorMeta {
+export type BadgeColorMeta = {
   value: SidebarBadgeColor
   label: string
   /** HEX swatch для отображения в селекторе цвета. */

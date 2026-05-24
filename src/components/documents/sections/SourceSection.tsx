@@ -12,7 +12,7 @@ import { SourceDocumentRow } from '../SourceDocumentRow'
 import { SystemSectionTable } from '../SystemSectionTable'
 import type { SourceDocument } from '../types'
 
-interface SourceSectionProps {
+type SourceSectionProps = {
   documents: SourceDocument[]
   isCollapsed: boolean
   isSyncing: boolean

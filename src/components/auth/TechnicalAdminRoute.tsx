@@ -18,7 +18,7 @@ const TECHNICAL_ADMIN_EMAILS = (process.env.NEXT_PUBLIC_TECHNICAL_ADMIN_EMAILS |
   .map((email: string) => email.trim().toLowerCase())
   .filter(Boolean)
 
-interface TechnicalAdminRouteProps {
+type TechnicalAdminRouteProps = {
   children: React.ReactNode
 }
 

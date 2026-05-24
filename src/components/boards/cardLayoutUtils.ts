@@ -13,12 +13,12 @@ import { CARD_FIELD_DEFS } from './listSettingsConfigs'
 
 // ── Resolved layout для рендеринга ──────────────────────
 
-export interface ResolvedField {
+export type ResolvedField = {
   fieldId: CardFieldId
   style: CardFieldStyle
 }
 
-export interface ResolvedRow {
+export type ResolvedRow = {
   fields: ResolvedField[]
 }
 

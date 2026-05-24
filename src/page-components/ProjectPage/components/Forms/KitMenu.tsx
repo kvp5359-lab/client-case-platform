@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useFormKitSync } from '@/hooks/forms/useFormKitSync'
 
-interface KitMenuProps {
+type KitMenuProps = {
   formKitId: string
   googleSheetId?: string | null
   briefSheetId?: string | null

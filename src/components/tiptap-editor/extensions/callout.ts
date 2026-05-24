@@ -2,7 +2,7 @@ import { Node, mergeAttributes } from '@tiptap/core'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 import { CalloutView } from '../node-views/callout-view'
 
-export interface CalloutOptions {
+export type CalloutOptions = {
   HTMLAttributes: Record<string, string>
 }
 
@@ -39,7 +39,7 @@ const getDefaultColor = (): CalloutColor => {
 }
 
 declare module '@tiptap/core' {
-  interface Commands<ReturnType> {
+  type Commands<ReturnType> = {
     callout: {
       setCallout: (attrs?: { icon?: CalloutIcon; color?: CalloutColor }) => ReturnType
       toggleCallout: (attrs?: { icon?: CalloutIcon; color?: CalloutColor }) => ReturnType

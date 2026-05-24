@@ -1,4 +1,4 @@
-interface TypingIndicatorProps {
+type TypingIndicatorProps = {
   typingUsers: { participantId: string; name: string }[]
 }
 

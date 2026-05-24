@@ -12,7 +12,7 @@ import { formatDeadline, isOverdue } from './boardListUtils'
 import { resolveCardLayout, fieldStyleToClasses, visibleFieldsToLayout } from './cardLayoutUtils'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
 
-interface BoardProjectRowProps {
+type BoardProjectRowProps = {
   project: BoardProject
   workspaceId: string
   displayMode: DisplayMode

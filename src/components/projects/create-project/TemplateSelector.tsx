@@ -9,12 +9,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-interface ProjectTemplate {
+type ProjectTemplate = {
   id: string
   name: string
 }
 
-interface TemplateSelectorProps {
+type TemplateSelectorProps = {
   value: string
   onChange: (value: string) => void
   templates: ProjectTemplate[]

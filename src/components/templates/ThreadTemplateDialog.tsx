@@ -49,7 +49,7 @@ const PROJECT_ROLE_OPTIONS = [
 
 // ── Props ──
 
-interface ThreadTemplateDialogProps {
+type ThreadTemplateDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string

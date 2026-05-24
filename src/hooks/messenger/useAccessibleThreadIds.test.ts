@@ -46,7 +46,7 @@ vi.mock('@/components/tasks/useTaskAssignees', () => ({
 
 // ─── Хелперы для построения тредов ───
 
-interface ThreadStub {
+type ThreadStub = {
   id: string
   type: 'chat' | 'task'
   project_id: string | null

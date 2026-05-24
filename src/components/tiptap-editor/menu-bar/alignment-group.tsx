@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 
-interface AlignmentGroupProps {
+type AlignmentGroupProps = {
   editor: Editor
 }
 

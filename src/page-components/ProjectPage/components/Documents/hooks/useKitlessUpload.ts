@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { kitlessDocumentKeys } from '@/hooks/queryKeys'
 import type { UploadDocumentFn } from '@/hooks/documents/useDocuments.types'
 
-interface UseKitlessUploadParams {
+type UseKitlessUploadParams = {
   projectId: string
   workspaceId: string
   uploadDocument: UploadDocumentFn

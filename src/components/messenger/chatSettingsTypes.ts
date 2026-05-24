@@ -13,7 +13,7 @@ export type ChannelType = 'none' | 'telegram' | 'email'
 export type ThreadType = 'chat' | 'task'
 export type TabMode = 'task' | 'chat' | 'email'
 
-export interface ChatSettingsResult {
+export type ChatSettingsResult = {
   threadType: ThreadType
   name: string
   accessType: AccessType
@@ -45,7 +45,7 @@ export interface ChatSettingsResult {
   sourceTemplateId?: string | null
 }
 
-export interface ChatCreatePreset {
+export type ChatCreatePreset = {
   tabMode?: TabMode
   projectId?: string
   statusId?: string
@@ -57,7 +57,7 @@ export interface ChatCreatePreset {
   assigneeIds?: string[]
 }
 
-export interface ChatSettingsDialogProps {
+export type ChatSettingsDialogProps = {
   /** null = create mode, ProjectThread = edit mode */
   chat: ProjectThread | null
   projectId?: string
@@ -85,7 +85,7 @@ export interface ChatSettingsDialogProps {
   isPending?: boolean
 }
 
-export interface Participant {
+export type Participant = {
   id: string
   name: string
   last_name: string | null

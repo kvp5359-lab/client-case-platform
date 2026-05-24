@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { useArticleVersions, useArticleVersion } from '@/hooks/knowledge'
 import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 
-interface ArticleVersionHistoryDialogProps {
+type ArticleVersionHistoryDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   articleId: string

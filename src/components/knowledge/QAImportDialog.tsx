@@ -36,7 +36,7 @@ import {
   type MappableField,
 } from '@/utils/files/csvParser'
 
-interface QAImportDialogProps {
+type QAImportDialogProps = {
   workspaceId: string
   open: boolean
   onOpenChange: (open: boolean) => void

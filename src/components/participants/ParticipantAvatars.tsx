@@ -5,7 +5,7 @@
 
 import Image from 'next/image'
 
-export interface AvatarParticipant {
+export type AvatarParticipant = {
   id: string
   name: string
   last_name: string | null

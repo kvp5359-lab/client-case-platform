@@ -6,7 +6,7 @@ import {
   type ProjectPreset,
 } from '@/components/projects/filters'
 
-interface Props {
+type Props = {
   preset: ProjectPreset
   filtersModified: boolean
   filtersOpen: boolean

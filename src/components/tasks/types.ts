@@ -3,7 +3,7 @@
  * Оба источника (ProjectThread из useProjectThreads, WorkspaceTask из RPC) приводятся к нему.
  */
 
-export interface TaskItem {
+export type TaskItem = {
   id: string
   name: string
   type: 'chat' | 'task'
@@ -36,7 +36,7 @@ export interface TaskItem {
 }
 
 /** Минимальная информация о проекте для шапки Режима 2 TaskPanel. */
-export interface ProjectHeaderInfo {
+export type ProjectHeaderInfo = {
   id: string
   name: string
   created_at?: string | null

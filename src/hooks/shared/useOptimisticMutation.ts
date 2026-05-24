@@ -11,7 +11,7 @@ import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-quer
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 
-interface OptimisticMutationConfig<TData, TVariables> {
+type OptimisticMutationConfig<TData, TVariables> = {
   /** Ключ кэша для optimistic update */
   queryKey: (variables: TVariables) => QueryKey
   /** Серверная операция */

@@ -38,7 +38,7 @@ import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 
 type AnyRecord = Record<string, unknown>
 
-interface UseTemplateListConfig<T, TFormData> {
+type UseTemplateListConfig<T, TFormData> = {
   /** Ключ таблицы в Supabase */
   tableName: string
   /** Ключ для React Query */

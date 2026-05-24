@@ -13,7 +13,7 @@ import { Loader2 } from 'lucide-react'
 import type { DocumentStatus } from '@/components/documents/types'
 import type { BatchCheckResult } from './useBatchCheck'
 
-interface BatchCheckTableProps {
+type BatchCheckTableProps = {
   results: BatchCheckResult[]
   statuses: DocumentStatus[]
   checkedCount: number

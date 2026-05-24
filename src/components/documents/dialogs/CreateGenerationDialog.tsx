@@ -28,7 +28,7 @@ import { FileText } from 'lucide-react'
 import { useDocumentTemplates } from '@/hooks/documents/useDocumentTemplates'
 import { useCreateDocumentGeneration } from '@/hooks/documents/useDocumentGenerations'
 
-interface CreateGenerationDialogProps {
+type CreateGenerationDialogProps = {
   projectId: string
   workspaceId: string
   open: boolean

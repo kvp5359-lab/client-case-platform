@@ -11,7 +11,7 @@ import { DestinationDocumentRow } from '../DestinationDocumentRow'
 import { SystemSectionTable } from '../SystemSectionTable'
 import type { DestinationDocument } from '../types'
 
-interface DestinationSectionProps {
+type DestinationSectionProps = {
   documents: DestinationDocument[]
   isCollapsed: boolean
   isExporting: boolean

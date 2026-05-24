@@ -12,7 +12,7 @@ export type ThreadAccentColor =
   | 'pink'
   | 'indigo'
 
-export interface ProjectThread {
+export type ProjectThread = {
   id: string
   project_id: string | null
   workspace_id: string

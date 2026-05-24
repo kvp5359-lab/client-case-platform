@@ -23,7 +23,7 @@ import {
 } from '@/store/documentKitUI'
 import { SourceSettingsDialog } from './DocumentKitsTab/dialogs/SourceSettingsDialog'
 
-interface DocumentKitsTabProps {
+type DocumentKitsTabProps = {
   projectId: string
   workspaceId: string
   kitId: string

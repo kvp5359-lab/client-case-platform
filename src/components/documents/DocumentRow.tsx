@@ -29,7 +29,7 @@ import {
   useDocumentKitIds,
 } from '@/components/projects/DocumentKitsTab/context'
 
-interface DocumentRowProps {
+type DocumentRowProps = {
   document: DocumentWithFiles
   index: number
   isUnassigned?: boolean

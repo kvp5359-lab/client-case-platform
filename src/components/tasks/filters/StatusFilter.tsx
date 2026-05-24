@@ -9,7 +9,7 @@ import { CircleDot } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { FilterToolbar, CheckItem, FilterButton } from './FilterPrimitives'
 
-interface StatusFilterProps {
+type StatusFilterProps = {
   statuses: { id: string; name: string; color: string; is_final: boolean }[]
   selectedIds: Set<string>
   onToggle: (id: string) => void

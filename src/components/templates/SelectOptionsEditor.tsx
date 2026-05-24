@@ -17,7 +17,7 @@ import { fieldDefinitionKeys } from '@/hooks/queryKeys'
 
 type SelectOption = Database['public']['Tables']['field_definition_select_options']['Row']
 
-interface SelectOptionsEditorProps {
+type SelectOptionsEditorProps = {
   fieldId: string
   onChangesDetected?: (hasChanges: boolean) => void
 }

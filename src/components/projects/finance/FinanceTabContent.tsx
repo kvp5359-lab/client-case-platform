@@ -12,7 +12,7 @@ import { FinanceSummary } from './FinanceSummary'
 import { ProjectServicesSection } from './ProjectServicesSection'
 import { ProjectTransactionsSection } from './ProjectTransactionsSection'
 
-interface Props {
+type Props = {
   projectId: string
   workspaceId: string
 }

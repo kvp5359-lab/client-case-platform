@@ -5,7 +5,7 @@
 
 import { logger } from '@/utils/logger'
 
-export interface SSEEvent {
+export type SSEEvent = {
   type: string
   data: unknown
 }

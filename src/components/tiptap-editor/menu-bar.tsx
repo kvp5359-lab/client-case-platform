@@ -17,7 +17,7 @@ import {
   LinkPopover,
 } from './menu-bar/index'
 
-interface MenuBarProps {
+type MenuBarProps = {
   editor: Editor | null
   className?: string
   isFullscreen?: boolean

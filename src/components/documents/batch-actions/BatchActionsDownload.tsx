@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Download } from 'lucide-react'
 
-interface BatchActionsDownloadProps {
+type BatchActionsDownloadProps = {
   canDownload: boolean
   selectedCount: number
   isProcessing: boolean

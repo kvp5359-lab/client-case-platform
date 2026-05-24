@@ -5,7 +5,7 @@
 import { toast } from 'sonner'
 import type { DocumentWithFiles } from '@/components/documents'
 
-interface UseBatchCheckProps {
+type UseBatchCheckProps = {
   openBatchCheckDialog: (documentIds: string[]) => void
 }
 

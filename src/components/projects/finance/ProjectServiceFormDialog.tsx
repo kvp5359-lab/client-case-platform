@@ -29,7 +29,7 @@ import type {
   ProjectServiceFormData,
 } from '@/hooks/projects/useProjectServices'
 
-interface Props {
+type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string

@@ -16,7 +16,7 @@ import { MoreHorizontal, Edit, Lock, LockOpen, Trash2, Eye } from 'lucide-react'
 import type { Participant } from '@/types/entities'
 import { StartImpersonationDialog } from '@/components/impersonation/StartImpersonationDialog'
 
-interface ParticipantMenuProps {
+type ParticipantMenuProps = {
   participant: Participant
   onEdit: (participant: Participant) => void
   onToggleAccess: (participantId: string, currentCanLogin: boolean) => void

@@ -15,7 +15,7 @@ type Document = Tables<'documents'> & {
   document_files: Tables<'document_files'>[]
 }
 
-interface ProjectDocumentsListProps {
+type ProjectDocumentsListProps = {
   projectId: string
   selectedDocumentId: string | null
   onSelect: (documentId: string) => void

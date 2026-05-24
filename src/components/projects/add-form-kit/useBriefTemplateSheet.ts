@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { extractGoogleSheetsId } from '@/utils/googleDrive'
 
-interface UseBriefTemplateSheetParams {
+type UseBriefTemplateSheetParams = {
   open: boolean
   projectId: string
   workspaceId: string

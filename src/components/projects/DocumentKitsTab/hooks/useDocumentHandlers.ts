@@ -8,7 +8,7 @@
 import { useCallback, useMemo } from 'react'
 import type { DocumentWithFiles, SourceDocument } from '@/components/documents/types'
 
-interface UseDocumentHandlersParams {
+type UseDocumentHandlersParams = {
   handlers: {
     handleOpenEditDialog: (documentId: string) => void
     handleUpdateStatus: (documentId: string, newStatus: string | null) => Promise<void>

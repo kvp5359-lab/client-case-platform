@@ -14,7 +14,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import type { FormData } from '@/components/forms/types'
 
-interface UseFormFieldSaveHandlersParams {
+type UseFormFieldSaveHandlersParams = {
   formKitId: string
   formData: FormData
   setFormData: React.Dispatch<React.SetStateAction<FormData>>

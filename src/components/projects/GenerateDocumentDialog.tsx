@@ -31,14 +31,14 @@ import { useDocumentTemplates, useGenerateDocument } from '@/hooks/documents/use
 import { fieldDefinitionKeys } from '@/hooks/queryKeys'
 import type { DocumentTemplatePlaceholder } from '@/services/api/documents/documentTemplateService'
 
-interface GenerateDocumentDialogProps {
+type GenerateDocumentDialogProps = {
   projectId: string
   workspaceId: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-interface FieldDefinitionInfo {
+type FieldDefinitionInfo = {
   id: string
   name: string
 }

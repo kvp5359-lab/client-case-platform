@@ -46,7 +46,7 @@ import { STALE_TIME, statusKeys } from '@/hooks/queryKeys'
 
 type FormReturn = ReturnType<typeof useChatSettingsFormState>
 
-interface UseChatSettingsActionsParams {
+type UseChatSettingsActionsParams = {
   chat: ProjectThread | null
   propProjectId?: string
   resolvedWorkspaceId?: string

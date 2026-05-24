@@ -38,7 +38,7 @@ import {
 } from '@/hooks/useWazzup'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
 
-interface Props {
+type Props = {
   workspaceId: string
   /** Сотрудники воркспейса (с user_id) для назначения на каналы. */
   employees: WorkspaceParticipant[]
@@ -219,7 +219,7 @@ export function WazzupSection({ workspaceId, employees }: Props) {
   )
 }
 
-interface RowProps {
+type RowProps = {
   channel: WazzupChannel
   employees: WorkspaceParticipant[]
   employeesByUserId: Map<string, WorkspaceParticipant>

@@ -9,27 +9,27 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { TabMode, ChannelType } from './chatSettingsTypes'
 
-interface EmailChip {
+type EmailChip = {
   email: string
   label: string
 }
 
-interface EmailSuggestion {
+type EmailSuggestion = {
   email: string
   label: string
   freq?: number
 }
 
-interface TelegramLinkInfo {
+type TelegramLinkInfo = {
   telegram_chat_title?: string | null
 }
 
-interface EmailLinkInfo {
+type EmailLinkInfo = {
   id: string
   contact_email: string
 }
 
-interface ChatSettingsChannelsProps {
+type ChatSettingsChannelsProps = {
   tabMode: TabMode
   channelType: ChannelType
   isEditMode: boolean

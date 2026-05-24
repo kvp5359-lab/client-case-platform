@@ -12,7 +12,7 @@ import { DraggableFieldRow } from './DraggableFieldRow'
 import { useFieldsTableContext } from './FieldsTableContext'
 import { SectionSettingsDialog } from './SectionSettingsDialog'
 
-interface SectionRowProps {
+type SectionRowProps = {
   section: FormSectionWithDetails
   sectionFields: FormFieldWithDefinition[]
   isCollapsed: boolean

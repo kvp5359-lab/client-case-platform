@@ -10,7 +10,7 @@ import { safeCssColor } from '@/utils/isValidCssColor'
 import { Circle } from 'lucide-react'
 import { STATUS_ICONS, type StatusIconDef } from '@/components/ui/status-icons'
 
-interface IconPickerProps {
+type IconPickerProps = {
   value: string | null | undefined
   onChange: (iconId: string) => void
   color?: string

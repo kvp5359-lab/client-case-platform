@@ -43,7 +43,7 @@ export function getChatTabAccent(accentColor: ThreadAccentColor): {
   return map[accentColor] ?? map.blue
 }
 
-interface EditChatDialogProps {
+type EditChatDialogProps = {
   chat: ProjectThread | null
   open: boolean
   onOpenChange: (open: boolean) => void

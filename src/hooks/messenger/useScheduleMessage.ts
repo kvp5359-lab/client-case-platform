@@ -24,7 +24,7 @@ import { messengerKeys, inboxKeys } from '@/hooks/queryKeys/messenger'
 
 export const MIN_SCHEDULE_OFFSET_MS = 2 * 60 * 1000
 
-interface ScheduleMessageParams {
+type ScheduleMessageParams = {
   content: string
   sendAt: Date
   attachments?: File[]
@@ -142,7 +142,7 @@ export function useScheduleMessage(params: {
 }
 
 /** Пресеты времени для пикера. */
-export interface SchedulePreset {
+export type SchedulePreset = {
   label: string
   getDate: () => Date
 }

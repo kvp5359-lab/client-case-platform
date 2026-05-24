@@ -20,7 +20,7 @@ import { useWorkspace } from '@/hooks/useWorkspace'
 import { workspaceKeys } from '@/hooks/queryKeys'
 import { useQueryClient } from '@tanstack/react-query'
 
-interface DefaultPromptsDialogProps {
+type DefaultPromptsDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string | undefined

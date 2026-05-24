@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { downloadDocumentsAsZip } from '@/services/documents/downloadDocumentsAsZip'
 import type { DocumentWithFiles } from '@/components/documents'
 
-interface UseBatchDownloadProps {
+type UseBatchDownloadProps = {
   clearSelection: () => void
 }
 

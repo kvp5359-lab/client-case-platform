@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import type { ConfirmDialogState } from '@/hooks/dialogs/useConfirmDialog'
 
-interface ConfirmDialogProps {
+type ConfirmDialogProps = {
   state: ConfirmDialogState
   onConfirm: () => void
   onCancel: () => void

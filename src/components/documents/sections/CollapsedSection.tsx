@@ -5,7 +5,7 @@
 
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 
-interface CollapsedSectionProps {
+type CollapsedSectionProps = {
   isCollapsed: boolean
   children: React.ReactNode
 }

@@ -14,7 +14,7 @@ import { SlotHelpButton } from './SlotHelpButton'
 import { useDocumentsContext } from './DocumentsContext'
 import type { FolderSlotWithDocument } from '@/components/documents/types'
 
-export interface SlotItemProps {
+export type SlotItemProps = {
   slot: FolderSlotWithDocument
   onSlotClick: (slotId: string, folderId: string) => void
   onSlotDrop?: (slotId: string, documentId: string) => void

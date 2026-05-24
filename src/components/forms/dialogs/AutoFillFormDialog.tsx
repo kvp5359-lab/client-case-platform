@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
 import { toast } from 'sonner'
 
-interface AutoFillFormDialogProps {
+type AutoFillFormDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   formKitId: string

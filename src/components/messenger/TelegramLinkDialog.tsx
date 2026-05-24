@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Copy, Unlink, Loader2 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 
-interface TelegramLinkDialogProps {
+type TelegramLinkDialogProps = {
   open: boolean
   onClose: () => void
   isLinked: boolean

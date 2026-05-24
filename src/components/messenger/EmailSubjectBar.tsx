@@ -2,7 +2,7 @@
  * Displays email subject/contact info bar above the message list
  */
 
-interface EmailSubjectBarProps {
+type EmailSubjectBarProps = {
   subject?: string | null
   contactEmail?: string | null
 }

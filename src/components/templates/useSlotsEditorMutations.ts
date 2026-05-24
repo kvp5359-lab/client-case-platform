@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 
-export interface Slot {
+export type Slot = {
   id: string
   name: string
   description: string | null
@@ -18,7 +18,7 @@ export interface Slot {
   sort_order: number
 }
 
-export interface CreateSlotInput {
+export type CreateSlotInput = {
   name: string
   description?: string | null
   knowledge_article_id?: string | null
@@ -26,7 +26,7 @@ export interface CreateSlotInput {
   ai_check_prompt?: string | null
 }
 
-export interface UpdateSlotInput {
+export type UpdateSlotInput = {
   id: string
   name: string
   description: string | null
@@ -35,7 +35,7 @@ export interface UpdateSlotInput {
   ai_check_prompt: string | null
 }
 
-export interface SlotTableConfig {
+export type SlotTableConfig = {
   table: 'folder_template_slots' | 'document_kit_template_folder_slots'
   foreignKey: string
   foreignKeyValue: string

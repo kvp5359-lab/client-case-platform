@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { projectThreadKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 /** Structured parts for `change_status` events, used to render coloured names. */
-export interface StatusChangeParts {
+export type StatusChangeParts = {
   actorName: string
   oldName: string
   oldColor: string | null
@@ -20,7 +20,7 @@ export interface StatusChangeParts {
   newColor: string | null
 }
 
-export interface ThreadAuditEvent {
+export type ThreadAuditEvent = {
   id: string
   action: string
   details: Record<string, unknown>

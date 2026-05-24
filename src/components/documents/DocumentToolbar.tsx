@@ -27,7 +27,7 @@ import {
   FileDown,
 } from 'lucide-react'
 
-interface DocumentToolbarProps {
+type DocumentToolbarProps = {
   // Состояния
   allSelected: boolean
   showOnlyUnverified: boolean

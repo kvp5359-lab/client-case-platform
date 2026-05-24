@@ -2,20 +2,20 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 
-interface AttachedDocument {
+type AttachedDocument = {
   id: string
   name: string
   textContent?: string | null
   isUploadedFile?: boolean
 }
 
-interface ProjectDocument {
+type ProjectDocument = {
   id: string
   name: string
   textContent?: string | null
 }
 
-interface UseProjectAiDocumentsParams {
+type UseProjectAiDocumentsParams = {
   attachedDocuments: AttachedDocument[]
   projectDocuments: ProjectDocument[]
   addAttachedDocument: (doc: { id: string; name: string; textContent?: string | null }) => void

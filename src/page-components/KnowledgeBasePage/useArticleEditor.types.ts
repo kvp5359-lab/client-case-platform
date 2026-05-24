@@ -3,7 +3,7 @@
  * мог импортировать их без цикла.
  */
 
-export interface EditorKnowledgeArticle {
+export type EditorKnowledgeArticle = {
   id: string
   workspace_id: string
   title: string
@@ -19,7 +19,7 @@ export interface EditorKnowledgeArticle {
   indexed_at: string | null
 }
 
-export interface EditorKnowledgeGroup {
+export type EditorKnowledgeGroup = {
   id: string
   name: string
   color: string | null
@@ -28,7 +28,7 @@ export interface EditorKnowledgeGroup {
   sort_order: number
 }
 
-export interface EditorKnowledgeTag {
+export type EditorKnowledgeTag = {
   id: string
   name: string
   color: string

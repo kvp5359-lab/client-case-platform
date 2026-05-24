@@ -14,7 +14,7 @@ import {
 } from './messengerService.helpers'
 import type { ProjectMessage, MessageChannel } from './messengerService.types'
 
-export interface SaveDraftParams {
+export type SaveDraftParams = {
   projectId?: string
   workspaceId: string
   content: string

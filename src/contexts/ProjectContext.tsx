@@ -24,13 +24,13 @@ type Project = Database['public']['Tables']['projects']['Row']
 type ProjectTemplate = Database['public']['Tables']['project_templates']['Row']
 
 /** Тип данных, возвращаемых из SELECT с JOIN project_templates */
-interface ProjectWithTemplate extends Project {
+type ProjectWithTemplate = {
   project_templates: ProjectTemplate | null
-}
+} & Project
 
 // === ТИПЫ ===
 
-interface ProjectContextValue {
+type ProjectContextValue = {
   project: Project | null
   projectTemplate: ProjectTemplate | null
   projectId: string | null
@@ -46,7 +46,7 @@ const ProjectContext = createContext<ProjectContextValue | null>(null)
 
 // === ПРОВАЙДЕР ===
 
-interface ProjectProviderProps {
+type ProjectProviderProps = {
   children: ReactNode
 }
 

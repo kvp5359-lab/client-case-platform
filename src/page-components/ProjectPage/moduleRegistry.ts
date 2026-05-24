@@ -23,7 +23,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import type { ProjectModule as ProjectModuleKey, WorkspaceFeature } from '@/types/permissions'
 
-export interface ModuleDefinition {
+export type ModuleDefinition = {
   /** Уникальный id модуля — используется в URL (?tab=tasks) */
   id: string
   /** Название вкладки */

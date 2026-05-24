@@ -29,12 +29,12 @@ function madridDayOfWeekIso(date: string): number {
   return (dow + 6) % 7 // 0=пн ... 6=вс
 }
 
-export interface DigestPeriod {
+export type DigestPeriod = {
   start: string // YYYY-MM-DD
   end: string   // YYYY-MM-DD (включительно)
 }
 
-export interface DigestPreset {
+export type DigestPreset = {
   id: string
   label: string
   compute: () => DigestPeriod

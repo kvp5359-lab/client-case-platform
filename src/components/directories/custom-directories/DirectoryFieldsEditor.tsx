@@ -27,7 +27,7 @@ import type {
   DirectoryFieldOptions,
 } from '@/types/customDirectories'
 
-interface DirectoryFieldsEditorProps {
+type DirectoryFieldsEditorProps = {
   directoryId: string
 }
 

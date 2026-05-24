@@ -34,7 +34,7 @@ import { TaskPanelTabbedShellRenderer } from './TaskPanelTabbedShellRenderer'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
 import type { TaskItem, ProjectHeaderInfo } from './types'
 
-interface TaskPanelTabbedShellProps {
+type TaskPanelTabbedShellProps = {
   workspaceId: string
   /**
    * projectId текущей страницы — стартовое значение «активного проекта».
@@ -45,7 +45,7 @@ interface TaskPanelTabbedShellProps {
   pageProjectId: string | null
 }
 
-export interface TaskPanelTabbedShellApi {
+export type TaskPanelTabbedShellApi = {
   /** Открыть тред во вкладке (или активировать существующую). */
   openThreadTab: (task: TaskItem) => void
   /** Открыть «список задач проекта» во вкладке (Mode 2 старого TaskPanel). */

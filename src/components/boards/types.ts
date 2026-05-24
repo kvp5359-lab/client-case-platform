@@ -11,7 +11,7 @@ import type { FilterGroup, SortField, SortDir } from '@/lib/filters/types'
 
 // ── Сущности БД ─────────────────────────────────────────
 
-export interface Board {
+export type Board = {
   id: string
   workspace_id: string
   name: string
@@ -33,7 +33,7 @@ export interface Board {
  * Фильтр всей доски — отдельные группы для разных entity_type.
  * Inbox-списки имеют свою логику (default_filter), здесь не участвуют.
  */
-export interface BoardGlobalFilter {
+export type BoardGlobalFilter = {
   project: FilterGroup
   thread: FilterGroup
 }
@@ -61,7 +61,7 @@ export const MIN_COLUMN_WIDTH = 200
 /** Максимальная допустимая ширина колонки */
 export const MAX_COLUMN_WIDTH = 800
 
-export interface BoardMember {
+export type BoardMember = {
   id: string
   board_id: string
   participant_id: string
@@ -72,7 +72,7 @@ export type DisplayMode = 'list' | 'cards' | 'calendar'
 
 /** Настройки календарного режима списка (board_lists.calendar_settings) */
 export type CalendarDefaultView = 'day' | 'work_week' | 'week' | 'next_n'
-export interface CalendarSettings {
+export type CalendarSettings = {
   default_view: CalendarDefaultView
   /** Час начала рабочей сетки (0–23) */
   min_hour: number
@@ -125,7 +125,7 @@ export type CardAlign = 'left' | 'right'
 export type CardTruncate = 'truncate' | 'wrap'
 
 /** Стиль одного поля в карточке */
-export interface CardFieldStyle {
+export type CardFieldStyle = {
   fontSize: CardFontSize
   align: CardAlign
   truncate: CardTruncate
@@ -133,25 +133,25 @@ export interface CardFieldStyle {
 }
 
 /** Размещение поля в строке */
-export interface CardFieldPlacement {
+export type CardFieldPlacement = {
   fieldId: CardFieldId
   visible: boolean
   style: CardFieldStyle
 }
 
 /** Строка карточки (макс. 3) */
-export interface CardLayoutRow {
+export type CardLayoutRow = {
   id: string
   fields: CardFieldPlacement[]
 }
 
 /** Полный layout карточки, хранится в board_lists.card_layout JSONB */
-export interface CardLayout {
+export type CardLayout = {
   version: 1
   rows: CardLayoutRow[]
 }
 
-export interface BoardList {
+export type BoardList = {
   id: string
   board_id: string
   name: string

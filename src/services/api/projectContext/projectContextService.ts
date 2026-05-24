@@ -13,29 +13,29 @@ export type ProjectContextItem = Database['public']['Tables']['project_context_i
 export type ProjectContextItemType = ProjectContextItem['item_type']
 export type ProjectContextExtractionStatus = ProjectContextItem['extraction_status']
 
-export interface ProjectContextItemWithFile extends ProjectContextItem {
+export type ProjectContextItemWithFile = {
   file:
     | Pick<
         Database['public']['Tables']['files']['Row'],
         'id' | 'file_name' | 'file_size' | 'mime_type' | 'storage_path' | 'bucket'
       >
     | null
-}
+} & ProjectContextItem
 
-interface BaseCreateParams {
+type BaseCreateParams = {
   workspaceId: string
   projectId: string
   name: string
 }
 
-interface CreateTextParams extends BaseCreateParams {
+type CreateTextParams = {
   contentHtml: string
-}
+} & BaseCreateParams
 
-interface CreateFileParams extends BaseCreateParams {
+type CreateFileParams = {
   file: File
   itemType?: 'file' | 'screenshot'
-}
+} & BaseCreateParams
 
 async function insertFileRecord(workspaceId: string, projectId: string, file: File) {
   const fileExt = file.name.includes('.') ? file.name.split('.').pop() : null
@@ -235,7 +235,7 @@ export async function hardDeleteItem(id: string): Promise<void> {
   }
 }
 
-export interface RunExtractionResult {
+export type RunExtractionResult = {
   status: ProjectContextExtractionStatus
   extracted_text?: string | null
   error?: string

@@ -17,7 +17,7 @@ import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
 import { myProjectParticipantKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 
-interface MyProjectData {
+type MyProjectData = {
   participantId: string
   projectRoles: string[]
 }

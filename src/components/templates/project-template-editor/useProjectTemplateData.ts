@@ -18,7 +18,7 @@ import type {
   KnowledgeGroupWithRelation,
 } from './constants'
 
-interface UseProjectTemplateDataParams {
+type UseProjectTemplateDataParams = {
   workspaceId: string | undefined
   templateId: string | undefined
 }

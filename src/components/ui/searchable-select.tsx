@@ -18,14 +18,14 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-export interface SearchableOption {
+export type SearchableOption = {
   value: string
   label: string
   /** Дополнительная подпись (email, организация, цена и т.п.) — справа от label. */
   hint?: string
 }
 
-interface Props {
+type Props = {
   options: SearchableOption[]
   /** Выбранное значение или null. */
   value: string | null

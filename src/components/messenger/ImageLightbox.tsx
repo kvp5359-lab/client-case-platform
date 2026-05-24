@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { X, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
 
-interface ImageLightboxProps {
+type ImageLightboxProps = {
   src: string
   alt: string
   onClose: () => void

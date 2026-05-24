@@ -5,7 +5,7 @@
 import { DatePicker } from '@/components/ui/date-picker'
 import type { Project } from '../types'
 
-interface ProjectDeadlinePickerProps {
+type ProjectDeadlinePickerProps = {
   project: Project
   onDeadlineChange: (date: Date | undefined) => void
   disabled?: boolean

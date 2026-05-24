@@ -10,7 +10,7 @@ import { TablesInsert } from '@/types/database'
 import { documentKitKeys, kitlessDocumentKeys, messengerAiKeys } from '@/hooks/queryKeys'
 import { triggerTextExtraction } from '@/services/documents/textExtractionService'
 
-export interface UploadDocumentParams {
+export type UploadDocumentParams = {
   file: File
   documentKitId: string | null
   projectId: string

@@ -18,7 +18,7 @@ import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { getArticleById } from '@/services/api/knowledge/knowledgeBaseService'
 import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 
-interface SlotHelpButtonProps {
+type SlotHelpButtonProps = {
   slotName: string
   description: string | null
   knowledgeArticleId: string | null

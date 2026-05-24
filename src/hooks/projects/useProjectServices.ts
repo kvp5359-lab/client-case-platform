@@ -9,7 +9,7 @@ const STALE_TIME = 5 * 60_000
 
 export type ProjectService = Tables<'project_services'>
 
-export interface ProjectServiceFormData {
+export type ProjectServiceFormData = {
   /** UUID услуги из справочника finance_services. */
   service_id: string | null
   /** Snapshot имени (по умолчанию из справочника, но можно править). */

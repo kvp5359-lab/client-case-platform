@@ -15,14 +15,14 @@ import { GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { RulePath } from '@/lib/filters/filterPathUtils'
 
-export interface DropIndicatorState {
+export type DropIndicatorState = {
   /** Path элемента, рядом с которым показать линию */
   targetPath: RulePath
   /** Позиция линии */
   position: 'top' | 'bottom'
 }
 
-interface DraggableFilterRuleProps {
+type DraggableFilterRuleProps = {
   dndId: string
   children: ReactNode
   dropIndicator: DropIndicatorState | null

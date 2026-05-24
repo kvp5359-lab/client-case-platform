@@ -30,7 +30,7 @@ const DEFAULT_TABLE_COLUMNS = [
   { name: 'Значение', type: 'text' as const },
 ]
 
-export interface FieldsGridProps {
+export type FieldsGridProps = {
   fields: FormField[]
   formData: FormData
   compositeItems: CompositeFieldItem[]

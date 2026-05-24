@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 
-interface HeadingsGroupProps {
+type HeadingsGroupProps = {
   editor: Editor
 }
 

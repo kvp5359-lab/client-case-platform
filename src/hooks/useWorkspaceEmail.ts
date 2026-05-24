@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { STALE_TIME } from '@/hooks/queryKeys'
 
-export interface WorkspaceEmailStatus {
+export type WorkspaceEmailStatus = {
   workspace_id: string
   slug: string
   email_active: boolean

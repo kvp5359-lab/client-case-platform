@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Toggle } from '@/components/ui/toggle'
 
-interface LinkPopoverProps {
+type LinkPopoverProps = {
   editor: Editor
   open: boolean
   onOpenChange: (open: boolean) => void

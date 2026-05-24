@@ -29,13 +29,13 @@ import { FIELD_TYPE_LABELS } from './field-definition/constants'
 import { cn } from '@/lib/utils'
 import { fieldDefinitionKeys } from '@/hooks/queryKeys'
 
-interface FieldDefinition {
+type FieldDefinition = {
   id: string
   name: string
   field_type: string
 }
 
-interface PlaceholderMappingDialogProps {
+type PlaceholderMappingDialogProps = {
   template: DocumentTemplate
   workspaceId: string
   open: boolean

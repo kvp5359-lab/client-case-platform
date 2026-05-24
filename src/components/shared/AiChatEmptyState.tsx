@@ -20,7 +20,7 @@ const accentIconClasses: Record<AccentColor, string> = {
   green: 'text-green-600',
 }
 
-interface AiChatEmptyStateProps {
+type AiChatEmptyStateProps = {
   title: string
   description: string
   accent?: AccentColor

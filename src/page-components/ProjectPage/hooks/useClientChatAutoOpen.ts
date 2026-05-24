@@ -13,7 +13,7 @@ import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { useAccessibleThreadIds } from '@/hooks/messenger/useAccessibleThreadIds'
 import { threadToItem } from '@/components/tasks/taskListConstants'
 
-interface Options {
+type Options = {
   projectId: string | undefined
   isClientOnly: boolean
   chatsEnabled: boolean

@@ -18,7 +18,7 @@ import { Unlink, Loader2, Mail } from 'lucide-react'
 import { useCreateEmailLink, useRemoveEmailLink, type EmailLink } from '@/hooks/email/useEmailLink'
 import { toast } from 'sonner'
 
-interface EmailLinkDialogProps {
+type EmailLinkDialogProps = {
   open: boolean
   onClose: () => void
   chatId: string | undefined

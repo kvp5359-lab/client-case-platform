@@ -13,7 +13,7 @@ const fmt = (value: number): string =>
     value,
   )
 
-interface CardProps {
+type CardProps = {
   label: string
   value: string
   hint?: string
@@ -39,7 +39,7 @@ function StatCard({ label, value, hint, tone = 'default' }: CardProps) {
   )
 }
 
-interface Props {
+type Props = {
   projectId: string
 }
 

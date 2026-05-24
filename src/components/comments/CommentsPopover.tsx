@@ -11,7 +11,7 @@ import { CommentThread } from './CommentThread'
 import { CommentInput } from './CommentInput'
 import type { CommentEntityType } from '@/types/comments'
 
-interface CommentsPopoverProps {
+type CommentsPopoverProps = {
   entityType: CommentEntityType
   entityId: string
   projectId: string

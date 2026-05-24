@@ -37,7 +37,7 @@ import type { DocumentStatus } from '@/types/entities'
 
 export type { BatchOperations, BatchPermissions, BatchHandlers }
 
-export interface FloatingBatchActionsProps {
+export type FloatingBatchActionsProps = {
   hasSelection: boolean
   selectedCount: number
   hasTrashDocumentsSelected?: boolean

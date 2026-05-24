@@ -18,7 +18,7 @@ type PageReturn = ReturnType<typeof useKnowledgeBasePage>
 
 const UNGROUPED_ID = '__ungrouped__'
 
-export interface DropIndicatorState {
+export type DropIndicatorState = {
   articleId: string
   position: 'top' | 'bottom'
 }

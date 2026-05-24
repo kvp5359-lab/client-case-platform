@@ -17,7 +17,7 @@ import { getChatIconComponent } from './EditChatDialog'
 import { COLOR_BG } from './threadConstants'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
-interface ThreadTemplatePickerProps {
+type ThreadTemplatePickerProps = {
   workspaceId: string | undefined
   projectId: string | null | undefined
   onSelect: (template: ThreadTemplate) => void

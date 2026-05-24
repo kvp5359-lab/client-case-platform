@@ -43,7 +43,7 @@ import { toast } from 'sonner'
  * и в контекстном меню по правой кнопке на баббле. Пункты рендерятся через
  * компоненты-примитивы радикса, которые мы передаём извне.
  */
-export interface MenuComponents {
+export type MenuComponents = {
   Item: ComponentType<{ onClick?: () => void; className?: string; children: ReactNode }>
   Separator: ComponentType<Record<string, never>>
   Sub: ComponentType<{ children: ReactNode }>
@@ -51,7 +51,7 @@ export interface MenuComponents {
   SubContent: ComponentType<{ className?: string; children: ReactNode }>
 }
 
-export interface MessageMenuBodyProps {
+export type MessageMenuBodyProps = {
   message: ProjectMessage
   isOwn: boolean
   quickReactions: string[]

@@ -18,7 +18,7 @@ import type { TaskItem } from './types'
  * (например, при изменении `activeTask` во время drag) не пересоздаёт
  * props и не перерисовывает все карточки списка.
  */
-export interface DraggableTaskRowProps {
+export type DraggableTaskRowProps = {
   task: TaskItem
   workspaceId: string
   statuses: TaskStatus[]

@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { TemplateWithFields } from './useAddFormKit'
 
-interface TemplateStepProps {
+type TemplateStepProps = {
   templates: TemplateWithFields[]
   loadingTemplates: boolean
   selectedTemplateId: string | null
@@ -14,7 +14,7 @@ interface TemplateStepProps {
   onToggle: (templateId: string) => void
 }
 
-interface TemplateRowProps {
+type TemplateRowProps = {
   template: TemplateWithFields
   isSelected: boolean
   isAlreadyAdded: boolean

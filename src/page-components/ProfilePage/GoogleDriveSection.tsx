@@ -10,7 +10,7 @@ import { Link2, Unlink } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
-export interface GoogleDriveSectionProps {
+export type GoogleDriveSectionProps = {
   connected: boolean
   loading: boolean
   onConnect: () => void

@@ -30,7 +30,7 @@ import type {
   DirectoryFieldOptions,
 } from '@/types/customDirectories'
 
-interface EntryFormDialogProps {
+type EntryFormDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   fields: CustomDirectoryField[]

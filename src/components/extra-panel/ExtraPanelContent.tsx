@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { DocumentKitsTab } from '@/components/projects/DocumentKitsTab'
 import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 
-interface ExtraPanelContentProps {
+type ExtraPanelContentProps = {
   projectId: string
   workspaceId: string
 }

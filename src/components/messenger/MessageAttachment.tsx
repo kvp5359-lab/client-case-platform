@@ -17,7 +17,7 @@ export { isAudio } from './utils/attachmentHelpers'
 /**
  * Wrapper: splits images (grid), audios, and files (list)
  */
-interface MessageAttachmentsProps {
+type MessageAttachmentsProps = {
   attachments: AttachmentType[]
   isOwn?: boolean
   isDraft?: boolean

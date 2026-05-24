@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight, Settings } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 
-interface ModulePermissionsSectionProps {
+type ModulePermissionsSectionProps = {
   title: string
   icon: typeof Settings
   expanded: boolean

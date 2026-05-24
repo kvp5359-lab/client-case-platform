@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { workspaceKeys, workspaceSettingsKeys } from '@/hooks/queryKeys'
 
-interface NotificationSettingsSectionProps {
+type NotificationSettingsSectionProps = {
   workspaceId: string
 }
 

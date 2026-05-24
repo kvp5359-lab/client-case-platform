@@ -429,7 +429,7 @@ export default function PersonalDialogsPage() {
   )
 }
 
-interface ChannelChipProps {
+type ChannelChipProps = {
   active: boolean
   label: string
   count: number

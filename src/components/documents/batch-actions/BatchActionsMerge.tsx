@@ -3,7 +3,7 @@
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { Merge, FileArchive } from 'lucide-react'
 
-interface BatchActionsMergeProps {
+type BatchActionsMergeProps = {
   selectedCount: number
   isProcessing: boolean
   canCompress: boolean

@@ -16,7 +16,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { ItemList } from '@/hooks/useItemLists'
 
-interface ItemListTabProps {
+type ItemListTabProps = {
   list: ItemList
   isActive: boolean
   isPinned: boolean

@@ -11,7 +11,7 @@ import { SIDEBAR_NAV_ITEMS, type SidebarPlacement } from '@/lib/sidebarSettings'
 import { plural } from './plural'
 import type { AvailableEntry } from './types'
 
-interface AvailableCardProps {
+type AvailableCardProps = {
   availableNav: AvailableEntry[]
   availableBoards: { id: string; name: string }[]
   availableLists: ItemList[]

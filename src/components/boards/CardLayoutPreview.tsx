@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import type { CardLayout, CardFieldId, CardFieldStyle } from './types'
 import { resolveCardLayout, fieldStyleToClasses } from './cardLayoutUtils'
 
-interface CardLayoutPreviewProps {
+type CardLayoutPreviewProps = {
   layout: CardLayout
   entityType: 'thread' | 'project'
   columnWidth?: number

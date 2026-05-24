@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import type { FinanceService, FinanceServiceFormData } from '@/hooks/finance/useFinanceServices'
 
-interface Props {
+type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   editing: FinanceService | null

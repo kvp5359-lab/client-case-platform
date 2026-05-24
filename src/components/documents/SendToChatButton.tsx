@@ -28,7 +28,7 @@ const SEND_TARGETS: Record<
   },
 }
 
-interface SendToChatButtonProps {
+type SendToChatButtonProps = {
   panelTab: PanelTab | null
   onSendToChat: (target: 'client' | 'internal' | 'assistant') => void
   isProcessing: boolean

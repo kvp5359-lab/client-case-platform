@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Pencil, Check, X } from 'lucide-react'
 import { DocumentKitTemplate } from './types'
 
-interface KitHeaderProps {
+type KitHeaderProps = {
   kit: DocumentKitTemplate
   isPending: boolean
   onSave: (data: { name: string; description: string }) => Promise<void> | void

@@ -9,7 +9,7 @@ import { FolderOpen } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { FilterToolbar, CheckItem, FilterButton } from './FilterPrimitives'
 
-interface ProjectFilterProps {
+type ProjectFilterProps = {
   projects: { id: string; name: string }[]
   selectedIds: Set<string>
   onToggle: (id: string) => void

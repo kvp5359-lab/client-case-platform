@@ -33,7 +33,7 @@ import type {
 
 const FIELD_TYPES = Object.entries(FIELD_TYPE_LABELS) as [CustomDirectoryFieldType, string][]
 
-interface FieldFormDialogProps {
+type FieldFormDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   editing: CustomDirectoryField | null

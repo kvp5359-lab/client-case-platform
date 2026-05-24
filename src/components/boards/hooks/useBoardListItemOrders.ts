@@ -43,7 +43,7 @@ export function useBoardListItemOrders(boardId: string | undefined, listIds: str
   })
 }
 
-interface ReorderParams {
+type ReorderParams = {
   board_id: string
   list_id: string
   item_type: BoardItemType

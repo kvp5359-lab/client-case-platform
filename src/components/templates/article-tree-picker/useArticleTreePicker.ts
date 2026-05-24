@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import type { ArticleTreePickerGroup, ArticleTreePickerLink } from './types'
 
-interface UseArticleTreePickerOptions {
+type UseArticleTreePickerOptions = {
   mode: 'single-article' | 'single-group' | 'multiple-groups'
   groups: ArticleTreePickerGroup[]
   articles: Array<{ id: string; title: string }>

@@ -13,7 +13,7 @@ import { downloadBlob } from '@/utils/files/downloadBlob'
 // Типы
 // =====================================================
 
-export interface DocumentGeneration {
+export type DocumentGeneration = {
   id: string
   project_id: string
   workspace_id: string

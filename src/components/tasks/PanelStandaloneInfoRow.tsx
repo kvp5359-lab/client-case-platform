@@ -13,7 +13,7 @@
 import { X, MessageSquare } from 'lucide-react'
 import type { TaskItem } from './types'
 
-interface PanelStandaloneInfoRowProps {
+type PanelStandaloneInfoRowProps = {
   thread: TaskItem
   onHidePanel: () => void
 }

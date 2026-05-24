@@ -21,7 +21,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { useCreateBoard } from './hooks/useBoardMutations'
 
-interface CreateBoardDialogProps {
+type CreateBoardDialogProps = {
   open: boolean
   onClose: () => void
   workspaceId: string

@@ -8,7 +8,7 @@
 import { useCallback, useMemo } from 'react'
 import type { DocumentWithFiles, SourceDocument } from '@/components/documents/types'
 
-interface UseDragDropHandlersParams {
+type UseDragDropHandlersParams = {
   handlers: {
     handleFolderDrop: (e: React.DragEvent, targetFolderId: string | null) => Promise<void>
     handleDocDrop: (e: React.DragEvent, targetDoc: DocumentWithFiles) => Promise<void>

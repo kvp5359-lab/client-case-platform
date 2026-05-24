@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils'
 import { GroupTreeNode } from './GroupTreeNode'
 import { useKnowledgeTreeData } from './useKnowledgeTreeData'
 
-interface AddKnowledgeDialogProps {
+type AddKnowledgeDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string | undefined

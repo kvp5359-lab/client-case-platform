@@ -10,7 +10,7 @@ import { useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { STALE_TIME, GC_TIME } from '@/hooks/queryKeys'
 
-export interface MessageTranslation {
+export type MessageTranslation = {
   message_id: string
   translated_content: string
   target_language: string

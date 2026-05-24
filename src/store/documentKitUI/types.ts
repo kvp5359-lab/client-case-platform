@@ -21,13 +21,13 @@ export type ExportPhase = 'idle' | 'cleaning' | 'uploading' | 'completed'
 export type SyncMode = 'replace_all' | 'add_only' | 'replace_existing'
 
 // Progress type
-export interface Progress {
+export type Progress = {
   current: number
   total: number
 }
 
 // Folder form data
-export interface FolderFormData {
+export type FolderFormData = {
   name: string
   description: string
   aiNamingPrompt?: string
@@ -36,7 +36,7 @@ export interface FolderFormData {
 }
 
 // Merge document
-export interface MergeDoc {
+export type MergeDoc = {
   id: string
   name: string
   size: number

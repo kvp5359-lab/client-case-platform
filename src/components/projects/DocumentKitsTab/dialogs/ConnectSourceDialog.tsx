@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-interface ConnectSourceDialogProps {
+type ConnectSourceDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   sourceFolderLink: string

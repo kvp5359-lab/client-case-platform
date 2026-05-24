@@ -9,7 +9,7 @@ import { useCreateThread } from '@/hooks/messenger/useProjectThreads'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import type { ChatSettingsResult } from '@/components/messenger/ChatSettingsDialog'
 
-interface UseCreateTaskParams {
+type UseCreateTaskParams = {
   workspaceId: string
   projectId?: string
   onSuccess: (newThread: ProjectThread, result: ChatSettingsResult) => void

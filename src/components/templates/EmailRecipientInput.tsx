@@ -8,12 +8,12 @@
 import { useRef } from 'react'
 import { X } from 'lucide-react'
 
-export interface EmailChip {
+export type EmailChip = {
   email: string
   label: string
 }
 
-interface EmailRecipientInputProps {
+type EmailRecipientInputProps = {
   chips: EmailChip[]
   inputValue: string
   dropdownOpen: boolean

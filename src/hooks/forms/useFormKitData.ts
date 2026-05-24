@@ -25,7 +25,7 @@ import { formKitKeys } from '@/hooks/queryKeys'
 
 type FieldType = Database['public']['Enums']['field_type']
 
-interface UseFormKitDataParams {
+type UseFormKitDataParams = {
   formKitId: string
   /** Загружать ли структуру, значения и compositeItems. Detail (заголовок) грузится всегда. */
   enabled?: boolean

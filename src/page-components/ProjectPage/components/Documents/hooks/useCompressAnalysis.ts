@@ -12,7 +12,7 @@ import {
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
 
-interface UseCompressAnalysisParams {
+type UseCompressAnalysisParams = {
   documentKits: DocumentKitWithDocuments[]
 }
 

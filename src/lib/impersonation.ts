@@ -9,18 +9,18 @@ import type { Session } from '@supabase/supabase-js'
 
 export const ORIGINAL_SESSION_BACKUP_KEY = 'cc_impersonation_original_session_v1'
 
-export interface ImpersonationClaim {
+export type ImpersonationClaim = {
   ownerId: string
   sessionId: string
 }
 
-interface JwtAppMetadata {
+type JwtAppMetadata = {
   impersonated_by?: string
   impersonation_session_id?: string
   [key: string]: unknown
 }
 
-interface JwtPayload {
+type JwtPayload = {
   sub?: string
   exp?: number
   iat?: number
@@ -61,7 +61,7 @@ export function getImpersonationClaim(session: Session | null): ImpersonationCla
   }
 }
 
-interface BackupSessionShape {
+type BackupSessionShape = {
   access_token: string
   refresh_token: string
   expires_at?: number | null

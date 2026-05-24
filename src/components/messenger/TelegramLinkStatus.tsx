@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { Send, Mail, Unplug } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-interface TelegramLinkStatusProps {
+type TelegramLinkStatusProps = {
   isLinked: boolean
   chatTitle: string | null
   onClick: () => void

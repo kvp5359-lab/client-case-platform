@@ -3,7 +3,7 @@ import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useUpdateTaskStatus } from '@/components/tasks/useTaskMutations'
 import { messengerKeys, projectThreadKeys } from '@/hooks/queryKeys'
 
-interface Options {
+type Options = {
   threadId: string | undefined
   projectId: string
   workspaceId: string

@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import type { ThreadAccentColor, ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import type { TabMode, ThreadType, AccessType, ChannelType, ChatCreatePreset } from '../chatSettingsTypes'
 
-export interface UseChatSettingsFormStateParams {
+export type UseChatSettingsFormStateParams = {
   chat: ProjectThread | null
   propProjectId?: string
   propWorkspaceId?: string

@@ -11,7 +11,7 @@ import { CircleDot, CircleOff } from 'lucide-react'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import type { DocumentStatus } from '@/types/entities'
 
-interface BatchActionsStatusProps {
+type BatchActionsStatusProps = {
   statuses: DocumentStatus[]
   selectedCount: number
   isProcessing: boolean

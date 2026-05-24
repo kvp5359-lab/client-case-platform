@@ -9,19 +9,19 @@
 import { FilterChip, type FilterType } from './FilterChip'
 import { GroupTreeFilterContent } from './GroupTreeFilterContent'
 
-interface FilterDef {
+type FilterDef = {
   selectedIds: string[]
   onToggle: (id: string) => void
   onClear: () => void
   options: { id: string; name: string; color?: string }[]
 }
 
-interface GroupFilterDef extends FilterDef {
+type GroupFilterDef = {
   /** Полный список групп для иерархического дерева (parent_id, sort_order) */
   treeGroups: Array<{ id: string; name: string; parent_id: string | null; sort_order: number }>
-}
+} & FilterDef
 
-interface NotionFilterRowProps {
+type NotionFilterRowProps = {
   status?: FilterDef
   group: GroupFilterDef
   tag: FilterDef

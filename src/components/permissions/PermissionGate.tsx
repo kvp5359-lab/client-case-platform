@@ -14,7 +14,7 @@ import type { WorkspaceFeature } from '../../types/permissions'
 // FeatureGate
 // =====================================================
 
-interface FeatureGateProps {
+type FeatureGateProps = {
   /** Фича для проверки */
   feature: WorkspaceFeature
   /** ID workspace (опционально, берётся из store) */

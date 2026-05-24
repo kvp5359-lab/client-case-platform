@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Upload } from 'lucide-react'
 import { useUploadDocumentTemplate } from '@/hooks/documents/useDocumentTemplates'
 
-interface UploadTemplateDialogProps {
+type UploadTemplateDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string

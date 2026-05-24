@@ -58,7 +58,7 @@ export const CODE_TEXT_COLORS = [
 ]
 
 // Тип цвета
-export interface ColorItem {
+export type ColorItem = {
   name: string
   color: string | null
 }

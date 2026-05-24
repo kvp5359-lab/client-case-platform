@@ -5,7 +5,7 @@
 import { useMemo } from 'react'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
-interface UseOptimisticEmailParams {
+type UseOptimisticEmailParams = {
   messages: ProjectMessage[]
   searchResults: ProjectMessage[]
   isSearchActive: boolean

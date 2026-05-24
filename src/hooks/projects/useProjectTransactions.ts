@@ -10,7 +10,7 @@ const STALE_TIME = 5 * 60_000
 export type ProjectTransaction = Tables<'project_transactions'>
 export type TransactionType = 'income' | 'expense'
 
-export interface ProjectTransactionFormData {
+export type ProjectTransactionFormData = {
   type: TransactionType
   /** ISO-дата (YYYY-MM-DD). */
   date: string

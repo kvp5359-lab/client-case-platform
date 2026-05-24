@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useClientWorkspaceProjects } from '@/hooks/useClientWorkspaceProjects'
 import { supabase } from '@/lib/supabase'
 
-interface ClientProjectHeaderProps {
+type ClientProjectHeaderProps = {
   workspaceId: string
   projectId: string
   projectName: string

@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { formatSize } from '@/utils/files/formatSize'
 import type { DownloadGroupMode } from '@/services/documents/downloadDocumentsAsZip'
 
-interface DownloadDocumentsDialogProps {
+type DownloadDocumentsDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   docCount: number

@@ -71,7 +71,7 @@ function useProjectParticipants(projectId: string | undefined) {
 // ── Props ──
 
 /** Thread-режим: компонент сам пишет в БД через useToggleAssignee. */
-interface ThreadModeProps {
+type ThreadModeProps = {
   mode?: 'thread'
   threadId: string
   projectId: string | null
@@ -82,7 +82,7 @@ interface ThreadModeProps {
 }
 
 /** Controlled-режим: state в родителе, компонент только рендерит и вызывает onToggle. */
-interface ControlledModeProps {
+type ControlledModeProps = {
   mode: 'controlled'
   workspaceId: string
   assigneeIds: Set<string>

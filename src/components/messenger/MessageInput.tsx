@@ -14,7 +14,7 @@ import { useEditorResizer } from './hooks/useEditorResizer'
 import { useTaskStatusPending } from './hooks/useTaskStatusPending'
 import { useQuoteInsertion } from './hooks/useQuoteInsertion'
 
-interface MessageInputProps {
+type MessageInputProps = {
   projectId: string
   channel: string
   workspaceId: string

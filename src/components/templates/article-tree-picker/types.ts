@@ -4,7 +4,7 @@
  * без циклической зависимости через родительский компонент.
  */
 
-export interface ArticleTreePickerGroup {
+export type ArticleTreePickerGroup = {
   id: string
   name: string
   color: string | null
@@ -12,7 +12,7 @@ export interface ArticleTreePickerGroup {
   sort_order: number
 }
 
-export interface ArticleTreePickerLink {
+export type ArticleTreePickerLink = {
   article_id: string
   group_id: string
 }

@@ -3,13 +3,13 @@ import { Check, ChevronDown, MessageSquare } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { ChatScope } from '@/services/api/messenger/messengerAiService'
 
-export interface ProjectThreadOption {
+export type ProjectThreadOption = {
   id: string
   name: string
   type: 'chat' | 'task'
 }
 
-interface Props {
+type Props = {
   chatScope: ChatScope
   projectThreads: ProjectThreadOption[]
   chatMessagesCount: number

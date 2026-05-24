@@ -20,13 +20,13 @@ import { toast } from 'sonner'
 import type { DocumentGeneration } from '@/services/api/documents/documentGenerationService'
 import type { DocumentTemplatePlaceholder } from '@/services/api/documents/documentTemplateService'
 
-interface FolderInfo {
+type FolderInfo = {
   id: string
   name: string
   document_kit_id: string
 }
 
-interface GeneratedResult {
+type GeneratedResult = {
   fileBase64: string
   fileName: string
   mimeType: string

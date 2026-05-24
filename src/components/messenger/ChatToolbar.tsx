@@ -5,7 +5,7 @@
 import { MessageSearch } from './MessageSearch'
 import { TelegramLinkStatus } from './TelegramLinkStatus'
 
-interface ChatToolbarProps {
+type ChatToolbarProps = {
   // Search
   searchQuery: string
   onSearchChange: (q: string) => void

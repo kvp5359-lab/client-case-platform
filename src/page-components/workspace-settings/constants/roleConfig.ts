@@ -8,7 +8,7 @@
 
 import { Crown, Users, Link, HandshakeIcon, Contact, type LucideIcon } from 'lucide-react'
 
-export interface RoleConfigItem {
+export type RoleConfigItem = {
   key: string
   label: string
   pluralLabel: string

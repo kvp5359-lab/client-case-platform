@@ -14,17 +14,17 @@ import type { useChatSettingsFormState } from './useChatSettingsFormState'
 type FormReturn = ReturnType<typeof useChatSettingsFormState>
 
 /** Минимальный набор полей, который нужен для установки default-значений. */
-interface TaskStatusLike {
+type TaskStatusLike = {
   id: string
   is_default: boolean | null
 }
 
-interface DefaultParticipant {
+type DefaultParticipant = {
   id: string
   user_id?: string | null
 }
 
-interface UseChatSettingsDefaultsParams {
+type UseChatSettingsDefaultsParams = {
   form: FormReturn
   taskStatuses: TaskStatusLike[]
   effectiveParticipants: DefaultParticipant[]

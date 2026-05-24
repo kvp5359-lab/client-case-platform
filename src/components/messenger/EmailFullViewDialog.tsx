@@ -10,7 +10,7 @@ import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { formatTime } from './bubbleUtils'
 import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 
-interface EmailFullViewDialogProps {
+type EmailFullViewDialogProps = {
   message: ProjectMessage | null
   open: boolean
   onOpenChange: (open: boolean) => void

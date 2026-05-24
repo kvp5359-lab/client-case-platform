@@ -14,7 +14,7 @@ import { HelpCircle, X } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
-interface FloatingFieldProps {
+type FloatingFieldProps = {
   label: string
   isRequired?: boolean
   description?: string | null

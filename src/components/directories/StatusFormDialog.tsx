@@ -28,7 +28,7 @@ import type { Database } from '@/types/database'
 type Status = Database['public']['Tables']['statuses']['Row']
 type StatusInsert = Database['public']['Tables']['statuses']['Insert']
 
-interface StatusFormDialogProps {
+type StatusFormDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   editingStatus: Status | null

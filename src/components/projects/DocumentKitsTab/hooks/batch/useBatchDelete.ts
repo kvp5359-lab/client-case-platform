@@ -7,7 +7,7 @@ import { logger } from '@/utils/logger'
 import { logAuditAction } from '@/services/auditService'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 
-interface UseBatchDeleteProps {
+type UseBatchDeleteProps = {
   projectId: string
   fetchDocumentKits: (projectId: string) => Promise<void>
   clearSelection: () => void

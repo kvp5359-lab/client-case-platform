@@ -13,9 +13,9 @@ import { Database } from '@/types/database'
 
 type FormTemplate = Database['public']['Tables']['form_templates']['Row']
 
-interface FormTemplateWithCount extends FormTemplate {
+type FormTemplateWithCount = {
   fields_count: number
-}
+} & FormTemplate
 
 export function useFormTemplateMutations(workspaceId: string | undefined) {
   const queryClient = useQueryClient()

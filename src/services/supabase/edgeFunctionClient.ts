@@ -11,7 +11,7 @@
 
 import { supabase } from '@/lib/supabase'
 
-interface CallEdgeFunctionRawParams {
+type CallEdgeFunctionRawParams = {
   functionName: string
   body: Record<string, unknown>
   signal?: AbortSignal

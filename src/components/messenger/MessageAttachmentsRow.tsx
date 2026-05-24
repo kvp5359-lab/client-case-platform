@@ -1,14 +1,14 @@
 import { FileChipRow, getFileIcon } from './ComposeField'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 
-interface ExistingAttachment {
+type ExistingAttachment = {
   id: string
   file_name: string
   storage_path: string
   file_id: string | null
 }
 
-interface MessageAttachmentsRowProps {
+type MessageAttachmentsRowProps = {
   existingAttachments: ExistingAttachment[]
   files: File[]
   forwardedAttachments: ForwardedAttachment[]

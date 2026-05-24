@@ -7,7 +7,7 @@ import { callEdgeFunctionRaw } from '../../supabase/edgeFunctionClient'
 import { parseSSEStream } from '@/utils/sseParser'
 import type { SearchSource } from './knowledgeSearchService.types'
 
-export interface StreamCallbacks {
+export type StreamCallbacks = {
   onSources: (sources: SearchSource[], chunksUsed: number) => void
   onText: (chunk: string) => void
   onDone: (fullAnswer: string) => void

@@ -21,7 +21,7 @@ import { integrationsKeys } from '@/hooks/queryKeys'
 import { useAuth } from '@/contexts/AuthContext'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
 
-interface MTProtoSessionRow {
+type MTProtoSessionRow = {
   user_id: string
   tg_user_id: number | null
   tg_username: string | null

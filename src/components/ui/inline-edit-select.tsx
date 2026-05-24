@@ -13,7 +13,7 @@ import { Search, X, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SearchableOption } from './searchable-select'
 
-interface Props {
+type Props = {
   options: SearchableOption[]
   value: string | null
   onCommit: (next: string | null) => void

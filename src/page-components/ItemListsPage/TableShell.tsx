@@ -7,13 +7,13 @@ import type { getColumnDef } from './columns'
 
 export const CHECKBOX_COL_WIDTH = 36
 
-export interface TableShellColumn {
+export type TableShellColumn = {
   key: string
   width: number
   def: NonNullable<ReturnType<typeof getColumnDef>>
 }
 
-interface TableShellProps<T extends { id: string }> {
+type TableShellProps<T extends { id: string }> = {
   isLoading: boolean
   isEmpty: boolean
   total: number

@@ -12,7 +12,7 @@ import type { Database } from '@/types/database'
 
 type StatusRow = Database['public']['Tables']['statuses']['Row']
 
-interface StatusPickerProps {
+type StatusPickerProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   statuses: StatusRow[]

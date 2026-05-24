@@ -10,7 +10,7 @@ import { FULL_PALETTE } from '@/lib/palette'
 
 const PRESET_COLORS = FULL_PALETTE
 
-interface ColorPickerProps {
+type ColorPickerProps = {
   value: string
   onChange: (color: string) => void
   disabled?: boolean

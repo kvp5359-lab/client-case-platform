@@ -6,7 +6,7 @@
 import { useBatchDelete, useBatchHardDelete, useBatchCheck, useBatchDownload } from './batch'
 import type { ProjectPermissionCode } from '@/types/permissions'
 
-interface UseBatchOperationsProps {
+type UseBatchOperationsProps = {
   projectId: string
   fetchDocumentKits: (projectId: string) => Promise<void>
   clearSelection: () => void

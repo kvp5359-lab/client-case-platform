@@ -11,7 +11,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { Board } from '@/components/boards/types'
 
-interface BoardTabProps {
+type BoardTabProps = {
   board: Board
   isActive: boolean
   isPinned: boolean

@@ -21,7 +21,7 @@ import { ProjectStatusPopover } from '@/components/projects/ProjectStatusPopover
 import { useProjectMutations } from '@/page-components/ProjectPage/hooks/useProjectMutations'
 import { useProjectPermissions } from '@/hooks/permissions'
 
-interface PanelProjectInfoRowProps {
+type PanelProjectInfoRowProps = {
   projectId: string
   workspaceId: string
   /** Скрыть панель целиком (вкладки сохранятся в БД). */

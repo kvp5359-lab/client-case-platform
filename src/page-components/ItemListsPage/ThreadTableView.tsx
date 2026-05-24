@@ -11,7 +11,7 @@ import { TableShell, type TableShellColumn } from './TableShell'
 import { ThreadRow } from './ThreadRow'
 import { BulkActionsBar } from './BulkActionsBar'
 
-export interface ThreadTableViewProps {
+export type ThreadTableViewProps = {
   workspaceId: string
   currentUserId: string
   filters: FilterGroup

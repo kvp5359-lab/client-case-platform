@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import type { Participant } from './chatSettingsTypes'
 import { getRoleGroup } from './chatSettingsTypes'
 
-interface ChatSettingsAssigneesProps {
+type ChatSettingsAssigneesProps = {
   participants: Participant[]
   userId: string | undefined
   isEditMode: boolean

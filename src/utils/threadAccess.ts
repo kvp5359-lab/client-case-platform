@@ -17,7 +17,7 @@
 
 import { SYSTEM_PROJECT_ROLES } from '@/types/permissions'
 
-export interface ThreadAccessInfo {
+export type ThreadAccessInfo = {
   id: string
   project_id: string | null
   access_type: string
@@ -25,7 +25,7 @@ export interface ThreadAccessInfo {
   created_by: string | null
 }
 
-export interface ThreadAccessParams {
+export type ThreadAccessParams = {
   thread: ThreadAccessInfo
   userId: string
   participantId: string | null

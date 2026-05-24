@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
-interface ClientConfirmDialogProps {
+type ClientConfirmDialogProps = {
   open: boolean
   roleName: string
   clientNames: string[]

@@ -16,7 +16,7 @@ import {
   type TaskTimeValue,
 } from '@/components/tasks/TaskTimePickerPopover'
 
-interface Props {
+type Props = {
   date: Date | undefined
   startTime: string
   endTime: string

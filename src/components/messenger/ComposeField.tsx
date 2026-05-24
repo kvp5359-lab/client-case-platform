@@ -140,7 +140,7 @@ export function FileChipRow({
 
 // ── ComposeField ──
 
-export interface ComposeFieldHandle {
+export type ComposeFieldHandle = {
   getHtml: () => string
   getText: () => string
   getFiles: () => File[]
@@ -152,7 +152,7 @@ export interface ComposeFieldHandle {
   editor: Editor | null
 }
 
-interface ComposeFieldProps {
+type ComposeFieldProps = {
   placeholder?: string
   editorMaxHeight?: number
   disabled?: boolean

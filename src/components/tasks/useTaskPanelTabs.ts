@@ -59,7 +59,7 @@ function shortenTabId(tabId: string | null, threads: ThreadShortIdInfo[]): strin
 
 type PersistedRow = TaskPanelPersistedRow
 
-interface UseTaskPanelTabsParams {
+type UseTaskPanelTabsParams = {
   projectId: string | null | undefined
   /** Если задан, scope вкладок — этот контакт (для тредов без проекта). */
   contactId?: string | null
@@ -70,7 +70,7 @@ interface UseTaskPanelTabsParams {
 
 type ScopeKind = TaskPanelScopeKind
 
-interface UseTaskPanelTabsResult {
+type UseTaskPanelTabsResult = {
   tabs: TaskPanelTab[]
   activeTabId: string | null
   activeTab: TaskPanelTab | null

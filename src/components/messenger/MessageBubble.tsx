@@ -39,7 +39,7 @@ function isTeamSender(role: string | null): boolean {
   return TEAM_ROLES.has(role)
 }
 
-interface MessageBubbleProps {
+type MessageBubbleProps = {
   message: ProjectMessage
   isOwn: boolean
   showAvatar?: boolean

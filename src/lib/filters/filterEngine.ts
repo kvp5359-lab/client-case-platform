@@ -175,7 +175,7 @@ type JunctionAccessor = (itemId: string) => string[]
  * вызывался 900 раз — все 900 с одинаковым результатом, потому что value
  * у каждого условия одно.
  */
-interface DateValueCache {
+type DateValueCache = {
   range: [Date, Date] | null | undefined
   scalar: Date | null | undefined
   rangeFrom: [Date, Date] | null | undefined

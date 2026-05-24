@@ -19,7 +19,7 @@ import {
 } from '@/hooks/queryKeys'
 import { logAuditAction } from '@/services/auditService'
 
-export interface CalendarThread {
+export type CalendarThread = {
   id: string
   workspace_id: string
   project_id: string | null

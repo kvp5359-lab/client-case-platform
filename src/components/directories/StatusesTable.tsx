@@ -118,7 +118,7 @@ function SortableStatusRow({
   )
 }
 
-interface StatusesTableProps {
+type StatusesTableProps = {
   statuses: Status[]
   onEdit: (status: Status) => void
   onDelete: (status: Status) => void

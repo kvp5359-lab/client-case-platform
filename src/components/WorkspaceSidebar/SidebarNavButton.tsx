@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 import { LucideIcon } from 'lucide-react'
 import { getBadgeColorMeta, type SidebarBadgeColor } from '@/lib/sidebarSettings'
 
-export interface SidebarNavButtonProps {
+export type SidebarNavButtonProps = {
   icon: LucideIcon
   label: string
   href: string

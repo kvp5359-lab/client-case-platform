@@ -6,7 +6,7 @@ import { getKitIdForFolder } from '@/services/documents/documentKitUtils'
 import type { DocumentKit, DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 import type { SourceDocumentInfo } from '@/components/documents/types'
 
-interface UseSourceDocumentUploadProps {
+type UseSourceDocumentUploadProps = {
   kit: DocumentKit | undefined
   allKits: DocumentKitWithDocuments[]
   projectId: string

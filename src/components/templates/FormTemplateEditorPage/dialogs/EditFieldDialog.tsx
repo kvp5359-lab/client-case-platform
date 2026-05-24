@@ -38,7 +38,7 @@ const HEADER_COLOR_PRESETS = [
   { value: '#ffedd5', label: 'Оранжевый', color: '#ffedd5' },
 ]
 
-export interface EditFieldState {
+export type EditFieldState = {
   sectionId: string
   isRequired: boolean
   description: string
@@ -48,7 +48,7 @@ export interface EditFieldState {
   dividerName: string
 }
 
-export interface EditFieldHandlers {
+export type EditFieldHandlers = {
   onSectionIdChange: (value: string) => void
   onIsRequiredChange: (value: boolean) => void
   onDescriptionChange: (value: string) => void
@@ -60,7 +60,7 @@ export interface EditFieldHandlers {
   onClose: () => void
 }
 
-interface EditFieldDialogProps {
+type EditFieldDialogProps = {
   field: FormFieldWithDefinition | null
   sections: FormSectionWithDetails[]
   isUpdating: boolean

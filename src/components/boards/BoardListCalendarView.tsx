@@ -73,7 +73,7 @@ const localizer = dateFnsLocalizer({
  * календаря (kind='external' — Google и т.п. через external_calendar_events).
  * Для kind='external' resize/drag отключены (read-only).
  */
-interface CalEvent {
+type CalEvent = {
   id: string
   title: string
   start: Date
@@ -154,7 +154,7 @@ function makeCalendarToolbar(
   }
 }
 
-interface Props {
+type Props = {
   /** ID board_list — используется в id @dnd-kit Droppable для фильтрации
    *  событий useDndMonitor (на доске может быть несколько календарей). */
   listId: string

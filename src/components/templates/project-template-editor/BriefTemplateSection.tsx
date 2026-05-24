@@ -12,7 +12,7 @@ import { Table2, ExternalLink, Trash2, Check, X } from 'lucide-react'
 import { extractGoogleSheetsId } from '@/utils/googleDrive'
 import { projectTemplateKeys } from '@/hooks/queryKeys'
 
-interface BriefTemplateSectionProps {
+type BriefTemplateSectionProps = {
   templateId: string | undefined
   briefTemplateSheetId: string | null | undefined
   workspaceId: string | undefined

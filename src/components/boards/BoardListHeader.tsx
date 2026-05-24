@@ -13,7 +13,7 @@ import { useDeleteList, useDuplicateList, useSwapListOrder } from './hooks/useLi
 import type { BoardList } from './types'
 import { hexToHeaderStyle } from './types'
 
-interface BoardListHeaderProps {
+type BoardListHeaderProps = {
   list: BoardList
   count: number
   collapsed: boolean

@@ -12,7 +12,7 @@ import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
-interface ResolvedThread {
+type ResolvedThread = {
   threadUuid: string
   projectId: string
 }

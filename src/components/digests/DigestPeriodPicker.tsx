@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { DIGEST_PRESETS, type DigestPeriod } from '@/lib/digestDefaults'
 
-interface Props {
+type Props = {
   value: DigestPeriod
   onChange: (next: DigestPeriod) => void
   /** Максимально допустимая дата окончания (обычно — сегодня по Мадриду). */

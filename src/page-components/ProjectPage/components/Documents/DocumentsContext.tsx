@@ -8,7 +8,7 @@
 import { createContext, useContext, useMemo } from 'react'
 import type { DocumentStatus } from '@/components/documents/types'
 
-interface DocumentsContextValue {
+type DocumentsContextValue = {
   projectId?: string
   workspaceId?: string
   statuses: DocumentStatus[]
@@ -75,7 +75,7 @@ export function useDocumentsContext() {
   return ctx
 }
 
-export interface DocumentsProviderProps {
+export type DocumentsProviderProps = {
   children: React.ReactNode
   projectId?: string
   workspaceId?: string

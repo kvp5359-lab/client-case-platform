@@ -9,12 +9,12 @@ import { FileText } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { FilterToolbar, CheckItem, FilterButton } from '@/components/tasks/filters/FilterPrimitives'
 
-export interface ProjectTemplateOption {
+export type ProjectTemplateOption = {
   id: string
   name: string
 }
 
-interface ProjectTemplateFilterProps {
+type ProjectTemplateFilterProps = {
   templates: ProjectTemplateOption[]
   selectedIds: Set<string>
   onToggle: (id: string) => void

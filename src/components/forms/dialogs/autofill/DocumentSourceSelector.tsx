@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { FolderOpen, Upload } from 'lucide-react'
 
-interface DocumentSourceSelectorProps {
+type DocumentSourceSelectorProps = {
   onSelect: (source: 'project' | 'upload') => void
 }
 

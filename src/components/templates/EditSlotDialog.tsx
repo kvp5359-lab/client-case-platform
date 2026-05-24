@@ -28,7 +28,7 @@ import {
   type ArticleTreePickerLink,
 } from './ArticleTreePicker'
 
-export interface SlotDialogValue {
+export type SlotDialogValue = {
   name: string
   description: string | null
   knowledge_article_id: string | null
@@ -36,7 +36,7 @@ export interface SlotDialogValue {
   ai_check_prompt: string | null
 }
 
-interface EditSlotDialogProps {
+type EditSlotDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   /** Заголовок диалога. Если не задан — «Слот» / «Создать слот». */

@@ -20,7 +20,7 @@ import { EditParticipantDialog } from '@/components/participants/EditParticipant
 import type { Participant } from '@/types/entities'
 import { cn } from '@/lib/utils'
 
-interface ContactCardDialogProps {
+type ContactCardDialogProps = {
   participantId: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -180,7 +180,7 @@ export function ContactCardDialog({
   )
 }
 
-interface MergePickerProps {
+type MergePickerProps = {
   contact: NonNullable<ReturnType<typeof useContactParticipant>['data']>
   onCancel: () => void
   onDone: () => void
@@ -278,7 +278,7 @@ function MergePicker({ contact, onCancel, onDone }: MergePickerProps) {
   )
 }
 
-interface RenameInlineProps {
+type RenameInlineProps = {
   contact: NonNullable<ReturnType<typeof useContactParticipant>['data']>
 }
 

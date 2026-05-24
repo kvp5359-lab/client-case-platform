@@ -31,7 +31,7 @@ import type { DocumentWithFiles, Folder, SourceDocument } from '@/components/doc
 import type { ProjectPermissionCode } from '@/types/permissions'
 import type { Tables } from '@/types/database'
 
-interface UseDocumentKitOpsParams {
+type UseDocumentKitOpsParams = {
   projectId: string
   workspaceId: string
   sourceFolderId: string | null | undefined

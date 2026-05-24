@@ -24,7 +24,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { messengerKeys, emailAccountKeys, chatStateKeys, messengerParticipantKeys, STALE_TIME } from '@/hooks/queryKeys'
 
-interface ChatStateResult {
+type ChatStateResult = {
   participant: {
     participantId: string
     name: string

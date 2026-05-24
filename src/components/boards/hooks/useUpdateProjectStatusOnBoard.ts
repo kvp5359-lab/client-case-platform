@@ -14,7 +14,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { accessibleProjectKeys, projectKeys } from '@/hooks/queryKeys'
 
-interface UpdateProjectStatusInput {
+type UpdateProjectStatusInput = {
   projectId: string
   statusId: string | null
 }

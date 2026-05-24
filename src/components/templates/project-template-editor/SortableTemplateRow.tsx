@@ -17,7 +17,7 @@ import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
-export interface SortableRowProps {
+export type SortableRowProps = {
   template: ThreadTemplate
   status: { name: string; color: string } | undefined
   assigneeRows: Array<{

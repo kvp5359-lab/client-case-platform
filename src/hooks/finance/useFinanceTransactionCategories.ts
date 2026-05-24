@@ -10,7 +10,7 @@ const STALE_TIME = 5 * 60_000
 export type FinanceTxCategory = Tables<'finance_transaction_categories'>
 export type FinanceTxCategoryKind = 'income' | 'expense'
 
-export interface FinanceTxCategoryFormData {
+export type FinanceTxCategoryFormData = {
   name: string
 }
 

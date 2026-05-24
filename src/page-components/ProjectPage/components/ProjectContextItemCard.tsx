@@ -40,7 +40,7 @@ import { formatBytes } from '@/utils/files/formatBytes'
 import type { ProjectContextItemWithFile } from '@/services/api/projectContext/projectContextService'
 import { ContextTextDialog } from './ContextTextDialog'
 
-interface ProjectContextItemCardProps {
+type ProjectContextItemCardProps = {
   item: ProjectContextItemWithFile
   projectId: string
   workspaceId: string

@@ -21,7 +21,7 @@ import {
 import { cn } from '@/lib/utils'
 import { ToolbarButton } from '@/components/tiptap-editor/menu-bar/toolbar-button'
 
-interface MinimalTiptapEditorProps {
+type MinimalTiptapEditorProps = {
   onSend: () => void
   onTyping?: () => void
   onPasteFiles?: (files: File[]) => void

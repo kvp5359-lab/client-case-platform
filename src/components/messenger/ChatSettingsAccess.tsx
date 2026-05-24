@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 import type { Participant, AccessType } from './chatSettingsTypes'
 import { getRoleGroup, PROJECT_ROLE_OPTIONS } from './chatSettingsTypes'
 
-interface ChatSettingsAccessProps {
+type ChatSettingsAccessProps = {
   participants: Participant[]
   userId: string | undefined
   isEditMode: boolean

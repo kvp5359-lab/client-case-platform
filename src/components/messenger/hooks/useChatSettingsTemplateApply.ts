@@ -20,28 +20,28 @@ type FormReturn = ReturnType<typeof useChatSettingsFormState>
  * Совместим и с `Participant` (project-level), и с `WorkspaceParticipant`
  * (workspace-level) — у обоих есть эти 4 поля.
  */
-interface TemplateParticipant {
+type TemplateParticipant = {
   id: string
   name: string
   last_name: string | null
   user_id?: string | null
 }
 
-interface TaskStatusLike {
+type TaskStatusLike = {
   id: string
 }
 
-interface EmailSuggestionLike {
+type EmailSuggestionLike = {
   email: string
   label: string
 }
 
-interface WorkspaceProjectLike {
+type WorkspaceProjectLike = {
   id: string
   name: string
 }
 
-interface UseChatSettingsTemplateApplyParams {
+type UseChatSettingsTemplateApplyParams = {
   open: boolean
   form: FormReturn
   composeRef: RefObject<ComposeFieldHandle | null>

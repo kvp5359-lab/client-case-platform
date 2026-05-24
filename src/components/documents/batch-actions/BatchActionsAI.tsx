@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Sparkles } from 'lucide-react'
 
-interface BatchActionsAIProps {
+type BatchActionsAIProps = {
   canBatchCheck: boolean
   selectedCount: number
   isProcessing: boolean

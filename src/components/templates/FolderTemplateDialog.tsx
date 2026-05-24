@@ -29,7 +29,7 @@ import {
 
 type FolderTemplate = Database['public']['Tables']['folder_templates']['Row']
 
-export interface FolderFormData {
+export type FolderFormData = {
   name: string
   description: string
   ai_naming_prompt: string
@@ -37,7 +37,7 @@ export interface FolderFormData {
   knowledge_article_id: string | null
 }
 
-interface FolderTemplateDialogProps {
+type FolderTemplateDialogProps = {
   open: boolean
   onClose: () => void
   editingTemplate: FolderTemplate | null

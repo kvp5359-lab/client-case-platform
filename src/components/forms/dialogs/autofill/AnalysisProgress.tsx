@@ -1,7 +1,7 @@
 import { Progress } from '@/components/ui/progress'
 import { Loader2 } from 'lucide-react'
 
-interface AnalysisProgressProps {
+type AnalysisProgressProps = {
   progress: number
   fileName: string
 }

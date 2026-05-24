@@ -22,7 +22,7 @@ import {
 } from '@/services/api/knowledge/knowledgeSearchService'
 import { knowledgeBaseKeys, STALE_TIME } from '@/hooks/queryKeys'
 
-interface UseProjectAiConversationsOptions {
+type UseProjectAiConversationsOptions = {
   workspaceId: string
   projectId?: string
   /** Thread-scope: pool диалогов привязан к треду personal-dialog. */

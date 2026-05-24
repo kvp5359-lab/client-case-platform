@@ -16,7 +16,7 @@ import { useDialog } from '@/hooks/shared/useDialog'
 import { useProjectPermissions } from '@/hooks/permissions/useProjectPermissions'
 import { supabase } from '@/lib/supabase'
 
-interface PanelDocumentsContentProps {
+type PanelDocumentsContentProps = {
   projectId: string
   workspaceId: string
 }

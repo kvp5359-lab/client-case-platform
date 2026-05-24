@@ -31,7 +31,7 @@ import {
 import { useScheduleMessage } from '@/hooks/messenger/useScheduleMessage'
 import { toast } from 'sonner'
 
-interface MessengerTabContentProps {
+type MessengerTabContentProps = {
   projectId?: string
   workspaceId: string
   accent?: MessengerAccent

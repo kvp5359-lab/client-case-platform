@@ -19,12 +19,12 @@
 
 // ── impersonate-start ──
 
-export interface ImpersonateStartRequest {
+export type ImpersonateStartRequest = {
   workspace_id: string
   target_user_id: string
 }
 
-export interface ImpersonateStartResponse {
+export type ImpersonateStartResponse = {
   access_token: string
   expires_at: string
   expires_in: number
@@ -39,13 +39,13 @@ export interface ImpersonateStartResponse {
 
 // ── impersonate-end ──
 
-export interface ImpersonateEndResponse {
+export type ImpersonateEndResponse = {
   ok: boolean
 }
 
 // ── generate-project-digest ──
 
-export interface GenerateProjectDigestRequest {
+export type GenerateProjectDigestRequest = {
   workspace_id: string
   project_id: string
   period_start?: string // YYYY-MM-DD
@@ -56,7 +56,7 @@ export interface GenerateProjectDigestRequest {
   override_prompt?: string
 }
 
-export interface GenerateProjectDigestResponse {
+export type GenerateProjectDigestResponse = {
   digest_id?: string
   content: string
   events_count: number
@@ -67,23 +67,23 @@ export interface GenerateProjectDigestResponse {
 
 // ── set-participant-access ──
 
-export interface SetParticipantAccessRequest {
+export type SetParticipantAccessRequest = {
   participant_id: string
   can_login: boolean
 }
 
-export interface SetParticipantAccessResponse {
+export type SetParticipantAccessResponse = {
   ok: boolean
 }
 
 // ── check-document ──
 
-export interface CheckDocumentRequest {
+export type CheckDocumentRequest = {
   document_id: string
   workspace_id: string
 }
 
-export interface CheckDocumentResponse {
+export type CheckDocumentResponse = {
   ai_naming_suggestion?: string
   ai_check_summary?: string
   ai_check_status: 'pending' | 'success' | 'failed'
@@ -92,11 +92,11 @@ export interface CheckDocumentResponse {
 
 // ── transcribe-audio ──
 
-export interface TranscribeAudioRequest {
+export type TranscribeAudioRequest = {
   attachment_id: string
   workspace_id: string
 }
 
-export interface TranscribeAudioResponse {
+export type TranscribeAudioResponse = {
   transcription: string
 }

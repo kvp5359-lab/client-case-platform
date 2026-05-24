@@ -12,7 +12,7 @@ import { REACTIONS } from '@/components/messenger/ReactionPicker'
 const STORAGE_KEY = 'cc:recentReactions:v1'
 const MAX_QUICK = 6
 
-interface Entry {
+type Entry = {
   emoji: string
   count: number
   lastUsed: number

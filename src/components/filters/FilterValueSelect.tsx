@@ -19,13 +19,13 @@ import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipant
 import { useProjectTemplatesQuery } from '@/page-components/ProjectsPage/hooks/useProjectsPageData'
 import type { FilterFieldDef } from '@/lib/filters/types'
 
-export interface FilterValueOption {
+export type FilterValueOption = {
   id: string
   label: string
   color?: string
 }
 
-interface FilterValueSelectProps {
+type FilterValueSelectProps = {
   fieldDef: FilterFieldDef
   value: unknown
   onChange: (value: string[]) => void

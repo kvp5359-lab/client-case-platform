@@ -38,7 +38,7 @@ export const ROLE_PRESET_COLORS = [
   '#14B8A6',
 ]
 
-interface RoleFormDialogProps {
+type RoleFormDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   editingRole: WorkspaceRole | ProjectRole | null

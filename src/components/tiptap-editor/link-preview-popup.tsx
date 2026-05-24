@@ -15,11 +15,11 @@ import { ExternalLink, Pencil, Unlink, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-interface LinkPreviewPopupProps {
+type LinkPreviewPopupProps = {
   editor: Editor
 }
 
-interface PopupState {
+type PopupState = {
   href: string
   top: number
   left: number

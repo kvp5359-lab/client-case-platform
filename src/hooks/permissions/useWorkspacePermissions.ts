@@ -13,11 +13,11 @@ import { permissionKeys, STALE_TIME } from '../queryKeys'
 import { SYSTEM_WORKSPACE_ROLES, type WorkspacePermission, type WorkspacePermissions } from '../../types/permissions'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 
-interface UseWorkspacePermissionsOptions {
+type UseWorkspacePermissionsOptions = {
   workspaceId?: string
 }
 
-export interface WorkspacePermissionsResult {
+export type WorkspacePermissionsResult = {
   /** Загрузка данных */
   isLoading: boolean
   /** Ошибка загрузки */

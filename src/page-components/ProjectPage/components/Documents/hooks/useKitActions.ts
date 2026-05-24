@@ -16,7 +16,7 @@ import {
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import type { DeleteKitMode } from '@/components/projects/DocumentKitsTab/dialogs/DeleteKitDialog'
 
-interface UseKitActionsParams {
+type UseKitActionsParams = {
   projectId: string
 }
 

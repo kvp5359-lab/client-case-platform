@@ -4,7 +4,7 @@
  * GroupTreeItem и ArticleRows.
  */
 
-export interface TreeArticle {
+export type TreeArticle = {
   id: string
   title: string
   content?: string | null
@@ -18,7 +18,7 @@ export interface TreeArticle {
   }[]
 }
 
-export interface TreeGroup {
+export type TreeGroup = {
   id: string
   name: string
   parent_id: string | null

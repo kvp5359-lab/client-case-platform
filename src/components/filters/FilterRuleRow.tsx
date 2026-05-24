@@ -22,7 +22,7 @@ import { useFilterRootGroup } from './FilterRootContext'
 /** Поля, для которых доступен мультиселект с опциями */
 const SELECTABLE_FIELDS = new Set(['status_id', 'status', 'type', 'channel', 'template_id', 'created_by', 'assignees', 'participants'])
 
-interface FilterRuleRowProps {
+type FilterRuleRowProps = {
   condition: FilterCondition
   onChange: (updated: FilterCondition) => void
   onRemove: () => void

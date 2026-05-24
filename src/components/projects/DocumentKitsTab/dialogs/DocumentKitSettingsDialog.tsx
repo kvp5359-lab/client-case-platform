@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-interface DocumentKitSettingsDialogProps {
+type DocumentKitSettingsDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
 

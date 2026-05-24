@@ -12,7 +12,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
 import { ImpersonationBanner } from '@/components/impersonation/ImpersonationBanner'
 
-interface ProtectedRouteProps {
+type ProtectedRouteProps = {
   children: ReactNode
 }
 

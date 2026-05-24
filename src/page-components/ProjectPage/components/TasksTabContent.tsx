@@ -4,7 +4,7 @@
 
 import { TaskListView } from '@/components/tasks/TaskListView'
 
-interface TasksTabContentProps {
+type TasksTabContentProps = {
   projectId: string
   workspaceId: string
 }

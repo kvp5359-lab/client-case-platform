@@ -9,7 +9,7 @@
 
 import { cn } from '@/lib/utils'
 
-export interface CheckboxFieldProps {
+export type CheckboxFieldProps = {
   value: string
   disabled?: boolean
   onChange: (value: string) => void

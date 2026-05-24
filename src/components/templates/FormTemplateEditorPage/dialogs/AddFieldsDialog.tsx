@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { FieldDefinition, getFieldTypeLabel } from '../types'
 
-interface AddFieldsDialogProps {
+type AddFieldsDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   fieldsToAdd: FieldDefinition[]

@@ -9,7 +9,7 @@ import { formatSize } from '@/utils/files/formatSize'
 import { toast } from 'sonner'
 import { AttachmentMenuButton } from './AttachmentMenuButton'
 
-interface FileAttachmentProps {
+type FileAttachmentProps = {
   attachment: AttachmentType
   isOwn?: boolean
   isDraft?: boolean

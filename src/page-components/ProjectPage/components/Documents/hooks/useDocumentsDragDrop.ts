@@ -17,7 +17,7 @@ import type { DocumentWithFiles } from '@/components/documents/types'
 
 type DragOverPosition = 'top' | 'bottom'
 
-interface UseDocumentsDragDropProps {
+type UseDocumentsDragDropProps = {
   documentKits: DocumentKitWithDocuments[]
   projectId: string
   reorderDocuments: (

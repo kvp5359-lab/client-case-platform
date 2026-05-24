@@ -19,7 +19,7 @@ import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
 import { logSendFailure } from '@/services/api/messenger/logSendFailure'
 
-interface SendEmailParams {
+type SendEmailParams = {
   threadId: string
   content: string
   subject?: string

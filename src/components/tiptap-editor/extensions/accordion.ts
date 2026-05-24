@@ -2,12 +2,12 @@ import { Node, mergeAttributes } from '@tiptap/core'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 import { AccordionView } from '../node-views/accordion-view'
 
-export interface AccordionOptions {
+export type AccordionOptions = {
   HTMLAttributes: Record<string, string>
 }
 
 declare module '@tiptap/core' {
-  interface Commands<ReturnType> {
+  type Commands<ReturnType> = {
     accordion: {
       setAccordion: (attrs?: { title?: string; open?: boolean }) => ReturnType
     }

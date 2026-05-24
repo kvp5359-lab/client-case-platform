@@ -17,7 +17,7 @@ import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { useProjectClientThreadIds } from '@/hooks/messenger/useProjectClientThreadIds'
 import type { AuditLogEntry } from '@/types/history'
 
-interface AllHistoryContentProps {
+type AllHistoryContentProps = {
   projectId: string
   workspaceId?: string
   threads: ProjectThread[]

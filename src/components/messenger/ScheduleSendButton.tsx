@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { getSchedulePresets, MIN_SCHEDULE_OFFSET_MS } from '@/hooks/messenger/useScheduleMessage'
 
-interface ScheduleSendButtonProps {
+type ScheduleSendButtonProps = {
   disabled?: boolean
   onSchedule: (sendAt: Date) => void
   /** Компактный вариант (h-7) — для строки контролов под scheduled-баблом,

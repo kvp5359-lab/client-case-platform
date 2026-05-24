@@ -3,11 +3,11 @@
  */
 
 
-export interface ThreadTemplateAssignee {
+export type ThreadTemplateAssignee = {
   participant_id: string
 }
 
-export interface ThreadTemplate {
+export type ThreadTemplate = {
   id: string
   workspace_id: string
   /**
@@ -45,7 +45,7 @@ export interface ThreadTemplate {
   thread_template_assignees?: ThreadTemplateAssignee[]
 }
 
-export interface ThreadTemplateFormData {
+export type ThreadTemplateFormData = {
   name: string
   description: string
   thread_type: 'chat' | 'task'

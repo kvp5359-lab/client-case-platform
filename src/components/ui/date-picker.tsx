@@ -14,7 +14,7 @@ function getCurrentYear() {
   return new Date().getFullYear()
 }
 
-interface DatePickerProps {
+type DatePickerProps = {
   date?: Date
   onDateChange?: (date: Date | undefined) => void
   placeholder?: string

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { MessageSquare } from 'lucide-react'
 import { ROLE_CONFIG, TELEGRAM_ROLE } from '../constants/roleConfig'
 
-interface ParticipantsSidebarProps {
+type ParticipantsSidebarProps = {
   selectedRole: string | 'all'
   onSelectRole: (role: string | 'all') => void
   roleStats: Record<string, number>

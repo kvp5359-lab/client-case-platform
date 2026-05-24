@@ -16,7 +16,7 @@ import { prepareFieldPayload, DEFAULT_TABLE_COLUMNS, type TableColumn } from './
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 import { fieldDefinitionKeys } from '@/hooks/queryKeys'
 
-interface UseFieldDefinitionFormParams {
+type UseFieldDefinitionFormParams = {
   open: boolean
   field: FieldDefinition | null
   onOpenChange: (open: boolean) => void

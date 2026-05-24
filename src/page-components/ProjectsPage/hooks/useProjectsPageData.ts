@@ -11,7 +11,7 @@ import type {
 import type { WorkspacePermissionsResult } from '@/hooks/permissions/useWorkspacePermissions'
 
 
-export interface ProjectParticipantsData {
+export type ProjectParticipantsData = {
   byProject: Record<string, string[]>
   byProjectGroups: Record<string, { role: string; participants: AvatarParticipant[] }[]>
   participants: ProjectAssigneeOption[]

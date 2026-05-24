@@ -22,7 +22,7 @@ type PageReturn = ReturnType<typeof useQuickRepliesPage>
 export const UNGROUPED_ID = '__ungrouped__'
 export const GROUP_DROP_PREFIX = 'group:'
 
-export interface DropIndicatorState {
+export type DropIndicatorState = {
   replyId: string
   position: 'top' | 'bottom'
 }

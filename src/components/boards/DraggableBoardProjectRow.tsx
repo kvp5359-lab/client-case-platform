@@ -10,7 +10,7 @@ import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { CardLayout, DisplayMode, VisibleField } from './types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 
-interface DraggableBoardProjectRowProps {
+type DraggableBoardProjectRowProps = {
   project: BoardProject
   /** Список, в котором карточка показана. Нужен для cross-list DnD (этап 4.5) —
    *  на drop в другой список меняем статус, а сам source-список знаем по этому полю. */

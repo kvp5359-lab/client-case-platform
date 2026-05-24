@@ -18,7 +18,7 @@ export type TaskPanelTabType =
   | 'assistant'          // AI-ассистент (AiPanelContent)
   | 'extra'              // дополнительно (ExtraPanelContent)
 
-export interface TaskPanelTab {
+export type TaskPanelTab = {
   /** Стабильный id вкладки. Для thread: `thread:${threadId}`, для системных: тип ('tasks', 'history' и т.д.). */
   id: string
   type: TaskPanelTabType

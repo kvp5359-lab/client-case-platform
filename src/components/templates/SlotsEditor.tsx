@@ -44,7 +44,7 @@ import { getArticlesByWorkspace } from '@/services/api/knowledge/knowledgeBaseSe
 
 export type { SlotTableConfig }
 
-interface SlotsEditorProps {
+type SlotsEditorProps = {
   config: SlotTableConfig
   description?: string
   /** ID воркспейса — нужен для picker-а из справочника и загрузки статей БЗ. */

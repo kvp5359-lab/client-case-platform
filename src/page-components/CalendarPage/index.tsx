@@ -67,7 +67,7 @@ const localizer = dateFnsLocalizer({
 
 const DnDCalendar = withDragAndDrop<CalendarEvent>(Calendar)
 
-interface CalendarEvent {
+type CalendarEvent = {
   id: string
   title: string
   start: Date

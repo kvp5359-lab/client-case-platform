@@ -27,7 +27,7 @@ import {
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { cn } from '@/lib/utils'
 
-interface Props {
+type Props = {
   workspaceId: string | undefined
 }
 

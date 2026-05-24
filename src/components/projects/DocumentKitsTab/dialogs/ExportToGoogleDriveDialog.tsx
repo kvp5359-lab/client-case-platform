@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 
 export type SyncMode = 'replace_all' | 'add_only' | 'replace_existing'
 
-interface SyncModeOption {
+type SyncModeOption = {
   title: string
   description: string
 }
@@ -35,7 +35,7 @@ const syncModeOptions: Record<SyncMode, SyncModeOption> = {
   },
 }
 
-interface ExportToGoogleDriveDialogProps {
+type ExportToGoogleDriveDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   folderLink: string

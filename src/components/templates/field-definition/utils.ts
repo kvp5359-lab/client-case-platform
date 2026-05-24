@@ -5,7 +5,7 @@
 import type { FieldType } from '@/components/forms/types'
 import { DEFAULT_TABLE_COLUMNS, type TableColumn } from './constants'
 
-interface PreparePayloadParams {
+type PreparePayloadParams = {
   name: string
   fieldType: FieldType
   description: string

@@ -7,7 +7,7 @@ import { ToolbarButton } from './toolbar-button'
 import { ColorPicker } from './color-picker'
 import { TEXT_COLORS, HIGHLIGHT_COLORS } from './constants'
 
-interface TextFormattingGroupProps {
+type TextFormattingGroupProps = {
   editor: Editor
 }
 

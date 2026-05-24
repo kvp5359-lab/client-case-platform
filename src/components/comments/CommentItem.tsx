@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import type { CommentWithAuthor } from '@/types/comments'
 
-interface CommentItemProps {
+type CommentItemProps = {
   comment: CommentWithAuthor
   entityType?: string
   entityId?: string

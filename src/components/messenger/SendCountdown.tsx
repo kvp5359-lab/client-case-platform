@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 
-interface SendCountdownProps {
+type SendCountdownProps = {
   expiresAt: number
   onCancel: () => void
 }

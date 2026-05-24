@@ -14,7 +14,7 @@ import { useWorkspace } from '@/hooks/useWorkspace'
 import { logger } from '@/utils/logger'
 import type { Workspace } from '@/types/entities'
 
-interface WorkspaceContextValue {
+type WorkspaceContextValue = {
   workspaceId: string | undefined
   workspace: Workspace | undefined
   isLoading: boolean
@@ -32,7 +32,7 @@ export function useWorkspaceContext() {
   return useContext(WorkspaceContext)
 }
 
-interface WorkspaceProviderProps {
+type WorkspaceProviderProps = {
   children: ReactNode
 }
 

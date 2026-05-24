@@ -11,7 +11,7 @@ import { CommentItem } from './CommentItem'
 import { CommentInput } from './CommentInput'
 import type { CommentThread as CommentThreadType, CommentEntityType } from '@/types/comments'
 
-interface CommentThreadProps {
+type CommentThreadProps = {
   thread: CommentThreadType
   entityType: CommentEntityType
   entityId: string

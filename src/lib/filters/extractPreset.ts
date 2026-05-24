@@ -17,7 +17,7 @@
 
 import type { FilterGroup, FilterContext, FilterCondition } from './types'
 
-export interface ThreadCreatePreset {
+export type ThreadCreatePreset = {
   tabMode?: 'task' | 'chat' | 'email'
   projectId?: string
   statusId?: string

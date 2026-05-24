@@ -38,7 +38,7 @@ import {
 } from './field-definition'
 import { useFieldDefinitionForm } from './useFieldDefinitionForm'
 
-interface FieldDefinitionDialogProps {
+type FieldDefinitionDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   field: FieldDefinition | null

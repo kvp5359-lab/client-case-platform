@@ -31,7 +31,7 @@ import { Calendar as CalendarUI } from '@/components/ui/calendar'
 import { ru } from 'date-fns/locale'
 import type { StatusOption } from '@/components/ui/status-dropdown'
 
-export interface TaskActionsMenuProps {
+export type TaskActionsMenuProps = {
   /** Открыть карточку задачи в правой панели. */
   onOpen?: () => void
 

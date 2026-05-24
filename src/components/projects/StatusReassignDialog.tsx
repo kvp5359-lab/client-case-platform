@@ -30,7 +30,7 @@ import type { Database } from '@/types/database'
 
 type Status = Database['public']['Tables']['statuses']['Row']
 
-interface StatusReassignDialogProps {
+type StatusReassignDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   /** Статус, который удаляют. */

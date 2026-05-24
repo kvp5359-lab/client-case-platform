@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 
-interface UseAuthLockoutOptions {
+type UseAuthLockoutOptions = {
   /** Префикс для ключей sessionStorage (например, 'login' или 'register') */
   storagePrefix: string
   /** Кол-во неудачных попыток до lockout (по умолчанию 5) */
@@ -17,7 +17,7 @@ interface UseAuthLockoutOptions {
   lockoutDuration?: number
 }
 
-interface UseAuthLockoutReturn {
+type UseAuthLockoutReturn = {
   isLocked: boolean
   remainingSeconds: number
   /** Вызвать при неудачной попытке. Возвращает true, если lockout сработал */

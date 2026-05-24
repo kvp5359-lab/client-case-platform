@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase'
 import { messengerKeys, telegramLinkKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
 
-interface TelegramLink {
+type TelegramLink = {
   id: string
   project_id: string
   telegram_chat_id: number

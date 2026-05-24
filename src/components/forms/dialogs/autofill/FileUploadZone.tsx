@@ -10,7 +10,7 @@ import { AUTOFILL_SUPPORTED_MIME_TYPES } from '@/utils/files/fileValidation'
 import { FORM_AUTOFILL_MAX_BYTES } from '@/utils/files/limits'
 import { AUTOFILL_AI_WARNING } from './types'
 
-interface FileUploadZoneProps {
+type FileUploadZoneProps = {
   file: File | null
   onFileSelect: (file: File | null) => void
   onAnalyze: () => void

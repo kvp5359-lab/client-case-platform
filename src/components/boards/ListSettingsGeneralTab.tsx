@@ -41,7 +41,7 @@ import type {
 } from './types'
 import type { SortField, SortDir } from '@/lib/filters/types'
 
-interface ListSettingsGeneralTabProps {
+type ListSettingsGeneralTabProps = {
   // Базовые поля
   name: string
   onNameChange: (value: string) => void

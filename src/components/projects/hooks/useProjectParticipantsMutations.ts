@@ -59,7 +59,7 @@ async function shareBriefsWithParticipants(
   }
 }
 
-interface UseProjectParticipantsMutationsParams {
+type UseProjectParticipantsMutationsParams = {
   projectId: string
   workspaceId: string
   projectParticipants: ParticipantWithUser[]

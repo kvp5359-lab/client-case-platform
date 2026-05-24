@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-export interface StatusOption {
+export type StatusOption = {
   id: string
   name: string
   color: string
@@ -23,7 +23,7 @@ export interface StatusOption {
   icon?: string | null
 }
 
-export interface StatusDropdownProps {
+export type StatusDropdownProps = {
   currentStatus?: StatusOption | null
   statuses: StatusOption[]
   onStatusChange: (statusId: string | null) => void

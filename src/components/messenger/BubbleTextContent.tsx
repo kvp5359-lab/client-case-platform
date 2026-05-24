@@ -11,7 +11,7 @@ import type { MessengerAccent } from './utils/messageStyles'
 import type { DeliveryStatus } from './bubbleUtils'
 import { BubbleTimestamp } from './BubbleTimestamp'
 
-interface BubbleTextContentProps {
+type BubbleTextContentProps = {
   message: ProjectMessage
   isOwn: boolean
   accent: MessengerAccent
@@ -141,7 +141,7 @@ export function BubbleTextContent({
   )
 }
 
-interface DraftPublishButtonProps {
+type DraftPublishButtonProps = {
   message: ProjectMessage
   accent: MessengerAccent
   onPublishDraft: (msg: ProjectMessage) => void
@@ -168,7 +168,7 @@ export function DraftPublishButton({ message, accent, onPublishDraft }: DraftPub
   )
 }
 
-interface RetrySendButtonProps {
+type RetrySendButtonProps = {
   message: ProjectMessage
   onRetrySend: (msg: ProjectMessage) => void
 }

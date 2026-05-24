@@ -10,12 +10,12 @@ import { extractGoogleDriveFolderId } from '@/utils/googleDrive'
 import { logger } from '@/utils/logger'
 import { toast } from 'sonner'
 
-interface DriveFolder {
+type DriveFolder = {
   id: string
   name: string
 }
 
-interface BriefTemplateStepProps {
+type BriefTemplateStepProps = {
   briefName: string
   onBriefNameChange: (value: string) => void
   briefTemplateLink: string

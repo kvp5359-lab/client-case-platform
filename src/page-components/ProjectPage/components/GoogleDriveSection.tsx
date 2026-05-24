@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils'
 
 type DialogMode = 'link' | 'create'
 
-interface GoogleDriveSectionProps {
+type GoogleDriveSectionProps = {
   // Данные
   googleDriveFolderLink: string | null | undefined
   folderName: string | null

@@ -21,7 +21,7 @@ import type { Database } from '@/types/database'
 
 type UserSettings = Database['public']['Tables']['user_settings']['Row']
 
-export interface AppSettingsSectionProps {
+export type AppSettingsSectionProps = {
   settings: UserSettings | null
   loading: boolean
   saving: boolean

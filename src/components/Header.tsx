@@ -9,7 +9,7 @@
 
 import { useRouter, useParams } from 'next/navigation'
 
-interface HeaderProps {
+type HeaderProps = {
   /** ID текущего workspace (опционально, берётся из URL если не указан) */
   workspaceId?: string
 }

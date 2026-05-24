@@ -28,7 +28,7 @@ import { Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ru } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 
-export interface TaskTimeValue {
+export type TaskTimeValue = {
   /** Точечный срок (используется в режиме без длительности). */
   deadline: string | null
   /** ISO начала. Если задан — задача в календаре. */
@@ -37,7 +37,7 @@ export interface TaskTimeValue {
   endAt: string | null
 }
 
-interface Props {
+type Props = {
   /** Текущее значение. Может прийти из БД. */
   value: TaskTimeValue
   /** Изменение значения. Родитель сохраняет в БД. */

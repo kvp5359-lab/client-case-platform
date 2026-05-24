@@ -14,7 +14,7 @@ import type {
 } from './constants'
 import type { DefaultPanelTabItem } from './panelTabsTypes'
 
-interface UseProjectTemplateMutationsParams {
+type UseProjectTemplateMutationsParams = {
   templateId: string | undefined
   linkedForms: FormTemplateWithRelation[]
   linkedDocKits: DocumentKitTemplateWithRelation[]

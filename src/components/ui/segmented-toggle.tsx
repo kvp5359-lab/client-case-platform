@@ -1,11 +1,11 @@
 import { cn } from '@/lib/utils'
 
-export interface SegmentedToggleOption<T extends string> {
+export type SegmentedToggleOption<T extends string> = {
   value: T
   label: string
 }
 
-interface SegmentedToggleProps<T extends string> {
+type SegmentedToggleProps<T extends string> = {
   options: SegmentedToggleOption<T>[]
   value: T
   onChange: (value: T) => void

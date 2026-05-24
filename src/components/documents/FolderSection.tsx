@@ -28,7 +28,7 @@ import {
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { getArticleById } from '@/services/api/knowledge/knowledgeBaseService'
 
-interface FolderSectionProps {
+type FolderSectionProps = {
   folder: FolderType
   folderIndex?: number
   documents: DocumentWithFiles[]

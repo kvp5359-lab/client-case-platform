@@ -14,7 +14,7 @@ import { ProjectStatusPopover } from '@/components/projects/ProjectStatusPopover
 import type { RoleGroup } from '../hooks/useProjectHeaderParticipants'
 import type { UseMutationResult } from '@tanstack/react-query'
 
-interface ProjectHeaderProps {
+type ProjectHeaderProps = {
   projectName: string
   canEdit: boolean
   updateProjectName: UseMutationResult<unknown, Error, string>

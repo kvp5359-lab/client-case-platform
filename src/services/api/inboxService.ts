@@ -12,7 +12,7 @@ import { ApiError } from '@/services/errors/AppError'
 
 export type InboxChannelType = 'web' | 'telegram' | 'email'
 
-export interface InboxThreadEntry {
+export type InboxThreadEntry = {
   thread_id: string
   thread_name: string
   thread_icon: string

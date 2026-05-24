@@ -7,7 +7,7 @@ import { DestinationDocument } from './types'
 import { formatSize } from '@/utils/files/formatSize'
 import { formatShortDate } from '@/utils/format/dateFormat'
 
-interface DestinationDocumentRowProps {
+type DestinationDocumentRowProps = {
   file: DestinationDocument
 }
 

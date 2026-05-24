@@ -10,12 +10,12 @@
 
 import { useEffect, useMemo } from 'react'
 
-interface EmailSuggestion {
+type EmailSuggestion = {
   email: string
   label: string
 }
 
-interface EmailChip {
+type EmailChip = {
   email: string
   label: string
 }

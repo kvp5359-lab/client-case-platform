@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import type { Editor } from '@tiptap/react'
 
-interface BlockGapInserterProps {
+type BlockGapInserterProps = {
   editor: Editor | null
 }
 

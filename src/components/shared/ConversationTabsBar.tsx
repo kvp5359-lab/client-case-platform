@@ -37,7 +37,7 @@ const accentActiveClasses: Record<AccentColor, string> = {
   green: 'bg-green-100 border border-green-300 text-green-800 font-medium',
 }
 
-interface ConversationTabsBarProps {
+type ConversationTabsBarProps = {
   conversations: KnowledgeConversation[]
   activeConversationId: string | null
   loadingConversations: boolean

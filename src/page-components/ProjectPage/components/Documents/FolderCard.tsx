@@ -21,7 +21,7 @@ import type {
 
 const noop = () => {}
 
-export interface FolderCardProps {
+export type FolderCardProps = {
   folder: Folder
   documents: DocumentWithFiles[]
   folderStatuses: DocumentStatus[]

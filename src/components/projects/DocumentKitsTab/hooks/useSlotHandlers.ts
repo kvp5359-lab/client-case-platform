@@ -15,7 +15,7 @@ import type {
   SourceDocumentInfo,
 } from '@/components/documents/types'
 
-interface UseSlotHandlersParams {
+type UseSlotHandlersParams = {
   kit: DocumentKitWithDocuments | undefined
   projectId: string
   workspaceId: string
@@ -48,7 +48,7 @@ interface UseSlotHandlersParams {
   ) => Promise<string | null>
 }
 
-export interface SlotHandlers {
+export type SlotHandlers = {
   onSlotClick: (slotId: string, folderId: string) => void
   onSlotUnlink: (slotId: string) => Promise<void>
   onSlotDelete: (slotId: string) => Promise<void>
@@ -64,7 +64,7 @@ export interface SlotHandlers {
   onClearEditingSlot: () => void
 }
 
-interface UseSlotHandlersReturn {
+type UseSlotHandlersReturn = {
   targetSlotId: string | null
   targetSlotFolderId: string | null
   editingSlotId: string | null

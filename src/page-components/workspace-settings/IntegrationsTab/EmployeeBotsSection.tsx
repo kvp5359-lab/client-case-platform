@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
 import type { BotIntegration, DialogState } from './types'
 
-interface EmployeeBotsSectionProps {
+type EmployeeBotsSectionProps = {
   employees: WorkspaceParticipant[]
   employeeBots: BotIntegration[]
   employeeBotByUserId: Map<string, BotIntegration>

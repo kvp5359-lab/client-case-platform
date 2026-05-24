@@ -30,7 +30,7 @@ import { useSidePanelStore } from '@/store/sidePanelStore'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import type { CompressAnalysisItem } from '@/components/documents/dialogs/CompressAnalysisDialog'
 
-interface DocumentsToolbarProps {
+type DocumentsToolbarProps = {
   filterMode: 'all' | 'action-required'
   setFilterMode: (mode: 'all' | 'action-required') => void
   searchQuery: string

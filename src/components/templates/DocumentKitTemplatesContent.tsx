@@ -35,9 +35,9 @@ import { useTemplateList } from './useTemplateList'
 
 type DocumentKitTemplate = Database['public']['Tables']['document_kit_templates']['Row']
 
-interface DocumentKitWithFolders extends DocumentKitTemplate {
+type DocumentKitWithFolders = {
   folders_count: number
-}
+} & DocumentKitTemplate
 
 const INITIAL_FORM = { name: '', description: '' }
 

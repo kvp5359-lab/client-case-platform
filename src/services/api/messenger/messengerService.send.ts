@@ -16,7 +16,7 @@ import {
 } from './messengerService.helpers'
 import type { ForwardedAttachment, MessageChannel, ProjectMessage } from './messengerService.types'
 
-export interface SendMessageParams {
+export type SendMessageParams = {
   /**
    * project_id — опционален для standalone-тредов без проекта (задач, созданных
    * вне проекта). Для обычных чатов проекта проставляется, чтобы RLS-политики

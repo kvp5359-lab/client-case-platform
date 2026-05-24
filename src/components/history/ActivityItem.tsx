@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils'
 import type { AuditLogEntry } from '@/types/history'
 import { formatShortDate } from '@/utils/format/dateFormat'
 
-interface ActivityItemProps {
+type ActivityItemProps = {
   entry: AuditLogEntry
   isUnread: boolean
   /** Карта id → название статуса. Нужна чтобы в change_status вместо UUID показать имя. */

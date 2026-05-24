@@ -13,7 +13,7 @@ import type {
 } from '@/components/documents/types'
 import { isStatusUnselected } from '@/components/documents/types'
 
-interface UseDocumentMemosParams {
+type UseDocumentMemosParams = {
   kit: DocumentKitWithDocuments | undefined
   allKits?: DocumentKitWithDocuments[]
   showOnlyUnverified: boolean
@@ -25,7 +25,7 @@ interface UseDocumentMemosParams {
   extraUngroupedDocs?: DocumentWithFiles[]
 }
 
-interface UseDocumentMemosReturn {
+type UseDocumentMemosReturn = {
   slotDocumentIds: Set<string>
   documentsByFolder: Map<string, DocumentWithFiles[]>
   ungroupedDocuments: DocumentWithFiles[]

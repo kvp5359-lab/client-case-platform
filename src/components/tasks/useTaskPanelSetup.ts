@@ -50,7 +50,7 @@ import type { TaskPanelProps } from './TaskPanel'
 
 const MAX_STACK = 7
 
-interface UseTaskPanelSetupParams {
+type UseTaskPanelSetupParams = {
   workspaceId: string
   /** Дополнительные query keys для инвалидации */
   extraInvalidateKeys?: ReadonlyArray<readonly unknown[]>

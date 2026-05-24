@@ -20,7 +20,7 @@ import type {
   FolderSlotWithDocument,
 } from '@/components/documents/types'
 
-interface UseDocumentKitEffectsParams {
+type UseDocumentKitEffectsParams = {
   // For knowledge base prefetch
   folders: Folder[]
 

@@ -31,7 +31,7 @@ import type {
 } from './article-tree-picker/types'
 
 // --- Single article mode (original) ---
-interface SingleArticleProps {
+type SingleArticleProps = {
   mode?: 'single-article'
   articles: Array<{ id: string; title: string }>
   groups: ArticleTreePickerGroup[]
@@ -46,7 +46,7 @@ interface SingleArticleProps {
 }
 
 // --- Single group mode ---
-interface SingleGroupProps {
+type SingleGroupProps = {
   mode: 'single-group'
   groups: ArticleTreePickerGroup[]
   selectedId: string | null
@@ -61,7 +61,7 @@ interface SingleGroupProps {
 }
 
 // --- Multiple groups mode ---
-interface MultipleGroupsProps {
+type MultipleGroupsProps = {
   mode: 'multiple-groups'
   groups: ArticleTreePickerGroup[]
   selectedGroupIds: string[]

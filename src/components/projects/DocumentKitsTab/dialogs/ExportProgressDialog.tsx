@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 export type ExportDocumentStatus = 'pending' | 'uploading' | 'success' | 'error'
 
-export interface ExportDocument {
+export type ExportDocument = {
   documentId: string
   fileName: string
   folderName?: string
@@ -14,7 +14,7 @@ export interface ExportDocument {
   error?: string
 }
 
-interface ExportProgressDialogProps {
+type ExportProgressDialogProps = {
   open: boolean
   phase: 'cleaning' | 'uploading' | 'completed'
   cleaningProgress?: number

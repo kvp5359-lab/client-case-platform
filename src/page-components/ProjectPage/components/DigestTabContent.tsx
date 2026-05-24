@@ -32,7 +32,7 @@ import {
 } from '@/lib/digestDefaults'
 import { DigestPeriodPicker } from '@/components/digests/DigestPeriodPicker'
 
-interface Props {
+type Props = {
   projectId: string
   workspaceId: string
 }

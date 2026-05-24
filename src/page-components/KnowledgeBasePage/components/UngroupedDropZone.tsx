@@ -1,7 +1,7 @@
 import { useDroppable } from '@dnd-kit/core'
 import { UNGROUPED_ID } from '../useKnowledgeTreeDnd'
 
-interface UngroupedDropZoneProps {
+type UngroupedDropZoneProps = {
   children: React.ReactNode
   isOver: boolean
 }

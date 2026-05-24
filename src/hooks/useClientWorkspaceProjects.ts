@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { STALE_TIME, clientWorkspaceProjectsKeys } from '@/hooks/queryKeys'
 
-export interface ClientProjectListItem {
+export type ClientProjectListItem = {
   id: string
   name: string
 }

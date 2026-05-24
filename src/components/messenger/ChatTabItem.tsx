@@ -18,7 +18,7 @@ import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import { formatBadgeCount } from '@/utils/inboxUnread'
 
-interface ChatTabItemProps {
+type ChatTabItemProps = {
   chat: ProjectThread
   isActive: boolean
   threadId: string | undefined

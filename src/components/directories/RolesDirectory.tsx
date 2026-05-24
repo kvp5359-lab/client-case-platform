@@ -33,7 +33,7 @@ type ProjectRole = Database['public']['Tables']['project_roles']['Row']
 const rolesQueryKey = (workspaceId: string, type: string) =>
   ['roles', 'directory', workspaceId, type] as const
 
-interface RolesDirectoryProps {
+type RolesDirectoryProps = {
   type: 'workspace' | 'project'
 }
 

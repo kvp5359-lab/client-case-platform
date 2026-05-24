@@ -33,7 +33,7 @@ import { type ProjectMessage } from '@/services/api/messenger/messengerService'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 
-interface UseMessengerHandlersParams {
+type UseMessengerHandlersParams = {
   channel: MessageChannel
   threadId?: string
   projectId?: string

@@ -28,7 +28,7 @@ export type UploadDocumentFn = (params: {
   sourceDocumentId?: string | null
 }) => Promise<{ document: Tables<'documents'>; fileId: string }>
 
-export interface UseDocumentKitHandlersProps {
+export type UseDocumentKitHandlersProps = {
   kit: DocumentKitWithDocuments | undefined
   projectId: string
 
@@ -216,7 +216,7 @@ export interface UseDocumentKitHandlersProps {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type LatestHandlersRef = React.RefObject<Record<string, any>>
 
-export interface DocumentKitHandlers {
+export type DocumentKitHandlers = {
   // Документы
   handleOpenEditDialog: (documentId: string) => void
   handleUpdateStatus: (documentId: string, newStatus: string | null) => Promise<void>

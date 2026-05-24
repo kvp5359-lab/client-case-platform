@@ -23,7 +23,7 @@ type SourceDrop = ReturnType<typeof useSourceDocumentDrop>
 type MessengerDrop = ReturnType<typeof useMessengerAttachmentDrop>
 type CompressAnalysis = ReturnType<typeof useCompressAnalysis>
 
-interface UseDocumentsProviderPropsParams {
+type UseDocumentsProviderPropsParams = {
   projectId: string
   workspaceId: string
   statuses: DocumentStatus[]

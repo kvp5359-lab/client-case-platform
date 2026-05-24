@@ -73,7 +73,7 @@ function inboxThread(overrides: Partial<InboxThreadEntry> = {}): InboxThreadEntr
   }
 }
 
-interface ThreadAccessStub {
+type ThreadAccessStub = {
   id: string
   project_id: string | null
   access_type: string
@@ -92,7 +92,7 @@ function accessInfo(overrides: Partial<ThreadAccessStub> = {}): ThreadAccessStub
   }
 }
 
-interface SidebarDataStub {
+type SidebarDataStub = {
   threads: ThreadAccessStub[]
   myProjectRoles: Array<{
     project_id: string

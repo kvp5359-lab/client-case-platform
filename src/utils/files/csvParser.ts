@@ -2,7 +2,7 @@
  * CSV-парсер с поддержкой многострочных полей в кавычках
  */
 
-export interface ParsedCSV {
+export type ParsedCSV = {
   headers: string[]
   rows: string[][]
 }
@@ -103,7 +103,7 @@ export type MappableField =
   | 'source'
   | 'qa_date'
 
-export interface ColumnMapping {
+export type ColumnMapping = {
   [csvHeader: string]: MappableField | null
 }
 

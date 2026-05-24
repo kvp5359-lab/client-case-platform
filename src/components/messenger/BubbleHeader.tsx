@@ -8,7 +8,7 @@ import { bubbleStyles } from './utils/messageStyles'
 import { useContactCardStore } from '@/store/contactCardStore'
 import { useMessengerContext } from './MessengerContext'
 
-interface BubbleHeaderProps {
+type BubbleHeaderProps = {
   message: ProjectMessage
   isOwn: boolean
   showAvatar: boolean

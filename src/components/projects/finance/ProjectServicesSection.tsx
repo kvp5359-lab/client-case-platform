@@ -47,7 +47,7 @@ const fmt = (value: number): string =>
     value,
   )
 
-interface Props {
+type Props = {
   projectId: string
   workspaceId: string
 }

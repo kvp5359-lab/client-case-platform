@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
 
-interface PageHeaderProps {
+type PageHeaderProps = {
   title: ReactNode
   /** Подзаголовок под title (например, тип сущности или хлебные крошки). */
   subtitle?: ReactNode

@@ -19,7 +19,7 @@ import { parseDateString, formatDateToString } from '@/utils/format/dateFormat'
 import { CheckboxField } from './CheckboxField'
 import type { FieldType } from './types'
 
-export interface SelectOption {
+export type SelectOption = {
   id: string
   value: string
   label: string
@@ -27,7 +27,7 @@ export interface SelectOption {
   order_index: number
 }
 
-export interface SimpleInputProps {
+export type SimpleInputProps = {
   fieldType: FieldType
   value: string
   disabled: boolean

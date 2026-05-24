@@ -7,7 +7,7 @@
 import { StateCreator } from 'zustand'
 import type { Progress, ExportPhase, SyncMode, MergeDoc, ExportDocument } from './types'
 
-export interface OperationsState {
+export type OperationsState = {
   // AI check
   isCheckingDocument: boolean
   suggestedNames: string[]
@@ -42,7 +42,7 @@ export interface OperationsState {
   exportProgressDialogOpen: boolean
 }
 
-export interface OperationsActions {
+export type OperationsActions = {
   // AI check
   setCheckingDocument: (isChecking: boolean) => void
   setSuggestedNames: (names: string[]) => void

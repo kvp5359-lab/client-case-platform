@@ -55,7 +55,7 @@ import { CreateDriveFoldersDialog } from './Documents/CreateDriveFoldersDialog'
 
 // === ТИПЫ ===
 
-interface DocumentsTabContentProps {
+type DocumentsTabContentProps = {
   documentKits: DocumentKitWithDocuments[]
   projectId: string
   workspaceId: string

@@ -21,7 +21,7 @@ import { getArticleById } from '@/services/api/knowledge/knowledgeBaseService'
 import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
 import type { Folder } from '@/components/documents/types'
 
-export interface FolderCardHeaderProps {
+export type FolderCardHeaderProps = {
   folder: Folder
   projectId: string | undefined
   workspaceId: string | undefined

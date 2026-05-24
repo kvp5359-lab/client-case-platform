@@ -7,12 +7,12 @@ import { cn } from '@/lib/utils'
  * (списки документов, поля форм, секции шаблонов и т.д.)
  */
 
-interface NativeTableProps extends React.HTMLAttributes<HTMLTableElement> {
+type NativeTableProps = {
   columns?: Array<{
     key: string
     width: string // "41%", "7%", "60px", etc.
   }>
-}
+} & React.HTMLAttributes<HTMLTableElement>
 
 const NativeTable = React.forwardRef<HTMLTableElement, NativeTableProps>(
   ({ className, columns, children, ...props }, ref) => (
@@ -42,11 +42,11 @@ const NativeTableBody = React.forwardRef<
 >(({ className, ...props }, ref) => <tbody ref={ref} className={cn('', className)} {...props} />)
 NativeTableBody.displayName = 'NativeTableBody'
 
-interface NativeTableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
+type NativeTableRowProps = {
   isHeader?: boolean
   isSection?: boolean
   isCollapsed?: boolean
-}
+} & React.HTMLAttributes<HTMLTableRowElement>
 
 const NativeTableRow = React.forwardRef<HTMLTableRowElement, NativeTableRowProps>(
   ({ className, isHeader, isSection, isCollapsed: _isCollapsed, ...props }, ref) => (
@@ -65,10 +65,10 @@ const NativeTableRow = React.forwardRef<HTMLTableRowElement, NativeTableRowProps
 )
 NativeTableRow.displayName = 'NativeTableRow'
 
-interface NativeTableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+type NativeTableCellProps = {
   withDivider?: boolean
   isNumeric?: boolean
-}
+} & React.TdHTMLAttributes<HTMLTableCellElement>
 
 const NativeTableCell = React.forwardRef<HTMLTableCellElement, NativeTableCellProps>(
   ({ className, withDivider = true, isNumeric, ...props }, ref) => (
@@ -87,10 +87,10 @@ const NativeTableCell = React.forwardRef<HTMLTableCellElement, NativeTableCellPr
 )
 NativeTableCell.displayName = 'NativeTableCell'
 
-interface NativeTableHeadCellProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
+type NativeTableHeadCellProps = {
   withDivider?: boolean
   isNumeric?: boolean
-}
+} & React.ThHTMLAttributes<HTMLTableCellElement>
 
 const NativeTableHeadCell = React.forwardRef<HTMLTableCellElement, NativeTableHeadCellProps>(
   ({ className, withDivider = true, isNumeric, ...props }, ref) => (

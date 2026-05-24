@@ -13,7 +13,7 @@
  * }
  * ```
  */
-export interface DialogBaseProps {
+export type DialogBaseProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
 }

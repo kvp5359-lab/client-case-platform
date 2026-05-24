@@ -13,7 +13,7 @@ import { GripVertical } from 'lucide-react'
 import { getFieldsForEntity } from '@/lib/filters/filterDefinitions'
 import type { FilterRule } from '@/lib/filters/types'
 
-interface FilterDragOverlayProps {
+type FilterDragOverlayProps = {
   rule: FilterRule
   entityType: 'thread' | 'project'
 }

@@ -49,7 +49,7 @@ import {
 } from '@/lib/sidebarSettings'
 import type { LucideIcon } from 'lucide-react'
 
-interface ZoneCardProps {
+type ZoneCardProps = {
   title: string
   description: string
   emptyHint: string
@@ -114,7 +114,7 @@ function BadgeColorPicker({
   )
 }
 
-interface SlotMeta {
+type SlotMeta = {
   label: string
   Icon: LucideIcon
 }
@@ -261,7 +261,7 @@ export function ZoneCard({
 
 // ── Row для обычного слота (nav/board/list) ──────────────────────
 
-interface SlotRowProps {
+type SlotRowProps = {
   slot: SidebarSlot
   meta: SlotMeta
   canUp: boolean
@@ -410,7 +410,7 @@ function SlotRow({
 
 // ── Row для папки: контейнер с раскрывающимся списком детей ───
 
-interface FolderRowProps {
+type FolderRowProps = {
   folder: SidebarSlot
   canUp: boolean
   canDown: boolean

@@ -23,7 +23,7 @@ export type { AiMessage }
 // Re-export for consumers
 export { fetchDocumentsForAi } from './useDocumentsForAi'
 
-export interface AttachedDocument {
+export type AttachedDocument = {
   id: string
   name: string
   textContent?: string | null
@@ -34,7 +34,7 @@ export interface AttachedDocument {
 const MAX_CONVERSATION_HISTORY = 20
 const MAX_DOC_LENGTH = 30_000
 
-export interface UseMessengerAiOptions {
+export type UseMessengerAiOptions = {
   onAnswerComplete?: (question: string, answer: string, sourceTags?: string[]) => void
   templateId?: string
   initialSources?: AiSources

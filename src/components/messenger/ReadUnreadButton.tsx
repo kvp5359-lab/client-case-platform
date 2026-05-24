@@ -4,7 +4,7 @@
 
 import { CheckCheck, EyeOff } from 'lucide-react'
 
-interface ReadUnreadButtonProps {
+type ReadUnreadButtonProps = {
   showUnread: boolean
   onMarkRead: () => void
   onMarkUnread: () => void

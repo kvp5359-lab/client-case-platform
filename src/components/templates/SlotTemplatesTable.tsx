@@ -16,7 +16,7 @@ import type { Database } from '@/types/database'
 
 type SlotTemplate = Database['public']['Tables']['slot_templates']['Row']
 
-interface SlotTemplatesTableProps {
+type SlotTemplatesTableProps = {
   templates: SlotTemplate[]
   articles: Array<{ id: string; title: string }>
   isLoading: boolean

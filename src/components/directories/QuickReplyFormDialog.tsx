@@ -30,7 +30,7 @@ import type { QuickReplyGroup } from '@/hooks/quick-replies/useQuickReplyGroups'
 
 const NO_GROUP_VALUE = '__none__'
 
-interface QuickReplyFormDialogProps {
+type QuickReplyFormDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   editingReply: QuickReply | null

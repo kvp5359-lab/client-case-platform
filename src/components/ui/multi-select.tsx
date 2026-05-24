@@ -44,7 +44,7 @@ function getRoleIcon(role?: string) {
   return ROLE_ICONS[role] || null
 }
 
-export interface MultiSelectOption {
+export type MultiSelectOption = {
   value: string
   label: string
   // Дополнительные поля для участников
@@ -56,7 +56,7 @@ export interface MultiSelectOption {
   isProjectParticipant?: boolean // Уже участвует в проекте (в другой роли)
 }
 
-export interface MultiSelectProps {
+export type MultiSelectProps = {
   options: MultiSelectOption[]
   value: string[]
   onChange: (value: string[]) => void

@@ -15,7 +15,7 @@ import {
 import { useInvalidateSourceDocuments } from './useSourceDocumentsQuery'
 import type { SourceDocument } from '@/components/documents/types'
 
-interface UseProjectSourceDocumentsProps {
+type UseProjectSourceDocumentsProps = {
   projectId: string
   sourceFolderId: string | null | undefined
   workspaceId: string

@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 import type { ExtractionResult } from './types'
 
-interface AutoFillResultsProps {
+type AutoFillResultsProps = {
   result: ExtractionResult
   formKitId: string
   onApply: () => void
@@ -17,7 +17,7 @@ interface AutoFillResultsProps {
   isApplying: boolean
 }
 
-interface FieldRow {
+type FieldRow = {
   id: string
   name: string
   field_definition_id: string
@@ -25,7 +25,7 @@ interface FieldRow {
   sort_order: number
 }
 
-interface SectionRow {
+type SectionRow = {
   id: string
   name: string
 }

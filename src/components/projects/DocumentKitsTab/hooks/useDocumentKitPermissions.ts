@@ -1,6 +1,6 @@
 import { useProjectPermissions, useWorkspaceFeatures } from '@/hooks/permissions'
 
-interface UseDocumentKitPermissionsParams {
+type UseDocumentKitPermissionsParams = {
   projectId: string
   workspaceId: string
 }

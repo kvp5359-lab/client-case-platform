@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import type { CardFieldId } from './types'
 import { getFieldLabel } from './listSettingsConfigs'
 
-interface DraggableLayoutFieldProps {
+type DraggableLayoutFieldProps = {
   fieldId: CardFieldId
   rowId: string
   isActive?: boolean

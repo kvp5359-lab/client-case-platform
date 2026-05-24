@@ -14,7 +14,7 @@ import { RoleEditDialogBase } from './RoleEditDialogBase'
 
 type WorkspaceRole = Database['public']['Tables']['workspace_roles']['Row']
 
-interface WorkspaceRoleEditDialogProps {
+type WorkspaceRoleEditDialogProps = {
   role: WorkspaceRole | null
   onClose: () => void
   onSave: (updates: Partial<WorkspaceRole>) => void

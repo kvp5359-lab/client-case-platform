@@ -38,7 +38,7 @@ import { useScrollIntoViewOnPanel } from '@/hooks/shared/useScrollIntoViewOnPane
  */
 const WorkspaceShellContext = createContext<boolean>(false)
 
-interface WorkspaceLayoutProps {
+type WorkspaceLayoutProps = {
   children: React.ReactNode
   workspaceId?: string
 }

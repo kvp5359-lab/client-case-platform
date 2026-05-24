@@ -25,7 +25,7 @@ export const REACTIONS = [
   '🤩',
 ]
 
-interface ReactionPickerProps {
+type ReactionPickerProps = {
   onPick: (emoji: string) => void
 }
 

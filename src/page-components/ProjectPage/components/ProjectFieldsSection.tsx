@@ -29,13 +29,13 @@ import type { FieldDefinition, FieldOptions } from '@/types/formKit'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 import { projectFieldsKeys } from '@/hooks/queryKeys'
 
-interface Props {
+type Props = {
   projectId: string
   templateId: string | null
   disabled?: boolean
 }
 
-interface LinkedField {
+type LinkedField = {
   link_id: string
   is_required: boolean
   order_index: number
@@ -265,12 +265,12 @@ export function ProjectFieldsSection({ projectId, templateId, disabled }: Props)
   )
 }
 
-interface EntryRow {
+type EntryRow = {
   id: string
   label: string
 }
 
-interface RowFieldProps {
+type RowFieldProps = {
   field: FieldDefinition
   isRequired: boolean
   value: unknown

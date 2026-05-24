@@ -66,14 +66,14 @@ import {
   type SystemPanelTabKey,
 } from './panelTabsTypes'
 
-interface Props {
+type Props = {
   workspaceId: string
   projectTemplateId: string
   enabledModules: string[]
   defaultPanelTabs: unknown
 }
 
-interface SystemTabDef {
+type SystemTabDef = {
   key: SystemPanelTabKey
   icon: LucideIcon
   /** Ключ модуля в enabled_modules. null = не зависит от шаблона. */

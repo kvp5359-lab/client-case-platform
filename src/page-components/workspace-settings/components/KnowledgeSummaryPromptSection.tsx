@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabase'
 
 const DEFAULT_SUMMARY_PROMPT = `Перечисли кратко все темы и сущности, которые содержатся в этой статье. Не пересказывай, а укажи что внутри: какие документы, процессы, суммы, сроки, типы ВНЖ и т.д. Формат — одно предложение-заголовок и список тем через запятую. Максимум 100 слов. Отвечай на русском языке.`
 
-interface KnowledgeSummaryPromptSectionProps {
+type KnowledgeSummaryPromptSectionProps = {
   workspaceId: string
 }
 

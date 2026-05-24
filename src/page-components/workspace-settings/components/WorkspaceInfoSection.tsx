@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { workspaceKeys } from '@/hooks/queryKeys'
 
-interface WorkspaceInfoSectionProps {
+type WorkspaceInfoSectionProps = {
   workspaceId: string
 }
 

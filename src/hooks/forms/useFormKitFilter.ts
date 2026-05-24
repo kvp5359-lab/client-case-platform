@@ -10,7 +10,7 @@ import type { FormStructure, CompositeFieldItem } from '@/components/forms/types
 import type { FieldOptions } from '@/types/formKit'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 
-interface UseFormKitFilterProps {
+type UseFormKitFilterProps = {
   structure: FormStructure | null | undefined
   formData: Record<string, string>
   compositeItems: CompositeFieldItem[]

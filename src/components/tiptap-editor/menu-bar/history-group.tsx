@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/react'
 import { Undo, Redo } from 'lucide-react'
 import { ToolbarButton } from './toolbar-button'
 
-interface HistoryGroupProps {
+type HistoryGroupProps = {
   editor: Editor
 }
 

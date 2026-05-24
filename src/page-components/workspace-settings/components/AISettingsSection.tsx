@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useAISettings, THINKING_OPTIONS } from './useAISettings'
 
-interface AISettingsSectionProps {
+type AISettingsSectionProps = {
   workspaceId: string
 }
 

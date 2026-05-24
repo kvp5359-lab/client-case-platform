@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
 import type { Participant } from '@/types/entities'
 
-interface TelegramContactsTableProps {
+type TelegramContactsTableProps = {
   contacts: Participant[]
   canManage: boolean
   hasRegularParticipants: boolean

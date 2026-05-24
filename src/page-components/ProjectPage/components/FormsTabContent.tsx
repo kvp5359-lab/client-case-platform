@@ -31,7 +31,7 @@ import { KitMenu } from './Forms/KitMenu'
 import { CreateBriefDialog } from './Forms/CreateBriefDialog'
 import { ConnectBriefDialog } from './Forms/ConnectBriefDialog'
 
-interface FormsTabContentProps {
+type FormsTabContentProps = {
   formKits: FormKit[]
   projectId: string
   workspaceId: string

@@ -13,7 +13,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { FilterToolbar, CheckItem, FilterButton } from '@/components/tasks/filters/FilterPrimitives'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
 
-interface ProjectStatusFilterProps {
+type ProjectStatusFilterProps = {
   workspaceId: string
   selectedIds: Set<string>
   onToggle: (id: string) => void

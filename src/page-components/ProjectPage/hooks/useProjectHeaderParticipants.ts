@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { participantKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
-export interface RoleGroup {
+export type RoleGroup = {
   role: string
   participants: AvatarParticipant[]
 }

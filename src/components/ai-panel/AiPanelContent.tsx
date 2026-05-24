@@ -9,7 +9,7 @@
 import { ProjectAiChat } from './ProjectAiChat'
 import { useProjectPermissions } from '@/hooks/permissions'
 
-interface AiPanelContentProps {
+type AiPanelContentProps = {
   workspaceId: string
   projectId?: string
   templateId?: string

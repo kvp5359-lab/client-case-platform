@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useProjectStatusesForTemplate } from '@/hooks/useStatuses'
 import type { Project } from '../types'
 
-interface ProjectStatusSelectorProps {
+type ProjectStatusSelectorProps = {
   project: Project
   onStatusChange: (statusId: string) => void
   disabled?: boolean

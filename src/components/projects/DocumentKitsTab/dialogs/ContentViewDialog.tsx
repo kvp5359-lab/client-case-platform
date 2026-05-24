@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-interface ContentViewDialogProps {
+type ContentViewDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   documentName: string

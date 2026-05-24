@@ -17,7 +17,7 @@ import { useCommentCounts } from '@/hooks/comments'
 import { CommentsPopover } from './CommentsPopover'
 import type { CommentEntityType } from '@/types/comments'
 
-interface CommentBadgeProps {
+type CommentBadgeProps = {
   entityType: CommentEntityType
   entityId: string
   projectId: string

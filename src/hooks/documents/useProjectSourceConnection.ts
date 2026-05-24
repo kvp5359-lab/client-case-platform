@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
 import { extractGoogleDriveFolderId } from '@/utils/googleDrive'
 
-interface UseProjectSourceConnectionProps {
+type UseProjectSourceConnectionProps = {
   projectId: string
   onSuccess?: () => void
 }

@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
 import type { UseMutationResult } from '@tanstack/react-query'
 
-interface UseProjectGoogleDriveActionsParams {
+type UseProjectGoogleDriveActionsParams = {
   workspaceId: string | undefined
   rootFolderId: string | null | undefined
   updateProjectGoogleDrive: UseMutationResult<unknown, Error, string | null>

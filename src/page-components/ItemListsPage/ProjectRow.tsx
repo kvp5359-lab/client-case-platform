@@ -7,7 +7,7 @@ import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProject
 import type { TableShellColumn } from './TableShell'
 import type { ItemListColumnKey } from './columns'
 
-interface ProjectRowProps {
+type ProjectRowProps = {
   project: BoardProject
   columns: TableShellColumn[]
   checked: boolean

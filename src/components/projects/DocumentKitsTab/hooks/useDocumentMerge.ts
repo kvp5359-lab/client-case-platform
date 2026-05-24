@@ -14,7 +14,7 @@ import type { DocumentWithFiles } from '@/components/documents/types'
 import type { DocumentKitWithDocuments } from '@/services/api/documents/documentKitService'
 
 // Тип для upload функции
-interface UploadDocumentParams {
+type UploadDocumentParams = {
   file: File
   documentKitId: string
   projectId: string
@@ -30,7 +30,7 @@ type UploadDocumentFn = (
 ) => Promise<{ document: Tables<'documents'>; fileId: string }>
 type SoftDeleteDocumentFn = (documentId: string) => Promise<void>
 
-interface MergeDocumentsParams {
+type MergeDocumentsParams = {
   documentKitId: string
   allDocuments: DocumentWithFiles[]
 }

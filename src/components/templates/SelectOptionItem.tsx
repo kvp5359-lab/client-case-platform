@@ -14,7 +14,7 @@ import { SELECT_OPTION_PALETTE as PRESET_COLORS } from '@/lib/palette'
 
 // --- ColorPickerPopover ---
 
-interface ColorPickerPopoverProps {
+type ColorPickerPopoverProps = {
   optionId: string
   currentColor: string | null
   onColorSelect: (id: string, color: string) => void
@@ -59,7 +59,7 @@ export function ColorPickerPopover({
 
 // --- OptionItem ---
 
-interface OptionItemProps {
+type OptionItemProps = {
   option: SelectOption
   isEditing: boolean
   editingLabel: string

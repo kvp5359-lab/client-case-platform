@@ -10,7 +10,7 @@ import { TrashedDocumentRow } from '../TrashedDocumentRow'
 import { SystemSectionTable } from '../SystemSectionTable'
 import type { DocumentWithFiles } from '../types'
 
-interface TrashSectionProps {
+type TrashSectionProps = {
   documents: DocumentWithFiles[]
   isCollapsed: boolean
   selectedDocuments: Set<string>

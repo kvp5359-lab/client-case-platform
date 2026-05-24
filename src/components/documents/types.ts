@@ -13,23 +13,23 @@ export type DocumentStatus = Tables<'statuses'>
 export type FolderSlot = Tables<'folder_slots'>
 
 // Документ с файлами
-export interface DocumentWithFiles extends Document {
+export type DocumentWithFiles = {
   document_files?: DocumentFile[]
-}
+} & Document
 
 // Набор документов с документами и папками
-export interface DocumentKitWithDocuments extends DocumentKit {
+export type DocumentKitWithDocuments = {
   documents?: DocumentWithFiles[]
   folders?: Folder[]
-}
+} & DocumentKit
 
 // Слот с подгруженным документом
-export interface FolderSlotWithDocument extends FolderSlot {
+export type FolderSlotWithDocument = {
   document?: DocumentWithFiles | null
-}
+} & FolderSlot
 
 // Документ из источника (Google Drive)
-export interface SourceDocument {
+export type SourceDocument = {
   id: string
   name: string
   mimeType: string
@@ -58,7 +58,7 @@ export type DragOverPosition = 'top' | 'bottom'
 export type SystemSectionTab = 'unassigned' | 'source' | 'destination' | 'trash'
 
 // Документ из папки назначения (Google Drive)
-export interface DestinationDocument {
+export type DestinationDocument = {
   id: string
   name: string
   mimeType: string
@@ -71,7 +71,7 @@ export interface DestinationDocument {
 }
 
 // Props для строки в корзине
-export interface TrashedDocumentRowProps {
+export type TrashedDocumentRowProps = {
   document: DocumentWithFiles
   index: number
   isSelected: boolean
@@ -85,7 +85,7 @@ export interface TrashedDocumentRowProps {
 }
 
 // Props для строки источника
-export interface SourceDocumentRowProps {
+export type SourceDocumentRowProps = {
   file: SourceDocument
   isSelected: boolean
   hasSelection: boolean
@@ -99,7 +99,7 @@ export interface SourceDocumentRowProps {
 }
 
 // Информация о документе-источнике для привязки к слотам и загрузки
-export interface SourceDocumentInfo {
+export type SourceDocumentInfo = {
   id: string
   name: string
   sourceDocumentId?: string

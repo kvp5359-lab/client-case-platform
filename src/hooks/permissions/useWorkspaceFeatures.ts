@@ -12,11 +12,11 @@ import { permissionKeys, STALE_TIME } from '../queryKeys'
 import type { WorkspaceFeature, WorkspaceFeatures } from '../../types/permissions'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 
-interface UseWorkspaceFeaturesOptions {
+type UseWorkspaceFeaturesOptions = {
   workspaceId?: string
 }
 
-export interface WorkspaceFeaturesResult {
+export type WorkspaceFeaturesResult = {
   /** Загрузка данных */
   isLoading: boolean
   /** Ошибка загрузки */

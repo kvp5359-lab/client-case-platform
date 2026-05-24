@@ -20,7 +20,7 @@ import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { AppError } from '@/services/errors'
 
-export interface ErrorHandlerOptions {
+export type ErrorHandlerOptions = {
   /** Показывать ли toast с ошибкой */
   showToast?: boolean
   /** Логировать ли ошибку в консоль */
@@ -31,7 +31,7 @@ export interface ErrorHandlerOptions {
   onError?: (error: unknown) => void
 }
 
-export interface UseErrorHandlerReturn {
+export type UseErrorHandlerReturn = {
   /** Обработать ошибку */
   handleError: (error: unknown, options?: ErrorHandlerOptions | string) => void
 }

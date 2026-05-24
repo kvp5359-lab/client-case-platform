@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 
 export type DeleteKitMode = 'delete_all' | 'move_to_unassigned'
 
-interface DeleteKitDialogProps {
+type DeleteKitDialogProps = {
   open: boolean
   kitName: string
   onConfirm: (mode: DeleteKitMode) => void

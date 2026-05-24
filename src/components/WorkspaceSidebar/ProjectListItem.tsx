@@ -18,7 +18,7 @@ import type { Project } from './useSidebarData'
  */
 const DEFAULT_ICON_COLOR = '#6B7280'
 
-export interface ProjectListItemProps {
+export type ProjectListItemProps = {
   project: Project
   badgeDisplays?: Map<string, BadgeDisplay>
   clientUnreadCounts?: Map<string, number>

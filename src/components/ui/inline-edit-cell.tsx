@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils'
 
 type FieldType = 'text' | 'number' | 'date'
 
-interface BaseProps {
+type BaseProps = {
   /** Подпись для пустого значения (по умолчанию «—»). */
   emptyText?: string
   /** Disable редактирование. */
@@ -34,13 +34,13 @@ interface BaseProps {
   placeholder?: string
 }
 
-interface TextProps extends BaseProps {
+type TextProps = {
   type: 'text'
   value: string
   onCommit: (next: string) => void
-}
+} & BaseProps
 
-interface NumberProps extends BaseProps {
+type NumberProps = {
   type: 'number'
   value: number | null
   onCommit: (next: number) => void
@@ -48,14 +48,14 @@ interface NumberProps extends BaseProps {
   min?: number
   /** Шаг для number-инпута. По умолчанию 0.01. */
   step?: number | string
-}
+} & BaseProps
 
-interface DateProps extends BaseProps {
+type DateProps = {
   type: 'date'
   /** ISO YYYY-MM-DD. */
   value: string
   onCommit: (next: string) => void
-}
+} & BaseProps
 
 type Props = TextProps | NumberProps | DateProps
 

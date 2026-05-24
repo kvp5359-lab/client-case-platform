@@ -16,7 +16,7 @@ import { RoleEditDialogBase } from './RoleEditDialogBase'
 
 type ProjectRole = Database['public']['Tables']['project_roles']['Row']
 
-interface ProjectRoleEditDialogProps {
+type ProjectRoleEditDialogProps = {
   role: ProjectRole | null
   onClose: () => void
   onSave: (updates: Partial<ProjectRole>) => void

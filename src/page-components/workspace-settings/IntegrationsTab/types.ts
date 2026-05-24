@@ -4,7 +4,7 @@
  */
 export const TEAM_ROLES = new Set(['Владелец', 'Администратор', 'Сотрудник', 'Внешний сотрудник'])
 
-export interface BotIntegration {
+export type BotIntegration = {
   id: string
   type: 'telegram_workspace_bot' | 'telegram_employee_bot'
   is_active: boolean
@@ -20,7 +20,7 @@ export interface BotIntegration {
   has_token: boolean
 }
 
-export interface DialogState {
+export type DialogState = {
   title: string
   bot: BotIntegration | null
   createParams: {
@@ -30,7 +30,7 @@ export interface DialogState {
   } | null
 }
 
-export interface EmailAccount {
+export type EmailAccount = {
   id: string
   email: string
   user_id: string | null

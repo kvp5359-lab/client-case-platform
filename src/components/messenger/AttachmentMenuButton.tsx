@@ -16,7 +16,7 @@ import {
 import { toast } from 'sonner'
 import { AddToProjectDialog } from './AddToProjectDialog'
 
-interface AttachmentMenuButtonProps {
+type AttachmentMenuButtonProps = {
   attachment: AttachmentType
   isOwn?: boolean
   projectId?: string

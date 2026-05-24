@@ -29,13 +29,13 @@ export const googleCalendarKeys = {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export interface GoogleCalendarToken {
+export type GoogleCalendarToken = {
   user_id: string
   google_email: string | null
   expires_at: string
 }
 
-export interface RemoteGoogleCalendar {
+export type RemoteGoogleCalendar = {
   id: string
   name: string
   description: string | null
@@ -44,7 +44,7 @@ export interface RemoteGoogleCalendar {
   access_role: string
 }
 
-export interface Calendar {
+export type Calendar = {
   id: string
   workspace_id: string
   name: string
@@ -259,7 +259,7 @@ export function useWriteExternalEvent() {
 
 // ── Mirror settings (наши задачи → Google Calendar) ───────────────────────
 
-export interface UserCalendarMirrorSettings {
+export type UserCalendarMirrorSettings = {
   id: string
   workspace_id: string
   user_id: string

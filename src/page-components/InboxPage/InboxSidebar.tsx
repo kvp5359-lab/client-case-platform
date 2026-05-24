@@ -9,7 +9,7 @@ import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { InboxFilter } from './useInboxFilters'
 
-interface InboxSidebarProps {
+type InboxSidebarProps = {
   filter: InboxFilter
   onSetFilter: (f: InboxFilter) => void
   searchQuery: string

@@ -15,13 +15,13 @@ import { GenerationSaveDialog } from './GenerationSaveDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { DocumentGeneration } from '@/services/api/documents/documentGenerationService'
 
-interface FolderInfo {
+type FolderInfo = {
   id: string
   name: string
   document_kit_id: string
 }
 
-interface GenerationCardProps {
+type GenerationCardProps = {
   generation: DocumentGeneration
   workspaceId: string
   projectId: string

@@ -46,7 +46,7 @@ import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
 import type { BoardItemType, BoardListOrdersMap } from './hooks/useBoardListItemOrders'
 
-interface BoardListCardProps {
+type BoardListCardProps = {
   list: BoardList
   tasks: WorkspaceTask[]
   projects: BoardProject[]
@@ -78,7 +78,7 @@ interface BoardListCardProps {
 }
 
 /** Снимок состояния card-DnD, который BoardView пробрасывает в каждый список. */
-export interface BoardCardDndState {
+export type BoardCardDndState = {
   /** Полный ID активной droppable-группы вида `group:<list_id>:<key>` или null. */
   activeGroupKey: string | null
   /** Полный ID активного droppable-списка вида `list-cards:<list_id>` или null. */

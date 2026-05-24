@@ -33,7 +33,7 @@ import {
 import { useDocumentKitData, useDocumentKitUIState, useDocumentKitIds } from '../context'
 
 /** Бизнес-handlers, которые нельзя получить из Zustand */
-export interface DocumentKitDialogHandlers {
+export type DocumentKitDialogHandlers = {
   // Move
   onMoveDocument: (folderId: string | null) => void
   onMoveSourceDocument: (folderId: string | null) => void
@@ -65,7 +65,7 @@ export interface DocumentKitDialogHandlers {
   onOpenAIChat?: () => void
 }
 
-export interface DocumentKitDialogsProps {
+export type DocumentKitDialogsProps = {
   handlers: DocumentKitDialogHandlers
 }
 

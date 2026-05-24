@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import type { AiSources, ChatScope } from '@/services/api/messenger/messengerAiService'
 import type { ProjectContextScope } from '@/services/api/knowledge/knowledgeSearchService.types'
 
-export interface UseAiSourcesOptions {
+export type UseAiSourcesOptions = {
   initialSources?: AiSources
   onSourcesChange?: (sources: AiSources) => void
 }

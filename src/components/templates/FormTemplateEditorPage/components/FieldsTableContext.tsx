@@ -6,7 +6,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import type { FormSectionWithDetails, FormFieldWithDefinition } from '../types'
 
-interface FieldsTableContextValue {
+type FieldsTableContextValue = {
   // Field drag state
   draggedFieldId: string | null
   dragOverFieldId: string | null
@@ -45,9 +45,9 @@ export function useFieldsTableContext() {
   return ctx
 }
 
-interface FieldsTableProviderProps extends FieldsTableContextValue {
+type FieldsTableProviderProps = {
   children: ReactNode
-}
+} & FieldsTableContextValue
 
 export function FieldsTableProvider({ children, ...value }: FieldsTableProviderProps) {
   const memoized = useMemo<FieldsTableContextValue>(

@@ -26,7 +26,7 @@ import type {
 
 // ============== Типы данных ==============
 
-export interface DocumentKitData {
+export type DocumentKitData = {
   kit: DocumentKit | null | undefined
   folders: Folder[]
   statuses: DocumentStatus[]
@@ -38,7 +38,7 @@ export interface DocumentKitData {
   folderSlots: FolderSlotWithDocument[]
 }
 
-export interface DocumentKitUIState {
+export type DocumentKitUIState = {
   // Выделение
   selectedDocuments: Set<string>
   hasSelection: boolean
@@ -81,7 +81,7 @@ export interface DocumentKitUIState {
   editingSlotId: string | null
 }
 
-export interface DocumentKitHandlers {
+export type DocumentKitHandlers = {
   // Document operations
   onSelectDocument: (docId: string, event?: React.MouseEvent) => void
   onHoverDocument: (docId: string | null) => void
@@ -153,7 +153,7 @@ export interface DocumentKitHandlers {
   onClearEditingSlot: () => void
 }
 
-interface DocumentKitIds {
+type DocumentKitIds = {
   projectId: string
   workspaceId: string
 }
@@ -167,7 +167,7 @@ const IdsContext = createContext<DocumentKitIds | null>(null)
 
 // ============== Объединённый тип (для обратной совместимости) ==============
 
-export interface DocumentKitContextValue {
+export type DocumentKitContextValue = {
   data: DocumentKitData
   uiState: DocumentKitUIState
   handlers: DocumentKitHandlers
@@ -177,7 +177,7 @@ export interface DocumentKitContextValue {
 
 // ============== Provider ==============
 
-export interface DocumentKitProviderProps {
+export type DocumentKitProviderProps = {
   children: ReactNode
   value: DocumentKitContextValue
 }

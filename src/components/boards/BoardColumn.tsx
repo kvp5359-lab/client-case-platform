@@ -12,7 +12,7 @@ import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
 
-interface BoardColumnProps {
+type BoardColumnProps = {
   lists: BoardList[]
   tasks: WorkspaceTask[]
   projects: BoardProject[]

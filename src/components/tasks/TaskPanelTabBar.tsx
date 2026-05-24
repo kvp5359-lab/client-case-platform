@@ -68,7 +68,7 @@ import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
 
-interface SystemTabDef {
+type SystemTabDef = {
   type: Exclude<TaskPanelTabType, 'thread' | 'knowledge_article'>
   title: string
   icon: React.ComponentType<{ className?: string }>
@@ -87,7 +87,7 @@ const SYSTEM_TABS: SystemTabDef[] = [
 
 const SYSTEM_TAB_BY_TYPE = new Map<string, SystemTabDef>(SYSTEM_TABS.map((d) => [d.type, d]))
 
-interface TaskPanelTabBarProps {
+type TaskPanelTabBarProps = {
   tabs: TaskPanelTab[]
   activeTabId: string | null
   onActivate: (id: string) => void
@@ -305,7 +305,7 @@ export function TaskPanelTabBar({
   )
 }
 
-interface DraggableTabProps {
+type DraggableTabProps = {
   tab: TaskPanelTab
   isActive: boolean
   accent: { active: string; badge: string } | null

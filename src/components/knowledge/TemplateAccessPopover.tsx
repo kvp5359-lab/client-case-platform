@@ -69,7 +69,7 @@ function isQuickReply(t: TemplateAccessEntityType) {
   return t === 'qr-group' || t === 'qr-reply'
 }
 
-interface QrFlags {
+type QrFlags = {
   personal_only: boolean
   access_inherits: boolean
   group_id: string | null
@@ -101,14 +101,14 @@ async function fetchQrFlags(
   return null
 }
 
-interface TemplateAccessPopoverProps {
+type TemplateAccessPopoverProps = {
   entityId: string
   entityType: TemplateAccessEntityType
   workspaceId: string
   children: React.ReactNode
 }
 
-interface ProjectTemplate {
+type ProjectTemplate = {
   id: string
   name: string
 }

@@ -12,7 +12,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 import { useProjectStatusesForTemplate } from '@/hooks/useStatuses'
 
-interface ProjectStatusPopoverProps {
+type ProjectStatusPopoverProps = {
   workspaceId: string
   projectTemplateId: string | null
   currentStatusId: string | null

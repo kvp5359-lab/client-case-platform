@@ -24,7 +24,7 @@ function getRoleGroup(roles?: string[]): 'staff' | 'external' | 'client' | 'othe
   return 'other'
 }
 
-export interface PickerParticipant {
+export type PickerParticipant = {
   id: string
   name: string
   last_name?: string | null
@@ -33,7 +33,7 @@ export interface PickerParticipant {
   workspace_roles?: string[]
 }
 
-interface ParticipantsPickerProps {
+type ParticipantsPickerProps = {
   participants: PickerParticipant[]
   selectedIds: string[]
   onChange: (ids: string[]) => void

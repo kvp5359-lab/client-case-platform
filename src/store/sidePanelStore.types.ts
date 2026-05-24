@@ -3,7 +3,7 @@ import type { AiSources } from '@/services/api/messenger/messengerAiService'
 export type PanelTab = 'client' | 'internal' | 'assistant' | 'extra'
 export type PanelType = 'ai' | 'messenger'
 
-export interface AiMessage {
+export type AiMessage = {
   id: string
   role: 'user' | 'assistant'
   content: string
@@ -11,12 +11,12 @@ export interface AiMessage {
   created_at: string
 }
 
-export interface PendingMessengerDocuments {
+export type PendingMessengerDocuments = {
   ids: string[]
   channel: 'client' | 'internal'
 }
 
-export interface PendingForwardMessage {
+export type PendingForwardMessage = {
   senderName: string
   content: string
   attachments?: Array<{
@@ -29,14 +29,14 @@ export interface PendingForwardMessage {
   targetChatId: string
 }
 
-export interface PanelContext {
+export type PanelContext = {
   workspaceId: string | null
   projectId?: string
   templateId?: string
 }
 
 /** Per-project AI session state (survives panel close/open) */
-export interface AiSessionState {
+export type AiSessionState = {
   activeConversationId: string | null
   aiMessages: AiMessage[]
   sources: AiSources
@@ -44,7 +44,7 @@ export interface AiSessionState {
   sessionDocs?: Record<string, { name: string; text: string }>
 }
 
-export interface PendingAiDocumentItem {
+export type PendingAiDocumentItem = {
   id: string
   name: string
   textContent?: string | null
@@ -58,7 +58,7 @@ export const DEFAULT_AI_SOURCES: AiSources = {
   projectContext: { mode: 'selected', itemIds: [] },
 }
 
-export interface SidePanelStore {
+export type SidePanelStore = {
   /** Активная вкладка панели (null = закрыта) */
   panelTab: PanelTab | null
   /** Последняя открытая вкладка (для восстановления при повторном открытии) */
@@ -136,7 +136,7 @@ export interface SidePanelStore {
   reset: () => void
 }
 
-export interface PendingInitialMessage {
+export type PendingInitialMessage = {
   threadId: string
   html: string
   files: File[]

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { BotIntegration } from './types'
 
-interface TelegramSecretarySectionProps {
+type TelegramSecretarySectionProps = {
   workspaceBots: BotIntegration[]
   telegramGroups: number
   onEdit: (bot: BotIntegration) => void

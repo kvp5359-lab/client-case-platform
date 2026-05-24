@@ -11,7 +11,7 @@ import { useInvalidateSourceDocuments } from '@/hooks/documents/useSourceDocumen
 import type { SourceDocumentInfo } from '@/components/documents/types'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 
-interface UseSourceDocumentDropParams {
+type UseSourceDocumentDropParams = {
   documentKits: DocumentKitWithDocuments[]
   projectId: string
   workspaceId: string

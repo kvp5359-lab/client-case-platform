@@ -7,13 +7,13 @@ import { NativeTableCell, NativeTableRow } from '@/components/ui/native-table'
 import { GripVertical, Folder, Pencil, Trash2, FileText } from 'lucide-react'
 import { KitFolder } from './types'
 
-interface SlotInfo {
+type SlotInfo = {
   id: string
   name: string
   sort_order: number
 }
 
-interface DraggableFolderRowProps {
+type DraggableFolderRowProps = {
   folder: KitFolder
   index: number
   slots?: SlotInfo[]

@@ -2,7 +2,7 @@
 
 import React, { memo } from 'react'
 
-interface HiddenFileInputsProps {
+type HiddenFileInputsProps = {
   fileInputRef: React.Ref<HTMLInputElement>
   slotFileInputRef: React.Ref<HTMLInputElement>
   onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void

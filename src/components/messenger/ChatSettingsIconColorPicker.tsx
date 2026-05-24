@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 
-interface PickerProps {
+type PickerProps = {
   accentColor: ThreadAccentColor
   icon: string
   onAccentColorChange: (color: ThreadAccentColor) => void

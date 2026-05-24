@@ -8,7 +8,7 @@ import type { FormSectionWithFields, CompositeFieldItem } from './types'
 import type { FieldOptions } from '@/types/formKit'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 
-export interface SectionProgress {
+export type SectionProgress = {
   filled: number
   total: number
 }

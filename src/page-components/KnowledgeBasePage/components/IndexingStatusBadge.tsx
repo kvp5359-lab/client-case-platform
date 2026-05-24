@@ -10,7 +10,7 @@
 
 import { CheckCircle2, Clock, AlertCircle, Loader2, CircleDashed, DatabaseZap } from 'lucide-react'
 
-interface IndexingStatusBadgeProps {
+type IndexingStatusBadgeProps = {
   status: string | null | undefined
   variant?: 'article' | 'qa'
 }

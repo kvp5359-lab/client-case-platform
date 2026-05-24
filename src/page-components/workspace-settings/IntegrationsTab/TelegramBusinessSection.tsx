@@ -21,7 +21,7 @@ import { integrationsKeys } from '@/hooks/queryKeys'
 import { useAuth } from '@/contexts/AuthContext'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
 
-interface BusinessConnectionRow {
+type BusinessConnectionRow = {
   id: string
   user_id: string
   tg_user_id: number
@@ -31,7 +31,7 @@ interface BusinessConnectionRow {
   can_reply: boolean
 }
 
-interface UserTelegramLinkRow {
+type UserTelegramLinkRow = {
   user_id: string
   tg_user_id: number
   tg_username: string | null

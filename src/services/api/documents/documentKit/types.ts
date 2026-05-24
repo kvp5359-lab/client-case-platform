@@ -11,7 +11,7 @@ export type DocumentKitUpdate = Partial<DocumentKitInsert>
 
 type Folder = Tables<'folders'>
 
-export interface DocumentKitWithDocuments extends DocumentKit {
+export type DocumentKitWithDocuments = {
   documents?: DocumentWithFiles[]
   folders?: Folder[]
-}
+} & DocumentKit

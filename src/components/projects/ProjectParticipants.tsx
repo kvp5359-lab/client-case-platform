@@ -12,7 +12,7 @@ import { ClientConfirmDialog } from './ClientConfirmDialog'
 import { useProjectParticipantsData } from './hooks/useProjectParticipantsData'
 import { useProjectParticipantsMutations } from './hooks/useProjectParticipantsMutations'
 
-interface ProjectParticipantsProps {
+type ProjectParticipantsProps = {
   projectId: string
   workspaceId: string
   createdBy: string | null

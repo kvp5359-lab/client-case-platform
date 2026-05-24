@@ -10,7 +10,7 @@ const ACCESS_ICONS = {
   custom: Users,
 } as const
 
-interface BoardCardProps {
+type BoardCardProps = {
   board: Board
   onClick: () => void
 }

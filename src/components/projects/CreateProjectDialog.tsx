@@ -20,7 +20,7 @@ import { useThreadTemplatesByProjectTemplate } from '@/hooks/messenger/useThread
 import { projectTemplateKeys } from '@/hooks/queryKeys'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
-interface CreateProjectDialogProps {
+type CreateProjectDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
@@ -69,11 +69,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
     enabled: !!activeTemplateId && open,
   })
 
-  // Шаблоны тредов (задачи и чаты в одной секции), привязанные к типу
-  // проекта. Раньше задачи хранились в project_template_tasks — с
-  // 2026-04-11 переехали в thread_templates.owner_project_template_id,
-  // а чаты появились как новый вид шаблонных тредов. С того же дня UI
-  // показывает их одним списком в секции "Задачи и чаты".
+  // Шаблоны тредов (задачи и чаты в одной секции), привязанные к типу проекта.
   const { data: scopedThreadTemplates = [] } = useThreadTemplatesByProjectTemplate(
     activeTemplateId,
   )

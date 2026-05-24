@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { User } from '@supabase/supabase-js'
 
-export interface UserProfileProps {
+export type UserProfileProps = {
   user: User
   onProfileClick: () => void
   onSignOut: () => Promise<void>

@@ -7,7 +7,7 @@
 import { StateCreator } from 'zustand'
 import type { SystemSectionTab } from './types'
 
-export interface UIState {
+export type UIState = {
   collapsedFolders: Set<string>
   uploadingFiles: string[]
   targetFolderId: string | null
@@ -22,7 +22,7 @@ export interface UIState {
   statusDropdownOpen: string | null
 }
 
-export interface UIActions {
+export type UIActions = {
   // Folder collapse
   toggleFolderCollapse: (folderId: string) => void
 

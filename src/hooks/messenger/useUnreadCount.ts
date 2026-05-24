@@ -39,7 +39,7 @@ export async function resolveParticipant(
   return null
 }
 
-interface CachePatchParams {
+type CachePatchParams = {
   threadId: string
   projectId?: string | undefined
   workspaceId?: string | undefined

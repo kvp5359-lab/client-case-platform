@@ -17,7 +17,7 @@ export type {
 
 // --- Параметры сервисных операций ---
 
-export interface DocumentUploadParams {
+export type DocumentUploadParams = {
   file: File
   kitId: string
   folderId?: string | null
@@ -26,23 +26,23 @@ export interface DocumentUploadParams {
   workspaceId: string
 }
 
-export interface DocumentMoveParams {
+export type DocumentMoveParams = {
   documentId: string
   folderId: string | null
 }
 
-export interface DocumentStatusUpdateParams {
+export type DocumentStatusUpdateParams = {
   documentId: string
   status: string | null
 }
 
-export interface DocumentReorderParams {
+export type DocumentReorderParams = {
   documentId: string
   newSortOrder: number
   folderId?: string | null
 }
 
-export interface MergeDocumentsParams {
+export type MergeDocumentsParams = {
   documentIds: string[]
   name: string
   folderId: string | null

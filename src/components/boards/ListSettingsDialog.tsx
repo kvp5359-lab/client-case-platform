@@ -18,7 +18,7 @@ import ListSettingsAppearanceTab from './ListSettingsAppearanceTab'
 import type { BoardList } from './types'
 import type { FilterGroup } from '@/lib/filters/types'
 
-interface ListSettingsDialogProps {
+type ListSettingsDialogProps = {
   open: boolean
   onClose: () => void
   list: BoardList

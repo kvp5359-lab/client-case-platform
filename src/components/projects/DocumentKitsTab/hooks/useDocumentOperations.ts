@@ -6,7 +6,7 @@ import { openDocumentInNewTab, downloadDocumentFile } from '@/services/documents
 import type { DocumentWithFiles } from '@/components/documents'
 import type { ProjectPermissionCode } from '@/types/permissions'
 
-interface UseDocumentOperationsProps {
+type UseDocumentOperationsProps = {
   projectId: string
   fetchDocumentKits: (projectId: string) => Promise<void>
   getDocument: (documentId: string) => DocumentWithFiles | undefined

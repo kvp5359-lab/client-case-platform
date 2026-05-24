@@ -27,7 +27,7 @@ export const sendButtonStyles: Record<string, string> = {
   dark: 'bg-stone-600 hover:bg-stone-700 text-white',
 }
 
-interface MessageInputToolbarProps {
+type MessageInputToolbarProps = {
   editor: Editor | null
   projectId: string
   workspaceId: string

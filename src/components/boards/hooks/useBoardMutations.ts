@@ -6,7 +6,7 @@ import { boardKeys } from '@/hooks/queryKeys'
 import type { Board, BoardGlobalFilter } from '../types'
 import type { Database } from '@/types/database'
 
-interface CreateBoardParams {
+type CreateBoardParams = {
   workspace_id: string
   name: string
   description?: string
@@ -15,7 +15,7 @@ interface CreateBoardParams {
   created_by: string
 }
 
-interface UpdateBoardParams {
+type UpdateBoardParams = {
   id: string
   workspace_id: string
   name?: string

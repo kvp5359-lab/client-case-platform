@@ -37,7 +37,7 @@ const OTHER_REACTION_STYLES: Record<string, string> = {
   dark: 'bg-stone-100 hover:bg-stone-200',
 }
 
-interface ReactionBadgesProps {
+type ReactionBadgesProps = {
   reactions: MessageReaction[]
   currentParticipantId: string | null
   onReact: (emoji: string) => void

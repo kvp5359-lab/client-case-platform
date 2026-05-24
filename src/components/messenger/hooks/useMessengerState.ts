@@ -50,7 +50,7 @@ import { useSidePanelStore } from '@/store/sidePanelStore'
 import { stripHtmlKeepNewlines } from '@/utils/format/messengerHtml'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 
-interface UseMessengerStateParams {
+type UseMessengerStateParams = {
   projectId?: string
   workspaceId: string
   channel: MessageChannel

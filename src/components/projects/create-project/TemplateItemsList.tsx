@@ -2,12 +2,12 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { FileText, FolderOpen, MessagesSquare } from 'lucide-react'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
-interface NamedItem {
+type NamedItem = {
   id: string
   name: string
 }
 
-interface TemplateItemsListProps {
+type TemplateItemsListProps = {
   docKitTemplates: NamedItem[]
   formTemplates: NamedItem[]
   /** Шаблоны тредов (задач и чатов одним списком), привязанные к типу проекта. */

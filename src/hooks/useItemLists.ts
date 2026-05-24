@@ -25,14 +25,14 @@ import type { Json } from '@/types/database'
 export type ItemListEntityType = 'thread' | 'project'
 
 /** Конфиг одной колонки таблицы списка. */
-export interface ItemListColumnConfig {
+export type ItemListColumnConfig = {
   key: string
   width: number
   order: number
   visible: boolean
 }
 
-export interface ItemList {
+export type ItemList = {
   id: string
   workspace_id: string
   owner_user_id: string | null
@@ -52,7 +52,7 @@ export interface ItemList {
   deleted_by: string | null
 }
 
-interface CreateItemListParams {
+type CreateItemListParams = {
   workspace_id: string
   entity_type: ItemListEntityType
   name: string
@@ -156,7 +156,7 @@ export function useCreateItemList() {
   })
 }
 
-interface UpdateItemListParams {
+type UpdateItemListParams = {
   id: string
   workspace_id: string
   name?: string

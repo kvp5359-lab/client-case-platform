@@ -58,7 +58,7 @@ function StatusMenuItems({
   )
 }
 
-interface StatusIconDropdownProps {
+type StatusIconDropdownProps = {
   documentId: string
   currentStatus: DocumentStatus | null
   statuses: DocumentStatus[]
@@ -92,7 +92,7 @@ export const DocumentStatusIconDropdown = memo(function DocumentStatusIconDropdo
   )
 })
 
-interface StatusLabelDropdownProps {
+type StatusLabelDropdownProps = {
   documentId: string
   currentStatus: DocumentStatus | null
   statuses: DocumentStatus[]

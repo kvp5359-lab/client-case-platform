@@ -20,7 +20,7 @@ import type { FolderSlotWithDocument as FolderSlot } from '@/components/document
 import type { UploadDocumentFn, SoftDeleteDocumentFn } from '@/hooks/documents/useDocuments.types'
 import type { useSourceDocumentDrop } from './useSourceDocumentDrop'
 
-interface UseDocumentsDialogActionsProps {
+type UseDocumentsDialogActionsProps = {
   projectId: string
   workspaceId: string
   documentKits: DocumentKitWithDocuments[]

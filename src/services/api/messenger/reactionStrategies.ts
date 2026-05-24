@@ -21,13 +21,13 @@ import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
 import { isEmailSource } from './messengerService.types'
 
-export interface ReactionParams {
+export type ReactionParams = {
   messageId: string
   participantId: string
   emoji: string
 }
 
-export interface ReactionResult {
+export type ReactionResult = {
   added: boolean
 }
 

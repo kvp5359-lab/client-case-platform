@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { formKitKeys } from '@/hooks/queryKeys'
 
-interface UseFormKitSyncProps {
+type UseFormKitSyncProps = {
   formKitId: string
   projectId: string
   googleSheetId?: string | null

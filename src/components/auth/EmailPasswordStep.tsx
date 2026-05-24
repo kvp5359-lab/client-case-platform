@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AuthAlert } from './AuthAlert'
 
-interface EmailPasswordStepProps {
+type EmailPasswordStepProps = {
   email: string
   password: string
   onEmailChange: (email: string) => void

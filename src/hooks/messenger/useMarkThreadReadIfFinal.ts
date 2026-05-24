@@ -22,7 +22,7 @@ import {
 import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 
-interface MarkParams {
+type MarkParams = {
   threadId: string
   statusId: string | null
   projectId: string | null | undefined

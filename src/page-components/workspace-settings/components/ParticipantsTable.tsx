@@ -8,7 +8,7 @@ import { ParticipantMenu } from './ParticipantMenu'
 import { ROLE_CONFIG } from '../constants/roleConfig'
 import type { Participant } from '@/types/entities'
 
-interface ParticipantsTableProps {
+type ParticipantsTableProps = {
   participants: Participant[]
   onEdit: (participant: Participant) => void
   onToggleAccess: (participantId: string, currentCanLogin: boolean) => void

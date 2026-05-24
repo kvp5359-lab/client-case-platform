@@ -10,7 +10,7 @@ import { documentKeys } from '@/hooks/queryKeys'
 /**
  * Результат проверки одного документа
  */
-export interface BatchCheckResult {
+export type BatchCheckResult = {
   documentId: string
   originalName: string
   suggestedName: string
@@ -21,7 +21,7 @@ export interface BatchCheckResult {
   error?: string
 }
 
-interface UseBatchCheckOptions {
+type UseBatchCheckOptions = {
   open: boolean
   documentIds: string[]
   documentNames: Map<string, string>

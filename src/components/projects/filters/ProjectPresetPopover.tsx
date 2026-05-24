@@ -17,7 +17,7 @@ export const PROJECT_PRESET_LABELS: Record<ProjectPreset, string> = {
   all: 'Все проекты',
 }
 
-interface ProjectPresetPopoverProps {
+type ProjectPresetPopoverProps = {
   preset: ProjectPreset
   filtersModified: boolean
   filtersOpen: boolean

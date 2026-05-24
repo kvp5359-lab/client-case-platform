@@ -10,7 +10,7 @@ import { downloadBlob } from '@/utils/files/downloadBlob'
 
 export type DownloadGroupMode = 'folders' | 'flat'
 
-interface DocumentForDownload {
+type DocumentForDownload = {
   id: string
   name: string
   folder_id: string | null
@@ -23,12 +23,12 @@ interface DocumentForDownload {
   }>
 }
 
-interface FolderForDownload {
+type FolderForDownload = {
   id: string
   name: string
 }
 
-export interface DownloadDocumentsOptions {
+export type DownloadDocumentsOptions = {
   docs: DocumentForDownload[]
   folders: FolderForDownload[]
   archiveName: string

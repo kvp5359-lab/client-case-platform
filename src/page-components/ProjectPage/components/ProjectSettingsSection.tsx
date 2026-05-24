@@ -18,12 +18,12 @@ import { ProjectStatusPopover } from '@/components/projects/ProjectStatusPopover
 import { ProjectDeadlinePicker } from './ProjectDeadlinePicker'
 import type { Project } from '../types'
 
-interface ProjectTemplate {
+type ProjectTemplate = {
   id: string
   name: string
 }
 
-interface ProjectSettingsSectionProps {
+type ProjectSettingsSectionProps = {
   project: Project
   templateName: string | null
   templates: ProjectTemplate[]

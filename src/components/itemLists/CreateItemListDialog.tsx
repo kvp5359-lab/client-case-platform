@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useCreateItemList, type ItemListEntityType } from '@/hooks/useItemLists'
 
-interface CreateItemListDialogProps {
+type CreateItemListDialogProps = {
   open: boolean
   onClose: () => void
   workspaceId: string

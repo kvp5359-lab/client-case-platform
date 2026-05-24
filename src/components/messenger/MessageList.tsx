@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useDeleteMessage } from '@/hooks/messenger/useDeleteMessage'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
-interface MessageListProps {
+type MessageListProps = {
   messages: ProjectMessage[]
   isLoading: boolean
   hasMoreOlder: boolean

@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { emailAccountKeys, STALE_TIME } from '@/hooks/queryKeys'
 
-export interface EmailLink {
+export type EmailLink = {
   id: string
   thread_id: string
   contact_email: string

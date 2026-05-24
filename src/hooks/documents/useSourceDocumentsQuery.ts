@@ -13,7 +13,7 @@ import { getSourceDocumentsByProject } from '@/services/documents/sourceDocument
 import { googleDriveKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { SourceDocument } from '@/components/documents/types'
 
-interface SourceDocumentsResult {
+type SourceDocumentsResult = {
   documents: SourceDocument[]
   usedSourceIds: Set<string>
 }

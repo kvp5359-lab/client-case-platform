@@ -27,7 +27,7 @@ type TimelineEntry =
   | { kind: 'audit'; data: AuditLogEntry }
   | { kind: 'message'; entry: TimelineMessageEntry }
 
-interface TimelineFeedProps {
+type TimelineFeedProps = {
   auditEntries: AuditLogEntry[]
   messages: TimelineMessageEntry[]
   currentUserId?: string

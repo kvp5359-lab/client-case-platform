@@ -15,7 +15,7 @@ import { useFlipAnimation } from './useFlipAnimation'
 import { ProjectListItem } from './ProjectListItem'
 import type { Project } from './useSidebarData'
 
-export interface ProjectsListProps {
+export type ProjectsListProps = {
   projects: Project[]
   loading: boolean
   searchQuery?: string

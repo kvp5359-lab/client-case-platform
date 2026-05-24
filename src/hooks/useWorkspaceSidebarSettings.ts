@@ -54,7 +54,7 @@ export function useWorkspaceSidebarSettings(workspaceId: string | undefined) {
   })
 }
 
-export interface UpdateSidebarSettingsParams {
+export type UpdateSidebarSettingsParams = {
   workspaceId: string
   slots: SidebarSlot[]
 }
@@ -90,7 +90,7 @@ export function useUpdateWorkspaceSidebarSettings() {
   })
 }
 
-export interface MyTaskCounts {
+export type MyTaskCounts = {
   active: number
   all: number
   overdue: number

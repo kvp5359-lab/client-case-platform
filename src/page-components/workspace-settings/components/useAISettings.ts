@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 
-export interface ModelOption {
+export type ModelOption = {
   value: string
   label: string
   provider: 'anthropic' | 'google'
@@ -54,7 +54,7 @@ export const AI_MODELS: ModelOption[] = [
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro — мощная, стабильная', provider: 'google' },
 ]
 
-export interface ThinkingOption {
+export type ThinkingOption = {
   value: string
   label: string
   description: string

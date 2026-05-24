@@ -5,7 +5,7 @@ import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import type { DeliveryStatus } from './bubbleUtils'
 import { DeliveryIcon, formatTime } from './bubbleUtils'
 
-interface BubbleTimestampProps {
+type BubbleTimestampProps = {
   message: ProjectMessage
   isOwn: boolean
   deliveryStatus: DeliveryStatus

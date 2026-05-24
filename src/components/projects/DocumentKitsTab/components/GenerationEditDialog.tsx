@@ -18,7 +18,7 @@ import {
 import { Trash2, FileDown, ClipboardPaste, Loader2 } from 'lucide-react'
 import type { DocumentTemplatePlaceholder } from '@/services/api/documents/documentTemplateService'
 
-interface GenerationEditDialogProps {
+type GenerationEditDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   nameValue: string

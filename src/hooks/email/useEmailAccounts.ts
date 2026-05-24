@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { emailAccountKeys, STALE_TIME } from '@/hooks/queryKeys'
 
-export interface EmailAccount {
+export type EmailAccount = {
   id: string
   user_id: string
   workspace_id: string

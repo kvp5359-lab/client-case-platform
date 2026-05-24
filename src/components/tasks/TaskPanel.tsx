@@ -40,7 +40,7 @@ const ChatSettingsDialog = lazy(() =>
   })),
 )
 
-export interface TaskPanelProps {
+export type TaskPanelProps = {
   stackTop: PanelStackItem | null
   open: boolean
   onClose: () => void

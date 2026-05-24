@@ -12,7 +12,7 @@ export type CommentEntityType =
   | 'task'
 
 /** Комментарий из БД */
-export interface Comment {
+export type Comment = {
   id: string
   workspace_id: string
   project_id: string
@@ -29,22 +29,22 @@ export interface Comment {
 }
 
 /** Комментарий с информацией об авторе */
-export interface CommentWithAuthor extends Comment {
+export type CommentWithAuthor = {
   author: {
     id: string
     name: string
     email: string
   }
-}
+} & Comment
 
 /** Тред: корневой комментарий + ответы */
-export interface CommentThread {
+export type CommentThread = {
   root: CommentWithAuthor
   replies: CommentWithAuthor[]
 }
 
 /** Данные для создания комментария */
-export interface CreateCommentInput {
+export type CreateCommentInput = {
   workspace_id: string
   project_id: string
   entity_type: CommentEntityType
@@ -54,6 +54,6 @@ export interface CreateCommentInput {
 }
 
 /** Данные для обновления комментария */
-export interface UpdateCommentInput {
+export type UpdateCommentInput = {
   content: string
 }

@@ -45,7 +45,7 @@ import {
   listIdFromSlotId,
 } from '@/lib/sidebarSettings'
 
-interface WorkspaceSidebarFullProps {
+type WorkspaceSidebarFullProps = {
   workspaceId?: string
   onCollapse?: () => void
   /** Сжатый режим — только иконки (без выбора воркспейса, проектов, пользователя). */

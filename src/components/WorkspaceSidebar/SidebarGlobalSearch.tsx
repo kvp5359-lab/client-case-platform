@@ -43,14 +43,14 @@ import { getProjectIcon } from '@/components/ui/project-icons'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { cn } from '@/lib/utils'
 
-interface Props {
+type Props = {
   workspaceId: string | undefined
   /** В compact-режиме рендерится кнопка-иконка, во full — input. */
   compact?: boolean
 }
 
 /** Унифицированный row для рендера (recent + search). */
-interface DisplayRow {
+type DisplayRow = {
   /** Стабильный ключ. */
   key: string
   entity_type: GlobalSearchEntityType

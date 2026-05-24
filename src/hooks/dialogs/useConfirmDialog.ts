@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 
-export interface ConfirmDialogOptions {
+export type ConfirmDialogOptions = {
   title: string
   description: string
   confirmText?: string
@@ -10,11 +10,11 @@ export interface ConfirmDialogOptions {
   variant?: 'default' | 'destructive'
 }
 
-export interface ConfirmDialogState extends ConfirmDialogOptions {
+export type ConfirmDialogState = {
   isOpen: boolean
-}
+} & ConfirmDialogOptions
 
-export interface UseConfirmDialogReturn {
+export type UseConfirmDialogReturn = {
   state: ConfirmDialogState
   confirm: (options: ConfirmDialogOptions) => Promise<boolean>
   handleConfirm: () => void

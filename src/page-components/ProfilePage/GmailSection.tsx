@@ -17,7 +17,7 @@ import { useConnectGmail } from '@/hooks/email/useConnectGmail'
 import { useDisconnectGmail } from '@/hooks/email/useDisconnectGmail'
 import { workspaceDomainKeys } from '@/hooks/queryKeys'
 
-interface GmailSectionProps {
+type GmailSectionProps = {
   workspaceId?: string | null
 }
 
@@ -142,7 +142,7 @@ export const GmailSection = memo(function GmailSection({ workspaceId }: GmailSec
   )
 })
 
-interface PersonalInboxBlockProps {
+type PersonalInboxBlockProps = {
   workspaceSlug: string
   accountEmail: string
 }

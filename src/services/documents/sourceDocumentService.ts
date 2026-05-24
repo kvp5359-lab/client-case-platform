@@ -13,11 +13,11 @@ import type { GoogleDriveFile } from './googleDriveTypes'
 
 type SourceDocumentRow = Tables<'source_documents'>
 
-export interface SourceDocumentWithUsage extends SourceDocumentRow {
+export type SourceDocumentWithUsage = {
   isUsed: boolean
-}
+} & SourceDocumentRow
 
-export interface SyncResult {
+export type SyncResult = {
   filesFound: number
   deleted: number
   folderName?: string | null

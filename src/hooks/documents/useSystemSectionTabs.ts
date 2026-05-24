@@ -11,7 +11,7 @@ import type { SystemSectionTab } from '@/components/documents/types'
 // Задержка для анимации закрытия секции
 const TAB_SWITCH_DELAY = 150
 
-interface UseSystemSectionTabsProps {
+type UseSystemSectionTabsProps = {
   activeTab: SystemSectionTab
   unassignedCollapsed: boolean
   sourceCollapsed: boolean

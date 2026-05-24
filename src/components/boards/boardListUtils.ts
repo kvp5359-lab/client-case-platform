@@ -35,7 +35,7 @@ export function formatTimeRange(
 
 // ── Группировка ─────────────────────────────────────────
 
-export interface TaskGroup {
+export type TaskGroup = {
   key: string
   label: string
   tasks: WorkspaceTask[]
@@ -123,7 +123,7 @@ export function groupTasks(
 // Группировка списков «Проекты» поддерживает только 'status' (см.
 // PROJECT_GROUP_BY_OPTIONS). Для других значений возвращается одна группа.
 
-export interface ProjectGroup<T> {
+export type ProjectGroup<T> = {
   key: string
   label: string
   color: string | null

@@ -14,14 +14,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
-export interface WazzupSettings {
+export type WazzupSettings = {
   workspace_id: string
   api_key: string
   webhook_secret: string
   updated_at: string | null
 }
 
-export interface WazzupChannel {
+export type WazzupChannel = {
   id: string
   workspace_id: string
   user_id: string | null

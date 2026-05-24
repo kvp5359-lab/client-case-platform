@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { formKitKeys } from '@/hooks/queryKeys'
 
-interface UseFormKitSaveParams {
+type UseFormKitSaveParams = {
   formKitId: string
 }
 

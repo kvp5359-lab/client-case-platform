@@ -2,7 +2,7 @@ import { FileText, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import type { AttachedDocument } from '@/hooks/messenger/useMessengerAi'
 
-interface Props {
+type Props = {
   attachedDocuments: AttachedDocument[]
   removeAttachedDocument: (id: string) => void
   disabled?: boolean

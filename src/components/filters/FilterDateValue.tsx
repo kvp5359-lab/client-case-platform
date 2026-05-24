@@ -57,7 +57,7 @@ function getDisplayValue(v: unknown): string {
   return ''
 }
 
-interface FilterDateValueProps {
+type FilterDateValueProps = {
   operator: string
   value: unknown
   onChange: (value: unknown) => void

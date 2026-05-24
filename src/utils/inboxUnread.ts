@@ -5,7 +5,7 @@
  * для определения того, что показывать в бейдже. Не дублировать if/else в компонентах.
  */
 
-export interface ThreadUnreadFields {
+export type ThreadUnreadFields = {
   unread_count: number
   /** Есть ли хотя бы одна непрочитанная реакция. Для совместимости с превью. */
   has_unread_reaction: boolean

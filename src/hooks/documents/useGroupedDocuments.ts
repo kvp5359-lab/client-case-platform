@@ -8,14 +8,14 @@
 import { useMemo } from 'react'
 import { isStatusUnselected, type DocumentWithFiles } from '@/components/documents/types'
 
-interface UseGroupedDocumentsProps {
+type UseGroupedDocumentsProps = {
   documents: DocumentWithFiles[] | undefined
   showOnlyUnverified: boolean
   /** ID документов, привязанных к слотам — они не попадают в обычный список */
   slotDocumentIds?: Set<string>
 }
 
-interface UseGroupedDocumentsReturn {
+type UseGroupedDocumentsReturn = {
   documentsByFolder: Map<string, DocumentWithFiles[]>
   ungroupedDocuments: DocumentWithFiles[]
   trashedDocuments: DocumentWithFiles[]

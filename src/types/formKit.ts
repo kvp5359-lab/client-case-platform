@@ -18,7 +18,7 @@ export type FieldDefinition = Database['public']['Tables']['field_definitions'][
 /**
  * Колонка таблицы для key-value-table полей
  */
-export interface TableColumn {
+export type TableColumn = {
   name: string
   type: 'text' | 'number' | 'date' | 'email' | 'phone'
   width?: number
@@ -27,7 +27,7 @@ export interface TableColumn {
 /**
  * Опции поля (field_definitions.options, form_kit_fields.options)
  */
-export interface FieldOptions {
+export type FieldOptions = {
   // Для key-value-table
   columns?: TableColumn[]
   headerColor?: string
@@ -54,7 +54,7 @@ export type TemplateFieldOptions = FieldOptions
 /**
  * Валидация поля (field_definitions.validation, form_kit_fields.validation)
  */
-export interface FieldValidation {
+export type FieldValidation = {
   min?: number
   max?: number
   step?: number
@@ -63,7 +63,7 @@ export interface FieldValidation {
   pattern?: string
 }
 
-export interface CompositeFieldItem {
+export type CompositeFieldItem = {
   id: string
   name: string
   field_type: string

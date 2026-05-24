@@ -4,7 +4,7 @@
  * их без циклической зависимости через knowledgeSearchService.
  */
 
-export interface SearchSource {
+export type SearchSource = {
   article_id: string | null
   qa_id?: string | null
   article_title: string
@@ -14,7 +14,7 @@ export interface SearchSource {
   source_type?: 'article' | 'qa'
 }
 
-export interface ArticleSource {
+export type ArticleSource = {
   article_id: string | null
   qa_id?: string | null
   article_title: string
@@ -23,7 +23,7 @@ export interface ArticleSource {
   source_type?: 'article' | 'qa'
 }
 
-export interface SearchSourcesResult {
+export type SearchSourcesResult = {
   sources: ArticleSource[]
   total_chunks: number
 }
@@ -35,7 +35,7 @@ export type ConversationType = 'knowledge' | 'project' | 'thread'
  * - mode 'all'      — искать во всех тредах проекта
  * - mode 'selected' — искать только в перечисленных threadIds (пустой массив = «никаких чатов»)
  */
-export interface ChatScope {
+export type ChatScope = {
   mode: 'all' | 'selected'
   threadIds: string[]
 }
@@ -45,12 +45,12 @@ export interface ChatScope {
  * mode 'all' → все записи модуля (отключение тогла = `mode: 'selected', itemIds: []`).
  * mode 'selected' → только перечисленные id.
  */
-export interface ProjectContextScope {
+export type ProjectContextScope = {
   mode: 'all' | 'selected'
   itemIds: string[]
 }
 
-export interface ConversationSources {
+export type ConversationSources = {
   /** Где искать переписку (треды проекта). */
   chats: ChatScope
   formData: boolean
@@ -135,7 +135,7 @@ export function migrateLegacySources(
   }
 }
 
-export interface KnowledgeConversation {
+export type KnowledgeConversation = {
   id: string
   workspace_id: string
   project_id: string | null
@@ -147,7 +147,7 @@ export interface KnowledgeConversation {
   updated_at: string
 }
 
-export interface KnowledgeMessage {
+export type KnowledgeMessage = {
   id: string
   conversation_id: string
   role: 'user' | 'assistant'

@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
-interface DeleteMessageDialogProps {
+type DeleteMessageDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   telegramMessageId?: number | null

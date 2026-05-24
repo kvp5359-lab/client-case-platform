@@ -16,7 +16,7 @@ import { projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { QuickReply } from '@/hooks/quick-replies/useQuickReplies'
 import type { Editor } from '@tiptap/react'
 
-interface QuickReplyPickerProps {
+type QuickReplyPickerProps = {
   editor: Editor
   projectId: string
   workspaceId: string

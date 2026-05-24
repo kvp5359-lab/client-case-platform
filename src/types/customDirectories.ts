@@ -28,7 +28,7 @@ export type CustomDirectoryFieldUpdate =
 export type CustomDirectoryFieldType = Database['public']['Enums']['custom_directory_field_type']
 
 // --- Field options ---
-export interface DirectoryFieldOptions {
+export type DirectoryFieldOptions = {
   /** Варианты для select / multi_select */
   choices?: string[]
   /** ID справочника для directory_ref */
@@ -38,9 +38,9 @@ export interface DirectoryFieldOptions {
 }
 
 // --- Запись с загруженными значениями ---
-export interface DirectoryEntryWithValues extends CustomDirectoryEntry {
+export type DirectoryEntryWithValues = {
   values: Record<string, CustomDirectoryValue>
-}
+} & CustomDirectoryEntry
 
 // --- Маппинг типов полей к человекочитаемым названиям ---
 export const FIELD_TYPE_LABELS: Record<CustomDirectoryFieldType, string> = {

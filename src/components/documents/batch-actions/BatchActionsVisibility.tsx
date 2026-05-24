@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Eye, EyeOff } from 'lucide-react'
 
-interface BatchActionsVisibilityProps {
+type BatchActionsVisibilityProps = {
   isSourceTab: boolean
   selectedSourceDocsAllHidden: boolean
   selectedCount: number

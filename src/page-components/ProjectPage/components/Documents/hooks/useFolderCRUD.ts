@@ -12,7 +12,7 @@ import { useDialog } from '@/hooks/shared/useDialog'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 
-interface UseFolderCRUDParams {
+type UseFolderCRUDParams = {
   projectId: string
   workspaceId: string
   documentKits: DocumentKitWithDocuments[]

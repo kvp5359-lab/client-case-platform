@@ -21,7 +21,7 @@ import { supabase } from '@/lib/supabase'
 import { messengerKeys, participantKeys, projectThreadKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 
-interface Participant {
+type Participant = {
   id: string
   name: string
   last_name: string | null
@@ -79,7 +79,7 @@ function useThreadMembers(threadId: string | undefined) {
   })
 }
 
-interface ChatAccessDialogProps {
+type ChatAccessDialogProps = {
   chat: ProjectThread | null
   open: boolean
   onOpenChange: (open: boolean) => void

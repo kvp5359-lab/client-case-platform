@@ -22,7 +22,7 @@ import { createContext, useContext } from 'react'
 import type { TaskItem, ProjectHeaderInfo } from './types'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
 
-interface TaskPanelContextValue {
+type TaskPanelContextValue = {
   openThread: (task: TaskItem) => void
   pushThread: (task: TaskItem) => void
   closeThread: () => void

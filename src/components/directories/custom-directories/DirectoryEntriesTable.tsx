@@ -22,7 +22,7 @@ import { EntryFormDialog } from './EntryFormDialog'
 import type { DirectoryEntryWithValues, CustomDirectoryField } from '@/types/customDirectories'
 import { EmptyState } from '@/components/ui/empty-state'
 
-interface DirectoryEntriesTableProps {
+type DirectoryEntriesTableProps = {
   directoryId: string
 }
 

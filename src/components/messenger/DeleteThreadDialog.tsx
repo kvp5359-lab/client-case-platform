@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
-interface DeleteThreadDialogProps {
+type DeleteThreadDialogProps = {
   thread: { name: string; type?: 'chat' | 'task' } | null
   onConfirm: () => void
   onClose: () => void

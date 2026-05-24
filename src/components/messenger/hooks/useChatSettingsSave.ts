@@ -17,7 +17,7 @@ import type { useChatSettingsFormState } from './useChatSettingsFormState'
 
 type FormReturn = ReturnType<typeof useChatSettingsFormState>
 
-interface UseChatSettingsSaveParams {
+type UseChatSettingsSaveParams = {
   form: FormReturn
   composeRef: RefObject<ComposeFieldHandle | null>
   appliedTemplateId: string | null

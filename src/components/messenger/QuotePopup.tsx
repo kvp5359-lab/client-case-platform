@@ -1,6 +1,6 @@
 import { Quote } from 'lucide-react'
 
-interface QuotePopupProps {
+type QuotePopupProps = {
   x: number
   y: number
   text: string

@@ -41,7 +41,7 @@ import {
 } from '@/page-components/ItemListsPage/columns'
 import type { FilterGroup, SortDir, SortField } from '@/lib/filters/types'
 
-interface Props {
+type Props = {
   open: boolean
   onClose: () => void
   list: ItemList

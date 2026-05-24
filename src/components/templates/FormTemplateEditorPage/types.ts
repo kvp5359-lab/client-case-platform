@@ -12,22 +12,22 @@ export type { FieldDefinition }
 export type FormTemplateField = Database['public']['Tables']['form_template_fields']['Row']
 
 // Секция с подсчётом полей (name и description теперь прямо в FormTemplateSection)
-export interface FormSectionWithDetails extends FormTemplateSection {
+export type FormSectionWithDetails = {
   fields_count: number
-}
+} & FormTemplateSection
 
 // Поле формы с данными об определении поля
-export interface FormFieldWithDefinition extends Omit<
-  FormTemplateField,
-  'options' | 'description'
-> {
+export type FormFieldWithDefinition = {
   field_definition: FieldDefinition
   options: Record<string, unknown> | null
   description?: string | null // Может приходить из join
-}
+} & Omit<
+  FormTemplateField,
+  'options' | 'description'
+>
 
 // Props для DraggableFieldRow
-export interface DraggableFieldRowProps {
+export type DraggableFieldRowProps = {
   field: FormFieldWithDefinition
   index?: number
   isDragging: boolean

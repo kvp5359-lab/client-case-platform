@@ -10,14 +10,14 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { ParticipantAvatar } from '@/components/participants/ParticipantAvatar'
 import { FilterToolbar, CheckItem, FilterButton } from '@/components/tasks/filters/FilterPrimitives'
 
-export interface ProjectAssigneeOption {
+export type ProjectAssigneeOption = {
   id: string
   name: string | null
   last_name?: string | null
   avatar_url?: string | null
 }
 
-interface ProjectAssigneeFilterProps {
+type ProjectAssigneeFilterProps = {
   participants: ProjectAssigneeOption[]
   selectedIds: Set<string>
   onToggle: (id: string) => void

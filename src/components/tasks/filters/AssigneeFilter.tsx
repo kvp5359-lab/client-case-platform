@@ -11,7 +11,7 @@ import type { AvatarParticipant } from '@/components/participants/ParticipantAva
 import { ParticipantAvatar } from '@/components/participants/ParticipantAvatar'
 import { FilterToolbar, CheckItem, FilterButton } from './FilterPrimitives'
 
-interface AssigneeFilterProps {
+type AssigneeFilterProps = {
   allAssignees: AvatarParticipant[]
   selectedIds: Set<string>
   onToggle: (id: string) => void

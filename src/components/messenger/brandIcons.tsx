@@ -7,7 +7,7 @@
  * Источник путей — официальные simple-icons (CC0 license).
  */
 
-interface IconProps {
+type IconProps = {
   className?: string
 }
 

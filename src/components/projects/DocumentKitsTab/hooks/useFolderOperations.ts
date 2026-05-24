@@ -19,7 +19,7 @@ import {
 } from '@/utils/files/fileValidation'
 
 // Тип для upload функции
-interface UploadDocumentParams {
+type UploadDocumentParams = {
   file: File
   documentKitId: string
   projectId: string

@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-interface CollapsedKitHeaderProps {
+type CollapsedKitHeaderProps = {
   kitName: string
   onToggle: () => void
   onGenerateSummary: () => void

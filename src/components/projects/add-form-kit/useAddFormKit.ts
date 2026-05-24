@@ -13,14 +13,14 @@ import { useBriefTemplateSheet } from './useBriefTemplateSheet'
 export type Mode = 'template' | 'google-sheet'
 export type GoogleSheetSubMode = 'existing' | 'from-template'
 
-export interface TemplateWithFields {
+export type TemplateWithFields = {
   id: string
   name: string
   description: string | null
   fieldCount: number
 }
 
-interface UseAddFormKitParams {
+type UseAddFormKitParams = {
   open: boolean
   projectId: string
   workspaceId: string

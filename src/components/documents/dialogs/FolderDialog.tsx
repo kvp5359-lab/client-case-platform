@@ -19,7 +19,7 @@ import { getArticlesByWorkspace } from '@/services/api/knowledge/knowledgeBaseSe
 import { supabase } from '@/lib/supabase'
 import { ArticleTreePicker } from '@/components/templates/ArticleTreePicker'
 
-interface FolderDialogProps extends DialogBaseProps {
+type FolderDialogProps = {
   isEditing: boolean
   name: string
   description: string
@@ -34,7 +34,7 @@ interface FolderDialogProps extends DialogBaseProps {
   onKnowledgeArticleChange?: (articleId: string | null) => void
   onSave: () => void
   isSaving: boolean
-}
+} & DialogBaseProps
 
 export function FolderDialog({
   open,

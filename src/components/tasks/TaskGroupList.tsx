@@ -30,7 +30,7 @@ import { DraggableTaskRow } from './DraggableTaskRow'
 
 // ── Drop indicator state ──
 
-interface DropIndicatorState {
+type DropIndicatorState = {
   taskId: string
   position: 'top' | 'bottom'
 }
@@ -70,7 +70,7 @@ function getDeadlineDateForGroup(group: DeadlineGroup): Date | null {
 
 // ── Основной компонент ──
 
-interface TaskGroupListProps {
+type TaskGroupListProps = {
   grouped: Map<DeadlineGroup | string, TaskItem[]>
   completedTasks: TaskItem[]
   workspaceId: string

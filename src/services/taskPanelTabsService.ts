@@ -18,14 +18,14 @@ const SCOPE_COLUMN: Record<TaskPanelScopeKind, 'project_id' | 'contact_participa
   knowledge: 'workspace_id',
 }
 
-export interface TaskPanelPersistedRow {
+export type TaskPanelPersistedRow = {
   tabs: TaskPanelTab[]
   active_tab_id: string | null
   /** true если строки для пары user/scope в БД ещё нет. */
   isNew?: boolean
 }
 
-interface FetchParams {
+type FetchParams = {
   scopeKind: TaskPanelScopeKind
   scopeId: string
   userId: string
@@ -81,7 +81,7 @@ export async function fetchTaskPanelTabs(
   }
 }
 
-interface UpsertParams {
+type UpsertParams = {
   scopeKind: TaskPanelScopeKind
   scopeId: string
   userId: string

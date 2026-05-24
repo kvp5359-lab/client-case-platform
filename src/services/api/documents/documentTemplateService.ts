@@ -8,7 +8,7 @@ import { logger } from '@/utils/logger'
 // Типы
 // =====================================================
 
-export interface DocumentTemplatePlaceholder {
+export type DocumentTemplatePlaceholder = {
   name: string
   field_definition_id: string | null
   label?: string
@@ -17,11 +17,11 @@ export interface DocumentTemplatePlaceholder {
 /** Ответ Edge Function extract-placeholders: каждый плейсхолдер — строка или объект с name */
 type ExtractPlaceholdersItem = string | { name: string }
 
-interface ExtractPlaceholdersResult {
+type ExtractPlaceholdersResult = {
   placeholders: ExtractPlaceholdersItem[]
 }
 
-export interface DocumentTemplate {
+export type DocumentTemplate = {
   id: string
   name: string
   description: string | null

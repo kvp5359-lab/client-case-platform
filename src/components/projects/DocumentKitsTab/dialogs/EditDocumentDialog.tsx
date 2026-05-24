@@ -19,14 +19,14 @@ import {
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 
-interface Status {
+type Status = {
   id: string
   name: string
   color?: string | null
   is_final?: boolean
 }
 
-interface EditDocumentDialogProps {
+type EditDocumentDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   // Данные формы

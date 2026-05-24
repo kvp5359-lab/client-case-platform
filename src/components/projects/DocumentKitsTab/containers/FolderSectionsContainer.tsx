@@ -9,7 +9,7 @@ import { FolderSection } from '@/components/documents'
 import type { DocumentWithFiles } from '@/components/documents'
 import { useDocumentKitContext } from '../context'
 
-interface FolderSectionsContainerProps {
+type FolderSectionsContainerProps = {
   documentsByFolder: Map<string, DocumentWithFiles[]>
 }
 

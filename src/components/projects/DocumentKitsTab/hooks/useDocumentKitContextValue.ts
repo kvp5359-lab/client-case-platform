@@ -25,7 +25,7 @@ import type {
 
 // ============== Типы параметров ==============
 
-interface DocumentKitDataParams {
+type DocumentKitDataParams = {
   kit: DocumentKit | null | undefined
   folders: Folder[]
   statuses: DocumentStatus[]
@@ -37,7 +37,7 @@ interface DocumentKitDataParams {
   folderSlots: FolderSlotWithDocument[]
 }
 
-interface DocumentKitUIStateParams {
+type DocumentKitUIStateParams = {
   selectedDocuments: Set<string>
   hasSelection: boolean
   hoveredDocumentId: string | null
@@ -65,7 +65,7 @@ interface DocumentKitUIStateParams {
   editingSlotId: string | null
 }
 
-interface UseDocumentKitContextValueParams {
+type UseDocumentKitContextValueParams = {
   projectId: string
   workspaceId: string
   data: DocumentKitDataParams

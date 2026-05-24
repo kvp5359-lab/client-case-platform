@@ -41,7 +41,7 @@ import { ThreadTemplateDialog } from '../ThreadTemplateDialog'
 import { SortableTemplateRow } from './SortableTemplateRow'
 import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTemplate'
 
-interface Props {
+type Props = {
   workspaceId: string
   projectTemplateId: string
   /**

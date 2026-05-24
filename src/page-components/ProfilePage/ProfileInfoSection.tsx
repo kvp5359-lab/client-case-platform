@@ -11,7 +11,7 @@ import type { User } from '@supabase/supabase-js'
 import { getEmailInitials } from '@/utils/avatarHelpers'
 import { formatNumericDate } from '@/utils/format/dateFormat'
 
-export interface ProfileInfoSectionProps {
+export type ProfileInfoSectionProps = {
   user: User
 }
 

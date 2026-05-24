@@ -6,7 +6,7 @@
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
-interface ParticipantAvatarProps {
+type ParticipantAvatarProps = {
   name: string
   avatarUrl?: string | null
   size?: 'sm' | 'md'

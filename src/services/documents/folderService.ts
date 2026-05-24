@@ -9,7 +9,7 @@ import { DocumentError } from '../errors'
 import { Folder } from './types'
 import { safeFetchOrThrow, safeDeleteOrThrow, safeUpdateOrThrow } from '../supabase/queryHelpers'
 
-export interface CreateFolderParams {
+export type CreateFolderParams = {
   name: string
   description?: string
   knowledgeArticleId?: string | null
@@ -18,7 +18,7 @@ export interface CreateFolderParams {
   workspaceId: string
 }
 
-export interface UpdateFolderParams {
+export type UpdateFolderParams = {
   folderId: string
   name?: string
   description?: string

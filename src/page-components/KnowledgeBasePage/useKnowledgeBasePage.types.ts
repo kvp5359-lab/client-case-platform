@@ -3,7 +3,7 @@
  * и useKnowledgeTags могли импортировать их без циклической зависимости.
  */
 
-export interface KnowledgeGroup {
+export type KnowledgeGroup = {
   id: string
   name: string
   color: string | null
@@ -13,7 +13,7 @@ export interface KnowledgeGroup {
   created_at: string
 }
 
-export interface KnowledgeTag {
+export type KnowledgeTag = {
   id: string
   workspace_id: string
   name: string
@@ -22,24 +22,24 @@ export interface KnowledgeTag {
   created_at: string
 }
 
-export interface ArticleGroupJoin {
+export type ArticleGroupJoin = {
   group_id: string
   sort_order: number
   knowledge_groups: { id: string; name: string; color: string | null } | null
 }
 
-export interface ArticleTagJoin {
+export type ArticleTagJoin = {
   tag_id: string
   knowledge_tags: { id: string; name: string; color: string } | null
 }
 
-export interface KnowledgeArticleStatus {
+export type KnowledgeArticleStatus = {
   id: string
   name: string
   color: string
 }
 
-export interface KnowledgeArticle {
+export type KnowledgeArticle = {
   id: string
   workspace_id: string
   title: string

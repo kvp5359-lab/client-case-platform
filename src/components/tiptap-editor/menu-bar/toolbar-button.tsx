@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { Toggle } from '@/components/ui/toggle'
 import type { LucideIcon } from 'lucide-react'
 
-interface ToolbarButtonProps {
+type ToolbarButtonProps = {
   icon: LucideIcon
   isActive?: boolean
   disabled?: boolean

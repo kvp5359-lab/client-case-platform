@@ -2,7 +2,7 @@ import { Code } from '@tiptap/extension-code'
 import { mergeAttributes } from '@tiptap/core'
 
 declare module '@tiptap/core' {
-  interface Commands<ReturnType> {
+  type Commands<ReturnType> = {
     coloredCode: {
       toggleColoredCode: (attrs?: { backgroundColor?: string; color?: string }) => ReturnType
       setCodeColor: (attrs: { backgroundColor?: string; color?: string }) => ReturnType

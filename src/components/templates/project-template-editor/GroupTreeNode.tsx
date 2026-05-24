@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ChevronRight, Folder, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export interface GroupNode {
+export type GroupNode = {
   id: string
   name: string
   parentId: string | null
@@ -15,7 +15,7 @@ export interface GroupNode {
   children: GroupNode[]
 }
 
-interface GroupTreeNodeProps {
+type GroupTreeNodeProps = {
   node: GroupNode
   depth: number
   isLast: boolean

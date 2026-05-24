@@ -58,7 +58,7 @@ function TabLoading() {
   )
 }
 
-interface GoogleDriveState {
+type GoogleDriveState = {
   googleDriveFolderName: string | null
   isLoadingFolderName: boolean
   dialogOpen: boolean
@@ -68,7 +68,7 @@ interface GoogleDriveState {
   setFolderLink: (link: string) => void
 }
 
-interface ProjectTabsContentProps {
+type ProjectTabsContentProps = {
   project: Project
   projectId: string
   workspaceId: string

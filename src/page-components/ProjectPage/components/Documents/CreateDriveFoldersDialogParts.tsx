@@ -10,7 +10,7 @@ import { FolderOpen, Loader2, Check, ExternalLink, Copy, RotateCcw } from 'lucid
 
 // --- SelectedFolderBadge ---
 
-interface SelectedFolderBadgeProps {
+type SelectedFolderBadgeProps = {
   folder: { id: string; name: string }
   onReset: () => void
 }
@@ -59,12 +59,12 @@ export function SelectedFolderBadge({ folder, onReset }: SelectedFolderBadgeProp
 
 // --- ExistingFoldersList ---
 
-interface DriveFolder {
+type DriveFolder = {
   id: string
   name: string
 }
 
-interface ExistingFoldersListProps {
+type ExistingFoldersListProps = {
   isLoading: boolean
   folders: DriveFolder[]
   selectedFolderId: string | null

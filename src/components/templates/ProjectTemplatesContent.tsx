@@ -39,7 +39,7 @@ import { useTemplateList } from './useTemplateList'
 
 type ProjectTemplate = Database['public']['Tables']['project_templates']['Row']
 
-interface FormData {
+type FormData = {
   name: string
   description: string
   enabled_modules: string[]

@@ -7,14 +7,14 @@ import { FolderOpen, Search, X, Check } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
-interface WorkspaceProject {
+type WorkspaceProject = {
   id: string
   name: string
   description: string | null
   project_templates: { name: string } | null
 }
 
-interface ChatSettingsProjectSelectorProps {
+type ChatSettingsProjectSelectorProps = {
   workspaceProjects: WorkspaceProject[]
   selectedProjectId: string | null
   isEditMode: boolean

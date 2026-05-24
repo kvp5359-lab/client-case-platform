@@ -41,7 +41,7 @@ type KitDownload = ReturnType<typeof useKitDownload>
 type FolderCRUD = ReturnType<typeof useFolderCRUD>
 type CompressAnalysis = ReturnType<typeof useCompressAnalysis>
 
-interface UseDocumentsDialogsPropsParams {
+type UseDocumentsDialogsPropsParams = {
   workspaceId: string
   documentKits: DocumentKitWithDocuments[]
   statuses: DocumentStatus[]

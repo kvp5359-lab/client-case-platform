@@ -35,7 +35,7 @@ import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import type { AuditLogEntry } from '@/types/history'
 
-interface HistoryTabContentProps {
+type HistoryTabContentProps = {
   projectId: string
   workspaceId: string
 }

@@ -70,7 +70,7 @@ import type { AvatarParticipant } from '@/components/participants/ParticipantAva
 
 // ── Props ──
 
-interface TaskListViewProps {
+type TaskListViewProps = {
   workspaceId: string
   /** Если передан — фильтрует задачи по проекту, скрывает фильтр «Проект», показывает showProject=false */
   projectId?: string

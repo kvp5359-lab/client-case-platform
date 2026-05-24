@@ -7,7 +7,7 @@
 import { StateCreator } from 'zustand'
 import type { Document, Folder, FolderTemplate, SourceDocument, FolderFormData } from './types'
 
-export interface DialogsState {
+export type DialogsState = {
   // Move dialog
   moveDialogOpen: boolean
   documentToMove: string | null
@@ -41,7 +41,7 @@ export interface DialogsState {
   kitSettingsDialogOpen: boolean
 }
 
-export interface DialogsActions {
+export type DialogsActions = {
   // Move dialog
   openMoveDialog: (documentId: string) => void
   closeMoveDialog: () => void

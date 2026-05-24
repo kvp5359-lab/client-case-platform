@@ -12,7 +12,7 @@ import { useState } from 'react'
 import { CheckCircle2, Info, AlertTriangle, Plug, XCircle, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export interface IntegrationOverviewProps {
+export type IntegrationOverviewProps = {
   /** Что это за интеграция — одно-два предложения по делу. */
   summary: string
   /** Шаги подключения — короткие маркеры. */

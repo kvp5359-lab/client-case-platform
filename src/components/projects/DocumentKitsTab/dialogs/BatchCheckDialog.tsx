@@ -24,7 +24,7 @@ import { BatchCheckTable } from './BatchCheckTable'
 // Re-export for backwards compatibility
 export type { BatchCheckResult } from './useBatchCheck'
 
-interface BatchCheckDialogProps {
+type BatchCheckDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   documentIds: string[]

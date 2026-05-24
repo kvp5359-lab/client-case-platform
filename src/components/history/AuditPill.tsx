@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
 import type { AuditLogEntry } from '@/types/history'
 
-interface AuditPillProps {
+type AuditPillProps = {
   entry: AuditLogEntry
   isUnread?: boolean
   /** id статуса → {name, color}. Если статус удалён — не попадёт в карту. */

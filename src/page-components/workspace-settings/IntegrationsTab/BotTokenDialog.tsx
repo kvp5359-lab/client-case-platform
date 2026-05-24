@@ -17,13 +17,13 @@ import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
 import type { BotIntegration, DialogState } from './types'
 
-interface BotTokenDialogProps {
+type BotTokenDialogProps = {
   state: DialogState | null
   onClose: () => void
   onSaved: () => void
 }
 
-interface TelegramGetMe {
+type TelegramGetMe = {
   id: number
   is_bot: boolean
   first_name: string

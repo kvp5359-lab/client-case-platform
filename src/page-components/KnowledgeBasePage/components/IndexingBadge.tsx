@@ -6,7 +6,7 @@
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, AlertCircle, RefreshCw, DatabaseZap } from 'lucide-react'
 
-interface IndexingBadgeProps {
+type IndexingBadgeProps = {
   status: string | null | undefined
   isIndexing: boolean
   onReindex: () => void

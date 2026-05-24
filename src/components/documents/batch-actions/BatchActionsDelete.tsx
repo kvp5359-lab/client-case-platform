@@ -3,7 +3,7 @@
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { Trash2 } from 'lucide-react'
 
-interface BatchActionsDeleteProps {
+type BatchActionsDeleteProps = {
   canDelete: boolean
   selectedCount: number
   isProcessing: boolean

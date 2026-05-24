@@ -8,7 +8,7 @@ import { memo } from 'react'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import type { DocumentStatus } from '@/components/documents/types'
 
-interface DocumentStatusIconProps {
+type DocumentStatusIconProps = {
   status: DocumentStatus | null
 }
 

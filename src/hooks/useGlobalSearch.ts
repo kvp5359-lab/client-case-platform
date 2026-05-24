@@ -28,7 +28,7 @@ export type GlobalSearchEntityType =
 
 export type RecentEntityType = Exclude<GlobalSearchEntityType, 'message'>
 
-export interface GlobalSearchRow {
+export type GlobalSearchRow = {
   entity_type: GlobalSearchEntityType
   entity_id: string
   title: string | null
@@ -48,7 +48,7 @@ export interface GlobalSearchRow {
   project_status_id: string | null
 }
 
-export interface RecentlyViewedRow {
+export type RecentlyViewedRow = {
   entity_type: RecentEntityType
   entity_id: string
   title: string | null
@@ -163,7 +163,7 @@ export function useAutoTrackRecentView(
 }
 
 /** template_id → {icon, icon_color_mode, icon_color}. */
-export interface ProjectTemplateMeta {
+export type ProjectTemplateMeta = {
   icon: string | null
   icon_color_mode: 'status' | 'fixed'
   icon_color: string

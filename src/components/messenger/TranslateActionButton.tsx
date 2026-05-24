@@ -21,7 +21,7 @@ import { useTranslatePreview } from '@/hooks/messenger/useTranslateMessage'
 import { useThreadTargetLanguage } from '@/hooks/messenger/useThreadTargetLanguage'
 import { cn } from '@/lib/utils'
 
-interface Props {
+type Props = {
   workspaceId: string
   threadId?: string
   getCurrentContent: () => string

@@ -27,7 +27,7 @@ import type { Database } from '@/types/database'
 
 export type ProjectDigest = Database['public']['Tables']['project_digests']['Row']
 
-export interface ProjectWithActivity {
+export type ProjectWithActivity = {
   project_id: string
   project_name: string
   events_count: number
@@ -151,7 +151,7 @@ export function useProjectsWithActivity(
 
 // ── Мутации ──
 
-export interface GenerateDigestParams {
+export type GenerateDigestParams = {
   workspaceId: string
   projectId: string
   periodStart?: string
@@ -162,7 +162,7 @@ export interface GenerateDigestParams {
   overridePrompt?: string
 }
 
-export interface GenerateDigestResult {
+export type GenerateDigestResult = {
   digest: ProjectDigest | null
   reused?: boolean
   test_run?: boolean

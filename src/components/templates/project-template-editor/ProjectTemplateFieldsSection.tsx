@@ -42,12 +42,12 @@ import { FieldDefinitionDialog } from '@/components/templates/FieldDefinitionDia
 import { FIELD_TYPE_LABELS } from '@/components/templates/field-definition/constants'
 import type { FieldDefinition } from '@/types/formKit'
 
-interface Props {
+type Props = {
   workspaceId: string
   projectTemplateId: string
 }
 
-interface LinkedField {
+type LinkedField = {
   link_id: string
   order_index: number
   is_required: boolean

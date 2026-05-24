@@ -33,7 +33,7 @@ import type { FloatingBatchActionsProps } from '@/components/documents/FloatingB
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
 import { useGlobalBatchMerge } from './useGlobalBatchMerge'
 
-interface UseGlobalBatchActionsParams {
+type UseGlobalBatchActionsParams = {
   projectId: string
   workspaceId: string
   sourceDocuments?: { id: string; isHidden?: boolean; sourceDocumentId: string }[]

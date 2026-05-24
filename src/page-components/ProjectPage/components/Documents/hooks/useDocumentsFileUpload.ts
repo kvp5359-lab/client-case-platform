@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import { validateUploadFile } from '@/utils/files/fileValidation'
 
-interface UseDocumentsFileUploadParams {
+type UseDocumentsFileUploadParams = {
   documentKits: { id: string; folders?: { id: string }[] }[]
   projectId: string
   workspaceId: string

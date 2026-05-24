@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 import type { ColorItem } from './constants'
 
-interface ColorPickerProps {
+type ColorPickerProps = {
   colors: ColorItem[]
   currentColor: string | null
   open: boolean

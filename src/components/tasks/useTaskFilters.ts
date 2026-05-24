@@ -20,7 +20,7 @@ export type TaskPreset = 'my_active' | 'active' | 'all' | 'control'
 // Sentinel-id для виртуальной опции «Без проекта» в фильтре по проектам.
 export const NO_PROJECT_ID = '__no_project__'
 
-interface UseTaskFiltersParams {
+type UseTaskFiltersParams = {
   allTasks: TaskItem[]
   membersMap: Record<string, AvatarParticipant[]>
   taskStatuses: TaskStatus[]

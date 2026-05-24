@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import type { LucideIcon } from 'lucide-react'
 
-interface RoleEditDialogBaseProps {
+type RoleEditDialogBaseProps = {
   open: boolean
   onClose: () => void
   onSave: () => void

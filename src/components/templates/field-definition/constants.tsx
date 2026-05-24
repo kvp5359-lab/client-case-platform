@@ -63,13 +63,13 @@ export const COLUMN_TYPES = [
 ]
 
 // Типы
-export interface TableColumn {
+export type TableColumn = {
   name: string
   type: string
   width?: number
 }
 
-export interface ValidationConfig {
+export type ValidationConfig = {
   min?: number
   max?: number
   step?: number

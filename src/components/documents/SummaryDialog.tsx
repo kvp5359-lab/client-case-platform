@@ -8,7 +8,7 @@ import { Copy, Check as CheckIcon } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
-interface SummaryDialogProps {
+type SummaryDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   text: string

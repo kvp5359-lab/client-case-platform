@@ -22,7 +22,7 @@ import { useUpdateBoard, useDeleteBoard } from './hooks/useBoardMutations'
 import { useBoardLists } from './hooks/useBoardQuery'
 import { DEFAULT_COLUMN_WIDTH, MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH, type Board } from './types'
 
-interface EditBoardDialogProps {
+type EditBoardDialogProps = {
   open: boolean
   onClose: () => void
   board: Board

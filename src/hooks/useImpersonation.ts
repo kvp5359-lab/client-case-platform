@@ -25,7 +25,7 @@ import {
   readOriginalSessionBackup,
 } from '@/lib/impersonation'
 
-export interface ImpersonationState {
+export type ImpersonationState = {
   isActive: boolean
   ownerId: string | null
   sessionId: string | null

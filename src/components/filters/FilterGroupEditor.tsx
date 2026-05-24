@@ -46,7 +46,7 @@ import type { FilterGroup, FilterRule, FilterCondition } from '@/lib/filters/typ
 
 // ── FilterGroupEditor (внутренний, без DndContext) ────────
 
-interface InnerGroupEditorProps {
+type InnerGroupEditorProps = {
   group: FilterGroup
   onChange: (group: FilterGroup) => void
   entityType: 'thread' | 'project'
@@ -226,7 +226,7 @@ function InnerGroupEditor({
 
 // ── FilterGroupEditor (публичный, с DndContext) ──────────
 
-interface FilterGroupEditorProps {
+type FilterGroupEditorProps = {
   group: FilterGroup
   onChange: (group: FilterGroup) => void
   entityType: 'thread' | 'project'

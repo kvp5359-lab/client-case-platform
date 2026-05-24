@@ -14,7 +14,7 @@ import { logger } from '@/utils/logger'
 import { exportToDestination } from '@/services/api/googleDriveService'
 import { googleDriveKeys } from '@/hooks/queryKeys'
 
-interface UseProjectDestinationFolderProps {
+type UseProjectDestinationFolderProps = {
   projectId: string
   exportFolderId: string | null | undefined
   workspaceId: string

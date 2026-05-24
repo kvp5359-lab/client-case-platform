@@ -10,7 +10,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 
 // === ТИПЫ ===
 
-interface ExportDocumentPayload {
+type ExportDocumentPayload = {
   document_id: string
   file_path: string
   file_name: string
@@ -18,7 +18,7 @@ interface ExportDocumentPayload {
   folder_name?: string
 }
 
-interface ExportDocumentsParams {
+type ExportDocumentsParams = {
   folderId: string
   syncMode: 'replace_all' | 'add_only' | 'replace_existing'
   sessionId: string
@@ -26,7 +26,7 @@ interface ExportDocumentsParams {
   documents: ExportDocumentPayload[]
 }
 
-interface ExportDocumentsResult {
+type ExportDocumentsResult = {
   results: Array<{
     success: boolean
     document_id: string
@@ -35,20 +35,20 @@ interface ExportDocumentsResult {
   success_count: number
 }
 
-interface ExportToDestinationParams {
+type ExportToDestinationParams = {
   projectId: string
   workspaceId: string
   exportFolderId: string
 }
 
-interface ExportToDestinationResult {
+type ExportToDestinationResult = {
   deleted: number
   folders: number
   files: number
   created: number
 }
 
-interface GoogleDriveFile {
+type GoogleDriveFile = {
   id: string
   name: string
   mimeType: string
@@ -60,14 +60,14 @@ interface GoogleDriveFile {
   parentFolderName?: string
 }
 
-interface CheckDocumentResult {
+type CheckDocumentResult = {
   check_result: string
   checked_at: string
   suggested_names?: string[]
   text_content?: string
 }
 
-interface ExportProgressPayload {
+type ExportProgressPayload = {
   document_id: string
   status: 'pending' | 'uploading' | 'success' | 'error'
   error_message?: string

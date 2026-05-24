@@ -11,7 +11,7 @@
 import { Component, type ReactNode } from 'react'
 import { logger } from '@/utils/logger'
 
-interface ErrorBoundaryProps {
+type ErrorBoundaryProps = {
   children: ReactNode
   /** Текст заголовка при ошибке */
   title?: string
@@ -19,7 +19,7 @@ interface ErrorBoundaryProps {
   fullPageReload?: boolean
 }
 
-interface ErrorBoundaryState {
+type ErrorBoundaryState = {
   hasError: boolean
   error: Error | null
 }

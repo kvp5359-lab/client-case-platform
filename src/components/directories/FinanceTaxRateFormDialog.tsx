@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import type { FinanceTaxRate, FinanceTaxRateFormData } from '@/hooks/finance/useFinanceTaxRates'
 
-interface Props {
+type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   editing: FinanceTaxRate | null

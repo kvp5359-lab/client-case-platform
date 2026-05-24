@@ -45,7 +45,7 @@ import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
 import { hexToHeaderStyle } from './types'
 
-interface BoardViewProps {
+type BoardViewProps = {
   boardId: string
   lists: BoardList[]
   tasks: WorkspaceTask[]

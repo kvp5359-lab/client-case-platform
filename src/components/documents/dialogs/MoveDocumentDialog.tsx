@@ -16,18 +16,18 @@ import {
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
-interface Folder {
+type Folder = {
   id: string
   name: string
 }
 
-export interface FolderGroup {
+export type FolderGroup = {
   kitId: string
   kitName: string
   folders: Folder[]
 }
 
-interface MoveDocumentDialogProps {
+type MoveDocumentDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   folders: Folder[]

@@ -3,7 +3,7 @@ import { Check, ChevronDown, FileIcon, FileText, Image as ImageIcon, Lock } from
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { ProjectContextScope } from '@/services/api/messenger/messengerAiService'
 
-export interface ProjectContextOption {
+export type ProjectContextOption = {
   id: string
   name: string
   itemType: 'text' | 'file' | 'screenshot'
@@ -11,7 +11,7 @@ export interface ProjectContextOption {
   hasText: boolean
 }
 
-interface Props {
+type Props = {
   scope: ProjectContextScope
   items: ProjectContextOption[]
   /** Сколько единиц контекста ушло бы в AI при текущем scope (для подписи на чипе). */

@@ -2,7 +2,7 @@
 
 import { useRef } from 'react'
 
-interface InlineColorPickerProps {
+type InlineColorPickerProps = {
   value: string
   onChange: (color: string) => void
   title?: string

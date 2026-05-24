@@ -30,7 +30,7 @@ import { useProjectAiDocuments } from './hooks/useProjectAiDocuments'
 import { projectAiKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { logger } from '@/utils/logger'
 
-interface ProjectAiChatProps {
+type ProjectAiChatProps = {
   projectId?: string
   workspaceId: string
   templateId?: string

@@ -5,7 +5,7 @@
 import { Input } from '@/components/ui/input'
 import { FieldGroup } from '@/components/ui/field-group'
 
-interface TextValidationProps {
+type TextValidationProps = {
   minLength: string
   maxLength: string
   onMinLengthChange: (value: string) => void

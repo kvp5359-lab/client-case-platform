@@ -13,13 +13,13 @@ import {
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 
-interface Template {
+type Template = {
   id: string
   name: string
   description?: string | null
 }
 
-interface AddTemplatesDialogProps {
+type AddTemplatesDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   title: string

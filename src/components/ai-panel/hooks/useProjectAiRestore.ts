@@ -13,7 +13,7 @@ import {
   type ConversationSources,
 } from '@/services/api/knowledge/knowledgeSearchService'
 
-interface UseProjectAiRestoreOptions {
+type UseProjectAiRestoreOptions = {
   activeConversationId: string | null
   aiMessages: AiMessage[]
   setAiMessages: (msgs: AiMessage[]) => void

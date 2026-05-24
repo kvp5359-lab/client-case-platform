@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Paperclip, Upload, FolderOpen } from 'lucide-react'
 
-interface AttachmentButtonProps {
+type AttachmentButtonProps = {
   onFilesSelected: (files: File[]) => void
   onOpenDocPicker?: () => void
   projectDocumentsCount?: number

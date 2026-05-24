@@ -56,7 +56,7 @@ export function LoadingBody() {
 
 // ─── Thread tab content (bare) ─────────────────────────────────
 
-interface ThreadTabContentProps {
+type ThreadTabContentProps = {
   threadId: string
   workspaceId: string
   onClose: () => void
@@ -138,7 +138,7 @@ export function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabCo
 
 // ─── Tasks tab content (bare) ───────────────────────────────────
 
-interface TasksTabContentProps {
+type TasksTabContentProps = {
   projectId: string
   workspaceId: string
   onClose: () => void
@@ -196,7 +196,7 @@ export function TasksTabContent({
 
 // ─── System tab body (bare) ─────────────────────────────────────
 
-interface SystemTabBodyProps {
+type SystemTabBodyProps = {
   tab: TaskPanelTab
   projectId: string | null
   workspaceId: string
@@ -229,7 +229,7 @@ export function SystemTabBody({
 
 // ─── System tab content dispatcher ─────────────────────────────
 
-interface SystemTabContentProps {
+type SystemTabContentProps = {
   tab: TaskPanelTab
   projectId: string | null
   workspaceId: string

@@ -6,7 +6,7 @@ import { SegmentedToggle } from '@/components/ui/segmented-toggle'
 import { BriefTemplateStep } from './BriefTemplateStep'
 import type { GoogleSheetSubMode } from './useAddFormKit'
 
-interface GoogleSheetStepProps {
+type GoogleSheetStepProps = {
   subMode: GoogleSheetSubMode
   onSubModeChange: (mode: GoogleSheetSubMode) => void
   // Existing sheet props

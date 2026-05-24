@@ -2,7 +2,7 @@
  * Типы для работы с Google Drive API
  */
 
-export interface GoogleDriveFile {
+export type GoogleDriveFile = {
   id: string
   name: string
   mimeType: string

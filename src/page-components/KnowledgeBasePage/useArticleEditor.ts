@@ -22,12 +22,12 @@ import type {
   EditorKnowledgeTag,
 } from './useArticleEditor.types'
 
-interface ArticleGroupRow {
+type ArticleGroupRow = {
   article_id: string
   group_id: string
 }
 
-interface ArticleTagRow {
+type ArticleTagRow = {
   article_id: string
   tag_id: string
 }

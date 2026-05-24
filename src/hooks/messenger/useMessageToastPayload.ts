@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { stripHtmlIgnoreQuotes } from '@/utils/format/messengerHtml'
 
-export interface RealtimeMessagePayload {
+export type RealtimeMessagePayload = {
   project_id: string
   workspace_id: string
   sender_participant_id: string | null

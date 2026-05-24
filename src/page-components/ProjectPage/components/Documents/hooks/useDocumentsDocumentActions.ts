@@ -12,7 +12,7 @@ import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import type { DocumentKitWithDocuments, DocumentWithFiles } from '@/components/documents/types'
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
 
-interface UseDocumentsDocumentActionsParams {
+type UseDocumentsDocumentActionsParams = {
   documentKits: DocumentKitWithDocuments[]
   kitlessDocuments?: DocumentWithFiles[]
   projectId: string

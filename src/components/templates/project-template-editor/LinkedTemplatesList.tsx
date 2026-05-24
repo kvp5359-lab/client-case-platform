@@ -2,12 +2,12 @@ import { type LucideIcon } from 'lucide-react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-interface LinkedItem {
+type LinkedItem = {
   id: string
   name: string
 }
 
-interface LinkedTemplatesListProps {
+type LinkedTemplatesListProps = {
   title: string
   count: number
   items: LinkedItem[]

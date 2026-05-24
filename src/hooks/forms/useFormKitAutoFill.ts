@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import type { FormStructure, CompositeFieldItem } from '@/components/forms/types'
 
-interface UseFormKitAutoFillProps {
+type UseFormKitAutoFillProps = {
   structure: FormStructure | null | undefined
   formData: Record<string, string>
   compositeItems: CompositeFieldItem[]

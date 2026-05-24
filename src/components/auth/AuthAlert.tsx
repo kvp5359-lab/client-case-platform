@@ -2,7 +2,7 @@
  * Алерт ошибки/успеха для форм авторизации
  */
 
-interface AuthAlertProps {
+type AuthAlertProps = {
   error: string | null
   success: string | null
 }

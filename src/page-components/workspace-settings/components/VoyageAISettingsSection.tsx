@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
-interface VoyageAISettingsSectionProps {
+type VoyageAISettingsSectionProps = {
   workspaceId: string
 }
 

@@ -15,13 +15,13 @@ import {
 } from '@/components/ui/dialog'
 import { Loader2, FolderDown, Download } from 'lucide-react'
 
-interface FolderInfo {
+type FolderInfo = {
   id: string
   name: string
   document_kit_id: string
 }
 
-interface GenerationSaveDialogProps {
+type GenerationSaveDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   fileName?: string

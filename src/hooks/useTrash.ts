@@ -32,7 +32,7 @@ export { trashKeys }
 
 // ── Типы ──
 
-export interface TrashedProject {
+export type TrashedProject = {
   id: string
   name: string
   description: string | null
@@ -42,7 +42,7 @@ export interface TrashedProject {
   created_at: string
 }
 
-export interface TrashedThread {
+export type TrashedThread = {
   id: string
   name: string
   type: 'chat' | 'task'
@@ -54,7 +54,7 @@ export interface TrashedThread {
   created_at: string
 }
 
-export interface TrashedContextItem {
+export type TrashedContextItem = {
   id: string
   name: string
   item_type: 'text' | 'file' | 'screenshot'

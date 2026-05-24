@@ -21,7 +21,7 @@ import { MessageSquare, Search, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Participant } from '@/types/entities'
 
-interface MergeTelegramContactDialogProps {
+type MergeTelegramContactDialogProps = {
   contact: Participant | null
   participants: Participant[]
   open: boolean

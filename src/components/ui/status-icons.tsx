@@ -74,7 +74,7 @@ const SquareFilled = forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>(
 ) as LucideIcon
 SquareFilled.displayName = 'SquareFilled'
 
-export interface StatusIconDef {
+export type StatusIconDef = {
   id: string
   icon: LucideIcon
   label: string

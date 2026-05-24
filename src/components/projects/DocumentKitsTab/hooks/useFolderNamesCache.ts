@@ -7,7 +7,7 @@
 
 import { useEffect, useRef } from 'react'
 
-interface UseFolderNamesCacheParams {
+type UseFolderNamesCacheParams = {
   sourceFolderId: string | null | undefined
   exportFolderId: string | null | undefined
   setSourceConnected: (v: boolean) => void

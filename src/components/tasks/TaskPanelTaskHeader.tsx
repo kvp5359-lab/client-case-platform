@@ -25,7 +25,7 @@ import { AssigneesPopover } from './AssigneesPopover'
 import { TaskActionsMenu } from './TaskActionsMenu'
 import type { ProjectHeaderInfo, TaskItem } from './types'
 
-interface TaskPanelTaskHeaderProps {
+type TaskPanelTaskHeaderProps = {
   task: TaskItem
   workspaceId: string
   statuses: StatusOption[]
