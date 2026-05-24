@@ -52,7 +52,7 @@ export function buildToolbarConfig(p: ToolbarParams) {
     },
     onConnectSource: () => p.openConnectSourceDialog(),
     onDownloadArchive: () => {
-      /* TODO(low): скачивание архива документов набора */
+      // План в feature-backlog/2026-05-24-misc-todos.md.
     },
     onDeleteKit: p.handleDelete,
     onOpenSettings: () => p.openKitSettingsDialog(),

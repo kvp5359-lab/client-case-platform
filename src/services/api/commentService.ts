@@ -143,7 +143,7 @@ export async function getCommentCounts(
 
   // Один запрос, подсчёт на клиенте. head:true не подходит для группировки по entity_id.
   // Минимизируем трафик — select только entity_id.
-  // TODO: Рассмотреть серверный RPC для подсчёта — уменьшит трафик при большом количестве комментариев.
+  // Серверный RPC для подсчёта — план в feature-backlog/2026-05-24-misc-todos.md.
   const { data, error } = await supabase
     .from('comments')
     .select('entity_id', { count: 'exact', head: false })
