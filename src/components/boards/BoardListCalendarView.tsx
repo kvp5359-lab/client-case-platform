@@ -18,7 +18,7 @@ import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useDroppable, useDndMonitor } from '@dnd-kit/core'
 import { createPortal } from 'react-dom'
-import { Calendar, momentLocalizer, Views, Navigate, type View } from 'react-big-calendar'
+import { Calendar, dateFnsLocalizer, Views, Navigate, type View } from 'react-big-calendar'
 import withDragAndDrop, {
   type withDragAndDropProps,
 } from 'react-big-calendar/lib/addons/dragAndDrop'
@@ -26,8 +26,8 @@ import withDragAndDrop, {
 // кастомного вида «Следующие N дней».
 // @ts-expect-error — type definitions for internal path не поставляются
 import TimeGrid from 'react-big-calendar/lib/TimeGrid'
-import moment from 'moment-timezone'
-import 'moment/locale/ru'
+import { format as fmt, parse as dfParse, startOfWeek, getDay, startOfDay, addDays, subDays, setHours } from 'date-fns'
+import { ru } from 'date-fns/locale'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { supabase } from '@/lib/supabase'
@@ -59,8 +59,13 @@ import { DEFAULT_CALENDAR_SETTINGS, type CalendarSettings, type ListHeight } fro
 import { ConvertExternalEventDialog } from './ConvertExternalEventDialog'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 
-moment.locale('ru')
-const localizer = momentLocalizer(moment)
+const localizer = dateFnsLocalizer({
+  format: (date: Date, formatStr: string) => fmt(date, formatStr, { locale: ru }),
+  parse: (value: string, formatStr: string) => dfParse(value, formatStr, new Date(), { locale: ru }),
+  startOfWeek: (date: Date) => startOfWeek(date, { locale: ru }),
+  getDay,
+  locales: { ru },
+})
 
 /**
  * Унифицированный тип события календарной сетки. Может быть либо задачей
@@ -179,30 +184,31 @@ const VIEW_BY_DEFAULT: Record<CalendarSettings['default_view'], View> = {
  */
 function makeNextNDaysView(n: number) {
   const View = (props: Record<string, unknown>) => {
-    const range = Array.from({ length: n }, (_, i) =>
-      moment((props as { date: Date }).date).startOf('day').add(i, 'day').toDate(),
-    )
+    const baseDate = startOfDay((props as { date: Date }).date)
+    const range = Array.from({ length: n }, (_, i) => addDays(baseDate, i))
     return <TimeGrid {...props} range={range} eventOffset={15} />
   }
-  ;(View as unknown as { range: (date: Date) => Date[] }).range = (date: Date) =>
-    Array.from({ length: n }, (_, i) => moment(date).startOf('day').add(i, 'day').toDate())
+  ;(View as unknown as { range: (date: Date) => Date[] }).range = (date: Date) => {
+    const baseDate = startOfDay(date)
+    return Array.from({ length: n }, (_, i) => addDays(baseDate, i))
+  }
   ;(View as unknown as { navigate: (date: Date, action: string) => Date }).navigate = (
     date: Date,
     action: string,
   ) => {
     switch (action) {
       case Navigate.PREVIOUS:
-        return moment(date).subtract(n, 'day').toDate()
+        return subDays(date, n)
       case Navigate.NEXT:
-        return moment(date).add(n, 'day').toDate()
+        return addDays(date, n)
       default:
         return date
     }
   }
   ;(View as unknown as { title: (date: Date) => string }).title = (date: Date) => {
-    const start = moment(date)
-    const end = moment(date).add(n - 1, 'day')
-    return `${start.format('D MMM')} — ${end.format('D MMM')}`
+    const start = date
+    const end = addDays(date, n - 1)
+    return `${fmt(start, 'd MMM', { locale: ru })} — ${fmt(end, 'd MMM', { locale: ru })}`
   }
   return View
 }
@@ -754,8 +760,8 @@ export function BoardListCalendarView({
           defaultView={initialView}
           step={10}
           timeslots={6}
-          min={moment().startOf('day').hour(minHour).toDate()}
-          max={moment().startOf('day').hour(maxHour).toDate()}
+          min={setHours(startOfDay(new Date()), minHour)}
+          max={setHours(startOfDay(new Date()), maxHour)}
           eventPropGetter={eventPropGetter}
           components={components}
           onSelectEvent={handleSelectEvent}
@@ -902,24 +908,22 @@ function computeTimeFromCoords(
   if (colIndex < 0) return null
 
   // Стартовая дата текущего диапазона.
-  const startOfRange = (() => {
-    const m = moment(date)
-    if (view === Views.DAY) return m.startOf('day')
+  const startOfRange: Date = (() => {
+    if (view === Views.DAY) return startOfDay(date)
     if (view === Views.WORK_WEEK) {
       // RBC по умолчанию: пн-пт текущей недели.
-      const day = m.day() // 0..6, вс=0
-      const monday = m.clone().subtract(day === 0 ? 6 : day - 1, 'day').startOf('day')
-      return monday
+      const day = getDay(date) // 0..6, вс=0
+      return startOfDay(subDays(date, day === 0 ? 6 : day - 1))
     }
     if ((view as string) === 'next_n') {
       // Кастомный вид: range = [date, date+N-1].
-      return m.startOf('day')
+      return startOfDay(date)
     }
-    // Week: воскресенье текущей недели (Sunday-start у moment).
-    return m.clone().startOf('week')
+    // Week: воскресенье текущей недели (Sunday-start).
+    return startOfWeek(date, { weekStartsOn: 0 })
   })()
 
-  const dayDate = startOfRange.clone().add(colIndex, 'day').toDate()
+  const dayDate = addDays(startOfRange, colIndex)
 
   // Y → минуты: доля Y в колонке * её длительность.
   const rect = daySlot.getBoundingClientRect()

@@ -14,12 +14,24 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { calendarKeys } from '@/hooks/queryKeys'
-import { Calendar, momentLocalizer, Views, type View } from 'react-big-calendar'
+import { Calendar, dateFnsLocalizer, Views, type View } from 'react-big-calendar'
 import withDragAndDrop, {
   type withDragAndDropProps,
 } from 'react-big-calendar/lib/addons/dragAndDrop'
-import moment from 'moment-timezone'
-import 'moment/locale/ru'
+import {
+  format as fmt,
+  parse as dfParse,
+  startOfWeek,
+  endOfWeek,
+  getDay,
+  startOfDay,
+  endOfDay,
+  addDays,
+  subDays,
+  setHours,
+  subHours,
+} from 'date-fns'
+import { ru } from 'date-fns/locale'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
@@ -45,8 +57,13 @@ import { COLOR_BG } from '@/components/messenger/threadConstants'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { cn } from '@/lib/utils'
 
-moment.locale('ru')
-const localizer = momentLocalizer(moment)
+const localizer = dateFnsLocalizer({
+  format: (date: Date, formatStr: string) => fmt(date, formatStr, { locale: ru }),
+  parse: (value: string, formatStr: string) => dfParse(value, formatStr, new Date(), { locale: ru }),
+  startOfWeek: (date: Date) => startOfWeek(date, { locale: ru }),
+  getDay,
+  locales: { ru },
+})
 
 const DnDCalendar = withDragAndDrop<CalendarEvent>(Calendar)
 
@@ -77,22 +94,21 @@ export default function CalendarPage() {
   // Для week/work_week берём 7 дней вокруг date с запасом, для day — 1 день,
   // для agenda — 30 дней. Запас в ±1 день нужен из-за разных часовых поясов.
   const { from, to } = useMemo(() => {
-    const m = moment(date)
     if (view === Views.DAY) {
       return {
-        from: m.clone().startOf('day').subtract(1, 'day').toDate(),
-        to: m.clone().endOf('day').add(1, 'day').toDate(),
+        from: subDays(startOfDay(date), 1),
+        to: addDays(endOfDay(date), 1),
       }
     }
     if (view === Views.AGENDA) {
       return {
-        from: m.clone().startOf('day').toDate(),
-        to: m.clone().add(30, 'days').endOf('day').toDate(),
+        from: startOfDay(date),
+        to: endOfDay(addDays(date, 30)),
       }
     }
     return {
-      from: m.clone().startOf('week').subtract(1, 'day').toDate(),
-      to: m.clone().endOf('week').add(1, 'day').toDate(),
+      from: subDays(startOfWeek(date, { locale: ru }), 1),
+      to: addDays(endOfWeek(date, { locale: ru }), 1),
     }
   }, [view, date])
 
@@ -220,7 +236,7 @@ export default function CalendarPage() {
     setCreateName('')
   }, [workspaceId, createSlot, createName, queryClient])
 
-  const scrollToTime = useMemo(() => moment().subtract(1, 'hour').toDate(), [])
+  const scrollToTime = useMemo(() => subHours(new Date(), 1), [])
 
   if (!workspaceId) return null
 
@@ -242,8 +258,8 @@ export default function CalendarPage() {
             defaultView={Views.WEEK}
             step={30}
             timeslots={1}
-            min={moment().startOf('day').hour(7).toDate()}
-            max={moment().startOf('day').hour(22).toDate()}
+            min={setHours(startOfDay(new Date()), 7)}
+            max={setHours(startOfDay(new Date()), 22)}
             eventPropGetter={eventPropGetter}
             onSelectEvent={handleSelectEvent}
             onEventDrop={handleEventDrop}
@@ -294,8 +310,8 @@ export default function CalendarPage() {
             />
             {createSlot && (
               <p className="text-xs text-muted-foreground">
-                {moment(createSlot.start).format('dd, D MMM, HH:mm')} —{' '}
-                {moment(createSlot.end).format('HH:mm')}
+                {fmt(createSlot.start, 'EE, d MMM, HH:mm', { locale: ru })} —{' '}
+                {fmt(createSlot.end, 'HH:mm', { locale: ru })}
               </p>
             )}
           </div>
