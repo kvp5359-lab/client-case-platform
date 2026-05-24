@@ -11,7 +11,11 @@ import { DraggableBoardTaskRow } from './DraggableBoardTaskRow'
 import { DraggableBoardProjectRow } from './DraggableBoardProjectRow'
 import { BoardInboxList } from './BoardInboxList'
 import { BoardListHeader } from './BoardListHeader'
-import { BoardListCalendarView } from './BoardListCalendarView'
+// Lazy: react-big-calendar (~5 МБ) и date-fns локали грузим, только когда
+// у списка реально включён режим календаря. В первый бандл досок не попадает.
+const BoardListCalendarView = lazy(() =>
+  import('./BoardListCalendarView').then((m) => ({ default: m.BoardListCalendarView })),
+)
 import { ListSettingsDialog } from './ListSettingsDialog'
 import { useCreateTaskHandler } from '@/components/tasks/useCreateTaskMutation'
 import { useQueueThreadInitialMessage } from '@/components/tasks/useQueueThreadInitialMessage'
@@ -483,18 +487,20 @@ export function BoardListCard({
                 </div>
               )
             ) : isCalendar ? (
-              <BoardListCalendarView
-                listId={list.id}
-                workspaceId={workspaceId}
-                tasks={filteredTasks}
-                onOpenTask={(task) => onOpenTask(task.id)}
-                settings={list.calendar_settings}
-                listHeight={listHeight}
-                onCreateAtSlot={(start, end) => {
-                  setCalendarSlot({ start: start.toISOString(), end: end.toISOString() })
-                  createDialog.open()
-                }}
-              />
+              <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Загружаю календарь…</div>}>
+                <BoardListCalendarView
+                  listId={list.id}
+                  workspaceId={workspaceId}
+                  tasks={filteredTasks}
+                  onOpenTask={(task) => onOpenTask(task.id)}
+                  settings={list.calendar_settings}
+                  listHeight={listHeight}
+                  onCreateAtSlot={(start, end) => {
+                    setCalendarSlot({ start: start.toISOString(), end: end.toISOString() })
+                    createDialog.open()
+                  }}
+                />
+              </Suspense>
             ) : filteredTasks.length > 0 ? (
               hasGrouping ? (
                 <div className={cn(isCards ? 'grid gap-1' : 'flex flex-col gap-2')}>
