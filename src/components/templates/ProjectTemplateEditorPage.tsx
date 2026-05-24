@@ -36,7 +36,7 @@ import { IconPicker } from '@/components/ui/icon-picker'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { Label } from '@/components/ui/label'
 import { SegmentedToggle } from '@/components/ui/segmented-toggle'
-import { PROJECT_ICONS } from '@/components/ui/project-icons'
+import { PROJECT_ICONS } from '@/components/common/project-icons'
 
 export function ProjectTemplateEditorPage() {
   const { workspaceId, templateId } = useParams<{ workspaceId: string; templateId: string }>()

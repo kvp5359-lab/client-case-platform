@@ -126,7 +126,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-import type { StatusIconDef } from '@/components/ui/status-icons'
+import type { StatusIconDef } from '@/components/common/status-icons'
 
 /**
  * Набор иконок для типов проектов. ID — стабильные kebab-case строки,

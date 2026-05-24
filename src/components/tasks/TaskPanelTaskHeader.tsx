@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useUpdateThread } from '@/hooks/messenger/useProjectThreads'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { Button } from '@/components/ui/button'
-import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
+import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { cn } from '@/lib/utils'
 import { DeadlinePopover } from './DeadlinePopover'

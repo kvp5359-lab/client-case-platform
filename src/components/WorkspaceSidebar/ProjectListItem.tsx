@@ -8,7 +8,7 @@ import type { ModuleDefinition } from '@/page-components/ProjectPage/moduleRegis
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import { formatBadgeCount } from '@/utils/inboxUnread'
 import { getBadgeClasses } from './projectListConstants'
-import { getProjectIcon } from '@/components/ui/project-icons'
+import { getProjectIcon } from '@/components/common/project-icons'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import type { Project } from './useSidebarData'
 

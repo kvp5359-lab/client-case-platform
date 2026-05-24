@@ -7,7 +7,7 @@
 import { useMemo, createElement, forwardRef } from 'react'
 import { CheckSquare, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
+import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { DraggableAttributes } from '@dnd-kit/core'
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities'

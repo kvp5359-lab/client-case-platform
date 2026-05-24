@@ -16,7 +16,7 @@ const ChatSettingsDialog = lazy(() =>
     default: m.ChatSettingsDialog,
   })),
 )
-import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
+import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'

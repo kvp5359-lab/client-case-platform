@@ -39,7 +39,7 @@ import { supabase } from '@/lib/supabase'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
-import { getProjectIcon } from '@/components/ui/project-icons'
+import { getProjectIcon } from '@/components/common/project-icons'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { cn } from '@/lib/utils'
 

@@ -39,7 +39,7 @@ import {
 import type { FilterContext } from '@/lib/filters/types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
-import type { StatusOption } from '@/components/ui/status-dropdown'
+import type { StatusOption } from '@/components/common/status-dropdown'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'

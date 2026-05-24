@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns'
 import { Checkbox } from '@/components/ui/checkbox'
-import type { StatusOption } from '@/components/ui/status-dropdown'
+import type { StatusOption } from '@/components/common/status-dropdown'
 import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProjects'
 import type { TableShellColumn } from './TableShell'
 import type { ItemListColumnKey } from './columns'

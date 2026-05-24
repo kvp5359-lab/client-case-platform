@@ -28,7 +28,7 @@ import { messengerKeys } from '@/hooks/queryKeys'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { TaskPanelProjectView } from './TaskPanelProjectView'
 import { TaskPanelTaskHeader } from './TaskPanelTaskHeader'
-import type { StatusOption } from '@/components/ui/status-dropdown'
+import type { StatusOption } from '@/components/common/status-dropdown'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { TaskItem, ProjectHeaderInfo, PanelStackItem } from './types'
 

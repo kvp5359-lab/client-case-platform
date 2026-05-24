@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
-import { getStatusIcon } from '@/components/ui/status-icons'
+import { getStatusIcon } from '@/components/common/status-icons'
 import type { TaskStatus } from '@/hooks/useStatuses'
 
 type TaskStatusPickerProps = {

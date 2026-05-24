@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { StatusDropdown } from '@/components/ui/status-dropdown'
+import { StatusDropdown } from '@/components/common/status-dropdown'
 import { GripVertical, Pencil, Trash2 } from 'lucide-react'
 import { TemplateAccessButton } from '@/components/knowledge/TemplateAccessPopover'
 import { useDraggable, useDroppable } from '@dnd-kit/core'

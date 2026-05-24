@@ -7,7 +7,7 @@ import { createElement } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { getStatusIcon } from '@/components/ui/status-icons'
+import { getStatusIcon } from '@/components/common/status-icons'
 import type { Database } from '@/types/database'
 
 type StatusRow = Database['public']['Tables']['statuses']['Row']

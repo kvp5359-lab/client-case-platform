@@ -18,7 +18,7 @@ import {
   NativeTableCell,
   NativeTableHeadCell,
 } from '@/components/ui/native-table'
-import { StatusDropdown } from '@/components/ui/status-dropdown'
+import { StatusDropdown } from '@/components/common/status-dropdown'
 import { Plus, Search, FolderPlus, Tags, BookOpen, Trash2, Filter } from 'lucide-react'
 import { formatSmartDate } from '@/utils/format/dateFormat'
 import { NotionFilterRow } from './components/NotionFilterRow'

@@ -7,7 +7,7 @@ import { memo, createElement } from 'react'
 import { CircleDashed } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
-import { getStatusIcon } from '@/components/ui/status-icons'
+import { getStatusIcon } from '@/components/common/status-icons'
 import {
   DropdownMenu,
   DropdownMenuContent,

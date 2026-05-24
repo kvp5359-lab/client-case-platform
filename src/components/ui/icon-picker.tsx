@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { Circle } from 'lucide-react'
-import { STATUS_ICONS, type StatusIconDef } from '@/components/ui/status-icons'
+import { STATUS_ICONS, type StatusIconDef } from '@/components/common/status-icons'
 
 type IconPickerProps = {
   value: string | null | undefined

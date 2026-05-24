@@ -3,7 +3,7 @@
  * Uses the shared StatusDropdown component for consistent styling.
  */
 
-import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
+import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 
 type TaskStatus = {
   id: string

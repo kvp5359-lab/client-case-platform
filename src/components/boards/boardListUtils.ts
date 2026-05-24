@@ -1,6 +1,6 @@
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
-import type { StatusOption } from '@/components/ui/status-dropdown'
+import type { StatusOption } from '@/components/common/status-dropdown'
 import type { GroupByField } from './types'
 
 // ── Форматирование дедлайна (re-export из общего модуля) ────

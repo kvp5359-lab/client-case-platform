@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { StatusDropdown } from '@/components/ui/status-dropdown'
+import { StatusDropdown } from '@/components/common/status-dropdown'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { Tag, Plus, Sparkles, ChevronDown, Loader2 } from 'lucide-react'

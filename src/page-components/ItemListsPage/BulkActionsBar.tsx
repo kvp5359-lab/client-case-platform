@@ -22,7 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { StatusOption } from '@/components/ui/status-dropdown'
+import type { StatusOption } from '@/components/common/status-dropdown'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProjects'
 import { useQueryClient } from '@tanstack/react-query'

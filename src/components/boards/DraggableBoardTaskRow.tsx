@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { BoardTaskRow } from './BoardTaskRow'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
-import type { StatusOption } from '@/components/ui/status-dropdown'
+import type { StatusOption } from '@/components/common/status-dropdown'
 import type { CardLayout, DisplayMode, VisibleField } from './types'
 
 type DraggableBoardTaskRowProps = {

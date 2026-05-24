@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
-import { StatusDropdown, type StatusOption } from '@/components/ui/status-dropdown'
+import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 import { ParticipantAvatars, type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { UnreadBadge } from '@/components/tasks/UnreadBadge'
 import { TaskActionsMenu } from '@/components/tasks/TaskActionsMenu'
