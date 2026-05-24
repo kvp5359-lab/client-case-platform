@@ -18,8 +18,7 @@ import {
 } from '@dnd-kit/core'
 import { BoardColumn } from './BoardColumn'
 import { ColumnGap, DroppableColumn } from './BoardViewDropTargets'
-import { BoardProjectRow } from './BoardProjectRow'
-import { BoardTaskRow } from './BoardTaskRow'
+import { BoardDragOverlayContent } from './board-view/BoardDragOverlayContent'
 import type { BoardCardDndState } from './BoardListCard'
 import { usePanDrag } from './hooks/usePanDrag'
 import { useReorderLists } from './hooks/useListMutations'
@@ -43,7 +42,6 @@ import type { StatusOption } from '@/components/common/status-dropdown'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
-import { hexToHeaderStyle } from './types'
 
 type BoardViewProps = {
   boardId: string
@@ -731,44 +729,15 @@ export function BoardView({
         <div className="shrink-0 w-[45vw]" aria-hidden />
       </div>
       <DragOverlay dropAnimation={activeList ? null : cardDropAnimation}>
-        {isOverCalendar ? null : activeList ? (
-          <div className="px-3 py-1 rounded-full text-sm font-medium shadow-lg" style={{
-            backgroundColor: hexToHeaderStyle(activeList.header_color).bg,
-            color: hexToHeaderStyle(activeList.header_color).text,
-          }}>
-            {activeList.name}
-          </div>
-        ) : activeCard?.kind === 'project' ? (() => {
-          const sourceList = lists.find((l) => l.id === activeCard.sourceListId)
-          return (
-            <div className="shadow-xl rounded-md opacity-90 bg-white">
-              <BoardProjectRow
-                project={activeCard.project}
-                workspaceId={workspaceId}
-                displayMode={sourceList?.display_mode ?? 'list'}
-                visibleFields={sourceList?.visible_fields ?? ['status', 'template']}
-                cardLayout={sourceList?.card_layout ?? null}
-              />
-            </div>
-          )
-        })() : activeCard?.kind === 'task' ? (() => {
-          const sourceList = lists.find((l) => l.id === activeCard.sourceListId)
-          return (
-            <div className="shadow-xl rounded-md opacity-90 bg-white">
-              <BoardTaskRow
-                task={activeCard.task}
-                workspaceId={workspaceId}
-                assignees={assigneesMap[activeCard.task.id] ?? []}
-                statuses={statuses ?? []}
-                visibleFields={sourceList?.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
-                displayMode={sourceList?.display_mode ?? 'list'}
-                cardLayout={sourceList?.card_layout ?? null}
-                onOpenTask={() => {}}
-                onStatusChange={() => {}}
-              />
-            </div>
-          )
-        })() : null}
+        <BoardDragOverlayContent
+          isOverCalendar={isOverCalendar}
+          activeList={activeList}
+          activeCard={activeCard}
+          lists={lists}
+          workspaceId={workspaceId}
+          assigneesMap={assigneesMap}
+          statuses={statuses ?? []}
+        />
       </DragOverlay>
     </DndContext>
   )
