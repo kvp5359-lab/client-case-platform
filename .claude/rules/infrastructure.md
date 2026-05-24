@@ -163,7 +163,8 @@ ORDER BY id DESC LIMIT 10;
 - **Путь**: `/opt/clientcase/`
 - **Docker-образ**: `ghcr.io/kvp5359-lab/client-case-platform:latest`
 - **Docker-сеть**: `relostart_web` (общая с nginx и другими сервисами).
-- **Blue/green** (с 2026-04-27): два контейнера `clientcase-app-blue` (3005) и `clientcase-app-green` (3006). В каждый момент времени запущен только один. Деплой поднимает противоположный цвет, ждёт ответ 200/302/307, переключает nginx upstream, гасит старый. Если новый не поднялся — старый живой, деплой падает. Никаких 502 во время деплоя.
+- **Blue/green** (с 2026-04-27): два контейнера `clientcase-app-blue` (3005) и `clientcase-app-green` (3006) + `clientcase-mtproto` (3007). В каждый момент времени запущен только один цвет (другой выключен между деплоями). Деплой поднимает противоположный цвет, ждёт ответ 200/302/307, переключает nginx upstream, гасит старый. Если новый не поднялся — старый живой, деплой падает. Никаких 502 во время деплоя.
+- **`docker-compose.yml`** в корне репо — зеркало `/opt/clientcase/docker-compose.yml` на VPS (там описаны оба цвета + mtproto). Для локального запуска используй `npm run dev`, не compose.
 
 ### Nginx (reverse proxy)
 

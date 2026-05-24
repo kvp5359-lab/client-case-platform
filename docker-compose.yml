@@ -1,26 +1,54 @@
+# ClientCase production compose.
+#
+# Зеркало того, что лежит на VPS `/opt/clientcase/docker-compose.yml`.
+# При расхождении источник правды — VPS (его правит CI/CD-скрипт деплоя).
+#
+# В проде работает blue/green:
+#   - clientcase-app-blue (3005:3000)
+#   - clientcase-app-green (3006:3000)
+# В каждый момент времени nginx upstream `clientcase` указывает на ОДИН цвет
+# (см. /opt/relostart/nginx/conf.d/clientcase-upstream.conf). Деплой-скрипт
+# поднимает противоположный цвет, ждёт healthcheck, переключает upstream,
+# гасит старый. Никаких 502 при выкатке.
+#
+# Локальная разработка — НЕ через этот compose. Запускай `npm run dev`
+# (Next dev на http://localhost:8080), он быстрее и работает без Docker.
+
 version: '3.8'
 
 services:
-  app:
+  app-blue:
     image: ghcr.io/kvp5359-lab/client-case-platform:latest
-    container_name: clientcase-app
+    container_name: clientcase-app-blue
     restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-      - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
-      - NEXT_PUBLIC_TECHNICAL_ADMIN_EMAILS=${NEXT_PUBLIC_TECHNICAL_ADMIN_EMAILS}
+    env_file: .env
     ports:
       - "3005:3000"
     networks:
       - web
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+
+  app-green:
+    image: ghcr.io/kvp5359-lab/client-case-platform:latest
+    container_name: clientcase-app-green
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3006:3000"
+    networks:
+      - web
+
+  mtproto:
+    build:
+      context: ./mtproto-service
+      dockerfile: Dockerfile
+    image: clientcase-mtproto:latest
+    container_name: clientcase-mtproto
+    restart: unless-stopped
+    env_file: ./mtproto-service/.env
+    ports:
+      - "3007:3007"
+    networks:
+      - web
 
 networks:
   web:
