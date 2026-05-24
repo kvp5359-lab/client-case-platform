@@ -180,6 +180,3 @@ export const bubbleStyles: Record<
     staffShadow: 'shadow-[inset_2px_0_0_#57534e]',
   },
 }
-
-/** Staff roles for yellow bubbles */
-export const STAFF_ROLES = ['Администратор', 'Исполнитель']

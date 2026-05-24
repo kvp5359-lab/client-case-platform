@@ -26,18 +26,13 @@ import { useMessengerContext } from './MessengerContext'
 import { useTranslateMessage } from '@/hooks/messenger/useTranslateMessage'
 import { useMyPreferredLanguage } from '@/hooks/useMyPreferredLanguage'
 import { useThreadTranslations } from '@/hooks/messenger/useThreadTranslations'
+import { isStaffRole } from '@/types/permissions'
 
 export type { MessengerAccent } from './utils/messageStyles'
 
-/**
- * Считаем отправителя «командой», если его роль — из числа внутренних.
- * Клиентские каналы (Telegram/Email/«Клиент») не маркируем кольцом.
- */
-const TEAM_ROLES = new Set(['Администратор', 'Владелец', 'Сотрудник', 'Исполнитель'])
-function isTeamSender(role: string | null): boolean {
-  if (!role) return false
-  return TEAM_ROLES.has(role)
-}
+// «Командные» отправители маркируются кольцом аватара. Источник правды —
+// STAFF_ROLES из permissions.ts (Владелец/Администратор/Сотрудник/Исполнитель).
+const isTeamSender = isStaffRole
 
 type MessageBubbleProps = {
   message: ProjectMessage
