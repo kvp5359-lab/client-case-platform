@@ -13,24 +13,15 @@
  *  - В правом углу — кнопка скрытия панели (✕).
  */
 
-import { Fragment, useCallback, useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import {
   Plus,
   X,
   Check,
-  Bot,
-  Settings2,
-  History,
-  FileText,
-  ListChecks,
-  FormInput,
   BookOpen,
-  Lock,
   Mail,
   MessageSquare,
   CheckCircle2,
-  Pin,
-  PinOff,
 } from 'lucide-react'
 import {
   DndContext,
@@ -46,46 +37,20 @@ import {
   SortableContext,
   arrayMove,
   horizontalListSortingStrategy,
-  useSortable,
 } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu'
 import { getChatIconComponent, getChatTabAccent } from '@/components/messenger/EditChatDialog'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
-
-type SystemTabDef = {
-  type: Exclude<TaskPanelTabType, 'thread' | 'knowledge_article'>
-  title: string
-  icon: React.ComponentType<{ className?: string }>
-}
-
-const SYSTEM_TABS: SystemTabDef[] = [
-  { type: 'tasks',      title: 'Задачи',             icon: ListChecks },
-  { type: 'history',    title: 'История',            icon: History },
-  { type: 'documents',  title: 'Документы',          icon: FileText },
-  { type: 'forms',      title: 'Анкеты',             icon: FormInput },
-  { type: 'materials',  title: 'Полезные материалы', icon: BookOpen },
-  { type: 'project_context', title: 'Контекст проекта', icon: Lock },
-  { type: 'assistant',  title: 'Ассистент',          icon: Bot },
-  { type: 'extra',      title: 'Дополнительно',      icon: Settings2 },
-]
-
-const SYSTEM_TAB_BY_TYPE = new Map<string, SystemTabDef>(SYSTEM_TABS.map((d) => [d.type, d]))
+import { SYSTEM_TABS, SYSTEM_TAB_BY_TYPE, type SystemTabDef } from './tab-bar/systemTabs'
+import { DraggableTab } from './tab-bar/DraggableTab'
+import { SortableSeparator, SEPARATOR_ID } from './tab-bar/SortableSeparator'
 
 type TaskPanelTabBarProps = {
   tabs: TaskPanelTab[]
@@ -106,7 +71,7 @@ type TaskPanelTabBarProps = {
   onReorder?: (activeId: string, overId: string | null, pinned: boolean) => void
 }
 
-const SEPARATOR_ID = '__pin_separator__'
+// SEPARATOR_ID импортирован из ./tab-bar/SortableSeparator
 
 /** Подобрать иконку для вкладки. */
 function getTabIcon(tab: TaskPanelTab): React.ComponentType<{ className?: string }> {
@@ -302,211 +267,6 @@ export function TaskPanelTabBar({
       </div>
       </SortableContext>
     </DndContext>
-  )
-}
-
-type DraggableTabProps = {
-  tab: TaskPanelTab
-  isActive: boolean
-  accent: { active: string; badge: string } | null
-  Icon: React.ComponentType<{ className?: string }>
-  badge: BadgeDisplay | undefined
-  hasBadge: boolean
-  onActivate: (id: string) => void
-  onClose: (id: string) => void
-  onTogglePin?: (id: string) => void
-}
-
-function DraggableTab({
-  tab,
-  isActive,
-  accent,
-  Icon,
-  badge,
-  hasBadge,
-  onActivate,
-  onClose,
-  onTogglePin,
-}: DraggableTabProps) {
-  const { attributes, listeners, setNodeRef, isDragging, transform, transition } = useSortable({
-    id: tab.id,
-  })
-
-  // Y залочен: вкладка скользит только по горизонтали. Соседние вкладки сами
-  // расступаются под курсором благодаря horizontalListSortingStrategy —
-  // отдельный drop-индикатор не нужен.
-  const dragStyle: React.CSSProperties = {
-    transform: transform ? CSS.Translate.toString({ ...transform, y: 0 }) : undefined,
-    transition,
-    zIndex: isDragging ? 50 : undefined,
-  }
-
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <div
-          ref={setNodeRef}
-          {...attributes}
-          {...listeners}
-          style={dragStyle}
-          className={cn(
-            'group relative flex items-center gap-1 rounded-full text-xs cursor-pointer min-w-0',
-            // Закреплённые компактные: только иконка (+ бейдж/крестик), без текста.
-            tab.pinned ? 'px-1.5 h-6 w-7 justify-center shrink-0' : 'pl-2 pr-2 h-6 min-w-[80px]',
-            !tab.pinned && (isActive ? 'shrink-0' : 'shrink'),
-            isActive
-              ? cn(
-                  'border border-gray-300 shadow-md ring-1 ring-black/5',
-                  accent ? accent.active : 'bg-white text-foreground',
-                )
-              : 'text-muted-foreground hover:bg-white/70 hover:text-foreground',
-            isDragging && 'shadow-2xl ring-2 ring-blue-500/60 cursor-grabbing scale-105 z-50',
-          )}
-          onClick={() => onActivate(tab.id)}
-          title={tab.title}
-        >
-          <Icon className="shrink-0 w-3.5 h-3.5" />
-          {!tab.pinned && (
-            <span className="truncate min-w-0 flex-1 max-w-[110px]">{tab.title}</span>
-          )}
-
-          {/* Бейдж и крестик. У pinned — мини-бейдж в углу (без места под крестик). */}
-          {tab.pinned ? (
-            <>
-              {hasBadge && badge && badge.type === 'dot' && (
-                <span
-                  className={cn(
-                    'absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ring-1 ring-white',
-                    accent ? accent.badge : 'bg-blue-600',
-                  )}
-                />
-              )}
-              {hasBadge && badge && badge.type === 'number' && (
-                <span
-                  className={cn(
-                    'absolute -top-0.5 -right-1 min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-full text-[9px] leading-none font-semibold text-white ring-1 ring-white',
-                    accent ? accent.badge : 'bg-blue-600',
-                  )}
-                >
-                  {badge.value > 99 ? '99+' : badge.value}
-                </span>
-              )}
-              {hasBadge && badge && badge.type === 'emoji' && (
-                <span
-                  className={cn(
-                    'absolute -top-0.5 -right-1 w-4 h-4 flex items-center justify-center rounded-full text-[10px] leading-none ring-1 ring-white',
-                    accent ? accent.badge : 'bg-blue-600',
-                  )}
-                >
-                  {badge.value}
-                </span>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Бейдж: занимает место в потоке только когда есть. На hover
-                  скрывается, чтобы крестик визуально перекрыл его в той же позиции. */}
-              {hasBadge && badge && (
-                <div
-                  className={cn(
-                    'relative w-4 h-4 shrink-0 -ml-1',
-                    'group-hover:opacity-0 transition-opacity',
-                  )}
-                >
-                  {badge.type === 'dot' && (
-                    <span
-                      className={cn(
-                        'absolute inset-0 rounded-full',
-                        accent ? accent.badge : 'bg-blue-600',
-                      )}
-                    />
-                  )}
-                  {badge.type === 'number' && (
-                    <span
-                      className={cn(
-                        'absolute inset-0 flex items-center justify-center rounded-full text-[10px] leading-none font-semibold text-white px-1',
-                        accent ? accent.badge : 'bg-blue-600',
-                      )}
-                    >
-                      {badge.value > 99 ? '99+' : badge.value}
-                    </span>
-                  )}
-                  {badge.type === 'emoji' && (
-                    <span
-                      className={cn(
-                        'absolute inset-0 flex items-center justify-center rounded-full text-[10px] leading-none',
-                        accent ? accent.badge : 'bg-blue-600',
-                      )}
-                    >
-                      {badge.value}
-                    </span>
-                  )}
-                </div>
-              )}
-              {/* Крестик: появляется поверх правого края при hover, в потоке не
-                  занимает места — текст вкладки получает чуть больше пространства. */}
-              <button
-                type="button"
-                className={cn(
-                  'absolute right-1 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full',
-                  'opacity-0 group-hover:opacity-100 transition-opacity',
-                  isActive ? 'bg-white shadow-sm' : 'bg-gray-100 hover:bg-gray-200',
-                  'text-muted-foreground hover:text-foreground',
-                )}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onClose(tab.id)
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                aria-label="Закрыть вкладку"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </>
-          )}
-        </div>
-      </ContextMenuTrigger>
-      <ContextMenuContent>
-        {onTogglePin && (
-          <ContextMenuItem onClick={() => onTogglePin(tab.id)}>
-            {tab.pinned ? (
-              <>
-                <PinOff className="w-3.5 h-3.5 mr-2" /> Открепить
-              </>
-            ) : (
-              <>
-                <Pin className="w-3.5 h-3.5 mr-2" /> Закрепить
-              </>
-            )}
-          </ContextMenuItem>
-        )}
-        <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => onClose(tab.id)} className="text-destructive">
-          <X className="w-3.5 h-3.5 mr-2" /> Закрыть
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
-  )
-}
-
-/** Серый разделитель pinned/unpinned. Sortable, но без drag-листенеров —
- *  пользователь его не схватит, зато соседи расступаются вокруг него
- *  как и вокруг остальных вкладок. */
-function SortableSeparator() {
-  const { setNodeRef, transform, transition } = useSortable({ id: SEPARATOR_ID })
-  const style: React.CSSProperties = {
-    transform: transform ? CSS.Translate.toString({ ...transform, y: 0 }) : undefined,
-    transition,
-  }
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="self-stretch w-3 flex items-center justify-center shrink-0"
-      aria-hidden
-    >
-      <div className="self-stretch w-px bg-gray-300" />
-    </div>
   )
 }
 
