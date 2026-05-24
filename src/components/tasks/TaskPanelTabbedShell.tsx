@@ -28,6 +28,7 @@ import {
   buildThreadTab,
   buildKnowledgeArticleTab,
 } from './useTaskPanelTabs'
+import { useStandaloneTabs } from './useStandaloneTabs'
 import { useThreadFromPanelTab } from './useThreadFromPanelTab'
 import { TaskPanelTabbedShellRenderer } from './TaskPanelTabbedShellRenderer'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
@@ -140,6 +141,11 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       !activeProjectId && !activeContactId && knowledgeMode ? workspaceId : null,
   })
 
+  // In-memory вкладки для standalone-режима (personal dialogs).
+  // Активируется только когда standaloneThread != null; не персистится в БД.
+  const standaloneTabs = useStandaloneTabs()
+  const inStandalone = !!standaloneThread
+
   // Очередь pending-вкладок: когда нужно сменить projectId перед openTab,
   // ждём готовности хука с новым projectId. ВАЖНО: храним вместе с
   // targetProjectId — если за время ожидания scope перешёл на другой
@@ -202,16 +208,24 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       }
       setHidden(false)
       // Standalone-режим: нет ни проекта, ни контакта → открываем изолированно
-      // без TabBar и без записи в task_panel_tabs.
+      // с in-memory TabBar (без записи в task_panel_tabs). Тред = первая вкладка,
+      // можно добавить рядом ассистента / KB / историю.
       if (!targetPid && !targetContactId) {
+        const threadTab = buildThreadTab(task.id, task.name, {
+          threadType: task.type,
+          icon: task.icon,
+          accentColor: task.accent_color,
+        })
         setStandaloneThread(task)
         setActiveProjectId(null)
         setActiveContactId(null)
         setPendingOpen(null)
+        standaloneTabs.seed([threadTab], threadTab.id)
         return
       }
       // Иначе — обычный scope. Сбрасываем standalone и knowledge-mode, если был.
       setStandaloneThread(null)
+      standaloneTabs.reset()
       setKnowledgeMode(false)
       const tab = buildThreadTab(task.id, task.name, {
         threadType: task.type,
@@ -229,7 +243,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
         tabsOpenTab(tab)
       }
     },
-    [activeProjectId, activeContactId, tabsOpenTab],
+    [activeProjectId, activeContactId, tabsOpenTab, standaloneTabs],
   )
 
   const openProjectTab = useCallback(
@@ -246,6 +260,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       }
       setHidden(false)
       setStandaloneThread(null)
+      standaloneTabs.reset()
       setKnowledgeMode(false)
       if (targetPid !== activeProjectId) {
         setActiveProjectId(targetPid)
@@ -254,20 +269,21 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
         tabsOpenTab(tab)
       }
     },
-    [activeProjectId, tabsOpenTab],
+    [activeProjectId, tabsOpenTab, standaloneTabs],
   )
+
+  // Активная вкладка: в standalone берём из in-memory state, иначе из DB-backed tabs.
+  const effectiveActiveTab = inStandalone ? standaloneTabs.activeTab : tabs.activeTab
 
   // Активный thread/project из текущей активной вкладки — для подсветки карточек на доске.
   // Когда панель скрыта, подсветку убираем — иначе обводка карточки остаётся после закрытия.
   const activeThreadId = hidden
     ? null
-    : standaloneThread
-      ? standaloneThread.id
-      : tabs.activeTab?.type === 'thread'
-        ? (tabs.activeTab.refId ?? null)
-        : null
+    : effectiveActiveTab?.type === 'thread'
+      ? (effectiveActiveTab.refId ?? null)
+      : null
   const activeProjectRefId =
-    !hidden && tabs.activeTab?.type === 'tasks' ? (tabs.activeTab.refId ?? null) : null
+    !hidden && effectiveActiveTab?.type === 'tasks' ? (effectiveActiveTab.refId ?? null) : null
 
   // Фиксируем открытие треда в «Недавнее». Покрывает ВСЕ способы открытия:
   // клик в списке внутри проекта, на доске, из инбокса, из тоста, из глобального
@@ -289,10 +305,11 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     // тред у получателя. Сама вкладка в табах остаётся — можно открыть
     // снова кликом, если пользователь захочет.
     tabs.clearUrlActive()
-    // Standalone-тред нигде не персистится — при закрытии панели его не к чему
-    // возвращать. Очищаем, иначе скрытая панель «помнит» тред до перезагрузки.
+    // Standalone-тред и его in-memory вкладки нигде не персистятся — при
+    // закрытии панели их не к чему возвращать. Очищаем.
     setStandaloneThread(null)
-  }, [tabs])
+    standaloneTabs.reset()
+  }, [tabs, standaloneTabs])
   const showPanel = useCallback(() => {
     setHidden(false)
     // Восстанавливаем ?panelTab=… при показе панели обратно (после hidePanel
@@ -307,30 +324,40 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       return next
     })
   }, [tabs])
-  const hasTabs = tabs.tabs.length > 0 || !!standaloneThread
+  const hasTabs = tabs.tabs.length > 0 || standaloneTabs.tabs.length > 0
 
   const closeAll = useCallback(() => {
     tabs.closeAll()
     setStandaloneThread(null)
-  }, [tabs])
+    standaloneTabs.reset()
+  }, [tabs, standaloneTabs])
 
   const openSystemTab = useCallback<TaskPanelTabbedShellApi['openSystemTab']>(
     (type, title) => {
       userInteractedRef.current = true
       setHidden(false)
-      setStandaloneThread(null)
+      // В standalone — добавляем системную вкладку в in-memory state, не сбрасывая
+      // standalone-режим (тред остаётся первой вкладкой).
+      if (inStandalone) {
+        standaloneTabs.openTab(buildSystemTab(type, title))
+        return
+      }
       setKnowledgeMode(false)
       tabsOpenTab(buildSystemTab(type, title))
     },
-    [tabsOpenTab],
+    [tabsOpenTab, inStandalone, standaloneTabs],
   )
 
   const openKnowledgeArticleTab = useCallback<TaskPanelTabbedShellApi['openKnowledgeArticleTab']>(
     (articleId, title) => {
       userInteractedRef.current = true
       setHidden(false)
-      setStandaloneThread(null)
       const tab = buildKnowledgeArticleTab(articleId, title)
+      // В standalone — статья KB открывается во in-memory TabBar рядом с тредом.
+      if (inStandalone) {
+        standaloneTabs.openTab(tab)
+        return
+      }
       // Если уже активен project/contact scope (открыта боковая панель проекта/треда) —
       // статья встраивается туда (вариант D). Если scope пустой (например, открыта
       // общая страница KB без проекта) — переключаемся в knowledge-scope воркспейса
@@ -347,7 +374,28 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
         tabsOpenTab(tab)
       }
     },
-    [tabsOpenTab, activeProjectId, activeContactId, knowledgeMode],
+    [tabsOpenTab, activeProjectId, activeContactId, knowledgeMode, inStandalone, standaloneTabs],
+  )
+
+  // Унифицированный closeTab — выбирает источник по текущему режиму.
+  // В standalone: если закрыли тред-вкладку (она же primary) → выходим из
+  // standalone и скрываем панель.
+  const closeTabUnified = useCallback(
+    (id: string) => {
+      if (inStandalone) {
+        const isThreadTab = standaloneThread && id === `thread:${standaloneThread.id}`
+        if (isThreadTab) {
+          setStandaloneThread(null)
+          standaloneTabs.reset()
+          setHidden(true)
+          return
+        }
+        standaloneTabs.closeTab(id)
+        return
+      }
+      tabs.closeTab(id)
+    },
+    [inStandalone, standaloneThread, standaloneTabs, tabs],
   )
 
   const api: TaskPanelTabbedShellApi = useMemo(
@@ -356,8 +404,8 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       openProjectTab,
       openSystemTab,
       openKnowledgeArticleTab,
-      closeTab: tabs.closeTab,
-      openTabs: tabs.tabs,
+      closeTab: closeTabUnified,
+      openTabs: inStandalone ? standaloneTabs.tabs : tabs.tabs,
       closeAll,
       hidePanel,
       showPanel,
@@ -372,7 +420,9 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       openProjectTab,
       openSystemTab,
       openKnowledgeArticleTab,
-      tabs.closeTab,
+      closeTabUnified,
+      inStandalone,
+      standaloneTabs.tabs,
       tabs.tabs,
       closeAll,
       hidePanel,
@@ -389,8 +439,9 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     (def: SystemTabDef) => {
       // «Все задачи» — это всегда tasks-вкладка ТЕКУЩЕГО проекта (с refId).
       // Без refId её нечем рендерить — поэтому требуется активный projectId.
+      // В standalone-режиме нет projectId, так что 'tasks' там недоступна.
       if (def.type === 'tasks') {
-        if (!activeProjectId) return
+        if (!activeProjectId || inStandalone) return
         tabsOpenTab({
           id: `tasks:${activeProjectId}`,
           type: 'tasks',
@@ -399,25 +450,36 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
         })
         return
       }
+      if (inStandalone) {
+        standaloneTabs.openTab(buildSystemTab(def.type, def.title))
+        return
+      }
       tabsOpenTab(buildSystemTab(def.type, def.title))
     },
-    [tabsOpenTab, activeProjectId],
+    [tabsOpenTab, activeProjectId, inStandalone, standaloneTabs],
   )
+
+  // Эффективные tabs/handlers — в зависимости от режима.
+  const effectiveTabs = inStandalone ? standaloneTabs.tabs : tabs.tabs
+  const effectiveActiveTabId = inStandalone ? standaloneTabs.activeTabId : tabs.activeTabId
+  const effectiveActivate = inStandalone ? standaloneTabs.activateTab : tabs.activateTab
+  const effectiveTogglePin = inStandalone ? standaloneTabs.togglePin : tabs.togglePin
+  const effectiveReorder = inStandalone ? standaloneTabs.reorderTab : tabs.reorderTab
 
   const shellElement = (
     <TaskPanelTabbedShellRenderer
-      tabs={tabs.tabs}
-      activeTab={tabs.activeTab}
-      activeTabId={tabs.activeTabId}
-      onActivate={tabs.activateTab}
-      onCloseTab={tabs.closeTab}
+      tabs={effectiveTabs}
+      activeTab={effectiveActiveTab}
+      activeTabId={effectiveActiveTabId}
+      onActivate={effectiveActivate}
+      onCloseTab={closeTabUnified}
       onOpenSystem={onOpenSystemTab}
       onOpenThreadTab={openThreadTab}
       onHidePanel={hidePanel}
-      onTogglePin={tabs.togglePin}
-      onReorderTab={tabs.reorderTab}
+      onTogglePin={effectiveTogglePin}
+      onReorderTab={effectiveReorder}
       onSeedTabs={tabs.seedTabs}
-      isNewProject={tabs.isNewProject}
+      isNewProject={tabs.isNewProject && !inStandalone}
       hidden={hidden}
       workspaceId={workspaceId}
       projectId={activeProjectId}

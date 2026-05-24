@@ -13,10 +13,13 @@ interface AiPanelContentProps {
   workspaceId: string
   projectId?: string
   templateId?: string
+  /** Thread-scope ассистент для personal dialogs (без проекта). */
+  threadId?: string
 }
 
-export function AiPanelContent({ workspaceId, projectId, templateId }: AiPanelContentProps) {
+export function AiPanelContent({ workspaceId, projectId, templateId, threadId }: AiPanelContentProps) {
   const { hasModuleAccess } = useProjectPermissions({ projectId: projectId || '' })
+  const hasThread = !projectId && !!threadId
 
   return (
     <div className="flex flex-col h-full min-w-0">
@@ -25,9 +28,12 @@ export function AiPanelContent({ workspaceId, projectId, templateId }: AiPanelCo
           projectId={projectId}
           workspaceId={workspaceId}
           templateId={templateId}
+          threadId={threadId}
           hasKnowledgeProjectAccess={!!projectId && hasModuleAccess('ai_knowledge_project')}
+          // Без проекта (knowledge + thread scope) — БЗ всегда доступна
           hasKnowledgeAllAccess={!projectId || hasModuleAccess('ai_knowledge_all')}
-          hasProjectContextAccess={!!projectId && hasModuleAccess('project_context')}
+          // В thread-scope контекст проекта недоступен (нет проекта)
+          hasProjectContextAccess={!!projectId && !hasThread && hasModuleAccess('project_context')}
         />
       </div>
     </div>

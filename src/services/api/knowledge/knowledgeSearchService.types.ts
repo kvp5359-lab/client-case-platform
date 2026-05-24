@@ -28,7 +28,7 @@ export interface SearchSourcesResult {
   total_chunks: number
 }
 
-export type ConversationType = 'knowledge' | 'project'
+export type ConversationType = 'knowledge' | 'project' | 'thread'
 
 /**
  * Скоуп поиска по чатам/задачам проекта.

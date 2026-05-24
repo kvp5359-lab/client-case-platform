@@ -25,7 +25,9 @@ import { knowledgeBaseKeys, STALE_TIME } from '@/hooks/queryKeys'
 interface UseProjectAiConversationsOptions {
   workspaceId: string
   projectId?: string
-  conversationType: 'project' | 'knowledge'
+  /** Thread-scope: pool диалогов привязан к треду personal-dialog. */
+  threadId?: string
+  conversationType: 'project' | 'knowledge' | 'thread'
   userId?: string
   sourcesRef: React.MutableRefObject<ConversationSources>
   setActiveConversationId: (id: string | null) => void
@@ -35,6 +37,7 @@ interface UseProjectAiConversationsOptions {
 export function useProjectAiConversations({
   workspaceId,
   projectId,
+  threadId,
   conversationType,
   userId,
   sourcesRef,
@@ -48,14 +51,15 @@ export function useProjectAiConversations({
   const setSourcesRef = useRef<(sources: ConversationSources) => void>(() => {})
   const startNewChatRef = useRef<() => void>(() => {})
 
-  // Список диалогов
+  // Список диалогов (per-thread в standalone, per-project иначе)
   const conversationsKey = [
     ...knowledgeBaseKeys.conversations(workspaceId, projectId),
     conversationType,
+    threadId ?? null,
   ]
   const { data: conversations = [], isLoading: loadingConversations } = useQuery({
     queryKey: conversationsKey,
-    queryFn: () => getConversations(workspaceId, projectId, conversationType),
+    queryFn: () => getConversations(workspaceId, projectId, conversationType, threadId),
     enabled: !!workspaceId,
     staleTime: STALE_TIME.SHORT,
   })
@@ -72,6 +76,7 @@ export function useProjectAiConversations({
         const conv = await createConversation({
           workspace_id: workspaceId,
           ...(projectId ? { project_id: projectId } : {}),
+          ...(threadId ? { thread_id: threadId } : {}),
           user_id: userId,
           title: question.slice(0, 100),
           type: conversationType,
@@ -95,7 +100,7 @@ export function useProjectAiConversations({
       await addMessage({ conversation_id: convId, role: 'assistant', content: answer })
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [workspaceId, projectId, userId],
+    [workspaceId, projectId, threadId, userId],
   )
 
   // Выбор существующего диалога

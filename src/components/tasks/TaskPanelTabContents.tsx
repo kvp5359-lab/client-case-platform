@@ -197,10 +197,18 @@ interface SystemTabBodyProps {
   tab: TaskPanelTab
   projectId: string | null
   workspaceId: string
+  /** В standalone-режиме (personal dialog) — id треда, для thread-scope ассистента. */
+  standaloneThreadId?: string
   onOpenThread: (task: TaskItem) => void
 }
 
-export function SystemTabBody({ tab, projectId, workspaceId, onOpenThread }: SystemTabBodyProps) {
+export function SystemTabBody({
+  tab,
+  projectId,
+  workspaceId,
+  standaloneThreadId,
+  onOpenThread,
+}: SystemTabBodyProps) {
   return (
     <div className="flex flex-col h-full min-w-0">
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
@@ -208,6 +216,7 @@ export function SystemTabBody({ tab, projectId, workspaceId, onOpenThread }: Sys
           tab={tab}
           projectId={projectId}
           workspaceId={workspaceId}
+          standaloneThreadId={standaloneThreadId}
           onOpenThread={onOpenThread}
         />
       </div>
@@ -221,14 +230,27 @@ interface SystemTabContentProps {
   tab: TaskPanelTab
   projectId: string | null
   workspaceId: string
+  /** В standalone-режиме (personal dialog) — id треда, для thread-scope ассистента. */
+  standaloneThreadId?: string
   onOpenThread: (task: TaskItem) => void
 }
 
-function SystemTabContent({ tab, projectId, workspaceId, onOpenThread }: SystemTabContentProps) {
+function SystemTabContent({
+  tab,
+  projectId,
+  workspaceId,
+  standaloneThreadId,
+  onOpenThread,
+}: SystemTabContentProps) {
   const { user } = useAuth()
   const { data: projectThreads = [] } = useProjectThreads(projectId ?? undefined)
 
+  // В standalone (без проекта) поддерживаем только 'assistant' — thread-scope чат.
+  // Остальные системные разделы требуют проекта.
   if (!projectId) {
+    if (tab.type === 'assistant' && standaloneThreadId) {
+      return <AiPanelContent workspaceId={workspaceId} threadId={standaloneThreadId} />
+    }
     return (
       <div className="p-4 text-sm text-muted-foreground">
         Откройте проект, чтобы пользоваться этим разделом.

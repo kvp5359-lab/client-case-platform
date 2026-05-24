@@ -56,6 +56,10 @@ interface AiChatInputProps {
   hasProjectContextAccess?: boolean
   /** Есть ли контекст проекта */
   hasProject?: boolean
+  /** Thread-scope режим: ассистент по одному треду personal-dialog. */
+  hasThread?: boolean
+  /** Сколько сообщений в этом треде (для подписи на статичном чипе). */
+  threadMessagesCount?: number
 }
 
 export function AiChatInput({
@@ -81,6 +85,8 @@ export function AiChatInput({
   hasKnowledgeAllAccess,
   hasProjectContextAccess,
   hasProject = true,
+  hasThread = false,
+  threadMessagesCount = 0,
   projectContextEffectiveCount = 0,
   projectContextOptions = [],
 }: AiChatInputProps) {
@@ -135,6 +141,16 @@ export function AiChatInput({
             setChatScope={setChatScope}
           />
         )}
+        {hasThread && (
+          // Thread-scope: статичный чип переписки треда. Скоуп фиксирован
+          // (selected, threadIds=[currentThread]) — picker не нужен.
+          <span className="inline-flex items-center gap-1 h-7 px-2 rounded-full bg-purple-50 border border-purple-200 text-xs text-purple-700">
+            ✦ Переписка треда
+            {threadMessagesCount > 0 && (
+              <span className="text-purple-500/70">· {threadMessagesCount}</span>
+            )}
+          </span>
+        )}
         <SourceToggles
           sources={sources}
           toggleSource={toggleSource}
@@ -175,7 +191,11 @@ export function AiChatInput({
               editorRef={editorRef}
               onSend={handleSend}
               placeholder={
-                hasProject ? 'Задайте вопрос по проекту...' : 'Задайте вопрос по базе знаний...'
+                hasProject
+                  ? 'Задайте вопрос по проекту...'
+                  : hasThread
+                    ? 'Задайте вопрос по этой переписке...'
+                    : 'Задайте вопрос по базе знаний...'
               }
               disabled={isStreaming}
             />

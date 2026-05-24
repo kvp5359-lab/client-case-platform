@@ -21,6 +21,7 @@ export async function getConversations(
   workspaceId: string,
   projectId?: string,
   type: ConversationType = 'knowledge',
+  threadId?: string,
 ): Promise<KnowledgeConversation[]> {
   let query = supabase
     .from('knowledge_conversations')
@@ -29,10 +30,12 @@ export async function getConversations(
     .eq('type', type)
     .order('updated_at', { ascending: false })
 
-  if (projectId) {
+  if (threadId) {
+    query = query.eq('thread_id', threadId)
+  } else if (projectId) {
     query = query.eq('project_id', projectId)
   } else {
-    query = query.is('project_id', null)
+    query = query.is('project_id', null).is('thread_id', null)
   }
 
   const rows = await safeFetchOrThrow(query, 'Не удалось загрузить диалоги', KnowledgeBaseError)
@@ -42,6 +45,7 @@ export async function getConversations(
 export async function createConversation(params: {
   workspace_id: string
   project_id?: string
+  thread_id?: string
   user_id: string
   title?: string
   type?: ConversationType

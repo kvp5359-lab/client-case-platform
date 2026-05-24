@@ -176,3 +176,32 @@ export async function getProjectMessages(
 
   return { messages: messages.reverse(), hasMore }
 }
+
+/**
+ * Загрузка сообщений одного треда без фильтра по project_id —
+ * для personal-dialog тредов (TG Business / MTProto / Wazzup личный),
+ * у которых project_id IS NULL. Используется в thread-scope AI-ассистенте.
+ */
+export async function getThreadMessages(
+  threadId: string,
+  options: { limit?: number } = {},
+): Promise<{ messages: ProjectMessage[]; hasMore: boolean }> {
+  const limit = options.limit ?? 200
+
+  const { data, error } = await supabase
+    .from('project_messages')
+    .select(MESSAGE_SELECT)
+    .eq('thread_id', threadId)
+    .order('created_at', { ascending: false })
+    .limit(limit + 1)
+
+  if (error) throw new ConversationError(`Ошибка загрузки сообщений треда: ${error.message}`)
+
+  const messages = castToProjectMessages(data ?? [])
+  const hasMore = messages.length > limit
+  if (hasMore) messages.pop()
+
+  await hydrateReplyMessages(messages)
+
+  return { messages: messages.reverse(), hasMore }
+}

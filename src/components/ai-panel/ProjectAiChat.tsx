@@ -14,7 +14,7 @@ import type { AiMessage } from '@/store/sidePanelStore'
 import { useDocumentStatuses } from '@/hooks/useStatuses'
 import { useAuth } from '@/contexts/AuthContext'
 import { DocumentPickerDialog } from '@/components/messenger/DocumentPickerDialog'
-import { getProjectMessages } from '@/services/api/messenger/messengerService'
+import { getProjectMessages, getThreadMessages } from '@/services/api/messenger/messengerService'
 import { type ConversationSources, migrateLegacySources } from '@/services/api/knowledge/knowledgeSearchService'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { supabase } from '@/lib/supabase'
@@ -34,6 +34,8 @@ interface ProjectAiChatProps {
   projectId?: string
   workspaceId: string
   templateId?: string
+  /** Thread-scope режим: ассистент по одному треду personal-dialog без проекта. */
+  threadId?: string
   hasKnowledgeProjectAccess?: boolean
   hasKnowledgeAllAccess?: boolean
   hasProjectContextAccess?: boolean
@@ -43,6 +45,7 @@ export function ProjectAiChat({
   projectId,
   workspaceId,
   templateId,
+  threadId,
   hasKnowledgeProjectAccess,
   hasKnowledgeAllAccess,
   hasProjectContextAccess,
@@ -51,9 +54,18 @@ export function ProjectAiChat({
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const hasProject = !!projectId
-  // Ключ сессии: projectId или '__knowledge__' для режима базы знаний
-  const sessionKey = projectId || '__knowledge__'
-  const conversationType = hasProject ? 'project' : 'knowledge'
+  const hasThread = !hasProject && !!threadId
+  // Ключ сессии: projectId, thread:<id> или '__knowledge__'
+  const sessionKey = hasProject
+    ? projectId
+    : hasThread
+      ? `thread:${threadId}`
+      : '__knowledge__'
+  const conversationType: 'project' | 'knowledge' | 'thread' = hasProject
+    ? 'project'
+    : hasThread
+      ? 'thread'
+      : 'knowledge'
 
   // Persisted AI session state from store
   const getAiSession = useSidePanelStore((s) => s.getAiSession)
@@ -75,12 +87,20 @@ export function ProjectAiChat({
   // Все треды проекта — для picker-а скоупа чатов
   const { data: projectThreads = [] } = useProjectThreads(projectId)
 
-  // Без проекта: knowledge: 'all' по умолчанию
+  // Дефолты источников:
+  // - проект: как есть из сессии
+  // - тред: переписка треда + БЗ воркспейса
+  // - просто БЗ: knowledge='all'
   const sessionSources = migrateLegacySources(
     session.sources as Partial<ConversationSources> | null | undefined,
   )
-  const initialSources: ConversationSources =
-    !hasProject && !sessionSources.knowledge
+  const initialSources: ConversationSources = hasThread
+    ? {
+        ...sessionSources,
+        chats: { mode: 'selected', threadIds: [threadId!] },
+        knowledge: sessionSources.knowledge ?? 'all',
+      }
+    : !hasProject && !sessionSources.knowledge
       ? { ...sessionSources, knowledge: 'all' as const }
       : sessionSources
 
@@ -101,7 +121,16 @@ export function ProjectAiChat({
     enabled: hasProject,
     staleTime: STALE_TIME.MEDIUM,
   })
-  const chatMessages = chatMessagesData?.messages ?? []
+  // Thread-scope: грузим сообщения одного треда напрямую, без project_id.
+  const { data: threadMessagesData } = useQuery({
+    queryKey: projectAiKeys.messengerMessagesByThreads('', threadId ? [threadId] : null),
+    queryFn: () => getThreadMessages(threadId!, { limit: 200 }),
+    enabled: hasThread,
+    staleTime: STALE_TIME.MEDIUM,
+  })
+  const chatMessages = hasThread
+    ? (threadMessagesData?.messages ?? [])
+    : (chatMessagesData?.messages ?? [])
 
   const chatScopeLabel = useMemo(() => {
     if (chatScope.mode === 'all') return 'ПЕРЕПИСКА (все чаты)'
@@ -130,6 +159,7 @@ export function ProjectAiChat({
   } = useProjectAiConversations({
     workspaceId,
     projectId,
+    threadId: hasThread ? threadId : undefined,
     conversationType,
     userId: user?.id,
     sourcesRef,
@@ -276,11 +306,19 @@ export function ProjectAiChat({
           </div>
         ) : isEmpty ? (
           <AiChatEmptyState
-            title={hasProject ? 'AI-ассистент проекта' : 'AI-ассистент базы знаний'}
+            title={
+              hasProject
+                ? 'AI-ассистент проекта'
+                : hasThread
+                  ? 'AI-ассистент по переписке'
+                  : 'AI-ассистент базы знаний'
+            }
             description={
               hasProject
                 ? 'Задайте вопрос по данным проекта. Выберите источники выше: переписку, анкеты или документы.'
-                : 'Задайте вопрос, и я найду ответ в статьях базы знаний.'
+                : hasThread
+                  ? 'Спросите о содержании переписки треда: суммировать, понять контекст, придумать ответ.'
+                  : 'Задайте вопрос, и я найду ответ в статьях базы знаний.'
             }
             accent="purple"
           />
@@ -342,6 +380,8 @@ export function ProjectAiChat({
           hasKnowledgeAllAccess={hasKnowledgeAllAccess}
           hasProjectContextAccess={hasProjectContextAccess}
           hasProject={hasProject}
+          hasThread={hasThread}
+          threadMessagesCount={chatMessages.length}
         />
 
         {/* Диалог выбора документов из проекта */}

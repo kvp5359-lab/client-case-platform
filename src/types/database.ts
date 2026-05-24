@@ -3706,6 +3706,7 @@ export type Database = {
           id: string
           project_id: string | null
           sources: Json | null
+          thread_id: string | null
           title: string | null
           type: string
           updated_at: string | null
@@ -3717,6 +3718,7 @@ export type Database = {
           id?: string
           project_id?: string | null
           sources?: Json | null
+          thread_id?: string | null
           title?: string | null
           type?: string
           updated_at?: string | null
@@ -3728,6 +3730,7 @@ export type Database = {
           id?: string
           project_id?: string | null
           sources?: Json | null
+          thread_id?: string | null
           title?: string | null
           type?: string
           updated_at?: string | null
@@ -3740,6 +3743,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_conversations_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "project_threads"
             referencedColumns: ["id"]
           },
           {
