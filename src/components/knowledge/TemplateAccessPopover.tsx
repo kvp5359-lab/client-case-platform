@@ -19,7 +19,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { knowledgeBaseKeys, quickReplyKeys, projectTemplateKeys, templateAccessKeys } from '@/hooks/queryKeys'
+import { knowledgeBaseKeys, quickReplyKeys, projectTemplateKeys, templateAccessKeys, qrFlagsKeys } from '@/hooks/queryKeys'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
@@ -157,7 +157,7 @@ export function TemplateAccessPopover({
 
   // Подгружаем флаги personal_only / access_inherits для qr-*
   const { data: qrFlags } = useQuery({
-    queryKey: ['qr-flags', entityType, entityId],
+    queryKey: qrFlagsKeys.byEntity(entityType, entityId),
     queryFn: () => fetchQrFlags(entityType, entityId),
     enabled: open && isQR,
   })
@@ -249,7 +249,7 @@ export function TemplateAccessPopover({
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['qr-flags', entityType, entityId] })
+      queryClient.invalidateQueries({ queryKey: qrFlagsKeys.byEntity(entityType, entityId) })
       queryClient.invalidateQueries({ queryKey: badgeQueryKey })
       queryClient.invalidateQueries({ queryKey: quickReplyKeys.all })
     },
@@ -433,7 +433,7 @@ export function TemplateAccessBadge({
 
   // Тот же queryKey и фетчер, что в TemplateAccessPopover — чтобы кэш был согласован
   const { data: qrFlags } = useQuery({
-    queryKey: ['qr-flags', entityType, entityId],
+    queryKey: qrFlagsKeys.byEntity(entityType, entityId),
     queryFn: () => fetchQrFlags(entityType, entityId),
     enabled: isQR,
   })
@@ -500,7 +500,7 @@ export function TemplateAccessButton({
   })
 
   const { data: qrFlags } = useQuery({
-    queryKey: ['qr-flags', entityType, entityId],
+    queryKey: qrFlagsKeys.byEntity(entityType, entityId),
     queryFn: () => fetchQrFlags(entityType, entityId),
     enabled: isQR,
   })

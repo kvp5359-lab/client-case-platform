@@ -14,6 +14,7 @@ import { useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { externalCalendarKeys } from '@/hooks/queryKeys'
 
 // ── Query keys ─────────────────────────────────────────────────────────────
 
@@ -206,7 +207,7 @@ export function useCreateCalendar() {
         supabase.functions
           .invoke('google-calendar-sync', { body: { calendar_id: cal.id } })
           .then(() => {
-            queryClient.invalidateQueries({ queryKey: ['external-calendar-events'] })
+            queryClient.invalidateQueries({ queryKey: externalCalendarKeys.all })
           })
           .catch((e) => console.warn('[calendar-sync] initial sync failed:', e))
       }
@@ -251,7 +252,7 @@ export function useWriteExternalEvent() {
       return data as { event?: unknown; ok?: boolean }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['external-calendar-events'] })
+      queryClient.invalidateQueries({ queryKey: externalCalendarKeys.all })
     },
     onError: (e) => toast.error(`Не удалось сохранить в Google Calendar: ${e instanceof Error ? e.message : 'ошибка'}`),
   })
@@ -341,7 +342,7 @@ export function useSyncCalendar() {
       return data as { results: Array<{ calendar_id: string; upserted: number; deleted: number; error?: string }> }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['external-calendar-events'] })
+      queryClient.invalidateQueries({ queryKey: externalCalendarKeys.all })
     },
   })
 }

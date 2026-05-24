@@ -9,7 +9,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { emailAccountKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { emailAccountKeys, messengerKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 export type EmailLink = {
   id: string
@@ -82,9 +82,8 @@ export function useCreateEmailLink(threadId: string | undefined) {
     onSuccess: () => {
       if (threadId) {
         queryClient.invalidateQueries({ queryKey: emailAccountKeys.emailLink(threadId) })
-        // Тред мог сменить type → инвалидируем кеш тредов
-        queryClient.invalidateQueries({ queryKey: ['threads'] })
-        queryClient.invalidateQueries({ queryKey: ['thread', threadId] })
+        // Тред мог сменить type → инвалидируем messenger-кэши тредов
+        queryClient.invalidateQueries({ queryKey: messengerKeys.all })
       }
     },
     onError: () => {
@@ -127,7 +126,7 @@ export function useUpdateEmailLink(threadId: string | undefined) {
     onSuccess: () => {
       if (threadId) {
         queryClient.invalidateQueries({ queryKey: emailAccountKeys.emailLink(threadId) })
-        queryClient.invalidateQueries({ queryKey: ['thread', threadId] })
+        queryClient.invalidateQueries({ queryKey: messengerKeys.all })
       }
     },
     onError: () => {

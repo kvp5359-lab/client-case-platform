@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ExternalLink } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { externalCalendarKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
 import {
   Dialog,
   DialogContent,
@@ -98,8 +99,8 @@ export function ConvertExternalEventDialog({
     },
     onSuccess: () => {
       toast.success('Событие превращено в задачу')
-      queryClient.invalidateQueries({ queryKey: ['workspace-threads', workspaceId] })
-      queryClient.invalidateQueries({ queryKey: ['external-calendar-events', workspaceId] })
+      queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: externalCalendarKeys.byWorkspace(workspaceId) })
       onClose()
     },
     onError: (e) => toast.error(`Не удалось: ${e instanceof Error ? e.message : 'ошибка'}`),

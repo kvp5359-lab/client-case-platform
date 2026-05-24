@@ -25,7 +25,8 @@ import {
   workspaceThreadKeys,
   trashKeys,
   myTaskCountsKeys,
-STALE_TIME,
+  projectContextKeys,
+  STALE_TIME,
 } from '@/hooks/queryKeys'
 
 export { trashKeys }
@@ -353,7 +354,7 @@ export function useRestoreContextItem(workspaceId: string) {
     onSuccess: (item) => {
       queryClient.invalidateQueries({ queryKey: trashKeys.contextItems(workspaceId) })
       queryClient.invalidateQueries({
-        queryKey: ['project-context', 'by-project', item.project_id],
+        queryKey: projectContextKeys.byProject(item.project_id),
       })
     },
   })

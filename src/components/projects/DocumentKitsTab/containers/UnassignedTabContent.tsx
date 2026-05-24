@@ -19,7 +19,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { projectKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { projectKeys, STALE_TIME, driveFolderKeys } from '@/hooks/queryKeys'
 import { getProjectById } from '@/services/api/projectService'
 import { UnassignedSection, SourceSection } from '@/components/documents/sections'
 import { useDocumentKitContext } from '../context'
@@ -46,7 +46,7 @@ function useSourceFolderInfo(projectId: string, workspaceId: string) {
   const folderId = project?.source_folder_id ?? null
 
   const { data: folderName } = useQuery({
-    queryKey: ['drive-folder-name', folderId, workspaceId],
+    queryKey: driveFolderKeys.byFolder(folderId, workspaceId),
     queryFn: async (): Promise<string | null> => {
       if (!folderId) return null
       const { data, error } = await supabase.functions.invoke<{

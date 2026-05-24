@@ -128,3 +128,39 @@ export const calendarKeys = {
   byWorkspaceRange: (workspaceId: string, fromIso: string, toIso: string) =>
     ['calendar', workspaceId, fromIso, toIso] as const,
 }
+
+/**
+ * Внешние календари (Google и т.п.) — события через external_calendar_events.
+ */
+export const externalCalendarKeys = {
+  all: ['external-calendar-events'] as const,
+  byWorkspace: (workspaceId: string) => ['external-calendar-events', workspaceId] as const,
+  byWorkspaceCalendars: (workspaceId: string, calendarIdsKey: string) =>
+    ['external-calendar-events', workspaceId, calendarIdsKey] as const,
+}
+
+/**
+ * Флаги шаблонов («qr-flags») — feature flags для конкретной сущности.
+ */
+export const qrFlagsKeys = {
+  all: ['qr-flags'] as const,
+  byEntity: (entityType: string, entityId: string) =>
+    ['qr-flags', entityType, entityId] as const,
+}
+
+/**
+ * «Контекст проекта» — внутренние материалы команды.
+ */
+export const projectContextKeys = {
+  all: ['project-context'] as const,
+  byProject: (projectId: string) => ['project-context', 'by-project', projectId] as const,
+}
+
+/**
+ * Google Drive — имя папки по ID (cache friendly).
+ */
+export const driveFolderKeys = {
+  all: ['drive-folder-name'] as const,
+  byFolder: (folderId: string, workspaceId: string) =>
+    ['drive-folder-name', folderId, workspaceId] as const,
+}

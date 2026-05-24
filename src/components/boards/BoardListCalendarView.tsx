@@ -31,7 +31,7 @@ import { ru } from 'date-fns/locale'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { supabase } from '@/lib/supabase'
-import { calendarKeys } from '@/hooks/queryKeys'
+import { calendarKeys, externalCalendarKeys } from '@/hooks/queryKeys'
 import { useUpdateThreadTime } from '@/hooks/useCalendarThreads'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useSyncCalendar, useWriteExternalEvent } from '@/hooks/useGoogleCalendar'
@@ -289,7 +289,7 @@ export function BoardListCalendarView({
   const calendarIds = useMemo(() => settings?.calendar_ids ?? [], [settings?.calendar_ids])
   const calendarIdsKey = useMemo(() => [...calendarIds].sort().join(','), [calendarIds])
   const { data: externalEvents = [] } = useQuery({
-    queryKey: ['external-calendar-events', workspaceId, calendarIdsKey],
+    queryKey: externalCalendarKeys.byWorkspaceCalendars(workspaceId, calendarIdsKey),
     enabled: calendarIds.length > 0,
     queryFn: async (): Promise<CalEvent[]> => {
       if (calendarIds.length === 0) return []
@@ -428,7 +428,7 @@ export function BoardListCalendarView({
     (eventId: string, newStart: Date, newEnd: Date) => {
       const id = eventId.replace(/^ext:/, '')
       queryClient.setQueriesData<CalEvent[]>(
-        { queryKey: ['external-calendar-events', workspaceId] },
+        { queryKey: externalCalendarKeys.byWorkspace(workspaceId) },
         (old) => {
           if (!old) return old
           return old.map((e) =>
