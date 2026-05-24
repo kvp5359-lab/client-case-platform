@@ -1,6 +1,6 @@
 # Миграция Edge Functions: `_shared/cors.ts` → `_shared/edge.ts`
 
-**Статус:** не сделано, требует отдельной волны со смок-тестами.
+**Статус:** CORS-часть сделана 2026-05-24 (60 функций мигрированы с `getCorsHeaders` на `corsHeadersFor`, deprecated объект `corsHeaders` удалён). Полная миграция API (`jsonRes`/`preflight`/`getServiceClient`/`requireInternalSecret`) — НЕ сделана.
 **Дата заведения:** 2026-05-24.
 
 ## Контекст
