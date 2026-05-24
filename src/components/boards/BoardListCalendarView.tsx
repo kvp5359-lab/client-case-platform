@@ -34,8 +34,6 @@ import { useUpdateThreadTime } from '@/hooks/useCalendarThreads'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useSyncCalendar, useWriteExternalEvent } from '@/hooks/useGoogleCalendar'
 import { useQueryClient } from '@tanstack/react-query'
-import { RefreshCw } from 'lucide-react'
-import type { ToolbarProps } from 'react-big-calendar'
 import { cn } from '@/lib/utils'
 import { ACCENT_HEX } from './calendar/accentColors'
 import { DEFAULT_CALENDAR_SETTINGS, type CalendarSettings, type ListHeight } from './types'
@@ -56,86 +54,12 @@ const localizer = dateFnsLocalizer({
  * календаря (kind='external' — Google и т.п. через external_calendar_events).
  * Для kind='external' resize/drag отключены (read-only).
  */
-type CalEvent = {
-  id: string
-  title: string
-  start: Date
-  end: Date
-  kind: 'task' | 'external'
-  /** Для kind='task' — данные задачи. */
-  resource?: WorkspaceTask & { start_at: string; end_at: string }
-  /** Для kind='external' — мета внешнего события. */
-  external?: {
-    calendar_id: string
-    external_id: string
-    color: string
-    html_link?: string | null
-    location?: string | null
-  }
-}
+// CalEvent / CalendarEventContent / makeCalendarToolbar вынесены в ./calendar/
+import type { CalEvent } from './calendar/calEventTypes'
+import { CalendarEventContent } from './calendar/CalendarEventContent'
+import { makeCalendarToolbar } from './calendar/makeCalendarToolbar'
 
 const DnDCalendar = withDragAndDrop<CalEvent>(Calendar)
-
-/** Контент события в сетке: название задачи + название проекта мелким
- *  под ней. Время рендерит сам RBC в .rbc-event-label (см. CSS
- *  flex-порядок в globals.css). */
-function CalendarEventContent({ event }: { event: CalEvent }) {
-  const project = event.resource?.project_name
-  return (
-    <>
-      <div className="font-medium truncate">{event.title}</div>
-      {project && (
-        <div className="truncate opacity-75 text-[10px] leading-tight">{project}</div>
-      )}
-    </>
-  )
-}
-
-/** Кастомный toolbar — копирует дефолтное поведение RBC + добавляет кнопку
- *  «Синхронизировать» справа (если в настройках списка выбраны календари). */
-function makeCalendarToolbar(
-  calendarIds: string[],
-  onSync: () => void,
-  syncing: boolean,
-) {
-  return function CalendarToolbar(props: ToolbarProps<CalEvent>) {
-    const { label, onNavigate, onView, view, views } = props
-    const viewsList = Array.isArray(views) ? views : Object.keys(views)
-    return (
-      <div className="rbc-toolbar">
-        <span className="rbc-btn-group">
-          <button type="button" onClick={() => onNavigate('TODAY')}>Сегодня</button>
-          <button type="button" onClick={() => onNavigate('PREV')}>←</button>
-          <button type="button" onClick={() => onNavigate('NEXT')}>→</button>
-        </span>
-        <span className="rbc-toolbar-label">{label}</span>
-        <span className="rbc-btn-group">
-          {viewsList.map((name) => (
-            <button
-              key={name}
-              type="button"
-              className={view === name ? 'rbc-active' : ''}
-              onClick={() => onView(name as View)}
-            >
-              {props.localizer.messages[name as keyof typeof props.localizer.messages] as string}
-            </button>
-          ))}
-          {calendarIds.length > 0 && (
-            <button
-              type="button"
-              onClick={onSync}
-              disabled={syncing}
-              title="Синхронизировать Google-календари"
-              className="!px-2"
-            >
-              <RefreshCw className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
-            </button>
-          )}
-        </span>
-      </div>
-    )
-  }
-}
 
 type Props = {
   /** ID board_list — используется в id @dnd-kit Droppable для фильтрации
