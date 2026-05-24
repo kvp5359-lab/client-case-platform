@@ -18,6 +18,24 @@
 Связано с уже существующим `services/documents/downloadDocumentsAsZip.ts` —
 возможно, переиспользовать.
 
+## TODO(low) — RPC для upsert task_panel_tabs
+
+**Файл:** `src/services/taskPanelTabsService.ts` (`upsertTaskPanelTabs`)
+
+Сейчас вставка/обновление строки `task_panel_tabs` — это ручной SELECT id
+по scope → UPDATE по id либо INSERT. Костыль вокруг partial unique
+индексов — PostgREST `.upsert({ onConflict })` с partial unique отдаёт
+42P10 (см. `.claude/rules/gotchas.md` — раздел про task_panel_tabs upsert).
+
+Что нужно:
+1. RPC `upsert_task_panel_tabs(p_user_id, p_scope_kind, p_scope_id, p_tabs jsonb, p_active_tab_id text)`
+   с `INSERT ... ON CONFLICT (cols) WHERE ... DO UPDATE` под каждый partial unique.
+2. Заменить `upsertTaskPanelTabs` на один `supabase.rpc(...)`.
+3. Альтернатива — переделать индексы на обычные (без `WHERE`) с CHECK
+   на остальные scope-колонки = NULL.
+
+Не критично — текущая реализация работает, просто 2 запроса вместо 1.
+
 ## TODO — серверный RPC для подсчёта комментариев
 
 **Файл:** `src/services/api/commentService.ts:146`

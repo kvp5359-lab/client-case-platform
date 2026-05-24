@@ -3,7 +3,8 @@
  *
  * Вынесено из useTaskPanelTabs, чтобы хук стал тоньше, а ручной upsert
  * (костыль вокруг partial unique — см. gotchas.md) был изолирован в одном
- * месте. Long-term TODO — заменить ручной SELECT+UPDATE/INSERT на RPC.
+ * месте. Долгосрочно — заменить ручной SELECT+UPDATE/INSERT на RPC
+ * (см. docs/feature-backlog/2026-05-24-misc-todos.md).
  */
 
 import { supabase } from '@/lib/supabase'

@@ -15,14 +15,13 @@
 
 ## Открытые
 
-| ID | Severity | Область | Название | Замечен |
-|---|---|---|---|---|
-| [2026-04-22-scroll-jitter-touchpad](open/2026-04-22-scroll-jitter-touchpad.md) | medium | messenger, history, scroll | Дёрганье при прокрутке истории и чатов на тачпаде MacBook | 2026-04-22 |
+_Нет открытых багов._
 
 ## Решённые
 
 | ID | Severity | Область | Название | Решён |
 |---|---|---|---|---|
+| [2026-04-22-scroll-jitter-touchpad](resolved/2026-04-22-scroll-jitter-touchpad.md) | medium | messenger, history, scroll | Дёрганье при прокрутке истории и чатов на тачпаде MacBook | 2026-05-24 |
 | [2026-05-13-telegram-multibot-message-duplicates](resolved/2026-05-13-telegram-multibot-message-duplicates.md) | high | telegram-webhook, project_messages | Сообщения клиента дублируются 2-3 раза в треде (per-bot message_id у Telegram при нескольких ботах в группе) | 2026-05-13 |
 | [2026-05-13-thread-insert-returning-rls](resolved/2026-05-13-thread-insert-returning-rls.md) | critical | rls, project_threads, can_user_access_thread | INSERT INTO project_threads ... RETURNING * падает с 42501 (3-я регрессия) | 2026-05-13 |
 | [2026-04-10-telegram-reactions-media-group](resolved/2026-04-10-telegram-reactions-media-group.md) | medium | telegram-webhook, telegram-send-message | Реакции на файлы в Telegram media group приходят как отдельные сообщения | 2026-04-21 |

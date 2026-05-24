@@ -1,13 +1,16 @@
 ---
 id: 2026-04-22-scroll-jitter-touchpad
 title: Дёрганье при прокрутке истории и чатов на тачпаде MacBook
-status: open
+status: resolved
 severity: medium
 area: messenger, history, scroll
 first-seen: 2026-04-22
 last-investigated: 2026-04-22
+resolved: 2026-05-24
 reproduced: yes
 ---
+
+> **Подтверждено пользователем 2026-05-24**: фикс от 2026-04-22 (Radix ScrollArea → нативный div, убран `overflow-anchor: none`, убран `contentVisibility: auto`) держится. Скролл больше не дёргается.
 
 ## Симптомы
 
