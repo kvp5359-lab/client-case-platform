@@ -158,13 +158,21 @@ export function BoardListCalendarView({
     return set
   }, [taskStatuses])
 
+  // Прошедшие события — осветляем фон смешиванием с белым (color-mix), а не
+  // ставим opacity. opacity делает прозрачным и текст — на пёстром фоне
+  // сетки читаемость падает. color-mix меняет только фон, текст остаётся
+  // полноценно белым. 65% оригинал + 35% белый — заметно мягче, цвет
+  // узнаваем, белый текст ещё держится. Поддержка color-mix: все
+  // современные браузеры (Chrome 111+, Safari 16.2+, Firefox 113+).
+  const lighten = (hex: string) => `color-mix(in srgb, ${hex} 65%, white)`
+
   const eventPropGetter = useCallback((event: CalEvent) => {
     if (event.kind === 'external') {
       const isPast = event.end.getTime() < Date.now()
+      const baseBg = event.external?.color ?? '#6b7280'
       return {
         style: {
-          backgroundColor: event.external?.color ?? '#6b7280',
-          ...(isPast ? { opacity: 0.55 } : {}),
+          backgroundColor: isPast ? lighten(baseBg) : baseBg,
         },
         className: 'text-white rounded text-xs px-1.5 py-0.5',
       }
@@ -177,7 +185,7 @@ export function BoardListCalendarView({
     const statusId = event.resource?.status_id
     const isFinal = !!statusId && finalStatusIds.has(statusId)
     return {
-      style: { backgroundColor: bg, ...(isPast ? { opacity: 0.55 } : {}) },
+      style: { backgroundColor: isPast ? lighten(bg) : bg },
       className: cn(
         'text-white rounded text-xs px-1.5 py-0.5',
         isFinal && 'line-through',
