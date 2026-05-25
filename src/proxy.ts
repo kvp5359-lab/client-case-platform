@@ -334,6 +334,11 @@ async function handleWorkspaceHost(
 
 /**
  * Auth-проверка + опциональный rewrite на новый pathname.
+ *
+ * Также прокидываем `x-url` с полным исходным URL пользователя — Next 16
+ * не даёт server-component layouts доступа к searchParams, и без этого
+ * хедера серверные гарды не могут принимать решения на основе query
+ * (например, сохранить `?panelTab=thread:…` при redirect из-за RLS на проект).
  */
 async function handleAuthAndRewrite(
   request: NextRequest,
@@ -345,6 +350,9 @@ async function handleAuthAndRewrite(
   const { pathname } = request.nextUrl
   const isPublic = isPublicPath(newPath) || isPublicPath(pathname)
 
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-url', request.nextUrl.toString())
+
   // Подготовка response: либо rewrite на новый путь, либо next
   let response: NextResponse
   if (doRewrite) {
@@ -352,7 +360,7 @@ async function handleAuthAndRewrite(
     rewriteUrl.pathname = newPath
     rewriteUrl.search = search
     response = NextResponse.rewrite(rewriteUrl, {
-      request: { headers: request.headers },
+      request: { headers: requestHeaders },
     })
   } else if (newPath !== pathname) {
     // Чистый редирект (например, /workspaces/<uuid>/projects → /projects на subdomain)
@@ -361,7 +369,7 @@ async function handleAuthAndRewrite(
     redirectUrl.search = search
     return NextResponse.redirect(redirectUrl, 307)
   } else {
-    response = NextResponse.next({ request: { headers: request.headers } })
+    response = NextResponse.next({ request: { headers: requestHeaders } })
   }
 
   if (isPublic) return response
