@@ -8,7 +8,8 @@ export { COLUMN_BG_COLORS } from './columns-types'
 import type { ColumnCount } from './columns-types'
 
 declare module '@tiptap/core' {
-  type Commands<ReturnType> = {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- declaration merging требует interface
+  interface Commands<ReturnType> {
     columns: {
       setColumns: (count?: ColumnCount) => ReturnType
     }

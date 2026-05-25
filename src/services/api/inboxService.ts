@@ -41,8 +41,10 @@ export type InboxThreadEntry = {
   /** Количество вложений в последнем сообщении. 0 — вложений нет. */
   last_message_attachment_count: number
   /** MIME-тип первого вложения last_message — используется для иконки и подписи
-   *  («🎤 Голосовое», «🖼 Изображение») в превью inbox, когда текст пустой/плейсхолдер. */
-  last_message_attachment_mime: string | null
+   *  («🎤 Голосовое», «🖼 Изображение») в превью inbox, когда текст пустой/плейсхолдер.
+   *  Опционально: сущестующие mock'и в тестах и фолбэк-выборки могут не передавать
+   *  его — фронт работает с `null`/`undefined` одинаково (см. `getMediaPreview`). */
+  last_message_attachment_mime?: string | null
   last_sender_name: string | null
   last_sender_avatar_url: string | null
   unread_count: number

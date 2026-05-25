@@ -39,7 +39,8 @@ const getDefaultColor = (): CalloutColor => {
 }
 
 declare module '@tiptap/core' {
-  type Commands<ReturnType> = {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- declaration merging требует interface
+  interface Commands<ReturnType> {
     callout: {
       setCallout: (attrs?: { icon?: CalloutIcon; color?: CalloutColor }) => ReturnType
       toggleCallout: (attrs?: { icon?: CalloutIcon; color?: CalloutColor }) => ReturnType

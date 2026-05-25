@@ -313,7 +313,7 @@ export const InboxChatItem = memo(function InboxChatItem({
                 // Если для media известен mime — даём осмысленное «Голосовое /
                 // Изображение / Видео». Иначе — имя файла под скрепкой.
                 const media = getMediaPreview(
-                  chat.last_message_attachment_mime,
+                  chat.last_message_attachment_mime ?? null,
                   chat.last_message_attachment_name,
                 )
                 return (

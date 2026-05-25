@@ -23,7 +23,8 @@ import type {
 } from './image-block-types'
 
 declare module '@tiptap/core' {
-  type Commands<ReturnType> = {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- declaration merging требует interface
+  interface Commands<ReturnType> {
     imageBlock: {
       setImageBlock: (attrs: {
         src: string

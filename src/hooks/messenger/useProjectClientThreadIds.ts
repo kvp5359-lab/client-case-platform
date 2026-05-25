@@ -40,8 +40,9 @@ export function useProjectClientThreadIds(
         .select('participant_id, project_roles')
         .eq('project_id', projectId)
       if (error) throw error
+      const clientRoles: readonly string[] = CLIENT_ROLES
       return ((data ?? []) as ProjectClientRow[]).filter((p) =>
-        (p.project_roles ?? []).some((r) => CLIENT_ROLES.includes(r)),
+        (p.project_roles ?? []).some((r) => clientRoles.includes(r)),
       )
     },
     enabled: !!projectId,

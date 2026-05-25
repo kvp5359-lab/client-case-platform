@@ -10,11 +10,13 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { Plus, LayoutList, LayoutGrid } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import {
   type CardLayout,
   type CardFieldId,
+  type CardFieldStyle,
   type DisplayMode,
   type CalendarSettings,
   DEFAULT_CALENDAR_SETTINGS,

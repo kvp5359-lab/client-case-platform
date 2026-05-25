@@ -10,23 +10,25 @@ import { PanelLeftOpen } from 'lucide-react'
 import { SidebarGlobalSearch } from './SidebarGlobalSearch'
 import { SidebarSlotsRow } from './SidebarSlotsRow'
 import type { ItemList } from '@/hooks/useItemLists'
-import type { SidebarSlot } from '@/lib/sidebarSettings'
+import type { SidebarSlot, SidebarBadgeMode, SidebarNavKey } from '@/lib/sidebarSettings'
 
 type Props = {
   onExpand?: () => void
   workspaceId: string | undefined
-  currentWorkspace: { name?: string } | null
+  currentWorkspace: { name?: string } | null | undefined
   topbarSlots: SidebarSlot[]
   listSlots: SidebarSlot[]
-  allBoards: { id: string; name: string }[]
-  allItemLists: ItemList[]
+  allBoards: { id: string; name: string }[] | undefined
+  allItemLists: ItemList[] | undefined
   isOwner: boolean
   isClientOnly: boolean
   pathname: string
   buildHref: (path: string) => string
-  computeBadge: (slot: SidebarSlot) => unknown
-  isNavActive: (slot: SidebarSlot) => boolean
-  isNavItemActive: (slot: SidebarSlot) => boolean
+  computeBadge: (mode: SidebarBadgeMode) => string | undefined
+  // Сигнатуры идентичны тем, что ожидает SidebarSlotsRow ниже —
+  // компонент пробрасывает их без модификации.
+  isNavActive: (href: string) => boolean
+  isNavItemActive: (key: SidebarNavKey, listSlots: SidebarSlot[]) => boolean
   toggleBoardPin: (boardId: string) => void
   toggleListPin: (listId: string) => void
 }

@@ -135,8 +135,13 @@ export const PROJECT_ROLE_OPTIONS = [
 
 export function getRoleGroup(roles?: string[] | null): 'staff' | 'external' | 'client' | 'other' {
   if (!roles) return 'other'
-  if (roles.some((r) => STAFF_ROLES.includes(r))) return 'staff'
-  if (roles.some((r) => EXTERNAL_ROLES.includes(r))) return 'external'
-  if (roles.some((r) => CLIENT_ROLES.includes(r))) return 'client'
+  // .includes на readonly tuple-типе требует приведения параметра к union;
+  // вместо этого приводим сам массив к string[] — семантика та же.
+  const staff: readonly string[] = STAFF_ROLES
+  const external: readonly string[] = EXTERNAL_ROLES
+  const client: readonly string[] = CLIENT_ROLES
+  if (roles.some((r) => staff.includes(r))) return 'staff'
+  if (roles.some((r) => external.includes(r))) return 'external'
+  if (roles.some((r) => client.includes(r))) return 'client'
   return 'other'
 }

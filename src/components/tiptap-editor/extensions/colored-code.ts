@@ -2,7 +2,8 @@ import { Code } from '@tiptap/extension-code'
 import { mergeAttributes } from '@tiptap/core'
 
 declare module '@tiptap/core' {
-  type Commands<ReturnType> = {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- declaration merging требует interface
+  interface Commands<ReturnType> {
     coloredCode: {
       toggleColoredCode: (attrs?: { backgroundColor?: string; color?: string }) => ReturnType
       setCodeColor: (attrs: { backgroundColor?: string; color?: string }) => ReturnType

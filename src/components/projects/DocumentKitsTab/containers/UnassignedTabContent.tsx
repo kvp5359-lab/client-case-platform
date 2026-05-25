@@ -46,7 +46,7 @@ function useSourceFolderInfo(projectId: string, workspaceId: string) {
   const folderId = project?.source_folder_id ?? null
 
   const { data: folderName } = useQuery({
-    queryKey: driveFolderKeys.byFolder(folderId, workspaceId),
+    queryKey: driveFolderKeys.byFolder(folderId ?? '', workspaceId),
     queryFn: async (): Promise<string | null> => {
       if (!folderId) return null
       const { data, error } = await supabase.functions.invoke<{
