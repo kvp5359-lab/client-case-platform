@@ -152,7 +152,11 @@ export function MessageInput({
     handleDragOver,
     handleDragLeave,
     handleDrop,
-  } = useMessageFiles(draftKey, addFilesRef, onDocumentDrop)
+  } = useMessageFiles(draftKey, addFilesRef, onDocumentDrop, () => {
+    // Возврат фокуса в редактор после прикрепления (input/paste/drop/проектные
+    // документы). Без этого пользователю каждый раз нужно кликать в поле ввода.
+    requestAnimationFrame(() => editorRef.current?.commands.focus('end'))
+  })
 
   const { saveDraft, clearDraft, skipDraftRestoreRef } = useDraftMessage(
     draftKey,

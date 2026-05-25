@@ -6,6 +6,7 @@ type ExistingAttachment = {
   file_name: string
   storage_path: string
   file_id: string | null
+  file_size?: number | null
 }
 
 type MessageAttachmentsRowProps = {
@@ -38,6 +39,7 @@ export function MessageAttachmentsRow({
             onRemove={() => onRemoveExisting(i)}
             storagePath={att.storage_path}
             fileId={att.file_id}
+            size={att.file_size}
           />
         )
       })}
@@ -51,6 +53,7 @@ export function MessageAttachmentsRow({
             iconColor={fi.color}
             onRemove={() => onRemoveFile(i)}
             localFile={file}
+            size={file.size}
           />
         )
       })}
@@ -65,6 +68,7 @@ export function MessageAttachmentsRow({
             onRemove={onRemoveForwarded ? () => onRemoveForwarded(i) : undefined}
             storagePath={att.storage_path}
             fileId={att.file_id}
+            size={att.file_size}
           />
         )
       })}

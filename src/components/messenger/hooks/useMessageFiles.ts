@@ -9,6 +9,9 @@ export function useMessageFiles(
   draftKey: string,
   addFilesRef?: React.MutableRefObject<((files: File[]) => void) | null>,
   onDocumentDrop?: (documentId: string) => void,
+  /** Вызывается после успешного добавления хотя бы одного файла — используется
+   *  для возврата фокуса в редактор после прикрепления. */
+  onFilesAdded?: () => void,
 ) {
   const [files, setFiles] = useState<File[]>([])
   /** Existing server-side attachments (for draft editing — no re-download needed) */
@@ -48,9 +51,10 @@ export function useMessageFiles(
           saveDraftFiles(draftKey, next)
           return next
         })
+        onFilesAdded?.()
       }
     },
-    [draftKey],
+    [draftKey, onFilesAdded],
   )
 
   const removeFile = useCallback(
