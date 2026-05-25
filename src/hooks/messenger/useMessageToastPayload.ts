@@ -46,6 +46,20 @@ export function dismissProjectToasts(projectId: string) {
   }
 }
 
+/** Dismiss all message toasts for a given thread (по суффиксу groupKey).
+ *  Используется при завершении треда (выставлении финального статуса) —
+ *  тред помечается прочитанным, тосты по нему уже не нужны. Работает и
+ *  для проектных тредов, и для личных диалогов (project_id=null). */
+export function dismissThreadToasts(threadId: string) {
+  const suffix = `:${threadId}`
+  for (const key of groupedLines.keys()) {
+    if (key.endsWith(suffix)) {
+      groupedLines.delete(key)
+      toast.dismiss(key)
+    }
+  }
+}
+
 function truncateLine(text: string, max = 80): string {
   return text.length > max ? text.slice(0, max) + '…' : text
 }

@@ -21,6 +21,7 @@ import {
 } from '@/services/api/messenger/messengerParticipantService'
 import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
+import { dismissThreadToasts } from './useMessageToastPayload'
 
 type MarkParams = {
   threadId: string
@@ -55,6 +56,10 @@ export function useMarkThreadReadIfFinal() {
 
       try {
         await markAsRead(participant.participantId, projectId ?? undefined, 'client', threadId)
+        // Снимаем висящие тосты по этому треду — он завершён, уведомления
+        // по нему больше не актуальны. По суффиксу threadId, не по projectId,
+        // чтобы покрыть и личные диалоги (project_id=NULL).
+        dismissThreadToasts(threadId)
         queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), 0)
         // Красная полоса «непрочитанного» на конкретных баблах рисуется по last_read_at —
         // без инвалидации эти ключи остаются на старом значении до перезагрузки.
