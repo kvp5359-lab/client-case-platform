@@ -4,6 +4,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import {
   accessibleProjectKeys,
+  inboxKeys,
+  invalidateMessengerCaches,
   messengerKeys,
   myTaskCountsKeys,
   projectThreadKeys,
@@ -243,6 +245,10 @@ export function useDeleteThread(workspaceId?: string) {
         queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
         queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
         queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })
+        // inbox + sidebar projects — без этого «Входящие» обновлялись только через
+        // realtime UPDATE на project_threads (throttle 400мс), отставая от
+        // остальных списков на доске.
+        invalidateMessengerCaches(queryClient, workspaceId)
       } else {
         // Fallback: старые вызовы без workspaceId — partial-match инвалидация
         // по префиксу. Работает, но задевает все воркспейсы пользователя.
@@ -250,6 +256,7 @@ export function useDeleteThread(workspaceId?: string) {
         queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.all })
         queryClient.invalidateQueries({ queryKey: taskKeys.allUrgent })
         queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.all })
+        queryClient.invalidateQueries({ queryKey: inboxKeys.all })
       }
       queryClient.invalidateQueries({ queryKey: trashKeys.all })
       // task_panel_tabs кэширует ссылки на треды; удалённый тред должен исчезнуть

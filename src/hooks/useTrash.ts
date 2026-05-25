@@ -26,6 +26,7 @@ import {
   trashKeys,
   myTaskCountsKeys,
   projectContextKeys,
+  invalidateMessengerCaches,
   STALE_TIME,
 } from '@/hooks/queryKeys'
 
@@ -300,6 +301,7 @@ export function useRestoreThread(workspaceId: string) {
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
       queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
       queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })
+      invalidateMessengerCaches(queryClient, workspaceId)
     },
   })
 }
@@ -409,6 +411,7 @@ export function useHardDeleteThread(workspaceId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: trashKeys.workspace(workspaceId) })
+      invalidateMessengerCaches(queryClient, workspaceId)
     },
   })
 }

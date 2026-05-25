@@ -26,7 +26,7 @@ import type { StatusOption } from '@/components/common/status-dropdown'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProjects'
 import { useQueryClient } from '@tanstack/react-query'
-import { workspaceThreadKeys, accessibleProjectKeys } from '@/hooks/queryKeys'
+import { workspaceThreadKeys, accessibleProjectKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
 import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
 
 type BulkActionsBarProps = {
@@ -63,6 +63,7 @@ export function BulkActionsBar({
   const refresh = () => {
     if (entityType === 'thread') {
       qc.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
+      invalidateMessengerCaches(qc, workspaceId)
     } else {
       qc.invalidateQueries({ queryKey: accessibleProjectKeys.workspace(workspaceId) })
     }
