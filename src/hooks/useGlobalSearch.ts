@@ -9,7 +9,7 @@
  * (резолвит сущности, фильтрует is_deleted).
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import {
@@ -251,14 +251,5 @@ export function useProjectIconResolver(workspaceId: string | undefined) {
   )
 }
 
-/**
- * Простой debounce для строки. 250ms по умолчанию (стандарт сайдбара).
- */
-export function useDebouncedValue<T>(value: T, delay = 250): T {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), delay)
-    return () => clearTimeout(t)
-  }, [value, delay])
-  return debounced
-}
+// useDebouncedValue удалён — общий хук `useDebounce` живёт в @/hooks/shared/useDebounce.
+// Импортируй `useDebounce(value, 250)` оттуда.

@@ -130,7 +130,7 @@ export function InlineEditCell(props: Props) {
   }
 
   const displayValue = (() => {
-    if (format) return format(props.value as never)
+    if (format) return format(props.value)
     if (props.value == null || props.value === '') return emptyText
     if (props.type === 'date') return formatDate(props.value)
     return String(props.value)

@@ -36,13 +36,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { TaskItem } from './types'
 
-// Lazy-load: ChatSettingsDialog тянет Tiptap (~200 KB) через ComposeField.
-// Грузим только когда юзер нажал "Создать задачу".
-const ChatSettingsDialog = lazy(() =>
-  import('@/components/messenger/ChatSettingsDialog').then((m) => ({
-    default: m.ChatSettingsDialog,
-  })),
-)
+import { LazyChatSettingsDialog as ChatSettingsDialog } from '@/components/lazyChatSettingsDialog'
 
 // Lazy-импорт TaskPanel — рвём цикл TaskListView → TaskPanel → TaskPanelProjectView → TaskListView.
 // Панель здесь — fallback на случай отсутствия layout-level TaskPanel.

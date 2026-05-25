@@ -5,23 +5,18 @@
  * Переиспользуется в TasksTabContent и TasksPage.
  */
 
-import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react'
+import { useState, useCallback, useRef, useEffect, Suspense } from 'react'
 import { CheckSquare, Pencil, Check, Settings, ExternalLink } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 
-// Lazy-load: ChatSettingsDialog тянет Tiptap через ComposeField.
-const ChatSettingsDialog = lazy(() =>
-  import('@/components/messenger/ChatSettingsDialog').then((m) => ({
-    default: m.ChatSettingsDialog,
-  })),
-)
+import { LazyChatSettingsDialog as ChatSettingsDialog } from '@/components/lazyChatSettingsDialog'
 import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'
 import type { TaskItem } from './types'
-import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
+import { useProjectThreadById, type ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 
 type TaskDialogProps = {
   task: TaskItem | null
@@ -63,6 +58,10 @@ export function TaskDialog({
   onProjectClick,
 }: TaskDialogProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // Полный ProjectThread подгружаем лениво — только когда юзер открыл настройки.
+  // TaskItem ≠ ProjectThread (нет access_type, link_code, business_*, wazzup_* и т.д.),
+  // поэтому диалогу нужны свежие данные из БД, а не TaskItem-снэпшот.
+  const { data: fullThread } = useProjectThreadById(task?.id, settingsOpen && !!task)
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
   const toolbarRef = useCallback((node: HTMLDivElement | null) => setToolbarContainer(node), [])
 
@@ -213,11 +212,11 @@ export function TaskDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Настройки задачи — монтируется только когда открыт */}
-      {settingsOpen && (
+      {/* Настройки задачи — монтируется только когда открыт и подгружен полный тред */}
+      {settingsOpen && fullThread && (
         <Suspense fallback={null}>
           <ChatSettingsDialog
-            chat={task as unknown as import('@/hooks/messenger/useProjectThreads').ProjectThread}
+            chat={fullThread}
             workspaceId={workspaceId}
             projectId={task?.project_id ?? undefined}
             open={settingsOpen}

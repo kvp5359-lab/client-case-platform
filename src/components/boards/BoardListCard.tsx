@@ -15,12 +15,7 @@ const BoardListCalendarView = lazy(() =>
   import('./BoardListCalendarView').then((m) => ({ default: m.BoardListCalendarView })),
 )
 import { ListSettingsDialog } from './ListSettingsDialog'
-// Lazy: ChatSettingsDialog тянет Tiptap (~200 KB) через ComposeField.
-const ChatSettingsDialog = lazy(() =>
-  import('@/components/messenger/ChatSettingsDialog').then((m) => ({
-    default: m.ChatSettingsDialog,
-  })),
-)
+import { LazyChatSettingsDialog as ChatSettingsDialog } from '@/components/lazyChatSettingsDialog'
 import type { BoardCardDndState, BoardGlobalFilter, BoardList } from './types'
 import type { FilterContext } from '@/lib/filters/types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'

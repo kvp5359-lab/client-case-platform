@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState, useMemo, startTransition } from 'react'
+import { useDebounce } from '@/hooks/shared/useDebounce'
 import { PanelLeftClose } from 'lucide-react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -23,7 +24,7 @@ import { supabase } from '@/lib/supabase'
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
 import { SendFailuresIndicator } from '@/components/messenger/SendFailuresIndicator'
 import { useDialog } from '@/hooks/shared/useDialog'
-import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
+import { openThreadById } from '@/components/tasks/openThreadById'
 import { usePinnedBoards } from './WorkspaceSidebar/usePinnedBoards'
 import { usePinnedItemLists } from './WorkspaceSidebar/usePinnedItemLists'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
@@ -79,11 +80,7 @@ export function WorkspaceSidebarFull({
   const { user } = useAuth()
 
   const [rawSearchQuery, setRawSearchQuery] = useState('')
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearchQuery(rawSearchQuery), 250)
-    return () => clearTimeout(t)
-  }, [rawSearchQuery])
+  const debouncedSearchQuery = useDebounce(rawSearchQuery, 250)
 
   // Считаем непрочитанные ДО useSidebarData, чтобы прокинуть список проектов с непрочитанными.
   const {
@@ -353,31 +350,7 @@ export function WorkspaceSidebarFull({
       handleNavigate(`projects/${projectId}`)
       return
     }
-    const { data: thread } = await supabase
-      .from('project_threads')
-      .select(
-        'id, name, type, project_id, workspace_id, status_id, deadline, accent_color, icon, is_pinned, created_at, created_by, sort_order',
-      )
-      .eq('id', threadId)
-      .eq('is_deleted', false)
-      .maybeSingle()
-    if (thread) {
-      globalOpenThread({
-        id: thread.id,
-        name: thread.name,
-        type: thread.type as 'chat' | 'task',
-        project_id: thread.project_id,
-        workspace_id: thread.workspace_id,
-        status_id: thread.status_id,
-        deadline: thread.deadline,
-        accent_color: thread.accent_color,
-        icon: thread.icon,
-        is_pinned: thread.is_pinned,
-        created_at: thread.created_at,
-        created_by: thread.created_by,
-        sort_order: thread.sort_order ?? 0,
-      })
-    }
+    await openThreadById(threadId)
   }
 
   const handleSignOut = async () => {

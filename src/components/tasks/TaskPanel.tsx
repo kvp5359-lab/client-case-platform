@@ -15,7 +15,8 @@
  * `useTaskPanelInternal`. Здесь — только UI-state и JSX.
  */
 
-import { useState, useCallback, lazy, Suspense } from 'react'
+import { useState, useCallback, Suspense } from 'react'
+import { LazyChatSettingsDialog as ChatSettingsDialog } from '@/components/lazyChatSettingsDialog'
 import { createPortal } from 'react-dom'
 import { ArrowLeft } from 'lucide-react'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
@@ -30,12 +31,6 @@ import type { AvatarParticipant } from '@/components/participants/ParticipantAva
 import type { TaskItem, ProjectHeaderInfo, PanelStackItem } from './types'
 
 export type { ProjectHeaderInfo, PanelStackItem } from './types'
-
-const ChatSettingsDialog = lazy(() =>
-  import('@/components/messenger/ChatSettingsDialog').then((m) => ({
-    default: m.ChatSettingsDialog,
-  })),
-)
 
 export type TaskPanelProps = {
   stackTop: PanelStackItem | null

@@ -3,7 +3,7 @@
  * Каждый чат — отдельная строка, сортировка по времени последнего сообщения.
  */
 
-import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react'
+import { useState, useCallback, useEffect, useMemo, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import { MessageSquare } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -39,12 +39,7 @@ import { InboxChatHeader, useProjectChatParticipants } from './InboxChatHeader'
 import { InboxSidebar } from './InboxSidebar'
 import { useInboxFilters } from './useInboxFilters'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
-
-const ChatSettingsDialog = lazy(() =>
-  import('@/components/messenger/ChatSettingsDialog').then((m) => ({
-    default: m.ChatSettingsDialog,
-  })),
-)
+import { LazyChatSettingsDialog as ChatSettingsDialog } from '@/components/lazyChatSettingsDialog'
 
 export default function InboxPage() {
   usePageTitle('Входящие')

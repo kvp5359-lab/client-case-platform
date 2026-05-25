@@ -20,13 +20,12 @@ import { PageLoader } from '@/components/ui/loaders'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import {
   useGlobalSearch,
-  useDebouncedValue,
   useProjectIconResolver,
   type GlobalSearchEntityType,
   type GlobalSearchRow,
 } from '@/hooks/useGlobalSearch'
-import { supabase } from '@/lib/supabase'
-import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
+import { useDebounce } from '@/hooks/shared/useDebounce'
+import { openThreadById } from '@/components/tasks/openThreadById'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { getProjectIcon } from '@/components/common/project-icons'
 import { safeCssColor } from '@/utils/isValidCssColor'
@@ -47,7 +46,7 @@ export default function SearchPage() {
   const initialQuery = searchParams.get('q') ?? ''
 
   const [query, setQuery] = useState(initialQuery)
-  const debouncedQuery = useDebouncedValue(query, 250)
+  const debouncedQuery = useDebounce(query, 250)
 
   // Синхронизация URL при изменении запроса (без перезагрузки страницы)
   useEffect(() => {
@@ -78,30 +77,7 @@ export default function SearchPage() {
   }, [results])
 
   const openThread = useCallback(async (threadId: string) => {
-    const { data: thread } = await supabase
-      .from('project_threads')
-      .select(
-        'id, name, type, project_id, workspace_id, status_id, deadline, accent_color, icon, is_pinned, created_at, created_by, sort_order',
-      )
-      .eq('id', threadId)
-      .eq('is_deleted', false)
-      .maybeSingle()
-    if (!thread) return
-    globalOpenThread({
-      id: thread.id,
-      name: thread.name,
-      type: (thread.type === 'task' ? 'task' : 'chat') as 'chat' | 'task',
-      project_id: thread.project_id,
-      workspace_id: thread.workspace_id,
-      status_id: thread.status_id,
-      deadline: thread.deadline,
-      accent_color: thread.accent_color,
-      icon: thread.icon,
-      is_pinned: thread.is_pinned,
-      created_at: thread.created_at,
-      created_by: thread.created_by,
-      sort_order: thread.sort_order ?? 0,
-    })
+    await openThreadById(threadId)
   }, [])
 
   const handlePick = useCallback(

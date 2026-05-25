@@ -20,10 +20,10 @@ import { Search, Clock, Loader2, X } from 'lucide-react'
 import {
   useGlobalSearch,
   useRecentlyViewed,
-  useDebouncedValue,
   useProjectIconResolver,
   type GlobalSearchEntityType,
 } from '@/hooks/useGlobalSearch'
+import { useDebounce } from '@/hooks/shared/useDebounce'
 import { supabase } from '@/lib/supabase'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -64,7 +64,7 @@ export function SidebarGlobalSearch({ workspaceId, compact = false }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const debouncedQuery = useDebouncedValue(query, 250)
+  const debouncedQuery = useDebounce(query, 250)
   const { data: results, isFetching: isSearching } = useGlobalSearch(workspaceId, debouncedQuery)
   const { data: recent } = useRecentlyViewed(workspaceId, 15)
   const resolveProjectIcon = useProjectIconResolver(workspaceId)

@@ -28,8 +28,7 @@ import {
 } from '@/hooks/messenger/useSendFailures'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { useWorkspacePermissions } from '@/hooks/permissions'
-import { supabase } from '@/lib/supabase'
-import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
+import { openThreadById } from '@/components/tasks/openThreadById'
 
 function formatTime(iso: string): string {
   const d = new Date(iso)
@@ -80,30 +79,7 @@ export function SendFailuresTab() {
 
   const handleOpenThread = async (f: SendFailureRow) => {
     if (!f.thread_id) return
-    const { data: thread } = await supabase
-      .from('project_threads')
-      .select(
-        'id, name, type, project_id, workspace_id, status_id, deadline, accent_color, icon, is_pinned, created_at, created_by, sort_order',
-      )
-      .eq('id', f.thread_id)
-      .eq('is_deleted', false)
-      .maybeSingle()
-    if (!thread) return
-    globalOpenThread({
-      id: thread.id,
-      name: thread.name,
-      type: thread.type as 'chat' | 'task',
-      project_id: thread.project_id,
-      workspace_id: thread.workspace_id,
-      status_id: thread.status_id,
-      deadline: thread.deadline,
-      accent_color: thread.accent_color,
-      icon: thread.icon,
-      is_pinned: thread.is_pinned,
-      created_at: thread.created_at,
-      created_by: thread.created_by,
-      sort_order: thread.sort_order ?? 0,
-    })
+    await openThreadById(f.thread_id)
   }
 
   const unresolvedCount = failures.filter((f) => !f.resolved_at).length
