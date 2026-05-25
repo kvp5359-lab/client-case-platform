@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from 'react'
+import { Fragment, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
@@ -284,20 +284,35 @@ export function BoardTaskRow({
       onKeyDown={handleKeyDown}
     >
       {rows.map((row, i) => {
-        // ml-auto у поля с align=right сработает только если соседние flex-items
-        // не забрали всё свободное место. project имеет grow=1 — обнуляем его,
-        // когда в этой же строке есть поле справа.
+        // ml-auto у поля с align=right сработает только если в flex-контейнере
+        // есть свободное место. Но name с flex-basis: auto + shrink=1 при
+        // длинном тексте забирает весь slack, а project (даже с grow=0 моим
+        // фиксом) и time остаются shrink-0 — между ними фактического свободного
+        // места не остаётся, margin-left:auto = 0.
+        // Решение: перед первым right-aligned полем рендерим невидимый
+        // flex-1 spacer. Он явно тянется на всё свободное пространство и
+        // отодвигает right-поля к правому краю. project с grow=0 (через
+        // rowHasRightAligned) не борется с ним за это место.
         const rowHasRightAligned = row.fields.some((f) => f.style.align === 'right')
+        const firstRightIdx = row.fields.findIndex((f) => f.style.align === 'right')
         return (
           <div key={i} className={cn('flex items-center gap-1.5 min-w-0', i > 0 && 'mt-0.5')}>
-            {row.fields.map((f) => (
-              <TaskField
-                key={f.fieldId}
-                fieldId={f.fieldId}
-                style={f.style}
-                {...fieldProps}
-                rowHasRightAligned={rowHasRightAligned}
-              />
+            {row.fields.map((f, fi) => (
+              <Fragment key={f.fieldId}>
+                {rowHasRightAligned && fi === firstRightIdx && (
+                  // min-w-[24px] — иначе при длинном name (sum > container)
+                  // spacer схлопывается в 0 и time прилипает к name. Минимум
+                  // 24px даёт визуальный зазор и отнимает у name всего ~6%
+                  // ширины, не критично для читаемости.
+                  <div className="flex-1 min-w-[24px]" aria-hidden />
+                )}
+                <TaskField
+                  fieldId={f.fieldId}
+                  style={f.style}
+                  {...fieldProps}
+                  rowHasRightAligned={rowHasRightAligned}
+                />
+              </Fragment>
             ))}
           </div>
         )
