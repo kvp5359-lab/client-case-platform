@@ -27,11 +27,15 @@ import {
   useGoogleCalendarToken,
   useRemoteGoogleCalendars,
   useSyncCalendar,
+  useUpdateCalendarColor,
   useUpdateUserCalendarMirror,
   useUserCalendarMirror,
   useWorkspaceCalendars,
 } from '@/hooks/useGoogleCalendar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ACCENT_HEX } from '@/components/boards/calendar/accentColors'
+import { Check } from 'lucide-react'
 
 export function GoogleCalendarSection() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -44,6 +48,7 @@ export function GoogleCalendarSection() {
   const createCal = useCreateCalendar()
   const deleteCal = useDeleteCalendar()
   const syncCal = useSyncCalendar()
+  const updateColor = useUpdateCalendarColor()
   const mirror = useUserCalendarMirror(workspaceId)
   const updateMirror = useUpdateUserCalendarMirror()
   const [busy, setBusy] = useState(false)
@@ -193,10 +198,45 @@ export function GoogleCalendarSection() {
                       className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-md border bg-card"
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span
-                          className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: cal.color }}
-                        />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="w-4 h-4 rounded-full shrink-0 ring-offset-2 ring-offset-background hover:ring-2 hover:ring-ring focus:outline-none focus:ring-2 focus:ring-ring transition"
+                              style={{ backgroundColor: cal.color }}
+                              title="Сменить цвет"
+                              aria-label="Сменить цвет календаря"
+                            />
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-2" align="start">
+                            <div className="grid grid-cols-5 gap-1.5">
+                              {Object.values(ACCENT_HEX).map((hex) => {
+                                const selected = cal.color.toLowerCase() === hex.toLowerCase()
+                                return (
+                                  <button
+                                    key={hex}
+                                    type="button"
+                                    onClick={() => {
+                                      if (selected || updateColor.isPending) return
+                                      if (!workspaceId) return
+                                      updateColor.mutate({
+                                        id: cal.id,
+                                        workspace_id: workspaceId,
+                                        color: hex,
+                                      })
+                                    }}
+                                    disabled={updateColor.isPending}
+                                    className="w-6 h-6 rounded-full flex items-center justify-center transition hover:scale-110 disabled:opacity-50"
+                                    style={{ backgroundColor: hex }}
+                                    aria-label={hex}
+                                  >
+                                    {selected && <Check className="h-3.5 w-3.5 text-white" />}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                         <span className="font-medium text-sm truncate">{cal.name}</span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">

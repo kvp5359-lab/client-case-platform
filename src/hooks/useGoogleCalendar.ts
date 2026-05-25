@@ -215,6 +215,26 @@ export function useCreateCalendar() {
   })
 }
 
+/** Сменить цвет календаря в нашей системе. Инвалидирует и список календарей,
+ *  и кэш внешних событий — чтобы цвет обновился в сетке досок без перезагрузки. */
+export function useUpdateCalendarColor() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (params: { id: string; workspace_id: string; color: string }) => {
+      const { error } = await supabase
+        .from('calendars')
+        .update({ color: params.color })
+        .eq('id', params.id)
+      if (error) throw error
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: googleCalendarKeys.calendars(vars.workspace_id) })
+      queryClient.invalidateQueries({ queryKey: externalCalendarKeys.all })
+    },
+    onError: (e) => toast.error(`Не удалось сменить цвет: ${e instanceof Error ? e.message : 'ошибка'}`),
+  })
+}
+
 /** Удалить календарь нашей системы. */
 export function useDeleteCalendar() {
   const queryClient = useQueryClient()
