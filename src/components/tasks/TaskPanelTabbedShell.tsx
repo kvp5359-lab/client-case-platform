@@ -327,6 +327,22 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   // Активная вкладка: в standalone берём из in-memory state, иначе из DB-backed tabs.
   const effectiveActiveTab = inStandalone ? standaloneTabs.activeTab : tabs.activeTab
 
+  // Синк URL ?panelTab=… для standalone-режима. Для project/contact scope URL
+  // уже пишет сам useTaskPanelTabs (внутри openTab/activateTab), а standaloneTabs
+  // чисто in-memory — без этого эффекта shareable-ссылка не обновляется при
+  // клике на тред без проекта (личные диалоги TG/Wazzup/Email).
+  // Когда панель скрыта (hidden), URL чистим — иначе скопированная ссылка
+  // открывает у получателя тред, который у автора уже закрыт.
+  const tabsSetUrlActive = tabs.setUrlActive
+  useEffect(() => {
+    if (!inStandalone) return
+    if (hidden) {
+      tabsSetUrlActive(null)
+      return
+    }
+    tabsSetUrlActive(standaloneTabs.activeTab?.id ?? null)
+  }, [inStandalone, hidden, standaloneTabs.activeTab, tabsSetUrlActive])
+
   // Активный thread/project из текущей активной вкладки — для подсветки карточек на доске.
   // Когда панель скрыта, подсветку убираем — иначе обводка карточки остаётся после закрытия.
   const activeThreadId = hidden

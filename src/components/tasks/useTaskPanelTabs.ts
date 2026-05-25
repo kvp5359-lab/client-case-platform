@@ -94,6 +94,10 @@ type UseTaskPanelTabsResult = {
   seedTabs: (seed: TaskPanelTab[], activeId?: string | null) => void
   /** Очистить ?panelTab= из URL без изменения активной вкладки. */
   clearUrlActive: () => void
+  /** Записать любой tabId в URL `?panelTab=...` без изменения активной вкладки
+   *  в текущем scope. Используется standalone-режимом (свой in-memory state),
+   *  чтобы shareable-ссылка обновлялась так же, как для project/contact tabs. */
+  setUrlActive: (tabId: string | null) => void
 }
 
 const EMPTY_STATE: PersistedRow = { tabs: [], active_tab_id: null }
@@ -396,6 +400,7 @@ export function useTaskPanelTabs({
     reorderTab,
     seedTabs,
     clearUrlActive,
+    setUrlActive,
   }
 }
 
