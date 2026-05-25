@@ -100,13 +100,32 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   // Hidden — UI-only флаг «панель скрыта». Не трогает вкладки в БД.
   // Сбрасывается на false при любом open*Tab (см. ниже).
   const [hidden, setHidden] = useState(false)
+
+  // In-memory вкладки для standalone-режима (personal dialogs).
+  // Объявлено ДО блока синка с pageProjectId, потому что синк его reset'ает
+  // при переходе со standalone-треда на страницу проекта.
+  const standaloneTabs = useStandaloneTabs()
+  const inStandalone = !!standaloneThread
+
   // Синк с pageProjectId: переключаем scope ТОЛЬКО когда pageProjectId реально
   // изменился (пользователь перешёл на другой проект). Render-time pattern из
   // React docs (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  // ВАЖНО: одновременно выходим из standalone/knowledge режимов — иначе при
+  // переходе из личного диалога (TG Business / Wazzup / Email без проекта)
+  // на страницу проекта standaloneThread остаётся в стейте, inStandalone=true,
+  // и effectiveTabs продолжает рисовать вкладки личного диалога вместо вкладок
+  // нового проекта.
   const [lastPageProjectId, setLastPageProjectId] = useState(pageProjectId)
   if (pageProjectId !== lastPageProjectId) {
     setLastPageProjectId(pageProjectId)
-    if (pageProjectId) setActiveProjectId(pageProjectId)
+    if (pageProjectId) {
+      setActiveProjectId(pageProjectId)
+      if (standaloneThread) {
+        setStandaloneThread(null)
+        standaloneTabs.reset()
+      }
+      if (knowledgeMode) setKnowledgeMode(false)
+    }
   }
 
   // Если URL содержит panelTab=thread:<short|uuid> и страница не знает projectId
@@ -124,12 +143,6 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   //     панель «дёргается», но остаётся на прежнем треде.
   const resolvedFromUrl = useThreadFromPanelTab(workspaceId)
   const userInteractedRef = useRef(false)
-
-  // In-memory вкладки для standalone-режима (personal dialogs).
-  // Активируется когда standaloneThread != null; не персистится в БД.
-  // Объявлено до URL-restore эффекта ниже — он сидит в standaloneTabs.seed.
-  const standaloneTabs = useStandaloneTabs()
-  const inStandalone = !!standaloneThread
 
   // Очередь pending-вкладок: когда нужно сменить projectId перед openTab,
   // ждём готовности хука с новым projectId. ВАЖНО: храним вместе с
