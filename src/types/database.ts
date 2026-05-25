@@ -7979,10 +7979,15 @@ export type Database = {
         Args: { p_chat_id: number; p_message_id: string; p_tg_msg_id: number }
         Returns: undefined
       }
-      can_user_access_thread: {
-        Args: { p_thread_id: string; p_user_id: string }
-        Returns: boolean
-      }
+      can_user_access_thread:
+        | { Args: { p_thread_id: string; p_user_id: string }; Returns: boolean }
+        | {
+            Args: {
+              p_user_id: string
+              t: Database["public"]["Tables"]["project_threads"]["Row"]
+            }
+            Returns: boolean
+          }
       can_view_conversation: {
         Args: { p_conversation_id: string; p_user_id: string }
         Returns: boolean
@@ -8328,6 +8333,7 @@ export type Database = {
           last_event_text: string
           last_message_at: string
           last_message_attachment_count: number
+          last_message_attachment_mime: string
           last_message_attachment_name: string
           last_message_text: string
           last_reaction_at: string

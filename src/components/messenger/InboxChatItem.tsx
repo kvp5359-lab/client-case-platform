@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import Image from 'next/image'
-import { MessageSquare, Send, Mail, EyeOff, CheckCheck, Paperclip } from 'lucide-react'
+import { MessageSquare, Send, Mail, EyeOff, CheckCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { stripHtml, stripHtmlIgnoreQuotes } from '@/utils/format/messengerHtml'
 import type { InboxThreadEntry, InboxChannelType } from '@/services/api/inboxService'
@@ -43,6 +43,26 @@ function isAttachmentPlaceholderText(text: string): boolean {
   // = эмодзи-плейсхолдер. Нормальные подписи длиннее или содержат буквы.
   if (trimmed.length > 4) return false
   return !/[\p{L}\p{N}]/u.test(trimmed)
+}
+
+/**
+ * Превью медиа-вложения для inbox-строки. Используется когда у последнего
+ * сообщения нет осмысленного текста (пустой / плейсхолдер).
+ *
+ * `audio/ogg` (Telegram/WA voice) → отдельно «Голосовое сообщение», иначе
+ * группируем по верхнему уровню mime. Если mime неизвестен — fallback на
+ * имя файла, иначе нейтральное «Вложение».
+ */
+function getMediaPreview(
+  mime: string | null,
+  fileName: string | null,
+): { emoji: string; label: string } {
+  if (mime === 'audio/ogg') return { emoji: '🎤', label: 'Голосовое сообщение' }
+  if (mime?.startsWith('audio/')) return { emoji: '🎵', label: 'Аудио' }
+  if (mime?.startsWith('image/')) return { emoji: '🖼', label: 'Изображение' }
+  if (mime?.startsWith('video/')) return { emoji: '🎬', label: 'Видео' }
+  if (fileName) return { emoji: '📎', label: fileName }
+  return { emoji: '📎', label: 'Вложение' }
 }
 
 /** Цвета фона и текста иконки по accent_color чата */
@@ -267,36 +287,56 @@ export const InboxChatItem = memo(function InboxChatItem({
               ) : (
                 <span className="text-amber-600 italic">{chat.last_event_text}</span>
               )
-            ) : chat.last_message_text &&
-              !(
-                chat.last_message_attachment_name &&
-                isAttachmentPlaceholderText(stripHtmlIgnoreQuotes(chat.last_message_text))
-              ) ? (
-              <>
-                {chat.last_sender_name && (
-                  <span className="font-semibold text-gray-900">{chat.last_sender_name}: </span>
-                )}
-                {truncateText(stripHtmlIgnoreQuotes(chat.last_message_text))}
-              </>
-            ) : chat.last_message_attachment_name ? (
-              <>
-                {chat.last_sender_name && (
-                  <span className="font-semibold text-gray-900">{chat.last_sender_name}: </span>
-                )}
-                <span className="inline-flex items-center gap-1 align-middle">
-                  <Paperclip className="h-3 w-3 shrink-0" />
-                  {truncateText(chat.last_message_attachment_name, 36)}
-                  {chat.last_message_attachment_count > 1 && (
-                    <span className="text-gray-400">
-                      {' +'}
-                      {chat.last_message_attachment_count - 1}
+            ) : (() => {
+              // Текстовое превью: есть осмысленный текст (не плейсхолдер, не пустота).
+              const strippedText = chat.last_message_text
+                ? stripHtmlIgnoreQuotes(chat.last_message_text)
+                : ''
+              const hasRealText = strippedText.length > 0 && !isAttachmentPlaceholderText(strippedText)
+              const hasMediaSignal =
+                chat.last_message_attachment_name ||
+                chat.last_message_attachment_mime ||
+                chat.last_message_attachment_count > 0
+
+              if (hasRealText) {
+                return (
+                  <>
+                    {chat.last_sender_name && (
+                      <span className="font-semibold text-gray-900">{chat.last_sender_name}: </span>
+                    )}
+                    {truncateText(strippedText)}
+                  </>
+                )
+              }
+
+              if (hasMediaSignal) {
+                // Если для media известен mime — даём осмысленное «Голосовое /
+                // Изображение / Видео». Иначе — имя файла под скрепкой.
+                const media = getMediaPreview(
+                  chat.last_message_attachment_mime,
+                  chat.last_message_attachment_name,
+                )
+                return (
+                  <>
+                    {chat.last_sender_name && (
+                      <span className="font-semibold text-gray-900">{chat.last_sender_name}: </span>
+                    )}
+                    <span className="inline-flex items-center gap-1 align-middle">
+                      <span aria-hidden>{media.emoji}</span>
+                      {truncateText(media.label, 36)}
+                      {chat.last_message_attachment_count > 1 && (
+                        <span className="text-gray-400">
+                          {' +'}
+                          {chat.last_message_attachment_count - 1}
+                        </span>
+                      )}
                     </span>
-                  )}
-                </span>
-              </>
-            ) : (
-              <span className="text-gray-400">Нет сообщений</span>
-            )}
+                  </>
+                )
+              }
+
+              return <span className="text-gray-400">Нет сообщений</span>
+            })()}
           </p>
           {/* Индикатор непрочитанности — единая логика из getBadgeDisplay */}
           {badge.type !== 'none' ? (
