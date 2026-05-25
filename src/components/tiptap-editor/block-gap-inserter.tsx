@@ -64,6 +64,11 @@ function showGap(top: number, index: number) {
       const ed = globalEditorRef.current
       const idx = globalGapIndex
       if (!ed || idx == null) return
+      if (ed.isDestroyed) {
+        globalEditorRef.current = null
+        hideGap()
+        return
+      }
 
       const doc = ed.state.doc
       let blockIndex = 0
@@ -106,6 +111,16 @@ function onMouseMove(e: MouseEvent) {
   const ed = globalEditorRef.current
   const container = globalContainerEl
   if (!ed || !container) return
+  // editor.view — это getter Tiptap, он кидает «view is not available»
+  // если editor уничтожен. globalListener живёт на document до полной
+  // выгрузки gap-inserter (см. removeListener), поэтому после destroy
+  // editor'а можем получить mousemove со stale-ссылкой. Сбрасываем ref,
+  // чтобы дальше не пытаться к нему обращаться.
+  if (ed.isDestroyed) {
+    globalEditorRef.current = null
+    hideGap()
+    return
+  }
 
   const editorDOM = ed.view.dom
   const containerRect = container.getBoundingClientRect()
