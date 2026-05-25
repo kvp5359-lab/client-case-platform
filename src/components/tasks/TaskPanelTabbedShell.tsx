@@ -124,24 +124,10 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   //     панель «дёргается», но остаётся на прежнем треде.
   const resolvedFromUrl = useThreadFromPanelTab(workspaceId)
   const userInteractedRef = useRef(false)
-  useEffect(() => {
-    if (!resolvedFromUrl) return
-    if (pageProjectId) return // на странице проекта scope уже задан
-    if (userInteractedRef.current) return
-    if (activeProjectId !== null) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- scope-resolver: подхватываем projectId из shareable-ссылки на /boards|/inbox
-    setActiveProjectId(resolvedFromUrl.projectId)
-  }, [resolvedFromUrl, activeProjectId, pageProjectId])
-
-  const tabs = useTaskPanelTabs({
-    projectId: activeProjectId,
-    contactId: activeProjectId ? null : activeContactId,
-    knowledgeWorkspaceId:
-      !activeProjectId && !activeContactId && knowledgeMode ? workspaceId : null,
-  })
 
   // In-memory вкладки для standalone-режима (personal dialogs).
-  // Активируется только когда standaloneThread != null; не персистится в БД.
+  // Активируется когда standaloneThread != null; не персистится в БД.
+  // Объявлено до URL-restore эффекта ниже — он сидит в standaloneTabs.seed.
   const standaloneTabs = useStandaloneTabs()
   const inStandalone = !!standaloneThread
 
@@ -151,7 +137,74 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   // проект (sync с pageProjectId, навигация по сайдбару), отбрасываем
   // pending, иначе вкладка треда чужого проекта окажется в этом scope
   // и зальётся в task_panel_tabs (мусорные вкладки в правой панели).
+  // Объявлено до URL-restore эффекта — он использует setPendingOpen
+  // чтобы открыть вкладку треда после установки scope.
   const [pendingOpen, setPendingOpen] = useState<{ tab: TaskPanelTab; projectId: string | null } | null>(null)
+
+  // Один раз восстанавливаем scope из URL — иначе при каждом render-цикле
+  // снова поднимали бы standalone-режим, перетирая ручные действия пользователя.
+  const restoredFromUrlRef = useRef(false)
+  useEffect(() => {
+    if (!resolvedFromUrl) return
+    if (pageProjectId) return // на странице проекта scope уже задан
+    if (userInteractedRef.current) return
+    if (restoredFromUrlRef.current) return
+    restoredFromUrlRef.current = true
+
+    const threadType = resolvedFromUrl.type === 'task' ? 'task' : 'chat'
+    const threadTab = buildThreadTab(resolvedFromUrl.threadUuid, resolvedFromUrl.name, {
+      threadType,
+      icon: resolvedFromUrl.icon ?? undefined,
+      accentColor: resolvedFromUrl.accentColor ?? undefined,
+    })
+
+    // Тред привязан к проекту → project scope + ставим вкладку в очередь,
+    // pendingOpen эффект ниже откроет её когда tabs.isReady для нового scope.
+    if (resolvedFromUrl.projectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- scope-resolver: восстановление scope из URL
+      setActiveProjectId(resolvedFromUrl.projectId)
+      setPendingOpen({ tab: threadTab, projectId: resolvedFromUrl.projectId })
+      return
+    }
+
+    // Тред в контакт-scope (без проекта, но с contact_participant_id) →
+    // contact scope. Вкладка тоже через pendingOpen, projectId=null совпадёт
+    // с activeProjectId=null в pendingOpen-эффекте.
+    if (resolvedFromUrl.contactParticipantId) {
+      setActiveContactId(resolvedFromUrl.contactParticipantId)
+      setPendingOpen({ tab: threadTab, projectId: null })
+      return
+    }
+
+    // Standalone-личный диалог (TG Business / MTProto / Wazzup / личный email):
+    // ни проекта, ни контакта. Поднимаем in-memory standalone, как делает
+    // ручной openThreadTab — иначе панель остаётся закрытой после reload
+    // shareable-ссылки.
+    const standaloneTask: TaskItem = {
+      id: resolvedFromUrl.threadUuid,
+      name: resolvedFromUrl.name,
+      type: threadType,
+      project_id: null,
+      workspace_id: workspaceId ?? '',
+      status_id: null,
+      deadline: null,
+      accent_color: resolvedFromUrl.accentColor ?? 'blue',
+      icon: resolvedFromUrl.icon ?? 'message-square',
+      is_pinned: false,
+      created_at: '',
+      project_name: null,
+      sort_order: 0,
+    }
+    setStandaloneThread(standaloneTask)
+    standaloneTabs.seed([threadTab], threadTab.id)
+  }, [resolvedFromUrl, pageProjectId, workspaceId, standaloneTabs])
+
+  const tabs = useTaskPanelTabs({
+    projectId: activeProjectId,
+    contactId: activeProjectId ? null : activeContactId,
+    knowledgeWorkspaceId:
+      !activeProjectId && !activeContactId && knowledgeMode ? workspaceId : null,
+  })
   useEffect(() => {
     if (!pendingOpen) return
     if (!tabs.isReady) return

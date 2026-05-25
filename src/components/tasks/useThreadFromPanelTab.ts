@@ -1,10 +1,15 @@
 "use client"
 
 /**
- * useThreadFromPanelTab — резолвит thread из panelTab=thread:<short|uuid> в URL
- * и возвращает project_id треда. Используется TaskPanelTabbedShell на страницах
- * без активного проекта (/boards, /inbox) — чтобы при открытии короткой ссылки
- * (`?panelTab=thread:385`) панель смогла подхватить scope правильного проекта.
+ * useThreadFromPanelTab — резолвит thread из panelTab=thread:<short|uuid> в URL.
+ * Используется TaskPanelTabbedShell на страницах без активного проекта
+ * (/boards, /inbox) — чтобы при открытии shareable-ссылки (`?panelTab=thread:385`)
+ * панель смогла подхватить правильный scope: проект, контакт или standalone
+ * (личный диалог TG/Wazzup/Email/MTProto без проекта).
+ *
+ * Возвращает достаточно полей для восстановления standalone-треда напрямую,
+ * без ожидания клика пользователя (см. TaskPanelTabbedShell — useEffect
+ * восстановления панели из URL).
  */
 
 import { useMemo } from 'react'
@@ -12,9 +17,16 @@ import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
-type ResolvedThread = {
+export type ResolvedThread = {
   threadUuid: string
-  projectId: string
+  name: string
+  type: 'task' | 'chat' | 'email'
+  /** null для личных диалогов и контакт-scope тредов. */
+  projectId: string | null
+  /** null если тред привязан к проекту или это standalone личный диалог. */
+  contactParticipantId: string | null
+  icon: string | null
+  accentColor: string | null
 }
 
 export function useThreadFromPanelTab(workspaceId: string | null | undefined): ResolvedThread | null {
@@ -56,11 +68,28 @@ export function useThreadFromPanelTab(workspaceId: string | null | undefined): R
 
       const { data: thread } = await supabase
         .from('project_threads')
-        .select('id, project_id')
+        .select('id, name, type, project_id, contact_participant_id, icon, accent_color')
         .eq('id', threadUuid)
         .maybeSingle()
-      if (!thread || !thread.project_id) return null
-      return { threadUuid: thread.id, projectId: thread.project_id }
+      if (!thread) return null
+      const row = thread as {
+        id: string
+        name: string
+        type: 'task' | 'chat' | 'email'
+        project_id: string | null
+        contact_participant_id: string | null
+        icon: string | null
+        accent_color: string | null
+      }
+      return {
+        threadUuid: row.id,
+        name: row.name,
+        type: row.type,
+        projectId: row.project_id,
+        contactParticipantId: row.contact_participant_id,
+        icon: row.icon,
+        accentColor: row.accent_color,
+      }
     },
     staleTime: 60_000,
   })
