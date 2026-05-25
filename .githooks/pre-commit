@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+#
+# pre-commit — техдолг-трекер: предупреждает о больших файлах в коммите.
+#
+# Поведение:
+#  - warning, НЕ блокирует коммит
+#  - срабатывает только когда файл впервые перевалил порог ИЛИ вырос ещё больше
+#  - игнорирует: тесты, генерированные типы, миграции, edge function index'ы
+#
+# Активация (один раз после клона репо):
+#   git config core.hooksPath .githooks
+#
+# Чтобы отключить однократно:  git commit --no-verify
+#
+
+set -e
+
+THRESHOLD=500
+
+# Только .ts/.tsx из staged-файлов. Исключения — генерированное и тестовое.
+CHANGED=$(git diff --cached --name-only --diff-filter=ACM \
+  | grep -E '\.(ts|tsx)$' \
+  | grep -v '\.test\.' \
+  | grep -v 'src/types/database\.ts$' \
+  | grep -v '^supabase/migrations/' \
+  || true)
+
+if [ -z "$CHANGED" ]; then
+  exit 0
+fi
+
+WARNINGS=""
+while IFS= read -r FILE; do
+  [ -z "$FILE" ] && continue
+  [ ! -f "$FILE" ] && continue
+
+  NEW_LINES=$(wc -l < "$FILE" | tr -d ' ')
+  if [ "$NEW_LINES" -le "$THRESHOLD" ]; then
+    continue
+  fi
+
+  # Сколько строк было в HEAD (если файл новый — 0)
+  OLD_LINES=$(git show "HEAD:$FILE" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+  OLD_LINES=${OLD_LINES:-0}
+
+  # Молчим, если файл уже был большим и не вырос
+  if [ "$OLD_LINES" -gt "$THRESHOLD" ] && [ "$NEW_LINES" -le "$OLD_LINES" ]; then
+    continue
+  fi
+
+  if [ "$OLD_LINES" -eq 0 ]; then
+    WARNINGS="${WARNINGS}  • ${FILE}: ${NEW_LINES} строк (новый файл)\n"
+  elif [ "$OLD_LINES" -le "$THRESHOLD" ]; then
+    WARNINGS="${WARNINGS}  • ${FILE}: ${NEW_LINES} строк (перевалил порог, было ${OLD_LINES})\n"
+  else
+    WARNINGS="${WARNINGS}  • ${FILE}: ${NEW_LINES} строк (вырос, было ${OLD_LINES})\n"
+  fi
+done <<< "$CHANGED"
+
+if [ -n "$WARNINGS" ]; then
+  echo ""
+  echo "⚠️  В коммите файлы крупнее ${THRESHOLD} строк:"
+  printf "%b" "$WARNINGS"
+  echo "   Это НЕ блокировка. Если в файле смешана логика и UI — подумай о распиле."
+  echo "   См. .claude/rules/audit-false-positives.md → раздел про большие файлы"
+  echo "       (когда оркестратор, а когда реально надо распилить)."
+  echo ""
+fi
+
+exit 0
