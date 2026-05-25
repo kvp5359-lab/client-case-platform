@@ -241,6 +241,53 @@ done
 
 ---
 
+## Из прошлых аудитов (`docs/archive/audit-backlog.md`)
+
+Извлечено из лога аудитов апреля-мая 2026. Полный контекст по каждому
+пункту — в первоисточнике.
+
+### `telegram-webhook` v1 «мёртвый — можно удалить» (A9)
+
+Ложно. Старая версия `supabase/functions/telegram-webhook/` (рядом с
+`telegram-webhook-v2/`) **живая** — используется через
+`telegram-setup-webhook` / `register-webhook` для отдельных сценариев.
+Удаление сломает регистрацию вебхука для части ботов.
+
+Проверка: оба директория должны существовать.
+```bash
+ls supabase/functions | grep telegram-webhook
+```
+
+### `DialogBaseProps` «осиротевший тип» (A18)
+
+Ложно. Тип определён в [`src/types/dialogs.ts:16`](../../src/types/dialogs.ts:16)
+и **используется** в [`FolderDialog.tsx`](../../src/components/documents/dialogs/FolderDialog.tsx).
+Импортируется через barrel `@/types`, поэтому grep по `from '@/types/dialogs'`
+ничего не найдёт — но это не значит «осиротевший».
+
+Признак реальных осиротевших типов: grep с **именем типа** (а не путём
+импорта) не находит использований.
+
+### `<button>` vs shadcn `Button` в `src/components/ui/` (A11/A12)
+
+Ложно как массовый репорт. Внутри `src/components/ui/` нативные
+`<button>` — намеренная кастомизация без `Button`-дефолтов
+(`segmented-toggle`, `inline-edit-cell`, `status-dropdown` triggers).
+Замена сломает темизацию или принесёт визуальные регрессии.
+
+Также shadcn-паттерн `DropdownMenuTrigger asChild` рендерит свой
+`<button>` внутри — это **не** дубль с `Button`, это норма.
+
+### `autoprefixer` / `postcss` «unused» (depcheck)
+
+Ложно. Оба используются через [`postcss.config.mjs`](../../postcss.config.mjs)
+— это статический конфиг, который `depcheck` не парсит. Не удалять.
+
+То же — для любых tooling-зависимостей, которые загружаются через
+конфиги (`tailwind.config.ts`, `vitest.config.ts`, etc).
+
+---
+
 ## Что считается **реальной** находкой
 
 | Признак | Почему серьёзно |
