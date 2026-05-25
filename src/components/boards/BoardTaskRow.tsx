@@ -35,23 +35,30 @@ function ProjectOrCounterpartField({
   task,
   workspaceId,
   classes,
+  rowHasRightAligned,
 }: {
   task: WorkspaceTask
   workspaceId: string
   classes: string
+  /** В этой же строке есть поле с align=right — значит project не должен
+   *  забирать всё свободное место (иначе ml-auto у time/deadline не сработает). */
+  rowHasRightAligned: boolean
 }) {
   const counterpartName = useThreadCounterpartName(task.id, workspaceId)
   const value = task.project_name ?? counterpartName
   if (!value) return null
   // grow=1 → поле забирает свободное место первым (иначе ml-auto у time/deadline
   // съедает пространство в пустой зазор и контакт обрезается до 4 символов).
+  // НО: если в строке есть поле с align=right (например, «Время» справа),
+  // grow убираем — иначе right-align не сработает, время прилипает сразу
+  // после проекта вместо правого края.
   // shrink=0.7 → при нехватке ширины контакт/проект сжимается слабее, чем name,
   // т.к. в name обычно общий префикс «Re: Вакансия…», а в контакте — уникальная
   // часть, важнее для распознавания строки.
   return (
     <span
       className={cn(classes, 'min-w-0 text-muted-foreground/60')}
-      style={{ flex: '1 0.7 auto' }}
+      style={{ flex: rowHasRightAligned ? '0 0.7 auto' : '1 0.7 auto' }}
     >
       {value}
     </span>
@@ -73,6 +80,7 @@ function TaskField({
   onOpenTask,
   onDeleteTask,
   onDeadlineChange,
+  rowHasRightAligned,
 }: {
   fieldId: CardFieldId
   style: CardFieldStyle
@@ -87,6 +95,7 @@ function TaskField({
   onOpenTask: (taskId: string) => void
   onDeleteTask?: (task: WorkspaceTask) => void
   onDeadlineChange?: (taskId: string, deadline: string | null) => void
+  rowHasRightAligned: boolean
 }) {
   const classes = fieldStyleToClasses(style)
 
@@ -154,7 +163,12 @@ function TaskField({
 
     case 'project':
       return (
-        <ProjectOrCounterpartField task={task} workspaceId={workspaceId} classes={classes} />
+        <ProjectOrCounterpartField
+          task={task}
+          workspaceId={workspaceId}
+          classes={classes}
+          rowHasRightAligned={rowHasRightAligned}
+        />
       )
 
     case 'unread':
@@ -269,18 +283,25 @@ export function BoardTaskRow({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
-      {rows.map((row, i) => (
-        <div key={i} className={cn('flex items-center gap-1.5 min-w-0', i > 0 && 'mt-0.5')}>
-          {row.fields.map((f) => (
-            <TaskField
-              key={f.fieldId}
-              fieldId={f.fieldId}
-              style={f.style}
-              {...fieldProps}
-            />
-          ))}
-        </div>
-      ))}
+      {rows.map((row, i) => {
+        // ml-auto у поля с align=right сработает только если соседние flex-items
+        // не забрали всё свободное место. project имеет grow=1 — обнуляем его,
+        // когда в этой же строке есть поле справа.
+        const rowHasRightAligned = row.fields.some((f) => f.style.align === 'right')
+        return (
+          <div key={i} className={cn('flex items-center gap-1.5 min-w-0', i > 0 && 'mt-0.5')}>
+            {row.fields.map((f) => (
+              <TaskField
+                key={f.fieldId}
+                fieldId={f.fieldId}
+                style={f.style}
+                {...fieldProps}
+                rowHasRightAligned={rowHasRightAligned}
+              />
+            ))}
+          </div>
+        )
+      })}
     </div>
   )
 }
