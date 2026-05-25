@@ -381,12 +381,44 @@ Deno.serve(async (req: Request) => {
       }
 
       if (tgData.ok && tgData.result?.message_id) {
-        await markMessageSent(serviceClient, body.message_id, {
-          channelFields: {
-            telegram_message_id: tgData.result.message_id,
-            telegram_chat_id: activeChatId,
-          },
+        trace("tg.send.ok.before_markSent", {
+          tg_message_id: tgData.result.message_id,
+          active_chat_id: activeChatId,
+          active_integration_id: activeIntegrationId,
         });
+        try {
+          await markMessageSent(serviceClient, body.message_id, {
+            channelFields: {
+              telegram_message_id: tgData.result.message_id,
+              telegram_chat_id: activeChatId,
+            },
+          });
+          trace("tg.send.ok.markSent_done");
+        } catch (markErr) {
+          // markMessageSent падает редко (RLS / триггеры), но если упал —
+          // сообщение УЖЕ отправлено в Telegram. Возвращаем 200 с warning,
+          // чтобы не дёргать watchdog (он пометит failed) и не давать клиенту
+          // повторить (создав дубль). Триггер на send_status сам разрулит.
+          const errMsg = markErr instanceof Error ? markErr.message : String(markErr);
+          console.error(JSON.stringify({
+            trace_id: TRACE_ID,
+            event: "markSent.failed",
+            message_id: body.message_id,
+            tg_message_id: tgData.result.message_id,
+            error: errMsg,
+            stack: markErr instanceof Error ? markErr.stack : undefined,
+          }));
+          // Best-effort прямой UPDATE send_status=sent — без триггеров на send_status_change.
+          await serviceClient
+            .from("project_messages")
+            .update({
+              send_status: "sent",
+              telegram_message_id: tgData.result.message_id,
+              telegram_chat_id: activeChatId,
+            })
+            .eq("id", body.message_id);
+          trace("tg.send.ok.markSent_fallback_done");
+        }
       } else {
         console.error("Telegram API error:", tgData);
         // Финальный фейл текстовой отправки (после всех retry/fallback) —
@@ -616,9 +648,21 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
-    console.error("telegram-send-message error:", error);
+    // Расширенный лог: stack + сам error JSON.stringify-нутый. В Supabase
+    // Dashboard будет видна вся цепочка вызовов.
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : undefined;
+    console.error(JSON.stringify({
+      event: "telegram-send-message.fatal",
+      error: errMsg,
+      stack: errStack,
+      error_raw: String(error),
+    }));
+    // Возвращаем КОНКРЕТНУЮ причину в body — watchdog запишет её в
+    // message_send_failures.error_text, и в БД сразу будет видно «где упало»
+    // без чтения Dashboard-логов.
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error", reason: errMsg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

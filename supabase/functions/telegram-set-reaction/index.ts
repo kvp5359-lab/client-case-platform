@@ -115,41 +115,52 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // setMessageReaction идёт через того же бота, который отправил оригинал
-    // (если знаем). Если на сообщении нет integration_id — пробуем личный бот
-    // реагирующего пользователя в этом воркспейсе, чтобы реакция шла «от него»,
-    // а не от секретаря. Это важно для групп, где есть и личный бот, и секретарь.
+    // Telegram setMessageReaction: реакция всегда «именная» — привязана к
+    // конкретному боту, который её отправил. В групповом чате с несколькими
+    // ботами это означает: реакция от реагирующего сотрудника должна идти
+    // через ЕГО личный бот, иначе все участники видят «Иванов отреагировал»,
+    // хотя на самом деле — Петров.
+    //
+    // Приоритет выбора токена:
+    //   1) Личный бот реагирующего пользователя (telegram_employee_bot c
+    //      owner_user_id = user.id) — корректная атрибуция реакции в TG.
+    //   2) Бот, отправивший оригинал (telegram_bot_integration_id) — fallback
+    //      на случай если у пользователя нет своего бота в этой группе.
+    //   3) Бот-секретарь (resolveBotToken) — последний fallback.
+    //
+    // Раньше п. 1 и п. 2 были в обратном порядке — отсюда баг с «реакциями
+    // от чужого имени» в группах с несколькими ботами.
     let TELEGRAM_BOT_TOKEN: string;
     {
-      const { data: msgRow } = await supabaseAdmin
-        .from("project_messages")
-        .select("telegram_bot_integration_id")
-        .eq("telegram_chat_id", body.chat_id)
-        .eq("telegram_message_id", body.message_id)
-        .maybeSingle();
-      const savedIntegrationId =
-        (msgRow?.telegram_bot_integration_id as string | null) ?? null;
-      const fromIntegration = savedIntegrationId
-        ? await resolveTokenByIntegrationId(supabaseAdmin, savedIntegrationId)
-        : null;
-      if (fromIntegration) {
-        TELEGRAM_BOT_TOKEN = fromIntegration.token;
+      const { data: empBots } = await supabaseAdmin
+        .from("workspace_integrations")
+        .select("id, is_active, config, secrets")
+        .eq("workspace_id", convWorkspaceId)
+        .eq("type", "telegram_employee_bot")
+        .eq("is_active", true);
+      const myBot = (empBots ?? []).find(
+        (r) =>
+          (r.config as { owner_user_id?: string } | null)?.owner_user_id === user.id,
+      );
+      const myBotToken =
+        (myBot?.secrets as { token?: string } | null)?.token ?? null;
+
+      if (myBotToken) {
+        TELEGRAM_BOT_TOKEN = myBotToken;
       } else {
-        // Личный бот реагирующего пользователя в воркспейсе чата.
-        const { data: empBots } = await supabaseAdmin
-          .from("workspace_integrations")
-          .select("id, is_active, config, secrets")
-          .eq("workspace_id", convWorkspaceId)
-          .eq("type", "telegram_employee_bot")
-          .eq("is_active", true);
-        const myBot = (empBots ?? []).find(
-          (r) =>
-            (r.config as { owner_user_id?: string } | null)?.owner_user_id === user.id,
-        );
-        const myBotToken =
-          (myBot?.secrets as { token?: string } | null)?.token ?? null;
-        if (myBotToken) {
-          TELEGRAM_BOT_TOKEN = myBotToken;
+        const { data: msgRow } = await supabaseAdmin
+          .from("project_messages")
+          .select("telegram_bot_integration_id")
+          .eq("telegram_chat_id", body.chat_id)
+          .eq("telegram_message_id", body.message_id)
+          .maybeSingle();
+        const savedIntegrationId =
+          (msgRow?.telegram_bot_integration_id as string | null) ?? null;
+        const fromIntegration = savedIntegrationId
+          ? await resolveTokenByIntegrationId(supabaseAdmin, savedIntegrationId)
+          : null;
+        if (fromIntegration) {
+          TELEGRAM_BOT_TOKEN = fromIntegration.token;
         } else {
           const fallback = await resolveBotToken(supabaseAdmin, body.chat_id);
           TELEGRAM_BOT_TOKEN = fallback.token;
