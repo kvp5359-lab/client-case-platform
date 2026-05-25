@@ -333,9 +333,9 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
             <div className="flex items-center justify-between gap-1 flex-nowrap">
               {fieldBtn('startDate', formatDateShort(date), '—', 68)}
               <div className="flex items-center gap-0">
-                {fieldBtn('startTime', startTime, '--:--', 44)}
+                {fieldBtn('startTime', startTime, '–:–', 44)}
                 <span className="text-xs text-muted-foreground px-0.5">–</span>
-                {fieldBtn('endTime', endTime, '--:--', 44)}
+                {fieldBtn('endTime', endTime, '–:–', 44)}
               </div>
               {fieldBtn('endDate', endDate ? formatDateShort(endDate) : '', '—', 68)}
             </div>
