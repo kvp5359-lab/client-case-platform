@@ -258,8 +258,9 @@ Deno.serve(async (req: Request) => {
           indexed++;
         } catch (err) {
           failed++;
+          const errMsg = err instanceof Error ? err.message : String(err);
           await supabaseAdmin.from("knowledge_articles")
-            .update({ indexing_status: "error", indexing_error: "Ошибка индексации. Попробуйте позже." })
+            .update({ indexing_status: "error", indexing_error: errMsg.slice(0, 500) })
             .eq("id", art.id);
           console.error(`Reindex failed for ${art.id}:`, err);
         }
@@ -305,8 +306,9 @@ Deno.serve(async (req: Request) => {
           indexed++;
         } catch (err) {
           failed++;
+          const errMsg = err instanceof Error ? err.message : String(err);
           await supabaseAdmin.from("knowledge_qa")
-            .update({ indexing_status: "error", indexing_error: "Ошибка индексации. Попробуйте позже." })
+            .update({ indexing_status: "error", indexing_error: errMsg.slice(0, 500) })
             .eq("id", qa.id);
           console.error(`Reindex Q&A failed for ${qa.id}:`, err);
         }
@@ -448,17 +450,19 @@ Deno.serve(async (req: Request) => {
     );
   } catch (err) {
     console.error("knowledge-index error:", err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const errStack = err instanceof Error ? err.stack : undefined;
 
     // Try to update status on error (body was parsed before try-block)
     try {
-      const genericErr = "Ошибка индексации. Попробуйте позже.";
+      const dbErr = errMsg.slice(0, 500);
       if (body?.article_id) {
         await supabaseAdmin.from("knowledge_articles")
-          .update({ indexing_status: "error", indexing_error: genericErr })
+          .update({ indexing_status: "error", indexing_error: dbErr })
           .eq("id", body.article_id);
       } else if (body?.qa_id) {
         await supabaseAdmin.from("knowledge_qa")
-          .update({ indexing_status: "error", indexing_error: genericErr })
+          .update({ indexing_status: "error", indexing_error: dbErr })
           .eq("id", body.qa_id);
       }
     } catch {
@@ -466,7 +470,11 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ error: "Knowledge indexing failed" }),
+      JSON.stringify({
+        error: "Knowledge indexing failed",
+        details: errMsg,
+        stack: errStack,
+      }),
       { status: 500, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
     );
   }
