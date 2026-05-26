@@ -140,22 +140,51 @@ async function resolveBucketAndPath(
 }
 
 /**
- * Get signed URL for inline viewing in browser.
+ * Браузеры умеют показывать inline только ограниченный набор MIME.
+ * Для всего остального лучше форсить download — иначе при `window.open(url)`
+ * браузер откроет Save dialog с именем из URL (= storage_path),
+ * пользователь видит кривое сгенерированное имя файла.
+ */
+export function canInlinePreview(mimeType: string | null | undefined): boolean {
+  if (!mimeType) return false
+  return (
+    mimeType === 'application/pdf' ||
+    mimeType.startsWith('image/') ||
+    mimeType.startsWith('video/') ||
+    mimeType.startsWith('audio/') ||
+    mimeType.startsWith('text/')
+  )
+}
+
+/**
+ * Get signed URL для просмотра/скачивания файла.
+ *
+ * Если передан `downloadName` — URL будет содержать `?download=<name>`,
+ * Supabase Storage выставит `Content-Disposition: attachment; filename="..."`,
+ * браузер сразу скачает файл с правильным именем. Без `downloadName` —
+ * чистый signed URL для inline preview (pdf/image открываются в new tab).
  */
 export async function getAttachmentUrl(
   storagePath: string,
   fileId?: string | null,
+  downloadName?: string | null,
 ): Promise<string> {
   const { bucket, path } = await resolveBucketAndPath(storagePath, fileId)
 
   const { data, error } = await supabase.storage
     .from(bucket)
-    .createSignedUrl(path, SIGNED_URL_EXPIRY_SEC)
+    .createSignedUrl(
+      path,
+      SIGNED_URL_EXPIRY_SEC,
+      downloadName ? { download: downloadName } : undefined,
+    )
 
   if (error) throw new ConversationError(`Ошибка получения URL: ${error.message}`)
 
   const url = new URL(data.signedUrl)
-  url.searchParams.delete('download')
+  // Без downloadName удаляем param `download`, который Supabase иногда добавляет
+  // по умолчанию — он бы превратил preview в скачивание.
+  if (!downloadName) url.searchParams.delete('download')
   return url.toString()
 }
 

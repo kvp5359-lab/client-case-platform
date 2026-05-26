@@ -50,6 +50,7 @@ export {
 export {
   uploadAttachments,
   getAttachmentUrl,
+  canInlinePreview,
   downloadAttachmentBlob,
   downloadAttachmentAsFile,
 } from './messengerAttachmentService'

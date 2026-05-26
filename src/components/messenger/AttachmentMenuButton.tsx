@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   getAttachmentUrl,
+  canInlinePreview,
   downloadAttachmentBlob,
   type MessageAttachment as AttachmentType,
 } from '@/services/api/messenger/messengerService'
@@ -45,6 +46,10 @@ export function AttachmentMenuButton({
       onOpen()
       return
     }
+    // То же, что в FileAttachment: для не-inline mime-типов сразу шлём
+    // ?download=file_name, иначе Save dialog подставит сгенерированное
+    // имя из storage_path вместо реального имени файла.
+    const inline = canInlinePreview(attachment.mime_type)
     const newTab = window.open('', '_blank')
     if (!newTab) {
       toast.error('Браузер заблокировал открытие вкладки')
@@ -52,7 +57,11 @@ export function AttachmentMenuButton({
     }
     setLoading(true)
     try {
-      const url = await getAttachmentUrl(attachment.storage_path, attachment.file_id)
+      const url = await getAttachmentUrl(
+        attachment.storage_path,
+        attachment.file_id,
+        inline ? null : attachment.file_name,
+      )
       newTab.location.href = url
     } catch {
       newTab.close()

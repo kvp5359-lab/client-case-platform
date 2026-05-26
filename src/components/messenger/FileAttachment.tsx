@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { FileText, Loader2 } from 'lucide-react'
 import {
   getAttachmentUrl,
+  canInlinePreview,
   type MessageAttachment as AttachmentType,
 } from '@/services/api/messenger/messengerService'
 import { formatSize } from '@/utils/files/formatSize'
@@ -30,6 +31,10 @@ export function FileAttachment({
 
   const handleOpen = async () => {
     if (!attachment.storage_path) return
+    // Файлы, которые браузер не покажет inline (docx, xlsx, zip, …) — скачиваем
+    // с правильным именем через ?download=file_name. Pdf/image/video/audio/text
+    // оставляем как inline preview в новой вкладке.
+    const inline = canInlinePreview(attachment.mime_type)
     const newTab = window.open('', '_blank')
     if (!newTab) {
       toast.error('Браузер заблокировал открытие вкладки')
@@ -37,7 +42,11 @@ export function FileAttachment({
     }
     setLoading(true)
     try {
-      const url = await getAttachmentUrl(attachment.storage_path, attachment.file_id)
+      const url = await getAttachmentUrl(
+        attachment.storage_path,
+        attachment.file_id,
+        inline ? null : attachment.file_name,
+      )
       newTab.location.href = url
     } catch {
       newTab.close()
