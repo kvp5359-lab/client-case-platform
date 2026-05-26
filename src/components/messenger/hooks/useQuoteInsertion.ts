@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import type { Editor } from '@tiptap/react'
 
 /**
@@ -10,14 +10,21 @@ import type { Editor } from '@tiptap/react'
  * новый → useEffect срабатывает.
  *
  * Позиция вставки:
- *  - Если редактор сфокусирован (editor.isFocused === true) — вставляем в
- *    текущую позицию курсора.
- *  - Иначе — focus('end') и вставка в конец документа.
+ *  - Если редактор хоть раз был сфокусирован в этом треде
+ *    (`wasFocusedRef.current === true`) — вставляем в последнюю позицию
+ *    курсора. `editor.commands.focus()` без аргументов восстанавливает
+ *    сохранённую в Tiptap selection.
+ *  - Иначе — `focus('end')` и вставка в конец документа.
+ *
+ * Проверять `editor.isFocused` напрямую нельзя: выделение текста в баббле
+ * уводит DOM Selection из редактора, isFocused становится false ещё до
+ * клика «Цитировать». wasFocusedRef — стабильный сигнал «был ли фокус».
  */
 export function useQuoteInsertion(
   editor: Editor | null,
   quoteText: string | null | undefined,
   nonce: number | undefined,
+  wasFocusedRef: RefObject<boolean>,
   onClearQuote?: () => void,
 ) {
   const onClearRef = useRef(onClearQuote)
@@ -39,11 +46,11 @@ export function useQuoteInsertion(
       })
       .join('')
     const content = `<blockquote>${paragraphs}</blockquote><p></p>`
-    if (editor.isFocused) {
-      editor.chain().insertContent(content).run()
+    if (wasFocusedRef.current) {
+      editor.chain().focus().insertContent(content).run()
     } else {
       editor.chain().focus('end').insertContent(content).run()
     }
     onClearRef.current?.()
-  }, [editor, quoteText, nonce])
+  }, [editor, quoteText, nonce, wasFocusedRef])
 }

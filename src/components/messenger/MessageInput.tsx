@@ -109,6 +109,12 @@ export function MessageInput({
   } | null>(null)
   const editorRef = useRef<Editor | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  // Отмечает, был ли редактор сфокусирован хотя бы раз в текущем треде.
+  // Нужно для useQuoteInsertion: если был — вставка в позицию курсора
+  // (Tiptap хранит последнюю selection), иначе — в конец документа.
+  // editor.isFocused в момент клика «Цитировать» всегда false, потому что
+  // выделение текста в баббле уводит DOM Selection из редактора.
+  const hasBeenFocusedRef = useRef(false)
   const { editorMaxHeight, handleResizerMouseDown } = useEditorResizer()
 
   const draftKey = threadId ? `msg_draft:${threadId}` : `msg_draft:${projectId}:${channel}`
@@ -267,7 +273,24 @@ export function MessageInput({
     return () => clearTimeout(timer)
   }, [replyTo, editor])
 
-  useQuoteInsertion(editor, quoteText, quoteNonce, onClearQuote)
+  // Отслеживаем onFocus редактора. Используется в useQuoteInsertion ниже.
+  useEffect(() => {
+    if (!editor) return
+    const handler = () => {
+      hasBeenFocusedRef.current = true
+    }
+    editor.on('focus', handler)
+    return () => {
+      editor.off('focus', handler)
+    }
+  }, [editor])
+
+  // Смена треда — сбрасываем флаг: в новом треде юзер ещё не работал.
+  useEffect(() => {
+    hasBeenFocusedRef.current = false
+  }, [threadId])
+
+  useQuoteInsertion(editor, quoteText, quoteNonce, hasBeenFocusedRef, onClearQuote)
 
   // Load content for editing
   useEffect(() => {
