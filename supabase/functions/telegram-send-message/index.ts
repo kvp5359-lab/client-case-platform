@@ -94,10 +94,19 @@ Deno.serve(async (req: Request) => {
     };
     trace("request.start", {
       attachments_only: body.attachments_only ?? false,
+      attachments_only_raw_type: typeof body.attachments_only,
       content_len: body.content?.length ?? 0,
+      content_preview: typeof body.content === "string" ? body.content.slice(0, 80) : null,
+      content_is_paperclip: body.content === "📎",
       sender_name: body.sender_name,
       has_reply_to: !!body.reply_to_telegram_message_id,
     });
+
+    // Флаг, который выставляется в местах markMessageSent / markMessageFailed.
+    // Если в конце функции остался false — значит мы прошли все ветки и не
+    // выставили send_status. Это баг (сообщение застрянет в pending), и нам
+    // нужно увидеть его в логах + в БД отдельным trace-event'ом.
+    let statusWritten = false;
 
     const requiredFields = body.attachments_only
       ? ["message_id", "telegram_chat_id"]
@@ -126,6 +135,15 @@ Deno.serve(async (req: Request) => {
 
     const isAttachmentsOnlyContent = body.content === "📎";
     const wantTextOnly = !body.attachments_only && !isAttachmentsOnlyContent;
+    trace("branch.decision", {
+      wantTextOnly,
+      attachments_only: body.attachments_only ?? false,
+      isAttachmentsOnlyContent,
+      will_enter_text_branch: wantTextOnly,
+      will_enter_attachments_branch: !!(body.attachments_only && body.message_id),
+      will_skip_both_branches:
+        !wantTextOnly && !(body.attachments_only && body.message_id),
+    });
 
     // Резолв бота: сначала пробуем личный бот сотрудника-отправителя; если
     // его нет — fallback на бота-секретаря (resolveBotToken).
@@ -393,6 +411,7 @@ Deno.serve(async (req: Request) => {
               telegram_chat_id: activeChatId,
             },
           });
+          statusWritten = true;
           trace("tg.send.ok.markSent_done");
         } catch (markErr) {
           // markMessageSent падает редко (RLS / триггеры), но если упал —
@@ -417,6 +436,7 @@ Deno.serve(async (req: Request) => {
               telegram_chat_id: activeChatId,
             })
             .eq("id", body.message_id);
+          statusWritten = true;
           trace("tg.send.ok.markSent_fallback_done");
         }
       } else {
@@ -437,6 +457,7 @@ Deno.serve(async (req: Request) => {
             failureMetadata: { stage: "text", chat_id: activeChatId },
           },
         );
+        statusWritten = true;
       }
 
       // (только для устранения unused-warn'ов)
@@ -596,6 +617,7 @@ Deno.serve(async (req: Request) => {
                 failureMetadata: { stage: "split_text", chat_id: activeChatId },
               },
             );
+            statusWritten = true;
           }
 
           attachmentsOk = await sendAttachmentsWithFallback({
@@ -627,6 +649,7 @@ Deno.serve(async (req: Request) => {
         await markMessageSent(serviceClient, body.message_id, {
           channelFields: { telegram_attachments_delivered: true },
         });
+        statusWritten = true;
       } else {
         await markMessageFailed(
           serviceClient,
@@ -639,12 +662,40 @@ Deno.serve(async (req: Request) => {
             failureMetadata: { stage: "attachments", chat_id: body.telegram_chat_id },
           },
         );
+        statusWritten = true;
       }
     }
 
-    trace("request.end", { total_ms: Date.now() - T0 });
+    // Финальная диагностика: если ни одна ветка не выставила send_status —
+    // это баг. Логируем громко (console.error для видимости в Dashboard),
+    // плюс пишем в telegram_error_detail на самом сообщении: так post-mortem
+    // можно делать SQL'ом, не залезая в Functions Logs.
+    if (!statusWritten) {
+      console.error(JSON.stringify({
+        trace_id: TRACE_ID,
+        event: "BUG.no_branch_wrote_status",
+        message_id: body.message_id,
+        attachments_only: body.attachments_only ?? false,
+        attachments_only_raw_type: typeof body.attachments_only,
+        content_preview: typeof body.content === "string" ? body.content.slice(0, 80) : null,
+        content_is_paperclip: body.content === "📎",
+        wantTextOnly,
+        body_keys: Object.keys((body ?? {}) as Record<string, unknown>),
+      }));
+      await serviceClient
+        .from("project_messages")
+        .update({
+          telegram_error_detail:
+            `BUG no_branch_wrote_status: attachments_only=${body.attachments_only ?? false} ` +
+            `content_paperclip=${body.content === "📎"} wantTextOnly=${wantTextOnly} ` +
+            `content_len=${body.content?.length ?? 0}`,
+        })
+        .eq("id", body.message_id);
+    }
+
+    trace("request.end", { total_ms: Date.now() - T0, statusWritten });
     return new Response(
-      JSON.stringify({ ok: true }),
+      JSON.stringify({ ok: true, statusWritten }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
