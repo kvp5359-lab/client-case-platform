@@ -27,12 +27,49 @@ interface TgFrom {
   last_name?: string;
 }
 
+interface TgFileRef {
+  file_unique_id?: string;
+}
+
 interface TgMessageMinimal {
   message_id: number;
   chat: { id: number };
   date?: number;
   from?: TgFrom;
   reply_to_message?: { message_id: number };
+  // Поля вложений — нужны для извлечения file_unique_id в дедуп-ключ.
+  // Все опциональные: одно сообщение содержит ровно один из этих типов
+  // (TG не миксует фото и документ в одном message).
+  document?: TgFileRef;
+  photo?: TgFileRef[]; // массив размеров; берём последний (самый большой)
+  video?: TgFileRef;
+  audio?: TgFileRef;
+  voice?: TgFileRef;
+  video_note?: TgFileRef;
+  animation?: TgFileRef;
+  sticker?: TgFileRef;
+}
+
+/**
+ * Извлекает стабильный TG-id первого вложения сообщения. Этот id одинаков
+ * у разных ботов для одного и того же файла (нужен multi-bot dedup) и
+ * разный для разных файлов (даёт различить файлы, отправленные одной
+ * секундой одним юзером).
+ */
+function extractFileUniqueId(message: TgMessageMinimal): string | null {
+  if (message.document?.file_unique_id) return message.document.file_unique_id;
+  if (message.photo && message.photo.length > 0) {
+    // Берём последний (самый большой) размер.
+    const last = message.photo[message.photo.length - 1];
+    if (last?.file_unique_id) return last.file_unique_id;
+  }
+  if (message.video?.file_unique_id) return message.video.file_unique_id;
+  if (message.audio?.file_unique_id) return message.audio.file_unique_id;
+  if (message.voice?.file_unique_id) return message.voice.file_unique_id;
+  if (message.video_note?.file_unique_id) return message.video_note.file_unique_id;
+  if (message.animation?.file_unique_id) return message.animation.file_unique_id;
+  if (message.sticker?.file_unique_id) return message.sticker.file_unique_id;
+  return null;
 }
 
 export interface ChatBinding {
@@ -111,6 +148,7 @@ export async function syncTelegramIncomingMessage(
   const messageDateISO = message.date
     ? new Date(message.date * 1000).toISOString()
     : null;
+  const fileUniqueId = extractFileUniqueId(message);
 
   // Lookup исходника реплая в counter того же бота.
   let replyToDbId: string | null = null;
@@ -146,6 +184,7 @@ export async function syncTelegramIncomingMessage(
     forwarded_from_name: forwardInfo.name,
     forwarded_date: forwardInfo.date,
     telegram_bot_integration_id: asPersonalBot?.integrationId ?? null,
+    telegram_file_unique_id: fileUniqueId,
   };
 
   const insertResult = await service
@@ -185,14 +224,19 @@ export async function syncTelegramIncomingMessage(
     // какой-то другой бот пришлёт edit/delete с другим counter id.
     // Атомарность не нужна: array_append через RPC слишком тяжело,
     // поэтому читаем-обновляем (узкое окно гонки приемлемо в этом сценарии).
-    const { data: existing } = await service
+    // При multi-file в одну секунду в БД может оказаться несколько строк
+    // с одинаковыми (chat, sender, date) — отличающиеся file_unique_id.
+    // Чтобы enrich попал ровно в «нашу» — фильтруем дополнительно по file id.
+    let lookup = service
       .from("project_messages")
       .select("id, telegram_message_ids")
       .eq("telegram_chat_id", chatId)
       .eq("telegram_sender_user_id", telegramUserId)
-      .eq("telegram_message_date", messageDateISO)
-      .limit(1)
-      .maybeSingle();
+      .eq("telegram_message_date", messageDateISO);
+    lookup = fileUniqueId
+      ? lookup.eq("telegram_file_unique_id", fileUniqueId)
+      : lookup.is("telegram_file_unique_id", null);
+    const { data: existing } = await lookup.limit(1).maybeSingle();
     if (existing) {
       const ids = (existing.telegram_message_ids as number[] | null) ?? [];
       if (!ids.includes(telegramMessageId)) {
@@ -200,13 +244,17 @@ export async function syncTelegramIncomingMessage(
       }
     }
 
-    await service
+    let upd = service
       .from("project_messages")
       .update(enrich)
       .eq("telegram_chat_id", chatId)
       .eq("telegram_sender_user_id", telegramUserId)
       .eq("telegram_message_date", messageDateISO)
       .is("telegram_bot_integration_id", null);
+    upd = fileUniqueId
+      ? upd.eq("telegram_file_unique_id", fileUniqueId)
+      : upd.is("telegram_file_unique_id", null);
+    await upd;
 
     return { rowId: existing?.id ?? null, outcome: "enriched" };
   }

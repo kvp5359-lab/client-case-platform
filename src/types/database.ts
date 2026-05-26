@@ -4962,6 +4962,7 @@ export type Database = {
           telegram_bot_integration_id: string | null
           telegram_chat_id: number | null
           telegram_error_detail: string | null
+          telegram_file_unique_id: string | null
           telegram_grouped_id: number | null
           telegram_message_date: string | null
           telegram_message_id: number | null
@@ -5011,6 +5012,7 @@ export type Database = {
           telegram_bot_integration_id?: string | null
           telegram_chat_id?: number | null
           telegram_error_detail?: string | null
+          telegram_file_unique_id?: string | null
           telegram_grouped_id?: number | null
           telegram_message_date?: string | null
           telegram_message_id?: number | null
@@ -5060,6 +5062,7 @@ export type Database = {
           telegram_bot_integration_id?: string | null
           telegram_chat_id?: number | null
           telegram_error_detail?: string | null
+          telegram_file_unique_id?: string | null
           telegram_grouped_id?: number | null
           telegram_message_date?: string | null
           telegram_message_id?: number | null
