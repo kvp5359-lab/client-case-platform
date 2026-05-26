@@ -223,10 +223,15 @@ function MessageBubbleImpl({
     }
   }, [])
 
-  const handleMouseUp = useCallback(
-    (e: React.MouseEvent) => {
-      if (!onQuote) return
-      if ((e.target as HTMLElement).closest('[data-quote-popup]')) return
+  // Показ/скрытие popup'а «Цитировать» по выделению текста.
+  // Слушаем mouseup на document'е, а не на самом баббле — иначе если юзер
+  // протянул выделение за границы баббла, mouseup случается вне нашего div'а
+  // и кнопка просто не появляется. По document — ловим всегда.
+  useEffect(() => {
+    if (!onQuote) return
+    const showOrHide = (e: MouseEvent) => {
+      // Клик по самому popup'у — не пересчитываем выделение.
+      if ((e.target as HTMLElement | null)?.closest?.('[data-quote-popup]')) return
       const selection = window.getSelection()
       if (!selection || selection.isCollapsed || !selection.toString().trim()) {
         destroyQuotePopup()
@@ -235,6 +240,8 @@ function MessageBubbleImpl({
       const container = contentRef.current
       if (!container) return
       const range = selection.getRangeAt(0)
+      // Показываем popup только если выделение пересекается с нашим баблом —
+      // не открываем своё для выделений в других сообщениях.
       if (!container.contains(range.commonAncestorContainer)) {
         destroyQuotePopup()
         return
@@ -272,11 +279,15 @@ function MessageBubbleImpl({
 
       container.appendChild(popup)
       quotePopupRef.current = popup
-    },
-    [onQuote, destroyQuotePopup],
-  )
+    }
+    document.addEventListener('mouseup', showOrHide)
+    return () => document.removeEventListener('mouseup', showOrHide)
+  }, [onQuote, destroyQuotePopup])
 
-  // Скрываем popup при клике вне бабла
+  // Скрываем popup при клике (mousedown) вне бабла. mouseup для popup-показа
+  // уже на document'е выше, mousedown отдельно — для срабатывания при клике
+  // вне выделения (тогда выделение схлопывается, и mouseup-обработчик уберёт
+  // popup).
   useEffect(() => {
     const hide = (e: MouseEvent) => {
       if (!quotePopupRef.current) return
@@ -404,8 +415,8 @@ function MessageBubbleImpl({
           reactionPopoverOpen={reactionPopoverOpen}
           setReactionPopoverOpen={setReactionPopoverOpen}
         >
-        <div className="relative max-w-full" ref={contentRef} onMouseUp={handleMouseUp}>
-          {/* Quote popup рендерится императивно через DOM — см. handleMouseUp */}
+        <div className="relative max-w-full" ref={contentRef}>
+          {/* Quote popup рендерится императивно через DOM — см. useEffect на mouseup в document */}
 
           {/* Оптимистический лейбл «Отправляется» — для свежих исходящих,
               которые ещё не вернулись из БД через realtime. */}

@@ -3,14 +3,21 @@ import type { Editor } from '@tiptap/react'
 
 /**
  * Вставляет переданный `quoteText` в редактор как blockquote и зовёт `onClearQuote`.
- * Принимает сам `editor` (state, а не ref), чтобы при пересылке в чат, где редактор
- * только что смонтирован, эффект повторно срабатывал, когда editor инициализируется
- * (null → Editor). Иначе quoteText выставляется раньше, эффект видит editor=null и
- * молча уходит, а при появлении редактора больше не повторяется.
+ *
+ * Зависит от `nonce` — счётчика, который растёт на каждый setQuoteText в
+ * useMessengerState. Это позволяет триггерить вставку, даже когда юзер
+ * цитирует ровно тот же текст подряд: значение строки не меняется, но nonce
+ * новый → useEffect срабатывает.
+ *
+ * Позиция вставки:
+ *  - Если редактор сфокусирован (editor.isFocused === true) — вставляем в
+ *    текущую позицию курсора.
+ *  - Иначе — focus('end') и вставка в конец документа.
  */
 export function useQuoteInsertion(
   editor: Editor | null,
   quoteText: string | null | undefined,
+  nonce: number | undefined,
   onClearQuote?: () => void,
 ) {
   const onClearRef = useRef(onClearQuote)
@@ -31,7 +38,12 @@ export function useQuoteInsertion(
         return `<p>${escaped || '<br>'}</p>`
       })
       .join('')
-    editor.chain().focus().insertContent(`<blockquote>${paragraphs}</blockquote><p></p>`).run()
+    const content = `<blockquote>${paragraphs}</blockquote><p></p>`
+    if (editor.isFocused) {
+      editor.chain().insertContent(content).run()
+    } else {
+      editor.chain().focus('end').insertContent(content).run()
+    }
     onClearRef.current?.()
-  }, [editor, quoteText])
+  }, [editor, quoteText, nonce])
 }

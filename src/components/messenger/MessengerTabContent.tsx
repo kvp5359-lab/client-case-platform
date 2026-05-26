@@ -336,6 +336,7 @@ export function MessengerTabContent({
           onClearEdit={() => state.setEditingMessage(null)}
           onEdit={handlers.handleEdit}
           quoteText={state.quoteText}
+          quoteNonce={state.quoteNonce}
           onClearQuote={() => state.setQuoteText(null)}
           onOpenDocPicker={state.documentPickerLogic.handleOpenDocPicker}
           projectDocumentsCount={state.documentPickerLogic.projectDocuments.length}

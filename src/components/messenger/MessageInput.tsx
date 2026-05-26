@@ -38,6 +38,9 @@ type MessageInputProps = {
     draftFiles?: { keepAttachmentIds: string[]; newFiles: File[]; publish?: boolean },
   ) => void
   quoteText?: string | null
+  /** Счётчик, растущий на каждый setQuoteText. Передаётся в useQuoteInsertion,
+   *  чтобы повторное цитирование того же текста тоже триггерило вставку. */
+  quoteNonce?: number
   onClearQuote?: () => void
   onOpenDocPicker?: () => void
   projectDocumentsCount?: number
@@ -74,6 +77,7 @@ export function MessageInput({
   onClearEdit,
   onEdit,
   quoteText,
+  quoteNonce,
   onClearQuote,
   onOpenDocPicker,
   projectDocumentsCount = 0,
@@ -154,8 +158,10 @@ export function MessageInput({
     handleDrop,
   } = useMessageFiles(draftKey, addFilesRef, onDocumentDrop, () => {
     // Возврат фокуса в редактор после прикрепления (input/paste/drop/проектные
-    // документы). Без этого пользователю каждый раз нужно кликать в поле ввода.
-    requestAnimationFrame(() => editorRef.current?.commands.focus('end'))
+    // документы). setTimeout(50) надёжнее RAF — нативный <input type="file">
+    // диалог и Radix DropdownMenu возвращают фокус через setTimeout, RAF
+    // (16мс) может проиграть. 50мс гарантирует, что наш focus последний.
+    setTimeout(() => editorRef.current?.commands.focus('end'), 50)
   })
 
   const { saveDraft, clearDraft, skipDraftRestoreRef } = useDraftMessage(
@@ -250,21 +256,18 @@ export function MessageInput({
   }, [threadId])
 
   // Focus editor on reply.
-  // requestAnimationFrame — клик по «Ответить» в контекстном меню (Radix)
-  // закрывает меню и возвращает фокус на trigger (баббл) ПОСЛЕ нашего эффекта;
-  // без отложенного вызова возврат фокуса перебивает focus('end'), и курсор
-  // в поле ввода не появляется. RAF гарантирует, что мы фокусируем после
-  // того, как Radix отработал.
+  // setTimeout(50) — клик по «Ответить» в Radix меню запускает возврат фокуса
+  // на trigger через свой setTimeout(0). RAF (16мс) на практике иногда
+  // проигрывает Radix-у. setTimeout(50) гарантирует, что наш focus идёт
+  // последним. editor в deps — на случай, когда replyTo выставился раньше,
+  // чем смонтировался редактор; эффект повторно сработает при появлении editor.
   useEffect(() => {
-    if (replyTo && editorRef.current) {
-      const id = requestAnimationFrame(() => {
-        editorRef.current?.commands.focus('end')
-      })
-      return () => cancelAnimationFrame(id)
-    }
-  }, [replyTo])
+    if (!replyTo || !editor) return
+    const timer = setTimeout(() => editor.commands.focus('end'), 50)
+    return () => clearTimeout(timer)
+  }, [replyTo, editor])
 
-  useQuoteInsertion(editor, quoteText, onClearQuote)
+  useQuoteInsertion(editor, quoteText, quoteNonce, onClearQuote)
 
   // Load content for editing
   useEffect(() => {

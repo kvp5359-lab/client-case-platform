@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { ChevronDown, RefreshCw, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -10,6 +11,7 @@ import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import type { MessengerAccent } from './utils/messageStyles'
 import type { DeliveryStatus } from './bubbleUtils'
 import { BubbleTimestamp } from './BubbleTimestamp'
+import { BubbleLinkMenu, type BubbleLinkMenuHandle } from './BubbleLinkMenu'
 
 type BubbleTextContentProps = {
   message: ProjectMessage
@@ -54,6 +56,31 @@ export function BubbleTextContent({
         }
       : undefined
 
+  // Правый клик на ссылке внутри баббла должен открывать меню для ссылки,
+  // а не общее меню сообщения. Вешаем native listener на capture phase —
+  // он сработает раньше React event delegation на корне, поэтому Radix
+  // ContextMenuTrigger родителя не успеет открыть своё меню.
+  // stopImmediatePropagation — на случай, если что-то ещё висит на том же
+  // узле в capture phase.
+  const linkMenuRef = useRef<BubbleLinkMenuHandle>(null)
+  const contentContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const node = contentContainerRef.current
+    if (!node) return
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null
+      const anchor = target?.closest?.('a') as HTMLAnchorElement | null
+      if (!anchor || !anchor.href) return
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+      linkMenuRef.current?.openAt(e.clientX, e.clientY, anchor.href)
+    }
+    node.addEventListener('contextmenu', handler, true)
+    return () => node.removeEventListener('contextmenu', handler, true)
+  }, [message.content])
+
   return (
     <div>
       <div className="relative">
@@ -65,6 +92,7 @@ export function BubbleTextContent({
           <div className={cn('flex items-end justify-between gap-2', hasAttachments && 'block')}>
             {isHtmlContent(message.content) ? (
               <div
+                ref={contentContainerRef}
                 className="text-sm break-words min-w-0 messenger-content messenger-links"
                 dangerouslySetInnerHTML={{
                   __html: linkifyHtml(sanitizeMessengerHtml(message.content)),
@@ -72,6 +100,7 @@ export function BubbleTextContent({
               />
             ) : (
               <div
+                ref={contentContainerRef}
                 className="text-sm whitespace-pre-wrap break-words min-w-0 messenger-links"
                 dangerouslySetInnerHTML={{
                   __html: sanitizeMessengerHtml(linkifyText(message.content)),
@@ -137,6 +166,7 @@ export function BubbleTextContent({
           </div>
         </div>
       )}
+      <BubbleLinkMenu ref={linkMenuRef} />
     </div>
   )
 }

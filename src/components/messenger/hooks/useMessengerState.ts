@@ -2,7 +2,7 @@
  * Core state and data hooks for MessengerTabContent
  */
 
-import { useState, useRef, useEffect } from 'react'
+import { useCallback, useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -74,7 +74,20 @@ export function useMessengerState({
 
   const [replyTo, setReplyTo] = useState<ProjectMessage | null>(null)
   const [editingMessage, setEditingMessage] = useState<ProjectMessage | null>(null)
-  const [quoteText, setQuoteText] = useState<string | null>(null)
+  // `quote` хранит и текст, и nonce — счётчик, который растёт на каждый
+  // setQuoteText, даже если текст совпадает с предыдущим. Иначе при повторе
+  // того же выделения useEffect в useQuoteInsertion не сработает (значение
+  // string не меняется → не считается обновлением), и цитата «не вставляется».
+  const [quote, setQuote] = useState<{ text: string; nonce: number } | null>(null)
+  const setQuoteText = useCallback((text: string | null) => {
+    if (text === null) {
+      setQuote(null)
+    } else {
+      setQuote((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }))
+    }
+  }, [])
+  const quoteText = quote?.text ?? null
+  const quoteNonce = quote?.nonce ?? 0
   const [forwardedAttachments, setForwardedAttachments] = useState<ForwardedAttachment[]>([])
   const [sendTrigger, setSendTrigger] = useState(0)
 
@@ -368,6 +381,7 @@ export function useMessengerState({
     editingMessage,
     setEditingMessage,
     quoteText,
+    quoteNonce,
     setQuoteText,
     forwardedAttachments,
     setForwardedAttachments,
