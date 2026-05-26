@@ -19,7 +19,9 @@
 
 import { useEffect, useState } from 'react'
 import { AlertCircle } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
+import { messengerKeys } from '@/hooks/queryKeys/messenger'
 
 export type DeliveryStatus = 'pending' | 'sent' | 'read' | 'failed' | null
 
@@ -35,6 +37,8 @@ const CLIENT_TIMEOUT_MS = 60_000
 export function useDeliveryStatus(message: ProjectMessage, isOwn: boolean): DeliveryStatus {
   // Optimistic-вставка фронта (до INSERT) — всегда pending.
   const isOptimistic = message.id.startsWith('optimistic-')
+
+  const queryClient = useQueryClient()
 
   // Локальный таймер для зависшего pending — стартует только при необходимости.
   const [timedOut, setTimedOut] = useState(false)
@@ -53,6 +57,21 @@ export function useDeliveryStatus(message: ProjectMessage, isOwn: boolean): Deli
     const timer = setTimeout(() => setTimedOut(true), remaining)
     return () => clearTimeout(timer)
   }, [isOwn, isOptimistic, message.send_status, message.send_attempted_at, message.created_at])
+
+  // При локальном timeout — однократный refetch треда. Закрывает класс багов,
+  // когда edge function успешно дошла до markMessageSent, но realtime UPDATE
+  // не доехал до клиента (или обработчик пропустил). Если в БД статус уже
+  // 'sent' — баббл сам станет синим. Если всё ещё 'pending' — увидим красное
+  // обоснованно. Срабатывает один раз на сообщение (effect deps завязаны на
+  // timedOut+thread_id+message.id, а timedOut переходит false→true и больше
+  // не сбрасывается пока send_status='pending').
+  useEffect(() => {
+    if (!timedOut) return
+    if (!message.thread_id) return
+    queryClient.refetchQueries({
+      queryKey: messengerKeys.messagesByThreadId(message.thread_id),
+    })
+  }, [timedOut, message.thread_id, message.id, queryClient])
 
   if (!isOwn) return null
   if (isOptimistic) return 'pending'
