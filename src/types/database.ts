@@ -8527,6 +8527,7 @@ export type Database = {
           global_filter: Json
           id: string
           name: string
+          short_id: number
           sort_order: number
           updated_at: string
           workspace_id: string

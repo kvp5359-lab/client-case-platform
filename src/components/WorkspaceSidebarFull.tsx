@@ -306,13 +306,21 @@ export function WorkspaceSidebarFull({
     }
     if (key === 'boards') {
       // /boards активен, но не внутри закреплённой доски (у неё свой пункт).
-      const pinnedBoardIds = listSlots
+      // URL может содержать как UUID, так и short_id — резолвим оба варианта
+      // через allBoards и проверяем pathname.
+      const pinnedBoardUuids = listSlots
         .filter((s) => s.type === 'board')
         .map((s) => boardIdFromSlotId(s.id))
         .filter((id): id is string => Boolean(id))
+      const pinnedBoardPathTokens: string[] = []
+      for (const uuid of pinnedBoardUuids) {
+        pinnedBoardPathTokens.push(uuid)
+        const b = allBoards?.find((x) => x.id === uuid)
+        if (b?.short_id != null) pinnedBoardPathTokens.push(String(b.short_id))
+      }
       return (
         isNavActive('boards') &&
-        !pinnedBoardIds.some((id) => pathname.includes(`/boards/${id}`))
+        !pinnedBoardPathTokens.some((token) => pathname.includes(`/boards/${token}`))
       )
     }
     if (key === 'lists') {

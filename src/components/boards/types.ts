@@ -28,6 +28,8 @@ export type Board = {
   global_filter: BoardGlobalFilter
   created_at: string
   updated_at: string
+  /** Короткий числовой идентификатор для красивых URL: /boards/1 рядом с UUID. */
+  short_id: number | null
 }
 
 /**

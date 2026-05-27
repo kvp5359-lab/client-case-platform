@@ -18,7 +18,7 @@ type Props = {
   currentWorkspace: { name?: string } | null | undefined
   topbarSlots: SidebarSlot[]
   listSlots: SidebarSlot[]
-  allBoards: { id: string; name: string }[] | undefined
+  allBoards: { id: string; name: string; short_id: number | null }[] | undefined
   allItemLists: ItemList[] | undefined
   isOwner: boolean
   isClientOnly: boolean

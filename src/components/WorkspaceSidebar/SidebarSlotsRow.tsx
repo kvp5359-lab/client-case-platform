@@ -37,7 +37,7 @@ type SidebarSlotsRowProps = {
   compact: boolean
   /** Направление рендера. По умолчанию: compact='row', обычный='column'. */
   direction?: 'row' | 'column'
-  allBoards: { id: string; name: string }[] | undefined
+  allBoards: { id: string; name: string; short_id: number | null }[] | undefined
   allItemLists: ItemList[] | undefined
   isOwner: boolean
   pathname: string
@@ -130,6 +130,11 @@ function SingleSlot({
           <PinOff className="h-[14px] w-[14px]" />
         </button>
       ) : undefined
+    // URL доски может быть и с UUID, и с short_id (на subdomain'е активны
+    // короткие пути типа /boards/1). Подсвечиваем при совпадении любого варианта.
+    const isThisBoardActive =
+      pathname.includes(`/boards/${board.id}`) ||
+      (board.short_id != null && pathname.includes(`/boards/${board.short_id}`))
     const button = (
       <SidebarNavButton
         icon={Kanban}
@@ -137,7 +142,7 @@ function SingleSlot({
         href={buildHref(`boards/${board.id}`)}
         badge={badge}
         badgeColor={slot.badge_color}
-        isActive={isNavActive('boards') && pathname.includes(`/boards/${board.id}`)}
+        isActive={isNavActive('boards') && isThisBoardActive}
         compact={compact || undefined}
         hoverIconSlot={hoverSlot}
       />
