@@ -409,6 +409,12 @@
 .side-panel {
   @apply fixed top-0 right-0 h-screen min-w-[360px] border-l border-gray-200 bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.08)];
   width: var(--panel-width, 600px);
+  /* Когда внутри панели открыта Radix-модалка (Popover modal, Dialog),
+     Radix выставляет body{pointer-events:none}. Без явного auto тут
+     панель становится прозрачной для кликов, и клики «проваливаются»
+     на нижележащий контент (например, .rbc-event у календаря, у которого
+     pointer-events:auto явно). */
+  pointer-events: auto;
 }
 
 /* Push-режим правой панели: на страницах с task-списком (data-panel-mode="push")

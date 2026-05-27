@@ -183,20 +183,24 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
     value: string,
     placeholder: string,
     width: number,
-  ) => (
-    <button
-      type="button"
-      onClick={() => setActive(active === field ? null : field)}
-      className={cn(
-        'h-8 px-2 rounded-md border border-input bg-background text-xs transition-colors hover:bg-accent text-center',
-        active === field && 'ring-2 ring-primary/30 border-primary',
-        !value && 'text-muted-foreground',
-      )}
-      style={{ width }}
-    >
-      {value || placeholder}
-    </button>
-  )
+  ) => {
+    const isTime = field === 'startTime' || field === 'endTime'
+    return (
+      <button
+        type="button"
+        onClick={() => setActive(active === field ? null : field)}
+        className={cn(
+          'h-8 rounded-md border border-input bg-background text-xs transition-colors hover:bg-accent text-center whitespace-nowrap',
+          isTime ? 'px-1' : 'px-2',
+          active === field && 'ring-2 ring-primary/30 border-primary',
+          !value && 'text-muted-foreground',
+        )}
+        style={{ width }}
+      >
+        {value || placeholder}
+      </button>
+    )
+  }
 
   const popoverBody = useMemo(() => {
     if (active === 'startTime' || active === 'endTime') {
@@ -331,13 +335,13 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
           {/* Поля длительности — под чекбоксом */}
           {showDuration && (
             <div className="flex items-center justify-between gap-1 flex-nowrap">
-              {fieldBtn('startDate', formatDateShort(date), '—', 68)}
+              {fieldBtn('startDate', formatDateShort(date), '—', 72)}
               <div className="flex items-center gap-0">
                 {fieldBtn('startTime', startTime, '–:–', 44)}
                 <span className="text-xs text-muted-foreground px-0.5">–</span>
                 {fieldBtn('endTime', endTime, '–:–', 44)}
               </div>
-              {fieldBtn('endDate', endDate ? formatDateShort(endDate) : '', '—', 68)}
+              {fieldBtn('endDate', endDate ? formatDateShort(endDate) : '', '—', 72)}
             </div>
           )}
         </div>
