@@ -126,8 +126,10 @@ export function WorkspaceSidebarFull({
   } = useSidebarData({ workspaceId, searchQuery: debouncedSearchQuery, unreadProjectIds })
 
   // Виртуальная запись «Без проекта» — рендерится как обычный проект в списке.
-  // Клик → `/tasks?filter=no_project`. Сортировка обеспечена через badgeDisplays
-  // (есть непрочитанные → ProjectsList ставит наверх) и last_activity_at.
+  // Клик → `/tasks?filter=no_project`. Сортировка — по last_activity_at среди
+  // обычных проектов: если в личных диалогах пришло свежее сообщение, виртуал
+  // поднимается вверх как обычный проект с новым событием. Если активности
+  // нет (noProjectLastActivityAt = null) — кладём в конец.
   const projects: Project[] = useMemo(() => {
     if (!workspaceId) return rawProjects
     const virtual = {
@@ -150,7 +152,18 @@ export function WorkspaceSidebarFull({
       iconId: 'folder-minus',
       iconColor: '#6b7280',
     } as unknown as Project
-    return [...rawProjects, virtual]
+    if (!noProjectLastActivityAt) return [...rawProjects, virtual]
+    const virtualMs = Date.parse(noProjectLastActivityAt)
+    if (!Number.isFinite(virtualMs)) return [...rawProjects, virtual]
+    // rawProjects уже отсортированы БД по last_activity_at desc — ищем первый
+    // проект с активностью СТАРШЕ виртуала и вставляем виртуал перед ним.
+    const insertIdx = rawProjects.findIndex((p) => {
+      const raw = (p as unknown as { last_activity_at: string | null }).last_activity_at
+      const pMs = raw ? Date.parse(raw) : Number.NEGATIVE_INFINITY
+      return !Number.isFinite(pMs) || pMs < virtualMs
+    })
+    if (insertIdx === -1) return [...rawProjects, virtual]
+    return [...rawProjects.slice(0, insertIdx), virtual, ...rawProjects.slice(insertIdx)]
   }, [rawProjects, workspaceId, noProjectLastActivityAt])
 
   // Резолв URL-сегмента (short_id или UUID) в реальный project.id (UUID).
