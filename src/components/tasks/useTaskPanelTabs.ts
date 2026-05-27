@@ -59,6 +59,20 @@ function shortenTabId(tabId: string | null, threads: ThreadShortIdInfo[]): strin
 
 type PersistedRow = TaskPanelPersistedRow
 
+/**
+ * Внутренний payload для debounced persist. Содержит snapshot scope
+ * на момент вызова persist, чтобы между debounce-таймером (250 мс) и
+ * реальной записью scope не сменился. Без snapshot'а ловили race:
+ * юзер на проекте A добавлял `tasks:A`, переключался на B до срабатывания
+ * таймера → mutation писала `tasks:A` в запись scope=B (refId одной вкладки
+ * указывал на чужой проект). 4 битые записи у одного пользователя за неделю.
+ */
+type PersistPayload = PersistedRow & {
+  _scopeKind: TaskPanelScopeKind
+  _scopeKey: string
+  _userId: string
+}
+
 type UseTaskPanelTabsParams = {
   projectId: string | null | undefined
   /** Если задан, scope вкладок — этот контакт (для тредов без проекта). */
@@ -153,7 +167,7 @@ export function useTaskPanelTabs({
   // Refs для debounced persist — объявляем до сброса при смене проекта,
   // чтобы можно было отменить in-flight upsert.
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const persistPayloadRef = useRef<PersistedRow | null>(null)
+  const persistPayloadRef = useRef<PersistPayload | null>(null)
 
   // Сброс при смене проекта — render-time pattern из React docs
   // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
@@ -208,19 +222,24 @@ export function useTaskPanelTabs({
 
   // Сохранение в БД — data layer в services/taskPanelTabsService.ts.
   // Костыль вокруг partial unique инкапсулирован там.
+  // Scope берём из payload (snapshot на момент persist), НЕ из closure хука —
+  // иначе при смене проекта между постановкой debounce и его срабатыванием
+  // mutation писала бы tabs старого scope в строку нового (см. PersistPayload).
   const upsertMutation = useMutation({
-    mutationFn: async (next: PersistedRow) => {
-      if (!scopeKey || !userId || !scopeKind) return
+    mutationFn: async (next: PersistPayload) => {
       await upsertTaskPanelTabs({
-        scopeKind,
-        scopeId: scopeKey,
-        userId,
+        scopeKind: next._scopeKind,
+        scopeId: next._scopeKey,
+        userId: next._userId,
         tabs: next.tabs,
         activeTabId: next.active_tab_id,
       })
     },
     onSuccess: (_data, vars) => {
-      queryClient.setQueryData<PersistedRow>(queryKey, vars)
+      queryClient.setQueryData<PersistedRow>(
+        taskPanelTabsKeys.byProjectUser(vars._scopeKey, vars._userId),
+        { tabs: vars.tabs, active_tab_id: vars.active_tab_id },
+      )
     },
   })
 
@@ -252,19 +271,78 @@ export function useTaskPanelTabs({
     upsertMutationRef.current = upsertMutation
   }, [upsertMutation])
 
+  // Ref'ы текущего scope — для race-guard'а внутри setTimeout.
+  // Захватываем scope в момент вызова persist в payload; при срабатывании
+  // таймера сравниваем с current scope. Если разошлось — отбрасываем payload
+  // (юзер успел перейти на другой проект, эти tabs относятся к старому scope).
+  const scopeKeyRef = useRef(scopeKey)
+  const scopeKindRef = useRef(scopeKind)
+  useEffect(() => {
+    scopeKeyRef.current = scopeKey
+    scopeKindRef.current = scopeKind
+  }, [scopeKey, scopeKind])
+
+  /**
+   * Sanity-нормализация: если в tabs есть `tasks`-вкладка с refId, указывающим
+   * на чужой проект — переписываем refId/id на текущий scope. Защита от
+   * остатков битого state в localTabs (на случай, если БД-фикс пропустил
+   * какой-то edge case или новый race пройдёт через ref-guard).
+   * Логируем как BUG.tasks_ref_mismatch для будущего отлова.
+   */
+  const sanitizeTabsForScope = useCallback(
+    (tabs: TaskPanelTab[], scopeId: string, kind: TaskPanelScopeKind): TaskPanelTab[] => {
+      if (kind !== 'project') return tabs
+      let changed = false
+      const result = tabs.map((t) => {
+        if (t.type !== 'tasks') return t
+        if (t.refId === scopeId) return t
+        changed = true
+        return { ...t, id: `tasks:${scopeId}`, refId: scopeId }
+      })
+      if (changed) {
+        console.warn(
+          '[BUG.tasks_ref_mismatch] tasks-вкладка с чужим refId перехвачена перед записью',
+          { scopeId, tabs: tabs.map((t) => ({ id: t.id, type: t.type, refId: t.refId })) },
+        )
+      }
+      return result
+    },
+    [],
+  )
+
   const persist = useCallback(
     (nextTabs: TaskPanelTab[], nextActiveId: string | null) => {
-      persistPayloadRef.current = { tabs: nextTabs, active_tab_id: nextActiveId }
+      // Snapshot scope в момент вызова — закрывает race condition
+      // между debounce-таймером и сменой проекта.
+      const targetScopeKey = scopeKey
+      const targetScopeKind = scopeKind
+      const targetUserId = userId
+      if (!targetScopeKey || !targetScopeKind || !targetUserId) return
+
+      const safeTabs = sanitizeTabsForScope(nextTabs, targetScopeKey, targetScopeKind)
+
+      persistPayloadRef.current = {
+        tabs: safeTabs,
+        active_tab_id: nextActiveId,
+        _scopeKey: targetScopeKey,
+        _scopeKind: targetScopeKind,
+        _userId: targetUserId,
+      }
       if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
       persistTimerRef.current = setTimeout(() => {
-        if (persistPayloadRef.current) {
-          upsertMutationRef.current.mutate(persistPayloadRef.current)
+        const payload = persistPayloadRef.current
+        if (payload) {
+          // Race-guard: если scope успел смениться, отбрасываем payload
+          // (его tabs относятся к прежнему scope, не пишем в новый).
+          if (payload._scopeKey === scopeKeyRef.current) {
+            upsertMutationRef.current.mutate(payload)
+          }
           persistPayloadRef.current = null
         }
         persistTimerRef.current = null
       }, 250)
     },
-    [],
+    [scopeKey, scopeKind, userId, sanitizeTabsForScope],
   )
 
   // На размонтировании — flush pending upsert, чтобы не потерять последнее состояние.
