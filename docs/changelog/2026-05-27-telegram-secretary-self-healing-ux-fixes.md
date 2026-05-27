@@ -232,6 +232,38 @@ fail'а в `telegram_error_detail` **до** вызова resolveBotToken
 
 ---
 
+## 8. UX: пустые блоки в email-баблах
+
+**Симптом:** маркетинговое письмо в треде показывало огромную пустую
+зону (десятки пустых строк) между шапкой и текстом. Старая фича
+«не более одной пустой строки подряд» не срабатывала.
+
+**Причина:** `collapseEmptyLines` в [`messengerHtml.ts`](../../src/utils/format/messengerHtml.ts)
+ловил только `<div></div>` / `<p><br></p>`. Маркетинговые письма
+(Gmail, Mailchimp и т.п.) валят пустоту через `<p>&nbsp;</p>`,
+`<div><span>&nbsp;</span></div>` и аналогичные конструкции — они
+проходили мимо regex'а.
+
+**Фикс**:
+- Переписал `collapseEmptyLines` на обход DOM. Любой блочный
+  элемент (`div / p / blockquote / ol / ul / li`), внутри которого
+  только whitespace + `&nbsp;` + `<br>` (без `img/svg/hr/picture/video/audio`),
+  заменяется на одиночный `<br>`. Post-order — пустой
+  `<div><span></span></div>` сначала схлопывается до `<br>`, потом
+  родитель замечает, что стал пустым, и тоже схлопывается.
+- Финальный шаг `<br>{3,} → <br><br>` сохранён — не больше одной
+  пустой строки подряд.
+- Старый regex оставлен как SSR-fallback (расширен на &nbsp;/&#160;/&#xA0;
+  и блочные теги blockquote/li/ol/ul).
+
+**Тесты:** добавил [`messengerHtml.test.ts`](../../src/utils/format/messengerHtml.test.ts)
+— 8 кейсов: `<p>&nbsp;</p>` подряд, `<div></div>` подряд,
+`<p><br></p>` подряд, вложенные пустые `<div><span>&nbsp;</span></div>`,
+`<br>{20}`, неполоманный текст с ссылкой, сохранение одной пустой
+строки между абзацами. Все зелёные.
+
+---
+
 ## Затронутые файлы
 
 **Backend:**
@@ -251,6 +283,8 @@ fail'а в `telegram_error_detail` **до** вызова resolveBotToken
 - `src/page-components/ProjectsPage.tsx`
 - `src/components/WorkspaceSidebar/SidebarGlobalSearch.tsx`
 - `src/components/tasks/AssigneesPopover.tsx`
+- `src/utils/format/messengerHtml.ts`
+- `src/utils/format/messengerHtml.test.ts` (new)
 
 **Дата-операции (через MCP):**
 - Backfill `integration_id` для 13 из 15 сирот в воркспейсе

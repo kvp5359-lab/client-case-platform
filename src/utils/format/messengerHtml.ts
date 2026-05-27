@@ -71,22 +71,63 @@ export function stripHtmlKeepNewlines(html: string): string {
 }
 
 /**
- * Схлопывает «пустые строки» в email-HTML: пустые блоки `<div></div>` /
- * `<p><br></p>` (Gmail и Outlook щедро вставляют их между абзацами) и подряд
- * идущие `<br>`. На выходе — максимум одна пустая строка подряд.
+ * Схлопывает «пустые строки» в email-HTML: пустые блоки `<div></div>`,
+ * `<p><br></p>`, `<p>&nbsp;</p>`, `<div><span>&nbsp;</span></div>` и так далее
+ * (Gmail / Outlook / маркетинговые рассылки щедро ставят их между абзацами).
+ * Плюс подряд идущие `<br>`. На выходе — максимум одна пустая строка подряд.
+ *
+ * Основной путь — обход DOM: «визуально пустой» = только whitespace, `&nbsp;`
+ * и/или `<br>` внутри, без img/svg/hr/picture/video/audio. Для SSR (где нет
+ * document) — fallback на regex.
  */
 function collapseEmptyLines(html: string): string {
+  if (typeof document === 'undefined') return collapseEmptyLinesRegex(html)
+
+  const root = document.createElement('div')
+  root.innerHTML = html
+
+  const BLOCK_TAGS = new Set(['DIV', 'P', 'BLOCKQUOTE', 'OL', 'UL', 'LI'])
+  const NON_EMPTY_DESCENDANTS = 'img, svg, hr, picture, video, audio'
+
+  const isVisuallyEmpty = (el: Element): boolean => {
+    if (el.querySelector(NON_EMPTY_DESCENDANTS)) return false
+    // textContent + удалить все whitespace и неразрывные пробелы.
+    const text = (el.textContent ?? '').replace(/[\s ]/g, '')
+    return text.length === 0
+  }
+
+  // Post-order: сначала глубокие потомки, потом текущий узел. Так пустой
+  // <div><span></span></div> схлопнется до <br>, а его родитель — заметит,
+  // что стал тоже пустым (содержит лишь <br>), и тоже схлопнется.
+  const walk = (node: Element) => {
+    const children = Array.from(node.children)
+    for (const child of children) walk(child)
+    if (node.parentElement && BLOCK_TAGS.has(node.tagName) && isVisuallyEmpty(node)) {
+      const br = document.createElement('br')
+      node.replaceWith(br)
+    }
+  }
+
+  Array.from(root.children).forEach(walk)
+
+  let result = root.innerHTML
+  // 3+ подряд <br> → 2 (= одна пустая строка).
+  result = result.replace(/(<br\s*\/?>\s*){3,}/gi, '<br><br>')
+  return result
+}
+
+/** SSR-fallback. Покрывает базовые случаи `<div></div>` / `<p><br></p>` /
+ *  `<p>&nbsp;</p>` без обхода DOM. */
+function collapseEmptyLinesRegex(html: string): string {
   let prev: string
   let curr = html
-  // Пустые блоки → один <br>. Повторяем, пока находятся вложенные пустые.
   do {
     prev = curr
     curr = curr.replace(
-      /<(div|p)(?:\s[^>]*)?>\s*(?:<br\s*\/?>\s*)*<\/\1>/gi,
+      /<(div|p|blockquote|li|ol|ul)(?:\s[^>]*)?>(?:\s|&nbsp;|&#160;|&#xA0;|<br\s*\/?>)*<\/\1>/gi,
       '<br>',
     )
   } while (curr !== prev)
-  // 3+ подряд <br> → 2 (= одна пустая строка).
   curr = curr.replace(/(<br\s*\/?>\s*){3,}/gi, '<br><br>')
   return curr
 }
