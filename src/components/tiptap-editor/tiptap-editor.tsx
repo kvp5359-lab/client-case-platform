@@ -258,11 +258,12 @@ export function TiptapEditor({
               const t = line.trim()
               return schema.nodes.paragraph.create(null, t ? schema.text(t) : null)
             })
-            let tr = state.tr.deleteSelection()
-            for (let i = 0; i < paragraphs.length; i++) {
-              const insertPos = tr.selection.from
-              tr = tr.insert(insertPos, paragraphs[i])
-            }
+            // tr.insert(pos, node) НЕ двигает selection.from — цикл с одной
+            // позицией вставлял каждый следующий параграф ПЕРЕД предыдущим
+            // (обратный порядок). Передаём массив одним insert — ProseMirror
+            // сам разложит ноды подряд начиная от позиции.
+            const tr = state.tr.deleteSelection()
+            tr.insert(tr.selection.from, paragraphs)
             dispatch(tr)
             return true
           }
