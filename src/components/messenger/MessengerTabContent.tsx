@@ -12,6 +12,7 @@ import type { MessengerAccent } from './MessageBubble'
 import { MessengerProvider } from './MessengerContext'
 import { MessageInput } from './MessageInput'
 import { TelegramLinkDialog } from './TelegramLinkDialog'
+import { ThreadHealthBanner } from './ThreadHealthBanner'
 import { EmailLinkDialog } from './EmailLinkDialog'
 import { TypingIndicator } from './TypingIndicator'
 import { DocumentPickerDialog } from './DocumentPickerDialog'
@@ -283,6 +284,8 @@ export function MessengerTabContent({
             contactEmail={state.emailLink?.contact_email}
           />
         )}
+
+        <ThreadHealthBanner threadId={threadId} workspaceId={workspaceId} />
 
         <MessageList
           messages={displayMessages}

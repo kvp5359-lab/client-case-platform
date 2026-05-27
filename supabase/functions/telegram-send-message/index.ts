@@ -9,7 +9,7 @@ import { corsHeadersFor } from "../_shared/edge.ts";
 import { safeJsonParse, findMissingField, isValidUUID } from "../_shared/validation.ts";
 import { htmlToTelegramHtml, escapeHtmlEntities, isHtmlContent } from "../_shared/htmlFormatting.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
-import { resolveBotToken, findEmployeeBot } from "../_shared/telegramBotToken.ts";
+import { resolveBotToken, findEmployeeBot, ERR_NO_SECRETARY_IN_GROUP } from "../_shared/telegramBotToken.ts";
 import { detectChatMigration } from "../_shared/telegramMigration.ts";
 import { isReplyNotFoundError, loadReplyQuoteHtml } from "./helpers.ts";
 import { sendAttachmentsWithFallback } from "./attachments.ts";
@@ -107,6 +107,40 @@ Deno.serve(async (req: Request) => {
     // выставили send_status. Это баг (сообщение застрянет в pending), и нам
     // нужно увидеть его в логах + в БД отдельным trace-event'ом.
     let statusWritten = false;
+
+    /**
+     * Попытка резолвить токен секретаря для fallback после fail личного бота.
+     * Если resolveBotToken бросает с маркером NO_SECRETARY_IN_GROUP — это
+     * означает что в группе нет ни одного нашего бота-секретаря. Делаем
+     * markMessageFailed с понятным reason и возвращаем null (вызывающий
+     * должен прервать fallback). Прочие ошибки пробрасываем в общий catch.
+     */
+    const tryFallbackToSecretary = async (
+      activeChatId: number,
+      stage: string,
+      employeeError: string,
+    ) => {
+      try {
+        return await resolveBotToken(serviceClient, activeChatId);
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        if (errMsg.includes(ERR_NO_SECRETARY_IN_GROUP)) {
+          await markMessageFailed(
+            serviceClient,
+            body.message_id,
+            "Личный бот не справился, а бота-секретаря в этой группе нет. Добавьте секретаря в группу или отправьте через другой канал.",
+            {
+              failureSource: "telegram",
+              failureCode: "no_secretary_in_group",
+              failureMetadata: { stage, chat_id: activeChatId, employee_error: employeeError },
+            },
+          );
+          statusWritten = true;
+          return null;
+        }
+        throw e;
+      }
+    };
 
     const requiredFields = body.attachments_only
       ? ["message_id", "telegram_chat_id"]
@@ -367,11 +401,39 @@ Deno.serve(async (req: Request) => {
       // «(Имя):» в тексте. Сохраняем диагностику.
       if (!tgData.ok && isEmployeeBot) {
         const employeeErrorDescription = tgData.description ?? "unknown";
+        const employeeErrorCode = tgData.error_code;
         console.warn(
           "[telegram-send-message] employee bot send failed, falling back to secretary:",
           employeeErrorDescription,
         );
-        const fallback = await resolveBotToken(serviceClient, activeChatId);
+        // Сохраняем причину СРАЗУ — до попытки fallback'а на секретаря.
+        // Если resolveBotToken упадёт (нет integration_id, intersection-сирота) —
+        // edge function вернёт 500, watchdog поставит failed, а пользователь
+        // увидит причину personal bot в telegram_error_detail.
+        // В успешном fallback'е поле перезапишется на employee_bot_send_failed: ...
+        await serviceClient
+          .from("project_messages")
+          .update({
+            telegram_error_detail:
+              `employee_bot_error: "${employeeErrorDescription}" ` +
+              `(code=${employeeErrorCode ?? "n/a"}); reply=${body.reply_to_telegram_message_id ?? "no"}; ` +
+              `via=text; awaiting_fallback`,
+          })
+          .eq("id", body.message_id);
+        const fallback = await tryFallbackToSecretary(
+          activeChatId,
+          "text",
+          employeeErrorDescription,
+        );
+        if (!fallback) {
+          // markMessageFailed уже вызван внутри tryFallbackToSecretary.
+          // Возвращаем 200 чтобы watchdog не перетёр reason на свой "HTTP 500".
+          trace("request.end.no_secretary", { stage: "text" });
+          return new Response(
+            JSON.stringify({ ok: true, fallback_failed: "no_secretary" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
         const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`;
         const secretaryPayload = { ...payload, chat_id: activeChatId, text: secretaryFormatted };
         tgResponse = await fetch(
@@ -565,11 +627,33 @@ Deno.serve(async (req: Request) => {
           // в группе, в то время как файлы доходили через sendAttachmentsWithFallback.
           if (!tgData.ok && isEmployeeBot) {
             const splitErrorDescription = tgData.description ?? "unknown";
+            const splitErrorCode = tgData.error_code;
             console.warn(
               "[telegram-send-message] split-text employee bot send failed, falling back to secretary:",
               splitErrorDescription,
             );
-            const fallback = await resolveBotToken(serviceClient, activeChatId);
+            // Сохраняем причину СРАЗУ — симметрично текстовой ветке.
+            await serviceClient
+              .from("project_messages")
+              .update({
+                telegram_error_detail:
+                  `employee_bot_error: "${splitErrorDescription}" ` +
+                  `(code=${splitErrorCode ?? "n/a"}); reply=${body.reply_to_telegram_message_id ?? "no"}; ` +
+                  `via=split-text; awaiting_fallback`,
+              })
+              .eq("id", body.message_id);
+            const fallback = await tryFallbackToSecretary(
+              activeChatId,
+              "split_text",
+              splitErrorDescription,
+            );
+            if (!fallback) {
+              trace("request.end.no_secretary", { stage: "split_text" });
+              return new Response(
+                JSON.stringify({ ok: true, fallback_failed: "no_secretary" }),
+                { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+              );
+            }
             const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name || "")}:</b>\n${contentForTelegram}`;
             const secretaryPayload = { ...payload, chat_id: activeChatId, text: secretaryFormatted };
             tgRes = await fetch(

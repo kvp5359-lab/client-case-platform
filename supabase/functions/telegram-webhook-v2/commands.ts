@@ -11,6 +11,7 @@ import { encode as encodeCb } from "./callback-data.ts";
 import { showKbGroups } from "./knowledge.ts";
 import { showUploadSlots, showDocStatus } from "./upload-slot.ts";
 import { escapeHtmlEntities } from "../_shared/htmlFormatting.ts";
+import { determineIntegrationIdForLink } from "../_shared/telegramBotToken.ts";
 import type { TgInlineKeyboard, TgMessage, TgUser } from "./types.ts";
 
 const MAIN_MENU_TEXT = "<b>Главное меню</b>\n\nВыберите раздел:";
@@ -171,11 +172,30 @@ async function cmdLink(chatId: number, codeArg: string | undefined, msg: TgMessa
   // Существует ли уже привязка этого треда?
   const { data: existing } = await service
     .from("project_telegram_chats")
-    .select("id")
+    .select("id, integration_id")
     .eq("thread_id", thread.id)
     .maybeSingle();
 
-  const payload = {
+  // Определяем integration_id секретаря (см. determineIntegrationIdForLink):
+  //  - если /link обработал сам секретарь → его id
+  //  - если личный бот, но секретарь тоже в группе → id секретаря (через TG getChat)
+  //  - если секретаря нет в группе → null (UI покажет баннер)
+  // При UPDATE не перезаписываем непустой integration_id на null — это сохраняет
+  // ранее установленную привязку, если /link шлют повторно из группы, куда
+  // секретарь временно перестал отвечать.
+  let resolvedIntegrationId: string | null = null;
+  try {
+    resolvedIntegrationId = await determineIntegrationIdForLink(
+      service,
+      chatId,
+      thread.workspace_id,
+      getBotToken(),
+    );
+  } catch (e) {
+    console.warn("[/link] determineIntegrationIdForLink failed:", e);
+  }
+
+  const payload: Record<string, unknown> = {
     project_id: thread.project_id,
     workspace_id: thread.workspace_id,
     telegram_chat_id: chatId,
@@ -185,6 +205,13 @@ async function cmdLink(chatId: number, codeArg: string | undefined, msg: TgMessa
     is_active: true,
     bot_version: BOT_VERSION,
   };
+  if (resolvedIntegrationId) {
+    payload.integration_id = resolvedIntegrationId;
+  } else if (!existing) {
+    // INSERT — явно проставим null (если не нашли) чтобы поле было определено.
+    payload.integration_id = null;
+  }
+  // existing && !resolvedIntegrationId → integration_id не трогаем (см. коммент выше).
 
   const { error: linkError } = existing
     ? await service.from("project_telegram_chats").update(payload).eq("id", existing.id)

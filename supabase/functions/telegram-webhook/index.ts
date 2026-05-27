@@ -551,15 +551,34 @@ async function handleCommand(
           .eq("channel", targetChannel)
           .maybeSingle();
 
+    // Определяем integration_id секретаря (если он в группе) — см.
+    // determineIntegrationIdForLink в _shared/telegramBotToken.ts.
+    let resolvedIntegrationId: string | null = null;
+    try {
+      const { determineIntegrationIdForLink } = await import(
+        "../_shared/telegramBotToken.ts"
+      );
+      resolvedIntegrationId = await determineIntegrationIdForLink(
+        serviceClient,
+        chatId,
+        targetWorkspaceId,
+        botToken,
+      );
+    } catch (e) {
+      console.warn("[/link v1] determineIntegrationIdForLink failed:", e);
+    }
+
     if (existing) {
+      const updatePayload: Record<string, unknown> = {
+        telegram_chat_id: chatId,
+        telegram_chat_title: message.chat.title ?? null,
+        thread_id: targetThreadId,
+        is_active: true,
+      };
+      if (resolvedIntegrationId) updatePayload.integration_id = resolvedIntegrationId;
       await serviceClient
         .from("project_telegram_chats")
-        .update({
-          telegram_chat_id: chatId,
-          telegram_chat_title: message.chat.title ?? null,
-          thread_id: targetThreadId,
-          is_active: true,
-        })
+        .update(updatePayload)
         .eq("id", existing.id);
     } else {
       await serviceClient.from("project_telegram_chats").insert({
@@ -570,6 +589,7 @@ async function handleCommand(
         channel: targetChannel,
         thread_id: targetThreadId,
         is_active: true,
+        integration_id: resolvedIntegrationId,
       });
     }
 

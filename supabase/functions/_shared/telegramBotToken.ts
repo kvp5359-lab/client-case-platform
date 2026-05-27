@@ -103,11 +103,74 @@ export async function findEmployeeBot(
 }
 
 /**
+ * Специальный маркер: ни один секретарь воркспейса не сидит в этой группе.
+ * Edge functions ловят его и делают markMessageFailed с понятным reason
+ * вместо общего 500.
+ */
+export const ERR_NO_SECRETARY_IN_GROUP = "NO_SECRETARY_IN_GROUP";
+
+/**
+ * Найти бот-секретарь, физически сидящий в группе. Для каждого активного
+ * `telegram_workspace_bot` воркспейса дёргает Telegram getChat — тот, кто
+ * получает ok=true, в группе. Возвращает первого найденного или null.
+ *
+ * Используется для self-healing привязки: если `project_telegram_chats.integration_id`
+ * NULL (баг webhook'а /link, который не записывал integration_id), мы можем
+ * автоматически восстановить связь. Также используется в /link для записи
+ * правильного integration_id даже когда команду обработал не секретарь.
+ */
+export async function findSecretaryInGroup(
+  service: SupabaseClient,
+  telegramChatId: number,
+  workspaceId: string,
+): Promise<ResolvedToken | null> {
+  const { data: bots } = await service
+    .from("workspace_integrations")
+    .select("id, is_active, config, secrets")
+    .eq("workspace_id", workspaceId)
+    .eq("type", "telegram_workspace_bot")
+    .eq("is_active", true);
+  if (!bots || bots.length === 0) return null;
+
+  for (const bot of bots) {
+    const token = (bot.secrets as { token?: string } | null)?.token;
+    if (!token) continue;
+    try {
+      const res = await fetch(
+        `https://api.telegram.org/bot${token}/getChat?chat_id=${telegramChatId}`,
+      );
+      const data = await res.json();
+      if (data?.ok === true) {
+        const botVersion =
+          (bot.config as { bot_version?: "v1" | "v2" } | null)?.bot_version === "v2"
+            ? "v2"
+            : "v1";
+        return {
+          token,
+          integrationId: bot.id as string,
+          senderType: "workspace_bot",
+          botVersion,
+        };
+      }
+    } catch (e) {
+      console.warn(`[findSecretaryInGroup] getChat for bot ${bot.id} threw:`, e);
+    }
+  }
+  return null;
+}
+
+/**
  * Получить токен бота-секретаря для конкретной группы.
  *
- * Группа связана с записью `workspace_integrations` через
- * `project_telegram_chats.integration_id`. Если связь оборвана или у
- * интеграции пустой токен — кидаем ошибку. Env-fallback'а больше нет.
+ * Логика:
+ *  1. Если в `project_telegram_chats.integration_id` уже что-то стоит и
+ *     интеграция жива — используем.
+ *  2. Иначе (NULL или мёртвая интеграция) — self-healing: дёргаем Telegram
+ *     getChat от каждого активного workspace_bot воркспейса, находим того,
+ *     кто реально в группе, и записываем его в integration_id навсегда.
+ *  3. Если ни один секретарь воркспейса не сидит в группе — кидаем ошибку
+ *     с маркером `NO_SECRETARY_IN_GROUP`. Вызывающий edge function должен
+ *     поймать её и сделать markMessageFailed с понятным reason.
  */
 export async function resolveBotToken(
   service: SupabaseClient,
@@ -115,22 +178,81 @@ export async function resolveBotToken(
 ): Promise<ResolvedToken> {
   const { data: chat } = await service
     .from("project_telegram_chats")
-    .select("integration_id, bot_version")
+    .select("id, integration_id, workspace_id, bot_version")
     .eq("telegram_chat_id", telegramChatId)
     .eq("is_active", true)
     .maybeSingle();
 
-  if (!chat?.integration_id) {
-    throw new Error(
-      `[resolveBotToken] No integration_id for chat ${telegramChatId}. Group must be linked to a workspace bot integration.`,
+  if (chat?.integration_id) {
+    const resolved = await resolveTokenByIntegrationId(service, chat.integration_id);
+    if (resolved) return resolved;
+    // Integration деактивирована или удалена — провалимся в self-heal ниже.
+    console.warn(
+      `[resolveBotToken] integration ${chat.integration_id} dead, trying self-heal`,
     );
   }
 
-  const resolved = await resolveTokenByIntegrationId(service, chat.integration_id);
-  if (!resolved) {
+  if (!chat?.workspace_id) {
     throw new Error(
-      `[resolveBotToken] Integration ${chat.integration_id} not active or missing token.`,
+      `[resolveBotToken] Chat ${telegramChatId} not registered in project_telegram_chats.`,
     );
   }
-  return resolved;
+
+  const found = await findSecretaryInGroup(service, telegramChatId, chat.workspace_id);
+  if (!found) {
+    // Маркер ловится в telegram-send-message → markMessageFailed с осмысленным reason.
+    throw new Error(
+      `${ERR_NO_SECRETARY_IN_GROUP}: chat=${telegramChatId} workspace=${chat.workspace_id}`,
+    );
+  }
+
+  // Self-heal: пропишем integration_id, чтобы при следующем вызове не дёргать TG API.
+  await service
+    .from("project_telegram_chats")
+    .update({ integration_id: found.integrationId })
+    .eq("id", chat.id);
+  console.log(
+    `[resolveBotToken] self-healed integration_id for chat ${telegramChatId}: ${found.integrationId}`,
+  );
+
+  return found;
+}
+
+/**
+ * Для webhook'а /link: определить какой integration_id записать в
+ * project_telegram_chats при подключении группы.
+ *
+ *  - Если /link обрабатывает сам секретарь → его id.
+ *  - Если /link обрабатывает личный бот сотрудника → ищем секретаря в группе
+ *    среди workspace_bot'ов воркспейса, возвращаем его id (даже если /link
+ *    обработал другой бот). Это правильное состояние: integration_id всегда
+ *    указывает на секретаря, fallback идёт туда.
+ *  - Если секретарь не в группе и /link обработал не секретарь → NULL. UI
+ *    покажет баннер «в группе нет секретаря».
+ */
+export async function determineIntegrationIdForLink(
+  service: SupabaseClient,
+  telegramChatId: number,
+  workspaceId: string,
+  currentBotToken: string,
+): Promise<string | null> {
+  const { data: allBots } = await service
+    .from("workspace_integrations")
+    .select("id, type, secrets, is_active")
+    .eq("workspace_id", workspaceId)
+    .eq("is_active", true)
+    .in("type", ["telegram_workspace_bot", "telegram_employee_bot"]);
+
+  const currentBot = allBots?.find(
+    (b) => (b.secrets as { token?: string } | null)?.token === currentBotToken,
+  );
+
+  if (currentBot?.type === "telegram_workspace_bot") {
+    return currentBot.id as string;
+  }
+
+  // Команду обработал личный бот (или бот воркспейса, но не secretary) —
+  // ищем секретаря в группе через TG API.
+  const secretary = await findSecretaryInGroup(service, telegramChatId, workspaceId);
+  return secretary?.integrationId ?? null;
 }
