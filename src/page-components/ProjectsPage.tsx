@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { toast } from 'sonner'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -35,6 +35,7 @@ import { ProjectRow } from './ProjectsPage/components/ProjectRow'
 export default function ProjectsPage() {
   usePageTitle('Проекты')
   const { workspaceId } = useParams<{ workspaceId: string }>()
+  const router = useRouter()
   const { workspaceId: currentWorkspaceId } = useWorkspaceContext()
   const { user } = useAuth()
   const createDialog = useDialog()
@@ -281,9 +282,12 @@ export default function ProjectsPage() {
           <CreateProjectDialog
             open={createDialog.isOpen}
             onOpenChange={(open) => (open ? createDialog.open() : createDialog.close())}
-            onSuccess={() => {
+            onSuccess={(project) => {
               refetch()
               createDialog.close()
+              if (activeWorkspaceId) {
+                router.push(`/workspaces/${activeWorkspaceId}/projects/${project.id}`)
+              }
             }}
           />
 

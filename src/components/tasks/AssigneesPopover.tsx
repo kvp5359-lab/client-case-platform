@@ -116,10 +116,11 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
   const { data: projectParticipants = [] } = useProjectParticipants(
     open && threadProjectId ? threadProjectId : undefined,
   )
+  // Грузим workspace-участников всегда при open — нужны:
+  // 1. как основной список (controlled, thread без projectId);
+  // 2. как fallback для исполнителей, которых нет в проекте (секция «Не в проекте»).
   const { data: workspaceMembers = [] } = useWorkspaceParticipants(
-    open && !threadProjectId && (threadWorkspaceId || controlledWorkspaceId)
-      ? (threadWorkspaceId ?? controlledWorkspaceId!)
-      : undefined,
+    open ? (threadWorkspaceId ?? controlledWorkspaceId ?? undefined) : undefined,
   )
   const loginableWorkspace = useMemo(
     () => workspaceMembers.filter((p) => p.can_login),
@@ -131,6 +132,30 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
     : threadProjectId
       ? projectParticipants
       : loginableWorkspace
+
+  // Исполнители, которых нет среди участников проекта — например, их убрали из проекта
+  // после назначения. Без этой секции они не показываются в popover, и снять их нельзя.
+  const orphanAssignees: WorkspaceParticipant[] = useMemo(() => {
+    if (isControlled || !threadProjectId) return []
+    const projectIds = new Set(projectParticipants.map((p) => p.id))
+    const missing = props.assignees.filter((a) => !projectIds.has(a.id))
+    if (missing.length === 0) return []
+    return missing.map((a) => {
+      const fromWs = workspaceMembers.find((w) => w.id === a.id)
+      if (fromWs) return fromWs
+      return {
+        id: a.id,
+        name: a.name,
+        last_name: a.last_name,
+        email: null,
+        avatar_url: a.avatar_url,
+        user_id: null,
+        workspace_roles: null,
+        can_login: false,
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isControlled, threadProjectId, projectParticipants, workspaceMembers, isControlled ? null : props.assignees])
 
   // ── Назначенные (разные источники в двух режимах) ──
   const assigneeSet = useMemo(() => {
@@ -171,6 +196,14 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
   const staff = filtered.filter((p) => getRoleGroup(p.workspace_roles) === 'staff')
   const external = filtered.filter((p) => getRoleGroup(p.workspace_roles) === 'external')
   const clients = filtered.filter((p) => getRoleGroup(p.workspace_roles) === 'client')
+
+  const filteredOrphans = orphanAssignees
+    .filter((p) => {
+      if (!search.trim()) return true
+      const q = search.toLowerCase()
+      return `${p.name ?? ''} ${p.last_name ?? ''}`.toLowerCase().includes(q)
+    })
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'ru'))
 
   const renderItem = (p: WorkspaceParticipant) => {
     const isAssigned = assigneeSet.has(p.id)
@@ -218,6 +251,7 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
     { items: staff, label: 'Сотрудники' },
     { items: external, label: 'Внешние сотрудники' },
     { items: clients, label: 'Клиенты' },
+    { items: filteredOrphans, label: 'Не в проекте' },
   ].filter((g) => g.items.length > 0)
 
   // ── Trigger ──
@@ -338,7 +372,7 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
               {g.items.map(renderItem)}
             </div>
           ))}
-          {filtered.length === 0 && (
+          {filtered.length === 0 && filteredOrphans.length === 0 && (
             <p className="px-3 py-2 text-xs text-muted-foreground">
               {search ? 'Никого не найдено' : 'Нет участников'}
             </p>

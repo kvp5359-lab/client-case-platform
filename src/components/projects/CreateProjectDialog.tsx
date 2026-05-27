@@ -23,7 +23,7 @@ import type { ThreadTemplate } from '@/types/threadTemplate'
 type CreateProjectDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess: () => void
+  onSuccess: (project: { id: string }) => void
 }
 
 export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreateProjectDialogProps) {
@@ -282,7 +282,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
         }
       }
 
-      onSuccess()
+      onSuccess({ id: project.id })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Произошла ошибка')
     } finally {

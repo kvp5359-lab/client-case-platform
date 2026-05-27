@@ -514,9 +514,10 @@ export function WorkspaceSidebarFull({
       <CreateProjectDialog
         open={createProjectDialog.isOpen}
         onOpenChange={(open) => (open ? createProjectDialog.open() : createProjectDialog.close())}
-        onSuccess={() => {
+        onSuccess={(project) => {
           refreshProjects()
           createProjectDialog.close()
+          if (workspaceId) router.push(`/workspaces/${workspaceId}/projects/${project.id}`)
         }}
       />
     </aside>

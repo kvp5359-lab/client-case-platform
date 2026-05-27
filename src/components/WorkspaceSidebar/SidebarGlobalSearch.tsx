@@ -53,9 +53,36 @@ type DisplayRow = {
   snippet: string | null
   thread_type: string | null
   thread_id: string | null
+  /** project_id треда/сообщения (null для личных диалогов). Нужен для построения href. */
+  project_id: string | null
   accent_color: string | null
   project_template_id: string | null
   project_status_id: string | null
+}
+
+/**
+ * URL для open-in-new-tab. Возвращает null, если для типа нет осмысленной ссылки.
+ * Для тредов/сообщений ведёт на страницу проекта с ?panelTab=thread:<id>;
+ * для тредов без project_id — на /inbox (там panelTab резолвится через useThreadFromPanelTab).
+ */
+function hrefForRow(row: DisplayRow, workspaceId: string): string | null {
+  const ws = `/workspaces/${workspaceId}`
+  switch (row.entity_type) {
+    case 'thread':
+    case 'message': {
+      const threadId = row.thread_id ?? row.entity_id
+      const panel = `panelTab=thread:${encodeURIComponent(threadId)}`
+      return row.project_id
+        ? `${ws}/projects/${row.project_id}?${panel}`
+        : `${ws}/inbox?${panel}`
+    }
+    case 'project':
+      return `${ws}/projects/${row.entity_id}`
+    case 'knowledge_article':
+      return `${ws}/settings/knowledge-base/${row.entity_id}`
+    case 'participant':
+      return `${ws}/settings/participants`
+  }
 }
 
 export function SidebarGlobalSearch({ workspaceId, compact = false }: Props) {
@@ -139,6 +166,7 @@ export function SidebarGlobalSearch({ workspaceId, compact = false }: Props) {
       snippet: null,
       thread_type: r.thread_type,
       thread_id: r.entity_type === 'thread' ? r.entity_id : null,
+      project_id: r.project_id,
       accent_color: r.accent_color,
       project_template_id: r.project_template_id,
       project_status_id: r.project_status_id,
@@ -159,6 +187,7 @@ export function SidebarGlobalSearch({ workspaceId, compact = false }: Props) {
       snippet: r.snippet,
       thread_type: r.thread_type,
       thread_id: r.thread_id,
+      project_id: r.project_id,
       accent_color: r.accent_color,
       project_template_id: r.project_template_id,
       project_status_id: r.project_status_id,
@@ -179,41 +208,53 @@ export function SidebarGlobalSearch({ workspaceId, compact = false }: Props) {
   }, [results, recentRows])
 
   const rowFor = useCallback(
-    (row: DisplayRow) => (
-      <li key={row.key}>
-        <button
-          type="button"
-          onClick={() => handlePick(row)}
-          className="w-full text-left px-3 py-1.5 flex items-start gap-2 hover:bg-gray-100 transition-colors"
-        >
-          <div className="pt-0.5">
-            <EntityIcon
-              type={row.entity_type}
-              threadType={row.thread_type}
-              accentColor={row.accent_color}
-              projectTemplateId={row.project_template_id}
-              projectStatusId={row.project_status_id}
-              resolveProjectIcon={resolveProjectIcon}
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm text-gray-800 truncate">
-              <span>{row.title || '—'}</span>
-              {row.subtitle && (
-                <span className="text-gray-400 ml-2 font-normal">{row.subtitle}</span>
+    (row: DisplayRow) => {
+      // Рендерим <a href> вместо <button>, чтобы браузер нативно открывал в новой
+      // вкладке по middle-click / Cmd+ЛКМ / Ctrl+ЛКМ / контекстному меню.
+      // Обычный левый клик перехватываем и зовём handlePick (открытие в панели справа,
+      // без перехода). Если зажат модификатор или это не основная кнопка — отпускаем
+      // дефолт, чтобы новая вкладка открылась.
+      const href = workspaceId ? hrefForRow(row, workspaceId) : null
+      return (
+        <li key={row.key}>
+          <a
+            href={href ?? '#'}
+            onClick={(e) => {
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+              e.preventDefault()
+              handlePick(row)
+            }}
+            className="w-full text-left px-3 py-1.5 flex items-start gap-2 hover:bg-gray-100 transition-colors no-underline text-inherit"
+          >
+            <div className="pt-0.5">
+              <EntityIcon
+                type={row.entity_type}
+                threadType={row.thread_type}
+                accentColor={row.accent_color}
+                projectTemplateId={row.project_template_id}
+                projectStatusId={row.project_status_id}
+                resolveProjectIcon={resolveProjectIcon}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm text-gray-800 truncate">
+                <span>{row.title || '—'}</span>
+                {row.subtitle && (
+                  <span className="text-gray-400 ml-2 font-normal">{row.subtitle}</span>
+                )}
+              </div>
+              {row.snippet && (
+                <div
+                  className="text-xs text-gray-500 mt-0.5 line-clamp-2 [&_mark]:bg-yellow-200 [&_mark]:text-gray-900 [&_mark]:rounded-sm [&_mark]:px-0.5"
+                  dangerouslySetInnerHTML={{ __html: row.snippet }}
+                />
               )}
             </div>
-            {row.snippet && (
-              <div
-                className="text-xs text-gray-500 mt-0.5 line-clamp-2 [&_mark]:bg-yellow-200 [&_mark]:text-gray-900 [&_mark]:rounded-sm [&_mark]:px-0.5"
-                dangerouslySetInnerHTML={{ __html: row.snippet }}
-              />
-            )}
-          </div>
-        </button>
-      </li>
-    ),
-    [handlePick, resolveProjectIcon],
+          </a>
+        </li>
+      )
+    },
+    [handlePick, resolveProjectIcon, workspaceId],
   )
 
   const dropdown = (
