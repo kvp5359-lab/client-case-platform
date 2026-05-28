@@ -34,13 +34,21 @@ Short-circuit `created_by = auth.uid()` больше **не нужен**. При
 
 Если в одной TG-группе сидят 2+ ботов воркспейса (`telegram_workspace_bot` + `telegram_employee_bot`'ы), при включённом privacy mode Telegram даёт **каждому боту свой message_id** для одного и того же сообщения клиента. То есть на одно реальное сообщение `/telegram-webhook` получает 2-3 разных update'а с разными `message.message_id`, но одинаковыми `chat.id`, `from.id`, `date`, `text`.
 
-UNIQUE `uq_telegram_message_per_chat (telegram_chat_id, telegram_message_id)` тут **не помогает** — id разные. Дедуп обеспечивает второй UNIQUE: `uq_project_messages_telegram_content_dedup (telegram_chat_id, telegram_sender_user_id, telegram_message_date, md5(content)) WHERE source='telegram'`. Первый webhook записывает, второй/третий получают 23505 → `outcome='duplicate'` в `_shared/syncTelegramIncomingMessage.ts`.
+UNIQUE `uq_telegram_message_per_chat (telegram_chat_id, telegram_message_id, COALESCE(telegram_bot_integration_id::text, 'secretary'))` тут **не помогает дедупу incoming** — id у разных ботов разные, constraint их пропускает как разные записи. Дедуп incoming обеспечивает второй UNIQUE: `uq_project_messages_telegram_content_dedup (telegram_chat_id, telegram_sender_user_id, telegram_message_date, md5(content), COALESCE(telegram_file_unique_id, '')) WHERE source='telegram'`. Первый webhook записывает, второй/третий получают 23505 → `outcome='duplicate'` в `_shared/syncTelegramIncomingMessage.ts`.
 
 **Edge case**: один клиент шлёт идентичный текст в одну секунду → второе дедуплено (потеря). На практике не встречается.
 
 **При добавлении нового типа TG-интеграции** не предполагать, что `message_id` уникален — это верно только в пределах одного бота. Полагаться на content-based dedup.
 
 Подробно: [docs/bugs/resolved/2026-05-13-telegram-multibot-message-duplicates.md](../../docs/bugs/resolved/2026-05-13-telegram-multibot-message-duplicates.md).
+
+### ⚠️ uq_telegram_message_per_chat **обязательно** включает bot_integration_id
+
+До миграции `20260528_fix_uq_telegram_message_per_chat_include_bot` индекс был по `(chat_id, msg_id)` без бота. Это ломало outgoing: разные боты в одной группе имеют **независимую нумерацию msg_id** (Telegram нумерует per-bot-view-of-chat), и legitimно могут получить одинаковый id для разных сообщений. Старый бот когда-то занял `(chat, 328)`, новый бот через 8 дней добирается до своего `msg_id=328` → 23505 на markMessageSent → сообщение зависает в pending/failed, хотя в TG доставлено.
+
+Фикс — расширить partial UNIQUE на третью колонку `COALESCE(telegram_bot_integration_id::text, 'secretary')`. NULL bot (legacy secretary-bot без stamp'а) → 'secretary' placeholder.
+
+**При любых будущих изменениях этого индекса** — оставлять `telegram_bot_integration_id` в ключе. Подробно: [docs/bugs/resolved/2026-05-28-telegram-send-stuck-pending.md](../../docs/bugs/resolved/2026-05-28-telegram-send-stuck-pending.md).
 
 ## Dev-сервер на Webpack, не Turbopack
 

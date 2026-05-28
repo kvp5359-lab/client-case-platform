@@ -1,12 +1,13 @@
 ---
 id: 2026-05-28-telegram-send-stuck-pending
-title: Исходящие через employee_bot зависают в send_status='pending', хотя реально доставлены
-status: open
+title: Исходящие через employee_bot зависают в send_status='pending' / failed (23505 на uq_telegram_message_per_chat)
+status: resolved
 severity: high
-area: telegram-send-message, send_status, employee_bot
+area: telegram-send-message, send_status, uq_telegram_message_per_chat
 first-seen: 2026-05-22 (по логам 27 мая)
 last-investigated: 2026-05-28
-reproduced: yes (несколько случаев, root cause не локализован)
+resolved: 2026-05-28
+resolution: расширить partial UNIQUE на telegram_bot_integration_id — разные боты в одной TG-группе имеют независимую нумерацию msg_id, constraint обязан их различать (миграция 20260528_fix_uq_telegram_message_per_chat_include_bot)
 ---
 
 ## Что было
