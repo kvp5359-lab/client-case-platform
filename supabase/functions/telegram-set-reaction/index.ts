@@ -121,79 +121,106 @@ Deno.serve(async (req: Request) => {
     // через ЕГО личный бот, иначе все участники видят «Иванов отреагировал»,
     // хотя на самом деле — Петров.
     //
-    // Приоритет выбора токена:
+    // Приоритет цепочки кандидатов:
     //   1) Личный бот реагирующего пользователя (telegram_employee_bot c
     //      owner_user_id = user.id) — корректная атрибуция реакции в TG.
-    //   2) Бот, отправивший оригинал (telegram_bot_integration_id) — fallback
-    //      на случай если у пользователя нет своего бота в этой группе.
-    //   3) Бот-секретарь (resolveBotToken) — последний fallback.
+    //   2) Бот, отправивший оригинал (telegram_bot_integration_id).
+    //   3) Бот-секретарь группы (resolveBotToken по chat_id).
     //
-    // Раньше п. 1 и п. 2 были в обратном порядке — отсюда баг с «реакциями
-    // от чужого имени» в группах с несколькими ботами.
-    let TELEGRAM_BOT_TOKEN: string;
-    {
-      const { data: empBots } = await supabaseAdmin
-        .from("workspace_integrations")
-        .select("id, is_active, config, secrets")
-        .eq("workspace_id", convWorkspaceId)
-        .eq("type", "telegram_employee_bot")
-        .eq("is_active", true);
-      const myBot = (empBots ?? []).find(
-        (r) =>
-          (r.config as { owner_user_id?: string } | null)?.owner_user_id === user.id,
-      );
-      const myBotToken =
-        (myBot?.secrets as { token?: string } | null)?.token ?? null;
+    // Шлём по очереди. Если бот не в группе ("chat not found" / "member not
+    // found"), пробуем следующего. На других ошибках TG (например невалидный
+    // emoji) — прерываем цепочку, fallback не поможет. Это закрывает кейс
+    // владельца с личным ботом, но в группе только секретарь — раньше функция
+    // выбирала первого кандидата и 502'ила, теперь fallback'нёт на секретаря.
+    const candidates: { token: string; label: string }[] = [];
 
-      if (myBotToken) {
-        TELEGRAM_BOT_TOKEN = myBotToken;
-      } else {
-        const { data: msgRow } = await supabaseAdmin
-          .from("project_messages")
-          .select("telegram_bot_integration_id")
-          .eq("telegram_chat_id", body.chat_id)
-          .eq("telegram_message_id", body.message_id)
-          .maybeSingle();
-        const savedIntegrationId =
-          (msgRow?.telegram_bot_integration_id as string | null) ?? null;
-        const fromIntegration = savedIntegrationId
-          ? await resolveTokenByIntegrationId(supabaseAdmin, savedIntegrationId)
-          : null;
-        if (fromIntegration) {
-          TELEGRAM_BOT_TOKEN = fromIntegration.token;
-        } else {
-          const fallback = await resolveBotToken(supabaseAdmin, body.chat_id);
-          TELEGRAM_BOT_TOKEN = fallback.token;
-        }
+    const { data: empBots } = await supabaseAdmin
+      .from("workspace_integrations")
+      .select("id, is_active, config, secrets")
+      .eq("workspace_id", convWorkspaceId)
+      .eq("type", "telegram_employee_bot")
+      .eq("is_active", true);
+    const myBot = (empBots ?? []).find(
+      (r) => (r.config as { owner_user_id?: string } | null)?.owner_user_id === user.id,
+    );
+    const myBotToken = (myBot?.secrets as { token?: string } | null)?.token ?? null;
+    if (myBotToken) candidates.push({ token: myBotToken, label: "personal_bot" });
+
+    const { data: msgRow } = await supabaseAdmin
+      .from("project_messages")
+      .select("telegram_bot_integration_id")
+      .eq("telegram_chat_id", body.chat_id)
+      .eq("telegram_message_id", body.message_id)
+      .maybeSingle();
+    const savedIntegrationId =
+      (msgRow?.telegram_bot_integration_id as string | null) ?? null;
+    if (savedIntegrationId) {
+      const fromIntegration = await resolveTokenByIntegrationId(
+        supabaseAdmin,
+        savedIntegrationId,
+      );
+      if (fromIntegration && !candidates.some((c) => c.token === fromIntegration.token)) {
+        candidates.push({ token: fromIntegration.token, label: "original_sender_bot" });
       }
     }
 
-    const tgResponse = await fetch(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setMessageReaction`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: body.chat_id,
-          message_id: body.message_id,
-          reaction: body.reaction ?? [],
-        }),
-      },
-    );
-
-    const tgData = await tgResponse.json();
-
-    if (!tgData.ok) {
-      console.error("Telegram setMessageReaction error:", tgData);
-      return new Response(
-        JSON.stringify({ error: "Telegram API error" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    const fallback = await resolveBotToken(supabaseAdmin, body.chat_id);
+    if (!candidates.some((c) => c.token === fallback.token)) {
+      candidates.push({ token: fallback.token, label: "secretary_bot" });
     }
 
+    // «Бот не в группе» — единственный ретраябельный класс ошибок.
+    // Остальные ошибки (REACTION_INVALID, MESSAGE_NOT_MODIFIED и т.п.)
+    // вернутся одинаково на любом боте — нет смысла спамить TG API.
+    const isNotMemberError = (description: string | undefined): boolean => {
+      if (!description) return false;
+      return /chat not found|not a member|member not found|user_not_participant/i.test(
+        description,
+      );
+    };
+
+    let lastDescription: string | undefined;
+    let lastErrorCode: number | undefined;
+    for (const { token, label } of candidates) {
+      const tgResponse = await fetch(
+        `https://api.telegram.org/bot${token}/setMessageReaction`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: body.chat_id,
+            message_id: body.message_id,
+            reaction: body.reaction ?? [],
+          }),
+        },
+      );
+      const tgData = await tgResponse.json();
+      if (tgData.ok) {
+        return new Response(
+          JSON.stringify({ ok: true, sent_by: label }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      lastDescription = tgData.description;
+      lastErrorCode = tgData.error_code;
+      console.warn(
+        `Telegram setMessageReaction failed via ${label}:`,
+        JSON.stringify({ error_code: tgData.error_code, description: tgData.description }),
+      );
+      if (!isNotMemberError(tgData.description)) {
+        // Не «бот не в группе» — fallback не поможет.
+        break;
+      }
+    }
+
+    console.error("Telegram setMessageReaction exhausted candidates:", {
+      candidates_tried: candidates.length,
+      last_error_code: lastErrorCode,
+      last_description: lastDescription,
+    });
     return new Response(
-      JSON.stringify({ ok: true }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ error: "Telegram API error", description: lastDescription }),
+      { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
     console.error("telegram-set-reaction error:", error);
