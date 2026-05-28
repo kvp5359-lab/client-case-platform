@@ -7,7 +7,7 @@
  * под единый entry point из Deno.serve.
  */
 
-import { service, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from "./shared.ts";
+import { service, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BOT_VERSION } from "./shared.ts";
 import { findChatBinding } from "./bindings.ts";
 import { findOrCreateParticipant } from "./participants.ts";
 import { downloadAttachments } from "./media.ts";
@@ -27,22 +27,43 @@ import { telegramEntitiesToHtml } from "../_shared/telegramEntitiesToHtml.ts";
 import {
   syncTelegramIncomingMessage,
   applyTelegramEdit,
+  type PersonalBotContext,
 } from "../_shared/syncTelegramIncomingMessage.ts";
-import type { TgMessage, TgChatBinding } from "./types.ts";
+import type { IntegrationContext, TgMessage, TgChatBinding } from "./types.ts";
 
-export async function handleMessage(msg: TgMessage, isEdited: boolean) {
+/**
+ * Контекст личного бота для multi-bot dedup и роутинга reply-lookup в counter
+ * того же бота. Для секретаря (workspace_bot) — null: записанная строка
+ * считается «секретарской» и может быть enriched личным ботом по 23505.
+ */
+function buildPersonalBotContext(ctx: IntegrationContext): PersonalBotContext | null {
+  if (ctx.mode === "workspace") return null;
+  return {
+    integrationId: ctx.id,
+    workspaceId: ctx.workspaceId,
+    botId: ctx.botId,
+  };
+}
+
+export async function handleMessage(msg: TgMessage, isEdited: boolean, ctx: IntegrationContext) {
   const chatId = msg.chat.id;
   const isPrivate = msg.chat.type === "private";
   const rawText = msg.text ?? msg.caption ?? "";
 
   // ── Команды (начинаются с "/") ──
   if (!isEdited && rawText.startsWith("/")) {
-    await handleCommand(msg, rawText);
+    await handleCommand(msg, rawText, ctx);
     return;
   }
 
   // ── Нажатие постоянной reply-кнопки «📋 Меню» ──
-  if (!isEdited && rawText.trim() === MENU_REPLY_BUTTON_TEXT && msg.chat.type !== "private") {
+  // Только workspace-бот показывает эту клавиатуру; у employee её не бывает.
+  if (
+    !isEdited &&
+    ctx.mode === "workspace" &&
+    rawText.trim() === MENU_REPLY_BUTTON_TEXT &&
+    msg.chat.type !== "private"
+  ) {
     await showMainMenu(chatId);
     return;
   }
@@ -57,32 +78,55 @@ export async function handleMessage(msg: TgMessage, isEdited: boolean) {
   const binding = await findChatBinding(chatId);
   if (!binding) return; // либо не наша группа, либо обслуживается v1
 
-  // В группе — файлы могут относиться к сценарию "жду файл для слота"
-  const hasFile = !!(msg.document || msg.photo || msg.video || msg.voice || msg.audio);
-  if (hasFile && msg.from) {
-    const session = await getSession(chatId, msg.from.id);
-    if (session?.state === "awaiting_file" && session.context.slot_id) {
-      await handleSlotFileUpload(msg, binding, session.context.slot_id as string);
-      return;
-    }
-    if (session?.state === "awaiting_free_file") {
-      await handleFreeFileUpload(msg, binding);
-      return;
+  // В группе — файлы могут относиться к сценарию "жду файл для слота".
+  // Сессии существуют только у workspace_bot; у employee — никогда (команды
+  // /upload/menu в employee mode молчат, awaiting_file не возникнет).
+  if (ctx.mode === "workspace") {
+    const hasFile = !!(msg.document || msg.photo || msg.video || msg.voice || msg.audio);
+    if (hasFile && msg.from) {
+      const session = await getSession(chatId, msg.from.id);
+      if (session?.state === "awaiting_file" && session.context.slot_id) {
+        await handleSlotFileUpload(msg, binding, session.context.slot_id as string);
+        return;
+      }
+      if (session?.state === "awaiting_free_file") {
+        await handleFreeFileUpload(msg, binding);
+        return;
+      }
     }
   }
 
   // Обычная синхронизация сообщения в project_messages
-  await syncGroupMessage(msg, binding, isEdited);
+  await syncGroupMessage(msg, binding, isEdited, ctx);
 }
 
-async function syncGroupMessage(msg: TgMessage, binding: TgChatBinding, isEdited: boolean) {
+async function syncGroupMessage(
+  msg: TgMessage,
+  binding: TgChatBinding,
+  isEdited: boolean,
+  ctx: IntegrationContext,
+) {
   const chatId = msg.chat.id;
   const telegramMessageId = msg.message_id;
   const rawText = msg.text ?? msg.caption ?? "";
   const entities = msg.entities ?? msg.caption_entities;
   const text = telegramEntitiesToHtml(rawText, entities);
+  const asPersonalBot = buildPersonalBotContext(ctx);
 
-  // Сервисные сообщения (вступил, вышел, переименовал...)
+  // Group → supergroup: chat_id меняется. Telegram шлёт это сообщение по
+  // старому chat_id, новые апдейты пойдут по новому. Переписываем binding
+  // ДО записи сервисного сообщения, чтобы следующий update нашёл тред.
+  // findChatBinding по старому id ещё работает (мы внутри его результата),
+  // но фильтр UPDATE по old chat_id всё равно зацепит ровно одну строку.
+  if (msg.migrate_to_chat_id) {
+    await service
+      .from("project_telegram_chats")
+      .update({ telegram_chat_id: msg.migrate_to_chat_id })
+      .eq("telegram_chat_id", chatId)
+      .eq("bot_version", BOT_VERSION);
+  }
+
+  // Сервисные сообщения (вступил, вышел, переименовал, migrate_to_chat_id...)
   const serviceText = getServiceMessageText(msg);
   if (serviceText) {
     await service.from("project_messages").insert({
@@ -107,7 +151,7 @@ async function syncGroupMessage(msg: TgMessage, binding: TgChatBinding, isEdited
       chatId,
       telegramMessageId,
       newContent: text || rawText,
-      asPersonalBot: null,
+      asPersonalBot,
     });
     return;
   }
@@ -129,7 +173,7 @@ async function syncGroupMessage(msg: TgMessage, binding: TgChatBinding, isEdited
     senderName: formatUserName(msg.from),
     senderParticipantId,
     forwardInfo: forward,
-    asPersonalBot: null, // v2 webhook всегда секретарский
+    asPersonalBot,
   });
 
   // Fire-and-forget: фоновый кэш аватара отправителя (кэш-функция дедуплицирует).

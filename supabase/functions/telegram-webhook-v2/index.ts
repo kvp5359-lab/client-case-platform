@@ -47,6 +47,7 @@ import {
 import { service, setBotToken } from "./shared.ts";
 import { handleMessage } from "./sync.ts";
 import { handleCallback } from "./callbacks.ts";
+import type { IntegrationContext } from "./types.ts";
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
@@ -56,19 +57,25 @@ Deno.serve(async (req) => {
   // Авторизация: secret_token = id записи workspace_integrations
   // (того, кто настроил webhook через telegram-register-webhook).
   // Подтягиваем оттуда же токен бота — env-переменных больше нет.
+  //
+  // Принимаем оба типа: telegram_workspace_bot (секретарь, полный функционал)
+  // и telegram_employee_bot (личный бот сотрудника, только приём + dedup +
+  // реакции + edit). Различение делается через IntegrationContext.mode и
+  // прокидывается во все нижние модули — см. types.ts → IntegrationContext.
   const headerSecret = req.headers.get("x-telegram-bot-api-secret-token");
   if (!headerSecret) {
     return new Response("Unauthorized", { status: 401 });
   }
   const { data: integration } = await service
     .from("workspace_integrations")
-    .select("id, type, is_active, config, secrets")
+    .select("id, type, workspace_id, is_active, config, secrets")
     .eq("id", headerSecret)
     .maybeSingle();
   if (
     !integration ||
     integration.is_active === false ||
-    integration.type !== "telegram_workspace_bot"
+    (integration.type !== "telegram_workspace_bot" &&
+      integration.type !== "telegram_employee_bot")
   ) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -78,11 +85,21 @@ Deno.serve(async (req) => {
   }
   setBotToken(tokenFromDb);
 
+  const ctx: IntegrationContext = {
+    id: integration.id as string,
+    workspaceId: integration.workspace_id as string,
+    botId:
+      ((integration.config as { bot_id?: number } | null)?.bot_id as
+        | number
+        | undefined) ?? null,
+    mode: integration.type === "telegram_workspace_bot" ? "workspace" : "employee",
+  };
+
   try {
     const update = await req.json();
 
     if (update.callback_query) {
-      await handleCallback(update.callback_query);
+      await handleCallback(update.callback_query, ctx);
     } else if (update.message_reaction) {
       await syncTelegramReactions(service, update.message_reaction);
     } else if (update.message_reaction_count) {
@@ -90,9 +107,9 @@ Deno.serve(async (req) => {
       // агрегатный count-update без user info. Пишем как «anonymous».
       await syncTelegramReactionsAggregated(service, update.message_reaction_count);
     } else if (update.edited_message) {
-      await handleMessage(update.edited_message, true);
+      await handleMessage(update.edited_message, true, ctx);
     } else if (update.message) {
-      await handleMessage(update.message, false);
+      await handleMessage(update.message, false, ctx);
     }
   } catch (err) {
     // Возвращаем 500, чтобы Telegram повторил доставку. Дедуп защищает от

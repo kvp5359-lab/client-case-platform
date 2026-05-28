@@ -57,6 +57,7 @@ export function getServiceMessageText(msg: TgMessage): string | null {
   }
   if (msg.new_chat_title) return `${fromName} изменил(а) название на «${msg.new_chat_title}»`;
   if (msg.pinned_message) return `${fromName} закрепил(а) сообщение`;
+  if (msg.migrate_to_chat_id) return "Группа была преобразована в супергруппу";
   return null;
 }
 

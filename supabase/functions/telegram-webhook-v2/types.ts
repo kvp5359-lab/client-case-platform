@@ -72,6 +72,13 @@ export interface TgMessage {
   group_chat_created?: boolean;
   supergroup_chat_created?: boolean;
   pinned_message?: TgMessage;
+  // Telegram присылает оба поля при превращении обычной группы в супергруппу:
+  // в OLD chat_id приходит сообщение с migrate_to_chat_id = NEW id, в NEW chat_id
+  // — зеркальное с migrate_from_chat_id. Мы реагируем на первое: переписываем
+  // project_telegram_chats.telegram_chat_id, чтобы будущие сообщения находили
+  // привязку.
+  migrate_to_chat_id?: number;
+  migrate_from_chat_id?: number;
   forward_origin?: {
     type: string;
     date: number;
@@ -120,4 +127,28 @@ export interface TgFileDescriptor {
 export interface BotSession {
   state: string;
   context: Record<string, unknown>;
+}
+
+/**
+ * Контекст интеграции, которой принадлежит входящий webhook. Прокидывается
+ * из entry-функции через handleMessage/handleCallback во все нижние модули.
+ *
+ * - `workspace`: telegram_workspace_bot — секретарь, полный функционал (команды,
+ *   inline-меню, knowledge, upload-slot, sessions). `asPersonalBot = null` при
+ *   записи в `project_messages` (тред считается «секретарским»).
+ * - `employee`: telegram_employee_bot — личный бот сотрудника. Только приём
+ *   сообщений, реакции, edit, dedup. Команды /menu/knowledge/upload/status молчат;
+ *   inline-кнопки молчат; sessions не открываются. `asPersonalBot = { integrationId,
+ *   workspaceId, botId }` — нужно для multi-bot dedup и корректного reply-lookup
+ *   в counter этого же бота.
+ *
+ * `botId` берётся из `workspace_integrations.config.bot_id`. Может быть null для
+ * старых записей без сидов конфига — тогда multi-bot dedup полагается только на
+ * (chat_id, sender_user_id, date, file_unique_id).
+ */
+export interface IntegrationContext {
+  id: string;
+  workspaceId: string;
+  botId: number | null;
+  mode: "workspace" | "employee";
 }

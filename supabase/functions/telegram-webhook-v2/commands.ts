@@ -12,16 +12,40 @@ import { showKbGroups } from "./knowledge.ts";
 import { showUploadSlots, showDocStatus } from "./upload-slot.ts";
 import { escapeHtmlEntities } from "../_shared/htmlFormatting.ts";
 import { determineIntegrationIdForLink } from "../_shared/telegramBotToken.ts";
-import type { TgInlineKeyboard, TgMessage, TgUser } from "./types.ts";
+import type { IntegrationContext, TgInlineKeyboard, TgMessage, TgUser } from "./types.ts";
 
 const MAIN_MENU_TEXT = "<b>Главное меню</b>\n\nВыберите раздел:";
 
-export async function handleCommand(msg: TgMessage, text: string) {
+export async function handleCommand(msg: TgMessage, text: string, ctx: IntegrationContext) {
   const chatId = msg.chat.id;
   const isPrivate = msg.chat.type === "private";
   // Убираем @botname из команды (/menu@bot → /menu)
   const cleaned = text.replace(/@\w+/, "");
   const [cmd, ...args] = cleaned.split(/\s+/);
+
+  // employee-bot обслуживает только админ-привязку группы (/link, /unlink) и
+  // личный deep-link (/start <token>, /help). Меню, knowledge, upload — это
+  // фичи секретаря, employee их не показывает.
+  if (ctx.mode === "employee") {
+    switch (cmd) {
+      case "/start":
+        if (isPrivate) await cmdStartPrivate(chatId, args[0], msg.from);
+        else await sendMessage(chatId, helpText());
+        return;
+      case "/help":
+        await sendMessage(chatId, helpText());
+        return;
+      case "/link":
+        await cmdLink(chatId, args[0], msg);
+        return;
+      case "/unlink":
+        await cmdUnlink(chatId);
+        return;
+      default:
+        // Неизвестная или workspace-only команда — молчим
+        return;
+    }
+  }
 
   switch (cmd) {
     case "/start":

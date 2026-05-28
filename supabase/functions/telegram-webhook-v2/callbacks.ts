@@ -20,12 +20,19 @@ import {
   onFreeUploadSelected,
 } from "./upload-slot.ts";
 import { showFolderInfo } from "./commands.ts";
-import type { TgCallbackQuery } from "./types.ts";
+import type { IntegrationContext, TgCallbackQuery } from "./types.ts";
 
 const MAIN_MENU_TEXT = "<b>Главное меню</b>\n\nВыберите раздел:";
 
-export async function handleCallback(cb: TgCallbackQuery) {
+export async function handleCallback(cb: TgCallbackQuery, ctx: IntegrationContext) {
   if (!cb.data || !cb.message) {
+    await answerCallback(cb.id);
+    return;
+  }
+  // У employee-бота нет inline-меню — если кто-то прислал callback (теоретически
+  // через старую кнопку секретаря в той же группе), отвечаем тихим acknowledge
+  // и выходим. Логика меню/knowledge/upload — только для workspace mode.
+  if (ctx.mode === "employee") {
     await answerCallback(cb.id);
     return;
   }
