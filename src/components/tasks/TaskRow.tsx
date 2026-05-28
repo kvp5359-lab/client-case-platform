@@ -7,6 +7,7 @@
 import { useMemo, createElement, forwardRef } from 'react'
 import { CheckSquare, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ACTIVE_NAV_ITEM_BG_CLASS, ACTIVE_NAV_ITEM_HOVER_BG_CLASS } from '@/lib/sidebarTokens'
 import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { DraggableAttributes } from '@dnd-kit/core'
@@ -49,6 +50,8 @@ type TaskRowProps = {
   isDragging?: boolean
   /** Запрос на удаление задачи (если не передан — меню «три точки» не показывается) */
   onRequestDelete?: () => void
+  /** Подсветка строки, когда эта задача открыта в боковой панели. */
+  isActive?: boolean
 }
 
 export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow({
@@ -68,6 +71,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
   style,
   isDragging,
   onRequestDelete,
+  isActive,
 }, ref) {
   const currentStatus = useMemo(
     () => statuses.find((s) => s.id === task.status_id) ?? null,
@@ -88,6 +92,12 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
       className={cn(
         'group/row relative flex items-center gap-3 px-3 py-1.5 border-b border-border/50 hover:bg-muted/30 transition-colors bg-background',
         isDragging && 'opacity-50 shadow-lg z-10',
+        // Подсветка задачи, открытой в боковой панели. hover-вариант
+        // оставляем заметным, иначе при наведении пропадает индикация.
+        // Подсветка задачи, открытой в боковой панели. Цвет — общий токен
+        // с активным проектом в сайдбаре (см. sidebarTokens.ts), чтобы UI
+        // оставался согласованным при будущих правках темы.
+        isActive && [ACTIVE_NAV_ITEM_BG_CLASS, ACTIVE_NAV_ITEM_HOVER_BG_CLASS],
       )}
     >
       {/* Drag handle — появляется слева при hover, поверх padding строки */}

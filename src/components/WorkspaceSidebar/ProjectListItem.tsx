@@ -10,6 +10,7 @@ import { formatBadgeCount } from '@/utils/inboxUnread'
 import { getBadgeClasses } from './projectListConstants'
 import { getProjectIcon } from '@/components/common/project-icons'
 import { safeCssColor } from '@/utils/isValidCssColor'
+import { ACTIVE_NAV_ITEM_CLASS } from '@/lib/sidebarTokens'
 import type { Project } from './useSidebarData'
 
 /**
@@ -96,7 +97,7 @@ export const ProjectListItem = memo(function ProjectListItem({
           isActive
             ? showTabs
               ? 'text-gray-900'
-              : 'bg-gray-200 text-gray-900'
+              : ACTIVE_NAV_ITEM_CLASS
             : 'text-gray-700 hover:bg-gray-100/50'
         }`}
       >

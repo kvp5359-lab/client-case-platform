@@ -34,6 +34,8 @@ export type DraggableTaskRowProps = {
   showProject: boolean
   dropIndicator: 'top' | 'bottom' | null
   onRequestDelete?: (task: TaskItem) => void
+  /** Подсветка строки, когда эта задача открыта в боковой панели. */
+  isActive?: boolean
 }
 
 export const DraggableTaskRow = memo(function DraggableTaskRow({
@@ -51,6 +53,7 @@ export const DraggableTaskRow = memo(function DraggableTaskRow({
   showProject,
   dropIndicator,
   onRequestDelete,
+  isActive,
 }: DraggableTaskRowProps) {
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
     id: task.id,
@@ -115,6 +118,7 @@ export const DraggableTaskRow = memo(function DraggableTaskRow({
         dragHandleProps={{ attributes, listeners }}
         isDragging={isDragging}
         onRequestDelete={handleRequestDelete}
+        isActive={isActive}
       />
       {dropIndicator === 'bottom' && (
         <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-500 rounded-full z-10" />

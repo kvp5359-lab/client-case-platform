@@ -353,6 +353,7 @@ export const TaskListView = memo(function TaskListView({
           onRequestDeleteTask={isWorkspaceOwner ? (task) => setDeletingTask(task) : undefined}
           deadlinePending={updateDeadline.isPending}
           finalStatusIds={new Set(taskStatuses.filter((s) => s.is_final).map((s) => s.id))}
+          selectedThreadId={layoutPanel?.activeThreadId ?? null}
         />
       )}
 

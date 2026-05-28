@@ -90,6 +90,8 @@ type TaskGroupListProps = {
   groupByDeadline?: boolean
   /** ID финальных статусов — для отключения подсветки просрочки */
   finalStatusIds?: Set<string>
+  /** id треда, открытого сейчас в боковой панели — для подсветки строки. */
+  selectedThreadId?: string | null
 }
 
 export function TaskGroupList({
@@ -109,6 +111,7 @@ export function TaskGroupList({
   deadlinePending,
   groupByDeadline = true,
   finalStatusIds = new Set(),
+  selectedThreadId = null,
 }: TaskGroupListProps) {
   const [completedExpanded, setCompletedExpanded] = useState(false)
   const [activeTask, setActiveTask] = useState<TaskItem | null>(null)
@@ -331,6 +334,7 @@ export function TaskGroupList({
                           dropIndicator?.taskId === task.id ? dropIndicator.position : null
                         }
                         onRequestDelete={onRequestDeleteTask}
+                        isActive={task.id === selectedThreadId}
                       />
                     ))}
                   </div>
@@ -359,6 +363,7 @@ export function TaskGroupList({
                   dropIndicator?.taskId === task.id ? dropIndicator.position : null
                 }
                 onRequestDelete={onRequestDeleteTask}
+                isActive={task.id === selectedThreadId}
               />
             ))}
           </div>
@@ -402,6 +407,7 @@ export function TaskGroupList({
                     onRequestDelete={
                       onRequestDeleteTask ? () => onRequestDeleteTask(task) : undefined
                     }
+                    isActive={task.id === selectedThreadId}
                   />
                 ))}
               </div>
