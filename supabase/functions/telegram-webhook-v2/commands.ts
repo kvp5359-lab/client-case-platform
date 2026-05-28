@@ -36,7 +36,7 @@ export async function handleCommand(msg: TgMessage, text: string, ctx: Integrati
         await sendMessage(chatId, helpText());
         return;
       case "/link":
-        await cmdLink(chatId, args[0], msg);
+        await cmdLink(chatId, args[0], msg, ctx);
         return;
       case "/unlink":
         await cmdUnlink(chatId);
@@ -56,7 +56,7 @@ export async function handleCommand(msg: TgMessage, text: string, ctx: Integrati
       await sendMessage(chatId, helpText());
       return;
     case "/link":
-      await cmdLink(chatId, args[0], msg);
+      await cmdLink(chatId, args[0], msg, ctx);
       return;
     case "/unlink":
       await cmdUnlink(chatId);
@@ -175,7 +175,7 @@ async function cmdStartPrivate(chatId: number, tokenArg: string | undefined, fro
   await sendMessage(chatId, "✅ Ваш Telegram привязан к аккаунту. Теперь в группах проектов бот узнаёт вас.");
 }
 
-async function cmdLink(chatId: number, codeArg: string | undefined, msg: TgMessage) {
+async function cmdLink(chatId: number, codeArg: string | undefined, msg: TgMessage, ctx: IntegrationContext) {
   if (!codeArg) {
     await sendMessage(chatId, "Укажите код: /link КОД");
     return;
@@ -256,12 +256,21 @@ async function cmdLink(chatId: number, codeArg: string | undefined, msg: TgMessa
     return;
   }
 
-  // Приветствие с постоянной кнопкой «📋 Меню» внизу
-  await sendMessage(
-    chatId,
-    `✅ Группа привязана к чату «${thread.name}».\n\nВнизу теперь есть кнопка <b>📋 Меню</b> — нажмите её в любой момент, чтобы открыть разделы бота.`,
-    { reply_markup: menuReplyKeyboard() },
-  );
+  // Приветствие с постоянной кнопкой «📋 Меню» — ТОЛЬКО для секретаря.
+  // У employee-бота нет своего меню (showMainMenu/inline-кнопки не показываются
+  // в employee mode — см. ctx.mode проверки в sync.ts и callbacks.ts), поэтому
+  // навешивать reply-клавиатуру было бы странно: юзер тапает «Меню», а бот
+  // молча игнорирует. Симметрично с тем, что cmdUnlink/showMainMenu тоже
+  // workspace-only по факту.
+  if (ctx.mode === "workspace") {
+    await sendMessage(
+      chatId,
+      `✅ Группа привязана к чату «${thread.name}».\n\nВнизу теперь есть кнопка <b>📋 Меню</b> — нажмите её в любой момент, чтобы открыть разделы бота.`,
+      { reply_markup: menuReplyKeyboard() },
+    );
+  } else {
+    await sendMessage(chatId, `✅ Группа привязана к чату «${thread.name}».`);
+  }
 
   // Напомним про права админа (реакции требуют administrator)
   const me = await tgCall<{ status: string }>("getChatMember", {
