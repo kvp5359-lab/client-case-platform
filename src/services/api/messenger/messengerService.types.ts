@@ -131,6 +131,25 @@ export type ProjectMessage = {
   updated_at: string
   reactions: MessageReaction[]
   attachments: MessageAttachment[]
+  /** Статус загрузки внешних вложений (TG/Wazzup) — NULL если файлов нет
+   *  или всё успешно загружено. 'pending' — webhook сейчас качает.
+   *  'failed' — все попытки скачать упали, плашка в UI. */
+  attachment_status?: 'pending' | 'failed' | null
+  /** Детали последнего сбоя загрузки. Видны юзеру в плашке (имя файла, причина). */
+  attachment_error?: {
+    stage?: string
+    failed_files?: Array<{
+      file_name: string
+      reason: string
+      http_status?: number | null
+      attempts?: number
+    }>
+    ok_files?: number
+    total_files?: number
+    failed_at?: string
+    message?: string
+    backfilled_at?: string
+  } | null
   sender: { name: string; last_name: string | null; avatar_url: string | null } | null
   /** Если пользователь отправил перевод — здесь оригинал (виден только автору). */
   original_content?: string | null

@@ -6,33 +6,25 @@
 import { useState, useCallback, useEffect, useMemo, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import { MessageSquare } from 'lucide-react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { toast } from 'sonner'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
+import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import {
-  getCurrentProjectParticipant,
   getCurrentWorkspaceParticipant,
-  markAsRead,
-  markAsUnread,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
-import { invalidateMessengerCaches, projectTemplateKeys, STALE_TIME, inboxKeys } from '@/hooks/queryKeys'
-import {
-  patchCachesForMarkRead,
-  patchCachesForMarkUnread,
-} from '@/hooks/messenger/useUnreadCount'
+import { invalidateMessengerCaches, projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { useCreateThread, useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { newThreadToTaskItem } from '@/components/tasks/taskListConstants'
 import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
-import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { MessengerAccent } from '@/components/messenger/utils/messageStyles'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import { InboxChatHeader, useProjectChatParticipants } from './InboxChatHeader'
@@ -60,7 +52,13 @@ export default function InboxPage() {
     closePanel()
   }, [closePanel])
 
-  const { data: chats = [], isLoading } = useFilteredInbox(workspaceId ?? '')
+  const {
+    data: chats = [],
+    isLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useFilteredInbox(workspaceId ?? '')
 
   const {
     filter,
@@ -201,90 +199,10 @@ export default function InboxPage() {
     [createChatMutation, user, workspaceId, setPendingInitialMessage, invalidateInbox],
   )
 
-  const getChannel = (chat: InboxThreadEntry): MessageChannel =>
-    (chat.legacy_channel as MessageChannel) ?? 'client'
-
-  /** Резолв participant: проектный (если у треда есть project_id) или
-   *  workspace-уровневый (личные диалоги TG/Email/Wazzup, у которых project_id = null). */
-  const resolveParticipantId = async (chat: InboxThreadEntry): Promise<string | null> => {
-    if (!user) return null
-    if (chat.project_id) {
-      return (await getCurrentProjectParticipant(chat.project_id, user.id))?.participantId ?? null
-    }
-    return (await getCurrentWorkspaceParticipant(workspaceId, user.id))?.participantId ?? null
-  }
-
-  // Мутации идентичны кнопке «Прочитано/Непрочитано» внутри чата:
-  // patchCachesForMarkRead/Unread из useUnreadCount.ts патчит ВСЕ три кэша
-  // (бейдж списка + кнопка чата + контуры бабблов) одинаково.
-
-  const markReadMutation = useMutation({
-    mutationFn: async (chat: InboxThreadEntry) => {
-      if (!user) throw new Error('Не авторизован')
-      const participantId = await resolveParticipantId(chat)
-      if (!participantId) throw new Error('Участник не найден')
-      return markAsRead(
-        participantId,
-        chat.project_id ?? undefined,
-        getChannel(chat),
-        chat.thread_id,
-      )
-    },
-    onMutate: (chat) => {
-      const prev = queryClient.getQueryData<InboxThreadEntry[]>(inboxKeys.threads(workspaceId))
-      patchCachesForMarkRead(queryClient, {
-        threadId: chat.thread_id,
-        projectId: chat.project_id ?? undefined,
-        workspaceId,
-      })
-      return { prev }
-    },
-    onSuccess: () => {
-      invalidateInbox()
-    },
-    onError: (err, _chat, context) => {
-      if (context?.prev) {
-        queryClient.setQueryData(inboxKeys.threads(workspaceId), context.prev)
-      }
-      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-      const desc = err instanceof Error ? err.message : undefined
-      toast.error('Не удалось отметить как прочитанное', desc ? { description: desc } : undefined)
-    },
-  })
-
-  const markUnreadMutation = useMutation({
-    mutationFn: async (chat: InboxThreadEntry) => {
-      if (!user) throw new Error('Не авторизован')
-      const participantId = await resolveParticipantId(chat)
-      if (!participantId) throw new Error('Участник не найден')
-      return markAsUnread(
-        participantId,
-        chat.project_id ?? undefined,
-        getChannel(chat),
-        chat.thread_id,
-      )
-    },
-    onMutate: (chat) => {
-      const prev = queryClient.getQueryData<InboxThreadEntry[]>(inboxKeys.threads(workspaceId))
-      patchCachesForMarkUnread(queryClient, {
-        threadId: chat.thread_id,
-        projectId: chat.project_id ?? undefined,
-        workspaceId,
-      })
-      return { prev }
-    },
-    onSuccess: () => {
-      invalidateInbox()
-    },
-    onError: (err, _chat, context) => {
-      if (context?.prev) {
-        queryClient.setQueryData(inboxKeys.threads(workspaceId), context.prev)
-      }
-      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-      const desc = err instanceof Error ? err.message : undefined
-      toast.error('Не удалось отметить как непрочитанное', desc ? { description: desc } : undefined)
-    },
-  })
+  // Общие mark-read/unread мутации: одна реализация на InboxPage + BoardInboxList.
+  // Оптимистичный патч + invalidate + rollback + toast — всё внутри хука.
+  const { markRead: markReadMutation, markUnread: markUnreadMutation } =
+    useInboxMarkMutations(workspaceId)
 
   return (
     <WorkspaceLayout>
@@ -306,6 +224,9 @@ export default function InboxPage() {
             onSelectThread={setSelectedThreadId}
             onMarkAsRead={(chat) => markReadMutation.mutate(chat)}
             onMarkAsUnread={(chat) => markUnreadMutation.mutate(chat)}
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={fetchNextPage}
           />
 
           {/* Правая панель — мессенджер конкретного чата */}
@@ -326,7 +247,7 @@ export default function InboxPage() {
                     key={activeChat.thread_id}
                     projectId={activeChat.project_id ?? undefined}
                     workspaceId={workspaceId}
-                    channel={getChannel(activeChat)}
+                    channel={(activeChat.legacy_channel as MessageChannel) ?? 'client'}
                     threadId={activeChat.thread_id}
                     accent={(activeChat.thread_accent_color as MessengerAccent) ?? 'blue'}
                     toolbarPortalContainer={toolbarContainer}

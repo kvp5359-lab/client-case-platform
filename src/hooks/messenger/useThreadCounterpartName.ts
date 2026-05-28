@@ -12,7 +12,7 @@
 import { useMemo, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { inboxKeys } from '@/hooks/queryKeys'
-import type { InboxThreadEntry } from '@/services/api/inboxService'
+import type { InboxInfiniteData } from './useInbox'
 
 export function useThreadCounterpartName(
   threadId: string,
@@ -21,7 +21,7 @@ export function useThreadCounterpartName(
   const queryClient = useQueryClient()
   const queryKey = useMemo(() => inboxKeys.threads(workspaceId), [workspaceId])
 
-  const threads = useSyncExternalStore<InboxThreadEntry[] | undefined>(
+  const data = useSyncExternalStore<InboxInfiniteData | undefined>(
     (onChange) => {
       const cache = queryClient.getQueryCache()
       return cache.subscribe((event) => {
@@ -38,12 +38,16 @@ export function useThreadCounterpartName(
         onChange()
       })
     },
-    () => queryClient.getQueryData<InboxThreadEntry[]>(queryKey),
+    () => queryClient.getQueryData<InboxInfiniteData>(queryKey),
     () => undefined,
   )
 
   return useMemo(() => {
-    const entry = threads?.find((e) => e.thread_id === threadId)
-    return entry?.counterpart_name ?? null
-  }, [threads, threadId])
+    if (!data?.pages) return null
+    for (const page of data.pages) {
+      const entry = page.items.find((e) => e.thread_id === threadId)
+      if (entry) return entry.counterpart_name ?? null
+    }
+    return null
+  }, [data, threadId])
 }

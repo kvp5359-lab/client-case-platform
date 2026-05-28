@@ -12,6 +12,12 @@ export const inboxKeys = {
   all: ['inbox'] as const,
   /** Ключ inbox-кеша (thread-level). v1 удалён, остался только v2. */
   threads: (workspaceId: string) => ['inbox', 'threads-v2', workspaceId] as const,
+  /**
+   * Лёгкий ключ для агрегатов сайдбар-бейджей и favicon (get_inbox_thread_aggregates).
+   * Возвращает только цифры по тредам — без имён, текстов, аватаров.
+   * Снимает зависимость счётчиков от тяжёлого RPC, чтобы пагинация фазы 2 не сломала их.
+   */
+  aggregates: (workspaceId: string) => ['inbox', 'aggregates', workspaceId] as const,
 }
 
 /**
@@ -140,6 +146,7 @@ export function invalidateMessengerCaches(
   workspaceId: string,
 ) {
   queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+  queryClient.invalidateQueries({ queryKey: inboxKeys.aggregates(workspaceId) })
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, true) })
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, false) })
 }

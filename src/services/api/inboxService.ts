@@ -101,3 +101,81 @@ export async function getInboxThreadsV2(
   if (error) throw new ApiError(`Ошибка загрузки входящих: ${error.message}`)
   return (data ?? []) as unknown as InboxThreadEntry[]
 }
+
+/**
+ * Лёгкая строка-агрегат — только поля для счётчиков сайдбара/favicon.
+ * Без имён, текстов, аватаров. Источник — RPC `get_inbox_thread_aggregates`.
+ */
+export type InboxThreadAggregate = {
+  thread_id: string
+  project_id: string | null
+  legacy_channel: string | null
+  thread_accent_color: string | null
+  last_message_at: string | null
+  unread_count: number
+  unread_event_count: number
+  unread_reaction_count: number
+  has_unread_reaction: boolean
+  manually_unread: boolean
+  last_reaction_emoji: string | null
+}
+
+export async function getInboxThreadAggregates(
+  workspaceId: string,
+  userId: string,
+): Promise<InboxThreadAggregate[]> {
+  const { data, error } = await supabase.rpc('get_inbox_thread_aggregates' as never, {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+  } as never)
+
+  if (error) throw new ApiError(`Ошибка загрузки агрегатов: ${error.message}`)
+  return (data ?? []) as unknown as InboxThreadAggregate[]
+}
+
+/** Keyset-курсор для пагинации инбокса. NULL — первая страница. */
+export type InboxPageCursor = {
+  sortAt: string
+  threadId: string
+} | null
+
+/** Размер одной страницы. Согласован с RPC-дефолтом (50). Меняется одновременно. */
+export const INBOX_PAGE_SIZE = 50
+
+/** Тред из пагинированного RPC — те же поля, что в `InboxThreadEntry`, + `sort_at` для курсора. */
+export type InboxThreadPageEntry = InboxThreadEntry & {
+  sort_at: string | null
+}
+
+/** Один «страничный» результат для useInfiniteQuery. */
+export type InboxThreadsPage = {
+  items: InboxThreadPageEntry[]
+  nextCursor: InboxPageCursor
+}
+
+export async function getInboxThreadsPage(
+  workspaceId: string,
+  userId: string,
+  cursor: InboxPageCursor,
+  limit: number = INBOX_PAGE_SIZE,
+): Promise<InboxThreadsPage> {
+  const { data, error } = await supabase.rpc('get_inbox_threads_page' as never, {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+    p_cursor_sort_at: cursor?.sortAt ?? null,
+    p_cursor_thread_id: cursor?.threadId ?? null,
+    p_limit: limit,
+  } as never)
+
+  if (error) throw new ApiError(`Ошибка загрузки страницы входящих: ${error.message}`)
+  const items = (data ?? []) as unknown as InboxThreadPageEntry[]
+
+  // Если страница полная — есть смысл запрашивать следующую: курсор — sort_at + thread_id последнего ряда.
+  const last = items.length === limit ? items[items.length - 1] : null
+  const nextCursor: InboxPageCursor =
+    last && last.sort_at
+      ? { sortAt: last.sort_at, threadId: last.thread_id }
+      : null
+
+  return { items, nextCursor }
+}

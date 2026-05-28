@@ -3,25 +3,107 @@
 /**
  * Хуки для раздела "Входящие" — список тредов и общий счётчик непрочитанных.
  *
- * Единственный источник данных — v2 RPC `get_inbox_threads_v2` (каждый тред
- * отдельной строкой, thread-level модель). v1 RPC `get_inbox_threads` больше
- * не используется ни одним хуком; сам RPC остался в БД как legacy для
- * потенциального быстрого отката, но TS-код его не вызывает.
+ * Источник данных — пагинированный RPC `get_inbox_threads_page` через `useInfiniteQuery`
+ * (фаза 2 пагинации, 2026-05-27). Возврат — флэт всех загруженных страниц как
+ * `InboxThreadEntry[]`, чтобы существующие consumers (useFilteredInbox, useIsManuallyUnread
+ * и др.) работали без изменений.
  *
- * Миграция с v1 на v2 завершена в рамках аудита 2026-04-11, П5.1.
+ * Legacy `get_inbox_threads_v2` оставлен в БД для отката. `get_inbox_thread_aggregates`
+ * (фаза 1) — отдельный лёгкий источник для бейджей сайдбара и favicon.
  *
  * Realtime-инвалидация ключа `inboxKeys.threads(workspaceId)` выполняется
  * в `useWorkspaceMessagesRealtime` (WorkspaceLayoutImpl) — единая
  * workspace-level подписка на `project_messages` / `message_reactions`.
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, type InfiniteData, type QueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
-import { getInboxThreadsV2, type InboxThreadEntry } from '@/services/api/inboxService'
+import {
+  getInboxThreadsPage,
+  type InboxThreadEntry,
+  type InboxThreadPageEntry,
+  type InboxPageCursor,
+  type InboxThreadsPage,
+  type InboxThreadAggregate,
+} from '@/services/api/inboxService'
 import { inboxKeys, STALE_TIME } from '@/hooks/queryKeys'
-import { calcTotalUnread, calcThreadUnread } from '@/utils/inboxUnread'
+import { calcThreadUnread } from '@/utils/inboxUnread'
 
-// ─── Базовый хук: единственный источник запроса ─────────────────
+// ─── Тип кэша + helpers для прямой работы с ним ──────────────────
+
+/** Полный тип кэша инбокса в React Query (после перехода на infinite v5). */
+export type InboxInfiniteData = InfiniteData<InboxThreadsPage, InboxPageCursor | undefined>
+
+/** Стандартный селектор — флэтит страницы в массив тредов. */
+function flattenPages(pages: InboxThreadsPage[]): InboxThreadEntry[] {
+  const all: InboxThreadEntry[] = []
+  for (const p of pages) all.push(...p.items)
+  return all
+}
+
+/**
+ * Достать плоский список тредов из кэша инбокса. Возвращает `undefined`,
+ * если кэш ещё не заполнен (как старая семантика `getQueryData<InboxThreadEntry[]>`).
+ */
+export function readInboxFromCache(
+  queryClient: QueryClient,
+  workspaceId: string,
+): InboxThreadEntry[] | undefined {
+  const data = queryClient.getQueryData<InboxInfiniteData>(inboxKeys.threads(workspaceId))
+  if (!data?.pages) return undefined
+  return flattenPages(data.pages)
+}
+
+/**
+ * Применить точечный апдейт к тредам в кэше инбокса. Сохраняет структуру
+ * `{ pages, pageParams }`, чтобы пагинация продолжала работать. Если кэш
+ * пуст — ничего не делает.
+ *
+ * Тип updater'а — `InboxThreadPageEntry` (с полем sort_at), но callers
+ * обычно меняют только подмножество полей и копируют остальные через
+ * spread — поэтому это совместимо с любым `InboxThreadEntry`-обновлением.
+ */
+export function patchInboxThreadInCache(
+  queryClient: QueryClient,
+  workspaceId: string,
+  predicate: (t: InboxThreadPageEntry) => boolean,
+  updater: (t: InboxThreadPageEntry) => InboxThreadPageEntry,
+) {
+  queryClient.setQueryData<InboxInfiniteData | undefined>(
+    inboxKeys.threads(workspaceId),
+    (prev) => {
+      if (!prev?.pages) return prev
+      return {
+        ...prev,
+        pages: prev.pages.map((page) => ({
+          ...page,
+          items: page.items.map((t) => (predicate(t) ? updater(t) : t)),
+        })),
+      }
+    },
+  )
+}
+
+/**
+ * Применить точечный апдейт к лёгкому кэшу агрегатов (для сайдбар-бейджей).
+ * Должен вызываться парно с `patchInboxThreadInCache` — иначе optimistic
+ * mark-read обновит список тредов, но бейдж проекта в сайдбаре останется
+ * висеть до полного refetch.
+ */
+export function patchInboxAggregateInCache(
+  queryClient: QueryClient,
+  workspaceId: string,
+  predicate: (t: InboxThreadAggregate) => boolean,
+  updater: (t: InboxThreadAggregate) => InboxThreadAggregate,
+) {
+  queryClient.setQueryData<InboxThreadAggregate[] | undefined>(
+    inboxKeys.aggregates(workspaceId),
+    (prev) => {
+      if (!prev) return prev
+      return prev.map((t) => (predicate(t) ? updater(t) : t))
+    },
+  )
+}
 
 function useInboxBase<T = InboxThreadEntry[]>(
   workspaceId: string,
@@ -29,13 +111,37 @@ function useInboxBase<T = InboxThreadEntry[]>(
 ) {
   const { user } = useAuth()
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: inboxKeys.threads(workspaceId),
-    queryFn: () => getInboxThreadsV2(workspaceId, user!.id),
+    queryFn: ({ pageParam }) =>
+      getInboxThreadsPage(workspaceId, user!.id, pageParam as InboxPageCursor),
+    // TanStack Query v5: initialPageParam обязателен. undefined трактуется
+    // как «первая страница без курсора» — getInboxThreadsPage сам приведёт к NULL.
+    initialPageParam: undefined as InboxPageCursor | undefined,
+    // TanStack ожидает undefined для «нет следующей» — null допустим, но undefined чище.
+    getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
     enabled: !!workspaceId && !!user,
     staleTime: STALE_TIME.SHORT,
-    ...(select && { select }),
+    select: (raw) => {
+      // На начальной фазе и при refetch TanStack может вызвать select раньше,
+      // чем data собрана — защищаемся от undefined/частичных pages.
+      const pages = raw?.pages ?? []
+      const flat = flattenPages(pages)
+      return (select ? select(flat) : flat) as T
+    },
   })
+}
+
+/**
+ * Список тредов с инфинит-скроллом. Возвращает `fetchNextPage`, `hasNextPage`,
+ * `isFetchingNextPage` помимо стандартного `data`. Использовать для UI с прокруткой
+ * (InboxPage, BoardTabContent inbox-колонки).
+ *
+ * Для счётчиков и проверок (useIsManuallyUnread, useTotalUnreadCount и т.д.)
+ * остаётся `useInboxThreadsV2`, который флэтит загруженные страницы.
+ */
+export function useInboxThreadsInfinite(workspaceId: string) {
+  return useInboxBase(workspaceId)
 }
 
 // ─── v2: тред-ориентированные хуки ──────────────────────────────
@@ -46,13 +152,6 @@ function useInboxBase<T = InboxThreadEntry[]>(
  */
 export function useInboxThreadsV2(workspaceId: string) {
   return useInboxBase(workspaceId)
-}
-
-/**
- * Суммарный счётчик непрочитанных сообщений для бейджа favicon и сайдбара.
- */
-export function useTotalUnreadCount(workspaceId: string) {
-  return useInboxBase(workspaceId, (threads) => calcTotalUnread(threads))
 }
 
 /**

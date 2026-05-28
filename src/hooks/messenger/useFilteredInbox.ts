@@ -16,7 +16,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { calcThreadUnread, calcTotalUnread, getAggregateBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import { canAccessThread, type ThreadAccessInfo } from '@/utils/threadAccess'
 import { useInboxThreadsV2 } from './useInbox'
-import { sidebarDataKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { getInboxThreadAggregates, type InboxThreadAggregate } from '@/services/api/inboxService'
+import { inboxKeys, sidebarDataKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 type MyProjectRole = {
   project_id: string
@@ -65,16 +66,23 @@ function useWorkspaceAccessData(workspaceId: string) {
 }
 
 /**
- * useFilteredInbox — возвращает отфильтрованный по доступу список inbox тредов.
- * Единая замена для useInboxThreadsV2 во всех компонентах.
+ * useAccessFilter — общий движок фильтрации тредов по правам доступа.
+ *
+ * Применяет canAccessThread() ко всем элементам массива, используя access-данные
+ * текущего пользователя из useWorkspaceAccessData (get_sidebar_data RPC).
+ * Safety fallback: если для треда нет access-info — оставляем (не теряем счётчик).
+ *
+ * Тип T должен иметь thread_id. Используется и для тяжёлого InboxThreadEntry,
+ * и для лёгкого InboxThreadAggregate.
  */
-export function useFilteredInbox(workspaceId: string) {
+function useAccessFilter<T extends { thread_id: string }>(
+  items: T[],
+  workspaceId: string,
+): T[] {
   const { user } = useAuth()
-  const { data: rawInboxThreads = [], ...queryRest } = useInboxThreadsV2(workspaceId)
   const { threads, myProjectRoles, myMemberThreadIds, myAssigneeThreadIds } =
     useWorkspaceAccessData(workspaceId)
 
-  // Быстрый lookup: project_id → мои роли
   const rolesByProject = useMemo(() => {
     const map = new Map<string, MyProjectRole>()
     for (const r of myProjectRoles) {
@@ -83,7 +91,6 @@ export function useFilteredInbox(workspaceId: string) {
     return map
   }, [myProjectRoles])
 
-  // Быстрый lookup: thread_id → access info
   const threadAccessMap = useMemo(() => {
     const map = new Map<string, ThreadAccessInfo>()
     for (const t of threads) {
@@ -92,13 +99,12 @@ export function useFilteredInbox(workspaceId: string) {
     return map
   }, [threads])
 
-  // Фильтрованные inbox треды — используем единую canAccessThread из utils
-  const data = useMemo(() => {
-    if (!user) return rawInboxThreads
+  return useMemo(() => {
+    if (!user) return items
 
-    return rawInboxThreads.filter((entry) => {
+    return items.filter((entry) => {
       const access = threadAccessMap.get(entry.thread_id)
-      if (!access) return true // Тред не найден в access данных — показываем (safety fallback)
+      if (!access) return true // safety fallback — не теряем строку из счётчика
 
       const myRole = access.project_id ? rolesByProject.get(access.project_id) : null
 
@@ -109,18 +115,41 @@ export function useFilteredInbox(workspaceId: string) {
         projectRoles: myRole?.project_roles ?? null,
         isAssignee: myAssigneeThreadIds.has(entry.thread_id),
         isMember: myMemberThreadIds.has(entry.thread_id),
-        hasViewAllProjects: false, // inbox фильтрация — view_all_projects не проверяем (данные уже загружены)
+        hasViewAllProjects: false,
       })
     })
-  }, [
-    rawInboxThreads,
-    user,
-    threadAccessMap,
-    rolesByProject,
-    myMemberThreadIds,
-    myAssigneeThreadIds,
-  ])
+  }, [items, user, threadAccessMap, rolesByProject, myMemberThreadIds, myAssigneeThreadIds])
+}
 
+/**
+ * useFilteredInboxAggregates — отфильтрованный по доступу список «лёгких» агрегатов
+ * для счётчиков сайдбара и favicon. В отличие от useFilteredInbox не тянет
+ * имена/тексты/аватары — payload в ~17 раз меньше, Postgres в ~2 раза быстрее.
+ *
+ * Источник — RPC `get_inbox_thread_aggregates`. Использование — только для
+ * счётчиков; для UI-списка тредов остаётся useFilteredInbox.
+ */
+export function useFilteredInboxAggregates(workspaceId: string) {
+  const { user } = useAuth()
+
+  const { data: rawAggregates = [] } = useQuery({
+    queryKey: inboxKeys.aggregates(workspaceId),
+    queryFn: () => getInboxThreadAggregates(workspaceId, user!.id),
+    enabled: !!workspaceId && !!user,
+    staleTime: STALE_TIME.SHORT,
+  })
+
+  const data = useAccessFilter<InboxThreadAggregate>(rawAggregates, workspaceId)
+  return { data }
+}
+
+/**
+ * useFilteredInbox — возвращает отфильтрованный по доступу список inbox тредов.
+ * Единая замена для useInboxThreadsV2 во всех компонентах.
+ */
+export function useFilteredInbox(workspaceId: string) {
+  const { data: rawInboxThreads = [], ...queryRest } = useInboxThreadsV2(workspaceId)
+  const data = useAccessFilter(rawInboxThreads, workspaceId)
   return { data, ...queryRest }
 }
 
@@ -129,9 +158,13 @@ export function useFilteredInbox(workspaceId: string) {
  * Заменяет связку useTotalFilteredUnreadCount + useProjectFilteredUnreadCounts:
  * раньше useFilteredInbox вычислялся дважды (useMemo-фильтрация гоняется дважды),
  * теперь всё делается в одном проходе.
+ *
+ * Источник — `useFilteredInboxAggregates` (лёгкий RPC `get_inbox_thread_aggregates`),
+ * чтобы сайдбар не зависел от тяжёлого инбокс-запроса и оставался быстрым при
+ * росте числа тредов / переходе списка инбокса на пагинацию (фаза 2).
  */
 export function useSidebarInboxCounts(workspaceId: string) {
-  const { data: threads } = useFilteredInbox(workspaceId)
+  const { data: threads } = useFilteredInboxAggregates(workspaceId)
 
   return useMemo(() => {
     const totalUnread = calcTotalUnread(threads)

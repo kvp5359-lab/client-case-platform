@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { inboxKeys } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import { getBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
+import type { InboxInfiniteData } from '@/hooks/messenger/useInbox'
 
 const ACCENT_BADGE: Record<string, string> = {
   blue: 'bg-blue-500',
@@ -34,11 +35,15 @@ type UnreadBadgeProps = {
 }
 
 function computeBadge(
-  threads: InboxThreadEntry[] | undefined,
+  data: InboxInfiniteData | undefined,
   threadId: string,
 ): BadgeDisplay {
-  const entry = threads?.find((e) => e.thread_id === threadId)
-  return entry ? getBadgeDisplay(entry) : { type: 'none' as const }
+  if (!data?.pages) return { type: 'none' as const }
+  for (const page of data.pages) {
+    const entry = page.items.find((e: InboxThreadEntry) => e.thread_id === threadId)
+    if (entry) return getBadgeDisplay(entry)
+  }
+  return { type: 'none' as const }
 }
 
 export function UnreadBadge({ threadId, workspaceId, accentColor }: UnreadBadgeProps) {
@@ -54,7 +59,7 @@ export function UnreadBadge({ threadId, workspaceId, accentColor }: UnreadBadgeP
   const queryClient = useQueryClient()
   const queryKey = useMemo(() => inboxKeys.threads(workspaceId), [workspaceId])
 
-  const threads = useSyncExternalStore<InboxThreadEntry[] | undefined>(
+  const data = useSyncExternalStore<InboxInfiniteData | undefined>(
     (onChange) => {
       const cache = queryClient.getQueryCache()
       return cache.subscribe((event) => {
@@ -71,11 +76,11 @@ export function UnreadBadge({ threadId, workspaceId, accentColor }: UnreadBadgeP
         onChange()
       })
     },
-    () => queryClient.getQueryData<InboxThreadEntry[]>(queryKey),
+    () => queryClient.getQueryData<InboxInfiniteData>(queryKey),
     () => undefined,
   )
 
-  const badge = useMemo<BadgeDisplay>(() => computeBadge(threads, threadId), [threads, threadId])
+  const badge = useMemo<BadgeDisplay>(() => computeBadge(data, threadId), [data, threadId])
 
   if (!badge || badge.type === 'none') return null
 

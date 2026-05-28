@@ -17,11 +17,9 @@ import {
 import { supabase } from '@/lib/supabase'
 import {
   messengerKeys,
-  inboxKeys,
   invalidateMessengerCaches,
 } from '@/hooks/queryKeys'
-import type { InboxThreadEntry } from '@/services/api/inboxService'
-import { useInboxThreadsV2 } from './useInbox'
+import { useInboxThreadsV2, patchInboxThreadInCache, patchInboxAggregateInCache } from './useInbox'
 import { dismissProjectToasts } from './useMessageToastPayload'
 
 /** Resolve participant: project-level if projectId given, else workspace-level */
@@ -63,21 +61,33 @@ export function patchCachesForMarkRead(queryClient: QueryClient, params: CachePa
   queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), 0)
   queryClient.setQueryData(messengerKeys.lastReadAtByThreadId(threadId), nowIso)
   if (workspaceId) {
-    queryClient.setQueryData<InboxThreadEntry[] | undefined>(
-      inboxKeys.threads(workspaceId),
-      (prev) =>
-        prev?.map((t) =>
-          t.thread_id === threadId
-            ? {
-                ...t,
-                unread_count: 0,
-                manually_unread: false,
-                has_unread_reaction: false,
-                unread_reaction_count: 0,
-                unread_event_count: 0,
-              }
-            : t,
-        ),
+    patchInboxThreadInCache(
+      queryClient,
+      workspaceId,
+      (t) => t.thread_id === threadId,
+      (t) => ({
+        ...t,
+        unread_count: 0,
+        manually_unread: false,
+        has_unread_reaction: false,
+        unread_reaction_count: 0,
+        unread_event_count: 0,
+      }),
+    )
+    // Зеркальный патч лёгкого кэша агрегатов — бейдж проекта в сайдбаре
+    // и favicon обновляются в той же фазе render, что и сам тред в списке.
+    patchInboxAggregateInCache(
+      queryClient,
+      workspaceId,
+      (t) => t.thread_id === threadId,
+      (t) => ({
+        ...t,
+        unread_count: 0,
+        manually_unread: false,
+        has_unread_reaction: false,
+        unread_reaction_count: 0,
+        unread_event_count: 0,
+      }),
     )
   }
 }
@@ -90,12 +100,17 @@ export function patchCachesForMarkUnread(queryClient: QueryClient, params: Cache
   // бейдж списка, но конкретные сообщения не должны быть «непрочитанными»).
   queryClient.setQueryData(messengerKeys.lastReadAtByThreadId(threadId), nowIso)
   if (workspaceId) {
-    queryClient.setQueryData<InboxThreadEntry[] | undefined>(
-      inboxKeys.threads(workspaceId),
-      (prev) =>
-        prev?.map((t) =>
-          t.thread_id === threadId ? { ...t, manually_unread: true } : t,
-        ),
+    patchInboxThreadInCache(
+      queryClient,
+      workspaceId,
+      (t) => t.thread_id === threadId,
+      (t) => ({ ...t, manually_unread: true }),
+    )
+    patchInboxAggregateInCache(
+      queryClient,
+      workspaceId,
+      (t) => t.thread_id === threadId,
+      (t) => ({ ...t, manually_unread: true }),
     )
   }
 }

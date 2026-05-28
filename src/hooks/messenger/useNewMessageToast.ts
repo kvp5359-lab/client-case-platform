@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { inboxKeys, messengerKeys, sidebarKeys, workspaceKeys } from '@/hooks/queryKeys'
 import { getCurrentProjectParticipant, markAsRead } from '@/services/api/messenger/messengerService'
-import type { InboxThreadEntry } from '@/services/api/inboxService'
+import { readInboxFromCache } from './useInbox'
 import type { Workspace } from '@/types/entities'
 import { buildToastContent } from './MessageToastContent'
 import {
@@ -103,9 +103,8 @@ export function useNewMessageToast(workspaceId: string | undefined) {
           const duration = durationSec === 0 ? Infinity : durationSec * 1000
 
           // Единый кеш v2 — читаем один раз, достаём и projectName, и accent_color.
-          const cachedThreads = queryClient.getQueryData<InboxThreadEntry[]>(
-            inboxKeys.threads(workspaceId),
-          )
+          // Кэш теперь infinite (страницы) — readInboxFromCache флэтит их в один массив.
+          const cachedThreads = readInboxFromCache(queryClient, workspaceId)
           const threadEntry = cachedThreads?.find((c) => c.thread_id === msg.thread_id)
           // Личные диалоги (project_id=NULL) — суффикс в скобках не показываем,
           // имя отправителя само по себе достаточно. Для проектных тредов —

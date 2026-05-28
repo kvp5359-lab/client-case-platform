@@ -2,7 +2,7 @@
  * Левая панель страницы «Входящие» — заголовок, поиск, фильтры, список чатов.
  */
 
-import { memo } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { Inbox, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
@@ -24,6 +24,12 @@ type InboxSidebarProps = {
   onSelectThread: (threadId: string) => void
   onMarkAsRead: (chat: InboxThreadEntry) => void
   onMarkAsUnread: (chat: InboxThreadEntry) => void
+  /** Есть ли следующая страница в пагинированном инбоксе. */
+  hasNextPage?: boolean
+  /** Идёт ли догрузка следующей страницы. */
+  isFetchingNextPage?: boolean
+  /** Триггер догрузки — подписывается на intersection sentinel в конце списка. */
+  onLoadMore?: () => void
 }
 
 export const InboxSidebar = memo(function InboxSidebar({
@@ -41,7 +47,30 @@ export const InboxSidebar = memo(function InboxSidebar({
   onSelectThread,
   onMarkAsRead,
   onMarkAsUnread,
+  hasNextPage = false,
+  isFetchingNextPage = false,
+  onLoadMore,
 }: InboxSidebarProps) {
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+
+  // IntersectionObserver на «сторожевом» div'е в конце списка — когда юзер
+  // прокрутил список так, что sentinel виден, дёргаем onLoadMore.
+  useEffect(() => {
+    if (!hasNextPage || !onLoadMore) return
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !isFetchingNextPage) {
+          onLoadMore()
+        }
+      },
+      { rootMargin: '200px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, onLoadMore])
+
   return (
     <div className="w-[35%] min-w-[220px] max-w-[352px] flex flex-col border-r overflow-hidden">
       {/* Заголовок + поиск */}
@@ -138,16 +167,23 @@ export const InboxSidebar = memo(function InboxSidebar({
                 : 'Нет активных чатов'}
           </div>
         ) : (
-          filteredChats.map((chat) => (
-            <InboxChatItem
-              key={chat.thread_id}
-              chat={chat}
-              isSelected={activeThreadId === chat.thread_id}
-              onClick={() => onSelectThread(chat.thread_id)}
-              onMarkAsRead={() => onMarkAsRead(chat)}
-              onMarkAsUnread={() => onMarkAsUnread(chat)}
-            />
-          ))
+          <>
+            {filteredChats.map((chat) => (
+              <InboxChatItem
+                key={chat.thread_id}
+                chat={chat}
+                isSelected={activeThreadId === chat.thread_id}
+                onClick={() => onSelectThread(chat.thread_id)}
+                onMarkAsRead={() => onMarkAsRead(chat)}
+                onMarkAsUnread={() => onMarkAsUnread(chat)}
+              />
+            ))}
+            {hasNextPage && (
+              <div ref={sentinelRef} className="px-4 py-3 text-center text-xs text-muted-foreground">
+                {isFetchingNextPage ? 'Загружаем ещё…' : ''}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

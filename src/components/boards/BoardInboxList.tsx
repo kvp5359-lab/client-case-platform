@@ -1,24 +1,11 @@
 "use client"
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Search, X } from 'lucide-react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
-import { useAuth } from '@/contexts/AuthContext'
-import {
-  getCurrentProjectParticipant,
-  getCurrentWorkspaceParticipant,
-  markAsRead,
-  markAsUnread,
-  type MessageChannel,
-} from '@/services/api/messenger/messengerService'
-import { inboxKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
-import {
-  patchCachesForMarkRead,
-  patchCachesForMarkUnread,
-} from '@/hooks/messenger/useUnreadCount'
+import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
+import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
 
@@ -58,98 +45,35 @@ export function BoardInboxList({
   defaultFilter = 'all',
   workspaceId,
 }: BoardInboxListProps) {
-  const { user } = useAuth()
-  const queryClient = useQueryClient()
   const [filter, setFilter] = useState<InboxFilter>(defaultFilter)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
 
-  const getChannel = (chat: InboxThreadEntry): MessageChannel =>
-    (chat.legacy_channel as MessageChannel) ?? 'client'
+  // Подписываемся на тот же infinite query, что родитель — получаем
+  // hasNextPage/fetchNextPage без drilling props. TanStack Query
+  // дедуплицирует — лишнего запроса не будет.
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = useFilteredInbox(workspaceId)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
 
-  /** Резолв participant: проектный (если есть project_id) или workspace-уровневый
-   *  (для личных диалогов TG/Email/Wazzup, у которых project_id = null). */
-  const resolveParticipantId = async (chat: InboxThreadEntry): Promise<string | null> => {
-    if (!user) return null
-    if (chat.project_id) {
-      return (await getCurrentProjectParticipant(chat.project_id, user.id))?.participantId ?? null
-    }
-    return (await getCurrentWorkspaceParticipant(workspaceId, user.id))?.participantId ?? null
-  }
+  useEffect(() => {
+    if (!hasNextPage) return
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !isFetchingNextPage) {
+          fetchNextPage()
+        }
+      },
+      { rootMargin: '200px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
-  // Мутации полностью идентичны кнопке «Прочитано/Непрочитано» внутри чата:
-  // переиспользуют те же patchCachesForMarkRead/Unread helper'ы из
-  // useUnreadCount.ts. Это гарантирует, что бейдж списка, кнопка чата
-  // и красные контуры бабблов обновляются одним и тем же образом.
-
-  const markReadMutation = useMutation({
-    mutationFn: async (chat: InboxThreadEntry) => {
-      if (!user) throw new Error('Не авторизован')
-      const participantId = await resolveParticipantId(chat)
-      if (!participantId) throw new Error('Участник не найден')
-      await markAsRead(
-        participantId,
-        chat.project_id ?? undefined,
-        getChannel(chat),
-        chat.thread_id,
-      )
-    },
-    onMutate: (chat) => {
-      // Snapshot для rollback + оптимистичный патч всех трёх кэшей.
-      const prev = queryClient.getQueryData<InboxThreadEntry[]>(inboxKeys.threads(workspaceId))
-      patchCachesForMarkRead(queryClient, {
-        threadId: chat.thread_id,
-        projectId: chat.project_id ?? undefined,
-        workspaceId,
-      })
-      return { prev }
-    },
-    onSuccess: () => {
-      invalidateMessengerCaches(queryClient, workspaceId)
-    },
-    onError: (err, _chat, context) => {
-      if (context?.prev) {
-        queryClient.setQueryData(inboxKeys.threads(workspaceId), context.prev)
-      }
-      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-      const desc = err instanceof Error ? err.message : undefined
-      toast.error('Не удалось отметить как прочитанное', desc ? { description: desc } : undefined)
-    },
-  })
-
-  const markUnreadMutation = useMutation({
-    mutationFn: async (chat: InboxThreadEntry) => {
-      if (!user) throw new Error('Не авторизован')
-      const participantId = await resolveParticipantId(chat)
-      if (!participantId) throw new Error('Участник не найден')
-      await markAsUnread(
-        participantId,
-        chat.project_id ?? undefined,
-        getChannel(chat),
-        chat.thread_id,
-      )
-    },
-    onMutate: (chat) => {
-      const prev = queryClient.getQueryData<InboxThreadEntry[]>(inboxKeys.threads(workspaceId))
-      patchCachesForMarkUnread(queryClient, {
-        threadId: chat.thread_id,
-        projectId: chat.project_id ?? undefined,
-        workspaceId,
-      })
-      return { prev }
-    },
-    onSuccess: () => {
-      invalidateMessengerCaches(queryClient, workspaceId)
-    },
-    onError: (err, _chat, context) => {
-      if (context?.prev) {
-        queryClient.setQueryData(inboxKeys.threads(workspaceId), context.prev)
-      }
-      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-      const desc = err instanceof Error ? err.message : undefined
-      toast.error('Не удалось отметить как непрочитанное', desc ? { description: desc } : undefined)
-    },
-  })
+  // Общие mark-read/unread мутации — одна реализация на InboxPage и BoardInboxList.
+  const { markRead: markReadMutation, markUnread: markUnreadMutation } =
+    useInboxMarkMutations(workspaceId)
 
   const unreadCount = useMemo(
     () => threads.filter((c) => c.unread_count > 0 || c.has_unread_reaction || c.manually_unread || (c.unread_event_count ?? 0) > 0).length,
@@ -252,16 +176,23 @@ export function BoardInboxList({
             {filter === 'unread' ? 'Нет непрочитанных' : searchQuery ? 'Ничего не найдено' : 'Пусто'}
           </div>
         ) : (
-          filteredThreads.map((chat) => (
-            <InboxChatItem
-              key={chat.thread_id}
-              chat={chat}
-              isSelected={selectedThreadId === chat.thread_id}
-              onClick={() => onOpenThread(threadToTaskItem(chat))}
-              onMarkAsRead={() => markReadMutation.mutate(chat)}
-              onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
-            />
-          ))
+          <>
+            {filteredThreads.map((chat) => (
+              <InboxChatItem
+                key={chat.thread_id}
+                chat={chat}
+                isSelected={selectedThreadId === chat.thread_id}
+                onClick={() => onOpenThread(threadToTaskItem(chat))}
+                onMarkAsRead={() => markReadMutation.mutate(chat)}
+                onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
+              />
+            ))}
+            {hasNextPage && (
+              <div ref={sentinelRef} className="px-3 py-2 text-[10px] text-muted-foreground text-center">
+                {isFetchingNextPage ? 'Загружаем ещё…' : ''}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

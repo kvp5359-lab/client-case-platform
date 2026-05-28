@@ -16,6 +16,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import {
   useFilteredInbox,
+  useFilteredInboxAggregates,
   useSidebarInboxCounts,
   useTotalFilteredUnreadCount,
 } from './useFilteredInbox'
@@ -23,7 +24,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useInboxThreadsV2 } from './useInbox'
 import { createQueryWrapper } from '@/test/testUtils'
 import { mockSupabaseRpc } from '@/test/supabaseMocks'
-import type { InboxThreadEntry } from '@/services/api/inboxService'
+import {
+  getInboxThreadAggregates,
+  type InboxThreadEntry,
+  type InboxThreadAggregate,
+} from '@/services/api/inboxService'
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn(),
@@ -31,6 +36,15 @@ vi.mock('@/contexts/AuthContext', () => ({
 vi.mock('./useInbox', () => ({
   useInboxThreadsV2: vi.fn(),
 }))
+vi.mock('@/services/api/inboxService', async () => {
+  const actual = await vi.importActual<typeof import('@/services/api/inboxService')>(
+    '@/services/api/inboxService',
+  )
+  return {
+    ...actual,
+    getInboxThreadAggregates: vi.fn(),
+  }
+})
 
 // ─── Хелперы ───
 
@@ -121,6 +135,23 @@ function setupHookMocks(opts: {
     isLoading: false,
     error: null,
   } as unknown as ReturnType<typeof useInboxThreadsV2>)
+
+  // Лёгкий RPC агрегатов — деривируется из тех же inboxThreads,
+  // чтобы все существующие тесты продолжали работать без изменений.
+  const aggregates: InboxThreadAggregate[] = opts.inboxThreads.map((t) => ({
+    thread_id: t.thread_id,
+    project_id: t.project_id,
+    legacy_channel: t.legacy_channel,
+    thread_accent_color: t.thread_accent_color,
+    last_message_at: t.last_message_at,
+    unread_count: t.unread_count,
+    unread_event_count: t.unread_event_count,
+    unread_reaction_count: t.unread_reaction_count,
+    has_unread_reaction: t.has_unread_reaction,
+    manually_unread: t.manually_unread,
+    last_reaction_emoji: t.last_reaction_emoji,
+  }))
+  vi.mocked(getInboxThreadAggregates).mockResolvedValue(aggregates)
 
   // RPC get_sidebar_data
   mockSupabaseRpc({
@@ -545,6 +576,61 @@ describe('useSidebarInboxCounts', () => {
     expect(result.current.totalUnread).toBe(2)
     // Но в projectData ничего нет — нет project_id
     expect(result.current.projectData.badgeDisplays.size).toBe(0)
+  })
+})
+
+describe('useFilteredInboxAggregates (лёгкий источник для сайдбар-бейджей)', () => {
+  it('фильтрует агрегаты по тем же правилам доступа, что useFilteredInbox', async () => {
+    const tYes = inboxThread({ thread_id: 't-yes', project_id: 'p-1', unread_count: 2 })
+    const tNo = inboxThread({ thread_id: 't-no', project_id: 'p-1', unread_count: 5 })
+
+    setupHookMocks({
+      inboxThreads: [tYes, tNo],
+      sidebarData: {
+        threads: [
+          accessInfo({ id: 't-yes', project_id: 'p-1', access_type: 'custom' }),
+          accessInfo({ id: 't-no', project_id: 'p-1', access_type: 'custom' }),
+        ],
+        myProjectRoles: [
+          { project_id: 'p-1', participant_id: 'me', project_roles: ['Член'] },
+        ],
+        myMemberThreadIds: ['t-yes'],
+        myAssigneeThreadIds: [],
+      },
+    })
+
+    const { wrapper, queryClient } = createQueryWrapper()
+    const { result } = renderHook(() => useFilteredInboxAggregates('ws-1'), { wrapper })
+
+    await waitFor(() => {
+      expect(queryClient.isFetching()).toBe(0)
+      const ids = result.current.data.map((t) => t.thread_id)
+      expect(ids).toContain('t-yes')
+      expect(ids).not.toContain('t-no')
+    })
+  })
+
+  it('safety fallback: тред без access-info показывается (счётчик не теряем)', async () => {
+    const t1 = inboxThread({ thread_id: 't-1', project_id: 'p-1', unread_count: 4 })
+
+    setupHookMocks({
+      inboxThreads: [t1],
+      sidebarData: {
+        // в sidebarData этого треда нет → fallback оставляет его в выдаче
+        threads: [],
+        myProjectRoles: [],
+        myMemberThreadIds: [],
+        myAssigneeThreadIds: [],
+      },
+    })
+
+    const { wrapper, queryClient } = createQueryWrapper()
+    const { result } = renderHook(() => useFilteredInboxAggregates('ws-1'), { wrapper })
+
+    await waitFor(() => {
+      expect(queryClient.isFetching()).toBe(0)
+      expect(result.current.data.map((t) => t.thread_id)).toContain('t-1')
+    })
   })
 })
 

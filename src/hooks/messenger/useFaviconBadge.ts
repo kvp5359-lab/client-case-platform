@@ -6,7 +6,9 @@
  * Рисует жёлтый квадрат с числом через canvas и подменяет им favicon вкладки.
  * Управляет собственным <link>-тегом с id=dynamic-favicon, чтобы не конфликтовать
  * с тегами, которые генерит Next.js из src/app/favicon.ico.
- * Использует useTotalUnreadCount — тот же queryKey, что и бейдж в сайдбаре.
+ * Использует useTotalFilteredUnreadCount → useSidebarInboxCounts → лёгкий
+ * RPC get_inbox_thread_aggregates, как и бейджи в сайдбаре. Так favicon и
+ * сайдбар обновляются согласованно.
  *
  * Стратегия: не удаляем чужие favicon-теги (это ломает React при переходах),
  * а держим свой тег последним в <head> — браузер использует последний rel=icon.
