@@ -22,12 +22,31 @@ type Props = {
   previewRect: PreviewRect
 }
 
+// Левый край открытой боковой панели (.side-panel, docked right). Полоса
+// hover'а портится в body с очень высоким z-index и иначе рисуется ПОВЕРХ
+// панели, когда колонка дня уходит под неё. Обрезаем полосу по этому краю.
+function getOpenSidePanelLeft(): number {
+  if (typeof document === 'undefined') return Infinity
+  let left = Infinity
+  document.querySelectorAll('.side-panel').forEach((el) => {
+    const rect = (el as HTMLElement).getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) left = Math.min(left, rect.left)
+  })
+  return left
+}
+
 export function CalendarHoverOverlay({ hoverTime, previewRect }: Props) {
   if (typeof document === 'undefined') return null
 
+  const panelLeft = hoverTime ? getOpenSidePanelLeft() : Infinity
+  const stripeRight = hoverTime
+    ? Math.min(hoverTime.stripeLeft + hoverTime.stripeWidth, panelLeft)
+    : 0
+  const clippedWidth = hoverTime ? stripeRight - hoverTime.stripeLeft : 0
+
   return (
     <>
-      {hoverTime && !previewRect &&
+      {hoverTime && !previewRect && clippedWidth > 0 &&
         createPortal(
           <>
             <div
@@ -35,22 +54,24 @@ export function CalendarHoverOverlay({ hoverTime, previewRect }: Props) {
               style={{
                 left: hoverTime.stripeLeft,
                 top: hoverTime.stripeTop,
-                width: hoverTime.stripeWidth,
+                width: clippedWidth,
                 height: 2,
                 backgroundColor: 'hsl(var(--primary) / 0.95)',
               }}
             />
-            <div
-              className="fixed z-[9999] pointer-events-none text-[12px] font-medium leading-none px-1 bg-white"
-              style={{
-                left: hoverTime.labelLeft,
-                top: hoverTime.stripeTop,
-                transform: 'translate(-100%, -50%)',
-                color: 'hsl(var(--primary) / 0.95)',
-              }}
-            >
-              {hoverTime.label}
-            </div>
+            {hoverTime.labelLeft <= panelLeft && (
+              <div
+                className="fixed z-[9999] pointer-events-none text-[12px] font-medium leading-none px-1 bg-white"
+                style={{
+                  left: hoverTime.labelLeft,
+                  top: hoverTime.stripeTop,
+                  transform: 'translate(-100%, -50%)',
+                  color: 'hsl(var(--primary) / 0.95)',
+                }}
+              >
+                {hoverTime.label}
+              </div>
+            )}
           </>,
           document.body,
         )}
