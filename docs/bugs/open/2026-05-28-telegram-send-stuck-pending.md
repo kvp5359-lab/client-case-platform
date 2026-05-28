@@ -213,3 +213,107 @@ WHERE id IN (
 ## Связано
 
 - `gotchas.md` → раздел про `uq_telegram_message_per_chat` и multi-bot dedup.
+
+## Действия 2026-05-28 18:45 UTC — **РОДНАЯ ПРИЧИНА ЛОКАЛИЗОВАНА И ИСПРАВЛЕНА**
+
+### Прорыв через candidate-диагностику
+
+Коммит `8244045` добавил запись `(chat, tg_msg_id, integration, tg_date, elapsed_ms)` в `telegram_error_detail` **до** вызова `markMessageSent`. Это позволило при следующем падении увидеть **точное** значение, которое пытались записать, даже если потом упало.
+
+### Следующий случай 2026-05-28 16:40 UTC — `7e8bc228-d2c2-475d-bcc8-a569f85c4e70`
+
+```
+telegram_error_detail: candidate_markSent: tg_msg_id=328,
+                       chat=-5065960967,
+                       integration=1399d46a-fd58-45fe-a8e2-b438bab9a46b (личный бот Анны),
+                       trace=tg-send-7e8bc228-mpppyp0k,
+                       elapsed_ms=453,
+                       tg_date=1779986432 (= 2026-05-28 16:40:32 UTC, +2 сек от created_at)
+```
+
+`tg_date` совсем свежий → Telegram **реально** отправил это сообщение сейчас, никакого кэшированного response от прошлого вызова не было. **Гипотеза о state leak / TG idempotency опровергнута.**
+
+### Кто **уже** в БД с (chat=-5065960967, msg_id=328)?
+
+```sql
+SELECT id, source, telegram_message_id, telegram_chat_id, telegram_bot_integration_id,
+       sender_name, created_at, LEFT(content,40)
+FROM project_messages WHERE telegram_message_id=328 AND telegram_chat_id=-5065960967;
+```
+
+Результат:
+```
+id=33053b3c-5d7f-4d57-9f74-74654da66311
+source=telegram (входящее)
+telegram_message_id=328
+telegram_chat_id=-5065960967
+telegram_bot_integration_id=ae023cda-bd89-4400-8847-d06beea72f18  ← СТАРЫЙ @relostart123_bot
+sender_name=Anait
+content=📎
+created_at=2026-05-20 12:40:45 (8 дней назад!)
+```
+
+### Истинная корневая причина
+
+`uq_telegram_message_per_chat` индексирует только `(telegram_chat_id, telegram_message_id)`, **не** включая `telegram_bot_integration_id`. Но **каждый бот в группе имеет свою независимую нумерацию `message_id`** — Telegram нумерует сообщения per-bot-view-of-chat, не глобально.
+
+Сценарий:
+1. **20 мая** клиент Anait отправил вложение в группу `-5065960967`.
+2. Webhook **старого** бота (`ae023cda`, @relostart123_bot) поймал его → INSERT в БД с (chat, 328, bot=ae023cda, source='telegram').
+3. **28 мая** Анна Бурнаева отправляет из ЛК сообщение через **другого** бота (`1399d46a`, новый личный бот Анны).
+4. Telegram даёт этому новому сообщению msg_id=328 — **в нумерации нового бота**.
+5. Edge Function пытается markMessageSent с `(chat, 328)` для `7e8bc228` → 23505 на UNIQUE conflict с record от старого бота.
+6. catch fallback тоже падает (то же 23505).
+7. Outer catch → 500 → watchdog ставит failed.
+
+**Симптом для пользователя:** сообщение реально в Telegram доставлено (личный бот Анны успешно отправил), но в БД красное.
+
+### Парадокс с gotchas.md
+
+В [gotchas.md → раздел multi-bot dedup](../../../.claude/rules/gotchas.md) уже было написано:
+
+> UNIQUE `uq_telegram_message_per_chat (telegram_chat_id, telegram_message_id)` тут **не помогает** — id разные.
+
+Этот текст описывал случай **двух ботов в одной группе принимают то же входящее сообщение**: у каждого свой msg_id → constraint просто пропускает оба INSERT'а. Тогда казалось, что constraint безвреден.
+
+Но **тот же факт** работает в обратную сторону: разные боты в той же группе **могут случайно получить пересекающиеся msg_id** (потому что нумерации независимы) → constraint **мешает** легитимной отправке.
+
+Заметка в gotchas неполная — она оценивала только один сценарий.
+
+### Фикс — миграция [20260528_fix_uq_telegram_message_per_chat_include_bot.sql](../../../supabase/migrations/20260528_fix_uq_telegram_message_per_chat_include_bot.sql)
+
+```sql
+DROP INDEX IF EXISTS public.uq_telegram_message_per_chat;
+
+CREATE UNIQUE INDEX uq_telegram_message_per_chat
+ON public.project_messages (
+  telegram_chat_id,
+  telegram_message_id,
+  COALESCE(telegram_bot_integration_id::text, 'secretary')
+)
+WHERE telegram_message_id IS NOT NULL AND telegram_chat_id IS NOT NULL;
+```
+
+NULL `telegram_bot_integration_id` → COALESCE на 'secretary' (это записи от secretary-bot, у которых stamp не ставится — для них поведение остаётся прежним).
+
+После фикса (chat, msg_id) от РАЗНЫХ ботов не считаются дублями, INSERT/UPDATE проходит.
+
+### Подтверждение жертв
+
+Все недавние failed/pending сообщения с этой ошибкой (manual recovery):
+- `fb962b07-2ba2-4d24-bfc6-696eae4bbc02` — Анна Бурнаева, 13:00 UTC
+- `43bc14a9-8460-44dd-9689-c102162a8fd6` — Анна Бурнаева, 13:08 UTC
+- `c76bfd54-479b-415b-9fba-9a361ecac21d` — Анна Бурнаева, 14:59 UTC
+- `6aefa4d6-eea5-475f-86fc-1ec66c0b1156` — Анна Бурнаева, 15:00 UTC
+- `d3b27721-980c-4767-aa73-1baa375b8660` — Анна Бурнаева, 16:11 UTC
+- `7e8bc228-d2c2-475d-bcc8-a569f85c4e70` — Анна Бурнаева, 16:40 UTC
+
+Все через `integration=1399d46a` (личный бот Анны). У неё в момент инцидента нумерация бот-у дошла до области, которая 8 дней назад была занята другим ботом — отсюда серия конфликтов в один день.
+
+### Обновить `gotchas.md`
+
+Раздел про uq_telegram_message_per_chat нужно дополнить: «constraint не только не помогает multi-bot dedup'у — он ещё и **активно ломает** легитимную отправку, когда разные боты в одной группе пересекаются по msg_id». После миграции 28 мая constraint расширен на bot_integration_id.
+
+### Статус
+
+**RESOLVED.** Bug-doc переедет в `docs/bugs/resolved/` при следующем чекине.
