@@ -1,12 +1,13 @@
 ---
 id: 2026-05-27-telegram-lost-attachments
 title: Файлы из Telegram пропадают тихо — webhook не делал retry и не помечал сбой
-status: partial-fix-deployed
+status: resolved
 severity: high
 area: telegram-webhook, media, ui
 first-seen: 2026-02-26 (по самой ранней находке в БД)
 last-investigated: 2026-05-27
-partial-fix-deployed: 2026-05-27
+partial-fix-deployed: 2026-05-27 (v2 only)
+resolved: 2026-05-28 (унификация v1+v2 распространила фикс на employee-боты)
 reproduced: yes (исторические данные)
 ---
 
@@ -58,7 +59,14 @@ Webhook `telegram-webhook-v2` записывает `project_messages` сразу
 3. Для проверки failure-кейса — временно выключить интернет на момент webhook или подделать `getFile` чтобы возвращал 429. Сообщение должно появиться с красной плашкой в треде.
 4. В БД: `SELECT id, content, attachment_status, attachment_error FROM project_messages WHERE attachment_status IS NOT NULL ORDER BY created_at DESC LIMIT 10;`
 
+## Resolved 2026-05-28
+
+Унификация webhook v1+v2 (см. [docs/changelog/2026-05-28-telegram-webhook-unified.md](../../changelog/2026-05-28-telegram-webhook-unified.md)) перенесла все 4 ботов (rs1_support, rs_help102, rs_help123, sppropia103) на v2 webhook вместе с переключением `bot_version='v2'` для всех 85 чатов. Retry на скачивание автоматически применился к employee-ботам — потери файлов 9.5% у employee должны опуститься до уровня workspace (0.9%).
+
+Сопутствующая регрессия: при унификации обнаружился баг в `v2/sync.ts` — `downloadAttachments` вызывался при любом непустом `sync.rowId`, включая `outcome='enriched'`. Это давало повторный upload в Storage от второго бота → 23505 «resource already exists» → ложная плашка `attachment_status='failed'` поверх успешной загрузки. Фикс — копия защиты из v1: `sync.outcome === "inserted" && sync.rowId`. Закоммичен `0e4e6c2`, задокументирован в [gotchas.md → downloadAttachments только при outcome='inserted'](../../../.claude/rules/gotchas.md#downloadattachments-только-при-outcomeinserted).
+
 ## Связано
 
-- Миграция [20260527_telegram_attachment_status.sql](../../supabase/migrations/20260527_telegram_attachment_status.sql)
+- Миграция [20260527_telegram_attachment_status.sql](../../../supabase/migrations/20260527_telegram_attachment_status.sql)
 - Память [feedback_no_test_insert_into_project_messages.md](../../../.claude/projects/-Users-kvp5359---------client-case-platform/memory/feedback_no_test_insert_into_project_messages.md) — урок инцидента того же дня
+- Унификация webhook'ов: [docs/changelog/2026-05-28-telegram-webhook-unified.md](../../changelog/2026-05-28-telegram-webhook-unified.md)
