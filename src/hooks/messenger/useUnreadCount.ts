@@ -116,37 +116,6 @@ export function patchCachesForMarkUnread(queryClient: QueryClient, params: Cache
 }
 
 /**
- * Полный апдейт после успешного mark-as-read: optimistic patch + инвалидации.
- * Используется в `useMarkAsRead` (вызывается в `onSuccess` после upsert).
- */
-export function applyOptimisticMarkRead(queryClient: QueryClient, params: CachePatchParams) {
-  const { threadId, projectId, workspaceId } = params
-  patchCachesForMarkRead(queryClient, params)
-  queryClient.invalidateQueries({ queryKey: messengerKeys.lastReadAtByThreadId(threadId) })
-  if (projectId) {
-    queryClient.invalidateQueries({
-      queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),
-    })
-  }
-  if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
-  if (projectId) dismissProjectToasts(projectId)
-}
-
-/** Зеркало `applyOptimisticMarkRead` для «отметить непрочитанным» */
-export function applyOptimisticMarkUnread(queryClient: QueryClient, params: CachePatchParams) {
-  const { threadId, projectId, workspaceId } = params
-  patchCachesForMarkUnread(queryClient, params)
-  queryClient.invalidateQueries({ queryKey: messengerKeys.unreadCountByThreadId(threadId) })
-  queryClient.invalidateQueries({ queryKey: messengerKeys.lastReadAtByThreadId(threadId) })
-  if (projectId) {
-    queryClient.invalidateQueries({
-      queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),
-    })
-  }
-  if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
-}
-
-/**
  * useUnreadCount / useLastReadAt — read-only хуки, читают из ОДНОГО источника
  * правды: `inboxKeys.threads(workspaceId)` (RPC `get_inbox_threads_v2`).
  *
@@ -185,6 +154,77 @@ export function useLastReadAt(
   return { ...query, data: value, isPending: query.isPending }
 }
 
+/**
+ * Snapshot всех кэшей, которые патчатся в patchCachesForMarkRead/Unread.
+ * Нужен для rollback в onError, если запрос в БД упадёт после оптимистичного
+ * patch'а в onMutate.
+ */
+function snapshotMarkCaches(
+  queryClient: QueryClient,
+  threadId: string,
+  workspaceId: string | undefined,
+) {
+  return {
+    unreadCount: queryClient.getQueryData(messengerKeys.unreadCountByThreadId(threadId)),
+    lastReadAt: queryClient.getQueryData(messengerKeys.lastReadAtByThreadId(threadId)),
+    inboxThreads: workspaceId
+      ? queryClient.getQueryData(['inbox', 'threads', workspaceId])
+      : undefined,
+    inboxAggregates: workspaceId
+      ? queryClient.getQueryData(['inbox', 'aggregates', workspaceId])
+      : undefined,
+  }
+}
+
+function restoreMarkCaches(
+  queryClient: QueryClient,
+  threadId: string,
+  workspaceId: string | undefined,
+  snap: ReturnType<typeof snapshotMarkCaches>,
+) {
+  queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), snap.unreadCount)
+  queryClient.setQueryData(messengerKeys.lastReadAtByThreadId(threadId), snap.lastReadAt)
+  if (workspaceId) {
+    queryClient.setQueryData(['inbox', 'threads', workspaceId], snap.inboxThreads)
+    queryClient.setQueryData(['inbox', 'aggregates', workspaceId], snap.inboxAggregates)
+  }
+}
+
+/**
+ * Инвалидации после успешного mark-as-read: догоняем БД, фиксируем snapshot.
+ * Отдельная функция (раньше — вторая половина applyOptimisticMarkRead),
+ * потому что patch теперь делается в onMutate, не в onSuccess.
+ */
+function invalidateAfterMarkRead(
+  queryClient: QueryClient,
+  params: CachePatchParams,
+) {
+  const { threadId, projectId, workspaceId } = params
+  queryClient.invalidateQueries({ queryKey: messengerKeys.lastReadAtByThreadId(threadId) })
+  if (projectId) {
+    queryClient.invalidateQueries({
+      queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),
+    })
+  }
+  if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
+  if (projectId) dismissProjectToasts(projectId)
+}
+
+function invalidateAfterMarkUnread(
+  queryClient: QueryClient,
+  params: CachePatchParams,
+) {
+  const { threadId, projectId, workspaceId } = params
+  queryClient.invalidateQueries({ queryKey: messengerKeys.unreadCountByThreadId(threadId) })
+  queryClient.invalidateQueries({ queryKey: messengerKeys.lastReadAtByThreadId(threadId) })
+  if (projectId) {
+    queryClient.invalidateQueries({
+      queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),
+    })
+  }
+  if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
+}
+
 export function useMarkAsRead(
   projectId: string | undefined,
   workspaceId: string | undefined,
@@ -202,8 +242,20 @@ export function useMarkAsRead(
       if (!pid) return
       return markAsRead(pid, projectId, channel, threadId)
     },
+    // Раньше patch шёл в onSuccess — это давало 300-500 мс лаг до пропадания
+    // красного контура у бабблов (полный round-trip к БД до обновления
+    // lastReadAtByThreadId). Теперь patch в onMutate — UI обновляется
+    // синхронно с кликом, как в useInboxMarkMutations.
+    onMutate: () => {
+      const snap = snapshotMarkCaches(queryClient, threadId, workspaceId)
+      patchCachesForMarkRead(queryClient, { threadId, projectId, workspaceId })
+      return snap
+    },
     onSuccess: () => {
-      applyOptimisticMarkRead(queryClient, { threadId, projectId, workspaceId })
+      invalidateAfterMarkRead(queryClient, { threadId, projectId, workspaceId })
+    },
+    onError: (_err, _vars, snap) => {
+      if (snap) restoreMarkCaches(queryClient, threadId, workspaceId, snap)
     },
   })
 }
@@ -231,8 +283,16 @@ export function useMarkAsUnread(
           .eq('id', projectId)
       }
     },
+    onMutate: () => {
+      const snap = snapshotMarkCaches(queryClient, threadId, workspaceId)
+      patchCachesForMarkUnread(queryClient, { threadId, projectId, workspaceId })
+      return snap
+    },
     onSuccess: () => {
-      applyOptimisticMarkUnread(queryClient, { threadId, projectId, workspaceId })
+      invalidateAfterMarkUnread(queryClient, { threadId, projectId, workspaceId })
+    },
+    onError: (_err, _vars, snap) => {
+      if (snap) restoreMarkCaches(queryClient, threadId, workspaceId, snap)
     },
   })
 }
