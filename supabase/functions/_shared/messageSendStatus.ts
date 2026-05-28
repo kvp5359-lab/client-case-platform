@@ -37,14 +37,28 @@ export async function markMessageSent(
     ...(options.channelFields ?? {}),
   };
 
-  const { error } = await service
+  // .select('id') возвращает массив affected rows. Без него supabase-js
+  // возвращает success даже при UPDATE 0 строк (id не найден / RLS) — это
+  // приводило к тихому bypass'у: send_status оставался 'pending', сообщение
+  // реально отправлено, UI 60 сек крутил «отправляется» → «Повторить».
+  // Случай docs/bugs/open/2026-05-28-telegram-send-stuck-pending.md.
+  const { data, error } = await service
     .from("project_messages")
     .update(payload)
-    .eq("id", messageId);
+    .eq("id", messageId)
+    .select("id");
 
   if (error) {
     throw new Error(
       `markMessageSent failed for ${messageId}: ${error.message} (${error.code})`,
+    );
+  }
+  if (!data || data.length === 0) {
+    // Жирный exception → попадёт в catch вызывающей функции → outer catch →
+    // 500 → watchdog переведёт pending в failed с reason в БД, юзер видит
+    // понятную ошибку, а в telegram_error_detail остаётся диагностика.
+    throw new Error(
+      `markMessageSent affected 0 rows for id=${messageId} — message not found or RLS denied UPDATE`,
     );
   }
 }
@@ -83,14 +97,21 @@ export async function markMessageFailed(
     ...(options.channelFields ?? {}),
   };
 
-  const { error } = await service
+  const { data, error } = await service
     .from("project_messages")
     .update(payload)
-    .eq("id", messageId);
+    .eq("id", messageId)
+    .select("id");
 
   if (error) {
     throw new Error(
       `markMessageFailed failed for ${messageId}: ${error.message} (${error.code})`,
+    );
+  }
+  // Симметрично markMessageSent: 0 строк = тихий bypass, превращаем в exception.
+  if (!data || data.length === 0) {
+    throw new Error(
+      `markMessageFailed affected 0 rows for id=${messageId} — message not found or RLS denied UPDATE`,
     );
   }
 

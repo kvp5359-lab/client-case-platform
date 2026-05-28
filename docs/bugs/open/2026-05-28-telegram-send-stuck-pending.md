@@ -80,6 +80,33 @@ markMessageSent использует service_role клиент (по идее). 
 
 Сообщение реально доставлено — клиент его видит. UI-обманка с «Повторить отправку» можно проигнорировать. **НЕ нажимать «Повторить»** — это приведёт к **дублю** в TG (status переход failed→pending триггерит повторную отправку).
 
+## Действия 2026-05-28 12:10 UTC
+
+### Manual recovery двух застрявших сообщений
+```sql
+UPDATE project_messages
+SET send_status = 'sent', send_failed_reason = NULL,
+    telegram_error_detail = 'manual_recovery_2026-05-28: stuck pending bug'
+WHERE id IN (
+  '3c576707-e8cf-4822-b8cf-4b92ae95a555',  -- «Понял, ну надеемся»
+  '8f9dfa06-2356-4178-90ff-f706ac7e61eb'   -- «Понял, сделаем»
+);
+```
+UI-плашки «Повторить отправку» убираются после refresh страницы.
+
+### Защитный фикс в `_shared/messageSendStatus.ts`
+`markMessageSent` и `markMessageFailed` теперь делают `.select('id')` после UPDATE и **бросают exception при 0 affected rows**. Раньше supabase-js возвращал success даже при 0 строк (id не найден / RLS) — это и был механизм тихого bypass'а.
+
+После фикса при повторении бага:
+1. markMessageSent кинет «affected 0 rows for id=…».
+2. Catch в `telegram-send-message/index.ts` (строки 478 / 670) попробует fallback UPDATE — тоже 0 rows (если корень — неверный id).
+3. Outer catch → 500 → watchdog за минуту переведёт pending → failed.
+4. В `telegram_error_detail` будет **конкретная причина** — можно сделать post-mortem SQL'ом без Dashboard logs.
+
+**Симптом для юзера почти не меняется** (failed появится за ~1 мин вместо 60 сек таймера), но **диагностика теперь в БД**.
+
+Деплой: telegram-send-message, telegram-mtproto-send, telegram-business-send, wazzup-send, email-internal-send.
+
 ## Связано
 
 - [docs/changelog/2026-05-27-telegram-secretary-self-healing-ux-fixes.md](../../changelog/2026-05-27-telegram-secretary-self-healing-ux-fixes.md) — добавленный мониторинг statusWritten.
