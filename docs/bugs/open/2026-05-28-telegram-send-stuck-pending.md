@@ -29,6 +29,16 @@ reproduced: yes (несколько случаев, root cause не локали
 
 В Telegram сообщение пришло сразу (видно на скриншоте юзера, 12:06 локального времени).
 
+### Окружение группы
+
+В группе «Клиент [Cuenta] — Наталья Шамина» (`telegram_chat_id = ?`, project `378a089c-d7c4-4675-8e53-0b344312ff28`) сидят **оба бота** и оба админы:
+- Секретарь («-», иконка наушников) — workspace bot.
+- `Kirill` — личный бот юзера `rs_help123_bot` (id `ae023cda-bd89-4400-8847-d06beea72f18`, employee_bot).
+
+Значит **«bot is not a member of the group chat» — не применимо**. Edge function правильно выбрала rs_help123 (через `telegram_bot_integration_id` сообщения), бот в группе, отправка успешна (697ms). Fallback на секретаря тоже не срабатывал (`telegram_bot_integration_id` в БД остался employee = ae023cda...).
+
+То есть **код успешно прошёл текстовую ветку до `markMessageSent`** — это **сужает зону поиска root cause до самой функции `markMessageSent` или того, что выполняется после неё**.
+
 ## Что показал предыдущий fix-attempt 2026-05-27
 
 См. [docs/changelog/2026-05-27-telegram-secretary-self-healing-ux-fixes.md](../../changelog/2026-05-27-telegram-secretary-self-healing-ux-fixes.md).
