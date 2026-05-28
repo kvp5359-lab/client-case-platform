@@ -241,6 +241,12 @@ async function cmdLink(chatId: number, codeArg: string | undefined, msg: TgMessa
     ? await service.from("project_telegram_chats").update(payload).eq("id", existing.id)
     : await service.from("project_telegram_chats").insert(payload);
 
+  if (linkError?.code === '23505') {
+    // Multi-bot race: другой бот успел INSERT'нуть первым, binding создан —
+    // молчим, не дублируем «привязано» и не пугаем юзера 23505.
+    return;
+  }
+
   if (linkError) {
     console.error("[/link] insert/update failed:", linkError);
     await sendMessage(
