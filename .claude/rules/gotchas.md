@@ -154,6 +154,20 @@ proxy_busy_buffers_size 512k;
 
 При добавлении нового канала отправки — обязательно добавить ветку и skip-условие в `source`.
 
+## `downloadAttachments` только при `outcome='inserted'`
+
+В [`telegram-webhook-v2/sync.ts`](../../supabase/functions/telegram-webhook-v2/sync.ts) `downloadAttachments` вызывать **строго** при `sync.outcome === "inserted" && sync.rowId`, не на любом непустом `rowId`.
+
+**Почему.** В общем хелпере [`_shared/syncTelegramIncomingMessage.ts`](../../supabase/functions/_shared/syncTelegramIncomingMessage.ts) есть три исхода с непустым `rowId`:
+- `inserted` — первый webhook, строка новая.
+- `enriched` — вторая попытка от **личного бота** (когда секретарь уже вставил эту же строку). Возвращает rowId существующей строки + UPDATE'ит `telegram_bot_integration_id` на личного.
+
+`enriched` означает что **первый webhook уже скачал/качает файл** в Storage. Повторный `downloadAttachments` от второго бота попытается залить в тот же путь `<ws>/<proj>/<msg_id>/<file>` с `upsert:false` → 23505 «resource already exists» → `media.ts` перепишет `attachment_status='failed'` поверх уже успешной загрузки. UI покажет ложную плашку «Файл из Telegram не загружен», хотя файл реально лежит и привязан в `message_attachments`.
+
+Регрессия 2026-05-28: пришла вместе с фазой 1 унификации webhook'ов (employee-боты теперь шлют на v2 с непустым `asPersonalBot` → enrich-ветка активировалась). До этого не проявлялась, потому что v2 всегда был секретарём (`asPersonalBot=null`), и 23505 → `outcome='duplicate'` (`rowId=null`).
+
+Защита присутствует в [v1/index.ts:398](../../supabase/functions/telegram-webhook/index.ts:398) — там `if (sync.outcome === "inserted" && sync.rowId)`. Воспроизводится только если в группе сидят оба бота (workspace + employee) и они обрабатывают одну media_group параллельно — большой файл с гонкой за Storage.
+
 ## MessageChannel enum — НЕ сигнал клиентского треда
 
 `MessageChannel` ('client' | 'internal') в типах сервиса — легаси-разделение для `project_messages`, не для тредов. Task-треды по умолчанию `channel='client'`, но клиентскими **не являются**. Для определения «клиентский тред» — см. [`channels.md`](./channels.md#подсветка-сообщений-сотрудников-в-клиентских-чатах).

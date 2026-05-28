@@ -48,9 +48,25 @@
 
 При добавлении нового канала: в edge function — `markMessageSent({ channelFields: { имя_канала_message_id, ... } })` на успехе и `markMessageFailed(reason, { failureSource })` на фейле. UI получает индикатор автоматически.
 
-## Telegram (групповой бот)
+## Telegram (групповой секретарь + личные боты сотрудников)
 
-`@rs2_support_bot` (id и токен — в `workspace_integrations`). Webhook: [`telegram-webhook-v2`](../../supabase/functions/telegram-webhook-v2/index.ts).
+С 2026-05-28 единый webhook [`telegram-webhook-v2`](../../supabase/functions/telegram-webhook-v2/index.ts) обслуживает оба типа интеграций — `telegram_workspace_bot` (секретарь, например `@rs2_support_bot`) и `telegram_employee_bot` (личный бот сотрудника). Различение через `IntegrationContext.mode` ([types.ts](../../supabase/functions/telegram-webhook-v2/types.ts) → `IntegrationContext`), прокидывается из entry-функции во все handler'ы.
+
+| Функционал | `workspace` mode | `employee` mode |
+|------------|-----------------|-----------------|
+| Приём сообщений + dedup + edit + реакции | ✅ | ✅ |
+| Retry на скачивание вложений (3 попытки exp backoff) | ✅ | ✅ |
+| `migrate_to_chat_id` (group → supergroup) | ✅ | ✅ |
+| `/start`, `/help`, `/link`, `/unlink` | ✅ | ✅ |
+| `/menu`, `/knowledge`, `/upload`, `/status`, `/requirements` | ✅ | ❌ молчит |
+| Inline-кнопки (`callback_query`) | ✅ | ❌ молчит |
+| Многошаговые сессии (`telegram_bot_sessions`) | ✅ | ❌ |
+| MENU-reply-кнопка «📋 Меню» | ✅ | ❌ |
+| `asPersonalBot` в `syncTelegramIncomingMessage` | `null` (секретарь) | `{ integrationId, workspaceId, botId }` (для multi-bot dedup) |
+
+**v1 webhook (`telegram-webhook`)** — legacy, заморожен после миграции 2026-05-28. Оставлен как hot-fallback на 1-2 недели. После — `supabase functions delete telegram-webhook` + дроп колонки `project_telegram_chats.bot_version` (не используется в коде после унификации, осталась как историческое поле).
+
+**Регрессионная ловушка в `v2/sync.ts`** (исправлена 2026-05-28): `downloadAttachments` вызывать только при `sync.outcome === "inserted"`, не на любом непустом `rowId`. Иначе при multi-bot (workspace + employee в одной группе) второй бот через `enrich`-ветку даст rowId существующей строки → повторный upload в Storage с `upsert:false` → 23505 → `attachment_status='failed'` поверх успешной загрузки. См. [gotchas.md → раздел про downloadAttachments outcome](./gotchas.md#downloadattachments-только-при-outcomeinserted).
 
 ### Распил telegram-webhook-v2 (2026-05-11)
 
