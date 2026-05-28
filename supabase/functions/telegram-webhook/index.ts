@@ -691,6 +691,22 @@ async function handleAttachments(
     files.push({ fileId: message.video_note.file_id, originalName: name, safeFileName: name, mimeType: "video/mp4" });
   }
 
+  // Стикер: качаем JPEG-thumbnail (сам WEBP/TGS-стикер браузер не отрисует).
+  // Если thumbnail отсутствует — UI покажет текстовый fallback "🟪 Стикер emoji"
+  // (см. fallbackContent в _shared/syncTelegramIncomingMessage.ts).
+  const sticker = (message as { sticker?: { file_id: string; file_unique_id: string; thumbnail?: { file_id: string } } }).sticker;
+  if (sticker?.thumbnail) {
+    const name = `sticker_${sticker.file_unique_id}.jpg`;
+    files.push({ fileId: sticker.thumbnail.file_id, originalName: name, safeFileName: name, mimeType: "image/jpeg" });
+  }
+
+  // GIF/анимация: качаем JPEG-thumbnail для превью.
+  const animation = (message as { animation?: { file_id: string; file_unique_id: string; thumbnail?: { file_id: string } } }).animation;
+  if (animation?.thumbnail) {
+    const name = `animation_${animation.file_unique_id}.jpg`;
+    files.push({ fileId: animation.thumbnail.file_id, originalName: name, safeFileName: name, mimeType: "image/jpeg" });
+  }
+
   const skippedFiles: string[] = [];
   for (const file of files) {
     try {

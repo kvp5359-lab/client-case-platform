@@ -48,7 +48,24 @@ export interface TgMessage {
   voice?: { file_id: string; file_unique_id: string; mime_type?: string; file_size?: number };
   audio?: { file_id: string; file_unique_id: string; file_name?: string; mime_type?: string; file_size?: number };
   video_note?: { file_id: string; file_unique_id: string };
-  sticker?: { file_id: string; file_unique_id: string; emoji?: string };
+  // Стикер: для UI качаем thumbnail (JPEG-превью), сам sticker в WEBP/TGS браузер не отрисует.
+  sticker?: {
+    file_id: string;
+    file_unique_id: string;
+    emoji?: string;
+    is_animated?: boolean;
+    is_video?: boolean;
+    thumbnail?: { file_id: string; file_unique_id: string; file_size?: number };
+  };
+  // Анимация (GIF): MP4 + thumbnail. Качаем thumbnail для превью; сам файл — опционально.
+  animation?: {
+    file_id: string;
+    file_unique_id: string;
+    file_name?: string;
+    mime_type?: string;
+    file_size?: number;
+    thumbnail?: { file_id: string; file_unique_id: string; file_size?: number };
+  };
   new_chat_members?: TgUser[];
   left_chat_member?: TgUser;
   new_chat_title?: string;

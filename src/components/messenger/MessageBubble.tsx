@@ -498,6 +498,41 @@ function MessageBubbleImpl({
               />
             )}
 
+            {/* Failed attachment plate — файл должен был быть, но webhook не смог его загрузить из Telegram.
+                Источник правды — project_messages.attachment_status='failed' (см. миграцию 20260527_telegram_attachment_status).
+                Без этой плашки потерянные файлы выглядели в UI как обычные текстовые сообщения, и юзер о потере не знал. */}
+            {message.attachment_status === 'failed' && (
+              <div className="mt-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-900">
+                <div className="flex items-start gap-2">
+                  <span className="text-sm leading-none">⚠️</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium mb-0.5">Файл из Telegram не загружен</div>
+                    {message.attachment_error?.failed_files?.length ? (
+                      <ul className="text-[11px] leading-snug space-y-0.5 break-words">
+                        {message.attachment_error.failed_files.slice(0, 5).map((f, i) => (
+                          <li key={i}>
+                            <span className="font-mono">{f.file_name}</span>
+                            {f.reason ? <span className="text-red-700"> — {f.reason}</span> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="text-[11px] leading-snug text-red-800">
+                        Загрузка вложения из Telegram не удалась. Откройте чат в Telegram чтобы посмотреть файл.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Pending attachment — webhook качает прямо сейчас. Тонкая полоска без алёрта. */}
+            {message.attachment_status === 'pending' && (
+              <div className="mt-2 text-[11px] text-muted-foreground italic">
+                Загружаю файл из Telegram…
+              </div>
+            )}
+
             {/* Attachments */}
             {hasAttachments && (
               <MessageAttachments

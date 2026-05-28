@@ -46,8 +46,9 @@ interface TgMessageMinimal {
   audio?: TgFileRef;
   voice?: TgFileRef;
   video_note?: TgFileRef;
-  animation?: TgFileRef;
-  sticker?: TgFileRef;
+  animation?: TgFileRef & { mime_type?: string };
+  /** Стикер: для UI берём emoji (если есть) для понятного content-описания. */
+  sticker?: TgFileRef & { emoji?: string };
 }
 
 /**
@@ -165,13 +166,26 @@ export async function syncTelegramIncomingMessage(
     replyToDbId = replyMsg?.id ?? null;
   }
 
+  // Подбираем человекочитаемое описание для медиа без caption.
+  // Раньше для всего (фото, документ, стикер, GIF) ставили "📎" — пользователь
+  // не отличал «клиент прислал документ, который не загрузился» от «клиент
+  // прислал стикер 😄 для эмоции». Теперь стикеры и анимации помечаются явно.
+  const fallbackContent = (() => {
+    if (message.sticker) {
+      const emoji = message.sticker.emoji;
+      return emoji ? `🟪 Стикер ${emoji}` : "🟪 Стикер";
+    }
+    if (message.animation) return "🎞 GIF";
+    return "📎";
+  })();
+
   const insertPayload = {
     project_id: binding.project_id,
     workspace_id: binding.workspace_id,
     sender_participant_id: senderParticipantId,
     sender_name: senderName,
     sender_role: senderRole,
-    content: text || "📎",
+    content: text || fallbackContent,
     source,
     channel: binding.channel || "client",
     thread_id: binding.thread_id ?? undefined,

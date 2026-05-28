@@ -511,7 +511,7 @@ async function uploadDocumentCore(
   }
 
   const dl = await fetchTelegramFile(f.fileId);
-  if (!dl) return { ok: false, reason: "download_failed" };
+  if (!dl.ok) return { ok: false, reason: "download_failed" };
 
   const { data: doc, error: docErr } = await service
     .from("documents")
@@ -730,9 +730,9 @@ export async function handleSlotFileUpload(msg: TgMessage, binding: TgChatBindin
     return;
   }
 
-  // Скачиваем
+  // Скачиваем (внутри есть retry на 429/5xx/сеть).
   const dl = await fetchTelegramFile(f.fileId);
-  if (!dl) {
+  if (!dl.ok) {
     await sendMessage(chatId, `⚠️ Не удалось получить файл (возможно, больше ${MAX_FILE_SIZE_MB} МБ). Загрузите через веб.`, {
       reply_to_message_id: msg.message_id,
     });

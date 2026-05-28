@@ -114,6 +114,29 @@ export function collectFiles(msg: TgMessage): TgFileDescriptor[] {
     const name = `videonote_${msg.video_note.file_unique_id}.mp4`;
     out.push({ fileId: msg.video_note.file_id, originalName: name, safeName: name, mimeType: "video/mp4" });
   }
+  // Стикер: качаем JPEG-thumbnail (сам WEBP/TGS-стикер браузер не отрисует).
+  // Если thumbnail отсутствует (редкий случай) — отображение остаётся текстовым
+  // ("🟪 Стикер emoji"), это устанавливается в syncTelegramIncomingMessage.
+  if (msg.sticker?.thumbnail) {
+    const name = `sticker_${msg.sticker.file_unique_id}.jpg`;
+    out.push({
+      fileId: msg.sticker.thumbnail.file_id,
+      originalName: name,
+      safeName: name,
+      mimeType: "image/jpeg",
+    });
+  }
+  // GIF/анимация: качаем JPEG-thumbnail для превью в UI. Сам MP4 не качаем,
+  // чтобы не переполнять Storage большими файлами — для просмотра достаточно превью.
+  if (msg.animation?.thumbnail) {
+    const name = `animation_${msg.animation.file_unique_id}.jpg`;
+    out.push({
+      fileId: msg.animation.thumbnail.file_id,
+      originalName: name,
+      safeName: name,
+      mimeType: "image/jpeg",
+    });
+  }
   return out;
 }
 
