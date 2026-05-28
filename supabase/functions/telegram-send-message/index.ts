@@ -490,14 +490,30 @@ Deno.serve(async (req: Request) => {
             stack: markErr instanceof Error ? markErr.stack : undefined,
           }));
           // Best-effort прямой UPDATE send_status=sent — без триггеров на send_status_change.
-          await serviceClient
+          // .select('id') + проверка affected rows: симметрично markMessageSent
+          // в _shared/messageSendStatus.ts (см. коммит 3ade916). Если fallback
+          // тоже 0 rows — это та же корневая причина (неверный id / RLS), и
+          // тихий bypass недопустим. Пробрасываем наверх → outer catch → 500
+          // → watchdog переведёт pending в failed.
+          const { data: fallbackData, error: fallbackErr } = await serviceClient
             .from("project_messages")
             .update({
               send_status: "sent",
               telegram_message_id: tgData.result.message_id,
               telegram_chat_id: activeChatId,
             })
-            .eq("id", body.message_id);
+            .eq("id", body.message_id)
+            .select("id");
+          if (fallbackErr) {
+            throw new Error(
+              `markSent fallback UPDATE failed for ${body.message_id}: ${fallbackErr.message} (${fallbackErr.code})`,
+            );
+          }
+          if (!fallbackData || fallbackData.length === 0) {
+            throw new Error(
+              `markSent fallback UPDATE affected 0 rows for id=${body.message_id} — message not found or RLS denied`,
+            );
+          }
           statusWritten = true;
           trace("tg.send.ok.markSent_fallback_done");
         }
