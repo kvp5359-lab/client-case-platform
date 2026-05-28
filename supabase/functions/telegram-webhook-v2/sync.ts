@@ -188,7 +188,6 @@ async function syncGroupMessage(
     }).catch(() => {});
   }
 
-  const inserted = sync.rowId ? { id: sync.rowId } : null;
   if (sync.outcome === "duplicate") {
     console.warn(
       "[telegram-webhook-v2] message dropped as duplicate",
@@ -203,8 +202,14 @@ async function syncGroupMessage(
     console.error("[telegram-webhook-v2] sync failed:", sync.error);
   }
 
-  if (inserted) {
-    await downloadAttachments(msg, inserted.id, binding.workspace_id, binding.project_id);
+  // Качаем вложения только при настоящем INSERT. На `enriched` (employee
+  // пришёл вторым после secretary) первый webhook уже скачал/начал качать
+  // файл — повторный upload с upsert:false упадёт с 23505 «resource already
+  // exists» и затрёт attachment_status, хотя файл реально загружен. На
+  // `duplicate` (secretary вторым) sync.rowId уже null, downloadAttachments
+  // и так бы не запустился.
+  if (sync.outcome === "inserted" && sync.rowId) {
+    await downloadAttachments(msg, sync.rowId, binding.workspace_id, binding.project_id);
   }
 }
 
