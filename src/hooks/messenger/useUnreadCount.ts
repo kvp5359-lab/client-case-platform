@@ -61,12 +61,19 @@ export function patchCachesForMarkRead(queryClient: QueryClient, params: CachePa
   queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), 0)
   queryClient.setQueryData(messengerKeys.lastReadAtByThreadId(threadId), nowIso)
   if (workspaceId) {
+    // ВАЖНО: useLastReadAt читает last_read_at ИЗ inbox-кэша (через
+    // useInboxThreadsV2.data.find(...).last_read_at), а не из отдельного ключа
+    // messengerKeys.lastReadAtByThreadId. Поэтому красный контур у бабблов
+    // в треде = inbox-кэш.last_read_at, и без обновления этого поля контур
+    // держится до refetch (3-4 сек). Симметрично для агрегатов — если их
+    // структура содержит last_read_at, бейдж сайдбара/проекта тоже обновится.
     patchInboxThreadInCache(
       queryClient,
       workspaceId,
       (t) => t.thread_id === threadId,
       (t) => ({
         ...t,
+        last_read_at: nowIso,
         unread_count: 0,
         manually_unread: false,
         has_unread_reaction: false,
@@ -82,6 +89,7 @@ export function patchCachesForMarkRead(queryClient: QueryClient, params: CachePa
       (t) => t.thread_id === threadId,
       (t) => ({
         ...t,
+        last_read_at: nowIso,
         unread_count: 0,
         manually_unread: false,
         has_unread_reaction: false,
@@ -100,17 +108,19 @@ export function patchCachesForMarkUnread(queryClient: QueryClient, params: Cache
   // бейдж списка, но конкретные сообщения не должны быть «непрочитанными»).
   queryClient.setQueryData(messengerKeys.lastReadAtByThreadId(threadId), nowIso)
   if (workspaceId) {
+    // last_read_at в inbox-кэше зеркалит messengerKeys.lastReadAtByThreadId —
+    // useLastReadAt читает именно отсюда, см. комментарий в patchCachesForMarkRead.
     patchInboxThreadInCache(
       queryClient,
       workspaceId,
       (t) => t.thread_id === threadId,
-      (t) => ({ ...t, manually_unread: true }),
+      (t) => ({ ...t, last_read_at: nowIso, manually_unread: true }),
     )
     patchInboxAggregateInCache(
       queryClient,
       workspaceId,
       (t) => t.thread_id === threadId,
-      (t) => ({ ...t, manually_unread: true }),
+      (t) => ({ ...t, last_read_at: nowIso, manually_unread: true }),
     )
   }
 }
