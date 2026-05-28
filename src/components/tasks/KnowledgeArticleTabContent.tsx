@@ -9,16 +9,18 @@
  * меню (поведение идентично модальной версии).
  */
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { X } from 'lucide-react'
+import { Download, X } from 'lucide-react'
 import { PageLoader } from '@/components/ui/loaders'
 import { supabase } from '@/lib/supabase'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
+import { printArticleToPdf } from '@/utils/print/printArticle'
 import { knowledgeBaseKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 
 type Props = {
   articleId: string
@@ -38,6 +40,9 @@ type KnowledgeArticleRow = {
 }
 
 export function KnowledgeArticleTabContent({ articleId, onClose }: Props) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const { isOwner } = useWorkspacePermissions()
+
   const { data: article, isLoading, error } = useQuery<KnowledgeArticleRow | null>({
     queryKey: knowledgeBaseKeys.article(articleId),
     enabled: !!articleId,
@@ -54,6 +59,12 @@ export function KnowledgeArticleTabContent({ articleId, onClose }: Props) {
   })
 
   const isReadOnly = article?.access_mode === 'read_only'
+  const canDownloadPdf = !!article && (!isReadOnly || isOwner)
+
+  const handleDownloadPdf = () => {
+    if (!contentRef.current || !article) return
+    void printArticleToPdf(contentRef.current, article.title)
+  }
 
   // Блокировка Ctrl+C / Ctrl+A для read_only — только пока эта вкладка
   // активна (компонент монтируется когда вкладка открыта, размонтируется
@@ -93,6 +104,17 @@ export function KnowledgeArticleTabContent({ articleId, onClose }: Props) {
             {ACCESS_MODE_LABELS[article.access_mode] ?? article.access_mode}
           </Badge>
         )}
+        {canDownloadPdf && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0"
+            onClick={handleDownloadPdf}
+            title="Скачать PDF"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
@@ -109,6 +131,7 @@ export function KnowledgeArticleTabContent({ articleId, onClose }: Props) {
           контент через max-w-3xl + mx-auto. */}
       <div className="flex-1 overflow-y-auto" onContextMenu={isReadOnly ? (e) => e.preventDefault() : undefined}>
       <div
+        ref={contentRef}
         className={cn(
           // Стили идентичны KnowledgeBaseArticleView — синхронизировать оба
           // места при изменении prose-классов.
