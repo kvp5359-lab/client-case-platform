@@ -466,6 +466,26 @@ Deno.serve(async (req: Request) => {
           active_chat_id: activeChatId,
           active_integration_id: activeIntegrationId,
         });
+        // Диагностика баг-кейса 2026-05-28 (23505 на uq_telegram_message_per_chat):
+        // ЗАПИСЫВАЕМ candidate (chat, msg_id) В telegram_error_detail ДО markMessageSent.
+        // Если markMessageSent потом упадёт на 23505 — у нас в БД будет видно
+        // КАКОЙ msg_id пытались записать. Сравнив с уже занятым в этом чате,
+        // увидим: совпадает с предыдущим сообщением того же бота? Полностью
+        // случайный? Это ключевая зацепка для поиска корня (state leak vs TG bug).
+        try {
+          await serviceClient
+            .from("project_messages")
+            .update({
+              telegram_error_detail:
+                `candidate_markSent: tg_msg_id=${tgData.result.message_id}, ` +
+                `chat=${activeChatId}, integration=${activeIntegrationId ?? 'null'}, ` +
+                `trace=${TRACE_ID}, elapsed_ms=${Date.now() - T0}, ` +
+                `tg_date=${tgData.result.date ?? 'n/a'}`,
+            })
+            .eq("id", body.message_id);
+        } catch (diagErr) {
+          console.warn("[telegram-send] candidate diag write failed:", diagErr);
+        }
         try {
           await markMessageSent(serviceClient, body.message_id, {
             channelFields: {
