@@ -22,6 +22,7 @@ import {
   type ForwardedAttachment,
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
+import { patchCachesForMarkRead } from './useUnreadCount'
 import { dismissProjectToasts } from './useMessageToastPayload'
 import { logSendFailure } from '@/services/api/messenger/logSendFailure'
 
@@ -305,14 +306,13 @@ export function useSendMessage(
       // Dismiss toast notifications for this project
       if (projectId) dismissProjectToasts(projectId)
 
-      // Отправка сообщения = прочитал чат
+      // Отправка сообщения = прочитал чат. Оптимистично патчим inbox-кэш
+      // (источник «прочитано» для кнопки/бейджа) сразу — как ручная кнопка
+      // «Прочитано». markAsRead + инвалидация догоняют сервер фоном.
       if (currentParticipant) {
+        patchCachesForMarkRead(queryClient, { threadId, projectId, workspaceId })
         markAsRead(currentParticipant.participantId, projectId, channel, threadId)
           .then(() => {
-            queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), 0)
-            queryClient.invalidateQueries({
-              queryKey: messengerKeys.lastReadAtByThreadId(threadId),
-            })
             invalidateMessengerCaches(queryClient, workspaceId)
           })
           .catch(() => {

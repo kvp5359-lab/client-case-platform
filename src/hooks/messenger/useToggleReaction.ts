@@ -14,7 +14,8 @@ import {
   markAsRead,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
-import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
+import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
+import { patchCachesForMarkRead } from './useUnreadCount'
 
 export function useToggleReaction(
   projectId: string | undefined,
@@ -43,18 +44,14 @@ export function useToggleReaction(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: messagesKey })
 
-      // Реакция = прочитал чат
+      // Реакция = прочитал чат. Оптимистично патчим inbox-кэш сразу (как
+      // ручная кнопка «Прочитано»), markAsRead + инвалидация догоняют фоном.
       const pid = participantId
       if (pid) {
+        patchCachesForMarkRead(queryClient, { threadId, projectId, workspaceId })
         markAsRead(pid, projectId, channel, threadId)
           .then(() => {
-            queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), 0)
-            queryClient.invalidateQueries({
-              queryKey: messengerKeys.lastReadAtByThreadId(threadId),
-            })
-            if (workspaceId) {
-              queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-            }
+            if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
           })
           .catch(() => {
             /* not critical */
