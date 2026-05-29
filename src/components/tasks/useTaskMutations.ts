@@ -14,6 +14,7 @@ import {
   accessibleProjectKeys,
   projectKeys,
   calendarKeys,
+  invalidateMessengerCaches,
 } from '@/hooks/queryKeys'
 import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
 
@@ -46,14 +47,19 @@ export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unkno
         projectId: old?.project_id ?? null,
         workspaceId: old?.workspace_id ?? null,
       })
+      return { workspaceId: old?.workspace_id ?? null }
     },
-    onSuccess: async (_, { threadId }) => {
+    onSuccess: async (result, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: projectThreadKeys.byId(threadId) })
       queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
       // Смена статуса может перевести задачу в/из финального — это меняет
       // has_active_deadline_task у проекта (используется в фильтрах на доске).
       queryClient.invalidateQueries({ queryKey: accessibleProjectKeys.all })
+      // Список «Входящие» (RPC get_inbox_threads_v2) живёт на отдельном
+      // ключе inboxKeys.threads — без этой инвалидации завершённая задача
+      // не пропадает из инбокса и держит старый статус до ручного refetch.
+      if (result?.workspaceId) invalidateMessengerCaches(queryClient, result.workspaceId)
       // Если у шаблона задачи задан on_complete_set_project_status_id и
       // задача ушла в финальный статус — БД-триггер обновит projects.status_id.
       // Подтягиваем свежие данные проекта, чтобы шапка перерисовалась.
@@ -88,7 +94,7 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
     }) => {
       const { data: old } = await supabase
         .from('project_threads')
-        .select('deadline, name, project_id')
+        .select('deadline, name, project_id, workspace_id')
         .eq('id', threadId)
         .single()
 
@@ -107,6 +113,8 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
         old_deadline: old?.deadline,
         new_deadline: deadline,
       }, old?.project_id ?? undefined)
+
+      return { workspaceId: old?.workspace_id ?? null }
     },
     onMutate: async ({ threadId, start_at, end_at }) => {
       // Optimistic update для board-list-times — чтобы блок в календаре
@@ -130,7 +138,7 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
         },
       )
     },
-    onSuccess: (_, { threadId }) => {
+    onSuccess: (result, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: projectThreadKeys.byId(threadId) })
       queryClient.invalidateQueries({ queryKey: projectThreadKeys.auditEvents(threadId) })
@@ -140,6 +148,9 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
       // Календарные виды читают start_at/end_at отдельным запросом
       // (useCalendarThreads + board-list-times внутри BoardListCalendarView).
       queryClient.invalidateQueries({ queryKey: calendarKeys.all })
+      // Инбокс группирует задачи по сроку (Сегодня/Завтра) и фильтрует —
+      // смена дедлайна должна перестроить список «Входящие».
+      if (result?.workspaceId) invalidateMessengerCaches(queryClient, result.workspaceId)
     },
     onError: () => toast.error('Не удалось обновить срок'),
   })
