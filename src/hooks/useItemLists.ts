@@ -192,9 +192,46 @@ export function useUpdateItemList() {
       if (error) throw error
       return fromRow(data as unknown as RawItemListRow)
     },
-    onSuccess: (updated) => {
-      qc.invalidateQueries({ queryKey: itemListKeys.byWorkspace(updated.workspace_id) })
-      qc.invalidateQueries({ queryKey: itemListKeys.detail(updated.id) })
+    // Optimistic: правки (имя, иконка, сортировка, видимость колонок) видны
+    // в списке и детали мгновенно. При ошибке — откат к снимку.
+    onMutate: async (params) => {
+      const listKey = itemListKeys.byWorkspace(params.workspace_id)
+      const detailKey = itemListKeys.detail(params.id)
+      await Promise.all([
+        qc.cancelQueries({ queryKey: listKey }),
+        qc.cancelQueries({ queryKey: detailKey }),
+      ])
+      const previousList = qc.getQueryData<ItemList[]>(listKey)
+      const previousDetail = qc.getQueryData<ItemList | null>(detailKey)
+
+      const patch = (list: ItemList): ItemList => ({
+        ...list,
+        ...(params.name !== undefined ? { name: params.name.trim() } : {}),
+        ...(params.icon !== undefined ? { icon: params.icon } : {}),
+        ...(params.color !== undefined ? { color: params.color } : {}),
+        ...(params.filter_config !== undefined ? { filter_config: params.filter_config } : {}),
+        ...(params.sort_by !== undefined ? { sort_by: params.sort_by } : {}),
+        ...(params.sort_dir !== undefined ? { sort_dir: params.sort_dir } : {}),
+        ...(params.columns !== undefined ? { columns: params.columns } : {}),
+      })
+
+      qc.setQueryData<ItemList[]>(listKey, (old) =>
+        old?.map((l) => (l.id === params.id ? patch(l) : l)),
+      )
+      qc.setQueryData<ItemList | null>(detailKey, (old) => (old ? patch(old) : old))
+      return { previousList, previousDetail }
+    },
+    onError: (_err, params, context) => {
+      if (context?.previousList !== undefined) {
+        qc.setQueryData(itemListKeys.byWorkspace(params.workspace_id), context.previousList)
+      }
+      if (context?.previousDetail !== undefined) {
+        qc.setQueryData(itemListKeys.detail(params.id), context.previousDetail)
+      }
+    },
+    onSettled: (_data, _err, params) => {
+      qc.invalidateQueries({ queryKey: itemListKeys.byWorkspace(params.workspace_id) })
+      qc.invalidateQueries({ queryKey: itemListKeys.detail(params.id) })
     },
   })
 }
@@ -215,7 +252,20 @@ export function useSoftDeleteItemList() {
         .eq('id', id)
       if (error) throw error
     },
-    onSuccess: (_data, vars) => {
+    // Optimistic: удаляемый список сразу исчезает из обзора. При ошибке — откат.
+    onMutate: async (vars) => {
+      const listKey = itemListKeys.byWorkspace(vars.workspace_id)
+      await qc.cancelQueries({ queryKey: listKey })
+      const previousList = qc.getQueryData<ItemList[]>(listKey)
+      qc.setQueryData<ItemList[]>(listKey, (old) => old?.filter((l) => l.id !== vars.id))
+      return { previousList }
+    },
+    onError: (_err, vars, context) => {
+      if (context?.previousList !== undefined) {
+        qc.setQueryData(itemListKeys.byWorkspace(vars.workspace_id), context.previousList)
+      }
+    },
+    onSettled: (_data, _err, vars) => {
       qc.invalidateQueries({ queryKey: itemListKeys.byWorkspace(vars.workspace_id) })
       qc.invalidateQueries({ queryKey: itemListKeys.detail(vars.id) })
     },

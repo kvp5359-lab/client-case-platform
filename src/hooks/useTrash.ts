@@ -12,7 +12,13 @@
  *  - удалить навсегда (физически из БД)
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+  type QueryKey,
+} from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { logAuditAction } from '@/services/auditService'
 import {
@@ -237,6 +243,34 @@ async function fetchParticipantNames(
   return map
 }
 
+// ── Optimistic helper ──
+
+/**
+ * Optimistic-удаление строки из кэша корзины по id: строка исчезает мгновенно,
+ * при ошибке — откат к снимку. Восстановление и hard-delete оба убирают элемент
+ * из соответствующего trash-списка, поэтому хендлеры общие.
+ */
+function trashRemoveHandlers<T extends { id: string }>(
+  queryClient: QueryClient,
+  key: QueryKey,
+) {
+  return {
+    onMutate: async (item: { id: string }) => {
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<T[]>(key)
+      queryClient.setQueryData<T[]>(key, (old) =>
+        (old ?? []).filter((row) => row.id !== item.id),
+      )
+      return { previous }
+    },
+    onError: (_err: unknown, _vars: unknown, context: { previous?: T[] } | undefined) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(key, context.previous)
+      }
+    },
+  }
+}
+
 // ── Восстановление ──
 
 /**
@@ -262,6 +296,7 @@ export function useRestoreProject(workspaceId: string) {
       queryClient.invalidateQueries({ queryKey: sidebarKeys.projectsBase(workspaceId) })
       queryClient.invalidateQueries({ queryKey: boardKeys.projectsByWorkspace(workspaceId) })
     },
+    ...trashRemoveHandlers<TrashedProject>(queryClient, trashKeys.projects(workspaceId)),
   })
 }
 
@@ -303,6 +338,7 @@ export function useRestoreThread(workspaceId: string) {
       queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })
       invalidateMessengerCaches(queryClient, workspaceId)
     },
+    ...trashRemoveHandlers<TrashedThread>(queryClient, trashKeys.threads(workspaceId)),
   })
 }
 
@@ -326,6 +362,7 @@ export function useHardDeleteProject(workspaceId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: trashKeys.workspace(workspaceId) })
     },
+    ...trashRemoveHandlers<TrashedProject>(queryClient, trashKeys.projects(workspaceId)),
   })
 }
 
@@ -359,6 +396,7 @@ export function useRestoreContextItem(workspaceId: string) {
         queryKey: projectContextKeys.byProject(item.project_id),
       })
     },
+    ...trashRemoveHandlers<TrashedContextItem>(queryClient, trashKeys.contextItems(workspaceId)),
   })
 }
 
@@ -382,6 +420,7 @@ export function useHardDeleteContextItem(workspaceId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: trashKeys.contextItems(workspaceId) })
     },
+    ...trashRemoveHandlers<TrashedContextItem>(queryClient, trashKeys.contextItems(workspaceId)),
   })
 }
 
@@ -413,5 +452,6 @@ export function useHardDeleteThread(workspaceId: string) {
       queryClient.invalidateQueries({ queryKey: trashKeys.workspace(workspaceId) })
       invalidateMessengerCaches(queryClient, workspaceId)
     },
+    ...trashRemoveHandlers<TrashedThread>(queryClient, trashKeys.threads(workspaceId)),
   })
 }

@@ -101,6 +101,7 @@ export function useUpdateQuickReply(_workspaceId: string | undefined) {
 export function useDeleteQuickReply(workspaceId: string | undefined) {
   const queryClient = useQueryClient()
 
+  // Optimistic: удаляемый шаблон исчезает из списка сразу. При ошибке — откат.
   return useMutation({
     mutationFn: async (replyId: string) => {
       await safeDeleteOrThrow(
@@ -108,12 +109,24 @@ export function useDeleteQuickReply(workspaceId: string | undefined) {
         'Не удалось удалить шаблон',
       )
     },
+    onMutate: async (replyId) => {
+      const key = quickReplyKeys.list(workspaceId ?? '')
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<QuickReply[]>(key)
+      queryClient.setQueryData<QuickReply[]>(key, (old) => old?.filter((r) => r.id !== replyId))
+      return { previous }
+    },
     onSuccess: () => {
       toast.success('Шаблон удалён')
-      queryClient.invalidateQueries({ queryKey: quickReplyKeys.list(workspaceId ?? '') })
     },
-    onError: () => {
+    onError: (_err, _replyId, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(quickReplyKeys.list(workspaceId ?? ''), context.previous)
+      }
       toast.error('Не удалось удалить шаблон')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: quickReplyKeys.list(workspaceId ?? '') })
     },
   })
 }

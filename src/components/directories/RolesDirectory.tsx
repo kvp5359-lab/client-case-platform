@@ -126,17 +126,32 @@ export function RolesDirectory({ type }: RolesDirectoryProps) {
   })
 
   // --- Мутация: удаление ---
+  // Optimistic: строка роли исчезает из таблицы сразу. При ошибке — откат к снимку.
   const deleteMutation = useMutation({
     mutationFn: async (roleId: string) => {
       const { error } = await supabase.from(tableName).delete().eq('id', roleId)
       if (error) throw error
     },
+    onMutate: async (roleId) => {
+      const key = rolesQueryKey(workspaceId ?? '', type)
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<(WorkspaceRole | ProjectRole)[]>(key)
+      queryClient.setQueryData<(WorkspaceRole | ProjectRole)[]>(key, (old) =>
+        old?.filter((r) => r.id !== roleId),
+      )
+      return { previous }
+    },
     onSuccess: () => {
       toast.success('Роль удалена')
-      queryClient.invalidateQueries({ queryKey: rolesQueryKey(workspaceId ?? '', type) })
     },
-    onError: (err) => {
+    onError: (err, _roleId, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(rolesQueryKey(workspaceId ?? '', type), context.previous)
+      }
       toast.error(err instanceof Error ? err.message : 'Не удалось удалить роль')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: rolesQueryKey(workspaceId ?? '', type) })
     },
   })
 

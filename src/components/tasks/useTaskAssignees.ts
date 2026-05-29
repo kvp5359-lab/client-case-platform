@@ -79,7 +79,11 @@ export function useTaskAssigneeIds(threadId: string | undefined) {
   })
 }
 
-/** Добавить/убрать исполнителя (toggle) */
+/** Добавить/убрать исполнителя (toggle).
+ *  Optimistic: список participant_id одной задачи (assigneeKeys.single) обновляется
+ *  мгновенно — клик по аватарке сразу даёт отклик. При ошибке — откат к снимку.
+ *  Batch-карту (assigneeKeys.map / workspaceTaskKeys.assigneesMap) не трогаем
+ *  оптимистично (нужны имя/аватар) — только инвалидируем в onSettled. */
 export function useToggleAssignee(threadId: string | undefined) {
   const queryClient = useQueryClient()
 
@@ -109,7 +113,27 @@ export function useToggleAssignee(threadId: string | undefined) {
         if (error) throw error
       }
     },
-    onSuccess: () => {
+    onMutate: async ({ participantId, assigned }) => {
+      if (!threadId) return { previousIds: undefined }
+      const key = assigneeKeys.single(threadId)
+      await queryClient.cancelQueries({ queryKey: key })
+      const previousIds = queryClient.getQueryData<string[]>(key)
+      queryClient.setQueryData<string[]>(key, (old) => {
+        const ids = old ?? []
+        return assigned
+          ? ids.filter((id) => id !== participantId)
+          : ids.includes(participantId)
+            ? ids
+            : [...ids, participantId]
+      })
+      return { previousIds }
+    },
+    onError: (_err, _vars, context) => {
+      if (threadId && context?.previousIds !== undefined) {
+        queryClient.setQueryData(assigneeKeys.single(threadId), context.previousIds)
+      }
+    },
+    onSettled: () => {
       if (threadId) {
         queryClient.invalidateQueries({ queryKey: assigneeKeys.single(threadId) })
         // Инвалидируем batch-карту тоже

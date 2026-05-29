@@ -119,12 +119,27 @@ export function ProjectContactSection({
         .eq('id', projectId)
       if (error) throw error
     },
-    onSuccess: () => {
+    // Optimistic: выбранный контакт отображается сразу. `selected` выводится из
+    // prop contactParticipantId, который родитель берёт из projectKeys.detail —
+    // патчим это поле в кэше, чтобы не ждать refetch. При ошибке — откат.
+    onMutate: async (newId) => {
+      const key = projectKeys.detail(projectId)
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData(key)
+      queryClient.setQueryData(key, (old) =>
+        old ? { ...(old as Record<string, unknown>), contact_participant_id: newId } : old,
+      )
+      return { previous }
+    },
+    onError: (e, _newId, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(projectKeys.detail(projectId), context.previous)
+      }
+      toast.error(e instanceof Error ? e.message : 'Не удалось обновить контакт')
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) })
       queryClient.invalidateQueries({ queryKey: projectKeys.byWorkspace(workspaceId) })
-    },
-    onError: (e) => {
-      toast.error(e instanceof Error ? e.message : 'Не удалось обновить контакт')
     },
   })
 

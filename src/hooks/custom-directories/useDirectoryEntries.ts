@@ -225,17 +225,38 @@ export function useDirectoryEntries(directoryId: string | undefined) {
     },
   })
 
+  // Optimistic для удаления/архивации: строка исчезает из таблицы сразу,
+  // при ошибке — откат к снимку. Оба действия убирают запись из списка.
+  const optimisticRemoveEntry = async (entryId: string) => {
+    const key = customDirectoryKeys.entries(directoryId ?? '')
+    await queryClient.cancelQueries({ queryKey: key })
+    const previous = queryClient.getQueryData<DirectoryEntryWithValues[]>(key)
+    queryClient.setQueryData<DirectoryEntryWithValues[]>(key, (old) =>
+      old?.filter((e) => e.id !== entryId),
+    )
+    return { previous }
+  }
+  const rollbackEntry = (context: { previous?: DirectoryEntryWithValues[] } | undefined) => {
+    if (context?.previous !== undefined) {
+      queryClient.setQueryData(customDirectoryKeys.entries(directoryId ?? ''), context.previous)
+    }
+  }
+
   const deleteEntryMutation = useMutation({
     mutationFn: async (entryId: string) => {
       const { error } = await supabase.from('custom_directory_entries').delete().eq('id', entryId)
       if (error) throw error
     },
+    onMutate: optimisticRemoveEntry,
     onSuccess: () => {
       toast.success('Запись удалена')
-      queryClient.invalidateQueries({ queryKey: customDirectoryKeys.entries(directoryId ?? '') })
     },
-    onError: (err) => {
+    onError: (err, _entryId, context) => {
+      rollbackEntry(context)
       toast.error(err instanceof Error ? err.message : 'Не удалось удалить запись')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: customDirectoryKeys.entries(directoryId ?? '') })
     },
   })
 
@@ -247,12 +268,16 @@ export function useDirectoryEntries(directoryId: string | undefined) {
         .eq('id', entryId)
       if (error) throw error
     },
+    onMutate: optimisticRemoveEntry,
     onSuccess: () => {
       toast.success('Запись архивирована')
-      queryClient.invalidateQueries({ queryKey: customDirectoryKeys.entries(directoryId ?? '') })
     },
-    onError: (err) => {
+    onError: (err, _entryId, context) => {
+      rollbackEntry(context)
       toast.error(err instanceof Error ? err.message : 'Не удалось архивировать запись')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: customDirectoryKeys.entries(directoryId ?? '') })
     },
   })
 

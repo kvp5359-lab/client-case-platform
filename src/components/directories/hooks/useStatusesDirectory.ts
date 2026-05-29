@@ -157,17 +157,30 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
   })
 
   // --- Мутация: удаление ---
+  // Optimistic: строка статуса исчезает сразу. При ошибке — откат к снимку.
   const deleteMutation = useMutation({
     mutationFn: async (statusId: string) => {
       const { error } = await supabase.rpc('delete_status', { p_status_id: statusId })
       if (error) throw error
     },
+    onMutate: async (statusId) => {
+      const key = statusesQueryKey(workspaceId ?? '')
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<Status[]>(key)
+      queryClient.setQueryData<Status[]>(key, (old) => old?.filter((s) => s.id !== statusId))
+      return { previous }
+    },
     onSuccess: () => {
       toast.success('Статус удалён')
-      queryClient.invalidateQueries({ queryKey: statusesQueryKey(workspaceId ?? '') })
     },
-    onError: (err) => {
+    onError: (err, _statusId, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(statusesQueryKey(workspaceId ?? ''), context.previous)
+      }
       toast.error(err instanceof Error ? err.message : 'Не удалось удалить статус')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: statusesQueryKey(workspaceId ?? '') })
     },
   })
 

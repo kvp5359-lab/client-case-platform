@@ -180,7 +180,7 @@ export function BoardView({
   }, [])
   // TEMP DEBUG — показываем в углу что видит dnd-kit. Удалить когда manual-reorder заработает.
 
-  const updateProjectStatus = useUpdateProjectStatusOnBoard()
+  const updateProjectStatus = useUpdateProjectStatusOnBoard(workspaceId)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
