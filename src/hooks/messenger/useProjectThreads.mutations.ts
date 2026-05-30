@@ -1,6 +1,7 @@
 "use client"
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import {
   accessibleProjectKeys,
@@ -15,6 +16,7 @@ import {
   workspaceTaskKeys,
   workspaceThreadKeys,
 } from '@/hooks/queryKeys'
+import { removeThreadFromInboxCaches } from '@/hooks/shared/threadCacheSync'
 import { logAuditAction } from '@/services/auditService'
 import type { ProjectThread, ThreadAccentColor } from './useProjectThreads.types'
 
@@ -234,6 +236,20 @@ export function useDeleteThread(workspaceId?: string) {
       }, thread.project_id ?? undefined)
 
       return thread
+    },
+    // Optimistic: удалённый тред исчезает из «Входящих» сразу. Сервер RPC
+    // исключает is_deleted, поэтому строку безопасно убрать из кэша. Тяжёлый
+    // refetch инбокса (invalidateMessengerCaches в onSuccess) остаётся фоновой
+    // досверкой. При ошибке — откат снимка инбокс-кэшей.
+    onMutate: async (thread) => {
+      if (!workspaceId) return undefined
+      await queryClient.cancelQueries({ queryKey: inboxKeys.threads(workspaceId) })
+      const rollbackInbox = removeThreadFromInboxCaches(queryClient, workspaceId, thread.id)
+      return { rollbackInbox }
+    },
+    onError: (_err, _thread, context) => {
+      context?.rollbackInbox?.()
+      toast.error('Не удалось удалить')
     },
     onSuccess: (thread) => {
       queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(thread.project_id ?? '') })

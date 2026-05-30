@@ -20,7 +20,7 @@ import {
   getCurrentWorkspaceParticipant,
 } from '@/services/api/messenger/messengerParticipantService'
 import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
-import type { InboxThreadEntry } from '@/services/api/inboxService'
+import { markThreadReadInInboxCaches } from '@/hooks/shared/threadCacheSync'
 import { dismissThreadToasts } from './useMessageToastPayload'
 
 type MarkParams = {
@@ -71,23 +71,15 @@ export function useMarkThreadReadIfFinal() {
         }
 
         if (workspaceId) {
-          const inboxKey = inboxKeys.threads(workspaceId)
-          await queryClient.cancelQueries({ queryKey: inboxKey })
-          queryClient.setQueryData<InboxThreadEntry[]>(inboxKey, (prev) => {
-            if (!prev) return prev
-            return prev.map((t) =>
-              t.thread_id === threadId
-                ? {
-                    ...t,
-                    unread_count: 0,
-                    manually_unread: false,
-                    has_unread_reaction: false,
-                    unread_reaction_count: 0,
-                    unread_event_count: 0,
-                  }
-                : t,
-            )
-          })
+          // Отменяем in-flight refetch, чтобы он не перетёр патч устаревшими
+          // данными, затем точечно гасим unread в обоих инбокс-кэшах.
+          // Раньше здесь был inline-патч, типизированный под массив, тогда как
+          // кэш инбокса — useInfiniteQuery ({pages}); вызов prev.map падал с
+          // TypeError, который глушился внешним catch, и патч молча не
+          // применялся (инбокс ждал тяжёлый refetch). Хелпер работает с
+          // правильной структурой pages.
+          await queryClient.cancelQueries({ queryKey: inboxKeys.threads(workspaceId) })
+          markThreadReadInInboxCaches(queryClient, workspaceId, threadId)
         }
       } catch {
         // Не критично — статус уже обновлён

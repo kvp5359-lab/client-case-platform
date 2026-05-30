@@ -105,6 +105,45 @@ export function patchInboxAggregateInCache(
   )
 }
 
+/**
+ * Удалить тред из кэша инбокса (для удалённых is_deleted тредов — сервер их
+ * исключает из RPC, поэтому строку можно убрать сразу). Сохраняет структуру
+ * `{ pages, pageParams }`; пустые страницы НЕ удаляются — иначе курсоры
+ * пагинации (nextCursor у lastPage) рассинхронизируются. Если кэш пуст —
+ * no-op.
+ */
+export function removeInboxThreadFromCache(
+  queryClient: QueryClient,
+  workspaceId: string,
+  threadId: string,
+) {
+  queryClient.setQueryData<InboxInfiniteData | undefined>(
+    inboxKeys.threads(workspaceId),
+    (prev) => {
+      if (!prev?.pages) return prev
+      return {
+        ...prev,
+        pages: prev.pages.map((page) => ({
+          ...page,
+          items: page.items.filter((t) => t.thread_id !== threadId),
+        })),
+      }
+    },
+  )
+}
+
+/** Удалить тред из лёгкого кэша агрегатов. Парный к removeInboxThreadFromCache. */
+export function removeInboxAggregateFromCache(
+  queryClient: QueryClient,
+  workspaceId: string,
+  threadId: string,
+) {
+  queryClient.setQueryData<InboxThreadAggregate[] | undefined>(
+    inboxKeys.aggregates(workspaceId),
+    (prev) => (prev ? prev.filter((t) => t.thread_id !== threadId) : prev),
+  )
+}
+
 function useInboxBase<T = InboxThreadEntry[]>(
   workspaceId: string,
   select?: (threads: InboxThreadEntry[]) => T,
