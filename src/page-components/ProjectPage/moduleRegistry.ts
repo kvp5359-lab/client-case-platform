@@ -19,6 +19,7 @@ import {
   BookOpen,
   NotebookText,
   Lock,
+  ListChecks,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ProjectModule as ProjectModuleKey, WorkspaceFeature } from '@/types/permissions'
@@ -79,6 +80,18 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     order: 99,
     templateKey: 'chats',
     permissionKey: 'chats',
+    showTab: false,
+  },
+  // План — наглядный план проекта. Своей вкладки НЕ имеет (showTab: false):
+  // рендерится сворачиваемым блоком под списком задач на вкладке «Задачи».
+  // Модуль управляет видимостью этого блока.
+  {
+    id: 'plan',
+    label: 'План',
+    icon: ListChecks,
+    order: 1.4,
+    templateKey: 'plan',
+    permissionKey: 'plan',
     showTab: false,
   },
   {

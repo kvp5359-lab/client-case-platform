@@ -5289,6 +5289,77 @@ export type Database = {
           },
         ]
       }
+      project_plan_blocks: {
+        Row: {
+          block_type: string
+          content: string | null
+          created_at: string
+          folder_slot_id: string | null
+          id: string
+          project_id: string
+          sort_order: number
+          thread_id: string | null
+          updated_at: string
+          visible_to_client: boolean
+          workspace_id: string
+        }
+        Insert: {
+          block_type: string
+          content?: string | null
+          created_at?: string
+          folder_slot_id?: string | null
+          id?: string
+          project_id: string
+          sort_order?: number
+          thread_id?: string | null
+          updated_at?: string
+          visible_to_client?: boolean
+          workspace_id: string
+        }
+        Update: {
+          block_type?: string
+          content?: string | null
+          created_at?: string
+          folder_slot_id?: string | null
+          id?: string
+          project_id?: string
+          sort_order?: number
+          thread_id?: string | null
+          updated_at?: string
+          visible_to_client?: boolean
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_plan_blocks_folder_slot_id_fkey"
+            columns: ["folder_slot_id"]
+            isOneToOne: false
+            referencedRelation: "folder_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_plan_blocks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_plan_blocks_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "project_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_plan_blocks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_roles: {
         Row: {
           color: string
@@ -5730,6 +5801,77 @@ export type Database = {
             columns: ["project_template_id"]
             isOneToOne: false
             referencedRelation: "project_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_template_plan_blocks: {
+        Row: {
+          block_type: string
+          content: string | null
+          created_at: string
+          id: string
+          project_template_id: string
+          slot_template_id: string | null
+          sort_order: number
+          thread_template_id: string | null
+          updated_at: string
+          visible_to_client: boolean
+          workspace_id: string
+        }
+        Insert: {
+          block_type: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          project_template_id: string
+          slot_template_id?: string | null
+          sort_order?: number
+          thread_template_id?: string | null
+          updated_at?: string
+          visible_to_client?: boolean
+          workspace_id: string
+        }
+        Update: {
+          block_type?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          project_template_id?: string
+          slot_template_id?: string | null
+          sort_order?: number
+          thread_template_id?: string | null
+          updated_at?: string
+          visible_to_client?: boolean
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_template_plan_blocks_project_template_id_fkey"
+            columns: ["project_template_id"]
+            isOneToOne: false
+            referencedRelation: "project_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_template_plan_blocks_slot_template_id_fkey"
+            columns: ["slot_template_id"]
+            isOneToOne: false
+            referencedRelation: "document_kit_template_folder_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_template_plan_blocks_thread_template_id_fkey"
+            columns: ["thread_template_id"]
+            isOneToOne: false
+            referencedRelation: "thread_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_template_plan_blocks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]

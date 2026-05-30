@@ -80,6 +80,7 @@ const FULL_MODULE_ACCESS: ProjectModuleAccess = {
   digest: true,
   project_context: true,
   finance: true,
+  plan: true,
 }
 
 // Полный набор разрешений — для workspace-администраторов
@@ -254,6 +255,7 @@ export function useProjectPermissions(
       digest: false,
       project_context: false,
       finance: false,
+      plan: false,
     }
 
     for (const role of userRolesData) {

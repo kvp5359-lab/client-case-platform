@@ -76,6 +76,8 @@ export type ProjectModuleAccess = {
   project_context: boolean
   // Будущие модули — optional т.к. не все workspace имеют эти модули включенными
   finance?: boolean
+  /** Модуль «План» — наглядный план проекта (блок под задачами). */
+  plan?: boolean
 }
 
 /**

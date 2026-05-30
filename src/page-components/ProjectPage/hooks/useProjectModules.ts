@@ -70,6 +70,9 @@ export function useProjectModules(
         finances: has('finances'),
         tasks: has('tasks'),
         chats: has('chats'),
+        // План — отдельный модуль, но своей вкладки нет: рендерится блоком
+        // под списком задач на вкладке «Задачи» (showTab: false в реестре).
+        plan: has('plan'),
         history: has('history'),
         digest: has('digest'),
         projectContext: has('project-context'),
