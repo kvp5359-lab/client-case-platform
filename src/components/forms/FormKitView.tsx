@@ -222,10 +222,7 @@ export function FormKitView({
                 )
               })()}
               {isActive && (
-                <div
-                  style={bodyStyle}
-                  className={cn('px-4', showHeader ? 'py-5' : 'py-3')}
-                >
+                <div style={bodyStyle} className="p-4">
                   {section.description && (
                     <div className="mb-5 flex gap-2.5 rounded-2xl border-l-2 border-primary/50 bg-muted/40 px-3 py-2.5">
                       <Info className="h-4 w-4 shrink-0 text-primary/70 mt-0.5" />
