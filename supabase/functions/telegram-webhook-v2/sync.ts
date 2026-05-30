@@ -129,7 +129,7 @@ async function syncGroupMessage(
   // Сервисные сообщения (вступил, вышел, переименовал, migrate_to_chat_id...)
   const serviceText = getServiceMessageText(msg);
   if (serviceText) {
-    await service.from("project_messages").insert({
+    const { error: svcErr } = await service.from("project_messages").insert({
       project_id: binding.project_id,
       workspace_id: binding.workspace_id,
       sender_participant_id: null,
@@ -141,7 +141,17 @@ async function syncGroupMessage(
       thread_id: binding.thread_id ?? undefined,
       telegram_message_id: telegramMessageId,
       telegram_chat_id: chatId,
+      // Multi-bot dedup: в группе с 2+ ботами каждый бот получает свой webhook
+      // на одно служебное событие (с РАЗНЫМ message_id), поэтому дедуп по
+      // message_id не срабатывает. Заполняем дату события — partial UNIQUE
+      // uq_project_messages_telegram_service_dedup (chat_id, date, md5(content))
+      // схлопывает дубли от разных ботов. Без даты (NULL) индекс не дедупит.
+      telegram_message_date: new Date(msg.date * 1000).toISOString(),
     });
+    // 23505 = тот же служебный апдейт уже записал другой бот — ожидаемо, молчим.
+    if (svcErr && svcErr.code !== "23505") {
+      console.error("[service-message] insert failed:", svcErr);
+    }
     return;
   }
 
