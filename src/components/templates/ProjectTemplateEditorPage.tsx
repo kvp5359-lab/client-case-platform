@@ -33,6 +33,7 @@ import {
 } from './project-template-editor'
 import { BriefTemplateSection } from './project-template-editor/BriefTemplateSection'
 import { RootFolderSection } from './project-template-editor/RootFolderSection'
+import { TemplatePlanSection } from '@/components/plan/TemplatePlanSection'
 import { IconPicker } from '@/components/ui/icon-picker'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { Label } from '@/components/ui/label'
@@ -293,6 +294,7 @@ export function ProjectTemplateEditorPage() {
             <TabsTrigger value="statuses">Статусы</TabsTrigger>
             <TabsTrigger value="fields">Поля</TabsTrigger>
             <TabsTrigger value="panel-tabs">Боковая панель</TabsTrigger>
+            <TabsTrigger value="plan">План</TabsTrigger>
           </TabsList>
 
           <TabsContent value="modules" className="mt-4">
@@ -380,6 +382,14 @@ export function ProjectTemplateEditorPage() {
               projectTemplateId={templateId}
               enabledModules={template.enabled_modules || []}
               defaultPanelTabs={template.default_panel_tabs}
+            />
+          </TabsContent>
+
+          <TabsContent value="plan" className="mt-4">
+            <TemplatePlanSection
+              workspaceId={workspaceId}
+              templateId={templateId}
+              enabledModules={template.enabled_modules || []}
             />
           </TabsContent>
         </Tabs>

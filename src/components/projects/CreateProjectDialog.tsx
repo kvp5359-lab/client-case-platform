@@ -282,6 +282,70 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
         }
       }
 
+      // Разворачивание «рыбы» плана из шаблона (модуль «План», Фаза 3).
+      // Делаем ПОСЛЕ создания тредов, чтобы резолвить thread_template_id →
+      // созданный тред по source_template_id. Текст копируется, задачи
+      // привязываются. Слоты в шаблоне пока не поддерживаются. Любая ошибка
+      // здесь некритична — проект уже создан.
+      if (activeTemplateId) {
+        try {
+          const { data: tmplBlocks } = await supabase
+            .from('project_template_plan_blocks')
+            .select('*')
+            .eq('project_template_id', activeTemplateId)
+            .order('sort_order', { ascending: true })
+          if (tmplBlocks && tmplBlocks.length > 0) {
+            const { data: createdThreads } = await supabase
+              .from('project_threads')
+              .select('id, source_template_id')
+              .eq('project_id', project.id)
+            const threadByTemplate = new Map<string, string>()
+            for (const t of createdThreads ?? []) {
+              if (t.source_template_id) threadByTemplate.set(t.source_template_id, t.id)
+            }
+            const planRows = tmplBlocks
+              .filter((b) => b.block_type !== 'slot')
+              .map((b, index) => {
+                if (b.block_type === 'task') {
+                  const threadId = b.thread_template_id
+                    ? threadByTemplate.get(b.thread_template_id)
+                    : null
+                  if (!threadId) return null
+                  return {
+                    workspace_id: currentWorkspaceId,
+                    project_id: project.id,
+                    block_type: 'task',
+                    sort_order: index,
+                    visible_to_client: b.visible_to_client,
+                    thread_id: threadId,
+                  }
+                }
+                return {
+                  workspace_id: currentWorkspaceId,
+                  project_id: project.id,
+                  block_type: 'text',
+                  sort_order: index,
+                  visible_to_client: b.visible_to_client,
+                  content: b.content,
+                }
+              })
+              .filter((r): r is NonNullable<typeof r> => r !== null)
+            if (planRows.length > 0) {
+              const { error: planErr } = await supabase
+                .from('project_plan_blocks')
+                .insert(planRows)
+              if (planErr) logger.warn(`Не удалось развернуть план: ${planErr.message}`)
+            }
+          }
+        } catch (planSeedErr) {
+          logger.warn(
+            `Ошибка разворачивания плана: ${
+              planSeedErr instanceof Error ? planSeedErr.message : String(planSeedErr)
+            }`,
+          )
+        }
+      }
+
       onSuccess({ id: project.id })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Произошла ошибка')
