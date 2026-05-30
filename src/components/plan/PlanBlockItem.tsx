@@ -17,6 +17,7 @@ import { GripVertical, Trash2, CheckSquare, FolderOpen, AlertTriangle } from 'lu
 import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { TiptapEditor } from '@/components/tiptap-editor/tiptap-editor'
+import { PLAN_TEXT_CLASS } from './planTextClass'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
@@ -47,7 +48,7 @@ export type PlanBlockDisplay = {
 
 type Props = {
   display: PlanBlockDisplay
-  editing: boolean
+  editable: boolean
   onChangeText: (html: string) => void
   onToggleVisible: (next: boolean) => void
   onDelete: () => void
@@ -57,7 +58,7 @@ type Props = {
 
 export function PlanBlockItem({
   display,
-  editing,
+  editable,
   onChangeText,
   onToggleVisible,
   onDelete,
@@ -66,10 +67,10 @@ export function PlanBlockItem({
 }: Props) {
   return (
     <div className="group flex items-start gap-2 rounded-md border border-transparent px-2 py-1.5 hover:border-border">
-      {editing && (
+      {editable && (
         <button
           type="button"
-          className="mt-1 cursor-grab text-muted-foreground/50 hover:text-muted-foreground"
+          className="mt-1 cursor-grab text-muted-foreground/40 opacity-0 transition-opacity hover:text-muted-foreground group-hover:opacity-100"
           {...dragHandleProps}
           aria-label="Перетащить"
         >
@@ -79,21 +80,26 @@ export function PlanBlockItem({
 
       <div className="min-w-0 flex-1">
         {display.block_type === 'text' && (
-          <TextBlockBody content={display.content} editing={editing} onChangeText={onChangeText} />
+          <TextBlockBody content={display.content} editing={editable} onChangeText={onChangeText} />
         )}
 
-        {display.block_type === 'task' && (
-          <TaskBlockBody display={display} />
-        )}
+        {display.block_type === 'task' && <TaskBlockBody display={display} />}
 
         {display.block_type === 'slot' && (
-          <SlotBlockBody display={display} editing={editing} onChangeSlotDeadline={onChangeSlotDeadline} />
+          <SlotBlockBody
+            display={display}
+            editing={editable}
+            onChangeSlotDeadline={onChangeSlotDeadline}
+          />
         )}
       </div>
 
-      {editing && (
-        <div className="flex items-center gap-2 pt-0.5">
-          <label className="flex items-center gap-1 text-xs text-muted-foreground" title="Виден клиенту">
+      {editable && (
+        <div className="flex items-center gap-2 pt-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+          <label
+            className="flex items-center gap-1 text-xs text-muted-foreground"
+            title="Виден клиенту"
+          >
             <Switch checked={display.visible_to_client} onCheckedChange={onToggleVisible} />
             Клиенту
           </label>
@@ -184,7 +190,7 @@ function TextBlockBody({
           </p>
         ) : (
           <div
-            className="prose prose-sm max-w-none dark:prose-invert"
+            className={PLAN_TEXT_CLASS}
             // Контент создаётся сотрудником через Tiptap внутри ЛК.
             dangerouslySetInnerHTML={{ __html: content }}
           />
@@ -209,6 +215,7 @@ function TextBlockBody({
         content={html}
         onChange={setHtml}
         minHeight="80px"
+        editorClassName="text-sm"
         placeholder="Текст плана — пояснение, раздел, стратегия…"
       />
     </div>

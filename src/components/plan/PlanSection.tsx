@@ -30,15 +30,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import {
-  ListChecks,
-  ChevronDown,
-  Type as TypeIcon,
-  CheckSquare,
-  FolderOpen,
-  Pencil,
-  Check,
-} from 'lucide-react'
+import { ListChecks, ChevronDown, Type as TypeIcon, CheckSquare, FolderOpen } from 'lucide-react'
 import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -82,7 +74,6 @@ export function PlanSection({ projectId, workspaceId }: Props) {
   const canEdit = userProjectRoles.length === 0 || userProjectRoles.some(isStaffRole)
 
   const [open, setOpen] = useState(true)
-  const [editing, setEditing] = useState(false)
   const [picker, setPicker] = useState<null | 'task' | 'slot'>(null)
 
   // ── Карты для обогащения блоков живыми данными ──────────
@@ -234,19 +225,6 @@ export function PlanSection({ projectId, workspaceId }: Props) {
             </span>
           )}
         </CollapsibleTrigger>
-
-        {canEdit && (
-          <Button
-            type="button"
-            variant={editing ? 'default' : 'ghost'}
-            size="sm"
-            className="h-7 gap-1.5 text-xs"
-            onClick={() => setEditing((v) => !v)}
-          >
-            {editing ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
-            {editing ? 'Готово' : 'Редактировать'}
-          </Button>
-        )}
       </div>
 
       <CollapsibleContent className="px-2 pb-2">
@@ -254,7 +232,7 @@ export function PlanSection({ projectId, workspaceId }: Props) {
           <p className="px-2 py-4 text-sm text-muted-foreground">Загрузка плана…</p>
         ) : !hasBlocks ? (
           <p className="px-2 py-4 text-sm text-muted-foreground">
-            {editing
+            {canEdit
               ? 'План пуст. Добавьте текст, задачу или документ ниже.'
               : 'План пока пуст.'}
           </p>
@@ -269,7 +247,7 @@ export function PlanSection({ projectId, workspaceId }: Props) {
                   <SortableBlock
                     key={display.id}
                     display={display}
-                    editing={editing}
+                    editable={canEdit}
                     onChangeText={(html) => updateBlock(display.id, { content: html })}
                     onToggleVisible={(next) => updateBlock(display.id, { visible_to_client: next })}
                     onDelete={() => deleteBlock(display.id)}
@@ -286,7 +264,7 @@ export function PlanSection({ projectId, workspaceId }: Props) {
           </DndContext>
         )}
 
-        {editing && (
+        {canEdit && (
           <div className="mt-2 flex flex-wrap items-center gap-2 border-t px-2 pt-2">
             <span className="text-xs text-muted-foreground">Добавить:</span>
             <Button
@@ -363,14 +341,14 @@ export function PlanSection({ projectId, workspaceId }: Props) {
 
 function SortableBlock({
   display,
-  editing,
+  editable,
   onChangeText,
   onToggleVisible,
   onDelete,
   onChangeSlotDeadline,
 }: {
   display: PlanBlockDisplay
-  editing: boolean
+  editable: boolean
   onChangeText: (html: string) => void
   onToggleVisible: (next: boolean) => void
   onDelete: () => void
@@ -378,7 +356,7 @@ function SortableBlock({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: display.id,
-    disabled: !editing,
+    disabled: !editable,
   })
 
   return (
@@ -389,7 +367,7 @@ function SortableBlock({
     >
       <PlanBlockItem
         display={display}
-        editing={editing}
+        editable={editable}
         onChangeText={onChangeText}
         onToggleVisible={onToggleVisible}
         onDelete={onDelete}

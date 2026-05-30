@@ -42,6 +42,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useTemplatePlan } from '@/hooks/plan/useTemplatePlan'
 import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
+import { PLAN_TEXT_CLASS } from './planTextClass'
 import type { TemplatePlanBlockRow } from '@/types/plan'
 
 type Props = {
@@ -356,10 +357,7 @@ function TemplateTextBlock({
         {isEmpty ? (
           <p className="text-sm italic text-muted-foreground">Нажмите, чтобы добавить текст</p>
         ) : (
-          <div
-            className="prose prose-sm max-w-none dark:prose-invert"
-            dangerouslySetInnerHTML={{ __html: content }}
-          />
+          <div className={PLAN_TEXT_CLASS} dangerouslySetInnerHTML={{ __html: content }} />
         )}
       </div>
     )
@@ -379,6 +377,7 @@ function TemplateTextBlock({
         content={html}
         onChange={setHtml}
         minHeight="80px"
+        editorClassName="text-sm"
         placeholder="Текст плана — пояснение, раздел, стратегия…"
       />
     </div>
