@@ -13,6 +13,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { formKitKeys } from '@/hooks/queryKeys'
+import type { RiskLevel } from '@/components/forms/riskLevels'
+
+type FieldValueCacheRow = {
+  field_definition_id: string
+  composite_field_id: string | null
+  value: string | null
+  risk_level?: string | null
+}
 
 type UseFormKitSaveParams = {
   formKitId: string
@@ -127,12 +135,7 @@ export function useFormKitSave({ formKitId }: UseFormKitSaveParams) {
       const value = data.serverValue
       const { fieldDefinitionId, compositeFieldId } = parseFieldKey(fieldId)
 
-      type FieldValueRow = {
-        field_definition_id: string
-        composite_field_id: string | null
-        value: string | null
-      }
-      queryClient.setQueryData<FieldValueRow[]>(formKitKeys.fieldValues(formKitId), (old) => {
+      queryClient.setQueryData<FieldValueCacheRow[]>(formKitKeys.fieldValues(formKitId), (old) => {
         if (!old) return old
         const idx = old.findIndex(
           (fv) =>
@@ -168,6 +171,88 @@ export function useFormKitSave({ formKitId }: UseFormKitSaveParams) {
       })
     },
   })
+
+  // Мутация для сохранения риск-оценки поля (🟢🟡🔴 или снятие).
+  // Только поля верхнего уровня (composite_field_id IS NULL).
+  // Строка создаётся даже если поле ещё не заполнено клиентом (value = null).
+  const riskMutation = useMutation({
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
+    mutationFn: async ({
+      fieldDefinitionId,
+      riskLevel,
+    }: {
+      fieldDefinitionId: string
+      riskLevel: RiskLevel | null
+    }) => {
+      const { data: updated, error: updateError } = await supabase
+        .from('form_kit_field_values')
+        .update({ risk_level: riskLevel, updated_at: new Date().toISOString() })
+        .eq('form_kit_id', formKitId)
+        .eq('field_definition_id', fieldDefinitionId)
+        .is('composite_field_id', null)
+        .select('id')
+      if (updateError) throw updateError
+
+      if (updated && updated.length > 0) return { riskLevel }
+
+      // Записи ещё нет (поле не заполнено) — вставляем со значением null.
+      const { error: insertError } = await supabase.from('form_kit_field_values').insert({
+        form_kit_id: formKitId,
+        field_definition_id: fieldDefinitionId,
+        composite_field_id: null,
+        value: null,
+        risk_level: riskLevel,
+      })
+
+      if (insertError) {
+        // Race condition: между update и insert кто-то вставил запись — повторяем update.
+        if (insertError.code === '23505') {
+          const { error: retryError } = await supabase
+            .from('form_kit_field_values')
+            .update({ risk_level: riskLevel, updated_at: new Date().toISOString() })
+            .eq('form_kit_id', formKitId)
+            .eq('field_definition_id', fieldDefinitionId)
+            .is('composite_field_id', null)
+          if (retryError) throw retryError
+          return { riskLevel }
+        }
+        throw insertError
+      }
+
+      return { riskLevel }
+    },
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData<FieldValueCacheRow[]>(formKitKeys.fieldValues(formKitId), (old) => {
+        if (!old) return old
+        const idx = old.findIndex(
+          (fv) => fv.field_definition_id === variables.fieldDefinitionId && fv.composite_field_id === null,
+        )
+        if (idx >= 0) {
+          const updated = [...old]
+          updated[idx] = { ...updated[idx], risk_level: data.riskLevel }
+          return updated
+        }
+        return [
+          ...old,
+          {
+            field_definition_id: variables.fieldDefinitionId,
+            composite_field_id: null,
+            value: null,
+            risk_level: data.riskLevel,
+          },
+        ]
+      })
+    },
+    onError: (error: Error) => {
+      queryClient.invalidateQueries({ queryKey: formKitKeys.fieldValues(formKitId) })
+      toast.error('Ошибка сохранения риск-оценки', { description: error.message })
+    },
+  })
+
+  const saveRiskLevel = (fieldDefinitionId: string, riskLevel: RiskLevel | null) => {
+    riskMutation.mutate({ fieldDefinitionId, riskLevel })
+  }
 
   // Дедупликация — не отправляем повторный запрос если значение не изменилось
   const lastSavedValuesRef = useRef<Map<string, string>>(new Map())
@@ -205,6 +290,7 @@ export function useFormKitSave({ formKitId }: UseFormKitSaveParams) {
   return {
     saveField,
     saveFieldAsync,
+    saveRiskLevel,
     isSaving: saveMutation.isPending,
     saveError,
     lastSaved,

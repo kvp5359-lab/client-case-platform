@@ -184,6 +184,7 @@ export function useFormFields(templateId: string | undefined) {
     mutationFn: async ({
       fieldId,
       isRequired,
+      riskAssessment,
       sectionId,
       description,
       options,
@@ -191,6 +192,7 @@ export function useFormFields(templateId: string | undefined) {
     }: {
       fieldId: string
       isRequired: boolean
+      riskAssessment?: boolean
       sectionId: string | null
       description?: string | null
       options?: Record<string, unknown>
@@ -199,6 +201,10 @@ export function useFormFields(templateId: string | undefined) {
       const updateData: Record<string, unknown> = {
         is_required: isRequired,
         form_template_section_id: sectionId,
+      }
+
+      if (riskAssessment !== undefined) {
+        updateData.risk_assessment_enabled = riskAssessment
       }
 
       if (description !== undefined) {
@@ -215,6 +221,38 @@ export function useFormFields(templateId: string | undefined) {
         .eq('id', fieldId)
 
       if (error) throw error
+
+      // Каскад флага риск-оценки в уже созданные анкеты этого шаблона.
+      // Best-effort: ошибка каскада не валит основной update.
+      if (riskAssessment !== undefined && templateId) {
+        try {
+          const { data: templateField } = await supabase
+            .from('form_template_fields')
+            .select('field_definition_id')
+            .eq('id', fieldId)
+            .single()
+
+          if (templateField) {
+            const { data: formKits } = await supabase
+              .from('form_kits')
+              .select('id')
+              .eq('template_id', templateId)
+
+            if (formKits && formKits.length > 0) {
+              await supabase
+                .from('form_kit_fields')
+                .update({ risk_assessment_enabled: riskAssessment })
+                .in(
+                  'form_kit_id',
+                  formKits.map((fk) => fk.id),
+                )
+                .eq('field_definition_id', templateField.field_definition_id)
+            }
+          }
+        } catch (cascadeErr) {
+          logger.error('Ошибка каскадного обновления risk_assessment_enabled в анкетах:', cascadeErr)
+        }
+      }
 
       // Обновление названия разделителя в field_definitions
       if (dividerName !== undefined) {

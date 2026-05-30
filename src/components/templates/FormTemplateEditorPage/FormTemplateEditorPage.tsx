@@ -186,6 +186,7 @@ function FormTemplateEditorContent() {
     updateField({
       fieldId: state.editingField.id,
       isRequired: state.editFieldIsRequired,
+      riskAssessment: state.editFieldRiskAssessment,
       sectionId: state.editFieldSectionId === 'no-section' ? null : state.editFieldSectionId,
       description: state.editFieldDescription.trim() || null,
       options,
@@ -326,6 +327,7 @@ function FormTemplateEditorContent() {
         state={{
           sectionId: state.editFieldSectionId,
           isRequired: state.editFieldIsRequired,
+          riskAssessment: state.editFieldRiskAssessment,
           description: state.editFieldDescription,
           defaultRows: state.editFieldDefaultRows,
           headerColor: state.editFieldHeaderColor,
@@ -337,6 +339,8 @@ function FormTemplateEditorContent() {
             dispatch({ type: 'SET_EDIT_FIELD_SECTION_ID', payload: value }),
           onIsRequiredChange: (value) =>
             dispatch({ type: 'SET_EDIT_FIELD_IS_REQUIRED', payload: value }),
+          onRiskAssessmentChange: (value) =>
+            dispatch({ type: 'SET_EDIT_FIELD_RISK_ASSESSMENT', payload: value }),
           onDescriptionChange: (value) =>
             dispatch({ type: 'SET_EDIT_FIELD_DESCRIPTION', payload: value }),
           onDividerNameChange: (value) =>

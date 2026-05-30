@@ -14,6 +14,7 @@ import { SimpleInput } from './SimpleInput'
 import { KeyValueTableField } from './KeyValueTableField'
 import type { FormField, FormData, CompositeFieldItem, FieldDefinitionSelectOption } from './types'
 import type { FieldOptions } from '@/types/formKit'
+import type { RiskLevel } from './riskLevels'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 
 // Единый стиль заголовков подгрупп (composite, divider, key-value-table)
@@ -39,6 +40,10 @@ export type FieldsGridProps = {
   updateField: (fieldId: string, value: string) => void
   saveField: (fieldId: string) => void
   saveFieldWithValue: (fieldId: string, value: string) => void
+  /** Риск-оценки по field_definition_id (только сотруднику). */
+  riskLevels?: Record<string, RiskLevel>
+  saveRiskLevel?: (fieldDefinitionId: string, level: RiskLevel | null) => void
+  canSetRisk?: boolean
 }
 
 export const FieldsGrid = memo(function FieldsGrid({
@@ -50,6 +55,9 @@ export const FieldsGrid = memo(function FieldsGrid({
   updateField,
   saveField,
   saveFieldWithValue,
+  riskLevels,
+  saveRiskLevel,
+  canSetRisk,
 }: FieldsGridProps) {
   const filteredFields = fields
 
@@ -196,6 +204,14 @@ export const FieldsGrid = memo(function FieldsGrid({
       const value = formData[fieldKey] || ''
       const isTextarea = field.field_type === 'textarea'
 
+      // Сброс риск-оценки при очистке значения (крестик у обычных полей либо
+      // выбор «Не выбрано» у select) — только сотрудник и только если оценка была.
+      const clearRiskOnEmpty = (v: string) => {
+        if (!v && canSetRisk && field.risk_assessment_enabled && riskLevels?.[fieldKey]) {
+          saveRiskLevel?.(fieldKey, null)
+        }
+      }
+
       fieldElements.push({
         type: isTextarea ? 'textarea' : 'other',
         field,
@@ -208,11 +224,19 @@ export const FieldsGrid = memo(function FieldsGrid({
             isFilled={isFilled(value)}
             multiline={isTextarea}
             labelInset={field.field_type === 'date' ? 24 : undefined}
+            hasRightAdornment={field.field_type === 'select'}
+            riskEnabled={field.risk_assessment_enabled}
+            riskLevel={riskLevels?.[fieldKey] ?? null}
+            canSetRisk={canSetRisk}
+            onRiskChange={
+              saveRiskLevel ? (level) => saveRiskLevel(fieldKey, level) : undefined
+            }
             onClear={
               field.field_type !== 'select'
                 ? () => {
                     updateField(fieldKey, '')
                     saveFieldWithValue(fieldKey, '')
+                    clearRiskOnEmpty('')
                   }
                 : undefined
             }
@@ -224,7 +248,10 @@ export const FieldsGrid = memo(function FieldsGrid({
                 disabled={disabled}
                 onChange={(v) => updateField(fieldKey, v)}
                 onBlur={() => saveField(fieldKey)}
-                onSaveWithValue={(v) => saveFieldWithValue(fieldKey, v)}
+                onSaveWithValue={(v) => {
+                  saveFieldWithValue(fieldKey, v)
+                  clearRiskOnEmpty(v)
+                }}
                 selectOptions={selectOptionsMap[fieldKey] || []}
               />
             )}

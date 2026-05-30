@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      _backup_project_telegram_chats_20260528: {
+        Row: {
+          bot_version: string | null
+          channel: string | null
+          created_at: string | null
+          id: string | null
+          integration_id: string | null
+          is_active: boolean | null
+          project_id: string | null
+          telegram_chat_id: number | null
+          telegram_chat_title: string | null
+          thread_id: string | null
+          updated_at: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          bot_version?: string | null
+          channel?: string | null
+          created_at?: string | null
+          id?: string | null
+          integration_id?: string | null
+          is_active?: boolean | null
+          project_id?: string | null
+          telegram_chat_id?: number | null
+          telegram_chat_title?: string | null
+          thread_id?: string | null
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          bot_version?: string | null
+          channel?: string | null
+          created_at?: string | null
+          id?: string | null
+          integration_id?: string | null
+          is_active?: boolean | null
+          project_id?: string | null
+          telegram_chat_id?: number | null
+          telegram_chat_title?: string | null
+          thread_id?: string | null
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -2886,6 +2931,7 @@ export type Database = {
           field_definition_id: string
           form_kit_id: string
           id: string
+          risk_level: string | null
           updated_at: string
           value: string | null
         }
@@ -2895,6 +2941,7 @@ export type Database = {
           field_definition_id: string
           form_kit_id: string
           id?: string
+          risk_level?: string | null
           updated_at?: string
           value?: string | null
         }
@@ -2904,6 +2951,7 @@ export type Database = {
           field_definition_id?: string
           form_kit_id?: string
           id?: string
+          risk_level?: string | null
           updated_at?: string
           value?: string | null
         }
@@ -2945,6 +2993,7 @@ export type Database = {
           name: string
           options: Json | null
           placeholder: string | null
+          risk_assessment_enabled: boolean
           sort_order: number
           updated_at: string | null
           validation: Json | null
@@ -2962,6 +3011,7 @@ export type Database = {
           name: string
           options?: Json | null
           placeholder?: string | null
+          risk_assessment_enabled?: boolean
           sort_order?: number
           updated_at?: string | null
           validation?: Json | null
@@ -2979,6 +3029,7 @@ export type Database = {
           name?: string
           options?: Json | null
           placeholder?: string | null
+          risk_assessment_enabled?: boolean
           sort_order?: number
           updated_at?: string | null
           validation?: Json | null
@@ -3132,6 +3183,7 @@ export type Database = {
           id: string
           is_required: boolean | null
           options: Json | null
+          risk_assessment_enabled: boolean
           sort_order: number
         }
         Insert: {
@@ -3143,6 +3195,7 @@ export type Database = {
           id?: string
           is_required?: boolean | null
           options?: Json | null
+          risk_assessment_enabled?: boolean
           sort_order?: number
         }
         Update: {
@@ -3154,6 +3207,7 @@ export type Database = {
           id?: string
           is_required?: boolean | null
           options?: Json | null
+          risk_assessment_enabled?: boolean
           sort_order?: number
         }
         Relationships: [
@@ -4925,6 +4979,8 @@ export type Database = {
       }
       project_messages: {
         Row: {
+          attachment_error: Json | null
+          attachment_status: string | null
           channel: string
           content: string
           created_at: string
@@ -4975,6 +5031,8 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          attachment_error?: Json | null
+          attachment_status?: string | null
           channel?: string
           content: string
           created_at?: string
@@ -5025,6 +5083,8 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          attachment_error?: Json | null
+          attachment_status?: string | null
           channel?: string
           content?: string
           created_at?: string
@@ -5912,6 +5972,7 @@ export type Database = {
           end_at: string | null
           icon: string
           id: string
+          inbox_sort_at: string | null
           is_default: boolean
           is_deleted: boolean
           is_pinned: boolean
@@ -5956,6 +6017,7 @@ export type Database = {
           end_at?: string | null
           icon?: string
           id?: string
+          inbox_sort_at?: string | null
           is_default?: boolean
           is_deleted?: boolean
           is_pinned?: boolean
@@ -6000,6 +6062,7 @@ export type Database = {
           end_at?: string | null
           icon?: string
           id?: string
+          inbox_sort_at?: string | null
           is_default?: boolean
           is_deleted?: boolean
           is_pinned?: boolean
@@ -8321,6 +8384,68 @@ export type Database = {
       get_history_unread_count: {
         Args: { p_project_id: string }
         Returns: number
+      }
+      get_inbox_thread_aggregates: {
+        Args: { p_user_id: string; p_workspace_id: string }
+        Returns: {
+          has_unread_reaction: boolean
+          last_message_at: string
+          last_reaction_emoji: string
+          legacy_channel: string
+          manually_unread: boolean
+          project_id: string
+          thread_accent_color: string
+          thread_id: string
+          unread_count: number
+          unread_event_count: number
+          unread_reaction_count: number
+        }[]
+      }
+      get_inbox_threads_page: {
+        Args: {
+          p_cursor_sort_at?: string
+          p_cursor_thread_id?: string
+          p_limit?: number
+          p_user_id: string
+          p_workspace_id: string
+        }
+        Returns: {
+          channel_type: string
+          counterpart_avatar_url: string
+          counterpart_name: string
+          email_contact: string
+          email_subject: string
+          has_unread_reaction: boolean
+          last_event_at: string
+          last_event_status_color: string
+          last_event_text: string
+          last_message_at: string
+          last_message_attachment_count: number
+          last_message_attachment_mime: string
+          last_message_attachment_name: string
+          last_message_text: string
+          last_reaction_at: string
+          last_reaction_emoji: string
+          last_reaction_message_preview: string
+          last_reaction_sender_avatar_url: string
+          last_reaction_sender_name: string
+          last_read_at: string
+          last_sender_avatar_url: string
+          last_sender_name: string
+          legacy_channel: string
+          manually_unread: boolean
+          project_id: string
+          project_name: string
+          sort_at: string
+          thread_accent_color: string
+          thread_icon: string
+          thread_id: string
+          thread_name: string
+          thread_type: string
+          unread_count: number
+          unread_event_count: number
+          unread_reaction_count: number
+        }[]
       }
       get_inbox_threads_v2: {
         Args: { p_user_id: string; p_workspace_id: string }

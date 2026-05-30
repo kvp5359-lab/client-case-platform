@@ -20,6 +20,7 @@ export type Status = Database['public']['Tables']['statuses']['Row']
  */
 export type FormField = {
   is_required: boolean
+  risk_assessment_enabled?: boolean // поле поддерживает риск-оценку (🟢🟡🔴)
   sort_order: number
   section_id: string | null
   field_definition_id: string // ID определения поля

@@ -13,6 +13,8 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { HelpCircle, X } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { RISK_COLORS, type RiskLevel } from './riskLevels'
+import { RiskLevelPopover } from './RiskLevelPopover'
 
 type FloatingFieldProps = {
   label: string
@@ -26,6 +28,15 @@ type FloatingFieldProps = {
   labelInset?: number
   className?: string
   onClear?: () => void
+  /** У поля есть своя иконка справа (напр. стрелка select) — маркер риска сдвигается левее. */
+  hasRightAdornment?: boolean
+  /** Поле поддерживает риск-оценку (из шаблона). */
+  riskEnabled?: boolean
+  /** Текущая оценка риска (null = не проставлена). */
+  riskLevel?: RiskLevel | null
+  /** Может ли текущий пользователь ставить оценку (сотрудник). От клиента контрол скрыт. */
+  canSetRisk?: boolean
+  onRiskChange?: (value: RiskLevel | null) => void
   children: (props: {
     isFocused: boolean
     onFocus: () => void
@@ -43,6 +54,11 @@ export function FloatingField({
   labelInset,
   className,
   onClear,
+  hasRightAdornment,
+  riskEnabled,
+  riskLevel,
+  canSetRisk,
+  onRiskChange,
   children,
 }: FloatingFieldProps) {
   const [isFocused, setIsFocused] = useState(false)
@@ -87,29 +103,65 @@ export function FloatingField({
     [isFocused, handleFocus, handleBlur],
   )
   const showClear = isFilled && isHovered && onClear
+  const showRisk = !!(riskEnabled && canSetRisk && onRiskChange)
+
+  // Цвет контура заполненного поля: при проставленной риск-оценке — в цвет индикатора,
+  // иначе чёрный (тема foreground). Незаполненное поле — серый border-border.
+  const filledBorderColor = riskLevel ? RISK_COLORS[riskLevel] : 'hsl(var(--foreground))'
+  // Цвет толстой левой полосы риска (border-l-4 как у баблов):
+  // оценка проставлена → цвет оценки; иначе — в тон основного контура (намёк только толщиной).
+  const riskBarColor = riskLevel
+    ? RISK_COLORS[riskLevel]
+    : isFilled
+      ? filledBorderColor // заполнено — чёрный, как остальной контур
+      : undefined // пусто — оставляем border-border (серый) из className
+
+  // Раздельные border*Color (не shorthand borderColor) — иначе конфликт с borderLeftColor.
+  const fieldStyle: React.CSSProperties = {}
+  if (isFilled) {
+    fieldStyle.borderTopColor = filledBorderColor
+    fieldStyle.borderRightColor = filledBorderColor
+    fieldStyle.borderBottomColor = filledBorderColor
+  }
+  if (showRisk) {
+    fieldStyle.borderLeftWidth = 4
+    if (riskBarColor) fieldStyle.borderLeftColor = riskBarColor
+  } else if (isFilled) {
+    fieldStyle.borderLeftColor = filledBorderColor
+  }
 
   return (
     <div
       ref={containerRef}
-      className={cn('relative', className)}
+      className={cn('relative', showRisk && 'group', className)}
       onFocus={handleFocus}
       onBlur={handleBlur}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Маркер риск-оценки — справа, слева от крестика. Сама полоса риска = левая граница поля. */}
+      {showRisk && (
+        <RiskLevelPopover
+          value={riskLevel ?? null}
+          onChange={(v) => onRiskChange?.(v)}
+          className={cn(
+            'absolute z-20 h-5 w-5',
+            multiline ? 'top-2' : 'top-1/2 -translate-y-1/2',
+            // слева от крестика очистки; у select — левее его стрелки; иначе у правого края
+            showClear ? 'right-7' : hasRightAdornment ? 'right-8' : 'right-2',
+          )}
+        />
+      )}
       {/* Контейнер поля */}
       <div
         className={cn(
-          'w-full rounded-lg bg-transparent px-[14px] pt-2.5 pb-2 text-sm transition-all duration-200',
+          'w-full rounded-2xl bg-transparent px-[14px] pt-2.5 pb-2 text-sm transition-all duration-200',
           multiline ? 'min-h-10' : 'h-10',
-          isFocused
-            ? isFilled
-              ? 'border-2 border-green-500 shadow-[0_4px_16px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)]'
-              : 'border-2 border-border shadow-[0_4px_16px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)]'
-            : isFilled
-              ? 'border border-green-500'
-              : 'border border-border',
+          isFocused ? 'border-2' : 'border',
+          isFocused && 'shadow-[0_4px_16px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)]',
+          !isFilled && 'border-border',
         )}
+        style={fieldStyle}
       >
         {/* eslint-disable-next-line react-hooks/refs -- handleBlur reads blurTimeoutRef but is never called during render */}
         {children(childrenProps)}
@@ -143,15 +195,12 @@ export function FloatingField({
             : multiline
               ? 'top-2.5 text-sm'
               : 'top-1/2 -translate-y-1/2 text-sm',
-          isFilled ? 'text-green-600' : 'text-gray-400',
+          !isFilled && 'text-gray-400',
         )}
-        style={
-          !isFloating && labelInset
-            ? { left: 9 + labelInset }
-            : !isFloating
-              ? { left: 9 }
-              : undefined
-        }
+        style={{
+          ...(!isFloating ? { left: 9 + (labelInset ?? 0) } : {}),
+          ...(isFilled ? { color: filledBorderColor } : {}),
+        }}
       >
         <span className="truncate">{label}</span>
         {isRequired && <span className="text-destructive shrink-0">*</span>}

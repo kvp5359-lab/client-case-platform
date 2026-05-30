@@ -41,6 +41,7 @@ const HEADER_COLOR_PRESETS = [
 export type EditFieldState = {
   sectionId: string
   isRequired: boolean
+  riskAssessment: boolean
   description: string
   defaultRows: string[][]
   headerColor: string
@@ -51,6 +52,7 @@ export type EditFieldState = {
 export type EditFieldHandlers = {
   onSectionIdChange: (value: string) => void
   onIsRequiredChange: (value: boolean) => void
+  onRiskAssessmentChange: (value: boolean) => void
   onDescriptionChange: (value: string) => void
   onDividerNameChange: (value: string) => void
   onDefaultRowsChange: (rows: string[][]) => void
@@ -59,6 +61,10 @@ export type EditFieldHandlers = {
   onSave: () => void
   onClose: () => void
 }
+
+// Типы полей, для которых риск-оценка показывается в анкете (рендерятся через FloatingField).
+// Таблицы, разделители и составные поля — вне scope.
+const RISK_UNSUPPORTED_FIELD_TYPES = ['divider', 'key-value-table', 'composite']
 
 type EditFieldDialogProps = {
   field: FormFieldWithDefinition | null
@@ -75,11 +81,20 @@ export function EditFieldDialog({
   state,
   handlers,
 }: EditFieldDialogProps) {
-  const { sectionId, isRequired, description, defaultRows, headerColor, activeTab, dividerName } =
-    state
+  const {
+    sectionId,
+    isRequired,
+    riskAssessment,
+    description,
+    defaultRows,
+    headerColor,
+    activeTab,
+    dividerName,
+  } = state
   const {
     onSectionIdChange,
     onIsRequiredChange,
+    onRiskAssessmentChange,
     onDescriptionChange,
     onDividerNameChange,
     onDefaultRowsChange,
@@ -89,6 +104,10 @@ export function EditFieldDialog({
     onClose,
   } = handlers
   if (!field) return null
+
+  const supportsRiskAssessment = !RISK_UNSUPPORTED_FIELD_TYPES.includes(
+    field.field_definition.field_type,
+  )
 
   const isKeyValueTable = field.field_definition.field_type === 'key-value-table'
   const columns = fromSupabaseJson<FieldOptions | null>(field.field_definition.options)
@@ -182,6 +201,25 @@ export function EditFieldDialog({
           <Label htmlFor="edit-required" className="cursor-pointer">
             Обязательное поле
           </Label>
+        </div>
+      )}
+
+      {/* Чекбокс риск-оценки — сотрудник сможет помечать ответ 🟢🟡🔴 */}
+      {supportsRiskAssessment && (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="edit-risk-assessment"
+              checked={riskAssessment}
+              onCheckedChange={(checked) => onRiskAssessmentChange(checked as boolean)}
+            />
+            <Label htmlFor="edit-risk-assessment" className="cursor-pointer">
+              Риск-оценка
+            </Label>
+          </div>
+          <p className="text-xs text-muted-foreground pl-6">
+            Сотрудник сможет помечать ответ индикатором риска (🟢 / 🟡 / 🔴). Клиенту метка не видна.
+          </p>
         </div>
       )}
 

@@ -25,6 +25,7 @@ type FormTemplateState = {
   editingField: FormFieldWithDefinition | null
   editFieldSectionId: string
   editFieldIsRequired: boolean
+  editFieldRiskAssessment: boolean
   editFieldDescription: string
   editFieldDefaultRows: string[][]
   editFieldHeaderColor: string
@@ -70,6 +71,7 @@ type FormTemplateAction =
   | { type: 'CLOSE_EDIT_FIELD_DIALOG' }
   | { type: 'SET_EDIT_FIELD_SECTION_ID'; payload: string }
   | { type: 'SET_EDIT_FIELD_IS_REQUIRED'; payload: boolean }
+  | { type: 'SET_EDIT_FIELD_RISK_ASSESSMENT'; payload: boolean }
   | { type: 'SET_EDIT_FIELD_DESCRIPTION'; payload: string }
   | { type: 'SET_EDIT_FIELD_DEFAULT_ROWS'; payload: string[][] }
   | { type: 'SET_EDIT_FIELD_HEADER_COLOR'; payload: string }
@@ -101,6 +103,7 @@ const initialState: FormTemplateState = {
   editingField: null,
   editFieldSectionId: '',
   editFieldIsRequired: false,
+  editFieldRiskAssessment: false,
   editFieldDescription: '',
   editFieldDefaultRows: [],
   editFieldHeaderColor: '',
@@ -172,6 +175,7 @@ function formTemplateReducer(
         editingField: field,
         editFieldSectionId: field.form_template_section_id || 'no-section',
         editFieldIsRequired: field.is_required || false,
+        editFieldRiskAssessment: field.risk_assessment_enabled || false,
         editFieldDescription: field.description || '',
         editFieldDefaultRows: isKeyValueTable ? fieldOptions?.defaultRows || [] : [],
         editFieldHeaderColor: isKeyValueTable ? fieldOptions?.headerColor || '' : '',
@@ -186,6 +190,7 @@ function formTemplateReducer(
         editingField: null,
         editFieldSectionId: '',
         editFieldIsRequired: false,
+        editFieldRiskAssessment: false,
         editFieldDescription: '',
         editFieldDefaultRows: [],
         editFieldHeaderColor: '',
@@ -196,6 +201,8 @@ function formTemplateReducer(
       return { ...state, editFieldSectionId: action.payload }
     case 'SET_EDIT_FIELD_IS_REQUIRED':
       return { ...state, editFieldIsRequired: action.payload }
+    case 'SET_EDIT_FIELD_RISK_ASSESSMENT':
+      return { ...state, editFieldRiskAssessment: action.payload }
     case 'SET_EDIT_FIELD_DESCRIPTION':
       return { ...state, editFieldDescription: action.payload }
     case 'SET_EDIT_FIELD_DEFAULT_ROWS':

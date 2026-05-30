@@ -21,7 +21,7 @@ import { useFormKitFilter } from '@/hooks/forms/useFormKitFilter'
 import { computeSectionProgress } from './sectionProgress'
 import { hexWithAlpha } from './sectionColors'
 import { useFormFieldSaveHandlers } from '@/hooks/forms/useFormFieldSaveHandlers'
-import { useProjectPermissions } from '@/hooks/permissions'
+import { useProjectPermissions, useWorkspacePermissions } from '@/hooks/permissions'
 
 type FormKitViewProps = {
   formKitId: string
@@ -57,6 +57,10 @@ export function FormKitView({
   const { can } = useProjectPermissions({ projectId })
   const canFillForms = can('forms', 'fill_forms')
 
+  // Риск-оценку ставит и видит только сотрудник — от «чистого» клиента контрол скрыт полностью.
+  const { isClientOnly } = useWorkspacePermissions({ workspaceId })
+  const canSetRisk = !isClientOnly
+
   const {
     formKit,
     structure,
@@ -64,11 +68,12 @@ export function FormKitView({
     setFormData,
     compositeItems,
     selectOptionsMap,
+    riskLevels,
     isLoading,
     error,
   } = useFormKitData({ formKitId })
 
-  const { saveField, saveFieldAsync, saveError } = useFormKitSave({
+  const { saveField, saveFieldAsync, saveRiskLevel, saveError } = useFormKitSave({
     formKitId,
   })
 
@@ -178,7 +183,7 @@ export function FormKitView({
             <div
               key={section.id}
               className={cn(
-                'rounded-lg border border-border bg-card overflow-hidden transition-shadow',
+                'rounded-2xl border border-border bg-card overflow-hidden transition-shadow',
                 isActive ? 'shadow-lg' : 'shadow-none',
               )}
             >
@@ -219,10 +224,10 @@ export function FormKitView({
               {isActive && (
                 <div
                   style={bodyStyle}
-                  className={cn(showHeader ? 'px-4 py-5' : 'py-3')}
+                  className={cn('px-4', showHeader ? 'py-5' : 'py-3')}
                 >
                   {section.description && (
-                    <div className="mb-5 flex gap-2.5 rounded-md border-l-2 border-primary/50 bg-muted/40 px-3 py-2.5">
+                    <div className="mb-5 flex gap-2.5 rounded-2xl border-l-2 border-primary/50 bg-muted/40 px-3 py-2.5">
                       <Info className="h-4 w-4 shrink-0 text-primary/70 mt-0.5" />
                       <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
                         {section.description}
@@ -238,6 +243,9 @@ export function FormKitView({
                     updateField={updateField}
                     saveField={handleSaveField}
                     saveFieldWithValue={handleSaveFieldWithValue}
+                    riskLevels={riskLevels}
+                    saveRiskLevel={saveRiskLevel}
+                    canSetRisk={canSetRisk}
                   />
 
                   {/* Навигация по секциям — слева под полями */}

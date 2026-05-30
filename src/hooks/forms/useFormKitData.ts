@@ -22,6 +22,7 @@ import type {
 } from '@/components/forms/types'
 import { logger } from '@/utils/logger'
 import { formKitKeys } from '@/hooks/queryKeys'
+import { isRiskLevel, type RiskLevel } from '@/components/forms/riskLevels'
 
 type FieldType = Database['public']['Enums']['field_type']
 
@@ -180,6 +181,8 @@ export function useFormKitData({ formKitId, enabled: enabledProp = true }: UseFo
           created_at: f.created_at || new Date().toISOString(),
           updated_at: f.updated_at || new Date().toISOString(),
           is_required: f.is_required ?? false,
+          risk_assessment_enabled:
+            (f as { risk_assessment_enabled?: boolean }).risk_assessment_enabled ?? false,
           sort_order: f.sort_order,
           section_id: sectionId,
         } as FormField
@@ -235,7 +238,7 @@ export function useFormKitData({ formKitId, enabled: enabledProp = true }: UseFo
     queryFn: async () => {
       const { data, error } = await supabase
         .from('form_kit_field_values')
-        .select('field_definition_id, composite_field_id, value')
+        .select('field_definition_id, composite_field_id, value, risk_level')
         .eq('form_kit_id', formKitId)
 
       if (error) throw error
@@ -331,6 +334,19 @@ export function useFormKitData({ formKitId, enabled: enabledProp = true }: UseFo
   const compositeItems = compositeAndOptions?.compositeItems ?? []
   const selectOptionsMap = compositeAndOptions?.selectOptionsMap ?? {}
 
+  // Риск-оценки полей (🟢🟡🔴). Ключ — field_definition_id, как в formData.
+  // Только поля верхнего уровня (composite_field_id IS NULL).
+  const riskLevels = useMemo<Record<string, RiskLevel>>(() => {
+    const map: Record<string, RiskLevel> = {}
+    fieldValues?.forEach((fv) => {
+      const row = fv as { composite_field_id: string | null; risk_level?: string | null }
+      if (!row.composite_field_id && isRiskLevel(row.risk_level)) {
+        map[fv.field_definition_id] = row.risk_level
+      }
+    })
+    return map
+  }, [fieldValues])
+
   // Инициализация formData из загруженных значений — только один раз.
   // Повторная инициализация перезаписала бы несохранённые локальные изменения
   // (например, при рефетче React Query после переключения вкладок).
@@ -365,6 +381,7 @@ export function useFormKitData({ formKitId, enabled: enabledProp = true }: UseFo
     setFormData,
     compositeItems,
     selectOptionsMap,
+    riskLevels,
     isLoading,
     /** Загружается ли сам formKit (detail). Для ленивой загрузки — отделяет от structure/values. */
     formKitLoading,
