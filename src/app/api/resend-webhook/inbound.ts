@@ -316,7 +316,64 @@ export async function handleInbound(supabase: ServiceClient, event: ResendEvent)
     .select('id')
     .single()
   if (insertError) {
-    return NextResponse.json({ error: 'insert_failed', detail: insertError.message }, { status: 500 })
+    // Вставка письма упала. Раньше тут был тихий 500 без логов → письмо
+    // терялось, а только что созданный тред оставался пустым призраком
+    // («Нет сообщений»). Теперь — fail-safe, чтобы пользователь точно узнал,
+    // что письмо пришло, и мог открыть его в Gmail.
+    console.error('[resend-webhook] insert_failed:', {
+      detail: insertError.message,
+      thread_id: threadId,
+      project_id: projectId,
+      from: realFrom.address,
+      subject: data.subject ?? null,
+      message_id: messageIdHeader,
+      resend_id: resendId,
+    })
+    // (1) Гарантированная запись в «Несопоставленные» — простой insert в
+    //     другую таблицу, переживает любую причину сбоя основной вставки.
+    await saveUnmatched(supabase, {
+      workspaceId,
+      resendId,
+      fromAddress: realFrom.address,
+      fromName: realFrom.name ?? null,
+      toAddresses: toList.map((a) => a.address),
+      ccAddresses: ccList.map((a) => a.address),
+      subject: data.subject ?? null,
+      messageIdHeader,
+      inReplyTo,
+      references,
+      originalTo: recipient.address,
+      reason: `insert_failed:${insertError.message}`.slice(0, 500),
+      spamScore: data.spam_score ?? null,
+    }).catch((e) => console.error('[resend-webhook] saveUnmatched after insert_failed failed:', e))
+    // (2) Заглушка-бабл прямо в тред — чтобы он не остался пустым и был виден
+    //     в инбоксе. source='bot_event' в skip-листе dispatch_message_to_channels
+    //     → НИЧЕГО не отправится наружу (ни email, ни TG). Минимальный payload
+    //     (без email_message_id / metadata) — чтобы не наткнуться на ту же
+    //     причину, что уронила основную вставку. Контент bot_event рендерится
+    //     как ПРОСТОЙ ТЕКСТ — без HTML-тегов.
+    const subjLabel = data.subject?.trim() || '(без темы)'
+    const fromLabel = realFrom.name ?? realFrom.address
+    await supabase
+      .from('project_messages')
+      .insert({
+        thread_id: threadId,
+        project_id: projectId,
+        workspace_id: workspaceId,
+        source: 'bot_event',
+        sender_name: 'Система',
+        sender_role: 'Email',
+        content: `⚠️ Письмо «${subjLabel}» от ${fromLabel} получено, но не загрузилось в чат. Откройте его в Gmail.`,
+      })
+      .then(({ error }) => {
+        if (error) console.error('[resend-webhook] placeholder insert failed:', error.message)
+      })
+    // 200, а не 500: письмо зафиксировано (unmatched + заглушка). На 500 Resend
+    // ретраил бы и плодил дубли заглушек, а основная вставка всё равно падает.
+    return NextResponse.json(
+      { status: 'insert_failed_recovered', detail: insertError.message, thread_id: threadId },
+      { status: 200 },
+    )
   }
 
   // Обновляем «последний внешний адрес» треда — нужно для матчинга и для UI
