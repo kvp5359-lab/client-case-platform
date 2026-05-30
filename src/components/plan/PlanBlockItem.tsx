@@ -12,14 +12,17 @@
  * (для этого список задач), здесь галочка только отражает текущий статус.
  */
 
-import { createElement, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { GripVertical, Trash2, CheckSquare, FolderOpen, AlertTriangle } from 'lucide-react'
-import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
-import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { TiptapEditor } from '@/components/tiptap-editor/tiptap-editor'
+import { DeadlinePopover } from '@/components/tasks/DeadlinePopover'
+import { AssigneesPopover } from '@/components/tasks/AssigneesPopover'
+import {
+  ParticipantAvatars,
+  type AvatarParticipant,
+} from '@/components/participants/ParticipantAvatars'
 import { PLAN_TEXT_CLASS } from './planTextClass'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatShortDate, formatDateToString, parseDateString } from '@/utils/format/dateFormat'
@@ -31,11 +34,11 @@ export type PlanBlockDisplay = {
   visible_to_client: boolean
   content: string | null
   task: {
+    threadId: string
     name: string
     deadline: string | null
     done: boolean
-    icon: string | null
-    accent_color: string | null
+    assignees: AvatarParticipant[]
   } | null
   slot: {
     name: string
@@ -49,20 +52,26 @@ export type PlanBlockDisplay = {
 type Props = {
   display: PlanBlockDisplay
   editable: boolean
+  projectId: string
+  workspaceId: string
   onChangeText: (html: string) => void
-  onToggleVisible: (next: boolean) => void
   onDelete: () => void
   onChangeSlotDeadline: (deadline: string | null) => void
+  onChangeTaskDeadline: (deadline: string | null) => void
+  taskDeadlinePending: boolean
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>
 }
 
 export function PlanBlockItem({
   display,
   editable,
+  projectId,
+  workspaceId,
   onChangeText,
-  onToggleVisible,
   onDelete,
   onChangeSlotDeadline,
+  onChangeTaskDeadline,
+  taskDeadlinePending,
   dragHandleProps,
 }: Props) {
   return (
@@ -83,7 +92,16 @@ export function PlanBlockItem({
           <TextBlockBody content={display.content} editing={editable} onChangeText={onChangeText} />
         )}
 
-        {display.block_type === 'task' && <TaskBlockBody display={display} />}
+        {display.block_type === 'task' && (
+          <TaskBlockBody
+            display={display}
+            editable={editable}
+            projectId={projectId}
+            workspaceId={workspaceId}
+            onChangeDeadline={onChangeTaskDeadline}
+            pending={taskDeadlinePending}
+          />
+        )}
 
         {display.block_type === 'slot' && (
           <SlotBlockBody
@@ -95,14 +113,7 @@ export function PlanBlockItem({
       </div>
 
       {editable && (
-        <div className="flex items-center gap-2 pt-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-          <label
-            className="flex items-center gap-1 text-xs text-muted-foreground"
-            title="Виден клиенту"
-          >
-            <Switch checked={display.visible_to_client} onCheckedChange={onToggleVisible} />
-            Клиенту
-          </label>
+        <div className="flex items-center pt-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
           <Button
             type="button"
             variant="ghost"
@@ -224,24 +235,63 @@ function TextBlockBody({
 
 // ── Блок-задача ───────────────────────────────────────────
 
-function TaskBlockBody({ display }: { display: PlanBlockDisplay }) {
+function TaskBlockBody({
+  display,
+  editable,
+  projectId,
+  workspaceId,
+  onChangeDeadline,
+  pending,
+}: {
+  display: PlanBlockDisplay
+  editable: boolean
+  projectId: string
+  workspaceId: string
+  onChangeDeadline: (deadline: string | null) => void
+  pending: boolean
+}) {
   if (display.missing || !display.task) {
     return <MissingRef icon={<CheckSquare className="size-4" />} label="Задача удалена или недоступна" />
   }
-  const { name, deadline, done, icon, accent_color } = display.task
+  const { threadId, name, deadline, done, assignees } = display.task
   return (
     <div className="flex items-center gap-2 py-1">
       <Checkbox checked={done} disabled aria-label={done ? 'Готово' : 'Не готово'} />
-      <span className="shrink-0">
-        {createElement(getChatIconComponent(icon ?? ''), {
-          className: `size-4 ${COLOR_TEXT[accent_color ?? ''] ?? 'text-muted-foreground'}`,
-        })}
-      </span>
-      <span className={`truncate text-sm ${done ? 'text-muted-foreground line-through' : ''}`}>
+      <span
+        className={`min-w-0 truncate text-sm ${done ? 'text-muted-foreground line-through' : ''}`}
+      >
         {name}
       </span>
-      {deadline && (
-        <span className="ml-auto shrink-0 text-xs text-muted-foreground">{formatShortDate(deadline)}</span>
+
+      {/* Срок — сразу после названия. Тот же chip, что в списке задач. */}
+      {editable ? (
+        <DeadlinePopover
+          deadline={deadline}
+          onSet={(date) => onChangeDeadline(date.toISOString())}
+          onClear={() => onChangeDeadline(null)}
+          isPending={pending}
+          isFinal={done}
+        />
+      ) : (
+        deadline && (
+          <span className="shrink-0 text-xs text-muted-foreground">{formatShortDate(deadline)}</span>
+        )
+      )}
+
+      {/* Исполнители — тот же компонент, что в задачах (AssigneesPopover). */}
+      {editable ? (
+        <AssigneesPopover
+          mode="thread"
+          threadId={threadId}
+          projectId={projectId}
+          workspaceId={workspaceId}
+          assignees={assignees}
+          dimmed={done}
+        />
+      ) : (
+        assignees.length > 0 && (
+          <ParticipantAvatars participants={assignees} maxVisible={3} size="sm" />
+        )
       )}
     </div>
   )

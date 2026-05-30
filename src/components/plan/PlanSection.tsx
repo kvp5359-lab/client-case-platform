@@ -39,10 +39,13 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useProjectPlan } from '@/hooks/plan/useProjectPlan'
 import { useUpdateSlotDeadline } from '@/hooks/plan/useUpdateSlotDeadline'
+import { useUpdateTaskDeadline } from '@/components/tasks/useTaskMutations'
+import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { useFolderSlots } from '@/hooks/documents/useFolderSlots'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useProjectPermissions } from '@/hooks/permissions'
+import { messengerKeys } from '@/hooks/queryKeys'
 import { isStaffRole } from '@/types/permissions'
 import { PlanBlockItem, type PlanBlockDisplay } from './PlanBlockItem'
 
@@ -63,6 +66,8 @@ export function PlanSection({ projectId, workspaceId }: Props) {
     reorderBlocks,
   } = useProjectPlan(projectId, workspaceId)
   const updateSlotDeadline = useUpdateSlotDeadline(projectId)
+  // Срок задачи меняем тем же путём, что и список задач (общая мутация).
+  const updateTaskDeadline = useUpdateTaskDeadline([messengerKeys.projectThreads(projectId ?? '')])
   const { data: threads = [] } = useProjectThreads(projectId)
   const { slots } = useFolderSlots(projectId)
   const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)
@@ -86,22 +91,10 @@ export function PlanSection({ projectId, workspaceId }: Props) {
   const threadMap = useMemo(() => {
     const m = new Map<
       string,
-      {
-        name: string
-        deadline: string | null
-        status_id: string | null
-        icon: string | null
-        accent_color: string | null
-      }
+      { name: string; deadline: string | null; status_id: string | null }
     >()
     for (const t of threads) {
-      m.set(t.id, {
-        name: t.name,
-        deadline: t.deadline,
-        status_id: t.status_id,
-        icon: t.icon,
-        accent_color: t.accent_color,
-      })
+      m.set(t.id, { name: t.name, deadline: t.deadline, status_id: t.status_id })
     }
     return m
   }, [threads])
@@ -118,6 +111,16 @@ export function PlanSection({ projectId, workspaceId }: Props) {
     return m
   }, [slots])
 
+  // Исполнители задач — тот же источник, что в списке задач (refresh при тоггле).
+  const taskThreadIds = useMemo(
+    () =>
+      blocks
+        .filter((b) => b.block_type === 'task' && b.thread_id)
+        .map((b) => b.thread_id as string),
+    [blocks],
+  )
+  const { data: assigneesMap = {} } = useTaskAssigneesMap(taskThreadIds)
+
   const displays: PlanBlockDisplay[] = useMemo(
     () =>
       blocks.map((b): PlanBlockDisplay => {
@@ -130,11 +133,11 @@ export function PlanSection({ projectId, workspaceId }: Props) {
             content: null,
             task: th
               ? {
+                  threadId: b.thread_id as string,
                   name: th.name,
                   deadline: th.deadline,
                   done: th.status_id ? !!statusFinal.get(th.status_id) : false,
-                  icon: th.icon,
-                  accent_color: th.accent_color,
+                  assignees: b.thread_id ? (assigneesMap[b.thread_id] ?? []) : [],
                 }
               : null,
             slot: null,
@@ -163,7 +166,7 @@ export function PlanSection({ projectId, workspaceId }: Props) {
           missing: false,
         }
       }),
-    [blocks, threadMap, slotMap, statusFinal],
+    [blocks, threadMap, slotMap, statusFinal, assigneesMap],
   )
 
   // Для клиента — только блоки, помеченные «виден клиенту».
@@ -248,8 +251,9 @@ export function PlanSection({ projectId, workspaceId }: Props) {
                     key={display.id}
                     display={display}
                     editable={canEdit}
+                    projectId={projectId}
+                    workspaceId={workspaceId}
                     onChangeText={(html) => updateBlock(display.id, { content: html })}
-                    onToggleVisible={(next) => updateBlock(display.id, { visible_to_client: next })}
                     onDelete={() => deleteBlock(display.id)}
                     onChangeSlotDeadline={(deadline) => {
                       const block = blocks.find((b) => b.id === display.id)
@@ -257,6 +261,13 @@ export function PlanSection({ projectId, workspaceId }: Props) {
                         updateSlotDeadline.mutate({ slotId: block.folder_slot_id, deadline })
                       }
                     }}
+                    onChangeTaskDeadline={(deadline) => {
+                      const block = blocks.find((b) => b.id === display.id)
+                      if (block?.thread_id) {
+                        updateTaskDeadline.mutate({ threadId: block.thread_id, deadline })
+                      }
+                    }}
+                    taskDeadlinePending={updateTaskDeadline.isPending}
                   />
                 ))}
               </div>
@@ -342,17 +353,23 @@ export function PlanSection({ projectId, workspaceId }: Props) {
 function SortableBlock({
   display,
   editable,
+  projectId,
+  workspaceId,
   onChangeText,
-  onToggleVisible,
   onDelete,
   onChangeSlotDeadline,
+  onChangeTaskDeadline,
+  taskDeadlinePending,
 }: {
   display: PlanBlockDisplay
   editable: boolean
+  projectId: string
+  workspaceId: string
   onChangeText: (html: string) => void
-  onToggleVisible: (next: boolean) => void
   onDelete: () => void
   onChangeSlotDeadline: (deadline: string | null) => void
+  onChangeTaskDeadline: (deadline: string | null) => void
+  taskDeadlinePending: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: display.id,
@@ -368,10 +385,13 @@ function SortableBlock({
       <PlanBlockItem
         display={display}
         editable={editable}
+        projectId={projectId}
+        workspaceId={workspaceId}
         onChangeText={onChangeText}
-        onToggleVisible={onToggleVisible}
         onDelete={onDelete}
         onChangeSlotDeadline={onChangeSlotDeadline}
+        onChangeTaskDeadline={onChangeTaskDeadline}
+        taskDeadlinePending={taskDeadlinePending}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>

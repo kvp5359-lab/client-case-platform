@@ -37,7 +37,6 @@ import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { TiptapEditor } from '@/components/tiptap-editor/tiptap-editor'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useTemplatePlan } from '@/hooks/plan/useTemplatePlan'
@@ -136,7 +135,6 @@ export function TemplatePlanSection({ workspaceId, templateId, enabledModules }:
                   block={block}
                   tpl={block.thread_template_id ? tplMap.get(block.thread_template_id) : undefined}
                   onChangeText={(html) => updateBlock(block.id, { content: html })}
-                  onToggleVisible={(next) => updateBlock(block.id, { visible_to_client: next })}
                   onDelete={() => deleteBlock(block.id)}
                 />
               ))}
@@ -241,13 +239,11 @@ function SortableTemplateBlock({
   block,
   tpl,
   onChangeText,
-  onToggleVisible,
   onDelete,
 }: {
   block: TemplatePlanBlockRow
-  tpl: { name: string; icon: string | null; accent_color: string | null } | undefined
+  tpl: { name: string } | undefined
   onChangeText: (html: string) => void
-  onToggleVisible: (next: boolean) => void
   onDelete: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -275,9 +271,6 @@ function SortableTemplateBlock({
           <TemplateTextBlock content={block.content} onChangeText={onChangeText} />
         ) : tpl ? (
           <div className="flex items-center gap-2 py-1">
-            {createElement(getChatIconComponent(tpl.icon ?? ''), {
-              className: `size-4 shrink-0 ${COLOR_TEXT[tpl.accent_color ?? ''] ?? 'text-muted-foreground'}`,
-            })}
             <span className="truncate text-sm">{tpl.name}</span>
           </div>
         ) : (
@@ -288,11 +281,7 @@ function SortableTemplateBlock({
         )}
       </div>
 
-      <div className="flex items-center gap-2 pt-0.5">
-        <label className="flex items-center gap-1 text-xs text-muted-foreground" title="Виден клиенту">
-          <Switch checked={block.visible_to_client} onCheckedChange={onToggleVisible} />
-          Клиенту
-        </label>
+      <div className="flex items-center pt-0.5">
         <Button
           type="button"
           variant="ghost"
