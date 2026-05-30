@@ -61,6 +61,7 @@ import { workspaceTaskToItem, threadToItem, newThreadToTaskItem } from './taskLi
 import { useTaskFilters } from './useTaskFilters'
 import { useCreateTaskHandler } from './useCreateTaskMutation'
 import { TaskGroupList } from './TaskGroupList'
+import { ProjectFlatPlanList } from '@/components/plan/ProjectFlatPlanList'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
 // ── Props ──
@@ -284,6 +285,25 @@ export const TaskListView = memo(function TaskListView({
     [layoutPanel, allTasks, createdThread],
   )
 
+  const finalStatusIds = useMemo(
+    () => new Set(taskStatuses.filter((s) => s.is_final).map((s) => s.id)),
+    [taskStatuses],
+  )
+
+  // Режим «план»: проектный список в ручном плоском порядке без активных
+  // фильтров/поиска. Тогда показываем объединённый список (задачи + текст +
+  // слоты). Любой фильтр/сортировка/группировка → обычный TaskGroupList.
+  const planMode =
+    isProjectMode &&
+    !!projectId &&
+    !filters.groupByDeadline &&
+    filters.preset === 'all' &&
+    !filters.searchQuery.trim() &&
+    filters.assigneeFilterIds === null &&
+    filters.deadlineFilter === null &&
+    filters.statusFilterIds === null &&
+    filters.projectFilterIds.size === 0
+
   // ── Рендер ──
 
   return (
@@ -309,6 +329,34 @@ export const TaskListView = memo(function TaskListView({
       {/* Контент */}
       {isLoading ? (
         <PageLoader />
+      ) : planMode ? (
+        <ProjectFlatPlanList
+          projectId={projectId!}
+          workspaceId={workspaceId}
+          tasks={filters.filteredTasks}
+          taskStatuses={taskStatuses}
+          membersMap={membersMap}
+          finalStatusIds={finalStatusIds}
+          selectedThreadId={layoutPanel?.activeThreadId ?? null}
+          showProject={showProject}
+          deadlinePending={updateDeadline.isPending}
+          onOpenTask={handleOpenTask}
+          onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}
+          onDeadlineSet={(taskId, date) =>
+            updateDeadline.mutate({ threadId: taskId, deadline: date.toISOString() })
+          }
+          onDeadlineClear={(taskId) => updateDeadline.mutate({ threadId: taskId, deadline: null })}
+          onTimeChange={(taskId, v) =>
+            updateDeadline.mutate({
+              threadId: taskId,
+              deadline: v.deadline,
+              start_at: v.startAt,
+              end_at: v.endAt,
+            })
+          }
+          onReorderTasks={(updates) => reorderTasks.mutate(updates)}
+          onRequestDeleteTask={isWorkspaceOwner ? (task) => setDeletingTask(task) : undefined}
+        />
       ) : allTasks.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <CheckSquare className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />

@@ -1,45 +1,47 @@
 "use client"
 
 /**
- * Один блок плана: текст / задача / слот.
+ * Тела блоков плана для объединённого списка (ProjectFlatPlanList).
  *
- * - text: read — HTML через prose; edit — TiptapEditor с автосохранением (debounce).
- * - task: ссылка на задачу — иконка, имя, галочка «готово» (по is_final статуса), срок.
- * - slot: ссылка на слот документа — имя, статус «собран/нужен», срок (редактируемый).
+ * Простые, без rich-text:
+ * - heading — заголовок секции (одна строка);
+ * - text — многострочный простой текст (сворачивание — на уровне строки списка);
+ * - slot — ссылка на слот документа (статус «собран/нужен» + срок).
  *
- * Задачи/слоты живые: данные подмешиваются в PlanSection из useProjectThreads /
- * useFolderSlots, здесь только отрисовка. Редактирование статуса задачи — НЕ тут
- * (для этого список задач), здесь галочка только отражает текущий статус.
+ * Задачи в плане рисуются НЕ здесь, а тем же TaskRow, что и в списке задач.
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { GripVertical, Trash2, CheckSquare, FolderOpen, AlertTriangle } from 'lucide-react'
-import { TiptapEditor } from '@/components/tiptap-editor/tiptap-editor'
-import { DeadlinePopover } from '@/components/tasks/DeadlinePopover'
-import { AssigneesPopover } from '@/components/tasks/AssigneesPopover'
-import {
-  ParticipantAvatars,
-  type AvatarParticipant,
-} from '@/components/participants/ParticipantAvatars'
-import { PLAN_TEXT_CLASS } from './planTextClass'
+import { FolderOpen, AlertTriangle } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatShortDate, formatDateToString, parseDateString } from '@/utils/format/dateFormat'
 
-/** Модель отображения блока — собирается в PlanSection. */
+/**
+ * HTML → простой текст. Нужно для legacy-блоков, созданных прежним rich-text
+ * редактором (Tiptap). Для нового простого текста (без тегов) — возвращает
+ * исходную строку. Блочные теги превращаются в переносы строк.
+ */
+function htmlToPlain(s: string): string {
+  if (!s) return ''
+  if (!/<[a-z!/]/i.test(s)) return s // нет тегов — это уже plain
+  return s
+    .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export type PlanBlockDisplay = {
   id: string
-  block_type: 'text' | 'task' | 'slot'
+  block_type: 'text' | 'heading' | 'task' | 'slot'
   visible_to_client: boolean
   content: string | null
-  task: {
-    threadId: string
-    name: string
-    deadline: string | null
-    done: boolean
-    assignees: AvatarParticipant[]
-  } | null
   slot: {
     name: string
     deadline: string | null
@@ -49,139 +51,32 @@ export type PlanBlockDisplay = {
   missing: boolean
 }
 
-type Props = {
-  display: PlanBlockDisplay
-  editable: boolean
-  projectId: string
-  workspaceId: string
-  onChangeText: (html: string) => void
-  onDelete: () => void
-  onChangeSlotDeadline: (deadline: string | null) => void
-  onChangeTaskDeadline: (deadline: string | null) => void
-  taskDeadlinePending: boolean
-  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>
-}
+// ── Заголовок секции (одна строка, click-to-edit) ─────────
 
-export function PlanBlockItem({
-  display,
-  editable,
-  projectId,
-  workspaceId,
-  onChangeText,
-  onDelete,
-  onChangeSlotDeadline,
-  onChangeTaskDeadline,
-  taskDeadlinePending,
-  dragHandleProps,
-}: Props) {
-  return (
-    <div className="group flex items-start gap-2 rounded-md border border-transparent px-2 py-1.5 hover:border-border">
-      {editable && (
-        <button
-          type="button"
-          className="mt-1 cursor-grab text-muted-foreground/40 opacity-0 transition-opacity hover:text-muted-foreground group-hover:opacity-100"
-          {...dragHandleProps}
-          aria-label="Перетащить"
-        >
-          <GripVertical className="size-4" />
-        </button>
-      )}
-
-      <div className="min-w-0 flex-1">
-        {display.block_type === 'text' && (
-          <TextBlockBody content={display.content} editing={editable} onChangeText={onChangeText} />
-        )}
-
-        {display.block_type === 'task' && (
-          <TaskBlockBody
-            display={display}
-            editable={editable}
-            projectId={projectId}
-            workspaceId={workspaceId}
-            onChangeDeadline={onChangeTaskDeadline}
-            pending={taskDeadlinePending}
-          />
-        )}
-
-        {display.block_type === 'slot' && (
-          <SlotBlockBody
-            display={display}
-            editing={editable}
-            onChangeSlotDeadline={onChangeSlotDeadline}
-          />
-        )}
-      </div>
-
-      {editable && (
-        <div className="flex items-center pt-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7 text-muted-foreground hover:text-destructive"
-            onClick={onDelete}
-            aria-label="Удалить блок"
-          >
-            <Trash2 className="size-4" />
-          </Button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Текстовый блок ────────────────────────────────────────
-
-function TextBlockBody({
+export function HeadingBlockBody({
   content,
   editing,
-  onChangeText,
+  onChange,
 }: {
   content: string | null
   editing: boolean
-  onChangeText: (html: string) => void
+  onChange: (value: string) => void
 }) {
-  // Локальное состояние редактора сидируется из content один раз (блок
-  // привязан по key=id, при смене блока компонент пересоздаётся). После
-  // автосохранения content становится равен html, дрейфа нет.
-  const [html, setHtml] = useState(content ?? '')
-  // active — открыт ли редактор у ЭТОГО блока. В режиме редактирования плана
-  // по умолчанию показываем чистый текст; редактор раскрывается по клику.
   const [active, setActive] = useState(false)
-  const editorWrapRef = useRef<HTMLDivElement>(null)
+  const [value, setValue] = useState(content ?? '')
+  const plain = htmlToPlain(content ?? '')
 
-  // Автосохранение через debounce, пока редактор активен.
-  useEffect(() => {
-    if (!active) return
-    if (html === (content ?? '')) return
-    const t = setTimeout(() => onChangeText(html), 800)
-    return () => clearTimeout(t)
-  }, [html, active, content, onChangeText])
+  const activate = () => {
+    setValue(plain)
+    setActive(true)
+  }
 
-  // При активации переносим фокус в редактор (immediatelyRender:false —
-  // contenteditable появляется чуть позже), чтобы click-away (blur) закрывал блок.
-  useEffect(() => {
-    if (!active) return
-    const id = setTimeout(() => {
-      const el = editorWrapRef.current?.querySelector(
-        '[contenteditable="true"]',
-      ) as HTMLElement | null
-      el?.focus()
-    }, 40)
-    return () => clearTimeout(id)
-  }, [active])
-
-  const isEmpty = !content || content === '<p></p>'
-
-  // Чистый текст: всегда вне режима редактирования, и в режиме —
-  // пока блок не активен (не кликнут).
   if (!editing || !active) {
+    const empty = !plain.trim()
     return (
       <div
-        className={
-          editing ? 'cursor-text rounded -mx-1 px-1 py-0.5 hover:bg-muted/50' : ''
-        }
-        onClick={editing ? () => setActive(true) : undefined}
+        className={editing ? '-mx-1 cursor-text rounded px-1 hover:bg-muted/50' : ''}
+        onClick={editing ? activate : undefined}
         role={editing ? 'button' : undefined}
         tabIndex={editing ? 0 : undefined}
         onKeyDown={
@@ -189,117 +84,118 @@ function TextBlockBody({
             ? (e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
-                  setActive(true)
+                  activate()
                 }
               }
             : undefined
         }
       >
-        {isEmpty ? (
-          <p className="text-sm italic text-muted-foreground">
-            {editing ? 'Нажмите, чтобы добавить текст' : 'Пустой текстовый блок'}
+        {empty ? (
+          <p className="text-lg font-semibold italic text-muted-foreground">
+            {editing ? 'Заголовок секции' : ''}
           </p>
         ) : (
-          <div
-            className={PLAN_TEXT_CLASS}
-            // Контент создаётся сотрудником через Tiptap внутри ЛК.
-            dangerouslySetInnerHTML={{ __html: content }}
-          />
+          <h3 className="text-lg font-semibold">{plain}</h3>
         )}
       </div>
     )
   }
 
-  // Активный редактор: закрываем по уходу фокуса наружу (клик по блоку/панели
-  // редактора фокус не теряет — relatedTarget внутри контейнера).
   return (
-    <div
-      ref={editorWrapRef}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-          setActive(false)
-          if (html !== (content ?? '')) onChangeText(html)
+    <Input
+      autoFocus
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => {
+        setActive(false)
+        if (value !== (content ?? '')) onChange(value)
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          ;(e.target as HTMLInputElement).blur()
         }
       }}
-    >
-      <TiptapEditor
-        content={html}
-        onChange={setHtml}
-        minHeight="80px"
-        editorClassName="text-sm"
-        placeholder="Текст плана — пояснение, раздел, стратегия…"
-      />
-    </div>
+      placeholder="Заголовок секции"
+      className="h-9 text-lg font-semibold"
+    />
   )
 }
 
-// ── Блок-задача ───────────────────────────────────────────
+// ── Многострочный текст (click-to-edit, textarea) ─────────
 
-function TaskBlockBody({
-  display,
-  editable,
-  projectId,
-  workspaceId,
-  onChangeDeadline,
-  pending,
+export function TextBlockBody({
+  content,
+  editing,
+  onChange,
 }: {
-  display: PlanBlockDisplay
-  editable: boolean
-  projectId: string
-  workspaceId: string
-  onChangeDeadline: (deadline: string | null) => void
-  pending: boolean
+  content: string | null
+  editing: boolean
+  onChange: (value: string) => void
 }) {
-  if (display.missing || !display.task) {
-    return <MissingRef icon={<CheckSquare className="size-4" />} label="Задача удалена или недоступна" />
+  const [active, setActive] = useState(false)
+  const [value, setValue] = useState(content ?? '')
+  const ref = useRef<HTMLTextAreaElement>(null)
+  const plain = htmlToPlain(content ?? '')
+
+  const activate = () => {
+    setValue(plain)
+    setActive(true)
   }
-  const { threadId, name, deadline, done, assignees } = display.task
-  return (
-    <div className="flex items-center gap-2 py-1">
-      <Checkbox checked={done} disabled aria-label={done ? 'Готово' : 'Не готово'} />
-      <span
-        className={`min-w-0 truncate text-sm ${done ? 'text-muted-foreground line-through' : ''}`}
+
+  useEffect(() => {
+    if (active) ref.current?.focus()
+  }, [active])
+
+  if (!editing || !active) {
+    const empty = !plain.trim()
+    return (
+      <div
+        className={editing ? '-mx-1 cursor-text rounded px-1 py-0.5 hover:bg-muted/50' : ''}
+        onClick={editing ? activate : undefined}
+        role={editing ? 'button' : undefined}
+        tabIndex={editing ? 0 : undefined}
+        onKeyDown={
+          editing
+            ? (e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  activate()
+                }
+              }
+            : undefined
+        }
       >
-        {name}
-      </span>
+        {empty ? (
+          <p className="text-sm italic text-muted-foreground">
+            {editing ? 'Нажмите, чтобы добавить текст' : 'Пустой текст'}
+          </p>
+        ) : (
+          <p className="whitespace-pre-wrap text-sm leading-relaxed">{plain}</p>
+        )}
+      </div>
+    )
+  }
 
-      {/* Срок — сразу после названия. Тот же chip, что в списке задач. */}
-      {editable ? (
-        <DeadlinePopover
-          deadline={deadline}
-          onSet={(date) => onChangeDeadline(date.toISOString())}
-          onClear={() => onChangeDeadline(null)}
-          isPending={pending}
-          isFinal={done}
-        />
-      ) : (
-        deadline && (
-          <span className="shrink-0 text-xs text-muted-foreground">{formatShortDate(deadline)}</span>
-        )
-      )}
-
-      {/* Исполнители — тот же компонент, что в задачах (AssigneesPopover). */}
-      {editable ? (
-        <AssigneesPopover
-          mode="thread"
-          threadId={threadId}
-          projectId={projectId}
-          workspaceId={workspaceId}
-          assignees={assignees}
-          dimmed={done}
-        />
-      ) : (
-        assignees.length > 0 && (
-          <ParticipantAvatars participants={assignees} maxVisible={3} size="sm" />
-        )
-      )}
-    </div>
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => {
+        setActive(false)
+        if (value !== (content ?? '')) onChange(value)
+      }}
+      rows={4}
+      placeholder="Текст плана…"
+      className="w-full resize-y rounded-md border bg-background px-2 py-1.5 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    />
   )
 }
 
 // ── Блок-слот (документ) ──────────────────────────────────
 
-function SlotBlockBody({
+export function SlotBlockBody({
   display,
   editing,
   onChangeSlotDeadline,

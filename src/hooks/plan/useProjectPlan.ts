@@ -52,13 +52,15 @@ export function useProjectPlan(projectId: string | undefined, workspaceId: strin
       content?: string | null
       thread_id?: string | null
       folder_slot_id?: string | null
+      /** Явный порядок — для общего со списком задач пространства sort_order. */
+      sort_order?: number
     }) => {
       if (!projectId || !workspaceId) throw new Error('projectId/workspaceId required')
       const { error } = await planDb.from(TABLE).insert({
         workspace_id: workspaceId,
         project_id: projectId,
         block_type: input.block_type,
-        sort_order: nextSortOrder(),
+        sort_order: input.sort_order ?? nextSortOrder(),
         content: input.content ?? null,
         thread_id: input.thread_id ?? null,
         folder_slot_id: input.folder_slot_id ?? null,
@@ -70,23 +72,48 @@ export function useProjectPlan(projectId: string | undefined, workspaceId: strin
 
   // ── Пакетное добавление (множественный выбор в пикере) ──
   const addBlocksBatch = useMutation({
-    mutationFn: async (
-      inputs: Array<{ block_type: PlanBlockType; thread_id?: string; folder_slot_id?: string }>,
-    ) => {
+    mutationFn: async ({
+      items,
+      base,
+    }: {
+      items: Array<{ block_type: PlanBlockType; thread_id?: string; folder_slot_id?: string }>
+      /** Базовый sort_order — для общего со списком задач пространства. */
+      base?: number
+    }) => {
       if (!projectId || !workspaceId) throw new Error('projectId/workspaceId required')
-      if (inputs.length === 0) return
-      const base = nextSortOrder()
-      const rows = inputs.map((inp, i) => ({
+      if (items.length === 0) return
+      const start = base ?? nextSortOrder()
+      const rows = items.map((inp, i) => ({
         workspace_id: workspaceId,
         project_id: projectId,
         block_type: inp.block_type,
-        sort_order: base + i,
+        sort_order: start + i * 10,
         content: null,
         thread_id: inp.thread_id ?? null,
         folder_slot_id: inp.folder_slot_id ?? null,
       }))
       const { error } = await planDb.from(TABLE).insert(rows)
       if (error) throw error
+    },
+    onSuccess: invalidate,
+  })
+
+  // ── Переупорядочивание по АБСОЛЮТНЫМ sort_order ──────────
+  // Для общего со списком задач порядка: компонент считает merged-порядок и
+  // пишет точные sort_order и в задачи, и в блоки.
+  const setBlockOrders = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      await Promise.all(
+        updates.map((u) =>
+          planDb
+            .from(TABLE)
+            .update({ sort_order: u.sort_order })
+            .eq('id', u.id)
+            .then(({ error }: { error: unknown }) => {
+              if (error) throw error
+            }),
+        ),
+      )
     },
     onSuccess: invalidate,
   })
@@ -131,20 +158,27 @@ export function useProjectPlan(projectId: string | undefined, workspaceId: strin
   return {
     blocks: blocksQuery.data ?? [],
     isLoading: blocksQuery.isLoading,
-    addTextBlock: (content: string) => addBlock.mutateAsync({ block_type: 'text', content }),
-    addTaskBlocks: (threadIds: string[]) =>
-      addBlocksBatch.mutateAsync(threadIds.map((id) => ({ block_type: 'task', thread_id: id }))),
-    addSlotBlocks: (slotIds: string[]) =>
-      addBlocksBatch.mutateAsync(slotIds.map((id) => ({ block_type: 'slot', folder_slot_id: id }))),
+    addTextBlock: (content: string, sortOrder?: number) =>
+      addBlock.mutateAsync({ block_type: 'text', content, sort_order: sortOrder }),
+    addHeadingBlock: (content: string, sortOrder?: number) =>
+      addBlock.mutateAsync({ block_type: 'heading', content, sort_order: sortOrder }),
+    addSlotBlocks: (slotIds: string[], baseSortOrder?: number) =>
+      addBlocksBatch.mutateAsync({
+        items: slotIds.map((id) => ({ block_type: 'slot', folder_slot_id: id })),
+        base: baseSortOrder,
+      }),
     updateBlock: (id: string, updates: PlanBlockUpdate) =>
       updateBlock.mutateAsync({ id, updates }),
     deleteBlock: (id: string) => deleteBlock.mutateAsync(id),
     reorderBlocks: (orderedIds: string[]) => reorderBlocks.mutateAsync(orderedIds),
+    setBlockOrders: (updates: { id: string; sort_order: number }[]) =>
+      setBlockOrders.mutateAsync(updates),
     isMutating:
       addBlock.isPending ||
       addBlocksBatch.isPending ||
       updateBlock.isPending ||
       deleteBlock.isPending ||
-      reorderBlocks.isPending,
+      reorderBlocks.isPending ||
+      setBlockOrders.isPending,
   }
 }

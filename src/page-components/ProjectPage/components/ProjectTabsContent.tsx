@@ -31,9 +31,6 @@ const TasksTabContent = lazy(() =>
   import('./TasksTabContent').then((m) => ({ default: m.TasksTabContent })),
 )
 // Блок «План» под списком задач — модуль plan (своей вкладки нет).
-const PlanSection = lazy(() =>
-  import('@/components/plan/PlanSection').then((m) => ({ default: m.PlanSection })),
-)
 const KnowledgeBaseTabContent = lazy(() =>
   import('./KnowledgeBaseTabContent').then((m) => ({ default: m.KnowledgeBaseTabContent })),
 )
@@ -212,11 +209,11 @@ export function ProjectTabsContent({
         </div>
       )}
 
-      {/* Вкладка "Задачи" — список задач + (опц.) блок «План» под ним */}
-      {activeTab === 'tasks' && (modules.tasks || modules.plan) && (
+      {/* Вкладка "Задачи" — список задач; в проекте он же план (текст/слоты
+          встраиваются прямо в список, см. ProjectFlatPlanList). */}
+      {activeTab === 'tasks' && modules.tasks && (
         <div className="space-y-6 mt-2">
-          {modules.tasks && <TasksTabContent projectId={projectId} workspaceId={workspaceId} />}
-          {modules.plan && <PlanSection projectId={projectId} workspaceId={workspaceId} />}
+          <TasksTabContent projectId={projectId} workspaceId={workspaceId} />
         </div>
       )}
 
