@@ -8,7 +8,7 @@
  * См. docs/feature-backlog/2026-05-30-plan-module.md
  */
 
-export type PlanBlockType = 'text' | 'task' | 'slot'
+export type PlanBlockType = 'text' | 'heading' | 'task' | 'slot'
 
 /** Строка project_plan_blocks (живой план в проекте). */
 export type PlanBlockRow = {
