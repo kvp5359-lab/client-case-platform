@@ -35,6 +35,8 @@ type ModulesSectionProps = {
   onRemoveDocKit: (relationId: string) => void
   onRemoveKnowledgeArticle: (relationId: string) => void
   onRemoveKnowledgeGroup: (relationId: string) => void
+  onReorderForms: (orderedRelationIds: string[]) => void
+  onReorderDocKits: (orderedRelationIds: string[]) => void
   isRemovingForm: boolean
   isRemovingDocKit: boolean
   isRemovingKnowledgeArticle: boolean
@@ -57,6 +59,8 @@ export function ModulesSection({
   onRemoveDocKit,
   onRemoveKnowledgeArticle,
   onRemoveKnowledgeGroup,
+  onReorderForms,
+  onReorderDocKits,
   isRemovingForm,
   isRemovingDocKit,
   isRemovingKnowledgeArticle,
@@ -171,6 +175,7 @@ export function ModulesSection({
                       icon={FileText}
                       onAdd={onAddForms}
                       onRemove={onRemoveForm}
+                      onReorder={onReorderForms}
                       isRemoving={isRemovingForm}
                     />
                   )}
@@ -186,6 +191,7 @@ export function ModulesSection({
                       icon={FolderOpen}
                       onAdd={onAddDocKits}
                       onRemove={onRemoveDocKit}
+                      onReorder={onReorderDocKits}
                       isRemoving={isRemovingDocKit}
                     />
                   )}

@@ -210,6 +210,44 @@ export function useProjectTemplateMutations({
     },
   })
 
+  // Переупорядочивание анкет (drag & drop). order_index обновляется батчем
+  // параллельных UPDATE по id связи — supabase-js не умеет bulk update.
+  // Оптимистик как у задач: переставляем порядок прямо в кэше React Query
+  // (onMutate), при ошибке откатываемся к снапшоту.
+  const reorderFormsMutation = useMutation({
+    mutationFn: async (orderedRelationIds: string[]) => {
+      const results = await Promise.all(
+        orderedRelationIds.map((id, i) =>
+          supabase.from('project_template_forms').update({ order_index: i }).eq('id', id),
+        ),
+      )
+      const firstError = results.find((r) => r.error)?.error
+      if (firstError) throw firstError
+    },
+    onMutate: async (orderedRelationIds: string[]) => {
+      const key = projectTemplateKeys.forms(templateId)
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<FormTemplateWithRelation[]>(key)
+      if (previous) {
+        const byId = new Map(previous.map((r) => [r.id, r]))
+        const reordered = orderedRelationIds
+          .map((id, i) => {
+            const row = byId.get(id)
+            return row ? { ...row, order_index: i } : null
+          })
+          .filter((r): r is FormTemplateWithRelation => r !== null)
+        queryClient.setQueryData<FormTemplateWithRelation[]>(key, reordered)
+      }
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      toast.error('Не удалось сохранить порядок анкет')
+      if (context?.previous) {
+        queryClient.setQueryData(projectTemplateKeys.forms(templateId), context.previous)
+      }
+    },
+  })
+
   // Добавление шаблонов наборов документов
   const addDocKitsMutation = useMutation({
     mutationFn: async (docKitIds: string[]) => {
@@ -250,6 +288,44 @@ export function useProjectTemplateMutations({
     },
     onError: () => {
       toast.error('Не удалось удалить набор документов')
+    },
+  })
+
+  // Переупорядочивание наборов документов (drag & drop). Оптимистик в кэше.
+  const reorderDocKitsMutation = useMutation({
+    mutationFn: async (orderedRelationIds: string[]) => {
+      const results = await Promise.all(
+        orderedRelationIds.map((id, i) =>
+          supabase
+            .from('project_template_document_kits')
+            .update({ order_index: i })
+            .eq('id', id),
+        ),
+      )
+      const firstError = results.find((r) => r.error)?.error
+      if (firstError) throw firstError
+    },
+    onMutate: async (orderedRelationIds: string[]) => {
+      const key = projectTemplateKeys.documentKits(templateId)
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<DocumentKitTemplateWithRelation[]>(key)
+      if (previous) {
+        const byId = new Map(previous.map((r) => [r.id, r]))
+        const reordered = orderedRelationIds
+          .map((id, i) => {
+            const row = byId.get(id)
+            return row ? { ...row, order_index: i } : null
+          })
+          .filter((r): r is DocumentKitTemplateWithRelation => r !== null)
+        queryClient.setQueryData<DocumentKitTemplateWithRelation[]>(key, reordered)
+      }
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      toast.error('Не удалось сохранить порядок документов')
+      if (context?.previous) {
+        queryClient.setQueryData(projectTemplateKeys.documentKits(templateId), context.previous)
+      }
     },
   })
 
@@ -349,8 +425,10 @@ export function useProjectTemplateMutations({
     updateDefaultPanelTabsMutation,
     addFormsMutation,
     removeFormMutation,
+    reorderFormsMutation,
     addDocKitsMutation,
     removeDocKitMutation,
+    reorderDocKitsMutation,
     addKnowledgeArticlesMutation,
     removeKnowledgeArticleMutation,
     addKnowledgeGroupsMutation,

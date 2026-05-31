@@ -74,8 +74,10 @@ export function ProjectTemplateEditorPage() {
     updateModulesMutation,
     addFormsMutation,
     removeFormMutation,
+    reorderFormsMutation,
     addDocKitsMutation,
     removeDocKitMutation,
+    reorderDocKitsMutation,
     addKnowledgeArticlesMutation,
     removeKnowledgeArticleMutation,
     addKnowledgeGroupsMutation,
@@ -342,6 +344,8 @@ export function ProjectTemplateEditorPage() {
                   id,
                 )
               }
+              onReorderForms={(orderedIds) => reorderFormsMutation.mutate(orderedIds)}
+              onReorderDocKits={(orderedIds) => reorderDocKitsMutation.mutate(orderedIds)}
               isRemovingForm={removeFormMutation.isPending}
               isRemovingDocKit={removeDocKitMutation.isPending}
               isRemovingKnowledgeArticle={removeKnowledgeArticleMutation.isPending}
