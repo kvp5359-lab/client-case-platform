@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react'
+import { GripVertical, Trash2, Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TaskRow } from '@/components/tasks/TaskRow'
 import type { TaskItem } from '@/components/tasks/types'
@@ -18,7 +18,7 @@ import type { AvatarParticipant } from '@/components/participants/ParticipantAva
 import type { FolderSlotWithDocument } from '@/components/documents/types'
 import { SlotItem } from '@/page-components/ProjectPage/components/Documents/SlotItem'
 import { usePlanSlotHandlers } from './PlanDocsProvider'
-import { HeadingBlockBody, TextBlockBody } from './PlanBlockItem'
+import { HeadingBlockBody, TextBlockBody, htmlToPlain } from './PlanBlockItem'
 import type { MergedItem } from './planTypes'
 
 // Кнопка «+» по центру нижней границы строки — появляется на hover.
@@ -92,6 +92,9 @@ export function SortableRow({
   const [collapsed, setCollapsed] = useState(
     item.kind === 'block' && item.display.block_type === 'text',
   )
+  // Открыт ли редактор текста (textarea). Включается кнопкой-карандашом;
+  // клик по самому тексту только сворачивает/разворачивает.
+  const [editingText, setEditingText] = useState(false)
 
   if (item.kind === 'task') {
     return (
@@ -159,23 +162,6 @@ export function SortableRow({
         <QuickAddBelow onClick={onQuickAddHere} revealClass="group-hover/row:opacity-100" />
       )}
 
-      {/* Текст: шеврон сворачивания в слоте статус-кружка → контент в одной
-          колонке с названиями задач. Заголовок и слот — без шеврона. */}
-      {bt === 'text' &&
-        (canEdit ? (
-          <button
-            type="button"
-            onClick={() => setCollapsed((c) => !c)}
-            className="flex h-6 shrink-0 items-center text-muted-foreground/50 transition-colors hover:text-foreground"
-            aria-label={collapsed ? 'Развернуть' : 'Свернуть'}
-            title={collapsed ? 'Развернуть' : 'Свернуть'}
-          >
-            {collapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
-          </button>
-        ) : (
-          <span className="w-4 shrink-0" />
-        ))}
-
       <div className="min-w-0 flex-1">
         {bt === 'heading' ? (
           <HeadingBlockBody
@@ -184,28 +170,73 @@ export function SortableRow({
             onChange={onChangeText}
           />
         ) : bt === 'text' ? (
-          collapsed ? (
-            <button
-              type="button"
-              onClick={() => setCollapsed(false)}
-              className="block w-full truncate py-0.5 text-left text-sm text-muted-foreground hover:text-foreground"
-              title="Развернуть"
-            >
-              {stripHtml(item.display.content) || 'Пустой текст'}
-            </button>
-          ) : (
+          editingText ? (
             <TextBlockBody
               content={item.display.content}
-              editing={canEdit}
               onChange={onChangeText}
+              onClose={() => setEditingText(false)}
             />
+          ) : (
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setCollapsed((c) => !c)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  setCollapsed((c) => !c)
+                }
+              }}
+              className="-mx-1 cursor-pointer rounded px-1 py-0.5 hover:bg-muted/50"
+              title={collapsed ? 'Развернуть' : 'Свернуть'}
+            >
+              {collapsed ? (
+                <p className="truncate text-sm text-muted-foreground">
+                  {stripHtml(item.display.content) || 'Пустой текст'}
+                </p>
+              ) : (
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                  {htmlToPlain(item.display.content ?? '') || 'Пустой текст'}
+                </p>
+              )}
+            </div>
           )
         ) : (
           <PlanSlotItem fullSlot={item.kind === 'block' ? item.fullSlot ?? null : null} />
         )}
       </div>
 
-      {canEdit && (
+      {/* Текст: карандаш (редактировать) + корзина — оверлеем в правом верхнем
+          углу, не резервируют место и не ограничивают ширину текста. */}
+      {canEdit && bt === 'text' && (
+        <div className="absolute right-1 top-1 z-10 flex gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7 rounded-md bg-background text-muted-foreground shadow-sm hover:text-foreground"
+            onClick={() => {
+              setEditingText(true)
+              setCollapsed(false)
+            }}
+            aria-label="Редактировать"
+          >
+            <Pencil className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7 rounded-md bg-background text-muted-foreground shadow-sm hover:text-destructive"
+            onClick={onDeleteBlock}
+            aria-label="Удалить блок"
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+      )}
+
+      {canEdit && bt !== 'text' && (
         <Button
           type="button"
           variant="ghost"

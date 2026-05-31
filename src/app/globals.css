@@ -329,18 +329,23 @@
 }
 .messenger-content ol {
   list-style: decimal;
-  padding-left: 1.25rem;
+  /* inside + display:inline у li>p: маркер растёт вправо → номера любой
+     длины (10, 100…) не обрезаются слева. */
+  list-style-position: inside;
+  padding-left: 0;
   margin: 0.25rem 0;
 }
 .messenger-content ul {
   list-style: disc;
-  padding-left: 1.5rem;
+  list-style-position: inside;
+  padding-left: 0;
   margin: 0.25rem 0;
 }
 .messenger-content li {
   margin: 0;
 }
 .messenger-content li p {
+  display: inline;
   margin: 0;
 }
 
@@ -388,15 +393,21 @@
 }
 .messenger-editor .ProseMirror ol {
   list-style: decimal;
-  padding-left: 1.25rem;
+  /* inside (+ display:inline у li>p ниже): маркер внутри контента и растёт
+     ВПРАВО, поэтому номера любой длины (10, 100…) не обрезаются слева. */
+  list-style-position: inside;
+  padding-left: 0;
   margin: 0.25rem 0;
 }
 .messenger-editor .ProseMirror ul {
   list-style: disc;
-  padding-left: 1.25rem;
+  list-style-position: inside;
+  padding-left: 0;
   margin: 0.25rem 0;
 }
 .messenger-editor .ProseMirror li p {
+  /* inline — чтобы маркер (inside) и текст были на одной строке. */
+  display: inline;
   margin: 0;
 }
 

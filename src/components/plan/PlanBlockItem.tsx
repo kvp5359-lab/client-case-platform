@@ -22,7 +22,7 @@ import { formatShortDate, formatDateToString, parseDateString } from '@/utils/fo
  * редактором (Tiptap). Для нового простого текста (без тегов) — возвращает
  * исходную строку. Блочные теги превращаются в переносы строк.
  */
-function htmlToPlain(s: string): string {
+export function htmlToPlain(s: string): string {
   if (!s) return ''
   if (!/<[a-z!/]/i.test(s)) return s // нет тегов — это уже plain
   return s
@@ -122,60 +122,25 @@ export function HeadingBlockBody({
   )
 }
 
-// ── Многострочный текст (click-to-edit, textarea) ─────────
+// ── Многострочный текст: управляемый редактор (textarea) ──
+// Открывается извне (кнопкой-карандашом в строке). Чтение/сворачивание —
+// на уровне строки списка (PlanSortableRow). Закрытие по blur → onClose.
 
 export function TextBlockBody({
   content,
-  editing,
   onChange,
+  onClose,
 }: {
   content: string | null
-  editing: boolean
   onChange: (value: string) => void
+  onClose: () => void
 }) {
-  const [active, setActive] = useState(false)
-  const [value, setValue] = useState(content ?? '')
+  const [value, setValue] = useState(htmlToPlain(content ?? ''))
   const ref = useRef<HTMLTextAreaElement>(null)
-  const plain = htmlToPlain(content ?? '')
-
-  const activate = () => {
-    setValue(plain)
-    setActive(true)
-  }
 
   useEffect(() => {
-    if (active) ref.current?.focus()
-  }, [active])
-
-  if (!editing || !active) {
-    const empty = !plain.trim()
-    return (
-      <div
-        className={editing ? '-mx-1 cursor-text rounded px-1 py-0.5 hover:bg-muted/50' : ''}
-        onClick={editing ? activate : undefined}
-        role={editing ? 'button' : undefined}
-        tabIndex={editing ? 0 : undefined}
-        onKeyDown={
-          editing
-            ? (e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  activate()
-                }
-              }
-            : undefined
-        }
-      >
-        {empty ? (
-          <p className="text-sm italic text-muted-foreground">
-            {editing ? 'Нажмите, чтобы добавить текст' : 'Пустой текст'}
-          </p>
-        ) : (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed">{plain}</p>
-        )}
-      </div>
-    )
-  }
+    ref.current?.focus()
+  }, [])
 
   return (
     <textarea
@@ -183,7 +148,7 @@ export function TextBlockBody({
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onBlur={() => {
-        setActive(false)
+        onClose()
         if (value !== (content ?? '')) onChange(value)
       }}
       rows={4}
