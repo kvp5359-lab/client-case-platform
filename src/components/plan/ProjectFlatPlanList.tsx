@@ -34,15 +34,12 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   GripVertical,
   Trash2,
-  Type as TypeIcon,
-  Heading,
   FolderOpen,
   Plus,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { TaskRow } from '@/components/tasks/TaskRow'
@@ -51,16 +48,28 @@ import type { TaskTimeValue } from '@/components/tasks/TaskTimePickerPopover'
 import type { TaskStatus } from '@/hooks/useStatuses'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { useProjectPlan } from '@/hooks/plan/useProjectPlan'
-import { useUpdateSlotDeadline } from '@/hooks/plan/useUpdateSlotDeadline'
 import { useFolderSlots } from '@/hooks/documents/useFolderSlots'
 import { useProjectPermissions } from '@/hooks/permissions'
 import { isStaffRole } from '@/types/permissions'
-import {
-  HeadingBlockBody,
-  TextBlockBody,
-  SlotBlockBody,
-  type PlanBlockDisplay,
-} from './PlanBlockItem'
+import { SlotItem } from '@/page-components/ProjectPage/components/Documents/SlotItem'
+import type { FolderSlotWithDocument } from '@/components/documents/types'
+import { PlanDocsProvider, usePlanSlotHandlers } from './PlanDocsProvider'
+import { QuickAddModal, type QuickAddItem } from './QuickAddModal'
+import { useCreateThread } from '@/hooks/messenger/useProjectThreads'
+import { HeadingBlockBody, TextBlockBody, type PlanBlockDisplay } from './PlanBlockItem'
+
+// Многострочный plain-текст → HTML-параграфы (как сохранил бы Tiptap-редактор).
+// htmlToPlain в PlanBlockItem конвертит </p> обратно в \n при отображении,
+// а редактор корректно распарсит <p> при правке.
+function escapeBlockHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+function planTextToHtml(s: string): string {
+  return s
+    .split('\n')
+    .map((l) => `<p>${escapeBlockHtml(l)}</p>`)
+    .join('')
+}
 
 type Props = {
   projectId: string
@@ -72,6 +81,10 @@ type Props = {
   selectedThreadId: string | null
   showProject: boolean
   deadlinePending: boolean
+  /** Видимость типов блоков — управляется тумблерами в панели фильтров. */
+  showHeadings: boolean
+  showText: boolean
+  showSlots: boolean
   onOpenTask: (id: string) => void
   onStatusChange: (taskId: string, statusId: string | null) => void
   onDeadlineSet: (taskId: string, date: Date) => void
@@ -83,7 +96,14 @@ type Props = {
 
 type MergedItem =
   | { kind: 'task'; id: string; sort: number; task: TaskItem }
-  | { kind: 'block'; id: string; sort: number; display: PlanBlockDisplay }
+  | {
+      kind: 'block'
+      id: string
+      sort: number
+      display: PlanBlockDisplay
+      /** Полный слот документа — для рендера настоящим SlotItem. */
+      fullSlot?: FolderSlotWithDocument | null
+    }
 
 export function ProjectFlatPlanList({
   projectId,
@@ -95,6 +115,9 @@ export function ProjectFlatPlanList({
   selectedThreadId,
   showProject,
   deadlinePending,
+  showHeadings,
+  showText,
+  showSlots,
   onOpenTask,
   onStatusChange,
   onDeadlineSet,
@@ -113,25 +136,24 @@ export function ProjectFlatPlanList({
     setBlockOrders,
   } = useProjectPlan(projectId, workspaceId)
   const { slots } = useFolderSlots(projectId)
-  const updateSlotDeadline = useUpdateSlotDeadline(projectId)
   const { userProjectRoles } = useProjectPermissions({ projectId })
 
   const canEdit = userProjectRoles.length === 0 || userProjectRoles.some(isStaffRole)
 
-  const [showSlots, setShowSlots] = useState(true)
+  // Видимость типов блоков (showHeadings/showText/showSlots) приходит пропсами
+  // из TaskListView — тумблеры живут в панели фильтров (TaskListControls).
   const [pickerOpen, setPickerOpen] = useState(false)
+  // Быстрое добавление: позиция (sort), ПОСЛЕ которой вставлять. null = закрыто.
+  // Само модальное окно — заглушка, прорабатывается отдельно.
+  const [quickAddAfterSort, setQuickAddAfterSort] = useState<number | null>(null)
 
-  const slotMap = useMemo(() => {
-    const m = new Map<string, { name: string; deadline: string | null; filled: boolean }>()
-    for (const s of slots) {
-      m.set(s.id, {
-        name: s.name,
-        deadline: (s as { deadline?: string | null }).deadline ?? null,
-        filled: !!s.document_id,
-      })
-    }
+  const slotById = useMemo(() => {
+    const m = new Map<string, FolderSlotWithDocument>()
+    for (const s of slots) m.set(s.id, s)
     return m
   }, [slots])
+
+  const hasSlotBlocks = useMemo(() => blocks.some((b) => b.block_type === 'slot'), [blocks])
 
   // ── Объединённый порядок: задачи (project_threads) + блоки (plan_blocks) ──
   const merged = useMemo<MergedItem[]>(() => {
@@ -140,6 +162,9 @@ export function ProjectFlatPlanList({
       items.push({ kind: 'task', id: t.id, sort: t.sort_order ?? 0, task: t })
     }
     for (const b of blocks) {
+      // Скрытие по типу через независимые тумблеры.
+      if (b.block_type === 'heading' && !showHeadings) continue
+      if (b.block_type === 'text' && !showText) continue
       if (b.block_type === 'text' || b.block_type === 'heading') {
         items.push({
           kind: 'block',
@@ -155,7 +180,7 @@ export function ProjectFlatPlanList({
           },
         })
       } else if (b.block_type === 'slot' && showSlots) {
-        const sl = b.folder_slot_id ? slotMap.get(b.folder_slot_id) : undefined
+        const fullSlot = b.folder_slot_id ? slotById.get(b.folder_slot_id) ?? null : null
         items.push({
           kind: 'block',
           id: b.id,
@@ -165,16 +190,17 @@ export function ProjectFlatPlanList({
             block_type: 'slot',
             visible_to_client: b.visible_to_client,
             content: null,
-            slot: sl ? { name: sl.name, deadline: sl.deadline, filled: sl.filled } : null,
-            missing: !sl,
+            slot: null,
+            missing: !fullSlot,
           },
+          fullSlot,
         })
       }
     }
     // Сортировка по общему sort_order; на равных — задачи раньше блоков.
     items.sort((a, b) => a.sort - b.sort || (a.kind === 'task' ? -1 : 1))
     return items
-  }, [tasks, blocks, slotMap, showSlots])
+  }, [tasks, blocks, slotById, showHeadings, showText, showSlots])
 
   const visibleMerged = useMemo(
     () =>
@@ -198,6 +224,52 @@ export function ProjectFlatPlanList({
     [slots, usedSlotIds],
   )
 
+  // ── Быстрое добавление: создаём элементы и вставляем ПОСЛЕ строки с «+» ──
+  const createTask = useCreateThread(projectId, workspaceId)
+  const [quickAddPending, setQuickAddPending] = useState(false)
+
+  const handleQuickAddSubmit = async (items: QuickAddItem[]) => {
+    if (!items.length) return
+    const baseSort = quickAddAfterSort ?? maxSort
+    const N = items.length
+    setQuickAddPending(true)
+    try {
+      // Окно [baseSort+10 .. baseSort+10N] под новые элементы: существующие
+      // элементы ПОСЛЕ baseSort сдвигаем на +N*10. Итоговый sort каждой строки
+      // детерминирован (по своей строке), поэтому порядок async-вызовов не важен.
+      const taskShifts = tasks
+        .filter((t) => (t.sort_order ?? 0) > baseSort)
+        .map((t) => ({ id: t.id, sort_order: (t.sort_order ?? 0) + N * 10 }))
+      const blockShifts = blocks
+        .filter((b) => b.sort_order > baseSort)
+        .map((b) => ({ id: b.id, sort_order: b.sort_order + N * 10 }))
+
+      const taskNewSorts: { id: string; sort_order: number }[] = []
+      for (let p = 0; p < N; p++) {
+        const target = baseSort + 10 * (p + 1)
+        const it = items[p]
+        if (it.type === 'heading') {
+          await addHeadingBlock(planTextToHtml(it.value), target)
+        } else if (it.type === 'text') {
+          await addTextBlock(planTextToHtml(it.value), target)
+        } else {
+          const thread = await createTask.mutateAsync({
+            name: it.value,
+            accessType: 'all',
+            type: 'task',
+          })
+          taskNewSorts.push({ id: thread.id, sort_order: target })
+        }
+      }
+
+      if (blockShifts.length) await setBlockOrders(blockShifts)
+      const taskUpdates = [...taskShifts, ...taskNewSorts]
+      if (taskUpdates.length) onReorderTasks(taskUpdates)
+    } finally {
+      setQuickAddPending(false)
+    }
+  }
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -219,13 +291,13 @@ export function ProjectFlatPlanList({
   }
 
   return (
-    <div>
+    <PlanDocsProvider projectId={projectId} workspaceId={workspaceId} enabled={hasSlotBlocks}>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext
           items={visibleMerged.map((i) => i.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="flex flex-col">
+          <div className="flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child_.border-b]:border-b-0">
             {visibleMerged.map((item) => (
               <SortableRow
                 key={item.id}
@@ -246,56 +318,12 @@ export function ProjectFlatPlanList({
                 onRequestDeleteTask={onRequestDeleteTask}
                 onChangeText={(html) => updateBlock(item.id, { content: html })}
                 onDeleteBlock={() => deleteBlock(item.id)}
-                onChangeSlotDeadline={(deadline) => {
-                  if (item.kind === 'block' && item.display.block_type === 'slot') {
-                    const b = blocks.find((x) => x.id === item.id)
-                    if (b?.folder_slot_id) {
-                      updateSlotDeadline.mutate({ slotId: b.folder_slot_id, deadline })
-                    }
-                  }
-                }}
+                onQuickAddHere={canEdit ? () => setQuickAddAfterSort(item.sort) : undefined}
               />
             ))}
           </div>
         </SortableContext>
       </DndContext>
-
-      {canEdit && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
-          <span className="text-xs text-muted-foreground">Добавить:</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 text-xs"
-            onClick={() => addHeadingBlock('', maxSort + 10)}
-          >
-            <Heading className="size-3.5" /> Заголовок
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 text-xs"
-            onClick={() => addTextBlock('', maxSort + 10)}
-          >
-            <TypeIcon className="size-3.5" /> Текст
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 text-xs"
-            onClick={() => setPickerOpen(true)}
-          >
-            <FolderOpen className="size-3.5" /> Документ
-          </Button>
-          <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Switch checked={showSlots} onCheckedChange={setShowSlots} />
-            Показывать документы
-          </label>
-        </div>
-      )}
 
       <SlotPicker
         open={pickerOpen}
@@ -306,7 +334,36 @@ export function ProjectFlatPlanList({
           setPickerOpen(false)
         }}
       />
-    </div>
+
+      {/* Быстрое добавление: задачи/заголовки/текст, со вставкой в позицию
+          quickAddAfterSort (после строки, под которой нажали «+»). */}
+      <QuickAddModal
+        open={quickAddAfterSort !== null}
+        onClose={() => setQuickAddAfterSort(null)}
+        onSubmit={handleQuickAddSubmit}
+        isPending={quickAddPending}
+      />
+    </PlanDocsProvider>
+  )
+}
+
+// Кнопка «+» по центру нижней границы строки — появляется на hover.
+// revealClass передаётся ЛИТЕРАЛОМ (group-hover/<name>:opacity-100), потому
+// что Tailwind JIT не видит динамически собранные имена групп.
+function QuickAddBelow({ onClick, revealClass }: { onClick: () => void; revealClass: string }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className={`absolute -bottom-3 left-1/2 z-20 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border bg-background text-muted-foreground opacity-0 shadow-sm transition-opacity hover:bg-accent hover:text-foreground ${revealClass}`}
+      aria-label="Добавить ниже"
+      title="Добавить задачу, документ, заголовок или текст"
+    >
+      <Plus className="size-3.5" />
+    </button>
   )
 }
 
@@ -330,7 +387,7 @@ function SortableRow({
   onRequestDeleteTask,
   onChangeText,
   onDeleteBlock,
-  onChangeSlotDeadline,
+  onQuickAddHere,
 }: {
   item: MergedItem
   canEdit: boolean
@@ -349,7 +406,8 @@ function SortableRow({
   onRequestDeleteTask?: (task: TaskItem) => void
   onChangeText: (html: string) => void
   onDeleteBlock: () => void
-  onChangeSlotDeadline: (deadline: string | null) => void
+  /** Открыть быстрое добавление с позицией ПОСЛЕ этой строки (task/heading). */
+  onQuickAddHere?: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -357,11 +415,19 @@ function SortableRow({
   })
   const style = { transform: CSS.Transform.toString(transform), transition }
   // Свёрнут ли текстовый блок до одной строки (состояние на блок, key=id).
-  const [collapsed, setCollapsed] = useState(false)
+  // По умолчанию текст свёрнут — чтобы длинная «Стратегия» не занимала
+  // пол-экрана над списком задач; разворачивается по клику/шеврону.
+  const [collapsed, setCollapsed] = useState(
+    item.kind === 'block' && item.display.block_type === 'text',
+  )
 
   if (item.kind === 'task') {
     return (
-      <div ref={setNodeRef} style={style} className={isDragging ? 'opacity-60' : ''}>
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`relative group/planrow ${isDragging ? 'opacity-60' : ''}`}
+      >
         <TaskRow
           task={item.task}
           workspaceId={workspaceId}
@@ -381,6 +447,9 @@ function SortableRow({
           isActive={item.id === selectedThreadId}
           dragHandleProps={canEdit ? { attributes, listeners } : undefined}
         />
+        {onQuickAddHere && (
+          <QuickAddBelow onClick={onQuickAddHere} revealClass="group-hover/planrow:opacity-100" />
+        )}
       </div>
     )
   }
@@ -394,19 +463,28 @@ function SortableRow({
       ref={setNodeRef}
       style={style}
       className={`group/row relative flex gap-3 px-3 py-1.5 transition-colors hover:bg-muted/30 ${
-        isHeading ? 'mt-3 items-center' : 'items-start border-b border-border/50'
+        isHeading
+          ? 'mt-3 items-center'
+          : bt === 'text'
+            ? 'items-start' // текст — без нижнего разделителя
+            : 'items-start border-b border-border/50'
       } ${isDragging ? 'opacity-50' : ''}`}
     >
       {canEdit && (
         <button
           type="button"
-          className="absolute -left-2.5 top-2 cursor-grab touch-none p-0.5 opacity-0 transition-opacity group-hover/row:opacity-100"
+          className="absolute -left-6 top-2 cursor-grab touch-none p-0.5 opacity-0 transition-opacity group-hover/row:opacity-100"
           {...attributes}
           {...listeners}
           aria-label="Перетащить"
         >
           <GripVertical className="size-4 text-muted-foreground/40" />
         </button>
+      )}
+
+      {/* «+» под заголовком (для текста/слотов не показываем). */}
+      {onQuickAddHere && isHeading && (
+        <QuickAddBelow onClick={onQuickAddHere} revealClass="group-hover/row:opacity-100" />
       )}
 
       {/* Текст: шеврон сворачивания в слоте статус-кружка → контент в одной
@@ -416,7 +494,7 @@ function SortableRow({
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            className="mt-0.5 shrink-0 text-muted-foreground/50 transition-colors hover:text-foreground"
+            className="flex h-6 shrink-0 items-center text-muted-foreground/50 transition-colors hover:text-foreground"
             aria-label={collapsed ? 'Развернуть' : 'Свернуть'}
             title={collapsed ? 'Развернуть' : 'Свернуть'}
           >
@@ -451,11 +529,7 @@ function SortableRow({
             />
           )
         ) : (
-          <SlotBlockBody
-            display={item.display}
-            editing={canEdit}
-            onChangeSlotDeadline={onChangeSlotDeadline}
-          />
+          <PlanSlotItem fullSlot={item.kind === 'block' ? item.fullSlot ?? null : null} />
         )}
       </div>
 
@@ -473,6 +547,25 @@ function SortableRow({
       )}
     </div>
   )
+}
+
+/** Слот документа в плане — настоящий SlotItem из «Документов» (reuse). */
+function PlanSlotItem({ fullSlot }: { fullSlot: FolderSlotWithDocument | null }) {
+  const { onSlotClick, onSlotRename } = usePlanSlotHandlers()
+  if (!fullSlot) {
+    return <span className="py-1 text-sm italic text-muted-foreground">Документ удалён</span>
+  }
+  const el = <SlotItem slot={fullSlot} onSlotClick={onSlotClick} onSlotRename={onSlotRename} />
+  // Пустой слот = пилюля (<div>), заполненный = DocumentItem (<tr>). Чтобы <tr>
+  // был валидным вне таблицы документов — оборачиваем в собственную таблицу.
+  if (fullSlot.document_id) {
+    return (
+      <table className="w-full">
+        <tbody>{el}</tbody>
+      </table>
+    )
+  }
+  return el
 }
 
 /** HTML → одна строка текста (для свёрнутого вида). */
@@ -536,16 +629,26 @@ function SlotPicker({
           <>
             <div className="-mx-1 max-h-80 space-y-0.5 overflow-y-auto px-1">
               {slots.map((s) => (
-                <button
+                // role=button, а не <button>: внутри Checkbox (Radix) сам
+                // рендерит <button> — вложенные кнопки невалидны и дают
+                // hydration error. Поэтому контейнер строки — div.
+                <div
                   key={s.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => toggle(s.id)}
-                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      toggle(s.id)
+                    }
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent"
                 >
                   <Checkbox checked={selected.has(s.id)} className="pointer-events-none" />
                   <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
                   <span className="truncate">{s.name}</span>
-                </button>
+                </div>
               ))}
             </div>
             <div className="flex items-center justify-between gap-2 border-t pt-3">

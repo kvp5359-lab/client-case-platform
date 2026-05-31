@@ -8,6 +8,8 @@
 import { memo } from 'react'
 import { Search, X, List, CalendarDays } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Switch } from '@/components/ui/switch'
+import type { PlanBlockVisibility } from '@/hooks/plan/usePlanBlockVisibility'
 import type { TaskStatus } from '@/hooks/useStatuses'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { useTaskFilters } from './useTaskFilters'
@@ -29,6 +31,10 @@ type TaskListControlsProps = {
   allAssignees: AvatarParticipant[]
   currentParticipantId: string | null
   taskStatuses: TaskStatus[]
+  /** Тумблеры видимости блоков плана — показываем в панели фильтров
+      только в plan-режиме (когда виден плоский план проекта). */
+  planVis?: PlanBlockVisibility
+  showPlanToggles?: boolean
 }
 
 export const TaskListControls = memo(function TaskListControls({
@@ -43,6 +49,8 @@ export const TaskListControls = memo(function TaskListControls({
   allAssignees,
   currentParticipantId,
   taskStatuses,
+  planVis,
+  showPlanToggles,
 }: TaskListControlsProps) {
   return (
     <>
@@ -180,6 +188,25 @@ export const TaskListControls = memo(function TaskListControls({
                 filters.markModified()
               }}
             />
+          )}
+          {showPlanToggles && planVis && (
+            <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1">
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Switch
+                  checked={planVis.showHeadings}
+                  onCheckedChange={planVis.setShowHeadings}
+                />
+                Заголовки
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Switch checked={planVis.showText} onCheckedChange={planVis.setShowText} />
+                Текст
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Switch checked={planVis.showSlots} onCheckedChange={planVis.setShowSlots} />
+                Документы
+              </label>
+            </div>
           )}
         </div>
       )}

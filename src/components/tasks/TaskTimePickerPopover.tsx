@@ -278,9 +278,11 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
           <div className="flex items-center gap-0.5">
             <button
               type="button"
-              onClick={() => setDisplayMonth((m) => {
-                const d = new Date(m); d.setMonth(d.getMonth() - 1); return d
-              })}
+              onClick={() => setDisplayMonth((m) =>
+                // Привязка к 1-му числу: иначе при дне 31 setMonth переполняет
+                // короткий месяц (31 мая → −1 → «31 апреля» → 1 мая, и т.п.).
+                new Date(m.getFullYear(), m.getMonth() - 1, 1),
+              )}
               className="p-0.5 rounded text-muted-foreground hover:bg-accent transition-colors"
               aria-label="Предыдущий месяц"
             >
@@ -291,9 +293,11 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
             </span>
             <button
               type="button"
-              onClick={() => setDisplayMonth((m) => {
-                const d = new Date(m); d.setMonth(d.getMonth() + 1); return d
-              })}
+              onClick={() => setDisplayMonth((m) =>
+                // Привязка к 1-му числу: иначе при дне 31 setMonth переполняет
+                // короткий месяц (31 мая → +1 → «31 июня» → 1 июля).
+                new Date(m.getFullYear(), m.getMonth() + 1, 1),
+              )}
               className="p-0.5 rounded text-muted-foreground hover:bg-accent transition-colors"
               aria-label="Следующий месяц"
             >

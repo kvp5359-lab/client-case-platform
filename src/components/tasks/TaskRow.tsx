@@ -7,7 +7,6 @@
 import { useMemo, createElement, forwardRef } from 'react'
 import { CheckSquare, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ACTIVE_NAV_ITEM_BG_CLASS, ACTIVE_NAV_ITEM_HOVER_BG_CLASS } from '@/lib/sidebarTokens'
 import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { DraggableAttributes } from '@dnd-kit/core'
@@ -92,19 +91,18 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
       className={cn(
         'group/row relative flex items-center gap-3 px-3 py-1 border-b border-border/50 hover:bg-muted/30 transition-colors bg-background',
         isDragging && 'opacity-50 shadow-lg z-10',
-        // Подсветка задачи, открытой в боковой панели. hover-вариант
-        // оставляем заметным, иначе при наведении пропадает индикация.
-        // Подсветка задачи, открытой в боковой панели. Цвет — общий токен
-        // с активным проектом в сайдбаре (см. sidebarTokens.ts), чтобы UI
-        // оставался согласованным при будущих правках темы.
-        isActive && [ACTIVE_NAV_ITEM_BG_CLASS, ACTIVE_NAV_ITEM_HOVER_BG_CLASS],
+        // Подсветка задачи, открытой в боковой панели. Светлее активного
+        // проекта в сайдбаре (там bg-gray-200) — для строки задачи такой тон
+        // визуально перегружен, поэтому намеренно более лёгкий фон. hover
+        // держим тем же, чтобы при наведении индикация не пропадала.
+        isActive && 'bg-gray-100 hover:bg-gray-100',
       )}
     >
       {/* Drag handle — появляется слева при hover, поверх padding строки */}
       {dragHandleProps && (
         <button
           type="button"
-          className="absolute -left-2.5 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-none p-0.5 shrink-0"
+          className="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-none p-0.5 shrink-0"
           {...dragHandleProps.attributes}
           {...dragHandleProps.listeners}
         >
@@ -169,6 +167,24 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
           />
         </span>
 
+        {/* Срок — прижат к исполнителям. Заполненный виден всегда,
+            пустой плейсхолдер «Срок» — только при наведении на строку. */}
+        <span className="shrink-0" onClick={(e) => e.stopPropagation()}>
+          <DeadlinePopover
+            deadline={task.deadline}
+            startAt={task.start_at}
+            endAt={task.end_at}
+            onChange={onTimeChange}
+            onSet={onDeadlineSet}
+            onClear={onDeadlineClear}
+            isPending={deadlinePending}
+            isFinal={isFinal}
+            triggerClassName={
+              !task.deadline ? 'hidden group-hover/row:inline-flex' : undefined
+            }
+          />
+        </span>
+
         <UnreadBadge threadId={task.id} workspaceId={workspaceId} accentColor={task.accent_color} />
 
         {/* Меню «три точки» — единый компонент для всех мест UI.
@@ -186,18 +202,6 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
           triggerClassName="opacity-0 group-hover/row:opacity-100"
         />
       </div>
-
-      {/* Срок */}
-      <DeadlinePopover
-        deadline={task.deadline}
-        startAt={task.start_at}
-        endAt={task.end_at}
-        onChange={onTimeChange}
-        onSet={onDeadlineSet}
-        onClear={onDeadlineClear}
-        isPending={deadlinePending}
-        isFinal={isFinal}
-      />
     </div>
   )
 })

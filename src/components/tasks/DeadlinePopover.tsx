@@ -18,6 +18,15 @@
 import { Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatShortDate, formatDateToString } from '@/utils/format/dateFormat'
+
+/** Разница в КАЛЕНДАРНЫХ днях между сроком и сегодня (по локальной дате). */
+function deadlineDayDiff(deadline: string): number {
+  const d = new Date(deadline)
+  const dd = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.round((dd.getTime() - today.getTime()) / 86_400_000)
+}
 import { TaskTimePickerPopover, type TaskTimeValue } from './TaskTimePickerPopover'
 
 function formatHM(d: Date): string {
@@ -69,6 +78,8 @@ type DeadlinePopoverProps = {
   isPending: boolean
   /** Задача завершена/отменена — не подсвечивать просрочку */
   isFinal?: boolean
+  /** Доп. классы на chip-триггер (напр. hover-only видимость для пустого срока). */
+  triggerClassName?: string
 }
 
 export function DeadlinePopover({
@@ -80,13 +91,12 @@ export function DeadlinePopover({
   onClear,
   isPending,
   isFinal,
+  triggerClassName,
 }: DeadlinePopoverProps) {
-  const d = deadline ? new Date(deadline) : undefined
-  const isOverdue =
-    !isFinal &&
-    d != null &&
-    new Date(d.getFullYear(), d.getMonth(), d.getDate()) <
-      new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())
+  // Цветовой акцент chip'а по близости срока: просрочено → красный,
+  // сегодня → оранжевый, завтра → синий, послезавтра → зелёный, позже → серый.
+  // Завершённую/отменённую задачу не подсвечиваем (diff = null → серый).
+  const diff = !isFinal && deadline ? deadlineDayDiff(deadline) : null
 
   const handleChange = (v: TaskTimeValue) => {
     if (onChange) {
@@ -114,12 +124,19 @@ export function DeadlinePopover({
           }}
           className={cn(
             'flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0 whitespace-nowrap',
-            isOverdue
-              ? 'text-red-600 bg-red-50 font-medium hover:bg-red-100'
-              : d
-                ? 'text-muted-foreground bg-gray-100 hover:text-foreground hover:bg-gray-200'
-                : 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50',
+            !deadline
+              ? 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50'
+              : diff != null && diff < 0
+                ? 'text-red-600 bg-red-50 font-medium hover:bg-red-100'
+                : diff === 0
+                  ? 'text-orange-600 bg-orange-50 font-medium hover:bg-orange-100'
+                  : diff === 1
+                    ? 'text-blue-600 bg-blue-50 font-medium hover:bg-blue-100'
+                    : diff === 2
+                      ? 'text-green-600 bg-green-50 font-medium hover:bg-green-100'
+                      : 'text-muted-foreground bg-gray-100 hover:text-foreground hover:bg-gray-200',
             isFinal && 'opacity-20 hover:opacity-100',
+            triggerClassName,
           )}
           disabled={isPending}
           title="Срок выполнения"

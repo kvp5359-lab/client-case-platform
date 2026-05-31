@@ -62,6 +62,7 @@ import { useTaskFilters } from './useTaskFilters'
 import { useCreateTaskHandler } from './useCreateTaskMutation'
 import { TaskGroupList } from './TaskGroupList'
 import { ProjectFlatPlanList } from '@/components/plan/ProjectFlatPlanList'
+import { usePlanBlockVisibility } from '@/hooks/plan/usePlanBlockVisibility'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
 // ── Props ──
@@ -114,6 +115,7 @@ export const TaskListView = memo(function TaskListView({
   const [createDefaultType, setCreateDefaultType] = useState<'task' | 'chat' | 'email'>('task')
   const [createTemplate, setCreateTemplate] = useState<ThreadTemplate | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const planVis = usePlanBlockVisibility()
   const [presetPopoverOpen, setPresetPopoverOpen] = useState(false)
   const [deletingTask, setDeletingTask] = useState<TaskItem | null>(null)
 
@@ -324,6 +326,8 @@ export const TaskListView = memo(function TaskListView({
         allAssignees={allAssignees}
         currentParticipantId={currentParticipantId}
         taskStatuses={taskStatuses}
+        planVis={planVis}
+        showPlanToggles={planMode}
       />
 
       {/* Контент */}
@@ -340,6 +344,9 @@ export const TaskListView = memo(function TaskListView({
           selectedThreadId={layoutPanel?.activeThreadId ?? null}
           showProject={showProject}
           deadlinePending={updateDeadline.isPending}
+          showHeadings={planVis.showHeadings}
+          showText={planVis.showText}
+          showSlots={planVis.showSlots}
           onOpenTask={handleOpenTask}
           onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}
           onDeadlineSet={(taskId, date) =>
