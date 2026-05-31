@@ -267,7 +267,7 @@ function SortableTemplateBlock({
       </button>
 
       <div className="min-w-0 flex-1">
-        {block.block_type === 'text' ? (
+        {block.block_type === 'text' || block.block_type === 'heading' ? (
           <TemplateTextBlock content={block.content} onChangeText={onChangeText} />
         ) : tpl ? (
           <div className="flex items-center gap-2 py-1">

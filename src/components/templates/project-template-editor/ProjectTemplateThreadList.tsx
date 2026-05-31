@@ -1,12 +1,13 @@
 /**
- * ProjectTemplateThreadList — список шаблонов тредов, привязанных к типу
- * проекта. Используется внутри ModulesSection в блоке "Задачи и чаты".
+ * ProjectTemplateThreadList — список шаблонов задач/чатов типа проекта плюс
+ * структурные блоки плана (заголовки и текст), привязанные к тому же типу.
  *
- * Всё UI (и CRUD) устроен так же, как ThreadTemplatesContent, только:
- * - грузит через useThreadTemplatesByProjectTemplate
- * - при создании проставляет owner_project_template_id
- * - поддерживает drag-and-drop переупорядочивания (sort_order)
- * - плотная компоновка (встраивается в блок модуля)
+ * Раньше показывал только thread_templates. Теперь это единый перетаскиваемый
+ * список «задачи + заголовки + текст» — как вкладка «Задачи» в самом проекте
+ * (ProjectFlatPlanList). Задачи живут в thread_templates, заголовки/текст —
+ * в project_template_plan_blocks (block_type heading/text). Общий порядок
+ * (sort_order) — единая шкала между обеими таблицами; при создании проекта
+ * блоки разворачиваются вперемешку с задачами (см. CreateProjectDialog).
  */
 
 "use client"
@@ -25,35 +26,44 @@ import {
   SortableContext,
   verticalListSortingStrategy,
   arrayMove,
+  useSortable,
 } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Heading, Type as TypeIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
-import { threadTemplateKeys } from '@/hooks/queryKeys'
+import { threadTemplateKeys, planKeys } from '@/hooks/queryKeys'
 import { useThreadTemplatesByProjectTemplate } from '@/hooks/messenger/useThreadTemplates'
+import { useTemplatePlan } from '@/hooks/plan/useTemplatePlan'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ThreadTemplateDialog } from '../ThreadTemplateDialog'
 import { SortableTemplateRow } from './SortableTemplateRow'
+import { HeadingBlockBody, TextBlockBody, htmlToPlain } from '@/components/plan/PlanBlockItem'
 import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTemplate'
+import type { TemplatePlanBlockRow } from '@/types/plan'
 
 type Props = {
   workspaceId: string
   projectTemplateId: string
   /**
-   * Фильтр по типу. Если не передан — показываются и задачи, и чаты
-   * (один объединённый список под модулем "Задачи и чаты").
+   * Фильтр по типу. Если не передан — показываются и задачи, и чаты, плюс
+   * структурные блоки (заголовки/текст). С фильтром блоки скрыты.
    */
   threadType?: 'task' | 'chat'
   /** Текст для пустого состояния. */
   emptyHint?: string
-  /** Текст кнопки добавления. */
+  /** Текст кнопки добавления задачи. */
   addLabel?: string
 }
+
+type MergedRow =
+  | { kind: 'task'; id: string; sort: number; template: ThreadTemplate }
+  | { kind: 'block'; id: string; sort: number; block: TemplatePlanBlockRow }
 
 export function ProjectTemplateThreadList({
   workspaceId,
@@ -65,6 +75,12 @@ export function ProjectTemplateThreadList({
   const queryClient = useQueryClient()
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
   const { data: all = [], isLoading } = useThreadTemplatesByProjectTemplate(projectTemplateId)
+
+  // Структурные блоки (заголовки/текст) показываем только в общем списке задач
+  // (без фильтра по типу) — как вкладка «Задачи» в проекте.
+  const showBlocks = !threadType
+  const { blocks, addHeadingBlock, addTextBlock, updateBlock, deleteBlock, setBlockOrders } =
+    useTemplatePlan(projectTemplateId, workspaceId)
 
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
   const participantById = useMemo(() => {
@@ -87,6 +103,29 @@ export function ProjectTemplateThreadList({
         threadType === 'task' ? t.thread_type === 'task' : t.thread_type === 'chat',
       )
 
+  const contentBlocks = useMemo(
+    () =>
+      showBlocks
+        ? blocks.filter((b) => b.block_type === 'heading' || b.block_type === 'text')
+        : [],
+    [blocks, showBlocks],
+  )
+
+  // Единый список: задачи + заголовки/текст по общей шкале sort_order.
+  const merged = useMemo<MergedRow[]>(() => {
+    const rows: MergedRow[] = []
+    for (const t of templates) {
+      rows.push({ kind: 'task', id: t.id, sort: t.sort_order ?? 0, template: t })
+    }
+    for (const b of contentBlocks) {
+      rows.push({ kind: 'block', id: b.id, sort: b.sort_order, block: b })
+    }
+    rows.sort((a, b) => a.sort - b.sort || (a.kind === 'task' ? -1 : 1))
+    return rows
+  }, [templates, contentBlocks])
+
+  const maxSort = merged.length ? Math.max(...merged.map((m) => m.sort)) : -1
+
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ThreadTemplate | null>(null)
 
@@ -95,6 +134,7 @@ export function ProjectTemplateThreadList({
       queryKey: threadTemplateKeys.byProjectTemplate(projectTemplateId),
     })
     queryClient.invalidateQueries({ queryKey: threadTemplateKeys.all })
+    queryClient.invalidateQueries({ queryKey: planKeys.templateByTemplate(projectTemplateId) })
   }, [queryClient, projectTemplateId])
 
   // ── Save ──
@@ -116,7 +156,7 @@ export function ProjectTemplateThreadList({
         })
         if (error) throw error
       } else {
-        const nextSort = templates.length
+        const nextSort = maxSort + 1
         const { data: created, error } = await supabase
           .from('thread_templates')
           .insert({
@@ -180,22 +220,29 @@ export function ProjectTemplateThreadList({
     },
   })
 
-  // ── Reorder (drag & drop) ──
-  // sort_order обновляется батчем через отдельные UPDATE по id.
-  // Supabase-js не поддерживает bulk update, поэтому шлём параллельно.
+  // ── Reorder (единый) ──
+  // Нумеруем общий список заново и пишем sort_order по индексу: задачи в
+  // thread_templates, блоки в project_template_plan_blocks.
   const reorderMutation = useMutation({
-    mutationFn: async (reordered: ThreadTemplate[]) => {
-      const updates = reordered.map((t, i) =>
-        supabase.from('thread_templates').update({ sort_order: i }).eq('id', t.id),
+    mutationFn: async ({
+      taskOrders,
+      blockOrders,
+    }: {
+      taskOrders: { id: string; sort_order: number }[]
+      blockOrders: { id: string; sort_order: number }[]
+    }) => {
+      const results = await Promise.all(
+        taskOrders.map((o) =>
+          supabase.from('thread_templates').update({ sort_order: o.sort_order }).eq('id', o.id),
+        ),
       )
-      const results = await Promise.all(updates)
       const firstError = results.find((r) => r.error)?.error
       if (firstError) throw firstError
+      if (blockOrders.length > 0) await setBlockOrders(blockOrders)
     },
     onError: (error) => {
-      logger.error('Ошибка переупорядочивания шаблонов тредов:', error)
+      logger.error('Ошибка переупорядочивания списка задач:', error)
       toast.error('Не удалось сохранить порядок')
-      // Инвалидируем кэш, чтобы откатиться к серверному порядку.
       invalidate()
     },
   })
@@ -209,37 +256,44 @@ export function ProjectTemplateThreadList({
       const { active, over } = event
       if (!over || active.id === over.id) return
 
-      const oldIndex = templates.findIndex((t) => t.id === active.id)
-      const newIndex = templates.findIndex((t) => t.id === over.id)
+      const ids = merged.map((m) => m.id)
+      const oldIndex = ids.indexOf(active.id as string)
+      const newIndex = ids.indexOf(over.id as string)
       if (oldIndex === -1 || newIndex === -1) return
 
-      const reordered = arrayMove(templates, oldIndex, newIndex)
+      const reordered = arrayMove(merged, oldIndex, newIndex)
+      const taskOrders: { id: string; sort_order: number }[] = []
+      const blockOrders: { id: string; sort_order: number }[] = []
+      reordered.forEach((m, i) => {
+        if (m.kind === 'task') taskOrders.push({ id: m.id, sort_order: i })
+        else blockOrders.push({ id: m.id, sort_order: i })
+      })
 
-      // Optimistic update: обновляем кэш query, чтобы UI отразил новый
-      // порядок до возврата ответа сервера. Работа идёт с query-ключом
-      // byProjectTemplate — именно он питает этот компонент.
+      // Оптимистично обновляем оба кэша, чтобы строки двигались сразу.
+      const taskMap = new Map(taskOrders.map((o) => [o.id, o.sort_order]))
       queryClient.setQueryData<ThreadTemplate[]>(
         threadTemplateKeys.byProjectTemplate(projectTemplateId),
-        (prev) => {
-          if (!prev) return prev
-          // Если threadType не передан — reordered покрывает весь список.
-          // Если передан — reordered это только отфильтрованная часть, а
-          // в кэше лежат обе (task + chat). Нужно слить: ставим
-          // переупорядоченные элементы в их новые слоты, не трогая чужой тип.
-          if (!threadType) {
-            return reordered.map((t, i) => ({ ...t, sort_order: i }))
-          }
-          const otherType = prev.filter((t) =>
-            threadType === 'task' ? t.thread_type !== 'task' : t.thread_type !== 'chat',
-          )
-          const updatedSameType = reordered.map((t, i) => ({ ...t, sort_order: i }))
-          return [...updatedSameType, ...otherType]
-        },
+        (prev) =>
+          prev
+            ? prev.map((t) =>
+                taskMap.has(t.id) ? { ...t, sort_order: taskMap.get(t.id)! } : t,
+              )
+            : prev,
+      )
+      const blockMap = new Map(blockOrders.map((o) => [o.id, o.sort_order]))
+      queryClient.setQueryData<TemplatePlanBlockRow[]>(
+        planKeys.templateByTemplate(projectTemplateId),
+        (prev) =>
+          prev
+            ? prev.map((b) =>
+                blockMap.has(b.id) ? { ...b, sort_order: blockMap.get(b.id)! } : b,
+              )
+            : prev,
       )
 
-      reorderMutation.mutate(reordered)
+      reorderMutation.mutate({ taskOrders, blockOrders })
     },
-    [templates, queryClient, projectTemplateId, threadType, reorderMutation],
+    [merged, queryClient, projectTemplateId, reorderMutation],
   )
 
   const handleCreate = () => {
@@ -273,7 +327,7 @@ export function ProjectTemplateThreadList({
         {isLoading && (
           <div className="text-xs text-muted-foreground px-2 py-1">Загрузка...</div>
         )}
-        {!isLoading && templates.length === 0 && (
+        {!isLoading && merged.length === 0 && (
           <div className="text-xs text-muted-foreground px-2 py-1">
             {emptyHint ?? 'Шаблонов пока нет'}
           </div>
@@ -284,33 +338,44 @@ export function ProjectTemplateThreadList({
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={templates.map((t) => t.id)}
+            items={merged.map((m) => m.id)}
             strategy={verticalListSortingStrategy}
           >
-            {templates.map((t) => {
-              const status = t.default_status_id
-                ? statusById.get(t.default_status_id)
-                : undefined
-              const assigneeRows = (t.thread_template_assignees ?? [])
-                .map((a) => participantById.get(a.participant_id))
-                .filter((p): p is NonNullable<typeof p> => !!p)
+            {merged.map((m) => {
+              if (m.kind === 'task') {
+                const t = m.template
+                const status = t.default_status_id
+                  ? statusById.get(t.default_status_id)
+                  : undefined
+                const assigneeRows = (t.thread_template_assignees ?? [])
+                  .map((a) => participantById.get(a.participant_id))
+                  .filter((p): p is NonNullable<typeof p> => !!p)
+                return (
+                  <SortableTemplateRow
+                    key={t.id}
+                    template={t}
+                    status={
+                      status ? { name: status.name, color: status.color ?? '' } : undefined
+                    }
+                    assigneeRows={assigneeRows}
+                    onEdit={handleEdit}
+                    onCopy={(tpl) => copyMutation.mutate(tpl)}
+                    onDelete={handleDelete}
+                  />
+                )
+              }
               return (
-                <SortableTemplateRow
-                  key={t.id}
-                  template={t}
-                  status={
-                    status ? { name: status.name, color: status.color ?? '' } : undefined
-                  }
-                  assigneeRows={assigneeRows}
-                  onEdit={handleEdit}
-                  onCopy={(tpl) => copyMutation.mutate(tpl)}
-                  onDelete={handleDelete}
+                <SortableContentRow
+                  key={m.id}
+                  block={m.block}
+                  onChangeContent={(content) => updateBlock(m.block.id, { content })}
+                  onDelete={() => deleteBlock(m.block.id)}
                 />
               )
             })}
           </SortableContext>
         </DndContext>
-        <div className="pt-1">
+        <div className="pt-1 flex flex-wrap items-center gap-1">
           <Button
             size="sm"
             variant="ghost"
@@ -320,6 +385,28 @@ export function ProjectTemplateThreadList({
             <Plus className="w-3 h-3 mr-1" />
             {addLabel ?? 'Добавить шаблон'}
           </Button>
+          {showBlocks && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => addHeadingBlock('', maxSort + 1)}
+                className="h-7 px-2 text-xs text-muted-foreground"
+              >
+                <Heading className="w-3 h-3 mr-1" />
+                Заголовок
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => addTextBlock('', maxSort + 1)}
+                className="h-7 px-2 text-xs text-muted-foreground"
+              >
+                <TypeIcon className="w-3 h-3 mr-1" />
+                Текст
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -337,6 +424,94 @@ export function ProjectTemplateThreadList({
       />
 
       <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
+    </div>
+  )
+}
+
+// ── Строка структурного блока (заголовок / текст) ──────────
+
+function SortableContentRow({
+  block,
+  onChangeContent,
+  onDelete,
+}: {
+  block: TemplatePlanBlockRow
+  onChangeContent: (content: string) => void
+  onDelete: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: block.id,
+  })
+  const [editingText, setEditingText] = useState(false)
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: 'relative',
+    zIndex: isDragging ? 10 : undefined,
+  }
+
+  const plain = htmlToPlain(block.content ?? '')
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-start gap-2 px-2 rounded group hover:bg-muted/60 transition-colors py-1"
+    >
+      <button
+        type="button"
+        className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+        aria-label="Переупорядочить"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+      </button>
+
+      <div className="min-w-0 flex-1">
+        {block.block_type === 'heading' ? (
+          <HeadingBlockBody content={block.content} editing onChange={onChangeContent} />
+        ) : editingText ? (
+          <TextBlockBody
+            content={block.content}
+            onChange={onChangeContent}
+            onClose={() => setEditingText(false)}
+          />
+        ) : (
+          <div
+            className="cursor-text rounded -mx-1 px-1 py-0.5 hover:bg-muted/50"
+            role="button"
+            tabIndex={0}
+            onClick={() => setEditingText(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                setEditingText(true)
+              }
+            }}
+          >
+            {plain ? (
+              <p className="text-sm whitespace-pre-wrap">{plain}</p>
+            ) : (
+              <p className="text-sm italic text-muted-foreground">
+                Нажмите, чтобы добавить текст
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+        onClick={onDelete}
+        title="Удалить"
+      >
+        <Trash2 className="w-3 h-3" />
+      </Button>
     </div>
   )
 }

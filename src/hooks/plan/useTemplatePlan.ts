@@ -53,13 +53,14 @@ export function useTemplatePlan(
       block_type: PlanBlockType
       content?: string | null
       thread_template_id?: string | null
+      sort_order?: number
     }) => {
       if (!templateId || !workspaceId) throw new Error('templateId/workspaceId required')
       const { error } = await planDb.from(TABLE).insert({
         workspace_id: workspaceId,
         project_template_id: templateId,
         block_type: input.block_type,
-        sort_order: nextSortOrder(),
+        sort_order: input.sort_order ?? nextSortOrder(),
         content: input.content ?? null,
         thread_template_id: input.thread_template_id ?? null,
         slot_template_id: null,
@@ -123,15 +124,39 @@ export function useTemplatePlan(
     onSuccess: invalidate,
   })
 
+  // Явная установка sort_order по id — для единого порядка задач+блоков
+  // в секции «Задачи» (там нумерация считается снаружи по общему списку).
+  const setBlockOrdersMut = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      await Promise.all(
+        updates.map((u) =>
+          planDb
+            .from(TABLE)
+            .update({ sort_order: u.sort_order })
+            .eq('id', u.id)
+            .then(({ error }: { error: unknown }) => {
+              if (error) throw error
+            }),
+        ),
+      )
+    },
+    onSuccess: invalidate,
+  })
+
   return {
     blocks: blocksQuery.data ?? [],
     isLoading: blocksQuery.isLoading,
-    addTextBlock: (content: string) => addBlock.mutateAsync({ block_type: 'text', content }),
+    addTextBlock: (content: string, sortOrder?: number) =>
+      addBlock.mutateAsync({ block_type: 'text', content, sort_order: sortOrder }),
+    addHeadingBlock: (content: string, sortOrder?: number) =>
+      addBlock.mutateAsync({ block_type: 'heading', content, sort_order: sortOrder }),
     addTaskBlocks: (threadTemplateIds: string[]) =>
       addTaskBlocksBatch.mutateAsync(threadTemplateIds),
     updateBlock: (id: string, updates: PlanBlockUpdate) =>
       updateBlock.mutateAsync({ id, updates }),
     deleteBlock: (id: string) => deleteBlock.mutateAsync(id),
     reorderBlocks: (orderedIds: string[]) => reorderBlocks.mutateAsync(orderedIds),
+    setBlockOrders: (updates: { id: string; sort_order: number }[]) =>
+      setBlockOrdersMut.mutateAsync(updates),
   }
 }

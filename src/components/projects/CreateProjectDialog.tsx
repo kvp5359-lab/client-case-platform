@@ -17,6 +17,7 @@ import { addDays } from 'date-fns'
 import { TemplateSelector } from './create-project/TemplateSelector'
 import { TemplateItemsList } from './create-project/TemplateItemsList'
 import { useThreadTemplatesByProjectTemplate } from '@/hooks/messenger/useThreadTemplates'
+import { useTemplatePlan } from '@/hooks/plan/useTemplatePlan'
 import { projectTemplateKeys } from '@/hooks/queryKeys'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
@@ -35,6 +36,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
   const [selectedDocKitIds, setSelectedDocKitIds] = useState<Set<string>>(new Set())
   const [selectedFormIds, setSelectedFormIds] = useState<Set<string>>(new Set())
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
+  const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set())
   const { workspaceId: currentWorkspaceId } = useWorkspaceContext()
 
   const activeTemplateId = templateId && templateId !== 'none' ? templateId : undefined
@@ -89,6 +91,15 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
     enabled: !!activeTemplateId && open,
   })
 
+  // Структурные блоки плана шаблона (заголовки/текст) — для превью списка
+  // «Задачи и чаты». Переиспользуем тот же запрос, что и редактор шаблона.
+  const { blocks: templatePlanBlocks } = useTemplatePlan(activeTemplateId, currentWorkspaceId)
+  const planContentBlocks = useMemo(
+    () =>
+      templatePlanBlocks.filter((b) => b.block_type === 'heading' || b.block_type === 'text'),
+    [templatePlanBlocks],
+  )
+
   const docKitTemplates = useMemo(
     () =>
       linkedDocKits
@@ -116,6 +127,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
   const docKitKey = docKitTemplates.map((t) => t.id).join(',')
   const formKey = formTemplates.map((t) => t.id).join(',')
   const threadKey = scopedThreadTemplates.map((t) => t.id).join(',')
+  const blockKey = planContentBlocks.map((b) => b.id).join(',')
 
   useEffect(() => {
     setSelectedDocKitIds(new Set(docKitTemplates.map((t) => t.id)))
@@ -131,6 +143,12 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
   }, [threadKey])
 
   useEffect(() => {
+    // Заголовки/текст шаблона по умолчанию включены.
+    setSelectedBlockIds(new Set(planContentBlocks.map((b) => b.id)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockKey])
+
+  useEffect(() => {
     if (!open) {
       setName('')
       setDescription('')
@@ -139,6 +157,7 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
       setSelectedDocKitIds(new Set())
       setSelectedFormIds(new Set())
       setSelectedTaskIds(new Set())
+      setSelectedBlockIds(new Set())
     }
   }, [open])
 
@@ -162,6 +181,15 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
 
   const toggleTask = (id: string) => {
     setSelectedTaskIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleBlock = (id: string) => {
+    setSelectedBlockIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -294,7 +322,15 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
             .select('*')
             .eq('project_template_id', activeTemplateId)
             .order('sort_order', { ascending: true })
-          if (tmplBlocks && tmplBlocks.length > 0) {
+          // Берём только структурные блоки (заголовки/текст). Задачи живут в
+          // project_threads (созданы выше), task-блоки шаблона игнорируем —
+          // порядок задач задаёт thread_templates.sort_order.
+          const contentBlocks = (tmplBlocks ?? []).filter(
+            (b) =>
+              (b.block_type === 'heading' || b.block_type === 'text') &&
+              selectedBlockIds.has(b.id),
+          )
+          if (contentBlocks.length > 0) {
             const { data: createdThreads } = await supabase
               .from('project_threads')
               .select('id, source_template_id')
@@ -303,33 +339,56 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
             for (const t of createdThreads ?? []) {
               if (t.source_template_id) threadByTemplate.set(t.source_template_id, t.id)
             }
-            const planRows = tmplBlocks
-              .filter((b) => b.block_type !== 'slot')
-              .map((b, index) => {
-                if (b.block_type === 'task') {
-                  const threadId = b.thread_template_id
-                    ? threadByTemplate.get(b.thread_template_id)
-                    : null
-                  if (!threadId) return null
-                  return {
-                    workspace_id: currentWorkspaceId,
-                    project_id: project.id,
-                    block_type: 'task',
-                    sort_order: index,
-                    visible_to_client: b.visible_to_client,
-                    thread_id: threadId,
-                  }
-                }
-                return {
+            // Единый порядок: задачи (по thread_template.sort_order) и блоки
+            // (по их sort_order) сводим в одну шкалу и нумеруем заново, чтобы
+            // заголовки/текст встали между задачами как в шаблоне.
+            type SeedItem =
+              | { kind: 'task'; threadId: string; sort: number }
+              | { kind: 'block'; block: (typeof contentBlocks)[number]; sort: number }
+            const items: SeedItem[] = []
+            for (const tpl of selectedThreadTemplates) {
+              const threadId = threadByTemplate.get(tpl.id)
+              if (threadId) items.push({ kind: 'task', threadId, sort: tpl.sort_order })
+            }
+            for (const b of contentBlocks) {
+              items.push({ kind: 'block', block: b, sort: b.sort_order })
+            }
+            items.sort((a, b) => a.sort - b.sort || (a.kind === 'task' ? -1 : 1))
+
+            const taskOrder: { threadId: string; index: number }[] = []
+            const planRows: {
+              workspace_id: string
+              project_id: string
+              block_type: 'heading' | 'text'
+              sort_order: number
+              visible_to_client: boolean
+              content: string | null
+            }[] = []
+            items.forEach((it, index) => {
+              if (it.kind === 'task') {
+                taskOrder.push({ threadId: it.threadId, index })
+              } else {
+                planRows.push({
                   workspace_id: currentWorkspaceId,
                   project_id: project.id,
-                  block_type: 'text',
+                  block_type: it.block.block_type as 'heading' | 'text',
                   sort_order: index,
-                  visible_to_client: b.visible_to_client,
-                  content: b.content,
-                }
-              })
-              .filter((r): r is NonNullable<typeof r> => r !== null)
+                  visible_to_client: it.block.visible_to_client,
+                  content: it.block.content,
+                })
+              }
+            })
+
+            if (taskOrder.length > 0) {
+              await Promise.all(
+                taskOrder.map((o) =>
+                  supabase
+                    .from('project_threads')
+                    .update({ sort_order: o.index })
+                    .eq('id', o.threadId),
+                ),
+              )
+            }
             if (planRows.length > 0) {
               const { error: planErr } = await supabase
                 .from('project_plan_blocks')
@@ -357,7 +416,8 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
   const hasLinkedItems =
     docKitTemplates.length > 0 ||
     formTemplates.length > 0 ||
-    scopedThreadTemplates.length > 0
+    scopedThreadTemplates.length > 0 ||
+    planContentBlocks.length > 0
 
   if (!open) return null
 
@@ -399,12 +459,15 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
               docKitTemplates={docKitTemplates}
               formTemplates={formTemplates}
               threads={scopedThreadTemplates}
+              planBlocks={planContentBlocks}
               selectedDocKitIds={selectedDocKitIds}
               selectedFormIds={selectedFormIds}
               selectedThreadIds={selectedTaskIds}
+              selectedBlockIds={selectedBlockIds}
               onToggleDocKit={toggleDocKit}
               onToggleForm={toggleForm}
               onToggleThread={toggleTask}
+              onToggleBlock={toggleBlock}
               disabled={isLoading}
             />
           )}
