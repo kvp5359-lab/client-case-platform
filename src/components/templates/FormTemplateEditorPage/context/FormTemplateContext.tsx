@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useReducer, useMemo, ReactNode } from 'react'
 import { FormFieldWithDefinition, FormSectionWithDetails } from '../types'
-import type { TemplateFieldOptions } from '@/types/formKit'
+import type { TemplateFieldOptions, FieldWidth } from '@/types/formKit'
 
 // Состояние
 type FormTemplateState = {
@@ -31,6 +31,8 @@ type FormTemplateState = {
   editFieldHeaderColor: string
   editFieldActiveTab: string
   editFieldDividerName: string
+  editFieldWidth: FieldWidth
+  editFieldNewRow: boolean
 
   // UI состояния
   collapsedSections: Set<string>
@@ -77,6 +79,8 @@ type FormTemplateAction =
   | { type: 'SET_EDIT_FIELD_HEADER_COLOR'; payload: string }
   | { type: 'SET_EDIT_FIELD_ACTIVE_TAB'; payload: string }
   | { type: 'SET_EDIT_FIELD_DIVIDER_NAME'; payload: string }
+  | { type: 'SET_EDIT_FIELD_WIDTH'; payload: FieldWidth }
+  | { type: 'SET_EDIT_FIELD_NEW_ROW'; payload: boolean }
   | { type: 'TOGGLE_SECTION_COLLAPSE'; payload: string }
   | { type: 'SET_DRAGGED_FIELD_ID'; payload: string | null }
   | { type: 'SET_DRAG_OVER_FIELD'; payload: { fieldId: string | null; position: 'top' | 'bottom' } }
@@ -109,6 +113,8 @@ const initialState: FormTemplateState = {
   editFieldHeaderColor: '',
   editFieldActiveTab: 'settings',
   editFieldDividerName: '',
+  editFieldWidth: '1/3',
+  editFieldNewRow: false,
   collapsedSections: new Set(),
   draggedFieldId: null,
   dragOverFieldId: null,
@@ -182,6 +188,8 @@ function formTemplateReducer(
         editFieldActiveTab: isKeyValueTable ? 'default-rows' : 'settings',
         editFieldDividerName:
           field.field_definition.field_type === 'divider' ? field.field_definition.name : '',
+        editFieldWidth: fieldOptions?.width || '1/3',
+        editFieldNewRow: fieldOptions?.newRow || false,
       }
     }
     case 'CLOSE_EDIT_FIELD_DIALOG':
@@ -196,6 +204,8 @@ function formTemplateReducer(
         editFieldHeaderColor: '',
         editFieldActiveTab: 'settings',
         editFieldDividerName: '',
+        editFieldWidth: '1/3',
+        editFieldNewRow: false,
       }
     case 'SET_EDIT_FIELD_SECTION_ID':
       return { ...state, editFieldSectionId: action.payload }
@@ -213,6 +223,10 @@ function formTemplateReducer(
       return { ...state, editFieldActiveTab: action.payload }
     case 'SET_EDIT_FIELD_DIVIDER_NAME':
       return { ...state, editFieldDividerName: action.payload }
+    case 'SET_EDIT_FIELD_WIDTH':
+      return { ...state, editFieldWidth: action.payload }
+    case 'SET_EDIT_FIELD_NEW_ROW':
+      return { ...state, editFieldNewRow: action.payload }
     case 'TOGGLE_SECTION_COLLAPSE': {
       const next = new Set(state.collapsedSections)
       if (next.has(action.payload)) {

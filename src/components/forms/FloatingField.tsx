@@ -211,13 +211,15 @@ export function FloatingField({
                 type="button"
                 className="pointer-events-auto text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0"
                 onClick={(e) => e.stopPropagation()}
+                // Не даём фокусу кнопки всплыть до контейнера — иначе поле уходит в «режим редактирования»
+                onFocus={(e) => e.stopPropagation()}
                 aria-label="Справка"
               >
                 <HelpCircle className="h-3 w-3" />
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-auto max-w-sm" align="start">
-              <p className="text-sm text-muted-foreground">{description}</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-line">{description}</p>
             </PopoverContent>
           </Popover>
         )}

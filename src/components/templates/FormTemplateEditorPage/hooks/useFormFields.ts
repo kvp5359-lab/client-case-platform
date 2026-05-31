@@ -28,6 +28,7 @@ export function useFormFields(templateId: string | undefined) {
           field_definition_id,
           form_template_id,
           is_required,
+          risk_assessment_enabled,
           options,
           description,
           form_template_section_id,

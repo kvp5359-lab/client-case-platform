@@ -24,8 +24,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Trash2 } from 'lucide-react'
 import { FormFieldWithDefinition, FormSectionWithDetails, getFieldTypeLabel } from '../types'
-import type { FieldOptions } from '@/types/formKit'
+import type { FieldOptions, FieldWidth } from '@/types/formKit'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
+
+const WIDTH_OPTIONS: { value: FieldWidth; label: string }[] = [
+  { value: '1/3', label: 'Треть' },
+  { value: '1/2', label: 'Половина' },
+  { value: 'full', label: 'Вся ширина' },
+]
 
 const HEADER_COLOR_PRESETS = [
   { value: '', label: 'По умолчанию', color: 'hsl(var(--muted))' },
@@ -47,6 +53,8 @@ export type EditFieldState = {
   headerColor: string
   activeTab: string
   dividerName: string
+  width: FieldWidth
+  newRow: boolean
 }
 
 export type EditFieldHandlers = {
@@ -58,6 +66,8 @@ export type EditFieldHandlers = {
   onDefaultRowsChange: (rows: string[][]) => void
   onHeaderColorChange: (color: string) => void
   onActiveTabChange: (tab: string) => void
+  onWidthChange: (value: FieldWidth) => void
+  onNewRowChange: (value: boolean) => void
   onSave: () => void
   onClose: () => void
 }
@@ -90,6 +100,8 @@ export function EditFieldDialog({
     headerColor,
     activeTab,
     dividerName,
+    width,
+    newRow,
   } = state
   const {
     onSectionIdChange,
@@ -100,6 +112,8 @@ export function EditFieldDialog({
     onDefaultRowsChange,
     onHeaderColorChange,
     onActiveTabChange,
+    onWidthChange,
+    onNewRowChange,
     onSave,
     onClose,
   } = handlers
@@ -108,6 +122,9 @@ export function EditFieldDialog({
   const supportsRiskAssessment = !RISK_UNSUPPORTED_FIELD_TYPES.includes(
     field.field_definition.field_type,
   )
+
+  // Раскладка (ширина/новая строка) — для обычных полей; заголовки и таблицы всегда во всю ширину.
+  const supportsLayout = !RISK_UNSUPPORTED_FIELD_TYPES.includes(field.field_definition.field_type)
 
   const isKeyValueTable = field.field_definition.field_type === 'key-value-table'
   const columns = fromSupabaseJson<FieldOptions | null>(field.field_definition.options)
@@ -220,6 +237,39 @@ export function EditFieldDialog({
           <p className="text-xs text-muted-foreground pl-6">
             Сотрудник сможет помечать ответ индикатором риска (🟢 / 🟡 / 🔴). Клиенту метка не видна.
           </p>
+        </div>
+      )}
+
+      {/* Раскладка поля — ширина и перенос на новую строку */}
+      {supportsLayout && (
+        <div className="space-y-3 rounded-md border p-3">
+          <div className="space-y-2">
+            <Label>Ширина поля</Label>
+            <div className="flex gap-1">
+              {WIDTH_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.value}
+                  type="button"
+                  size="sm"
+                  variant={width === opt.value ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => onWidthChange(opt.value)}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="edit-new-row"
+              checked={newRow}
+              onCheckedChange={(checked) => onNewRowChange(checked as boolean)}
+            />
+            <Label htmlFor="edit-new-row" className="cursor-pointer">
+              Начинать с новой строки
+            </Label>
+          </div>
         </div>
       )}
 

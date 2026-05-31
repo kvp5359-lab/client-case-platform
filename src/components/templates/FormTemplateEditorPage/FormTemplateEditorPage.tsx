@@ -175,12 +175,27 @@ function FormTemplateEditorContent() {
   const handleSaveEditField = () => {
     if (!state.editingField) return
 
+    const ftype = state.editingField.field_definition.field_type
+    // Раскладку (ширина/новая строка) не задаём для заголовочных/табличных полей —
+    // они всегда занимают всю ширину.
+    const layoutUnsupported = ['divider', 'composite', 'key-value-table'].includes(ftype)
+
     let options: Record<string, unknown> | undefined
-    if (state.editingField.field_definition.field_type === 'key-value-table') {
+    if (ftype === 'key-value-table') {
       options = {
         defaultRows: state.editFieldDefaultRows,
         ...(state.editFieldHeaderColor ? { headerColor: state.editFieldHeaderColor } : {}),
       }
+    } else if (!layoutUnsupported) {
+      // Патчим существующие options поля: добавляем/убираем width и newRow,
+      // сохраняя прочие ключи. Дефолт '1/3' не пишем — отсутствие = треть.
+      const base = (state.editingField.options as Record<string, unknown> | null) || {}
+      const next: Record<string, unknown> = { ...base }
+      if (state.editFieldWidth && state.editFieldWidth !== '1/3') next.width = state.editFieldWidth
+      else delete next.width
+      if (state.editFieldNewRow) next.newRow = true
+      else delete next.newRow
+      options = next
     }
 
     updateField({
@@ -333,6 +348,8 @@ function FormTemplateEditorContent() {
           headerColor: state.editFieldHeaderColor,
           activeTab: state.editFieldActiveTab,
           dividerName: state.editFieldDividerName,
+          width: state.editFieldWidth,
+          newRow: state.editFieldNewRow,
         }}
         handlers={{
           onSectionIdChange: (value) =>
@@ -350,6 +367,8 @@ function FormTemplateEditorContent() {
           onHeaderColorChange: (color) =>
             dispatch({ type: 'SET_EDIT_FIELD_HEADER_COLOR', payload: color }),
           onActiveTabChange: (tab) => dispatch({ type: 'SET_EDIT_FIELD_ACTIVE_TAB', payload: tab }),
+          onWidthChange: (value) => dispatch({ type: 'SET_EDIT_FIELD_WIDTH', payload: value }),
+          onNewRowChange: (value) => dispatch({ type: 'SET_EDIT_FIELD_NEW_ROW', payload: value }),
           onSave: handleSaveEditField,
           onClose: () => dispatch({ type: 'CLOSE_EDIT_FIELD_DIALOG' }),
         }}

@@ -16,6 +16,21 @@ import type { FormField, FormData, CompositeFieldItem, FieldDefinitionSelectOpti
 import type { FieldOptions } from '@/types/formKit'
 import type { RiskLevel } from './riskLevels'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
+import { cn } from '@/lib/utils'
+
+// Сетка анкеты — 6 колонок на десктопе (НОД 2 и 3).
+// Литералы перечислены явно, иначе Tailwind JIT их не подхватит.
+const COL_SPAN_GRID = 6
+const SPAN_CLASS: Record<number, string> = {
+  1: 'md:col-span-1',
+  2: 'md:col-span-2',
+  3: 'md:col-span-3',
+  4: 'md:col-span-4',
+  5: 'md:col-span-5',
+  6: 'md:col-span-6',
+}
+// Базовая ширина поля в колонках: треть = 2, половина = 3 (из 6).
+const widthToCols = (w: FieldOptions['width']): number => (w === '1/2' ? 3 : 2)
 
 // Единый стиль заголовков подгрупп (composite, divider, key-value-table)
 // Единый wrapper для заголовков подгрупп — всегда отдельный grid-элемент
@@ -65,8 +80,23 @@ export const FieldsGrid = memo(function FieldsGrid({
   type FieldElement = { type: 'textarea' | 'other'; field: FormField; node: React.ReactNode }
   const fieldElements: FieldElement[] = []
 
+  // Симуляция укладки: сколько колонок занято в текущей строке (0..6).
+  // Нужна, чтобы «вся ширина» заняла остаток строки, а перенос случился только при нехватке места.
+  let usedCols = 0
+  // Невидимая распорка — добивает остаток строки, чтобы следующее поле ушло на новую строку
+  // (без конфликта col-start + col-span). На мобиле (1 колонка) скрыта.
+  const pushSpacer = (cols: number, key: string) => {
+    if (cols <= 0) return
+    fieldElements.push({
+      type: 'other',
+      field: filteredFields[0],
+      node: <div key={key} aria-hidden className={cn('hidden md:block', SPAN_CLASS[cols])} />,
+    })
+  }
+
   for (const field of filteredFields) {
     if (field.field_type === 'composite') {
+      usedCols = 0
       // Composite — раскладываем на отдельные вложенные поля в одну строку
       const allItems = compositeItems
         .filter((ci) => ci.composite_field_id === field.field_definition_id)
@@ -134,6 +164,7 @@ export const FieldsGrid = memo(function FieldsGrid({
         ),
       })
     } else if (field.field_type === 'key-value-table') {
+      usedCols = 0
       // Табличное поле — рендерим без FloatingField (таблица не влезает в h-12)
       const fieldKey = field.field_definition_id ?? ''
       const value = formData[fieldKey] || ''
@@ -162,7 +193,9 @@ export const FieldsGrid = memo(function FieldsGrid({
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto max-w-sm" align="start">
-                    <p className="text-sm text-muted-foreground">{field.description}</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">
+                      {field.description}
+                    </p>
                   </PopoverContent>
                 </Popover>
               )}
@@ -188,6 +221,7 @@ export const FieldsGrid = memo(function FieldsGrid({
         ),
       })
     } else if (field.field_type === 'divider') {
+      usedCols = 0
       // Разделитель — визуальный заголовок подгруппы, без данных
       fieldElements.push({
         type: 'other',
@@ -204,6 +238,39 @@ export const FieldsGrid = memo(function FieldsGrid({
       const value = formData[fieldKey] || ''
       const isTextarea = field.field_type === 'textarea'
 
+      // Раскладка поля: ширина (дефолт треть) + принудительный перенос на новую строку.
+      const layoutOptions = fromSupabaseJson<FieldOptions | null>(field.options)
+      const explicitWidth = layoutOptions?.width
+      // textarea без явной ширины — старое поведение (авто-группировка в 2 колонки).
+      // С явной шириной — обычный элемент сетки.
+      const groupAsTextarea = isTextarea && explicitWidth === undefined
+
+      // Симулируем укладку, чтобы вычислить col-span (для 'full' — остаток строки).
+      let layoutClass: string | undefined
+      if (groupAsTextarea) {
+        usedCols = 0 // textarea-группа занимает свои отдельные строки
+      } else if (explicitWidth === 'full') {
+        // Принудительный перенос: добиваем остаток строки распоркой → поле уходит на новую строку.
+        if (layoutOptions?.newRow && usedCols > 0) {
+          pushSpacer(COL_SPAN_GRID - usedCols, `${field.id}-spacer`)
+          usedCols = 0
+        }
+        const span = usedCols === 0 ? COL_SPAN_GRID : COL_SPAN_GRID - usedCols
+        layoutClass = SPAN_CLASS[span]
+        usedCols = 0 // «вся ширина» добивает строку до конца
+      } else {
+        const w = widthToCols(explicitWidth)
+        if (layoutOptions?.newRow && usedCols > 0) {
+          pushSpacer(COL_SPAN_GRID - usedCols, `${field.id}-spacer`)
+          usedCols = 0
+        } else if (usedCols + w > COL_SPAN_GRID) {
+          usedCols = 0 // не влезает — браузер переносит сам
+        }
+        layoutClass = SPAN_CLASS[w]
+        usedCols += w
+        if (usedCols >= COL_SPAN_GRID) usedCols = 0
+      }
+
       // Сброс риск-оценки при очистке значения (крестик у обычных полей либо
       // выбор «Не выбрано» у select) — только сотрудник и только если оценка была.
       const clearRiskOnEmpty = (v: string) => {
@@ -213,7 +280,7 @@ export const FieldsGrid = memo(function FieldsGrid({
       }
 
       fieldElements.push({
-        type: isTextarea ? 'textarea' : 'other',
+        type: groupAsTextarea ? 'textarea' : 'other',
         field,
         node: (
           <FloatingField
@@ -223,6 +290,7 @@ export const FieldsGrid = memo(function FieldsGrid({
             description={field.description}
             isFilled={isFilled(value)}
             multiline={isTextarea}
+            className={groupAsTextarea ? undefined : layoutClass}
             labelInset={field.field_type === 'date' ? 24 : undefined}
             hasRightAdornment={field.field_type === 'select'}
             riskEnabled={field.risk_assessment_enabled}
@@ -288,5 +356,5 @@ export const FieldsGrid = memo(function FieldsGrid({
     }
   }
 
-  return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-4">{elements}</div>
+  return <div className="grid grid-cols-1 md:grid-cols-6 gap-x-3 gap-y-4">{elements}</div>
 })

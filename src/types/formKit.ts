@@ -25,6 +25,12 @@ export type TableColumn = {
 }
 
 /**
+ * Ширина поля в раскладке анкеты:
+ * '1/3' — треть (дефолт), '1/2' — половина, 'full' — вся ширина.
+ */
+export type FieldWidth = 'full' | '1/2' | '1/3'
+
+/**
  * Опции поля (field_definitions.options, form_kit_fields.options)
  */
 export type FieldOptions = {
@@ -43,6 +49,9 @@ export type FieldOptions = {
   values?: string[]
   // Для directory_ref — id пользовательского справочника
   ref_directory_id?: string
+  // Раскладка поля в анкете (только в шаблоне/анкете, не в справочнике)
+  width?: FieldWidth
+  newRow?: boolean
 }
 
 /**

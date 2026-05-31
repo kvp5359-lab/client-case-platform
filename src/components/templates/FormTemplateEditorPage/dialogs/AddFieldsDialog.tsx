@@ -64,7 +64,7 @@ export function AddFieldsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           {/* Поиск */}
           <Input
             placeholder="Поиск по названию..."
@@ -99,14 +99,14 @@ export function AddFieldsDialog({
                     onCheckedChange={() => onToggleSelection(field.id)}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium truncate">{field.name}</p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-sm font-medium truncate min-w-0">{field.name}</p>
                       <Badge variant="secondary" className="text-xs shrink-0">
                         {getFieldTypeLabel(field.field_type)}
                       </Badge>
                     </div>
                     {field.description && (
-                      <p className="text-sm text-muted-foreground truncate">{field.description}</p>
+                      <p className="text-xs text-muted-foreground truncate">{field.description}</p>
                     )}
                   </div>
                 </label>
