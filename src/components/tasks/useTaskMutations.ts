@@ -194,22 +194,22 @@ export function useReorderTasks(invalidateKeys: ReadonlyArray<readonly unknown[]
       const error = results.find((r) => r.error)?.error
       if (error) throw error
     },
-    onMutate: async (updates) => {
-      // Optimistic update: сразу обновляем sort_order в кэше.
-      // Используем setQueriesData (по префиксу), потому что фактические ключи
-      // в кэше включают userId — например, ['workspace-threads', wsId, userId].
+    onMutate: (updates) => {
+      // Optimistic update: СИНХРОННО патчим sort_order в кэше — это важно для
+      // dnd: на отпускании мыши кэш должен обновиться в том же кадре, что и
+      // снятие transform у dnd-kit, иначе строка кадр стоит на старом месте
+      // (дёрганье/отскок). Поэтому setQueriesData ДО любого await, а
+      // cancelQueries — fire-and-forget (только чтобы in-flight рефетч не
+      // перетёр оптимистику). Ключи в кэше включают userId — поэтому префикс.
       const orderMap = new Map(updates.map((u) => [u.id, u.sort_order]))
-
       for (const key of invalidateKeys) {
-        await queryClient.cancelQueries({ queryKey: key })
         queryClient.setQueriesData({ queryKey: key }, (old: unknown) => {
           if (!Array.isArray(old)) return old
           return old.map((item: { id: string; sort_order?: number }) =>
-            orderMap.has(item.id)
-              ? { ...item, sort_order: orderMap.get(item.id) }
-              : item,
+            orderMap.has(item.id) ? { ...item, sort_order: orderMap.get(item.id) } : item,
           )
         })
+        void queryClient.cancelQueries({ queryKey: key })
       }
     },
     onSettled: () => {

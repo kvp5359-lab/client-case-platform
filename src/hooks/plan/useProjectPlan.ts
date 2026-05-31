@@ -115,7 +115,29 @@ export function useProjectPlan(projectId: string | undefined, workspaceId: strin
         ),
       )
     },
-    onSuccess: invalidate,
+    // Оптимистично и СИНХРОННО патчим порядок в кэше — патч должен лечь в том
+    // же кадре, что и снятие transform у dnd-kit на отпускании, иначе блок
+    // кадр стоит на старом месте (дёрганье/отскок). setQueryData ДО await,
+    // cancelQueries — fire-and-forget (чтобы in-flight рефетч не перетёр).
+    onMutate: (updates: { id: string; sort_order: number }[]) => {
+      const key = planKeys.byProject(projectId ?? '')
+      const prev = queryClient.getQueryData<PlanBlockRow[]>(key)
+      const orderMap = new Map(updates.map((u) => [u.id, u.sort_order]))
+      queryClient.setQueryData<PlanBlockRow[]>(key, (old) =>
+        Array.isArray(old)
+          ? old
+              .map((b) => (orderMap.has(b.id) ? { ...b, sort_order: orderMap.get(b.id)! } : b))
+              .sort((a, b) => a.sort_order - b.sort_order)
+          : old,
+      )
+      void queryClient.cancelQueries({ queryKey: key })
+      return { prev }
+    },
+    onError: (_e, _v, ctx) => {
+      const prev = (ctx as { prev?: PlanBlockRow[] } | undefined)?.prev
+      if (prev) queryClient.setQueryData(planKeys.byProject(projectId ?? ''), prev)
+    },
+    onSettled: invalidate,
   })
 
   // ── Изменение блока (контент текста / видимость) ─────────
