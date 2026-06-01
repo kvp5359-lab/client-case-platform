@@ -436,6 +436,15 @@ Deno.serve(async (req: Request) => {
         }
         const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`;
         const secretaryPayload = { ...payload, chat_id: activeChatId, text: secretaryFormatted };
+        // reply_parameters.message_id — это id в нумерации личного бота.
+        // Секретарь такого сообщения не видел → нативный reply упадёт с
+        // "message to be replied not found". Сбрасываем reply и вставляем
+        // blockquote-цитату оригинала (как в висячем-reply fallback выше).
+        if (secretaryPayload.reply_parameters) {
+          delete secretaryPayload.reply_parameters;
+          const quote = await loadReplyQuoteHtml(serviceClient, body.message_id);
+          if (quote) secretaryPayload.text = `${quote}\n${secretaryFormatted}`;
+        }
         tgResponse = await fetch(
           `https://api.telegram.org/bot${fallback.token}/sendMessage`,
           {
@@ -692,6 +701,14 @@ Deno.serve(async (req: Request) => {
             }
             const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name || "")}:</b>\n${contentForTelegram}`;
             const secretaryPayload = { ...payload, chat_id: activeChatId, text: secretaryFormatted };
+            // reply_parameters указывает на id в нумерации личного бота —
+            // секретарю он неизвестен. Сбрасываем reply и вставляем
+            // blockquote-цитату оригинала (см. text-ветку выше).
+            if (secretaryPayload.reply_parameters) {
+              delete secretaryPayload.reply_parameters;
+              const quote = await loadReplyQuoteHtml(serviceClient, body.message_id);
+              if (quote) secretaryPayload.text = `${quote}\n${secretaryFormatted}`;
+            }
             tgRes = await fetch(
               `https://api.telegram.org/bot${fallback.token}/sendMessage`,
               { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(secretaryPayload) },
