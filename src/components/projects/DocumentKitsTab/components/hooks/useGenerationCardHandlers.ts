@@ -14,6 +14,7 @@ import {
   base64ToFile,
 } from '@/hooks/documents/useDocumentGenerations'
 import { useDocumentTemplates } from '@/hooks/documents/useDocumentTemplates'
+import { useDirectoryPlaceholderOptions } from '@/hooks/documents/useDirectoryPlaceholderOptions'
 import { useDocuments } from '@/hooks/documents/useDocuments'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { toast } from 'sonner'
@@ -216,9 +217,13 @@ export function useGenerationCardHandlers(
 
   const filledCount = placeholders.filter((ph) => localValues[ph.name]?.trim()).length
 
+  // Записи справочников для плейсхолдеров с прямой привязкой
+  const directoryOptions = useDirectoryPlaceholderOptions(placeholders, dialogOpen)
+
   return {
     template,
     placeholders,
+    directoryOptions,
     fillMutation,
     generateMutation,
     dialogOpen,

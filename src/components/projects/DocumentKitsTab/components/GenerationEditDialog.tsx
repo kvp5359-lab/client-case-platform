@@ -15,8 +15,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Trash2, FileDown, ClipboardPaste, Loader2 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Trash2, FileDown, ClipboardPaste, Loader2, Library } from 'lucide-react'
 import type { DocumentTemplatePlaceholder } from '@/services/api/documents/documentTemplateService'
+import type { DirectoryEntryOption } from '@/hooks/documents/useDirectoryPlaceholderOptions'
 
 type GenerationEditDialogProps = {
   open: boolean
@@ -25,6 +33,7 @@ type GenerationEditDialogProps = {
   onNameChange: (value: string) => void
   templateName?: string
   placeholders: DocumentTemplatePlaceholder[]
+  directoryOptions: Record<string, DirectoryEntryOption[]>
   localValues: Record<string, string>
   onFieldChange: (name: string, value: string) => void
   onFillFromFormKit: () => void
@@ -34,6 +43,8 @@ type GenerationEditDialogProps = {
   onDelete: () => void
 }
 
+const DIR_NONE = '__none__'
+
 export function GenerationEditDialog({
   open,
   onOpenChange,
@@ -41,6 +52,7 @@ export function GenerationEditDialog({
   onNameChange,
   templateName,
   placeholders,
+  directoryOptions,
   localValues,
   onFieldChange,
   onFillFromFormKit,
@@ -89,22 +101,48 @@ export function GenerationEditDialog({
         {/* Поля плейсхолдеров */}
         {placeholders.length > 0 ? (
           <div className="space-y-1.5 py-1">
-            {placeholders.map((ph) => (
-              <div key={ph.name} className="flex items-center gap-3">
-                <label className="text-xs text-muted-foreground w-1/3 shrink-0 truncate">
-                  {ph.label || ph.name}
-                </label>
-                <Input
-                  value={localValues[ph.name] || ''}
-                  onChange={(e) => onFieldChange(ph.name, e.target.value)}
-                  placeholder={`{{${ph.name}}}`}
-                  className={cn(
-                    'h-8 text-xs placeholder:text-muted-foreground/40',
-                    localValues[ph.name]?.trim() && 'border-green-400',
+            {placeholders.map((ph) => {
+              const isDirectory = !!ph.source_directory_id
+              const current = localValues[ph.name] || ''
+              return (
+                <div key={ph.name} className="flex items-center gap-3">
+                  <label className="text-xs text-muted-foreground w-1/3 shrink-0 truncate flex items-center gap-1">
+                    {isDirectory && <Library className="h-3 w-3 shrink-0 opacity-60" />}
+                    {ph.label || ph.name}
+                  </label>
+                  {isDirectory ? (
+                    <Select
+                      value={current || DIR_NONE}
+                      onValueChange={(v) => onFieldChange(ph.name, v === DIR_NONE ? '' : v)}
+                    >
+                      <SelectTrigger
+                        className={cn('h-8 text-xs', current.trim() && 'border-green-400')}
+                      >
+                        <SelectValue placeholder="Выберите запись справочника" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={DIR_NONE}>— Не выбрано —</SelectItem>
+                        {(directoryOptions[ph.name] ?? []).map((opt) => (
+                          <SelectItem key={opt.entryId} value={opt.entryId}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={current}
+                      onChange={(e) => onFieldChange(ph.name, e.target.value)}
+                      placeholder={`{{${ph.name}}}`}
+                      className={cn(
+                        'h-8 text-xs placeholder:text-muted-foreground/40',
+                        current.trim() && 'border-green-400',
+                      )}
+                    />
                   )}
-                />
-              </div>
-            ))}
+                </div>
+              )
+            })}
           </div>
         ) : (
           <div className="text-sm text-muted-foreground py-4 text-center">

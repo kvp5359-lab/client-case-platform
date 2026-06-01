@@ -10,7 +10,20 @@ import { logger } from '@/utils/logger'
 
 export type DocumentTemplatePlaceholder = {
   name: string
+  /** Привязка к полю анкеты (field_definitions.id). */
   field_definition_id: string | null
+  /**
+   * Прямая привязка к справочнику (custom_directories.id) — без поля анкеты.
+   * В окне генерации пользователь выбирает запись справочника из списка.
+   * Взаимоисключающа с field_definition_id.
+   */
+  source_directory_id?: string | null
+  /**
+   * Какую колонку справочника (custom_directory_fields.id) подставлять в документ.
+   * Применяется и к прямой привязке (source_directory_id), и к полю-справочнику
+   * (field_definition с типом directory_ref). null/undefined → название записи (display_name).
+   */
+  directory_field_id?: string | null
   label?: string
 }
 

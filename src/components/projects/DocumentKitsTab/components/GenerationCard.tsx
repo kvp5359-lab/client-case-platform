@@ -63,6 +63,7 @@ export function GenerationCard({
         onNameChange={h.setNameValue}
         templateName={h.template?.name}
         placeholders={h.placeholders}
+        directoryOptions={h.directoryOptions}
         localValues={h.localValues}
         onFieldChange={h.handleFieldChange}
         onFillFromFormKit={h.handleFillFromFormKit}

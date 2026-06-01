@@ -138,12 +138,125 @@ export async function fillPlaceholdersFromFormKit(params: {
     }
   }
 
+  // Для полей-справочников (directory_ref) значение в form_kit_field_values —
+  // это UUID записи справочника. Резолвим его в читаемое значение:
+  // либо название записи (display_name), либо выбранную колонку.
+  const dirRefByField = await resolveDirectoryRefFields(mappedFieldIds)
+  const dirValueByPlaceholder = await resolveDirectoryValues(
+    placeholders,
+    fieldValueMap,
+    dirRefByField,
+  )
+
   // Маппинг: placeholder name → value
   const result: Record<string, string> = {}
   for (const ph of placeholders) {
-    if (ph.field_definition_id && fieldValueMap[ph.field_definition_id]) {
+    if (!ph.field_definition_id) continue
+    if (dirRefByField[ph.field_definition_id]) {
+      // directory_ref: используем резолвленное значение (может быть пустым)
+      if (ph.name in dirValueByPlaceholder) {
+        result[ph.name] = dirValueByPlaceholder[ph.name]
+      }
+    } else if (fieldValueMap[ph.field_definition_id]) {
       result[ph.name] = fieldValueMap[ph.field_definition_id]
     }
+  }
+
+  return result
+}
+
+/** Возвращает { field_definition_id → ref_directory_id } только для directory_ref полей. */
+async function resolveDirectoryRefFields(
+  fieldIds: string[],
+): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  if (fieldIds.length === 0) return out
+
+  const { data, error } = await supabase
+    .from('field_definitions')
+    .select('id, field_type, options')
+    .in('id', fieldIds)
+  if (error) throw new DocumentGenerationError(error.message)
+
+  for (const fd of data || []) {
+    if (fd.field_type === 'directory_ref') {
+      const refId = (fd.options as { ref_directory_id?: string } | null)?.ref_directory_id
+      if (refId) out[fd.id] = refId
+    }
+  }
+  return out
+}
+
+/**
+ * Резолвит directory_ref-плейсхолдеры: UUID записи → читаемое значение.
+ * Возвращает { placeholder name → value } только для directory_ref привязок.
+ */
+async function resolveDirectoryValues(
+  placeholders: DocumentTemplatePlaceholder[],
+  fieldValueMap: Record<string, string>,
+  dirRefByField: Record<string, string>,
+): Promise<Record<string, string>> {
+  const result: Record<string, string> = {}
+
+  const entryIdsForDisplay = new Set<string>()
+  const columnLookups: { entryId: string; fieldId: string }[] = []
+
+  for (const ph of placeholders) {
+    const fid = ph.field_definition_id
+    if (!fid || !dirRefByField[fid]) continue
+    const entryId = fieldValueMap[fid]
+    if (!entryId) continue
+    if (ph.directory_field_id) {
+      columnLookups.push({ entryId, fieldId: ph.directory_field_id })
+    } else {
+      entryIdsForDisplay.add(entryId)
+    }
+  }
+
+  const displayName: Record<string, string> = {}
+  if (entryIdsForDisplay.size > 0) {
+    const { data } = await supabase
+      .from('custom_directory_entries')
+      .select('id, display_name')
+      .in('id', Array.from(entryIdsForDisplay))
+    for (const e of data || []) displayName[e.id] = e.display_name ?? ''
+  }
+
+  const columnValue: Record<string, string> = {}
+  if (columnLookups.length > 0) {
+    const entryIds = Array.from(new Set(columnLookups.map((c) => c.entryId)))
+    const fieldIds = Array.from(new Set(columnLookups.map((c) => c.fieldId)))
+    const { data } = await supabase
+      .from('custom_directory_values')
+      .select('entry_id, field_id, value_text, value_number, value_date, value_bool, value_json')
+      .in('entry_id', entryIds)
+      .in('field_id', fieldIds)
+    for (const v of data || []) {
+      const raw =
+        v.value_text ??
+        (v.value_number != null ? String(v.value_number) : null) ??
+        v.value_date ??
+        (v.value_bool != null ? (v.value_bool ? 'Да' : 'Нет') : null) ??
+        (v.value_json != null
+          ? Array.isArray(v.value_json)
+            ? v.value_json.join(', ')
+            : String(v.value_json).replace(/^"|"$/g, '')
+          : null)
+      if (raw != null) columnValue[`${v.entry_id}:${v.field_id}`] = String(raw)
+    }
+  }
+
+  for (const ph of placeholders) {
+    const fid = ph.field_definition_id
+    if (!fid || !dirRefByField[fid]) continue
+    const entryId = fieldValueMap[fid]
+    if (!entryId) {
+      result[ph.name] = ''
+      continue
+    }
+    result[ph.name] = ph.directory_field_id
+      ? (columnValue[`${entryId}:${ph.directory_field_id}`] ?? '')
+      : (displayName[entryId] ?? '')
   }
 
   return result

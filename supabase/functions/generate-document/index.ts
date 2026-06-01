@@ -12,6 +12,76 @@ import PizZip from "npm:pizzip@3";
 interface Placeholder {
   name: string;
   field_definition_id: string | null;
+  source_directory_id?: string | null;
+  directory_field_id?: string | null;
+}
+
+/**
+ * Резолвит значение колонки записи справочника (или display_name).
+ * Возвращает карту: ключ `${entry_id}:${field_id|'__display__'}` → текст.
+ */
+// deno-lint-ignore no-explicit-any
+async function resolveDirectoryEntries(
+  client: any,
+  lookups: { entryId: string; fieldId: string | null }[],
+): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  if (lookups.length === 0) return out;
+
+  const displayEntryIds = new Set<string>();
+  const colEntryIds = new Set<string>();
+  const colFieldIds = new Set<string>();
+  for (const l of lookups) {
+    if (l.fieldId) {
+      colEntryIds.add(l.entryId);
+      colFieldIds.add(l.fieldId);
+    } else {
+      displayEntryIds.add(l.entryId);
+    }
+  }
+
+  if (displayEntryIds.size > 0) {
+    const { data } = await client
+      .from("custom_directory_entries")
+      .select("id, display_name")
+      .in("id", Array.from(displayEntryIds));
+    for (const e of data || []) {
+      out[`${e.id}:__display__`] = e.display_name ?? "";
+    }
+  }
+
+  if (colEntryIds.size > 0 && colFieldIds.size > 0) {
+    const { data } = await client
+      .from("custom_directory_values")
+      .select(
+        "entry_id, field_id, value_text, value_number, value_date, value_bool, value_json",
+      )
+      .in("entry_id", Array.from(colEntryIds))
+      .in("field_id", Array.from(colFieldIds));
+    for (const v of data || []) {
+      const raw =
+        v.value_text ??
+        (v.value_number !== null && v.value_number !== undefined
+          ? String(v.value_number)
+          : null) ??
+        v.value_date ??
+        (v.value_bool !== null && v.value_bool !== undefined
+          ? v.value_bool
+            ? "Да"
+            : "Нет"
+          : null) ??
+        (v.value_json !== null && v.value_json !== undefined
+          ? Array.isArray(v.value_json)
+            ? v.value_json.join(", ")
+            : String(v.value_json).replace(/^"|"$/g, "")
+          : null);
+      if (raw !== null && raw !== undefined) {
+        out[`${v.entry_id}:${v.field_id}`] = String(raw);
+      }
+    }
+  }
+
+  return out;
 }
 
 /**
@@ -143,8 +213,31 @@ Deno.serve(async (req: Request) => {
       typeof custom_values === "object" &&
       !Array.isArray(custom_values)
     ) {
-      // Custom values passed directly (from document_generations)
-      fillData = custom_values as Record<string, string>;
+      // Custom values passed directly (from document_generations).
+      fillData = { ...(custom_values as Record<string, string>) };
+
+      // Плейсхолдеры с прямой привязкой к справочнику: в custom_values
+      // хранится id записи (entry_id) — резолвим в значение колонки.
+      const placeholders = (template.placeholders || []) as Placeholder[];
+      const lookups: { entryId: string; fieldId: string | null }[] = [];
+      for (const ph of placeholders) {
+        if (!ph.source_directory_id) continue;
+        const entryId = fillData[ph.name];
+        if (entryId) {
+          lookups.push({ entryId, fieldId: ph.directory_field_id ?? null });
+        }
+      }
+
+      if (lookups.length > 0) {
+        const resolved = await resolveDirectoryEntries(supabaseUser, lookups);
+        for (const ph of placeholders) {
+          if (!ph.source_directory_id) continue;
+          const entryId = fillData[ph.name];
+          if (!entryId) continue;
+          const key = `${entryId}:${ph.directory_field_id ?? "__display__"}`;
+          fillData[ph.name] = resolved[key] ?? "";
+        }
+      }
     } else {
       // Load from form_kit_field_values (legacy behavior)
       const { data: formKits } = await supabaseUser
@@ -177,25 +270,130 @@ Deno.serve(async (req: Request) => {
       }
 
       const placeholders = (template.placeholders || []) as Placeholder[];
+
+      // Определить, какие из привязанных полей — directory_ref (Справочник).
+      // У такого поля значение в form_kit_field_values — это UUID записи
+      // справочника (custom_directory_entries.id), которую нужно резолвить
+      // в читаемое значение перед подстановкой.
+      const mappedFieldIds = Array.from(
+        new Set(
+          placeholders
+            .map((ph) => ph.field_definition_id)
+            .filter((id): id is string => !!id),
+        ),
+      );
+
+      // fieldId → ref_directory_id (только для directory_ref полей)
+      const dirRefByField: Record<string, string> = {};
+      if (mappedFieldIds.length > 0) {
+        const { data: fieldDefs } = await supabaseUser
+          .from("field_definitions")
+          .select("id, field_type, options")
+          .in("id", mappedFieldIds);
+
+        for (const fd of fieldDefs || []) {
+          if (fd.field_type === "directory_ref") {
+            const refId = (fd.options as { ref_directory_id?: string } | null)
+              ?.ref_directory_id;
+            if (refId) dirRefByField[fd.id] = refId;
+          }
+        }
+      }
+
+      // Собрать entry_id'шники, которые нужно резолвить, и провести батч-запросы.
+      // Карта: entry_id → display_name, и (entry_id + field_id) → значение колонки.
+      const entryDisplayName: Record<string, string> = {};
+      const columnValue: Record<string, string> = {}; // ключ `${entry_id}:${field_id}`
+
+      const entryIdsForDisplay = new Set<string>();
+      const columnLookups: { entryId: string; fieldId: string }[] = [];
+
+      for (const ph of placeholders) {
+        const fid = ph.field_definition_id;
+        if (!fid || !dirRefByField[fid]) continue;
+        const entryId = dataMap[fid];
+        if (!entryId) continue;
+        if (ph.directory_field_id) {
+          columnLookups.push({ entryId, fieldId: ph.directory_field_id });
+        } else {
+          entryIdsForDisplay.add(entryId);
+        }
+      }
+
+      if (entryIdsForDisplay.size > 0) {
+        const { data: entries } = await supabaseUser
+          .from("custom_directory_entries")
+          .select("id, display_name")
+          .in("id", Array.from(entryIdsForDisplay));
+        for (const e of entries || []) {
+          entryDisplayName[e.id] = e.display_name ?? "";
+        }
+      }
+
+      if (columnLookups.length > 0) {
+        const entryIds = Array.from(new Set(columnLookups.map((c) => c.entryId)));
+        const fieldIds = Array.from(new Set(columnLookups.map((c) => c.fieldId)));
+        const { data: vals } = await supabaseUser
+          .from("custom_directory_values")
+          .select(
+            "entry_id, field_id, value_text, value_number, value_date, value_bool, value_json",
+          )
+          .in("entry_id", entryIds)
+          .in("field_id", fieldIds);
+        for (const v of vals || []) {
+          const raw =
+            v.value_text ??
+            (v.value_number !== null && v.value_number !== undefined
+              ? String(v.value_number)
+              : null) ??
+            v.value_date ??
+            (v.value_bool !== null && v.value_bool !== undefined
+              ? v.value_bool
+                ? "Да"
+                : "Нет"
+              : null) ??
+            (v.value_json !== null && v.value_json !== undefined
+              ? Array.isArray(v.value_json)
+                ? v.value_json.join(", ")
+                : String(v.value_json).replace(/^"|"$/g, "")
+              : null);
+          if (raw !== null && raw !== undefined) {
+            columnValue[`${v.entry_id}:${v.field_id}`] = String(raw);
+          }
+        }
+      }
+
       fillData = {};
 
       for (const ph of placeholders) {
-        if (ph.field_definition_id && dataMap[ph.field_definition_id]) {
-          let value = dataMap[ph.field_definition_id];
-          try {
-            const parsed = JSON.parse(value);
-            if (typeof parsed === "string") {
-              value = parsed;
-            } else if (Array.isArray(parsed)) {
-              value = parsed.join(", ");
-            }
-          } catch {
-            // Not JSON, use as-is
-          }
-          fillData[ph.name] = value;
-        } else {
+        const fid = ph.field_definition_id;
+        if (!fid || !dataMap[fid]) {
           fillData[ph.name] = "";
+          continue;
         }
+
+        // directory_ref: резолвим UUID записи в читаемое значение
+        if (dirRefByField[fid]) {
+          const entryId = dataMap[fid];
+          fillData[ph.name] = ph.directory_field_id
+            ? (columnValue[`${entryId}:${ph.directory_field_id}`] ?? "")
+            : (entryDisplayName[entryId] ?? "");
+          continue;
+        }
+
+        // Обычное поле
+        let value = dataMap[fid];
+        try {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === "string") {
+            value = parsed;
+          } else if (Array.isArray(parsed)) {
+            value = parsed.join(", ");
+          }
+        } catch {
+          // Not JSON, use as-is
+        }
+        fillData[ph.name] = value;
       }
     }
 
