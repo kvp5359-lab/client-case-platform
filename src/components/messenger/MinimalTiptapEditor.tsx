@@ -9,6 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useEditor, EditorContent, type Editor, Extension } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
+import Link from '@tiptap/extension-link'
 import {
   Bold,
   Italic,
@@ -31,6 +32,13 @@ type MinimalTiptapEditorProps = {
   onEditorReady?: (editor: Editor | null) => void
   editorMaxHeight?: number
 }
+
+/**
+ * Ссылка в мессенджере: non-inclusive — текст, набираемый сразу после ссылки,
+ * НЕ становится её частью и не наследует её оформление. Дефолтный Link из
+ * StarterKit возвращает inclusive = autolink (true), из-за чего текст «прилипал».
+ */
+const MessengerLink = Link.extend({ inclusive: () => false })
 
 /** Кастомное расширение: Cmd/Ctrl+Enter = отправить, Enter/Shift+Enter = перенос строки */
 const SendOnEnter = Extension.create({
@@ -174,6 +182,17 @@ export function MinimalTiptapEditor({
         horizontalRule: false,
         codeBlock: false,
         code: false,
+        link: false,
+      }),
+      MessengerLink.configure({
+        openOnClick: false,
+        autolink: true,
+        linkOnPaste: true,
+        HTMLAttributes: {
+          class: 'text-blue-600 underline font-normal',
+          rel: 'noopener noreferrer nofollow',
+          target: '_blank',
+        },
       }),
       Placeholder.configure({ placeholder }),
       // eslint-disable-next-line react-hooks/refs -- Tiptap extensions init once; stableSend reads ref only on keypress, not during render
