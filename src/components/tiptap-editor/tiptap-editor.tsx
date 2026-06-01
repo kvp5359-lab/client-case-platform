@@ -192,8 +192,58 @@ export function TiptapEditor({
       // строки превращались в отдельные параграфы.
       transformPastedHTML: (html: string) => {
         if (!html) return html
-        if (/<p\b/i.test(html)) return html
+
+        // Notion отдаёт глубоко вложенные <div> без <p>/<br>. Каждый блок —
+        // <div data-block-id ... class="notion-..._list-block"> с 5-6 уровнями
+        // вложенных div внутри. Прямое <div>→<p> плодило бы пустые параграфы.
+        // Разбираем DOM и собираем чистый HTML из листовых блоков.
+        if (typeof window !== 'undefined' && /notion-selectable|data-block-id=/.test(html)) {
+          try {
+            const doc = new DOMParser().parseFromString(html, 'text/html')
+            const blocks = Array.from(doc.querySelectorAll('[data-block-id]'))
+            if (blocks.length > 0) {
+              const parts: string[] = []
+              let listType: 'ul' | 'ol' | null = null
+              let items: string[] = []
+              const flush = () => {
+                if (items.length && listType) parts.push(`<${listType}>${items.join('')}</${listType}>`)
+                items = []
+                listType = null
+              }
+              for (const block of blocks) {
+                // пропускаем блоки-контейнеры с вложенными блоками — берём только листья
+                if (block.querySelector('[data-block-id]')) continue
+                const leaf = block.querySelector('[data-content-editable-leaf="true"]')
+                const inner = (leaf?.innerHTML ?? block.textContent ?? '').trim()
+                if (!inner) continue
+                const cls = block.className || ''
+                if (/numbered_list-block/.test(cls)) {
+                  if (listType && listType !== 'ol') flush()
+                  listType = 'ol'
+                  items.push(`<li>${inner}</li>`)
+                } else if (/bulleted_list-block|to_do-block|toggle-block/.test(cls)) {
+                  if (listType && listType !== 'ul') flush()
+                  listType = 'ul'
+                  items.push(`<li>${inner}</li>`)
+                } else {
+                  flush()
+                  parts.push(/header.*-block/.test(cls) ? `<p><strong>${inner}</strong></p>` : `<p>${inner}</p>`)
+                }
+              }
+              flush()
+              if (parts.length > 0) return parts.join('')
+            }
+          } catch {
+            // если разбор не удался — падаем в общий путь ниже
+          }
+        }
+
         let out = html
+        // Прочие источники: вырезаем пустые блоки <p>/<div> (вертикальные отступы).
+        const emptyBlock = /<(p|div)\b[^>]*>(?:\s|&nbsp;|&#160;|<br\s*\/?>)*<\/\1>/gi
+        out = out.replace(emptyBlock, '').replace(emptyBlock, '')
+        // Если остались <p> — построчная структура сохранена, дальше не трогаем.
+        if (/<p\b/i.test(out)) return out
         // <br><br> → конец параграфа + новый параграф
         out = out.replace(/(<br\s*\/?>\s*){2,}/gi, '</p><p>')
         // одиночный <br> → новый параграф (для построчных вставок)
