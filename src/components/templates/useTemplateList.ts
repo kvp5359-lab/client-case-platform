@@ -55,6 +55,10 @@ type UseTemplateListConfig<T, TFormData> = {
   customCopyFn?: (item: T) => Promise<void>
   /** Дополнительные ключи для инвалидации при закрытии диалога */
   invalidateOnClose?: string[]
+  /** Колонка сортировки в дефолтной загрузке (по умолчанию created_at, desc) */
+  orderByColumn?: string
+  /** Направление сортировки (по умолчанию false = desc) */
+  orderAscending?: boolean
 }
 
 export function useTemplateList<
@@ -70,6 +74,8 @@ export function useTemplateList<
     customCreateFn,
     customCopyFn,
     invalidateOnClose,
+    orderByColumn = 'created_at',
+    orderAscending = false,
   } = config
 
   const queryClient = useQueryClient()
@@ -95,7 +101,7 @@ export function useTemplateList<
           .from(tableName)
           .select('*')
           .eq('workspace_id', workspaceId)
-          .order('created_at', { ascending: false })
+          .order(orderByColumn, { ascending: orderAscending })
         if (error) throw error
         return (data || []) as T[]
       }),
@@ -167,6 +173,36 @@ export function useTemplateList<
     },
   })
 
+  const reorderMutation = useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      await Promise.all(
+        orderedIds.map((id, idx) =>
+          supabaseDyn.from(tableName).update({ order_index: idx } as AnyRecord).eq('id', id),
+        ),
+      )
+    },
+    onMutate: async (orderedIds: string[]) => {
+      await queryClient.cancelQueries({ queryKey: fullQueryKey })
+      const prev = queryClient.getQueryData<T[]>(fullQueryKey)
+      if (prev) {
+        const byId = new Map(prev.map((i) => [i.id, i]))
+        const next = orderedIds
+          .map((id) => byId.get(id))
+          .filter((i): i is T => !!i)
+        queryClient.setQueryData<T[]>(fullQueryKey, next)
+      }
+      return { prev }
+    },
+    onError: (error, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(fullQueryKey, context.prev)
+      logger.error('Ошибка сортировки шаблонов:', error)
+      toast.error('Не удалось сохранить порядок')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: fullQueryKey })
+    },
+  })
+
   // ============== Фильтрация ==============
 
   const filteredItems = items.filter((item) => {
@@ -216,6 +252,13 @@ export function useTemplateList<
     [copyMutation],
   )
 
+  const handleReorder = useCallback(
+    (orderedIds: string[]) => {
+      reorderMutation.mutate(orderedIds)
+    },
+    [reorderMutation],
+  )
+
   const handleDelete = useCallback(
     async (id: string, confirmMessage: string) => {
       const ok = await confirm({
@@ -253,12 +296,14 @@ export function useTemplateList<
     handleCloseDialog,
     handleSubmit,
     handleCopy,
+    handleReorder,
     handleDelete,
 
     // Mutation states
     isSaving: saveMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isCopying: copyMutation.isPending,
+    isReordering: reorderMutation.isPending,
 
     // Confirm dialog (parent must render <ConfirmDialog {...confirmDialogProps} />)
     confirmDialogProps: { state: confirmState, onConfirm: handleConfirm, onCancel: handleCancel },

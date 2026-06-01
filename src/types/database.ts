@@ -1641,6 +1641,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          order_index: number
           updated_at: string
           workspace_id: string
         }
@@ -1649,6 +1650,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          order_index?: number
           updated_at?: string
           workspace_id: string
         }
@@ -1657,6 +1659,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          order_index?: number
           updated_at?: string
           workspace_id?: string
         }
@@ -5932,6 +5935,7 @@ export type Database = {
           id: string
           is_lead_template: boolean
           name: string
+          order_index: number
           root_folder_id: string | null
           updated_at: string
           workspace_id: string
@@ -5949,6 +5953,7 @@ export type Database = {
           id?: string
           is_lead_template?: boolean
           name: string
+          order_index?: number
           root_folder_id?: string | null
           updated_at?: string
           workspace_id: string
@@ -5966,6 +5971,7 @@ export type Database = {
           id?: string
           is_lead_template?: boolean
           name?: string
+          order_index?: number
           root_folder_id?: string | null
           updated_at?: string
           workspace_id?: string
@@ -8387,6 +8393,10 @@ export type Database = {
       }
       docbuilder_is_admin: { Args: never; Returns: boolean }
       docbuilder_user_email: { Args: never; Returns: string }
+      duplicate_project_template: {
+        Args: { p_new_name?: string; p_template_id: string }
+        Returns: string
+      }
       end_impersonation_session: {
         Args: { p_session_id: string }
         Returns: undefined

@@ -33,9 +33,23 @@ import {
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { Pencil, Trash2, Search, Plus } from 'lucide-react'
+import { Pencil, Trash2, Search, Plus, Copy } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
 import { AVAILABLE_MODULES } from './project-template-editor/constants'
 import { useTemplateList } from './useTemplateList'
+import { SortableTemplateRow } from './SortableTemplateRow'
 
 type ProjectTemplate = Database['public']['Tables']['project_templates']['Row']
 
@@ -62,9 +76,12 @@ export function ProjectTemplatesContent() {
     isDialogOpen,
     handleCreate: baseHandleCreate,
     handleCloseDialog,
+    handleCopy,
+    handleReorder,
     handleDelete,
     handleSubmit,
     isSaving,
+    isCopying,
     confirmDialogProps,
     formData,
     setFormData,
@@ -72,6 +89,8 @@ export function ProjectTemplatesContent() {
     tableName: 'project_templates',
     queryKey: 'project-templates',
     workspaceId,
+    orderByColumn: 'order_index',
+    orderAscending: true,
     initialFormData: { name: '', description: '', enabled_modules: DEFAULT_MODULES },
     customCreateFn: async (data: FormData) => {
       const {
@@ -86,7 +105,29 @@ export function ProjectTemplatesContent() {
       })
       if (error) throw error
     },
+    customCopyFn: async (template) => {
+      const { error } = await supabase.rpc('duplicate_project_template', {
+        p_template_id: template.id,
+        p_new_name: `${template.name} (копия)`,
+      })
+      if (error) throw error
+    },
   })
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  )
+  const dragDisabled = searchQuery.trim().length > 0
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const ids = filteredTemplates.map((t) => t.id)
+    const oldIndex = ids.indexOf(active.id as string)
+    const newIndex = ids.indexOf(over.id as string)
+    if (oldIndex === -1 || newIndex === -1) return
+    handleReorder(arrayMove(ids, oldIndex, newIndex))
+  }
 
   const handleCreate = () => {
     setFormEnabledModules(DEFAULT_MODULES)
@@ -139,82 +180,100 @@ export function ProjectTemplatesContent() {
             {searchQuery ? 'Ничего не найдено' : 'Пока нет типов проектов. Создайте первый!'}
           </div>
         ) : (
-          <Table className="table-fixed w-full">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[200px]">Название</TableHead>
-                <TableHead>Модули</TableHead>
-                <TableHead className="text-right w-[80px]">Действия</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTemplates.map((template) => {
-                const enabledModules = template.enabled_modules || []
-                return (
-                  <TableRow key={template.id} className="group">
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{template.name}</p>
-                        {template.description && (
-                          <p className="text-sm text-muted-foreground">{template.description}</p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1.5 flex-wrap">
-                        {enabledModules.length === 0 ? (
-                          <span className="text-xs text-muted-foreground">Нет модулей</span>
-                        ) : (
-                          enabledModules.map((moduleId: string) => {
-                            const mod = AVAILABLE_MODULES.find((m) => m.id === moduleId)
-                            if (!mod) return null
-                            const Icon = mod.icon
-                            return (
-                              <Badge
-                                key={moduleId}
-                                variant="secondary"
-                                className="text-xs shrink-0"
-                              >
-                                <Icon className="w-3 h-3 mr-1" />
-                                {mod.label}
-                              </Badge>
-                            )
-                          })
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => handleEdit(template)}
-                          title="Редактировать"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() =>
-                            handleDelete(
-                              template.id,
-                              'Вы уверены, что хотите удалить этот тип проекта?',
-                            )
-                          }
-                          title="Удалить"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <Table className="table-fixed w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8" />
+                  <TableHead className="w-[200px]">Название</TableHead>
+                  <TableHead>Модули</TableHead>
+                  <TableHead className="text-right w-[80px]">Действия</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <SortableContext
+                  items={filteredTemplates.map((t) => t.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {filteredTemplates.map((template) => {
+                    const enabledModules = template.enabled_modules || []
+                    return (
+                      <SortableTemplateRow key={template.id} id={template.id} disabled={dragDisabled}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{template.name}</p>
+                            {template.description && (
+                              <p className="text-sm text-muted-foreground">{template.description}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {enabledModules.length === 0 ? (
+                              <span className="text-xs text-muted-foreground">Нет модулей</span>
+                            ) : (
+                              enabledModules.map((moduleId: string) => {
+                                const mod = AVAILABLE_MODULES.find((m) => m.id === moduleId)
+                                if (!mod) return null
+                                const Icon = mod.icon
+                                return (
+                                  <Badge
+                                    key={moduleId}
+                                    variant="secondary"
+                                    className="text-xs shrink-0"
+                                  >
+                                    <Icon className="w-3 h-3 mr-1" />
+                                    {mod.label}
+                                  </Badge>
+                                )
+                              })
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => handleEdit(template)}
+                              title="Редактировать"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => handleCopy(template)}
+                              disabled={isCopying}
+                              title="Копировать"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() =>
+                                handleDelete(
+                                  template.id,
+                                  'Вы уверены, что хотите удалить этот тип проекта?',
+                                )
+                              }
+                              title="Удалить"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </SortableTemplateRow>
+                    )
+                  })}
+                </SortableContext>
+              </TableBody>
+            </Table>
+          </DndContext>
         )}
       </div>
 

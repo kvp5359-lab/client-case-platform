@@ -31,8 +31,22 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Pencil, Copy, Trash2, Search, Plus, Package } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTemplateList } from './useTemplateList'
+import { SortableTemplateRow } from './SortableTemplateRow'
 
 type DocumentKitTemplate = Database['public']['Tables']['document_kit_templates']['Row']
 
@@ -59,6 +73,7 @@ export function DocumentKitTemplatesContent() {
     handleCloseDialog,
     handleSubmit,
     handleCopy,
+    handleReorder,
     handleDelete,
     isSaving,
     isDeleting,
@@ -76,7 +91,7 @@ export function DocumentKitTemplatesContent() {
           .from('document_kit_templates')
           .select('*')
           .eq('workspace_id', workspaceId)
-          .order('created_at', { ascending: false })
+          .order('order_index', { ascending: true })
 
         if (error) throw error
 
@@ -110,12 +125,23 @@ export function DocumentKitTemplatesContent() {
       }
     },
     customCopyFn: async (kit) => {
+      // Новый набор в конец списка
+      const { data: maxRow } = await supabase
+        .from('document_kit_templates')
+        .select('order_index')
+        .eq('workspace_id', workspaceId ?? '')
+        .order('order_index', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      const nextOrder = (maxRow?.order_index ?? -1) + 1
+
       const { data: newKit, error: createError } = await supabase
         .from('document_kit_templates')
         .insert({
           workspace_id: workspaceId ?? '',
           name: `${kit.name} (копия)`,
           description: kit.description,
+          order_index: nextOrder,
         })
         .select()
         .single()
@@ -143,6 +169,21 @@ export function DocumentKitTemplatesContent() {
 
   const handleEdit = (kit: DocumentKitTemplate) => {
     router.push(`/workspaces/${workspaceId}/settings/templates/document-kit-templates/${kit.id}`)
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  )
+  const dragDisabled = searchQuery.trim().length > 0
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const ids = filteredKits.map((k) => k.id)
+    const oldIndex = ids.indexOf(active.id as string)
+    const newIndex = ids.indexOf(over.id as string)
+    if (oldIndex === -1 || newIndex === -1) return
+    handleReorder(arrayMove(ids, oldIndex, newIndex))
   }
 
   return (
@@ -173,70 +214,78 @@ export function DocumentKitTemplatesContent() {
             {searchQuery ? 'Ничего не найдено' : 'Пока нет наборов документов. Создайте первый!'}
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[70%]">Название</TableHead>
-                <TableHead className="text-right">Папок</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredKits.map((kit) => (
-                <TableRow key={kit.id} className="group">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Package className="w-5 h-5 text-blue-500 shrink-0" />
-                      <div className="flex-1">
-                        <p className="font-medium">{kit.name}</p>
-                        {kit.description && (
-                          <p className="text-sm text-muted-foreground">{kit.description}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => handleEdit(kit)}
-                          title="Редактировать"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => handleCopy(kit)}
-                          disabled={isCopying}
-                          title="Копировать"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() =>
-                            handleDelete(
-                              kit.id,
-                              'Вы уверены, что хотите удалить этот набор документов?',
-                            )
-                          }
-                          disabled={isDeleting}
-                          title="Удалить"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className="text-muted-foreground">{kit.folders_count}</span>
-                  </TableCell>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8" />
+                  <TableHead className="w-[70%]">Название</TableHead>
+                  <TableHead className="text-right">Папок</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                <SortableContext
+                  items={filteredKits.map((k) => k.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {filteredKits.map((kit) => (
+                    <SortableTemplateRow key={kit.id} id={kit.id} disabled={dragDisabled}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Package className="w-5 h-5 text-blue-500 shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-medium">{kit.name}</p>
+                            {kit.description && (
+                              <p className="text-sm text-muted-foreground">{kit.description}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => handleEdit(kit)}
+                              title="Редактировать"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => handleCopy(kit)}
+                              disabled={isCopying}
+                              title="Копировать"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() =>
+                                handleDelete(
+                                  kit.id,
+                                  'Вы уверены, что хотите удалить этот набор документов?',
+                                )
+                              }
+                              disabled={isDeleting}
+                              title="Удалить"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="text-muted-foreground">{kit.folders_count}</span>
+                      </TableCell>
+                    </SortableTemplateRow>
+                  ))}
+                </SortableContext>
+              </TableBody>
+            </Table>
+          </DndContext>
         )}
       </div>
 
