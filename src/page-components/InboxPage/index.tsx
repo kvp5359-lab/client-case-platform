@@ -10,7 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
-import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
+import { useFilteredInbox, useFilteredInboxUnread } from '@/hooks/messenger/useFilteredInbox'
 import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSidePanelStore } from '@/store/sidePanelStore'
@@ -60,6 +60,9 @@ export default function InboxPage() {
     fetchNextPage,
   } = useFilteredInbox(workspaceId ?? '')
 
+  // Все непрочитанные одним запросом — источник вкладки «Непрочитанные» (без каскада догрузки).
+  const { data: unreadChats = [] } = useFilteredInboxUnread(workspaceId ?? '')
+
   const {
     filter,
     handleSetFilter,
@@ -70,7 +73,7 @@ export default function InboxPage() {
     closeSearch,
     filteredChats,
     unreadCount,
-  } = useInboxFilters(chats)
+  } = useInboxFilters(chats, unreadChats)
 
   // Активный чат — выбранный или первый из списка
   const activeChat = useMemo(() => {
@@ -204,6 +207,11 @@ export default function InboxPage() {
   const { markRead: markReadMutation, markUnread: markUnreadMutation } =
     useInboxMarkMutations(workspaceId)
 
+  // Догрузка страниц — только на вкладке «Все». На «Непрочитанных» источник
+  // полный (useFilteredInboxUnread), пагинация не нужна — иначе короткий
+  // отфильтрованный список запускал бы каскад догрузки всего инбокса.
+  const showLoadMore = filter === 'all' && hasNextPage
+
   return (
     <WorkspaceLayout>
       <div className="h-full overflow-hidden bg-white p-6 pr-[72px]">
@@ -224,7 +232,7 @@ export default function InboxPage() {
             onSelectThread={setSelectedThreadId}
             onMarkAsRead={(chat) => markReadMutation.mutate(chat)}
             onMarkAsUnread={(chat) => markUnreadMutation.mutate(chat)}
-            hasNextPage={hasNextPage}
+            hasNextPage={showLoadMore}
             isFetchingNextPage={isFetchingNextPage}
             onLoadMore={fetchNextPage}
           />

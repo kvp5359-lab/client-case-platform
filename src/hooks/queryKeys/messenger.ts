@@ -18,6 +18,12 @@ export const inboxKeys = {
    * Снимает зависимость счётчиков от тяжёлого RPC, чтобы пагинация фазы 2 не сломала их.
    */
   aggregates: (workspaceId: string) => ['inbox', 'aggregates', workspaceId] as const,
+  /**
+   * Все непрочитанные треды одним запросом (get_inbox_unread_threads) — источник
+   * вкладки «Непрочитанные». Отдельно от пагинированного `threads`, чтобы вкладка
+   * не зависела от прокрутки страниц и не запускала каскад догрузки.
+   */
+  unread: (workspaceId: string) => ['inbox', 'unread', workspaceId] as const,
 }
 
 /**
@@ -147,6 +153,7 @@ export function invalidateMessengerCaches(
 ) {
   queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
   queryClient.invalidateQueries({ queryKey: inboxKeys.aggregates(workspaceId) })
+  queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, true) })
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, false) })
 }

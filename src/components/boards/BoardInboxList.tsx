@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
-import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
+import { useFilteredInbox, useFilteredInboxUnread } from '@/hooks/messenger/useFilteredInbox'
 import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
@@ -53,10 +53,20 @@ export function BoardInboxList({
   // hasNextPage/fetchNextPage без drilling props. TanStack Query
   // дедуплицирует — лишнего запроса не будет.
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = useFilteredInbox(workspaceId)
+  // Все непрочитанные одним запросом — источник вкладки «Непрочитанные».
+  const { data: unreadThreads = [] } = useFilteredInboxUnread(workspaceId)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
 
+  const q = searchQuery.trim().toLowerCase()
+  // Вкладка «Непрочитанные» без активного поиска работает на полном списке
+  // непрочитанных (unreadThreads), а не на пагинированных threads — поэтому
+  // здесь не нужна догрузка страниц (раньше короткий список запускал каскад).
+  const usingUnreadSource = filter === 'unread' && !q
+  // Догрузку оставляем только когда источник — пагинированный threads.
+  const showLoadMore = !usingUnreadSource && hasNextPage
+
   useEffect(() => {
-    if (!hasNextPage) return
+    if (!showLoadMore) return
     const el = sentinelRef.current
     if (!el) return
     const observer = new IntersectionObserver(
@@ -69,37 +79,30 @@ export function BoardInboxList({
     )
     observer.observe(el)
     return () => observer.disconnect()
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+  }, [showLoadMore, isFetchingNextPage, fetchNextPage])
 
   // Общие mark-read/unread мутации — одна реализация на InboxPage и BoardInboxList.
   const { markRead: markReadMutation, markUnread: markUnreadMutation } =
     useInboxMarkMutations(workspaceId)
 
-  const unreadCount = useMemo(
-    () => threads.filter((c) => c.unread_count > 0 || c.has_unread_reaction || c.manually_unread || (c.unread_event_count ?? 0) > 0).length,
-    [threads],
-  )
+  // Точный счётчик непрочитанных — из полного списка, не из загруженных страниц.
+  const unreadCount = unreadThreads.length
 
   const filteredThreads = useMemo(() => {
-    let result = threads
-    const q = searchQuery.trim().toLowerCase()
-    // При активном поиске unread-фильтр игнорируется — ищем по всему списку,
-    // включая прочитанные. Так пользователь не упустит нужного собеседника
+    // При активном поиске unread-фильтр игнорируется — ищем по всему загруженному
+    // списку, включая прочитанные. Так пользователь не упустит нужного собеседника
     // только потому, что сейчас выбрана вкладка «Непрочитанные».
-    if (filter === 'unread' && !q) {
-      result = result.filter(
-        (c) => c.unread_count > 0 || c.has_unread_reaction || c.manually_unread || (c.unread_event_count ?? 0) > 0,
-      )
-    }
     if (q) {
-      result = result.filter(
+      return threads.filter(
         (c) =>
           c.thread_name.toLowerCase().includes(q) ||
           (c.project_name?.toLowerCase().includes(q) ?? false),
       )
     }
-    return result
-  }, [threads, filter, searchQuery])
+    // Вкладка «Непрочитанные» — полный список непрочитанных одним запросом.
+    if (filter === 'unread') return unreadThreads
+    return threads
+  }, [threads, unreadThreads, filter, q])
 
   return (
     <div>
@@ -187,7 +190,7 @@ export function BoardInboxList({
                 onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
               />
             ))}
-            {hasNextPage && (
+            {showLoadMore && (
               <div ref={sentinelRef} className="px-3 py-2 text-[10px] text-muted-foreground text-center">
                 {isFetchingNextPage ? 'Загружаем ещё…' : ''}
               </div>

@@ -16,7 +16,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import { calcThreadUnread, calcTotalUnread, getAggregateBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import { canAccessThread, type ThreadAccessInfo } from '@/utils/threadAccess'
 import { useInboxThreadsV2 } from './useInbox'
-import { getInboxThreadAggregates, type InboxThreadAggregate } from '@/services/api/inboxService'
+import {
+  getInboxThreadAggregates,
+  getInboxUnreadThreads,
+  type InboxThreadAggregate,
+} from '@/services/api/inboxService'
 import { inboxKeys, sidebarDataKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 type MyProjectRole = {
@@ -150,6 +154,29 @@ export function useFilteredInboxAggregates(workspaceId: string) {
 export function useFilteredInbox(workspaceId: string) {
   const { data: rawInboxThreads = [], ...queryRest } = useInboxThreadsV2(workspaceId)
   const data = useAccessFilter(rawInboxThreads, workspaceId)
+  return { data, ...queryRest }
+}
+
+/**
+ * useFilteredInboxUnread — все непрочитанные треды одним запросом (без пагинации),
+ * отфильтрованные тем же access-фильтром, что и основной список.
+ *
+ * Источник вкладки «Непрочитанные». Раньше непрочитанные фильтровались на клиенте
+ * поверх keyset-пагинации — короткий после фильтра список заставлял бесконечный
+ * скролл прокачивать весь инбокс (каскад → подвисание «Загружаем ещё…»). Здесь
+ * непрочитанные (их всегда единицы) приходят целиком одним вызовом RPC.
+ */
+export function useFilteredInboxUnread(workspaceId: string) {
+  const { user } = useAuth()
+
+  const { data: rawUnread = [], ...queryRest } = useQuery({
+    queryKey: inboxKeys.unread(workspaceId),
+    queryFn: () => getInboxUnreadThreads(workspaceId, user!.id),
+    enabled: !!workspaceId && !!user,
+    staleTime: STALE_TIME.SHORT,
+  })
+
+  const data = useAccessFilter(rawUnread, workspaceId)
   return { data, ...queryRest }
 }
 

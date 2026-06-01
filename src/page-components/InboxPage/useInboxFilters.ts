@@ -8,43 +8,56 @@ import type { InboxThreadEntry } from '@/services/api/inboxService'
 
 export type InboxFilter = 'all' | 'unread'
 
-function isUnread(c: InboxThreadEntry): boolean {
-  return (
-    c.unread_count > 0 ||
-    c.has_unread_reaction ||
-    c.manually_unread ||
-    (c.unread_event_count ?? 0) > 0
-  )
+/** Ключ сортировки треда — как в RPC: max(last_message_at, last_event_at). */
+function sortKey(c: InboxThreadEntry): number {
+  const m = c.last_message_at ? Date.parse(c.last_message_at) : 0
+  const e = c.last_event_at ? Date.parse(c.last_event_at) : 0
+  return Math.max(m, e)
 }
 
-export function useInboxFilters(chats: InboxThreadEntry[]) {
+/**
+ * @param chats — пагинированный список инбокса (вкладка «Все», keyset-страницы).
+ * @param unreadChats — все непрочитанные одним запросом (вкладка «Непрочитанные»).
+ *   Отдельный источник, чтобы вкладка не зависела от прокрутки и не каскадила догрузку.
+ */
+export function useInboxFilters(chats: InboxThreadEntry[], unreadChats: InboxThreadEntry[]) {
   const [filter, setFilter] = useState<InboxFilter>('unread')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
-  const [unreadSnapshot, setUnreadSnapshot] = useState<Set<string> | null>(null)
+  // Снимок непрочитанных при входе на вкладку — чтобы прочитанный тред не исчезал
+  // мгновенно, пока пользователь остаётся на «Непрочитанных». Храним сами записи:
+  // прочитанный тред выпадает из unreadChats, и без снимка его данные негде взять.
+  const [unreadSnapshot, setUnreadSnapshot] = useState<Map<string, InboxThreadEntry> | null>(null)
 
   // Сброс снимка при смене фильтра; при включении unread — делаем снимок
   const handleSetFilter = useCallback(
     (f: InboxFilter) => {
       if (f === 'unread') {
-        const ids = new Set(chats.filter(isUnread).map((c) => c.thread_id))
-        setUnreadSnapshot(ids)
+        const snap = new Map<string, InboxThreadEntry>()
+        for (const c of unreadChats) snap.set(c.thread_id, c)
+        setUnreadSnapshot(snap)
       } else {
         setUnreadSnapshot(null)
       }
       setFilter(f)
     },
-    [chats],
+    [unreadChats],
   )
 
   // Фильтрация и поиск
   const filteredChats = useMemo(() => {
-    let result = chats
+    let result: InboxThreadEntry[]
 
     if (filter === 'unread') {
-      result = result.filter(
-        (c) => isUnread(c) || (unreadSnapshot?.has(c.thread_id) ?? false),
-      )
+      // Источник — полный список непрочитанных + «залипшие» прочитанные из снимка.
+      const byId = new Map<string, InboxThreadEntry>()
+      for (const c of unreadChats) byId.set(c.thread_id, c)
+      if (unreadSnapshot) {
+        for (const [id, c] of unreadSnapshot) if (!byId.has(id)) byId.set(id, c)
+      }
+      result = Array.from(byId.values()).sort((a, b) => sortKey(b) - sortKey(a))
+    } else {
+      result = chats
     }
 
     if (searchQuery.trim()) {
@@ -57,9 +70,9 @@ export function useInboxFilters(chats: InboxThreadEntry[]) {
     }
 
     return result
-  }, [chats, filter, searchQuery, unreadSnapshot])
+  }, [chats, unreadChats, filter, searchQuery, unreadSnapshot])
 
-  const unreadCount = useMemo(() => chats.filter(isUnread).length, [chats])
+  const unreadCount = useMemo(() => unreadChats.length, [unreadChats])
 
   const closeSearch = useCallback(() => {
     setSearchOpen(false)

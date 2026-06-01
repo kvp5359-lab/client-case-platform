@@ -103,6 +103,25 @@ export async function getInboxThreadsV2(
 }
 
 /**
+ * Все непрочитанные треды инбокса одним запросом, без пагинации (RPC
+ * `get_inbox_unread_threads`, потолок 100). Источник для вкладки «Непрочитанные»:
+ * непрочитанных всегда единицы, поэтому keyset-пагинация (и её каскад догрузки)
+ * тут не нужна. Возвращает те же поля, что `get_inbox_threads_v2`.
+ */
+export async function getInboxUnreadThreads(
+  workspaceId: string,
+  userId: string,
+): Promise<InboxThreadEntry[]> {
+  const { data, error } = await supabase.rpc('get_inbox_unread_threads' as never, {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+  } as never)
+
+  if (error) throw new ApiError(`Ошибка загрузки непрочитанных: ${error.message}`)
+  return (data ?? []) as unknown as InboxThreadEntry[]
+}
+
+/**
  * Лёгкая строка-агрегат — только поля для счётчиков сайдбара/favicon.
  * Без имён, текстов, аватаров. Источник — RPC `get_inbox_thread_aggregates`.
  */
