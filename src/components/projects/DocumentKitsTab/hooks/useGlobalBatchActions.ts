@@ -125,6 +125,16 @@ export function useGlobalBatchActions({
 
   const hasSelection = globalCount > 0
 
+  // Суммарный размер выделенных документов (по текущей версии файла)
+  const selectedSize = useMemo(
+    () =>
+      selectedDocs.reduce((sum, doc) => {
+        const currentFile = getCurrentDocumentFile(doc.document_files)
+        return sum + (currentFile?.file_size ?? 0)
+      }, 0),
+    [selectedDocs],
+  )
+
   // === Handlers ===
 
   const handleClearSelection = useCallback(() => {
@@ -258,6 +268,7 @@ export function useGlobalBatchActions({
   const batchActionsProps: FloatingBatchActionsProps = {
     hasSelection,
     selectedCount: globalCount,
+    selectedSize,
     hasTrashDocumentsSelected: hasTrashDocs,
     isSourceTab,
     selectedSourceDocsAllHidden,

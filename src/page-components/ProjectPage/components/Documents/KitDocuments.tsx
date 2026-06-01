@@ -28,6 +28,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useGroupedDocuments } from '@/hooks/documents/useGroupedDocuments'
+import { getCurrentDocumentFile } from '@/utils/documentUtils'
+import { formatSize } from '@/utils/files/formatSize'
 import { FolderCard } from './FolderCard'
 import { useDocumentsContext } from './DocumentsContext'
 import type { DocumentStatus, FolderSlotWithDocument } from '@/components/documents/types'
@@ -116,6 +118,19 @@ export const KitDocuments = memo(function KitDocuments({
   const documents = useMemo(() => kit.documents || [], [kit.documents])
 
   const kitFolderIds = useMemo(() => new Set(folders.map((f) => f.id)), [folders])
+
+  // Суммарный размер файлов набора (по текущей версии каждого документа).
+  // Считаем только реально видимые: не удалённые и принадлежащие папкам этого набора.
+  const totalSize = useMemo(
+    () =>
+      documents.reduce((sum, doc) => {
+        if (doc.is_deleted === true) return sum
+        if (!doc.folder_id || !kitFolderIds.has(doc.folder_id)) return sum
+        const file = getCurrentDocumentFile(doc.document_files)
+        return sum + (file?.file_size ?? 0)
+      }, 0),
+    [documents, kitFolderIds],
+  )
 
   const slotsByFolder = useMemo(() => {
     const map = new Map<string, FolderSlotWithDocument[]>()
@@ -283,6 +298,11 @@ export const KitDocuments = memo(function KitDocuments({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {totalSize > 0 && (
+            <span className="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[11px] font-medium text-gray-400 bg-gray-100 tabular-nums">
+              {formatSize(totalSize)}
+            </span>
+          )}
         </div>
         {visibleFolders.map((folder) => (
           <FolderCard

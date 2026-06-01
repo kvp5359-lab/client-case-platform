@@ -15,6 +15,9 @@ type DocumentsContextValue = {
   compressingDocIds: Set<string>
   uploadingSlotId: string | null
   highlightedCompressDocIds: Set<string>
+  // Пороги размера файла (МБ) из шаблона проекта — для подсветки тега размера. null → выкл.
+  fileSizeWarnMb: number | null
+  fileSizeDangerMb: number | null
   // Selection
   selectedDocuments: Set<string>
   hasSelection: boolean
@@ -83,6 +86,8 @@ export type DocumentsProviderProps = {
   compressingDocIds: Set<string>
   uploadingSlotId: string | null
   highlightedCompressDocIds: Set<string>
+  fileSizeWarnMb: number | null
+  fileSizeDangerMb: number | null
   selectedDocuments: Set<string>
   hasSelection: boolean
   onSelectDocument: (docId: string, event?: React.MouseEvent) => void
@@ -139,6 +144,8 @@ export function DocumentsProvider({
   compressingDocIds,
   uploadingSlotId,
   highlightedCompressDocIds,
+  fileSizeWarnMb,
+  fileSizeDangerMb,
   selectedDocuments,
   hasSelection,
   onSelectDocument,
@@ -180,6 +187,8 @@ export function DocumentsProvider({
       compressingDocIds,
       uploadingSlotId,
       highlightedCompressDocIds,
+      fileSizeWarnMb,
+      fileSizeDangerMb,
       selectedDocuments,
       hasSelection,
       onSelectDocument,
@@ -220,6 +229,8 @@ export function DocumentsProvider({
       compressingDocIds,
       uploadingSlotId,
       highlightedCompressDocIds,
+      fileSizeWarnMb,
+      fileSizeDangerMb,
       selectedDocuments,
       hasSelection,
       onSelectDocument,

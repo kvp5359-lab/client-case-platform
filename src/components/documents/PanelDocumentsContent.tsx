@@ -14,6 +14,7 @@ import { AddDocumentKitDialog } from '@/components/projects/AddDocumentKitDialog
 import { useDocumentKitsQuery } from '@/hooks/documents/useDocumentKitsQuery'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useProjectPermissions } from '@/hooks/permissions/useProjectPermissions'
+import { useProjectData } from '@/page-components/ProjectPage/hooks/useProjectData'
 import { supabase } from '@/lib/supabase'
 
 type PanelDocumentsContentProps = {
@@ -26,6 +27,9 @@ export function PanelDocumentsContent({ projectId, workspaceId }: PanelDocuments
   const addKitDialog = useDialog()
   const { can } = useProjectPermissions({ projectId })
   const canAddDocumentKits = can('documents', 'add_document_kits')
+
+  // Пороги размера файла из шаблона проекта — для подсветки тега размера.
+  const { projectTemplate } = useProjectData(projectId)
 
   // Google Drive folder link — нужен DocumentsTabContent для «Создать папки в Drive».
   const [googleDriveFolderLink, setGoogleDriveFolderLink] = useState<string | null>(null)
@@ -56,6 +60,8 @@ export function PanelDocumentsContent({ projectId, workspaceId }: PanelDocuments
             workspaceId={workspaceId}
             onOpenAddKitDialog={canAddDocumentKits ? addKitDialog.open : undefined}
             googleDriveFolderLink={googleDriveFolderLink}
+            fileSizeWarnMb={projectTemplate?.file_size_warn_mb ?? null}
+            fileSizeDangerMb={projectTemplate?.file_size_danger_mb ?? null}
             compact
           />
         )}

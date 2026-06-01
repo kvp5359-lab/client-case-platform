@@ -94,6 +94,8 @@ type ProjectTabsContentProps = {
   documentKits: DocumentKit[]
   canAddDocumentKits: boolean
   addKitDialog: UseDialogReturn
+  fileSizeWarnMb?: number | null
+  fileSizeDangerMb?: number | null
 }
 
 export function ProjectTabsContent({
@@ -122,6 +124,8 @@ export function ProjectTabsContent({
   documentKits,
   canAddDocumentKits,
   addKitDialog,
+  fileSizeWarnMb,
+  fileSizeDangerMb,
 }: ProjectTabsContentProps) {
   return (
     <Suspense fallback={<TabLoading />}>
@@ -267,6 +271,8 @@ export function ProjectTabsContent({
             workspaceId={workspaceId}
             onOpenAddKitDialog={canAddDocumentKits ? addKitDialog.open : undefined}
             googleDriveFolderLink={project.google_drive_folder_link}
+            fileSizeWarnMb={fileSizeWarnMb}
+            fileSizeDangerMb={fileSizeDangerMb}
           />
         </div>
       )}

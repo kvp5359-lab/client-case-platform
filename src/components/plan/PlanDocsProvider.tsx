@@ -109,6 +109,8 @@ export function PlanDocsProvider({
       compressingDocIds={EMPTY_SET}
       uploadingSlotId={fileUpload.uploadingSlotId}
       highlightedCompressDocIds={EMPTY_SET}
+      fileSizeWarnMb={null}
+      fileSizeDangerMb={null}
       selectedDocuments={EMPTY_SET}
       hasSelection={false}
       onSelectDocument={noop}

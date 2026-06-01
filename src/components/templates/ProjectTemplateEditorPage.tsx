@@ -33,6 +33,7 @@ import {
 } from './project-template-editor'
 import { BriefTemplateSection } from './project-template-editor/BriefTemplateSection'
 import { RootFolderSection } from './project-template-editor/RootFolderSection'
+import { FileSizeThresholdsSection } from './project-template-editor/FileSizeThresholdsSection'
 import { TemplatePlanSection } from '@/components/plan/TemplatePlanSection'
 import { IconPicker } from '@/components/ui/icon-picker'
 import { ColorPicker } from '@/components/ui/color-picker'
@@ -363,6 +364,11 @@ export function ProjectTemplateEditorPage() {
               templateId={templateId}
               briefTemplateSheetId={template.brief_template_sheet_id}
               workspaceId={workspaceId}
+            />
+            <FileSizeThresholdsSection
+              templateId={templateId}
+              warnMb={template.file_size_warn_mb}
+              dangerMb={template.file_size_danger_mb}
             />
           </TabsContent>
 

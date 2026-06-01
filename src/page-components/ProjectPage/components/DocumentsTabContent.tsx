@@ -61,6 +61,9 @@ type DocumentsTabContentProps = {
   workspaceId: string
   onOpenAddKitDialog?: () => void
   googleDriveFolderLink?: string | null
+  /** Пороги размера файла (МБ) из шаблона проекта — подсветка тега размера. null → выкл. */
+  fileSizeWarnMb?: number | null
+  fileSizeDangerMb?: number | null
   /** Принудительно сжимать подписи и максимальную ширину карточек.
    *  Используется в TaskPanel → «Документы». */
   compact?: boolean
@@ -74,6 +77,8 @@ export function DocumentsTabContent({
   workspaceId,
   onOpenAddKitDialog,
   googleDriveFolderLink,
+  fileSizeWarnMb = null,
+  fileSizeDangerMb = null,
   compact: compactProp,
 }: DocumentsTabContentProps) {
   const [filterMode, setFilterMode] = useState<'all' | 'action-required'>('all')
@@ -292,6 +297,8 @@ export function DocumentsTabContent({
     projectId,
     workspaceId,
     statuses,
+    fileSizeWarnMb,
+    fileSizeDangerMb,
     compressingDocIds,
     compressAnalysis,
     fileUpload,

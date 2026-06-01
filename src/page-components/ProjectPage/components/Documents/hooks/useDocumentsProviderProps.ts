@@ -27,6 +27,8 @@ type UseDocumentsProviderPropsParams = {
   projectId: string
   workspaceId: string
   statuses: DocumentStatus[]
+  fileSizeWarnMb: number | null
+  fileSizeDangerMb: number | null
   compressingDocIds: Set<string>
   compressAnalysis: CompressAnalysis
   fileUpload: FileUpload
@@ -47,6 +49,8 @@ export function useDocumentsProviderProps({
   projectId,
   workspaceId,
   statuses,
+  fileSizeWarnMb,
+  fileSizeDangerMb,
   compressingDocIds,
   compressAnalysis,
   fileUpload,
@@ -67,6 +71,8 @@ export function useDocumentsProviderProps({
       projectId,
       workspaceId,
       statuses,
+      fileSizeWarnMb,
+      fileSizeDangerMb,
       compressingDocIds,
       uploadingSlotId: fileUpload.uploadingSlotId,
       highlightedCompressDocIds: compressAnalysis.highlightedCompressDocIds,
@@ -107,6 +113,8 @@ export function useDocumentsProviderProps({
       projectId,
       workspaceId,
       statuses,
+      fileSizeWarnMb,
+      fileSizeDangerMb,
       compressingDocIds,
       compressAnalysis.highlightedCompressDocIds,
       fileUpload.uploadingSlotId,

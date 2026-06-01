@@ -390,6 +390,8 @@ export default function ProjectPage() {
                 documentKits={documentKits}
                 canAddDocumentKits={canAddDocumentKits}
                 addKitDialog={addKitDialog}
+                fileSizeWarnMb={projectTemplate?.file_size_warn_mb ?? null}
+                fileSizeDangerMb={projectTemplate?.file_size_danger_mb ?? null}
               />
             </Tabs>
           </div>

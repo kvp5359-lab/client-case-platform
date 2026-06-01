@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Loader2, X, Bot } from 'lucide-react'
+import { formatSize } from '@/utils/files/formatSize'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { SendToChatButton } from './SendToChatButton'
 import {
@@ -40,6 +41,7 @@ export type { BatchOperations, BatchPermissions, BatchHandlers }
 export type FloatingBatchActionsProps = {
   hasSelection: boolean
   selectedCount: number
+  selectedSize?: number
   hasTrashDocumentsSelected?: boolean
   isSourceTab?: boolean
   selectedSourceDocsAllHidden?: boolean
@@ -53,6 +55,7 @@ export type FloatingBatchActionsProps = {
 export const FloatingBatchActions = memo(function FloatingBatchActions({
   hasSelection,
   selectedCount,
+  selectedSize,
   hasTrashDocumentsSelected = false,
   isSourceTab = false,
   selectedSourceDocsAllHidden = false,
@@ -141,6 +144,9 @@ export const FloatingBatchActions = memo(function FloatingBatchActions({
         {/* Текст с количеством выбранных документов */}
         <div className="text-sm font-medium text-foreground">
           Выбрано документов: {selectedCount}
+          {selectedSize != null && selectedSize > 0 && (
+            <span className="text-muted-foreground font-normal"> ({formatSize(selectedSize)})</span>
+          )}
         </div>
 
         {/* Кнопки "Действия" + "Ассистент" */}

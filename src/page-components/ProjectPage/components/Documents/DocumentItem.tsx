@@ -55,10 +55,28 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
     onSourceDocDrop,
     onMessengerAttachmentDrop,
     highlightedCompressDocIds,
+    fileSizeWarnMb,
+    fileSizeDangerMb,
   } = useDocumentsContext()
 
   const isSelected = selectedDocuments.has(document.id)
   const currentFile = getCurrentDocumentFile(document.document_files)
+
+  // Подсветка тега размера по порогам из шаблона проекта. null → выключено.
+  // Уже сжатые файлы подсвечиваем приглушённо — они уже оптимизированы.
+  const sizeMb = (currentFile?.file_size || 0) / (1024 * 1024)
+  const isOverDanger = fileSizeDangerMb != null && sizeMb >= fileSizeDangerMb
+  const isOverWarn = fileSizeWarnMb != null && sizeMb >= fileSizeWarnMb
+  const sizeCompressed = !!currentFile?.is_compressed
+  const sizeColorClass = isOverDanger
+    ? sizeCompressed
+      ? 'text-red-300'
+      : 'text-red-500 font-medium'
+    : isOverWarn
+      ? sizeCompressed
+        ? 'text-amber-300'
+        : 'text-amber-500 font-medium'
+      : 'text-gray-300'
   const hasFile = (document.document_files?.length || 0) > 0
   const currentStatus = statuses.find((s) => s.id === document.status) || null
   const isFinal = !!currentStatus?.is_final
@@ -215,7 +233,9 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
           </span>
           {/* Размер файла + иконка сжатия */}
           {hasFile && currentFile && (
-            <span className="shrink-0 inline-flex items-center gap-0.5 text-[13px] leading-tight text-gray-300">
+            <span
+              className={`shrink-0 inline-flex items-center gap-0.5 text-[13px] leading-tight ${sizeColorClass}`}
+            >
               {formatSize(currentFile.file_size || 0)}
               {currentFile.is_compressed && (
                 <span title="Документ сжат" className="inline-flex">

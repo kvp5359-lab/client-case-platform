@@ -5929,6 +5929,8 @@ export type Database = {
           default_panel_tabs: Json | null
           description: string | null
           enabled_modules: string[] | null
+          file_size_danger_mb: number | null
+          file_size_warn_mb: number | null
           icon: string
           icon_color: string
           icon_color_mode: string
@@ -5947,6 +5949,8 @@ export type Database = {
           default_panel_tabs?: Json | null
           description?: string | null
           enabled_modules?: string[] | null
+          file_size_danger_mb?: number | null
+          file_size_warn_mb?: number | null
           icon?: string
           icon_color?: string
           icon_color_mode?: string
@@ -5965,6 +5969,8 @@ export type Database = {
           default_panel_tabs?: Json | null
           description?: string | null
           enabled_modules?: string[] | null
+          file_size_danger_mb?: number | null
+          file_size_warn_mb?: number | null
           icon?: string
           icon_color?: string
           icon_color_mode?: string
