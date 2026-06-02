@@ -5,7 +5,7 @@
  * После audit S1 cleanup: threadId обязательный, legacy-режим удалён.
  */
 
-import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   markAsRead,
@@ -14,10 +14,12 @@ import {
   getCurrentWorkspaceParticipant,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
+import { getInboxThreadOne } from '@/services/api/inboxService'
 import { supabase } from '@/lib/supabase'
 import {
   messengerKeys,
   invalidateMessengerCaches,
+  STALE_TIME,
 } from '@/hooks/queryKeys'
 import { useInboxThreadsV2, patchInboxThreadInCache, patchInboxAggregateInCache } from './useInbox'
 import { dismissProjectToasts } from './useMessageToastPayload'
@@ -153,15 +155,35 @@ export function useUnreadCount(
   return { ...query, data: value }
 }
 
+/**
+ * useLastReadAt — граница «прочитанного» для ОТКРЫТОГО треда (красный контур
+ * непрачитанных бабблов в MessageList).
+ *
+ * ВАЖНО: НЕ читаем из useInboxThreadsV2 — после перехода инбокса на keyset-
+ * пагинацию этот список содержит только загруженные страницы. Для треда за их
+ * пределами `find` возвращал undefined → last_read_at = null → MessageList красил
+ * ВСЕ чужие сообщения как непрочитанные, хотя на сервере тред прочитан.
+ *
+ * Теперь — точечный запрос по thread_id (RPC get_inbox_thread_one), на ключе
+ * `messengerKeys.lastReadAtByThreadId`, который уже патчат все mark-read мутации
+ * (patchCachesForMarkRead, useNewMessageToast, useDelayedSend, ...) → контур
+ * исчезает мгновенно при прочтении/отправке.
+ */
 export function useLastReadAt(
   workspaceId: string,
   threadId: string | undefined,
 ) {
-  const query = useInboxThreadsV2(workspaceId)
-  const value: string | null = threadId
-    ? query.data?.find((t) => t.thread_id === threadId)?.last_read_at ?? null
-    : null
-  return { ...query, data: value, isPending: query.isPending }
+  const { user } = useAuth()
+  const query = useQuery({
+    queryKey: messengerKeys.lastReadAtByThreadId(threadId ?? '__none__'),
+    queryFn: async (): Promise<string | null> => {
+      const row = await getInboxThreadOne(workspaceId, user!.id, threadId!)
+      return row?.last_read_at ?? null
+    },
+    enabled: !!workspaceId && !!user && !!threadId,
+    staleTime: STALE_TIME.SHORT,
+  })
+  return { ...query, data: query.data ?? null, isPending: query.isPending }
 }
 
 /**

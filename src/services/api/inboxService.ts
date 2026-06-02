@@ -103,6 +103,29 @@ export async function getInboxThreadsV2(
 }
 
 /**
+ * Одна строка инбокса для конкретного треда (RPC `get_inbox_thread_one`).
+ * Источник надёжных last_read_at/unread_count для ОТКРЫТОГО треда — не зависит
+ * от того, попал ли тред в пагинированный список useInboxThreadsV2 (иначе для
+ * треда за пределами загруженных страниц last_read_at приходил null → ложные
+ * красные «непрочитанные» баблы). Возвращает null, если тред недоступен.
+ */
+export async function getInboxThreadOne(
+  workspaceId: string,
+  userId: string,
+  threadId: string,
+): Promise<InboxThreadEntry | null> {
+  const { data, error } = await supabase.rpc('get_inbox_thread_one' as never, {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+    p_thread_id: threadId,
+  } as never)
+
+  if (error) throw new ApiError(`Ошибка загрузки треда: ${error.message}`)
+  const rows = (data ?? []) as unknown as InboxThreadEntry[]
+  return rows[0] ?? null
+}
+
+/**
  * Все непрочитанные треды инбокса одним запросом, без пагинации (RPC
  * `get_inbox_unread_threads`, потолок 100). Источник для вкладки «Непрочитанные»:
  * непрочитанных всегда единицы, поэтому keyset-пагинация (и её каскад догрузки)
