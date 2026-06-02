@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Crown, Users, Link, HandshakeIcon, Contact, Camera, type LucideIcon } from 'lucide-react'
+import { Crown, Users, Link, HandshakeIcon, Contact, Camera, X, type LucideIcon } from 'lucide-react'
 import { ParticipantChannelsBlock } from './ParticipantChannelsBlock'
 
 export type RoleOption = {
@@ -167,6 +167,13 @@ export function EditParticipantDialog({
     }
   }
 
+  const handleClearAvatar = () => {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview)
+    setAvatarPreview(null)
+    setAvatarUrl(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSave({
@@ -203,27 +210,42 @@ export function EditParticipantDialog({
             {/* Аватарка — только для редактирования (нужен participant.id для пути в Storage) */}
             {participant && (
               <div className="flex justify-center">
-                <button
-                  type="button"
-                  className="relative group"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading || isUploading}
-                >
-                  <Avatar className="h-20 w-20">
-                    {currentAvatarSrc && <AvatarImage src={currentAvatarSrc} alt={displayName} />}
-                    <AvatarFallback className="text-lg font-medium bg-muted">
-                      {getInitials(displayName)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="h-5 w-5 text-white" />
-                  </div>
-                  {isUploading && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
-                      <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="relative group/avatar">
+                  <button
+                    type="button"
+                    className="relative block"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isLoading || isUploading}
+                  >
+                    <Avatar className="h-20 w-20">
+                      {currentAvatarSrc && <AvatarImage src={currentAvatarSrc} alt={displayName} />}
+                      <AvatarFallback className="text-lg font-medium bg-muted">
+                        {getInitials(displayName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                      <Camera className="h-5 w-5 text-white" />
                     </div>
+                    {isUploading && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                        <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                  </button>
+                  {/* Кнопка очистки аватарки — серая, поверх, появляется при наведении */}
+                  {currentAvatarSrc && !isUploading && (
+                    <button
+                      type="button"
+                      onClick={handleClearAvatar}
+                      disabled={isLoading}
+                      className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm ring-1 ring-border opacity-0 transition-opacity group-hover/avatar:opacity-100 hover:bg-muted/80 hover:text-foreground"
+                      aria-label="Удалить аватарку"
+                      title="Удалить аватарку"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   )}
-                </button>
+                </div>
                 <input
                   ref={fileInputRef}
                   type="file"

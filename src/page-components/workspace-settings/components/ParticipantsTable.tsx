@@ -4,6 +4,8 @@
 
 import { Badge } from '@/components/ui/badge'
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { getInitials } from '@/utils/avatarHelpers'
 import { ParticipantMenu } from './ParticipantMenu'
 import { ROLE_CONFIG } from '../constants/roleConfig'
 import type { Participant } from '@/types/entities'
@@ -44,8 +46,25 @@ export function ParticipantsTable({
         {participants.map((participant) => (
           <TableRow key={participant.id}>
             <TableCell className="text-sm">
-              {participant.name || '—'}
-              {participant.last_name && ` ${participant.last_name}`}
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8 shrink-0">
+                  {participant.avatar_url && (
+                    <AvatarImage
+                      src={participant.avatar_url}
+                      alt={participant.name || ''}
+                    />
+                  )}
+                  <AvatarFallback className="text-xs bg-muted">
+                    {getInitials(
+                      [participant.name, participant.last_name].filter(Boolean).join(' ') || '—',
+                    )}
+                  </AvatarFallback>
+                </Avatar>
+                <span>
+                  {participant.name || '—'}
+                  {participant.last_name && ` ${participant.last_name}`}
+                </span>
+              </div>
             </TableCell>
             <TableCell className="text-sm text-gray-500 max-w-[260px] truncate" title={participant.email ?? undefined}>{participant.email}</TableCell>
             <TableCell className="text-sm text-gray-600">{participant.phone || '—'}</TableCell>
