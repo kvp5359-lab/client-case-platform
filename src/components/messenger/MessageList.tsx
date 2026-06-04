@@ -421,9 +421,16 @@ export function MessageList({
 
           const { msg, idx: i } = item
           const showDate = i === 0 || !isSameDay(messages[i - 1].created_at, msg.created_at)
-          const isOwn = currentParticipantId
-            ? msg.sender_participant_id === currentParticipantId
-            : false
+          // Оптимистичная заглушка (id `optimistic-…`) — это сообщение, которое мы
+          // сами только что отправили, поэтому оно всегда «наше». Без этого
+          // правила pending-письмо рисуется слева: его sender_participant_id ещё
+          // null (currentParticipant не догрузился в момент отправки), а реальную
+          // строку с верным id потом присылает сервер → бабл «прыгает» вправо.
+          const isOwn = msg.id.startsWith('optimistic-')
+            ? true
+            : currentParticipantId
+              ? msg.sender_participant_id === currentParticipantId
+              : false
 
           const showUnreadSeparator = i === firstUnreadIndex
           // Если last_read_at отсутствует — тред никогда не открывался, все чужие сообщения непрочитанные.
