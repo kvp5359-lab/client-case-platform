@@ -1,14 +1,14 @@
 "use client"
 
 /**
- * Тулбар пакетных действий для item_lists. Показывается, когда выделено
- * хотя бы одно элемент. При смешанной выборке (например, в треды-списке
- * выбраны task + chat) действия, неприменимые ко всем — задизейблены
- * с подсказкой о причине.
+ * Тулбар пакетных действий для item_lists — единое меню «Действия».
+ * Показывается, когда выделено хотя бы одно элемент. При смешанной выборке
+ * (в треды-списке выбраны task + chat) действия, неприменимые ко всем —
+ * задизейблены с подсказкой о причине.
  *
- * MVP-набор:
- *   - Треды (task): сменить статус, изменить дедлайн (одной датой), архив.
- *   - Проекты: сменить статус, архив.
+ * Набор:
+ *   - Треды (task): сменить статус, архив.
+ *   - Проекты: сменить статус, добавить/отстранить исполнителей, архив.
  */
 
 import { useState } from 'react'
@@ -20,6 +20,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { StatusOption } from '@/components/common/status-dropdown'
@@ -28,6 +32,11 @@ import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProject
 import { useQueryClient } from '@tanstack/react-query'
 import { workspaceThreadKeys, accessibleProjectKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
 import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
+import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import type { PickerParticipant } from '@/components/participants/ParticipantsPicker'
+import { AddExecutorsDialog } from './AddExecutorsDialog'
+import { RemoveExecutorDialog } from './RemoveExecutorDialog'
+import { addExecutors, removeExecutor, removeAllExecutors } from './bulkExecutorActions'
 
 type BulkActionsBarProps = {
   entityType: 'thread' | 'project'
@@ -51,8 +60,23 @@ export function BulkActionsBar({
   const qc = useQueryClient()
   const markReadIfFinal = useMarkThreadReadIfFinal()
   const [pending, setPending] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const [removeOpen, setRemoveOpen] = useState(false)
+
+  const { data: rawParticipants = [] } = useWorkspaceParticipants(
+    entityType === 'project' ? workspaceId : undefined,
+  )
+  const workspaceParticipants: PickerParticipant[] = rawParticipants.map((p) => ({
+    id: p.id,
+    name: p.name,
+    last_name: p.last_name,
+    avatar_url: p.avatar_url,
+    user_id: p.user_id,
+    workspace_roles: p.workspace_roles ?? undefined,
+  }))
 
   const selectedItems = items.filter((it) => selectedIds.has(it.id))
+  const projectIds = selectedItems.map((it) => it.id)
 
   // Для тредов — есть ли в выделении не-task (чат/email)? Если да, операции,
   // относящиеся только к task, дизейблятся.
@@ -110,13 +134,12 @@ export function BulkActionsBar({
   const setProjectStatus = async (statusId: string) => {
     setPending(true)
     try {
-      const ids = selectedItems.map((it) => it.id)
       const { error } = await supabase
         .from('projects')
         .update({ status_id: statusId } as never)
-        .in('id', ids)
+        .in('id', projectIds)
       if (error) throw error
-      toast.success(`Статус обновлён у ${ids.length} проектов`)
+      toast.success(`Статус обновлён у ${projectIds.length} проектов`)
       refresh()
       onClearSelection()
     } catch (e) {
@@ -149,61 +172,152 @@ export function BulkActionsBar({
     }
   }
 
+  // ── Исполнители (только проекты) ──────────────────────────────────────────
+  const handleAddExecutors = async (participantIds: string[]) => {
+    setPending(true)
+    try {
+      await addExecutors(projectIds, participantIds)
+      toast.success(`Исполнители добавлены в ${projectIds.length} проектов`)
+      setAddOpen(false)
+      refresh()
+      onClearSelection()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Не удалось добавить исполнителей')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  const handleRemoveExecutor = async (participantId: string) => {
+    setPending(true)
+    try {
+      await removeExecutor(projectIds, participantId)
+      toast.success('Исполнитель отстранён')
+      setRemoveOpen(false)
+      refresh()
+      onClearSelection()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Не удалось отстранить исполнителя')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  const handleRemoveAllExecutors = async () => {
+    if (!confirm(`Отстранить всех исполнителей из ${projectIds.length} проектов?`)) return
+    setPending(true)
+    try {
+      await removeAllExecutors(projectIds)
+      toast.success('Все исполнители отстранены')
+      refresh()
+      onClearSelection()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Не удалось отстранить исполнителей')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  const statusOptions = entityType === 'thread' ? taskStatuses : projectStatuses
+  const statusDisabled = entityType === 'thread' && mixedThreadTypes
+
   return (
     <>
       {pending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={pending || (entityType === 'thread' && mixedThreadTypes)}
-            title={
-              entityType === 'thread' && mixedThreadTypes
-                ? 'Среди выделенных есть чаты/email — у них нет статуса. Оставьте только задачи.'
-                : undefined
-            }
-          >
-            Сменить статус
+          <Button variant="outline" size="sm" disabled={pending}>
+            Действия
             <ChevronDown className="h-3 w-3 ml-1" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
-          {(entityType === 'thread' ? taskStatuses : projectStatuses).map((s) => (
-            <DropdownMenuItem
-              key={s.id}
-              onClick={() =>
-                entityType === 'thread' ? setThreadStatus(s.id) : setProjectStatus(s.id)
+        <DropdownMenuContent align="end" className="min-w-[200px]">
+          {/* Сменить статус */}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              disabled={statusDisabled}
+              title={
+                statusDisabled
+                  ? 'Среди выделенных есть чаты/email — у них нет статуса. Оставьте только задачи.'
+                  : undefined
               }
             >
-              <span
-                className="h-2.5 w-2.5 rounded-full mr-2 inline-block"
-                style={{ backgroundColor: s.color ?? '#6B7280' }}
-              />
-              {s.name}
-            </DropdownMenuItem>
-          ))}
-          {entityType === 'thread' && (
-            <DropdownMenuItem onClick={() => setThreadStatus(null)} className="text-muted-foreground">
-              Без статуса
-            </DropdownMenuItem>
+              Сменить статус
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto">
+              {statusOptions.map((s) => (
+                <DropdownMenuItem
+                  key={s.id}
+                  onClick={() =>
+                    entityType === 'thread' ? setThreadStatus(s.id) : setProjectStatus(s.id)
+                  }
+                >
+                  <span
+                    className="h-2.5 w-2.5 rounded-full mr-2 inline-block"
+                    style={{ backgroundColor: s.color ?? '#6B7280' }}
+                  />
+                  {s.name}
+                </DropdownMenuItem>
+              ))}
+              {entityType === 'thread' && (
+                <DropdownMenuItem
+                  onClick={() => setThreadStatus(null)}
+                  className="text-muted-foreground"
+                >
+                  Без статуса
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+
+          {/* Исполнители — только для проектов */}
+          {entityType === 'project' && (
+            <>
+              <DropdownMenuItem onClick={() => setAddOpen(true)}>
+                Добавить исполнителей
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setRemoveOpen(true)}>
+                Отстранить исполнителя
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleRemoveAllExecutors}>
+                Отстранить всех исполнителей
+              </DropdownMenuItem>
+            </>
           )}
+
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onClick={() => {
+              if (!confirm(`Перенести ${selectedIds.size} в корзину?`)) return
+              archive()
+            }}
+          >
+            В корзину
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Button
-        variant="outline"
-        size="sm"
-        className="text-destructive hover:text-destructive"
-        disabled={pending}
-        onClick={() => {
-          if (!confirm(`Перенести ${selectedIds.size} в корзину?`)) return
-          archive()
-        }}
-      >
-        В корзину
-      </Button>
+      {entityType === 'project' && (
+        <>
+          <AddExecutorsDialog
+            open={addOpen}
+            onOpenChange={setAddOpen}
+            participants={workspaceParticipants}
+            projectCount={projectIds.length}
+            pending={pending}
+            onConfirm={handleAddExecutors}
+          />
+          <RemoveExecutorDialog
+            open={removeOpen}
+            onOpenChange={setRemoveOpen}
+            projectIds={projectIds}
+            pending={pending}
+            onConfirm={handleRemoveExecutor}
+          />
+        </>
+      )}
     </>
   )
 }
