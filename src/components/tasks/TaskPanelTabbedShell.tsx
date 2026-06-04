@@ -246,9 +246,18 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   useEffect(() => {
     if (!tabsIsReady) return
     if (!activeProjectId) return
-    if (scopeThreadsRaw.length === 0) return // ждём загрузки тредов проекта
     for (const tab of tabsTabs) {
+      // Чужая tasks-вкладка: её refId указывает на другой проект (id = `tasks:<projectId>`).
+      // Попадает в набор при быстром переключении между тредами разных проектов на
+      // /boards и /inbox (scope-switch race). На экране видна как лишняя иконка списка
+      // задач, в чужой проект ведёт и не открывает контент — вычищаем сразу.
+      // refId-less legacy tasks-вкладку не трогаем (фолбэк на projectId в рендере).
+      if (tab.type === 'tasks' && tab.refId && tab.refId !== activeProjectId) {
+        tabsCloseTab(tab.id)
+        continue
+      }
       if (tab.type !== 'thread' || !tab.refId) continue
+      if (scopeThreadsRaw.length === 0) continue // ждём загрузки тредов проекта
       if (!scopeThreadIds.has(tab.refId)) {
         tabsCloseTab(tab.id)
       }
