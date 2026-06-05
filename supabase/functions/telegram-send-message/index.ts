@@ -500,6 +500,9 @@ Deno.serve(async (req: Request) => {
             channelFields: {
               telegram_message_id: tgData.result.message_id,
               telegram_chat_id: activeChatId,
+              telegram_message_date: tgData.result.date
+                ? new Date(tgData.result.date * 1000).toISOString()
+                : null,
             },
           });
           statusWritten = true;

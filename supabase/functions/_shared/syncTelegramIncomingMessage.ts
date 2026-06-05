@@ -36,7 +36,7 @@ interface TgMessageMinimal {
   chat: { id: number };
   date?: number;
   from?: TgFrom;
-  reply_to_message?: { message_id: number };
+  reply_to_message?: { message_id: number; date?: number };
   // Поля вложений — нужны для извлечения file_unique_id в дедуп-ключ.
   // Все опциональные: одно сообщение содержит ровно один из этих типов
   // (TG не миксует фото и документ в одном message).
@@ -164,6 +164,27 @@ export async function syncTelegramIncomingMessage(
       : q.is("telegram_bot_integration_id", null);
     const { data: replyMsg } = await q.maybeSingle();
     replyToDbId = replyMsg?.id ?? null;
+  }
+
+  // Фолбэк для multi-bot групп: оригинал мог быть отправлен ДРУГИМ ботом,
+  // тогда reply_to_message.message_id (нумерация бота, поймавшего реплай)
+  // не совпадёт с записанным telegram_message_id оригинала. Дата сообщения
+  // бот-независима → матчим оригинал по (chat_id + date). Включается только
+  // когда основной поиск дал null — рабочие single-bot случаи не трогаем.
+  if (!replyToDbId && message.reply_to_message?.date) {
+    const replyDateISO = new Date(
+      message.reply_to_message.date * 1000,
+    ).toISOString();
+    const { data: replyByDate } = await service
+      .from("project_messages")
+      .select("id")
+      .eq("project_id", binding.project_id)
+      .eq("telegram_chat_id", chatId)
+      .eq("telegram_message_date", replyDateISO)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    replyToDbId = replyByDate?.id ?? null;
   }
 
   // Подбираем человекочитаемое описание для медиа без caption.
