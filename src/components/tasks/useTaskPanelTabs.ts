@@ -116,6 +116,29 @@ type UseTaskPanelTabsResult = {
 
 const EMPTY_STATE: PersistedRow = { tabs: [], active_tab_id: null }
 
+/**
+ * Дедупликация вкладок по id. Оставляет первое вхождение, но если среди
+ * дублей был pinned — переносит флаг на сохранённую вкладку (чтобы не
+ * «открепить» её случайно). Лечит legacy-мусор в task_panel_tabs, где
+ * scope-race + sanitizeTabsForScope создавали два экземпляра `tasks:<projectId>`
+ * (один pinned из сидера, второй — перепривязанный из чужого scope), что
+ * давало дублирующиеся иконки и React key-collision (вкладки «не кликались»).
+ */
+function dedupeTabsById(tabs: TaskPanelTab[]): TaskPanelTab[] {
+  const indexById = new Map<string, number>()
+  const result: TaskPanelTab[] = []
+  for (const t of tabs) {
+    const existing = indexById.get(t.id)
+    if (existing === undefined) {
+      indexById.set(t.id, result.length)
+      result.push(t)
+    } else if (t.pinned && !result[existing].pinned) {
+      result[existing] = { ...result[existing], pinned: true }
+    }
+  }
+  return result
+}
+
 export function useTaskPanelTabs({
   projectId,
   contactId,
@@ -159,7 +182,7 @@ export function useTaskPanelTabs({
   const [hydrated, setHydrated] = useState(false)
   useEffect(() => {
     if (isSuccess && persisted && !hydrated) {
-      setLocalTabs(persisted.tabs)
+      setLocalTabs(dedupeTabsById(persisted.tabs))
       setHydrated(true)
     }
   }, [isSuccess, persisted, hydrated])
@@ -319,7 +342,11 @@ export function useTaskPanelTabs({
       const targetUserId = userId
       if (!targetScopeKey || !targetScopeKind || !targetUserId) return
 
-      const safeTabs = sanitizeTabsForScope(nextTabs, targetScopeKey, targetScopeKind)
+      // sanitizeTabsForScope может перепривязать чужую tasks-вкладку на текущий
+      // scope и создать второй экземпляр с тем же id — поэтому дедупим ПОСЛЕ него.
+      const safeTabs = dedupeTabsById(
+        sanitizeTabsForScope(nextTabs, targetScopeKey, targetScopeKind),
+      )
 
       persistPayloadRef.current = {
         tabs: safeTabs,
