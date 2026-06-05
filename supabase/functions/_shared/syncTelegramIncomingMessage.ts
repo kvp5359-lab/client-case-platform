@@ -237,6 +237,27 @@ export async function syncTelegramIncomingMessage(
   // кто пришёл первым) уже вставил эту строку. Догоним.
   const isUniqueViolation =
     typeof insertResult.error?.code === "string" && insertResult.error.code === "23505";
+
+  // Multi-bot reply fix: если МЫ (бот-владелец оригинала) разрешили reply-связку,
+  // но строку уже вставил ДРУГОЙ бот (гонка при нескольких ботах в группе) —
+  // дописываем reply_to_message_id туда, где он ещё ПУСТ. Telegram гарантированно
+  // отдаёт реплай боту-владельцу оригинала с заполненным reply_to_message, поэтому
+  // только он способен разрешить связку. Не трогаем чужой bot_integration_id и не
+  // перезаписываем уже установленную связку (условие .is(reply, null)).
+  if (isUniqueViolation && replyToDbId && telegramUserId != null && messageDateISO) {
+    let replyFix = service
+      .from("project_messages")
+      .update({ reply_to_message_id: replyToDbId })
+      .eq("telegram_chat_id", chatId)
+      .eq("telegram_sender_user_id", telegramUserId)
+      .eq("telegram_message_date", messageDateISO)
+      .is("reply_to_message_id", null);
+    replyFix = fileUniqueId
+      ? replyFix.eq("telegram_file_unique_id", fileUniqueId)
+      : replyFix.is("telegram_file_unique_id", null);
+    await replyFix;
+  }
+
   if (
     isUniqueViolation &&
     telegramUserId != null &&
