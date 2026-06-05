@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
+import { useContactThreads } from '@/hooks/useContactCard'
 import { useTrackRecentView } from '@/hooks/useGlobalSearch'
 import { type SystemTabDef } from './TaskPanelTabBar'
 import {
@@ -230,39 +231,79 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     setPendingOpen(null)
   }, [pendingOpen, tabs, activeProjectId])
 
-  // Cleanup мусорных thread-вкладок: для всех пользователей (не только клиентов)
-  // удаляем из tabs те thread-вкладки, у которых refId нет среди тредов
-  // текущего scope-проекта. Покрывает кейсы: перемещение треда между проектами,
-  // soft-delete, race-condition pendingOpen-а до фикса выше (вычищает уже
-  // накопившийся мусор в task_panel_tabs).
+  // Cleanup мусорных вкладок чужого scope — единая валидация принадлежности.
+  // Корень: при переключении областей (проект ↔ контакт ↔ личный диалог) набор
+  // вкладок одной области протекал в запись другой; битый набор затем
+  // самовоспроизводился через hydrate→persist (см. логи scope-leak). Удаляем из
+  // tabs всё, что не принадлежит текущей области; closeTab перезапишет чистый
+  // набор в task_panel_tabs → цикл разрывается, существующий мусор вычищается
+  // при первом же открытии области.
+  //
+  //  • project-scope: thread-вкладка валидна только если тред в этом проекте;
+  //    tasks-вкладка — только своего проекта (refId === projectId).
+  //  • contact-scope: thread-вкладка валидна только если тред этого контакта;
+  //    tasks-вкладки недопустимы вовсе (нет проекта).
+  // Системные вкладки (history/documents/…) не трогаем — они не несут чужих
+  // данных, их видимость отруливает usePanelTabsVisibility в рендере.
   const { data: scopeThreadsRaw = [] } = useProjectThreads(activeProjectId ?? undefined)
   const scopeThreadIds = useMemo(
     () => new Set(scopeThreadsRaw.map((t) => t.id)),
     [scopeThreadsRaw],
+  )
+  // Треды контакта — для валидации contact-scope (когда нет активного проекта).
+  const { data: contactThreadsRaw = [] } = useContactThreads(
+    activeProjectId ? null : activeContactId,
+  )
+  const contactThreadIds = useMemo(
+    () => new Set(contactThreadsRaw.map((t) => t.id)),
+    [contactThreadsRaw],
   )
   const tabsCloseTab = tabs.closeTab
   const tabsTabs = tabs.tabs
   const tabsIsReady = tabs.isReady
   useEffect(() => {
     if (!tabsIsReady) return
-    if (!activeProjectId) return
-    for (const tab of tabsTabs) {
-      // Чужая tasks-вкладка: её refId указывает на другой проект (id = `tasks:<projectId>`).
-      // Попадает в набор при быстром переключении между тредами разных проектов на
-      // /boards и /inbox (scope-switch race). На экране видна как лишняя иконка списка
-      // задач, в чужой проект ведёт и не открывает контент — вычищаем сразу.
-      // refId-less legacy tasks-вкладку не трогаем (фолбэк на projectId в рендере).
-      if (tab.type === 'tasks' && tab.refId && tab.refId !== activeProjectId) {
-        tabsCloseTab(tab.id)
-        continue
+
+    // ── project-scope ──
+    if (activeProjectId) {
+      for (const tab of tabsTabs) {
+        // Чужая tasks-вкладка (refId другого проекта) — scope-leak.
+        // refId-less legacy tasks не трогаем (фолбэк на projectId в рендере).
+        if (tab.type === 'tasks' && tab.refId && tab.refId !== activeProjectId) {
+          tabsCloseTab(tab.id)
+          continue
+        }
+        if (tab.type !== 'thread' || !tab.refId) continue
+        if (scopeThreadsRaw.length === 0) continue // ждём загрузки тредов проекта
+        if (!scopeThreadIds.has(tab.refId)) tabsCloseTab(tab.id)
       }
-      if (tab.type !== 'thread' || !tab.refId) continue
-      if (scopeThreadsRaw.length === 0) continue // ждём загрузки тредов проекта
-      if (!scopeThreadIds.has(tab.refId)) {
-        tabsCloseTab(tab.id)
+      return
+    }
+
+    // ── contact-scope ──
+    if (activeContactId) {
+      for (const tab of tabsTabs) {
+        // tasks-вкладка в личном диалоге невозможна — это протёкшая вкладка проекта.
+        if (tab.type === 'tasks') {
+          tabsCloseTab(tab.id)
+          continue
+        }
+        if (tab.type !== 'thread' || !tab.refId) continue
+        if (contactThreadsRaw.length === 0) continue // ждём загрузки тредов контакта
+        if (!contactThreadIds.has(tab.refId)) tabsCloseTab(tab.id)
       }
     }
-  }, [tabsIsReady, tabsTabs, scopeThreadIds, scopeThreadsRaw.length, tabsCloseTab, activeProjectId])
+  }, [
+    tabsIsReady,
+    tabsTabs,
+    scopeThreadIds,
+    scopeThreadsRaw.length,
+    contactThreadIds,
+    contactThreadsRaw.length,
+    tabsCloseTab,
+    activeProjectId,
+    activeContactId,
+  ])
 
   const tabsOpenTab = tabs.openTab
   const openThreadTab = useCallback(
