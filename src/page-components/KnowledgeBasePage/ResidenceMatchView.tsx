@@ -6,18 +6,25 @@
  */
 
 import { useState, useMemo } from 'react'
+import { Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import { useResidenceCountries, useResidenceCatalog } from '@/lib/residence/useResidenceCatalog'
 import { ResidenceMatrix } from './ResidenceMatrix'
+import { CriterionDialog, ResidenceTypeDialog } from './ResidenceEditDialogs'
 
 export function ResidenceMatchView() {
   const countriesQ = useResidenceCountries()
   const [countryId, setCountryId] = useState<string | null>(null)
+  const [criterionOpen, setCriterionOpen] = useState(false)
+  const [typeOpen, setTypeOpen] = useState(false)
+  const { isOwner } = useWorkspacePermissions()
 
   const effectiveCountryId = useMemo(
     () => countryId ?? countriesQ.data?.[0]?.id ?? null,
@@ -72,6 +79,16 @@ export function ResidenceMatchView() {
             <Badge variant="outline">{cat.rules.length} правил</Badge>
           </div>
         )}
+        {isOwner && cat && (
+          <div className="ml-auto flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setCriterionOpen(true)}>
+              <Plus className="w-4 h-4 mr-1" /> Критерий
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setTypeOpen(true)}>
+              <Plus className="w-4 h-4 mr-1" /> ВНЖ
+            </Button>
+          </div>
+        )}
       </div>
 
       {catalogQ.isLoading && <Skeleton className="h-64 w-full" />}
@@ -85,6 +102,22 @@ export function ResidenceMatchView() {
       )}
 
       {cat && <ResidenceMatrix catalog={cat} />}
+
+      {effectiveCountryId && cat && (
+        <>
+          <CriterionDialog
+            open={criterionOpen}
+            onOpenChange={setCriterionOpen}
+            countryId={effectiveCountryId}
+            groups={cat.groups}
+          />
+          <ResidenceTypeDialog
+            open={typeOpen}
+            onOpenChange={setTypeOpen}
+            countryId={effectiveCountryId}
+          />
+        </>
+      )}
     </div>
   )
 }
