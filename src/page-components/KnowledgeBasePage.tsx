@@ -9,12 +9,13 @@
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { BookOpen, MessageCircleQuestion, TableProperties, TreePine } from 'lucide-react'
+import { BookOpen, Compass, MessageCircleQuestion, TableProperties, TreePine } from 'lucide-react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useKnowledgeBasePage } from './KnowledgeBasePage/useKnowledgeBasePage'
 import { KnowledgeTreeView } from './KnowledgeBasePage/KnowledgeTreeView'
 import { KnowledgeTableView } from './KnowledgeBasePage/KnowledgeTableView'
 import { KnowledgeQAView } from './KnowledgeBasePage/KnowledgeQAView'
+import { ResidenceMatchView } from './KnowledgeBasePage/ResidenceMatchView'
 
 export default function KnowledgeBasePage() {
   const page = useKnowledgeBasePage()
@@ -22,7 +23,11 @@ export default function KnowledgeBasePage() {
   const router = useRouter()
   const pathname = usePathname()
   const tabParam = searchParams.get('tab')
-  const activeTab = tabParam === 'qa' ? 'qa' : tabParam === 'table' ? 'table' : 'tree'
+  const activeTab =
+    tabParam === 'qa' ? 'qa'
+    : tabParam === 'table' ? 'table'
+    : tabParam === 'residence' ? 'residence'
+    : 'tree'
 
   const handleTabChange = (value: string) => {
     router.replace(value === 'tree' ? pathname : `${pathname}?tab=${value}`)
@@ -64,6 +69,10 @@ export default function KnowledgeBasePage() {
                 <MessageCircleQuestion className="w-4 h-4 mr-1.5" />
                 Q&A
               </TabsTrigger>
+              <TabsTrigger value="residence">
+                <Compass className="w-4 h-4 mr-1.5" />
+                Подбор
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="tree" className="mt-4">
@@ -76,6 +85,10 @@ export default function KnowledgeBasePage() {
 
             <TabsContent value="qa" className="mt-4">
               <KnowledgeQAView workspaceId={page.workspaceId} />
+            </TabsContent>
+
+            <TabsContent value="residence" className="mt-4">
+              <ResidenceMatchView />
             </TabsContent>
           </Tabs>
         </div>
