@@ -67,4 +67,22 @@ if [ -n "$WARNINGS" ]; then
   echo ""
 fi
 
+# ── Мессенджер: напоминание про ledger (НЕ блокирует) ───────────────────────
+# Если в коммите тронуты файлы мессенджера, но messenger-ledger.md не обновлён —
+# напомнить. Мессенджер — самый чувствительный блок, его история живёт в ledger.
+MSG_TOUCHED=$(git diff --cached --name-only --diff-filter=ACM \
+  | grep -E '(supabase/functions/(telegram|wazzup|gmail|email-internal-send|_shared/(syncTelegram|messageSendStatus)))|src/(components|hooks)/messenger|src/services/messenger' \
+  || true)
+LEDGER_TOUCHED=$(git diff --cached --name-only --diff-filter=ACM \
+  | grep -E '\.claude/rules/messenger-ledger\.md$' || true)
+
+if [ -n "$MSG_TOUCHED" ] && [ -z "$LEDGER_TOUCHED" ]; then
+  echo ""
+  echo "📓 Тронут МЕССЕНДЖЕР (самый чувствительный блок), но messenger-ledger.md не обновлён:"
+  printf "%b" "$(echo "$MSG_TOUCHED" | sed 's/^/  • /')\n"
+  echo "   Зафиксируй в .claude/rules/messenger-ledger.md: расследование/состояние/грабли."
+  echo "   Это НЕ блокировка (обойти: git commit --no-verify), но для мессенджера — обязательная привычка."
+  echo ""
+fi
+
 exit 0
