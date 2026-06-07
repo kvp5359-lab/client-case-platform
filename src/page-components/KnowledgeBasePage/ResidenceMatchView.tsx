@@ -95,14 +95,6 @@ export function ResidenceMatchView() {
             }
           />
         )}
-        {cat && (
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="outline">{cat.residenceTypes.length} ВНЖ</Badge>
-            <Badge variant="outline">{cat.criteria.length} критериев</Badge>
-            <Badge variant="outline">{cat.groups.length} групп</Badge>
-            <Badge variant="outline">{cat.rules.length} правил</Badge>
-          </div>
-        )}
         {isOwner && cat && (
           <div className="ml-auto flex gap-2">
             <Button size="sm" variant="outline" onClick={() => setCriterionOpen(true)}>
@@ -131,6 +123,15 @@ export function ResidenceMatchView() {
           visibleTypeIds={visibleTypeIds ?? undefined}
           onEditCriterion={isOwner ? setEditingCriterion : undefined}
         />
+      )}
+
+      {cat && (
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline">{cat.residenceTypes.length} ВНЖ</Badge>
+          <Badge variant="outline">{cat.criteria.length} критериев</Badge>
+          <Badge variant="outline">{cat.groups.length} групп</Badge>
+          <Badge variant="outline">{cat.rules.length} правил</Badge>
+        </div>
       )}
 
       {effectiveCountryId && cat && (criterionOpen || editingCriterion) && (
