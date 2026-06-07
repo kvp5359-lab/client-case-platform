@@ -64,6 +64,8 @@ export type MultiSelectProps = {
   className?: string
   disabled?: boolean
   showSearch?: boolean // Показывать ли поиск
+  showSelectAll?: boolean // Показывать ли кнопки «Выбрать все / Снять все»
+  searchPlaceholder?: string // Плейсхолдер поля поиска
   showExtendedInfo?: boolean // Показывать ли расширенную информацию (аватар, фамилия, роль)
   onAddNew?: () => void // Callback для добавления нового участника
 }
@@ -140,6 +142,8 @@ export function MultiSelect({
   className,
   disabled = false,
   showSearch = false,
+  showSelectAll = false,
+  searchPlaceholder = 'Поиск участников...',
   showExtendedInfo = false,
   onAddNew,
 }: MultiSelectProps) {
@@ -271,7 +275,7 @@ export function MultiSelect({
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Поиск участников..."
+                  placeholder={searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 h-8"
@@ -294,6 +298,26 @@ export function MultiSelect({
                 </Button>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Выбрать все / снять все */}
+        {showSelectAll && (
+          <div className="flex items-center gap-3 px-3 py-1.5 border-b text-xs">
+            <button
+              type="button"
+              className="text-primary hover:underline"
+              onClick={(e) => { e.stopPropagation(); onChange(options.map((o) => o.value)) }}
+            >
+              Выбрать все
+            </button>
+            <button
+              type="button"
+              className="text-muted-foreground hover:underline"
+              onClick={(e) => { e.stopPropagation(); onChange([]) }}
+            >
+              Снять все
+            </button>
           </div>
         )}
 

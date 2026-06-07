@@ -83,6 +83,9 @@ export function ResidenceMatchView() {
           <MultiSelect
             className="w-64"
             placeholder="Все виды ВНЖ"
+            showSearch
+            showSelectAll
+            searchPlaceholder="Поиск ВНЖ…"
             options={cat.residenceTypes.map((t) => ({ value: t.id, label: t.name_ru || t.name_en }))}
             value={visibleTypeIds ?? cat.residenceTypes.map((t) => t.id)}
             onChange={(ids) =>
