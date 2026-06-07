@@ -21,7 +21,9 @@ import { useResidenceCountries, useResidenceCatalog } from '@/lib/residence/useR
 import type { ResidenceCriterion } from '@/lib/residence/types'
 import type { MatrixCell } from '@/lib/residence/matrix'
 import { ResidenceMatrix } from './ResidenceMatrix'
-import { CriterionDialog, ConditionDialog, ResidenceTypeDialog } from './ResidenceEditDialogs'
+import {
+  CriterionDialog, ConditionDialog, AddConditionDialog, ResidenceTypeDialog,
+} from './ResidenceEditDialogs'
 
 const STORAGE_PREFIX = 'residence-visible-vnj:'
 
@@ -121,6 +123,9 @@ function ResidenceCountryView({
   const [editingCondition, setEditingCondition] = useState<
     { crit: ResidenceCriterion; rtId: string; cell: MatrixCell } | null
   >(null)
+  const [addingCondition, setAddingCondition] = useState<
+    { groupId: string | null; rtId: string } | null
+  >(null)
 
   const cat = catalogQ.data
 
@@ -177,6 +182,9 @@ function ResidenceCountryView({
           onEditCondition={
             isOwner ? (crit, rtId, cell) => setEditingCondition({ crit, rtId, cell }) : undefined
           }
+          onAddCondition={
+            isOwner ? (groupId, rtId) => setAddingCondition({ groupId, rtId }) : undefined
+          }
         />
       )}
 
@@ -211,6 +219,21 @@ function ResidenceCountryView({
             cat.residenceTypes.find((t) => t.id === editingCondition.rtId)?.name_ru ?? ''
           }
           cell={editingCondition.cell}
+        />
+      )}
+
+      {cat && addingCondition && (
+        <AddConditionDialog
+          key={`${addingCondition.groupId}:${addingCondition.rtId}`}
+          open
+          onOpenChange={(v) => { if (!v) setAddingCondition(null) }}
+          countryId={countryId}
+          catalog={cat}
+          groupId={addingCondition.groupId}
+          residenceTypeId={addingCondition.rtId}
+          residenceTypeName={
+            cat.residenceTypes.find((t) => t.id === addingCondition.rtId)?.name_ru ?? ''
+          }
         />
       )}
 

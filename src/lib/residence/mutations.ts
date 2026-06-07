@@ -9,7 +9,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { getResidenceModuleClient } from './moduleClient'
-import { treeHasField, updateConditionInTree } from './matrix'
+import { treeHasField, updateConditionInTree, addConditionToTree } from './matrix'
 import type { FieldType, RuleCondition, ResidenceCatalog } from './types'
 
 const SCHEMA = 'mod_choice'
@@ -138,6 +138,44 @@ export function useUpdateCondition(countryId: string, catalog: ResidenceCatalog 
         touched++
       }
       if (touched === 0) throw new Error('Условие не найдено в правилах этого ВНЖ')
+    },
+    onSuccess: invalidate,
+  })
+}
+
+/**
+ * Добавить новое условие критерия для ВНЖ. Кладём в ОСНОВНОЕ правило ВНЖ
+ * (первый link по priority), в корневую группу условий. Процедуры не различаем.
+ */
+export function useAddCondition(countryId: string, catalog: ResidenceCatalog | undefined) {
+  const invalidate = useInvalidate(countryId)
+  return useMutation({
+    mutationFn: async (input: {
+      residenceTypeId: string
+      field: string
+      operator: RuleCondition['operator']
+      value: RuleCondition['value']
+      severity: RuleCondition['severity']
+    }) => {
+      if (!catalog) throw new Error('Справочник не загружен')
+      const link = catalog.links
+        .filter((l) => l.residence_type_id === input.residenceTypeId)
+        .sort((a, b) => a.priority - b.priority)[0]
+      if (!link) throw new Error('У этого ВНЖ нет связки/правила — добавление пока невозможно')
+      const rule = catalog.rules.find((r) => r.link_id === link.id)
+      if (!rule) throw new Error('У этого ВНЖ нет правила — добавление пока невозможно')
+      if (treeHasField(rule.rule_json, input.field)) {
+        throw new Error('Это условие уже есть у ВНЖ — отредактируйте существующее')
+      }
+      const newJson = addConditionToTree(rule.rule_json, {
+        field: input.field,
+        operator: input.operator,
+        value: input.value,
+        severity: input.severity,
+      })
+      const sb = getResidenceModuleClient()
+      const { error } = await sb.schema(SCHEMA).from('rules').update({ rule_json: newJson }).eq('id', rule.id)
+      if (error) throw error
     },
     onSuccess: invalidate,
   })

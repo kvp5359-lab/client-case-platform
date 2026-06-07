@@ -13,17 +13,21 @@ import { buildResidenceMatrix, formatCell, type MatrixCell } from '@/lib/residen
 import type { ResidenceCatalog, ResidenceCriterion } from '@/lib/residence/types'
 
 export type EditConditionFn = (criterion: ResidenceCriterion, residenceTypeId: string, cell: MatrixCell) => void
+export type AddConditionFn = (groupId: string | null, residenceTypeId: string) => void
 
 export function ResidenceMatrix({
   catalog,
   visibleTypeIds,
   onEditCondition,
+  onAddCondition,
 }: {
   catalog: ResidenceCatalog
   /** Если задан — показываем только эти виды ВНЖ (столбцы). */
   visibleTypeIds?: string[]
   /** Если задан — клик по строке критерия открывает правку условия (для владельца). */
   onEditCondition?: EditConditionFn
+  /** Если задан — в ячейке группы появляется «+ добавить условие». */
+  onAddCondition?: AddConditionFn
 }) {
   const matrix = useMemo(() => buildResidenceMatrix(catalog), [catalog])
   const { cells } = matrix
@@ -75,11 +79,13 @@ export function ResidenceMatrix({
           {visibleRows.map((row) => (
             <GroupSection
               key={row.group?.id ?? 'ungrouped'}
+              groupId={row.group?.id ?? null}
               groupName={row.group ? row.group.name_ru || row.group.name_en : 'Без группы'}
               criteria={row.criteria}
               residenceTypeIds={residenceTypes.map((rt) => rt.id)}
               cells={cells}
               onEditCondition={onEditCondition}
+              onAddCondition={onAddCondition}
             />
           ))}
         </tbody>
@@ -89,17 +95,21 @@ export function ResidenceMatrix({
 }
 
 function GroupSection({
+  groupId,
   groupName,
   criteria,
   residenceTypeIds,
   cells,
   onEditCondition,
+  onAddCondition,
 }: {
+  groupId: string | null
   groupName: string
   criteria: ResidenceCriterion[]
   residenceTypeIds: string[]
   cells: ReturnType<typeof buildResidenceMatrix>['cells']
   onEditCondition?: EditConditionFn
+  onAddCondition?: AddConditionFn
 }) {
   return (
     <>
@@ -117,21 +127,29 @@ function GroupSection({
             .map((crit) => ({ crit, cell: cells.get(crit.field_key)?.get(rtId) ?? null }))
             .filter((x) => x.cell !== null)
           return (
-            <td key={rtId} className="align-top border-l first:border-l-0 p-0">
-              {items.length === 0 ? (
-                <div className="px-3 py-2 text-xs text-muted-foreground/40">—</div>
-              ) : (
-                <div className="py-1">
-                  {items.map(({ crit, cell }) => (
-                    <CriterionRow
-                      key={crit.id}
-                      crit={crit}
-                      cell={cell}
-                      onEdit={onEditCondition ? () => onEditCondition(crit, rtId, cell) : undefined}
-                    />
-                  ))}
-                </div>
-              )}
+            <td key={rtId} className="group/cell align-top border-l first:border-l-0 p-0">
+              <div className="py-1">
+                {items.map(({ crit, cell }) => (
+                  <CriterionRow
+                    key={crit.id}
+                    crit={crit}
+                    cell={cell}
+                    onEdit={onEditCondition ? () => onEditCondition(crit, rtId, cell) : undefined}
+                  />
+                ))}
+                {items.length === 0 && !onAddCondition && (
+                  <div className="px-3 py-1 text-xs text-muted-foreground/40">—</div>
+                )}
+                {onAddCondition && (
+                  <button
+                    type="button"
+                    onClick={() => onAddCondition(groupId, rtId)}
+                    className="mt-0.5 w-full px-3 py-0.5 text-left text-xs text-muted-foreground opacity-0 transition-opacity group-hover/cell:opacity-100 hover:text-foreground"
+                  >
+                    + добавить условие
+                  </button>
+                )}
+              </div>
             </td>
           )
         })}

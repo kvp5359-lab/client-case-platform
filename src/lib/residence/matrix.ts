@@ -25,6 +25,11 @@ export function treeHasField(rg: RuleGroup | null | undefined, field: string): b
   return extractConditions(rg).some((c) => c.field === field)
 }
 
+/** Добавить условие в корень дерева (в верхнюю группу conditions). */
+export function addConditionToTree(rg: RuleGroup, cond: RuleCondition): RuleGroup {
+  return { ...rg, conditions: [...(rg.conditions ?? []), cond] }
+}
+
 /**
  * Вернуть новое дерево, где у всех условий с данным field обновлены
  * operator/value/severity. Структура (И/ИЛИ, вложенность) сохраняется.
