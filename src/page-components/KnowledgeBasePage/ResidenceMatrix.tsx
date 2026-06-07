@@ -7,7 +7,7 @@
  */
 
 import { useMemo } from 'react'
-import { HelpCircle, Pencil } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buildResidenceMatrix, formatCell, type MatrixCell } from '@/lib/residence/matrix'
 import type { ResidenceCatalog, ResidenceCriterion } from '@/lib/residence/types'
@@ -181,14 +181,6 @@ function CriterionRow({
       title={onEdit ? 'Изменить условие для этого ВНЖ' : undefined}
     >
       <span>{crit.title_ru || crit.title_en}</span>
-      {crit.is_askable && (
-        <HelpCircle
-          className="mx-1 inline h-3 w-3 align-text-top text-primary/60"
-          aria-label="Анкетируемый"
-        >
-          <title>{crit.question_ru || crit.title_ru}</title>
-        </HelpCircle>
-      )}
       {!hideValue && (
         <>
           {' — '}
