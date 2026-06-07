@@ -51,13 +51,15 @@ export function ConditionDialog({
   )
   const statusesQ = useCurrentStatuses(countryId)
   const statusOptions = (statusesQ.data ?? []).map((s) => ({ value: s.id, label: s.name_ru }))
+  // только валидные id (присутствующие в справочнике) — отсекаем старые «висячие»
+  const validSelected = selectedStatuses.filter((id) => statusOptions.some((o) => o.value === id))
 
   const handleSave = async () => {
     setErr(null)
     let value: RuleCondition['value']
     if (isReference) {
-      if (selectedStatuses.length === 0) { setErr('Выберите хотя бы один статус'); return }
-      value = selectedStatuses
+      if (validSelected.length === 0) { setErr('Выберите хотя бы один статус'); return }
+      value = validSelected
     } else if (ft === 'number') {
       if (numValue.trim() === '' || Number.isNaN(Number(numValue))) { setErr('Введите число'); return }
       value = Number(numValue)
@@ -99,7 +101,7 @@ export function ConditionDialog({
               ) : (
                 <div className="rounded-md border">
                   <div className="flex items-center justify-between border-b px-2 py-1 text-xs">
-                    <span className="text-muted-foreground">Выбрано: {selectedStatuses.length}</span>
+                    <span className="text-muted-foreground">Выбрано: {validSelected.length}</span>
                     <div className="flex gap-2">
                       <button type="button" className="text-primary hover:underline"
                         onClick={() => setSelectedStatuses(statusOptions.map((o) => o.value))}>все</button>
