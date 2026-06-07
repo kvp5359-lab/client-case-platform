@@ -23,7 +23,7 @@ export function ResidenceMatrix({
   onEditCriterion?: (criterion: ResidenceCriterion) => void
 }) {
   const matrix = useMemo(() => buildResidenceMatrix(catalog), [catalog])
-  const { rows, cells } = matrix
+  const { cells } = matrix
 
   const residenceTypes = useMemo(
     () =>
@@ -32,6 +32,21 @@ export function ResidenceMatrix({
         : matrix.residenceTypes,
     [matrix.residenceTypes, visibleTypeIds],
   )
+
+  // При выборе конкретных ВНЖ — оставляем только критерии, используемые в них
+  // (и группы, где такие критерии есть). Без выбора — показываем всё.
+  const rows = useMemo(() => {
+    if (!visibleTypeIds) return matrix.rows
+    return matrix.rows
+      .map((row) => ({
+        ...row,
+        criteria: row.criteria.filter((crit) => {
+          const m = cells.get(crit.field_key)
+          return !!m && visibleTypeIds.some((rtId) => m.has(rtId))
+        }),
+      }))
+      .filter((row) => row.criteria.length > 0)
+  }, [matrix.rows, cells, visibleTypeIds])
 
   if (matrix.residenceTypes.length === 0) {
     return <p className="text-sm text-muted-foreground">Для страны нет видов ВНЖ.</p>
