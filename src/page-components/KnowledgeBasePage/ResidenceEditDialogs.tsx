@@ -26,7 +26,7 @@ import type {
 } from '@/lib/residence/types'
 import { buildResidenceMatrix, type MatrixCell } from '@/lib/residence/matrix'
 import { useResidenceStatuses } from '@/lib/residence/useResidenceCatalog'
-import { MultiSelect } from '@/components/ui/multi-select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 
 const FIELD_TYPE_LABELS: { value: FieldType; label: string }[] = [
@@ -310,17 +310,42 @@ export function ConditionDialog({
               {statusesQ.isLoading ? (
                 <p className="text-sm text-muted-foreground">Загрузка…</p>
               ) : (
-                <MultiSelect
-                  className="w-full"
-                  placeholder="Выберите статусы"
-                  showSearch
-                  showSelectAll
-                  maxVisibleTags={2}
-                  searchPlaceholder="Поиск статуса…"
-                  options={statusOptions}
-                  value={selectedStatuses}
-                  onChange={setSelectedStatuses}
-                />
+                <div className="rounded-md border">
+                  <div className="flex items-center justify-between border-b px-2 py-1 text-xs">
+                    <span className="text-muted-foreground">Выбрано: {selectedStatuses.length}</span>
+                    <div className="flex gap-2">
+                      <button type="button" className="text-primary hover:underline"
+                        onClick={() => setSelectedStatuses(statusOptions.map((o) => o.value))}>все</button>
+                      <button type="button" className="text-muted-foreground hover:underline"
+                        onClick={() => setSelectedStatuses([])}>снять</button>
+                    </div>
+                  </div>
+                  <div className="max-h-56 overflow-y-auto p-1">
+                    {statusOptions.length === 0 ? (
+                      <p className="px-2 py-2 text-sm text-muted-foreground">Нет статусов</p>
+                    ) : (
+                      statusOptions.map((o) => {
+                        const checked = selectedStatuses.includes(o.value)
+                        return (
+                          <label key={o.value}
+                            className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={() =>
+                                setSelectedStatuses((prev) =>
+                                  prev.includes(o.value)
+                                    ? prev.filter((x) => x !== o.value)
+                                    : [...prev, o.value],
+                                )
+                              }
+                            />
+                            <span>{o.label}</span>
+                          </label>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
               )}
               <p className="text-[11px] text-muted-foreground">
                 Из каких текущих статусов клиента доступен этот ВНЖ.
