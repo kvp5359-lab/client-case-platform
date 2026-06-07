@@ -122,7 +122,7 @@ function GroupSection({
               {items.length === 0 ? (
                 <div className="px-3 py-2 text-xs text-muted-foreground/40">—</div>
               ) : (
-                <div className="divide-y">
+                <div className="py-1">
                   {items.map(({ crit, cell }) => (
                     <CriterionRow
                       key={crit.id}
@@ -151,40 +151,32 @@ function CriterionRow({
   onEditCriterion?: (criterion: ResidenceCriterion) => void
 }) {
   return (
-    <div className="group/row flex items-start gap-2 px-3 py-1.5 hover:bg-muted/30">
-      <div className="flex min-w-0 flex-1 items-start gap-1">
-        <span className="text-sm leading-snug">{crit.title_ru || crit.title_en}</span>
-        {crit.is_askable && (
-          <span
-            className="mt-0.5 shrink-0"
-            title={crit.question_ru || crit.title_ru}
-            aria-label="Анкетируемый"
-          >
-            <HelpCircle className="h-3 w-3 text-primary/60" />
-          </span>
-        )}
-      </div>
-      <span
-        className={cn(
-          'shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-xs',
-          cell?.severity === 'critical'
-            ? 'bg-primary/10 text-foreground font-medium'
-            : 'bg-muted text-muted-foreground',
-        )}
-        title={cell?.conflict ? 'Разные значения в разных процедурах' : undefined}
-      >
+    <div className="group/row px-3 py-0.5 text-sm leading-snug hover:bg-muted/30">
+      <span>{crit.title_ru || crit.title_en}</span>
+      {crit.is_askable && (
+        <HelpCircle
+          className="mx-1 inline h-3 w-3 align-text-top text-primary/60"
+          aria-label="Анкетируемый"
+        >
+          <title>{crit.question_ru || crit.title_ru}</title>
+        </HelpCircle>
+      )}
+      {' — '}
+      <span className={cn('font-medium', cell?.severity === 'critical' && 'text-foreground')}>
         {formatCell(cell, crit)}
-        {cell?.conflict && <span className="ml-0.5 text-amber-500">*</span>}
       </span>
+      {cell?.conflict && (
+        <span className="text-amber-500" title="Разные значения в разных процедурах"> *</span>
+      )}
       {onEditCriterion && (
         <button
           type="button"
           onClick={() => onEditCriterion(crit)}
-          className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/row:opacity-100 text-muted-foreground hover:text-foreground"
+          className="ml-1 inline align-text-top opacity-0 transition-opacity group-hover/row:opacity-100 text-muted-foreground hover:text-foreground"
           aria-label="Редактировать критерий"
           title="Редактировать критерий"
         >
-          <Pencil className="h-3.5 w-3.5" />
+          <Pencil className="inline h-3.5 w-3.5" />
         </button>
       )}
     </div>
