@@ -30,6 +30,33 @@ export function useResidenceCountries() {
   })
 }
 
+export type ResidenceStatusOption = { id: string; residence_type_id: string; family_status_id: string | null }
+export type FamilyStatus = { id: string; name_ru: string; name_en: string }
+
+/** Справочник «статусов» (residence_statuses = ВНЖ × семейный статус) + семейные статусы. */
+export function useResidenceStatuses(countryId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['residence', 'statuses', countryId],
+    enabled: enabled && !!countryId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const sb = getResidenceModuleClient()
+      const cid = countryId as string
+      const [stRes, famRes] = await Promise.all([
+        sb.schema(SCHEMA).from('residence_statuses').select('id,residence_type_id,family_status_id')
+          .eq('country_id', cid).eq('is_active', true),
+        sb.schema(SCHEMA).from('family_statuses').select('id,name_ru,name_en'),
+      ])
+      if (stRes.error) throw stRes.error
+      if (famRes.error) throw famRes.error
+      return {
+        statuses: (stRes.data ?? []) as ResidenceStatusOption[],
+        family: (famRes.data ?? []) as FamilyStatus[],
+      }
+    },
+  })
+}
+
 /** Полный справочник по одной стране: виды ВНЖ, группы, критерии, links, rules. */
 export function useResidenceCatalog(countryId: string | null) {
   return useQuery({

@@ -25,6 +25,8 @@ import type {
   FieldType, ResidenceCriteriaGroup, ResidenceCriterion, ResidenceCatalog, RuleCondition,
 } from '@/lib/residence/types'
 import { buildResidenceMatrix, type MatrixCell } from '@/lib/residence/matrix'
+import { useResidenceStatuses } from '@/lib/residence/useResidenceCatalog'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { cn } from '@/lib/utils'
 
 const FIELD_TYPE_LABELS: { value: FieldType; label: string }[] = [
@@ -253,11 +255,23 @@ export function ConditionDialog({
 
   const update = useUpdateCondition(countryId, catalog)
   const isReference = ft === 'reference' || Array.isArray(cell?.value)
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(
+    Array.isArray(cell?.value) ? (cell.value as string[]) : [],
+  )
+  const statusesQ = useResidenceStatuses(countryId, isReference)
+  const statusOptions = (statusesQ.data?.statuses ?? []).map((s) => {
+    const rt = catalog.residenceTypes.find((t) => t.id === s.residence_type_id)
+    const fam = statusesQ.data?.family.find((f) => f.id === s.family_status_id)
+    return { value: s.id, label: `${rt?.name_ru ?? '—'}${fam ? ` — ${fam.name_ru}` : ''}` }
+  })
 
   const handleSave = async () => {
     setErr(null)
     let value: RuleCondition['value']
-    if (ft === 'number') {
+    if (isReference) {
+      if (selectedStatuses.length === 0) { setErr('Выберите хотя бы один статус'); return }
+      value = selectedStatuses
+    } else if (ft === 'number') {
       if (numValue.trim() === '' || Number.isNaN(Number(numValue))) { setErr('Введите число'); return }
       value = Number(numValue)
     } else if (ft === 'boolean') {
@@ -269,7 +283,7 @@ export function ConditionDialog({
       await update.mutateAsync({
         residenceTypeId,
         field: criterion.field_key,
-        operator: ft === 'boolean' ? '=' : operator,
+        operator: ft === 'boolean' || isReference ? '=' : operator,
         value,
         severity,
       })
@@ -290,10 +304,34 @@ export function ConditionDialog({
         </DialogHeader>
 
         {isReference ? (
-          <p className="text-sm text-muted-foreground">
-            Это критерий-список (напр. «текущий статус»). Правка набора значений пока недоступна —
-            поддержим отдельно.
-          </p>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Допустимые статусы</Label>
+              {statusesQ.isLoading ? (
+                <p className="text-sm text-muted-foreground">Загрузка…</p>
+              ) : (
+                <MultiSelect
+                  className="w-full"
+                  placeholder="Выберите статусы"
+                  showSearch
+                  showSelectAll
+                  maxVisibleTags={2}
+                  searchPlaceholder="Поиск статуса…"
+                  options={statusOptions}
+                  value={selectedStatuses}
+                  onChange={setSelectedStatuses}
+                />
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Из каких текущих статусов клиента доступен этот ВНЖ.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Важность</Label>
+              <SeverityPicker value={severity} onChange={setSeverity} />
+            </div>
+            {err && <p className="text-sm text-destructive">{err}</p>}
+          </div>
         ) : (
           <div className="space-y-4">
             {ft === 'number' && (
@@ -347,11 +385,9 @@ export function ConditionDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={update.isPending}>
             Отмена
           </Button>
-          {!isReference && (
-            <Button onClick={handleSave} disabled={update.isPending}>
-              {update.isPending ? 'Сохранение…' : 'Сохранить'}
-            </Button>
-          )}
+          <Button onClick={handleSave} disabled={update.isPending}>
+            {update.isPending ? 'Сохранение…' : 'Сохранить'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
