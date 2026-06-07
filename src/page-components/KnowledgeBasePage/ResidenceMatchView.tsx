@@ -134,10 +134,11 @@ function ResidenceCountryView({
         {countrySelect}
         {cat && cat.residenceTypes.length > 0 && (
           <MultiSelect
-            className="w-64"
+            className="w-96"
             placeholder="Все виды ВНЖ"
             showSearch
             showSelectAll
+            maxVisibleTags={2}
             searchPlaceholder="Поиск ВНЖ…"
             options={cat.residenceTypes.map((t) => ({ value: t.id, label: t.name_ru || t.name_en }))}
             value={visibleTypeIds ?? cat.residenceTypes.map((t) => t.id)}

@@ -66,6 +66,7 @@ export type MultiSelectProps = {
   showSearch?: boolean // Показывать ли поиск
   showSelectAll?: boolean // Показывать ли кнопки «Выбрать все / Снять все»
   searchPlaceholder?: string // Плейсхолдер поля поиска
+  maxVisibleTags?: number // Сколько тегов показывать в триггере, остальные → «ещё N»
   showExtendedInfo?: boolean // Показывать ли расширенную информацию (аватар, фамилия, роль)
   onAddNew?: () => void // Callback для добавления нового участника
 }
@@ -144,6 +145,7 @@ export function MultiSelect({
   showSearch = false,
   showSelectAll = false,
   searchPlaceholder = 'Поиск участников...',
+  maxVisibleTags,
   showExtendedInfo = false,
   onAddNew,
 }: MultiSelectProps) {
@@ -163,6 +165,9 @@ export function MultiSelect({
   }
 
   const selectedOptions = options.filter((opt) => value.includes(opt.value))
+  const visibleTags =
+    maxVisibleTags && maxVisibleTags > 0 ? selectedOptions.slice(0, maxVisibleTags) : selectedOptions
+  const hiddenCount = selectedOptions.length - visibleTags.length
 
   // Фильтрация и группировка по поисковому запросу
   const { staffOptions, contactOptions } = React.useMemo(() => {
@@ -222,46 +227,56 @@ export function MultiSelect({
           )}
           disabled={disabled}
         >
-          <div className="flex gap-1 flex-1 overflow-x-auto scrollbar-hide items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
             {selectedOptions.length === 0 ? (
               <span>{placeholder}</span>
             ) : (
-              selectedOptions.map((option) => (
-                <Badge
-                  key={option.value}
-                  variant="secondary"
-                  className="text-xs font-normal pl-1 pr-1.5 py-0.5 flex items-center gap-1.5 bg-muted/60 hover:bg-muted/80 shrink-0"
-                >
-                  {showExtendedInfo ? (
-                    <>
-                      <Avatar className="h-5 w-5 shrink-0">
-                        <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
-                          {getInitials(option)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="truncate max-w-[120px]">{getFullName(option)}</span>
-                    </>
-                  ) : (
-                    <span>{option.label}</span>
-                  )}
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    className="ml-0.5 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer inline-flex items-center"
-                    aria-label={`Удалить ${option.label}`}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                    }}
-                    onClick={(e) => handleRemove(option.value, e)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') handleRemove(option.value, e)
-                    }}
+              <>
+                {visibleTags.map((option) => (
+                  <Badge
+                    key={option.value}
+                    variant="secondary"
+                    className="text-xs font-normal pl-1 pr-1.5 py-0.5 flex items-center gap-1.5 bg-muted/60 hover:bg-muted/80 shrink-0 max-w-[150px]"
                   >
-                    <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                  </span>
-                </Badge>
-              ))
+                    {showExtendedInfo ? (
+                      <>
+                        <Avatar className="h-5 w-5 shrink-0">
+                          <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                            {getInitials(option)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="truncate max-w-[120px]">{getFullName(option)}</span>
+                      </>
+                    ) : (
+                      <span className="truncate">{option.label}</span>
+                    )}
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="ml-0.5 shrink-0 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer inline-flex items-center"
+                      aria-label={`Удалить ${option.label}`}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                      }}
+                      onClick={(e) => handleRemove(option.value, e)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') handleRemove(option.value, e)
+                      }}
+                    >
+                      <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                    </span>
+                  </Badge>
+                ))}
+                {hiddenCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="shrink-0 bg-muted/60 text-xs font-normal py-0.5"
+                  >
+                    ещё {hiddenCount}
+                  </Badge>
+                )}
+              </>
             )}
           </div>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
