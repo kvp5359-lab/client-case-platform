@@ -236,7 +236,7 @@ export function MultiSelect({
                   <Badge
                     key={option.value}
                     variant="secondary"
-                    className="text-xs font-normal pl-1 pr-1.5 py-0.5 flex items-center gap-1.5 bg-muted/60 hover:bg-muted/80 shrink-0 max-w-[150px]"
+                    className="text-xs font-normal pl-1 pr-1.5 py-0.5 flex items-center gap-1.5 bg-muted/60 hover:bg-muted/80 min-w-0 max-w-[140px]"
                   >
                     {showExtendedInfo ? (
                       <>
