@@ -244,8 +244,8 @@ export function MultiSelect({
                   ) : (
                     <span>{option.label}</span>
                   )}
-                  <button
-                    type="button"
+                  <span
+                    role="button"
                     tabIndex={0}
                     className="ml-0.5 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer inline-flex items-center"
                     aria-label={`Удалить ${option.label}`}
@@ -259,7 +259,7 @@ export function MultiSelect({
                     }}
                   >
                     <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                  </button>
+                  </span>
                 </Badge>
               ))
             )}
