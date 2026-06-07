@@ -11,12 +11,30 @@ import { cn } from '@/lib/utils'
 import { buildResidenceMatrix, formatCell } from '@/lib/residence/matrix'
 import type { ResidenceCatalog } from '@/lib/residence/types'
 
-export function ResidenceMatrix({ catalog }: { catalog: ResidenceCatalog }) {
+export function ResidenceMatrix({
+  catalog,
+  visibleTypeIds,
+}: {
+  catalog: ResidenceCatalog
+  /** Если задан — показываем только эти виды ВНЖ (столбцы). */
+  visibleTypeIds?: string[]
+}) {
   const matrix = useMemo(() => buildResidenceMatrix(catalog), [catalog])
-  const { rows, residenceTypes, cells } = matrix
+  const { rows, cells } = matrix
 
-  if (residenceTypes.length === 0) {
+  const residenceTypes = useMemo(
+    () =>
+      visibleTypeIds
+        ? matrix.residenceTypes.filter((rt) => visibleTypeIds.includes(rt.id))
+        : matrix.residenceTypes,
+    [matrix.residenceTypes, visibleTypeIds],
+  )
+
+  if (matrix.residenceTypes.length === 0) {
     return <p className="text-sm text-muted-foreground">Для страны нет видов ВНЖ.</p>
+  }
+  if (residenceTypes.length === 0) {
+    return <p className="text-sm text-muted-foreground">Не выбрано ни одного вида ВНЖ.</p>
   }
 
   return (

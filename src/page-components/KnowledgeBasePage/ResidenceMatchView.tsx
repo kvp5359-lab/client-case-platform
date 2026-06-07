@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import { useResidenceCountries, useResidenceCatalog } from '@/lib/residence/useResidenceCatalog'
 import { ResidenceMatrix } from './ResidenceMatrix'
@@ -24,6 +25,8 @@ export function ResidenceMatchView() {
   const [countryId, setCountryId] = useState<string | null>(null)
   const [criterionOpen, setCriterionOpen] = useState(false)
   const [typeOpen, setTypeOpen] = useState(false)
+  // null = показать все ВНЖ (столбцы); иначе — только выбранные
+  const [visibleTypeIds, setVisibleTypeIds] = useState<string[] | null>(null)
   const { isOwner } = useWorkspacePermissions()
 
   const effectiveCountryId = useMemo(
@@ -31,6 +34,11 @@ export function ResidenceMatchView() {
     [countryId, countriesQ.data],
   )
   const catalogQ = useResidenceCatalog(effectiveCountryId)
+
+  const handleCountryChange = (id: string) => {
+    setCountryId(id)
+    setVisibleTypeIds(null) // сброс фильтра колонок при смене страны
+  }
 
   if (countriesQ.isLoading) return <Skeleton className="h-40 w-full" />
 
@@ -61,7 +69,7 @@ export function ResidenceMatchView() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm text-muted-foreground">Страна:</span>
-        <Select value={effectiveCountryId ?? undefined} onValueChange={setCountryId}>
+        <Select value={effectiveCountryId ?? undefined} onValueChange={handleCountryChange}>
           <SelectTrigger className="w-56">
             <SelectValue placeholder="Выберите страну" />
           </SelectTrigger>
@@ -71,6 +79,17 @@ export function ResidenceMatchView() {
             ))}
           </SelectContent>
         </Select>
+        {cat && cat.residenceTypes.length > 0 && (
+          <MultiSelect
+            className="w-64"
+            placeholder="Все виды ВНЖ"
+            options={cat.residenceTypes.map((t) => ({ value: t.id, label: t.name_ru || t.name_en }))}
+            value={visibleTypeIds ?? cat.residenceTypes.map((t) => t.id)}
+            onChange={(ids) =>
+              setVisibleTypeIds(ids.length === cat.residenceTypes.length ? null : ids)
+            }
+          />
+        )}
         {cat && (
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">{cat.residenceTypes.length} ВНЖ</Badge>
@@ -101,7 +120,7 @@ export function ResidenceMatchView() {
         </Card>
       )}
 
-      {cat && <ResidenceMatrix catalog={cat} />}
+      {cat && <ResidenceMatrix catalog={cat} visibleTypeIds={visibleTypeIds ?? undefined} />}
 
       {effectiveCountryId && cat && (
         <>
