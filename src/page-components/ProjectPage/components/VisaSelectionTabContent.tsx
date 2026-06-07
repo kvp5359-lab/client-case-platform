@@ -7,14 +7,16 @@
 
 import { useMemo, useState } from 'react'
 import { Check } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { useResidenceCountries, useResidenceCatalog } from '@/lib/residence/useResidenceCatalog'
-import { evaluateResidenceTypes, type Answers } from '@/lib/residence/ruleEvaluator'
+import { useResidenceCountries } from '@/lib/residence/useResidenceCatalog'
+import type { Answers } from '@/lib/residence/ruleEvaluator'
 import { ResidenceMatcher } from '@/components/residence/ResidenceMatcher'
 import { useCaseProfile, useSaveCaseProfile, type CaseProfile } from '@/hooks/useCaseProfile'
 
@@ -47,12 +49,18 @@ function Inner({
     () => countryId ?? countriesQ.data?.[0]?.id ?? null,
     [countryId, countriesQ.data],
   )
-  const catalogQ = useResidenceCatalog(effectiveCountryId)
   const save = useSaveCaseProfile(projectId, workspaceId)
+  const qc = useQueryClient()
 
   const handleSave = async () => {
-    const result = catalogQ.data ? evaluateResidenceTypes(catalogQ.data, answers) : null
-    await save.mutateAsync({ country_id: effectiveCountryId, answers, result_snapshot: result })
+    // 1) сохраняем ответы; 2) официальный расчёт снимка на сервере (Edge)
+    await save.mutateAsync({ country_id: effectiveCountryId, answers })
+    try {
+      await supabase.functions.invoke('residence-match', { body: { project_id: projectId } })
+      qc.invalidateQueries({ queryKey: ['case-profile', projectId] })
+    } catch {
+      /* снимок не обновлён, но ответы сохранены */
+    }
     setDirty(false)
   }
 
