@@ -24,6 +24,9 @@ import type { DocumentKit } from '@/services/api/documents/documentKitService'
 const FormsTabContent = lazy(() =>
   import('./FormsTabContent').then((m) => ({ default: m.FormsTabContent })),
 )
+const VisaSelectionTabContent = lazy(() =>
+  import('./VisaSelectionTabContent').then((m) => ({ default: m.VisaSelectionTabContent })),
+)
 const DocumentsTabContent = lazy(() =>
   import('./DocumentsTabContent').then((m) => ({ default: m.DocumentsTabContent })),
 )
@@ -210,6 +213,12 @@ export function ProjectTabsContent({
             canAddForms={canAddForms}
             onAddFormKit={addFormKitDialog.open}
           />
+        </div>
+      )}
+
+      {activeTab === 'visa_selection' && modules.visaSelection && (
+        <div className="space-y-6 mt-2">
+          <VisaSelectionTabContent projectId={projectId} workspaceId={workspaceId} />
         </div>
       )}
 

@@ -78,6 +78,8 @@ export type ProjectModuleAccess = {
   finance?: boolean
   /** Модуль «План» — наглядный план проекта (блок под задачами). */
   plan?: boolean
+  /** Модуль «Подбор ВНЖ» — подбор видов на жительство по анкете. */
+  visa_selection?: boolean
 }
 
 /**

@@ -86,6 +86,7 @@ export function useProjectModules(
             hasModuleAccess('ai_project_assistant')) &&
           isFeatureEnabled('ai_chat_assistant'),
         knowledgeBase: has('knowledge-base'),
+        visaSelection: has('visa_selection'),
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- .join(',') стабилизация массива

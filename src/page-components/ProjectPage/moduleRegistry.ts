@@ -20,6 +20,7 @@ import {
   NotebookText,
   Lock,
   ListChecks,
+  Compass,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ProjectModule as ProjectModuleKey, WorkspaceFeature } from '@/types/permissions'
@@ -109,6 +110,14 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     order: 3,
     templateKey: 'forms',
     permissionKey: 'forms',
+  },
+  {
+    id: 'visa_selection',
+    label: 'Подбор ВНЖ',
+    icon: Compass,
+    order: 3.5,
+    templateKey: 'visa_selection',
+    permissionKey: 'visa_selection',
   },
   {
     id: 'knowledge-base',
