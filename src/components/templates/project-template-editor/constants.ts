@@ -12,6 +12,7 @@ import {
   BookOpen,
   Lock,
   ListChecks,
+  Compass,
 } from 'lucide-react'
 import type { Database } from '@/types/database'
 
@@ -58,6 +59,12 @@ export const AVAILABLE_MODULES = [
     label: 'AI-ассистент',
     icon: MessageSquare,
     description: 'Общение с нейросетью по документам проекта',
+  },
+  {
+    id: 'visa_selection',
+    label: 'Подбор ВНЖ',
+    icon: Compass,
+    description: 'Подбор видов на жительство по анкете клиента',
   },
   {
     id: 'knowledge_base',

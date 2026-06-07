@@ -14,6 +14,7 @@ import {
   BookOpen,
   NotebookText,
   DollarSign,
+  Compass,
 } from 'lucide-react'
 import type { WorkspacePermissions, ProjectModuleAccess } from '@/types/permissions'
 
@@ -75,6 +76,7 @@ export const MODULE_LABELS: Partial<
   chats: { label: 'Чаты', icon: MessagesSquare },
   history: { label: 'История', icon: History },
   knowledge_base: { label: 'Материалы', icon: BookOpen },
+  visa_selection: { label: 'Подбор ВНЖ', icon: Compass },
   ai_document_check: { label: 'AI проверка документов', icon: Sparkles },
   ai_form_autofill: { label: 'AI автозаполнение', icon: Sparkles },
   ai_knowledge_all: { label: 'AI: Вся база знаний', icon: Sparkles },
