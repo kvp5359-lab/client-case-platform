@@ -17,6 +17,7 @@ import {
 import { MultiSelect } from '@/components/ui/multi-select'
 import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import { useResidenceCountries, useResidenceCatalog } from '@/lib/residence/useResidenceCatalog'
+import type { ResidenceCriterion } from '@/lib/residence/types'
 import { ResidenceMatrix } from './ResidenceMatrix'
 import { CriterionDialog, ResidenceTypeDialog } from './ResidenceEditDialogs'
 
@@ -24,6 +25,7 @@ export function ResidenceMatchView() {
   const countriesQ = useResidenceCountries()
   const [countryId, setCountryId] = useState<string | null>(null)
   const [criterionOpen, setCriterionOpen] = useState(false)
+  const [editingCriterion, setEditingCriterion] = useState<ResidenceCriterion | null>(null)
   const [typeOpen, setTypeOpen] = useState(false)
   // null = показать все ВНЖ (столбцы); иначе — только выбранные
   const [visibleTypeIds, setVisibleTypeIds] = useState<string[] | null>(null)
@@ -123,22 +125,33 @@ export function ResidenceMatchView() {
         </Card>
       )}
 
-      {cat && <ResidenceMatrix catalog={cat} visibleTypeIds={visibleTypeIds ?? undefined} />}
+      {cat && (
+        <ResidenceMatrix
+          catalog={cat}
+          visibleTypeIds={visibleTypeIds ?? undefined}
+          onEditCriterion={isOwner ? setEditingCriterion : undefined}
+        />
+      )}
 
-      {effectiveCountryId && cat && (
-        <>
-          <CriterionDialog
-            open={criterionOpen}
-            onOpenChange={setCriterionOpen}
-            countryId={effectiveCountryId}
-            groups={cat.groups}
-          />
-          <ResidenceTypeDialog
-            open={typeOpen}
-            onOpenChange={setTypeOpen}
-            countryId={effectiveCountryId}
-          />
-        </>
+      {effectiveCountryId && cat && (criterionOpen || editingCriterion) && (
+        <CriterionDialog
+          key={editingCriterion?.id ?? 'new'}
+          open
+          onOpenChange={(v) => {
+            if (!v) { setCriterionOpen(false); setEditingCriterion(null) }
+          }}
+          countryId={effectiveCountryId}
+          groups={cat.groups}
+          criterion={editingCriterion}
+        />
+      )}
+
+      {effectiveCountryId && (
+        <ResidenceTypeDialog
+          open={typeOpen}
+          onOpenChange={setTypeOpen}
+          countryId={effectiveCountryId}
+        />
       )}
     </div>
   )

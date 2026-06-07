@@ -76,6 +76,31 @@ export function useCreateCriterion(countryId: string) {
   })
 }
 
+/**
+ * Обновление критерия. `field_key` НЕ меняем — по нему правила матчатся в rule_json,
+ * смена ключа отвяжет критерий от существующих правил.
+ */
+export function useUpdateCriterion(countryId: string) {
+  const invalidate = useInvalidate(countryId)
+  return useMutation({
+    mutationFn: async (input: NewCriterion & { id: string }) => {
+      const sb = getResidenceModuleClient()
+      const { error } = await sb.schema(SCHEMA).from('criteria').update({
+        title_ru: input.title_ru,
+        title_en: input.title_ru,
+        field_type: input.field_type,
+        group_id: input.group_id,
+        options: input.options,
+        is_required: input.is_required,
+        is_askable: input.is_askable,
+        question_ru: input.is_askable ? input.question_ru : null,
+      }).eq('id', input.id)
+      if (error) throw error
+    },
+    onSuccess: invalidate,
+  })
+}
+
 export function useCreateGroup(countryId: string) {
   const invalidate = useInvalidate(countryId)
   return useMutation({

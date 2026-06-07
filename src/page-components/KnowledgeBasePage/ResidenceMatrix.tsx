@@ -6,18 +6,21 @@
  */
 
 import { useMemo } from 'react'
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buildResidenceMatrix, formatCell } from '@/lib/residence/matrix'
-import type { ResidenceCatalog } from '@/lib/residence/types'
+import type { ResidenceCatalog, ResidenceCriterion } from '@/lib/residence/types'
 
 export function ResidenceMatrix({
   catalog,
   visibleTypeIds,
+  onEditCriterion,
 }: {
   catalog: ResidenceCatalog
   /** Если задан — показываем только эти виды ВНЖ (столбцы). */
   visibleTypeIds?: string[]
+  /** Если задан — у строк критериев появляется кнопка редактирования. */
+  onEditCriterion?: (criterion: ResidenceCriterion) => void
 }) {
   const matrix = useMemo(() => buildResidenceMatrix(catalog), [catalog])
   const { rows, cells } = matrix
@@ -63,6 +66,7 @@ export function ResidenceMatrix({
               row={row}
               residenceTypeIds={residenceTypes.map((rt) => rt.id)}
               cells={cells}
+              onEditCriterion={onEditCriterion}
             />
           ))}
         </tbody>
@@ -75,10 +79,12 @@ function GroupRows({
   row,
   residenceTypeIds,
   cells,
+  onEditCriterion,
 }: {
   row: ReturnType<typeof buildResidenceMatrix>['rows'][number]
   residenceTypeIds: string[]
   cells: ReturnType<typeof buildResidenceMatrix>['cells']
+  onEditCriterion?: (criterion: ResidenceCriterion) => void
 }) {
   return (
     <>
@@ -93,7 +99,7 @@ function GroupRows({
       {row.criteria.map((crit) => {
         const fieldMap = cells.get(crit.field_key)
         return (
-          <tr key={crit.id} className="border-b hover:bg-muted/20">
+          <tr key={crit.id} className="group/row border-b hover:bg-muted/20">
             <td className="sticky left-0 z-10 bg-background px-3 py-1.5 align-top">
               <div className="flex items-start gap-1">
                 <span className="line-clamp-2">{crit.title_ru || crit.title_en}</span>
@@ -105,6 +111,17 @@ function GroupRows({
                   >
                     <HelpCircle className="h-3 w-3 text-primary/60" />
                   </span>
+                )}
+                {onEditCriterion && (
+                  <button
+                    type="button"
+                    onClick={() => onEditCriterion(crit)}
+                    className="ml-auto mt-0.5 shrink-0 opacity-0 group-hover/row:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                    aria-label="Редактировать критерий"
+                    title="Редактировать критерий"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
                 )}
               </div>
               <span className="text-[10px] text-muted-foreground">

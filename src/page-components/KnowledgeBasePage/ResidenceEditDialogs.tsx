@@ -17,8 +17,10 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { useCreateCriterion, useCreateGroup, useCreateResidenceType } from '@/lib/residence/mutations'
-import type { FieldType, ResidenceCriteriaGroup } from '@/lib/residence/types'
+import {
+  useCreateCriterion, useUpdateCriterion, useCreateGroup, useCreateResidenceType,
+} from '@/lib/residence/mutations'
+import type { FieldType, ResidenceCriteriaGroup, ResidenceCriterion } from '@/lib/residence/types'
 
 const FIELD_TYPE_LABELS: { value: FieldType; label: string }[] = [
   { value: 'number', label: 'Число' },
@@ -28,32 +30,32 @@ const FIELD_TYPE_LABELS: { value: FieldType; label: string }[] = [
 ]
 
 export function CriterionDialog({
-  open, onOpenChange, countryId, groups,
+  open, onOpenChange, countryId, groups, criterion,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   countryId: string
   groups: ResidenceCriteriaGroup[]
+  /** Если задан — режим редактирования (иначе создание). */
+  criterion?: ResidenceCriterion | null
 }) {
-  const [title, setTitle] = useState('')
-  const [isAskable, setIsAskable] = useState(true)
-  const [question, setQuestion] = useState('')
-  const [fieldType, setFieldType] = useState<FieldType>('boolean')
-  const [groupId, setGroupId] = useState<string>('__none__')
+  // Начальные значения берём из criterion (режим правки) или дефолты (создание).
+  // Сброс/префилл обеспечивается перемонтажом по `key` в родителе.
+  const isEdit = !!criterion
+  const [title, setTitle] = useState(criterion?.title_ru ?? '')
+  const [isAskable, setIsAskable] = useState(criterion?.is_askable ?? true)
+  const [question, setQuestion] = useState(criterion?.question_ru ?? '')
+  const [fieldType, setFieldType] = useState<FieldType>(criterion?.field_type ?? 'boolean')
+  const [groupId, setGroupId] = useState<string>(criterion?.group_id ?? '__none__')
   const [newGroup, setNewGroup] = useState('')
-  const [optionsText, setOptionsText] = useState('')
-  const [isRequired, setIsRequired] = useState(false)
+  const [optionsText, setOptionsText] = useState((criterion?.options ?? []).join('\n'))
+  const [isRequired, setIsRequired] = useState(criterion?.is_required ?? false)
   const [err, setErr] = useState<string | null>(null)
 
   const createCriterion = useCreateCriterion(countryId)
+  const updateCriterion = useUpdateCriterion(countryId)
   const createGroup = useCreateGroup(countryId)
-  const busy = createCriterion.isPending || createGroup.isPending
-
-  const reset = () => {
-    setTitle(''); setIsAskable(true); setQuestion('')
-    setFieldType('boolean'); setGroupId('__none__'); setNewGroup('')
-    setOptionsText(''); setIsRequired(false); setErr(null)
-  }
+  const busy = createCriterion.isPending || updateCriterion.isPending || createGroup.isPending
 
   const handleSave = async () => {
     setErr(null)
@@ -69,7 +71,7 @@ export function CriterionDialog({
         fieldType === 'reference'
           ? optionsText.split('\n').map((s) => s.trim()).filter(Boolean)
           : null
-      await createCriterion.mutateAsync({
+      const payload = {
         title_ru: title.trim(),
         field_type: fieldType,
         group_id: resolvedGroupId,
@@ -77,8 +79,12 @@ export function CriterionDialog({
         is_required: isRequired,
         is_askable: isAskable,
         question_ru: isAskable ? (question.trim() || title.trim()) : null,
-      })
-      reset()
+      }
+      if (criterion) {
+        await updateCriterion.mutateAsync({ ...payload, id: criterion.id })
+      } else {
+        await createCriterion.mutateAsync(payload)
+      }
       onOpenChange(false)
     } catch (e) {
       setErr((e as Error)?.message ?? 'Ошибка сохранения')
@@ -86,9 +92,11 @@ export function CriterionDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v) }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Новый критерий</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{isEdit ? 'Редактировать критерий' : 'Новый критерий'}</DialogTitle>
+        </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Название</Label>
@@ -156,7 +164,9 @@ export function CriterionDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Отмена</Button>
-          <Button onClick={handleSave} disabled={busy}>{busy ? 'Сохранение…' : 'Создать'}</Button>
+          <Button onClick={handleSave} disabled={busy}>
+            {busy ? 'Сохранение…' : isEdit ? 'Сохранить' : 'Создать'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
