@@ -200,6 +200,43 @@ export function useCreateGroup(countryId: string) {
   })
 }
 
+/** CRUD справочника «Текущий статус». */
+export function useCurrentStatusMutations(countryId: string) {
+  const qc = useQueryClient()
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['residence', 'current-statuses', countryId] })
+
+  const create = useMutation({
+    mutationFn: async (name_ru: string) => {
+      const sb = getResidenceModuleClient()
+      const { error } = await sb.schema(SCHEMA).from('current_statuses').insert({
+        country_id: countryId, name_ru, sort_order: 999, is_active: true,
+      })
+      if (error) throw error
+    },
+    onSuccess: invalidate,
+  })
+
+  const rename = useMutation({
+    mutationFn: async ({ id, name_ru }: { id: string; name_ru: string }) => {
+      const sb = getResidenceModuleClient()
+      const { error } = await sb.schema(SCHEMA).from('current_statuses').update({ name_ru }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: invalidate,
+  })
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const sb = getResidenceModuleClient()
+      const { error } = await sb.schema(SCHEMA).from('current_statuses').update({ is_active: false }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: invalidate,
+  })
+
+  return { create, rename, remove }
+}
+
 export type NewResidenceType = {
   name_ru: string
   category: 'temporary' | 'permanent' | 'citizenship'

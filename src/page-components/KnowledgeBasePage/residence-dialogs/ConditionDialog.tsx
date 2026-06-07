@@ -14,7 +14,7 @@ import {
 import { useUpdateCondition } from '@/lib/residence/mutations'
 import type { ResidenceCatalog, ResidenceCriterion, RuleCondition } from '@/lib/residence/types'
 import type { MatrixCell } from '@/lib/residence/matrix'
-import { useResidenceStatuses } from '@/lib/residence/useResidenceCatalog'
+import { useCurrentStatuses } from '@/lib/residence/useResidenceCatalog'
 import { NUMBER_OPS, SeverityPicker } from './shared'
 
 /** Правка условия (порога) критерия для конкретного ВНЖ. */
@@ -49,12 +49,8 @@ export function ConditionDialog({
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(
     Array.isArray(cell?.value) ? (cell.value as string[]) : [],
   )
-  const statusesQ = useResidenceStatuses(countryId, isReference)
-  const statusOptions = (statusesQ.data?.statuses ?? []).map((s) => {
-    const rt = catalog.residenceTypes.find((t) => t.id === s.residence_type_id)
-    const fam = statusesQ.data?.family.find((f) => f.id === s.family_status_id)
-    return { value: s.id, label: `${rt?.name_ru ?? '—'}${fam ? ` — ${fam.name_ru}` : ''}` }
-  })
+  const statusesQ = useCurrentStatuses(countryId)
+  const statusOptions = (statusesQ.data ?? []).map((s) => ({ value: s.id, label: s.name_ru }))
 
   const handleSave = async () => {
     setErr(null)

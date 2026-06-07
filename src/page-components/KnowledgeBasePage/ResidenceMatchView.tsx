@@ -22,7 +22,7 @@ import type { ResidenceCriterion } from '@/lib/residence/types'
 import type { MatrixCell } from '@/lib/residence/matrix'
 import { ResidenceMatrix } from './ResidenceMatrix'
 import {
-  CriterionDialog, ConditionDialog, AddConditionDialog, ResidenceTypeDialog,
+  CriterionDialog, ConditionDialog, AddConditionDialog, ResidenceTypeDialog, CurrentStatusesDialog,
 } from './ResidenceEditDialogs'
 
 const STORAGE_PREFIX = 'residence-visible-vnj:'
@@ -120,6 +120,7 @@ function ResidenceCountryView({
   const [visibleTypeIds, setVisibleTypeIds] = useState<string[] | null>(() => loadVisible(countryId))
   const [criterionOpen, setCriterionOpen] = useState(false)
   const [typeOpen, setTypeOpen] = useState(false)
+  const [statusesOpen, setStatusesOpen] = useState(false)
   const [editingCondition, setEditingCondition] = useState<
     { crit: ResidenceCriterion; rtId: string; cell: MatrixCell } | null
   >(null)
@@ -155,6 +156,9 @@ function ResidenceCountryView({
         )}
         {isOwner && cat && (
           <div className="ml-auto flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setStatusesOpen(true)}>
+              Статусы
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setCriterionOpen(true)}>
               <Plus className="w-4 h-4 mr-1" /> Критерий
             </Button>
@@ -238,6 +242,10 @@ function ResidenceCountryView({
       )}
 
       <ResidenceTypeDialog open={typeOpen} onOpenChange={setTypeOpen} countryId={countryId} />
+
+      {statusesOpen && (
+        <CurrentStatusesDialog open onOpenChange={(v) => { if (!v) setStatusesOpen(false) }} countryId={countryId} />
+      )}
     </div>
   )
 }
