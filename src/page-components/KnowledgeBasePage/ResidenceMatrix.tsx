@@ -6,6 +6,7 @@
  */
 
 import { useMemo } from 'react'
+import { HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buildResidenceMatrix, formatCell } from '@/lib/residence/matrix'
 import type { ResidenceCatalog } from '@/lib/residence/types'
@@ -76,8 +77,21 @@ function GroupRows({
         return (
           <tr key={crit.id} className="border-b hover:bg-muted/20">
             <td className="sticky left-0 z-10 bg-background px-3 py-1.5 align-top">
-              <div className="line-clamp-2">{crit.title_ru || crit.title_en}</div>
-              <span className="text-[10px] text-muted-foreground">{crit.field_type}</span>
+              <div className="flex items-start gap-1">
+                <span className="line-clamp-2">{crit.title_ru || crit.title_en}</span>
+                {crit.is_askable && (
+                  <span
+                    className="mt-0.5 shrink-0"
+                    title={crit.question_ru || crit.title_ru}
+                    aria-label="Анкетируемый"
+                  >
+                    <HelpCircle className="h-3 w-3 text-primary/60" />
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-muted-foreground">
+                {crit.field_type}{!crit.is_askable && ' · не спрашивается'}
+              </span>
             </td>
             {residenceTypeIds.map((rtId) => {
               const cell = fieldMap?.get(rtId) ?? null

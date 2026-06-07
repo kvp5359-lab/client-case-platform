@@ -52,6 +52,11 @@ export type ResidenceCriterion = {
   group_id: string | null
   country_id: string
   is_active: boolean
+  /** Показывать ли критерий как вопрос в анкете-подборе. */
+  is_askable: boolean
+  /** Текст вопроса для анкеты (если анкетируемый). Фолбэк на title_ru, если пусто. */
+  question_ru: string | null
+  question_en: string | null
 }
 
 export type ResidenceLink = {

@@ -36,6 +36,8 @@ export function CriterionDialog({
   groups: ResidenceCriteriaGroup[]
 }) {
   const [title, setTitle] = useState('')
+  const [isAskable, setIsAskable] = useState(true)
+  const [question, setQuestion] = useState('')
   const [fieldType, setFieldType] = useState<FieldType>('boolean')
   const [groupId, setGroupId] = useState<string>('__none__')
   const [newGroup, setNewGroup] = useState('')
@@ -48,7 +50,8 @@ export function CriterionDialog({
   const busy = createCriterion.isPending || createGroup.isPending
 
   const reset = () => {
-    setTitle(''); setFieldType('boolean'); setGroupId('__none__'); setNewGroup('')
+    setTitle(''); setIsAskable(true); setQuestion('')
+    setFieldType('boolean'); setGroupId('__none__'); setNewGroup('')
     setOptionsText(''); setIsRequired(false); setErr(null)
   }
 
@@ -72,6 +75,8 @@ export function CriterionDialog({
         group_id: resolvedGroupId,
         options: options && options.length ? options : null,
         is_required: isRequired,
+        is_askable: isAskable,
+        question_ru: isAskable ? (question.trim() || title.trim()) : null,
       })
       reset()
       onOpenChange(false)
@@ -88,7 +93,25 @@ export function CriterionDialog({
           <div className="space-y-1.5">
             <Label>Название</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="Напр. Ваш годовой доход" />
+              placeholder="Короткое название, напр. Доход" />
+            <p className="text-[11px] text-muted-foreground">Для матрицы и внутреннего обзора.</p>
+          </div>
+          <div className="rounded-md border p-3 space-y-2.5">
+            <div className="flex items-center gap-2">
+              <Switch checked={isAskable} onCheckedChange={setIsAskable} id="askable" />
+              <Label htmlFor="askable" className="cursor-pointer">Анкетируемый (задаётся клиенту вопросом)</Label>
+            </div>
+            {isAskable && (
+              <div className="space-y-1.5">
+                <Label>Текст вопроса</Label>
+                <Textarea value={question} onChange={(e) => setQuestion(e.target.value)}
+                  rows={2} placeholder="Напр. Ваш годовой доход (€)?" />
+                <p className="text-[11px] text-muted-foreground">
+                  Пусто → подставится название. Не анкетируемый → критерий участвует в правилах,
+                  но клиента о нём не спрашивают.
+                </p>
+              </div>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Группа</Label>

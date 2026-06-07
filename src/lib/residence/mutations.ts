@@ -43,6 +43,8 @@ export type NewCriterion = {
   group_id: string | null
   options: string[] | null
   is_required: boolean
+  is_askable: boolean
+  question_ru: string | null
 }
 
 export function useCreateCriterion(countryId: string) {
@@ -62,6 +64,9 @@ export function useCreateCriterion(countryId: string) {
         hint_ru: '',
         hint_en: '',
         is_required: input.is_required,
+        is_askable: input.is_askable,
+        question_ru: input.is_askable ? input.question_ru : null,
+        question_en: null,
         display_order: 999,
         is_active: true,
       })
