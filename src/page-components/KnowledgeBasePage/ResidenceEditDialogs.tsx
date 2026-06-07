@@ -19,8 +19,12 @@ import {
 } from '@/components/ui/select'
 import {
   useCreateCriterion, useUpdateCriterion, useCreateGroup, useCreateResidenceType,
+  useUpdateCondition,
 } from '@/lib/residence/mutations'
-import type { FieldType, ResidenceCriteriaGroup, ResidenceCriterion } from '@/lib/residence/types'
+import type {
+  FieldType, ResidenceCriteriaGroup, ResidenceCriterion, ResidenceCatalog, RuleCondition,
+} from '@/lib/residence/types'
+import type { MatrixCell } from '@/lib/residence/matrix'
 
 const FIELD_TYPE_LABELS: { value: FieldType; label: string }[] = [
   { value: 'number', label: 'Число' },
@@ -167,6 +171,154 @@ export function CriterionDialog({
           <Button onClick={handleSave} disabled={busy}>
             {busy ? 'Сохранение…' : isEdit ? 'Сохранить' : 'Создать'}
           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const NUMBER_OPS: { value: RuleCondition['operator']; label: string }[] = [
+  { value: '>=', label: '≥ не меньше' },
+  { value: '<=', label: '≤ не больше' },
+  { value: '>', label: '> больше' },
+  { value: '<', label: '< меньше' },
+  { value: '=', label: '= равно' },
+]
+
+/** Правка условия (порога) критерия для конкретного ВНЖ. */
+export function ConditionDialog({
+  open, onOpenChange, countryId, catalog, criterion, residenceTypeId, residenceTypeName, cell,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  countryId: string
+  catalog: ResidenceCatalog
+  criterion: ResidenceCriterion
+  residenceTypeId: string
+  residenceTypeName: string
+  cell: MatrixCell
+}) {
+  const ft = criterion.field_type
+  const [operator, setOperator] = useState<RuleCondition['operator']>(cell?.operator ?? (ft === 'number' ? '>=' : '='))
+  const [numValue, setNumValue] = useState<string>(
+    cell && typeof cell.value === 'number' ? String(cell.value) : '',
+  )
+  const [boolValue, setBoolValue] = useState<boolean>(
+    cell && typeof cell.value === 'boolean' ? cell.value : true,
+  )
+  const [textValue, setTextValue] = useState<string>(
+    cell && typeof cell.value === 'string' ? cell.value : '',
+  )
+  const [severity, setSeverity] = useState<RuleCondition['severity']>(cell?.severity ?? 'important')
+  const [err, setErr] = useState<string | null>(null)
+
+  const update = useUpdateCondition(countryId, catalog)
+  const isReference = ft === 'reference' || Array.isArray(cell?.value)
+
+  const handleSave = async () => {
+    setErr(null)
+    let value: RuleCondition['value']
+    if (ft === 'number') {
+      if (numValue.trim() === '' || Number.isNaN(Number(numValue))) { setErr('Введите число'); return }
+      value = Number(numValue)
+    } else if (ft === 'boolean') {
+      value = boolValue
+    } else {
+      value = textValue.trim()
+    }
+    try {
+      await update.mutateAsync({
+        residenceTypeId,
+        field: criterion.field_key,
+        operator: ft === 'boolean' ? '=' : operator,
+        value,
+        severity,
+      })
+      onOpenChange(false)
+    } catch (e) {
+      setErr((e as Error)?.message ?? 'Ошибка сохранения')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-base">
+            {criterion.title_ru || criterion.title_en}
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground">для ВНЖ «{residenceTypeName}»</p>
+        </DialogHeader>
+
+        {isReference ? (
+          <p className="text-sm text-muted-foreground">
+            Это критерий-список (напр. «текущий статус»). Правка набора значений пока недоступна —
+            поддержим отдельно.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {ft === 'number' && (
+              <div className="flex gap-2">
+                <div className="space-y-1.5 w-44">
+                  <Label>Условие</Label>
+                  <Select value={operator} onValueChange={(v) => setOperator(v as RuleCondition['operator'])}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {NUMBER_OPS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 flex-1">
+                  <Label>Значение</Label>
+                  <Input type="number" value={numValue} onChange={(e) => setNumValue(e.target.value)} />
+                </div>
+              </div>
+            )}
+
+            {ft === 'boolean' && (
+              <div className="space-y-1.5">
+                <Label>Требуемый ответ</Label>
+                <Select value={boolValue ? 'yes' : 'no'} onValueChange={(v) => setBoolValue(v === 'yes')}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Да</SelectItem>
+                    <SelectItem value="no">Нет</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {ft === 'text' && (
+              <div className="space-y-1.5">
+                <Label>Значение</Label>
+                <Input value={textValue} onChange={(e) => setTextValue(e.target.value)} />
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label>Важность</Label>
+              <Select value={severity ?? 'important'} onValueChange={(v) => setSeverity(v as RuleCondition['severity'])}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="critical">Критично (не подходит, если не выполнено)</SelectItem>
+                  <SelectItem value="important">Желательно (частично подходит)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {err && <p className="text-sm text-destructive">{err}</p>}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={update.isPending}>
+            Отмена
+          </Button>
+          {!isReference && (
+            <Button onClick={handleSave} disabled={update.isPending}>
+              {update.isPending ? 'Сохранение…' : 'Сохранить'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

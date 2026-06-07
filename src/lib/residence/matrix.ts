@@ -20,6 +20,27 @@ export function extractConditions(rg: RuleGroup | null | undefined): RuleConditi
   return out
 }
 
+/** Есть ли в дереве условие на это поле. */
+export function treeHasField(rg: RuleGroup | null | undefined, field: string): boolean {
+  return extractConditions(rg).some((c) => c.field === field)
+}
+
+/**
+ * Вернуть новое дерево, где у всех условий с данным field обновлены
+ * operator/value/severity. Структура (И/ИЛИ, вложенность) сохраняется.
+ */
+export function updateConditionInTree(
+  rg: RuleGroup,
+  field: string,
+  patch: Pick<RuleCondition, 'operator' | 'value' | 'severity'>,
+): RuleGroup {
+  return {
+    ...rg,
+    conditions: rg.conditions?.map((c) => (c.field === field ? { ...c, ...patch } : c)),
+    groups: rg.groups?.map((sub) => updateConditionInTree(sub, field, patch)),
+  }
+}
+
 export type MatrixCell = {
   operator: RuleCondition['operator']
   value: RuleCondition['value']

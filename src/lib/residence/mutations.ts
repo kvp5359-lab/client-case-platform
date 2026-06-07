@@ -9,7 +9,8 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { getResidenceModuleClient } from './moduleClient'
-import type { FieldType } from './types'
+import { treeHasField, updateConditionInTree } from './matrix'
+import type { FieldType, RuleCondition, ResidenceCatalog } from './types'
 
 const SCHEMA = 'mod_choice'
 
@@ -96,6 +97,47 @@ export function useUpdateCriterion(countryId: string) {
         question_ru: input.is_askable ? input.question_ru : null,
       }).eq('id', input.id)
       if (error) throw error
+    },
+    onSuccess: invalidate,
+  })
+}
+
+/**
+ * Правка условия критерия для конкретного ВНЖ. Обновляет condition во ВСЕХ правилах
+ * этого ВНЖ (по всем процедурам — мы их не различаем), где критерий встречается.
+ * Новые условия не добавляет — только меняет существующие.
+ */
+export function useUpdateCondition(countryId: string, catalog: ResidenceCatalog | undefined) {
+  const invalidate = useInvalidate(countryId)
+  return useMutation({
+    mutationFn: async (input: {
+      residenceTypeId: string
+      field: string
+      operator: RuleCondition['operator']
+      value: RuleCondition['value']
+      severity: RuleCondition['severity']
+    }) => {
+      if (!catalog) throw new Error('Справочник не загружен')
+      const linkIds = catalog.links
+        .filter((l) => l.residence_type_id === input.residenceTypeId)
+        .map((l) => l.id)
+      const rules = catalog.rules.filter((r) => linkIds.includes(r.link_id))
+      const patch = { operator: input.operator, value: input.value, severity: input.severity }
+
+      const sb = getResidenceModuleClient()
+      let touched = 0
+      for (const rule of rules) {
+        if (!treeHasField(rule.rule_json, input.field)) continue
+        const newJson = updateConditionInTree(rule.rule_json, input.field, patch)
+        const { error } = await sb
+          .schema(SCHEMA)
+          .from('rules')
+          .update({ rule_json: newJson })
+          .eq('id', rule.id)
+        if (error) throw error
+        touched++
+      }
+      if (touched === 0) throw new Error('Условие не найдено в правилах этого ВНЖ')
     },
     onSuccess: invalidate,
   })

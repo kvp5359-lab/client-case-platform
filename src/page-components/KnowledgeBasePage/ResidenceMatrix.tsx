@@ -3,7 +3,7 @@
 /**
  * Обзор ВНЖ (Контур 1). Столбцы — виды ВНЖ. Группы критериев — ОБЩИЕ горизонтальные
  * секции (заголовок на всю ширину). Под каждой группой в колонке ВНЖ — её критерии
- * со значениями (только используемые в этом ВНЖ).
+ * со значениями. Клик по строке (владельцу) → правка условия для этого ВНЖ.
  */
 
 import { useMemo } from 'react'
@@ -12,16 +12,18 @@ import { cn } from '@/lib/utils'
 import { buildResidenceMatrix, formatCell, type MatrixCell } from '@/lib/residence/matrix'
 import type { ResidenceCatalog, ResidenceCriterion } from '@/lib/residence/types'
 
+export type EditConditionFn = (criterion: ResidenceCriterion, residenceTypeId: string, cell: MatrixCell) => void
+
 export function ResidenceMatrix({
   catalog,
   visibleTypeIds,
-  onEditCriterion,
+  onEditCondition,
 }: {
   catalog: ResidenceCatalog
   /** Если задан — показываем только эти виды ВНЖ (столбцы). */
   visibleTypeIds?: string[]
-  /** Если задан — у строк критериев появляется кнопка редактирования. */
-  onEditCriterion?: (criterion: ResidenceCriterion) => void
+  /** Если задан — клик по строке критерия открывает правку условия (для владельца). */
+  onEditCondition?: EditConditionFn
 }) {
   const matrix = useMemo(() => buildResidenceMatrix(catalog), [catalog])
   const { cells } = matrix
@@ -34,7 +36,6 @@ export function ResidenceMatrix({
     [matrix.residenceTypes, visibleTypeIds],
   )
 
-  // только группы, где есть хоть один используемый критерий среди показанных ВНЖ
   const visibleRows = useMemo(() => {
     const ids = residenceTypes.map((rt) => rt.id)
     return matrix.rows
@@ -78,7 +79,7 @@ export function ResidenceMatrix({
               criteria={row.criteria}
               residenceTypeIds={residenceTypes.map((rt) => rt.id)}
               cells={cells}
-              onEditCriterion={onEditCriterion}
+              onEditCondition={onEditCondition}
             />
           ))}
         </tbody>
@@ -92,17 +93,16 @@ function GroupSection({
   criteria,
   residenceTypeIds,
   cells,
-  onEditCriterion,
+  onEditCondition,
 }: {
   groupName: string
   criteria: ResidenceCriterion[]
   residenceTypeIds: string[]
   cells: ReturnType<typeof buildResidenceMatrix>['cells']
-  onEditCriterion?: (criterion: ResidenceCriterion) => void
+  onEditCondition?: EditConditionFn
 }) {
   return (
     <>
-      {/* общий заголовок группы на всю ширину */}
       <tr className="border-y-2 border-border bg-muted">
         <td
           colSpan={residenceTypeIds.length}
@@ -111,7 +111,6 @@ function GroupSection({
           📁 {groupName}
         </td>
       </tr>
-      {/* по ячейке на ВНЖ — список «критерий — значение» этой группы */}
       <tr className="border-b">
         {residenceTypeIds.map((rtId) => {
           const items = criteria
@@ -128,7 +127,7 @@ function GroupSection({
                       key={crit.id}
                       crit={crit}
                       cell={cell}
-                      onEditCriterion={onEditCriterion}
+                      onEdit={onEditCondition ? () => onEditCondition(crit, rtId, cell) : undefined}
                     />
                   ))}
                 </div>
@@ -144,17 +143,25 @@ function GroupSection({
 function CriterionRow({
   crit,
   cell,
-  onEditCriterion,
+  onEdit,
 }: {
   crit: ResidenceCriterion
   cell: MatrixCell
-  onEditCriterion?: (criterion: ResidenceCriterion) => void
+  onEdit?: () => void
 }) {
   // boolean = «да» → значение подразумевается, не показываем (само название = требование)
   const hideValue = !!cell && typeof cell.value === 'boolean' && cell.value === true
 
   return (
-    <div className="group/row px-3 py-0.5 text-sm leading-snug hover:bg-muted/30">
+    <div
+      className={cn(
+        'group/row px-3 py-0.5 text-sm leading-snug',
+        onEdit ? 'cursor-pointer hover:bg-muted/40' : 'hover:bg-muted/30',
+      )}
+      onClick={onEdit}
+      role={onEdit ? 'button' : undefined}
+      title={onEdit ? 'Изменить условие для этого ВНЖ' : undefined}
+    >
       <span>{crit.title_ru || crit.title_en}</span>
       {crit.is_askable && (
         <HelpCircle
@@ -175,16 +182,8 @@ function CriterionRow({
           )}
         </>
       )}
-      {onEditCriterion && (
-        <button
-          type="button"
-          onClick={() => onEditCriterion(crit)}
-          className="ml-1 inline align-text-top opacity-0 transition-opacity group-hover/row:opacity-100 text-muted-foreground hover:text-foreground"
-          aria-label="Редактировать критерий"
-          title="Редактировать критерий"
-        >
-          <Pencil className="inline h-3.5 w-3.5" />
-        </button>
+      {onEdit && (
+        <Pencil className="ml-1 inline h-3 w-3 align-text-top opacity-0 transition-opacity group-hover/row:opacity-100 text-muted-foreground" />
       )}
     </div>
   )

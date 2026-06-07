@@ -19,8 +19,9 @@ import { MultiSelect } from '@/components/ui/multi-select'
 import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import { useResidenceCountries, useResidenceCatalog } from '@/lib/residence/useResidenceCatalog'
 import type { ResidenceCriterion } from '@/lib/residence/types'
+import type { MatrixCell } from '@/lib/residence/matrix'
 import { ResidenceMatrix } from './ResidenceMatrix'
-import { CriterionDialog, ResidenceTypeDialog } from './ResidenceEditDialogs'
+import { CriterionDialog, ConditionDialog, ResidenceTypeDialog } from './ResidenceEditDialogs'
 
 const STORAGE_PREFIX = 'residence-visible-vnj:'
 
@@ -116,8 +117,10 @@ function ResidenceCountryView({
   // null = все ВНЖ; иначе — выбранные. Стартовое — из localStorage (по стране).
   const [visibleTypeIds, setVisibleTypeIds] = useState<string[] | null>(() => loadVisible(countryId))
   const [criterionOpen, setCriterionOpen] = useState(false)
-  const [editingCriterion, setEditingCriterion] = useState<ResidenceCriterion | null>(null)
   const [typeOpen, setTypeOpen] = useState(false)
+  const [editingCondition, setEditingCondition] = useState<
+    { crit: ResidenceCriterion; rtId: string; cell: MatrixCell } | null
+  >(null)
 
   const cat = catalogQ.data
 
@@ -171,7 +174,9 @@ function ResidenceCountryView({
         <ResidenceMatrix
           catalog={cat}
           visibleTypeIds={visibleTypeIds ?? undefined}
-          onEditCriterion={isOwner ? setEditingCriterion : undefined}
+          onEditCondition={
+            isOwner ? (crit, rtId, cell) => setEditingCondition({ crit, rtId, cell }) : undefined
+          }
         />
       )}
 
@@ -184,16 +189,28 @@ function ResidenceCountryView({
         </div>
       )}
 
-      {cat && (criterionOpen || editingCriterion) && (
+      {cat && criterionOpen && (
         <CriterionDialog
-          key={editingCriterion?.id ?? 'new'}
           open
-          onOpenChange={(v) => {
-            if (!v) { setCriterionOpen(false); setEditingCriterion(null) }
-          }}
+          onOpenChange={(v) => { if (!v) setCriterionOpen(false) }}
           countryId={countryId}
           groups={cat.groups}
-          criterion={editingCriterion}
+        />
+      )}
+
+      {cat && editingCondition && (
+        <ConditionDialog
+          key={`${editingCondition.crit.id}:${editingCondition.rtId}`}
+          open
+          onOpenChange={(v) => { if (!v) setEditingCondition(null) }}
+          countryId={countryId}
+          catalog={cat}
+          criterion={editingCondition.crit}
+          residenceTypeId={editingCondition.rtId}
+          residenceTypeName={
+            cat.residenceTypes.find((t) => t.id === editingCondition.rtId)?.name_ru ?? ''
+          }
+          cell={editingCondition.cell}
         />
       )}
 
