@@ -139,9 +139,9 @@ function GroupRows({
                   </button>
                 )}
               </div>
-              <span className="text-[10px] text-muted-foreground">
-                {crit.field_type}{!crit.is_askable && ' · не спрашивается'}
-              </span>
+              {!crit.is_askable && (
+                <span className="text-[10px] text-muted-foreground">не спрашивается</span>
+              )}
             </td>
             {residenceTypeIds.map((rtId) => {
               const cell = fieldMap?.get(rtId) ?? null
