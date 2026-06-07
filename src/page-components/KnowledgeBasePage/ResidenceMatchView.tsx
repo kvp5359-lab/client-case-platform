@@ -7,7 +7,7 @@
  */
 
 import { useState, useMemo, type ReactNode } from 'react'
-import { Plus } from 'lucide-react'
+import { Settings2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -22,7 +22,7 @@ import type { ResidenceCriterion } from '@/lib/residence/types'
 import type { MatrixCell } from '@/lib/residence/matrix'
 import { ResidenceMatrix } from './ResidenceMatrix'
 import {
-  CriterionDialog, ConditionDialog, AddConditionDialog, ResidenceTypeDialog, CurrentStatusesDialog,
+  ConditionDialog, AddConditionDialog, ManageDictionariesDialog,
 } from './ResidenceEditDialogs'
 
 const STORAGE_PREFIX = 'residence-visible-vnj:'
@@ -118,9 +118,7 @@ function ResidenceCountryView({
   const catalogQ = useResidenceCatalog(countryId)
   // null = все ВНЖ; иначе — выбранные. Стартовое — из localStorage (по стране).
   const [visibleTypeIds, setVisibleTypeIds] = useState<string[] | null>(() => loadVisible(countryId))
-  const [criterionOpen, setCriterionOpen] = useState(false)
-  const [typeOpen, setTypeOpen] = useState(false)
-  const [statusesOpen, setStatusesOpen] = useState(false)
+  const [manageOpen, setManageOpen] = useState(false)
   const [editingCondition, setEditingCondition] = useState<
     { crit: ResidenceCriterion; rtId: string; cell: MatrixCell } | null
   >(null)
@@ -155,15 +153,9 @@ function ResidenceCountryView({
           />
         )}
         {isOwner && cat && (
-          <div className="ml-auto flex gap-2">
-            <Button size="sm" variant="ghost" onClick={() => setStatusesOpen(true)}>
-              Статусы
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setCriterionOpen(true)}>
-              <Plus className="w-4 h-4 mr-1" /> Критерий
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setTypeOpen(true)}>
-              <Plus className="w-4 h-4 mr-1" /> ВНЖ
+          <div className="ml-auto">
+            <Button size="sm" variant="outline" onClick={() => setManageOpen(true)}>
+              <Settings2 className="w-4 h-4 mr-1" /> Справочники
             </Button>
           </div>
         )}
@@ -201,12 +193,12 @@ function ResidenceCountryView({
         </div>
       )}
 
-      {cat && criterionOpen && (
-        <CriterionDialog
+      {cat && manageOpen && (
+        <ManageDictionariesDialog
           open
-          onOpenChange={(v) => { if (!v) setCriterionOpen(false) }}
+          onOpenChange={(v) => { if (!v) setManageOpen(false) }}
           countryId={countryId}
-          groups={cat.groups}
+          catalog={cat}
         />
       )}
 
@@ -239,12 +231,6 @@ function ResidenceCountryView({
             cat.residenceTypes.find((t) => t.id === addingCondition.rtId)?.name_ru ?? ''
           }
         />
-      )}
-
-      <ResidenceTypeDialog open={typeOpen} onOpenChange={setTypeOpen} countryId={countryId} />
-
-      {statusesOpen && (
-        <CurrentStatusesDialog open onOpenChange={(v) => { if (!v) setStatusesOpen(false) }} countryId={countryId} />
       )}
     </div>
   )

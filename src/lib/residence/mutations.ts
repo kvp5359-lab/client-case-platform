@@ -262,3 +262,44 @@ export function useCreateResidenceType(countryId: string) {
     onSuccess: invalidate,
   })
 }
+
+export function useUpdateResidenceType(countryId: string) {
+  const invalidate = useInvalidate(countryId)
+  return useMutation({
+    mutationFn: async (input: NewResidenceType & { id: string }) => {
+      const sb = getResidenceModuleClient()
+      const { error } = await sb.schema(SCHEMA).from('residence_types').update({
+        name_ru: input.name_ru,
+        name_en: input.name_ru,
+        category: input.category,
+        description_ru: input.description_ru || null,
+      }).eq('id', input.id)
+      if (error) throw error
+    },
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteResidenceType(countryId: string) {
+  const invalidate = useInvalidate(countryId)
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const sb = getResidenceModuleClient()
+      const { error } = await sb.schema(SCHEMA).from('residence_types').update({ is_active: false }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteCriterion(countryId: string) {
+  const invalidate = useInvalidate(countryId)
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const sb = getResidenceModuleClient()
+      const { error } = await sb.schema(SCHEMA).from('criteria').update({ is_active: false }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: invalidate,
+  })
+}

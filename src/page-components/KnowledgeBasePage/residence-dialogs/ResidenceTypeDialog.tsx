@@ -11,28 +11,39 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { useCreateResidenceType } from '@/lib/residence/mutations'
+import { useCreateResidenceType, useUpdateResidenceType } from '@/lib/residence/mutations'
+import type { ResidenceType, ResidenceTypeCategory } from '@/lib/residence/types'
 
-/** Создание вида ВНЖ. */
+/** Создание / редактирование вида ВНЖ. */
 export function ResidenceTypeDialog({
-  open, onOpenChange, countryId,
+  open, onOpenChange, countryId, residenceType,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   countryId: string
+  /** Если задан — режим правки. */
+  residenceType?: ResidenceType | null
 }) {
-  const [name, setName] = useState('')
-  const [category, setCategory] = useState<'temporary' | 'permanent' | 'citizenship'>('temporary')
-  const [description, setDescription] = useState('')
+  const isEdit = !!residenceType
+  const [name, setName] = useState(residenceType?.name_ru ?? '')
+  const [category, setCategory] = useState<ResidenceTypeCategory>(residenceType?.category ?? 'temporary')
+  const [description, setDescription] = useState(residenceType?.description_ru ?? '')
   const [err, setErr] = useState<string | null>(null)
+
   const create = useCreateResidenceType(countryId)
+  const update = useUpdateResidenceType(countryId)
+  const busy = create.isPending || update.isPending
 
   const handleSave = async () => {
     setErr(null)
     if (!name.trim()) { setErr('Укажите название ВНЖ'); return }
+    const payload = { name_ru: name.trim(), category, description_ru: description.trim() }
     try {
-      await create.mutateAsync({ name_ru: name.trim(), category, description_ru: description.trim() })
-      setName(''); setDescription(''); setCategory('temporary'); setErr(null)
+      if (residenceType) {
+        await update.mutateAsync({ ...payload, id: residenceType.id })
+      } else {
+        await create.mutateAsync(payload)
+      }
       onOpenChange(false)
     } catch (e) {
       setErr((e as Error)?.message ?? 'Ошибка сохранения')
@@ -42,7 +53,9 @@ export function ResidenceTypeDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-full max-w-md [&>*]:min-w-0">
-        <DialogHeader><DialogTitle>Новый вид ВНЖ</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{isEdit ? 'Редактировать вид ВНЖ' : 'Новый вид ВНЖ'}</DialogTitle>
+        </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Название</Label>
@@ -50,7 +63,7 @@ export function ResidenceTypeDialog({
           </div>
           <div className="space-y-1.5">
             <Label>Категория</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v as typeof category)}>
+            <Select value={category} onValueChange={(v) => setCategory(v as ResidenceTypeCategory)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="temporary">Временный ВНЖ</SelectItem>
@@ -66,9 +79,9 @@ export function ResidenceTypeDialog({
           {err && <p className="text-sm text-destructive">{err}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>Отмена</Button>
-          <Button onClick={handleSave} disabled={create.isPending}>
-            {create.isPending ? 'Сохранение…' : 'Создать'}
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Отмена</Button>
+          <Button onClick={handleSave} disabled={busy}>
+            {busy ? 'Сохранение…' : isEdit ? 'Сохранить' : 'Создать'}
           </Button>
         </DialogFooter>
       </DialogContent>
