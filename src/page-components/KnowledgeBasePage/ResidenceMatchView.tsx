@@ -21,6 +21,7 @@ import { useResidenceCountries, useResidenceCatalog } from '@/lib/residence/useR
 import type { ResidenceCriterion } from '@/lib/residence/types'
 import type { MatrixCell } from '@/lib/residence/matrix'
 import { ResidenceMatrix } from './ResidenceMatrix'
+import { ResidenceMatcher } from '@/components/residence/ResidenceMatcher'
 import {
   ConditionDialog, AddConditionDialog, ManageDictionariesDialog,
 } from './ResidenceEditDialogs'
@@ -116,6 +117,7 @@ function ResidenceCountryView({
   countrySelect: ReactNode
 }) {
   const catalogQ = useResidenceCatalog(countryId)
+  const [mode, setMode] = useState<'matrix' | 'matcher'>('matrix')
   // null = все ВНЖ; иначе — выбранные. Стартовое — из localStorage (по стране).
   const [visibleTypeIds, setVisibleTypeIds] = useState<string[] | null>(() => loadVisible(countryId))
   const [manageOpen, setManageOpen] = useState(false)
@@ -139,9 +141,17 @@ function ResidenceCountryView({
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm text-muted-foreground">Страна:</span>
         {countrySelect}
-        {cat && cat.residenceTypes.length > 0 && (
+        <div className="flex rounded-md border p-0.5 text-sm">
+          <button type="button"
+            className={`rounded px-3 py-1 ${mode === 'matrix' ? 'bg-muted font-medium' : 'text-muted-foreground'}`}
+            onClick={() => setMode('matrix')}>База знаний</button>
+          <button type="button"
+            className={`rounded px-3 py-1 ${mode === 'matcher' ? 'bg-muted font-medium' : 'text-muted-foreground'}`}
+            onClick={() => setMode('matcher')}>Подбор</button>
+        </div>
+        {mode === 'matrix' && cat && cat.residenceTypes.length > 0 && (
           <MultiSelect
-            className="w-96"
+            className="w-80"
             placeholder="Все виды ВНЖ"
             showSearch
             showSelectAll
@@ -152,7 +162,7 @@ function ResidenceCountryView({
             onChange={(ids) => handleVisibleChange(ids, cat.residenceTypes.length)}
           />
         )}
-        {isOwner && cat && (
+        {mode === 'matrix' && isOwner && cat && (
           <div className="ml-auto">
             <Button size="sm" variant="outline" onClick={() => setManageOpen(true)}>
               <Settings2 className="w-4 h-4 mr-1" /> Справочники
@@ -171,7 +181,9 @@ function ResidenceCountryView({
         </Card>
       )}
 
-      {cat && (
+      {mode === 'matcher' && <ResidenceMatcher countryId={countryId} />}
+
+      {mode === 'matrix' && cat && (
         <ResidenceMatrix
           catalog={cat}
           visibleTypeIds={visibleTypeIds ?? undefined}
@@ -184,7 +196,7 @@ function ResidenceCountryView({
         />
       )}
 
-      {cat && (
+      {mode === 'matrix' && cat && (
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">{cat.residenceTypes.length} ВНЖ</Badge>
           <Badge variant="outline">{cat.criteria.length} критериев</Badge>
