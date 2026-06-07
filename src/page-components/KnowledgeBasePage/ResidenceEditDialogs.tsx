@@ -97,7 +97,7 @@ export function CriterionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-md">
+      <DialogContent className="w-full max-w-md [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Редактировать критерий' : 'Новый критерий'}</DialogTitle>
         </DialogHeader>
@@ -242,7 +242,7 @@ export function ConditionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-md">
+      <DialogContent className="w-full max-w-md [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle className="text-base">
             {criterion.title_ru || criterion.title_en}
@@ -387,7 +387,7 @@ export function AddConditionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-md">
+      <DialogContent className="w-full max-w-md [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle className="text-base">Добавить условие</DialogTitle>
           <p className="text-xs text-muted-foreground">для ВНЖ «{residenceTypeName}»</p>
@@ -511,7 +511,7 @@ export function ResidenceTypeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-md">
+      <DialogContent className="w-full max-w-md [&>*]:min-w-0">
         <DialogHeader><DialogTitle>Новый вид ВНЖ</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
