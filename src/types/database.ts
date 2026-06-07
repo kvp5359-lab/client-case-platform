@@ -361,6 +361,63 @@ export type Database = {
           },
         ]
       }
+      case_profiles: {
+        Row: {
+          answers: Json
+          computed_at: string | null
+          country_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          project_id: string
+          result_snapshot: Json | null
+          selected_residence_type_ids: string[]
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          answers?: Json
+          computed_at?: string | null
+          country_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          project_id: string
+          result_snapshot?: Json | null
+          selected_residence_type_ids?: string[]
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          answers?: Json
+          computed_at?: string | null
+          country_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          project_id?: string
+          result_snapshot?: Json | null
+          selected_residence_type_ids?: string[]
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_profiles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_profiles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           content: string
@@ -8559,6 +8616,45 @@ export type Database = {
           unread_reaction_count: number
         }[]
       }
+      get_inbox_thread_one: {
+        Args: { p_thread_id: string; p_user_id: string; p_workspace_id: string }
+        Returns: {
+          channel_type: string
+          counterpart_avatar_url: string
+          counterpart_name: string
+          email_contact: string
+          email_subject: string
+          has_unread_reaction: boolean
+          last_event_at: string
+          last_event_status_color: string
+          last_event_text: string
+          last_message_at: string
+          last_message_attachment_count: number
+          last_message_attachment_mime: string
+          last_message_attachment_name: string
+          last_message_text: string
+          last_reaction_at: string
+          last_reaction_emoji: string
+          last_reaction_message_preview: string
+          last_reaction_sender_avatar_url: string
+          last_reaction_sender_name: string
+          last_read_at: string
+          last_sender_avatar_url: string
+          last_sender_name: string
+          legacy_channel: string
+          manually_unread: boolean
+          project_id: string
+          project_name: string
+          thread_accent_color: string
+          thread_icon: string
+          thread_id: string
+          thread_name: string
+          thread_type: string
+          unread_count: number
+          unread_event_count: number
+          unread_reaction_count: number
+        }[]
+      }
       get_inbox_threads_page: {
         Args: {
           p_cursor_sort_at?: string
@@ -8606,6 +8702,45 @@ export type Database = {
         }[]
       }
       get_inbox_threads_v2: {
+        Args: { p_user_id: string; p_workspace_id: string }
+        Returns: {
+          channel_type: string
+          counterpart_avatar_url: string
+          counterpart_name: string
+          email_contact: string
+          email_subject: string
+          has_unread_reaction: boolean
+          last_event_at: string
+          last_event_status_color: string
+          last_event_text: string
+          last_message_at: string
+          last_message_attachment_count: number
+          last_message_attachment_mime: string
+          last_message_attachment_name: string
+          last_message_text: string
+          last_reaction_at: string
+          last_reaction_emoji: string
+          last_reaction_message_preview: string
+          last_reaction_sender_avatar_url: string
+          last_reaction_sender_name: string
+          last_read_at: string
+          last_sender_avatar_url: string
+          last_sender_name: string
+          legacy_channel: string
+          manually_unread: boolean
+          project_id: string
+          project_name: string
+          thread_accent_color: string
+          thread_icon: string
+          thread_id: string
+          thread_name: string
+          thread_type: string
+          unread_count: number
+          unread_event_count: number
+          unread_reaction_count: number
+        }[]
+      }
+      get_inbox_unread_threads: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: {
           channel_type: string
