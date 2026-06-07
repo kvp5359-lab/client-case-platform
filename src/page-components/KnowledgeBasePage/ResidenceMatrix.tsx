@@ -150,6 +150,9 @@ function CriterionRow({
   cell: MatrixCell
   onEditCriterion?: (criterion: ResidenceCriterion) => void
 }) {
+  // boolean = «да» → значение подразумевается, не показываем (само название = требование)
+  const hideValue = !!cell && typeof cell.value === 'boolean' && cell.value === true
+
   return (
     <div className="group/row px-3 py-0.5 text-sm leading-snug hover:bg-muted/30">
       <span>{crit.title_ru || crit.title_en}</span>
@@ -161,12 +164,16 @@ function CriterionRow({
           <title>{crit.question_ru || crit.title_ru}</title>
         </HelpCircle>
       )}
-      {' — '}
-      <span className={cn('font-medium', cell?.severity === 'critical' && 'text-foreground')}>
-        {formatCell(cell, crit)}
-      </span>
-      {cell?.conflict && (
-        <span className="text-amber-500" title="Разные значения в разных процедурах"> *</span>
+      {!hideValue && (
+        <>
+          {' — '}
+          <span className={cn('font-medium', cell?.severity === 'critical' && 'text-foreground')}>
+            {formatCell(cell, crit)}
+          </span>
+          {cell?.conflict && (
+            <span className="text-amber-500" title="Разные значения в разных процедурах"> *</span>
+          )}
+        </>
       )}
       {onEditCriterion && (
         <button
