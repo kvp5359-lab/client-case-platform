@@ -88,10 +88,10 @@ function GroupRows({
 }) {
   return (
     <>
-      <tr className="border-b bg-muted/20">
+      <tr className="border-y-2 border-border bg-muted">
         <td
           colSpan={residenceTypeIds.length + 1}
-          className="sticky left-0 px-3 py-1.5 text-xs font-semibold text-muted-foreground"
+          className="sticky left-0 bg-muted px-3 py-2 text-xs font-bold uppercase tracking-wide text-foreground"
         >
           📁 {row.group ? row.group.name_ru || row.group.name_en : 'Без группы'}
         </td>
