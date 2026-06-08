@@ -15,7 +15,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { useResidenceCountries } from '@/lib/residence/useResidenceCatalog'
+import { useResidenceCountries, useResidenceCatalog } from '@/lib/residence/useResidenceCatalog'
+import { MultiSelect } from '@/components/ui/multi-select'
 import type { Answers } from '@/lib/residence/ruleEvaluator'
 import { ResidenceMatcher } from '@/components/residence/ResidenceMatcher'
 import { useCaseProfile, useSaveCaseProfile, type CaseProfile } from '@/hooks/useCaseProfile'
@@ -43,18 +44,27 @@ function Inner({
   const countriesQ = useResidenceCountries()
   const [countryId, setCountryId] = useState<string | null>(profile?.country_id ?? null)
   const [answers, setAnswers] = useState<Answers>(profile?.answers ?? {})
+  // null = все ВНЖ; иначе — рассматриваемые. Старт из сохранённого.
+  const [visibleTypeIds, setVisibleTypeIds] = useState<string[] | null>(
+    profile?.selected_residence_type_ids?.length ? profile.selected_residence_type_ids : null,
+  )
   const [dirty, setDirty] = useState(false)
 
   const effectiveCountryId = useMemo(
     () => countryId ?? countriesQ.data?.[0]?.id ?? null,
     [countryId, countriesQ.data],
   )
+  const catalogQ = useResidenceCatalog(effectiveCountryId)
   const save = useSaveCaseProfile(projectId, workspaceId)
   const qc = useQueryClient()
 
   const handleSave = async () => {
     // 1) сохраняем ответы; 2) официальный расчёт снимка на сервере (Edge)
-    await save.mutateAsync({ country_id: effectiveCountryId, answers })
+    await save.mutateAsync({
+      country_id: effectiveCountryId,
+      answers,
+      selected_residence_type_ids: visibleTypeIds ?? [],
+    })
     try {
       await supabase.functions.invoke('residence-match', { body: { project_id: projectId } })
       qc.invalidateQueries({ queryKey: ['case-profile', projectId] })
@@ -91,6 +101,22 @@ function Inner({
             ))}
           </SelectContent>
         </Select>
+        {catalogQ.data && catalogQ.data.residenceTypes.length > 0 && (
+          <MultiSelect
+            className="w-80"
+            placeholder="Все виды ВНЖ"
+            showSearch
+            showSelectAll
+            maxVisibleTags={2}
+            searchPlaceholder="Поиск ВНЖ…"
+            options={catalogQ.data.residenceTypes.map((t) => ({ value: t.id, label: t.name_ru || t.name_en }))}
+            value={visibleTypeIds ?? catalogQ.data.residenceTypes.map((t) => t.id)}
+            onChange={(ids) => {
+              setVisibleTypeIds(ids.length === catalogQ.data!.residenceTypes.length ? null : ids)
+              setDirty(true)
+            }}
+          />
+        )}
         <div className="ml-auto flex items-center gap-2">
           {!dirty && profile && <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><Check className="h-3 w-3" /> сохранено</span>}
           <Button size="sm" onClick={handleSave} disabled={save.isPending || !dirty}>
@@ -104,6 +130,7 @@ function Inner({
           countryId={effectiveCountryId}
           answers={answers}
           onAnswersChange={(a) => { setAnswers(a); setDirty(true) }}
+          visibleTypeIds={visibleTypeIds ?? undefined}
         />
       )}
     </div>

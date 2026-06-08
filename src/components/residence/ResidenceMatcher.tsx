@@ -17,6 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { useResidenceCatalog, useCurrentStatuses } from '@/lib/residence/useResidenceCatalog'
+import { buildResidenceMatrix } from '@/lib/residence/matrix'
 import { evaluateResidenceTypes, type Answers, type EvalStatus } from '@/lib/residence/ruleEvaluator'
 import type { ResidenceCriterion } from '@/lib/residence/types'
 
@@ -24,11 +25,14 @@ export function ResidenceMatcher({
   countryId,
   answers,
   onAnswersChange,
+  visibleTypeIds,
 }: {
   countryId: string
   /** Контролируемые ответы (для персиста). Если не задано — внутренний стейт. */
   answers?: Answers
   onAnswersChange?: (a: Answers) => void
+  /** Если задан — вопросы и результат сужаются до этих ВНЖ. */
+  visibleTypeIds?: string[]
 }) {
   const catalogQ = useResidenceCatalog(countryId)
   const statusesQ = useCurrentStatuses(countryId)
@@ -41,10 +45,13 @@ export function ResidenceMatcher({
   const setAnswer = (field: string, value: Answers[string]) => setAnswers({ ...a, [field]: value })
 
   const cat = catalogQ.data
-  const askable = useMemo(
-    () => (cat?.criteria ?? []).filter((c) => c.is_askable),
-    [cat?.criteria],
-  )
+  // анкетируемые критерии; при фильтре по ВНЖ — только используемые в выбранных
+  const askable = useMemo(() => {
+    const all = (cat?.criteria ?? []).filter((c) => c.is_askable)
+    if (!cat || !visibleTypeIds || visibleTypeIds.length === 0) return all
+    const cells = buildResidenceMatrix(cat).cells
+    return all.filter((c) => visibleTypeIds.some((rtId) => cells.get(c.field_key)?.has(rtId)))
+  }, [cat, visibleTypeIds])
   // группы с анкетируемыми критериями
   const groups = useMemo(() => {
     if (!cat) return []
@@ -57,8 +64,8 @@ export function ResidenceMatcher({
   }, [cat, askable])
 
   const result = useMemo(
-    () => (cat ? evaluateResidenceTypes(cat, a) : []),
-    [cat, a],
+    () => (cat ? evaluateResidenceTypes(cat, a, visibleTypeIds && visibleTypeIds.length ? visibleTypeIds : undefined) : []),
+    [cat, a, visibleTypeIds],
   )
 
   if (catalogQ.isLoading) return <Skeleton className="h-64 w-full" />
