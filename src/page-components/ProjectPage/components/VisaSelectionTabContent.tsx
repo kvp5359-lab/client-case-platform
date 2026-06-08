@@ -112,8 +112,11 @@ function Inner({
             options={catalogQ.data.residenceTypes.map((t) => ({ value: t.id, label: t.name_ru || t.name_en }))}
             value={visibleTypeIds ?? catalogQ.data.residenceTypes.map((t) => t.id)}
             onChange={(ids) => {
-              setVisibleTypeIds(ids.length === catalogQ.data!.residenceTypes.length ? null : ids)
+              const next = ids.length === catalogQ.data!.residenceTypes.length ? null : ids
+              setVisibleTypeIds(next)
               setDirty(true)
+              // авто-сохраняем выбор ВНЖ (часть профиля проекта) — переживёт обновление
+              save.mutate({ country_id: effectiveCountryId, answers, selected_residence_type_ids: next ?? [] })
             }}
           />
         )}
