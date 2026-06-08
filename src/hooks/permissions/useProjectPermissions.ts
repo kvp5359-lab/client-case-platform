@@ -81,6 +81,7 @@ const FULL_MODULE_ACCESS: ProjectModuleAccess = {
   project_context: true,
   finance: true,
   plan: true,
+  visa_selection: true,
 }
 
 // Полный набор разрешений — для workspace-администраторов
