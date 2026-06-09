@@ -24,6 +24,7 @@ import { GmailSection } from './ProfilePage/GmailSection'
 import { AppSettingsSection } from './ProfilePage/AppSettingsSection'
 import { TranslationLanguageSection } from './ProfilePage/TranslationLanguageSection'
 import { ProfilePersonalTelegramSection } from './ProfilePage/PersonalTelegramSection'
+import { WazzupNumbersSection } from './ProfilePage/WazzupNumbersSection'
 import { Database } from '@/types/database'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { toast } from 'sonner'
@@ -362,6 +363,9 @@ export function ProfilePage() {
 
           {/* Личный Telegram (Business / MTProto) — подключает сам сотрудник */}
           <ProfilePersonalTelegramSection workspaceId={lastWorkspaceId} />
+
+          {/* WhatsApp / Instagram (Wazzup) — назначенные номера, только просмотр */}
+          <WazzupNumbersSection workspaceId={lastWorkspaceId} />
 
           {/* Перевод сообщений */}
           <TranslationLanguageSection />
