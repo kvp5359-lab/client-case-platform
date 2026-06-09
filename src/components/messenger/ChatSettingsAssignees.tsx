@@ -128,6 +128,9 @@ export function ChatSettingsAssignees({
               )}
             </div>
           </div>
+          <p className="px-3 py-1.5 text-[11px] leading-snug text-amber-700 dark:text-amber-400 bg-amber-50/70 dark:bg-amber-950/30 border-b">
+            Исполнитель получит доступ к задаче и всей её переписке, даже без доступа к проекту.
+          </p>
           <div className="max-h-[300px] overflow-y-auto py-1">
             {groups.map((g, i) => (
               <div key={g.label}>

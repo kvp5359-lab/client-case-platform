@@ -236,6 +236,10 @@ export function ChatSettingsAccess({
             </div>
           </div>
 
+          <p className="px-3 py-1.5 text-[11px] leading-snug text-amber-700 dark:text-amber-400 bg-amber-50/70 dark:bg-amber-950/30 border-b">
+            Добавленный участник увидит {isTask ? 'задачу' : 'чат'} и всю переписку с самого начала, даже без доступа к проекту.
+          </p>
+
           <div
             className="max-h-[300px] overflow-y-auto overscroll-contain py-1"
             onWheel={(e) => e.stopPropagation()}
