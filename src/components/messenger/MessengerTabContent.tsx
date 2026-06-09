@@ -30,6 +30,7 @@ import {
   useIsMtprotoThread,
 } from '@/hooks/messenger/useBackfillTelegramHistory'
 import { useScheduleMessage } from '@/hooks/messenger/useScheduleMessage'
+import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
 
 type MessengerTabContentProps = {
@@ -64,6 +65,17 @@ export function MessengerTabContent({
   const { data: directThread } = useProjectThreadById(threadId, true)
   const currentThread = allThreads.find((t) => t.id === threadId) ?? directThread ?? undefined
   const hasClientParticipant = useThreadHasClient(currentThread)
+  const { user } = useAuth()
+
+  // Чужой личный диалог: тред без проекта, владелец которого — не текущий
+  // пользователь (владелец воркспейса / менеджер смотрит переписку сотрудника).
+  // В таком треде не подсвечиваем «непрочитанное» — это не наша переписка,
+  // красный контур на всех сообщениях бессмыслен.
+  const isForeignPersonalThread =
+    !!currentThread &&
+    currentThread.project_id === null &&
+    !!currentThread.owner_user_id &&
+    currentThread.owner_user_id !== user?.id
 
   // MTProto-бэкфилл истории через `Api.messages.GetHistory`. Кнопка
   // «Загрузить ещё из Telegram» появляется в MessageList только когда тред
@@ -303,6 +315,7 @@ export function MessengerTabContent({
             isMtprotoThread ? () => backfillMutation.mutate() : undefined
           }
           isBackfilling={backfillMutation.isPending}
+          suppressUnread={isForeignPersonalThread}
         />
 
         {/* Кнопка Прочитано/Непрочитано — наезжает на список через negative margin */}

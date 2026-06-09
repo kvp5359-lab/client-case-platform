@@ -42,6 +42,12 @@ type MessageListProps = {
   onBackfillFromTelegram?: () => void
   /** Идёт ли сейчас запрос бэкфилла (для дизейбла кнопки и спиннера). */
   isBackfilling?: boolean
+  /**
+   * Подавить подсветку «непрочитанного» (красный контур + разделитель).
+   * Включается для чужих личных диалогов, которые владелец/менеджер открыл
+   * на просмотр — там отметка прочтения не его, и подсветка бессмысленна.
+   */
+  suppressUnread?: boolean
 }
 
 /** Разделитель дат */
@@ -98,6 +104,7 @@ export function MessageList({
   onJumpComplete,
   onBackfillFromTelegram,
   isBackfilling = false,
+  suppressUnread = false,
 }: MessageListProps) {
   const {
     currentParticipantId,
@@ -313,11 +320,12 @@ export function MessageList({
   // форматах (с T или с пробелом, с микросекундами или без), string-compare даёт сюрпризы.
   const lastReadAtMs = useMemo(() => (lastReadAt ? Date.parse(lastReadAt) : null), [lastReadAt])
   const firstUnreadIndex = useMemo(() => {
+    if (suppressUnread) return -1
     if (lastReadAtMs === null) return -1
     return messages.findIndex(
       (m) => Date.parse(m.created_at) > lastReadAtMs && m.sender_participant_id !== currentParticipantId,
     )
-  }, [messages, lastReadAtMs, currentParticipantId])
+  }, [messages, lastReadAtMs, currentParticipantId, suppressUnread])
 
   // Build a set of audit event timestamps to insert between messages
   // Each event maps to: insert AFTER the last message with created_at <= event.created_at
@@ -407,6 +415,7 @@ export function MessageList({
             // Если last_read_at отсутствует — тред никогда не открывался, все чужие события непрочитанные.
             // Пока lastReadAt ещё грузится (isLastReadAtLoaded=false) — не подсвечиваем, чтобы не мигало.
             const eventIsUnread =
+              !suppressUnread &&
               isLastReadAtLoaded &&
               item.event.user_id !== currentUserId &&
               (lastReadAtMs === null || Date.parse(item.event.created_at) > lastReadAtMs)
@@ -436,6 +445,7 @@ export function MessageList({
           // Если last_read_at отсутствует — тред никогда не открывался, все чужие сообщения непрочитанные.
           // Пока lastReadAt ещё грузится (isLastReadAtLoaded=false) — не подсвечиваем, чтобы не мигало.
           const isUnread =
+            !suppressUnread &&
             isLastReadAtLoaded &&
             !isOwn &&
             msg.sender_participant_id !== currentParticipantId &&
