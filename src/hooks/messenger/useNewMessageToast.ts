@@ -98,6 +98,24 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             if (myParticipantIdsRef.current.has(msg.sender_participant_id)) return
           }
 
+          // Личные диалоги (тред без project_id: TG Business / MTProto / Wazzup /
+          // личная почта) — уведомление показываем ТОЛЬКО владельцу диалога.
+          // Иначе владелец воркспейса и менеджеры с полным доступом (RLS пускает
+          // их ко всем сообщениям) получали бы тосты о чужих личных переписках.
+          // Проектные/клиентские треды не трогаем — там уведомление по доступу
+          // к проекту это правильно.
+          if (!msg.project_id && msg.thread_id) {
+            const currentUserId = userRef.current?.id
+            const { data: ownerRow } = await supabase
+              .from('project_threads')
+              .select('owner_user_id')
+              .eq('id', msg.thread_id)
+              .maybeSingle()
+            const ownerUserId =
+              (ownerRow as { owner_user_id?: string | null } | null)?.owner_user_id ?? null
+            if (ownerUserId && ownerUserId !== currentUserId) return
+          }
+
           const ws = queryClient.getQueryData<Workspace>(workspaceKeys.detail(workspaceId))
           const durationSec = ws?.notification_toast_duration ?? 5
           const duration = durationSec === 0 ? Infinity : durationSec * 1000
