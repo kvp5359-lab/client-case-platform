@@ -18,6 +18,7 @@ import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProfileInfoSection } from './ProfilePage/ProfileInfoSection'
 import { GoogleDriveSection } from './ProfilePage/GoogleDriveSection'
 import { GmailSection } from './ProfilePage/GmailSection'
@@ -350,35 +351,43 @@ export function ProfilePage() {
           {/* Информация о профиле */}
           <ProfileInfoSection user={user} />
 
-          {/* Интеграции */}
-          <GoogleDriveSection
-            connected={googleDriveConnected}
-            loading={googleDriveLoading || disconnectGoogleDriveMutation.isPending}
-            onConnect={handleConnectGoogleDrive}
-            onDisconnect={handleDisconnectGoogleDrive}
-          />
+          {/* Интеграции — единый список сворачиваемых строк */}
+          <Card className="mb-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Интеграции</CardTitle>
+              <CardDescription>Подключённые сервисы для переписки и работы</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0 divide-y border-t">
+              <GoogleDriveSection
+                connected={googleDriveConnected}
+                loading={googleDriveLoading || disconnectGoogleDriveMutation.isPending}
+                onConnect={handleConnectGoogleDrive}
+                onDisconnect={handleDisconnectGoogleDrive}
+              />
+              <GmailSection workspaceId={lastWorkspaceId} />
+              <ProfilePersonalTelegramSection workspaceId={lastWorkspaceId} />
+              <WazzupNumbersSection workspaceId={lastWorkspaceId} />
+            </CardContent>
+          </Card>
 
-          {/* Gmail */}
-          <GmailSection workspaceId={lastWorkspaceId} />
-
-          {/* Личный Telegram (Business / MTProto) — подключает сам сотрудник */}
-          <ProfilePersonalTelegramSection workspaceId={lastWorkspaceId} />
-
-          {/* WhatsApp / Instagram (Wazzup) — назначенные номера, только просмотр */}
-          <WazzupNumbersSection workspaceId={lastWorkspaceId} />
-
-          {/* Перевод сообщений */}
-          <TranslationLanguageSection />
-
-          {/* Настройки приложения */}
-          <AppSettingsSection
-            settings={localSettings}
-            loading={loading}
-            saving={saveSettingsMutation.isPending}
-            onSettingsChange={setLocalSettings}
-            onSave={() => saveSettingsMutation.mutate()}
-            onCancel={handleCancelSettings}
-          />
+          {/* Настройки — единый список сворачиваемых строк */}
+          <Card className="mb-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Настройки</CardTitle>
+              <CardDescription>Личные предпочтения и параметры</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0 divide-y border-t">
+              <TranslationLanguageSection />
+              <AppSettingsSection
+                settings={localSettings}
+                loading={loading}
+                saving={saveSettingsMutation.isPending}
+                onSettingsChange={setLocalSettings}
+                onSave={() => saveSettingsMutation.mutate()}
+                onCancel={handleCancelSettings}
+              />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </WorkspaceLayout>

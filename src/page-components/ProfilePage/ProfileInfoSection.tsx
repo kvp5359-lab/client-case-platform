@@ -20,8 +20,8 @@ export const ProfileInfoSection = memo(function ProfileInfoSection({
 }: ProfileInfoSectionProps) {
   return (
     <Card className="mb-6">
-      <CardHeader>
-        <CardTitle>Информация профиля</CardTitle>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Информация профиля</CardTitle>
         <CardDescription>Ваши основные данные и статус</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
