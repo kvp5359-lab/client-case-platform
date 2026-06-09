@@ -20,6 +20,7 @@ export {
   useThreadIdByChannel,
 } from './useProjectThreads.queries'
 export {
+  useChangeThreadOwner,
   useCreateThread,
   useDeleteThread,
   usePinThread,

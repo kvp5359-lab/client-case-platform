@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import {
   accessibleProjectKeys,
   inboxKeys,
+  invalidateAfterThreadMove,
   invalidateMessengerCaches,
   messengerKeys,
   myTaskCountsKeys,
@@ -414,6 +415,52 @@ export function useUpdateThread() {
           queryKey: messengerKeys.projectThreads(params.project_id),
         })
       }
+    },
+  })
+}
+
+/**
+ * Передать личный диалог другому сотруднику — сменить owner_user_id треда.
+ *
+ * Применимо к тредам без project_id (TG Business / MTProto / Wazzup / личная
+ * почта): диалог уезжает в «Личные диалоги» нового владельца, и новые входящие
+ * по этому каналу маршрутизируются ему. История сообщений переезжает вместе с
+ * тредом (сообщения привязаны к thread_id). Старый владелец доступ теряет.
+ */
+export function useChangeThreadOwner(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (params: { threadId: string; newOwnerUserId: string }) => {
+      const { data: old } = await supabase
+        .from('project_threads')
+        .select('owner_user_id, name')
+        .eq('id', params.threadId)
+        .single()
+
+      const { error } = await supabase
+        .from('project_threads')
+        .update({ owner_user_id: params.newOwnerUserId })
+        .eq('id', params.threadId)
+      if (error) throw error
+
+      logAuditAction('change_settings', 'thread', params.threadId, {
+        name: old?.name,
+        old_owner_user_id: old?.owner_user_id,
+        new_owner_user_id: params.newOwnerUserId,
+      })
+
+      return params
+    },
+    onSuccess: (params) => {
+      // Тред переезжает между владельцами — сбрасываем все списки личных
+      // диалогов, инбоксы, сайдбар и счётчики (как при перемещении треда).
+      invalidateAfterThreadMove(queryClient, workspaceId)
+      queryClient.invalidateQueries({ queryKey: projectThreadKeys.byId(params.threadId) })
+      toast.success('Диалог передан')
+    },
+    onError: (err: Error) => {
+      toast.error(`Не удалось передать диалог: ${err.message}`)
     },
   })
 }

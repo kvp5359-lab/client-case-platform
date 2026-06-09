@@ -38,6 +38,7 @@ import { ChatSettingsProjectSelector } from './ChatSettingsProjectSelector'
 import { ChatSettingsAssignees } from './ChatSettingsAssignees'
 import { ChatSettingsAccess } from './ChatSettingsAccess'
 import { ChatSettingsChannels } from './ChatSettingsChannels'
+import { ChatSettingsChannelInfo } from './ChatSettingsChannelInfo'
 import { ChatSettingsTimeRangePicker } from './ChatSettingsTimeRangePicker'
 import { ChatSettingsStatusPopover } from './ChatSettingsStatusPopover'
 import { useChatSettingsFormState } from './hooks/useChatSettingsFormState'
@@ -66,6 +67,14 @@ export function ChatSettingsDialog({
   const { user } = useAuth()
   const resolvedWorkspaceId = chat ? chat.workspace_id : propWorkspaceId
   const composeRef = useRef<ComposeFieldHandle>(null)
+
+  // Личный диалог (без проекта), привязанный к каналу Wazzup / TG Business —
+  // для него вместо «Подключить канал» показываем блок «Канал» с типом, номером
+  // и передачей ответственного.
+  const isPersonalChannelThread =
+    !!chat &&
+    chat.project_id === null &&
+    (!!chat.wazzup_channel_id || !!chat.business_connection_id)
 
   // Файлы первого сообщения — для UI-проверки лимита email-вложений.
   // ComposeField пушит изменения через onFilesChange.
@@ -261,8 +270,18 @@ export function ChatSettingsDialog({
             hasProject={!!(form.selectedProjectId ?? propProjectId)}
           />
 
-          {/* Каналы */}
-          {(form.isEditMode || form.tabMode !== 'task') && (
+          {/* Канал личного диалога (Wazzup / TG Business): показываем тип + номер
+              + передачу ответственному. Для таких тредов блок «Подключить канал»
+              ниже не нужен — канал уже подключён. */}
+          {isPersonalChannelThread && chat ? (
+            <ChatSettingsChannelInfo
+              thread={chat}
+              workspaceId={chat.workspace_id}
+              participants={actions.effectiveParticipants}
+            />
+          ) : (
+          /* Каналы */
+          (form.isEditMode || form.tabMode !== 'task') && (
             <ChatSettingsChannels
               tabMode={form.tabMode}
               channelType={form.channelType}
@@ -297,6 +316,7 @@ export function ChatSettingsDialog({
               onSetSubjectTouched={form.setSubjectTouched}
               onSetEmailDropdownOpen={form.setEmailDropdownOpen}
             />
+          )
           )}
         </div>
 

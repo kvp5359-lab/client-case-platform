@@ -49,6 +49,12 @@ export type ProjectThread = {
   wazzup_channel_id: string | null
   /** ID чата в Wazzup (телефон без `+` для WA, username для IG). */
   wazzup_chat_id: string | null
+  /**
+   * Владелец личного диалога (треды без project_id: TG Business / MTProto /
+   * Wazzup / личная почта). Определяет, у кого диалог показывается и кому
+   * приходят новые входящие. NULL для проектных тредов.
+   */
+  owner_user_id: string | null
   /** Контакт-собеседник треда (для личных диалогов email/wazzup/telegram). NULL для проектных тредов и тредов между сотрудниками. */
   contact_participant_id: string | null
   created_at: string
