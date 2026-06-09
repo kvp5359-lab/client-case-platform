@@ -116,15 +116,16 @@ export async function downloadAttachments(
     .update({ attachment_status: "pending", attachment_error: null })
     .eq("id", messageId);
 
-  const skippedTooLarge: string[] = [];
+  const skippedTooLarge: { name: string; sizeMb: number }[] = [];
   const failed: FailedFile[] = [];
   let ok = 0;
 
   for (const f of files) {
     const result = await processSingleFile(f, messageId, workspaceId, projectId);
     if (result.kind === "ok") ok++;
-    else if (result.kind === "too_large") skippedTooLarge.push(f.originalName);
-    else failed.push(result.info);
+    else if (result.kind === "too_large") {
+      skippedTooLarge.push({ name: f.originalName, sizeMb: result.sizeMb });
+    } else failed.push(result.info);
   }
 
   // Итоговое состояние сообщения:
@@ -157,12 +158,24 @@ export async function downloadAttachments(
       .select("content")
       .eq("id", messageId)
       .single();
+    const fmt = (s: number) => s.toFixed(1).replace(".", ",");
     const warn = skippedTooLarge.length === 1
-      ? `\n\n⚠️ Файл «${skippedTooLarge[0]}» слишком большой (макс. ${MAX_FILE_SIZE_MB} МБ через Telegram)`
-      : `\n\n⚠️ Файлы слишком большие:\n${skippedTooLarge.map((n) => `• ${n}`).join("\n")}`;
+      ? `\n\n⚠️ Файл «${skippedTooLarge[0].name}» слишком большой — ${fmt(skippedTooLarge[0].sizeMb)} МБ (макс. ${MAX_FILE_SIZE_MB} МБ через Telegram)`
+      : `\n\n⚠️ Файлы слишком большие:\n${skippedTooLarge.map((f) => `• ${f.name} (${fmt(f.sizeMb)} МБ)`).join("\n")}`;
     await service
       .from("project_messages")
-      .update({ content: (cur?.content ?? "") + warn })
+      .update({
+        content: (cur?.content ?? "") + warn,
+        // Диагностика: фактический размер скачанного файла. Для сжатого фото
+        // >20 МБ нетипично — если всплывёт «2 МБ», значит баг подсчёта/скачивания,
+        // а не реально большой файл. Открытый вопрос в messenger-ledger.md.
+        attachment_error: {
+          stage: "too_large",
+          files: skippedTooLarge,
+          limit_mb: MAX_FILE_SIZE_MB,
+          at: new Date().toISOString(),
+        },
+      })
       .eq("id", messageId);
   }
 
@@ -171,7 +184,7 @@ export async function downloadAttachments(
 
 type ProcessResult =
   | { kind: "ok" }
-  | { kind: "too_large" }
+  | { kind: "too_large"; sizeMb: number }
   | { kind: "failed"; info: FailedFile };
 
 async function processSingleFile(
@@ -196,7 +209,7 @@ async function processSingleFile(
 
   const sizeMb = dl.buffer.byteLength / (1024 * 1024);
   if (sizeMb > MAX_FILE_SIZE_MB) {
-    return { kind: "too_large" };
+    return { kind: "too_large", sizeMb };
   }
 
   const storagePath = `${workspaceId}/${projectId}/${messageId}/${f.safeName}`;
