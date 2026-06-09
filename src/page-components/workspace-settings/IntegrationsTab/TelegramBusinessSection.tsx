@@ -41,13 +41,20 @@ type UserTelegramLinkRow = {
 export function TelegramBusinessSection({
   workspaceId,
   employees,
+  selfOnly = false,
 }: {
   workspaceId: string
   employees: WorkspaceParticipant[]
+  /** В профиле сотрудника — показываем только свою строку, без обзора по всем. */
+  selfOnly?: boolean
 }) {
   const { user } = useAuth()
   const currentUserId = user?.id ?? null
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
+
+  const visibleEmployees = selfOnly
+    ? employees.filter((e) => e.user_id === currentUserId)
+    : employees
 
   // Подключения через @clientcase_bot. Видны: своё (всегда), все
   // сотрудников воркспейса (если у текущего юзера manage_workspace_settings).
@@ -115,15 +122,19 @@ export function TelegramBusinessSection({
               </CardDescription>
             </div>
           </div>
-          <Badge variant="outline" className="text-xs">
-            {activeCount > 0 ? `Активно: ${activeCount}` : 'Никто не подключён'}
-          </Badge>
+          {!selfOnly && (
+            <Badge variant="outline" className="text-xs">
+              {activeCount > 0 ? `Активно: ${activeCount}` : 'Никто не подключён'}
+            </Badge>
+          )}
         </CardHeader>
         <CardContent className="space-y-2">
-          {employees.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Нет сотрудников в воркспейсе.</p>
+          {visibleEmployees.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {selfOnly ? 'Профиль сотрудника не найден.' : 'Нет сотрудников в воркспейсе.'}
+            </p>
           ) : (
-            employees.map((emp) => {
+            visibleEmployees.map((emp) => {
               if (!emp.user_id) return null
               const fullName =
                 [emp.name, emp.last_name].filter(Boolean).join(' ') || emp.email || '—'

@@ -13,9 +13,12 @@ import { TelegramMTProtoSection } from './TelegramMTProtoSection'
 export function PersonalTelegramSection({
   workspaceId,
   employees,
+  selfOnly = false,
 }: {
   workspaceId: string
   employees: WorkspaceParticipant[]
+  /** В профиле сотрудника — только своя строка подключения, без списка всех. */
+  selfOnly?: boolean
 }) {
   return (
     <Tabs defaultValue="mtproto" className="space-y-4">
@@ -24,10 +27,10 @@ export function PersonalTelegramSection({
         <TabsTrigger value="business">Telegram Business (Premium)</TabsTrigger>
       </TabsList>
       <TabsContent value="mtproto" className="mt-2">
-        <TelegramMTProtoSection workspaceId={workspaceId} employees={employees} />
+        <TelegramMTProtoSection workspaceId={workspaceId} employees={employees} selfOnly={selfOnly} />
       </TabsContent>
       <TabsContent value="business" className="mt-2">
-        <TelegramBusinessSection workspaceId={workspaceId} employees={employees} />
+        <TelegramBusinessSection workspaceId={workspaceId} employees={employees} selfOnly={selfOnly} />
       </TabsContent>
     </Tabs>
   )
