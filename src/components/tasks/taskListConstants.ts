@@ -29,11 +29,13 @@ export const GROUP_ORDER: DeadlineGroup[] = [
   'no_deadline',
 ]
 
+// Палитра выровнена с единым акцентом срока (см. getDeadlineAccentClass):
+// просрочено → красный, сегодня → оранжевый, завтра → синий, неделя → зелёный.
 export const GROUP_COLORS: Record<DeadlineGroup, string> = {
   overdue: 'text-red-600',
-  today: 'text-blue-600',
-  tomorrow: 'text-amber-600',
-  this_week: 'text-emerald-600',
+  today: 'text-orange-600',
+  tomorrow: 'text-blue-600',
+  this_week: 'text-green-600',
   later: 'text-muted-foreground',
   no_deadline: 'text-muted-foreground/60',
 }

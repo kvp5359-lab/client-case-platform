@@ -12,6 +12,7 @@ import { TranslationSettingsSection } from './components/TranslationSettingsSect
 import { KnowledgeSummaryPromptSection } from './components/KnowledgeSummaryPromptSection'
 import { NotificationSettingsSection } from './components/NotificationSettingsSection'
 import { SendDelaySettingsSection } from './components/SendDelaySettingsSection'
+import { DeadlineFormatSection } from './components/DeadlineFormatSection'
 
 export function GeneralSettingsTab() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -29,6 +30,7 @@ export function GeneralSettingsTab() {
 
       <NotificationSettingsSection workspaceId={workspaceId} />
       <SendDelaySettingsSection workspaceId={workspaceId} />
+      <DeadlineFormatSection workspaceId={workspaceId} />
       <AISettingsSection workspaceId={workspaceId} />
       <TranslationSettingsSection workspaceId={workspaceId} />
       <VoyageAISettingsSection workspaceId={workspaceId} />

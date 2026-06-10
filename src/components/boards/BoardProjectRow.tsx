@@ -8,7 +8,9 @@ import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField } from './types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
-import { formatDeadline, isOverdue } from './boardListUtils'
+import { getDeadlineAccentClass, formatDeadlineDisplay, type DeadlineNearFormat, type DeadlineFarFormat } from '@/utils/deadlineUtils'
+import { useDeadlineFormat } from '@/hooks/useDeadlineFormat'
+import { formatDeadline } from './boardListUtils'
 import { resolveCardLayout, fieldStyleToClasses, visibleFieldsToLayout } from './cardLayoutUtils'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
 
@@ -30,7 +32,7 @@ function ProjectField({
   style,
   project,
   deadline,
-  overdue,
+  deadlineFormat,
   nextTask,
   authorName,
   statusName,
@@ -40,7 +42,7 @@ function ProjectField({
   style: CardFieldStyle
   project: BoardProject
   deadline: string | null
-  overdue: boolean
+  deadlineFormat: { near: DeadlineNearFormat; far: DeadlineFarFormat }
   nextTask?: WorkspaceTask
   authorName?: string | null
   statusName: string | null
@@ -83,7 +85,7 @@ function ProjectField({
     case 'deadline':
       if (!deadline) return null
       return (
-        <span className={cn(classes, 'shrink-0', overdue ? 'text-red-500' : 'text-muted-foreground')}>
+        <span className={cn(classes, 'shrink-0', getDeadlineAccentClass(project.deadline, { variant: 'text' }))}>
           {deadline}
         </span>
       )
@@ -118,15 +120,14 @@ function ProjectField({
       if (!nextTask || !nextTask.deadline) {
         return <span className={cn(classes, 'shrink-0 text-muted-foreground/40')}>—</span>
       }
-      const taskOverdue = isOverdue(nextTask.deadline)
-      const taskDeadline = formatDeadline(nextTask.deadline)
+      const taskDeadline = formatDeadlineDisplay(nextTask.deadline, deadlineFormat)
       return (
         <span className={cn(classes, 'min-w-0 flex items-center gap-1.5 truncate')}>
           <span className="truncate text-muted-foreground">
             {nextTask.name}
           </span>
           {taskDeadline && (
-            <span className={cn('shrink-0', taskOverdue ? 'text-red-500' : 'text-muted-foreground/60')}>
+            <span className={cn('shrink-0', getDeadlineAccentClass(nextTask.deadline, { variant: 'text' }))}>
               {taskDeadline}
             </span>
           )}
@@ -152,8 +153,8 @@ export function BoardProjectRow({
   const router = useRouter()
   const layoutPanel = useLayoutTaskPanel()
   const href = `/workspaces/${workspaceId}/projects/${project.id}`
-  const deadline = formatDeadline(project.deadline)
-  const overdue = isOverdue(project.deadline)
+  const deadlineFormat = useDeadlineFormat()
+  const deadline = formatDeadlineDisplay(project.deadline, deadlineFormat)
 
   // Resolve status name/color через единый кэш статусов воркспейса.
   // useQuery с одинаковым ключом не делает повторных запросов.
@@ -183,7 +184,7 @@ export function BoardProjectRow({
     }
   }
 
-  const fieldProps = { project, deadline, overdue, nextTask, authorName, statusName, statusColor }
+  const fieldProps = { project, deadline, deadlineFormat, nextTask, authorName, statusName, statusColor }
   const isCards = displayMode === 'cards'
   const selectedOutlineColor = statusColor ?? 'hsl(var(--brand-500))'
   const selectedStyle = isSelected

@@ -10,7 +10,9 @@ import { TaskActionsMenu } from '@/components/tasks/TaskActionsMenu'
 import { useThreadCounterpartName } from '@/hooks/messenger/useThreadCounterpartName'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField } from './types'
-import { formatDeadline, formatTimeRange, isOverdue } from './boardListUtils'
+import { getDeadlineAccentClass, formatDeadlineDisplay } from '@/utils/deadlineUtils'
+import { useDeadlineFormat } from '@/hooks/useDeadlineFormat'
+import { formatTimeRange, isOverdue } from './boardListUtils'
 import { resolveCardLayout, fieldStyleToClasses, visibleFieldsToLayout } from './cardLayoutUtils'
 
 type BoardTaskRowProps = {
@@ -138,7 +140,7 @@ function TaskField({
     case 'deadline':
       if (!deadline) return null
       return (
-        <span className={cn(classes, 'shrink-0', overdue ? 'text-red-500' : 'text-muted-foreground')}>
+        <span className={cn(classes, 'shrink-0', getDeadlineAccentClass(task.deadline, { variant: 'text' }))}>
           {deadline}
         </span>
       )
@@ -225,7 +227,8 @@ export function BoardTaskRow({
   isSelected,
   cardLayout,
 }: BoardTaskRowProps) {
-  const deadline = formatDeadline(task.deadline)
+  const deadlineFormat = useDeadlineFormat()
+  const deadline = formatDeadlineDisplay(task.deadline, deadlineFormat)
   const overdue = isOverdue(task.deadline)
   const currentStatus = statuses.find((s) => s.id === task.status_id) ?? null
 

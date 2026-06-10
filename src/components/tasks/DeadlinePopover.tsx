@@ -17,16 +17,13 @@
 
 import { Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatShortDate, formatDateToString } from '@/utils/format/dateFormat'
-
-/** Разница в КАЛЕНДАРНЫХ днях между сроком и сегодня (по локальной дате). */
-function deadlineDayDiff(deadline: string): number {
-  const d = new Date(deadline)
-  const dd = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  return Math.round((dd.getTime() - today.getTime()) / 86_400_000)
-}
+import {
+  getDeadlineAccentClass,
+  formatDeadlineDisplay,
+  type DeadlineNearFormat,
+  type DeadlineFarFormat,
+} from '@/utils/deadlineUtils'
+import { useDeadlineFormat } from '@/hooks/useDeadlineFormat'
 import { TaskTimePickerPopover, type TaskTimeValue } from './TaskTimePickerPopover'
 
 function formatHM(d: Date): string {
@@ -40,7 +37,13 @@ function formatHM(d: Date): string {
  *   - "17 мая 09:00" — с временем (одна дата)
  *   - "17 мая 22:00 → 18 мая 06:00" — встреча через ночь
  */
-function buildChipSummary(deadline: string, startAt: string | null, endAt: string | null): string {
+function buildChipSummary(
+  deadline: string,
+  startAt: string | null,
+  endAt: string | null,
+  fmt: { near: DeadlineNearFormat; far: DeadlineFarFormat },
+): string {
+  const d = (date: Date) => formatDeadlineDisplay(date, fmt) ?? ''
   if (startAt && endAt) {
     const s = new Date(startAt)
     const e = new Date(endAt)
@@ -53,14 +56,14 @@ function buildChipSummary(deadline: string, startAt: string | null, endAt: strin
       s.getHours() === 0 && s.getMinutes() === 0 &&
       e.getHours() === 23 && e.getMinutes() === 59
     if (isMultiDayAllDay) {
-      return `${formatShortDate(formatDateToString(s))} — ${formatShortDate(formatDateToString(e))}`
+      return `${d(s)} — ${d(e)}`
     }
     if (sameDay) {
-      return `${formatShortDate(formatDateToString(s))} ${formatHM(s)}–${formatHM(e)}`
+      return `${d(s)} ${formatHM(s)}–${formatHM(e)}`
     }
-    return `${formatShortDate(formatDateToString(s))} ${formatHM(s)} → ${formatShortDate(formatDateToString(e))} ${formatHM(e)}`
+    return `${d(s)} ${formatHM(s)} → ${d(e)} ${formatHM(e)}`
   }
-  return formatShortDate(formatDateToString(new Date(deadline)))
+  return d(new Date(deadline))
 }
 
 type DeadlinePopoverProps = {
@@ -93,10 +96,7 @@ export function DeadlinePopover({
   isFinal,
   triggerClassName,
 }: DeadlinePopoverProps) {
-  // Цветовой акцент chip'а по близости срока: просрочено → красный,
-  // сегодня → оранжевый, завтра → синий, послезавтра → зелёный, позже → серый.
-  // Завершённую/отменённую задачу не подсвечиваем (diff = null → серый).
-  const diff = !isFinal && deadline ? deadlineDayDiff(deadline) : null
+  const deadlineFormat = useDeadlineFormat()
 
   const handleChange = (v: TaskTimeValue) => {
     if (onChange) {
@@ -124,17 +124,7 @@ export function DeadlinePopover({
           }}
           className={cn(
             'flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0 whitespace-nowrap',
-            !deadline
-              ? 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50'
-              : diff != null && diff < 0
-                ? 'text-red-600 bg-red-50 font-medium hover:bg-red-100'
-                : diff === 0
-                  ? 'text-orange-600 bg-orange-50 font-medium hover:bg-orange-100'
-                  : diff === 1
-                    ? 'text-blue-600 bg-blue-50 font-medium hover:bg-blue-100'
-                    : diff === 2
-                      ? 'text-green-600 bg-green-50 font-medium hover:bg-green-100'
-                      : 'text-muted-foreground bg-gray-100 hover:text-foreground hover:bg-gray-200',
+            getDeadlineAccentClass(deadline, { variant: 'chip', isFinal }),
             isFinal && 'opacity-20 hover:opacity-100',
             triggerClassName,
           )}
@@ -143,7 +133,7 @@ export function DeadlinePopover({
         >
           <Calendar className="w-3 h-3" />
           {deadline
-            ? buildChipSummary(deadline, startAt ?? null, endAt ?? null)
+            ? buildChipSummary(deadline, startAt ?? null, endAt ?? null, deadlineFormat)
             : 'Срок'}
         </button>
       )}

@@ -8113,6 +8113,8 @@ export type Database = {
           custom_domain: string | null
           custom_domain_status: string | null
           custom_domain_verified_at: string | null
+          deadline_far_format: string
+          deadline_near_format: string
           default_ai_check_prompt: string | null
           default_ai_naming_prompt: string | null
           default_lead_template_per_source: Json
@@ -8145,6 +8147,8 @@ export type Database = {
           custom_domain?: string | null
           custom_domain_status?: string | null
           custom_domain_verified_at?: string | null
+          deadline_far_format?: string
+          deadline_near_format?: string
           default_ai_check_prompt?: string | null
           default_ai_naming_prompt?: string | null
           default_lead_template_per_source?: Json
@@ -8177,6 +8181,8 @@ export type Database = {
           custom_domain?: string | null
           custom_domain_status?: string | null
           custom_domain_verified_at?: string | null
+          deadline_far_format?: string
+          deadline_near_format?: string
           default_ai_check_prompt?: string | null
           default_ai_naming_prompt?: string | null
           default_lead_template_per_source?: Json

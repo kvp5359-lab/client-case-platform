@@ -11,6 +11,8 @@
 import { useMemo } from 'react'
 import { Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getDeadlineAccentClass, formatDeadlineDisplay } from '@/utils/deadlineUtils'
+import { useDeadlineFormat } from '@/hooks/useDeadlineFormat'
 import {
   TaskTimePickerPopover,
   type TaskTimeValue,
@@ -28,15 +30,6 @@ type Props = {
   onEndDateChange: (date: Date | undefined) => void
   onShowDurationChange: (show: boolean) => void
   onClear: () => void
-}
-
-function formatDateShort(d: Date | undefined): string {
-  if (!d) return ''
-  return d.toLocaleDateString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  })
 }
 
 function buildIsoFromDateAndTime(date: Date | undefined, time: string): string | null {
@@ -71,6 +64,8 @@ export function ChatSettingsTimeRangePicker({
   onShowDurationChange,
   onClear,
 }: Props) {
+  const deadlineFormat = useDeadlineFormat()
+
   /** Собираем гранулярный state в TaskTimeValue для попапа. */
   const value: TaskTimeValue = useMemo(() => {
     if (!date) return { deadline: null, startAt: null, endAt: null }
@@ -94,15 +89,16 @@ export function ChatSettingsTimeRangePicker({
   /** Сводка для кнопки. */
   const summary = useMemo(() => {
     if (!date) return 'Не указан'
-    const d1 = formatDateShort(date)
+    const fmt = (d: Date) => formatDeadlineDisplay(d, deadlineFormat) ?? ''
+    const d1 = fmt(date)
     if (!showDuration) return d1
-    const d2 = formatDateShort(endDate ?? date)
+    const d2 = fmt(endDate ?? date)
     const sameDay = d1 === d2
     const hasTime = Boolean(startTime && endTime)
     if (!hasTime) return sameDay ? d1 : `${d1} — ${d2}`
     if (sameDay) return `${d1}, ${startTime}–${endTime}`
     return `${d1} ${startTime} → ${d2} ${endTime}`
-  }, [date, showDuration, startTime, endTime, endDate])
+  }, [date, showDuration, startTime, endTime, endDate, deadlineFormat])
 
   /** Парсим TaskTimeValue из попапа обратно в гранулярный state. */
   const handleChange = (v: TaskTimeValue) => {
@@ -151,9 +147,7 @@ export function ChatSettingsTimeRangePicker({
           onClick={open}
           className={cn(
             'flex items-center gap-1.5 text-sm rounded px-2 py-1 transition-colors shrink-0',
-            date
-              ? 'text-muted-foreground bg-gray-100 hover:text-foreground hover:bg-gray-200'
-              : 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-gray-100',
+            getDeadlineAccentClass(date ?? null, { variant: 'chip' }),
           )}
         >
           <Calendar className="w-3.5 h-3.5" />
