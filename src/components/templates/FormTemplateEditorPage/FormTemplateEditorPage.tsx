@@ -188,10 +188,12 @@ function FormTemplateEditorContent() {
       }
     } else if (!layoutUnsupported) {
       // Патчим существующие options поля: добавляем/убираем width и newRow,
-      // сохраняя прочие ключи. Дефолт '1/3' не пишем — отсутствие = треть.
+      // сохраняя прочие ключи. Ширину пишем ВСЕГДА, включая '1/3' — иначе для
+      // textarea пустая ширина включает легаси-авто-группировку в 2 колонки
+      // (выбор «Треть» игнорировался). Явный width выводит поле из группы.
       const base = (state.editingField.options as Record<string, unknown> | null) || {}
       const next: Record<string, unknown> = { ...base }
-      if (state.editFieldWidth && state.editFieldWidth !== '1/3') next.width = state.editFieldWidth
+      if (state.editFieldWidth) next.width = state.editFieldWidth
       else delete next.width
       if (state.editFieldNewRow) next.newRow = true
       else delete next.newRow
