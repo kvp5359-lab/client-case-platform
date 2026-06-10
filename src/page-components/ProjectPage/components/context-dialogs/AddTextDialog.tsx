@@ -15,10 +15,19 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { useCreateContextText } from '@/hooks/projects/useProjectContext'
 
 export function AddTextDialog({
@@ -34,12 +43,25 @@ export function AddTextDialog({
 }) {
   const [name, setName] = useState('')
   const [text, setText] = useState('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const createText = useCreateContextText()
+
+  const isDirty = name.trim() !== '' || text.trim() !== ''
 
   const close = () => {
     setName('')
     setText('')
+    setConfirmOpen(false)
     onOpenChange(false)
+  }
+
+  // Закрытие с подтверждением, если что-то уже введено
+  const requestClose = () => {
+    if (isDirty) {
+      setConfirmOpen(true)
+      return
+    }
+    close()
   }
 
   const handleSave = async () => {
@@ -64,13 +86,29 @@ export function AddTextDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
-      <DialogContent className="max-w-3xl">
+    <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : requestClose())}>
+      <DialogContent
+        className="max-w-3xl"
+        onInteractOutside={(e) => {
+          if (isDirty) {
+            e.preventDefault()
+            setConfirmOpen(true)
+          }
+        }}
+      >
         <DialogHeader>
-          <DialogTitle>Новая заметка</DialogTitle>
-          <DialogDescription>
-            Внутренний контекст проекта. Используется ассистентом, не виден клиентам.
-          </DialogDescription>
+          <div className="flex items-start justify-between gap-2 pr-8">
+            <div>
+              <DialogTitle>Новая заметка</DialogTitle>
+              <DialogDescription>
+                Внутренний контекст проекта. Используется ассистентом, не виден клиентам.
+              </DialogDescription>
+            </div>
+            <Button size="sm" onClick={handleSave} disabled={createText.isPending}>
+              {createText.isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              Сохранить
+            </Button>
+          </div>
         </DialogHeader>
         <div className="space-y-3">
           <Input
@@ -83,22 +121,29 @@ export function AddTextDialog({
             <TiptapEditor
               content={text}
               onChange={setText}
+              className="max-h-[calc(100vh-280px)]"
               placeholder="Текст заметки. Доступно форматирование, списки, заголовки, картинки..."
               minHeight="280px"
               imageUpload={{ workspaceId, articleId: `new-${projectId}` }}
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={close}>
-            Отмена
-          </Button>
-          <Button onClick={handleSave} disabled={createText.isPending}>
-            {createText.isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-            Сохранить
-          </Button>
-        </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Закрыть без сохранения?</AlertDialogTitle>
+            <AlertDialogDescription>
+              В заметке есть несохранённые изменения. Если закрыть сейчас, они будут потеряны.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Продолжить редактирование</AlertDialogCancel>
+            <AlertDialogAction onClick={close}>Закрыть без сохранения</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }
