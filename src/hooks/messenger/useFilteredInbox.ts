@@ -19,6 +19,7 @@ import { useInboxThreadsV2 } from './useInbox'
 import {
   getInboxThreadAggregates,
   getInboxUnreadThreads,
+  getInboxSearchThreads,
   type InboxThreadAggregate,
 } from '@/services/api/inboxService'
 import { inboxKeys, sidebarDataKeys, STALE_TIME } from '@/hooks/queryKeys'
@@ -123,6 +124,27 @@ function useAccessFilter<T extends { thread_id: string }>(
       })
     })
   }, [items, user, threadAccessMap, rolesByProject, myMemberThreadIds, myAssigneeThreadIds])
+}
+
+/**
+ * useFilteredInboxSearch — серверный поиск по тредам инбокса (по названию треда /
+ * проекта), отфильтрованный тем же access-фильтром. Ищет по ВСЕМ тредам, а не по
+ * загруженным страницам useInboxThreadsV2. Запрос делается только при непустом
+ * query (вызывающий передаёт уже debounce'нутое значение).
+ */
+export function useFilteredInboxSearch(workspaceId: string, query: string) {
+  const { user } = useAuth()
+  const q = query.trim()
+
+  const { data: rawResults = [], ...queryRest } = useQuery({
+    queryKey: inboxKeys.search(workspaceId, q),
+    queryFn: () => getInboxSearchThreads(workspaceId, user!.id, q),
+    enabled: !!workspaceId && !!user && q.length > 0,
+    staleTime: STALE_TIME.SHORT,
+  })
+
+  const data = useAccessFilter(rawResults, workspaceId)
+  return { data, ...queryRest }
 }
 
 /**

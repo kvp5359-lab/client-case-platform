@@ -103,6 +103,26 @@ export async function getInboxThreadsV2(
 }
 
 /**
+ * Поиск по тредам входящих по названию треда / имени проекта (RPC
+ * `get_inbox_search_threads`). Серверный — по ВСЕМ тредам инбокса, а не по
+ * загруженным в браузер страницам. Пустой запрос → пустой результат.
+ */
+export async function getInboxSearchThreads(
+  workspaceId: string,
+  userId: string,
+  query: string,
+): Promise<InboxThreadEntry[]> {
+  const { data, error } = await supabase.rpc('get_inbox_search_threads' as never, {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+    p_query: query,
+  } as never)
+
+  if (error) throw new ApiError(`Ошибка поиска по входящим: ${error.message}`)
+  return (data ?? []) as unknown as InboxThreadEntry[]
+}
+
+/**
  * Одна строка инбокса для конкретного треда (RPC `get_inbox_thread_one`).
  * Источник надёжных last_read_at/unread_count для ОТКРЫТОГО треда — не зависит
  * от того, попал ли тред в пагинированный список useInboxThreadsV2 (иначе для

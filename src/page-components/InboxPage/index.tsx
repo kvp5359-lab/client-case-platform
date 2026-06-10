@@ -10,7 +10,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
-import { useFilteredInbox, useFilteredInboxUnread } from '@/hooks/messenger/useFilteredInbox'
+import {
+  useFilteredInbox,
+  useFilteredInboxUnread,
+  useFilteredInboxSearch,
+} from '@/hooks/messenger/useFilteredInbox'
+import { useDebounce } from '@/hooks/shared/useDebounce'
 import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSidePanelStore } from '@/store/sidePanelStore'
@@ -75,11 +80,19 @@ export default function InboxPage() {
     unreadCount,
   } = useInboxFilters(chats, unreadChats)
 
+  // Серверный поиск по тредам инбокса (по названию треда/проекта) — по всем
+  // тредам, а не по загруженным страницам. При активном поиске он заменяет
+  // вкладочный список.
+  const debouncedSearch = useDebounce(searchQuery.trim(), 300)
+  const { data: searchResults = [] } = useFilteredInboxSearch(workspaceId ?? '', debouncedSearch)
+  const isSearching = searchQuery.trim().length > 0
+  const displayChats = isSearching ? searchResults : filteredChats
+
   // Активный чат — выбранный или первый из списка
   const activeChat = useMemo(() => {
     if (selectedThreadId) return chats.find((c) => c.thread_id === selectedThreadId) ?? null
-    return filteredChats.length > 0 ? filteredChats[0] : null
-  }, [selectedThreadId, chats, filteredChats])
+    return displayChats.length > 0 ? displayChats[0] : null
+  }, [selectedThreadId, chats, displayChats])
 
   // Участники проекта для хедера. Для workspace-level тредов (project_id=null)
   // участников проекта нет — передаём undefined, хук отключает запрос.
@@ -207,10 +220,11 @@ export default function InboxPage() {
   const { markRead: markReadMutation, markUnread: markUnreadMutation } =
     useInboxMarkMutations(workspaceId)
 
-  // Догрузка страниц — только на вкладке «Все». На «Непрочитанных» источник
-  // полный (useFilteredInboxUnread), пагинация не нужна — иначе короткий
-  // отфильтрованный список запускал бы каскад догрузки всего инбокса.
-  const showLoadMore = filter === 'all' && hasNextPage
+  // Догрузка страниц — только на вкладке «Все» без активного поиска. На
+  // «Непрочитанных» источник полный (useFilteredInboxUnread), при поиске —
+  // серверный (searchResults); пагинация там не нужна — иначе короткий список
+  // запускал бы каскад догрузки всего инбокса.
+  const showLoadMore = !isSearching && filter === 'all' && hasNextPage
 
   return (
     <WorkspaceLayout>
@@ -227,7 +241,7 @@ export default function InboxPage() {
             onCloseSearch={closeSearch}
             unreadCount={unreadCount}
             isLoading={isLoading}
-            filteredChats={filteredChats}
+            filteredChats={displayChats}
             activeThreadId={activeChat?.thread_id ?? null}
             onSelectThread={setSelectedThreadId}
             onMarkAsRead={(chat) => markReadMutation.mutate(chat)}

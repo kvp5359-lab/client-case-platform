@@ -24,6 +24,9 @@ export const inboxKeys = {
    * не зависела от прокрутки страниц и не запускала каскад догрузки.
    */
   unread: (workspaceId: string) => ['inbox', 'unread', workspaceId] as const,
+  /** Серверный поиск по тредам инбокса (по названию треда/проекта). */
+  search: (workspaceId: string, query: string) =>
+    ['inbox', 'search', workspaceId, query] as const,
 }
 
 /**

@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
-import { useFilteredInbox, useFilteredInboxUnread } from '@/hooks/messenger/useFilteredInbox'
+import {
+  useFilteredInbox,
+  useFilteredInboxUnread,
+  useFilteredInboxSearch,
+} from '@/hooks/messenger/useFilteredInbox'
+import { useDebounce } from '@/hooks/shared/useDebounce'
 import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
@@ -55,15 +60,17 @@ export function BoardInboxList({
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = useFilteredInbox(workspaceId)
   // Все непрочитанные одним запросом — источник вкладки «Непрочитанные».
   const { data: unreadThreads = [] } = useFilteredInboxUnread(workspaceId)
+  // Серверный поиск по тредам инбокса (по названию треда/проекта) — ищет по всем,
+  // а не по загруженным страницам. Debounce, чтобы не дёргать RPC на каждую букву.
+  const debouncedSearch = useDebounce(searchQuery.trim(), 300)
+  const { data: searchResults = [] } = useFilteredInboxSearch(workspaceId, debouncedSearch)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
 
   const q = searchQuery.trim().toLowerCase()
-  // Вкладка «Непрочитанные» без активного поиска работает на полном списке
-  // непрочитанных (unreadThreads), а не на пагинированных threads — поэтому
-  // здесь не нужна догрузка страниц (раньше короткий список запускал каскад).
-  const usingUnreadSource = filter === 'unread' && !q
-  // Догрузку оставляем только когда источник — пагинированный threads.
-  const showLoadMore = !usingUnreadSource && hasNextPage
+  // Догрузку страниц оставляем ТОЛЬКО на вкладке «Все» без поиска. На «Непрочитанных»
+  // источник полный (unreadThreads), при поиске — серверный (searchResults); в обоих
+  // случаях пагинация не нужна (иначе короткий список запускал бы каскад догрузки).
+  const showLoadMore = !q && filter === 'all' && hasNextPage
 
   useEffect(() => {
     if (!showLoadMore) return
@@ -89,25 +96,18 @@ export function BoardInboxList({
   const unreadCount = unreadThreads.length
 
   const filteredThreads = useMemo(() => {
-    // При активном поиске unread-фильтр игнорируется — ищем по всему загруженному
-    // списку, включая прочитанные. Так пользователь не упустит нужного собеседника
-    // только потому, что сейчас выбрана вкладка «Непрочитанные».
-    if (q) {
-      return threads.filter(
-        (c) =>
-          c.thread_name.toLowerCase().includes(q) ||
-          (c.project_name?.toLowerCase().includes(q) ?? false),
-      )
-    }
+    // При активном поиске — серверные результаты по всем тредам инбокса
+    // (по названию треда/проекта), а не фильтр загруженных страниц.
+    if (q) return searchResults
     // Вкладка «Непрочитанные» — полный список непрочитанных одним запросом.
     if (filter === 'unread') return unreadThreads
     return threads
-  }, [threads, unreadThreads, filter, q])
+  }, [threads, unreadThreads, searchResults, filter, q])
 
   return (
     <div>
-      {/* Filter bar */}
-      <div className="px-2 py-1.5 border-b border-border/50 flex items-center gap-1">
+      {/* Filter bar — прилипает к верху при прокрутке списка */}
+      <div className="sticky top-0 z-10 bg-white px-2 py-1.5 border-b border-border/50 flex items-center gap-1">
         {searchOpen ? (
           <div className="flex items-center gap-1.5 flex-1">
             <Search className="h-3 w-3 text-gray-400 shrink-0" />
