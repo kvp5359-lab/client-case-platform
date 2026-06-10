@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
 import { parseDateString, formatDateToString } from '@/utils/format/dateFormat'
+import { cn } from '@/lib/utils'
 import { CheckboxField } from './CheckboxField'
 import type { FieldType } from './types'
 
@@ -35,6 +36,10 @@ export type SimpleInputProps = {
   onBlur: () => void
   onSaveWithValue?: (value: string) => void
   selectOptions?: SelectOption[]
+  /** Подсказка серым внутри пустого текстового поля (placeholder поля → иначе описание). */
+  placeholder?: string
+  /** Показывать ли подсказку (для input — только в фокусе, чтобы не накладываться на плавающий лейбл). */
+  placeholderVisible?: boolean
 }
 
 // Высота 2.5 строк текста (line-height 20px × 2.5 = 50px)
@@ -45,11 +50,15 @@ const AutoGrowTextarea = memo(function AutoGrowTextarea({
   onChange,
   onBlur,
   disabled,
+  placeholder,
+  placeholderVisible,
 }: {
   value: string
   onChange: (value: string) => void
   onBlur: () => void
   disabled: boolean
+  placeholder?: string
+  placeholderVisible?: boolean
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
   const isFocusedRef = useRef(false)
@@ -90,8 +99,13 @@ const AutoGrowTextarea = memo(function AutoGrowTextarea({
         onBlur()
       }}
       disabled={disabled}
+      placeholder={placeholder}
       style={{ height: COLLAPSED_HEIGHT }}
-      className="w-full border-0 bg-transparent p-0 resize-none text-sm leading-5 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden"
+      className={cn(
+        'w-full border-0 bg-transparent p-0 resize-none text-sm leading-5 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden',
+        // Подсказку видно только в фокусе — иначе наложилась бы на лейбл вверху поля.
+        placeholderVisible ? 'placeholder:text-gray-400' : 'placeholder:text-transparent',
+      )}
     />
   )
 })
@@ -104,6 +118,8 @@ export const SimpleInput = memo(function SimpleInput({
   onBlur,
   onSaveWithValue,
   selectOptions = [],
+  placeholder,
+  placeholderVisible,
 }: SimpleInputProps) {
   switch (fieldType) {
     case 'text':
@@ -117,13 +133,26 @@ export const SimpleInput = memo(function SimpleInput({
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
           disabled={disabled}
-          className="w-full border-0 bg-transparent p-0 text-sm text-foreground placeholder:text-transparent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          placeholder={placeholder}
+          className={cn(
+            'w-full border-0 bg-transparent p-0 text-sm text-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+            // Подсказку показываем только когда лейбл всплыл (фокус) — иначе она
+            // наложилась бы на плавающий лейбл по центру пустого поля.
+            placeholderVisible ? 'placeholder:text-gray-400' : 'placeholder:text-transparent',
+          )}
         />
       )
 
     case 'textarea':
       return (
-        <AutoGrowTextarea value={value} onChange={onChange} onBlur={onBlur} disabled={disabled} />
+        <AutoGrowTextarea
+          value={value}
+          onChange={onChange}
+          onBlur={onBlur}
+          disabled={disabled}
+          placeholder={placeholder}
+          placeholderVisible={placeholderVisible}
+        />
       )
 
     case 'number':

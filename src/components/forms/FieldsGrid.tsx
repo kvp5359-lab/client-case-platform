@@ -238,6 +238,21 @@ export const FieldsGrid = memo(function FieldsGrid({
       const value = formData[fieldKey] || ''
       const isTextarea = field.field_type === 'textarea'
 
+      // Серая подсказка внутри пустого текстового поля: свой placeholder поля,
+      // иначе — описание поля. Только для текстовых типов.
+      const isTextInput =
+        field.field_type === 'text' ||
+        field.field_type === 'textarea' ||
+        field.field_type === 'email' ||
+        field.field_type === 'phone' ||
+        field.field_type === 'url'
+      const fieldPlaceholder = field.placeholder?.trim()
+        ? field.placeholder
+        : (field.description ?? undefined)
+      // В placeholder переносы строк не отображаются (схлопываются → слова слипаются),
+      // поэтому переносы и окружающие пробелы заменяем одним пробелом.
+      const hint = isTextInput ? fieldPlaceholder?.replace(/\s*\n+\s*/g, ' ') : undefined
+
       // Раскладка поля: ширина (дефолт треть) + принудительный перенос на новую строку.
       const layoutOptions = fromSupabaseJson<FieldOptions | null>(field.options)
       const explicitWidth = layoutOptions?.width
@@ -309,7 +324,7 @@ export const FieldsGrid = memo(function FieldsGrid({
                 : undefined
             }
           >
-            {() => (
+            {({ isFocused }) => (
               <SimpleInput
                 fieldType={field.field_type}
                 value={value}
@@ -321,6 +336,12 @@ export const FieldsGrid = memo(function FieldsGrid({
                   clearRiskOnEmpty(v)
                 }}
                 selectOptions={selectOptionsMap[fieldKey] || []}
+                placeholder={hint}
+                // Подсказку показываем только в фокусе: тогда плавающий лейбл
+                // уходит на рамку и освобождает тело поля. Без фокуса лейбл стоит
+                // внутри (по центру у input, вверху у textarea) и подсказка бы на
+                // него наложилась.
+                placeholderVisible={isFocused}
               />
             )}
           </FloatingField>
@@ -345,7 +366,7 @@ export const FieldsGrid = memo(function FieldsGrid({
       elements.push(
         <div
           key={`textarea-group-${group[0].field.id}`}
-          className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-4"
+          className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-4 items-start"
         >
           {group.map((g) => g.node)}
         </div>,
@@ -356,5 +377,5 @@ export const FieldsGrid = memo(function FieldsGrid({
     }
   }
 
-  return <div className="grid grid-cols-1 md:grid-cols-6 gap-x-3 gap-y-4">{elements}</div>
+  return <div className="grid grid-cols-1 md:grid-cols-6 gap-x-3 gap-y-4 items-start">{elements}</div>
 })
