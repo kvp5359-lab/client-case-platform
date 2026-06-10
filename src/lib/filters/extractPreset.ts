@@ -54,11 +54,19 @@ export function extractThreadCreatePreset(
     }
 
     if (c.field === 'deadline') {
-      // Резолвим пресет-строку (__today__, __this_week__, ...) и абсолютную ISO.
+      // Резолвим пресет-строку (__today__, __tomorrow__, ...) и абсолютную ISO.
+      const dayOffset = (days: number): string => {
+        const d = new Date(ctx.now)
+        d.setDate(d.getDate() + days)
+        return d.toISOString()
+      }
       const resolvePresetValue = (v: unknown): string | null => {
         if (typeof v !== 'string') return null
         if (v === '__today__' || v === '__this_week__') return ctx.now.toISOString()
-        // Любая абсолютная дата возвращается как есть; не пресет — Date.parse уловит.
+        if (v === '__tomorrow__') return dayOffset(1)
+        if (v === '__yesterday__') return dayOffset(-1)
+        // Прочие пресеты (диапазоны: недели/месяцы) — не подставляем как одну дату.
+        // Любая абсолютная дата возвращается как есть; Date.parse уловит при применении.
         if (v.startsWith('__')) return null
         return v
       }
