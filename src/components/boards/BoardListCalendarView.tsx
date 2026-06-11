@@ -436,6 +436,7 @@ export function BoardListCalendarView({
           startAt={convertEvent.start.toISOString()}
           endAt={convertEvent.end.toISOString()}
           htmlLink={convertEvent.external.html_link}
+          location={convertEvent.external.location}
         />
       )}
     </>
