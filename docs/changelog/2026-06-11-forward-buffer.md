@@ -41,6 +41,20 @@
 URL (не по `telegram_file_id`, которого у forwarded-вложения из чужого чата нет),
 `wazzup-send` — signed URL в `contentUri`. **Бэкенд/edge не менялись.**
 
+## Фикс: вставленные файлы переживают переключение чата
+
+**Баг:** после «Вставить» файлы попадали в поле ввода, но при переходе на другой
+диалог и обратно пропадали (текст оставался). Причина: текст сохранялся в
+черновик (`localStorage: msg_draft:<thread>`), а `forwardedAttachments` был
+эфемерным `useState` и терялся при перемонтировании компонента.
+
+**Решение:** файлы-пересылки — сериализуемые метаданные (`file_id`/`storage_path`),
+поэтому им сделан такой же черновик в localStorage по треду. Новый хук
+[`useForwardedAttachmentsDraft.ts`](../../src/components/messenger/hooks/useForwardedAttachmentsDraft.ts):
+lazy-init из localStorage, перечитывание при смене треда (эффект + `queueMicrotask`,
+как в `useDraftMessage`), персист на каждое изменение, очистка ключа при
+отправке/очистке. В `useMessengerState` `useState` заменён на этот хук.
+
 ## Затронутые файлы
 
 - `src/components/messenger/ForwardBufferBar.tsx` (новый)

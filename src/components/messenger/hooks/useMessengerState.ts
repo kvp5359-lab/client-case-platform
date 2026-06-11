@@ -47,7 +47,7 @@ import { useSendEmail } from '@/hooks/email/useSendEmail'
 import { useChatState } from '@/hooks/messenger/useChatState'
 import { useDocumentPickerLogic } from './useDocumentPickerLogic'
 import { useSidePanelStore } from '@/store/sidePanelStore'
-import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
+import { useForwardedAttachmentsDraft } from './useForwardedAttachmentsDraft'
 
 type UseMessengerStateParams = {
   projectId?: string
@@ -87,7 +87,9 @@ export function useMessengerState({
   }, [])
   const quoteText = quote?.text ?? null
   const quoteNonce = quote?.nonce ?? 0
-  const [forwardedAttachments, setForwardedAttachments] = useState<ForwardedAttachment[]>([])
+  // Персистится в localStorage по треду — переживает переход на другой диалог
+  // и обратно (см. useForwardedAttachmentsDraft).
+  const [forwardedAttachments, setForwardedAttachments] = useForwardedAttachmentsDraft(threadId)
   const [sendTrigger, setSendTrigger] = useState(0)
 
   // Single RPC `get_chat_state` warm-loads participant + telegram link + email
