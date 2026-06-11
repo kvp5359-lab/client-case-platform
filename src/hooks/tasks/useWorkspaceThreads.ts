@@ -42,12 +42,24 @@ export function useWorkspaceThreads(workspaceId: string | undefined) {
   return useQuery({
     queryKey: workspaceThreadKeys.forUser(workspaceId ?? '', user?.id),
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_workspace_threads', {
-        p_workspace_id: workspaceId!,
-        p_user_id: user!.id,
-      })
-      if (error) throw error
-      return (data ?? []) as WorkspaceTask[]
+      // PostgREST отдаёт максимум 1000 строк за запрос. Воркспейсы с >1000
+      // тредов раньше теряли всё сверх лимита (треды просто не доходили до
+      // досок/списков). Грузим постранично, пока приходит полная страница.
+      const PAGE = 1000
+      const all: WorkspaceTask[] = []
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .rpc('get_workspace_threads', {
+            p_workspace_id: workspaceId!,
+            p_user_id: user!.id,
+          })
+          .range(from, from + PAGE - 1)
+        if (error) throw error
+        const batch = (data ?? []) as WorkspaceTask[]
+        all.push(...batch)
+        if (batch.length < PAGE) break
+      }
+      return all
     },
     enabled: !!workspaceId && !!user?.id,
     staleTime: STALE_TIME.SHORT,

@@ -5,10 +5,9 @@ import { useDroppable } from '@dnd-kit/core'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
-import { BoardProjectRow } from './BoardProjectRow'
+import { BoardProjectRow, type NextTaskInfo } from './BoardProjectRow'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { CardLayout, DisplayMode, VisibleField } from './types'
-import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 
 type DraggableBoardProjectRowProps = {
   project: BoardProject
@@ -20,7 +19,7 @@ type DraggableBoardProjectRowProps = {
   visibleFields: VisibleField[]
   isSelected?: boolean
   cardLayout?: CardLayout | null
-  nextTask?: WorkspaceTask
+  nextTask?: NextTaskInfo
   authorName?: string | null
   /** Подсветка позиции drop'а при ручной сортировке (manual_order). */
   dropIndicator?: 'top' | 'bottom' | null

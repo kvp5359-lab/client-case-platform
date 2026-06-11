@@ -102,6 +102,21 @@ export const boardKeys = {
   itemOrders: (boardId: string) => ['boards', boardId, 'item-orders'] as const,
 }
 
+/**
+ * Серверно-отфильтрованные данные доски (вариант A — union-prefilter).
+ * Ключ включает сериализованный union-фильтр: при смене фильтров списков
+ * запрос автоматически перевыбирается. Префиксы `*All` — для broad-invalidate
+ * из мутаций задач/проектов (они знают только workspaceId).
+ */
+export const boardFilteredKeys = {
+  threadsAll: (workspaceId: string) => ['board-filtered-threads', workspaceId] as const,
+  threads: (workspaceId: string, userId: string | undefined, filterKey: string) =>
+    ['board-filtered-threads', workspaceId, userId, filterKey] as const,
+  projectsAll: (workspaceId: string) => ['board-filtered-projects', workspaceId] as const,
+  projects: (workspaceId: string, userId: string | undefined, filterKey: string) =>
+    ['board-filtered-projects', workspaceId, userId, filterKey] as const,
+}
+
 export const myTaskCountsKeys = {
   /** Префикс для broad-invalidate во всех воркспейсах. */
   all: ['my-task-counts'] as const,

@@ -22,7 +22,8 @@ import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { newThreadToTaskItem } from '@/components/tasks/taskListConstants'
 import { extractThreadCreatePreset } from '@/lib/filters/extractPreset'
 import { mergeFilterGroupsAnd } from '@/lib/filters/types'
-import { useAllProjectStatuses, useTaskStatuses } from '@/hooks/useStatuses'
+import { useAllProjectStatuses } from '@/hooks/useStatuses'
+import type { NextTaskInfo } from '../BoardProjectRow'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { groupTasks, groupProjects } from '../boardListUtils'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
@@ -115,25 +116,19 @@ export function useBoardListCardSetup({
     },
   })
 
-  // Для списков проектов вычисляем карту «ближайшая незавершённая задача» по project_id.
-  // Используем уже загруженный кэш `tasks` (useWorkspaceThreads) — дополнительных запросов нет.
-  // Загружаем is_final из taskStatuses только если это project-list, чтобы не дёргать в task-списках.
-  const { data: fullStatuses = [] } = useTaskStatuses(isProject ? workspaceId : undefined)
+  // Ближайшая активная задача проекта теперь считается на сервере
+  // (get_board_filtered_projects → next_task_*) — не зависим от загрузки всех
+  // тредов воркспейса. Раскладываем серверные поля в карты для рендера/сортировки.
   const nextTaskByProjectId = useMemo(() => {
     if (!isProject) return {}
-    const finalStatusIds = new Set(fullStatuses.filter((s) => s.is_final).map((s) => s.id))
-    const byProject: Record<string, WorkspaceTask> = {}
-    for (const t of tasks) {
-      if (t.type !== 'task') continue
-      if (!t.project_id || !t.deadline) continue
-      if (t.status_id && finalStatusIds.has(t.status_id)) continue
-      const existing = byProject[t.project_id]
-      if (!existing || new Date(t.deadline).getTime() < new Date(existing.deadline!).getTime()) {
-        byProject[t.project_id] = t
+    const byProject: Record<string, NextTaskInfo> = {}
+    for (const p of projects) {
+      if (p.next_task_name && p.next_task_deadline) {
+        byProject[p.id] = { name: p.next_task_name, deadline: p.next_task_deadline }
       }
     }
     return byProject
-  }, [isProject, tasks, fullStatuses])
+  }, [isProject, projects])
 
   // Карта project_id → deadline ближайшей задачи (для сортировки в useFilteredProjects).
   const nextTaskDeadlineByProjectId = useMemo(() => {

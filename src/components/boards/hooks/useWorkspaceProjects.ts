@@ -17,6 +17,12 @@ export type BoardProject = Tables<'projects'> & {
   /** Подтип финального статуса проекта (won/lost/abandoned). NULL — если статус
    *  не финальный или final_kind не задан. Денормализуется из statuses в RPC. */
   final_kind?: 'won' | 'lost' | 'abandoned' | null
+  /** Ближайшая активная задача с дедлайном — считается на сервере в
+   *  get_board_filtered_projects. Используется для сортировки `next_task_deadline`
+   *  и подписи «ближайшая задача» в строке проекта. Отсутствует в legacy-путях. */
+  next_task_id?: string | null
+  next_task_name?: string | null
+  next_task_deadline?: string | null
 }
 
 export function useWorkspaceProjects(workspaceId: string | undefined) {

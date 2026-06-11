@@ -41,6 +41,29 @@ export function mergeFilterGroupsAnd(a: FilterGroup, b: FilterGroup): FilterGrou
   }
 }
 
+/**
+ * Объединить несколько групп фильтров через OR (union).
+ *
+ * Используется серверной фильтрацией досок: каждый список доски даёт свою
+ * группу, серверу отправляется их OR — «верни всё, что подходит хоть одному
+ * списку». Пустая группа среди слагаемых означает «список без фильтра = всё»,
+ * поэтому весь union вырождается в пустую группу (= не сужать ничего).
+ */
+export function mergeFilterGroupsOr(groups: FilterGroup[]): FilterGroup {
+  const nonTrivial: FilterGroup[] = []
+  for (const g of groups) {
+    // Список без правил = «показывать всё» → union тоже «всё».
+    if (!g || g.rules.length === 0) return EMPTY_FILTER_GROUP
+    nonTrivial.push(g)
+  }
+  if (nonTrivial.length === 0) return EMPTY_FILTER_GROUP
+  if (nonTrivial.length === 1) return nonTrivial[0]
+  return {
+    logic: 'or',
+    rules: nonTrivial.map((g) => ({ type: 'group' as const, group: g })),
+  }
+}
+
 // ── Описание полей фильтра ─────────────────────────────────
 
 export type FieldType = 'uuid' | 'date' | 'boolean' | 'text' | 'junction'

@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import {
   accessibleProjectKeys,
+  boardFilteredKeys,
   inboxKeys,
   invalidateAfterThreadMove,
   invalidateMessengerCaches,
@@ -259,6 +260,9 @@ export function useDeleteThread(workspaceId?: string) {
         // на досках (см. useWorkspaceThreads). Без него удалённая задача
         // оставалась в досках до полного reload.
         queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
+        // Серверно-фильтрованные данные досок (вариант A) — иначе удалённая
+        // задача висит в списке доски до полного reload.
+        queryClient.invalidateQueries({ queryKey: boardFilteredKeys.threadsAll(workspaceId) })
         queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
         queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
         queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })

@@ -14,51 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _backup_project_telegram_chats_20260528: {
-        Row: {
-          bot_version: string | null
-          channel: string | null
-          created_at: string | null
-          id: string | null
-          integration_id: string | null
-          is_active: boolean | null
-          project_id: string | null
-          telegram_chat_id: number | null
-          telegram_chat_title: string | null
-          thread_id: string | null
-          updated_at: string | null
-          workspace_id: string | null
-        }
-        Insert: {
-          bot_version?: string | null
-          channel?: string | null
-          created_at?: string | null
-          id?: string | null
-          integration_id?: string | null
-          is_active?: boolean | null
-          project_id?: string | null
-          telegram_chat_id?: number | null
-          telegram_chat_title?: string | null
-          thread_id?: string | null
-          updated_at?: string | null
-          workspace_id?: string | null
-        }
-        Update: {
-          bot_version?: string | null
-          channel?: string | null
-          created_at?: string | null
-          id?: string | null
-          integration_id?: string | null
-          is_active?: boolean | null
-          project_id?: string | null
-          telegram_chat_id?: number | null
-          telegram_chat_title?: string | null
-          thread_id?: string | null
-          updated_at?: string | null
-          workspace_id?: string | null
-        }
-        Relationships: []
-      }
       audit_logs: {
         Row: {
           action: string
@@ -8221,6 +8176,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _board_compile_condition: {
+        Args: { p_entity: string; p_node: Json }
+        Returns: string
+      }
+      _board_compile_group: {
+        Args: { p_entity: string; p_group: Json }
+        Returns: string
+      }
+      _board_filter_text_list: { Args: { p_value: Json }; Returns: string }
+      _board_filter_uuid_list: { Args: { p_value: Json }; Returns: string }
+      _board_value_has_sentinel: {
+        Args: { p_sentinel: string; p_value: Json }
+        Returns: boolean
+      }
       add_document_version: {
         Args: {
           p_checksum?: string
@@ -8550,6 +8519,60 @@ export type Database = {
           version: number
         }[]
       }
+      get_board_filtered_projects: {
+        Args: { p_filter: Json; p_user_id: string; p_workspace_id: string }
+        Returns: {
+          contact_participant_id: string
+          created_at: string
+          created_by: string
+          deadline: string
+          description: string
+          export_folder_id: string
+          final_kind: Database["public"]["Enums"]["status_final_kind"]
+          google_drive_folder_link: string
+          has_active_deadline_task: boolean
+          id: string
+          is_lead_template: boolean
+          last_activity_at: string
+          messenger_link_code: string
+          name: string
+          next_task_deadline: string
+          next_task_id: string
+          next_task_name: string
+          source_folder_id: string
+          status_id: string
+          template_id: string
+          template_name: string
+          updated_at: string
+          workspace_id: string
+        }[]
+      }
+      get_board_filtered_threads: {
+        Args: { p_filter: Json; p_user_id: string; p_workspace_id: string }
+        Returns: {
+          accent_color: string
+          created_at: string
+          created_by: string
+          deadline: string
+          end_at: string
+          icon: string
+          id: string
+          is_pinned: boolean
+          name: string
+          project_id: string
+          project_name: string
+          sort_order: number
+          start_at: string
+          status_color: string
+          status_id: string
+          status_name: string
+          status_order: number
+          status_show_to_creator: boolean
+          type: string
+          updated_at: string
+          workspace_id: string
+        }[]
+      }
       get_board_lists: {
         Args: { p_board_id: string }
         Returns: {
@@ -8611,6 +8634,57 @@ export type Database = {
       get_history_unread_count: {
         Args: { p_project_id: string }
         Returns: number
+      }
+      get_inbox_message_status: {
+        Args: { p_user_id: string; p_workspace_id: string }
+        Returns: {
+          delivery_status: string
+          thread_id: string
+        }[]
+      }
+      get_inbox_search_threads: {
+        Args: {
+          p_limit?: number
+          p_query: string
+          p_user_id: string
+          p_workspace_id: string
+        }
+        Returns: {
+          channel_type: string
+          counterpart_avatar_url: string
+          counterpart_name: string
+          email_contact: string
+          email_subject: string
+          has_unread_reaction: boolean
+          last_event_at: string
+          last_event_status_color: string
+          last_event_text: string
+          last_message_at: string
+          last_message_attachment_count: number
+          last_message_attachment_mime: string
+          last_message_attachment_name: string
+          last_message_text: string
+          last_reaction_at: string
+          last_reaction_emoji: string
+          last_reaction_message_preview: string
+          last_reaction_sender_avatar_url: string
+          last_reaction_sender_name: string
+          last_read_at: string
+          last_sender_avatar_url: string
+          last_sender_name: string
+          legacy_channel: string
+          manually_unread: boolean
+          project_id: string
+          project_name: string
+          thread_accent_color: string
+          thread_icon: string
+          thread_id: string
+          thread_name: string
+          thread_type: string
+          unread_count: number
+          unread_event_count: number
+          unread_reaction_count: number
+        }[]
       }
       get_inbox_thread_aggregates: {
         Args: { p_user_id: string; p_workspace_id: string }

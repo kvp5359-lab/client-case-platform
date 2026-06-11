@@ -2,8 +2,7 @@
 
 import { useMemo, useCallback } from 'react'
 import { useBoardLists } from '@/components/boards/hooks/useBoardQuery'
-import { useWorkspaceThreads } from '@/hooks/tasks/useWorkspaceThreads'
-import { useAccessibleProjects } from '@/hooks/shared/useAccessibleProjects'
+import { useBoardThreads, useBoardProjects } from '@/components/boards/hooks/useBoardData'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
 import { useCurrentParticipantId } from '@/hooks/shared/useCurrentParticipantId'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
@@ -16,7 +15,7 @@ import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { BoardView } from '@/components/boards/BoardView'
 import { CreateListDialog } from '@/components/boards/CreateListDialog'
-import { workspaceThreadKeys } from '@/hooks/queryKeys'
+import { workspaceThreadKeys, boardFilteredKeys } from '@/hooks/queryKeys'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
 import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
 import type { Board } from '@/components/boards/types'
@@ -39,18 +38,23 @@ export function BoardTabContent({
   const hasTaskLists = lists?.some((l) => l.entity_type === 'thread')
   const hasProjectLists = lists?.some((l) => l.entity_type === 'project')
   const hasInboxLists = lists?.some((l) => l.entity_type === 'inbox')
-  // Треды нужны и для task-listов, и для project-listов (поле «Ближайшая задача»
-  // вычисляется на клиенте из уже загруженного кэша — без доп. запросов).
-  const { data: tasks } = useWorkspaceThreads(
-    hasTaskLists || hasProjectLists ? workspaceId : undefined,
+
+  const { data: currentParticipantId } = useCurrentParticipantId(workspaceId)
+
+  // Серверная фильтрация (вариант A): доска отправляет union-фильтр своих
+  // списков и получает только подходящие строки. Треды нужны только task-листам;
+  // «ближайшая задача» для project-листов считается на сервере (next_task_*).
+  const { data: tasks } = useBoardThreads(
+    workspaceId, lists ?? [], board.global_filter, currentParticipantId ?? null, !!hasTaskLists,
   )
-  const { data: projects } = useAccessibleProjects(hasProjectLists ? workspaceId : undefined)
+  const { data: projects } = useBoardProjects(
+    workspaceId, lists ?? [], board.global_filter, currentParticipantId ?? null, !!hasProjectLists,
+  )
   const { data: inboxThreads = [] } = useFilteredInbox(hasInboxLists ? workspaceId : '')
 
   const taskIds = (tasks ?? []).map((t) => t.id)
   const { data: assigneesMap } = useTaskAssigneesMap(taskIds)
 
-  const { data: currentParticipantId } = useCurrentParticipantId(workspaceId)
   const { data: participants } = useWorkspaceParticipants(workspaceId)
   const { data: taskStatuses } = useTaskStatuses(workspaceId)
 
@@ -66,7 +70,12 @@ export function BoardTabContent({
 
   // Мутации задач (статус — отдельно для BoardView inline-change)
   const boardInvalidateKeys = useMemo(
-    () => [workspaceThreadKeys.workspace(workspaceId), workspaceThreadKeys.workspace(workspaceId)],
+    () => [
+      workspaceThreadKeys.workspace(workspaceId),
+      // Серверно-фильтрованные треды доски (вариант A) — иначе после смены
+      // статуса/дедлайна карточка не переедет в нужную колонку до reload.
+      boardFilteredKeys.threadsAll(workspaceId),
+    ],
     [workspaceId],
   )
   const updateStatus = useUpdateTaskStatus(boardInvalidateKeys)

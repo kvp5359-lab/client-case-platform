@@ -7,12 +7,15 @@ import { cn } from '@/lib/utils'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField } from './types'
-import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import { getDeadlineAccentClass, formatDeadlineDisplay, type DeadlineNearFormat, type DeadlineFarFormat } from '@/utils/deadlineUtils'
 import { useDeadlineFormat } from '@/hooks/useDeadlineFormat'
 import { formatDeadline } from './boardListUtils'
 import { resolveCardLayout, fieldStyleToClasses, visibleFieldsToLayout } from './cardLayoutUtils'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
+
+/** Минимум данных о ближайшей активной задаче проекта для подписи в строке.
+ *  Считается на сервере (get_board_filtered_projects → next_task_*). */
+export type NextTaskInfo = { name: string; deadline: string | null }
 
 type BoardProjectRowProps = {
   project: BoardProject
@@ -22,7 +25,7 @@ type BoardProjectRowProps = {
   isSelected?: boolean
   cardLayout?: CardLayout | null
   /** Ближайшая незавершённая задача этого проекта — используется полем `next_task`. */
-  nextTask?: WorkspaceTask
+  nextTask?: NextTaskInfo
   /** Имя автора проекта (resolved from created_by uuid) — используется полем `created_by`. */
   authorName?: string | null
 }
@@ -43,7 +46,7 @@ function ProjectField({
   project: BoardProject
   deadline: string | null
   deadlineFormat: { near: DeadlineNearFormat; far: DeadlineFarFormat }
-  nextTask?: WorkspaceTask
+  nextTask?: NextTaskInfo
   authorName?: string | null
   statusName: string | null
   statusColor: string | null

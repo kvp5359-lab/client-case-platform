@@ -6,8 +6,7 @@ import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useBoardDetail, useBoardLists } from '@/components/boards/hooks/useBoardQuery'
-import { useWorkspaceThreads } from '@/hooks/tasks/useWorkspaceThreads'
-import { useAccessibleProjects } from '@/hooks/shared/useAccessibleProjects'
+import { useBoardThreads, useBoardProjects } from '@/components/boards/hooks/useBoardData'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
 import { useCurrentParticipantId } from '@/hooks/shared/useCurrentParticipantId'
 import { useAuth } from '@/contexts/AuthContext'
@@ -27,18 +26,22 @@ export default function BoardPage() {
   usePageTitle(board?.name)
   const { data: lists } = useBoardLists(boardId)
 
-  // Пул данных: задачи + проекты
+  // Контекст пользователя для __me__ (нужен до сборки серверного фильтра).
+  const { data: currentParticipantId } = useCurrentParticipantId(workspaceId)
+
+  // Серверная фильтрация (вариант A): доска тянет только подходящие строки.
   const hasTaskLists = lists?.some((l) => l.entity_type === 'thread')
   const hasProjectLists = lists?.some((l) => l.entity_type === 'project')
-  const { data: tasks } = useWorkspaceThreads(hasTaskLists ? workspaceId : undefined)
-  const { data: projects } = useAccessibleProjects(hasProjectLists ? workspaceId : undefined)
+  const { data: tasks } = useBoardThreads(
+    workspaceId, lists ?? [], board?.global_filter, currentParticipantId ?? null, !!hasTaskLists,
+  )
+  const { data: projects } = useBoardProjects(
+    workspaceId, lists ?? [], board?.global_filter, currentParticipantId ?? null, !!hasProjectLists,
+  )
 
   // Исполнители задач
   const taskIds = (tasks ?? []).map((t) => t.id)
   const { data: assigneesMap } = useTaskAssigneesMap(taskIds)
-
-  // Контекст пользователя для __me__
-  const { data: currentParticipantId } = useCurrentParticipantId(workspaceId)
 
   if (!workspaceId || !boardId) return null
 
@@ -80,6 +83,7 @@ export default function BoardPage() {
             currentParticipantId={currentParticipantId ?? null}
             currentUserId={user?.id ?? null}
             columnWidths={board?.column_widths}
+            boardGlobalFilter={board?.global_filter}
           />
         </div>
       </div>
