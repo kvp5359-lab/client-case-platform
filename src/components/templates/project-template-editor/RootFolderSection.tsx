@@ -9,25 +9,55 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { FolderOpen, ExternalLink, Trash2, Check, X } from 'lucide-react'
 import { extractGoogleDriveFolderId, buildGoogleDriveFolderUrl } from '@/utils/googleDrive'
 import { projectTemplateKeys } from '@/hooks/queryKeys'
+import { FOLDER_NAME_VARIABLES, expandFolderNameTemplate } from '@/lib/folderNameTemplate'
 
 type RootFolderSectionProps = {
   templateId: string | undefined
   rootFolderId: string | null | undefined
   workspaceId: string | undefined
+  folderNameTemplate: string | null | undefined
+  folderNameReplaceSpaces: boolean | undefined
+}
+
+/** Пример значений для живого превью шаблона имени папки. */
+const PREVIEW_VARS = {
+  project_name: 'Иван Петров',
+  contact_name: 'Иван Петров',
+  description: 'ВНЖ Испания',
+  short_id: 'PR-42',
+  template_name: 'Бизнес-план',
+  created_at: undefined,
 }
 
 export function RootFolderSection({
   templateId,
   rootFolderId,
   workspaceId,
+  folderNameTemplate,
+  folderNameReplaceSpaces,
 }: RootFolderSectionProps) {
   const queryClient = useQueryClient()
   const [isEditing, setIsEditing] = useState(false)
   const [folderLink, setFolderLink] = useState('')
   const [folderName, setFolderName] = useState<string | null>(null)
+  const [nameTemplate, setNameTemplate] = useState(folderNameTemplate ?? '')
+  const [replaceSpaces, setReplaceSpaces] = useState(folderNameReplaceSpaces ?? true)
+
+  // Синхронизация локального стейта при загрузке/смене шаблона (props приходят
+  // асинхронно после загрузки шаблона проекта).
+  /* eslint-disable react-hooks/set-state-in-effect -- sync from async-loaded props */
+  useEffect(() => {
+    setNameTemplate(folderNameTemplate ?? '')
+  }, [folderNameTemplate])
+  useEffect(() => {
+    setReplaceSpaces(folderNameReplaceSpaces ?? true)
+  }, [folderNameReplaceSpaces])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   /* eslint-disable react-hooks/set-state-in-effect -- async effect with isCurrent guard */
   useEffect(() => {
@@ -92,6 +122,34 @@ export function RootFolderSection({
     setIsEditing(false)
     setFolderLink('')
   }
+
+  const saveNameTemplate = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('project_templates')
+        .update({
+          folder_name_template: nameTemplate.trim() || null,
+          folder_name_replace_spaces: replaceSpaces,
+        })
+        .eq('id', templateId ?? '')
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
+      toast.success('Шаблон имени папки сохранён')
+    },
+    onError: () => toast.error('Не удалось сохранить шаблон имени'),
+  })
+
+  const insertToken = (token: string) => setNameTemplate((t) => (t ? `${t}${token}` : token))
+
+  const namePreview = nameTemplate.trim()
+    ? expandFolderNameTemplate(nameTemplate, PREVIEW_VARS, replaceSpaces)
+    : 'БП_2026.04.18_Иван_Петров (по умолчанию)'
+
+  const nameTemplateDirty =
+    nameTemplate.trim() !== (folderNameTemplate ?? '').trim() ||
+    replaceSpaces !== (folderNameReplaceSpaces ?? true)
 
   return (
     <section className="space-y-3 mb-6">
@@ -175,6 +233,61 @@ export function RootFolderSection({
           </Button>
         </div>
       )}
+
+      {/* Шаблон имени создаваемой папки проекта */}
+      <div className="pt-4 mt-2 border-t space-y-2">
+        <div>
+          <h3 className="text-sm font-semibold">Шаблон имени папки проекта</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Имя папки, которая создаётся для нового проекта. Вставьте переменные —
+            они заменятся данными проекта. Пусто — имя по умолчанию.
+          </p>
+        </div>
+
+        <Input
+          value={nameTemplate}
+          onChange={(e) => setNameTemplate(e.target.value)}
+          placeholder="БП_{date}_{project_name}"
+        />
+
+        <div className="flex flex-wrap gap-1">
+          {FOLDER_NAME_VARIABLES.map((v) => (
+            <button
+              key={v.token}
+              type="button"
+              onClick={() => insertToken(v.token)}
+              title={v.label}
+              className="text-[11px] px-1.5 py-0.5 rounded border bg-muted/50 hover:bg-muted text-muted-foreground font-mono transition-colors"
+            >
+              {v.token}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="folder-replace-spaces"
+            checked={replaceSpaces}
+            onCheckedChange={(c) => setReplaceSpaces(c === true)}
+          />
+          <Label htmlFor="folder-replace-spaces" className="text-sm cursor-pointer">
+            Заменять пробелы нижним подчёркиванием
+          </Label>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Превью: <span className="font-mono text-foreground">{namePreview}</span>
+        </p>
+
+        <Button
+          size="sm"
+          onClick={() => saveNameTemplate.mutate()}
+          disabled={!nameTemplateDirty || saveNameTemplate.isPending}
+        >
+          <Check className="h-4 w-4 mr-1" />
+          Сохранить шаблон имени
+        </Button>
+      </div>
     </section>
   )
 }

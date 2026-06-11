@@ -32,6 +32,8 @@ export function useProjectTemplate(templateId: string | null | undefined) {
           name,
           enabled_modules,
           root_folder_id,
+          folder_name_template,
+          folder_name_replace_spaces,
           file_size_warn_mb,
           file_size_danger_mb,
           project_template_document_kits(document_kit_template_id),

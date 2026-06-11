@@ -89,6 +89,8 @@ type ProjectTabsContentProps = {
   onCreateGoogleDriveFolder: (folderName: string) => Promise<void>
   onDisconnectGoogleDrive: () => Promise<void>
   rootFolderId?: string | null
+  folderNameTemplate?: string | null
+  folderNameReplaceSpaces?: boolean
   // Forms tab
   formKits: FormKit[]
   canAddForms: boolean
@@ -121,6 +123,8 @@ export function ProjectTabsContent({
   onCreateGoogleDriveFolder,
   onDisconnectGoogleDrive,
   rootFolderId,
+  folderNameTemplate,
+  folderNameReplaceSpaces,
   formKits,
   canAddForms,
   addFormKitDialog,
@@ -180,6 +184,10 @@ export function ProjectTabsContent({
               projectDescription={project.description}
               projectCreatedAt={project.created_at}
               templateName={templateName}
+              projectShortId={project.short_id != null ? String(project.short_id) : null}
+              contactParticipantId={project.contact_participant_id ?? null}
+              folderNameTemplate={folderNameTemplate}
+              folderNameReplaceSpaces={folderNameReplaceSpaces}
               onOpenDialog={googleDrive.openDialog}
               onCloseDialog={googleDrive.closeDialog}
               onFolderLinkChange={googleDrive.setFolderLink}

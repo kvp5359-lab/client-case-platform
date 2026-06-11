@@ -359,6 +359,8 @@ export function ProjectTemplateEditorPage() {
               templateId={templateId}
               rootFolderId={template.root_folder_id}
               workspaceId={workspaceId}
+              folderNameTemplate={template.folder_name_template}
+              folderNameReplaceSpaces={template.folder_name_replace_spaces}
             />
             <BriefTemplateSection
               templateId={templateId}

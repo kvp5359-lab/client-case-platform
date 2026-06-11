@@ -18,6 +18,8 @@ export type ProjectTemplateWithRelations = {
   name: string
   enabled_modules: string[] | null
   root_folder_id: string | null
+  folder_name_template: string | null
+  folder_name_replace_spaces: boolean
   file_size_warn_mb: number | null
   file_size_danger_mb: number | null
   project_template_document_kits: Array<{ document_kit_template_id: string }>

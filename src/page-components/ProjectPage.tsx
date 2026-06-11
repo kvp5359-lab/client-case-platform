@@ -384,6 +384,8 @@ export default function ProjectPage() {
                 onCreateGoogleDriveFolder={handleCreateGoogleDriveFolder}
                 onDisconnectGoogleDrive={handleDisconnectGoogleDrive}
                 rootFolderId={projectTemplate?.root_folder_id}
+                folderNameTemplate={projectTemplate?.folder_name_template}
+                folderNameReplaceSpaces={projectTemplate?.folder_name_replace_spaces}
                 formKits={formKits}
                 canAddForms={canAddForms}
                 addFormKitDialog={addFormKitDialog}

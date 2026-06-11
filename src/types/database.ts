@@ -5988,6 +5988,8 @@ export type Database = {
           enabled_modules: string[] | null
           file_size_danger_mb: number | null
           file_size_warn_mb: number | null
+          folder_name_replace_spaces: boolean
+          folder_name_template: string | null
           icon: string
           icon_color: string
           icon_color_mode: string
@@ -6008,6 +6010,8 @@ export type Database = {
           enabled_modules?: string[] | null
           file_size_danger_mb?: number | null
           file_size_warn_mb?: number | null
+          folder_name_replace_spaces?: boolean
+          folder_name_template?: string | null
           icon?: string
           icon_color?: string
           icon_color_mode?: string
@@ -6028,6 +6032,8 @@ export type Database = {
           enabled_modules?: string[] | null
           file_size_danger_mb?: number | null
           file_size_warn_mb?: number | null
+          folder_name_replace_spaces?: boolean
+          folder_name_template?: string | null
           icon?: string
           icon_color?: string
           icon_color_mode?: string

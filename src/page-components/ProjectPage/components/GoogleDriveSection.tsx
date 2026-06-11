@@ -9,9 +9,13 @@
  */
 
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { supabase } from '@/lib/supabase'
+import { STALE_TIME } from '@/hooks/queryKeys'
+import { expandFolderNameTemplate } from '@/lib/folderNameTemplate'
 import {
   Dialog,
   DialogContent,
@@ -52,6 +56,12 @@ type GoogleDriveSectionProps = {
   projectDescription?: string | null
   projectCreatedAt?: string | null
   templateName?: string | null
+  projectShortId?: string | null
+  /** Участник-контакт проекта — для подстановки {contact_name} в шаблон имени. */
+  contactParticipantId?: string | null
+  /** Шаблон имени папки из настроек типа проекта (с переменными). */
+  folderNameTemplate?: string | null
+  folderNameReplaceSpaces?: boolean
 
   // Действия
   onOpenDialog: () => void
@@ -74,7 +84,11 @@ export function GoogleDriveSection({
   projectName,
   projectDescription,
   projectCreatedAt,
-  templateName: _templateName,
+  templateName,
+  projectShortId,
+  contactParticipantId,
+  folderNameTemplate,
+  folderNameReplaceSpaces,
   onOpenDialog,
   onCloseDialog,
   onFolderLinkChange,
@@ -85,9 +99,43 @@ export function GoogleDriveSection({
   const [dialogMode, setDialogMode] = useState<DialogMode>('link')
   const [newFolderName, setNewFolderName] = useState('')
 
+  // Имя контакта для {contact_name} — нужно только когда шаблон его использует.
+  const needsContact = !!folderNameTemplate?.includes('{contact_name}') && !!contactParticipantId
+  const { data: contactName } = useQuery({
+    queryKey: ['project-contact-name', contactParticipantId],
+    enabled: needsContact,
+    staleTime: STALE_TIME.STANDARD,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('participants')
+        .select('name, last_name')
+        .eq('id', contactParticipantId!)
+        .maybeSingle()
+      if (!data) return ''
+      return [data.name, data.last_name].filter(Boolean).join(' ').trim()
+    },
+  })
+
   const hasCreateOption = !!rootFolderId && !!onCreateFolder
 
   const buildDefaultFolderName = () => {
+    // Кастомный шаблон из типа проекта — приоритетнее старого дефолта.
+    if (folderNameTemplate && folderNameTemplate.trim()) {
+      return expandFolderNameTemplate(
+        folderNameTemplate,
+        {
+          project_name: projectName,
+          description: projectDescription,
+          short_id: projectShortId,
+          template_name: templateName,
+          contact_name: contactName,
+          created_at: projectCreatedAt,
+        },
+        folderNameReplaceSpaces ?? true,
+      )
+    }
+
+    // Старое поведение по умолчанию (шаблон не задан).
     const parts: string[] = ['БП']
 
     if (projectCreatedAt) {
