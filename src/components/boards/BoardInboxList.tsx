@@ -8,6 +8,7 @@ import {
   useFilteredInbox,
   useFilteredInboxUnread,
   useFilteredInboxSearch,
+  useInboxMessageStatuses,
 } from '@/hooks/messenger/useFilteredInbox'
 import { useDebounce } from '@/hooks/shared/useDebounce'
 import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
@@ -64,6 +65,8 @@ export function BoardInboxList({
   // а не по загруженным страницам. Debounce, чтобы не дёргать RPC на каждую букву.
   const debouncedSearch = useDebounce(searchQuery.trim(), 300)
   const { data: searchResults = [] } = useFilteredInboxSearch(workspaceId, debouncedSearch)
+  // Статусы доставки последних исходящих — для галочки в превью.
+  const deliveryStatuses = useInboxMessageStatuses(workspaceId)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
 
   const q = searchQuery.trim().toLowerCase()
@@ -188,6 +191,7 @@ export function BoardInboxList({
                 onClick={() => onOpenThread(threadToTaskItem(chat))}
                 onMarkAsRead={() => markReadMutation.mutate(chat)}
                 onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
+                deliveryStatus={deliveryStatuses.get(chat.thread_id)}
               />
             ))}
             {showLoadMore && (

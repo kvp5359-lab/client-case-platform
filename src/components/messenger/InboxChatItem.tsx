@@ -1,9 +1,10 @@
 import { memo } from 'react'
 import Image from 'next/image'
-import { MessageSquare, Send, Mail, EyeOff, CheckCheck } from 'lucide-react'
+import { MessageSquare, Send, Mail, EyeOff, Check, CheckCheck, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { stripHtml, stripHtmlIgnoreQuotes } from '@/utils/format/messengerHtml'
 import type { InboxThreadEntry, InboxChannelType } from '@/services/api/inboxService'
+import type { DeliveryStatus } from './DeliveryIndicator'
 import { getBadgeDisplay, formatBadgeCount } from '@/utils/inboxUnread'
 import { formatShortDate } from '@/utils/format/dateFormat'
 import { safeCssColor } from '@/utils/isValidCssColor'
@@ -111,6 +112,18 @@ const accentStyles: Record<string, { bg: string; text: string; badge: string; ri
 
 const defaultAccent = accentStyles.blue
 
+/**
+ * Галочка статуса доставки последнего ИСХОДЯЩЕГО сообщения в превью списка.
+ * Как в самих сообщениях: «отправлено» — одна серая, «прочитано» — две синие.
+ * `failed` в превью не рисуем (ошибка видна в треде + тосте). Цвета — под белый фон.
+ */
+function DeliveryTick({ status }: { status: DeliveryStatus }) {
+  if (status === 'pending') return <Clock className="h-3 w-3 shrink-0 text-gray-400" aria-label="Отправляется" />
+  if (status === 'read') return <CheckCheck className="h-3 w-3 shrink-0 text-blue-500" aria-label="Прочитано" />
+  if (status === 'sent') return <Check className="h-3 w-3 shrink-0 text-gray-400" aria-label="Отправлено" />
+  return null
+}
+
 /** Иконка типа канала (маленькая, в углу аватара) */
 const channelIcons: Record<InboxChannelType, typeof Send> = {
   telegram: Send,
@@ -126,6 +139,8 @@ type InboxChatItemProps = {
   onMarkAsRead?: () => void
   /** Скрыть название проекта (для контекста внутри проекта) */
   hideProjectName?: boolean
+  /** Статус доставки последнего исходящего сообщения (для галочки в превью). */
+  deliveryStatus?: DeliveryStatus
 }
 
 export const InboxChatItem = memo(function InboxChatItem({
@@ -135,6 +150,7 @@ export const InboxChatItem = memo(function InboxChatItem({
   onMarkAsUnread,
   onMarkAsRead,
   hideProjectName,
+  deliveryStatus,
 }: InboxChatItemProps) {
   // Черновик из localStorage
   const draftHtml = localStorage.getItem(`msg_draft:${chat.project_id}:${chat.thread_id}`)
@@ -155,6 +171,10 @@ export const InboxChatItem = memo(function InboxChatItem({
     !reactionIsNewer &&
     !!chat.last_event_at &&
     (!chat.last_message_at || chat.last_event_at > chat.last_message_at)
+
+  // Галочка доставки — только когда превью показывает само сообщение (не черновик,
+  // не реакцию, не событие) и оно исходящее (deliveryStatus задан сервером).
+  const showDelivery = !!deliveryStatus && !draftText && !reactionIsNewer && !eventIsNewer
 
   const displayTime = reactionIsNewer
     ? chat.last_reaction_at
@@ -385,6 +405,35 @@ export const InboxChatItem = memo(function InboxChatItem({
               <span className="hidden group-hover/badge:flex w-5 h-5 items-center justify-center rounded-full bg-blue-100">
                 <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
               </span>
+            </div>
+          ) : showDelivery && deliveryStatus ? (
+            // Последнее сообщение наше — галочка доставки на месте бейджа.
+            // На ховере строки галочка уступает кнопке «отметить непрочитанным».
+            <div className="ml-2 shrink-0 flex items-center justify-center w-5 h-5">
+              <span className={cn(onMarkAsUnread && 'group-hover/chat:hidden')}>
+                <DeliveryTick status={deliveryStatus} />
+              </span>
+              {onMarkAsUnread && (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  title="Непрочитанное"
+                  className="hidden group-hover/chat:flex w-5 h-5 items-center justify-center cursor-pointer rounded-full hover:bg-gray-200"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onMarkAsUnread()
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      onMarkAsUnread()
+                    }
+                  }}
+                >
+                  <EyeOff className="h-3.5 w-3.5 text-gray-400" />
+                </div>
+              )}
             </div>
           ) : (
             onMarkAsUnread && (

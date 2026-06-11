@@ -14,6 +14,7 @@ import {
   useFilteredInbox,
   useFilteredInboxUnread,
   useFilteredInboxSearch,
+  useInboxMessageStatuses,
 } from '@/hooks/messenger/useFilteredInbox'
 import { useDebounce } from '@/hooks/shared/useDebounce'
 import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
@@ -87,6 +88,8 @@ export default function InboxPage() {
   const { data: searchResults = [] } = useFilteredInboxSearch(workspaceId ?? '', debouncedSearch)
   const isSearching = searchQuery.trim().length > 0
   const displayChats = isSearching ? searchResults : filteredChats
+  // Статусы доставки последних исходящих — для галочки в превью.
+  const deliveryStatuses = useInboxMessageStatuses(workspaceId ?? '')
 
   // Активный чат — выбранный или первый из списка
   const activeChat = useMemo(() => {
@@ -246,6 +249,7 @@ export default function InboxPage() {
             onSelectThread={setSelectedThreadId}
             onMarkAsRead={(chat) => markReadMutation.mutate(chat)}
             onMarkAsUnread={(chat) => markUnreadMutation.mutate(chat)}
+            deliveryStatuses={deliveryStatuses}
             hasNextPage={showLoadMore}
             isFetchingNextPage={isFetchingNextPage}
             onLoadMore={fetchNextPage}

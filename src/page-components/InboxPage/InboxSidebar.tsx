@@ -7,6 +7,7 @@ import { Inbox, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
+import type { DeliveryStatus } from '@/components/messenger/DeliveryIndicator'
 import type { InboxFilter } from './useInboxFilters'
 
 type InboxSidebarProps = {
@@ -24,6 +25,8 @@ type InboxSidebarProps = {
   onSelectThread: (threadId: string) => void
   onMarkAsRead: (chat: InboxThreadEntry) => void
   onMarkAsUnread: (chat: InboxThreadEntry) => void
+  /** Карта thread_id → статус доставки последнего исходящего (галочка в превью). */
+  deliveryStatuses?: Map<string, DeliveryStatus>
   /** Есть ли следующая страница в пагинированном инбоксе. */
   hasNextPage?: boolean
   /** Идёт ли догрузка следующей страницы. */
@@ -47,6 +50,7 @@ export const InboxSidebar = memo(function InboxSidebar({
   onSelectThread,
   onMarkAsRead,
   onMarkAsUnread,
+  deliveryStatuses,
   hasNextPage = false,
   isFetchingNextPage = false,
   onLoadMore,
@@ -176,6 +180,7 @@ export const InboxSidebar = memo(function InboxSidebar({
                 onClick={() => onSelectThread(chat.thread_id)}
                 onMarkAsRead={() => onMarkAsRead(chat)}
                 onMarkAsUnread={() => onMarkAsUnread(chat)}
+                deliveryStatus={deliveryStatuses?.get(chat.thread_id)}
               />
             ))}
             {hasNextPage && (

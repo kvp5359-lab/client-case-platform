@@ -27,6 +27,9 @@ export const inboxKeys = {
   /** Серверный поиск по тредам инбокса (по названию треда/проекта). */
   search: (workspaceId: string, query: string) =>
     ['inbox', 'search', workspaceId, query] as const,
+  /** Статусы доставки последних исходящих сообщений (галочка в превью). */
+  messageStatuses: (workspaceId: string) =>
+    ['inbox', 'message-statuses', workspaceId] as const,
 }
 
 /**
@@ -157,6 +160,7 @@ export function invalidateMessengerCaches(
   queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
   queryClient.invalidateQueries({ queryKey: inboxKeys.aggregates(workspaceId) })
   queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
+  queryClient.invalidateQueries({ queryKey: inboxKeys.messageStatuses(workspaceId) })
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, true) })
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, false) })
 }

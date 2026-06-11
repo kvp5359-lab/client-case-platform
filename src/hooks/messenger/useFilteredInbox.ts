@@ -20,8 +20,10 @@ import {
   getInboxThreadAggregates,
   getInboxUnreadThreads,
   getInboxSearchThreads,
+  getInboxMessageStatuses,
   type InboxThreadAggregate,
 } from '@/services/api/inboxService'
+import type { DeliveryStatus } from '@/components/messenger/DeliveryIndicator'
 import { inboxKeys, sidebarDataKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 type MyProjectRole = {
@@ -145,6 +147,31 @@ export function useFilteredInboxSearch(workspaceId: string, query: string) {
 
   const data = useAccessFilter(rawResults, workspaceId)
   return { data, ...queryRest }
+}
+
+/**
+ * useInboxMessageStatuses — карта thread_id → статус доставки последнего исходящего
+ * сообщения (для галочки в превью списка). Отдельный лёгкий запрос; не зависит от
+ * пагинации инбокса. Возвращает Map для O(1)-доступа по thread_id.
+ */
+export function useInboxMessageStatuses(workspaceId: string): Map<string, DeliveryStatus> {
+  const { user } = useAuth()
+
+  const { data } = useQuery({
+    queryKey: inboxKeys.messageStatuses(workspaceId),
+    queryFn: () => getInboxMessageStatuses(workspaceId, user!.id),
+    enabled: !!workspaceId && !!user,
+    staleTime: STALE_TIME.SHORT,
+    select: (rows) => {
+      const map = new Map<string, DeliveryStatus>()
+      for (const r of rows) {
+        if (r.delivery_status) map.set(r.thread_id, r.delivery_status)
+      }
+      return map
+    },
+  })
+
+  return data ?? new Map<string, DeliveryStatus>()
 }
 
 /**

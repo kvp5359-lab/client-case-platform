@@ -102,6 +102,31 @@ export async function getInboxThreadsV2(
   return (data ?? []) as unknown as InboxThreadEntry[]
 }
 
+/** Статус доставки последнего исходящего сообщения треда (для галочки в превью). */
+export type InboxMessageStatus = {
+  thread_id: string
+  delivery_status: 'pending' | 'sent' | 'read' | 'failed' | null
+}
+
+/**
+ * Статусы доставки последних сообщений по тредам инбокса (RPC
+ * `get_inbox_message_status`). `delivery_status` непустой только когда последнее
+ * сообщение исходящее (наше). Отдельный лёгкий запрос — не трогает
+ * get_inbox_threads_v2 и его обёртки.
+ */
+export async function getInboxMessageStatuses(
+  workspaceId: string,
+  userId: string,
+): Promise<InboxMessageStatus[]> {
+  const { data, error } = await supabase.rpc('get_inbox_message_status' as never, {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+  } as never)
+
+  if (error) throw new ApiError(`Ошибка загрузки статусов доставки: ${error.message}`)
+  return (data ?? []) as unknown as InboxMessageStatus[]
+}
+
 /**
  * Поиск по тредам входящих по названию треда / имени проекта (RPC
  * `get_inbox_search_threads`). Серверный — по ВСЕМ тредам инбокса, а не по
