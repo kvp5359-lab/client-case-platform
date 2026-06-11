@@ -105,16 +105,25 @@ export const boardKeys = {
 /**
  * Серверно-отфильтрованные данные доски (вариант A — union-prefilter).
  * Ключ включает сериализованный union-фильтр: при смене фильтров списков
- * запрос автоматически перевыбирается. Префиксы `*All` — для broad-invalidate
- * из мутаций задач/проектов (они знают только workspaceId).
+ * запрос автоматически перевыбирается.
+ *
+ * ⚠️ КОНТРАКТ: ключи НАМЕРЕННО вложены под префиксы родительских данных —
+ * threads под `['workspace-threads', ws]` (= workspaceThreadKeys.workspace),
+ * projects под `['accessible-projects', ws]` (= accessibleProjectKeys.workspace).
+ * Доска читает производные от них данные, поэтому ЛЮБАЯ существующая
+ * инвалидация workspaceThreadKeys.workspace(ws) / accessibleProjectKeys.all
+ * (панель задач, мутации статуса/дедлайна, удаление и т.д.) благодаря
+ * partial-prefix matching React Query автоматически рефетчит и доску. Без этого
+ * пришлось бы добавлять board-инвалидацию в десятки мутаций. НЕ менять первые
+ * два сегмента, иначе доска перестанет обновляться на правки извне.
  */
 export const boardFilteredKeys = {
-  threadsAll: (workspaceId: string) => ['board-filtered-threads', workspaceId] as const,
+  threadsAll: (workspaceId: string) => ['workspace-threads', workspaceId, 'board'] as const,
   threads: (workspaceId: string, userId: string | undefined, filterKey: string) =>
-    ['board-filtered-threads', workspaceId, userId, filterKey] as const,
-  projectsAll: (workspaceId: string) => ['board-filtered-projects', workspaceId] as const,
+    ['workspace-threads', workspaceId, 'board', userId, filterKey] as const,
+  projectsAll: (workspaceId: string) => ['accessible-projects', workspaceId, 'board'] as const,
   projects: (workspaceId: string, userId: string | undefined, filterKey: string) =>
-    ['board-filtered-projects', workspaceId, userId, filterKey] as const,
+    ['accessible-projects', workspaceId, 'board', userId, filterKey] as const,
 }
 
 export const myTaskCountsKeys = {
