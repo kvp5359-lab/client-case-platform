@@ -232,6 +232,8 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             await markAsRead(participant.participantId, msg.project_id, msgChannel, msg.thread_id)
             queryClient.setQueryData(messengerKeys.unreadCountByThreadId(msg.thread_id), 0)
             queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+            queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
+            queryClient.invalidateQueries({ queryKey: inboxKeys.messageStatuses(workspaceId) })
           }
 
           playIncomingSound()

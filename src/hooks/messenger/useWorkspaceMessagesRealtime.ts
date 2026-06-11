@@ -31,10 +31,14 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
 
     const doInvalidate = () => {
       // Инвалидируем все ключи, которые зависят от project_messages workspace-level:
-      // - threadsV2: единый inbox-кеш для UI-списка тредов
+      // - threadsV2: единый inbox-кеш для UI-списка тредов (вкладка «Все»)
+      // - unread: отдельный полный список непрочитанных (вкладка «Непрочитанные»)
+      // - messageStatuses: статусы доставки для галочек в превью
       // - aggregates: лёгкий RPC для сайдбар-бейджей и favicon (с 2026-05-27)
       // - projectsBase: сайдбар проектов с last_activity_at
       queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.messageStatuses(workspaceId) })
       queryClient.invalidateQueries({ queryKey: inboxKeys.aggregates(workspaceId) })
       queryClient.invalidateQueries({ queryKey: sidebarKeys.projectsBase(workspaceId) })
     }
