@@ -75,9 +75,7 @@ function MessageBubbleImpl({
     onEdit,
     onDelete,
     onQuote,
-    onForwardToChat,
-    forwardChats,
-    currentThreadId,
+    onForward,
     onPublishDraft,
     onEditDraft,
     onRetryTelegramSend,
@@ -392,9 +390,7 @@ function MessageBubbleImpl({
           onEdit={onEdit}
           onDelete={onDelete}
           canDelete={canDelete}
-          onForwardToChat={onForwardToChat}
-          forwardChats={forwardChats}
-          currentThreadId={currentThreadId}
+          onForward={onForward}
           onPublishDraft={onPublishDraft}
           onEditDraft={onEditDraft}
           onViewEmail={isEmailSource(message.source) ? () => setEmailViewOpen(true) : undefined}
@@ -641,9 +637,7 @@ function MessageBubbleImpl({
               onEdit={onEdit}
               onDelete={onDelete}
               canDelete={canDelete}
-              onForwardToChat={onForwardToChat}
-              forwardChats={forwardChats}
-              currentThreadId={currentThreadId}
+              onForward={onForward}
               onPublishDraft={onPublishDraft}
               onEditDraft={onEditDraft}
               onViewEmail={isEmailSource(message.source) ? () => setEmailViewOpen(true) : undefined}

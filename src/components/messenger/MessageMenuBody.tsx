@@ -1,6 +1,4 @@
-import { createElement } from 'react'
 import type { ComponentType, ReactNode } from 'react'
-import { cn } from '@/lib/utils'
 import {
   Reply,
   Pencil,
@@ -13,28 +11,14 @@ import {
   Quote,
   Languages,
 } from 'lucide-react'
-import {
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-} from '@/components/ui/context-menu'
+import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
+import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { REACTIONS } from './ReactionPicker'
 import { trackReactionUsage } from '@/utils/messenger/recentReactions'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import { isReactionSupportedForSource } from '@/services/api/messenger/reactionStrategies'
-import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
-import { getChatIconComponent, getChatTabAccent } from './EditChatDialog'
 import { stripHtml, isHtmlContent, sanitizeMessengerHtml } from '@/utils/format/messengerHtml'
 import { toast } from 'sonner'
 
@@ -46,9 +30,6 @@ import { toast } from 'sonner'
 export type MenuComponents = {
   Item: ComponentType<{ onClick?: () => void; className?: string; children: ReactNode }>
   Separator: ComponentType<Record<string, never>>
-  Sub: ComponentType<{ children: ReactNode }>
-  SubTrigger: ComponentType<{ children: ReactNode }>
-  SubContent: ComponentType<{ className?: string; children: ReactNode }>
 }
 
 export type MessageMenuBodyProps = {
@@ -62,9 +43,8 @@ export type MessageMenuBodyProps = {
   onEdit?: (msg: ProjectMessage) => void
   onDelete?: (messageId: string) => void
   canDelete?: boolean
-  onForwardToChat?: (msg: ProjectMessage, targetChatId: string) => void
-  forwardChats?: ProjectThread[]
-  currentThreadId?: string
+  /** Разложить сообщение на блоки буфера пересылки (текст + файлы). */
+  onForward?: (msg: ProjectMessage) => void
   onPublishDraft?: (msg: ProjectMessage) => void
   onEditDraft?: (msg: ProjectMessage) => void
   onViewEmail?: () => void
@@ -90,9 +70,7 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
     onEdit,
     onDelete,
     canDelete,
-    onForwardToChat,
-    forwardChats,
-    currentThreadId,
+    onForward,
     onPublishDraft,
     onEditDraft,
     onViewEmail,
@@ -103,7 +81,7 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
     reactionPopoverOpen,
     setReactionPopoverOpen,
   } = props
-  const { Item, Separator, Sub, SubTrigger, SubContent } = comps
+  const { Item, Separator } = comps
 
   const handleCopyText = () => {
     const raw = message.content
@@ -162,11 +140,6 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
       </>
     )
   }
-
-  const availableForwardChats =
-    onForwardToChat && forwardChats
-      ? forwardChats.filter((c) => c.id !== currentThreadId && c.type === 'chat')
-      : []
 
   // В каналах, где Telegram/WhatsApp/email не позволяют доставить
   // реакцию получателю, скрываем UI «быстрых реакций» совсем — вместо
@@ -274,32 +247,11 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
         </Item>
       )}
 
-      {onForwardToChat && availableForwardChats.length > 0 && (
-        <Sub>
-          <SubTrigger>
-            <Forward className="h-4 w-4 mr-2" />
-            Переслать в чат
-          </SubTrigger>
-          <SubContent className="min-w-[180px]">
-            {availableForwardChats.map((chat) => {
-              const IconComponent = getChatIconComponent(chat.icon)
-              const accent = getChatTabAccent(chat.accent_color)
-              return (
-                <Item key={chat.id} onClick={() => onForwardToChat(message, chat.id)}>
-                  <span
-                    className={cn(
-                      'flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] mr-2',
-                      accent.active,
-                    )}
-                  >
-                    {createElement(IconComponent, { className: 'h-3 w-3' })}
-                  </span>
-                  <span className="truncate">{chat.name}</span>
-                </Item>
-              )
-            })}
-          </SubContent>
-        </Sub>
+      {onForward && (
+        <Item onClick={() => onForward(message)}>
+          <Forward className="h-4 w-4 mr-2" />
+          Переслать сообщение
+        </Item>
       )}
 
       {canDelete && onDelete && (
@@ -321,15 +273,9 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
 export const DROPDOWN_COMPONENTS: MenuComponents = {
   Item: DropdownMenuItem as MenuComponents['Item'],
   Separator: DropdownMenuSeparator as MenuComponents['Separator'],
-  Sub: DropdownMenuSub as MenuComponents['Sub'],
-  SubTrigger: DropdownMenuSubTrigger as MenuComponents['SubTrigger'],
-  SubContent: DropdownMenuSubContent as MenuComponents['SubContent'],
 }
 
 export const CONTEXT_COMPONENTS: MenuComponents = {
   Item: ContextMenuItem as MenuComponents['Item'],
   Separator: ContextMenuSeparator as MenuComponents['Separator'],
-  Sub: ContextMenuSub as MenuComponents['Sub'],
-  SubTrigger: ContextMenuSubTrigger as MenuComponents['SubTrigger'],
-  SubContent: ContextMenuSubContent as MenuComponents['SubContent'],
 }

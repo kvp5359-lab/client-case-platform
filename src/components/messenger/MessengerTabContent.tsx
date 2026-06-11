@@ -2,7 +2,7 @@
  * Main container for "Messages" tab
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
@@ -11,6 +11,7 @@ import { MessageList } from './MessageList'
 import type { MessengerAccent } from './MessageBubble'
 import { MessengerProvider } from './MessengerContext'
 import { MessageInput } from './MessageInput'
+import { ForwardBufferBar } from './ForwardBufferBar'
 import { TelegramLinkDialog } from './TelegramLinkDialog'
 import { ThreadHealthBanner } from './ThreadHealthBanner'
 import { EmailLinkDialog } from './EmailLinkDialog'
@@ -30,6 +31,9 @@ import {
   useIsMtprotoThread,
 } from '@/hooks/messenger/useBackfillTelegramHistory'
 import { useScheduleMessage } from '@/hooks/messenger/useScheduleMessage'
+import { useSidePanelStore } from '@/store/sidePanelStore'
+import type { ForwardBufferItem } from '@/store/sidePanelStore'
+import { buildForwardContent, toForwardedAttachments, type ForwardMode } from '@/utils/messenger/forwardContent'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
 
@@ -60,6 +64,10 @@ export function MessengerTabContent({
   const [searchOpen, setSearchOpen] = useState(false)
   const [jumpToMessageId, setJumpToMessageId] = useState<string | null>(null)
   const { data: allThreads = [] } = useProjectThreads(projectId)
+  const forwardBuffer = useSidePanelStore((s) => s.forwardBuffer)
+  const removeFromForwardBuffer = useSidePanelStore((s) => s.removeFromForwardBuffer)
+  const clearForwardBuffer = useSidePanelStore((s) => s.clearForwardBuffer)
+  const insertContentRef = useRef<((html: string) => void) | null>(null)
   // Тред догружаем напрямую — нужен contact_participant_id (для personal-тредов
   // его нет в allThreads). React Query дедуплицирует с useProjectThreadById в TaskPanel.
   const { data: directThread } = useProjectThreadById(threadId, true)
@@ -213,6 +221,29 @@ export function MessengerTabContent({
     [state],
   )
 
+  // «Вставить» из буфера: текстовые блоки → в редактор (цитата/оригинал),
+  // файлы → в чипы вложений композера. Вставленные элементы убираем из буфера.
+  const handleInsertForward = useCallback(
+    (items: ForwardBufferItem[], mode: ForwardMode) => {
+      const files = items.flatMap((i) => (i.kind === 'file' ? toForwardedAttachments(i.attachments) : []))
+      if (files.length > 0) {
+        state.setForwardedAttachments((prev) => [...prev, ...files])
+      }
+      // Все текстовые блоки вставляем ОДНИМ insertContent — иначе второй вызов
+      // приходит курсором внутрь первого blockquote и цитата вкладывается в
+      // цитату. Хвостовой <p> выводит курсор из последней цитаты.
+      const textHtml = items
+        .filter((i) => i.kind === 'text')
+        .map((i) => buildForwardContent(i, mode))
+        .join('')
+      if (textHtml) {
+        insertContentRef.current?.(`${textHtml}<p></p>`)
+      }
+      for (const item of items) removeFromForwardBuffer(item.id)
+    },
+    [state, removeFromForwardBuffer],
+  )
+
   const displayMessages = useOptimisticEmail({
     messages: state.messages,
     searchResults: state.searchResults,
@@ -274,8 +305,7 @@ export function MessengerTabContent({
         onEdit={handlers.handleStartEdit}
         onDelete={handleDelete}
         onQuote={state.setQuoteText}
-        onForwardToChat={handlers.handleForwardToChat}
-        forwardChats={allThreads}
+        onForward={handlers.handleForward}
         currentThreadId={threadId}
         onPublishDraft={handlers.handlePublishDraft}
         onEditDraft={handlers.handleEditDraft}
@@ -333,6 +363,13 @@ export function MessengerTabContent({
 
         <EmailSendMethodSelector threadId={threadId} />
 
+        <ForwardBufferBar
+          items={forwardBuffer}
+          onInsert={handleInsertForward}
+          onRemove={removeFromForwardBuffer}
+          onClear={clearForwardBuffer}
+        />
+
         <MessageInput
           projectId={projectId ?? ''}
           channel={channel}
@@ -357,6 +394,7 @@ export function MessengerTabContent({
           onOpenDocPicker={state.documentPickerLogic.handleOpenDocPicker}
           projectDocumentsCount={state.documentPickerLogic.projectDocuments.length}
           addFilesRef={state.documentPickerLogic.addFilesRef}
+          insertContentRef={insertContentRef}
           onDocumentDrop={state.documentPickerLogic.handleDocumentDrop}
           forwardedAttachments={state.forwardedAttachments}
           onRemoveForwardedAttachment={(index) =>

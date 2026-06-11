@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/context-menu'
 import { useQuickReactions } from '@/hooks/messenger/useQuickReactions'
 import type { ProjectMessage, MessageChannel } from '@/services/api/messenger/messengerService'
-import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { bubbleStyles, type MessengerAccent } from './utils/messageStyles'
 import {
   renderMessageMenuBody,
@@ -32,9 +31,7 @@ type MessageActionsProps = {
   onEdit?: (msg: ProjectMessage) => void
   onDelete?: (messageId: string) => void
   canDelete?: boolean
-  onForwardToChat?: (msg: ProjectMessage, targetChatId: string) => void
-  forwardChats?: ProjectThread[]
-  currentThreadId?: string
+  onForward?: (msg: ProjectMessage) => void
   onPublishDraft?: (msg: ProjectMessage) => void
   onEditDraft?: (msg: ProjectMessage) => void
   onViewEmail?: () => void
@@ -74,9 +71,7 @@ export function MessageActions({
   onEdit,
   onDelete,
   canDelete,
-  onForwardToChat,
-  forwardChats,
-  currentThreadId,
+  onForward,
   onPublishDraft,
   onEditDraft,
   onViewEmail,
@@ -192,9 +187,7 @@ export function MessageActions({
             onEdit,
             onDelete,
             canDelete,
-            onForwardToChat,
-            forwardChats,
-            currentThreadId,
+            onForward,
             onPublishDraft,
             onEditDraft,
             onViewEmail,
@@ -231,9 +224,7 @@ export function MessageContextMenu({
   onEdit,
   onDelete,
   canDelete,
-  onForwardToChat,
-  forwardChats,
-  currentThreadId,
+  onForward,
   onPublishDraft,
   onEditDraft,
   onViewEmail,
@@ -259,9 +250,7 @@ export function MessageContextMenu({
           onEdit,
           onDelete,
           canDelete,
-          onForwardToChat,
-          forwardChats,
-          currentThreadId,
+          onForward,
           onPublishDraft,
           onEditDraft,
           onViewEmail,

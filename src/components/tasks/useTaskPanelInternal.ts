@@ -19,7 +19,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useProjectThreadById, useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { getCurrentProjectParticipant } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
-import { useSidePanelStore } from '@/store/sidePanelStore'
 import type { TaskItem, PanelStackItem } from './types'
 
 type Params = {
@@ -39,7 +38,6 @@ export function useTaskPanelInternal({
   viewMode,
   settingsOpen,
   onClose,
-  onOpenThreadInStack,
 }: Params) {
   const { user } = useAuth()
 
@@ -49,35 +47,6 @@ export function useTaskPanelInternal({
 
   // Треды проекта — нужны для «Всей истории» (рендер и переход по клику на чат)
   const { data: projectThreads = [] } = useProjectThreads(task?.project_id ?? undefined)
-
-  // Пересылка сообщения в другой чат из TaskPanel: подхватываем pendingForwardMessage
-  // и пушим целевой тред поверх стека. Сам pendingForwardMessage не трогаем — его
-  // сконсумирует useMessengerState целевого треда (вставит цитату/вложения).
-  const pendingForwardMessage = useSidePanelStore((s) => s.pendingForwardMessage)
-  useEffect(() => {
-    if (!open) return
-    if (!pendingForwardMessage) return
-    if (!onOpenThreadInStack) return
-    const targetId = pendingForwardMessage.targetChatId
-    // Если уже в целевом треде — ничего не делаем, цитата вставится сама.
-    if (task?.id === targetId) return
-    const t = projectThreads.find((x) => x.id === targetId)
-    if (!t) return
-    onOpenThreadInStack({
-      id: t.id,
-      name: t.name,
-      type: t.type,
-      project_id: t.project_id,
-      workspace_id: t.workspace_id,
-      status_id: t.status_id,
-      deadline: t.deadline,
-      accent_color: t.accent_color,
-      icon: t.icon,
-      is_pinned: t.is_pinned,
-      created_at: t.created_at,
-      sort_order: t.sort_order,
-    })
-  }, [pendingForwardMessage, open, task?.id, projectThreads, onOpenThreadInStack])
 
   // Карта last_read_at по тредам проекта — для красной рамки «непрочитано»
   // в бабблах «Всей истории». Загружаем только когда включён режим истории,

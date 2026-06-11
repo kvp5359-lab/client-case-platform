@@ -1,7 +1,6 @@
 import { createContext, useContext, useMemo } from 'react'
 import type { ProjectMessage, MessageChannel } from '@/services/api/messenger/messengerService'
 import type { MessengerAccent } from './utils/messageStyles'
-import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 
 export type MessengerContextValue = {
   // Static per chat session
@@ -40,8 +39,8 @@ export type MessengerContextValue = {
   onEdit?: (msg: ProjectMessage) => void
   onDelete?: (messageId: string) => void
   onQuote?: (text: string) => void
-  onForwardToChat?: (msg: ProjectMessage, targetChatId: string) => void
-  forwardChats?: ProjectThread[]
+  /** Разложить сообщение на блоки буфера пересылки (текст + файлы). */
+  onForward?: (msg: ProjectMessage) => void
   currentThreadId?: string
   onPublishDraft?: (msg: ProjectMessage) => void
   onEditDraft?: (msg: ProjectMessage) => void
@@ -97,8 +96,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       onEdit: value.onEdit,
       onDelete: value.onDelete,
       onQuote: value.onQuote,
-      onForwardToChat: value.onForwardToChat,
-      forwardChats: value.forwardChats,
+      onForward: value.onForward,
       currentThreadId: value.currentThreadId,
       onPublishDraft: value.onPublishDraft,
       onEditDraft: value.onEditDraft,
@@ -132,8 +130,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       value.onEdit,
       value.onDelete,
       value.onQuote,
-      value.onForwardToChat,
-      value.forwardChats,
+      value.onForward,
       value.currentThreadId,
       value.onPublishDraft,
       value.onEditDraft,

@@ -47,7 +47,6 @@ import { useSendEmail } from '@/hooks/email/useSendEmail'
 import { useChatState } from '@/hooks/messenger/useChatState'
 import { useDocumentPickerLogic } from './useDocumentPickerLogic'
 import { useSidePanelStore } from '@/store/sidePanelStore'
-import { stripHtmlKeepNewlines } from '@/utils/format/messengerHtml'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 
 type UseMessengerStateParams = {
@@ -275,42 +274,6 @@ export function useMessengerState({
     clearPendingMessengerDocuments()
     handleConfirmDocPickerRef.current(new Set(pendingMessengerDocuments.ids))
   }, [pendingMessengerDocuments, channel, clearPendingMessengerDocuments])
-
-  // Подхватываем пересылку сообщения из другого канала
-  const pendingForwardMessage = useSidePanelStore((s) => s.pendingForwardMessage)
-  const clearPendingForwardMessage = useSidePanelStore((s) => s.clearPendingForwardMessage)
-  const setQuoteTextRef = useRef(setQuoteText)
-  useEffect(() => {
-    setQuoteTextRef.current = setQuoteText
-  }, [setQuoteText])
-  const setForwardedAttachmentsRef = useRef(setForwardedAttachments)
-  useEffect(() => {
-    setForwardedAttachmentsRef.current = setForwardedAttachments
-  }, [setForwardedAttachments])
-
-  useEffect(() => {
-    if (!pendingForwardMessage) return
-    if (pendingForwardMessage.targetChatId !== threadId) return
-    clearPendingForwardMessage()
-
-    const plainText = stripHtmlKeepNewlines(pendingForwardMessage.content)
-    if (plainText.trim() && plainText !== '📎') {
-      setQuoteTextRef.current(plainText)
-    }
-
-    if (pendingForwardMessage.attachments?.length) {
-      const fwdAtts: ForwardedAttachment[] = pendingForwardMessage.attachments
-        .filter((a) => a.file_id)
-        .map((a) => ({
-          file_id: a.file_id!,
-          file_name: a.file_name,
-          file_size: a.file_size,
-          mime_type: a.mime_type,
-          storage_path: a.storage_path,
-        }))
-      setForwardedAttachmentsRef.current(fwdAtts)
-    }
-  }, [pendingForwardMessage, threadId, clearPendingForwardMessage])
 
   const showUnread =
     unreadCount > 0 || isManuallyUnread || hasUnreadReaction || unreadEventCount > 0

@@ -45,6 +45,8 @@ type MessageInputProps = {
   onOpenDocPicker?: () => void
   projectDocumentsCount?: number
   addFilesRef?: React.MutableRefObject<((files: File[]) => void) | null>
+  /** Ref для вставки готового HTML в редактор (используется буфером пересылки). */
+  insertContentRef?: React.MutableRefObject<((html: string) => void) | null>
   onDocumentDrop?: (documentId: string) => void
   forwardedAttachments?: ForwardedAttachment[]
   onRemoveForwardedAttachment?: (index: number) => void
@@ -82,6 +84,7 @@ export function MessageInput({
   onOpenDocPicker,
   projectDocumentsCount = 0,
   addFilesRef,
+  insertContentRef,
   onDocumentDrop,
   forwardedAttachments = [],
   onRemoveForwardedAttachment,
@@ -291,6 +294,23 @@ export function MessageInput({
   }, [threadId])
 
   useQuoteInsertion(editor, quoteText, quoteNonce, hasBeenFocusedRef, onClearQuote)
+
+  // Вставка готового HTML в редактор (буфер пересылки, режим «как оригинал»/
+  // «как цитата»). Позиция — как в useQuoteInsertion: в курсор, если редактор
+  // уже был сфокусирован в этом треде, иначе в конец.
+  useEffect(() => {
+    if (!insertContentRef) return
+    insertContentRef.current = (html: string) => {
+      if (!editor || !html) return
+      const chain = editor.chain()
+      ;(hasBeenFocusedRef.current ? chain.focus() : chain.focus('end'))
+        .insertContent(html)
+        .run()
+    }
+    return () => {
+      if (insertContentRef) insertContentRef.current = null
+    }
+  }, [editor, insertContentRef])
 
   // Load content for editing
   useEffect(() => {

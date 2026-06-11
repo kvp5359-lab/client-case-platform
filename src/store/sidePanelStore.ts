@@ -42,7 +42,8 @@ export type {
   PanelType,
   AiMessage,
   PendingMessengerDocuments,
-  PendingForwardMessage,
+  ForwardBufferItem,
+  ForwardBufferAttachment,
   PendingInitialMessage,
   AiSessionState,
 } from './sidePanelStore.types'
@@ -64,7 +65,7 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
   aiSessions: initialAiSessions,
   pendingAiDocuments: [],
   pendingMessengerDocuments: null,
-  pendingForwardMessage: null,
+  forwardBuffer: [],
   activeChatId: null,
 
   openPanel: (tab) => {
@@ -214,13 +215,22 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
   },
   clearPendingMessengerDocuments: () => set({ pendingMessengerDocuments: null }),
 
-  forwardMessageToChannel: (msg) => {
-    set({
-      activeChatId: msg.targetChatId,
-      pendingForwardMessage: msg,
-    })
-  },
-  clearPendingForwardMessage: () => set({ pendingForwardMessage: null }),
+  addToForwardBuffer: (item) =>
+    set((state) => {
+      // Дедуп: тот же источник + тот же вид + тот же первый файл — не плодим.
+      const exists = state.forwardBuffer.some(
+        (b) =>
+          b.kind === item.kind &&
+          b.sourceMessageId === item.sourceMessageId &&
+          (b.attachments[0]?.storage_path ?? null) ===
+            (item.attachments[0]?.storage_path ?? null),
+      )
+      if (exists) return {}
+      return { forwardBuffer: [...state.forwardBuffer, item] }
+    }),
+  removeFromForwardBuffer: (id) =>
+    set((state) => ({ forwardBuffer: state.forwardBuffer.filter((b) => b.id !== id) })),
+  clearForwardBuffer: () => set({ forwardBuffer: [] }),
 
   pendingInitialMessage: null,
   setPendingInitialMessage: (msg) => set({ pendingInitialMessage: msg }),
@@ -239,7 +249,7 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
       aiSessions: {},
       pendingAiDocuments: [],
       pendingMessengerDocuments: null,
-      pendingForwardMessage: null,
+      forwardBuffer: [],
       activeChatId: null,
       pendingInitialMessage: null,
     })

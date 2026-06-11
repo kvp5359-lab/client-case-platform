@@ -54,7 +54,7 @@ function resetStore() {
       aiSessions: {},
       pendingAiDocuments: [],
       pendingMessengerDocuments: null,
-      pendingForwardMessage: null,
+      forwardBuffer: [],
       activeChatId: null,
       pendingInitialMessage: null,
     },
@@ -421,28 +421,41 @@ describe('sendDocumentsToMessenger', () => {
   })
 })
 
-describe('forwardMessageToChannel', () => {
-  it('сохраняет pendingForwardMessage и переключает activeChatId', () => {
-    const msg = {
-      senderName: 'Иван',
-      content: 'Привет',
-      targetChatId: 'chat-42',
-    }
-    useSidePanelStore.getState().forwardMessageToChannel(msg)
-
-    const state = useSidePanelStore.getState()
-    expect(state.pendingForwardMessage).toEqual(msg)
-    expect(state.activeChatId).toBe('chat-42')
+describe('forwardBuffer', () => {
+  const item = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    kind: 'text' as const,
+    sourceMessageId: `msg-${id}`,
+    fromAuthorName: 'Иван',
+    content: 'Привет',
+    attachments: [],
+    ...over,
   })
 
-  it('clearPendingForwardMessage очищает', () => {
-    useSidePanelStore.getState().forwardMessageToChannel({
-      senderName: 'X',
-      content: 'Y',
-      targetChatId: 'c-1',
-    })
-    useSidePanelStore.getState().clearPendingForwardMessage()
-    expect(useSidePanelStore.getState().pendingForwardMessage).toBe(null)
+  it('addToForwardBuffer накапливает элементы', () => {
+    useSidePanelStore.getState().addToForwardBuffer(item('a'))
+    useSidePanelStore.getState().addToForwardBuffer(item('b'))
+    expect(useSidePanelStore.getState().forwardBuffer.map((i) => i.id)).toEqual(['a', 'b'])
+  })
+
+  it('дедуп: тот же источник+вид+первый файл не добавляется повторно', () => {
+    useSidePanelStore.getState().addToForwardBuffer(item('a'))
+    // другой id, но тот же sourceMessageId и kind, без вложений → дубль
+    useSidePanelStore.getState().addToForwardBuffer(item('a2', { sourceMessageId: 'msg-a' }))
+    expect(useSidePanelStore.getState().forwardBuffer).toHaveLength(1)
+  })
+
+  it('removeFromForwardBuffer убирает по id', () => {
+    useSidePanelStore.getState().addToForwardBuffer(item('a'))
+    useSidePanelStore.getState().addToForwardBuffer(item('b'))
+    useSidePanelStore.getState().removeFromForwardBuffer('a')
+    expect(useSidePanelStore.getState().forwardBuffer.map((i) => i.id)).toEqual(['b'])
+  })
+
+  it('clearForwardBuffer очищает всё', () => {
+    useSidePanelStore.getState().addToForwardBuffer(item('a'))
+    useSidePanelStore.getState().clearForwardBuffer()
+    expect(useSidePanelStore.getState().forwardBuffer).toEqual([])
   })
 })
 
@@ -532,7 +545,7 @@ describe('reset', () => {
     expect(state.aiSessions).toEqual({})
     expect(state.pendingAiDocuments).toEqual([])
     expect(state.pendingMessengerDocuments).toBe(null)
-    expect(state.pendingForwardMessage).toBe(null)
+    expect(state.forwardBuffer).toEqual([])
     expect(state.activeChatId).toBe(null)
     expect(state.pendingInitialMessage).toBe(null)
   })

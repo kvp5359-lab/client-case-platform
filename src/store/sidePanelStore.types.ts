@@ -16,17 +16,33 @@ export type PendingMessengerDocuments = {
   channel: 'client' | 'internal'
 }
 
-export type PendingForwardMessage = {
-  senderName: string
+export type ForwardBufferAttachment = {
+  file_id: string | null
+  file_name: string
+  file_size: number | null
+  mime_type: string | null
+  storage_path: string
+}
+
+/**
+ * Элемент «буфера пересылки». Каждый блок гранулярный: либо текст сообщения
+ * (`text`), либо одно вложение (`file`). «Переслать сообщение» раскладывает
+ * сообщение на текстовый блок + по блоку на каждый файл — чтобы в буфере можно
+ * было отметить только нужное. Потом в любом чате выбранные блоки вставляются
+ * в поле ввода (текст — цитатой/оригиналом, файлы — чипами вложений). Буфер
+ * глобальный и переживает переход между чатами/проектами (в памяти).
+ */
+export type ForwardBufferItem = {
+  /** Локальный uuid элемента буфера — для выбора и удаления. */
+  id: string
+  /** text — текст сообщения; file — одно конкретное вложение. */
+  kind: 'text' | 'file'
+  sourceMessageId: string
+  /** Имя автора оригинала — для формата «цитата с упоминанием автора». */
+  fromAuthorName: string
+  /** HTML оригинального текста. Для kind='file' — пустая строка. */
   content: string
-  attachments?: Array<{
-    file_name: string
-    file_size: number | null
-    mime_type: string | null
-    storage_path: string
-    file_id: string | null
-  }>
-  targetChatId: string
+  attachments: ForwardBufferAttachment[]
 }
 
 export type PanelContext = {
@@ -116,10 +132,11 @@ export type SidePanelStore = {
   sendDocumentsToMessenger: (ids: string[], channel: 'client' | 'internal') => void
   clearPendingMessengerDocuments: () => void
 
-  /** Переслать сообщение в другой канал */
-  pendingForwardMessage: PendingForwardMessage | null
-  forwardMessageToChannel: (msg: PendingForwardMessage) => void
-  clearPendingForwardMessage: () => void
+  /** Буфер пересылки — накапливаем сообщения/файлы, потом вставляем в любой чат */
+  forwardBuffer: ForwardBufferItem[]
+  addToForwardBuffer: (item: ForwardBufferItem) => void
+  removeFromForwardBuffer: (id: string) => void
+  clearForwardBuffer: () => void
 
   /** Активный chatId для гибких чатов (project_chats.id) */
   activeChatId: string | null

@@ -32,6 +32,7 @@ import type { MessageChannel } from '@/services/api/messenger/messengerService'
 import { type ProjectMessage } from '@/services/api/messenger/messengerService'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
+import { stripHtml } from '@/utils/format/messengerHtml'
 
 type UseMessengerHandlersParams = {
   channel: MessageChannel
@@ -141,7 +142,7 @@ export function useMessengerHandlers({
   setSendTrigger,
   editingMessage,
 }: UseMessengerHandlersParams) {
-  const forwardMessageToChannel = useSidePanelStore((s) => s.forwardMessageToChannel)
+  const addToForwardBuffer = useSidePanelStore((s) => s.addToForwardBuffer)
 
   const handleSend = useCallback(
     async (
@@ -274,22 +275,46 @@ export function useMessengerHandlers({
     setReplyTo(null)
   }
 
-  const handleForwardToChat = useCallback(
-    (msg: ProjectMessage, targetChatId: string) => {
-      forwardMessageToChannel({
-        senderName: msg.sender_name,
-        content: msg.content,
-        attachments: msg.attachments?.map((a) => ({
-          file_name: a.file_name,
-          file_size: a.file_size,
-          mime_type: a.mime_type,
-          storage_path: a.storage_path,
-          file_id: a.file_id,
-        })),
-        targetChatId,
-      })
+  // «Переслать сообщение»: раскладываем на гранулярные блоки буфера —
+  // текстовый блок (если есть текст) + по блоку на каждое вложение. В буфере
+  // их можно отметить по отдельности.
+  const handleForward = useCallback(
+    (msg: ProjectMessage) => {
+      let added = 0
+      const text = stripHtml(msg.content).trim()
+      if (text && text !== '📎') {
+        addToForwardBuffer({
+          id: crypto.randomUUID(),
+          kind: 'text',
+          sourceMessageId: msg.id,
+          fromAuthorName: msg.sender_name,
+          content: msg.content,
+          attachments: [],
+        })
+        added++
+      }
+      for (const a of msg.attachments ?? []) {
+        addToForwardBuffer({
+          id: crypto.randomUUID(),
+          kind: 'file',
+          sourceMessageId: msg.id,
+          fromAuthorName: msg.sender_name,
+          content: '',
+          attachments: [
+            {
+              file_id: a.file_id,
+              file_name: a.file_name,
+              file_size: a.file_size,
+              mime_type: a.mime_type,
+              storage_path: a.storage_path,
+            },
+          ],
+        })
+        added++
+      }
+      if (added > 0) toast.success('Добавлено к пересылке')
     },
-    [forwardMessageToChannel],
+    [addToForwardBuffer],
   )
 
   const handleSaveDraft = useCallback(
@@ -349,7 +374,7 @@ export function useMessengerHandlers({
     handleSend,
     handleEdit,
     handleStartEdit,
-    handleForwardToChat,
+    handleForward,
     handleSaveDraft,
     handleEditDraft,
     handlePublishDraft,

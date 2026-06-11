@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { MoreHorizontal, Eye, Download, FolderPlus, Loader2 } from 'lucide-react'
+import { MoreHorizontal, Eye, Download, FolderPlus, Forward, Loader2 } from 'lucide-react'
+import { useSidePanelStore } from '@/store/sidePanelStore'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -40,6 +41,27 @@ export function AttachmentMenuButton({
   setLoading,
 }: AttachmentMenuButtonProps) {
   const [addToProjectOpen, setAddToProjectOpen] = useState(false)
+  const addToForwardBuffer = useSidePanelStore((s) => s.addToForwardBuffer)
+
+  const handleForward = () => {
+    addToForwardBuffer({
+      id: crypto.randomUUID(),
+      kind: 'file',
+      sourceMessageId: attachment.message_id,
+      fromAuthorName: '',
+      content: '',
+      attachments: [
+        {
+          file_id: attachment.file_id,
+          file_name: attachment.file_name,
+          file_size: attachment.file_size,
+          mime_type: attachment.mime_type,
+          storage_path: attachment.storage_path,
+        },
+      ],
+    })
+    toast.success('Файл добавлен к пересылке')
+  }
 
   const handleOpen = async () => {
     if (onOpen) {
@@ -124,6 +146,15 @@ export function AttachmentMenuButton({
             <DropdownMenuItem onClick={handleDownload}>
               <Download className="h-4 w-4 mr-2" />
               Скачать
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation()
+                handleForward()
+              }}
+            >
+              <Forward className="h-4 w-4 mr-2" />
+              Переслать
             </DropdownMenuItem>
             {projectId && workspaceId && (
               <DropdownMenuItem
