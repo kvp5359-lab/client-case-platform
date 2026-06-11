@@ -44,8 +44,10 @@ export function htmlToTelegramHtml(html: string): string {
   );
 
   // <ol> с <li> → нумерованный текст (Telegram не поддерживает <ol>/<li>)
-  result = result.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/g, (_match, inner: string) => {
-    let counter = 0;
+  result = result.replace(/<ol([^>]*)>([\s\S]*?)<\/ol>/g, (_match, attrs: string, inner: string) => {
+    // Уважаем атрибут start (нумерация может начинаться не с 1)
+    const startMatch = attrs.match(/\bstart\s*=\s*["']?(\d+)/i);
+    let counter = startMatch ? parseInt(startMatch[1], 10) - 1 : 0;
     return inner.replace(/<li[^>]*>([\s\S]*?)<\/li>/g, (_m: string, content: string) => {
       counter++;
       // Убираем <p> обёртки внутри <li>

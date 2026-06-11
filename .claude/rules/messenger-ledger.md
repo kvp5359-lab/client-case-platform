@@ -45,6 +45,16 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-11 — Нумерованные списки: сохранение `start` + UI смены номера + Shift+Enter
+- **Симптомы:** (1) список, начатый не с 1 (`<ol start="8">`), после отправки рисовался с 1 — и в ЛК, и в Telegram; (2) Shift+Enter рвал список на куски; (3) не было способа задать стартовый номер.
+- **Корень (1):** `start` в БД сохраняется корректно (tiptap пишет `<ol start="8">`), теряется на рендере. В баббле — `sanitizeMessengerHtml` вырезал `start` (не было в `ALLOWED_ATTR`). В Telegram — `htmlToTelegramHtml` (`_shared/htmlFormatting.ts`) счётчик `<ol>` всегда с 1, игнорировал `start`.
+- **Корень (2):** `SendOnEnter` в `MinimalTiptapEditor.tsx` вешал `Shift-Enter` на `splitBlock()` — внутри списка это разбивало пункт/список, плодя обрывки `<ol>` со съехавшей нумерацией.
+- **Фиксы:** (1) `messengerHtml.ts` — добавил `start`,`type` в `ALLOWED_ATTR`; (2) `htmlFormatting.ts` — `<ol>`-конвертер читает `start` и стартует счётчик с него; (3) `Shift-Enter` → `setHardBreak()` (мягкий перенос, список цел); (4) новый UI: клик по цифре-маркеру пункта открывает всплывашку «Номер пункта» → `updateAttributes('orderedList', { start })`, пересчёт всего `<ol>`.
+- **Грабли (измерено в preview):** маркер списка в `prose` рисуется `list-style-position: **inside**`; при клике по цифре `event.target === <li>` (по тексту — `<p>`). Детект клика по тегу `LI` (НЕ по геометрии — две попытки с порогом по X промахивались). Пересчёт: `newStart = max(1, кликнутый_номер − index_пункта)`.
+- **Смок-тест:** ✅ preview — клик по 1-му и 2-му пункту, смена номера → `<ol start>` обновляется, список пересчитывается. Lint+44 теста format зелёные.
+- **⏳ Деплой:** правка `_shared/htmlFormatting.ts` требует редеплоя `telegram-send-message`, `telegram-business-send`, `telegram-edit-message` — иначе в Telegram нумерация всё ещё с 1. **Не задеплоено.**
+- **Файлы:** `MinimalTiptapEditor.tsx`, `utils/format/messengerHtml.ts`, `_shared/htmlFormatting.ts`.
+
 ### 2026-06-11 — `useDeleteThread` теперь инвалидирует и board-кэши (касание мессенджер-файла)
 - **Контекст:** серверная фильтрация досок (вариант A, changelog `2026-06-11-board-server-side-filtering.md`). Доски перестали читать `useWorkspaceThreads` — теперь читают серверно-фильтрованные кэши `boardFilteredKeys.threads/projects`.
 - **Правка в мессенджер-файле:** в `useProjectThreads.mutations.ts` → `useDeleteThread.onSuccess` добавлена строка `invalidateQueries(boardFilteredKeys.threadsAll(workspaceId))` рядом с существующей `workspaceThreadKeys.workspace`. Иначе удалённая задача висела бы в списке доски до полного reload. Поведение мессенджера/инбокса **не менялось** — только +1 инвалидация для досок.

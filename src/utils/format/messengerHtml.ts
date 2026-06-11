@@ -158,7 +158,7 @@ export function sanitizeMessengerHtml(dirty: string): string {
       'li',
       'a',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'rel'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'start', 'type'],
     FORBID_ATTR: [],
     ALLOW_UNKNOWN_PROTOCOLS: false,
   })

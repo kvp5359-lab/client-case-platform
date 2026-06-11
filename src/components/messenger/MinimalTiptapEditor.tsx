@@ -6,7 +6,9 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useEditor, EditorContent, type Editor, Extension } from '@tiptap/react'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Link from '@tiptap/extension-link'
@@ -55,7 +57,9 @@ const SendOnEnter = Extension.create({
         return true
       },
       'Shift-Enter': ({ editor }) => {
-        editor.commands.splitBlock()
+        // Мягкий перенос строки внутри текущего блока. Внутри списка НЕ
+        // разрывает пункт (splitBlock рвал список на куски и ломал нумерацию).
+        editor.commands.setHardBreak()
         return true
       },
     }
@@ -131,6 +135,21 @@ export function MinimalTiptapEditor({
   onEditorReady,
   editorMaxHeight,
 }: MinimalTiptapEditorProps) {
+  // Всплывашка «изменить номер» — открывается кликом по цифре пункта
+  // нумерованного списка. index — позиция кликнутого пункта внутри <ol>,
+  // нужна чтобы пересчитать start (число первого пункта).
+  const [numberPopover, setNumberPopover] = useState<{
+    left: number
+    top: number
+    index: number
+  } | null>(null)
+  const [numberValue, setNumberValue] = useState('')
+  // Позиция узла <ol> в документе ProseMirror (стабильна при смене только
+  // атрибута start). Храним позицию, а НЕ DOM-элемент: после первого изменения
+  // ProseMirror пересоздаёт <ol> и старая DOM-ссылка становится «мёртвой».
+  const activeOlPosRef = useRef<number | null>(null)
+  const numberPopoverRef = useRef<HTMLDivElement | null>(null)
+
   // Ref для onSend — SendOnEnter захватывает callback при создании,
   // ref гарантирует что Ctrl+Enter всегда вызовет актуальный handleSend
   const onSendRef = useRef(onSend)
@@ -212,6 +231,113 @@ export function MinimalTiptapEditor({
     },
   })
 
+  // Клик по цифре пункта нумерованного списка → всплывашка «изменить номер».
+  // Браузер отдаёт target = сам <li> при клике по ::marker (цифре/паддингу),
+  // а при клике по тексту target = вложенный <p>. Так отличаем клик по цифре.
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    const dom = editor.view.dom as HTMLElement
+    const handleClick = (e: MouseEvent) => {
+      if (disabled) return
+      const target = e.target as HTMLElement
+      // Клик по цифре-маркеру: браузер отдаёт target = сам <li> (текст лежит во
+      // вложенном <p>, по нему target = P). Но <li> занимает всю ширину строки,
+      // поэтому клик в пустую зону СПРАВА от текста — тоже target = LI. Чтобы
+      // ловить именно цифру, дополнительно требуем, чтобы клик был в левой зоне.
+      if (target.tagName !== 'LI' || target.parentElement?.tagName !== 'OL') return
+      const rect = target.getBoundingClientRect()
+      const MARKER_ZONE_PX = 28
+      if (e.clientX > rect.left + MARKER_ZONE_PX) return
+      const ol = target.parentElement as HTMLOListElement
+      const items = Array.from(ol.children).filter(
+        (c) => c.tagName === 'LI',
+      ) as HTMLLIElement[]
+      const index = items.indexOf(target as HTMLLIElement)
+      // start читаем из DOM (tiptap пишет атрибут только при start≠1) — без
+      // обращения к выделению, поэтому ничего не бросает.
+      const start = parseInt(ol.getAttribute('start') ?? '1', 10) || 1
+      // Запоминаем позицию узла <ol> в документе (живой элемент → позиция).
+      activeOlPosRef.current = null
+      try {
+        const posInside = editor.view.posAtDOM(ol, 0)
+        const $pos = editor.state.doc.resolve(posInside)
+        let depth = $pos.depth
+        while (depth > 0 && $pos.node(depth).type.name !== 'orderedList') depth--
+        if ($pos.node(depth).type.name === 'orderedList') {
+          activeOlPosRef.current = $pos.before(depth)
+        }
+      } catch {
+        // не разрешилось — оставим null, applyNumber просто ничего не сделает
+      }
+      setNumberValue(String(start + index))
+      setNumberPopover({ left: rect.left, top: rect.top, index })
+    }
+    dom.addEventListener('click', handleClick)
+    return () => dom.removeEventListener('click', handleClick)
+  }, [editor, disabled])
+
+  // Закрытие всплывашки «Номер пункта» по клику снаружи. Слушатель вешается
+  // в useEffect (после коммита рендера), поэтому открывающий клик его не ловит —
+  // иначе подложка-оверлей закрывала всплывашку тем же кликом, что и открыл.
+  useEffect(() => {
+    if (!numberPopover) return
+    const onDown = (e: MouseEvent) => {
+      if (numberPopoverRef.current && !numberPopoverRef.current.contains(e.target as Node)) {
+        setNumberPopover(null)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [numberPopover])
+
+  // Применяет новый номер кликнутого пункта, пересчитывая start всего списка.
+  // Меняем атрибут конкретного узла <ol> транзакцией по его позиции в документе,
+  // не трогая выделение (надёжно при клике по маркеру-цифре).
+  const applyNumber = useCallback(
+    (raw: string) => {
+      setNumberValue(raw)
+      const n = parseInt(raw, 10)
+      const olPos = activeOlPosRef.current
+      if (Number.isNaN(n) || !numberPopover || !editor || olPos == null) return
+      const value = Math.max(1, n)
+      const idx = numberPopover.index
+      try {
+        // Узел берём заново по позиции на каждое изменение (DOM-ссылка протухает).
+        const node = editor.state.doc.nodeAt(olPos)
+        if (!node || node.type.name !== 'orderedList') return
+
+        if (idx <= 0) {
+          // Кликнут первый пункт — предыдущих нет, просто задаём start всему списку.
+          editor.view.dispatch(
+            editor.state.tr.setNodeMarkup(olPos, undefined, { ...node.attrs, start: value }),
+          )
+          return
+        }
+
+        // Кликнут не первый пункт: разрываем список. Пункты [0..idx-1] остаются
+        // в исходном <ol> со своей нумерацией; пункты [idx..] переезжают в новый
+        // <ol start=value> — так предыдущие номера не меняются, а последующие
+        // пересчитываются от нового значения.
+        const before: ProseMirrorNode[] = []
+        const after: ProseMirrorNode[] = []
+        node.forEach((child, _offset, i) => {
+          ;(i < idx ? before : after).push(child)
+        })
+        const firstOl = node.type.create(node.attrs, before)
+        const secondOl = node.type.create({ ...node.attrs, start: value }, after)
+        editor.view.dispatch(
+          editor.state.tr.replaceWith(olPos, olPos + node.nodeSize, [firstOl, secondOl]),
+        )
+        // Теперь правим уже второй список, в котором кликнутый пункт стал первым.
+        activeOlPosRef.current = olPos + firstOl.nodeSize
+        setNumberPopover((p) => (p ? { ...p, index: 0 } : p))
+      } catch {
+        // узел переехал — тихо пропускаем
+      }
+    },
+    [editor, numberPopover],
+  )
+
   // Синхронизация editable с disabled
   useEffect(() => {
     if (editor && !editor.isDestroyed) {
@@ -247,9 +373,42 @@ export function MinimalTiptapEditor({
   if (!editor) return null
 
   return (
-    <EditorContent
-      editor={editor}
-      className={cn('messenger-editor', disabled && 'opacity-50 pointer-events-none')}
-    />
+    <>
+      <EditorContent
+        editor={editor}
+        className={cn('messenger-editor', disabled && 'opacity-50 pointer-events-none')}
+      />
+      {numberPopover &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          // Портал в body: иначе position:fixed считается от трансформированного
+          // предка-композера и всплывашку уносит за экран.
+          <div
+            ref={numberPopoverRef}
+            className="fixed z-[1000] flex items-center gap-1.5 rounded-md border border-border bg-popover px-2 py-1.5 text-xs shadow-md"
+            style={{
+              left: numberPopover.left,
+              top: Math.max(8, numberPopover.top - 44),
+            }}
+          >
+            <span className="text-muted-foreground whitespace-nowrap">Номер пункта</span>
+            <input
+              autoFocus
+              type="number"
+              min={1}
+              value={numberValue}
+              onChange={(e) => applyNumber(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === 'Escape') {
+                  e.preventDefault()
+                  setNumberPopover(null)
+                }
+              }}
+              className="w-14 rounded border border-input bg-background px-1.5 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>,
+          document.body,
+        )}
+    </>
   )
 }
