@@ -11,7 +11,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/edge.ts";
 import { getValidAccessTokenForUser } from "../_shared/googleDriveToken.ts";
-import { createDriveFolder, listFilesInFolder } from "../_shared/googleDriveHelpers.ts";
+import { createDriveFolder, listFilesInFolder, getFileName, listFolderTree } from "../_shared/googleDriveHelpers.ts";
 import { isValidUUID, isValidGoogleDriveId } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 
@@ -83,7 +83,10 @@ Deno.serve(async (req) => {
         );
       }
 
-      const files = await listFilesInFolder(folderId, accessToken);
+      const [files, folderName] = await Promise.all([
+        listFilesInFolder(folderId, accessToken),
+        getFileName(folderId, accessToken),
+      ]);
       const folders = files
         .filter((f) =>
           f.mimeType === "application/vnd.google-apps.folder" ||
@@ -98,7 +101,31 @@ Deno.serve(async (req) => {
         }));
 
       return new Response(
-        JSON.stringify({ folders }),
+        JSON.stringify({ folders, folderName }),
+        { headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
+      );
+    }
+
+    // =========================================================================
+    // ACTION: tree — full subfolder tree of a given folder (for picker UI)
+    // =========================================================================
+    if (action === "tree") {
+      const { folderId } = body;
+
+      if (!folderId || !isValidGoogleDriveId(folderId)) {
+        return new Response(
+          JSON.stringify({ error: "Invalid folderId" }),
+          { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
+        );
+      }
+
+      const [folderName, { tree, truncated }] = await Promise.all([
+        getFileName(folderId, accessToken),
+        listFolderTree(folderId, accessToken),
+      ]);
+
+      return new Response(
+        JSON.stringify({ folderName, tree, truncated }),
         { headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }

@@ -48,6 +48,79 @@ export async function listFilesInFolder(
   return files;
 }
 
+export interface DriveFolderNode {
+  id: string;
+  name: string;
+  children: DriveFolderNode[];
+}
+
+/**
+ * Recursively build the subfolder tree of a folder.
+ * Sequential walk (one folder at a time) to respect Google API rate limits.
+ * Caps by depth and total node count; sets `truncated` when limits hit.
+ */
+export async function listFolderTree(
+  folderId: string,
+  accessToken: string,
+  opts?: { maxDepth?: number; maxNodes?: number },
+): Promise<{ tree: DriveFolderNode[]; truncated: boolean }> {
+  const maxDepth = opts?.maxDepth ?? 6;
+  const maxNodes = opts?.maxNodes ?? 500;
+  let count = 0;
+  let truncated = false;
+
+  const isFolder = (f: GoogleDriveFile) =>
+    f.mimeType === "application/vnd.google-apps.folder" ||
+    (f.mimeType === "application/vnd.google-apps.shortcut" &&
+      f.shortcutDetails?.targetMimeType === "application/vnd.google-apps.folder");
+
+  const resolveId = (f: GoogleDriveFile) =>
+    f.mimeType === "application/vnd.google-apps.shortcut" ? f.shortcutDetails!.targetId : f.id;
+
+  async function walk(id: string, depth: number): Promise<DriveFolderNode[]> {
+    if (depth >= maxDepth) {
+      truncated = true;
+      return [];
+    }
+    const files = await listFilesInFolder(id, accessToken);
+    const folders = files.filter(isFolder);
+    const nodes: DriveFolderNode[] = [];
+    for (const f of folders) {
+      if (count >= maxNodes) {
+        truncated = true;
+        break;
+      }
+      count++;
+      const childId = resolveId(f);
+      const children = await walk(childId, depth + 1);
+      nodes.push({ id: childId, name: f.name, children });
+    }
+    return nodes;
+  }
+
+  const tree = await walk(folderId, 0);
+  return { tree, truncated };
+}
+
+/** Get a file/folder name by ID. Returns null if not accessible. */
+export async function getFileName(
+  fileId: string,
+  accessToken: string,
+): Promise<string | null> {
+  const url = new URL(`https://www.googleapis.com/drive/v3/files/${fileId}`);
+  url.searchParams.append("fields", "name");
+  url.searchParams.append("supportsAllDrives", "true");
+
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) return null;
+
+  const data = await response.json();
+  return data.name ?? null;
+}
+
 /** Delete a single file/folder by ID. Returns true on success. */
 export async function deleteFile(
   fileId: string,
