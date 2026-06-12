@@ -100,6 +100,19 @@ export function ContactCardDialog({
                   <span>tg:{contact.telegram_user_id}</span>
                 </div>
               )}
+              {contact.telegram_username && (
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Send className="h-3.5 w-3.5 text-gray-400" />
+                  <a
+                    href={`https://t.me/${contact.telegram_username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    @{contact.telegram_username}
+                  </a>
+                </div>
+              )}
               {contact.notes && (
                 <div className="text-gray-600 text-xs whitespace-pre-wrap pt-1">{contact.notes}</div>
               )}

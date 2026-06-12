@@ -19,6 +19,7 @@ export type ContactParticipant = {
   email: string
   phone: string | null
   telegram_user_id: number | null
+  telegram_username: string | null
   avatar_url: string | null
   notes: string | null
   can_login: boolean
@@ -44,7 +45,7 @@ export function useContactParticipant(participantId: string | null | undefined) 
       if (!participantId) return null
       const { data, error } = await supabase
         .from('participants')
-        .select('id, workspace_id, user_id, name, last_name, email, phone, telegram_user_id, avatar_url, notes, can_login, workspace_roles')
+        .select('id, workspace_id, user_id, name, last_name, email, phone, telegram_user_id, telegram_username, avatar_url, notes, can_login, workspace_roles')
         .eq('id', participantId)
         .maybeSingle()
       if (error) throw error

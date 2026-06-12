@@ -71,6 +71,7 @@ export function EditParticipantDialog({
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [telegramUserId, setTelegramUserId] = useState('')
+  const [telegramUsername, setTelegramUsername] = useState('')
   const [role, setRole] = useState('')
   const [canLogin, setCanLogin] = useState(true)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
@@ -90,6 +91,7 @@ export function EditParticipantDialog({
       setEmail(participant.email || '')
       setPhone(participant.phone || '')
       setTelegramUserId(participant.telegram_user_id?.toString() || '')
+      setTelegramUsername(participant.telegram_username || '')
       setCanLogin(participant.can_login)
       setAvatarUrl(participant.avatar_url || null)
       setAvatarPreview(null)
@@ -182,6 +184,7 @@ export function EditParticipantDialog({
       email,
       phone,
       telegram_user_id: telegramUserId ? Number(telegramUserId) : null,
+      telegram_username: telegramUsername.trim().replace(/^@/, '') || null,
       avatar_url: avatarUrl,
       workspace_roles: role ? [role] : [],
       can_login: canLogin,
@@ -320,6 +323,21 @@ export function EditParticipantDialog({
               />
               <p className="text-xs text-muted-foreground">
                 Узнать свой ID: напишите @userinfobot в Telegram
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="telegramUsername">Telegram username</Label>
+              <Input
+                id="telegramUsername"
+                type="text"
+                value={telegramUsername}
+                onChange={(e) => setTelegramUsername(e.target.value)}
+                placeholder="@username"
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                Ник в Telegram — чтобы найти диалог по @username
               </p>
             </div>
 
