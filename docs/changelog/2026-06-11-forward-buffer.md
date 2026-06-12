@@ -55,6 +55,23 @@ lazy-init из localStorage, перечитывание при смене тре
 как в `useDraftMessage`), персист на каждое изменение, очистка ключа при
 отправке/очистке. В `useMessengerState` `useState` заменён на этот хук.
 
+## Фикс: буфер пересылки переживает перезагрузку страницы
+
+**Баг:** выбранные для пересылки сообщения/файлы (буфер) пропадали при F5 —
+буфер жил только в памяти (Zustand). Несогласованно с вставленными файлами,
+которые уже персистились.
+
+**Решение:** буфер сохраняется в localStorage (`cc:forward-buffer`).
+Инициализируется из него при загрузке (`loadPersistedState`), пишется при
+add/remove/clear, чистится при логауте (`lsClearPanelKeys`). Буфер глобальный
+(на воркспейс), поэтому переживает и переход между чатами, и перезагрузку, и
+закрытие вкладки.
+
+- `src/store/sidePanelStore.localStorage.ts` — ключ `LS_KEY_FORWARD_BUFFER`,
+  загрузка в `loadPersistedState`, очистка в `lsClearPanelKeys`.
+- `src/store/sidePanelStore.ts` — `forwardBuffer` инициализируется из persisted,
+  `lsSet` на каждой мутации.
+
 ## Затронутые файлы
 
 - `src/components/messenger/ForwardBufferBar.tsx` (новый)

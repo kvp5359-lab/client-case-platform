@@ -35,6 +35,7 @@ import {
   LS_KEY_PANEL_TAB_PREFIX,
   LS_KEY_PANEL_STATE,
   LS_KEY_ACTIVE_THREAD_PREFIX,
+  LS_KEY_FORWARD_BUFFER,
 } from './sidePanelStore.localStorage'
 
 export type { PanelTab, SidePanelStore }
@@ -52,6 +53,7 @@ const {
   persistedAiTab,
   initialAiSessions,
   initialPanelTab: _initialPanelTab,
+  initialForwardBuffer,
 } = loadPersistedState()
 
 export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
@@ -65,7 +67,7 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
   aiSessions: initialAiSessions,
   pendingAiDocuments: [],
   pendingMessengerDocuments: null,
-  forwardBuffer: [],
+  forwardBuffer: initialForwardBuffer,
   activeChatId: null,
 
   openPanel: (tab) => {
@@ -226,11 +228,20 @@ export const useSidePanelStore = create<SidePanelStore>((set, get) => ({
             (item.attachments[0]?.storage_path ?? null),
       )
       if (exists) return {}
-      return { forwardBuffer: [...state.forwardBuffer, item] }
+      const forwardBuffer = [...state.forwardBuffer, item]
+      lsSet(LS_KEY_FORWARD_BUFFER, forwardBuffer)
+      return { forwardBuffer }
     }),
   removeFromForwardBuffer: (id) =>
-    set((state) => ({ forwardBuffer: state.forwardBuffer.filter((b) => b.id !== id) })),
-  clearForwardBuffer: () => set({ forwardBuffer: [] }),
+    set((state) => {
+      const forwardBuffer = state.forwardBuffer.filter((b) => b.id !== id)
+      lsSet(LS_KEY_FORWARD_BUFFER, forwardBuffer)
+      return { forwardBuffer }
+    }),
+  clearForwardBuffer: () => {
+    lsSet(LS_KEY_FORWARD_BUFFER, [])
+    set({ forwardBuffer: [] })
+  },
 
   pendingInitialMessage: null,
   setPendingInitialMessage: (msg) => set({ pendingInitialMessage: msg }),

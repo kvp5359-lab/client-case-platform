@@ -1,5 +1,5 @@
 import type { AiSources } from '@/services/api/messenger/messengerAiService'
-import type { PanelTab, AiSessionState } from './sidePanelStore.types'
+import type { PanelTab, AiSessionState, ForwardBufferItem } from './sidePanelStore.types'
 import { DEFAULT_AI_SOURCES } from './sidePanelStore.types'
 
 export const LS_KEY_SOURCES = 'cc:ai-sources'
@@ -9,6 +9,7 @@ export const LS_KEY_AI_TAB = 'cc:ai-tab'
 export const LS_KEY_PANEL_TAB_PREFIX = 'cc:panel-tab:'
 export const LS_KEY_PANEL_STATE = 'cc:panel-state'
 export const LS_KEY_ACTIVE_THREAD_PREFIX = 'cc:active-thread:'
+export const LS_KEY_FORWARD_BUFFER = 'cc:forward-buffer'
 
 export function lsGet<T>(key: string, fallback: T): T {
   try {
@@ -37,6 +38,7 @@ export function lsClearPanelKeys() {
     localStorage.removeItem(LS_KEY_CONVERSATIONS)
     localStorage.removeItem(LS_KEY_AI_TAB)
     localStorage.removeItem(LS_KEY_PANEL_STATE)
+    localStorage.removeItem(LS_KEY_FORWARD_BUFFER)
     const prefixes = [LS_KEY_SOURCES_PREFIX, LS_KEY_PANEL_TAB_PREFIX, LS_KEY_ACTIVE_THREAD_PREFIX]
     const toRemove: string[] = []
     for (let i = 0; i < localStorage.length; i++) {
@@ -73,11 +75,13 @@ export function loadPersistedState() {
   const persistedAiTab = lsGet<string | null>(LS_KEY_AI_TAB, null)
   const persistedPanelState = lsGet<{ tab: PanelTab | null }>(LS_KEY_PANEL_STATE, { tab: null })
   const initialAiSessions = buildInitialAiSessions(persistedConversations, persistedSources)
+  const initialForwardBuffer = lsGet<ForwardBufferItem[]>(LS_KEY_FORWARD_BUFFER, [])
 
   return {
     persistedSources,
     persistedAiTab,
     initialAiSessions,
     initialPanelTab: persistedPanelState.tab,
+    initialForwardBuffer,
   }
 }
