@@ -327,38 +327,49 @@
 .messenger-content blockquote::after {
   content: none;
 }
+/* Номер списка — абсолютный ::before (не нативный маркер). Даёт точный контроль:
+   - вложенный номер автоматически встаёт под текст родителя (left:0 у li);
+   - зазор номер↔текст = padding-left минус ширина номера (явно);
+   - перенос строки висит под текстом (блочный <p> + padding-left);
+   - counters(list-item, ".") → многоуровневая нумерация 1, 1.1, 1.2 (уважает start);
+   - клик по номеру по-прежнему даёт target=LI (::before принадлежит li). */
 .messenger-content ol {
-  list-style: decimal;
-  /* outside + display:block у li>p: маркер в левом gutter, текст блоком —
-     перенос строки выравнивается по тексту первой строки (висячий отступ,
-     как в Notion). padding-left даёт место под номер (двузначные не режутся). */
-  list-style-position: outside;
-  padding-left: 1.35rem;
+  list-style: none;
+  padding-left: 0;
   margin: 0.25rem 0;
 }
-/* Многоуровневая нумерация 1, 1.1, 1.2… через встроенный счётчик list-item
-   (уважает start у <ol> и вложенность). На ::marker — детект клика по цифре
-   не ломается. */
-.messenger-content ol > li::marker {
-  content: counters(list-item, ".") ". ";
-}
-/* Вложенные списки — меньший отступ */
-.messenger-content ol ol {
-  padding-left: 1.1rem;
-}
-.messenger-content ul {
-  list-style: disc;
-  list-style-position: outside;
-  padding-left: 1.4rem;
-  margin: 0.25rem 0;
-}
-.messenger-content ul ul {
-  padding-left: 1.1rem;
-}
-.messenger-content li {
+.messenger-content ol > li {
+  position: relative;
+  padding-left: 1.4em;
   margin: 0;
 }
-.messenger-content li p {
+.messenger-content ol > li::before {
+  content: counters(list-item, ".") ".";
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+/* Вложенные номера шире (1.1.) — больше места, чтобы текст не наезжал */
+.messenger-content ol ol > li {
+  padding-left: 2em;
+}
+.messenger-content ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.25rem 0;
+}
+.messenger-content ul > li {
+  position: relative;
+  padding-left: 1em;
+  margin: 0;
+}
+.messenger-content ul > li::before {
+  content: "•";
+  position: absolute;
+  left: 0.15em;
+  top: 0;
+}
+.messenger-content li > p {
   display: block;
   margin: 0;
 }
@@ -405,30 +416,41 @@
   font-weight: normal;
   color: hsl(var(--muted-foreground) / 0.7);
 }
+/* Номер списка через абсолютный ::before (см. .messenger-content выше). */
 .messenger-editor .ProseMirror ol {
-  list-style: decimal;
-  /* outside + display:block у li>p: маркер в левом gutter, перенос строки
-     выравнивается по тексту первой строки (висячий отступ, как в Notion).
-     padding-left даёт место под номер (двузначные не режутся). */
-  list-style-position: outside;
-  padding-left: 1.35rem;
+  list-style: none;
+  padding-left: 0;
   margin: 0.25rem 0;
 }
-/* Многоуровневая нумерация 1, 1.1, 1.2… (см. .messenger-content выше). */
-.messenger-editor .ProseMirror ol > li::marker {
-  content: counters(list-item, ".") ". ";
+.messenger-editor .ProseMirror ol > li {
+  position: relative;
+  padding-left: 1.4em;
+  margin: 0;
 }
-.messenger-editor .ProseMirror ol ol {
-  padding-left: 1.1rem;
+.messenger-editor .ProseMirror ol > li::before {
+  content: counters(list-item, ".") ".";
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.messenger-editor .ProseMirror ol ol > li {
+  padding-left: 2em;
 }
 .messenger-editor .ProseMirror ul {
-  list-style: disc;
-  list-style-position: outside;
-  padding-left: 1.4rem;
+  list-style: none;
+  padding-left: 0;
   margin: 0.25rem 0;
 }
-.messenger-editor .ProseMirror ul ul {
-  padding-left: 1.1rem;
+.messenger-editor .ProseMirror ul > li {
+  position: relative;
+  padding-left: 1em;
+  margin: 0;
+}
+.messenger-editor .ProseMirror ul > li::before {
+  content: "•";
+  position: absolute;
+  left: 0.15em;
+  top: 0;
 }
 .messenger-editor .ProseMirror li p {
   display: block;

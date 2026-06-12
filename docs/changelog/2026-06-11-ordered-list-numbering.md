@@ -89,13 +89,38 @@
   `ul` внутри `ol`. Покрыто ручным прогоном 6 кейсов (nested, start, ul-в-ol,
   bold, текст вокруг).
 
+## Доработка: номер через `::before`, выравнивание вложенных, отступы
+
+Нативные маркеры (`list-style-position: outside` + `::marker`) давали
+непредсказуемое позиционирование: вложенный номер «вылезал» влево, зазор
+номер↔текст не контролировался, точное выравнивание «на глаз» было неустойчивым
+(подтверждено замерами в preview). Переписано на **абсолютный `::before`**:
+
+```css
+ol { list-style: none; padding-left: 0; }
+ol > li { position: relative; padding-left: 1.4em; }
+ol > li::before { content: counters(list-item, ".") "."; position: absolute; left: 0; }
+ol ol > li { padding-left: 2em; }   /* вложенные номера шире (1.1.) */
+```
+
+Что это даёт (всё измерено в preview):
+- **Вложенный номер автоматически встаёт под текст родителя** — `left:0` у
+  вложенного `li`, а его левый край = контент-левая родительского `li` = текст
+  родителя. nested number == parent text (232 == 232 при 14px).
+- **Зазор номер↔текст явный** = `padding-left` − ширина номера (~0.4em).
+- Перенос строк висит под текстом (блочный `<p>` + `padding-left`).
+- `counters(list-item, ".")` — нумерация `1`, `1.1`, уважает `start`.
+- `ul` — маркер «•» тем же `::before`.
+- **Детект клика по номеру сохранён**: `::before` принадлежит `li`, клик даёт
+  `target=LI` (проверено в реальном редакторе — всплывашка открывается, 0 ошибок).
+
 ## Затронутые файлы
 
 - `src/components/messenger/MinimalTiptapEditor.tsx` — Shift+Enter, детект клика
   по цифре, всплывашка через портал, разрыв списка, закрытие по клику снаружи
 - `src/utils/format/messengerHtml.ts` — `start`/`type` в whitelist DOMPurify
-- `src/app/globals.css` — висячий отступ (outside), `::marker` 1.1-нумерация,
-  уменьшенные `padding-left` (редактор + баббл)
+- `src/app/globals.css` — нумерация списков через абсолютный `::before`
+  (вложенный номер под текстом родителя, явный зазор, 1.1, висячий отступ)
 - `supabase/functions/_shared/htmlFormatting.ts` — учёт `start` + рекурсивный
   `listsToText` с иерархической нумерацией для Telegram
 - `.claude/rules/messenger-ledger.md` — запись в журнал расследований
