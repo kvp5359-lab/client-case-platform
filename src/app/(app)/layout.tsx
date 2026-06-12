@@ -18,11 +18,13 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServerClient()
+  // getUser() валидирует JWT на auth-сервере (getSession() просто читает куку,
+  // подделанная кука прошла бы гейт) — паттерн как в (auth)/layout.tsx.
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect('/login')
   }
 

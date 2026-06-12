@@ -365,7 +365,10 @@ Deno.serve(async (req: Request) => {
       refinement_text: body.refinement ?? null,
     })
 
-    const apiKey = body.api_key || Deno.env.get('ANTHROPIC_API_KEY')
+    // Ключ ТОЛЬКО из body (оба приложения-потребителя передают свой).
+    // env-фолбэк убран: если бы кто-то задал платформенный ANTHROPIC_API_KEY,
+    // функция стала бы бесплатным прокси для любого залогиненного.
+    const apiKey = body.api_key
     if (!apiKey) throw new Error('API key not provided')
 
     const model = body.model || 'claude-sonnet-4-6'

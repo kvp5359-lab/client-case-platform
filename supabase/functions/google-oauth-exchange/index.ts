@@ -30,8 +30,10 @@ Deno.serve(async (req: Request) => {
     })
     const tokenJson = await tokenRes.json()
     if (!tokenRes.ok) {
-      console.error('[exchange] token error from Google:', tokenJson)
-      throw new Error(`Token exchange failed: ${JSON.stringify(tokenJson)}`)
+      // Не логируем тело целиком — на части ошибок Google может вернуть
+      // чувствительные поля; статуса и кода ошибки достаточно для отладки.
+      console.error('[exchange] token error from Google:', tokenRes.status, tokenJson?.error, tokenJson?.error_description)
+      throw new Error(`Token exchange failed: ${tokenJson?.error ?? tokenRes.status}`)
     }
 
     let email = ''

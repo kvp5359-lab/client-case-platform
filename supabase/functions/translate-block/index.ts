@@ -27,7 +27,9 @@ Deno.serve(async (req: Request) => {
   try {
     const body: TranslateRequest = await req.json()
 
-    const apiKey = body.api_key || Deno.env.get('ANTHROPIC_API_KEY')
+    // Ключ только из body — env-фолбэк убран (риск бесплатного прокси,
+    // если платформенный ключ когда-нибудь появится в env).
+    const apiKey = body.api_key
     if (!apiKey) throw new Error('API key not provided')
 
     const model = body.model || 'claude-sonnet-4-6'

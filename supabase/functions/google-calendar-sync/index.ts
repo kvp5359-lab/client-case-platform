@@ -227,6 +227,11 @@ Deno.serve(async (req: Request) => {
 
     if (targetCalendarId) {
       calendarsQuery = calendarsQuery.eq('id', targetCalendarId);
+      // Пользовательский вызов с явным calendar_id — только свой календарь,
+      // иначе можно дёргать чужие OAuth-токены по подбору id (IDOR).
+      if (!isInternal && userId) {
+        calendarsQuery = calendarsQuery.eq('owner_user_id', userId);
+      }
     } else if (!isInternal && userId) {
       // Пользовательский вызов без явного calendar_id — синкаем все его календари.
       calendarsQuery = calendarsQuery.eq('owner_user_id', userId);

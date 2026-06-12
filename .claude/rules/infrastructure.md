@@ -156,7 +156,6 @@ ORDER BY id DESC LIMIT 10;
 | `NEXT_PUBLIC_SUPABASE_URL` | URL Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Публичный anon ключ |
 | `NEXT_PUBLIC_APP_NAME` | Имя приложения |
-| `NEXT_PUBLIC_TECHNICAL_ADMIN_EMAILS` | Email техадминов (через запятую) |
 
 ## Деплой
 

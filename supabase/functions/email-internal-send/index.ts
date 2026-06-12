@@ -17,7 +17,8 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
-  preflight, jsonRes, requireInternalSecret, getServiceClient, SUPABASE_URL,
+  preflight, jsonRes, requireInternalSecret, getServiceClient, getUser,
+  INTERNAL_FUNCTION_SECRET, SUPABASE_URL,
 } from "../_shared/edge.ts";
 import { ensureValidGmailToken, type GmailAccountData } from "../_shared/gmailToken.ts";
 import { uint8ArrayToBase64 } from "../_shared/encoding.ts";
@@ -87,6 +88,26 @@ Deno.serve(async (req: Request) => {
   if (!msg) return jsonRes({ error: "message not found" }, 404, req);
   if (!msg.thread_id) return jsonRes({ error: "message has no thread_id" }, 400, req);
   const m = msg as MessageRow;
+
+  // verify_jwt=false → шлюз Bearer не проверяет, а requireInternalSecret(req, true)
+  // пропускает любой "Bearer ..." по префиксу. Для фронт-пути (attachments_only)
+  // валидируем JWT по-настоящему и проверяем членство в воркспейсе сообщения.
+  const viaInternalSecret =
+    !!INTERNAL_FUNCTION_SECRET &&
+    req.headers.get("x-internal-secret") === INTERNAL_FUNCTION_SECRET;
+  if (!viaInternalSecret) {
+    const user = await getUser(req);
+    if (!user) return jsonRes({ error: "unauthorized" }, 401, req);
+    const { data: member } = await service
+      .from("participants")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("workspace_id", m.workspace_id)
+      .eq("is_deleted", false)
+      .limit(1)
+      .maybeSingle();
+    if (!member) return jsonRes({ error: "forbidden" }, 403, req);
+  }
 
   const { data: thread, error: threadErr } = await service
     .from("project_threads")

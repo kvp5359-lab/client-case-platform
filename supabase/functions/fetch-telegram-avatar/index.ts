@@ -15,9 +15,10 @@
  */
 import {
   getServiceClient,
+  getUser,
+  INTERNAL_FUNCTION_SECRET,
   jsonRes,
   preflight,
-  requireInternalSecret,
 } from "../_shared/edge.ts";
 
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BUSINESS_BOT_TOKEN") ??
@@ -28,7 +29,12 @@ const CACHE_MISS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return preflight(req);
-  if (!requireInternalSecret(req, true)) {
+  // x-internal-secret (вебхуки/триггеры) ИЛИ настоящий JWT (фронт).
+  // Раньше Bearer проверялся только по префиксу строки.
+  const viaInternalSecret =
+    !!INTERNAL_FUNCTION_SECRET &&
+    req.headers.get("x-internal-secret") === INTERNAL_FUNCTION_SECRET;
+  if (!viaInternalSecret && !(await getUser(req))) {
     return jsonRes({ error: "unauthorized" }, 401, req);
   }
   if (!BOT_TOKEN) {
