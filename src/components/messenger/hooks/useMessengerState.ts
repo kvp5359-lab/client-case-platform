@@ -129,10 +129,20 @@ export function useMessengerState({
 
   const { data: currentParticipant } = useQuery({
     queryKey: messengerParticipantKeys.current(projectId ?? workspaceId, user?.id),
-    queryFn: () =>
-      projectId
-        ? getCurrentProjectParticipant(projectId, user!.id)
-        : getCurrentWorkspaceParticipant(workspaceId, user!.id),
+    queryFn: async () => {
+      if (projectId) {
+        const inProject = await getCurrentProjectParticipant(projectId, user!.id)
+        if (inProject) return inProject
+        // Владелец/менеджер может иметь доступ к проекту без явной записи в
+        // project_participants (доступ по праву владельца/роли). Тогда берём
+        // его workspace-личность — она валидна для реакций, mark-read и пр.
+        // (message_reactions.participant_id и др. ссылаются на participants).
+        // Без этого фоллбэка реакция падала «Участник не найден».
+        if (workspaceId) return getCurrentWorkspaceParticipant(workspaceId, user!.id)
+        return null
+      }
+      return workspaceId ? getCurrentWorkspaceParticipant(workspaceId, user!.id) : null
+    },
     enabled: !!(projectId || workspaceId) && !!user,
     staleTime: Infinity,
   })

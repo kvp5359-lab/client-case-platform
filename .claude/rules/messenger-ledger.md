@@ -45,6 +45,14 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-12 — Owner-не-участник проекта: реакции/отправка/прочитано/«своё» ломаются (currentParticipant=null)
+- **Симптом:** во внутренней задаче проекта «Контент» владелец не может поставить реакцию («Не удалось поставить реакцию»); его сообщение на проде рисуется как чужое (слева), а на dev — как своё.
+- **Замеры:** RPC `toggle_message_reaction` от service role проходит (`added=true`), GRANT для `authenticated` есть → дело не в БД. В `project_participants` проекта «Контент» владельца **нет** (доступ — по праву владельца, всего 1 участник). 
+- **Корень:** `getCurrentProjectParticipant` ищет юзера в `project_participants` и для owner-не-участника возвращает `null` → `currentParticipant=null` в `useMessengerState`. От него зависят сразу четверо: реакция (`pid` пуст → throw «Участник не найден»), отправка (`throw 'Нет доступа'`), mark-read, и `isOwn` (`sender_participant_id === currentParticipantId` → при null всегда false → «чужое»). На проде поэтому «Да, супер!» слева; на dev уже стоял фикс → справа.
+- **Фикс (вариант A, один источник):** в `useMessengerState` резолв `currentParticipant` сделан каскадным — `project` → если null → `workspace` (`getCurrentWorkspaceParticipant`). Workspace-личность валидна везде (`message_reactions.participant_id` и пр. ссылаются на `participants`). Чинит все 4 проявления разом. [useMessengerState.ts:130](../../src/components/messenger/hooks/useMessengerState.ts).
+- **Грабли:** `currentParticipant=null` у owner/менеджера без явной записи в `project_participants` — общий корень для всего, что завязано на «мою личность» в треде. Любой новый потребитель `currentParticipant` должен переживать этот случай. Внутренние project-only fallback'ы в `useSendMessage`/`useToggleReaction` теперь недостижимы (оставлены как есть).
+- **Статус:** фикс в коде, dev подтверждён (реакция/«своё» работают). Ждёт деплоя фронта.
+
 ### 2026-06-12 — Тост уведомления: имя треда в верхней строке + фоллбэк имён
 - **Запрос:** в тосте о новом сообщении верхняя строка показывала только `Имя (Проект)` — без названия треда/задачи. Нужен формат `Имя (Проект · Название треда)`.
 - **Симптом при первой версии:** добавил `thread_name`, но тост показал `Кирилл (Проект)` — даже имя проекта не подтянулось. **Корень:** `threadEntry` берётся из inbox-кэша (`readInboxFromCache`), а он пуст, если «Входящие» не открывались / тред туда не попадал → `project_name` падал в fallback `'Проект'`, `thread_name` — пусто.
