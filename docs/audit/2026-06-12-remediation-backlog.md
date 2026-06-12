@@ -21,37 +21,37 @@
 ## Этап 1 — Критическая безопасность БД и Storage 🔴
 
 ### 1.1 REVOKE-пакет (миграция `20260612_revoke_anon_security_definer.sql`)
-- [ ] Перед применением: grep фронта по каждой функции блока 1 (что НЕ зовётся клиентом напрямую); проверить prosecdef триггер-функций, зовущих dispatch_send_http (если INVOKER — authenticated нужен EXECUTE, тогда вместо REVOKE FROM authenticated — сделать вызывающий триггер DEFINER или оставить authenticated).
-- [ ] **Блок 1 — REVOKE FROM anon, authenticated (service_role only):**
+- [x] Перед применением: grep фронта по каждой функции блока 1 (что НЕ зовётся клиентом напрямую); проверить prosecdef триггер-функций, зовущих dispatch_send_http (если INVOKER — authenticated нужен EXECUTE, тогда вместо REVOKE FROM authenticated — сделать вызывающий триггер DEFINER или оставить authenticated).
+- [x] **Блок 1 — REVOKE FROM anon, authenticated (service_role only):**
   - get/set/delete_workspace_api_key, get/set/delete_workspace_google_api_key, get/set/delete_workspace_voyageai_api_key (9 шт, Vault)
   - dispatch_send_http(text, jsonb, uuid, text) — ⚠️ проверить trigger-цепочку до revoke от authenticated
   - revoke_all_user_sessions(uuid)
   - add_document_version_service, fill_slot_atomic_service
   - route_incoming_to_project, match_inbound_email, resolve_inbound_email_address, find_or_create_contact_participant, append_telegram_message_id
-- [ ] **Блок 2 — REVOKE FROM anon (authenticated остаётся):**
+- [x] **Блок 2 — REVOKE FROM anon (authenticated остаётся):**
   - get_chat_state, get_current_document_file, get_document_file_history, add_document_version, restore_document_version, reorder_documents, add_message_pair, toggle_message_reaction, update_task_assignees, create_task_with_assignees, delete_status, convert_external_event_to_task, match_knowledge_chunks (+_by_articles, +_by_sources), upsert_knowledge_embeddings, get_accessible_projects, get_user_projects, get_workspace_threads, get_inbox_threads_v2, get_total_unread_count, get_sidebar_data, get_project_history, get_short_id_by_uuid, resolve_short_id
-- [ ] **Блок 3 — гигиена, REVOKE FROM anon:** get_personal_dialogs, merge_participants, merge_telegram_contact, fill_folder_slot, fill_slot_atomic, move_thread_to_project, set_my_preferred_language, end_impersonation_session
-- [ ] DROP FUNCTION debug_auth_context (отладочный мусор)
-- [ ] НЕ трогать: resolve_workspace_by_host, get_workspace_slug_by_id (middleware pre-auth, категория A), bool-хелперы RLS, триггерные функции
+- [x] **Блок 3 — гигиена, REVOKE FROM anon:** get_personal_dialogs, merge_participants, merge_telegram_contact, fill_folder_slot, fill_slot_atomic, move_thread_to_project, set_my_preferred_language, end_impersonation_session
+- [x] DROP FUNCTION debug_auth_context (отладочный мусор)
+- [x] НЕ трогать: resolve_workspace_by_host, get_workspace_slug_by_id (middleware pre-auth, категория A), bool-хелперы RLS, триггерные функции
 - [ ] Долгосрочно (этап 6): добавить auth.uid()-гейты внутрь функций категории C (revoke не закрывает межпользовательский вектор по p_user_id)
 
 ### 1.2 Storage-политики (миграция)
-- [ ] `message-attachments`: SELECT-политику переписать на workspace-фильтр по первому сегменту пути (эталон — бакет `files`: `((storage.foldername(name))[1])::uuid IN (SELECT workspace_id FROM participants WHERE user_id=auth.uid() ...)`)
-- [ ] `document-files`: то же (политика "Service role can read document-files" фактически открыта всем authenticated)
-- [ ] `document-templates`: то же (политика вообще без auth-проверки)
+- [x] `message-attachments`: SELECT-политику переписать на workspace-фильтр по первому сегменту пути (эталон — бакет `files`: `((storage.foldername(name))[1])::uuid IN (SELECT workspace_id FROM participants WHERE user_id=auth.uid() ...)`)
+- [x] `document-files`: то же (политика "Service role can read document-files" фактически открыта всем authenticated)
+- [x] `document-templates`: то же (политика вообще без auth-проверки)
 - [ ] Смок: после фикса проверить, что вложение из своего воркспейса скачивается (signed URL фронта работает — фронт качает через createSignedUrl? проверить путь фронта)
 
 ### 1.3 docbuilder_app_settings
-- [ ] Read-only проверка: кто в docbuilder_allowed_users, как docbuilder_is_admin() устроен
-- [ ] Закрыть SELECT `USING (true)` → `docbuilder_is_admin()`. Откат-план записать (CREATE POLICY обратно).
+- [x] Read-only проверка: кто в docbuilder_allowed_users, как docbuilder_is_admin() устроен
+- [x] Закрыть SELECT `USING (true)` → `docbuilder_is_admin()`. Откат-план записать (CREATE POLICY обратно).
 
 ### 1.4 Ротация INTERNAL_FUNCTION_SECRET (⚠️ самое деликатное, делать последним в этапе)
-- [ ] Сгенерировать новый секрет (openssl rand -hex 32)
+- [x] Сгенерировать новый секрет (openssl rand -hex 32)
 - [ ] `supabase secrets set INTERNAL_FUNCTION_SECRET=...` (+ повторный set при необходимости — gotcha про старое значение)
-- [ ] Обновить тело `dispatch_send_http` в БД (живое тело взять из БД! не из репо) — новый секрет в http_post header
-- [ ] VPS: обновить `INTERNAL_SECRET` в `/opt/clientcase/mtproto-service/.env` (НЕ перезатирая остальные переменные!) + `docker compose restart mtproto` (или up -d)
-- [ ] Проверить какие Edge Functions читают секрет (requireInternalSecret) — env подхватится сам, но по gotcha может понадобиться redeploy
-- [ ] Верификация БЕЗ реальных сообщений: вызвать telegram-send-message напрямую с новым секретом и несуществующим message_id → ожидаем не-401 (например 404/400 от нашего кода). Старый секрет → 401.
+- [x] Обновить тело `dispatch_send_http` в БД (живое тело взять из БД! не из репо) — новый секрет в http_post header
+- [x] VPS: обновить `INTERNAL_SECRET` в `/opt/clientcase/mtproto-service/.env` (НЕ перезатирая остальные переменные!) + `docker compose restart mtproto` (или up -d)
+- [x] Проверить какие Edge Functions читают секрет (requireInternalSecret) — env подхватится сам, но по gotcha может понадобиться redeploy
+- [x] Верификация БЕЗ реальных сообщений: вызвать telegram-send-message напрямую с новым секретом и несуществующим message_id → ожидаем не-401 (например 404/400 от нашего кода). Старый секрет → 401.
 - [ ] Проверить net._http_response после первого реального исходящего (попросить пользователя в конце)
 
 ### 1.5 Контроль этапа
@@ -167,4 +167,9 @@
 
 ## Лог выполнения
 
-(заполняется по ходу)
+### 2026-06-12 — Этап 1 ✅ ЗАВЕРШЁН
+- **1.1 REVOKE** — миграции `20260612_security_revoke_anon_and_api_key_gates` + `20260612_security_revoke_anon_public_grant_fix` применены в прод. Грабли: REVOKE FROM anon не работает при PUBLIC-гранте — нужно снимать PUBLIC и возвращать явные GRANT. Блок 1 (12 функций) → service_role only; блоки 2/3 (~45) → authenticated only. Гейт owner/manage_workspace_settings добавлен внутрь 6 функций set/delete_*_api_key (фронт зовёт их напрямую — E1-агент ошибался про «только Edge»). resend-webhook работает на service-клиенте — проверено. Вся триггер-цепочка отправки SECURITY DEFINER — REVOKE dispatch_send_http безопасен. debug_auth_context дропнут. Верифицировано: anon=false везде кроме resolve_workspace_by_host / get_workspace_slug_by_id (by design).
+- **1.2 Storage** — миграция `20260612_storage_workspace_scoped_policies` применена. Все 3 бакета на workspace-фильтре. Проверено по данным: 100% объектов с папками имеют ws-uuid первым сегментом (1 тестовый файл в корне message-attachments остался виден только service_role).
+- **1.3 docbuilder** — `20260612_docbuilder_app_settings_restrict_select`: SELECT сужен до участников docbuilder_allowed_users (2 юзера, вкл. не-админа — поэтому не is_admin). Откат-план в миграции.
+- **1.4 Ротация секрета** — старый `ad0fe058…` был закоммичен в `20260525_convert_external_event_assignee.sql` (репо на GitHub) → скомпрометирован. Новый: `supabase secrets set` → env подхватился автоматически без redeploy; обновлены 3 БД-функции с хардкодом (dispatch_send_http, notify_google_calendar_mirror, convert_external_event_to_task) через execute_sql (новый секрет в репо НЕ коммитим); VPS mtproto-service/.env обновлён sed'ом (бэкап .env.bak-20260612), контейнер пересоздан, сессия восстановилась. Верификация: новый секрет → 400 "Missing field: content" (наш код), старый → 401. ⚠️ Эти 3 функции теперь драфтят от репо ещё сильнее — учесть в этапе 6 (фиксация RPC).
+- **1.5** — финальный advisors-прогон и живой смок TG отложены на этап 7 (по плану).
