@@ -573,6 +573,26 @@ body[data-task-panel-open] [data-sonner-toaster][data-x-position='right'] {
   outline: 2px solid white;
   outline-offset: -1px;
 }
+/* Подпись текущего времени у красной линии-индикатора. Текст приходит
+   из CSS-переменной --rbc-now-label (формат "ЧЧ:ММ"), которую раз в
+   минуту обновляет useNowIndicatorLabel — без ре-рендера календаря. */
+.rbc-current-time-indicator::after {
+  content: var(--rbc-now-label, '');
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(calc(-50% - 1px));
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: #ef4444;
+  /* Совпадает с фоном колонки текущего дня (.rbc-today, дефолт rbc),
+     чтобы подпись сливалась с подложкой и перекрывала линию. */
+  background: #eaf6ff;
+  padding: 0 4px;
+  white-space: nowrap;
+  pointer-events: none;
+}
 /* В today-колонке фон голубоватый (rgb(234,246,255) у RBC) — контур
    подгоняем под него, чтобы блок «выписывался» в свою колонку, а не
    терял края на цветной подложке. */

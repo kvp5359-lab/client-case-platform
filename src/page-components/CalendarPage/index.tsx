@@ -8,7 +8,7 @@
  * привязка к задачам через drop из списка — следующие этапы.
  */
 
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -37,6 +37,7 @@ import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { usePageTitle } from '@/hooks/usePageTitle'
+import { useNowIndicatorLabel } from '@/hooks/useNowIndicatorLabel'
 import {
   Dialog,
   DialogContent,
@@ -238,6 +239,9 @@ export default function CalendarPage() {
 
   const scrollToTime = useMemo(() => subHours(new Date(), 1), [])
 
+  const calendarRef = useRef<HTMLDivElement>(null)
+  useNowIndicatorLabel(calendarRef)
+
   if (!workspaceId) return null
 
   return (
@@ -246,7 +250,7 @@ export default function CalendarPage() {
         <div className="px-6 py-4 border-b">
           <h1 className="text-xl font-semibold">Календарь</h1>
         </div>
-        <div className="flex-1 overflow-hidden px-6 py-4">
+        <div ref={calendarRef} className="flex-1 overflow-hidden px-6 py-4">
           <DnDCalendar
             localizer={localizer}
             events={events}

@@ -49,6 +49,7 @@ import { useExternalCalendarEvents } from './calendar/useExternalCalendarEvents'
 import { useCalendarDropMonitor, type PreviewRect } from './calendar/useCalendarDropMonitor'
 import { CalendarHoverOverlay, type HoverTime } from './calendar/CalendarHoverOverlay'
 import { buildCalendarMessages } from './calendar/calendarMessages'
+import { useNowIndicatorLabel } from '@/hooks/useNowIndicatorLabel'
 
 const localizer = dateFnsLocalizer({
   format: (date: Date, formatStr: string) => fmt(date, formatStr, { locale: ru }),
@@ -369,12 +370,16 @@ export function BoardListCalendarView({
     const stripeTop = slotRect.top + minutesFromTop * ppm
     const hh = String(time.getHours()).padStart(2, '0')
     const mm = String(time.getMinutes()).padStart(2, '0')
+    // Фон подписи = фон колонки под курсором (текущий день голубой, прочие
+    // белые), чтобы подпись сливалась с подложкой и перекрывала линию.
+    const isToday = !!slot.closest('.rbc-today')
     setHoverTime({
       stripeLeft: slotRect.left,
       stripeTop,
       stripeWidth: slotRect.width,
-      labelLeft: slotRect.right - 4,
+      labelLeft: slotRect.right,
       label: `${hh}:${mm}`,
+      labelBg: isToday ? '#eaf6ff' : '#fff',
     })
   }, [previewRect, hoverTime])
 
@@ -386,6 +391,8 @@ export function BoardListCalendarView({
     'h-[480px]'
 
   const messages = useMemo(() => buildCalendarMessages(nextNDays), [nextNDays])
+
+  useNowIndicatorLabel(containerRef)
 
   return (
     <>

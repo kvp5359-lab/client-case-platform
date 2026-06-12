@@ -15,6 +15,7 @@ export type HoverTime = {
   stripeWidth: number
   labelLeft: number
   label: string
+  labelBg: string
 } | null
 
 type Props = {
@@ -61,12 +62,15 @@ export function CalendarHoverOverlay({ hoverTime, previewRect }: Props) {
             />
             {hoverTime.labelLeft <= panelLeft && (
               <div
-                className="fixed z-[9999] pointer-events-none text-[12px] font-medium leading-none px-1 bg-white"
+                className="fixed z-[9999] pointer-events-none text-[12px] font-medium leading-none px-1"
                 style={{
                   left: hoverTime.labelLeft,
                   top: hoverTime.stripeTop,
-                  transform: 'translate(-100%, -50%)',
+                  transform: 'translate(-100%, calc(-50% - 1px))',
                   color: 'hsl(var(--primary) / 0.95)',
+                  // Фон колонки под курсором (голубой для текущего дня, белый
+                  // для прочих) — чтобы подпись сливалась с подложкой.
+                  backgroundColor: hoverTime.labelBg,
                 }}
               >
                 {hoverTime.label}
