@@ -192,6 +192,7 @@ export async function ingestMtprotoMessage(args: {
     telegram_user_id: clientTgUserId,
     first_name: clientFirstName,
     last_name: clientLastName,
+    username: clientUsername,
   })
 
   // Fire-and-forget: загрузить аватар клиента, если его ещё нет в participant.

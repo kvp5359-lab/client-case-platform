@@ -25,12 +25,23 @@ export async function participantByTgId(workspaceId: string, tgId: number): Prom
 export async function findOrCreateParticipant(workspaceId: string, from: TgUser): Promise<string | null> {
   const { data: existing } = await service
     .from("participants")
-    .select("id")
+    .select("id, telegram_username")
     .eq("workspace_id", workspaceId)
     .eq("telegram_user_id", from.id)
     .eq("is_deleted", false)
     .maybeSingle();
-  if (existing) return existing.id;
+  if (existing) {
+    // Дозаписываем @username, если у уже заведённого контакта его ещё нет
+    // (чтобы из карточки можно было найти диалог в Telegram). Имя не трогаем —
+    // оно могло быть отредактировано вручную.
+    if (from.username && !existing.telegram_username) {
+      await service
+        .from("participants")
+        .update({ telegram_username: from.username })
+        .eq("id", existing.id);
+    }
+    return existing.id;
+  }
 
   const { data: created, error } = await service
     .from("participants")
@@ -38,6 +49,7 @@ export async function findOrCreateParticipant(workspaceId: string, from: TgUser)
       workspace_id: workspaceId,
       name: from.first_name ?? "Telegram User",
       last_name: from.last_name ?? null,
+      telegram_username: from.username ?? null,
       email: `tg_${from.id}@telegram.placeholder`,
       telegram_user_id: from.id,
       workspace_roles: ["Telegram-контакт"],

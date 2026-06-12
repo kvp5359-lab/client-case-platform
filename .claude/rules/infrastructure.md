@@ -124,7 +124,15 @@ ORDER BY id DESC LIMIT 10;
 `mtproto-service/` — отдельный Node 20 сервис на Fastify + gramjs. Держит MTProto-сессии сотрудников (TG «как личный аккаунт»: реакции в обе стороны, read-receipts, online presence, typing). **Только private chats**; групповые — на бот-секретаре.
 
 - **Доступ**: только через Edge Function `telegram-mtproto-*` (JWT + права) → mtproto-service с `x-internal-secret`. **Никогда не доступен из браузера напрямую.**
-- **Деплой**: отдельный Docker-контейнер на VPS. `mtproto-service/Dockerfile`, README рядом.
+- **Деплой**: **ручной**, НЕ через CI/CD (`deploy.yml` его не выкатывает — `git push` mtproto не трогает). `/opt/clientcase/` на VPS — **не git-репо**; код `mtproto-service/` доставляется **rsync'ом** с локалки, образ собирается **локально на VPS** (`docker-compose.yml` → `build: ./mtproto-service`, не pull). Контейнер `clientcase-mtproto` (порт 3007). На VPS свой `mtproto-service/.env` с секретами — **не перезатирать**.
+  ```bash
+  # 1. С локалки — синхронизировать код (БЕЗ .env / node_modules / dist):
+  rsync -av --delete --exclude node_modules --exclude dist --exclude .env \
+    ./mtproto-service/ vps:/opt/clientcase/mtproto-service/
+  # 2. На VPS — пересобрать и поднять только mtproto:
+  ssh vps 'cd /opt/clientcase && docker compose build mtproto && docker compose up -d mtproto'
+  ```
+  Простой — пара секунд; сессии переподнимаются из БД (`bootstrapAllSessions`). `app-blue/green` не затрагиваются.
 - **Локально**:
   ```bash
   cd mtproto-service

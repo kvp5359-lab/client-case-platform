@@ -4658,6 +4658,7 @@ export type Database = {
           preferred_language: string
           search_vector: unknown
           telegram_user_id: number | null
+          telegram_username: string | null
           updated_at: string
           user_id: string | null
           workspace_id: string
@@ -4679,6 +4680,7 @@ export type Database = {
           preferred_language?: string
           search_vector?: unknown
           telegram_user_id?: number | null
+          telegram_username?: string | null
           updated_at?: string
           user_id?: string | null
           workspace_id: string
@@ -4700,6 +4702,7 @@ export type Database = {
           preferred_language?: string
           search_vector?: unknown
           telegram_user_id?: number | null
+          telegram_username?: string | null
           updated_at?: string
           user_id?: string | null
           workspace_id?: string

@@ -20,12 +20,27 @@ export async function ensureMTProtoThread(args: {
 }): Promise<string> {
   const { data: existing } = await supabase
     .from("project_threads")
-    .select("id")
+    .select("id, name")
     .eq("mtproto_session_user_id", args.session_user_id)
     .eq("mtproto_client_tg_user_id", args.client_tg_user_id)
     .eq("is_deleted", false)
     .maybeSingle()
-  if (existing) return existing.id as string
+  if (existing) {
+    // Тред мог быть создан с плейсхолдером (`tg:<id>` / `@username`), когда
+    // имя контакта ещё не было известно (например, первое исходящее новому
+    // контакту). Как только приходит настоящее имя — переименовываем.
+    // Только плейсхолдер → реальное имя, не наоборот.
+    const isPlaceholder = /^(tg:|@)/.test((existing.name as string | null) ?? "")
+    const incomingIsReal =
+      !!args.client_display_name && !/^(tg:|@)/.test(args.client_display_name)
+    if (isPlaceholder && incomingIsReal) {
+      await supabase
+        .from("project_threads")
+        .update({ name: args.client_display_name })
+        .eq("id", existing.id as string)
+    }
+    return existing.id as string
+  }
 
   const { data: created, error } = await supabase
     .from("project_threads")
@@ -92,10 +107,11 @@ export async function ensureClientParticipant(args: {
   telegram_user_id: number
   first_name: string | null
   last_name: string | null
+  username?: string | null
 }): Promise<string | null> {
   const { data: existing } = await supabase
     .from("participants")
-    .select("id, name, last_name")
+    .select("id, name, last_name, telegram_username")
     .eq("workspace_id", args.workspace_id)
     .eq("telegram_user_id", args.telegram_user_id)
     .eq("is_deleted", false)
@@ -103,12 +119,19 @@ export async function ensureClientParticipant(args: {
 
   const newName = args.first_name || existing?.name || "Telegram User"
   const newLastName = args.last_name ?? existing?.last_name ?? null
+  // username без @; не затираем существующий, если в апдейте его нет.
+  const newUsername =
+    args.username ?? (existing?.telegram_username as string | null | undefined) ?? null
 
   if (existing) {
-    if (existing.name !== newName || existing.last_name !== newLastName) {
+    if (
+      existing.name !== newName ||
+      existing.last_name !== newLastName ||
+      (existing.telegram_username as string | null) !== newUsername
+    ) {
       await supabase
         .from("participants")
-        .update({ name: newName, last_name: newLastName })
+        .update({ name: newName, last_name: newLastName, telegram_username: newUsername })
         .eq("id", existing.id)
     }
     return existing.id as string
@@ -120,6 +143,7 @@ export async function ensureClientParticipant(args: {
       workspace_id: args.workspace_id,
       name: newName,
       last_name: newLastName,
+      telegram_username: newUsername,
       email: `tg_${args.telegram_user_id}@telegram.placeholder`,
       telegram_user_id: args.telegram_user_id,
       workspace_roles: ["Telegram-контакт"],
