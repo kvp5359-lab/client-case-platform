@@ -92,6 +92,8 @@ jobs:
             NEXT_PUBLIC_APP_NAME=${{ secrets.NEXT_PUBLIC_APP_NAME }}
             NEXT_PUBLIC_TECHNICAL_ADMIN_EMAILS=${{ secrets.NEXT_PUBLIC_TECHNICAL_ADMIN_EMAILS }}
             NEXT_PUBLIC_APP_VERSION=1.0.0
+            NEXT_PUBLIC_MODULE_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_MODULE_SUPABASE_URL }}
+            NEXT_PUBLIC_MODULE_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_MODULE_SUPABASE_ANON_KEY }}
 
   # ===========================================
   # 3. Deploy to VPS
