@@ -128,24 +128,41 @@ export function useNewMessageToast(workspaceId: string | undefined) {
           // имя отправителя само по себе достаточно. Для проектных тредов —
           // имя проекта, fallback на «Проект» если по какой-то причине не догрузилось.
           const isPersonal = !msg.project_id
-          const projectName = isPersonal
+          // Имя проекта и имя треда/задачи — для верхней строки `Имя (Проект · Тред)`.
+          // Личные диалоги (project_id=NULL) — проект не показываем.
+          let projectName: string | null = isPersonal
             ? null
-            : (threadEntry?.project_name ?? 'Проект')
+            : (threadEntry?.project_name ?? null)
+          let threadName: string | null = threadEntry?.thread_name ?? null
           let accentColor = threadEntry?.thread_accent_color ?? null
           let threadIcon: string | null = threadEntry?.thread_icon ?? null
 
-          // Фоллбэк: если цвет/иконка не лежат в кеше (например, email-тред
-          // ещё не попадал в inbox v2), подгружаем напрямую из project_threads.
-          if ((!accentColor || !threadIcon) && msg.thread_id) {
-            const { data: threadAccent } = await supabase
+          // Фоллбэк: если что-то не лежит в inbox-кеше (тред не открывался во
+          // «Входящих» / email-тред ещё не попадал в inbox v2), подгружаем
+          // напрямую из project_threads (+ имя проекта через join).
+          const needFallback =
+            !accentColor || !threadIcon || !threadName || (!isPersonal && !projectName)
+          if (needFallback && msg.thread_id) {
+            const { data: threadRow } = await supabase
               .from('project_threads')
-              .select('accent_color, icon')
+              .select('accent_color, icon, name, projects(name)')
               .eq('id', msg.thread_id)
               .maybeSingle()
-            accentColor = accentColor ?? (threadAccent?.accent_color ?? null)
-            threadIcon =
-              threadIcon ?? ((threadAccent as { icon?: string | null } | null)?.icon ?? null)
+            const row = threadRow as
+              | {
+                  accent_color?: string | null
+                  icon?: string | null
+                  name?: string | null
+                  projects?: { name?: string | null } | null
+                }
+              | null
+            accentColor = accentColor ?? (row?.accent_color ?? null)
+            threadIcon = threadIcon ?? (row?.icon ?? null)
+            threadName = threadName ?? (row?.name ?? null)
+            if (!isPersonal) projectName = projectName ?? (row?.projects?.name ?? null)
           }
+          // Последний фоллбэк имени проекта, чтобы не показать пустые скобки.
+          if (!isPersonal && !projectName) projectName = 'Проект'
 
           // Если у входящего email sender_participant_id=NULL, sender_name = email.
           // Подставляем имя контакта из inbox v2, если оно резолвлено через participant.
@@ -243,6 +260,7 @@ export function useNewMessageToast(workspaceId: string | undefined) {
               buildToastContent(
                 groupedLines.get(groupKey) ?? [],
                 projectName,
+                threadName,
                 senderName,
                 avatarUrl,
                 msgChannel,

@@ -101,6 +101,9 @@ export function buildToastContent(
   lines: string[],
   /** null/пустая строка — личный диалог, суффикс в скобках не показываем. */
   projectName: string | null,
+  /** Имя треда/задачи. Дописывается в скобки после проекта: `(Проект · Тред)`.
+   *  Показывается только когда есть projectName (для личных диалогов — нет). */
+  threadName: string | null,
   senderName: string,
   avatarUrl: string | null,
   channel: 'client' | 'internal',
@@ -134,7 +137,7 @@ export function buildToastContent(
           ? createElement(
               'span',
               { className: 'font-normal text-muted-foreground ml-1' },
-              `(${projectName})`,
+              `(${projectName}${threadName ? ` · ${threadName}` : ''})`,
             )
           : null,
       ),
