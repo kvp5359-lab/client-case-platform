@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown, ChevronRight, Copy, Filter, MoreVertical, Plus, Trash2, ArrowUp, ArrowDown, GripVertical } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Filter, MoreVertical, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, CalendarClock } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,6 +21,9 @@ type BoardListHeaderProps = {
   onOpenSettings: () => void
   /** Открыть диалог создания треда с preset из фильтра колонки. Null для inbox/project. */
   onCreateThread?: () => void
+  /** Разовая сортировка задач списка по сроку (с дедлайном — вперёд по возрастанию,
+   *  остальные сохраняют порядок). Задаётся только для thread-списков. */
+  onSortByDeadline?: () => void
   hasFilters: boolean
   isInbox: boolean
   isFirst?: boolean
@@ -35,6 +38,7 @@ export function BoardListHeader({
   onToggleCollapse,
   onOpenSettings,
   onCreateThread,
+  onSortByDeadline,
   hasFilters,
   isInbox,
   isFirst,
@@ -122,6 +126,12 @@ export function BoardListHeader({
               <Filter className="h-3.5 w-3.5 mr-2" />
               Настройки
             </DropdownMenuItem>
+            {onSortByDeadline && (
+              <DropdownMenuItem onClick={onSortByDeadline}>
+                <CalendarClock className="h-3.5 w-3.5 mr-2" />
+                Сортировать по сроку
+              </DropdownMenuItem>
+            )}
             {!isInbox && (
               <DropdownMenuItem
                 onClick={() =>

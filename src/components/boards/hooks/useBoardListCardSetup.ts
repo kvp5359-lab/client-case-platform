@@ -15,6 +15,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useFilteredTasks, useFilteredProjects } from './useFilteredListData'
+import { useReorderBoardListItems } from './useBoardListItemOrders'
+import { useUpdateList } from './useListMutations'
 import { useWorkspaceProjectParticipants } from './useWorkspaceProjectParticipants'
 import { useCreateTaskHandler } from '@/components/tasks/useCreateTaskMutation'
 import { useQueueThreadInitialMessage } from '@/components/tasks/useQueueThreadInitialMessage'
@@ -165,6 +167,31 @@ export function useBoardListCardSetup({
     manualThreadPositions,
   )
 
+  // «Сортировать по сроку» (пункт меню списка): задачи с дедлайном — вперёд,
+  // по возрастанию с учётом времени; остальные сохраняют текущий порядок.
+  // Пишется как ручной порядок (manual_order), поэтому, если список не в этом
+  // режиме, переводим его туда — иначе сохранённый порядок будет проигнорирован.
+  const reorderItems = useReorderBoardListItems()
+  const updateList = useUpdateList()
+  const sortByDeadline = useCallback(() => {
+    if (list.entity_type !== 'thread') return
+    const withDeadline = filteredTasks
+      .filter((t) => t.deadline)
+      .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())
+    const withoutDeadline = filteredTasks.filter((t) => !t.deadline)
+    const itemIds = [...withDeadline, ...withoutDeadline].map((t) => t.id)
+    if (itemIds.length === 0) return
+    reorderItems.mutate({
+      board_id: list.board_id,
+      list_id: list.id,
+      item_type: 'thread',
+      item_ids: itemIds,
+    })
+    if (list.sort_by !== 'manual_order') {
+      updateList.mutate({ id: list.id, board_id: list.board_id, sort_by: 'manual_order' })
+    }
+  }, [filteredTasks, list, reorderItems, updateList])
+
   const { data: projectParticipantsMap } = useWorkspaceProjectParticipants(
     workspaceId,
     isProject,
@@ -264,6 +291,7 @@ export function useBoardListCardSetup({
     // Mutations
     handleCreate,
     createPending,
+    sortByDeadline,
     // Data maps
     nextTaskByProjectId,
     authorNameByUserId,

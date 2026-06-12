@@ -98,6 +98,7 @@ export function BoardListCard({
     createPreset,
     handleCreate,
     createPending,
+    sortByDeadline,
     nextTaskByProjectId,
     authorNameByUserId,
     filteredTasks,
@@ -131,6 +132,7 @@ export function BoardListCard({
         onToggleCollapse={() => setUserCollapsed(!collapsed)}
         onOpenSettings={settingsDialog.open}
         onCreateThread={list.entity_type === 'thread' ? createDialog.open : undefined}
+        onSortByDeadline={list.entity_type === 'thread' ? sortByDeadline : undefined}
         hasFilters={hasFilters}
         isInbox={isInbox}
         isFirst={isFirst}
