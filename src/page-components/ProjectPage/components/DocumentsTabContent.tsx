@@ -61,6 +61,12 @@ type DocumentsTabContentProps = {
   workspaceId: string
   onOpenAddKitDialog?: () => void
   googleDriveFolderLink?: string | null
+  /** Создать корневую папку проекта прямо из диалога подпапок (если не подключена). */
+  onCreateProjectFolder?: (folderName: string) => Promise<void>
+  /** Корневая папка типа проекта — без неё создать папку проекта нельзя. */
+  rootFolderId?: string | null
+  /** Имя проекта — подсказка имени при создании папки проекта. */
+  projectName?: string | null
   /** Пороги размера файла (МБ) из шаблона проекта — подсветка тега размера. null → выкл. */
   fileSizeWarnMb?: number | null
   fileSizeDangerMb?: number | null
@@ -77,6 +83,9 @@ export function DocumentsTabContent({
   workspaceId,
   onOpenAddKitDialog,
   googleDriveFolderLink,
+  onCreateProjectFolder,
+  rootFolderId,
+  projectName,
   fileSizeWarnMb = null,
   fileSizeDangerMb = null,
   compact: compactProp,
@@ -438,7 +447,7 @@ export function DocumentsTabContent({
                 onDownloadKit={kitDownload.handleDownloadKit}
                 onEditFolder={canCreateFolders ? folderCRUD.handleOpenEditFolder : undefined}
                 onDeleteFolder={canCreateFolders ? folderCRUD.handleDeleteFolder : undefined}
-                onCreateDriveFolders={googleDriveFolderLink ? setDriveFoldersKit : undefined}
+                onCreateDriveFolders={setDriveFoldersKit}
                 onMoveKit={kitActions.handleMoveKit}
                 isFirst={kitIndex === 0}
                 isLast={kitIndex === documentKits.length - 1}
@@ -454,6 +463,9 @@ export function DocumentsTabContent({
           kit={driveFoldersKit}
           googleDriveFolderLink={googleDriveFolderLink}
           workspaceId={workspaceId}
+          onCreateProjectFolder={onCreateProjectFolder}
+          rootFolderId={rootFolderId}
+          defaultProjectFolderName={projectName}
         />
       </TooltipProvider>
     </DocumentsProvider>

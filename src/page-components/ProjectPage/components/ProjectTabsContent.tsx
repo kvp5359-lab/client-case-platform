@@ -288,6 +288,9 @@ export function ProjectTabsContent({
             workspaceId={workspaceId}
             onOpenAddKitDialog={canAddDocumentKits ? addKitDialog.open : undefined}
             googleDriveFolderLink={project.google_drive_folder_link}
+            onCreateProjectFolder={canManageGoogleDrive ? onCreateGoogleDriveFolder : undefined}
+            rootFolderId={rootFolderId}
+            projectName={project.name}
             fileSizeWarnMb={fileSizeWarnMb}
             fileSizeDangerMb={fileSizeDangerMb}
           />
