@@ -281,6 +281,28 @@ export function useSendMessage(
         // Убираем оптимистики и дедуплицируем с realtime-версиями (если succeed
         // успел отработать после того, как realtime уже добавил запись).
         const realIds = new Set(result.map((m) => m.id))
+        // НЕ понижаем статус доставки. `result` — это версия на момент INSERT
+        // (send_status='pending'); edge function проставляет 'sent' асинхронно и
+        // присылает realtime-UPDATE, который мог уже долететь и обновить кэш
+        // (особенно для email+вложение, где мутация дольше). Если в кэше уже
+        // стоит финальный статус — сохраняем его, иначе бабл залипает в
+        // «Отправляется», хотя письмо ушло (гонка realtime vs onSuccess).
+        const prevById = new Map<string, ProjectMessage>()
+        for (const page of typed.pages) {
+          for (const msg of page.messages) prevById.set(msg.id, msg)
+        }
+        const isFinal = (s: string | null | undefined) => s === 'sent' || s === 'failed'
+        const merged = result.map((m) => {
+          const prev = prevById.get(m.id)
+          if (prev && isFinal(prev.send_status) && !isFinal(m.send_status)) {
+            return {
+              ...m,
+              send_status: prev.send_status,
+              recipient_read_at: m.recipient_read_at ?? prev.recipient_read_at,
+            }
+          }
+          return m
+        })
         const pages = typed.pages.map((page) => ({
           ...page,
           messages: page.messages.filter(
@@ -290,7 +312,7 @@ export function useSendMessage(
         const lastIdx = pages.length - 1
         pages[lastIdx] = {
           ...pages[lastIdx],
-          messages: [...pages[lastIdx].messages, ...result],
+          messages: [...pages[lastIdx].messages, ...merged],
         }
         return { ...typed, pages }
       })
