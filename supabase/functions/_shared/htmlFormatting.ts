@@ -16,6 +16,100 @@ export function escapeHtmlEntities(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
+/** Индекс закрывающего </tag> для тега, открытого на fromIdx, с учётом
+ *  вложенности того же тега (например, <ol> внутри <ol>). */
+function findMatchingClose(html: string, fromIdx: number, tag: string): number {
+  const re = new RegExp(`<(/?)${tag}\\b[^>]*>`, "ig");
+  re.lastIndex = fromIdx;
+  let depth = 1;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    if (m[1] === "/") {
+      depth--;
+      if (depth === 0) return m.index;
+    } else {
+      depth++;
+    }
+  }
+  return html.length;
+}
+
+/** Прямые <li> содержимого списка (вложенные <li> пропускаются). */
+function splitDirectListItems(inner: string): string[] {
+  const items: string[] = [];
+  let pos = 0;
+  while (true) {
+    const open = inner.slice(pos).match(/<li\b[^>]*>/i);
+    if (!open || open.index === undefined) break;
+    const start = pos + open.index + open[0].length;
+    const close = findMatchingClose(inner, start, "li");
+    items.push(inner.slice(start, close));
+    pos = close + "</li>".length;
+  }
+  return items;
+}
+
+/**
+ * Рекурсивно конвертирует <ol>/<ul> в текст. Нумерованные — иерархически:
+ * верхний уровень 1, 2…, вложенные — prefix.N (1.1, 1.2…). Уважает start у <ol>.
+ * Telegram не поддерживает <ol>/<ul>/<li>.
+ */
+function listsToText(html: string, prefix = ""): string {
+  let out = "";
+  let pos = 0;
+  const openRe = /<(ol|ul)\b([^>]*)>/i;
+  while (true) {
+    const rest = html.slice(pos);
+    const m = rest.match(openRe);
+    if (!m || m.index === undefined) {
+      out += rest;
+      break;
+    }
+    const tag = m[1].toLowerCase();
+    const attrs = m[2];
+    const openStart = pos + m.index;
+    const openEnd = openStart + m[0].length;
+    out += html.slice(pos, openStart);
+    const closeIdx = findMatchingClose(html, openEnd, tag);
+    const inner = html.slice(openEnd, closeIdx);
+    out += renderListItems(inner, tag, attrs, prefix);
+    pos = closeIdx + `</${tag}>`.length;
+  }
+  return out;
+}
+
+function renderListItems(
+  inner: string,
+  tag: string,
+  attrs: string,
+  prefix: string,
+): string {
+  const items = splitDirectListItems(inner);
+  let counter = 0;
+  if (tag === "ol") {
+    const sm = attrs.match(/\bstart\s*=\s*["']?(\d+)/i);
+    counter = sm ? parseInt(sm[1], 10) - 1 : 0;
+  }
+  let out = "";
+  for (const item of items) {
+    // Текст пункта — до первого вложенного списка; вложенные — рекурсивно.
+    const nestedAt = item.search(/<(ol|ul)\b/i);
+    const textPart = nestedAt === -1 ? item : item.slice(0, nestedAt);
+    const nestedPart = nestedAt === -1 ? "" : item.slice(nestedAt);
+    const text = textPart.replace(/<\/?p\b[^>]*>/gi, "").trim();
+    if (tag === "ol") {
+      counter++;
+      const label = `${prefix}${counter}`;
+      out += `${label}. ${text}\n`;
+      if (nestedPart) out += listsToText(nestedPart, `${label}.`);
+    } else {
+      out += `• ${text}\n`;
+      if (nestedPart) out += listsToText(nestedPart, prefix);
+    }
+  }
+  return out;
+}
+
 /**
  * Конвертирует Tiptap HTML → Telegram-совместимый HTML
  * Telegram поддерживает ограниченный набор тегов, остальные удаляются
@@ -43,26 +137,8 @@ export function htmlToTelegramHtml(html: string): string {
     `\n\n<b><i>${inner.trim()}</i></b>\n\n`,
   );
 
-  // <ol> с <li> → нумерованный текст (Telegram не поддерживает <ol>/<li>)
-  result = result.replace(/<ol([^>]*)>([\s\S]*?)<\/ol>/g, (_match, attrs: string, inner: string) => {
-    // Уважаем атрибут start (нумерация может начинаться не с 1)
-    const startMatch = attrs.match(/\bstart\s*=\s*["']?(\d+)/i);
-    let counter = startMatch ? parseInt(startMatch[1], 10) - 1 : 0;
-    return inner.replace(/<li[^>]*>([\s\S]*?)<\/li>/g, (_m: string, content: string) => {
-      counter++;
-      // Убираем <p> обёртки внутри <li>
-      const clean = content.replace(/<p>/g, "").replace(/<\/p>/g, "");
-      return `${counter}. ${clean}\n`;
-    });
-  });
-
-  // <ul> с <li> → маркированный текст (Telegram не поддерживает <ul>/<li>)
-  result = result.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/g, (_match, inner: string) => {
-    return inner.replace(/<li[^>]*>([\s\S]*?)<\/li>/g, (_m: string, content: string) => {
-      const clean = content.replace(/<p>/g, "").replace(/<\/p>/g, "");
-      return `• ${clean}\n`;
-    });
-  });
+  // Списки → текст. Нумерованные — иерархически (1, 1.1, 1.2…), уважают start.
+  result = listsToText(result);
 
   // <blockquote> — Telegram поддерживает, оставляем
   // Пустые параграфы (<p><br></p> или <p></p>) → пустая строка

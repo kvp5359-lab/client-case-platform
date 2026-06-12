@@ -70,12 +70,34 @@
 
 Корень каждого слоя подтверждён замером (preview/console-логи), а не догадкой.
 
+## Дополнение: висячий отступ, многоуровневая нумерация, отступы
+
+Доработки оформления списков (CSS + edge), по запросу:
+
+- **Висячий отступ (как в Notion).** Списки переведены с `list-style-position:
+  inside` на `outside` + `<li><p>` снова блочный → перенос строки выравнивается
+  по тексту первой строки, а не под цифру. Заодно ушёл прежний баг «клик в
+  пустую зону справа открывал попап» — теперь там блочный `<p>` (target=P,
+  отфильтровывается), а цифра в gutter по-прежнему `target=LI`.
+- **Многоуровневая нумерация 1, 1.1, 1.2…** Через `::marker { content:
+  counters(list-item, ".") ". " }` — встроенный счётчик `list-item` уважает
+  `start` у `<ol>` и вложенность, остаётся на `::marker` (детект клика цел).
+- **Уменьшены левые отступы** (`padding-left` верхний 1.35rem, вложенный 1.1rem).
+- **Telegram-нумерация вложенных.** `htmlToTelegramHtml` переписан со старого
+  плоского regex (он не умел вложенность) на рекурсивный разбор `listsToText`:
+  иерархическая нумерация `1`, `1.1`, `1.2`, уважает `start` на каждом уровне,
+  `ul` внутри `ol`. Покрыто ручным прогоном 6 кейсов (nested, start, ul-в-ol,
+  bold, текст вокруг).
+
 ## Затронутые файлы
 
 - `src/components/messenger/MinimalTiptapEditor.tsx` — Shift+Enter, детект клика
   по цифре, всплывашка через портал, разрыв списка, закрытие по клику снаружи
 - `src/utils/format/messengerHtml.ts` — `start`/`type` в whitelist DOMPurify
-- `supabase/functions/_shared/htmlFormatting.ts` — учёт `start` в Telegram-HTML
+- `src/app/globals.css` — висячий отступ (outside), `::marker` 1.1-нумерация,
+  уменьшенные `padding-left` (редактор + баббл)
+- `supabase/functions/_shared/htmlFormatting.ts` — учёт `start` + рекурсивный
+  `listsToText` с иерархической нумерацией для Telegram
 - `.claude/rules/messenger-ledger.md` — запись в журнал расследований
 
 ## Деплой

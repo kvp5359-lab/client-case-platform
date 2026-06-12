@@ -329,23 +329,37 @@
 }
 .messenger-content ol {
   list-style: decimal;
-  /* inside + display:inline у li>p: маркер растёт вправо → номера любой
-     длины (10, 100…) не обрезаются слева. */
-  list-style-position: inside;
-  padding-left: 0;
+  /* outside + display:block у li>p: маркер в левом gutter, текст блоком —
+     перенос строки выравнивается по тексту первой строки (висячий отступ,
+     как в Notion). padding-left даёт место под номер (двузначные не режутся). */
+  list-style-position: outside;
+  padding-left: 1.35rem;
   margin: 0.25rem 0;
+}
+/* Многоуровневая нумерация 1, 1.1, 1.2… через встроенный счётчик list-item
+   (уважает start у <ol> и вложенность). На ::marker — детект клика по цифре
+   не ломается. */
+.messenger-content ol > li::marker {
+  content: counters(list-item, ".") ". ";
+}
+/* Вложенные списки — меньший отступ */
+.messenger-content ol ol {
+  padding-left: 1.1rem;
 }
 .messenger-content ul {
   list-style: disc;
-  list-style-position: inside;
-  padding-left: 0;
+  list-style-position: outside;
+  padding-left: 1.4rem;
   margin: 0.25rem 0;
+}
+.messenger-content ul ul {
+  padding-left: 1.1rem;
 }
 .messenger-content li {
   margin: 0;
 }
 .messenger-content li p {
-  display: inline;
+  display: block;
   margin: 0;
 }
 
@@ -393,21 +407,31 @@
 }
 .messenger-editor .ProseMirror ol {
   list-style: decimal;
-  /* inside (+ display:inline у li>p ниже): маркер внутри контента и растёт
-     ВПРАВО, поэтому номера любой длины (10, 100…) не обрезаются слева. */
-  list-style-position: inside;
-  padding-left: 0;
+  /* outside + display:block у li>p: маркер в левом gutter, перенос строки
+     выравнивается по тексту первой строки (висячий отступ, как в Notion).
+     padding-left даёт место под номер (двузначные не режутся). */
+  list-style-position: outside;
+  padding-left: 1.35rem;
   margin: 0.25rem 0;
+}
+/* Многоуровневая нумерация 1, 1.1, 1.2… (см. .messenger-content выше). */
+.messenger-editor .ProseMirror ol > li::marker {
+  content: counters(list-item, ".") ". ";
+}
+.messenger-editor .ProseMirror ol ol {
+  padding-left: 1.1rem;
 }
 .messenger-editor .ProseMirror ul {
   list-style: disc;
-  list-style-position: inside;
-  padding-left: 0;
+  list-style-position: outside;
+  padding-left: 1.4rem;
   margin: 0.25rem 0;
 }
+.messenger-editor .ProseMirror ul ul {
+  padding-left: 1.1rem;
+}
 .messenger-editor .ProseMirror li p {
-  /* inline — чтобы маркер (inside) и текст были на одной строке. */
-  display: inline;
+  display: block;
   margin: 0;
 }
 
