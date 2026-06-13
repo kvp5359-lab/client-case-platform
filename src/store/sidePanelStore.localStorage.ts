@@ -29,21 +29,27 @@ export function lsSet(key: string, value: unknown) {
 }
 
 /**
- * Полная очистка всех ключей панели из localStorage — вызывается при logout.
- * Удаляет фиксированные ключи и все ключи по префиксам (per-project).
+ * Префиксы пользовательских localStorage-ключей, которые сметаются при logout.
+ * Всё пространство `cc:` (панель, AI, last-workspace, target-language, и любые
+ * будущие `cc:`-ключи) И черновики сообщений `msg_draft:`/`msg_outbox:`.
+ *
+ * ⚠️ Черновики содержат ТЕКСТ неотправленных сообщений и scope у них только по
+ * threadId (не по user_id). Без очистки на общем браузере следующий пользователь
+ * видел чужой черновик. При добавлении нового persist-ключа — либо префикс `cc:`,
+ * либо допиши сюда (см. audit 2026-06-13-architecture-maintainability P0).
+ */
+const LS_CLEAR_PREFIXES = ['cc:', 'msg_draft:', 'msg_outbox:']
+
+/**
+ * Полная очистка пользовательских ключей приложения из localStorage —
+ * вызывается при logout. Сметаем по префиксам из LS_CLEAR_PREFIXES.
  */
 export function lsClearPanelKeys() {
   try {
-    localStorage.removeItem(LS_KEY_SOURCES)
-    localStorage.removeItem(LS_KEY_CONVERSATIONS)
-    localStorage.removeItem(LS_KEY_AI_TAB)
-    localStorage.removeItem(LS_KEY_PANEL_STATE)
-    localStorage.removeItem(LS_KEY_FORWARD_BUFFER)
-    const prefixes = [LS_KEY_SOURCES_PREFIX, LS_KEY_PANEL_TAB_PREFIX, LS_KEY_ACTIVE_THREAD_PREFIX]
     const toRemove: string[] = []
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
-      if (key && prefixes.some((p) => key.startsWith(p))) {
+      if (key && LS_CLEAR_PREFIXES.some((p) => key.startsWith(p))) {
         toRemove.push(key)
       }
     }

@@ -153,7 +153,25 @@ describe('lsClearPanelKeys', () => {
     expect(localStorage.getItem(LS_KEY_ACTIVE_THREAD_PREFIX + 'p-1')).toBe(null)
   })
 
-  it('НЕ трогает ключи, которые не относятся к панели', () => {
+  it('очищает черновики сообщений (msg_draft/msg_outbox) и все cc:-ключи при logout', () => {
+    // P0 (audit 2026-06-13): черновики содержат текст неотправленных сообщений
+    // и без очистки утекали следующему пользователю на общем браузере.
+    localStorage.setItem('msg_draft:thread-1', '<p>секретный недописанный текст</p>')
+    localStorage.setItem('msg_draft:proj-1:thread-2', '<p>другой черновик</p>')
+    localStorage.setItem('msg_outbox:thread-1', '<p>в полёте</p>')
+    localStorage.setItem('cc:last-workspace-id', '"ws-1"')
+    localStorage.setItem('cc:translate-target:thread-1', '"en"')
+
+    lsClearPanelKeys()
+
+    expect(localStorage.getItem('msg_draft:thread-1')).toBe(null)
+    expect(localStorage.getItem('msg_draft:proj-1:thread-2')).toBe(null)
+    expect(localStorage.getItem('msg_outbox:thread-1')).toBe(null)
+    expect(localStorage.getItem('cc:last-workspace-id')).toBe(null)
+    expect(localStorage.getItem('cc:translate-target:thread-1')).toBe(null)
+  })
+
+  it('НЕ трогает ключи вне пространства приложения', () => {
     localStorage.setItem('other-key', 'should-survive')
     localStorage.setItem('app:settings', '{"theme":"dark"}')
 
