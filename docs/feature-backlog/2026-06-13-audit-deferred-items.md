@@ -123,12 +123,23 @@ SELECT → участникам docbuilder). Дубли RLS-политик и п
 
 ## Перф (отложено)
 
+> **Проход перф-аудита 2026-06-13 (вариант 2 + screenshot-пункты).** Сделано и
+> на проде/в деплое: вариант 2 «Непрочитанные» без потолка (миграция); дроп 4
+> мёртвых индексов `project_messages`; P5 (`CommentCountsProvider`); P4b
+> (`useThreadCounterpartNameMap`). Отозвано как ложное: P3 (`inbox_sort_at`
+> живой — drift), premise P2 (нет PostgREST cap 1000), 6 из 10 «unused» индексов
+> (покрывают FK). Полный отчёт — `docs/audit/2026-06-13-performance-scalability.md`.
+
+- **P4a (defer, заметный риск, низкая текущая польза):** виртуализация `/tasks`+`/lists` (`TableShell`) через `@tanstack/react-virtual`. `memo(ThreadRow)` уже убрал острую боль ре-рендера; виртуализация семантической `<table>` со sticky-заголовком + inline-edit + DnD — заметный риск, выгода только при 1000+ строках В ОДНОМ списке (сейчас редкость). Делать при росте объёмов.
+- **P2 (defer, Tier 3, НЕ срочно):** keyset-пагинация `get_workspace_threads`/досок + облегчение `get_sidebar_data`. Premise «тихая потеря на 1000» опровергнут (нет cap). Реальный риск — `statement_timeout 8s` при крупном росте (та же категория, что P1). `get_accessible_projects` `LIMIT 200` — реальный потолок при >200 проектах.
+- **P1 (Tier 3, главный обрыв):** денормализованная inbox-проекция + адресные `_one`/`_unread` вместо обёрток над `get_inbox_threads_v2` (полный скан ~150мс на вызов, усиливается realtime-инвалидацией у всех онлайн). Крупный DB-рефактор горячего пути.
 - `useTaskAssigneesMap` (28 параллельных запросов + 40-КБ queryKey на /tasks и /lists) → один RPC `get_assignees_for_workspace(workspace_id)`.
-- виртуализация таблиц списков (`TableShell`) через `@tanstack/react-virtual` — `memo(ThreadRow)` уже убрал острую боль (ре-рендер при выделении); виртуализация семантической `<table>` со sticky-заголовком и inline-edit — заметный риск, делать отдельно при росте объёмов.
+- realtime: слить 2 workspace-канала (`useWorkspaceMessagesRealtime` + `useNewMessageToast`) в один + таргетная инвалидация по `thread_id` из payload вместо broad-invalidate всего инбокса.
 - `block-gap-inserter.tsx` cleanup глобального listener через ref-counting (сейчас эвристика через setTimeout+querySelector, задокументирована).
 
 ## БД (отложено)
 
-- `inbox`-RPC семья = ~95% нагрузки БД (известно, план в backlog) — `get_inbox_thread_one` (283мс за 1 тред) и `get_inbox_unread_threads` (685мс) первыми переписать на прямой доступ вместо обёрток над `get_inbox_threads_v2`.
+- ⚠️ **drift-долг:** репо-тело `get_inbox_threads_page` расходится с прод (в репо `COALESCE(GREATEST(...))` без `inbox_sort_at`, на проде — с `inbox_sort_at` как главным ключом). Синхронизировать репо с живым (db push прод не откатит, но доки врут). См. поправку P3 в перф-аудите.
+- `inbox`-RPC семья = ~95% нагрузки БД (известно) — `get_inbox_thread_one` и `get_inbox_unread_threads` (теперь без потолка → тяжелее при многих непрочитанных) первыми переписать на прямой доступ вместо обёрток над `get_inbox_threads_v2`.
 - проверить пару дедуп-индексов `uq_project_messages_telegram_dedup` vs `uq_project_messages_telegram_content_dedup` (возможно первый — мёртвый предшественник) — отдельной задачей со смок-тестом.
 - `net._http_response` heap раздут (~9МБ при 44 строках) — `VACUUM FULL` при окне обслуживания.
