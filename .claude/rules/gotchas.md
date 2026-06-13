@@ -149,14 +149,15 @@ proxy_busy_buffers_size 512k;
 
 ## Маршрутизация исходящих в триггере `notify_telegram_on_new_message`
 
-Триггер — единая точка маршрутизации исходящих по каналам. Логика веток:
-1. `mtproto_session_user_id IS NOT NULL` → `telegram-mtproto-send`
-2. `business_connection_id IS NOT NULL` → `telegram-business-send`
-3. `wazzup_channel_id IS NOT NULL` → `wazzup-send`
-4. Иначе `telegram_chat_id IS NOT NULL` → `telegram-send-message`
-5. Email — отдельным путём через `email-internal-send`.
+Триггер тонкий: пропускает черновики/отложенные и делегирует в `dispatch_message_to_channels(NEW.id)` — **вся** маршрутизация там. Порядок веток (первая подходящая выигрывает):
+1. Email-тред (`email_send_account_id IS NOT NULL` или в треде уже есть `source='email_internal'`) → `email-internal-send`
+2. `mtproto_session_user_id IS NOT NULL` → `mtproto-send` (`https://mtproto.kvp-projects.com/messages/send`)
+3. `business_connection_id IS NOT NULL` → `telegram-business-send`
+4. `wazzup_channel_id IS NOT NULL` → `wazzup-send`
+5. Иначе `project_telegram_chats` по `thread_id` (active) → `telegram-send-message`
+6. Ничего не подошло → `send_status='sent'` (внутренний тред без внешнего канала).
 
-**Skip-conditions**: `source IN ('telegram', 'telegram_business', 'wazzup', 'telegram_mtproto', 'email')` — чтобы входящие не запускали отправку.
+**Skip-conditions** (входящие не должны запускать отправку): `source IN ('telegram','telegram_service','telegram_business','telegram_mtproto','bot_event','wazzup','email_internal')`. Обрати внимание: входящая почта — `email_internal` (НЕ `'email'`; `'email'` — это легаси-источник, в skip-листе его нет).
 
 **Skip для вложений Wazzup**: `has_attachments=true` — фронт сам инициирует через `supabase.functions.invoke('wazzup-send', { body: { message_id, attachments_only: true } })`. Триггер не отправит.
 

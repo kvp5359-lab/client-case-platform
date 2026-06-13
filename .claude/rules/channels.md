@@ -66,7 +66,9 @@
 | MENU-reply-кнопка «📋 Меню» | ✅ | ❌ |
 | `asPersonalBot` в `syncTelegramIncomingMessage` | `null` (секретарь) | `{ integrationId, workspaceId, botId }` (для multi-bot dedup) |
 
-**v1 webhook (`telegram-webhook`)** — legacy, заморожен после миграции 2026-05-28. Оставлен как hot-fallback на 1-2 недели. После — `supabase functions delete telegram-webhook` + дроп колонки `project_telegram_chats.bot_version` (не используется в коде после унификации, осталась как историческое поле).
+**v1 webhook (`telegram-webhook`)** — формально «legacy» после миграции 2026-05-28, но **НЕ мёртвый**. ⚠️ Аудит 2026-06-13: на проде остаётся ≥1 чат на v1, а `telegram-register-webhook:109` ставит URL **новых** ботов на **v1**. Удаление v1 сломает приём в этих группах. **НЕ удалять `telegram-webhook` и НЕ дропать `project_telegram_chats.bot_version`** до отдельного разбора дрейфа (свериться `getWebhookInfo` по всем ботам, выбрать канонический webhook, синхронизировать). См. F1 в [`docs/audit/2026-06-13-quarantine-audit.md`](../../docs/audit/2026-06-13-quarantine-audit.md).
+
+⚠️ `bot_version` **активно используется** в коде, вопреки прежней пометке «историческое поле»: фильтры `.eq("bot_version", BOT_VERSION)` в `bindings.ts`/`sync.ts`/`commands.ts`, резолв v1/v2 в `_shared/telegramBotToken.ts`, фильтр `bot_version !== 'v1'` в `IntegrationsTab.tsx`. Дроп колонки сломает маршрутизацию — не трогать.
 
 **Регрессионная ловушка в `v2/sync.ts`** (исправлена 2026-05-28): `downloadAttachments` вызывать только при `sync.outcome === "inserted"`, не на любом непустом `rowId`. Иначе при multi-bot (workspace + employee в одной группе) второй бот через `enrich`-ветку даст rowId существующей строки → повторный upload в Storage с `upsert:false` → 23505 → `attachment_status='failed'` поверх успешной загрузки. См. [gotchas.md → раздел про downloadAttachments outcome](./gotchas.md#downloadattachments-только-при-outcomeinserted).
 
