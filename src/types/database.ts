@@ -8861,10 +8861,6 @@ export type Database = {
         }[]
       }
       get_my_task_counts: { Args: { p_workspace_id: string }; Returns: Json }
-      get_my_urgent_tasks_count: {
-        Args: { p_workspace_id: string }
-        Returns: number
-      }
       get_owner_permissions: { Args: never; Returns: Json }
       get_personal_dialogs: {
         Args: { p_target_user_id: string; p_workspace_id: string }
