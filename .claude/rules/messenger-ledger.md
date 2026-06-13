@@ -45,6 +45,15 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-13 — Распил MessageBubble: вынос перевода и quote-popup в хуки (не баг, аудит размеров)
+- **Контекст:** полная инвентаризация файлов >400 строк (вкл. карантин) показала, что `MessageBubble.tsx` (692) — единственный реальный кандидат на распил в мессенджере: в теле до return (~265 строк) смешаны 3 несвязанные с рендером бабла заботы.
+- **Вынесено** (механически, без изменения логики/порядка эффектов):
+  - перевод сообщения (унификация входящего/исходящего: `translationSource`, `viewMode`, `handleTranslate`, `displayContent/displayMessage`) → `hooks/useMessageTranslation.ts`.
+  - quote-popup по выделению (императивный DOM, 3 useEffect на document + refs) → `hooks/useQuotePopup.ts` (возвращает `contentRef`).
+- **Итог:** 692→536, тело до return ~265→~100. Остальные 8 messenger-файлов (MessageInput, MessageList, InboxChatItem, MessengerTabContent, MinimalTiptapEditor, useMessengerAi, useChatSettingsActions, useProjectThreads.mutations) — распил объективно НЕ нужен (оркестраторы/движки/плотная разметка/коллекция мутаций).
+- **Грабли:** quote-popup и перевод теперь в `hooks/`; новый потребитель — оттуда. Логика выделения слушает `mouseup`/`mousedown` на `document` (не на баббле) — это намеренно (выделение за границы бабла), при правках сохранять.
+- **Статус:** код в порядке (tsc+lint+704 теста+build зелёные). Ждёт смок-теста: выделить текст → «Цитировать» в TG/Wazzup; перевод входящего и тоггл оригинал↔перевод у исходящего.
+
 ### 2026-06-13 — Аудит производительности: tiptap из eager-графа + вынос хелперов иконок (не баг)
 - **Симптом:** редактор tiptap (~390 КБ) попадал в бандл почти всех страниц воркспейса.
 - **Корень:** (1) `TaskPanelTabContents` статически импортировал `TaskPanel` → `MessengerTabContent` → `MinimalTiptapEditor`; (2) 14 файлов тянули `getChatIconComponent`/`getChatTabAccent` из тяжёлого `EditChatDialog`/`ChatSettingsDialog`, утаскивая весь диалог.
