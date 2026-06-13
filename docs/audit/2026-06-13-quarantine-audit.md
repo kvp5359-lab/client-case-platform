@@ -125,12 +125,15 @@ resolveParticipant унификация.
 
 **`telegram-register-webhook:109`** ставит НОВЫМ ботам URL `/telegram-webhook` (**v1**) — источник продолжающегося дрейфа.
 
-**Безопасная миграция (за пользователем, со смок-тестом — трогает ЖИВОЙ клиентский тред):**
-1. Поправить `telegram-register-webhook:109` → `/telegram-webhook-v2` (только будущие регистрации; существующих не трогает). Передеплоить.
-2. Скоординированно для rs_help103: (а) `setWebhook` на `telegram-webhook-v2` с `secret_token=<integration.id 3b8db351>`; (б) одновременно `UPDATE project_telegram_chats SET bot_version='v2'` для ВСЕХ его активных чатов (мин. «Клиенты» 9716fc6a). Иначе v2 не найдёт биндинг (фильтр `bot_version='v2'`) → входящие потеряются.
-3. Смок: клиент пишет в «Клиенты» → сообщение доходит в ЛК. Реплай/реакция.
-4. Только ПОСЛЕ того как `getWebhookInfo` по всем ботам = v2: `supabase functions delete telegram-webhook` + дроп `bot_version`.
-5. Откат: вернуть `setWebhook` rs_help103 на `telegram-webhook` + `bot_version='v1'`.
+**Миграция ВЫПОЛНЕНА 2026-06-13 (одобрено пользователем). ⏳ Ждёт смок-подтверждения.**
+Порядок выбран zero-loss: v1-webhook биндит чат по `telegram_chat_id` БЕЗ фильтра `bot_version` (проверено `telegram-webhook/index.ts:282`), v2 — С фильтром `bot_version='v2'` (`bindings.ts`). Поэтому:
+1. ✅ `UPDATE project_telegram_chats SET bot_version='v2'` для единственного v1-чата rs_help103 — «Клиенты» `9716fc6a` (-5236809642). (Остальные 13 чатов rs_help103 уже были v2 — он их биндил через v1, который игнорит bot_version.) В окне до шага 3 v1 продолжал биндить → без потерь.
+2. ✅ `telegram-register-webhook:109` → `/telegram-webhook-v2`, передеплоен. Новые боты больше не садятся на v1.
+3. ✅ `setWebhook` rs_help103 → `telegram-webhook-v2`, `secret_token=3b8db351…`, `drop_pending_updates=false`. `getWebhookInfo`: **все 5 ботов на v2, pending=0, ошибок нет.**
+4. ⏳ **СМОК (за пользователем):** клиент пишет в «Клиенты» (-5236809642) → доходит в ЛК; реплай/реакция. Если ОК — можно `supabase functions delete telegram-webhook` + дроп `bot_version` (но остаётся мёртвый v1-чат «Команда» 60eac940 rs1 — флипнуть или забить).
+5. **Откат** (если смок провалится): `setWebhook` rs_help103 обратно на `/telegram-webhook` + `UPDATE … SET bot_version='v1' WHERE id='9716fc6a…'`.
+
+**v1 webhook (`telegram-webhook`) сейчас не получает трафик** (ни один бот на него не смотрит), но НЕ удалён — ждём смок-подтверждения.
 
 #### email-internal-send распил — НЕ трогал
 Высокий риск, рабочая карантинная функция без бага под распилом. Только по явной просьбе.

@@ -106,7 +106,11 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  const webhookUrl = `${SUPABASE_URL}/functions/v1/telegram-webhook`;
+  // Новые боты регистрируются на v2 (унифицированный webhook, обслуживает и
+  // workspace-секретарей, и employee-ботов с 2026-05-28). Раньше тут был v1
+  // (`/telegram-webhook`) — это плодило дрейф: новые боты садились на legacy.
+  // См. F1 в docs/audit/2026-06-13-quarantine-audit.md.
+  const webhookUrl = `${SUPABASE_URL}/functions/v1/telegram-webhook-v2`;
 
   if (body.action === "register") {
     const tgRes = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
