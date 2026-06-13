@@ -18,6 +18,7 @@ import { getInboxThreadOne } from '@/services/api/inboxService'
 import { supabase } from '@/lib/supabase'
 import {
   messengerKeys,
+  inboxKeys,
   invalidateMessengerCaches,
   STALE_TIME,
 } from '@/hooks/queryKeys'
@@ -200,10 +201,10 @@ function snapshotMarkCaches(
     unreadCount: queryClient.getQueryData(messengerKeys.unreadCountByThreadId(threadId)),
     lastReadAt: queryClient.getQueryData(messengerKeys.lastReadAtByThreadId(threadId)),
     inboxThreads: workspaceId
-      ? queryClient.getQueryData(['inbox', 'threads', workspaceId])
+      ? queryClient.getQueryData(inboxKeys.threads(workspaceId))
       : undefined,
     inboxAggregates: workspaceId
-      ? queryClient.getQueryData(['inbox', 'aggregates', workspaceId])
+      ? queryClient.getQueryData(inboxKeys.aggregates(workspaceId))
       : undefined,
   }
 }
@@ -217,8 +218,8 @@ function restoreMarkCaches(
   queryClient.setQueryData(messengerKeys.unreadCountByThreadId(threadId), snap.unreadCount)
   queryClient.setQueryData(messengerKeys.lastReadAtByThreadId(threadId), snap.lastReadAt)
   if (workspaceId) {
-    queryClient.setQueryData(['inbox', 'threads', workspaceId], snap.inboxThreads)
-    queryClient.setQueryData(['inbox', 'aggregates', workspaceId], snap.inboxAggregates)
+    queryClient.setQueryData(inboxKeys.threads(workspaceId), snap.inboxThreads)
+    queryClient.setQueryData(inboxKeys.aggregates(workspaceId), snap.inboxAggregates)
   }
 }
 
