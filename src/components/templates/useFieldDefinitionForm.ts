@@ -137,13 +137,13 @@ export function useFieldDefinitionForm({
       if (existingField) {
         const { error } = await supabase
           .from('field_definitions')
-          .update(payload as never)
+          .update(payload)
           .eq('id', existingField.id)
         if (error) throw error
       } else {
         const { error } = await supabase
           .from('field_definitions')
-          .insert({ ...payload, workspace_id: workspaceId } as never)
+          .insert({ ...payload, workspace_id: workspaceId })
         if (error) throw error
       }
     },
@@ -201,7 +201,7 @@ export function useFieldDefinitionForm({
       if (existingField) {
         const { error } = await supabase
           .from('field_definitions')
-          .update(payload as never)
+          .update(payload)
           .eq('id', existingField.id)
         if (error) throw error
         await queryClient.invalidateQueries({ queryKey: fieldDefinitionKeys.all })
@@ -211,7 +211,7 @@ export function useFieldDefinitionForm({
       } else {
         const { data, error } = await supabase
           .from('field_definitions')
-          .insert({ ...payload, workspace_id: workspaceId } as never)
+          .insert({ ...payload, workspace_id: workspaceId })
           .select()
         if (error) throw error
         if (data && data.length > 0) {

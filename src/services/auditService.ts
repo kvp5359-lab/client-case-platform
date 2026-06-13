@@ -16,6 +16,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
+import type { Json } from '@/types/database'
 
 type AuditAction =
   | 'download'
@@ -62,10 +63,12 @@ export async function logAuditAction(
       p_action: action,
       p_resource_type: resourceType,
       p_resource_id: resourceId ?? undefined,
-      p_details: (details ?? {}) as never,
+      // только p_details требует каста (колонка Json); остальные args
+      // проверяются типами штатно.
+      p_details: (details ?? {}) as Json,
       p_project_id: projectId ?? undefined,
       p_user_id: user?.id ?? undefined,
-    } as never)
+    })
   } catch (error) {
     logger.error('Failed to write audit log:', error)
   }

@@ -67,12 +67,14 @@ export function useChatState(
   const { data } = useQuery({
     queryKey: chatStateKeys.byThread(threadId, user?.id),
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_chat_state' as never, {
+      const { data, error } = await supabase.rpc('get_chat_state', {
         p_thread_id: threadId!,
         p_user_id: user!.id,
-        p_project_id: projectId ?? null,
+        // undefined (а не null): Args типизирует p_project_id как string?;
+        // supabase-js опускает поле, plpgsql берёт DEFAULT NULL — эквивалентно.
+        p_project_id: projectId ?? undefined,
         p_workspace_id: workspaceId,
-      } as never)
+      })
       if (error) throw error
       return data as unknown as ChatStateResult
     },

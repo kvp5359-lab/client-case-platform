@@ -42,10 +42,10 @@ function useWorkspaceAccessData(workspaceId: string) {
   const { data } = useQuery({
     queryKey: sidebarDataKeys.forUser(workspaceId, user?.id),
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_sidebar_data' as never, {
+      const { data, error } = await supabase.rpc('get_sidebar_data', {
         p_workspace_id: workspaceId,
         p_user_id: user!.id,
-      } as never)
+      })
       if (error) throw error
       const result = data as unknown as {
         threads: ThreadAccessInfo[]

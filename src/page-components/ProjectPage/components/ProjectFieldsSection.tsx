@@ -15,6 +15,7 @@ import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import type { Json } from '@/types/database'
 import type { FieldDefinition, FieldOptions } from '@/types/formKit'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 import { projectFieldsKeys, fieldDefinitionKeys } from '@/hooks/queryKeys'
@@ -192,7 +193,7 @@ export function ProjectFieldsSection({ projectId, templateId, disabled }: Props)
             {
               project_id: projectId,
               field_definition_id: fieldId,
-              value: value as never,
+              value: value as unknown as Json,
             },
             { onConflict: 'project_id,field_definition_id' },
           )

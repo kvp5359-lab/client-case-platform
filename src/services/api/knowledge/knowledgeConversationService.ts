@@ -3,6 +3,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import type { Json, TablesInsert, TablesUpdate } from '@/types/database'
 import { KnowledgeBaseError } from '../../errors'
 import { safeFetchOrThrow, safeDeleteOrThrow } from '../../supabase/queryHelpers'
 import type {
@@ -51,8 +52,12 @@ export async function createConversation(params: {
   type?: ConversationType
   sources?: ConversationSources
 }): Promise<KnowledgeConversation> {
+  const payload: TablesInsert<'knowledge_conversations'> = {
+    ...params,
+    sources: (params.sources ?? null) as unknown as Json,
+  }
   const row = await safeFetchOrThrow(
-    supabase.from('knowledge_conversations').insert(params as never).select().single(),
+    supabase.from('knowledge_conversations').insert(payload).select().single(),
     'Не удалось создать диалог',
     KnowledgeBaseError,
   )
@@ -66,7 +71,12 @@ export async function updateConversation(
   const row = await safeFetchOrThrow(
     supabase
       .from('knowledge_conversations')
-      .update(updates as never)
+      .update({
+        ...updates,
+        sources: updates.sources === undefined
+          ? undefined
+          : (updates.sources as unknown as Json),
+      } satisfies TablesUpdate<'knowledge_conversations'>)
       .eq('id', conversationId)
       .select()
       .single(),
@@ -110,7 +120,10 @@ export async function addMessage(params: {
   const row = await safeFetchOrThrow(
     supabase
       .from('knowledge_messages')
-      .insert({ ...params, sources: params.sources ?? null } as never)
+      .insert({
+        ...params,
+        sources: (params.sources ?? null) as unknown as Json,
+      } satisfies TablesInsert<'knowledge_messages'>)
       .select()
       .single(),
     'Не удалось сохранить сообщение',

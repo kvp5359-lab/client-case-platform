@@ -2,6 +2,8 @@
  * Типы модуля комментариев
  */
 
+import type { Tables } from './database'
+
 /** Типы сущностей, к которым можно оставить комментарий */
 export type CommentEntityType =
   | 'document'
@@ -11,21 +13,13 @@ export type CommentEntityType =
   | 'form_section'
   | 'task'
 
-/** Комментарий из БД */
-export type Comment = {
-  id: string
-  workspace_id: string
-  project_id: string
+/**
+ * Комментарий из БД. Привязан к сгенерированному Row, чтобы не отставать при
+ * изменении схемы; единственное отличие — `entity_type` сужен до union
+ * (в БД колонка `string`) — осознанный type-tightening.
+ */
+export type Comment = Omit<Tables<'comments'>, 'entity_type'> & {
   entity_type: CommentEntityType
-  entity_id: string
-  parent_id: string | null
-  content: string
-  is_resolved: boolean
-  resolved_by: string | null
-  resolved_at: string | null
-  created_by: string
-  updated_at: string
-  created_at: string
 }
 
 /** Комментарий с информацией об авторе */

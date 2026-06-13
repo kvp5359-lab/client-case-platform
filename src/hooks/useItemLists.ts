@@ -20,7 +20,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { itemListKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { FilterGroup, SortDir, SortField } from '@/lib/filters/types'
-import type { Json } from '@/types/database'
+import type { Json, TablesUpdate } from '@/types/database'
 
 export type ItemListEntityType = 'thread' | 'project'
 
@@ -156,18 +156,18 @@ export function useUpdateItemList() {
     mutationFn: async (params: UpdateItemListParams): Promise<ItemList> => {
       const { id, workspace_id, ...rest } = params
       void workspace_id
-      const update: Record<string, unknown> = {}
+      const update: TablesUpdate<'item_lists'> = {}
       if (rest.name !== undefined) update.name = rest.name.trim()
       if (rest.icon !== undefined) update.icon = rest.icon
       if (rest.color !== undefined) update.color = rest.color
-      if (rest.filter_config !== undefined) update.filter_config = rest.filter_config
+      if (rest.filter_config !== undefined) update.filter_config = rest.filter_config as unknown as Json
       if (rest.sort_by !== undefined) update.sort_by = rest.sort_by
       if (rest.sort_dir !== undefined) update.sort_dir = rest.sort_dir
-      if (rest.columns !== undefined) update.columns = rest.columns
+      if (rest.columns !== undefined) update.columns = rest.columns as unknown as Json
 
       const { data, error } = await supabase
         .from('item_lists')
-        .update(update as never)
+        .update(update)
         .eq('id', id)
         .select()
         .single()

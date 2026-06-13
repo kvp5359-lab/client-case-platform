@@ -105,7 +105,7 @@ export function BulkActionsBar({
       const ids = targets.map((t) => t.id)
       const { error } = await supabase
         .from('project_threads')
-        .update({ status_id: statusId } as never)
+        .update({ status_id: statusId })
         .in('id', ids)
       if (error) throw error
 
@@ -136,7 +136,7 @@ export function BulkActionsBar({
     try {
       const { error } = await supabase
         .from('projects')
-        .update({ status_id: statusId } as never)
+        .update({ status_id: statusId })
         .in('id', projectIds)
       if (error) throw error
       toast.success(`Статус обновлён у ${projectIds.length} проектов`)
@@ -153,14 +153,13 @@ export function BulkActionsBar({
     setPending(true)
     try {
       const ids = selectedItems.map((it) => it.id)
-      const table = entityType === 'thread' ? 'project_threads' : 'projects'
-      const { error } = await supabase
-        .from(table)
-        .update({
-          is_deleted: true,
-          deleted_at: new Date().toISOString(),
-        } as never)
-        .in('id', ids)
+      // Динамическое имя таблицы ломает вывод типа .update() (supabase-js даёт
+      // never на union-таблице). Ветвим на литералы — обе таблицы имеют
+      // is_deleted/deleted_at, проверка колонок сохраняется.
+      const patch = { is_deleted: true, deleted_at: new Date().toISOString() }
+      const { error } = entityType === 'thread'
+        ? await supabase.from('project_threads').update(patch).in('id', ids)
+        : await supabase.from('projects').update(patch).in('id', ids)
       if (error) throw error
       toast.success(`В корзину перенесено: ${ids.length}`)
       refresh()

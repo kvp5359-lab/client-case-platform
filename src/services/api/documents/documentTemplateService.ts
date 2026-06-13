@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import type { Json, TablesUpdate } from '@/types/database'
 import { safeFetchOrThrow, safeDeleteOrThrow, safeUpdateOrThrow } from '../../supabase/queryHelpers'
 import { DocumentTemplateError } from '../../errors'
 import { fileToBase64 } from '@/utils/files/fileConversion'
@@ -144,7 +145,12 @@ export async function updateDocumentTemplate(
   },
 ): Promise<void> {
   await safeUpdateOrThrow(
-    supabase.from('document_templates').update(updates as never).eq('id', id).select().single(),
+    supabase.from('document_templates').update({
+      ...updates,
+      placeholders: updates.placeholders === undefined
+        ? undefined
+        : (updates.placeholders as unknown as Json),
+    } satisfies TablesUpdate<'document_templates'>).eq('id', id).select().single(),
     'Не удалось обновить шаблон документа',
     DocumentTemplateError,
   )
@@ -229,7 +235,7 @@ export async function replaceDocumentTemplateFile(params: {
           file_path: filePath,
           file_name: file.name,
           file_size: file.size,
-          placeholders: mergedPlaceholders as never,
+          placeholders: mergedPlaceholders as unknown as Json,
           updated_at: new Date().toISOString(),
         })
         .eq('id', templateId)

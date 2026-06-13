@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import type { Enums } from '@/types/database'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 
 export type ModelOption = {
@@ -119,7 +120,7 @@ export function useAISettings(workspaceId: string) {
       const thinkingValue = thinkingBudget === 'auto' ? null : Number(thinkingBudget)
       const { error: modelError } = await supabase
         .from('workspaces')
-        .update({ ai_model: aiModel as never, gemini_thinking_budget: thinkingValue })
+        .update({ ai_model: aiModel as Enums<'ai_model'>, gemini_thinking_budget: thinkingValue })
         .eq('id', workspaceId)
       if (modelError) throw modelError
 

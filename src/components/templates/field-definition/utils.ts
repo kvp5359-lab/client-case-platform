@@ -3,6 +3,7 @@
  */
 
 import type { FieldType } from '@/components/forms/types'
+import type { Json, TablesInsert } from '@/types/database'
 import { DEFAULT_TABLE_COLUMNS, type TableColumn } from './constants'
 
 type PreparePayloadParams = {
@@ -86,7 +87,9 @@ export function prepareValidation(
 /**
  * Подготавливает полный payload для сохранения
  */
-export function prepareFieldPayload(params: PreparePayloadParams) {
+export function prepareFieldPayload(
+  params: PreparePayloadParams,
+): Omit<TablesInsert<'field_definitions'>, 'workspace_id'> {
   const {
     name,
     fieldType,
@@ -105,7 +108,8 @@ export function prepareFieldPayload(params: PreparePayloadParams) {
     name: name.trim(),
     field_type: fieldType,
     description: description.trim() || null,
-    options: prepareOptions(fieldType, selectOptions, tableColumns, refDirectoryId),
-    validation: prepareValidation(fieldType, minValue, maxValue, step, minLength, maxLength),
+    // options/validation — Json-колонки; готовятся из доменных шейпов.
+    options: prepareOptions(fieldType, selectOptions, tableColumns, refDirectoryId) as unknown as Json,
+    validation: prepareValidation(fieldType, minValue, maxValue, step, minLength, maxLength) as unknown as Json,
   }
 }

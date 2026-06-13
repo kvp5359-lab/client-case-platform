@@ -6,6 +6,7 @@ import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import type { Json } from '@/types/database'
 import { logger } from '@/utils/logger'
 import { formTemplateKeys, fieldDefinitionKeys } from '@/hooks/queryKeys'
 import { FormFieldWithDefinition, FieldDefinition } from '../types'
@@ -306,7 +307,7 @@ export function useFormFields(templateId: string | undefined) {
               const formKitIds = formKits.map((fk) => fk.id)
               await supabase
                 .from('form_kit_fields')
-                .update({ options: mergedOptions as never })
+                .update({ options: mergedOptions as unknown as Json })
                 .in('form_kit_id', formKitIds)
                 .eq('field_definition_id', templateField.field_definition_id)
             }
