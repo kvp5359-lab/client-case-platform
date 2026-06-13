@@ -18,9 +18,9 @@
 
 import { createContext, useCallback, useContext, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { DocumentsProvider } from '@/page-components/ProjectPage/components/Documents/DocumentsContext'
-import { HiddenFileInputs } from '@/page-components/ProjectPage/components/Documents/HiddenFileInputs'
-import { useDocumentsFileUpload } from '@/page-components/ProjectPage/components/Documents/hooks/useDocumentsFileUpload'
+import { DocumentsProvider } from '@/components/documents/Documents/DocumentsContext'
+import { HiddenFileInputs } from '@/components/documents/Documents/HiddenFileInputs'
+import { useDocumentsFileUpload } from '@/components/documents/Documents/hooks/useDocumentsFileUpload'
 import { useDocuments } from '@/hooks/documents/useDocuments'
 import {
   useDocumentKitsQuery,
@@ -28,7 +28,7 @@ import {
 } from '@/hooks/documents/useDocumentKitsQuery'
 import { useFolderSlots } from '@/hooks/documents/useFolderSlots'
 import { useDocumentStatuses } from '@/hooks/useStatuses'
-import { useDocumentsDocumentActions } from '@/page-components/ProjectPage/components/Documents/hooks/useDocumentsDocumentActions'
+import { useDocumentsDocumentActions } from '@/components/documents/Documents/hooks/useDocumentsDocumentActions'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { documentKitKeys, folderSlotKeys } from '@/hooks/queryKeys'
 

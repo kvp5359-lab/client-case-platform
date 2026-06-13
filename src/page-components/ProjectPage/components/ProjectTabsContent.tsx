@@ -28,7 +28,7 @@ const VisaSelectionTabContent = lazy(() =>
   import('./VisaSelectionTabContent').then((m) => ({ default: m.VisaSelectionTabContent })),
 )
 const DocumentsTabContent = lazy(() =>
-  import('./DocumentsTabContent').then((m) => ({ default: m.DocumentsTabContent })),
+  import('@/components/documents/DocumentsTabContent').then((m) => ({ default: m.DocumentsTabContent })),
 )
 const TasksTabContent = lazy(() =>
   import('./TasksTabContent').then((m) => ({ default: m.TasksTabContent })),

@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from 'react'
 import { PageLoader } from '@/components/ui/loaders'
-import { DocumentsTabContent } from '@/page-components/ProjectPage/components/DocumentsTabContent'
+import { DocumentsTabContent } from '@/components/documents/DocumentsTabContent'
 import { AddDocumentKitDialog } from '@/components/projects/AddDocumentKitDialog'
 import { useDocumentKitsQuery } from '@/hooks/documents/useDocumentKitsQuery'
 import { useDialog } from '@/hooks/shared/useDialog'

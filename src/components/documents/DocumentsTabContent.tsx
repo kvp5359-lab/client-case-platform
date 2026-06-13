@@ -16,14 +16,14 @@ import { useDocumentStatuses, useDocumentKitStatuses } from '@/hooks/useStatuses
 import { useDocuments } from '@/hooks/documents/useDocuments'
 import { useDocumentKitUIStore, useCompressState } from '@/store/documentKitUI'
 import { useSourceDocumentsQuery } from '@/hooks/documents/useSourceDocumentsQuery'
-import { UngroupedCard } from './Documents'
-import { DocumentsProvider } from './Documents/DocumentsContext'
-import { KitDocuments } from './Documents/KitDocuments'
-import type { KitSlotHandlers, KitDocumentHandlers } from './Documents/KitDocuments'
-import { DocumentsToolbar } from './Documents/DocumentsToolbar'
-import { DocumentsTip } from './Documents/DocumentsTip'
-import { CollapsedKitHeader } from './Documents/CollapsedKitHeader'
-import { DocumentsDialogs } from './Documents/DocumentsDialogs'
+import { UngroupedCard } from '@/components/documents/Documents'
+import { DocumentsProvider } from '@/components/documents/Documents/DocumentsContext'
+import { KitDocuments } from '@/components/documents/Documents/KitDocuments'
+import type { KitSlotHandlers, KitDocumentHandlers } from '@/components/documents/Documents/KitDocuments'
+import { DocumentsToolbar } from '@/components/documents/Documents/DocumentsToolbar'
+import { DocumentsTip } from '@/components/documents/Documents/DocumentsTip'
+import { CollapsedKitHeader } from '@/components/documents/Documents/CollapsedKitHeader'
+import { DocumentsDialogs } from '@/components/documents/Documents/DocumentsDialogs'
 import { useFolderSlots } from '@/hooks/documents/useFolderSlots'
 import { useDocumentCompress } from '@/components/projects/DocumentKitsTab/hooks/useDocumentCompress'
 import { useUpdateFolderStatusMutation } from '@/hooks/documents/useDocumentKitsQuery'
@@ -46,12 +46,12 @@ import {
   useDocumentsFlatList,
   useDocumentsProviderProps,
   useDocumentsDialogsProps,
-} from './Documents/hooks'
+} from '@/components/documents/Documents/hooks'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import { useProjectPermissions } from '@/hooks/permissions/useProjectPermissions'
 import { toggleSourceDocumentHidden } from '@/services/documents/sourceDocumentService'
 import { useDocumentSelection } from '@/hooks/documents/useDocumentSelection'
-import { CreateDriveFoldersDialog } from './Documents/CreateDriveFoldersDialog'
+import { CreateDriveFoldersDialog } from '@/components/documents/Documents/CreateDriveFoldersDialog'
 
 // === ТИПЫ ===
 
