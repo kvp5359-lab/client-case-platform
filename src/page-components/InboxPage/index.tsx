@@ -13,6 +13,7 @@ import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 import {
   useFilteredInbox,
   useFilteredInboxUnread,
+  useFilteredInboxAwaitingReply,
   useFilteredInboxSearch,
   useInboxMessageStatuses,
 } from '@/hooks/messenger/useFilteredInbox'
@@ -68,6 +69,8 @@ export default function InboxPage() {
 
   // Все непрочитанные одним запросом — источник вкладки «Непрочитанные» (без каскада догрузки).
   const { data: unreadChats = [] } = useFilteredInboxUnread(workspaceId ?? '')
+  // Все «Ждут ответа» одним запросом — внешние диалоги, где последними писали мы.
+  const { data: awaitingChats = [] } = useFilteredInboxAwaitingReply(workspaceId ?? '')
 
   const {
     filter,
@@ -79,7 +82,8 @@ export default function InboxPage() {
     closeSearch,
     filteredChats,
     unreadCount,
-  } = useInboxFilters(chats, unreadChats)
+    awaitingCount,
+  } = useInboxFilters(chats, unreadChats, awaitingChats)
 
   // Серверный поиск по тредам инбокса (по названию треда/проекта) — по всем
   // тредам, а не по загруженным страницам. При активном поиске он заменяет
@@ -243,6 +247,7 @@ export default function InboxPage() {
             onOpenSearch={() => setSearchOpen(true)}
             onCloseSearch={closeSearch}
             unreadCount={unreadCount}
+            awaitingCount={awaitingCount}
             isLoading={isLoading}
             filteredChats={displayChats}
             activeThreadId={activeChat?.thread_id ?? null}

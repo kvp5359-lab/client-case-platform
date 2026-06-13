@@ -26,6 +26,27 @@ import { playIncomingSound } from './useMessageSound'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import type { TaskItem } from '@/components/tasks/types'
 
+/** Поля строки project_threads из realtime-payload, нужные для тоста «Новый диалог». */
+type RealtimeThreadPayload = {
+  id: string
+  name: string | null
+  type: string | null
+  project_id: string | null
+  workspace_id: string
+  owner_user_id: string | null
+  status_id: string | null
+  deadline: string | null
+  accent_color: string | null
+  icon: string | null
+  is_pinned: boolean | null
+  created_at: string | null
+  created_by: string | null
+  sort_order: number | null
+  wazzup_channel_id: string | null
+  business_connection_id: string | null
+  mtproto_session_user_id: string | null
+}
+
 export function useNewMessageToast(workspaceId: string | undefined) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
@@ -277,6 +298,81 @@ export function useNewMessageToast(workspaceId: string | undefined) {
               onAutoClose: () => groupedLines.delete(groupKey),
             },
           )
+        },
+      )
+      // Тост «Новый диалог» при создании треда внешнего личного диалога.
+      // Закрывает кейс: сотрудник пишет клиенту ПЕРВЫМ в TG/WhatsApp — тред
+      // создаётся, но в «Непрочитанных» не виден (своё сообщение) и обычный
+      // тост сообщения подавлен. Здесь сигнал привязан к самому факту создания
+      // треда, поэтому ловит и собственное первое касание. Для входящего нового
+      // диалога сработает И этот тост, И обычный тост сообщения — поэтому текст
+      // нейтральный, без «вы написали первым».
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'project_threads',
+          filter: `workspace_id=eq.${workspaceId}`,
+        },
+        (payload) => {
+          const t = payload.new as RealtimeThreadPayload
+
+          // Только свежесозданные — отсекаем возможный реплей старых строк.
+          if (t.created_at) {
+            const ageMs = Date.now() - new Date(t.created_at).getTime()
+            if (ageMs > 60_000) return
+          }
+
+          // Только ЛИЧНЫЕ диалоги с внешним каналом (WhatsApp / TG Business /
+          // MTProto), принадлежащие текущему пользователю. Исключает внутренние
+          // треды и задачи (нет внешней привязки) и чужие личные диалоги.
+          const isExternalDialog =
+            !!t.wazzup_channel_id || !!t.business_connection_id || !!t.mtproto_session_user_id
+          if (!isExternalDialog) return
+          if (!t.owner_user_id || t.owner_user_id !== userRef.current?.id) return
+
+          const ws = queryClient.getQueryData<Workspace>(workspaceKeys.detail(workspaceId))
+          const durationSec = ws?.notification_toast_duration ?? 5
+          const duration = durationSec === 0 ? Infinity : durationSec * 1000
+
+          // У MTProto при первом исходящем имя — плейсхолдер `tg:<id>`
+          // (резолвится при ответе). Плейсхолдеры/@username не показываем —
+          // лучше нейтральное «Новый диалог», чем «Новый диалог: tg:12345».
+          const raw = (t.name ?? '').trim()
+          const isPlaceholder = !raw || /^tg:/i.test(raw) || raw.startsWith('@')
+          const title = isPlaceholder ? 'Новый диалог' : `Новый диалог: ${raw}`
+          const channelLabel = t.wazzup_channel_id ? 'WhatsApp' : 'Telegram'
+
+          playIncomingSound()
+
+          toast(title, {
+            id: `new-thread:${t.id}`,
+            description: channelLabel,
+            duration,
+            action: {
+              label: 'Открыть',
+              onClick: () => {
+                const taskItem: TaskItem = {
+                  id: t.id,
+                  name: t.name ?? 'Диалог',
+                  type: (t.type as 'chat' | 'task') ?? 'chat',
+                  project_id: t.project_id ?? null,
+                  workspace_id: t.workspace_id,
+                  status_id: t.status_id ?? null,
+                  deadline: t.deadline ?? null,
+                  accent_color: t.accent_color ?? 'blue',
+                  icon: t.icon ?? 'message-square',
+                  is_pinned: t.is_pinned ?? false,
+                  created_at: t.created_at ?? '',
+                  created_by: t.created_by ?? null,
+                  sort_order: t.sort_order ?? 0,
+                  project_name: null,
+                }
+                globalOpenThread(taskItem)
+              },
+            },
+          })
         },
       )
       .subscribe()

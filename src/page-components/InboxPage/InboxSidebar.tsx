@@ -19,6 +19,8 @@ type InboxSidebarProps = {
   onOpenSearch: () => void
   onCloseSearch: () => void
   unreadCount: number
+  /** Сколько тредов «Ждут ответа» — внешние диалоги, где последними писали мы. */
+  awaitingCount: number
   isLoading: boolean
   filteredChats: InboxThreadEntry[]
   activeThreadId: string | null
@@ -44,6 +46,7 @@ export const InboxSidebar = memo(function InboxSidebar({
   onOpenSearch,
   onCloseSearch,
   unreadCount,
+  awaitingCount,
   isLoading,
   filteredChats,
   activeThreadId,
@@ -146,6 +149,31 @@ export const InboxSidebar = memo(function InboxSidebar({
               </button>
               <button
                 type="button"
+                onClick={() => onSetFilter('awaiting')}
+                title="Внешние диалоги, где последними написали мы — ждём ответа собеседника"
+                className={cn(
+                  'text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1',
+                  filter === 'awaiting'
+                    ? 'bg-blue-100 text-blue-700 font-medium'
+                    : 'text-gray-500 hover:bg-gray-100',
+                )}
+              >
+                Ждут ответа
+                {awaitingCount > 0 && (
+                  <span
+                    className={cn(
+                      'min-w-[16px] h-4 px-1 rounded-full text-[10px] font-medium flex items-center justify-center',
+                      filter === 'awaiting'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-600',
+                    )}
+                  >
+                    {awaitingCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={onOpenSearch}
                 className="ml-auto p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
               >
@@ -166,9 +194,11 @@ export const InboxSidebar = memo(function InboxSidebar({
           <div className="px-4 py-8 text-center text-sm text-muted-foreground">
             {filter === 'unread'
               ? 'Нет непрочитанных'
-              : searchQuery
-                ? 'Ничего не найдено'
-                : 'Нет активных чатов'}
+              : filter === 'awaiting'
+                ? 'Нет диалогов в ожидании ответа'
+                : searchQuery
+                  ? 'Ничего не найдено'
+                  : 'Нет активных чатов'}
           </div>
         ) : (
           <>

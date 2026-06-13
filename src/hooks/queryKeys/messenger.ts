@@ -24,6 +24,12 @@ export const inboxKeys = {
    * не зависела от прокрутки страниц и не запускала каскад догрузки.
    */
   unread: (workspaceId: string) => ['inbox', 'unread', workspaceId] as const,
+  /**
+   * Все треды «Ждут ответа» одним запросом (get_inbox_awaiting_reply_threads) —
+   * источник одноимённой вкладки. Внешние диалоги, где последними писали мы.
+   * Отдельно от `threads`/`unread` по той же причине — без пагинации и каскада.
+   */
+  awaitingReply: (workspaceId: string) => ['inbox', 'awaiting-reply', workspaceId] as const,
   /** Серверный поиск по тредам инбокса (по названию треда/проекта). */
   search: (workspaceId: string, query: string) =>
     ['inbox', 'search', workspaceId, query] as const,
@@ -160,6 +166,7 @@ export function invalidateMessengerCaches(
   queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
   queryClient.invalidateQueries({ queryKey: inboxKeys.aggregates(workspaceId) })
   queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
+  queryClient.invalidateQueries({ queryKey: inboxKeys.awaitingReply(workspaceId) })
   queryClient.invalidateQueries({ queryKey: inboxKeys.messageStatuses(workspaceId) })
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, true) })
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, false) })

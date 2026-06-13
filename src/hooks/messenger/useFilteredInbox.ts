@@ -19,6 +19,7 @@ import { useInboxThreadsV2 } from './useInbox'
 import {
   getInboxThreadAggregates,
   getInboxUnreadThreads,
+  getInboxAwaitingReplyThreads,
   getInboxSearchThreads,
   getInboxMessageStatuses,
   type InboxThreadAggregate,
@@ -229,6 +230,30 @@ export function useFilteredInboxUnread(workspaceId: string) {
   })
 
   const data = useAccessFilter(rawUnread, workspaceId)
+  return { data, ...queryRest }
+}
+
+/**
+ * useFilteredInboxAwaitingReply — все треды «Ждут ответа» одним запросом (без
+ * пагинации), отфильтрованные тем же access-фильтром.
+ *
+ * Источник вкладки «Ждут ответа»: внешние диалоги, где ПОСЛЕДНЕЕ сообщение
+ * отправили мы → ждём ответа собеседника. Решает кейс «написал клиенту первым в
+ * TG/WhatsApp — тред создан, но в "Непрочитанных" не виден (unread_count=0)».
+ * Пагинацию сюда возвращать НЕЛЬЗЯ — каскад из-за клиентского access-фильтра
+ * (та же причина, что у useFilteredInboxUnread).
+ */
+export function useFilteredInboxAwaitingReply(workspaceId: string) {
+  const { user } = useAuth()
+
+  const { data: rawAwaiting = [], ...queryRest } = useQuery({
+    queryKey: inboxKeys.awaitingReply(workspaceId),
+    queryFn: () => getInboxAwaitingReplyThreads(workspaceId, user!.id),
+    enabled: !!workspaceId && !!user,
+    staleTime: STALE_TIME.SHORT,
+  })
+
+  const data = useAccessFilter(rawAwaiting, workspaceId)
   return { data, ...queryRest }
 }
 

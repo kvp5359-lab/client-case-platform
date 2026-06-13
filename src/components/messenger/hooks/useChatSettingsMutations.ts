@@ -29,10 +29,13 @@ export function useChatSettingsMutations({
   const updateProjectMutation = useMutation({
     mutationFn: async (newProjectId: string | null) => {
       if (!chatId) return
-      const { error } = await supabase
-        .from('project_threads')
-        .update({ project_id: newProjectId })
-        .eq('id', chatId)
+      // RPC двигает project_id И у треда, И у сообщений (SECURITY DEFINER).
+      // Прямой UPDATE раньше двигал только тред → project_messages.project_id
+      // оставался привязан к старому проекту (рассинхрон).
+      const { error } = await supabase.rpc('move_thread_to_project', {
+        p_thread_id: chatId,
+        p_target_project_id: newProjectId,
+      })
       if (error) throw error
     },
     onSuccess: () => {

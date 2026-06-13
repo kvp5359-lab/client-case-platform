@@ -2,10 +2,18 @@
  * Project selector popover for ChatSettingsDialog.
  */
 
-import { useState } from 'react'
-import { FolderOpen, Search, X, Check } from 'lucide-react'
+import { lazy, Suspense, useState } from 'react'
+import { FolderOpen, Search, X, Check, Plus } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+
+// Тяжёлый диалог создания проекта (тянет шаблоны/киты) — грузим лениво, только
+// когда жмут «+». Иначе он попадал бы в бандл везде, где есть селектор проекта.
+const CreateProjectDialog = lazy(() =>
+  import('@/components/projects/CreateProjectDialog').then((m) => ({
+    default: m.CreateProjectDialog,
+  })),
+)
 
 type WorkspaceProject = {
   id: string
@@ -19,6 +27,10 @@ type ChatSettingsProjectSelectorProps = {
   selectedProjectId: string | null
   isEditMode: boolean
   onSelect: (projectId: string | null) => void
+  /** Префилл имени при создании нового проекта через «+» (напр. имя контакта). */
+  createDefaultName?: string
+  /** Цвет триггер-кнопки: 'brand' (золотой, по умолчанию) или 'muted' (серый, для шапки панели). */
+  variant?: 'brand' | 'muted'
 }
 
 export function ChatSettingsProjectSelector({
@@ -26,11 +38,12 @@ export function ChatSettingsProjectSelector({
   selectedProjectId,
   isEditMode: _isEditMode,
   onSelect,
+  createDefaultName,
+  variant = 'brand',
 }: ChatSettingsProjectSelectorProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [search, setSearch] = useState('')
-
-  if (workspaceProjects.length === 0) return null
+  const [createOpen, setCreateOpen] = useState(false)
 
   const filtered = workspaceProjects.filter((p) => {
     if (!search.trim()) return true
@@ -39,6 +52,7 @@ export function ChatSettingsProjectSelector({
   })
 
   return (
+    <>
     <Popover
       open={popoverOpen}
       onOpenChange={(v) => {
@@ -52,9 +66,13 @@ export function ChatSettingsProjectSelector({
           type="button"
           className={cn(
             'flex items-center gap-1.5 text-sm rounded px-2 py-1 transition-colors shrink-0',
-            selectedProjectId
-              ? 'text-brand-700 bg-brand-100/75 hover:bg-brand-100'
-              : 'text-brand-500/70 hover:text-brand-600 hover:bg-brand-100/75',
+            variant === 'muted'
+              ? selectedProjectId
+                ? 'text-gray-700 bg-gray-200/70 hover:bg-gray-200'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/60'
+              : selectedProjectId
+                ? 'text-brand-700 bg-brand-100/75 hover:bg-brand-100'
+                : 'text-brand-500/70 hover:text-brand-600 hover:bg-brand-100/75',
           )}
         >
           <FolderOpen className="w-3.5 h-3.5" />
@@ -64,8 +82,8 @@ export function ChatSettingsProjectSelector({
         </button>
       </PopoverTrigger>
         <PopoverContent className="w-[346px] p-0" align="start">
-          <div className="px-3 py-2 border-b">
-            <div className="flex items-center gap-2 border rounded-md px-2 py-1">
+          <div className="px-3 py-2 border-b flex items-center gap-2">
+            <div className="flex items-center gap-2 border rounded-md px-2 py-1 flex-1 min-w-0">
               <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
               <input
                 type="text"
@@ -81,6 +99,19 @@ export function ChatSettingsProjectSelector({
                 </button>
               )}
             </div>
+            {/* Создать новый проект из шаблона — справа от поиска. */}
+            <button
+              type="button"
+              onClick={() => {
+                setPopoverOpen(false)
+                setCreateOpen(true)
+              }}
+              title="Создать новый проект"
+              aria-label="Создать новый проект"
+              className="shrink-0 flex items-center justify-center w-7 h-7 rounded-md border text-brand-600 hover:bg-brand-100/75 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
           <div className="max-h-[325px] overflow-y-auto py-1">
             {/* Без проекта */}
@@ -131,5 +162,19 @@ export function ChatSettingsProjectSelector({
           </div>
         </PopoverContent>
       </Popover>
+      {createOpen && (
+        <Suspense fallback={null}>
+          <CreateProjectDialog
+            open={createOpen}
+            onOpenChange={setCreateOpen}
+            defaultName={createDefaultName}
+            onSuccess={(project) => {
+              onSelect(project.id)
+              setCreateOpen(false)
+            }}
+          />
+        </Suspense>
+      )}
+    </>
   )
 }

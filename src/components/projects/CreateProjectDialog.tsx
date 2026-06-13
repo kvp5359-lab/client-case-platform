@@ -22,9 +22,11 @@ type CreateProjectDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: (project: { id: string }) => void
+  /** Префилл поля «Название» при открытии (напр. имя контакта при создании сделки из чата). */
+  defaultName?: string
 }
 
-export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreateProjectDialogProps) {
+export function CreateProjectDialog({ open, onOpenChange, onSuccess, defaultName }: CreateProjectDialogProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [templateId, setTemplateId] = useState<string>('')
@@ -163,8 +165,11 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
       setSelectedFormIds(new Set())
       setSelectedTaskIds(new Set())
       setSelectedBlockIds(new Set())
+    } else if (defaultName) {
+      // Префилл имени при открытии (создание проекта/сделки из чата).
+      setName(defaultName)
     }
-  }, [open])
+  }, [open, defaultName])
 
   const toggleDocKit = (id: string) => {
     setSelectedDocKitIds((prev) => {

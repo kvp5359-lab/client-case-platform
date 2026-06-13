@@ -7,6 +7,7 @@ import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import {
   useFilteredInbox,
   useFilteredInboxUnread,
+  useFilteredInboxAwaitingReply,
   useFilteredInboxSearch,
   useInboxMessageStatuses,
 } from '@/hooks/messenger/useFilteredInbox'
@@ -15,7 +16,7 @@ import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
 
-type InboxFilter = 'all' | 'unread'
+type InboxFilter = 'all' | 'unread' | 'awaiting'
 
 /** Convert InboxThreadEntry → TaskItem for opening in TaskPanel */
 function threadToTaskItem(thread: InboxThreadEntry): TaskItem {
@@ -61,6 +62,8 @@ export function BoardInboxList({
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = useFilteredInbox(workspaceId)
   // Все непрочитанные одним запросом — источник вкладки «Непрочитанные».
   const { data: unreadThreads = [] } = useFilteredInboxUnread(workspaceId)
+  // Все «Ждут ответа» одним запросом — внешние диалоги, где последними писали мы.
+  const { data: awaitingThreads = [] } = useFilteredInboxAwaitingReply(workspaceId)
   // Серверный поиск по тредам инбокса (по названию треда/проекта) — ищет по всем,
   // а не по загруженным страницам. Debounce, чтобы не дёргать RPC на каждую букву.
   const debouncedSearch = useDebounce(searchQuery.trim(), 300)
@@ -97,6 +100,7 @@ export function BoardInboxList({
 
   // Точный счётчик непрочитанных — из полного списка, не из загруженных страниц.
   const unreadCount = unreadThreads.length
+  const awaitingCount = awaitingThreads.length
 
   const filteredThreads = useMemo(() => {
     // При активном поиске — серверные результаты по всем тредам инбокса
@@ -104,8 +108,10 @@ export function BoardInboxList({
     if (q) return searchResults
     // Вкладка «Непрочитанные» — полный список непрочитанных одним запросом.
     if (filter === 'unread') return unreadThreads
+    // Вкладка «Ждут ответа» — внешние диалоги, где мы написали последними.
+    if (filter === 'awaiting') return awaitingThreads
     return threads
-  }, [threads, unreadThreads, searchResults, filter, q])
+  }, [threads, unreadThreads, awaitingThreads, searchResults, filter, q])
 
   return (
     <div>
@@ -154,6 +160,27 @@ export function BoardInboxList({
             </button>
             <button
               type="button"
+              onClick={() => setFilter('awaiting')}
+              title="Внешние диалоги, где последними написали мы — ждём ответа собеседника"
+              className={cn(
+                'text-[10px] px-2 py-0.5 rounded-full transition-colors flex items-center gap-1',
+                filter === 'awaiting'
+                  ? 'bg-blue-100 text-blue-700 font-medium'
+                  : 'text-gray-500 hover:bg-gray-100',
+              )}
+            >
+              Ждут ответа
+              {awaitingCount > 0 && (
+                <span className={cn(
+                  'min-w-[14px] h-3.5 px-1 rounded-full text-[9px] font-medium flex items-center justify-center',
+                  filter === 'awaiting' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600',
+                )}>
+                  {awaitingCount}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
               onClick={() => setFilter('all')}
               className={cn(
                 'text-[10px] px-2 py-0.5 rounded-full transition-colors',
@@ -179,7 +206,13 @@ export function BoardInboxList({
       <div className="divide-y divide-border/50 border-b border-border/50">
         {filteredThreads.length === 0 ? (
           <div className="px-3 py-4 text-xs text-muted-foreground text-center">
-            {filter === 'unread' ? 'Нет непрочитанных' : searchQuery ? 'Ничего не найдено' : 'Пусто'}
+            {filter === 'unread'
+              ? 'Нет непрочитанных'
+              : filter === 'awaiting'
+                ? 'Нет диалогов в ожидании ответа'
+                : searchQuery
+                  ? 'Ничего не найдено'
+                  : 'Пусто'}
           </div>
         ) : (
           <>

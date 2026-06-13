@@ -191,6 +191,28 @@ export async function getInboxUnreadThreads(
 }
 
 /**
+ * Треды «Ждут ответа» одним запросом (RPC `get_inbox_awaiting_reply_threads`) —
+ * внешние диалоги, где ПОСЛЕДНЕЕ сообщение отправили мы (sender_role ∈ команда),
+ * т.е. ждём ответа собеседника. Источник вкладки «Ждут ответа». Решает кейс
+ * «написал клиенту первым в TG/WhatsApp — тред создан, но в "Непрочитанных" не
+ * виден». Взаимоисключающе с непрочитанными (там последнее сообщение — входящее).
+ * Без пагинации (как unread): keyset недопустим из-за клиентского access-фильтра.
+ * Возвращает те же поля, что `get_inbox_threads_v2`.
+ */
+export async function getInboxAwaitingReplyThreads(
+  workspaceId: string,
+  userId: string,
+): Promise<InboxThreadEntry[]> {
+  const { data, error } = await supabase.rpc('get_inbox_awaiting_reply_threads', {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+  })
+
+  if (error) throw new ApiError(`Ошибка загрузки «Ждут ответа»: ${error.message}`)
+  return (data ?? []) as unknown as InboxThreadEntry[]
+}
+
+/**
  * Лёгкая строка-агрегат — только поля для счётчиков сайдбара/favicon.
  * Без имён, текстов, аватаров. Источник — RPC `get_inbox_thread_aggregates`.
  */
