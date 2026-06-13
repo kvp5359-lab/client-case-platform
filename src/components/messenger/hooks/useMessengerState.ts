@@ -31,8 +31,7 @@ import { useWazzupMarkRead } from '@/hooks/messenger/useWazzupMarkRead'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
 import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import {
-  getCurrentProjectParticipant,
-  getCurrentWorkspaceParticipant,
+  resolveParticipantFull,
   type ProjectMessage,
 } from '@/services/api/messenger/messengerService'
 import {
@@ -129,20 +128,10 @@ export function useMessengerState({
 
   const { data: currentParticipant } = useQuery({
     queryKey: messengerParticipantKeys.current(projectId ?? workspaceId, user?.id),
-    queryFn: async () => {
-      if (projectId) {
-        const inProject = await getCurrentProjectParticipant(projectId, user!.id)
-        if (inProject) return inProject
-        // Владелец/менеджер может иметь доступ к проекту без явной записи в
-        // project_participants (доступ по праву владельца/роли). Тогда берём
-        // его workspace-личность — она валидна для реакций, mark-read и пр.
-        // (message_reactions.participant_id и др. ссылаются на participants).
-        // Без этого фоллбэка реакция падала «Участник не найден».
-        if (workspaceId) return getCurrentWorkspaceParticipant(workspaceId, user!.id)
-        return null
-      }
-      return workspaceId ? getCurrentWorkspaceParticipant(workspaceId, user!.id) : null
-    },
+    // Каскад project→workspace (фоллбэк для owner/менеджера без записи в
+    // project_participants) живёт в resolveParticipantFull — см. ledger
+    // 2026-06-12. Раньше был инлайн-копией.
+    queryFn: () => resolveParticipantFull(projectId, workspaceId, user!.id),
     enabled: !!(projectId || workspaceId) && !!user,
     staleTime: Infinity,
   })

@@ -10,8 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   markAsRead,
   markAsUnread,
-  getCurrentProjectParticipant,
-  getCurrentWorkspaceParticipant,
+  resolveParticipantId,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
 import { getInboxThreadOne } from '@/services/api/inboxService'
@@ -24,21 +23,6 @@ import {
 } from '@/hooks/queryKeys'
 import { useInboxThreadsV2, patchInboxThreadInCache, patchInboxAggregateInCache } from './useInbox'
 import { dismissProjectToasts } from './useMessageToastPayload'
-
-/** Resolve participant: project-level if projectId given, else workspace-level */
-export async function resolveParticipant(
-  projectId: string | undefined,
-  workspaceId: string | undefined,
-  userId: string,
-) {
-  if (projectId) {
-    return (await getCurrentProjectParticipant(projectId, userId))?.participantId ?? null
-  }
-  if (workspaceId) {
-    return (await getCurrentWorkspaceParticipant(workspaceId, userId))?.participantId ?? null
-  }
-  return null
-}
 
 type CachePatchParams = {
   threadId: string
@@ -271,7 +255,7 @@ export function useMarkAsRead(
   return useMutation({
     mutationFn: async () => {
       if (!user) return
-      const pid = participantId ?? (await resolveParticipant(projectId, workspaceId, user.id))
+      const pid = participantId ?? (await resolveParticipantId(projectId, workspaceId, user.id))
       if (!pid) return
       return markAsRead(pid, projectId, channel, threadId)
     },
@@ -306,7 +290,7 @@ export function useMarkAsUnread(
   return useMutation({
     mutationFn: async () => {
       if (!user) return
-      const pid = participantId ?? (await resolveParticipant(projectId, workspaceId, user.id))
+      const pid = participantId ?? (await resolveParticipantId(projectId, workspaceId, user.id))
       if (!pid) return
       await markAsUnread(pid, projectId, channel, threadId)
       if (projectId) {

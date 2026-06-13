@@ -9,8 +9,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   toggleReaction,
-  getCurrentProjectParticipant,
-  getCurrentWorkspaceParticipant,
+  resolveParticipantId,
   markAsRead,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
@@ -31,13 +30,7 @@ export function useToggleReaction(
   return useMutation({
     mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
       if (!user) throw new Error('Не авторизован')
-      const pid =
-        participantId ??
-        (projectId
-          ? (await getCurrentProjectParticipant(projectId, user.id))?.participantId
-          : workspaceId
-            ? (await getCurrentWorkspaceParticipant(workspaceId, user.id))?.participantId
-            : null)
+      const pid = participantId ?? (await resolveParticipantId(projectId, workspaceId, user.id))
       if (!pid) throw new Error('Участник не найден')
       await toggleReaction(messageId, pid, emoji)
       // Возвращаем разрешённый pid (с фоллбэком project→workspace), чтобы

@@ -64,6 +64,9 @@ export {
 export {
   getCurrentProjectParticipant,
   getCurrentWorkspaceParticipant,
+  resolveParticipantFull,
+  resolveParticipantId,
+  type ResolvedParticipant,
 } from './messengerParticipantService'
 export {
   saveDraftMessage,

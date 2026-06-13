@@ -12,8 +12,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import {
-  getCurrentProjectParticipant,
-  getCurrentWorkspaceParticipant,
+  resolveParticipantId,
   markAsRead,
   markAsUnread,
   type MessageChannel,
@@ -32,18 +31,15 @@ export function useInboxMarkMutations(workspaceId: string) {
 
   // Резолв participant: проектный (если у треда есть project_id) или
   // workspace-уровневый (личные диалоги TG/Email/Wazzup без project_id).
-  const resolveParticipantId = async (chat: InboxThreadEntry): Promise<string | null> => {
+  const resolveChatParticipantId = async (chat: InboxThreadEntry): Promise<string | null> => {
     if (!user) return null
-    if (chat.project_id) {
-      return (await getCurrentProjectParticipant(chat.project_id, user.id))?.participantId ?? null
-    }
-    return (await getCurrentWorkspaceParticipant(workspaceId, user.id))?.participantId ?? null
+    return resolveParticipantId(chat.project_id ?? undefined, workspaceId, user.id)
   }
 
   const markRead = useMutation({
     mutationFn: async (chat: InboxThreadEntry) => {
       if (!user) throw new Error('Не авторизован')
-      const participantId = await resolveParticipantId(chat)
+      const participantId = await resolveChatParticipantId(chat)
       if (!participantId) throw new Error('Участник не найден')
       return markAsRead(
         participantId,
@@ -78,7 +74,7 @@ export function useInboxMarkMutations(workspaceId: string) {
   const markUnread = useMutation({
     mutationFn: async (chat: InboxThreadEntry) => {
       if (!user) throw new Error('Не авторизован')
-      const participantId = await resolveParticipantId(chat)
+      const participantId = await resolveChatParticipantId(chat)
       if (!participantId) throw new Error('Участник не найден')
       return markAsUnread(
         participantId,

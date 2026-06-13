@@ -14,8 +14,7 @@ import {
   sendMessage,
   shouldSplitTextAndFiles,
   markAsRead,
-  getCurrentProjectParticipant,
-  getCurrentWorkspaceParticipant,
+  resolveParticipantFull,
   type ProjectMessage,
   type ReplyMessage,
   type MessageChannel,
@@ -71,9 +70,7 @@ export function useSendMessage(
 
       const participant =
         currentParticipant ??
-        (projectId
-          ? await getCurrentProjectParticipant(projectId, user.id)
-          : await getCurrentWorkspaceParticipant(workspaceId, user.id))
+        (await resolveParticipantFull(projectId, workspaceId, user.id))
       if (!participant) throw new Error('Нет доступа')
 
       return sendMessage({

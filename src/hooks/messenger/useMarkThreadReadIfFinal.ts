@@ -15,10 +15,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { markAsRead } from '@/services/api/messenger/messengerReadStatusService'
-import {
-  getCurrentProjectParticipant,
-  getCurrentWorkspaceParticipant,
-} from '@/services/api/messenger/messengerParticipantService'
+import { resolveParticipantFull } from '@/services/api/messenger/messengerParticipantService'
 import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 import { markThreadReadInInboxCaches } from '@/hooks/shared/threadCacheSync'
 import { dismissThreadToasts } from './useMessageToastPayload'
@@ -47,11 +44,11 @@ export function useMarkThreadReadIfFinal() {
 
       // Личные диалоги (project_id=NULL, type='email'/'chat') — participant ищем
       // на уровне воркспейса. Иначе — проектный participant.
-      const participant = projectId
-        ? await getCurrentProjectParticipant(projectId, user.id)
-        : workspaceId
-          ? await getCurrentWorkspaceParticipant(workspaceId, user.id)
-          : null
+      const participant = await resolveParticipantFull(
+        projectId ?? undefined,
+        workspaceId ?? undefined,
+        user.id,
+      )
       if (!participant) return
 
       try {

@@ -72,3 +72,47 @@ export async function getCurrentWorkspaceParticipant(
     role: roleName,
   }
 }
+
+/** Participant либо в проекте, либо в воркспейсе. */
+export type ResolvedParticipant = {
+  participantId: string
+  name: string
+  role: string | null
+}
+
+/**
+ * Резолв «моей личности» в треде (каскад):
+ *   1. Если есть projectId — пробуем project-level participant.
+ *   2. Если в проекте записи нет (owner/менеджер с доступом по праву
+ *      владельца/роли БЕЗ строки в project_participants) ИЛИ projectId нет —
+ *      падаем на workspace-level participant. Он валиден везде
+ *      (message_reactions.participant_id и пр. ссылаются на participants).
+ *
+ * Каскад (а не XOR project/workspace) — это и есть фикс owner-не-участника
+ * из ledger 2026-06-12 (без фоллбэка ломались реакции/отправка/mark-read/
+ * «своё»). Раньше логика дублировалась инлайн в 5+ messenger-хуках, причём
+ * часть из них была XOR-вариантом с латентной дырой; единый источник.
+ */
+export async function resolveParticipantFull(
+  projectId: string | undefined,
+  workspaceId: string | undefined,
+  userId: string,
+): Promise<ResolvedParticipant | null> {
+  if (projectId) {
+    const inProject = await getCurrentProjectParticipant(projectId, userId)
+    if (inProject) return inProject
+  }
+  if (workspaceId) {
+    return await getCurrentWorkspaceParticipant(workspaceId, userId)
+  }
+  return null
+}
+
+/** То же, но возвращает только participantId (или null). */
+export async function resolveParticipantId(
+  projectId: string | undefined,
+  workspaceId: string | undefined,
+  userId: string,
+): Promise<string | null> {
+  return (await resolveParticipantFull(projectId, workspaceId, userId))?.participantId ?? null
+}
