@@ -71,14 +71,39 @@ SELECT → участникам docbuilder). Дубли RLS-политик и п
 - мелкие: `ManageGroupsDialog`↔`ManageTagsDialog`, `RowHoverActions`, `useProjectPlan`↔`useTemplatePlan` CRUD, `BoardTab`↔`ItemListTab`, `DraggableBoardRow`, `SelectOptionRow`, `ContextTextDialog`↔`AddTextDialog`.
 - утилиты-близнецы (разные слои, связывать осторожно): `diffDaysFromToday` ×4, `escapeHtml` ×3 (server route vs client util), `formatBadgeCount` ×2, `plural` → `src/utils/`.
 
-## Отложенная инверсия слоёв (5 точек, кроме сделанной useParticipantsMutations)
+## Отложенная инверсия слоёв (компонентная — ТИПЫ/DTO уже вынесены)
 
-`components → page-components` импорты — переносить при касании:
-- модуль `ProjectPage/components/Documents/*` → `components/documents/` (3 потребителя).
-- `ProjectPage/moduleRegistry` + `useProjectModules`/`useProjectTemplate` → `lib/` или `components/projects/`.
-- `ProjectsPage/.../useProjectTemplatesQuery` → `hooks/`.
-- `ItemListsPage/columns` → `components/itemLists/`.
-- `ProjectPage/hooks/useProjectMutations` → `hooks/projects/`.
+⚠️ **Обновление 2026-06-13 (архитектурный аудит, тема T1):** type/DTO-инверсии
+СНЯТЫ этой сессией — доменные типы и DTO вынесены вниз (`@/types/documents`,
+`@/types/forms`, `@/types/board`, `@/types/taskPanelTabs`, `ExportDocument`→store),
+`FilterPrimitives`→`components/filters/`. Осталась **компонентная** инверсия
+(перенос живого UI, нужна сессия со смоком вкладки «Документы»):
+- движок документов в ДВУХ слоях: `page-components/ProjectPage/components/Documents/*`
+  ↔ `components/documents/` (пересекающиеся `SlotItem`/`SlotRow`, `DocumentsContext`).
+- `components → page-components/ProjectPage` импорты (7 файлов): `moduleRegistry`,
+  `useProjectModules`/`useProjectTemplate`/`useProjectData`/`useProjectMutations`,
+  `Documents/*` движок. Переносить при касании или отдельной сессией.
+- `DocumentKitContext` (cross-feature `documents ↔ projects/DocumentKitsTab`) → shared.
+- `ProjectsPage/.../useProjectTemplatesQuery` → `hooks/`; `ItemListsPage/columns` → `components/itemLists/`.
+
+## Карантин-мессенджер (отложено из аудита защищённых зон 2026-06-13)
+
+- **F1 финальная зачистка** (после смока «Клиенты»): `supabase functions delete telegram-webhook` (v1) + дроп колонки `project_telegram_chats.bot_version` + добить мёртвый v1-чат «Команда» (60eac940, rs1_support_bot, неактивен с марта). Все 5 ботов уже на v2 (getWebhookInfo). Откат и условия — `docs/audit/2026-06-13-quarantine-audit.md` §F1.
+- **Распил `email-internal-send`** — высокий риск, рабочая карантинная функция без бага под распилом. Только по явной просьбе.
+- **Карантин accent-карты** (`ReactionBadges`/`MessageInputToolbar`/`threadConstants` `COLOR_TEXT`) → `Record<ThreadAccentColor>` НЕ сделал: локальный `MessengerAccent` имеет legacy-алиасы (`green`/`dark`), которых нет в картах → нужны доп. касты + карантин. 3 не-карантинных карты уже под защитой типов (T4).
+- **B9 полный дедуп** mtproto `/users/fetch-avatar` с `fetchAndStoreAvatar` — НЕ делал: разные контракты `force`/TTL + void-return, а у эндпоинта нет живых вызывающих (стамп `avatar_fetched_at` добавлен).
+
+## Косметика T5 (архитектурный аудит — churn > выгода)
+
+- 3 routed-страницы шаблонов (`ProjectTemplateEditorPage`, `DocumentKitTemplateEditorPage`, `FormTemplateEditorPage/`) в `components/` → `page-components/` (поломает много относительных импортов ради организации).
+- Единый `ROUTES`/`buildRoute` реестр для 69 hardcoded route-строк `/workspaces/${id}/...`.
+- Унификация суффиксов management-view (`*Directory` vs `*Content`).
+- Покрытие edge-контрактов (`edgeContracts.ts` 6 из 65 `invoke`) — полу-by-design, заводить при касании.
+- Стягивание 68 inline-`supabase.from` из хуков/компонентов в сервисы — органически (правило в `infrastructure.md`).
+
+## Мелкий БД-долг (архитектурный аудит)
+
+- Дроп мёртвой RPC `get_my_urgent_tasks_count` — фронт-кластер `taskKeys` удалён (T4), RPC без живого вызывающего. Дропать после сверки, что её не зовёт edge/cron.
 
 ## Перф (отложено)
 
