@@ -7,7 +7,7 @@
 import { useState, useMemo } from 'react'
 import { CircleDot } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
-import { FilterToolbar, CheckItem, FilterButton } from './FilterPrimitives'
+import { FilterToolbar, CheckItem, FilterButton } from '@/components/filters/FilterPrimitives'
 
 type StatusFilterProps = {
   statuses: { id: string; name: string; color: string; is_final: boolean }[]

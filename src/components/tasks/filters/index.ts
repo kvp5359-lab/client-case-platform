@@ -1,4 +1,4 @@
-export { FilterToolbar, CheckItem, FilterButton } from './FilterPrimitives'
+export { FilterToolbar, CheckItem, FilterButton } from '@/components/filters/FilterPrimitives'
 export { AssigneeFilter } from './AssigneeFilter'
 export { DeadlineFilter, type DeadlineFilterValue } from './DeadlineFilter'
 export { StatusFilter } from './StatusFilter'

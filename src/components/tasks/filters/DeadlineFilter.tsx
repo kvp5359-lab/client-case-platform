@@ -7,7 +7,7 @@
 import { useState, useMemo } from 'react'
 import { Calendar } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
-import { FilterToolbar, CheckItem, FilterButton } from './FilterPrimitives'
+import { FilterToolbar, CheckItem, FilterButton } from '@/components/filters/FilterPrimitives'
 
 export type DeadlineFilterValue =
   | 'all'

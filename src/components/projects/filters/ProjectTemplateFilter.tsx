@@ -7,7 +7,7 @@
 import { useState, useMemo } from 'react'
 import { FileText } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
-import { FilterToolbar, CheckItem, FilterButton } from '@/components/tasks/filters/FilterPrimitives'
+import { FilterToolbar, CheckItem, FilterButton } from '@/components/filters/FilterPrimitives'
 
 export type ProjectTemplateOption = {
   id: string

@@ -42,9 +42,24 @@
 - **Фронтенд**: Next.js App Router. Клиент в `src/`, страницы и layout — в `src/app/`.
 - **Бэкенд**: Supabase (PostgreSQL + Auth + Storage + Realtime + Edge Functions).
 - **Стилизация**: Tailwind 3 + CSS Variables (HSL) + shadcn/ui.
-- **Состояние**: React Query (серверное, query keys в `src/hooks/queryKeys.ts`) + Zustand (клиентское, `src/store/`).
+- **Состояние**: React Query (серверное, query keys в `src/hooks/queryKeys/` — директория модулей + barrel `index.ts`) + Zustand (клиентское, `src/store/`).
 - **Структура**: `src/page-components/` (тяжёлые компоненты страниц), `src/components/` (переиспользуемые по модулям), `src/components/ui/` (shadcn).
 - **Публичная часть**: `src/app/(public)/` — заглушки для маркетплейса (lawyers, blog, about).
+
+### Слои и направление зависимостей (правило — T1 аудита 2026-06-13)
+
+Зависимости текут СВЕРХУ ВНИЗ. Нижние слои НЕ импортят верхние:
+
+```
+app/  →  page-components/  →  components/  →  hooks/ ─┐
+                                                       ├→  services/ → lib/ → types/  (+ store/, contexts/)
+```
+
+- **Доменные типы, чистые предикаты, DTO — в нижнем слое** (`src/types/<domain>.ts`, `src/lib/`), НЕ в `components/`/`page-components/`. Если тип нужен и сервису/хуку, и компоненту — его дом `types/`, а UI-файл реэкспортит (примеры: `@/types/documents`, `@/types/forms`, `@/types/board`, `@/types/taskPanelTabs`). Так нижние слои переиспользуемы/тестируемы без захода в UI.
+- **`services/`, `store/`, `hooks/` НЕ импортят из `components/`/`page-components/`** (даже `import type`). Нашёл такое — выноси общий тип/хелпер вниз + реэкспорт.
+- **Хуки**: общие/кросс-фичевые — в `src/hooks/`; строго фиче-локальные можно colocate в `<feature>/hooks/`, но слой `hooks/` НЕ зависит от `components/`.
+- **Кросс-фичевое UI** (фильтр-примитивы, общие контексты) — в `src/components/filters/`, `src/components/shared/`, не во внутренностях конкретной фичи.
+- **Известный остаток T1** (НЕ доделано, нужна сессия с UI-тестом): движок документов физически в двух слоях (`components/documents/` + `page-components/ProjectPage/components/Documents/`), и 7 файлов `components/` импортят внутренности `page-components/ProjectPage/`. См. [`docs/audit/2026-06-13-architecture-maintainability.md`](../../docs/audit/2026-06-13-architecture-maintainability.md) T1.
 - **Приватная часть**: `src/app/(app)/` — защищена цепочкой middleware (`src/proxy.ts`, см. [`gotchas.md`](./gotchas.md#файл-middleware--srcproxyts-не-middlewarets)) → server-side `(app)/layout.tsx` → клиентский `ProtectedRoute` → RLS в БД.
 
 ## Supabase

@@ -9,7 +9,7 @@ import { Users } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { ParticipantAvatar } from '@/components/participants/ParticipantAvatar'
-import { FilterToolbar, CheckItem, FilterButton } from './FilterPrimitives'
+import { FilterToolbar, CheckItem, FilterButton } from '@/components/filters/FilterPrimitives'
 
 type AssigneeFilterProps = {
   allAssignees: AvatarParticipant[]

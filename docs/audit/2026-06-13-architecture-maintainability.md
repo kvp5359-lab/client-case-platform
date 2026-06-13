@@ -166,7 +166,13 @@ Strict честный (`: any`/`as any`/`@ts-ignore` в проде = 0), но:
 - **P0** ✅ — утечка черновиков: `lsClearPanelKeys` sweep по префиксам `[cc:, msg_draft:, msg_outbox:]` +тест.
 - **T3** ✅ — 16 `as never` убраны (RPC-cruft, write-payload через `TablesInsert/Update`+`as Json`, enum-каст). Оставлены 4 обоснованных (динамич. union-таблицы + carantine RPC).
 - **T4** ✅ — мёртвый `taskKeys.urgentCount`-кластер удалён (+6 инвалидаций, тест обновлён на живой `my-task-counts`); дубль-ключ `templateIdForProject` → `projectTemplateKeys.idByProject`; accent-карты `Record<ThreadAccentColor>` в 3 не-карантинных (UnreadBadge, TimelineFeed, InboxChatHeader). **НЕ трогал карантинные accent-карты** (ReactionBadges/MessageInputToolbar/threadConstants): их локальный `MessengerAccent` имеет legacy-алиасы (`green`/`dark`), которых нет в картах → `Record<MessengerAccent>` не подходит, а `Record<ThreadAccentColor>` потребует доп. кастов против MessengerAccent; + карантин. Оставлены как есть.
-- **T1/T2/T5** — ниже, в работе.
+- **T1** — ⏳ частично:
+  - ✅ Доменные типы вниз: `@/types/documents`, `@/types/forms` (21 нижний импортёр переведён, UI реэкспортит).
+  - ✅ DTO вниз: `ExportDocument`→store, `WorkspaceTask`/`BoardProject`→`@/types/board`, `taskPanelTabs.types`→`@/types/taskPanelTabs`. Сервисы/store больше не импортят типы из hooks/components/dialogs.
+  - ✅ `FilterPrimitives` (cross-feature) → `components/filters/` (shared).
+  - ✅ Правило слоёв зафиксировано в `infrastructure.md` + doc-drift `queryKeys.ts`→`queryKeys/` (3 места).
+  - ⏳ **ОСТАЛОСЬ (нужна сессия с UI-тестом, риск):** движок документов в двух слоях (`components/documents/` + `page-components/ProjectPage/components/Documents/`) + 7 файлов `components/`, импортящих внутренности `page-components/ProjectPage/` (D1) + `DocumentKitContext` cross-feature (A5). Это КОМПОНЕНТНЫЕ переносы живого UI — делать отдельно, со смок-тестом вкладки «Документы»/плана.
+- **T2/T5** — ниже, в работе.
 
 ## Приоритет правок (предложение)
 1. **P0** — утечка черновиков (быстро, приватность).

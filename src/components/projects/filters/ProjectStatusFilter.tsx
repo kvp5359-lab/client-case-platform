@@ -10,7 +10,7 @@
 import { useState, useMemo } from 'react'
 import { CircleDot } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
-import { FilterToolbar, CheckItem, FilterButton } from '@/components/tasks/filters/FilterPrimitives'
+import { FilterToolbar, CheckItem, FilterButton } from '@/components/filters/FilterPrimitives'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
 
 type ProjectStatusFilterProps = {

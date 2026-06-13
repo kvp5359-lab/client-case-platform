@@ -8,7 +8,7 @@ import { useState, useMemo } from 'react'
 import { Users } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { ParticipantAvatar } from '@/components/participants/ParticipantAvatar'
-import { FilterToolbar, CheckItem, FilterButton } from '@/components/tasks/filters/FilterPrimitives'
+import { FilterToolbar, CheckItem, FilterButton } from '@/components/filters/FilterPrimitives'
 
 export type ProjectAssigneeOption = {
   id: string

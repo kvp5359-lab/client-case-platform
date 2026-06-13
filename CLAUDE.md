@@ -98,6 +98,6 @@ git config core.hooksPath .githooks
 - [ ] Если менял RLS на `project_threads` — сохранил short-circuit `created_by = auth.uid()`.
 - [ ] Если деплоил Edge Function на webhook или `*-send` — флаг `--no-verify-jwt`.
 - [ ] Если изменил BD-схему — `supabase gen types typescript ... > src/types/database.ts`.
-- [ ] Если добавил мутацию — инвалидировал релевантные query keys из `src/hooks/queryKeys.ts`.
+- [ ] Если добавил мутацию — инвалидировал релевантные query keys из `src/hooks/queryKeys/`.
 - [ ] `npm run lint && npm test` зелёные.
 - [ ] Не пушил без явного «да».
