@@ -11,7 +11,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getCommentsByEntity } from '@/services/api/commentService'
 import { getSectionProgress } from '@/hooks/forms/useFormKitProgress'
-import type { FormSectionWithFields, CompositeFieldItem, FormData } from '@/components/forms/types'
+import type { FormSectionWithFields, CompositeFieldItem, FormData } from '@/types/forms'
 
 type UseFormSummaryParams = {
   workspaceId: string

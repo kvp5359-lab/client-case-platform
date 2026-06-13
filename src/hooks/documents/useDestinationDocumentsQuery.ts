@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { listFiles } from '@/services/api/googleDriveService'
 import { googleDriveKeys, STALE_TIME } from '@/hooks/queryKeys'
-import type { DestinationDocument } from '@/components/documents/types'
+import type { DestinationDocument } from '@/types/documents'
 
 async function fetchDestinationDocuments(
   exportFolderId: string,

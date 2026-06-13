@@ -10,7 +10,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { folderSlotKeys, documentKitKeys, kitlessDocumentKeys, STALE_TIME } from '@/hooks/queryKeys'
-import type { FolderSlotWithDocument } from '@/components/documents/types'
+import type { FolderSlotWithDocument } from '@/types/documents'
 
 export function useFolderSlots(projectId: string) {
   const queryClient = useQueryClient()

@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useGroupedDocuments } from './useGroupedDocuments'
-import type { DocumentWithFiles } from '@/components/documents/types'
+import type { DocumentWithFiles } from '@/types/documents'
 
 // Хелпер для создания документа
 function makeDoc(overrides: Partial<DocumentWithFiles> = {}): DocumentWithFiles {

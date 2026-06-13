@@ -6,7 +6,7 @@
  */
 
 import { useMemo } from 'react'
-import { isStatusUnselected, type DocumentWithFiles } from '@/components/documents/types'
+import { isStatusUnselected, type DocumentWithFiles } from '@/types/documents'
 
 type UseGroupedDocumentsProps = {
   documents: DocumentWithFiles[] | undefined

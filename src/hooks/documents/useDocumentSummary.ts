@@ -13,7 +13,7 @@ import type {
   DocumentKit,
   DocumentStatus,
   FolderSlotWithDocument,
-} from '@/components/documents/types'
+} from '@/types/documents'
 
 type DocumentKitWithFolders = {
   folders?: Array<{

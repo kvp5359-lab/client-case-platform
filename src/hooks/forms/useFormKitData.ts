@@ -19,7 +19,7 @@ import type {
   FormField,
   CompositeFieldItem,
   FieldDefinitionSelectOption,
-} from '@/components/forms/types'
+} from '@/types/forms'
 import { logger } from '@/utils/logger'
 import { formKitKeys } from '@/hooks/queryKeys'
 import { isRiskLevel, type RiskLevel } from '@/components/forms/riskLevels'

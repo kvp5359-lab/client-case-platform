@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import type { SourceDocument } from '@/components/documents/types'
+import type { SourceDocument } from '@/types/documents'
 
 type DragOverPosition = 'top' | 'bottom'
 

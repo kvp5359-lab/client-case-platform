@@ -8,7 +8,7 @@
 import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
-import type { FormStructure, CompositeFieldItem } from '@/components/forms/types'
+import type { FormStructure, CompositeFieldItem } from '@/types/forms'
 
 type UseFormKitAutoFillProps = {
   structure: FormStructure | null | undefined

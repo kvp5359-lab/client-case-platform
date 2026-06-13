@@ -8,7 +8,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { kitlessDocumentKeys, STALE_TIME } from '@/hooks/queryKeys'
-import type { DocumentWithFiles } from '@/components/documents/types'
+import type { DocumentWithFiles } from '@/types/documents'
 
 export function useKitlessDocumentsQuery(projectId: string | undefined) {
   return useQuery({

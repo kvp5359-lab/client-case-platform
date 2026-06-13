@@ -12,7 +12,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
-import type { FormData } from '@/components/forms/types'
+import type { FormData } from '@/types/forms'
 
 type UseFormFieldSaveHandlersParams = {
   formKitId: string

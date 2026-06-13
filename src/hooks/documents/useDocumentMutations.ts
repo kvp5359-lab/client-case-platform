@@ -6,7 +6,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { DocumentKitWithDocuments, FolderSlotWithDocument } from '@/components/documents/types'
+import type { DocumentKitWithDocuments, FolderSlotWithDocument } from '@/types/documents'
 import { documentKitKeys, folderSlotKeys } from '@/hooks/queryKeys'
 import { hardDeleteDocument } from '@/services/documents/documentService'
 

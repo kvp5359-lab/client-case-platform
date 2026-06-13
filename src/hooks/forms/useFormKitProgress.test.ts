@@ -15,7 +15,7 @@ import type {
   CompositeFieldItem,
   FieldType,
   FormTemplate,
-} from '@/components/forms/types'
+} from '@/types/forms'
 
 // Хелпер для создания секции с полями
 function makeSection(

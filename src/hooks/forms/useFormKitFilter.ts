@@ -6,7 +6,7 @@
  */
 
 import { useMemo } from 'react'
-import type { FormStructure, CompositeFieldItem } from '@/components/forms/types'
+import type { FormStructure, CompositeFieldItem } from '@/types/forms'
 import type { FieldOptions } from '@/types/formKit'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 

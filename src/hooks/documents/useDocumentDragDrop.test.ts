@@ -5,7 +5,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useDocumentDragDrop } from './useDocumentDragDrop'
-import type { SourceDocument } from '@/components/documents/types'
+import type { SourceDocument } from '@/types/documents'
 
 // Хелпер для создания mock drag event
 function makeDragEvent(overrides: Record<string, unknown> = {}): React.DragEvent {

@@ -7,7 +7,7 @@ import type {
   SourceDocument,
   DestinationDocument,
   SystemSectionTab,
-} from '@/components/documents/types'
+} from '@/types/documents'
 import type { ExportDocument } from '@/components/projects/DocumentKitsTab/dialogs/ExportProgressDialog'
 
 // Re-export для удобства

@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { getSourceDocumentsByProject } from '@/services/documents/sourceDocumentService'
 import { googleDriveKeys, STALE_TIME } from '@/hooks/queryKeys'
-import type { SourceDocument } from '@/components/documents/types'
+import type { SourceDocument } from '@/types/documents'
 
 type SourceDocumentsResult = {
   documents: SourceDocument[]

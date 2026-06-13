@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react'
-import type { SystemSectionTab } from '@/components/documents/types'
+import type { SystemSectionTab } from '@/types/documents'
 
 // Задержка для анимации закрытия секции
 const TAB_SWITCH_DELAY = 150

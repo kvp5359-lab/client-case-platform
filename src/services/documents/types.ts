@@ -13,7 +13,7 @@ export type {
   Folder,
   DocumentWithFiles,
   SourceDocument,
-} from '@/components/documents/types'
+} from '@/types/documents'
 
 // --- Параметры сервисных операций ---
 

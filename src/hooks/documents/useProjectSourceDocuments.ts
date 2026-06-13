@@ -13,7 +13,7 @@ import {
   downloadGoogleDriveFile,
 } from '@/services/documents/sourceDocumentService'
 import { useInvalidateSourceDocuments } from './useSourceDocumentsQuery'
-import type { SourceDocument } from '@/components/documents/types'
+import type { SourceDocument } from '@/types/documents'
 
 type UseProjectSourceDocumentsProps = {
   projectId: string

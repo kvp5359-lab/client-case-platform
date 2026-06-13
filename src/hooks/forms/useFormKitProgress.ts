@@ -14,7 +14,7 @@ import type {
   FormProgress,
   FormSectionWithFields,
   CompositeFieldItem,
-} from '@/components/forms/types'
+} from '@/types/forms'
 
 type UseFormKitProgressParams = {
   structure: FormStructure | null | undefined
