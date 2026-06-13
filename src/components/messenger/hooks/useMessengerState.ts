@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { checkEmailAttachmentsLimit } from './useMessengerHandlers'
-import { messengerParticipantKeys } from '@/hooks/queryKeys'
+import { messengerParticipantKeys, projectThreadKeys } from '@/hooks/queryKeys'
 import {
   useProjectMessages,
   useSendMessage,
@@ -112,7 +112,7 @@ export function useMessengerState({
   // обмена). Без этого свежесозданный email-тред считался не-email,
   // и optimistic-сообщение разбивалось на 2 бабла (текст + файлы).
   const { data: threadRow } = useQuery({
-    queryKey: ['project-thread-type', threadId],
+    queryKey: projectThreadKeys.type(threadId),
     queryFn: async () => {
       if (!threadId) return null
       const { data } = await supabase

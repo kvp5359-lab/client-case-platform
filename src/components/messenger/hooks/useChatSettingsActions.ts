@@ -42,7 +42,7 @@ import { useChatSettingsSave } from './useChatSettingsSave'
 import { useChatSettingsDefaults } from './useChatSettingsDefaults'
 import type { ComposeFieldHandle } from '../ComposeField'
 import type { useChatSettingsFormState } from './useChatSettingsFormState'
-import { STALE_TIME, statusKeys } from '@/hooks/queryKeys'
+import { STALE_TIME, statusKeys, projectThreadKeys } from '@/hooks/queryKeys'
 
 type FormReturn = ReturnType<typeof useChatSettingsFormState>
 
@@ -249,7 +249,7 @@ export function useChatSettingsActions({
     (participantId: string) => {
       const isMember = memberIds.has(participantId)
       toggleMemberMutation.mutate({ participantId, add: !isMember })
-      queryClient.setQueryData(['thread-members', chat?.id], (old: Set<string> | undefined) => {
+      queryClient.setQueryData(projectThreadKeys.members(chat?.id), (old: Set<string> | undefined) => {
         const next = new Set(old ?? [])
         if (isMember) next.delete(participantId)
         else next.add(participantId)

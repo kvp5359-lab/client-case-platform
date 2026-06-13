@@ -39,24 +39,26 @@ export function useToggleReaction(
             ? (await getCurrentWorkspaceParticipant(workspaceId, user.id))?.participantId
             : null)
       if (!pid) throw new Error('Участник не найден')
-      return toggleReaction(messageId, pid, emoji)
+      await toggleReaction(messageId, pid, emoji)
+      // Возвращаем разрешённый pid (с фоллбэком project→workspace), чтобы
+      // onSuccess пометил прочитанным даже owner-не-участника, у которого
+      // prop participantId пуст. Раньше onSuccess брал только prop → mark-read
+      // пропускался (та же первопричина, что в записи 2026-06-12).
+      return { pid }
     },
-    onSuccess: () => {
+    onSuccess: ({ pid }) => {
       queryClient.invalidateQueries({ queryKey: messagesKey })
 
       // Реакция = прочитал чат. Оптимистично патчим inbox-кэш сразу (как
       // ручная кнопка «Прочитано»), markAsRead + инвалидация догоняют фоном.
-      const pid = participantId
-      if (pid) {
-        patchCachesForMarkRead(queryClient, { threadId, projectId, workspaceId })
-        markAsRead(pid, projectId, channel, threadId)
-          .then(() => {
-            if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
-          })
-          .catch(() => {
-            /* not critical */
-          })
-      }
+      patchCachesForMarkRead(queryClient, { threadId, projectId, workspaceId })
+      markAsRead(pid, projectId, channel, threadId)
+        .then(() => {
+          if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
+        })
+        .catch(() => {
+          /* not critical */
+        })
     },
     onError: () => {
       toast.error('Не удалось поставить реакцию')

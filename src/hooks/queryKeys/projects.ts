@@ -51,6 +51,7 @@ export const clientWorkspaceProjectsKeys = {
 export const projectThreadKeys = {
   all: ['project_thread'] as const,
   byId: (threadId: string | undefined) => ['project_thread', threadId ?? ''] as const,
+  type: (threadId: string | undefined) => ['project-thread-type', threadId] as const,
   auditEvents: (threadId: string | undefined) => ['thread-audit-events', threadId] as const,
   members: (threadId: string | undefined) => ['thread-members', threadId] as const,
   membersMap: (threadIds: string[]) =>
