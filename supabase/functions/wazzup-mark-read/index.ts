@@ -8,7 +8,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
-  preflight, jsonRes, getUser, getUserClient, getServiceClient,
+  preflight, jsonRes, getUser, getServiceClient,
 } from "../_shared/edge.ts";
 
 Deno.serve(async (req: Request) => {
@@ -24,7 +24,6 @@ Deno.serve(async (req: Request) => {
 
   // Под service-role читаем то, что нужно для запроса в Wazzup. Доступ к
   // треду фронт уже подтвердил RLS'ом — иначе пользователь его не видел бы.
-  const _userClient = getUserClient(req); // зарезервировано на будущие RLS-проверки
   const service = getServiceClient();
 
   const { data: thread } = await service

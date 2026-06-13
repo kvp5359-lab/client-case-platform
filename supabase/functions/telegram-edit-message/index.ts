@@ -130,21 +130,29 @@ Deno.serve(async (req: Request) => {
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
+      // workspace_id берём напрямую из сообщения — он NOT NULL и есть у всех
+      // тредов, включая личные диалоги (project_id = NULL). Старый join через
+      // projects!inner резолвился только для проектных тредов → для личных
+      // диалогов проверка членства тихо пропускалась (IDOR). Теперь — всегда.
       const { data: msg } = await serviceClient
         .from("project_messages")
-        .select("project_id, projects!inner(workspace_id)")
+        .select("workspace_id")
         .eq("id", body.message_id)
         .maybeSingle();
 
-      const workspaceId = (msg?.projects as unknown as { workspace_id: string })?.workspace_id;
-      if (workspaceId) {
-        const isMember = await checkWorkspaceMembership(serviceClient, authenticatedUserId, workspaceId);
-        if (!isMember) {
-          return new Response(
-            JSON.stringify({ error: "Access denied" }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
-        }
+      const workspaceId = (msg?.workspace_id as string | null) ?? null;
+      if (!workspaceId) {
+        return new Response(
+          JSON.stringify({ error: "Access denied" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      const isMember = await checkWorkspaceMembership(serviceClient, authenticatedUserId, workspaceId);
+      if (!isMember) {
+        return new Response(
+          JSON.stringify({ error: "Access denied" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
     } // end authenticatedUserId
 

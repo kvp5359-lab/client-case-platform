@@ -9,9 +9,11 @@
  * Алгоритм:
  *  1. Нормальные дубликаты (один и тот же бот видит апдейт повторно): ловим
  *     через индекс по (telegram_chat_id, telegram_message_id, integration_id).
- *  2. Кросс-ботовые дубликаты в basic-группах: ловим через UNIQUE INDEX
- *     uq_project_messages_telegram_dedup по
- *     (telegram_chat_id, telegram_sender_user_id, telegram_message_date).
+ *  2. Кросс-ботовые дубликаты (у каждого бота свой telegram_message_id, см.
+ *     gotchas «multi-bot dedup»): msg_id-индекс их НЕ ловит. Ловит content-based
+ *     UNIQUE INDEX uq_project_messages_telegram_content_dedup по
+ *     (telegram_chat_id, telegram_sender_user_id, telegram_message_date,
+ *      md5(content), telegram_file_unique_id).
  *     INSERT падает с 23505 — догоняем UPDATE'ом, но **только** на полях,
  *     которые ещё не заполнены (`.is(...null)`), чтобы не затереть данные
  *     первого вставщика.
@@ -232,9 +234,11 @@ export async function syncTelegramIncomingMessage(
     return { rowId: insertResult.data.id as string, outcome: "inserted" };
   }
 
-  // 23505 = unique violation на uq_project_messages_telegram_dedup.
-  // Другой webhook (секретарь или личный бот, в зависимости от того,
-  // кто пришёл первым) уже вставил эту строку. Догоним.
+  // 23505 = unique violation на одном из дедуп-индексов: msg_id-based
+  // uq_project_messages_telegram_dedup (тот же бот, повторный апдейт) ИЛИ
+  // content-based uq_project_messages_telegram_content_dedup (другой бот,
+  // свой msg_id, но тот же контент). Другой webhook (секретарь или личный
+  // бот, кто пришёл первым) уже вставил эту строку. Догоним.
   const isUniqueViolation =
     typeof insertResult.error?.code === "string" && insertResult.error.code === "23505";
 

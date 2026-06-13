@@ -88,22 +88,3 @@ export async function getValidGmailTokenForUser(
   const accessToken = await ensureValidGmailToken(supabaseAdmin, account);
   return { accessToken, account };
 }
-
-export async function getValidGmailTokenForAccount(
-  supabaseAdmin: SupabaseClient,
-  accountId: string,
-): Promise<{ accessToken: string; account: GmailAccountData }> {
-  const { data: account, error } = await supabaseAdmin
-    .from("email_accounts")
-    .select("id, user_id, email, access_token, refresh_token, token_expires_at, last_history_id, watch_expires_at")
-    .eq("id", accountId)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (error || !account) {
-    throw new Error("Gmail account not found or inactive");
-  }
-
-  const accessToken = await ensureValidGmailToken(supabaseAdmin, account);
-  return { accessToken, account };
-}
