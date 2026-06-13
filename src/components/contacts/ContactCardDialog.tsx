@@ -15,7 +15,7 @@ import {
   useRenameParticipant,
 } from '@/hooks/useContactCard'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
-import { useParticipantsMutations } from '@/page-components/workspace-settings/useParticipantsMutations'
+import { useParticipantsMutations } from '@/hooks/permissions/useParticipantsMutations'
 import { EditParticipantDialog } from '@/components/participants/EditParticipantDialog'
 import type { Participant } from '@/types/entities'
 import { cn } from '@/lib/utils'

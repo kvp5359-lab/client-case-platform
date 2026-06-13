@@ -14,7 +14,7 @@ import { EditParticipantDialog } from '@/components/participants/EditParticipant
 import { MergeTelegramContactDialog } from '@/components/participants/MergeTelegramContactDialog'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import type { Participant } from '@/types/entities'
-import { useParticipantsMutations } from './useParticipantsMutations'
+import { useParticipantsMutations } from '@/hooks/permissions/useParticipantsMutations'
 import { ROLE_CONFIG, TELEGRAM_ROLE } from './constants/roleConfig'
 import { ParticipantsSidebar } from './components/ParticipantsSidebar'
 import { ParticipantsTable } from './components/ParticipantsTable'

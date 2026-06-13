@@ -8,12 +8,9 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert } from '@/components/ui/alert'
-import { createDocumentKitFromTemplate } from '@/services/api/documents/documentKitService'
-import { createFormKitFromTemplate } from '@/services/api/forms/formKitService'
+import { createProjectFromTemplate } from '@/services/projects/createProjectFromTemplate'
 import { toast } from 'sonner'
-import { logger } from '@/utils/logger'
 import { Loader2 } from 'lucide-react'
-import { addDays } from 'date-fns'
 import { TemplateSelector } from './create-project/TemplateSelector'
 import { TemplateItemsList } from './create-project/TemplateItemsList'
 import { useThreadTemplatesByProjectTemplate } from '@/hooks/messenger/useThreadTemplates'
@@ -220,200 +217,23 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
     setError(null)
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      const { data: project, error: insertError } = await supabase
-        .from('projects')
-        .insert({
-          name: name.trim(),
-          description: description.trim() || null,
-          workspace_id: currentWorkspaceId,
-          created_by: user?.id || null,
-          template_id: activeTemplateId || null,
-        })
-        .select()
-        .single()
-
-      if (insertError) throw insertError
-
-      const promises: Promise<void>[] = []
-
-      for (const docKitTemplateId of selectedDocKitIds) {
-        promises.push(
-          createDocumentKitFromTemplate(docKitTemplateId, project.id, currentWorkspaceId).then(
-            () => {},
-          ),
-        )
-      }
-
-      for (const formTemplateId of selectedFormIds) {
-        promises.push(
-          createFormKitFromTemplate(formTemplateId, project.id, currentWorkspaceId).then(() => {}),
-        )
-      }
-
-      // Инстанциация шаблонов тредов (задач и чатов): создаём project_threads,
-      // копируем assignees из thread_template_assignees, проставляем
-      // source_template_id — так меню "+" внутри проекта будет скрывать
-      // только что созданные шаблоны как "уже использованные".
       const selectedThreadTemplates: ThreadTemplate[] = scopedThreadTemplates.filter((t) =>
         selectedTaskIds.has(t.id),
       )
-
-      for (const tpl of selectedThreadTemplates) {
-        promises.push(
-          (async () => {
-            const deadline =
-              tpl.thread_type === 'task' && tpl.deadline_days != null
-                ? addDays(new Date(), tpl.deadline_days).toISOString()
-                : null
-            const { data: thread, error: threadErr } = await supabase
-              .from('project_threads')
-              .insert({
-                project_id: project.id,
-                workspace_id: currentWorkspaceId,
-                name: tpl.name,
-                type: tpl.thread_type,
-                access_type: tpl.access_type,
-                access_roles: tpl.access_type === 'roles' ? (tpl.access_roles ?? []) : [],
-                accent_color: tpl.accent_color,
-                icon: tpl.icon,
-                status_id: tpl.default_status_id,
-                deadline,
-                sort_order: tpl.sort_order + 100,
-                source_template_id: tpl.id,
-              })
-              .select('id')
-              .single()
-            if (threadErr) throw threadErr
-
-            // Copy assignees for tasks.
-            const assigneeIds = (tpl.thread_template_assignees ?? []).map(
-              (a) => a.participant_id,
-            )
-            if (tpl.thread_type === 'task' && assigneeIds.length > 0) {
-              const rows = assigneeIds.map((pid) => ({
-                thread_id: thread.id,
-                participant_id: pid,
-              }))
-              const { error: aErr } = await supabase.from('task_assignees').insert(rows)
-              if (aErr) {
-                logger.warn(
-                  `Не удалось назначить исполнителей в треде ${thread.id}: ${aErr.message}`,
-                )
-              }
-            }
-          })(),
-        )
+      const { projectId, kitFormFailures } = await createProjectFromTemplate({
+        workspaceId: currentWorkspaceId,
+        name,
+        description,
+        templateId: activeTemplateId,
+        selectedDocKitIds: [...selectedDocKitIds],
+        selectedFormIds: [...selectedFormIds],
+        selectedThreadTemplates,
+        selectedBlockIds,
+      })
+      if (kitFormFailures > 0) {
+        toast.warning(`Проект создан, но ${kitFormFailures} набор(ов) не удалось создать`)
       }
-
-      if (promises.length > 0) {
-        const results = await Promise.allSettled(promises)
-        const failed = results.filter((r) => r.status === 'rejected')
-        if (failed.length > 0) {
-          logger.error('Ошибки при создании наборов/анкет:', failed)
-          toast.warning(`Проект создан, но ${failed.length} набор(ов) не удалось создать`)
-        }
-      }
-
-      // Разворачивание «рыбы» плана из шаблона (модуль «План», Фаза 3).
-      // Делаем ПОСЛЕ создания тредов, чтобы резолвить thread_template_id →
-      // созданный тред по source_template_id. Текст копируется, задачи
-      // привязываются. Слоты в шаблоне пока не поддерживаются. Любая ошибка
-      // здесь некритична — проект уже создан.
-      if (activeTemplateId) {
-        try {
-          const { data: tmplBlocks } = await supabase
-            .from('project_template_plan_blocks')
-            .select('*')
-            .eq('project_template_id', activeTemplateId)
-            .order('sort_order', { ascending: true })
-          // Берём только структурные блоки (заголовки/текст). Задачи живут в
-          // project_threads (созданы выше), task-блоки шаблона игнорируем —
-          // порядок задач задаёт thread_templates.sort_order.
-          const contentBlocks = (tmplBlocks ?? []).filter(
-            (b) =>
-              (b.block_type === 'heading' || b.block_type === 'text') &&
-              selectedBlockIds.has(b.id),
-          )
-          if (contentBlocks.length > 0) {
-            const { data: createdThreads } = await supabase
-              .from('project_threads')
-              .select('id, source_template_id')
-              .eq('project_id', project.id)
-            const threadByTemplate = new Map<string, string>()
-            for (const t of createdThreads ?? []) {
-              if (t.source_template_id) threadByTemplate.set(t.source_template_id, t.id)
-            }
-            // Единый порядок: задачи (по thread_template.sort_order) и блоки
-            // (по их sort_order) сводим в одну шкалу и нумеруем заново, чтобы
-            // заголовки/текст встали между задачами как в шаблоне.
-            type SeedItem =
-              | { kind: 'task'; threadId: string; sort: number }
-              | { kind: 'block'; block: (typeof contentBlocks)[number]; sort: number }
-            const items: SeedItem[] = []
-            for (const tpl of selectedThreadTemplates) {
-              const threadId = threadByTemplate.get(tpl.id)
-              if (threadId) items.push({ kind: 'task', threadId, sort: tpl.sort_order })
-            }
-            for (const b of contentBlocks) {
-              items.push({ kind: 'block', block: b, sort: b.sort_order })
-            }
-            items.sort((a, b) => a.sort - b.sort || (a.kind === 'task' ? -1 : 1))
-
-            const taskOrder: { threadId: string; index: number }[] = []
-            const planRows: {
-              workspace_id: string
-              project_id: string
-              block_type: 'heading' | 'text'
-              sort_order: number
-              visible_to_client: boolean
-              content: string | null
-            }[] = []
-            items.forEach((it, index) => {
-              if (it.kind === 'task') {
-                taskOrder.push({ threadId: it.threadId, index })
-              } else {
-                planRows.push({
-                  workspace_id: currentWorkspaceId,
-                  project_id: project.id,
-                  block_type: it.block.block_type as 'heading' | 'text',
-                  sort_order: index,
-                  visible_to_client: it.block.visible_to_client,
-                  content: it.block.content,
-                })
-              }
-            })
-
-            if (taskOrder.length > 0) {
-              await Promise.all(
-                taskOrder.map((o) =>
-                  supabase
-                    .from('project_threads')
-                    .update({ sort_order: o.index })
-                    .eq('id', o.threadId),
-                ),
-              )
-            }
-            if (planRows.length > 0) {
-              const { error: planErr } = await supabase
-                .from('project_plan_blocks')
-                .insert(planRows)
-              if (planErr) logger.warn(`Не удалось развернуть план: ${planErr.message}`)
-            }
-          }
-        } catch (planSeedErr) {
-          logger.warn(
-            `Ошибка разворачивания плана: ${
-              planSeedErr instanceof Error ? planSeedErr.message : String(planSeedErr)
-            }`,
-          )
-        }
-      }
-
-      onSuccess({ id: project.id })
+      onSuccess({ id: projectId })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Произошла ошибка')
     } finally {
