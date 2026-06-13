@@ -8,10 +8,10 @@
 
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
-import { createUISlice } from './uiSlice'
-import { createDialogsSlice } from './dialogsSlice'
-import { createOperationsSlice } from './operationsSlice'
-import { createGoogleDriveSlice } from './googleDriveSlice'
+import { createUISlice, initialUIState } from './uiSlice'
+import { createDialogsSlice, initialDialogsState } from './dialogsSlice'
+import { createOperationsSlice, initialOperationsState } from './operationsSlice'
+import { createGoogleDriveSlice, initialGoogleDriveState } from './googleDriveSlice'
 import type { DocumentKitUIStore } from './types-store'
 
 export const useDocumentKitUIStore = create<DocumentKitUIStore>()(
@@ -22,94 +22,20 @@ export const useDocumentKitUIStore = create<DocumentKitUIStore>()(
       ...createOperationsSlice(...args),
       ...createGoogleDriveSlice(...args),
 
-      // Global reset
+      // Global reset. Собираем из initial-стейтов слайсов — новое поле в любом
+      // слайсе автоматически попадает в reset (раньше поля копировались руками
+      // и легко рассинхронизировались → состояние «протекало» между проектами).
+      // collapsedFolders/compressingDocIds — свежие Set, чтобы reset не делил
+      // ссылку с initial-объектом слайса.
       resetState: () => {
         const [set] = args
         set({
-          // UI
+          ...initialUIState,
+          ...initialDialogsState,
+          ...initialOperationsState,
+          ...initialGoogleDriveState,
           collapsedFolders: new Set(),
-          uploadingFiles: [],
-          targetFolderId: null,
-          hoveredFolderId: null,
-          hoveredDocumentId: null,
-          systemSectionTab: 'unassigned',
-          unassignedCollapsed: false,
-          sourceCollapsed: false,
-          destinationCollapsed: false,
-          trashCollapsed: false,
-          showOnlyUnverified: false,
-          statusDropdownOpen: null,
-
-          // Dialogs
-          moveDialogOpen: false,
-          documentToMove: null,
-          sourceDocToMove: null,
-          isMovingSourceDoc: false,
-          isBatchMoving: false,
-          editDialogOpen: false,
-          documentToEdit: null,
-          editName: '',
-          editDescription: '',
-          editStatus: '',
-          contentViewDialogOpen: false,
-          documentContent: null,
-          batchCheckDialogOpen: false,
-          batchCheckDocumentIds: [],
-          addFolderDialogOpen: false,
-          templateSelectDialogOpen: false,
-          editingFolder: null,
-          folderFormData: {
-            name: '',
-            description: '',
-            aiNamingPrompt: '',
-            aiCheckPrompt: '',
-            knowledgeArticleId: null,
-          },
-          folderTemplates: [],
-          loadingTemplates: false,
-          selectedTemplateIds: [],
-          kitSettingsDialogOpen: false,
-
-          // Operations
-          isCheckingDocument: false,
-          suggestedNames: [],
-          isLoadingContent: false,
-          isCheckingBatch: false,
-          checkProgress: null,
-          isMerging: false,
-          mergeProgress: null,
-          mergeDialogOpen: false,
-          mergeName: '',
-          mergeFolderId: null,
-          isGeneratingMergeName: false,
-          mergeDocsList: [],
-          draggedIndex: null,
-          isCompressing: false,
-          compressProgress: null,
           compressingDocIds: new Set<string>(),
-          isExportingToDisk: false,
-          exportProgress: null,
-          exportToDiskDialogOpen: false,
-          googleDriveFolderLink: '',
-          exportSyncMode: 'replace_all' as const,
-          exportPhase: 'idle' as const,
-          exportDocuments: [],
-          exportCleaningProgress: 0,
-          exportProgressDialogOpen: false,
-
-          // Google Drive
-          connectSourceDialogOpen: false,
-          sourceFolderLink: '',
-          sourceSettingsDialogOpen: false,
-          sourceFolderName: '',
-          isSourceConnected: false,
-          isSyncing: false,
-          showHiddenSourceDocs: false,
-          exportFolderName: '',
-          isExportFolderConnected: false,
-          isExporting: false,
-          isFetchingDestination: false,
-          hasExported: false,
         })
       },
     }),

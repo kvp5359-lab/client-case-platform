@@ -55,7 +55,7 @@ export type GoogleDriveActions = {
 
 export type GoogleDriveSlice = GoogleDriveState & GoogleDriveActions
 
-const initialGoogleDriveState: GoogleDriveState = {
+export const initialGoogleDriveState: GoogleDriveState = {
   // Source documents
   connectSourceDialogOpen: false,
   sourceFolderLink: '',

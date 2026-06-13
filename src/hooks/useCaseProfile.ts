@@ -2,6 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { toSupabaseJson } from '@/utils/supabaseJson'
+import { caseProfileKeys } from '@/hooks/queryKeys'
 import type { Answers } from '@/lib/residence/ruleEvaluator'
 
 export type CaseProfile = {
@@ -15,12 +17,10 @@ export type CaseProfile = {
   computed_at: string | null
 }
 
-const key = (projectId: string) => ['case-profile', projectId]
-
 /** Профиль подбора ВНЖ проекта (один на проект). */
 export function useCaseProfile(projectId: string) {
   return useQuery({
-    queryKey: key(projectId),
+    queryKey: caseProfileKeys.byProject(projectId),
     queryFn: async (): Promise<CaseProfile | null> => {
       const { data, error } = await supabase
         .from('case_profiles')
@@ -50,9 +50,9 @@ export function useSaveCaseProfile(projectId: string, workspaceId: string) {
           project_id: projectId,
           workspace_id: workspaceId,
           country_id: input.country_id,
-          answers: input.answers as never,
+          answers: toSupabaseJson(input.answers),
           selected_residence_type_ids: input.selected_residence_type_ids ?? [],
-          result_snapshot: (input.result_snapshot ?? null) as never,
+          result_snapshot: toSupabaseJson(input.result_snapshot ?? null),
           computed_at: input.result_snapshot ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         },
@@ -60,6 +60,6 @@ export function useSaveCaseProfile(projectId: string, workspaceId: string) {
       )
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: key(projectId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: caseProfileKeys.byProject(projectId) }),
   })
 }

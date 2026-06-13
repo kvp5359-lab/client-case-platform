@@ -20,6 +20,7 @@ import { LazyChatSettingsDialog as ChatSettingsDialog } from '@/components/lazyC
 import { createPortal } from 'react-dom'
 import { ArrowLeft } from 'lucide-react'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
+import type { MessengerAccent } from '@/components/messenger/utils/messageStyles'
 import { AllHistoryContent } from '@/components/history/AllHistoryContent'
 import { PanelDocumentsContent } from '@/components/documents/PanelDocumentsContent'
 import { cn } from '@/lib/utils'
@@ -258,7 +259,7 @@ export function TaskPanel({
               projectId={task.project_id ?? undefined}
               workspaceId={workspaceId}
               threadId={task.id}
-              accent={liveTask.accent_color as never}
+              accent={liveTask.accent_color as MessengerAccent}
               toolbarPortalContainer={toolbarContainer}
             />
           )}

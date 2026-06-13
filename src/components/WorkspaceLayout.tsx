@@ -20,6 +20,7 @@ import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { FloatingPanelButtons } from './FloatingPanelButtons'
 import { GlobalContactCardDialog } from '@/components/contacts/GlobalContactCardDialog'
+import { useContactCardStore } from '@/store/contactCardStore'
 import { SendFailureToasts } from '@/components/messenger/SendFailureToasts'
 import { useNewMessageToast } from '@/hooks/messenger/useNewMessageToast'
 import { useFaviconBadge } from '@/hooks/messenger/useFaviconBadge'
@@ -90,6 +91,10 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
     if (workspaceId) {
       setContext({ workspaceId })
     }
+    // Закрыть карточку контакта при смене воркспейса — GlobalContactCardDialog
+    // смонтирован на этом layout и не размонтируется при переходе между
+    // воркспейсами, иначе показал бы участника прежнего воркспейса.
+    useContactCardStore.getState().close()
   }, [workspaceId, setContext])
 
   // Единая workspace-level Realtime-подписка на project_messages/message_reactions.

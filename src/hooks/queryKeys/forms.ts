@@ -38,4 +38,10 @@ export const fieldDefinitionKeys = {
     ['field-definitions-for-composite', fieldId] as const,
   projectValues: (projectId: string | undefined, fieldIds: string[]) =>
     ['project-field-values', projectId, fieldIds] as const,
+  /** Broad-prefix всех значений полей проекта (покрывает projectValues). */
+  projectValuesAll: (projectId: string) =>
+    ['project-field-values', projectId] as const,
+  /** Поля по шаблону проекта (для ProjectFieldsSection). */
+  forTemplate: (templateId: string | null) =>
+    ['project-fields-for-template', templateId] as const,
 }

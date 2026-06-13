@@ -83,9 +83,17 @@ export const projectFieldsKeys = {
 export const projectTemplateKeys = {
   all: ['project-template'] as const,
   allList: ['project-templates'] as const,
-  /** Список шаблонов в воркспейсе. */
+  /** Полный список шаблонов воркспейса (select '*', порядок order_index). */
   listByWorkspace: (workspaceId: string | undefined) =>
     ['project-templates', workspaceId] as const,
+  /**
+   * Лёгкий список «id + name» для пикеров (TemplateAccessPopover). Отдельный
+   * ключ от `listByWorkspace`, иначе обрезанные строки `{id,name}` затирали бы
+   * полный кеш (исчезали enabled_modules/description) при глобальном
+   * staleTime LONG.
+   */
+  namesByWorkspace: (workspaceId: string | undefined) =>
+    ['project-templates', 'names', workspaceId] as const,
   /**
    * Лёгкий детальный ключ шаблона: `id, name, enabled_modules, root_folder_id`.
    * Используется в `useProjectData`/`WorkspaceSidebarFull` — там нужен только

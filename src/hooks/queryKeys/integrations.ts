@@ -28,3 +28,16 @@ export const telegramLinkKeys = {
   /** Fallback key when no threadId — matches messengerKeys.telegramLinkByThreadId pattern. */
   noThread: ['messenger', 'telegram-link', 'no-thread'] as const,
 }
+
+/**
+ * Wazzup (WhatsApp/Instagram). Раньше ключи были размазаны: локальный
+ * wazzupKeys в useWazzup.ts + литерал 'my-channels' в WazzupNumbersSection.
+ */
+export const wazzupKeys = {
+  settings: (wsId: string) => ['wazzup', 'settings', wsId] as const,
+  channels: (wsId: string) => ['wazzup', 'channels', wsId] as const,
+  /** Broad-prefix личных каналов сотрудника в воркспейсе. */
+  myChannelsByWorkspace: (wsId: string) => ['wazzup', 'my-channels', wsId] as const,
+  myChannels: (wsId: string, userId: string) =>
+    ['wazzup', 'my-channels', wsId, userId] as const,
+}

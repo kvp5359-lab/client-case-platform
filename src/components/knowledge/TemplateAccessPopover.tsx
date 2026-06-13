@@ -63,9 +63,10 @@ export function TemplateAccessPopover({
   const { table, fkColumn, queryKey, badgeQueryKey } = getAccessConfig(entityType, entityId)
   const isQR = isQuickReply(entityType)
 
-  // Загружаем все шаблоны проектов workspace
+  // Загружаем все шаблоны проектов workspace (лёгкий список id+name —
+  // отдельный кеш-ключ, чтобы не затирать полный кеш listByWorkspace).
   const { data: allTemplates = [] } = useQuery({
-    queryKey: projectTemplateKeys.listByWorkspace(workspaceId),
+    queryKey: projectTemplateKeys.namesByWorkspace(workspaceId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_templates')
@@ -120,6 +121,9 @@ export function TemplateAccessPopover({
   // Добавить связь
   const addMutation = useMutation({
     mutationFn: async (templateId: string) => {
+      // table — union из 4 junction-таблиц с разными fk-колонками, а ключ
+      // payload вычисляемый ([fkColumn]) → статически не сматчить ни с одной
+      // конкретной Insert-формой. Каст здесь обоснован динамикой.
       const payload = { [fkColumn]: entityId, project_template_id: templateId }
       const { error } = await supabase.from(table).insert(payload as never)
       if (error) throw error
@@ -181,7 +185,7 @@ export function TemplateAccessPopover({
       }
       const { error } = await supabase
         .from('quick_replies')
-        .update(patch as never)
+        .update(patch)
         .eq('id', entityId)
       if (error) throw error
     },

@@ -1,16 +1,11 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
 /**
- * Доступ к таблицам модуля «План» до регенерации src/types/database.ts.
- *
- * Таблицы `project_plan_blocks` / `project_template_plan_blocks` создаются
- * миграцией 20260530_plan_module.sql и пока отсутствуют в сгенерированных
- * типах. Чтобы код модуля компилировался до применения миграции и
- * `supabase gen types`, обращаемся к ним через клиент без схемы Database и
- * приводим результаты к локальным типам из `@/types/plan`.
- *
- * После применения миграции и регенерации типов этот мост можно убрать,
- * заменив `planDb.from(...)` на обычный `supabase.from(...)`.
+ * Доступ к таблицам модуля «План» (`project_plan_blocks` /
+ * `project_template_plan_blocks`). Раньше здесь был нетипизированный мост
+ * (`as unknown as SupabaseClient`), пока таблицы отсутствовали в
+ * сгенерированных типах. Сейчас они есть в `@/types/database`, поэтому
+ * `planDb` — это обычный типизированный клиент. Алиас оставлен, чтобы не
+ * трогать call-sites; можно постепенно заменить на `supabase`.
  */
-export const planDb = supabase as unknown as SupabaseClient
+export const planDb = supabase

@@ -180,3 +180,23 @@ export const driveFolderKeys = {
   byFolder: (folderId: string, workspaceId: string) =>
     ['drive-folder-name', folderId, workspaceId] as const,
 }
+
+/**
+ * Профиль подбора ВНЖ проекта (case_profiles, один на проект).
+ */
+export const caseProfileKeys = {
+  all: ['case-profile'] as const,
+  byProject: (projectId: string) => ['case-profile', projectId] as const,
+}
+
+/**
+ * Секции профиля пользователя (личный TG-статус, свой participant и т.п.).
+ * Раньше были литералами в PersonalTelegramSection (один из них залезал в
+ * чужой namespace 'participant').
+ */
+export const profileSectionKeys = {
+  selfParticipant: (workspaceId: string, userId: string) =>
+    ['profile', 'self-participant', workspaceId, userId] as const,
+  tgStatus: (workspaceId: string, userId: string) =>
+    ['profile', 'tg-status', workspaceId, userId] as const,
+}

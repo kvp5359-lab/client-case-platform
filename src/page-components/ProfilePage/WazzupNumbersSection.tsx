@@ -13,7 +13,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { STALE_TIME, wazzupKeys } from '@/hooks/queryKeys'
 import { WhatsAppIcon } from '@/components/messenger/brandIcons'
 import { cn } from '@/lib/utils'
 import { IntegrationRow } from './IntegrationRow'
@@ -37,7 +37,7 @@ export function WazzupNumbersSection({ workspaceId }: { workspaceId: string | nu
   const { user } = useAuth()
 
   const { data: channels = [] } = useQuery({
-    queryKey: ['wazzup', 'my-channels', workspaceId ?? '', user?.id ?? ''],
+    queryKey: wazzupKeys.myChannels(workspaceId ?? '', user?.id ?? ''),
     queryFn: async (): Promise<MyWazzupChannel[]> => {
       const { data, error } = await supabase
         .from('wazzup_channels')

@@ -3,6 +3,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { boardKeys } from '@/hooks/queryKeys'
+import { toSupabaseJson } from '@/utils/supabaseJson'
+import type { TablesUpdate, TablesInsert } from '@/types/database'
 import type { BoardList, DisplayMode, VisibleField, GroupByField, ListHeight, CardLayout, CalendarSettings } from '../types'
 import type { FilterGroup, SortField, SortDir } from '@/lib/filters/types'
 
@@ -78,17 +80,19 @@ export function useUpdateList() {
 
   return useMutation({
     mutationFn: async (params: UpdateListParams) => {
-      const { id, board_id, filters, card_layout, ...rest } = params
+      const { id, board_id, filters, card_layout, calendar_settings, ...rest } = params
       void board_id // used in onSuccess
-      const updatePayload: Record<string, unknown> = {
+      const updatePayload: TablesUpdate<'board_lists'> = {
         ...rest,
         updated_at: new Date().toISOString(),
       }
-      if (filters) updatePayload.filters = filters as unknown
-      if (card_layout !== undefined) updatePayload.card_layout = card_layout as unknown
+      if (filters) updatePayload.filters = toSupabaseJson(filters)
+      if (card_layout !== undefined) updatePayload.card_layout = toSupabaseJson(card_layout)
+      if (calendar_settings !== undefined)
+        updatePayload.calendar_settings = toSupabaseJson(calendar_settings)
       const { data, error } = await supabase
         .from('board_lists')
-        .update(updatePayload as never)
+        .update(updatePayload)
         .eq('id', id)
         .select()
         .single()
@@ -194,26 +198,26 @@ export function useDuplicateList() {
         : 0
 
       // 3) вставляем копию со всеми параметрами оригинала
-      const copyPayload: Record<string, unknown> = {
+      const copyPayload: TablesInsert<'board_lists'> = {
         board_id: source.board_id,
         name: `${source.name} (копия)`,
         entity_type: source.entity_type,
         column_index: source.column_index,
         sort_order: nextSortOrder,
-        filters: source.filters as unknown,
+        filters: toSupabaseJson(source.filters),
         sort_by: source.sort_by,
         sort_dir: source.sort_dir,
         display_mode: source.display_mode,
-        visible_fields: source.visible_fields as unknown,
+        visible_fields: source.visible_fields,
         group_by: source.group_by,
         list_height: source.list_height,
         header_color: source.header_color,
-        card_layout: source.card_layout as unknown,
-        calendar_settings: source.calendar_settings as unknown,
+        card_layout: toSupabaseJson(source.card_layout),
+        calendar_settings: toSupabaseJson(source.calendar_settings),
       }
       const { data, error } = await supabase
         .from('board_lists')
-        .insert(copyPayload as never)
+        .insert(copyPayload)
         .select()
         .single()
       if (error) throw error

@@ -88,7 +88,7 @@ export type OperationsActions = {
 
 export type OperationsSlice = OperationsState & OperationsActions
 
-const initialOperationsState: OperationsState = {
+export const initialOperationsState: OperationsState = {
   // AI check
   isCheckingDocument: false,
   suggestedNames: [],

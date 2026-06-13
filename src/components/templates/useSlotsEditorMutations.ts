@@ -55,6 +55,9 @@ export function useSlotsEditorMutations(config: SlotTableConfig, slots: Slot[]) 
       const maxOrder = slots.length > 0 ? Math.max(...slots.map((s) => s.sort_order || 0)) : -1
       const data = typeof input === 'string' ? { name: input } : input
 
+      // config.table — union из 2 slot-таблиц с разными fk-колонками,
+      // ключ [config.foreignKey] вычисляемый → статически не сматчить с
+      // конкретной Insert-формой. Каст обоснован динамикой конфига.
       const { error } = await supabase.from(config.table).insert({
         [config.foreignKey]: config.foreignKeyValue,
         ...config.extraInsertFields,
@@ -90,6 +93,8 @@ export function useSlotsEditorMutations(config: SlotTableConfig, slots: Slot[]) 
   const updateMutation = useMutation({
     mutationFn: async (input: UpdateSlotInput) => {
       const { id, ...rest } = input
+      // config.table — union из 2 slot-таблиц; supabase-js не сводит Update-форму
+      // по union к одной → каст. Поля общие для обеих таблиц.
       const { error } = await supabase
         .from(config.table)
         .update({

@@ -17,7 +17,7 @@ import { planDb } from './planDb'
 import { planKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { PlanBlockRow, PlanBlockType, PlanBlockUpdate } from '@/types/plan'
 
-const TABLE = 'project_plan_blocks'
+const TABLE = 'project_plan_blocks' as const
 
 export function useProjectPlan(projectId: string | undefined, workspaceId: string | undefined) {
   const queryClient = useQueryClient()

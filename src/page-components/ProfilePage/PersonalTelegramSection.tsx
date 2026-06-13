@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Send } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { STALE_TIME, profileSectionKeys } from '@/hooks/queryKeys'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
 import { PersonalTelegramSection } from '@/page-components/workspace-settings/IntegrationsTab/PersonalTelegramSection'
 import { IntegrationRow } from './IntegrationRow'
@@ -27,7 +27,7 @@ export function ProfilePersonalTelegramSection({
 
   // Свой participant в текущем воркспейсе — RLS пускает к собственной строке.
   const { data: me } = useQuery({
-    queryKey: ['participant', 'self', workspaceId ?? '', user?.id ?? ''],
+    queryKey: profileSectionKeys.selfParticipant(workspaceId ?? '', user?.id ?? ''),
     queryFn: async (): Promise<WorkspaceParticipant | null> => {
       const { data, error } = await supabase
         .from('participants')
@@ -45,7 +45,7 @@ export function ProfilePersonalTelegramSection({
 
   // Статус для свёрнутой строки: подключён ли личный TG (MTProto или Business).
   const { data: connected = false } = useQuery({
-    queryKey: ['profile', 'tg-status', workspaceId ?? '', user?.id ?? ''],
+    queryKey: profileSectionKeys.tgStatus(workspaceId ?? '', user?.id ?? ''),
     queryFn: async (): Promise<boolean> => {
       const [mt, biz] = await Promise.all([
         supabase

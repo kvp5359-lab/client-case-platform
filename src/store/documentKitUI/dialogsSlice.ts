@@ -86,7 +86,7 @@ export type DialogsActions = {
 
 export type DialogsSlice = DialogsState & DialogsActions
 
-const initialDialogsState: DialogsState = {
+export const initialDialogsState: DialogsState = {
   // Move dialog
   moveDialogOpen: false,
   documentToMove: null,

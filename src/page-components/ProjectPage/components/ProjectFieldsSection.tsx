@@ -17,7 +17,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import type { FieldDefinition, FieldOptions } from '@/types/formKit'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
-import { projectFieldsKeys } from '@/hooks/queryKeys'
+import { projectFieldsKeys, fieldDefinitionKeys } from '@/hooks/queryKeys'
 import { RowField, type EntryRow } from './ProjectFieldsSection/RowField'
 
 type Props = {
@@ -33,9 +33,8 @@ type LinkedField = {
   field: FieldDefinition
 }
 
-const fieldsKey = (templateId: string | null) =>
-  ['project-fields-for-template', templateId] as const
-const valuesKey = (projectId: string) => ['project-field-values', projectId] as const
+const fieldsKey = fieldDefinitionKeys.forTemplate
+const valuesKey = fieldDefinitionKeys.projectValuesAll
 
 export function ProjectFieldsSection({ projectId, templateId, disabled }: Props) {
   const queryClient = useQueryClient()

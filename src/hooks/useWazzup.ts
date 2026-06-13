@@ -13,6 +13,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { wazzupKeys } from '@/hooks/queryKeys'
 
 export type WazzupSettings = {
   workspace_id: string
@@ -32,11 +33,6 @@ export type WazzupChannel = {
   state: string | null
   is_active: boolean
   last_synced_at: string | null
-}
-
-const wazzupKeys = {
-  settings: (wsId: string) => ['wazzup', 'settings', wsId] as const,
-  channels: (wsId: string) => ['wazzup', 'channels', wsId] as const,
 }
 
 export function useWazzupSettings(workspaceId: string | undefined) {
@@ -135,6 +131,7 @@ export function useFetchWazzupChannels(workspaceId: string | undefined) {
     },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: wazzupKeys.channels(workspaceId ?? '') })
+      qc.invalidateQueries({ queryKey: wazzupKeys.myChannelsByWorkspace(workspaceId ?? '') })
       toast.success(`Загружено каналов: ${result.count}`)
     },
     onError: (err: Error) => {
@@ -155,6 +152,8 @@ export function useAssignWazzupChannelUser(workspaceId: string | undefined) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: wazzupKeys.channels(workspaceId ?? '') })
+      // Личный список каналов сотрудника (в профиле) тоже зависит от привязки.
+      qc.invalidateQueries({ queryKey: wazzupKeys.myChannelsByWorkspace(workspaceId ?? '') })
       toast.success('Канал привязан')
     },
     onError: (err: Error) => {

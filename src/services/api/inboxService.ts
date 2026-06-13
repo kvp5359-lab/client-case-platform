@@ -118,10 +118,10 @@ export async function getInboxMessageStatuses(
   workspaceId: string,
   userId: string,
 ): Promise<InboxMessageStatus[]> {
-  const { data, error } = await supabase.rpc('get_inbox_message_status' as never, {
+  const { data, error } = await supabase.rpc('get_inbox_message_status', {
     p_workspace_id: workspaceId,
     p_user_id: userId,
-  } as never)
+  })
 
   if (error) throw new ApiError(`Ошибка загрузки статусов доставки: ${error.message}`)
   return (data ?? []) as unknown as InboxMessageStatus[]
@@ -137,11 +137,11 @@ export async function getInboxSearchThreads(
   userId: string,
   query: string,
 ): Promise<InboxThreadEntry[]> {
-  const { data, error } = await supabase.rpc('get_inbox_search_threads' as never, {
+  const { data, error } = await supabase.rpc('get_inbox_search_threads', {
     p_workspace_id: workspaceId,
     p_user_id: userId,
     p_query: query,
-  } as never)
+  })
 
   if (error) throw new ApiError(`Ошибка поиска по входящим: ${error.message}`)
   return (data ?? []) as unknown as InboxThreadEntry[]
@@ -159,11 +159,11 @@ export async function getInboxThreadOne(
   userId: string,
   threadId: string,
 ): Promise<InboxThreadEntry | null> {
-  const { data, error } = await supabase.rpc('get_inbox_thread_one' as never, {
+  const { data, error } = await supabase.rpc('get_inbox_thread_one', {
     p_workspace_id: workspaceId,
     p_user_id: userId,
     p_thread_id: threadId,
-  } as never)
+  })
 
   if (error) throw new ApiError(`Ошибка загрузки треда: ${error.message}`)
   const rows = (data ?? []) as unknown as InboxThreadEntry[]
@@ -180,10 +180,10 @@ export async function getInboxUnreadThreads(
   workspaceId: string,
   userId: string,
 ): Promise<InboxThreadEntry[]> {
-  const { data, error } = await supabase.rpc('get_inbox_unread_threads' as never, {
+  const { data, error } = await supabase.rpc('get_inbox_unread_threads', {
     p_workspace_id: workspaceId,
     p_user_id: userId,
-  } as never)
+  })
 
   if (error) throw new ApiError(`Ошибка загрузки непрочитанных: ${error.message}`)
   return (data ?? []) as unknown as InboxThreadEntry[]
@@ -211,10 +211,10 @@ export async function getInboxThreadAggregates(
   workspaceId: string,
   userId: string,
 ): Promise<InboxThreadAggregate[]> {
-  const { data, error } = await supabase.rpc('get_inbox_thread_aggregates' as never, {
+  const { data, error } = await supabase.rpc('get_inbox_thread_aggregates', {
     p_workspace_id: workspaceId,
     p_user_id: userId,
-  } as never)
+  })
 
   if (error) throw new ApiError(`Ошибка загрузки агрегатов: ${error.message}`)
   return (data ?? []) as unknown as InboxThreadAggregate[]
@@ -246,13 +246,13 @@ export async function getInboxThreadsPage(
   cursor: InboxPageCursor,
   limit: number = INBOX_PAGE_SIZE,
 ): Promise<InboxThreadsPage> {
-  const { data, error } = await supabase.rpc('get_inbox_threads_page' as never, {
+  const { data, error } = await supabase.rpc('get_inbox_threads_page', {
     p_workspace_id: workspaceId,
     p_user_id: userId,
-    p_cursor_sort_at: cursor?.sortAt ?? null,
-    p_cursor_thread_id: cursor?.threadId ?? null,
+    p_cursor_sort_at: cursor?.sortAt ?? undefined,
+    p_cursor_thread_id: cursor?.threadId ?? undefined,
     p_limit: limit,
-  } as never)
+  })
 
   if (error) throw new ApiError(`Ошибка загрузки страницы входящих: ${error.message}`)
   const items = (data ?? []) as unknown as InboxThreadPageEntry[]

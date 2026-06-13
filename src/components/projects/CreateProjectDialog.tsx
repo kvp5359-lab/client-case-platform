@@ -41,20 +41,28 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess }: CreatePro
 
   const activeTemplateId = templateId && templateId !== 'none' ? templateId : undefined
 
-  const { data: projectTemplates = [] } = useQuery({
+  const { data: projectTemplatesRaw = [] } = useQuery({
     queryKey: projectTemplateKeys.listByWorkspace(currentWorkspaceId),
     queryFn: async () => {
       if (!currentWorkspaceId) return []
+      // Тот же queryFn и порядок (order_index), что у редактора шаблонов
+      // (ProjectTemplatesContent через useTemplateList) — иначе общий кеш-ключ
+      // `['project-templates', ws]` перетирался бы разным порядком.
       const { data, error } = await supabase
         .from('project_templates')
         .select('*')
         .eq('workspace_id', currentWorkspaceId)
-        .order('name', { ascending: true })
+        .order('order_index', { ascending: true })
       if (error) throw error
       return data || []
     },
     enabled: !!currentWorkspaceId && open,
   })
+  // Для пикера показываем по алфавиту — сортируем на клиенте, не трогая кеш.
+  const projectTemplates = useMemo(
+    () => [...projectTemplatesRaw].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')),
+    [projectTemplatesRaw],
+  )
 
   const { data: linkedDocKits = [] } = useQuery({
     queryKey: projectTemplateKeys.documentKits(activeTemplateId),

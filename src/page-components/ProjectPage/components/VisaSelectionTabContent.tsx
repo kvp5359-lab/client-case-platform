@@ -20,6 +20,7 @@ import { MultiSelect } from '@/components/ui/multi-select'
 import type { Answers } from '@/lib/residence/ruleEvaluator'
 import { ResidenceMatcher } from '@/components/residence/ResidenceMatcher'
 import { useCaseProfile, useSaveCaseProfile, type CaseProfile } from '@/hooks/useCaseProfile'
+import { caseProfileKeys } from '@/hooks/queryKeys'
 
 export function VisaSelectionTabContent({ projectId, workspaceId }: { projectId: string; workspaceId: string }) {
   const profileQ = useCaseProfile(projectId)
@@ -67,7 +68,7 @@ function Inner({
     })
     try {
       await supabase.functions.invoke('residence-match', { body: { project_id: projectId } })
-      qc.invalidateQueries({ queryKey: ['case-profile', projectId] })
+      qc.invalidateQueries({ queryKey: caseProfileKeys.byProject(projectId) })
     } catch {
       /* снимок не обновлён, но ответы сохранены */
     }

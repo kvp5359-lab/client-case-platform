@@ -17,7 +17,7 @@ import { planDb } from './planDb'
 import { planKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { TemplatePlanBlockRow, PlanBlockType, PlanBlockUpdate } from '@/types/plan'
 
-const TABLE = 'project_template_plan_blocks'
+const TABLE = 'project_template_plan_blocks' as const
 
 export function useTemplatePlan(
   templateId: string | undefined,

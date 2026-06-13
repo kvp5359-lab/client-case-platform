@@ -18,6 +18,7 @@ import { getProjectMessages, getThreadMessages } from '@/services/api/messenger/
 import { type ConversationSources, migrateLegacySources } from '@/services/api/knowledge/knowledgeSearchService'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { supabase } from '@/lib/supabase'
+import { toSupabaseJson } from '@/utils/supabaseJson'
 import { AiChatInput } from './AiChatInput'
 import { AiMessageBubble } from './AiMessageBubble'
 import { AiStreamingBubble } from './AiStreamingBubble'
@@ -211,7 +212,7 @@ export function ProjectAiChat({
         if (convId) {
           supabase
             .from('knowledge_conversations')
-            .update({ sources: s } as never)
+            .update({ sources: toSupabaseJson(s) })
             .eq('id', convId)
             .then(({ error }) => {
               if (error) logger.debug('Не удалось сохранить sources диалога:', error)

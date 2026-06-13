@@ -52,7 +52,7 @@ export type UIActions = {
 
 export type UISlice = UIState & UIActions
 
-const initialUIState: UIState = {
+export const initialUIState: UIState = {
   collapsedFolders: new Set(),
   uploadingFiles: [],
   targetFolderId: null,

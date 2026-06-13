@@ -15,8 +15,19 @@ import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
+/**
+ * Таблицы шаблонов, с которыми работает этот table-generic хук. Union вместо
+ * `string` не даёт передать произвольное имя таблицы. Сам клиент остаётся
+ * динамическим (см. ниже) — supabase-js не выводит per-table типы при
+ * рантайм-выборе таблицы, а CRUD-форма здесь общая для всех трёх.
+ */
+export type TemplateTableName =
+  | 'document_kit_templates'
+  | 'folder_templates'
+  | 'project_templates'
+
 type SupabaseDynamic = {
-  from: (table: string) => {
+  from: (table: TemplateTableName) => {
     select: (cols: string) => {
       eq: (col: string, val: unknown) => {
         order: (col: string, opts: unknown) => Promise<{ data: unknown[] | null; error: { message: string } | null }>
@@ -40,7 +51,7 @@ type AnyRecord = Record<string, unknown>
 
 type UseTemplateListConfig<T, TFormData> = {
   /** Ключ таблицы в Supabase */
-  tableName: string
+  tableName: TemplateTableName
   /** Ключ для React Query */
   queryKey: string
   /** ID рабочего пространства */
