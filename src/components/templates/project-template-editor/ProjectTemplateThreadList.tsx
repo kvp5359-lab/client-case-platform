@@ -13,7 +13,7 @@
 "use client"
 
 import { useState, useCallback, useMemo } from 'react'
-import { useQueryClient, useMutation } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   DndContext,
   closestCenter,
@@ -22,18 +22,9 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  arrayMove,
-  useSortable,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { Button } from '@/components/ui/button'
-import { Plus, Trash2, GripVertical, Heading, Type as TypeIcon } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
-import { toast } from 'sonner'
-import { logger } from '@/utils/logger'
+import { Plus, Heading, Type as TypeIcon } from 'lucide-react'
 import { threadTemplateKeys, planKeys } from '@/hooks/queryKeys'
 import { useThreadTemplatesByProjectTemplate } from '@/hooks/messenger/useThreadTemplates'
 import { useTemplatePlan } from '@/hooks/plan/useTemplatePlan'
@@ -43,7 +34,8 @@ import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ThreadTemplateDialog } from '../ThreadTemplateDialog'
 import { SortableTemplateRow } from './SortableTemplateRow'
-import { HeadingBlockBody, TextBlockBody, htmlToPlain } from '@/components/plan/PlanBlockItem'
+import { SortableContentRow } from './SortableContentRow'
+import { useProjectTemplateThreadListMutations } from './useProjectTemplateThreadListMutations'
 import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTemplate'
 import type { TemplatePlanBlockRow } from '@/types/plan'
 
@@ -129,123 +121,13 @@ export function ProjectTemplateThreadList({
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ThreadTemplate | null>(null)
 
-  const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: threadTemplateKeys.byProjectTemplate(projectTemplateId),
+  const { saveMutation, deleteMutation, copyMutation, reorderMutation } =
+    useProjectTemplateThreadListMutations({
+      workspaceId,
+      projectTemplateId,
+      maxSort,
+      setBlockOrders,
     })
-    queryClient.invalidateQueries({ queryKey: threadTemplateKeys.all })
-    queryClient.invalidateQueries({ queryKey: planKeys.templateByTemplate(projectTemplateId) })
-  }, [queryClient, projectTemplateId])
-
-  // ── Save ──
-  const saveMutation = useMutation({
-    mutationFn: async ({
-      data,
-      templateId,
-    }: {
-      data: ThreadTemplateFormData
-      templateId: string | null
-    }) => {
-      const { assignee_ids, ...templateData } = data
-
-      if (templateId) {
-        const { error } = await supabase.rpc('update_thread_template_with_assignees', {
-          p_template_id: templateId,
-          p_updates: templateData,
-          p_assignee_ids: assignee_ids,
-        })
-        if (error) throw error
-      } else {
-        const nextSort = maxSort + 1
-        const { data: created, error } = await supabase
-          .from('thread_templates')
-          .insert({
-            ...templateData,
-            workspace_id: workspaceId,
-            owner_project_template_id: projectTemplateId,
-            sort_order: nextSort,
-          })
-          .select('id')
-          .single()
-        if (error) throw error
-        if (assignee_ids.length > 0) {
-          const { error: aErr } = await supabase
-            .from('thread_template_assignees')
-            .insert(assignee_ids.map((pid) => ({ template_id: created.id, participant_id: pid })))
-          if (aErr) throw aErr
-        }
-      }
-    },
-    onSuccess: () => {
-      invalidate()
-      setIsDialogOpen(false)
-      setEditingItem(null)
-      toast.success('Шаблон сохранён')
-    },
-    onError: (error) => {
-      logger.error('Ошибка сохранения шаблона треда:', error)
-      toast.error('Не удалось сохранить шаблон')
-    },
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('thread_templates').delete().eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => {
-      invalidate()
-      toast.success('Шаблон удалён')
-    },
-    onError: (error) => {
-      logger.error('Ошибка удаления шаблона треда:', error)
-      toast.error('Не удалось удалить шаблон')
-    },
-  })
-
-  const copyMutation = useMutation({
-    mutationFn: async (item: ThreadTemplate) => {
-      const { error } = await supabase.rpc('copy_thread_template', {
-        p_template_id: item.id,
-      })
-      if (error) throw error
-    },
-    onSuccess: () => {
-      invalidate()
-      toast.success('Шаблон скопирован')
-    },
-    onError: (error) => {
-      logger.error('Ошибка копирования шаблона треда:', error)
-      toast.error('Не удалось скопировать шаблон')
-    },
-  })
-
-  // ── Reorder (единый) ──
-  // Нумеруем общий список заново и пишем sort_order по индексу: задачи в
-  // thread_templates, блоки в project_template_plan_blocks.
-  const reorderMutation = useMutation({
-    mutationFn: async ({
-      taskOrders,
-      blockOrders,
-    }: {
-      taskOrders: { id: string; sort_order: number }[]
-      blockOrders: { id: string; sort_order: number }[]
-    }) => {
-      const results = await Promise.all(
-        taskOrders.map((o) =>
-          supabase.from('thread_templates').update({ sort_order: o.sort_order }).eq('id', o.id),
-        ),
-      )
-      const firstError = results.find((r) => r.error)?.error
-      if (firstError) throw firstError
-      if (blockOrders.length > 0) await setBlockOrders(blockOrders)
-    },
-    onError: (error) => {
-      logger.error('Ошибка переупорядочивания списка задач:', error)
-      toast.error('Не удалось сохранить порядок')
-      invalidate()
-    },
-  })
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -318,7 +200,15 @@ export function ProjectTemplateThreadList({
   }
 
   const handleSave = (data: ThreadTemplateFormData) => {
-    saveMutation.mutate({ data, templateId: editingItem?.id ?? null })
+    saveMutation.mutate(
+      { data, templateId: editingItem?.id ?? null },
+      {
+        onSuccess: () => {
+          setIsDialogOpen(false)
+          setEditingItem(null)
+        },
+      },
+    )
   }
 
   return (
@@ -424,94 +314,6 @@ export function ProjectTemplateThreadList({
       />
 
       <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
-    </div>
-  )
-}
-
-// ── Строка структурного блока (заголовок / текст) ──────────
-
-function SortableContentRow({
-  block,
-  onChangeContent,
-  onDelete,
-}: {
-  block: TemplatePlanBlockRow
-  onChangeContent: (content: string) => void
-  onDelete: () => void
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: block.id,
-  })
-  const [editingText, setEditingText] = useState(false)
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    position: 'relative',
-    zIndex: isDragging ? 10 : undefined,
-  }
-
-  const plain = htmlToPlain(block.content ?? '')
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="flex items-start gap-2 px-2 rounded group hover:bg-muted/60 transition-colors py-1"
-    >
-      <button
-        type="button"
-        className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-        aria-label="Переупорядочить"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
-      </button>
-
-      <div className="min-w-0 flex-1">
-        {block.block_type === 'heading' ? (
-          <HeadingBlockBody content={block.content} editing onChange={onChangeContent} />
-        ) : editingText ? (
-          <TextBlockBody
-            content={block.content}
-            onChange={onChangeContent}
-            onClose={() => setEditingText(false)}
-          />
-        ) : (
-          <div
-            className="cursor-text rounded -mx-1 px-1 py-0.5 hover:bg-muted/50"
-            role="button"
-            tabIndex={0}
-            onClick={() => setEditingText(true)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                setEditingText(true)
-              }
-            }}
-          >
-            {plain ? (
-              <p className="text-sm whitespace-pre-wrap">{plain}</p>
-            ) : (
-              <p className="text-sm italic text-muted-foreground">
-                Нажмите, чтобы добавить текст
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-        onClick={onDelete}
-        title="Удалить"
-      >
-        <Trash2 className="w-3 h-3" />
-      </Button>
     </div>
   )
 }
