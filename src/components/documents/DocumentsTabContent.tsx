@@ -52,6 +52,7 @@ import { useProjectPermissions } from '@/hooks/permissions/useProjectPermissions
 import { toggleSourceDocumentHidden } from '@/services/documents/sourceDocumentService'
 import { useDocumentSelection } from '@/hooks/documents/useDocumentSelection'
 import { CreateDriveFoldersDialog } from '@/components/documents/Documents/CreateDriveFoldersDialog'
+import { CommentCountsProvider } from '@/components/comments/CommentCountsContext'
 
 // === ТИПЫ ===
 
@@ -125,6 +126,18 @@ export function DocumentsTabContent({
     documentKits,
     kitlessDocuments,
     folderSlots,
+  )
+
+  // Пакетная загрузка счётчиков комментариев (P5): один запрос на тип вместо
+  // запроса на каждый бейдж. Карточное дерево рисует бейджи только у документов
+  // и папок (у слотов-карточек бейджа нет).
+  const commentDocumentIds = useMemo(
+    () => allDocumentsFlat.map((d) => d.id),
+    [allDocumentsFlat],
+  )
+  const commentFolderIds = useMemo(
+    () => documentKits.flatMap((k) => (k.folders ?? []).map((f) => f.id)),
+    [documentKits],
   )
 
   // Selection
@@ -380,6 +393,7 @@ export function DocumentsTabContent({
 
   return (
     <DocumentsProvider {...providerProps}>
+      <CommentCountsProvider documentIds={commentDocumentIds} folderIds={commentFolderIds}>
       <TooltipProvider>
         <DocumentsToolbar
           filterMode={filterMode}
@@ -468,6 +482,7 @@ export function DocumentsTabContent({
           defaultProjectFolderName={projectName}
         />
       </TooltipProvider>
+      </CommentCountsProvider>
     </DocumentsProvider>
   )
 }

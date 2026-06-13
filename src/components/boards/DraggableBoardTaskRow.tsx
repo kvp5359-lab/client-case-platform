@@ -29,6 +29,8 @@ type DraggableBoardTaskRowProps = {
   dropIndicator: 'top' | 'bottom' | null
   /** Только что отпущена сюда — кратко подсвечиваем фон. */
   justDropped?: boolean
+  /** Имя собеседника из карты на уровне доски (P4b: значение пропом, не per-row хук). */
+  counterpartName: string | null
 }
 
 export const DraggableBoardTaskRow = memo(function DraggableBoardTaskRow({

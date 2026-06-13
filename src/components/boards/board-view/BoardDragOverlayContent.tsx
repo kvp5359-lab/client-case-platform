@@ -8,6 +8,7 @@
 
 import { BoardProjectRow } from '../BoardProjectRow'
 import { BoardTaskRow } from '../BoardTaskRow'
+import { useThreadCounterpartName } from '@/hooks/messenger/useThreadCounterpartName'
 import { hexToHeaderStyle, type BoardList } from '../types'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { StatusOption } from '@/components/common/status-dropdown'
@@ -36,6 +37,11 @@ export function BoardDragOverlayContent({
   assigneesMap,
   statuses,
 }: Props) {
+  // Overlay — одна перетаскиваемая строка; одиночный хук безопасен (не список).
+  // Вызываем до early-returns (правила хуков); для не-task — пустой id → null.
+  const overlayTaskId = activeCard?.kind === 'task' ? activeCard.task.id : ''
+  const overlayCounterpartName = useThreadCounterpartName(overlayTaskId, workspaceId)
+
   if (isOverCalendar) return null
 
   if (activeList) {
@@ -81,6 +87,7 @@ export function BoardDragOverlayContent({
           cardLayout={sourceList?.card_layout ?? null}
           onOpenTask={() => {}}
           onStatusChange={() => {}}
+          counterpartName={overlayCounterpartName}
         />
       </div>
     )

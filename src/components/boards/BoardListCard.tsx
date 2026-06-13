@@ -5,6 +5,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { cn } from '@/lib/utils'
 import { BoardGroupDropZone, BoardListCardsDropZone } from './board-list/BoardListDropZones'
 import { useBoardListCardSetup } from './hooks/useBoardListCardSetup'
+import { useThreadCounterpartNameMap } from '@/hooks/messenger/useThreadCounterpartName'
 import { DraggableBoardTaskRow } from './DraggableBoardTaskRow'
 import { DraggableBoardProjectRow } from './DraggableBoardProjectRow'
 import { BoardInboxList } from './BoardInboxList'
@@ -80,6 +81,9 @@ export function BoardListCard({
   boardGlobalFilter,
   boardCardDnd,
 }: BoardListCardProps) {
+  // P4b: одна подписка на inbox-кэш на колонку доски + карта (значение пропом
+  // в строки), вместо подписки в каждой из строк колонки.
+  const counterpartNameMap = useThreadCounterpartNameMap(workspaceId)
   const {
     userCollapsed,
     setUserCollapsed,
@@ -285,6 +289,7 @@ export function BoardListCard({
                               cardLayout={list.card_layout}
                               dropIndicator={indicatorForRow('thread', task.id)}
                               justDropped={boardCardDnd?.recentlyDroppedId === `thread:${task.id}`}
+                              counterpartName={counterpartNameMap.get(task.id) ?? null}
                             />
                           ))}
                         </div>
@@ -316,6 +321,7 @@ export function BoardListCard({
                         cardLayout={list.card_layout}
                         dropIndicator={indicatorForRow('thread', task.id)}
                         justDropped={boardCardDnd?.recentlyDroppedId === `thread:${task.id}`}
+                        counterpartName={counterpartNameMap.get(task.id) ?? null}
                       />
                     ))}
                   </div>

@@ -4,6 +4,7 @@ import { useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWorkspaceThreads, type WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
+import { useThreadCounterpartNameMap } from '@/hooks/messenger/useThreadCounterpartName'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useFilteredTasks } from '@/components/boards/hooks/useFilteredListData'
 import type { FilterContext, FilterGroup } from '@/lib/filters/types'
@@ -38,6 +39,9 @@ export function ThreadTableView({
   const taskIds = useMemo(() => threads.map((t) => t.id), [threads])
   const { data: assigneesMap = {} } = useTaskAssigneesMap(taskIds)
   const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)
+  // P4b: одна подписка на inbox-кэш + карта на уровне таблицы (значение пропом
+  // в строки), вместо подписки в каждой из ~1000 строк.
+  const counterpartNameMap = useThreadCounterpartNameMap(workspaceId)
 
   const ctx = useMemo<FilterContext>(
     () => ({
@@ -114,6 +118,7 @@ export function ThreadTableView({
           onOpen={handleOpen}
           assigneesMap={assigneesMap}
           taskStatuses={taskStatuses}
+          counterpartName={counterpartNameMap.get(task.id) ?? null}
         />
       )}
       items={filtered}

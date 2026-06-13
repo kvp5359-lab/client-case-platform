@@ -7,7 +7,6 @@ import { StatusDropdown, type StatusOption } from '@/components/common/status-dr
 import { ParticipantAvatars, type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { UnreadBadge } from '@/components/tasks/UnreadBadge'
 import { TaskActionsMenu } from '@/components/tasks/TaskActionsMenu'
-import { useThreadCounterpartName } from '@/hooks/messenger/useThreadCounterpartName'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField } from './types'
 import { getDeadlineAccentClass, formatDeadlineDisplay } from '@/utils/deadlineUtils'
@@ -30,23 +29,25 @@ type BoardTaskRowProps = {
   onDeadlineChange?: (taskId: string, deadline: string | null) => void
   isSelected?: boolean
   cardLayout?: CardLayout | null
+  /** Имя собеседника из карты на уровне доски (P4b: не звать per-row хук). */
+  counterpartName: string | null
 }
 
 /** Поле «проект»: если тред не привязан к проекту, показываем имя контакта. */
 function ProjectOrCounterpartField({
   task,
-  workspaceId,
+  counterpartName,
   classes,
   rowHasRightAligned,
 }: {
   task: WorkspaceTask
-  workspaceId: string
+  /** Имя собеседника из карты на уровне доски (P4b: не звать per-row хук). */
+  counterpartName: string | null
   classes: string
   /** В этой же строке есть поле с align=right — значит project не должен
    *  забирать всё свободное место (иначе ml-auto у time/deadline не сработает). */
   rowHasRightAligned: boolean
 }) {
-  const counterpartName = useThreadCounterpartName(task.id, workspaceId)
   const value = task.project_name ?? counterpartName
   if (!value) return null
   // grow=1 → поле забирает свободное место первым (иначе ml-auto у time/deadline
@@ -82,6 +83,7 @@ function TaskField({
   onOpenTask,
   onDeleteTask,
   onDeadlineChange,
+  counterpartName,
   rowHasRightAligned,
 }: {
   fieldId: CardFieldId
@@ -97,6 +99,7 @@ function TaskField({
   onOpenTask: (taskId: string) => void
   onDeleteTask?: (task: WorkspaceTask) => void
   onDeadlineChange?: (taskId: string, deadline: string | null) => void
+  counterpartName: string | null
   rowHasRightAligned: boolean
 }) {
   const classes = fieldStyleToClasses(style)
@@ -167,7 +170,7 @@ function TaskField({
       return (
         <ProjectOrCounterpartField
           task={task}
-          workspaceId={workspaceId}
+          counterpartName={counterpartName}
           classes={classes}
           rowHasRightAligned={rowHasRightAligned}
         />
@@ -226,6 +229,7 @@ export function BoardTaskRow({
   onDeadlineChange,
   isSelected,
   cardLayout,
+  counterpartName,
 }: BoardTaskRowProps) {
   const deadlineFormat = useDeadlineFormat()
   const deadline = formatDeadlineDisplay(task.deadline, deadlineFormat)
@@ -258,6 +262,7 @@ export function BoardTaskRow({
     onOpenTask,
     onDeleteTask,
     onDeadlineChange,
+    counterpartName,
   }
 
   const isCards = displayMode === 'cards'

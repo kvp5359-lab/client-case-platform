@@ -14,6 +14,7 @@ import { MessageCircle } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useProjectPermissions } from '@/hooks/permissions/useProjectPermissions'
 import { useCommentCounts } from '@/hooks/comments'
+import { useBatchedCommentCount } from './CommentCountsContext'
 import { CommentsPopover } from './CommentsPopover'
 import type { CommentEntityType } from '@/types/comments'
 
@@ -42,12 +43,12 @@ export function CommentBadge({
 }: CommentBadgeProps) {
   const { hasModuleAccess } = useProjectPermissions({ projectId })
 
-  // Загружаем count для одной сущности, если не передан извне
-  const { data: countsMap } = useCommentCounts(
-    entityType,
-    externalCount === undefined ? [entityId] : [],
-  )
-  const count = externalCount ?? countsMap?.get(entityId) ?? 0
+  // Приоритет источника счётчика: явный проп → пакетный контекст списка →
+  // собственный одиночный запрос (fallback, когда провайдера нет — формы/задачи).
+  const batchedCount = useBatchedCommentCount(entityType, entityId)
+  const needOwnQuery = externalCount === undefined && batchedCount === undefined
+  const { data: countsMap } = useCommentCounts(entityType, needOwnQuery ? [entityId] : [])
+  const count = externalCount ?? batchedCount ?? countsMap?.get(entityId) ?? 0
   const hasComments = count > 0
 
   if (!hasModuleAccess('comments')) return null

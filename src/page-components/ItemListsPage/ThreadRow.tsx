@@ -9,7 +9,6 @@ import { StatusDropdown, type StatusOption } from '@/components/common/status-dr
 import { DatePicker } from '@/components/ui/date-picker'
 import { useUpdateTaskStatus, useUpdateTaskDeadline } from '@/components/tasks/useTaskMutations'
 import { workspaceThreadKeys } from '@/hooks/queryKeys'
-import { useThreadCounterpartName } from '@/hooks/messenger/useThreadCounterpartName'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { TableShellColumn } from './TableShell'
 import type { ItemListColumnKey } from './columns'
@@ -24,9 +23,11 @@ type ThreadRowProps = {
   onOpen: (task: WorkspaceTask) => void
   assigneesMap: Record<string, { id: string; name?: string | null; last_name?: string | null }[]>
   taskStatuses: StatusOption[]
+  /** Имя собеседника из карты на уровне таблицы (P4b: не звать per-row хук). */
+  counterpartName: string | null
 }
 
-export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, taskStatuses }: ThreadRowProps) {
+export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, taskStatuses, counterpartName }: ThreadRowProps) {
   const updateStatus = useUpdateTaskStatus([
     workspaceThreadKeys.workspace(task.workspace_id),
   ])
@@ -36,7 +37,6 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
 
   const currentStatus = taskStatuses.find((s) => s.id === task.status_id) ?? null
   const assignees = assigneesMap[task.id] ?? []
-  const counterpartName = useThreadCounterpartName(task.id, task.workspace_id)
 
   return (
     <tr className="border-b hover:bg-muted/30">

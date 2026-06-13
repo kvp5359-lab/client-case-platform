@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { CommentCountsProvider } from '@/components/comments/CommentCountsContext'
 import { Loader2 } from 'lucide-react'
 import { PageLoader } from '@/components/ui/loaders'
 import { useDocumentKitSetup } from './DocumentKitsTab/hooks'
@@ -124,6 +125,18 @@ function DocumentKitsTabContent(props: DocumentKitsTabProps) {
     workspaceId: props.workspaceId,
   })
 
+  // Пакетная загрузка счётчиков комментариев (P5): один запрос на тип вместо
+  // запроса на каждый бейдж. Секционное дерево рисует бейджи у документов,
+  // папок и слотов.
+  const commentDocumentIds = useMemo(() => {
+    const ids: string[] = []
+    for (const docs of documentsByFolder.values()) for (const d of docs) ids.push(d.id)
+    for (const d of ungroupedDocuments) ids.push(d.id)
+    return ids
+  }, [documentsByFolder, ungroupedDocuments])
+  const commentFolderIds = useMemo(() => folders.map((f) => f.id), [folders])
+  const commentSlotIds = useMemo(() => folderSlots.map((s) => s.id), [folderSlots])
+
   // === РЕНДЕРИНГ ===
 
   if (isLoading && !kit) {
@@ -143,6 +156,11 @@ function DocumentKitsTabContent(props: DocumentKitsTabProps) {
 
   return (
     <DocumentKitProvider value={contextValue}>
+      <CommentCountsProvider
+        documentIds={commentDocumentIds}
+        folderIds={commentFolderIds}
+        slotIds={commentSlotIds}
+      >
       <div className={showToolbar ? 'space-y-4' : ''}>
         <input
           ref={folderFileInputRef}
@@ -257,6 +275,7 @@ function DocumentKitsTabContent(props: DocumentKitsTabProps) {
           workspaceId={props.workspaceId}
         />
       </div>
+      </CommentCountsProvider>
     </DocumentKitProvider>
   )
 }
