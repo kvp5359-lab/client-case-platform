@@ -705,118 +705,25 @@ export async function handleSlotFileUpload(msg: TgMessage, binding: TgChatBindin
     return;
   }
 
-  const files = collectFiles(msg);
-  if (files.length === 0) {
-    await sendMessage(chatId, "Не вижу файла в сообщении. Прикрепите документ или фото.", {
-      reply_to_message_id: msg.message_id,
-    });
-    return;
-  }
-  if (files.length > 1) {
-    await sendMessage(chatId, "Пожалуйста, пришлите один файл за раз.", {
-      reply_to_message_id: msg.message_id,
-    });
-    return;
-  }
-  const f = files[0];
-
-  // Проверка размера (если есть в описании)
-  const declaredSize =
-    msg.document?.file_size ?? msg.video?.file_size ?? msg.audio?.file_size ?? msg.voice?.file_size ?? 0;
-  if (declaredSize && declaredSize > MAX_FILE_SIZE_MB * 1024 * 1024) {
-    await sendMessage(chatId, `⚠️ Файл больше ${MAX_FILE_SIZE_MB} МБ. Загрузите его через веб-интерфейс ClientCase.`, {
-      reply_to_message_id: msg.message_id,
-    });
+  // Загрузка документа — общий core (тот же, что и у free-upload): collectFiles,
+  // проверка размера, скачивание с ретраями, documents+files+версия+in_progress,
+  // fire-and-forget extract-text. Раньше эта логика (~90 строк) дублировалась
+  // здесь байт-в-байт — теперь делегируем uploadDocumentCore. Документ
+  // создаётся сразу в папке слота (slot.folder_id).
+  const result = await uploadDocumentCore(msg, binding, slot.folder_id);
+  if (!result.ok) {
+    // no_file: сессию слота НЕ чистим — ждём, что пользователь пришлёт файл.
+    // Тексты ошибок — общий mapUploadError (no_file/multiple_files/too_large/
+    // download_failed дословно те же; редкие backend-фейлы → общий текст,
+    // как и в free-upload; детали в console.error внутри core).
+    await sendMessage(chatId, mapUploadError(result.reason), { reply_to_message_id: msg.message_id });
     return;
   }
 
-  // Скачиваем (внутри есть retry на 429/5xx/сеть).
-  const dl = await fetchTelegramFile(f.fileId);
-  if (!dl.ok) {
-    await sendMessage(chatId, `⚠️ Не удалось получить файл (возможно, больше ${MAX_FILE_SIZE_MB} МБ). Загрузите через веб.`, {
-      reply_to_message_id: msg.message_id,
-    });
-    return;
-  }
-
-  // Создаём документ
-  const { data: doc, error: docErr } = await service
-    .from("documents")
-    .insert({
-      folder_id: slot.folder_id,
-      project_id: binding.project_id,
-      workspace_id: binding.workspace_id,
-      name: f.originalName,
-      status: "pending",
-    })
-    .select("id")
-    .single();
-  if (docErr || !doc) {
-    console.error("create doc error:", docErr);
-    await sendMessage(chatId, "⚠️ Не удалось создать документ.", { reply_to_message_id: msg.message_id });
-    return;
-  }
-
-  // Storage
-  const ts = Date.now();
-  const storagePath = `${binding.workspace_id}/${doc.id}/v1_${ts}_${f.safeName}`;
-  const { error: upErr } = await service.storage.from("files").upload(storagePath, dl.buffer, {
-    contentType: f.mimeType,
-    upsert: false,
-  });
-  if (upErr) {
-    console.error("storage upload:", upErr);
-    await service.from("documents").delete().eq("id", doc.id);
-    await sendMessage(chatId, "⚠️ Не удалось загрузить файл в хранилище.", { reply_to_message_id: msg.message_id });
-    return;
-  }
-
-  // files
-  const { data: fileRow, error: fileErr } = await service
-    .from("files")
-    .insert({
-      workspace_id: binding.workspace_id,
-      bucket: "files",
-      storage_path: storagePath,
-      file_name: f.originalName,
-      file_size: dl.buffer.byteLength,
-      mime_type: f.mimeType,
-    })
-    .select("id")
-    .single();
-  if (fileErr || !fileRow) {
-    console.error("files insert:", fileErr);
-    await service.storage.from("files").remove([storagePath]);
-    await service.from("documents").delete().eq("id", doc.id);
-    await sendMessage(chatId, "⚠️ Не удалось сохранить метаданные файла.", { reply_to_message_id: msg.message_id });
-    return;
-  }
-
-  // add_document_version_service RPC (служебный вариант без проверки auth.uid())
-  const { error: verErr } = await service.rpc("add_document_version_service", {
-    p_document_id: doc.id,
-    p_file_path: storagePath,
-    p_file_name: f.originalName,
-    p_file_size: dl.buffer.byteLength,
-    p_mime_type: f.mimeType,
-    p_file_id: fileRow.id,
-  });
-  if (verErr) {
-    console.error("add_document_version:", verErr);
-    // Компенсация
-    await service.storage.from("files").remove([storagePath]);
-    await service.from("files").delete().eq("id", fileRow.id);
-    await service.from("documents").delete().eq("id", doc.id);
-    await sendMessage(chatId, "⚠️ Не удалось зафиксировать версию документа.", { reply_to_message_id: msg.message_id });
-    return;
-  }
-
-  await service.from("documents").update({ status: "in_progress" }).eq("id", doc.id);
-
-  // fill_slot_atomic_service (служебный вариант без проверки auth.uid())
+  // Слот-специфика: атомарно привязываем загруженный документ к слоту.
   const { error: fillErr } = await service.rpc("fill_slot_atomic_service", {
     p_slot_id: slot.id,
-    p_document_id: doc.id,
+    p_document_id: result.docId,
     p_project_id: binding.project_id,
   });
   if (fillErr) {
@@ -831,7 +738,7 @@ export async function handleSlotFileUpload(msg: TgMessage, binding: TgChatBindin
   await clearSession(chatId, from.id);
   await sendMessage(
     chatId,
-    `✅ Документ <b>${escapeHtml(f.originalName)}</b> загружен в слот <b>${escapeHtml(slot.name)}</b>.`,
+    `✅ Документ <b>${escapeHtml(result.fileName)}</b> загружен в слот <b>${escapeHtml(slot.name)}</b>.`,
     {
       reply_to_message_id: msg.message_id,
       reply_markup: {
@@ -851,25 +758,8 @@ export async function handleSlotFileUpload(msg: TgMessage, binding: TgChatBindin
     chatId,
     binding,
     from,
-    `📎 ${formatUserName(from)} загрузил(а) документ «${f.originalName}» в слот «${slot.name}»`,
+    `📎 ${formatUserName(from)} загрузил(а) документ «${result.fileName}» в слот «${slot.name}»`,
     { counted: true },
   );
-
-  // Fire-and-forget: запустить извлечение текста, чтобы документ стал виден
-  // в выборе «Выбрать из проекта» и чтобы работала кнопка «Просмотреть содержимое».
-  const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
-  if (internalSecret) {
-    fetch(`${SUPABASE_URL}/functions/v1/extract-text`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-secret": internalSecret,
-        // Supabase Functions требует Authorization для любого вызова функции —
-        // кладём anon-подобный токен (service-role здесь безопасен, тк функция
-        // сама обнаружит x-internal-secret и не будет полагаться на JWT).
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      body: JSON.stringify({ document_id: doc.id }),
-    }).catch((err) => console.warn("[extract-text] fire-and-forget failed:", err));
-  }
+  // extract-text запускается внутри uploadDocumentCore — отдельный вызов не нужен.
 }
