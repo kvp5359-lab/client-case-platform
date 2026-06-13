@@ -122,6 +122,9 @@ export function useUpdateThreadTime() {
       //    BoardListCalendarView) — апсёртим всегда, в т.ч. для новых
       //    дропнутых задач (entry ещё не было).
       await queryClient.cancelQueries({ queryKey: calendarKeys.all })
+      // Снимок для rollback в onError — иначе при неудачном drag/resize
+      // оптимистичная граница остаётся на новом месте до рефетча.
+      const snapshot = queryClient.getQueriesData({ queryKey: calendarKeys.all })
       queryClient.setQueriesData(
         { queryKey: calendarKeys.all },
         (old: unknown) => {
@@ -144,6 +147,11 @@ export function useUpdateThreadTime() {
           return old
         },
       )
+      return { snapshot }
+    },
+    onError: (_err, _params, ctx) => {
+      // Восстанавливаем кэш из снимка onMutate.
+      ctx?.snapshot?.forEach(([key, data]) => queryClient.setQueryData(key, data))
     },
     onSuccess: (params) => {
       // Календарь и обычные представления тредов могут показывать одну и ту

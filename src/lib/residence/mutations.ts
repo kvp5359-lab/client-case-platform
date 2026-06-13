@@ -9,6 +9,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { getResidenceModuleClient } from './moduleClient'
+import { residenceKeys } from './queryKeys'
 import { treeHasField, updateConditionInTree, addConditionToTree } from './matrix'
 import type { FieldType, RuleCondition, ResidenceCatalog } from './types'
 
@@ -35,7 +36,7 @@ export function toFieldKey(title: string): string {
 
 function useInvalidate(countryId: string) {
   const qc = useQueryClient()
-  return () => qc.invalidateQueries({ queryKey: ['residence', 'catalog', countryId] })
+  return () => qc.invalidateQueries({ queryKey: residenceKeys.catalog(countryId) })
 }
 
 export type NewCriterion = {
@@ -203,7 +204,7 @@ export function useCreateGroup(countryId: string) {
 /** CRUD справочника «Текущий статус». */
 export function useCurrentStatusMutations(countryId: string) {
   const qc = useQueryClient()
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['residence', 'current-statuses', countryId] })
+  const invalidate = () => qc.invalidateQueries({ queryKey: residenceKeys.currentStatuses(countryId) })
 
   const create = useMutation({
     mutationFn: async (name_ru: string) => {

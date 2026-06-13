@@ -172,7 +172,13 @@ Strict честный (`: any`/`as any`/`@ts-ignore` в проде = 0), но:
   - ✅ `FilterPrimitives` (cross-feature) → `components/filters/` (shared).
   - ✅ Правило слоёв зафиксировано в `infrastructure.md` + doc-drift `queryKeys.ts`→`queryKeys/` (3 места).
   - ⏳ **ОСТАЛОСЬ (нужна сессия с UI-тестом, риск):** движок документов в двух слоях (`components/documents/` + `page-components/ProjectPage/components/Documents/`) + 7 файлов `components/`, импортящих внутренности `page-components/ProjectPage/` (D1) + `DocumentKitContext` cross-feature (A5). Это КОМПОНЕНТНЫЕ переносы живого UI — делать отдельно, со смок-тестом вкладки «Документы»/плана.
-- **T2/T5** — ниже, в работе.
+- **T2** ✅ (правило) — «доступ к БД через сервисы, supabase не в .tsx» зафиксировано в `infrastructure.md`. Стягивание 68 inline-`from` — органически при правках (не кампания).
+- **T5** ✅ частично:
+  - ✅ doc-drift `queryKeys.ts`→`queryKeys/` (infrastructure.md, refactoring.md, CLAUDE.md).
+  - ✅ `useUpdateThreadTime` — добавлен snapshot+`onError` rollback (был optimistic без отката).
+  - ✅ `residenceKeys` фабрика (`lib/residence/queryKeys.ts`) — литералы `['residence',...]` убраны из catalog/mutations.
+  - ✅ `history.ts` `source` — комментарий «не источник правды, канон ProjectMessage.source».
+  - ⏭️ **Сознательно отложено (низкий приоритет, churn > выгода):** 3 routed-страницы шаблонов в `components/`→`page-components/` (поломает кучу относительных импортов ради организации); единый `ROUTES`-реестр для 69 route-строк; унификация суффиксов `*Directory`/`*Content`; покрытие edge-контрактов (полу-by-design, заводить при касании). Зафиксированы как конвенции «по пути».
 
 ## Приоритет правок (предложение)
 1. **P0** — утечка черновиков (быстро, приватность).

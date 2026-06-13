@@ -35,6 +35,10 @@ export type TimelineMessage = {
   sender_user_id: string | null
   sender_avatar_url: string | null
   content: string
+  // ⚠️ Урезанное подмножество для отображения; НЕ источник правды по source.
+  // Канон — ProjectMessage.source (9 значений: +wazzup/telegram_business/
+  // mtproto/email_internal/…). Не использовать для switch'ей по каналу —
+  // бери канонический тип, если нужна полная логика.
   source: 'web' | 'telegram' | 'email'
   created_at: string
   forwarded_from_name: string | null

@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { getResidenceModuleClient } from './moduleClient'
+import { residenceKeys } from './queryKeys'
 import type {
   ResidenceCountry,
   ResidenceCatalog,
@@ -14,7 +15,7 @@ const SCHEMA = 'mod_choice'
 /** Список стран из внешней базы ВНЖ. */
 export function useResidenceCountries() {
   return useQuery({
-    queryKey: ['residence', 'countries'],
+    queryKey: residenceKeys.countries(),
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<ResidenceCountry[]> => {
       const sb = getResidenceModuleClient()
@@ -35,7 +36,7 @@ export type CurrentStatus = { id: string; name_ru: string; sort_order: number }
 /** Справочник «Текущий статус» (плоский, ведётся вручную). */
 export function useCurrentStatuses(countryId: string | null) {
   return useQuery({
-    queryKey: ['residence', 'current-statuses', countryId],
+    queryKey: residenceKeys.currentStatuses(countryId ?? undefined),
     enabled: !!countryId,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<CurrentStatus[]> => {
@@ -58,7 +59,7 @@ export function useCurrentStatuses(countryId: string | null) {
 /** Полный справочник по одной стране: виды ВНЖ, группы, критерии, links, rules. */
 export function useResidenceCatalog(countryId: string | null) {
   return useQuery({
-    queryKey: ['residence', 'catalog', countryId],
+    queryKey: residenceKeys.catalog(countryId ?? undefined),
     enabled: !!countryId,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<ResidenceCatalog> => {
