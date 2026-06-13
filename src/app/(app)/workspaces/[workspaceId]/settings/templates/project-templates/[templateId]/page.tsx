@@ -1,3 +1,3 @@
 "use client"
-import { ProjectTemplateEditorPage } from '@/components/templates/ProjectTemplateEditorPage'
+import { ProjectTemplateEditorPage } from '@/page-components/ProjectTemplateEditorPage'
 export default function ProjectTemplateRoute() { return <ProjectTemplateEditorPage /> }

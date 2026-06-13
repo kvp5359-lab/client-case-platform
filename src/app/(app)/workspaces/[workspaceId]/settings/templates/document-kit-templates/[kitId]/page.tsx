@@ -1,3 +1,3 @@
 "use client"
-import { DocumentKitTemplateEditorPage } from '@/components/templates/DocumentKitTemplateEditorPage'
+import { DocumentKitTemplateEditorPage } from '@/page-components/DocumentKitTemplateEditorPage'
 export default function DocumentKitTemplateRoute() { return <DocumentKitTemplateEditorPage /> }

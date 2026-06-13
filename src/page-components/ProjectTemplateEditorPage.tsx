@@ -30,10 +30,10 @@ import {
   ProjectTemplateStatusesSection,
   ProjectTemplateFieldsSection,
   PanelTabsSection,
-} from './project-template-editor'
-import { BriefTemplateSection } from './project-template-editor/BriefTemplateSection'
-import { RootFolderSection } from './project-template-editor/RootFolderSection'
-import { FileSizeThresholdsSection } from './project-template-editor/FileSizeThresholdsSection'
+} from '@/components/templates/project-template-editor'
+import { BriefTemplateSection } from '@/components/templates/project-template-editor/BriefTemplateSection'
+import { RootFolderSection } from '@/components/templates/project-template-editor/RootFolderSection'
+import { FileSizeThresholdsSection } from '@/components/templates/project-template-editor/FileSizeThresholdsSection'
 import { TemplatePlanSection } from '@/components/plan/TemplatePlanSection'
 import { IconPicker } from '@/components/ui/icon-picker'
 import { ColorPicker } from '@/components/ui/color-picker'

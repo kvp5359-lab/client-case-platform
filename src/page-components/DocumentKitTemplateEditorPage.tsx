@@ -36,7 +36,7 @@ import {
   DraggableFolderRow,
   EditKitFolderDialog,
   KitFolder,
-} from './document-kit-template-editor'
+} from '@/components/templates/document-kit-template-editor'
 
 export function DocumentKitTemplateEditorPage() {
   const { workspaceId, kitId } = useParams<{ workspaceId: string; kitId: string }>()

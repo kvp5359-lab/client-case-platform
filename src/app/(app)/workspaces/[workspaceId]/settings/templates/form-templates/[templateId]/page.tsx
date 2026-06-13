@@ -1,3 +1,3 @@
 "use client"
-import { FormTemplateEditorPage } from '@/components/templates/FormTemplateEditorPage'
+import { FormTemplateEditorPage } from '@/page-components/FormTemplateEditorPage'
 export default function FormTemplateRoute() { return <FormTemplateEditorPage /> }
