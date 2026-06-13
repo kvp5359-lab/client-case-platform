@@ -45,6 +45,13 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-13 — Рефакторинг карантина, Волна 3: дедуп resolveParticipant (каскад) + upload-slot ⭐ ЖДЁТ ДЕПЛОЯ+СМОК-ТЕСТА
+- **resolveParticipant (фронт):** резолв «моей личности» дублировался в 6 хуках, часть — XOR-вариантом (project ИЛИ workspace) с латентной дырой: owner/менеджер без записи в `project_participants` в проектном треде → null → «Участник не найден». Единые `resolveParticipantFull`/`resolveParticipantId` в `messengerParticipantService` с **КАСКАДОМ** project→(если нет)→workspace — это фикс owner-не-участника (ledger 2026-06-12) теперь везде. Потребители: useMessengerState (был единственный с каскадом), useSendMessage, useToggleReaction, useUnreadCount, useMarkThreadReadIfFinal, useInboxMarkMutations.
+  - **Грабли:** новый потребитель «моей личности» — звать `resolveParticipantFull`/`Id` (каскад), НЕ инлайн XOR. Прямые одиночные вызовы `getCurrentProjectParticipant`/`getCurrentWorkspaceParticipant` (useTaskPanelInternal, useNewMessageToast, useQueueThreadInitialMessage, InboxPage) намеренно НЕ трогали — это специфичные одиночные лукапы, не каскад.
+- **upload-slot D1 (edge):** `handleSlotFileUpload` дублировал ~90 строк core-загрузки байт-в-байт с `uploadDocumentCore`. Теперь делегирует core + слот-специфика (fill_slot_atomic + сообщения через `mapUploadError`). −110 строк. Редкие backend-фейлы теперь дают общий текст (как free-upload), детали в console.error.
+- **Проверки:** фронт tsc+lint+704 0; edge deno-check upload-slot 0.
+- **⏳ Деплой:** фронт push/CI; edge `telegram-webhook-v2` (upload-slot).
+
 ### 2026-06-13 — Рефакторинг карантина, Волна 2: баги B2/B3/B6/B7/B8/B9 + дедуп/типы ⭐ ЖДЁТ ДЕПЛОЯ+СМОК-ТЕСТА
 - **B3 (edge, 🔴):** `email-internal-send` — `m.created_at` использовался в анти-гонке двух писем подряд, но НЕ был в `.select()` (и в типе `MessageRow`) → `undefined` → второе письмо уходило без `In-Reply-To`, Gmail отделял в новый тред. Добавил `created_at` в select + интерфейс.
 - **B2 (mtproto, 🔴):** `incoming.ts` `withAlbumLock` — Map не чистился: сравнение `albumLocks.get(key) === next` (в Map лежит `prev.then(()=>next)`, не `next`) ИЛИ пересоздавало `prev.then(...)` (новый промис) → всегда ложь → утечка. Храним цепочку в `chained`, сверяем по ней.

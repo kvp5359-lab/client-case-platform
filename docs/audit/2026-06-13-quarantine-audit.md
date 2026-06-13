@@ -100,8 +100,8 @@ resolveParticipant унификация.
 
 ### Волна 3 — частично (2026-06-13)
 - **B6** (FLOOD_WAIT → 429+Retry-After на всех mtproto-роутах) — ✅ сделан (хелпер `floodAwareError`, убран дубль в backfill). Cross-layer проверен: edge `!res.ok` обрабатывает 429 как 500, `failed` пишется в catch до ответа.
-- **resolveParticipant унификация** — ⏸️ НЕ делал. Не тривиальный дедуп: `useSendMessage`/`useMessengerState` нужен ПОЛНЫЙ объект participant (name/role), остальным (`useToggleReaction`/`useUnreadCount`/`useMarkThreadReadIfFinal`/`useInboxMarkMutations`) — только id. Чистая унификация = два хелпера (`…Full`/`…Id`) в сервис-слой + правка ~6 карантинных хуков → большой смок-тест-фронт. Ждёт решения.
-- **upload-slot D1** (~120 строк `uploadDocumentCore` vs `handleSlotFileUpload` в 875-строчном bot-файле) — ⏸️ НЕ делал. Самый рискованный дедуп зоны. Ждёт решения.
+- **resolveParticipant унификация** — ✅ сделано (одобрено пользователем). Два хелпера `resolveParticipantFull`/`resolveParticipantId` в `messengerParticipantService`, **каскад** project→workspace (раньше часть хуков была XOR с латентной дырой owner-не-участника). 6 потребителей переведены: useMessengerState, useSendMessage, useToggleReaction, useUnreadCount, useMarkThreadReadIfFinal, useInboxMarkMutations. tsc+lint+704 теста 0.
+- **upload-slot D1** — ✅ сделано (одобрено). `handleSlotFileUpload` делегирует `uploadDocumentCore` (как `handleFreeFileUpload`), оставлена только слот-специфика (fill_slot_atomic + сообщения через `mapUploadError`). −110 строк. deno-check upload-slot 0 (полный, без openai-блокера).
 
 ### Волна 4 — НЕ трогал (по плану)
 - **F1** (дрейф v1↔v2 webhook) — расследование, НЕ удалять v1, НЕ дропать `bot_version`. Doc-предупреждения добавлены (channels.md).
