@@ -103,6 +103,34 @@ resolveParticipant унификация.
 - **resolveParticipant унификация** — ✅ сделано (одобрено пользователем). Два хелпера `resolveParticipantFull`/`resolveParticipantId` в `messengerParticipantService`, **каскад** project→workspace (раньше часть хуков была XOR с латентной дырой owner-не-участника). 6 потребителей переведены: useMessengerState, useSendMessage, useToggleReaction, useUnreadCount, useMarkThreadReadIfFinal, useInboxMarkMutations. tsc+lint+704 теста 0.
 - **upload-slot D1** — ✅ сделано (одобрено). `handleSlotFileUpload` делегирует `uploadDocumentCore` (как `handleFreeFileUpload`), оставлена только слот-специфика (fill_slot_atomic + сообщения через `mapUploadError`). −110 строк. deno-check upload-slot 0 (полный, без openai-блокера).
 
-### Волна 4 — НЕ трогал (по плану)
-- **F1** (дрейф v1↔v2 webhook) — расследование, НЕ удалять v1, НЕ дропать `bot_version`. Doc-предупреждения добавлены (channels.md).
-- **email-internal-send** распил — высокий риск, отдельная задача.
+### Волна 4
+
+#### F1 — РАССЛЕДОВАНИЕ ЗАВЕРШЕНО (2026-06-13). Миграция — за пользователем.
+Снял `getWebhookInfo` по всем 5 ботам воркспейса (read-only). **Определённая картина:**
+
+| Бот | type | реальный webhook | состояние |
+|-----|------|------------------|-----------|
+| rs2_support_bot | workspace | **v2** | секретарь |
+| rs1_support_bot | workspace | **v2** | cfg `bot_version=v1` СТАЛО (реально v2); только мёртвый чат «Команда» (март) |
+| rs_help123_bot | employee | **v2** | ок |
+| rs_help102_bot | employee | **v2** | ок |
+| **rs_help103_bot** | employee | **v1** ⚠️ | **единственный на v1**; обслуживает живой тред «Клиенты» (сообщения ежедневно, посл. 2026-06-12) |
+
+**Вывод:** v1 webhook (`telegram-webhook`) держится на ОДНОМ боте — `rs_help103_bot`. Удалить v1 нельзя, пока он на v1.
+
+**Дрейф трёх «bot_version», которые НЕ совпадают:**
+1. `workspace_integrations.config->>'bot_version'` — у rs1 стоит `v1`, реально webhook v2 (рассинхрон).
+2. `project_telegram_chats.bot_version` — чат «Клиенты» помечен `v1` (+ `integration_id=NULL`), хотя входящие в нём штампит rs_help103 (employee).
+3. Реальный webhook у бота (getWebhookInfo) — единственный источник правды.
+
+**`telegram-register-webhook:109`** ставит НОВЫМ ботам URL `/telegram-webhook` (**v1**) — источник продолжающегося дрейфа.
+
+**Безопасная миграция (за пользователем, со смок-тестом — трогает ЖИВОЙ клиентский тред):**
+1. Поправить `telegram-register-webhook:109` → `/telegram-webhook-v2` (только будущие регистрации; существующих не трогает). Передеплоить.
+2. Скоординированно для rs_help103: (а) `setWebhook` на `telegram-webhook-v2` с `secret_token=<integration.id 3b8db351>`; (б) одновременно `UPDATE project_telegram_chats SET bot_version='v2'` для ВСЕХ его активных чатов (мин. «Клиенты» 9716fc6a). Иначе v2 не найдёт биндинг (фильтр `bot_version='v2'`) → входящие потеряются.
+3. Смок: клиент пишет в «Клиенты» → сообщение доходит в ЛК. Реплай/реакция.
+4. Только ПОСЛЕ того как `getWebhookInfo` по всем ботам = v2: `supabase functions delete telegram-webhook` + дроп `bot_version`.
+5. Откат: вернуть `setWebhook` rs_help103 на `telegram-webhook` + `bot_version='v1'`.
+
+#### email-internal-send распил — НЕ трогал
+Высокий риск, рабочая карантинная функция без бага под распилом. Только по явной просьбе.

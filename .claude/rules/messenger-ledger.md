@@ -45,6 +45,13 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-13 — F1: расследование дрейфа v1↔v2 webhook (ЗАВЕРШЕНО, миграция за пользователем)
+- **Метод:** `getWebhookInfo` (read-only) по всем 5 ботам воркспейса. Это **единственный источник правды** — `config.bot_version` и `project_telegram_chats.bot_version` оба разъехались с реальностью.
+- **Итог:** v1 webhook (`telegram-webhook`) держится на ОДНОМ боте — **`rs_help103_bot`** (employee), он обслуживает **живой** клиентский тред «Клиенты» (входящие ежедневно). Остальные 4 (вкл. оба секретаря rs1/rs2) — на v2. `rs1_support_bot` имеет `config.bot_version=v1`, но реально webhook v2 (стало).
+- **Корень дрейфа:** `telegram-register-webhook:109` ставит новым ботам URL `/telegram-webhook` (v1). Чат «Клиенты» помечен `bot_version='v1'` + `integration_id=NULL`, хотя штампит его employee-бот.
+- **⚠️ Ловушка миграции:** v2-webhook фильтрует биндинги по `bot_version='v2'`. Поэтому просто `setWebhook` rs_help103→v2 НЕДОСТАТОЧНО — нужно ОДНОВРЕМЕННО `UPDATE project_telegram_chats SET bot_version='v2'` его чатов, иначе входящие потеряют биндинг. Трогает живой клиентский тред → только со смок-тестом, за пользователем. Полный план + откат в [`docs/audit/2026-06-13-quarantine-audit.md`](../../docs/audit/2026-06-13-quarantine-audit.md) §F1.
+- **НЕ делал:** саму миграцию, фикс register-webhook, удаление v1 — взаимозависимы и трогают живой тред.
+
 ### 2026-06-13 — Рефакторинг карантина, Волна 3: дедуп resolveParticipant (каскад) + upload-slot ⭐ ЖДЁТ ДЕПЛОЯ+СМОК-ТЕСТА
 - **resolveParticipant (фронт):** резолв «моей личности» дублировался в 6 хуках, часть — XOR-вариантом (project ИЛИ workspace) с латентной дырой: owner/менеджер без записи в `project_participants` в проектном треде → null → «Участник не найден». Единые `resolveParticipantFull`/`resolveParticipantId` в `messengerParticipantService` с **КАСКАДОМ** project→(если нет)→workspace — это фикс owner-не-участника (ledger 2026-06-12) теперь везде. Потребители: useMessengerState (был единственный с каскадом), useSendMessage, useToggleReaction, useUnreadCount, useMarkThreadReadIfFinal, useInboxMarkMutations.
   - **Грабли:** новый потребитель «моей личности» — звать `resolveParticipantFull`/`Id` (каскад), НЕ инлайн XOR. Прямые одиночные вызовы `getCurrentProjectParticipant`/`getCurrentWorkspaceParticipant` (useTaskPanelInternal, useNewMessageToast, useQueueThreadInitialMessage, InboxPage) намеренно НЕ трогали — это специфичные одиночные лукапы, не каскад.
