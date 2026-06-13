@@ -106,5 +106,14 @@ access-логика, `MessageList`, вкладка «Все».
 `get_inbox_unread_threads` и `get_inbox_thread_one` — обёртки над
 `get_inbox_threads_v2`, который сканит весь инбокс (~150 мс независимо от числа
 непрочитанных / для одного треда). На больших объёмах стоит переписать на прямой
-доступ. Связано с уже зафиксированным: материализованная колонка
-`project_threads.inbox_sort_at` + триггеры сейчас не читаются `get_inbox_threads_page`.
+доступ.
+
+> ⚠️ **Поправка 2026-06-13:** утверждение ниже («`inbox_sort_at` + триггеры
+> сейчас не читаются `get_inbox_threads_page`») оказалось **ошибочным** (читали
+> репо-версию функции, прод расходится — drift). Живой `get_inbox_threads_page`
+> ЧИТАЕТ колонку как главный ключ сортировки:
+> `COALESCE(inbox_sort_at, GREATEST(last_message_at,last_event_at), created_at)`
+> + keyset по `(sort_at, thread_id)`. Колонка и триггеры **живые, не дропать.**
+
+~~Связано с уже зафиксированным: материализованная колонка
+`project_threads.inbox_sort_at` + триггеры сейчас не читаются `get_inbox_threads_page`.~~
