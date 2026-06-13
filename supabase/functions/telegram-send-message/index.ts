@@ -311,6 +311,156 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Общая цепочка отправки текста с фоллбэками: send → ретрай при миграции
+    // группы → fallback «висячего» reply → fallback личный→секретарь. Возвращает
+    // финальный tgData + контекст, ЛИБО сигнал no_secretary (вызывающий вернёт
+    // 200, чтобы watchdog не перетёр reason). Пост-обработка статуса (markSent /
+    // отложенный апдейт telegram_message_id) у текстовой и split-text веток
+    // разная — поэтому остаётся в вызывающем коде. Раньше эта цепочка была
+    // скопирована дважды (text + split-text) — рассинхрон копий породил баг
+    // 2026-05-28. Вся диагностика (telegram_error_detail на каждом шаге)
+    // сохранена дословно, через параметр `via`.
+    type SendChainResult =
+      | { kind: "no_secretary" }
+      | {
+          kind: "done";
+          tgData: { ok: boolean; result?: { message_id?: number; date?: number }; description?: string; error_code?: number };
+          tgStatus: number;
+          activeChatId: number;
+          activeIntegrationId: string | null;
+          activeToken: string;
+        };
+    const sendTextWithFallbacks = async (opts: {
+      initialChatId: number;
+      /** Текст основной отправки (личным ботом). Используется и для реконструкции reply-цитаты. */
+      formattedText: string;
+      /** Текст для отправки секретарём — всегда с префиксом «Имя:» (у секретаря своя личность). */
+      secretaryFormattedText: string;
+      via: "text" | "split-text";
+      stage: "text" | "split_text";
+    }): Promise<SendChainResult> => {
+      let activeChatId = opts.initialChatId;
+      const payload: Record<string, unknown> = {
+        chat_id: activeChatId,
+        text: opts.formattedText,
+        parse_mode: "HTML",
+      };
+      if (body.reply_to_telegram_message_id) {
+        payload.reply_parameters = { message_id: body.reply_to_telegram_message_id };
+      }
+
+      let tgResponse = await fetch(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      );
+      let tgData = await tgResponse.json();
+      let activeToken = TELEGRAM_BOT_TOKEN;
+      let activeIntegrationId = resolved.integrationId;
+
+      // Апгрейд группы → супергруппы: при migrate_to_chat_id повторяем тем же
+      // ботом с новым chat_id. Только потом — fallback на секретаря.
+      const migratedChatId = await detectChatMigration(serviceClient, activeChatId, tgData);
+      if (migratedChatId !== null) {
+        activeChatId = migratedChatId;
+        payload.chat_id = migratedChatId;
+        tgResponse = await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+        );
+        tgData = await tgResponse.json();
+      }
+
+      // Fallback «висячего» reply: reply_parameters указывает на исчезнувшее
+      // сообщение (типично после миграции в супергруппу). Шлём тем же ботом без
+      // reply_parameters, с blockquote-цитатой оригинала в начале.
+      if (!tgData.ok && isReplyNotFoundError(tgData) && payload.reply_parameters) {
+        const quote = await loadReplyQuoteHtml(serviceClient, body.message_id);
+        delete payload.reply_parameters;
+        if (quote) {
+          payload.text = `${quote}\n${opts.formattedText}`;
+        }
+        tgResponse = await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+        );
+        tgData = await tgResponse.json();
+        if (tgData.ok) {
+          await serviceClient
+            .from("project_messages")
+            .update({
+              telegram_error_detail: `reply_dropped: original message_id=${body.reply_to_telegram_message_id} not in chat (likely supergroup migration); via=${opts.via}`,
+            })
+            .eq("id", body.message_id)
+            .throwOnError();
+        }
+      }
+
+      // Fallback личный→секретарь: личный бот не смог отправить (например, его
+      // нет в группе — "bot is not a member of the group chat"). Переотправляем
+      // секретарём с префиксом «Имя:». Диагностику сохраняем.
+      if (!tgData.ok && isEmployeeBot) {
+        const employeeErrorDescription = tgData.description ?? "unknown";
+        const employeeErrorCode = tgData.error_code;
+        console.warn(
+          `[telegram-send-message] ${opts.via === "split-text" ? "split-text " : ""}employee bot send failed, falling back to secretary:`,
+          employeeErrorDescription,
+        );
+        // Сохраняем причину СРАЗУ — до попытки fallback'а на секретаря (если
+        // resolveBotToken упадёт, причина personal bot останется видна в БД).
+        await serviceClient
+          .from("project_messages")
+          .update({
+            telegram_error_detail:
+              `employee_bot_error: "${employeeErrorDescription}" ` +
+              `(code=${employeeErrorCode ?? "n/a"}); reply=${body.reply_to_telegram_message_id ?? "no"}; ` +
+              `via=${opts.via}; awaiting_fallback`,
+          })
+          .eq("id", body.message_id);
+        const fallback = await tryFallbackToSecretary(
+          activeChatId,
+          opts.stage,
+          employeeErrorDescription,
+        );
+        if (!fallback) {
+          // markMessageFailed уже вызван внутри tryFallbackToSecretary.
+          trace("request.end.no_secretary", { stage: opts.stage });
+          return { kind: "no_secretary" };
+        }
+        const secretaryPayload = { ...payload, chat_id: activeChatId, text: opts.secretaryFormattedText };
+        // reply_parameters.message_id — id в нумерации личного бота, секретарю
+        // он неизвестен. Сбрасываем reply и вставляем blockquote-цитату.
+        if (secretaryPayload.reply_parameters) {
+          delete secretaryPayload.reply_parameters;
+          const quote = await loadReplyQuoteHtml(serviceClient, body.message_id);
+          if (quote) secretaryPayload.text = `${quote}\n${opts.secretaryFormattedText}`;
+        }
+        tgResponse = await fetch(
+          `https://api.telegram.org/bot${fallback.token}/sendMessage`,
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(secretaryPayload) },
+        );
+        tgData = await tgResponse.json();
+        activeToken = fallback.token;
+        // Секретарь отправил → integration_id личного бота больше не актуален,
+        // снимаем стамп, чтобы edit/delete/reaction роутились по секретарю.
+        activeIntegrationId = null;
+        const fallbackDetail = `employee_bot_send_failed: ${employeeErrorDescription}; reply=${body.reply_to_telegram_message_id ?? "no"}; via=${opts.via}`;
+        await serviceClient
+          .from("project_messages")
+          .update({ telegram_bot_integration_id: null, telegram_error_detail: fallbackDetail })
+          .eq("id", body.message_id)
+          .throwOnError();
+      }
+
+      return {
+        kind: "done",
+        tgData,
+        tgStatus: tgResponse.status,
+        activeChatId,
+        activeIntegrationId,
+        activeToken,
+      };
+    };
+
     if (wantTextOnly) {
       const contentForTelegram = isHtmlContent(body.content)
         ? htmlToTelegramHtml(body.content)
@@ -318,156 +468,23 @@ Deno.serve(async (req: Request) => {
       const formattedText = showSenderName
         ? `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`
         : contentForTelegram;
+      const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`;
 
-      let activeChatId = body.telegram_chat_id;
-      const payload: Record<string, unknown> = {
-        chat_id: activeChatId,
-        text: formattedText,
-        parse_mode: "HTML",
-      };
-
-      if (body.reply_to_telegram_message_id) {
-        payload.reply_parameters = {
-          message_id: body.reply_to_telegram_message_id,
-        };
+      const sent = await sendTextWithFallbacks({
+        initialChatId: body.telegram_chat_id,
+        formattedText,
+        secretaryFormattedText: secretaryFormatted,
+        via: "text",
+        stage: "text",
+      });
+      if (sent.kind === "no_secretary") {
+        // Возвращаем 200, чтобы watchdog не перетёр reason на свой "HTTP 500".
+        return new Response(
+          JSON.stringify({ ok: true, fallback_failed: "no_secretary" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
-
-      let tgResponse = await fetch(
-        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
-      let tgData = await tgResponse.json();
-      let activeToken = TELEGRAM_BOT_TOKEN;
-      let activeIntegrationId = resolved.integrationId;
-
-      // Обработка апгрейда группы → супергруппы. Если Telegram вернул
-      // migrate_to_chat_id, обновляем project_telegram_chats и повторяем
-      // отправку с новым chat_id (тем же ботом). Только тогда переходим к
-      // fallback на секретаря — если retry тоже упал по другой причине.
-      const migratedChatId = await detectChatMigration(serviceClient, activeChatId, tgData);
-      if (migratedChatId !== null) {
-        activeChatId = migratedChatId;
-        payload.chat_id = migratedChatId;
-        tgResponse = await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          },
-        );
-        tgData = await tgResponse.json();
-      }
-
-      // Fallback на «висячий» reply: Telegram отбил отправку, потому что
-      // reply_parameters.message_id указывает на сообщение, которого больше
-      // нет (типичный кейс — миграция группы в супергруппу обнулила старые
-      // message_id, маппинг API не отдаёт). Шлём тем же ботом без
-      // reply_parameters, но с blockquote-цитатой текста оригинала в начале —
-      // визуально клиент увидит, на что отвечают.
-      if (!tgData.ok && isReplyNotFoundError(tgData) && payload.reply_parameters) {
-        const quote = await loadReplyQuoteHtml(serviceClient, body.message_id);
-        delete payload.reply_parameters;
-        if (quote) {
-          payload.text = `${quote}\n${formattedText}`;
-        }
-        tgResponse = await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          },
-        );
-        tgData = await tgResponse.json();
-        if (tgData.ok) {
-          await serviceClient
-            .from("project_messages")
-            .update({
-              telegram_error_detail: `reply_dropped: original message_id=${body.reply_to_telegram_message_id} not in chat (likely supergroup migration); via=text`,
-            })
-            .eq("id", body.message_id)
-            .throwOnError();
-        }
-      }
-
-      // Fallback: если личный бот не смог отправить (например, его нет
-      // в этом чате — Telegram возвращает "bot is not a member of the
-      // group chat"), переотправляем через бота-секретаря с приставкой
-      // «(Имя):» в тексте. Сохраняем диагностику.
-      if (!tgData.ok && isEmployeeBot) {
-        const employeeErrorDescription = tgData.description ?? "unknown";
-        const employeeErrorCode = tgData.error_code;
-        console.warn(
-          "[telegram-send-message] employee bot send failed, falling back to secretary:",
-          employeeErrorDescription,
-        );
-        // Сохраняем причину СРАЗУ — до попытки fallback'а на секретаря.
-        // Если resolveBotToken упадёт (нет integration_id, intersection-сирота) —
-        // edge function вернёт 500, watchdog поставит failed, а пользователь
-        // увидит причину personal bot в telegram_error_detail.
-        // В успешном fallback'е поле перезапишется на employee_bot_send_failed: ...
-        await serviceClient
-          .from("project_messages")
-          .update({
-            telegram_error_detail:
-              `employee_bot_error: "${employeeErrorDescription}" ` +
-              `(code=${employeeErrorCode ?? "n/a"}); reply=${body.reply_to_telegram_message_id ?? "no"}; ` +
-              `via=text; awaiting_fallback`,
-          })
-          .eq("id", body.message_id);
-        const fallback = await tryFallbackToSecretary(
-          activeChatId,
-          "text",
-          employeeErrorDescription,
-        );
-        if (!fallback) {
-          // markMessageFailed уже вызван внутри tryFallbackToSecretary.
-          // Возвращаем 200 чтобы watchdog не перетёр reason на свой "HTTP 500".
-          trace("request.end.no_secretary", { stage: "text" });
-          return new Response(
-            JSON.stringify({ ok: true, fallback_failed: "no_secretary" }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
-        }
-        const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`;
-        const secretaryPayload = { ...payload, chat_id: activeChatId, text: secretaryFormatted };
-        // reply_parameters.message_id — это id в нумерации личного бота.
-        // Секретарь такого сообщения не видел → нативный reply упадёт с
-        // "message to be replied not found". Сбрасываем reply и вставляем
-        // blockquote-цитату оригинала (как в висячем-reply fallback выше).
-        if (secretaryPayload.reply_parameters) {
-          delete secretaryPayload.reply_parameters;
-          const quote = await loadReplyQuoteHtml(serviceClient, body.message_id);
-          if (quote) secretaryPayload.text = `${quote}\n${secretaryFormatted}`;
-        }
-        tgResponse = await fetch(
-          `https://api.telegram.org/bot${fallback.token}/sendMessage`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(secretaryPayload),
-          },
-        );
-        tgData = await tgResponse.json();
-        activeToken = fallback.token;
-        // Секретарь отправил → integration_id личного бота больше не актуален,
-        // снимаем стамп, чтобы edit/delete/reaction роутились по секретарю.
-        // В telegram_error_detail пишем причину fallback'а (description от Telegram +
-        // флаг reply) — чтобы post-mortem можно было сделать SQL-запросом, а не
-        // лазать в Supabase Functions Logs.
-        activeIntegrationId = null;
-        const fallbackDetail = `employee_bot_send_failed: ${employeeErrorDescription}; reply=${body.reply_to_telegram_message_id ?? "no"}; via=text`;
-        await serviceClient
-          .from("project_messages")
-          .update({ telegram_bot_integration_id: null, telegram_error_detail: fallbackDetail })
-          .eq("id", body.message_id)
-          .throwOnError();
-      }
+      const { tgData, tgStatus, activeChatId, activeIntegrationId, activeToken } = sent;
 
       if (tgData.ok && tgData.result?.message_id) {
         trace("tg.send.ok.before_markSent", {
@@ -557,12 +574,12 @@ Deno.serve(async (req: Request) => {
         await markMessageFailed(
           serviceClient,
           body.message_id,
-          tgData.description ?? `Telegram API: ${tgResponse.status}`,
+          tgData.description ?? `Telegram API: ${tgStatus}`,
           {
             failureSource: "telegram",
             failureCode: tgData.error_code != null
               ? `tg_${tgData.error_code}`
-              : `http_${tgResponse.status}`,
+              : `http_${tgStatus}`,
             integrationId: activeIntegrationId ?? null,
             failureMetadata: { stage: "text", chat_id: activeChatId },
           },
@@ -615,116 +632,24 @@ Deno.serve(async (req: Request) => {
             senderName: body.sender_name,
           });
         } else {
-          let activeChatId = body.telegram_chat_id;
-          const payload: Record<string, unknown> = {
-            chat_id: activeChatId,
-            text: formattedCaption,
-            parse_mode: "HTML",
-          };
-          if (body.reply_to_telegram_message_id) {
-            payload.reply_parameters = { message_id: body.reply_to_telegram_message_id };
+          // Split-text: текст отдельным сообщением ПЕРЕД альбомом (2+ файла или
+          // caption > 1024). Та же цепочка отправки с фоллбэками, что у текстовой
+          // ветки — теперь общий хелпер sendTextWithFallbacks (раньше копия).
+          const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name || "")}:</b>\n${contentForTelegram}`;
+          const sent = await sendTextWithFallbacks({
+            initialChatId: body.telegram_chat_id,
+            formattedText: formattedCaption,
+            secretaryFormattedText: secretaryFormatted,
+            via: "split-text",
+            stage: "split_text",
+          });
+          if (sent.kind === "no_secretary") {
+            return new Response(
+              JSON.stringify({ ok: true, fallback_failed: "no_secretary" }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
           }
-
-          let tgRes = await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
-          );
-          let tgData = await tgRes.json();
-
-          // Апгрейд группы → супергруппы: повторяем с новым chat_id.
-          const migratedSplit = await detectChatMigration(serviceClient, activeChatId, tgData);
-          if (migratedSplit !== null) {
-            activeChatId = migratedSplit;
-            payload.chat_id = migratedSplit;
-            tgRes = await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-              { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
-            );
-            tgData = await tgRes.json();
-          }
-
-          // Fallback на «висячий» reply (см. коммент в текстовой ветке выше):
-          // переотправка тем же ботом без reply_parameters, с blockquote-цитатой.
-          if (!tgData.ok && isReplyNotFoundError(tgData) && payload.reply_parameters) {
-            const quote = await loadReplyQuoteHtml(serviceClient, body.message_id);
-            delete payload.reply_parameters;
-            if (quote) {
-              payload.text = `${quote}\n${formattedCaption}`;
-            }
-            tgRes = await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-              { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
-            );
-            tgData = await tgRes.json();
-            if (tgData.ok) {
-              await serviceClient
-                .from("project_messages")
-                .update({
-                  telegram_error_detail: `reply_dropped: original message_id=${body.reply_to_telegram_message_id} not in chat (likely supergroup migration); via=split-text`,
-                })
-                .eq("id", body.message_id)
-                .throwOnError();
-            }
-          }
-
-          // Fallback на секретаря для split-текста: если личный бот не в группе
-          // ("bot is not a member of the group chat"), переотправляем сообщение
-          // через секретаря с префиксом "<Имя>:" в начале. Симметрично fallback'у
-          // в обычной текстовой ветке (строки 305-330): без него split-текст
-          // (2+ файла или caption > 1024) терялся при отсутствии личного бота
-          // в группе, в то время как файлы доходили через sendAttachmentsWithFallback.
-          if (!tgData.ok && isEmployeeBot) {
-            const splitErrorDescription = tgData.description ?? "unknown";
-            const splitErrorCode = tgData.error_code;
-            console.warn(
-              "[telegram-send-message] split-text employee bot send failed, falling back to secretary:",
-              splitErrorDescription,
-            );
-            // Сохраняем причину СРАЗУ — симметрично текстовой ветке.
-            await serviceClient
-              .from("project_messages")
-              .update({
-                telegram_error_detail:
-                  `employee_bot_error: "${splitErrorDescription}" ` +
-                  `(code=${splitErrorCode ?? "n/a"}); reply=${body.reply_to_telegram_message_id ?? "no"}; ` +
-                  `via=split-text; awaiting_fallback`,
-              })
-              .eq("id", body.message_id);
-            const fallback = await tryFallbackToSecretary(
-              activeChatId,
-              "split_text",
-              splitErrorDescription,
-            );
-            if (!fallback) {
-              trace("request.end.no_secretary", { stage: "split_text" });
-              return new Response(
-                JSON.stringify({ ok: true, fallback_failed: "no_secretary" }),
-                { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-              );
-            }
-            const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name || "")}:</b>\n${contentForTelegram}`;
-            const secretaryPayload = { ...payload, chat_id: activeChatId, text: secretaryFormatted };
-            // reply_parameters указывает на id в нумерации личного бота —
-            // секретарю он неизвестен. Сбрасываем reply и вставляем
-            // blockquote-цитату оригинала (см. text-ветку выше).
-            if (secretaryPayload.reply_parameters) {
-              delete secretaryPayload.reply_parameters;
-              const quote = await loadReplyQuoteHtml(serviceClient, body.message_id);
-              if (quote) secretaryPayload.text = `${quote}\n${secretaryFormatted}`;
-            }
-            tgRes = await fetch(
-              `https://api.telegram.org/bot${fallback.token}/sendMessage`,
-              { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(secretaryPayload) },
-            );
-            tgData = await tgRes.json();
-            // Секретарь отправил → integration_id больше не актуален.
-            const fallbackDetail = `employee_bot_send_failed: ${splitErrorDescription}; reply=${body.reply_to_telegram_message_id ?? "no"}; via=split-text`;
-            await serviceClient
-              .from("project_messages")
-              .update({ telegram_bot_integration_id: null, telegram_error_detail: fallbackDetail })
-              .eq("id", body.message_id)
-              .throwOnError();
-          }
+          const { tgData, tgStatus, activeChatId } = sent;
 
           if (tgData.ok && tgData.result?.message_id) {
             // Текст ушёл — фиксируем message_id. send_status выставим позже,
@@ -748,12 +673,12 @@ Deno.serve(async (req: Request) => {
             await markMessageFailed(
               serviceClient,
               body.message_id,
-              tgData.description ?? `Telegram API: ${tgRes.status}`,
+              tgData.description ?? `Telegram API: ${tgStatus}`,
               {
                 failureSource: "telegram",
                 failureCode: tgData.error_code != null
                   ? `tg_${tgData.error_code}`
-                  : `http_${tgRes.status}`,
+                  : `http_${tgStatus}`,
                 failureMetadata: { stage: "split_text", chat_id: activeChatId },
               },
             );

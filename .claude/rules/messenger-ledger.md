@@ -45,6 +45,13 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-13 — Дедуп telegram-send-message: общий sendTextWithFallbacks (не баг, аудит размеров) ⭐ ЖДЁТ СМОК-ТЕСТА
+- **Контекст:** в `telegram-send-message/index.ts` (860) цепочка отправки текста с фоллбэками (send → ретрай при `migrate_to_chat_id` → fallback «висячего» reply → fallback личный→секретарь) была **скопирована дважды** — текстовая ветка (`wantTextOnly`) и split-text ветка (внутри `attachments_only`, 2+ файла или caption>1024). Именно рассинхрон этих копий — класс бага §2026-05-28 (фикс в одной ветке надо было зеркалить во вторую).
+- **Что сделано:** общая цепочка вынесена в локальное замыкание `sendTextWithFallbacks(opts)` (возвращает `{kind:'done', tgData, tgStatus, activeChatId, activeIntegrationId, activeToken}` ЛИБО `{kind:'no_secretary'}`). Различие веток (text делает candidate-diag + markMessageSent; split-text — только апдейт `telegram_message_id`, статус решается с вложениями) осталось в caller. Параметр `via`/`stage` сохраняет диагностику дословно (`reply_dropped`, `employee_bot_error...awaiting_fallback`, `employee_bot_send_failed`, candidate_markSent, `statusWritten`). 860→785.
+- **Верификация (deno check --node-modules-dir=auto, in-place baseline-сравнение):** исходник 30 ошибок типов → моя версия **26**, новых КОДОВ ошибок **нет** (TS2339 10→8, TS2345 16→14; дедуп убрал 4 дублирующие копии тех же strict-генерик-замечаний supabase-js — deno-only шум, бандлер Supabase их терпит). Логика тождественна. Задеплоено `--no-verify-jwt`, гейтвей отвечает.
+- **⚠️ ЖДЁТ ЖИВОГО СМОК-ТЕСТА** на боевой группе (матрица): текст / 1 файл / 2+ файла / реплай cross-bot / employee→secretary fallback (личный бот не в группе) / миграция группы→супергруппы. При регрессии — откат `git revert` + redeploy.
+- **Грабли:** при будущих правках цепочки отправки — править ОДИН хелпер `sendTextWithFallbacks`, не плодить копии. Диагностика (`candidate_*`, `via`, `statusWritten`) — не удалять, она и ловит баги (§G7).
+
 ### 2026-06-13 — Распил MessageBubble: вынос перевода и quote-popup в хуки (не баг, аудит размеров)
 - **Контекст:** полная инвентаризация файлов >400 строк (вкл. карантин) показала, что `MessageBubble.tsx` (692) — единственный реальный кандидат на распил в мессенджере: в теле до return (~265 строк) смешаны 3 несвязанные с рендером бабла заботы.
 - **Вынесено** (механически, без изменения логики/порядка эффектов):
