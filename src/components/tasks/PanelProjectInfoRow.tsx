@@ -18,7 +18,7 @@ import { projectKeys, projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { getProjectById } from '@/services/api/projectService'
 import { supabase } from '@/lib/supabase'
 import { ProjectStatusPopover } from '@/components/projects/ProjectStatusPopover'
-import { useProjectMutations } from '@/page-components/ProjectPage/hooks/useProjectMutations'
+import { useProjectMutations } from '@/hooks/projects/useProjectMutations'
 import { useProjectPermissions } from '@/hooks/permissions'
 
 type PanelProjectInfoRowProps = {

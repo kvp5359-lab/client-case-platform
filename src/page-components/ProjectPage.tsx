@@ -47,7 +47,7 @@ import {
   useProjectModules,
   useProjectHeaderParticipants,
 } from './ProjectPage/hooks'
-import { useProjectMutations } from './ProjectPage/hooks/useProjectMutations'
+import { useProjectMutations } from '@/hooks/projects/useProjectMutations'
 import { useClientChatAutoOpen } from './ProjectPage/hooks/useClientChatAutoOpen'
 import { useProjectGoogleDrive } from './ProjectPage/hooks/useProjectGoogleDrive'
 import { useProjectGoogleDriveActions } from './ProjectPage/hooks/useProjectGoogleDriveActions'

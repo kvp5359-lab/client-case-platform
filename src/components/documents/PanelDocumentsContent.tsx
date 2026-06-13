@@ -14,7 +14,7 @@ import { AddDocumentKitDialog } from '@/components/projects/AddDocumentKitDialog
 import { useDocumentKitsQuery } from '@/hooks/documents/useDocumentKitsQuery'
 import { useDialog } from '@/hooks/shared/useDialog'
 import { useProjectPermissions } from '@/hooks/permissions/useProjectPermissions'
-import { useProjectData } from '@/page-components/ProjectPage/hooks/useProjectData'
+import { useProjectData } from '@/hooks/projects/useProjectData'
 import { supabase } from '@/lib/supabase'
 
 type PanelDocumentsContentProps = {

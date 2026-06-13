@@ -8,7 +8,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { getProjectById } from '@/services/api/projectService'
 import { supabase } from '@/lib/supabase'
 import { projectKeys, projectTemplateKeys, STALE_TIME, GC_TIME } from '@/hooks/queryKeys'
-import type { ProjectTemplateWithRelations } from '../types'
+import type { ProjectTemplateWithRelations } from '@/types/project'
 
 /**
  * Загрузка шаблона проекта с join-ами на document_kits и forms — нужно для
