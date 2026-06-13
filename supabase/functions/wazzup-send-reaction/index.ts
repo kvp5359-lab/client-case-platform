@@ -17,6 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
   preflight, jsonRes, getServiceClient, markOutgoingExternal,
 } from "../_shared/edge.ts";
+import { stripHtmlBasic } from "../_shared/channelText.ts";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return preflight(req);
@@ -40,7 +41,7 @@ Deno.serve(async (req: Request) => {
   // Fallback-цитата в текст: Wazzup quotedMessageId не работает для исходящих,
   // поэтому добавляем «> текст оригинала\nэмодзи». Без этого клиент видит просто
   // эмодзи и не понимает, к чему оно относится.
-  const origText = stripHtml((msg.content as string) ?? "");
+  const origText = stripHtmlBasic((msg.content as string) ?? "");
   const truncated = origText.length > 200 ? origText.slice(0, 200) + "…" : origText;
   const reactionText = truncated ? `> ${truncated}\n${body.emoji}` : body.emoji;
 
@@ -104,17 +105,3 @@ Deno.serve(async (req: Request) => {
 
   return jsonRes({ ok: true, wazzup_message_id: sentMessageId }, 200, req);
 });
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
-}

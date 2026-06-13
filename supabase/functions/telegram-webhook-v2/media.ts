@@ -162,20 +162,26 @@ export async function downloadAttachments(
     const warn = skippedTooLarge.length === 1
       ? `\n\n⚠️ Файл «${skippedTooLarge[0].name}» слишком большой — ${fmt(skippedTooLarge[0].sizeMb)} МБ (макс. ${MAX_FILE_SIZE_MB} МБ через Telegram)`
       : `\n\n⚠️ Файлы слишком большие:\n${skippedTooLarge.map((f) => `• ${f.name} (${fmt(f.sizeMb)} МБ)`).join("\n")}`;
+    const tooLargeUpdate: Record<string, unknown> = {
+      content: (cur?.content ?? "") + warn,
+    };
+    // attachment_error пишем only при отсутствии hard-fail'ов: иначе блок выше
+    // уже записал download-детали (stage='download', failed_files) — они
+    // важнее для диагностики, чем too_large, и не должны затираться.
+    // Диагностика too_large: фактический размер скачанного файла. Для сжатого
+    // фото >20 МБ нетипично — если всплывёт «2 МБ», значит баг подсчёта/скачивания.
+    // Открытый вопрос в messenger-ledger.md.
+    if (failed.length === 0) {
+      tooLargeUpdate.attachment_error = {
+        stage: "too_large",
+        files: skippedTooLarge,
+        limit_mb: MAX_FILE_SIZE_MB,
+        at: new Date().toISOString(),
+      };
+    }
     await service
       .from("project_messages")
-      .update({
-        content: (cur?.content ?? "") + warn,
-        // Диагностика: фактический размер скачанного файла. Для сжатого фото
-        // >20 МБ нетипично — если всплывёт «2 МБ», значит баг подсчёта/скачивания,
-        // а не реально большой файл. Открытый вопрос в messenger-ledger.md.
-        attachment_error: {
-          stage: "too_large",
-          files: skippedTooLarge,
-          limit_mb: MAX_FILE_SIZE_MB,
-          at: new Date().toISOString(),
-        },
-      })
+      .update(tooLargeUpdate)
       .eq("id", messageId);
   }
 

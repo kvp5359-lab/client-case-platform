@@ -23,6 +23,7 @@ import {
   markOutgoingExternal,
 } from "../_shared/edge.ts";
 import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
+import { stripHtmlBasic } from "../_shared/channelText.ts";
 
 interface RequestBody {
   message_id: string;
@@ -81,7 +82,7 @@ Deno.serve(async (req: Request) => {
     .eq("workspace_id", channel.workspace_id).maybeSingle();
   if (!settings?.api_key) return jsonRes({ skip: "no api key" }, 200, req);
 
-  let text = stripHtml(msg.content || "");
+  let text = stripHtmlBasic(msg.content || "");
 
   // 5. Reply: Wazzup API через `quotedMessageId` не цитирует наши исходящие
   // в WhatsApp (поле принимается без ошибки, но не отображается у клиента).
@@ -98,7 +99,7 @@ Deno.serve(async (req: Request) => {
     quotedMessageId = (orig?.wazzup_message_id as string | null) ?? null;
 
     if (orig) {
-      const origText = stripHtml((orig.content as string) ?? "");
+      const origText = stripHtmlBasic((orig.content as string) ?? "");
       const truncated = origText.length > 200 ? origText.slice(0, 200) + "…" : origText;
       // Имя автора не добавляем — у клиента в WhatsApp контекст и так очевиден
       // (его собственное сообщение или наше предыдущее). Один перенос — иначе
@@ -233,18 +234,4 @@ async function sendWazzup(
   await markOutgoingExternal(getServiceClient(), "wazzup", json.messageId, "send");
 
   return { ok: true, messageId: json.messageId };
-}
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
 }

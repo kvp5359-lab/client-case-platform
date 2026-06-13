@@ -39,11 +39,7 @@ interface MessageRow {
   email_send_account_id: string | null;
   thread_id: string;
   workspace_id: string;
-}
-
-interface ThreadRowExt {
-  email_send_account_id?: string | null;
-  email_send_method?: string | null;
+  created_at: string;
 }
 
 interface ThreadRow {
@@ -51,6 +47,8 @@ interface ThreadRow {
   short_id: number | null;
   email_subject_root: string | null;
   email_last_external_address: string | null;
+  email_send_account_id: string | null;
+  email_send_method: string | null;
 }
 
 interface WorkspaceRow {
@@ -80,7 +78,7 @@ Deno.serve(async (req: Request) => {
   const { data: msg, error: msgErr } = await service
     .from("project_messages")
     .select(
-      "id, content, sender_name, has_attachments, email_in_reply_to, email_references, email_subject, email_send_method, email_send_account_id, thread_id, workspace_id",
+      "id, content, sender_name, has_attachments, email_in_reply_to, email_references, email_subject, email_send_method, email_send_account_id, thread_id, workspace_id, created_at",
     )
     .eq("id", body.message_id)
     .maybeSingle();
@@ -354,9 +352,8 @@ Deno.serve(async (req: Request) => {
   }
 
   // Метод отправки: явный на сообщении/треде, иначе авто (есть account → Gmail, иначе Resend)
-  const tExt = t as unknown as ThreadRowExt;
-  const explicitMethod = m.email_send_method ?? tExt.email_send_method ?? null;
-  const sendAccountId = m.email_send_account_id ?? tExt.email_send_account_id ?? null;
+  const explicitMethod = m.email_send_method ?? t.email_send_method ?? null;
+  const sendAccountId = m.email_send_account_id ?? t.email_send_account_id ?? null;
   const method =
     explicitMethod === "employee_mailbox"
       ? "employee_mailbox"
