@@ -57,12 +57,6 @@ export const commentKeys = {
   countsAll: ['comments', 'counts'] as const,
 }
 
-export const taskKeys = {
-  /** Prefix for broad-invalidate: matches all workspaces. */
-  allUrgent: ['my-urgent-tasks-count'] as const,
-  urgentCount: (workspaceId: string) => ['my-urgent-tasks-count', workspaceId] as const,
-}
-
 export const taskPanelTabsKeys = {
   all: ['task-panel-tabs'] as const,
   byProjectUser: (projectId: string, userId: string) =>

@@ -12,7 +12,6 @@ import {
   messengerKeys,
   myTaskCountsKeys,
   projectThreadKeys,
-  taskKeys,
   taskPanelTabsKeys,
   trashKeys,
   workspaceTaskKeys,
@@ -183,7 +182,6 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
       queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.assigneesMap })
-      queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
       queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })
       // Создание задачи с дедлайном меняет has_active_deadline_task у проекта —
       // инвалидируем кеш доступных проектов, чтобы фильтры на досках обновились.
@@ -264,7 +262,6 @@ export function useDeleteThread(workspaceId?: string) {
         // задача висит в списке доски до полного reload.
         queryClient.invalidateQueries({ queryKey: boardFilteredKeys.threadsAll(workspaceId) })
         queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
-        queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
         queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })
         // inbox + sidebar projects — без этого «Входящие» обновлялись только через
         // realtime UPDATE на project_threads (throttle 400мс), отставая от
@@ -275,7 +272,6 @@ export function useDeleteThread(workspaceId?: string) {
         // по префиксу. Работает, но задевает все воркспейсы пользователя.
         queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.all })
         queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.all })
-        queryClient.invalidateQueries({ queryKey: taskKeys.allUrgent })
         queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.all })
         queryClient.invalidateQueries({ queryKey: inboxKeys.all })
       }

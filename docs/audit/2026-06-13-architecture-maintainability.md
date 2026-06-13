@@ -162,6 +162,12 @@ Strict честный (`: any`/`as any`/`@ts-ignore` в проде = 0), но:
 - Сервисы без god-объектов (макс 395 строк); зрелая инфра ошибок (`AppError`+`safe*OrThrow`).
 - Обработка ошибок консистентна; пустых `.catch(()=>{})` всего 5, безвредны.
 
+## Лог выполнения (2026-06-13)
+- **P0** ✅ — утечка черновиков: `lsClearPanelKeys` sweep по префиксам `[cc:, msg_draft:, msg_outbox:]` +тест.
+- **T3** ✅ — 16 `as never` убраны (RPC-cruft, write-payload через `TablesInsert/Update`+`as Json`, enum-каст). Оставлены 4 обоснованных (динамич. union-таблицы + carantine RPC).
+- **T4** ✅ — мёртвый `taskKeys.urgentCount`-кластер удалён (+6 инвалидаций, тест обновлён на живой `my-task-counts`); дубль-ключ `templateIdForProject` → `projectTemplateKeys.idByProject`; accent-карты `Record<ThreadAccentColor>` в 3 не-карантинных (UnreadBadge, TimelineFeed, InboxChatHeader). **НЕ трогал карантинные accent-карты** (ReactionBadges/MessageInputToolbar/threadConstants): их локальный `MessengerAccent` имеет legacy-алиасы (`green`/`dark`), которых нет в картах → `Record<MessengerAccent>` не подходит, а `Record<ThreadAccentColor>` потребует доп. кастов против MessengerAccent; + карантин. Оставлены как есть.
+- **T1/T2/T5** — ниже, в работе.
+
 ## Приоритет правок (предложение)
 1. **P0** — утечка черновиков (быстро, приватность).
 2. **T3** — убрать 2 RPC `as never` [смок] + типизировать write-payload + `comments.ts`.

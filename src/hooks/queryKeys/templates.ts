@@ -32,7 +32,8 @@ export const templatesForRoutingKeys = {
     ['project-templates-for-lead-routing', workspaceId] as const,
   defaultLeadTemplates: (workspaceId: string) =>
     ['workspace-default-lead-templates', workspaceId] as const,
-  templateIdForProject: (projectId: string) => ['project-template-id', projectId] as const,
+  // templateIdForProject удалён в T4 — дублировал projectTemplateKeys.idByProject
+  // (тот же ключ ['project-template-id', projectId]). Используй idByProject.
 }
 
 /**

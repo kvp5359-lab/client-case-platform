@@ -23,7 +23,6 @@ import { supabase } from '@/lib/supabase'
 import { logAuditAction } from '@/services/auditService'
 import {
   messengerKeys,
-  taskKeys,
   projectKeys,
   sidebarKeys,
   boardKeys,
@@ -334,7 +333,6 @@ export function useRestoreThread(workspaceId: string) {
       }
       queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(workspaceId) })
-      queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(workspaceId) })
       queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(workspaceId) })
       invalidateMessengerCaches(queryClient, workspaceId)
     },

@@ -19,10 +19,9 @@ import { useWorkspaceThreads } from '@/hooks/tasks/useWorkspaceThreads'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import {
   messengerKeys,
-  taskKeys,
   workspaceThreadKeys,
   myTaskCountsKeys,
-  templatesForRoutingKeys,
+  projectTemplateKeys,
 } from '@/hooks/queryKeys'
 import { useProjectThreads, useDeleteThread } from '@/hooks/messenger/useProjectThreads'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
@@ -151,7 +150,7 @@ export const TaskListView = memo(function TaskListView({
   // Загружаем template_id проекта (если в проектном режиме) — чтобы попап
   // создания показывал релевантные шаблоны тредов.
   const { data: projectTemplateId } = useQuery<string | null>({
-    queryKey: templatesForRoutingKeys.templateIdForProject(projectId ?? ''),
+    queryKey: projectTemplateKeys.idByProject(projectId ?? ''),
     enabled: !!projectId,
     queryFn: async () => {
       if (!projectId) return null
@@ -215,7 +214,6 @@ export const TaskListView = memo(function TaskListView({
   const invalidateKeys = useMemo(() => {
     const keys: Array<readonly unknown[]> = [
       workspaceThreadKeys.workspace(workspaceId),
-      taskKeys.urgentCount(workspaceId),
       myTaskCountsKeys.byWorkspace(workspaceId),
     ]
     if (projectId) {

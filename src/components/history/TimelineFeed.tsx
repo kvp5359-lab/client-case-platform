@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { MessageBubble } from '@/components/messenger/MessageBubble'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
 import { MessengerProvider } from '@/components/messenger/MessengerContext'
 import { ServiceMessage } from '@/components/messenger/ServiceMessage'
 import { AuditPill } from './AuditPill'
@@ -300,8 +301,8 @@ function ChatDivider({
   threadAccent: string
   onClick: () => void
 }) {
-  const accentColor = ACCENT_TEXT[threadAccent] ?? 'text-blue-500'
-  const accentBg = ACCENT_BG[threadAccent] ?? 'bg-blue-50'
+  const accentColor = ACCENT_TEXT[threadAccent as ThreadAccentColor] ?? 'text-blue-500'
+  const accentBg = ACCENT_BG[threadAccent as ThreadAccentColor] ?? 'bg-blue-50'
 
   return (
     <button
@@ -320,7 +321,7 @@ function ChatDivider({
   )
 }
 
-const ACCENT_TEXT: Record<string, string> = {
+const ACCENT_TEXT: Record<ThreadAccentColor, string> = {
   blue: 'text-blue-600',
   slate: 'text-stone-600',
   emerald: 'text-emerald-600',
@@ -333,7 +334,7 @@ const ACCENT_TEXT: Record<string, string> = {
   indigo: 'text-indigo-600',
 }
 
-const ACCENT_BG: Record<string, string> = {
+const ACCENT_BG: Record<ThreadAccentColor, string> = {
   blue: 'bg-blue-50/70',
   slate: 'bg-stone-50/70',
   emerald: 'bg-emerald-50/70',

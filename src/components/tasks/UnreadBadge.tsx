@@ -14,8 +14,11 @@ import { inboxKeys } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import { getBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import type { InboxInfiniteData } from '@/hooks/messenger/useInbox'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
 
-const ACCENT_BADGE: Record<string, string> = {
+// Record<ThreadAccentColor> (а не <string>): добавление 11-го акцента в union
+// заставит TS потребовать ключ здесь (а не молча упасть в fallback). T4.
+const ACCENT_BADGE: Record<ThreadAccentColor, string> = {
   blue: 'bg-blue-500',
   slate: 'bg-stone-600',
   emerald: 'bg-emerald-500',
@@ -84,7 +87,7 @@ export function UnreadBadge({ threadId, workspaceId, accentColor }: UnreadBadgeP
 
   if (!badge || badge.type === 'none') return null
 
-  const badgeBg = ACCENT_BADGE[accentColor ?? ''] ?? 'bg-primary'
+  const badgeBg = ACCENT_BADGE[accentColor as ThreadAccentColor] ?? 'bg-primary'
 
   if (badge.type === 'dot') {
     return (

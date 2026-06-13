@@ -93,7 +93,7 @@ describe('useRestoreProject', () => {
 })
 
 describe('useRestoreThread', () => {
-  it('выставляет is_deleted=false и инвалидирует urgentCount c workspaceId', async () => {
+  it('выставляет is_deleted=false и инвалидирует счётчик задач c workspaceId', async () => {
     vi.mocked(supabase.from).mockReturnValue({
       update: vi.fn().mockReturnValue({
         eq: vi.fn().mockResolvedValue({ error: null }),
@@ -116,14 +116,15 @@ describe('useRestoreThread', () => {
       expect(result.current.isSuccess).toBe(true)
     })
 
-    // Инвалидация urgent-tasks-count должна идти с workspaceId — без него счётчик
-    // в инбоксе не пересчитывается (регресс S2 в аудите 2026-04-11).
+    // Инвалидация счётчика «мои задачи» должна идти с workspaceId — без него
+    // бейдж сайдбара не пересчитывается. (Мёртвый my-urgent-tasks-count удалён
+    // в T4 аудита 2026-06-13; живой счётчик — my-task-counts.)
     const invalidatedKeys = invalidateSpy.mock.calls.map((c) => c[0]?.queryKey)
     expect(invalidatedKeys).toEqual(
       expect.arrayContaining([
         ['trash', 'ws-1'],
         ['workspace-tasks', 'ws-1'],
-        ['my-urgent-tasks-count', 'ws-1'],
+        ['my-task-counts', 'ws-1'],
       ]),
     )
   })

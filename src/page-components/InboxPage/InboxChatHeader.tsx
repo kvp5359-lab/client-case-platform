@@ -7,6 +7,7 @@ import {
   ParticipantAvatars,
   type AvatarParticipant,
 } from '@/components/participants/ParticipantAvatars'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,7 +42,7 @@ export function useProjectChatParticipants(projectId: string | undefined) {
   })
 }
 
-const ACCENT_BG: Record<string, string> = {
+const ACCENT_BG: Record<ThreadAccentColor, string> = {
   blue: 'bg-blue-500',
   slate: 'bg-stone-600',
   emerald: 'bg-emerald-600',
@@ -161,7 +162,7 @@ export function InboxChatHeader({
                           <div
                             className={cn(
                               'w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mr-2',
-                              ACCENT_BG[t.accent_color ?? ''] ?? 'bg-muted',
+                              ACCENT_BG[t.accent_color as ThreadAccentColor] ?? 'bg-muted',
                             )}
                           >
                             <IconComp className="w-3 h-3 text-white" />

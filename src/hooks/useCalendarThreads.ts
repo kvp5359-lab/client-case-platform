@@ -13,7 +13,6 @@ import {
   messengerKeys,
   myTaskCountsKeys,
   projectThreadKeys,
-  taskKeys,
   workspaceTaskKeys,
   STALE_TIME,
 } from '@/hooks/queryKeys'
@@ -157,7 +156,6 @@ export function useUpdateThreadTime() {
         })
       }
       // Дедлайн/время могут влиять на «мои задачи» и счётчики.
-      queryClient.invalidateQueries({ queryKey: taskKeys.urgentCount(params.workspaceId) })
       queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(params.workspaceId) })
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(params.workspaceId) })
     },
