@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { extractOriginalFrom } from '@/lib/resendWebhook'
-import { fetchResendInbound, fetchResendInboundAttachments, sendAutoReply } from './api'
+import { fetchResendInbound } from './api'
 import {
-  escapeHtml,
   normalizeAddressList,
   normalizeHeaders,
   parseAddress,
@@ -15,6 +14,11 @@ import {
   ensurePersonalEmailThread,
   saveUnmatched,
 } from './routing'
+import {
+  buildEmailMetadata,
+  saveInboundAttachments,
+  maybeSendAutoReply,
+} from './inboundProcessing'
 import { ROOT_DOMAIN, type ResendEmailData, type ResendEvent, type Resolution, type ServiceClient } from './types'
 
 export async function handleInbound(supabase: ServiceClient, event: ResendEvent) {
@@ -269,31 +273,17 @@ export async function handleInbound(supabase: ServiceClient, event: ResendEvent)
     return NextResponse.json({ error: 'routing_returned_no_thread' }, { status: 500 })
   }
 
-  // Готовим email_metadata JSONB для UI-компонентов (EmailFullViewDialog
-  // показывает кнопку «Открыть письмо» при наличии email_metadata.body_html).
-  const bodyHtmlRaw = data.html?.trim() || null
-  const bodyTextRaw = data.text?.trim() || null
-  const fullBodyHtml = bodyHtmlRaw
-    ?? (bodyTextRaw ? `<pre style="white-space:pre-wrap">${escapeHtml(bodyTextRaw)}</pre>` : null)
-  // Сохраняем сырой attachments-array (без content) — для диагностики и UI.
-  const attachmentsForMetadata = data.attachments?.map((a) => ({
-    filename: a.filename ?? null,
-    content_type: a.content_type ?? null,
-    size: a.size ?? null,
-    has_inline_content: !!a.content,
-    url: a.url ?? null,
-  })) ?? null
-  const emailMetadata = {
-    gmail_message_id: messageIdHeader ?? resendId ?? '',
-    message_id_header: messageIdHeader,
-    in_reply_to: inReplyTo,
-    from_email: realFrom.address,
-    to_emails: toList.map((a) => a.address),
-    cc_emails: ccList.map((a) => a.address),
-    subject: data.subject ?? null,
-    body_html: fullBodyHtml,
-    attachments: attachmentsForMetadata,
-  }
+  // email_metadata JSONB для UI (EmailFullViewDialog показывает «Открыть письмо»
+  // при наличии body_html).
+  const emailMetadata = buildEmailMetadata({
+    messageIdHeader,
+    resendId,
+    inReplyTo,
+    realFrom,
+    toList,
+    ccList,
+    data,
+  })
 
   const { data: inserted, error: insertError } = await supabase
     .from('project_messages')
@@ -382,80 +372,23 @@ export async function handleInbound(supabase: ServiceClient, event: ResendEvent)
     .update({ email_last_external_address: realFrom.address })
     .eq('id', threadId)
 
-  // Сохраняем вложения. Resend в webhook payload и в /emails/inbound/{id}
-  // отдаёт только метаданные (filename/size/content_type) без контента —
-  // за подписанным download_url нужно ходить отдельно через
-  // /emails/receiving/{id}/attachments. Затем качаем по этому URL и кладём в
-  // Storage bucket 'files'.
-  if (data.attachments && data.attachments.length > 0 && resendId) {
-    const remoteAttachments = await fetchResendInboundAttachments(resendId)
-    for (const att of remoteAttachments) {
-      try {
-        const r = await fetch(att.download_url)
-        if (!r.ok) {
-          console.warn('[resend-webhook] attachment download failed:', att.filename, r.status)
-          continue
-        }
-        const buf = await r.arrayBuffer()
-        const bytes = new Uint8Array(buf)
-        const fileName = att.filename ?? 'attachment'
-        const dotIdx = fileName.lastIndexOf('.')
-        const ext = dotIdx >= 0 ? fileName.slice(dotIdx) : ''
-        const rand = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
-        const sp = projectId
-          ? `${workspaceId}/${projectId}/email-attachments/${rand}`
-          : `${workspaceId}/email-attachments/${rand}`
-        const mime = att.content_type || 'application/octet-stream'
-        const { error: ue } = await supabase.storage
-          .from('files')
-          .upload(sp, bytes, { upsert: false, contentType: mime })
-        if (ue) continue
-        const { data: fr } = await supabase
-          .from('files')
-          .insert({
-            workspace_id: workspaceId,
-            bucket: 'files',
-            storage_path: sp,
-            file_name: fileName,
-            file_size: bytes.length,
-            mime_type: mime,
-          })
-          .select('id')
-          .single()
-        if (!fr) continue
-        await supabase.from('message_attachments').insert({
-          message_id: inserted.id,
-          file_name: fileName,
-          file_size: bytes.length,
-          mime_type: mime,
-          storage_path: sp,
-          file_id: fr.id,
-        })
-      } catch (e) {
-        console.error('[resend-webhook] Attachment error:', att.filename, e)
-      }
-    }
-  }
+  // Вложения: скачиваем из Resend и кладём в Storage bucket 'files'.
+  await saveInboundAttachments(supabase, {
+    data,
+    resendId,
+    workspaceId,
+    projectId,
+    messageId: inserted.id,
+  })
 
-  // Auto-responder: если письмо пришло на виртуальный адрес с включённым
-  // auto_reply_enabled — fire-and-forget шлём готовый ответ.
-  // Заголовок Auto-Submitted предотвращает ping-pong с другими auto-responder'ами.
-  if (
-    resolution.resolution_type === 'virtual' &&
-    resolution.auto_reply_enabled &&
-    resolution.auto_reply_text
-  ) {
-    sendAutoReply({
-      to: realFrom.address,
-      subject: data.subject?.trim() ? `Re: ${data.subject}` : 'Автоответ',
-      text: resolution.auto_reply_text,
-      fromLocal: recipient.address.split('@')[0] ?? 'noreply',
-      fromDomain: recipient.address.split('@')[1] ?? `${resolution.workspace_slug}.${ROOT_DOMAIN}`,
-      inReplyTo: messageIdHeader,
-    }).catch((e) => {
-      console.error('[resend-webhook] auto_reply failed:', e)
-    })
-  }
+  // Auto-responder для virtual-адресов с включённым auto_reply (fire-and-forget).
+  maybeSendAutoReply({
+    resolution,
+    data,
+    recipientAddress: recipient.address,
+    realFrom,
+    messageIdHeader,
+  })
 
   return NextResponse.json({
     status: 'ok',
