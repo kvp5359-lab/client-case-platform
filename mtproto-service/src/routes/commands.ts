@@ -11,7 +11,7 @@
  *  4. Возвращает результат, в т.ч. telegram_message_id для записи в БД.
  */
 
-import type { FastifyPluginAsync } from "fastify"
+import type { FastifyPluginAsync, FastifyReply } from "fastify"
 import bigInt from "big-integer"
 import { Api, TelegramClient } from "telegram"
 import { CustomFile } from "telegram/client/uploads.js"
@@ -297,7 +297,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
           })
           .eq("id", body.data.message_id_internal)
       }
-      return reply.code(500).send({ error: humanError(err) })
+      return floodAwareError(reply, err)
     }
   })
 
@@ -332,7 +332,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       return { ok: true }
     } catch (err) {
       app.log.error({ err }, "messages/edit failed")
-      return reply.code(500).send({ error: humanError(err) })
+      return floodAwareError(reply, err)
     }
   })
 
@@ -367,7 +367,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       return { ok: true }
     } catch (err) {
       app.log.error({ err }, "messages/delete failed")
-      return reply.code(500).send({ error: humanError(err) })
+      return floodAwareError(reply, err)
     }
   })
 
@@ -413,7 +413,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       return { ok: true }
     } catch (err) {
       app.log.error({ err }, "reactions/set failed")
-      return reply.code(500).send({ error: humanError(err) })
+      return floodAwareError(reply, err)
     }
   })
 
@@ -450,7 +450,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       return { ok: true }
     } catch (err) {
       app.log.error({ err }, "threads/read failed")
-      return reply.code(500).send({ error: humanError(err) })
+      return floodAwareError(reply, err)
     }
   })
 
@@ -539,7 +539,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       return { ok: true, avatar_url: avatarUrl }
     } catch (err) {
       app.log.error({ err }, "users/fetch-avatar failed")
-      return reply.code(500).send({ error: humanError(err) })
+      return floodAwareError(reply, err)
     }
   })
 
@@ -617,7 +617,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       peer = await resolvePeer(client, clientTgUserId)
     } catch (err) {
       app.log.error({ err }, "backfill resolvePeer failed")
-      return reply.code(500).send({ error: humanError(err) })
+      return floodAwareError(reply, err)
     }
 
     // 5. GetHistory: offset_id — exclusive (Telegram отдаёт сообщения
@@ -646,17 +646,8 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
         (m): m is Api.Message => m instanceof Api.Message,
       )
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      const flood = msg.match(/FLOOD_WAIT_(\d+)/)
-      if (flood) {
-        const seconds = Number(flood[1] ?? "60")
-        return reply
-          .code(429)
-          .header("retry-after", String(seconds))
-          .send({ error: "FLOOD_WAIT", retry_after_seconds: seconds })
-      }
       app.log.error({ err }, "messages/backfill GetHistory failed")
-      return reply.code(500).send({ error: humanError(err) })
+      return floodAwareError(reply, err)
     }
 
     // 6. Ingest каждое сообщение через общую функцию. Сортируем по id ASC,
@@ -786,4 +777,27 @@ function humanError(err: unknown): string {
     return msg
   }
   return "Unknown error"
+}
+
+/**
+ * Единый разбор ошибки Telegram в HTTP-ответ (B6).
+ *   - FLOOD_WAIT_N → 429 + Retry-After (информативно для вызывающего, чтобы
+ *     знал паузу). И send-путь, и фронт-вызовы (react/edit/read) одинаково.
+ *   - всё остальное → 500 + humanError.
+ * Раньше 429 умел только backfill-цикл, остальные роуты отдавали 500 и
+ * теряли подсказку Retry-After. Оба кода — non-2xx, так что watchdog
+ * dispatch'а по-прежнему помечает исходящее failed (политика без авторетрая
+ * не меняется).
+ */
+function floodAwareError(reply: FastifyReply, err: unknown) {
+  const msg = err instanceof Error ? err.message : String(err)
+  const flood = msg.match(/FLOOD_WAIT_(\d+)/)
+  if (flood) {
+    const seconds = Number(flood[1] ?? "60")
+    return reply
+      .code(429)
+      .header("retry-after", String(seconds))
+      .send({ error: "FLOOD_WAIT", retry_after_seconds: seconds })
+  }
+  return reply.code(500).send({ error: humanError(err) })
 }
