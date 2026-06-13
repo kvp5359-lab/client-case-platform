@@ -65,9 +65,13 @@ describe('useInboxFilters', () => {
     entry({ thread_id: 'w1', last_message_at: '2026-06-01T07:00:00Z' }),
     entry({ thread_id: 'w2', last_message_at: '2026-06-01T11:00:00Z' }),
   ]
+  const needs = [
+    entry({ thread_id: 'n1', last_message_at: '2026-06-01T06:00:00Z' }),
+    entry({ thread_id: 'n2', last_message_at: '2026-06-01T13:00:00Z' }),
+  ]
 
   it('по умолчанию вкладка «unread» и источник — unreadChats, не chats', () => {
-    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting))
+    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting, needs))
     expect(result.current.filter).toBe('unread')
     const ids = result.current.filteredChats.map((c) => c.thread_id)
     // только непрочитанные (b, x), отсортированы по дате убыв. (x новее b)
@@ -75,19 +79,19 @@ describe('useInboxFilters', () => {
   })
 
   it('unreadCount берётся из полного unreadChats, не зависит от загруженных chats', () => {
-    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting))
+    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting, needs))
     expect(result.current.unreadCount).toBe(2)
   })
 
   it('на вкладке «all» источник — полный пагинированный chats', () => {
-    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting))
+    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting, needs))
     act(() => result.current.handleSetFilter('all'))
     expect(result.current.filteredChats.map((c) => c.thread_id)).toEqual(['a', 'b', 'c'])
   })
 
   it('снимок: прочитанный тред остаётся видимым, пока не уходим с вкладки', () => {
     const { result, rerender } = renderHook(
-      ({ u }: { u: InboxThreadEntry[] }) => useInboxFilters(chats, u, awaiting),
+      ({ u }: { u: InboxThreadEntry[] }) => useInboxFilters(chats, u, awaiting, needs),
       { initialProps: { u: unread } },
     )
     // входим на вкладку — снимаем снимок текущих непрочитанных (b, x)
@@ -101,11 +105,19 @@ describe('useInboxFilters', () => {
   })
 
   it('вкладка «awaiting» — источник awaitingChats, сортировка по дате убыв.', () => {
-    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting))
+    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting, needs))
     expect(result.current.awaitingCount).toBe(2)
     act(() => result.current.handleSetFilter('awaiting'))
     // w2 (11:00) новее w1 (07:00)
     expect(result.current.filteredChats.map((c) => c.thread_id)).toEqual(['w2', 'w1'])
+  })
+
+  it('вкладка «needs_reply» — источник needsReplyChats, сортировка по дате убыв.', () => {
+    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting, needs))
+    expect(result.current.needsReplyCount).toBe(2)
+    act(() => result.current.handleSetFilter('needs_reply'))
+    // n2 (13:00) новее n1 (06:00)
+    expect(result.current.filteredChats.map((c) => c.thread_id)).toEqual(['n2', 'n1'])
   })
 
   it('поиск фильтрует по имени треда', () => {
@@ -113,7 +125,7 @@ describe('useInboxFilters', () => {
       entry({ thread_id: '1', thread_name: 'Договор', unread_count: 1 }),
       entry({ thread_id: '2', thread_name: 'Счёт', unread_count: 1 }),
     ]
-    const { result } = renderHook(() => useInboxFilters(named, named, awaiting))
+    const { result } = renderHook(() => useInboxFilters(named, named, awaiting, needs))
     act(() => result.current.setSearchQuery('счёт'))
     expect(result.current.filteredChats.map((c) => c.thread_id)).toEqual(['2'])
   })

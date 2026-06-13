@@ -213,6 +213,26 @@ export async function getInboxAwaitingReplyThreads(
 }
 
 /**
+ * Треды «Нужно ответить» одним запросом (RPC `get_inbox_needs_reply_threads`) —
+ * внешние диалоги, где ПОСЛЕДНЕЕ сообщение от клиента и всё прочитано (ты видел,
+ * но не ответил). Источник вкладки «Нужно ответить». Инверсия «Ждём клиента»;
+ * гейт «прочитано» исключает пересечение с «Непрочитанными» (там приоритет).
+ * Без пагинации (как unread/awaiting) — клиентский access-фильтр.
+ */
+export async function getInboxNeedsReplyThreads(
+  workspaceId: string,
+  userId: string,
+): Promise<InboxThreadEntry[]> {
+  const { data, error } = await supabase.rpc('get_inbox_needs_reply_threads', {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+  })
+
+  if (error) throw new ApiError(`Ошибка загрузки «Нужно ответить»: ${error.message}`)
+  return (data ?? []) as unknown as InboxThreadEntry[]
+}
+
+/**
  * Лёгкая строка-агрегат — только поля для счётчиков сайдбара/favicon.
  * Без имён, текстов, аватаров. Источник — RPC `get_inbox_thread_aggregates`.
  */

@@ -33,13 +33,15 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
       // Инвалидируем все ключи, которые зависят от project_messages workspace-level:
       // - threadsV2: единый inbox-кеш для UI-списка тредов (вкладка «Все»)
       // - unread: отдельный полный список непрочитанных (вкладка «Непрочитанные»)
-      // - awaitingReply: внешние диалоги, где мы написали последними (вкладка «Ждут ответа»)
+      // - awaitingReply: внешние диалоги, где мы написали последними (вкладка «Ждём клиента»)
+      // - needsReply: внешние диалоги, где клиент написал последним + прочитано (вкладка «Нужно ответить»)
       // - messageStatuses: статусы доставки для галочек в превью
       // - aggregates: лёгкий RPC для сайдбар-бейджей и favicon (с 2026-05-27)
       // - projectsBase: сайдбар проектов с last_activity_at
       queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
       queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
       queryClient.invalidateQueries({ queryKey: inboxKeys.awaitingReply(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.needsReply(workspaceId) })
       queryClient.invalidateQueries({ queryKey: inboxKeys.messageStatuses(workspaceId) })
       queryClient.invalidateQueries({ queryKey: inboxKeys.aggregates(workspaceId) })
       queryClient.invalidateQueries({ queryKey: sidebarKeys.projectsBase(workspaceId) })

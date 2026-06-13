@@ -19,8 +19,10 @@ type InboxSidebarProps = {
   onOpenSearch: () => void
   onCloseSearch: () => void
   unreadCount: number
-  /** Сколько тредов «Ждут ответа» — внешние диалоги, где последними писали мы. */
+  /** «Ждём клиента» — внешние диалоги, где последними писали мы (прочитано). */
   awaitingCount: number
+  /** «Нужно ответить» — внешние диалоги, где последним писал клиент (прочитано). */
+  needsReplyCount: number
   isLoading: boolean
   filteredChats: InboxThreadEntry[]
   activeThreadId: string | null
@@ -47,6 +49,7 @@ export const InboxSidebar = memo(function InboxSidebar({
   onCloseSearch,
   unreadCount,
   awaitingCount,
+  needsReplyCount,
   isLoading,
   filteredChats,
   activeThreadId,
@@ -111,71 +114,99 @@ export const InboxSidebar = memo(function InboxSidebar({
           ) : (
             /* Фильтры + кнопка поиска */
             <>
-              <button
-                type="button"
-                onClick={() => onSetFilter('all')}
-                className={cn(
-                  'text-xs px-2.5 py-1 rounded-full transition-colors',
-                  filter === 'all'
-                    ? 'bg-blue-100 text-blue-700 font-medium'
-                    : 'text-gray-500 hover:bg-gray-100',
-                )}
-              >
-                Все
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetFilter('unread')}
-                className={cn(
-                  'text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1',
-                  filter === 'unread'
-                    ? 'bg-blue-100 text-blue-700 font-medium'
-                    : 'text-gray-500 hover:bg-gray-100',
-                )}
-              >
-                Непрочитанные
-                {unreadCount > 0 && (
-                  <span
-                    className={cn(
-                      'min-w-[16px] h-4 px-1 rounded-full text-[10px] font-medium flex items-center justify-center',
-                      filter === 'unread'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-600',
-                    )}
-                  >
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetFilter('awaiting')}
-                title="Внешние диалоги, где последними написали мы — ждём ответа собеседника"
-                className={cn(
-                  'text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1',
-                  filter === 'awaiting'
-                    ? 'bg-blue-100 text-blue-700 font-medium'
-                    : 'text-gray-500 hover:bg-gray-100',
-                )}
-              >
-                Ждут ответа
-                {awaitingCount > 0 && (
-                  <span
-                    className={cn(
-                      'min-w-[16px] h-4 px-1 rounded-full text-[10px] font-medium flex items-center justify-center',
-                      filter === 'awaiting'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-600',
-                    )}
-                  >
-                    {awaitingCount}
-                  </span>
-                )}
-              </button>
+              {/* Вкладки в одну строку с горизонтальным скроллом (без переноса, без видимой полосы). */}
+              <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => onSetFilter('unread')}
+                  className={cn(
+                    'shrink-0 whitespace-nowrap text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1',
+                    filter === 'unread'
+                      ? 'bg-blue-100 text-blue-700 font-medium'
+                      : 'text-gray-500 hover:bg-gray-100',
+                  )}
+                >
+                  Непрочитанные
+                  {unreadCount > 0 && (
+                    <span
+                      className={cn(
+                        'min-w-[16px] h-4 px-1 rounded-full text-[10px] font-medium flex items-center justify-center',
+                        filter === 'unread'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-600',
+                      )}
+                    >
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetFilter('all')}
+                  className={cn(
+                    'shrink-0 whitespace-nowrap text-xs px-2.5 py-1 rounded-full transition-colors',
+                    filter === 'all'
+                      ? 'bg-blue-100 text-blue-700 font-medium'
+                      : 'text-gray-500 hover:bg-gray-100',
+                  )}
+                >
+                  Все
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetFilter('needs_reply')}
+                  title="Внешние диалоги, где последним написал клиент и всё прочитано — нужен твой ответ"
+                  className={cn(
+                    'shrink-0 whitespace-nowrap text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1',
+                    filter === 'needs_reply'
+                      ? 'bg-blue-100 text-blue-700 font-medium'
+                      : 'text-gray-500 hover:bg-gray-100',
+                  )}
+                >
+                  Нужно ответить
+                  {needsReplyCount > 0 && (
+                    <span
+                      className={cn(
+                        'min-w-[16px] h-4 px-1 rounded-full text-[10px] font-medium flex items-center justify-center',
+                        filter === 'needs_reply'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-600',
+                      )}
+                    >
+                      {needsReplyCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetFilter('awaiting')}
+                  title="Внешние диалоги, где последними написали мы — ждём ответа клиента"
+                  className={cn(
+                    'shrink-0 whitespace-nowrap text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1',
+                    filter === 'awaiting'
+                      ? 'bg-blue-100 text-blue-700 font-medium'
+                      : 'text-gray-500 hover:bg-gray-100',
+                  )}
+                >
+                  Ждём клиента
+                  {awaitingCount > 0 && (
+                    <span
+                      className={cn(
+                        'min-w-[16px] h-4 px-1 rounded-full text-[10px] font-medium flex items-center justify-center',
+                        filter === 'awaiting'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-600',
+                      )}
+                    >
+                      {awaitingCount}
+                    </span>
+                  )}
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={onOpenSearch}
-                className="ml-auto p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                className="shrink-0 p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
               >
                 <Search className="h-3.5 w-3.5" />
               </button>
@@ -194,11 +225,13 @@ export const InboxSidebar = memo(function InboxSidebar({
           <div className="px-4 py-8 text-center text-sm text-muted-foreground">
             {filter === 'unread'
               ? 'Нет непрочитанных'
-              : filter === 'awaiting'
-                ? 'Нет диалогов в ожидании ответа'
-                : searchQuery
-                  ? 'Ничего не найдено'
-                  : 'Нет активных чатов'}
+              : filter === 'needs_reply'
+                ? 'Нет диалогов, ждущих ответа'
+                : filter === 'awaiting'
+                  ? 'Нет диалогов в ожидании клиента'
+                  : searchQuery
+                    ? 'Ничего не найдено'
+                    : 'Нет активных чатов'}
           </div>
         ) : (
           <>

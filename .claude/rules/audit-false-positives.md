@@ -179,8 +179,9 @@ Legacy паттерн — это:
 | `src/components/messenger/chatSettingsTypes.ts → STAFF_ROLES` | Только workspace-роли (без «Исполнитель»). Для классификации участника чата в 4 группы. |
 | `src/page-components/workspace-settings/IntegrationsTab/types.ts → TEAM_ROLES` | Включает «Внешний сотрудник» вместо «Исполнитель». Для фильтра доступа к персональному боту. |
 | `src/components/messenger/MessageBubble.tsx → isTeamSender` | Импортирует `isStaffRole` из `permissions.ts`. Уже унифицирован 2026-05-24. |
+| БД: `public.is_staff_role(text)` | **Намеренное SQL-зеркало** канона `permissions.ts STAFF_ROLES` (те же 4 роли). Введён 2026-06-13 как единый источник на стороне БД для inbox-обёрток (`get_inbox_needs_reply_threads`, `get_inbox_awaiting_reply_threads`). НЕ «5-й дубль» — SQL и TS не могут делить функцию; при изменении набора править оба. `get_inbox_threads_v2` его пока НЕ зовёт (карантин). |
 
-Если хочется унифицировать — поломает поведение в одном из мест.
+Если хочется унифицировать (TS-наборы между собой) — поломает поведение в одном из мест.
 
 ---
 

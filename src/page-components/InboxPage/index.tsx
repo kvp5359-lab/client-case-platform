@@ -14,6 +14,7 @@ import {
   useFilteredInbox,
   useFilteredInboxUnread,
   useFilteredInboxAwaitingReply,
+  useFilteredInboxNeedsReply,
   useFilteredInboxSearch,
   useInboxMessageStatuses,
 } from '@/hooks/messenger/useFilteredInbox'
@@ -69,8 +70,10 @@ export default function InboxPage() {
 
   // Все непрочитанные одним запросом — источник вкладки «Непрочитанные» (без каскада догрузки).
   const { data: unreadChats = [] } = useFilteredInboxUnread(workspaceId ?? '')
-  // Все «Ждут ответа» одним запросом — внешние диалоги, где последними писали мы.
+  // «Ждём клиента» — внешние диалоги, где последними писали мы (прочитано).
   const { data: awaitingChats = [] } = useFilteredInboxAwaitingReply(workspaceId ?? '')
+  // «Нужно ответить» — внешние диалоги, где последним писал клиент (прочитано).
+  const { data: needsReplyChats = [] } = useFilteredInboxNeedsReply(workspaceId ?? '')
 
   const {
     filter,
@@ -83,7 +86,8 @@ export default function InboxPage() {
     filteredChats,
     unreadCount,
     awaitingCount,
-  } = useInboxFilters(chats, unreadChats, awaitingChats)
+    needsReplyCount,
+  } = useInboxFilters(chats, unreadChats, awaitingChats, needsReplyChats)
 
   // Серверный поиск по тредам инбокса (по названию треда/проекта) — по всем
   // тредам, а не по загруженным страницам. При активном поиске он заменяет
@@ -248,6 +252,7 @@ export default function InboxPage() {
             onCloseSearch={closeSearch}
             unreadCount={unreadCount}
             awaitingCount={awaitingCount}
+            needsReplyCount={needsReplyCount}
             isLoading={isLoading}
             filteredChats={displayChats}
             activeThreadId={activeChat?.thread_id ?? null}

@@ -6,7 +6,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 
-export type InboxFilter = 'all' | 'unread' | 'awaiting'
+export type InboxFilter = 'all' | 'unread' | 'awaiting' | 'needs_reply'
 
 /** Ключ сортировки треда — как в RPC: max(last_message_at, last_event_at). */
 function sortKey(c: InboxThreadEntry): number {
@@ -19,13 +19,16 @@ function sortKey(c: InboxThreadEntry): number {
  * @param chats — пагинированный список инбокса (вкладка «Все», keyset-страницы).
  * @param unreadChats — все непрочитанные одним запросом (вкладка «Непрочитанные»).
  *   Отдельный источник, чтобы вкладка не зависела от прокрутки и не каскадила догрузку.
- * @param awaitingChats — все треды «Ждут ответа» одним запросом (вкладка «Ждут ответа»):
- *   внешние диалоги, где последними писали мы. Тоже без пагинации (см. unread).
+ * @param awaitingChats — все треды «Ждём клиента» одним запросом: внешние диалоги,
+ *   где последними писали мы и всё прочитано. Без пагинации (см. unread).
+ * @param needsReplyChats — все треды «Нужно ответить»: внешние диалоги, где
+ *   последним писал клиент и всё прочитано. Без пагинации.
  */
 export function useInboxFilters(
   chats: InboxThreadEntry[],
   unreadChats: InboxThreadEntry[],
   awaitingChats: InboxThreadEntry[],
+  needsReplyChats: InboxThreadEntry[],
 ) {
   const [filter, setFilter] = useState<InboxFilter>('unread')
   const [searchQuery, setSearchQuery] = useState('')
@@ -63,10 +66,12 @@ export function useInboxFilters(
       }
       result = Array.from(byId.values()).sort((a, b) => sortKey(b) - sortKey(a))
     } else if (filter === 'awaiting') {
-      // Полный список «Ждут ответа» одним запросом. Снимок не нужен: тред уходит
-      // отсюда только когда собеседник ответит (последнее сообщение → входящее),
-      // а не при прочтении — открытие/чтение его тут не трогает.
+      // Полный список «Ждём клиента» одним запросом. Снимок не нужен — тред
+      // уходит отсюда, когда собеседник ответит (последнее → входящее).
       result = [...awaitingChats].sort((a, b) => sortKey(b) - sortKey(a))
+    } else if (filter === 'needs_reply') {
+      // Полный список «Нужно ответить» одним запросом.
+      result = [...needsReplyChats].sort((a, b) => sortKey(b) - sortKey(a))
     } else {
       result = chats
     }
@@ -81,10 +86,11 @@ export function useInboxFilters(
     }
 
     return result
-  }, [chats, unreadChats, awaitingChats, filter, searchQuery, unreadSnapshot])
+  }, [chats, unreadChats, awaitingChats, needsReplyChats, filter, searchQuery, unreadSnapshot])
 
   const unreadCount = useMemo(() => unreadChats.length, [unreadChats])
   const awaitingCount = useMemo(() => awaitingChats.length, [awaitingChats])
+  const needsReplyCount = useMemo(() => needsReplyChats.length, [needsReplyChats])
 
   const closeSearch = useCallback(() => {
     setSearchOpen(false)
@@ -102,5 +108,6 @@ export function useInboxFilters(
     filteredChats,
     unreadCount,
     awaitingCount,
+    needsReplyCount,
   }
 }

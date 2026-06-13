@@ -20,6 +20,7 @@ import {
   getInboxThreadAggregates,
   getInboxUnreadThreads,
   getInboxAwaitingReplyThreads,
+  getInboxNeedsReplyThreads,
   getInboxSearchThreads,
   getInboxMessageStatuses,
   type InboxThreadAggregate,
@@ -234,14 +235,10 @@ export function useFilteredInboxUnread(workspaceId: string) {
 }
 
 /**
- * useFilteredInboxAwaitingReply — все треды «Ждут ответа» одним запросом (без
- * пагинации), отфильтрованные тем же access-фильтром.
- *
- * Источник вкладки «Ждут ответа»: внешние диалоги, где ПОСЛЕДНЕЕ сообщение
- * отправили мы → ждём ответа собеседника. Решает кейс «написал клиенту первым в
- * TG/WhatsApp — тред создан, но в "Непрочитанных" не виден (unread_count=0)».
- * Пагинацию сюда возвращать НЕЛЬЗЯ — каскад из-за клиентского access-фильтра
- * (та же причина, что у useFilteredInboxUnread).
+ * useFilteredInboxAwaitingReply — все треды «Ждём клиента» одним запросом
+ * (внешние диалоги, где ПОСЛЕДНЕЕ сообщение от нас и всё прочитано),
+ * отфильтрованные тем же access-фильтром. Источник вкладки «Ждём клиента».
+ * Без пагинации (каскад из-за клиентского access-фильтра).
  */
 export function useFilteredInboxAwaitingReply(workspaceId: string) {
   const { user } = useAuth()
@@ -254,6 +251,27 @@ export function useFilteredInboxAwaitingReply(workspaceId: string) {
   })
 
   const data = useAccessFilter(rawAwaiting, workspaceId)
+  return { data, ...queryRest }
+}
+
+/**
+ * useFilteredInboxNeedsReply — все треды «Нужно ответить» одним запросом
+ * (внешние диалоги, где ПОСЛЕДНЕЕ сообщение от клиента и всё прочитано),
+ * отфильтрованные тем же access-фильтром. Источник вкладки «Нужно ответить».
+ * Взаимоисключающе с «Ждём клиента» (направление последнего сообщения) и с
+ * «Непрочитанными» (гейт «прочитано»). Без пагинации.
+ */
+export function useFilteredInboxNeedsReply(workspaceId: string) {
+  const { user } = useAuth()
+
+  const { data: rawNeeds = [], ...queryRest } = useQuery({
+    queryKey: inboxKeys.needsReply(workspaceId),
+    queryFn: () => getInboxNeedsReplyThreads(workspaceId, user!.id),
+    enabled: !!workspaceId && !!user,
+    staleTime: STALE_TIME.SHORT,
+  })
+
+  const data = useAccessFilter(rawNeeds, workspaceId)
   return { data, ...queryRest }
 }
 

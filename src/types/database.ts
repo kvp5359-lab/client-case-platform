@@ -8821,6 +8821,45 @@ export type Database = {
           unread_reaction_count: number
         }[]
       }
+      get_inbox_needs_reply_threads: {
+        Args: { p_user_id: string; p_workspace_id: string }
+        Returns: {
+          channel_type: string
+          counterpart_avatar_url: string
+          counterpart_name: string
+          email_contact: string
+          email_subject: string
+          has_unread_reaction: boolean
+          last_event_at: string
+          last_event_status_color: string
+          last_event_text: string
+          last_message_at: string
+          last_message_attachment_count: number
+          last_message_attachment_mime: string
+          last_message_attachment_name: string
+          last_message_text: string
+          last_reaction_at: string
+          last_reaction_emoji: string
+          last_reaction_message_preview: string
+          last_reaction_sender_avatar_url: string
+          last_reaction_sender_name: string
+          last_read_at: string
+          last_sender_avatar_url: string
+          last_sender_name: string
+          legacy_channel: string
+          manually_unread: boolean
+          project_id: string
+          project_name: string
+          thread_accent_color: string
+          thread_icon: string
+          thread_id: string
+          thread_name: string
+          thread_type: string
+          unread_count: number
+          unread_event_count: number
+          unread_reaction_count: number
+        }[]
+      }
       get_inbox_awaiting_reply_threads: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: {
