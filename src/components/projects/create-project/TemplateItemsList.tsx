@@ -4,6 +4,7 @@ import { FileText, FolderOpen, MessagesSquare, Heading, Type as TypeIcon } from 
 import { cn } from '@/lib/utils'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { htmlToPlain } from '@/components/plan/PlanBlockItem'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import type { TemplatePlanBlockRow } from '@/types/plan'
@@ -127,7 +128,7 @@ export function TemplateItemsList({
                   {createElement(getChatIconComponent(t.icon ?? ''), {
                     className: cn(
                       'h-3.5 w-3.5 shrink-0',
-                      COLOR_TEXT[t.accent_color ?? ''] ?? 'text-muted-foreground',
+                      COLOR_TEXT[(t.accent_color ?? "") as ThreadAccentColor] ?? 'text-muted-foreground',
                     ),
                   })}
                 </label>

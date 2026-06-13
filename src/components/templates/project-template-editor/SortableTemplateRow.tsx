@@ -14,6 +14,7 @@ import { Pencil, Trash2, Copy, Clock, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
@@ -73,7 +74,7 @@ export function SortableTemplateRow({
       {createElement(getChatIconComponent(t.icon), {
         className: cn(
           'w-4 h-4 flex-shrink-0',
-          COLOR_TEXT[t.accent_color] ?? 'text-blue-500',
+          COLOR_TEXT[t.accent_color as ThreadAccentColor] ?? 'text-blue-500',
         ),
       })}
       <span className="text-sm truncate flex-shrink min-w-0">{t.name}</span>

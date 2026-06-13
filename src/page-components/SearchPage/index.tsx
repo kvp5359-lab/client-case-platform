@@ -27,6 +27,7 @@ import {
 import { useDebounce } from '@/hooks/shared/useDebounce'
 import { openThreadById } from '@/components/tasks/openThreadById'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { getProjectIcon } from '@/components/common/project-icons'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { cn } from '@/lib/utils'
@@ -238,7 +239,7 @@ function EntityIcon({
     })
   }
   const useAccent = accentColor && (type === 'thread' || type === 'message')
-  const accentClass = useAccent ? COLOR_TEXT[accentColor!] ?? 'text-gray-500' : 'text-gray-500'
+  const accentClass = useAccent ? COLOR_TEXT[accentColor! as ThreadAccentColor] ?? 'text-gray-500' : 'text-gray-500'
   const cls = cn('shrink-0', accentClass)
   if (type === 'thread' || type === 'message') {
     if (threadType === 'task') return <ListChecks size={size} className={cls} />

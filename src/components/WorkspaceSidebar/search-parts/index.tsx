@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { getProjectIcon } from '@/components/common/project-icons'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { GlobalSearchEntityType } from '@/hooks/useGlobalSearch'
 
 export function SearchInputInline({
@@ -106,7 +107,7 @@ export function EntityIcon({
   // accent_color у тредов — семантический ключ Tailwind-палитры
   // ('slate', 'violet', 'rose' …), не CSS-цвет. Резолвим через COLOR_TEXT.
   const useAccent = !muted && accentColor && (type === 'thread' || type === 'message')
-  const accentClass = useAccent ? COLOR_TEXT[accentColor!] ?? 'text-gray-500' : null
+  const accentClass = useAccent ? COLOR_TEXT[accentColor! as ThreadAccentColor] ?? 'text-gray-500' : null
   const cls = cn(
     'shrink-0',
     accentClass ?? (muted ? 'text-gray-400' : 'text-gray-500'),

@@ -70,8 +70,10 @@ export const COLOR_BG: Record<string, string> = Object.fromEntries(
   ACCENT_COLORS.map((c) => [c.value, c.bg]),
 )
 
-/** Маппинг accent_color → Tailwind text class */
-export const COLOR_TEXT: Record<string, string> = {
+/** Маппинг accent_color → Tailwind text class.
+ *  Record<ThreadAccentColor>: добавление акцента в union даёт ошибку компиляции
+ *  здесь (а не молчаливый fallback). Индекс-сайты кастуют free-string accent. */
+export const COLOR_TEXT: Record<ThreadAccentColor, string> = {
   blue: 'text-blue-500',
   slate: 'text-stone-600',
   emerald: 'text-emerald-600',

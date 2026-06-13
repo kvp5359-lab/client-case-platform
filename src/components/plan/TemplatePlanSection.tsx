@@ -35,6 +35,7 @@ import {
 } from 'lucide-react'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { TiptapEditor } from '@/components/tiptap-editor/tiptap-editor'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -193,7 +194,7 @@ export function TemplatePlanSection({ workspaceId, templateId, enabledModules }:
                   >
                     <Checkbox checked={selectedTpl.has(t.id)} className="pointer-events-none" />
                     {createElement(getChatIconComponent(t.icon ?? ''), {
-                      className: `size-4 shrink-0 ${COLOR_TEXT[t.accent_color ?? ''] ?? 'text-muted-foreground'}`,
+                      className: `size-4 shrink-0 ${COLOR_TEXT[(t.accent_color ?? "") as ThreadAccentColor] ?? 'text-muted-foreground'}`,
                     })}
                     <span className="truncate">{t.name}</span>
                   </button>

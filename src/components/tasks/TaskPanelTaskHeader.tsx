@@ -189,7 +189,7 @@ export function TaskPanelTaskHeader({
                 className="shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-muted/60 transition-colors"
               >
                 {createElement(ThreadIcon, {
-                  className: cn('w-4 h-4', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
+                  className: cn('w-4 h-4', COLOR_TEXT[task.accent_color as ThreadAccentColor] ?? 'text-blue-500'),
                 })}
               </button>
             </PopoverTrigger>

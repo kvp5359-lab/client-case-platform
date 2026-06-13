@@ -15,6 +15,7 @@ import { safeCssColor } from '@/utils/isValidCssColor'
 import { getDeadlineGroup } from '@/utils/deadlineUtils'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { DeadlinePopover } from './DeadlinePopover'
 import type { TaskTimeValue } from './TaskTimePickerPopover'
 import { AssigneesPopover } from './AssigneesPopover'
@@ -144,7 +145,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
         {task.type && task.type !== 'task' && (
           <span className={cn('shrink-0', isFinal && 'opacity-40')}>
             {createElement(getChatIconComponent(task.icon), {
-              className: cn('w-3.5 h-3.5', COLOR_TEXT[task.accent_color] ?? 'text-blue-500'),
+              className: cn('w-3.5 h-3.5', COLOR_TEXT[task.accent_color as ThreadAccentColor] ?? 'text-blue-500'),
             })}
           </span>
         )}
