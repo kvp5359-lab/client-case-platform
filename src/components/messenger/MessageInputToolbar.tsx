@@ -11,7 +11,7 @@ import type { TaskStatus } from '@/hooks/useStatuses'
 import { TranslateActionButton } from './TranslateActionButton'
 import { ScheduleSendButton } from './ScheduleSendButton'
 
-export const sendButtonStyles: Record<string, string> = {
+export const sendButtonStyles: Record<MessengerAccent, string> = {
   blue: 'bg-blue-500 hover:bg-blue-600 text-white',
   slate: 'bg-stone-600 hover:bg-stone-700 text-white',
   emerald: 'bg-emerald-600 hover:bg-emerald-700 text-white',

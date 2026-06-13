@@ -6,7 +6,7 @@ import { groupReactions } from './utils/reactionHelpers'
 import type { MessengerAccent } from './utils/messageStyles'
 
 /** Accent-colored backgrounds for own reactions */
-const OWN_REACTION_STYLES: Record<string, string> = {
+const OWN_REACTION_STYLES: Record<MessengerAccent, string> = {
   blue: 'bg-blue-500 hover:bg-blue-600 text-white',
   slate: 'bg-stone-600 hover:bg-stone-700 text-white',
   emerald: 'bg-emerald-600 hover:bg-emerald-700 text-white',
@@ -22,7 +22,7 @@ const OWN_REACTION_STYLES: Record<string, string> = {
 }
 
 /** Accent-colored backgrounds for other users' reactions */
-const OTHER_REACTION_STYLES: Record<string, string> = {
+const OTHER_REACTION_STYLES: Record<MessengerAccent, string> = {
   blue: 'bg-blue-100 hover:bg-blue-200',
   slate: 'bg-stone-100 hover:bg-stone-200',
   emerald: 'bg-emerald-100 hover:bg-emerald-200',
