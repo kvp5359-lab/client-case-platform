@@ -239,7 +239,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       void (async () => {
         try {
           const { data: session } = await supabase
-            .from("mtproto_sessions")
+            .from("telegram_mtproto_sessions")
             .select("workspace_id")
             .eq("user_id", body.data.user_id)
             .maybeSingle()

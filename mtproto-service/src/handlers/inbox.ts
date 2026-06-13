@@ -83,15 +83,6 @@ export async function resolveSessionParticipant(args: {
   return { id: data.id as string, name: fullName }
 }
 
-// Совместимость со старым именем — возвращает только id.
-export async function resolveSessionParticipantId(args: {
-  user_id: string
-  workspace_id: string
-}): Promise<string | null> {
-  const p = await resolveSessionParticipant(args)
-  return p?.id ?? null
-}
-
 /**
  * Upsert клиента (собеседника MTProto) в таблицу participants как
  * "Telegram-контакт". Возвращает participant_id. Тот же контракт, что
