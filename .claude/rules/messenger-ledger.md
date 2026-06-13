@@ -45,6 +45,15 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-12 — Аудит безопасности: ротация INTERNAL_FUNCTION_SECRET + укрепление auth *-send (не баг — плановые фиксы)
+- **Контекст:** полный аудит нашёл: (1) старый секрет закоммичен в репо (`20260525_convert_external_event_assignee.sql`) → скомпрометирован; (2) `requireInternalSecret(req, true)` пропускает ЛЮБУЮ строку `Bearer ...` по префиксу — при `verify_jwt=false` Bearer фактически не проверялся.
+- **Ротация секрета:** новый через `supabase secrets set` (env подхватился сам, redeploy не понадобился) → обновлены 3 БД-функции с хардкодом (`dispatch_send_http`, `notify_google_calendar_mirror`, `convert_external_event_to_task`) через MCP execute_sql (секрет в репо НЕ коммитим — это и была причина утечки) → VPS `mtproto-service/.env` (sed, бэкап `.env.bak-20260612`) + пересоздание контейнера (сессия восстановилась штатно). Верификация: telegram-send-message с новым секретом + несуществующим message_id → 400 «Missing field» (наш код), со старым → 401. Окно простоя исходящих ~2 мин, инцидентов нет.
+- **email-internal-send:** для не-секретного пути (фронт, attachments) — теперь настоящий `getUser` + проверка участия в `msg.workspace_id`. Ранний `requireInternalSecret(req, true)` оставлен как префильтр. Передеплоена `--no-verify-jwt`.
+- **fetch-telegram-avatar:** Bearer-префикс заменён на настоящий `getUser`. Передеплоена `--no-verify-jwt`.
+- **REVOKE-волна (этап 1):** у anon отозваны EXECUTE на всех мессенджер-RPC (`get_inbox_*`, `get_workspace_threads`, `toggle_message_reaction`, `get_chat_state`, `move_thread_to_project`, `merge_telegram_contact`…); `dispatch_send_http`, `route_incoming_to_project`, `match_inbound_email`, `append_telegram_message_id` — только service_role. Триггер-цепочка отправки вся SECURITY DEFINER → REVOKE безопасен (проверено). Storage `message-attachments` — workspace-фильтр (раньше любой залогиненный читал вложения чужих воркспейсов).
+- **Грабли (новые):** ⚠️ при будущей смене секрета помнить ТРИ места с хардкодом в БД (dispatch_send_http, notify_google_calendar_mirror, convert_external_event_to_task) + mtproto-service/.env на VPS. Секрет в файл миграции не класть. `REVOKE FROM anon` не работает, пока EXECUTE выдан через PUBLIC — снимать PUBLIC и возвращать явные GRANT.
+- **Статус:** ждёт живого смок-теста TG (одно сообщение) в конце марафона фиксов.
+
 ### 2026-06-12 — MTProto: имя треда = `tg:<id>` + нет @username контакта
 - **Симптом A:** при первом исходящем новому MTProto-контакту тред создаётся с именем-плейсхолдером `tg:<id>`, а когда приходит ответ с настоящим именем — НЕ переименовывается.
 - **Корень A:** `ensureMTProtoThread` для существующего треда просто возвращал id, имя не трогал. Имя резолвится корректно (`first_name`), но застывало на стартовом плейсхолдере.
