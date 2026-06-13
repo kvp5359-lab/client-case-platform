@@ -46,7 +46,9 @@ export function useProjectsQuery(
 
 export function useProjectTemplatesQuery(workspaceId: string | null | undefined) {
   return useQuery({
-    queryKey: projectTemplateKeys.listByWorkspace(workspaceId ?? ''),
+    // Лёгкий список id+name → отдельный кеш namesByWorkspace, иначе обрезанные
+    // строки затирали бы полный кеш listByWorkspace (редактор шаблонов).
+    queryKey: projectTemplateKeys.namesByWorkspace(workspaceId ?? ''),
     queryFn: async (): Promise<ProjectTemplateOption[]> => {
       if (!workspaceId) return []
       const { data, error } = await supabase

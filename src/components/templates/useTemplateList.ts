@@ -92,6 +92,10 @@ export function useTemplateList<
   const queryClient = useQueryClient()
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
   const fullQueryKey = [queryKey, workspaceId]
+  // Broad-префикс для инвалидации: покрывает и полный список [queryKey, ws],
+  // и лёгкий [queryKey, 'names', ws] (project-templates namesByWorkspace) —
+  // иначе пикеры показывали бы устаревший список после CRUD шаблонов.
+  const broadInvalidateKey = [queryKey]
 
   // ============== State ==============
 
@@ -141,7 +145,7 @@ export function useTemplateList<
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: fullQueryKey })
+      queryClient.invalidateQueries({ queryKey: broadInvalidateKey })
       handleCloseDialog()
     },
     onError: (error) => {
@@ -156,7 +160,7 @@ export function useTemplateList<
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: fullQueryKey })
+      queryClient.invalidateQueries({ queryKey: broadInvalidateKey })
     },
     onError: (error) => {
       logger.error('Ошибка удаления шаблона:', error)
@@ -176,7 +180,7 @@ export function useTemplateList<
         if (error) throw error
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: fullQueryKey })
+      queryClient.invalidateQueries({ queryKey: broadInvalidateKey })
     },
     onError: (error) => {
       logger.error('Ошибка копирования шаблона:', error)
@@ -210,7 +214,7 @@ export function useTemplateList<
       toast.error('Не удалось сохранить порядок')
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: fullQueryKey })
+      queryClient.invalidateQueries({ queryKey: broadInvalidateKey })
     },
   })
 

@@ -317,6 +317,5 @@ export function TemplateAccessPopover({
   )
 }
 
-// useTemplateAccessCounts / TemplateAccessBadge / TemplateAccessButton живут в
-// ./template-access/ — импортируйте напрямую оттуда. Реэкспорт убран: он создавал
-// цикл TemplateAccessPopover ↔ TemplateAccessButton (madge).
+// TemplateAccessButton живёт в ./template-access/ — импортируйте напрямую оттуда.
+// Реэкспорт убран: он создавал цикл TemplateAccessPopover ↔ TemplateAccessButton (madge).

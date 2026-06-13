@@ -94,9 +94,10 @@ export default function ProjectPage() {
     updateProjectFields,
   } = useProjectMutations(projectId)
 
-  // Загрузка списка шаблонов для workspace
+  // Загрузка списка шаблонов для workspace (лёгкий id+name → namesByWorkspace,
+  // отдельный кеш от полного listByWorkspace).
   const { data: projectTemplates = [] } = useQuery({
-    queryKey: projectTemplateKeys.listByWorkspace(workspaceId),
+    queryKey: projectTemplateKeys.namesByWorkspace(workspaceId),
     queryFn: async () => {
       if (!workspaceId) return []
       const { data, error } = await supabase
