@@ -45,6 +45,13 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-13 — Аудит производительности: tiptap из eager-графа + вынос хелперов иконок (не баг)
+- **Симптом:** редактор tiptap (~390 КБ) попадал в бандл почти всех страниц воркспейса.
+- **Корень:** (1) `TaskPanelTabContents` статически импортировал `TaskPanel` → `MessengerTabContent` → `MinimalTiptapEditor`; (2) 14 файлов тянули `getChatIconComponent`/`getChatTabAccent` из тяжёлого `EditChatDialog`/`ChatSettingsDialog`, утаскивая весь диалог.
+- **Фикс:** `TaskPanel` в `TaskPanelTabContents` → `React.lazy`+`Suspense`. Хелперы иконок вынесены в новый лёгкий `src/components/messenger/chatVisuals.ts`; `ChatSettingsDialog` реэкспортирует их; 14 импортов перенаправлены. Мёртвый компонент `EditChatDialog.tsx` удалён (хелперы были его единственными живыми экспортами).
+- **Грабли:** `getChatIconComponent`/`getChatTabAccent` теперь живут в `chatVisuals.ts`, НЕ в `EditChatDialog` (удалён) и НЕ в `ChatSettingsDialog` (только реэкспорт). Новый потребитель иконки — импортировать из `chatVisuals`, не из диалогов (иначе вернётся tiptap в граф).
+- **Смок:** build зелёный, поведение мессенджера не менялось. Ждёт живого смок-теста TG в конце марафона.
+
 ### 2026-06-12 — Аудит безопасности: ротация INTERNAL_FUNCTION_SECRET + укрепление auth *-send (не баг — плановые фиксы)
 - **Контекст:** полный аудит нашёл: (1) старый секрет закоммичен в репо (`20260525_convert_external_event_assignee.sql`) → скомпрометирован; (2) `requireInternalSecret(req, true)` пропускает ЛЮБУЮ строку `Bearer ...` по префиксу — при `verify_jwt=false` Bearer фактически не проверялся.
 - **Ротация секрета:** новый через `supabase secrets set` (env подхватился сам, redeploy не понадобился) → обновлены 3 БД-функции с хардкодом (`dispatch_send_http`, `notify_google_calendar_mirror`, `convert_external_event_to_task`) через MCP execute_sql (секрет в репо НЕ коммитим — это и была причина утечки) → VPS `mtproto-service/.env` (sed, бэкап `.env.bak-20260612`) + пересоздание контейнера (сессия восстановилась штатно). Верификация: telegram-send-message с новым секретом + несуществующим message_id → 400 «Missing field» (наш код), со старым → 401. Окно простоя исходящих ~2 мин, инцидентов нет.
