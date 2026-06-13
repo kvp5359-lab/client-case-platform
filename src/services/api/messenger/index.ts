@@ -1,7 +1,0 @@
-export * from './messengerService'
-export * from './messengerAiService'
-export * from './messengerAttachmentService'
-export * from './messengerDraftService'
-export * from './messengerParticipantService'
-export * from './messengerReactionService'
-export * from './messengerReadStatusService'

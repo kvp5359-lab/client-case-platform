@@ -99,24 +99,6 @@ export function useItemLists(workspaceId: string | undefined) {
   })
 }
 
-export function useItemList(listId: string | undefined) {
-  return useQuery({
-    queryKey: listId ? itemListKeys.detail(listId) : ['item-lists', 'detail', 'noop'],
-    enabled: !!listId,
-    staleTime: STALE_TIME.STANDARD,
-    queryFn: async (): Promise<ItemList | null> => {
-      const { data, error } = await supabase
-        .from('item_lists')
-        .select('*')
-        .eq('id', listId!)
-        .maybeSingle()
-      if (error) throw error
-      if (!data) return null
-      return fromRow(data as unknown as RawItemListRow)
-    },
-  })
-}
-
 // ── Мутации ───────────────────────────────────────────────
 
 export function useCreateItemList() {

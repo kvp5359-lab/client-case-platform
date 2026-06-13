@@ -14,10 +14,6 @@ export type CustomDirectoryValue = Database['public']['Tables']['custom_director
 export type CustomDirectoryInsert = Database['public']['Tables']['custom_directories']['Insert']
 export type CustomDirectoryFieldInsert =
   Database['public']['Tables']['custom_directory_fields']['Insert']
-export type CustomDirectoryEntryInsert =
-  Database['public']['Tables']['custom_directory_entries']['Insert']
-export type CustomDirectoryValueInsert =
-  Database['public']['Tables']['custom_directory_values']['Insert']
 
 // --- Update types ---
 export type CustomDirectoryUpdate = Database['public']['Tables']['custom_directories']['Update']

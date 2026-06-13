@@ -62,7 +62,8 @@ React Query использует partial matching: инвалидация `all` 
 
 Признак реального бага: код использует `as never` или `as unknown` для
 обхода type-error. Тогда либо расширить тип, либо привести через
-осмысленный union (см. `TaskDialog.tsx:209` — паттерн `as ThreadAccentColor`).
+осмысленный union (паттерн `accent as MessengerAccent` в `TaskPanel.tsx` —
+осмысленный каст вместо `as never`).
 
 ### «Дубликат типа `ProjectThread`»
 

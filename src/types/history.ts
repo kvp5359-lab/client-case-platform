@@ -41,11 +41,3 @@ export type TimelineMessage = {
   reply_to: { sender_name: string; content: string } | null
   attachments: { id: string; file_name: string; file_size: number; mime_type: string }[]
 }
-
-/** Набор включённых фильтров timeline */
-export type TimelineFilterState = {
-  /** Включённые типы ресурсов аудита (пустой set = все выключены) */
-  auditResourceTypes: Set<string>
-  /** Включённые thread IDs для переписки */
-  threadIds: Set<string>
-}

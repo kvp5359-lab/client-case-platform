@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Plus, Folder, FolderOpen, FolderPlus, Pencil, Trash2 } from 'lucide-react'
-import { TemplateAccessButton } from '@/components/knowledge/TemplateAccessPopover'
+import { TemplateAccessButton } from '@/components/knowledge/template-access/TemplateAccessButton'
 import { useDroppable } from '@dnd-kit/core'
 import type {
   KnowledgeGroup,

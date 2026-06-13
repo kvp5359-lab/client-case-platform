@@ -28,17 +28,6 @@ export type PlanBlockRow = {
   updated_at: string
 }
 
-export type PlanBlockInsert = {
-  workspace_id: string
-  project_id: string
-  block_type: PlanBlockType
-  sort_order?: number
-  visible_to_client?: boolean
-  content?: string | null
-  thread_id?: string | null
-  folder_slot_id?: string | null
-}
-
 export type PlanBlockUpdate = {
   sort_order?: number
   visible_to_client?: boolean

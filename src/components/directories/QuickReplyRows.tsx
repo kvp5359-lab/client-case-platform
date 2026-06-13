@@ -7,7 +7,7 @@
 import { useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Pencil, Trash2, GripVertical, FileText } from 'lucide-react'
-import { TemplateAccessButton } from '@/components/knowledge/TemplateAccessPopover'
+import { TemplateAccessButton } from '@/components/knowledge/template-access/TemplateAccessButton'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import type { QuickReply } from '@/hooks/quick-replies/useQuickReplies'
 import type { useQuickRepliesPage } from '@/hooks/quick-replies/useQuickRepliesPage'
