@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { useProjectPermissions, useWorkspacePermissions } from '@/hooks/permissions'
-import type { TaskPanelTabType } from './taskPanelTabs.types'
+import type { TaskPanelTabType } from '@/types/taskPanelTabs'
 
 /**
  * Видимость системных вкладок по правам пользователя.

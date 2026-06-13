@@ -105,7 +105,7 @@ type UseDocumentKitOpsParams = {
   setExportFolderConnected: (value: boolean) => void
   deleteDocumentKit: (kitId: string) => Promise<void>
   setExportPhase: (phase: 'idle' | 'cleaning' | 'uploading' | 'completed') => void
-  setExportDocuments: (docs: import('../dialogs/ExportProgressDialog').ExportDocument[]) => void
+  setExportDocuments: (docs: import('@/store/documentKitUI/types').ExportDocument[]) => void
   updateExportDocumentStatus: (
     documentId: string,
     status: 'pending' | 'uploading' | 'success' | 'error',

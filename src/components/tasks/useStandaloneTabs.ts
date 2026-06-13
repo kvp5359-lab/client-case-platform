@@ -14,7 +14,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react'
-import type { TaskPanelTab } from './taskPanelTabs.types'
+import type { TaskPanelTab } from '@/types/taskPanelTabs'
 
 export type StandaloneTabsApi = {
   tabs: TaskPanelTab[]

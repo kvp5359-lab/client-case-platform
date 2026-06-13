@@ -32,7 +32,7 @@ import {
 import { useStandaloneTabs } from './useStandaloneTabs'
 import { useThreadFromPanelTab } from './useThreadFromPanelTab'
 import { TaskPanelTabbedShellRenderer } from './TaskPanelTabbedShellRenderer'
-import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
+import type { TaskPanelTab, TaskPanelTabType } from '@/types/taskPanelTabs'
 import type { TaskItem, ProjectHeaderInfo } from './types'
 
 type TaskPanelTabbedShellProps = {

@@ -10,31 +10,10 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { workspaceThreadKeys, STALE_TIME } from '@/hooks/queryKeys'
 
-export type WorkspaceTask = {
-  id: string
-  name: string
-  type?: 'chat' | 'task'
-  project_id: string | null
-  project_name: string | null
-  workspace_id: string
-  status_id: string | null
-  status_name: string | null
-  status_color: string | null
-  status_order: number | null
-  status_show_to_creator: boolean
-  deadline: string | null
-  /** Запланированное начало (для слота в календаре). */
-  start_at: string | null
-  /** Запланированный конец. */
-  end_at: string | null
-  accent_color: string
-  icon: string
-  is_pinned: boolean
-  created_at: string
-  updated_at: string
-  created_by: string | null
-  sort_order: number
-}
+// WorkspaceTask переехал в нейтральный @/types/board (T1) — реэкспорт для
+// существующих импортёров хука.
+export type { WorkspaceTask } from '@/types/board'
+import type { WorkspaceTask } from '@/types/board'
 
 export function useWorkspaceThreads(workspaceId: string | undefined) {
   const { user } = useAuth()

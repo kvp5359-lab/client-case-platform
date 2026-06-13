@@ -11,7 +11,7 @@ import {
   cleanupExportProgress,
 } from '@/services/api/googleDriveService'
 import type { DocumentWithFiles } from '@/components/documents'
-import type { ExportDocument } from '../dialogs/ExportProgressDialog'
+import type { ExportDocument } from '@/store/documentKitUI/types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
 // === ТИПЫ ===

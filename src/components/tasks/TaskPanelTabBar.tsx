@@ -47,7 +47,7 @@ import {
 import { getChatIconComponent, getChatTabAccent } from '@/components/messenger/chatVisuals'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
-import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
+import type { TaskPanelTab, TaskPanelTabType } from '@/types/taskPanelTabs'
 import { SYSTEM_TABS, SYSTEM_TAB_BY_TYPE, type SystemTabDef } from './tab-bar/systemTabs'
 import { DraggableTab } from './tab-bar/DraggableTab'
 import { SortableSeparator, SEPARATOR_ID } from './tab-bar/SortableSeparator'

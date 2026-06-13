@@ -13,8 +13,7 @@ import { supabase } from '@/lib/supabase'
 import { ApiError } from '@/services/errors/AppError'
 import type { Json } from '@/types/database'
 import type { FilterGroup } from '@/lib/filters/types'
-import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
-import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProjects'
+import type { WorkspaceTask, BoardProject } from '@/types/board'
 
 /** Проект доски + поля ближайшей активной задачи (считаются на сервере). */
 export type BoardFilteredProject = BoardProject & {

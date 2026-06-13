@@ -22,8 +22,8 @@ import {
   type TaskPanelScopeKind,
   type TaskPanelPersistedRow,
 } from '@/services/taskPanelTabsService'
-import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'
-import { makeTabId } from './taskPanelTabs.types'
+import type { TaskPanelTab, TaskPanelTabType } from '@/types/taskPanelTabs'
+import { makeTabId } from '@/types/taskPanelTabs'
 
 /** Минимальная информация о треде для конверсии short_id ↔ uuid в URL. */
 type ThreadShortIdInfo = { id: string; short_id: number | null }

@@ -2,17 +2,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Progress } from '@/components/ui/progress'
 import { CheckCircle2, Loader2, XCircle, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { ExportDocument, ExportDocumentStatus } from '@/store/documentKitUI/types'
 
-export type ExportDocumentStatus = 'pending' | 'uploading' | 'success' | 'error'
-
-export type ExportDocument = {
-  documentId: string
-  fileName: string
-  folderName?: string
-  status: ExportDocumentStatus
-  progress?: number
-  error?: string
-}
+// ExportDocument/ExportDocumentStatus переехали в store/documentKitUI/types
+// (форма данных, не UI). Реэкспортим для существующих импортёров диалога.
+export type { ExportDocument, ExportDocumentStatus }
 
 type ExportProgressDialogProps = {
   open: boolean

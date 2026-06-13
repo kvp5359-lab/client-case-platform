@@ -17,7 +17,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
-import type { TaskPanelTab } from '../taskPanelTabs.types'
+import type { TaskPanelTab } from '@/types/taskPanelTabs'
 
 export type DraggableTabProps = {
   tab: TaskPanelTab

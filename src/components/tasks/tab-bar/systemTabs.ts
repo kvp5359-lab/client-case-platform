@@ -14,7 +14,7 @@ import {
   BookOpen,
   Lock,
 } from 'lucide-react'
-import type { TaskPanelTabType } from '../taskPanelTabs.types'
+import type { TaskPanelTabType } from '@/types/taskPanelTabs'
 
 export type SystemTabDef = {
   type: Exclude<TaskPanelTabType, 'thread' | 'knowledge_article'>

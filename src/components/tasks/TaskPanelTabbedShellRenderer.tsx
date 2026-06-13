@@ -27,7 +27,7 @@ import {
 } from './TaskPanelTabContents'
 import { KnowledgeArticleTabContent } from './KnowledgeArticleTabContent'
 import { usePanelTabsVisibility } from './usePanelTabsVisibility'
-import type { TaskPanelTab } from './taskPanelTabs.types'
+import type { TaskPanelTab } from '@/types/taskPanelTabs'
 import type { TaskItem } from './types'
 
 export type RendererProps = {

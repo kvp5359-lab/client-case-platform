@@ -9,7 +9,7 @@
 
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database'
-import type { TaskPanelTab } from '@/components/tasks/taskPanelTabs.types'
+import type { TaskPanelTab } from '@/types/taskPanelTabs'
 
 export type TaskPanelScopeKind = 'project' | 'contact' | 'knowledge'
 

@@ -15,7 +15,7 @@ import { useQuery } from '@tanstack/react-query'
 const TaskPanel = lazy(() => import('./TaskPanel').then((m) => ({ default: m.TaskPanel })))
 import { threadToTaskItem } from './threadToTaskItem'
 import type { TaskItem, ProjectHeaderInfo } from './types'
-import type { TaskPanelTab } from './taskPanelTabs.types'
+import type { TaskPanelTab } from '@/types/taskPanelTabs'
 import { useProjectThreadById, useProjectThreads, useDeleteThread } from '@/hooks/messenger/useProjectThreads'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useTaskAssigneesMap } from './useTaskAssignees'
