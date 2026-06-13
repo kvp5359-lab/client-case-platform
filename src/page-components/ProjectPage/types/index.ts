@@ -1,36 +1,9 @@
 /**
  * Типы для ProjectPage.
  *
- * Project реэкспортируется из @/types/entities — раньше тут была локальная
- * копия, которая дрейфовала от канонического Tables<'projects'>.
- *
- * ProjectTemplateWithRelations — projection шаблона проекта с join-ами на
- * document_kits и forms. Используется в ProjectPage/ProjectPageDialogs для
- * получения списка id-шаблонов, которые уже привязаны к типу проекта.
+ * Доменные типы переехали в нейтральный `@/types/project` (T1/D1 аудита
+ * 2026-06-13), чтобы их могли использовать опущенные вниз moduleRegistry/хуки
+ * без инверсии. Здесь — реэкспорт для существующих импортёров ProjectPage.
  */
 
-import type { Project } from '@/types/entities'
-
-export type { Project }
-
-export type ProjectTemplateWithRelations = {
-  id: string
-  name: string
-  enabled_modules: string[] | null
-  root_folder_id: string | null
-  folder_name_template: string | null
-  folder_name_replace_spaces: boolean
-  file_size_warn_mb: number | null
-  file_size_danger_mb: number | null
-  project_template_document_kits: Array<{ document_kit_template_id: string }>
-  project_template_forms: Array<{ form_template_id: string }>
-}
-
-export type ProjectTab =
-  | 'settings'
-  | 'forms'
-  | 'documents'
-  | 'finances'
-  | 'tasks'
-  | 'history'
-  | 'participants'
+export type { Project, ProjectTemplateWithRelations, ProjectTab } from '@/types/project'

@@ -13,7 +13,7 @@
 
 import { useCallback, useMemo } from 'react'
 import { useProjectPermissions, useWorkspaceFeatures } from '@/hooks/permissions'
-import { PROJECT_MODULES, type ModuleDefinition } from '../moduleRegistry'
+import { PROJECT_MODULES, type ModuleDefinition } from '@/components/projects/moduleRegistry'
 import type { ProjectTemplateWithRelations } from '../types'
 
 export function useProjectModules(

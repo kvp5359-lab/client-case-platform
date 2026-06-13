@@ -8,7 +8,7 @@
 
 import { memo, useState, useRef, useEffect, useMemo } from 'react'
 import { Search, X, Plus } from 'lucide-react'
-import type { ModuleDefinition } from '@/page-components/ProjectPage/moduleRegistry'
+import type { ModuleDefinition } from '@/components/projects/moduleRegistry'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import { usePinnedProjects } from './usePinnedProjects'
 import { useFlipAnimation } from './useFlipAnimation'
