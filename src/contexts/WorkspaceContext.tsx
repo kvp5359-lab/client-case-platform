@@ -6,7 +6,7 @@
  * Saves last_workspace_id to user_settings on mount.
  */
 
-import { createContext, useContext, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, ReactNode } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './AuthContext'
@@ -66,8 +66,15 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     }
   }, [workspaceId, userId, workspace])
 
+  // Мемоизируем value: иначе новый объект-литерал на каждый рендер провайдера
+  // ре-рендерит всех потребителей контекста.
+  const value = useMemo(
+    () => ({ workspaceId, workspace, isLoading, error }),
+    [workspaceId, workspace, isLoading, error],
+  )
+
   return (
-    <WorkspaceContext.Provider value={{ workspaceId, workspace, isLoading, error }}>
+    <WorkspaceContext.Provider value={value}>
       {children}
     </WorkspaceContext.Provider>
   )

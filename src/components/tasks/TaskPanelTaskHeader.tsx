@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation'
 import {
   Check, Settings, ExternalLink, X, ListTree, History, FolderOpen,
 } from 'lucide-react'
-import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
+import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { ChatIconColorGrid } from '@/components/messenger/ChatSettingsIconColorPicker'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'

@@ -18,7 +18,7 @@ import { ChevronDown, MessageSquare, CheckSquare, Mail } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { getChatIconComponent } from '@/components/messenger/ChatSettingsDialog'
+import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
 export type ThreadKind = 'task' | 'chat' | 'email'

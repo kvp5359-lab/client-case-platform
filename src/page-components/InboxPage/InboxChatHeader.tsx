@@ -17,7 +17,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { getChatIconComponent } from '@/components/messenger/ChatSettingsDialog'
+import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { participantKeys, inboxThreadDetailKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { ThreadTemplate } from '@/types/threadTemplate'

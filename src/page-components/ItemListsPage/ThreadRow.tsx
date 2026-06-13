@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from 'react'
 import { Pin } from 'lucide-react'
 import { format } from 'date-fns'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -17,19 +18,21 @@ type ThreadRowProps = {
   task: WorkspaceTask
   columns: TableShellColumn[]
   checked: boolean
-  onToggle: () => void
-  onOpen: () => void
+  /** Стабильный колбэк — принимает id, чтобы memo'нутая строка не перерисовывалась
+   *  при каждом изменении выделения (раньше onToggle замыкался на selectedIds). */
+  onToggle: (id: string) => void
+  onOpen: (task: WorkspaceTask) => void
   assigneesMap: Record<string, { id: string; name?: string | null; last_name?: string | null }[]>
   taskStatuses: StatusOption[]
 }
 
-export function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, taskStatuses }: ThreadRowProps) {
+export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, taskStatuses }: ThreadRowProps) {
   const updateStatus = useUpdateTaskStatus([
     workspaceThreadKeys.workspace(task.workspace_id),
-  ] as never)
+  ])
   const updateDeadline = useUpdateTaskDeadline([
     workspaceThreadKeys.workspace(task.workspace_id),
-  ] as never)
+  ])
 
   const currentStatus = taskStatuses.find((s) => s.id === task.status_id) ?? null
   const assignees = assigneesMap[task.id] ?? []
@@ -38,13 +41,13 @@ export function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesM
   return (
     <tr className="border-b hover:bg-muted/30">
       <td className="px-3 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
-        <Checkbox checked={checked} onCheckedChange={onToggle} />
+        <Checkbox checked={checked} onCheckedChange={() => onToggle(task.id)} />
       </td>
       {columns.map((c) => {
         switch (c.key as ItemListColumnKey) {
           case 'name':
             return (
-              <td key={c.key} className="px-3 py-2 cursor-pointer truncate" onClick={onOpen}>
+              <td key={c.key} className="px-3 py-2 cursor-pointer truncate" onClick={() => onOpen(task)}>
                 <div className="flex items-center gap-2 min-w-0">
                   {task.is_pinned && <Pin className="h-3 w-3 text-amber-500 shrink-0" />}
                   <span className="truncate font-medium">{task.name}</span>
@@ -67,7 +70,7 @@ export function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesM
                     currentStatus={currentStatus}
                     statuses={taskStatuses}
                     onStatusChange={(newId) =>
-                      updateStatus.mutate({ taskId: task.id, statusId: newId } as never)
+                      updateStatus.mutate({ threadId: task.id, statusId: newId })
                     }
                     size="sm"
                   />
@@ -89,7 +92,7 @@ export function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesM
                 <DatePicker
                   date={task.deadline ? new Date(task.deadline) : undefined}
                   onDateChange={(d) =>
-                    updateDeadline.mutate({ taskId: task.id, deadline: d ? d.toISOString() : null } as never)
+                    updateDeadline.mutate({ threadId: task.id, deadline: d ? d.toISOString() : null })
                   }
                   placeholder="—"
                 />
@@ -126,4 +129,4 @@ export function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesM
       })}
     </tr>
   )
-}
+})

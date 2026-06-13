@@ -7,7 +7,7 @@
 import { createElement } from 'react'
 import Image from 'next/image'
 import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
-import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
+import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 
 // SVG icons (inline, no lucide dependency in module scope)
 const iconClose = createElement(

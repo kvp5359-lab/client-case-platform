@@ -19,7 +19,7 @@ import { threadTemplateKeys } from '@/hooks/queryKeys'
 import { useGlobalThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ThreadTemplateDialog } from './ThreadTemplateDialog'
-import { getChatIconComponent } from '@/components/messenger/ChatSettingsDialog'
+import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_BG } from '@/components/messenger/threadConstants'
 import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTemplate'
 

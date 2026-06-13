@@ -45,7 +45,7 @@ import { useChatSettingsFormState } from './hooks/useChatSettingsFormState'
 import { useChatSettingsActions } from './hooks/useChatSettingsActions'
 
 // Re-export helpers used by WorkspaceLayout and other consumers
-export { getChatIconComponent, getChatTabAccent } from './EditChatDialog'
+export { getChatIconComponent, getChatTabAccent } from './chatVisuals'
 export type { ChatSettingsResult, ChatSettingsDialogProps } from './chatSettingsTypes'
 
 // ── Main component ──

@@ -33,7 +33,7 @@ import {
   CheckSquare,
   AlertTriangle,
 } from 'lucide-react'
-import { getChatIconComponent } from '@/components/messenger/EditChatDialog'
+import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { TiptapEditor } from '@/components/tiptap-editor/tiptap-editor'
 import { Button } from '@/components/ui/button'

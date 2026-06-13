@@ -7,7 +7,7 @@
  * Загружает секции, данные, прогресс, комментарии и формирует текстовую сводку.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getCommentsByEntity } from '@/services/api/commentService'
 import { getSectionProgress } from '@/hooks/forms/useFormKitProgress'
@@ -166,10 +166,19 @@ export function useFormSummary({ workspaceId }: UseFormSummaryParams) {
     [workspaceId],
   )
 
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current)
+    },
+    [],
+  )
+
   const handleCopySummary = useCallback(() => {
     navigator.clipboard.writeText(summaryText)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current)
+    copiedTimerRef.current = setTimeout(() => setCopied(false), 2000)
   }, [summaryText])
 
   return {

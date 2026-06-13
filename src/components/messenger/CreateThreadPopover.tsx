@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { Plus, MessageSquare, CheckSquare, Mail } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { getChatIconComponent } from '@/components/messenger/ChatSettingsDialog'
+import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
 type CreateThreadPopoverProps = {

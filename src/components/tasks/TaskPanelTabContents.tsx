@@ -9,7 +9,10 @@
 import { useMemo, lazy, Suspense } from 'react'
 import { PageLoader } from '@/components/ui/loaders'
 import { useQuery } from '@tanstack/react-query'
-import { TaskPanel } from './TaskPanel'
+// Lazy: TaskPanel тянет MessengerTabContent → MinimalTiptapEditor → tiptap
+// (~390 КБ). Статический импорт затягивал tiptap в eager-граф почти всех
+// страниц воркспейса. Грузим по требованию (панель открывается по клику).
+const TaskPanel = lazy(() => import('./TaskPanel').then((m) => ({ default: m.TaskPanel })))
 import { threadToTaskItem } from './threadToTaskItem'
 import type { TaskItem, ProjectHeaderInfo } from './types'
 import type { TaskPanelTab } from './taskPanelTabs.types'
@@ -93,6 +96,7 @@ export function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabCo
   if (!task) return <LoadingBody />
 
   return (
+    <Suspense fallback={<LoadingBody />}>
     <TaskPanel
       bare
       stackTop={{ kind: 'task', task }}
@@ -129,6 +133,7 @@ export function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabCo
       settingsPending={updateSettings.isPending}
       showProjectLink
     />
+    </Suspense>
   )
 }
 
@@ -176,6 +181,7 @@ export function TasksTabContent({
   }
 
   return (
+    <Suspense fallback={<LoadingBody />}>
     <TaskPanel
       bare
       stackTop={{ kind: 'project', project: projectInfo }}
@@ -187,6 +193,7 @@ export function TasksTabContent({
       settingsPending={false}
       onOpenThreadInStack={onOpenThreadInTab}
     />
+    </Suspense>
   )
 }
 

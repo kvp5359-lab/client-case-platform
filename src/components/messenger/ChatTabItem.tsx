@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
-import { getChatIconComponent, getChatTabAccent } from '@/components/messenger/ChatSettingsDialog'
+import { getChatIconComponent, getChatTabAccent } from '@/components/messenger/chatVisuals'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import { formatBadgeCount } from '@/utils/inboxUnread'

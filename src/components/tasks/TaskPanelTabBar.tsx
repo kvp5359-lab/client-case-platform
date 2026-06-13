@@ -44,7 +44,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { getChatIconComponent, getChatTabAccent } from '@/components/messenger/EditChatDialog'
+import { getChatIconComponent, getChatTabAccent } from '@/components/messenger/chatVisuals'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import type { TaskPanelTab, TaskPanelTabType } from './taskPanelTabs.types'

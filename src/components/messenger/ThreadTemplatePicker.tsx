@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
 import { projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
-import { getChatIconComponent } from './EditChatDialog'
+import { getChatIconComponent } from './chatVisuals'
 import { COLOR_BG } from './threadConstants'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
