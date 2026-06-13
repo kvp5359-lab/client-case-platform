@@ -15,12 +15,7 @@
 import { Api } from "telegram"
 import { supabase } from "../db.js"
 import { logger } from "../utils/logger.js"
-
-interface SessionContext {
-  user_id: string
-  workspace_id: string
-  tg_user_id: number
-}
+import type { SessionContext } from "./types.js"
 
 export async function handleRawUpdate(
   ctx: SessionContext,

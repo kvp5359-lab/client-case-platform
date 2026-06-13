@@ -17,12 +17,7 @@ import { Raw } from "telegram/events/Raw.js"
 import { handleNewMessage } from "./incoming.js"
 import { handleRawUpdate } from "./raw.js"
 import { logger } from "../utils/logger.js"
-
-interface SessionContext {
-  user_id: string
-  workspace_id: string
-  tg_user_id: number
-}
+import type { SessionContext } from "./types.js"
 
 export function registerHandlers(
   client: TelegramClient,

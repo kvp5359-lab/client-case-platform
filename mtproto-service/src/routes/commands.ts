@@ -527,10 +527,13 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
         .getPublicUrl(path)
       const avatarUrl = `${pub.publicUrl}?v=${Date.now()}`
 
-      // 5. Апдейтим participants.avatar_url.
+      // 5. Апдейтим participants.avatar_url + стампим avatar_fetched_at (B9),
+      // чтобы хелпер fetchAndStoreAvatar (hot-path входящих) считал аватар
+      // свежим и не перекачивал его в течение TTL. Без стампа каждое входящее
+      // от этого клиента заново дёргало getEntity/downloadProfilePhoto.
       await supabase
         .from("participants")
-        .update({ avatar_url: avatarUrl })
+        .update({ avatar_url: avatarUrl, avatar_fetched_at: new Date().toISOString() })
         .eq("id", participant.id)
 
       return { ok: true, avatar_url: avatarUrl }

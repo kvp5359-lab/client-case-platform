@@ -21,12 +21,7 @@ import {
   ensureMTProtoThread,
   resolveSessionParticipant,
 } from "./inbox.js"
-
-interface SessionContext {
-  user_id: string
-  workspace_id: string
-  tg_user_id: number
-}
+import type { SessionContext } from "./types.js"
 
 /**
  * In-process сериализатор по `(threadId, groupedId)`. Альбом Telegram
@@ -41,14 +36,20 @@ async function withAlbumLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const prev = albumLocks.get(key) ?? Promise.resolve()
   let release!: () => void
   const next = new Promise<void>((r) => { release = r })
-  albumLocks.set(key, prev.then(() => next))
+  // Храним именно ту цепочку, что положили в Map, чтобы потом сверять по
+  // идентичности. Раньше сравнивали с `next` (в Map лежит prev.then(...), не
+  // next) или пересоздавали `prev.then(...)` (новый промис, никогда не равен) —
+  // условие всегда ложно → запись не удалялась → утечка Map.
+  const chained = prev.then(() => next)
+  albumLocks.set(key, chained)
   try {
     await prev
     return await fn()
   } finally {
     release()
-    // Чистим Map чтобы не утекало.
-    if (albumLocks.get(key) === next || albumLocks.get(key) === prev.then(() => next)) {
+    // Удаляем только если с тех пор никто не перезаписал ключ своей цепочкой
+    // (тогда владелец — он, и он сам почистит).
+    if (albumLocks.get(key) === chained) {
       albumLocks.delete(key)
     }
   }
