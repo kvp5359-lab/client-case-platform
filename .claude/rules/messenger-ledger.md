@@ -45,6 +45,18 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-13 — Рефакторинг карантина, Волна 2: баги B2/B3/B6/B7/B8/B9 + дедуп/типы ⭐ ЖДЁТ ДЕПЛОЯ+СМОК-ТЕСТА
+- **B3 (edge, 🔴):** `email-internal-send` — `m.created_at` использовался в анти-гонке двух писем подряд, но НЕ был в `.select()` (и в типе `MessageRow`) → `undefined` → второе письмо уходило без `In-Reply-To`, Gmail отделял в новый тред. Добавил `created_at` в select + интерфейс.
+- **B2 (mtproto, 🔴):** `incoming.ts` `withAlbumLock` — Map не чистился: сравнение `albumLocks.get(key) === next` (в Map лежит `prev.then(()=>next)`, не `next`) ИЛИ пересоздавало `prev.then(...)` (новый промис) → всегда ложь → утечка. Храним цепочку в `chained`, сверяем по ней.
+- **B6 (mtproto, 🟠):** FLOOD_WAIT → 429+Retry-After теперь на всех роутах (был только backfill). Хелпер `floodAwareError`. Оба non-2xx → watchdog dispatch'а помечает failed как раньше; edge `!res.ok` обрабатывает 429 идентично 500. Авторетрая нет.
+- **B7 (edge, 🟡):** `media.ts` — `attachment_error` для `too_large` пишется only при `failed.length===0`; раньше безусловно затирал download-детали при сочетании «упавший + слишком большой».
+- **B8 (фронт, 🟡):** `useToggleReaction` — `mutationFn` возвращает разрешённый pid (фоллбэк project→workspace), `onSuccess` шлёт mark-read по нему. Раньше брал только prop → owner-не-участник не помечал прочитанным (тот же корень, что 2026-06-12).
+- **B9 (mtproto, 🟡):** `/users/fetch-avatar` success-путь стампит `avatar_fetched_at` (хелпер hot-path считает аватар свежим в TTL). Полный дедуп с `fetchAndStoreAvatar` НЕ делал — у эндпоинта нет живых вызывающих, контракты `force`/TTL разные.
+- **Дедуп/типы:** query-ключи в фабрику (`projectThreadKeys.type/.members`); mtproto `SessionContext` ×3 → `handlers/types.ts`; `email-internal-send` `ThreadRow`+`ThreadRowExt` слиты; `stripHtml` ×2 (wazzup) → `_shared/channelText.ts#stripHtmlBasic`.
+- **Сознательно НЕ трогал:** accent-карты (параллельные context-specific Tailwind, общие только ключи), mtproto `humanError` ×2 (разные словари send/auth), gmail-send `stripHtml` (другая обработка абзацев), `findMtprotoThread` (не существует).
+- **Проверки:** фронт tsc+lint+704 теста 0; mtproto tsc 0; edge — 0 новых ошибок vs HEAD.
+- **⏳ ЖДЁТ ДЕПЛОЯ:** edge `email-internal-send`, `wazzup-send`, `wazzup-send-reaction`, `telegram-webhook-v2` (media.ts); mtproto rsync (B2/B6/B9/SessionContext); фронт push/CI. **Смок:** 2 письма подряд (B3 — второе с In-Reply-To/в одном треде); реакция owner-не-участника помечает прочитанным (B8); MTProto-альбом из 2+ фото (B2); FLOOD не роняет 500 (B6).
+
 ### 2026-06-13 — Рефакторинг карантина, Волна 1: реальные баги B1/B4/B5/B10 + мёртвый код + doc-фиксы ⭐ ЖДЁТ ДЕПЛОЯ+СМОК-ТЕСТА
 - **Контекст:** полный аудит защищённых зон (5 агентов прочитали целиком telegram/wazzup/gmail/email edge + `_shared`, mtproto-service, фронт мессенджера, критичную БД). План волнами в [`docs/audit/2026-06-13-quarantine-audit.md`](../../docs/audit/2026-06-13-quarantine-audit.md). Волна 1 — околонулевой риск.
 - **B4 (фронт, 🔴):** `useUnreadCount` snapshot/restoreMarkCaches писали в **литерал** `['inbox','threads',ws]` / `['inbox','aggregates',ws]`, а реальные патчеры (`patchInboxThreadInCache`) используют `inboxKeys.threads(ws)` = `['inbox','threads-v2',ws]`. Несовпадение ключа → rollback оптимистичного mark-read при ошибке БД **не восстанавливал** кэш тредов (aggregates совпадал случайно). Фикс: ключи через фабрику `inboxKeys`.

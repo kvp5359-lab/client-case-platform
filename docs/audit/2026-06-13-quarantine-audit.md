@@ -97,3 +97,12 @@ resolveParticipant унификация.
 - **Сознательно НЕ сделал (объективно не нужно):** accent-карты (×3+ — параллельные context-specific Tailwind-карты, общие только ключи; значения разные → унификация = риск визуальных регрессий без выигрыша); mtproto `humanError` ×2 (контекстно-разные словари ошибок: send vs auth, общий только FLOOD_WAIT с РАЗНЫМ текстом); `findMtprotoThread` (не существует — ложный след); gmail-send `stripHtml` (отличается обработкой абзацев `</p><p>`→`\n\n`); `_shared/textProcessing#stripHtml` (list-aware, для KB — для канала изменил бы исходящий текст).
 - **Проверки:** фронт tsc+lint+704 теста 0; mtproto `tsc --noEmit` 0; edge `channelText.ts` deno-check clean, остальные — 0 новых ошибок vs HEAD (openai-блокер идентичен).
 - **Деплой ⏳:** + edge `wazzup-send`, `wazzup-send-reaction`, `email-internal-send`, `telegram-webhook-v2` (media.ts B7); mtproto rsync (B2/B9/SessionContext). Фронт — push/CI.
+
+### Волна 3 — частично (2026-06-13)
+- **B6** (FLOOD_WAIT → 429+Retry-After на всех mtproto-роутах) — ✅ сделан (хелпер `floodAwareError`, убран дубль в backfill). Cross-layer проверен: edge `!res.ok` обрабатывает 429 как 500, `failed` пишется в catch до ответа.
+- **resolveParticipant унификация** — ⏸️ НЕ делал. Не тривиальный дедуп: `useSendMessage`/`useMessengerState` нужен ПОЛНЫЙ объект participant (name/role), остальным (`useToggleReaction`/`useUnreadCount`/`useMarkThreadReadIfFinal`/`useInboxMarkMutations`) — только id. Чистая унификация = два хелпера (`…Full`/`…Id`) в сервис-слой + правка ~6 карантинных хуков → большой смок-тест-фронт. Ждёт решения.
+- **upload-slot D1** (~120 строк `uploadDocumentCore` vs `handleSlotFileUpload` в 875-строчном bot-файле) — ⏸️ НЕ делал. Самый рискованный дедуп зоны. Ждёт решения.
+
+### Волна 4 — НЕ трогал (по плану)
+- **F1** (дрейф v1↔v2 webhook) — расследование, НЕ удалять v1, НЕ дропать `bot_version`. Doc-предупреждения добавлены (channels.md).
+- **email-internal-send** распил — высокий риск, отдельная задача.
