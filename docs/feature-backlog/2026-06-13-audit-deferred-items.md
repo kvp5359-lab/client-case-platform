@@ -1,11 +1,20 @@
 # Отложенные пункты аудита 2026-06-13
 
-> **✅ Проход «доделать отложенное» 2026-06-13:** закрыты — дроп мёртвой RPC
-> `get_my_urgent_tasks_count` (+ регенерация типов); карантин accent-карты
-> `ReactionBadges`/`MessageInputToolbar` → `Record<MessengerAccent>` (type-only);
-> D1-инверсия частично — `ProjectPage/types`→`@/types/project`, `moduleRegistry`→
-> `components/projects/`. Остальное ниже — либо нужен твой смок (карантин/UI),
-> либо churn > выгода, либо большой focused-рефакторинг (движок документов).
+> **✅ Проход «доделать отложенное» 2026-06-13 (волна 2, пункты 2-5):** закрыты —
+> #5: project-хуки→`@/hooks/projects`, `moduleRegistry`→`@/lib`; #4: COLOR_TEXT→
+> `Record<ThreadAccentColor>`, routed-страницы шаблонов→`page-components`;
+> #3: `email-internal-send` распилен (ветки Gmail/Resend → функции, поведение
+> сохранено, ⏳ ждёт редеплоя+смока 2 писем); #2: **вся** инверсия
+> components→page-components/ProjectPage снята — движок документов (Documents/ +
+> DocumentsTabContent) перенесён в `components/documents/` (⏳ ждёт UI-смока).
+> Ранее (волна 1): дроп `get_my_urgent_tasks_count`, accent-карты ReactionBadges/
+> MessageInputToolbar, `@/types/project`.
+>
+> **Сознательно НЕ сделано (engineering-обоснование):** ROUTES-реестр для 69
+> route-строк + унификация суффиксов (churn + риск тихого 404, не ловится
+> tsc/тестами, нулевая функц. выгода); глубокий дедуп дублей-компонентов документов
+> (SlotRow↔SlotItem — семантический мердж, риск поведения); B9 полный дедуп
+> (эндпоинт мёртв); F1-удаление v1 (ждёт смока «Клиенты»).
 
 Марафон фиксов по двум аудитам закрыл критику и большинство находок (см.
 `docs/audit/2026-06-12-remediation-backlog.md`). Здесь — то, что осознанно
