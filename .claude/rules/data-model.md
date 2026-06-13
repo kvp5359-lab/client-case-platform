@@ -56,7 +56,7 @@
   - UPDATE `deadline` у задачи БЕЗ календаря → start_at/end_at не трогаются
   - Снять `deadline` у задачи в календаре → start_at и end_at обнуляются (уезжает из календаря)
   - Временное решение. Долгосрочно убрать `deadline` совсем — см. [`docs/feature-backlog/2026-05-16-drop-deadline-merge-with-end-at.md`](../../docs/feature-backlog/2026-05-16-drop-deadline-merge-with-end-at.md).
-- **Страница**: [`src/page-components/CalendarPage/index.tsx`](../../src/page-components/CalendarPage/index.tsx). `react-big-calendar` + `withDragAndDrop` + `momentLocalizer`. 30-мин слоты. Drag/resize → `useUpdateThreadTime`.
+- **Страница**: [`src/page-components/CalendarPage/index.tsx`](../../src/page-components/CalendarPage/index.tsx). `react-big-calendar` + `withDragAndDrop` + `dateFnsLocalizer`. 30-мин слоты. Drag/resize → `useUpdateThreadTime`.
 - **Режим в `board_lists`**: `display_mode = 'calendar'`. [`BoardListCalendarView`](../../src/components/boards/BoardListCalendarView.tsx) дозапрашивает start_at/end_at по taskIds (чтобы не трогать `get_workspace_threads`).
 - **Хуки**: `useCalendarThreads`, `useUpdateThreadTime`. Query key: `calendarKeys.byWorkspaceRange(workspaceId, fromIso, toIso)`.
 - **Ограничения**: drag из обычных `@dnd-kit` списков в react-big-calendar (HTML5 DnD) не работает — два движка не интегрированы. Часовой пояс — системный браузера.
@@ -172,7 +172,7 @@
   - `NOT NULL` — личный (видит/меняет только владелец).
 - **`entity_type`**: `'thread' | 'project'`.
 - **`filter_config`**: общий `FilterGroup`. Применяется через `applyFilters` (не RPC).
-- **`columns`**: `[{ key, width, order, visible }]`. Реестр — [`src/page-components/ItemListPage/columns.ts`](../../src/page-components/ItemListPage/columns.ts). MVP: ресайз мышкой не реализован.
+- **`columns`**: `[{ key, width, order, visible }]`. Реестр — [`src/page-components/ItemListsPage/columns.ts`](../../src/page-components/ItemListsPage/columns.ts). MVP: ресайз мышкой не реализован.
 - **Корзина**: `is_deleted=true` через `useSoftDeleteItemList`. UI-восстановления пока нет.
 - **RLS**: см. миграцию `20260510_item_lists.sql`.
 - **Хуки**: [`src/hooks/useItemLists.ts`](../../src/hooks/useItemLists.ts). Query keys: `itemListKeys`.

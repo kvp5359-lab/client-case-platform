@@ -31,7 +31,7 @@
 | Radix UI | latest | Примитивы для UI |
 | TanStack React Query | 5.x | Серверное состояние |
 | Zustand | 5.x | Клиентское состояние |
-| Формы | — | Нативные `useState`. **Ни `react-hook-form`, ни `zod`** в реальных формах не используются (см. [`gotchas.md`](./gotchas.md#формы)). |
+| Формы | — | Нативные `useState`. `react-hook-form` и `zod` **удалены из зависимостей** (легаси, не использовались) (см. [`gotchas.md`](./gotchas.md#формы)). |
 | Tiptap | 3.x | Rich text editor |
 | @dnd-kit | latest | Drag & drop |
 | Supabase JS | 2.x | БД, Auth, Storage, Realtime |

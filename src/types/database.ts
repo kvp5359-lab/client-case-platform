@@ -8395,14 +8395,6 @@ export type Database = {
         }
         Returns: string
       }
-      debug_auth_context: {
-        Args: never
-        Returns: {
-          check_result: boolean
-          current_auth_role: string
-          current_auth_uid: string
-        }[]
-      }
       delete_status: { Args: { p_status_id: string }; Returns: undefined }
       delete_workspace_api_key: {
         Args: { workspace_uuid: string }

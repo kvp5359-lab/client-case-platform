@@ -31,9 +31,11 @@
 | Функция                    | verify_jwt | x-internal-secret | Bearer JWT | Кто вызывает |
 |----------------------------|------------|-------------------|------------|--------------|
 | `*-webhook` (TG, Wazzup)   | false      | —                 | —          | Сторонний сервис, защита через secret в URL/header |
-| `*-send` (TG group, Business, Wazzup) | false | да | да (фронт)| pg-триггер `notify_telegram_on_new_message` + фронт (attachments_only) |
+| `*-send` (TG group, Business, Wazzup) | false | да | ⚠️ см. ниже | pg-триггер `notify_telegram_on_new_message` + фронт (attachments_only) |
 | `wazzup-mark-read` / `wazzup-fetch-channels` / `wazzup-set-webhook` / `*-react` (Business/MTProto) | true | — | да | Только фронт (RLS внутри) |
 | `wazzup-send-reaction`     | true       | —                 | да         | Фронт |
+
+> ⚠️ **Bearer у `*-send` НЕ аутентифицирует.** При `verify_jwt=false` шлюз Bibika не проверяет JWT, а `requireInternalSecret(req, true)` смотрит только на **префикс** `Bearer ` (не валидирует токен). Реальная защита `*-send` держится на `x-internal-secret` + неугадываемом `message_id`. С 2026-06-12 функции с фронт-путём (`email-internal-send`, `fetch-telegram-avatar`) делают настоящий `getUser` + проверку членства, не полагаясь на Bearer-префикс.
 
 ## Унифицированный send_status
 
@@ -154,9 +156,9 @@
 Архитектурный сдвиг 2026-05-10: личные диалоги сотрудника (TG Business / Wazzup / личная почта) **больше не лежат в фейковом системном проекте** — это треды без `project_id` (`NULL`) с владельцем `project_threads.owner_user_id`.
 
 - **Что НЕ делаем**: не создавать новые системные инбокс-проекты. Паттерн «создать проект под личные диалоги» устаревший, удалён миграцией `20260510_drop_system_inbox_projects.sql`.
-- **Страница**: [`/workspaces/[id]/personal-dialogs`](../../src/app/(app)/workspaces/[workspaceId]/personal-dialogs/page.tsx) — единый UI для всех личных диалогов сотрудника.
+- **Страница**: [`/workspaces/[id]/personal-dialogs`](../../src/app/(app)/workspaces/[workspaceId]/personal-dialogs/page.tsx) — **с 2026-06 это только redirect** на `/tasks?filter=no_project` (унифицированная страница «Без проекта», показывает И чаты, И задачи без `project_id`). Старый отдельный UI личных диалогов (`PersonalDialogsPage`, `usePersonalDialogs`, `useMoveThreadToProject`, `personalDialogsService`) удалён в аудит-чистке 2026-06-13.
 - **Доступ**: тред видит только `owner_user_id` + менеджеры воркспейса с `manage_workspace_settings`.
-- **RPC `move_thread_to_project(thread_id, project_id)`** — переносит тред между «личные» (`NULL`) и проектом. Меняет `project_id` у треда + всех сообщений.
+- **RPC `move_thread_to_project(thread_id, project_id)`** — переносит тред между «личные» (`NULL`) и проектом. Меняет `project_id` у треда + всех сообщений. ⚠️ С фронта больше не вызывается (хук удалён), осталась в БД.
 - **Скрытие из общих списков**: тред с `project_id=NULL` фильтруется из обычных списков на уровне RPC.
 
 ## Подсветка сообщений сотрудников в клиентских чатах

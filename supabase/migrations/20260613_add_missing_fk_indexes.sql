@@ -1,0 +1,19 @@
+-- Аудит 2026-06-13: 18 FK без покрывающего индекса (advisors 0001). Применено через MCP.
+CREATE INDEX IF NOT EXISTS idx_calendars_owner_user_id ON public.calendars(owner_user_id);
+CREATE INDEX IF NOT EXISTS idx_case_profiles_workspace_id ON public.case_profiles(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_message_send_failures_integration_id ON public.message_send_failures(integration_id);
+CREATE INDEX IF NOT EXISTS idx_message_send_failures_participant_id ON public.message_send_failures(participant_id);
+CREATE INDEX IF NOT EXISTS idx_message_send_failures_project_id ON public.message_send_failures(project_id);
+CREATE INDEX IF NOT EXISTS idx_message_send_failures_resolved_by ON public.message_send_failures(resolved_by);
+CREATE INDEX IF NOT EXISTS idx_message_translations_created_by ON public.message_translations(created_by);
+CREATE INDEX IF NOT EXISTS idx_project_context_items_created_by ON public.project_context_items(created_by);
+CREATE INDEX IF NOT EXISTS idx_project_context_items_deleted_by ON public.project_context_items(deleted_by);
+CREATE INDEX IF NOT EXISTS idx_project_plan_blocks_workspace_id ON public.project_plan_blocks(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_project_template_plan_blocks_slot_template_id ON public.project_template_plan_blocks(slot_template_id);
+CREATE INDEX IF NOT EXISTS idx_project_template_plan_blocks_thread_template_id ON public.project_template_plan_blocks(thread_template_id);
+CREATE INDEX IF NOT EXISTS idx_project_template_plan_blocks_workspace_id ON public.project_template_plan_blocks(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_recently_viewed_workspace_id ON public.recently_viewed(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_task_google_event_map_calendar_id ON public.task_google_event_map(calendar_id);
+CREATE INDEX IF NOT EXISTS idx_task_google_event_map_user_id ON public.task_google_event_map(user_id);
+CREATE INDEX IF NOT EXISTS idx_task_panel_tabs_workspace_id ON public.task_panel_tabs(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_user_calendar_mirror_settings_target_calendar_id ON public.user_calendar_mirror_settings(target_calendar_id);
