@@ -13,7 +13,7 @@
  *  - В правом углу — кнопка скрытия панели (✕).
  */
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   Plus,
   X,
@@ -178,11 +178,29 @@ export function TaskPanelTabBar({
     onReorder(aid, insertBeforeId, pinned)
   }, [onReorder, sortableItems, orderedTabs])
 
+  // Прокрутка ленты вкладок колесом мыши: вертикальный wheel → горизонтальный
+  // скролл. Нативный listener с passive:false, чтобы preventDefault сработал
+  // (React onWheel — passive, preventDefault там не действует).
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      // Горизонтальный жест трекпада (deltaX) скроллит нативно — не трогаем.
+      if (e.deltaY === 0 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+      if (el.scrollWidth <= el.clientWidth) return // нечего прокручивать
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
   return (
     <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragEnd={handleDragEnd}>
       <SortableContext items={sortableItems} strategy={horizontalListSortingStrategy}>
       <div className="flex items-center gap-1 px-2 h-10 border-b bg-gray-50/80 shrink-0 min-w-0">
-        <div className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto">
+        <div ref={scrollRef} className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto scrollbar-hide">
           {sortableItems.map((id) => {
             if (id === SEPARATOR_ID) {
               return <SortableSeparator key={SEPARATOR_ID} />
@@ -212,9 +230,12 @@ export function TaskPanelTabBar({
               />
             )
           })}
+        </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+        {/* «+» — вне прокручиваемой ленты вкладок, чтобы не уезжал при большом
+            числе вкладок. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
               <button
                 type="button"
                 className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-white hover:text-foreground transition-colors shrink-0"
@@ -251,7 +272,6 @@ export function TaskPanelTabBar({
               })}
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
 
         {onHidePanel && (
           <button
