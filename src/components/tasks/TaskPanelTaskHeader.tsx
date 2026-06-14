@@ -13,6 +13,10 @@ import {
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { ChatIconColorGrid } from '@/components/messenger/ChatSettingsIconColorPicker'
+import { ChatSettingsProjectSelector } from '@/components/messenger/ChatSettingsProjectSelector'
+import { useWorkspaceProjects } from '@/components/messenger/hooks/useChatSettingsData'
+import { useMoveThreadToProject } from '@/hooks/messenger/useMoveThreadToProject'
+import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useUpdateThread } from '@/hooks/messenger/useProjectThreads'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
@@ -85,6 +89,37 @@ export function TaskPanelTaskHeader({
   const ThreadIcon = getChatIconComponent(task.icon)
   const updateThread = useUpdateThread()
 
+  // Привязка треда к проекту прямо из шапки — кнопка видна только пока проект
+  // НЕ выбран. После выбора тред переносится (move_thread_to_project: тред +
+  // сообщения) и кнопка прячется. Локальный attachedProjectId, чтобы спрятать
+  // кнопку сразу, не дожидаясь обновления пропа task.
+  const { data: workspaceProjects = [] } = useWorkspaceProjects(workspaceId)
+  const moveThreadToProject = useMoveThreadToProject(workspaceId)
+  const [attachedProjectId, setAttachedProjectId] = useState<string | null>(task.project_id ?? null)
+
+  const handleSelectProject = (projectId: string | null) => {
+    if (!projectId || projectId === attachedProjectId) return
+    setAttachedProjectId(projectId)
+    moveThreadToProject.mutate(
+      { threadId: task.id, projectId },
+      {
+        onSuccess: () => {
+          const name = workspaceProjects.find((p) => p.id === projectId)?.name ?? 'проект'
+          toast.success(`Диалог добавлен в «${name}»`, {
+            action: {
+              label: 'Отменить',
+              onClick: () => {
+                setAttachedProjectId(null)
+                moveThreadToProject.mutate({ threadId: task.id, projectId: null })
+              },
+            },
+          })
+        },
+        onError: () => setAttachedProjectId(null),
+      },
+    )
+  }
+
   // Inline-редактирование
   const [editingName, setEditingName] = useState(false)
   const [editNameValue, setEditNameValue] = useState('')
@@ -94,6 +129,7 @@ export function TaskPanelTaskHeader({
   if (task.id !== prevTaskId) {
     setPrevTaskId(task.id)
     setEditingName(false)
+    setAttachedProjectId(task.project_id ?? null)
   }
 
   const startEditName = () => {
@@ -260,6 +296,21 @@ export function TaskPanelTaskHeader({
             onSet={onDeadlineSet}
             onClear={onDeadlineClear}
             isPending={deadlinePending}
+          />
+        )}
+
+        {/* Привязать тред к проекту — только пока проект не выбран. Стиль 1:1
+            с чипом «Срок» (DeadlinePopover): цвет, размер шрифта, паддинги. */}
+        {!attachedProjectId && (
+          <ChatSettingsProjectSelector
+            workspaceProjects={workspaceProjects}
+            selectedProjectId={null}
+            isEditMode
+            onSelect={handleSelectProject}
+            createDefaultName={task.name}
+            label="Проект"
+            iconClassName="w-3 h-3"
+            triggerClassName="flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0 whitespace-nowrap text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50"
           />
         )}
 

@@ -31,6 +31,12 @@ type ChatSettingsProjectSelectorProps = {
   createDefaultName?: string
   /** Цвет триггер-кнопки: 'brand' (золотой, по умолчанию) или 'muted' (серый, для шапки панели). */
   variant?: 'brand' | 'muted'
+  /** Текст триггера, когда проект не выбран (по умолчанию «Выбрать проект»). */
+  label?: string
+  /** Полностью переопределить классы триггер-кнопки (для подгонки под соседние чипы, напр. «Срок»). */
+  triggerClassName?: string
+  /** Классы иконки папки в триггере (по умолчанию `w-3.5 h-3.5`). */
+  iconClassName?: string
 }
 
 export function ChatSettingsProjectSelector({
@@ -40,6 +46,9 @@ export function ChatSettingsProjectSelector({
   onSelect,
   createDefaultName,
   variant = 'brand',
+  label,
+  triggerClassName,
+  iconClassName,
 }: ChatSettingsProjectSelectorProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -64,21 +73,24 @@ export function ChatSettingsProjectSelector({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={cn(
-            'flex items-center gap-1.5 text-sm rounded px-2 py-1 transition-colors shrink-0',
-            variant === 'muted'
-              ? selectedProjectId
-                ? 'text-gray-700 bg-gray-200/70 hover:bg-gray-200'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/60'
-              : selectedProjectId
-                ? 'text-brand-700 bg-brand-100/75 hover:bg-brand-100'
-                : 'text-brand-500/70 hover:text-brand-600 hover:bg-brand-100/75',
-          )}
+          className={
+            triggerClassName ??
+            cn(
+              'flex items-center gap-1.5 text-sm rounded px-2 py-1 transition-colors shrink-0',
+              variant === 'muted'
+                ? selectedProjectId
+                  ? 'text-gray-700 bg-gray-200/70 hover:bg-gray-200'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/60'
+                : selectedProjectId
+                  ? 'text-brand-700 bg-brand-100/75 hover:bg-brand-100'
+                  : 'text-brand-500/70 hover:text-brand-600 hover:bg-brand-100/75',
+            )
+          }
         >
-          <FolderOpen className="w-3.5 h-3.5" />
+          <FolderOpen className={iconClassName ?? 'w-3.5 h-3.5'} />
           {selectedProjectId
             ? (workspaceProjects.find((p) => p.id === selectedProjectId)?.name ?? 'Проект')
-            : 'Выбрать проект'}
+            : (label ?? 'Выбрать проект')}
         </button>
       </PopoverTrigger>
         <PopoverContent className="w-[346px] p-0" align="start">

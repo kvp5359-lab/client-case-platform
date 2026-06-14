@@ -394,12 +394,7 @@ function TaskPanelTabbedShellRenderer({
           Если scope-проект совпадает с открытой страницей, строку прячем
           (дубль шапки страницы), и тогда «×» уезжает в TabBar. */}
       {standaloneThread ? (
-        <PanelStandaloneInfoRow
-          key={standaloneThread.id}
-          thread={standaloneThread}
-          workspaceId={workspaceId}
-          onHidePanel={onHidePanel}
-        />
+        <PanelStandaloneInfoRow thread={standaloneThread} onHidePanel={onHidePanel} />
       ) : infoRowVisible ? (
         effectiveContactId ? (
           <PanelContactInfoRow
