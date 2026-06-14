@@ -238,6 +238,7 @@ export function ChatSettingsDialog({
               selectedProjectId={form.selectedProjectId}
               isEditMode={form.isEditMode}
               onSelect={actions.handleProjectSelect}
+              workspaceId={resolvedWorkspaceId}
             />
           </div>
 

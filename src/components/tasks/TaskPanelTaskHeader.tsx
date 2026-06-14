@@ -308,6 +308,7 @@ export function TaskPanelTaskHeader({
             isEditMode
             onSelect={handleSelectProject}
             createDefaultName={task.name}
+            workspaceId={workspaceId}
             label="Проект"
             iconClassName="w-3 h-3"
             triggerClassName="flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0 whitespace-nowrap text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50"

@@ -2,10 +2,13 @@
  * Project selector popover for ChatSettingsDialog.
  */
 
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, createElement, useState } from 'react'
 import { FolderOpen, Search, X, Check, Plus } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { useProjectIconResolver } from '@/hooks/useGlobalSearch'
+import { getProjectIcon } from '@/components/common/project-icons'
+import { safeCssColor } from '@/utils/isValidCssColor'
 
 // Тяжёлый диалог создания проекта (тянет шаблоны/киты) — грузим лениво, только
 // когда жмут «+». Иначе он попадал бы в бандл везде, где есть селектор проекта.
@@ -19,6 +22,8 @@ type WorkspaceProject = {
   id: string
   name: string
   description: string | null
+  template_id: string | null
+  status_id: string | null
   project_templates: { name: string } | null
 }
 
@@ -27,6 +32,8 @@ type ChatSettingsProjectSelectorProps = {
   selectedProjectId: string | null
   isEditMode: boolean
   onSelect: (projectId: string | null) => void
+  /** Воркспейс — для резолва per-project иконки/цвета (как в сайдбаре). */
+  workspaceId?: string
   /** Префилл имени при создании нового проекта через «+» (напр. имя контакта). */
   createDefaultName?: string
   /** Цвет триггер-кнопки: 'brand' (золотой, по умолчанию) или 'muted' (серый, для шапки панели). */
@@ -45,6 +52,7 @@ export function ChatSettingsProjectSelector({
   isEditMode: _isEditMode,
   onSelect,
   createDefaultName,
+  workspaceId,
   variant = 'brand',
   label,
   triggerClassName,
@@ -53,6 +61,8 @@ export function ChatSettingsProjectSelector({
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
+  // Те же иконка/цвет проекта, что в левом сайдбаре (из шаблона + статуса).
+  const resolveIcon = useProjectIconResolver(workspaceId)
 
   const filtered = workspaceProjects.filter((p) => {
     if (!search.trim()) return true
@@ -143,7 +153,9 @@ export function ChatSettingsProjectSelector({
                 <span className="truncate">Без проекта</span>
               </button>
             )}
-            {filtered.map((p) => (
+            {filtered.map((p) => {
+              const { iconId, iconColor } = resolveIcon(p.template_id, p.status_id)
+              return (
               <button
                 key={p.id}
                 type="button"
@@ -156,7 +168,11 @@ export function ChatSettingsProjectSelector({
                   selectedProjectId === p.id ? 'bg-brand-50 font-medium' : 'hover:bg-muted/50',
                 )}
               >
-                <FolderOpen className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                {createElement(getProjectIcon(iconId), {
+                  className: 'w-3.5 h-3.5 shrink-0',
+                  strokeWidth: 1.5,
+                  style: { color: safeCssColor(iconColor) },
+                })}
                 <span className="shrink-0">{p.name}</span>
                 {p.project_templates?.name && (
                   <span className="truncate text-muted-foreground/40 font-normal">
@@ -167,7 +183,8 @@ export function ChatSettingsProjectSelector({
                   <Check className="w-3.5 h-3.5 ml-auto shrink-0 text-primary" />
                 )}
               </button>
-            ))}
+              )
+            })}
             {filtered.length === 0 && search.trim() && (
               <p className="px-3 py-2 text-xs text-muted-foreground">Ничего не найдено</p>
             )}

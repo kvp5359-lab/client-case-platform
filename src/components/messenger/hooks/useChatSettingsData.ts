@@ -37,7 +37,7 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('id, name, description, project_templates ( name )')
+        .select('id, name, description, template_id, status_id, project_templates ( name )')
         .eq('workspace_id', workspaceId!)
         .eq('is_deleted', false)
         .order('name')
@@ -46,6 +46,8 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
         id: string
         name: string
         description: string | null
+        template_id: string | null
+        status_id: string | null
         project_templates: { name: string } | null
       }[]
     },
