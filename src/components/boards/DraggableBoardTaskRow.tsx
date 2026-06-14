@@ -5,6 +5,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
+import { usePrefetchThreadMessages } from '@/hooks/messenger/usePrefetchThreadMessages'
 import { BoardTaskRow } from './BoardTaskRow'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
@@ -41,6 +42,7 @@ export const DraggableBoardTaskRow = memo(function DraggableBoardTaskRow({
   ...rest
 }: DraggableBoardTaskRowProps) {
   const isCards = rest.displayMode === 'cards'
+  const prefetchMessages = usePrefetchThreadMessages()
   const {
     attributes,
     listeners,
@@ -77,6 +79,8 @@ export const DraggableBoardTaskRow = memo(function DraggableBoardTaskRow({
       style={style}
       {...attributes}
       {...listeners}
+      // Прогрев кэша сообщений по наведению → клик открывает панель мгновенно.
+      onMouseEnter={() => prefetchMessages(task.id)}
       className={cn(
         'relative min-w-0 touch-none rounded-md',
         isDragging && 'opacity-40',

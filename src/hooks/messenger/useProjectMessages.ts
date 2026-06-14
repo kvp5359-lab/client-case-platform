@@ -72,6 +72,12 @@ export function useProjectMessages(
       return firstPage.messages[0]?.created_at
     },
     enabled: !!threadId,
+    // Перф: держим сообщения треда в кэше долго (24ч), а не дефолтные 10 мин.
+    // Тогда повторное открытие треда в течение дня — мгновенное (тёплый кэш,
+    // рисуем из него + фоновый refetch при открытии). Также выравнено с maxAge
+    // персиста кэша в IndexedDB (Providers) — чтобы тред переживал перезагрузку.
+    // Свежесть держат realtime-подписка и refetch-on-open ниже.
+    gcTime: 24 * 60 * 60_000,
   })
 
   // Flatten в хронологическом порядке

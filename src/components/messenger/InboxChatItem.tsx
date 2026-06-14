@@ -8,6 +8,7 @@ import type { DeliveryStatus } from './DeliveryIndicator'
 import { getBadgeDisplay, formatBadgeCount } from '@/utils/inboxUnread'
 import { formatShortDate } from '@/utils/format/dateFormat'
 import { safeCssColor } from '@/utils/isValidCssColor'
+import { usePrefetchThreadMessages } from '@/hooks/messenger/usePrefetchThreadMessages'
 
 const STATUS_PREFIX = 'Статус: '
 
@@ -152,6 +153,8 @@ export const InboxChatItem = memo(function InboxChatItem({
   hideProjectName,
   deliveryStatus,
 }: InboxChatItemProps) {
+  const prefetchMessages = usePrefetchThreadMessages()
+
   // Черновик из localStorage
   const draftHtml = localStorage.getItem(`msg_draft:${chat.project_id}:${chat.thread_id}`)
   const draftText = draftHtml ? stripHtml(draftHtml).trim() || null : null
@@ -212,6 +215,7 @@ export const InboxChatItem = memo(function InboxChatItem({
   return (
     <button
       onClick={onClick}
+      onMouseEnter={() => prefetchMessages(chat.thread_id)}
       className={cn(
         'group/chat w-full flex items-start gap-3 px-4 py-3 text-left transition-colors',
         isSelected

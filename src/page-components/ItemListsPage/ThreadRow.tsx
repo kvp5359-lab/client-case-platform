@@ -9,6 +9,7 @@ import { StatusDropdown, type StatusOption } from '@/components/common/status-dr
 import { DatePicker } from '@/components/ui/date-picker'
 import { useUpdateTaskStatus, useUpdateTaskDeadline } from '@/components/tasks/useTaskMutations'
 import { workspaceThreadKeys } from '@/hooks/queryKeys'
+import { usePrefetchThreadMessages } from '@/hooks/messenger/usePrefetchThreadMessages'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { TableShellColumn } from './TableShell'
 import type { ItemListColumnKey } from './columns'
@@ -37,9 +38,10 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
 
   const currentStatus = taskStatuses.find((s) => s.id === task.status_id) ?? null
   const assignees = assigneesMap[task.id] ?? []
+  const prefetchMessages = usePrefetchThreadMessages()
 
   return (
-    <tr className="border-b hover:bg-muted/30">
+    <tr className="border-b hover:bg-muted/30" onMouseEnter={() => prefetchMessages(task.id)}>
       <td className="px-3 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
         <Checkbox checked={checked} onCheckedChange={() => onToggle(task.id)} />
       </td>

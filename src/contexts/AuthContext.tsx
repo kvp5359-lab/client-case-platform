@@ -25,6 +25,14 @@ import { safeInternalPath } from '@/hooks/shared/useAuthRedirect'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useDocumentKitUIStore } from '@/store/documentKitUI/store'
 import { useContactCardStore } from '@/store/contactCardStore'
+import { persistQueryClient } from '@tanstack/react-query-persist-client'
+import {
+  createIdbPersister,
+  shouldPersistQuery,
+  clearPersistedQueryCache,
+  PERSIST_BUSTER,
+  PERSIST_MAX_AGE,
+} from '@/lib/queryPersister'
 
 // Типы для контекста
 type AuthContextType = {
@@ -62,6 +70,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Персист кэша сообщений в IndexedDB — пер-юзер (ключ привязан к user.id),
+  // чтобы боковая панель открывалась мгновенно и после перезагрузки (подход
+  // «как Notion», но без sync-движка: рисуем из локального снапшота + фоновое
+  // обновление). Снапшот другого пользователя на том же браузере физически не
+  // читается. Только в браузере; SSR не затрагивается (эффект клиентский).
+  useEffect(() => {
+    const uid = user?.id
+    if (!uid) return
+    const [unsubscribe] = persistQueryClient({
+      queryClient,
+      persister: createIdbPersister(uid),
+      maxAge: PERSIST_MAX_AGE,
+      buster: PERSIST_BUSTER,
+      dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery },
+    })
+    return unsubscribe
+  }, [user?.id, queryClient])
 
   const signUp = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({ email, password })
@@ -103,14 +129,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
+    const uid = user?.id
     await supabase.auth.signOut()
     queryClient.clear()
+    // Стереть персистнутый в IndexedDB снапшот сообщений этого пользователя —
+    // defense-in-depth + гигиена (ключ и так пер-юзер, чужой не читается).
+    if (uid) await clearPersistedQueryCache(uid)
     // Чистим клиентские сторы, чтобы не осталось данных предыдущего пользователя
     // (AI-сессии, контекст страницы, состояние документ-кита, открытые чаты и т.п.)
     useSidePanelStore.getState().reset()
     useDocumentKitUIStore.getState().resetState()
     useContactCardStore.getState().close()
-  }, [queryClient])
+  }, [queryClient, user?.id])
 
   const value = useMemo(
     () => ({
