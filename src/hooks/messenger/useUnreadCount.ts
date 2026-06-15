@@ -13,7 +13,7 @@ import {
   resolveParticipantId,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
-import { getInboxThreadOne } from '@/services/api/inboxService'
+import { getInboxThreadOne, getInboxThreadAggregates } from '@/services/api/inboxService'
 import { supabase } from '@/lib/supabase'
 import {
   messengerKeys,
@@ -21,7 +21,7 @@ import {
   invalidateMessengerCaches,
   STALE_TIME,
 } from '@/hooks/queryKeys'
-import { useInboxThreadsV2, patchInboxThreadInCache, patchInboxAggregateInCache } from './useInbox'
+import { patchInboxThreadInCache, patchInboxAggregateInCache } from './useInbox'
 import { dismissProjectToasts } from './useMessageToastPayload'
 
 type CachePatchParams = {
@@ -133,11 +133,21 @@ export function useUnreadCount(
   workspaceId: string,
   threadId: string | undefined,
 ) {
-  const query = useInboxThreadsV2(workspaceId)
-  const value = threadId
-    ? query.data?.find((t) => t.thread_id === threadId)?.unread_count ?? 0
-    : 0
-  return { ...query, data: value }
+  // ⚠️ Источник — ПОЛНЫЙ кэш агрегатов (inboxKeys.aggregates), а НЕ пагинированный
+  // useInboxThreadsV2 (только первые ~50 тредов). Для треда со 2-й+ страницы
+  // инбокса find возвращал undefined → unread_count=0 → кнопка «Прочитано/
+  // Непрочитано» показывала «Непрочитано» при наличии непрочитанных. Агрегаты
+  // полные, наполняются сайдбаром и патчатся mark-read (patchInboxAggregateInCache).
+  const { user } = useAuth()
+  const query = useQuery({
+    queryKey: inboxKeys.aggregates(workspaceId),
+    queryFn: () => getInboxThreadAggregates(workspaceId, user!.id),
+    enabled: !!workspaceId && !!user,
+    staleTime: STALE_TIME.SHORT,
+    select: (rows) =>
+      threadId ? rows.find((t) => t.thread_id === threadId)?.unread_count ?? 0 : 0,
+  })
+  return { ...query, data: query.data ?? 0 }
 }
 
 /**

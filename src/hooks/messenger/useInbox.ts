@@ -16,10 +16,11 @@
  * workspace-level подписка на `project_messages` / `message_reactions`.
  */
 
-import { useInfiniteQuery, type InfiniteData, type QueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, type InfiniteData, type QueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   getInboxThreadsPage,
+  getInboxThreadAggregates,
   type InboxThreadEntry,
   type InboxThreadPageEntry,
   type InboxPageCursor,
@@ -172,6 +173,32 @@ function useInboxBase<T = InboxThreadEntry[]>(
 }
 
 /**
+ * База для per-thread/per-project unread-хуков поверх ПОЛНОГО кэша агрегатов
+ * (`inboxKeys.aggregates`, RPC `get_inbox_thread_aggregates` — без пагинации).
+ *
+ * ⚠️ Раньше эти хуки сидели на `useInboxBase` (пагинированный `inboxKeys.threads`,
+ * только загруженные ~50 тредов) → для треда со 2-й+ страницы инбокса возвращали
+ * 0/false: бейдж пропадал, а кнопка «Прочитано/Непрочитано» показывала
+ * «Непрочитано» при наличии непрочитанных. Агрегаты — полный список, наполняется
+ * сайдбаром на каждой странице и патчится теми же mark-read/unread мутациями
+ * (`patchInboxAggregateInCache`) → мгновенная реакция на чтение. Тот же кэш, что
+ * читает `UnreadBadge`. Запрос дедупится с сайдбаром (один queryKey).
+ */
+function useInboxAggregatesBase<T = InboxThreadAggregate[]>(
+  workspaceId: string,
+  select?: (rows: InboxThreadAggregate[]) => T,
+) {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: inboxKeys.aggregates(workspaceId),
+    queryFn: () => getInboxThreadAggregates(workspaceId, user!.id),
+    enabled: !!workspaceId && !!user,
+    staleTime: STALE_TIME.SHORT,
+    select: select ? (rows) => select(rows ?? []) : undefined,
+  })
+}
+
+/**
  * Список тредов с инфинит-скроллом. Возвращает `fetchNextPage`, `hasNextPage`,
  * `isFetchingNextPage` помимо стандартного `data`. Использовать для UI с прокруткой
  * (InboxPage, BoardTabContent inbox-колонки).
@@ -206,7 +233,7 @@ export function useIsManuallyUnread(
   channel: 'client' | 'internal' = 'client',
   threadId?: string,
 ) {
-  return useInboxBase(workspaceId, (threads) => {
+  return useInboxAggregatesBase(workspaceId, (threads) => {
     if (threadId) {
       return threads.some((t) => t.thread_id === threadId && t.manually_unread)
     }
@@ -229,7 +256,7 @@ export function useHasUnreadReaction(
   channel: 'client' | 'internal' = 'client',
   threadId?: string,
 ) {
-  return useInboxBase(workspaceId, (threads) => {
+  return useInboxAggregatesBase(workspaceId, (threads) => {
     if (threadId) {
       return threads.some((t) => t.thread_id === threadId && t.has_unread_reaction)
     }
@@ -270,7 +297,7 @@ export function useUnreadReactionCount(
  * в инбоксе висит бейдж по событию.
  */
 export function useUnreadEventCount(workspaceId: string, threadId?: string) {
-  return useInboxBase(workspaceId, (threads) => {
+  return useInboxAggregatesBase(workspaceId, (threads) => {
     if (!threadId) return 0
     const t = threads.find((t) => t.thread_id === threadId)
     return t?.unread_event_count ?? 0
