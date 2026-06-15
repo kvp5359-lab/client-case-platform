@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { STALE_TIME, threadScopeKeys } from '@/hooks/queryKeys'
 import { useInboxThreadsV2 } from '@/hooks/messenger/useInbox'
+import { useFilteredInboxAggregates } from '@/hooks/messenger/useFilteredInbox'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { getBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import { PanelProjectInfoRow } from './PanelProjectInfoRow'
@@ -272,19 +273,22 @@ function TaskPanelTabbedShellRenderer({
         }),
     [tabs, visibleSystemTypes, freshThreadById],
   )
-  // Карта бейджа по thread_id — для индикации на thread-вкладках.
-  // Используем getBadgeDisplay из @/utils/inboxUnread — единый источник правды,
-  // он же считает бейджи для сайдбара, списка задач и inbox. Возвращает структуру:
-  // number / dot (manually_unread без активности) / emoji / none.
-  const { data: inboxThreads = [] } = useInboxThreadsV2(workspaceId)
+  // Держим inboxKeys.threads тёплым на странице проекта — его читают
+  // counterpart-имена (P4b), mark-read патчи кэша, threadCacheSync и др.
+  useInboxThreadsV2(workspaceId)
+  // Карта бейджа по thread_id для thread-вкладок. Источник — ПОЛНЫЙ кэш
+  // агрегатов (get_inbox_thread_aggregates, без пагинации), а НЕ пагинированный
+  // inboxKeys.threads (только первая страница ~50): иначе у вкладки с тредом со
+  // 2-й+ страницы инбокса бейдж пропадал. getBadgeDisplay — единый источник.
+  const { data: aggregates = [] } = useFilteredInboxAggregates(workspaceId)
   const badgeByThreadId = useMemo(() => {
     const map: Record<string, BadgeDisplay> = {}
-    for (const t of inboxThreads) {
+    for (const t of aggregates) {
       const display = getBadgeDisplay(t)
       if (display.type !== 'none') map[t.thread_id] = display
     }
     return map
-  }, [inboxThreads])
+  }, [aggregates])
   // Один persistent .side-panel контейнер. Анимация въезда срабатывает только
   // при первом появлении (tabs.length: 0 → >0). Переключение между вкладками
   // не размонтирует контейнер — меняется только содержимое.

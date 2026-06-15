@@ -1,19 +1,26 @@
 "use client"
 
 /**
- * UnreadBadge — бейдж непрочитанных сообщений задачи (из inbox-кэша).
+ * UnreadBadge — бейдж непрочитанных сообщений задачи.
  *
- * Подписывается на inbox-кэш через useQuery({ select }) — бейдж обновляется
- * автоматически при любом изменении inbox-данных (новое сообщение, mark as read, realtime).
+ * ⚠️ Источник — ПОЛНЫЙ кэш агрегатов `inboxKeys.aggregates` (RPC
+ * `get_inbox_thread_aggregates`, без пагинации), а НЕ пагинированный
+ * `inboxKeys.threads` (он держит только первую страницу инбокса ~50 тредов).
+ * Раньше читали threads → у задачи со 2-й+ страницы инбокса бейдж пропадал,
+ * хотя непрочитанные есть. Агрегаты наполняет сайдбар на каждой странице
+ * (`useSidebarInboxCounts`) и realtime их инвалидирует → бейдж обновляется сам.
+ *
+ * Подписка через useSyncExternalStore (read-only, без своего queryFn): при
+ * множественных observer-ах одного queryKey React Query мог использовать
+ * «пустой» queryFn и класть [] в кэш — тогда у всех тредов разом исчезали бейджи.
  */
 
 import { useMemo, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { inboxKeys } from '@/hooks/queryKeys'
-import type { InboxThreadEntry } from '@/services/api/inboxService'
+import type { InboxThreadAggregate } from '@/services/api/inboxService'
 import { getBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
-import type { InboxInfiniteData } from '@/hooks/messenger/useInbox'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
 
 // Record<ThreadAccentColor> (а не <string>): добавление 11-го акцента в union
@@ -38,15 +45,12 @@ type UnreadBadgeProps = {
 }
 
 function computeBadge(
-  data: InboxInfiniteData | undefined,
+  data: InboxThreadAggregate[] | undefined,
   threadId: string,
 ): BadgeDisplay {
-  if (!data?.pages) return { type: 'none' as const }
-  for (const page of data.pages) {
-    const entry = page.items.find((e: InboxThreadEntry) => e.thread_id === threadId)
-    if (entry) return getBadgeDisplay(entry)
-  }
-  return { type: 'none' as const }
+  if (!data) return { type: 'none' as const }
+  const entry = data.find((e) => e.thread_id === threadId)
+  return entry ? getBadgeDisplay(entry) : { type: 'none' as const }
 }
 
 export function UnreadBadge({ threadId, workspaceId, accentColor }: UnreadBadgeProps) {
@@ -60,9 +64,9 @@ export function UnreadBadge({ threadId, workspaceId, accentColor }: UnreadBadgeP
   // while rendering a different component»: getSnapshot возвращает стабильную
   // ссылку на массив тредов, badge выводим через useMemo в render-фазе).
   const queryClient = useQueryClient()
-  const queryKey = useMemo(() => inboxKeys.threads(workspaceId), [workspaceId])
+  const queryKey = useMemo(() => inboxKeys.aggregates(workspaceId), [workspaceId])
 
-  const data = useSyncExternalStore<InboxInfiniteData | undefined>(
+  const data = useSyncExternalStore<InboxThreadAggregate[] | undefined>(
     (onChange) => {
       const cache = queryClient.getQueryCache()
       return cache.subscribe((event) => {
@@ -79,7 +83,7 @@ export function UnreadBadge({ threadId, workspaceId, accentColor }: UnreadBadgeP
         onChange()
       })
     },
-    () => queryClient.getQueryData<InboxInfiniteData>(queryKey),
+    () => queryClient.getQueryData<InboxThreadAggregate[]>(queryKey),
     () => undefined,
   )
 
