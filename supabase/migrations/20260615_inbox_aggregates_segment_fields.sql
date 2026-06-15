@@ -205,7 +205,15 @@ AS $function$
   LEFT JOIN manual_unread mu ON mu.thread_id = at.id
   LEFT JOIN unread_reaction_counts urc ON urc.thread_id = at.id
   LEFT JOIN last_reaction_emoji_cte lre ON lre.thread_id = at.id
-  LEFT JOIN unread_audit ua ON ua.thread_id = at.id;
+  LEFT JOIN unread_audit ua ON ua.thread_id = at.id
+  -- Детерминированный порядок ОБЯЗАТЕЛЕН: клиент тянет агрегаты постранично
+  -- через .range() по 1000 (Supabase REST отдаёт максимум 1000 строк за запрос),
+  -- а без стабильного ORDER BY строки между страницами повторяются/пропадают.
+  -- Воркспейс перевалил 1000 тредов → без пагинации треды «хвоста» выпадали из
+  -- агрегатов, и всё, что на них построено (кнопка «Прочитано/Непрочитано»,
+  -- бейджи вкладок панели, бейдж проекта в сайдбаре, счётчики сегментов), их
+  -- не видело. См. getInboxThreadAggregates (range-цикл) + ledger 2026-06-15.
+  ORDER BY at.id;
 $function$;
 
 REVOKE EXECUTE ON FUNCTION public.get_inbox_thread_aggregates(uuid, uuid) FROM PUBLIC;

@@ -259,17 +259,38 @@ export type InboxThreadAggregate = {
   has_external: boolean
 }
 
+/**
+ * Лёгкие агрегаты по ВСЕМ доступным тредам — источник счётчиков непрочитанного
+ * (сайдбар, favicon), бейджей вкладок панели, кнопки «Прочитано/Непрочитано» и
+ * счётчиков сегментов инбокса. RPC сортирует по thread_id (ORDER BY at.id).
+ *
+ * ⚠️ Пагинация ОБЯЗАТЕЛЬНА. Supabase REST отдаёт максимум 1000 строк за запрос.
+ * Воркспейсы с >1000 тредов без пагинации теряли «хвост» — тред за границей 1000
+ * выпадал из агрегатов, и кнопка/бейджи/счётчики на нём считали «прочитано»
+ * (баг 2026-06-15: непрочитанный тред без бейджа и с кнопкой «Непрочитано»).
+ * Тянем постранично по 1000 (как boardFilterService), стабильный порядок — из RPC.
+ */
+const AGGREGATES_PAGE = 1000
+
 export async function getInboxThreadAggregates(
   workspaceId: string,
   userId: string,
 ): Promise<InboxThreadAggregate[]> {
-  const { data, error } = await supabase.rpc('get_inbox_thread_aggregates', {
-    p_workspace_id: workspaceId,
-    p_user_id: userId,
-  })
+  const all: InboxThreadAggregate[] = []
+  for (let from = 0; ; from += AGGREGATES_PAGE) {
+    const { data, error } = await supabase
+      .rpc('get_inbox_thread_aggregates', {
+        p_workspace_id: workspaceId,
+        p_user_id: userId,
+      })
+      .range(from, from + AGGREGATES_PAGE - 1)
 
-  if (error) throw new ApiError(`Ошибка загрузки агрегатов: ${error.message}`)
-  return (data ?? []) as unknown as InboxThreadAggregate[]
+    if (error) throw new ApiError(`Ошибка загрузки агрегатов: ${error.message}`)
+    const batch = (data ?? []) as unknown as InboxThreadAggregate[]
+    all.push(...batch)
+    if (batch.length < AGGREGATES_PAGE) break
+  }
+  return all
 }
 
 /** Keyset-курсор для пагинации инбокса. NULL — первая страница. */
