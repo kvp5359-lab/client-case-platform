@@ -134,3 +134,64 @@ export function calcTotalUnread(threads: ThreadUnreadFields[]): number {
 export function formatBadgeCount(count: number): string {
   return count > 99 ? '99+' : String(count)
 }
+
+// --- Сегменты инбокса «Нужно ответить» / «Ждём клиента» ---
+// Считаются на клиенте из лёгких агрегатов (get_inbox_thread_aggregates +
+// поля last_from_staff/has_external) — чтобы НЕ грузить тяжёлые обёртки
+// get_inbox_needs_reply_threads / get_inbox_awaiting_reply_threads в дефолтном
+// пути доски «Входящие». Полные списки этих вкладок грузятся лениво (по клику).
+// Предикаты — точное зеркало WHERE этих обёрток (проверено на проде: счётчики
+// совпадают ровно). Менять оба места синхронно.
+
+/** Поля агрегата, нужные для классификации сегментов. */
+export type InboxSegmentFields = {
+  last_message_at: string | null
+  unread_count: number
+  unread_event_count?: number
+  unread_reaction_count?: number
+  has_unread_reaction: boolean
+  manually_unread: boolean
+  /** Последнее НЕ-сервисное сообщение от сотрудника? null = собеседник. */
+  last_from_staff?: boolean | null
+  /** Есть сообщение из внешнего канала (TG/Wazzup/Email). */
+  has_external?: boolean
+}
+
+/**
+ * Тред «полностью прочитан» — ни одного непрочитанного сигнала. Зеркало
+ * read-гейта обёрток needs/awaiting (last_message_at IS NOT NULL + все unread = 0).
+ */
+export function isThreadFullyRead(t: InboxSegmentFields): boolean {
+  return (
+    t.last_message_at != null &&
+    t.unread_count === 0 &&
+    (t.unread_event_count ?? 0) === 0 &&
+    (t.unread_reaction_count ?? 0) === 0 &&
+    t.has_unread_reaction === false &&
+    t.manually_unread === false
+  )
+}
+
+/** «Нужно ответить»: внешний диалог, прочитан, последним писал НЕ сотрудник. */
+export function isNeedsReply(t: InboxSegmentFields): boolean {
+  return t.has_external === true && isThreadFullyRead(t) && t.last_from_staff !== true
+}
+
+/** «Ждём клиента»: внешний диалог, прочитан, последним писал сотрудник. */
+export function isAwaitingReply(t: InboxSegmentFields): boolean {
+  return t.has_external === true && isThreadFullyRead(t) && t.last_from_staff === true
+}
+
+/** Счётчики сегментов инбокса из лёгких агрегатов — один проход. */
+export function countInboxSegments(
+  threads: InboxSegmentFields[],
+): { needsReply: number; awaiting: number } {
+  let needsReply = 0
+  let awaiting = 0
+  for (const t of threads) {
+    if (t.has_external !== true || !isThreadFullyRead(t)) continue
+    if (t.last_from_staff === true) awaiting += 1
+    else needsReply += 1
+  }
+  return { needsReply, awaiting }
+}

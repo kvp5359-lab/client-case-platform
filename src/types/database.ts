@@ -8684,7 +8684,9 @@ export type Database = {
       get_inbox_thread_aggregates: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: {
+          has_external: boolean
           has_unread_reaction: boolean
+          last_from_staff: boolean
           last_message_at: string
           last_reaction_emoji: string
           legacy_channel: string

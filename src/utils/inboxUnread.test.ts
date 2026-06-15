@@ -5,7 +5,12 @@ import {
   calcThreadUnread,
   calcTotalUnread,
   formatBadgeCount,
+  isThreadFullyRead,
+  isNeedsReply,
+  isAwaitingReply,
+  countInboxSegments,
   type ThreadUnreadFields,
+  type InboxSegmentFields,
 } from './inboxUnread'
 
 function thread(overrides: Partial<ThreadUnreadFields>): ThreadUnreadFields {
@@ -247,5 +252,74 @@ describe('formatBadgeCount', () => {
   it('возвращает "99+" для значений больше 99', () => {
     expect(formatBadgeCount(100)).toBe('99+')
     expect(formatBadgeCount(999)).toBe('99+')
+  })
+})
+
+function seg(over: Partial<InboxSegmentFields>): InboxSegmentFields {
+  return {
+    last_message_at: '2026-06-01T10:00:00Z',
+    unread_count: 0,
+    unread_event_count: 0,
+    unread_reaction_count: 0,
+    has_unread_reaction: false,
+    manually_unread: false,
+    has_external: true,
+    last_from_staff: false,
+    ...over,
+  }
+}
+
+describe('isThreadFullyRead', () => {
+  it('true когда нет ни одного непрочитанного сигнала', () => {
+    expect(isThreadFullyRead(seg({}))).toBe(true)
+  })
+  it('false без last_message_at (тред без сообщений)', () => {
+    expect(isThreadFullyRead(seg({ last_message_at: null }))).toBe(false)
+  })
+  it('false при любом непрочитанном сигнале', () => {
+    expect(isThreadFullyRead(seg({ unread_count: 1 }))).toBe(false)
+    expect(isThreadFullyRead(seg({ unread_event_count: 1 }))).toBe(false)
+    expect(isThreadFullyRead(seg({ unread_reaction_count: 1 }))).toBe(false)
+    expect(isThreadFullyRead(seg({ has_unread_reaction: true }))).toBe(false)
+    expect(isThreadFullyRead(seg({ manually_unread: true }))).toBe(false)
+  })
+})
+
+describe('isNeedsReply / isAwaitingReply', () => {
+  it('needsReply: внешний, прочитан, последним писал НЕ сотрудник', () => {
+    expect(isNeedsReply(seg({ last_from_staff: false }))).toBe(true)
+    expect(isNeedsReply(seg({ last_from_staff: null }))).toBe(true) // NULL-роль = собеседник
+  })
+  it('awaiting: внешний, прочитан, последним писал сотрудник', () => {
+    expect(isAwaitingReply(seg({ last_from_staff: true }))).toBe(true)
+  })
+  it('взаимоисключающи по направлению', () => {
+    const staff = seg({ last_from_staff: true })
+    expect(isNeedsReply(staff)).toBe(false)
+    expect(isAwaitingReply(staff)).toBe(true)
+  })
+  it('оба false для внутреннего диалога (нет внешнего канала)', () => {
+    expect(isNeedsReply(seg({ has_external: false, last_from_staff: false }))).toBe(false)
+    expect(isAwaitingReply(seg({ has_external: false, last_from_staff: true }))).toBe(false)
+  })
+  it('оба false для непрочитанного (приоритет у «Непрочитанных»)', () => {
+    expect(isNeedsReply(seg({ unread_count: 2, last_from_staff: false }))).toBe(false)
+    expect(isAwaitingReply(seg({ unread_count: 2, last_from_staff: true }))).toBe(false)
+  })
+})
+
+describe('countInboxSegments', () => {
+  it('считает needsReply и awaiting за один проход, игнорируя нерелевантные', () => {
+    const counts = countInboxSegments([
+      seg({ last_from_staff: false }), // needs
+      seg({ last_from_staff: null }), // needs (собеседник)
+      seg({ last_from_staff: true }), // awaiting
+      seg({ has_external: false, last_from_staff: false }), // внутренний — мимо
+      seg({ unread_count: 1, last_from_staff: false }), // непрочитан — мимо
+    ])
+    expect(counts).toEqual({ needsReply: 2, awaiting: 1 })
+  })
+  it('пустой список → нули', () => {
+    expect(countInboxSegments([])).toEqual({ needsReply: 0, awaiting: 0 })
   })
 })

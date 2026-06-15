@@ -17,6 +17,7 @@ import {
   useFilteredInboxNeedsReply,
   useFilteredInboxSearch,
   useInboxMessageStatuses,
+  useInboxSegmentCounts,
 } from '@/hooks/messenger/useFilteredInbox'
 import { useDebounce } from '@/hooks/shared/useDebounce'
 import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
@@ -37,7 +38,7 @@ import type { MessengerAccent } from '@/components/messenger/utils/messageStyles
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import { InboxChatHeader, useProjectChatParticipants } from './InboxChatHeader'
 import { InboxSidebar } from './InboxSidebar'
-import { useInboxFilters } from './useInboxFilters'
+import { useInboxFilters, type InboxFilter } from './useInboxFilters'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { LazyChatSettingsDialog as ChatSettingsDialog } from '@/components/lazyChatSettingsDialog'
 
@@ -68,15 +69,27 @@ export default function InboxPage() {
     fetchNextPage,
   } = useFilteredInbox(workspaceId ?? '')
 
+  // Активная вкладка — владелец стейта здесь (controlled), чтобы загейтить
+  // тяжёлые списки awaiting/needs по активной вкладке (грузить только открытую).
+  const [filter, setFilter] = useState<InboxFilter>('unread')
+
   // Все непрочитанные одним запросом — источник вкладки «Непрочитанные» (без каскада догрузки).
   const { data: unreadChats = [] } = useFilteredInboxUnread(workspaceId ?? '')
-  // «Ждём клиента» — внешние диалоги, где последними писали мы (прочитано).
-  const { data: awaitingChats = [] } = useFilteredInboxAwaitingReply(workspaceId ?? '')
-  // «Нужно ответить» — внешние диалоги, где последним писал клиент (прочитано).
-  const { data: needsReplyChats = [] } = useFilteredInboxNeedsReply(workspaceId ?? '')
+  // «Ждём клиента» / «Нужно ответить» — тяжёлые списки, грузятся ЛЕНИВО (только
+  // когда соответствующая вкладка активна). Бейджи-счётчики — из лёгких агрегатов.
+  const { data: awaitingChats = [] } = useFilteredInboxAwaitingReply(
+    workspaceId ?? '',
+    filter === 'awaiting',
+  )
+  const { data: needsReplyChats = [] } = useFilteredInboxNeedsReply(
+    workspaceId ?? '',
+    filter === 'needs_reply',
+  )
+  // Счётчики бейджей вкладок — из лёгких агрегатов (тот же RPC, что сайдбар).
+  const { needsReply: needsReplyCount, awaiting: awaitingCount } =
+    useInboxSegmentCounts(workspaceId ?? '')
 
   const {
-    filter,
     handleSetFilter,
     searchQuery,
     setSearchQuery,
@@ -85,9 +98,7 @@ export default function InboxPage() {
     closeSearch,
     filteredChats,
     unreadCount,
-    awaitingCount,
-    needsReplyCount,
-  } = useInboxFilters(chats, unreadChats, awaitingChats, needsReplyChats)
+  } = useInboxFilters(chats, unreadChats, awaitingChats, needsReplyChats, filter, setFilter)
 
   // Серверный поиск по тредам инбокса (по названию треда/проекта) — по всем
   // тредам, а не по загруженным страницам. При активном поиске он заменяет

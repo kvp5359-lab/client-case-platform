@@ -150,6 +150,8 @@ function setupHookMocks(opts: {
     has_unread_reaction: t.has_unread_reaction,
     manually_unread: t.manually_unread,
     last_reaction_emoji: t.last_reaction_emoji,
+    last_from_staff: null,
+    has_external: false,
   }))
   vi.mocked(getInboxThreadAggregates).mockResolvedValue(aggregates)
 

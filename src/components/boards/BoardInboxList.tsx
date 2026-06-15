@@ -11,6 +11,7 @@ import {
   useFilteredInboxNeedsReply,
   useFilteredInboxSearch,
   useInboxMessageStatuses,
+  useInboxSegmentCounts,
 } from '@/hooks/messenger/useFilteredInbox'
 import { useDebounce } from '@/hooks/shared/useDebounce'
 import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
@@ -63,10 +64,16 @@ export function BoardInboxList({
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = useFilteredInbox(workspaceId)
   // Все непрочитанные одним запросом — источник вкладки «Непрочитанные».
   const { data: unreadThreads = [] } = useFilteredInboxUnread(workspaceId)
-  // «Ждём клиента» — внешние диалоги, где последними писали мы (прочитано).
-  const { data: awaitingThreads = [] } = useFilteredInboxAwaitingReply(workspaceId)
-  // «Нужно ответить» — внешние диалоги, где последним писал клиент (прочитано).
-  const { data: needsReplyThreads = [] } = useFilteredInboxNeedsReply(workspaceId)
+  // «Ждём клиента» / «Нужно ответить» — тяжёлые списки, грузятся ЛЕНИВО (только
+  // при активной вкладке). Бейджи-счётчики — из лёгких агрегатов ниже.
+  const { data: awaitingThreads = [] } = useFilteredInboxAwaitingReply(
+    workspaceId,
+    filter === 'awaiting',
+  )
+  const { data: needsReplyThreads = [] } = useFilteredInboxNeedsReply(
+    workspaceId,
+    filter === 'needs_reply',
+  )
   // Серверный поиск по тредам инбокса (по названию треда/проекта) — ищет по всем,
   // а не по загруженным страницам. Debounce, чтобы не дёргать RPC на каждую букву.
   const debouncedSearch = useDebounce(searchQuery.trim(), 300)
@@ -103,8 +110,10 @@ export function BoardInboxList({
 
   // Точный счётчик непрочитанных — из полного списка, не из загруженных страниц.
   const unreadCount = unreadThreads.length
-  const awaitingCount = awaitingThreads.length
-  const needsReplyCount = needsReplyThreads.length
+  // Счётчики «Ждём клиента» / «Нужно ответить» — из лёгких агрегатов, а не из
+  // тяжёлых списков (они теперь грузятся лениво). Дешёвый бейдж без RPC-обёрток.
+  const { needsReply: needsReplyCount, awaiting: awaitingCount } =
+    useInboxSegmentCounts(workspaceId)
 
   const filteredThreads = useMemo(() => {
     // При активном поиске — серверные результаты по всем тредам инбокса

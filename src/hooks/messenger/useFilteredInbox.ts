@@ -13,7 +13,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { calcThreadUnread, calcTotalUnread, getAggregateBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
+import { calcThreadUnread, calcTotalUnread, countInboxSegments, getAggregateBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import { canAccessThread, type ThreadAccessInfo } from '@/utils/threadAccess'
 import { useInboxThreadsV2 } from './useInbox'
 import {
@@ -199,6 +199,19 @@ export function useFilteredInboxAggregates(workspaceId: string) {
 }
 
 /**
+ * useInboxSegmentCounts — счётчики бейджей вкладок «Нужно ответить» / «Ждём клиента»
+ * из лёгких агрегатов (поля last_from_staff/has_external), а НЕ из полного списка
+ * тяжёлых обёрток. Источник — `useFilteredInboxAggregates` (тот же RPC, что для
+ * сайдбар-бейджей; TanStack дедуплицирует → лишнего запроса нет). Полные списки
+ * самих вкладок грузятся лениво — только при активной вкладке (см. enabled у
+ * useFilteredInboxNeedsReply / useFilteredInboxAwaitingReply).
+ */
+export function useInboxSegmentCounts(workspaceId: string) {
+  const { data: aggregates } = useFilteredInboxAggregates(workspaceId)
+  return useMemo(() => countInboxSegments(aggregates), [aggregates])
+}
+
+/**
  * useFilteredInbox — возвращает отфильтрованный по доступу список inbox тредов.
  * Единая замена для useInboxThreadsV2 во всех компонентах.
  */
@@ -239,14 +252,18 @@ export function useFilteredInboxUnread(workspaceId: string) {
  * (внешние диалоги, где ПОСЛЕДНЕЕ сообщение от нас и всё прочитано),
  * отфильтрованные тем же access-фильтром. Источник вкладки «Ждём клиента».
  * Без пагинации (каскад из-за клиентского access-фильтра).
+ *
+ * `enabled` — гейт по активной вкладке: тяжёлый список грузится ТОЛЬКО когда
+ * вкладка «Ждём клиента» открыта. Бейдж-счётчик берётся из лёгких агрегатов
+ * (useInboxSegmentCounts), поэтому в дефолтном пути доски этот RPC не вызывается.
  */
-export function useFilteredInboxAwaitingReply(workspaceId: string) {
+export function useFilteredInboxAwaitingReply(workspaceId: string, enabled = true) {
   const { user } = useAuth()
 
   const { data: rawAwaiting = [], ...queryRest } = useQuery({
     queryKey: inboxKeys.awaitingReply(workspaceId),
     queryFn: () => getInboxAwaitingReplyThreads(workspaceId, user!.id),
-    enabled: !!workspaceId && !!user,
+    enabled: !!workspaceId && !!user && enabled,
     staleTime: STALE_TIME.SHORT,
   })
 
@@ -260,14 +277,18 @@ export function useFilteredInboxAwaitingReply(workspaceId: string) {
  * отфильтрованные тем же access-фильтром. Источник вкладки «Нужно ответить».
  * Взаимоисключающе с «Ждём клиента» (направление последнего сообщения) и с
  * «Непрочитанными» (гейт «прочитано»). Без пагинации.
+ *
+ * `enabled` — гейт по активной вкладке: тяжёлый список грузится ТОЛЬКО когда
+ * вкладка «Нужно ответить» открыта. Бейдж-счётчик — из лёгких агрегатов
+ * (useInboxSegmentCounts), поэтому в дефолтном пути доски этот RPC не вызывается.
  */
-export function useFilteredInboxNeedsReply(workspaceId: string) {
+export function useFilteredInboxNeedsReply(workspaceId: string, enabled = true) {
   const { user } = useAuth()
 
   const { data: rawNeeds = [], ...queryRest } = useQuery({
     queryKey: inboxKeys.needsReply(workspaceId),
     queryFn: () => getInboxNeedsReplyThreads(workspaceId, user!.id),
-    enabled: !!workspaceId && !!user,
+    enabled: !!workspaceId && !!user && enabled,
     staleTime: STALE_TIME.SHORT,
   })
 

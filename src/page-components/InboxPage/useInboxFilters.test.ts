@@ -8,9 +8,25 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { useState } from 'react'
 import { renderHook, act } from '@testing-library/react'
-import { useInboxFilters } from './useInboxFilters'
+import { useInboxFilters, type InboxFilter } from './useInboxFilters'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
+
+/**
+ * Обёртка: filter теперь controlled (владелец — родитель). В тесте держим стейт
+ * локально, как это делает InboxPage, чтобы handleSetFilter реально переключал вкладку.
+ */
+function useTestFilters(
+  chats: InboxThreadEntry[],
+  unread: InboxThreadEntry[],
+  awaiting: InboxThreadEntry[],
+  needs: InboxThreadEntry[],
+  initial: InboxFilter = 'unread',
+) {
+  const [filter, setFilter] = useState<InboxFilter>(initial)
+  return useInboxFilters(chats, unread, awaiting, needs, filter, setFilter)
+}
 
 function entry(over: Partial<InboxThreadEntry> & { thread_id: string }): InboxThreadEntry {
   return {
@@ -71,7 +87,7 @@ describe('useInboxFilters', () => {
   ]
 
   it('по умолчанию вкладка «unread» и источник — unreadChats, не chats', () => {
-    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting, needs))
+    const { result } = renderHook(() => useTestFilters(chats, unread, awaiting, needs))
     expect(result.current.filter).toBe('unread')
     const ids = result.current.filteredChats.map((c) => c.thread_id)
     // только непрочитанные (b, x), отсортированы по дате убыв. (x новее b)
@@ -79,19 +95,19 @@ describe('useInboxFilters', () => {
   })
 
   it('unreadCount берётся из полного unreadChats, не зависит от загруженных chats', () => {
-    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting, needs))
+    const { result } = renderHook(() => useTestFilters(chats, unread, awaiting, needs))
     expect(result.current.unreadCount).toBe(2)
   })
 
   it('на вкладке «all» источник — полный пагинированный chats', () => {
-    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting, needs))
+    const { result } = renderHook(() => useTestFilters(chats, unread, awaiting, needs))
     act(() => result.current.handleSetFilter('all'))
     expect(result.current.filteredChats.map((c) => c.thread_id)).toEqual(['a', 'b', 'c'])
   })
 
   it('снимок: прочитанный тред остаётся видимым, пока не уходим с вкладки', () => {
     const { result, rerender } = renderHook(
-      ({ u }: { u: InboxThreadEntry[] }) => useInboxFilters(chats, u, awaiting, needs),
+      ({ u }: { u: InboxThreadEntry[] }) => useTestFilters(chats, u, awaiting, needs),
       { initialProps: { u: unread } },
     )
     // входим на вкладку — снимаем снимок текущих непрочитанных (b, x)
@@ -105,16 +121,14 @@ describe('useInboxFilters', () => {
   })
 
   it('вкладка «awaiting» — источник awaitingChats, сортировка по дате убыв.', () => {
-    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting, needs))
-    expect(result.current.awaitingCount).toBe(2)
+    const { result } = renderHook(() => useTestFilters(chats, unread, awaiting, needs))
     act(() => result.current.handleSetFilter('awaiting'))
     // w2 (11:00) новее w1 (07:00)
     expect(result.current.filteredChats.map((c) => c.thread_id)).toEqual(['w2', 'w1'])
   })
 
   it('вкладка «needs_reply» — источник needsReplyChats, сортировка по дате убыв.', () => {
-    const { result } = renderHook(() => useInboxFilters(chats, unread, awaiting, needs))
-    expect(result.current.needsReplyCount).toBe(2)
+    const { result } = renderHook(() => useTestFilters(chats, unread, awaiting, needs))
     act(() => result.current.handleSetFilter('needs_reply'))
     // n2 (13:00) новее n1 (06:00)
     expect(result.current.filteredChats.map((c) => c.thread_id)).toEqual(['n2', 'n1'])
@@ -125,7 +139,7 @@ describe('useInboxFilters', () => {
       entry({ thread_id: '1', thread_name: 'Договор', unread_count: 1 }),
       entry({ thread_id: '2', thread_name: 'Счёт', unread_count: 1 }),
     ]
-    const { result } = renderHook(() => useInboxFilters(named, named, awaiting, needs))
+    const { result } = renderHook(() => useTestFilters(named, named, awaiting, needs))
     act(() => result.current.setSearchQuery('счёт'))
     expect(result.current.filteredChats.map((c) => c.thread_id)).toEqual(['2'])
   })

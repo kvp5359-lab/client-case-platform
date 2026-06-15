@@ -23,14 +23,20 @@ function sortKey(c: InboxThreadEntry): number {
  *   где последними писали мы и всё прочитано. Без пагинации (см. unread).
  * @param needsReplyChats — все треды «Нужно ответить»: внешние диалоги, где
  *   последним писал клиент и всё прочитано. Без пагинации.
+ *
+ * `filter`/`setFilter` — управляемое состояние активной вкладки (controlled).
+ * Владелец — родитель (InboxPage), чтобы загейтить тяжёлые списки awaiting/needs
+ * по активной вкладке (грузить только открытую). Счётчики этих вкладок здесь
+ * НЕ считаются — берутся из лёгких агрегатов (useInboxSegmentCounts).
  */
 export function useInboxFilters(
   chats: InboxThreadEntry[],
   unreadChats: InboxThreadEntry[],
   awaitingChats: InboxThreadEntry[],
   needsReplyChats: InboxThreadEntry[],
+  filter: InboxFilter,
+  setFilter: (f: InboxFilter) => void,
 ) {
-  const [filter, setFilter] = useState<InboxFilter>('unread')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   // Снимок непрочитанных при входе на вкладку — чтобы прочитанный тред не исчезал
@@ -50,7 +56,7 @@ export function useInboxFilters(
       }
       setFilter(f)
     },
-    [unreadChats],
+    [unreadChats, setFilter],
   )
 
   // Фильтрация и поиск
@@ -89,8 +95,6 @@ export function useInboxFilters(
   }, [chats, unreadChats, awaitingChats, needsReplyChats, filter, searchQuery, unreadSnapshot])
 
   const unreadCount = useMemo(() => unreadChats.length, [unreadChats])
-  const awaitingCount = useMemo(() => awaitingChats.length, [awaitingChats])
-  const needsReplyCount = useMemo(() => needsReplyChats.length, [needsReplyChats])
 
   const closeSearch = useCallback(() => {
     setSearchOpen(false)
@@ -107,7 +111,5 @@ export function useInboxFilters(
     closeSearch,
     filteredChats,
     unreadCount,
-    awaitingCount,
-    needsReplyCount,
   }
 }

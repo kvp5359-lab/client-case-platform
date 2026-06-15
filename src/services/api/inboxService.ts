@@ -248,6 +248,15 @@ export type InboxThreadAggregate = {
   has_unread_reaction: boolean
   manually_unread: boolean
   last_reaction_emoji: string | null
+  /**
+   * Последнее НЕ-сервисное сообщение треда отправил сотрудник (staff)?
+   * Зеркало предиката `is_staff_role(sender_role)` в обёртках needs/awaiting:
+   * `null` — собеседник (роль не staff / NULL). Используется для подсчёта
+   * сегментов «Нужно ответить» / «Ждём клиента» на клиенте без тяжёлых обёрток.
+   */
+  last_from_staff: boolean | null
+  /** В треде есть хотя бы одно сообщение из внешнего канала (TG/Wazzup/Email). */
+  has_external: boolean
 }
 
 export async function getInboxThreadAggregates(
