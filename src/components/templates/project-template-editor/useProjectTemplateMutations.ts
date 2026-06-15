@@ -133,6 +133,28 @@ export function useProjectTemplateMutations({
     },
   })
 
+  // «Название по умолчанию» — префикс имени нового проекта этого типа (CRM).
+  const updateDefaultNamePrefixMutation = useMutation({
+    mutationFn: async (prefix: string | null) => {
+      const value = prefix && prefix.trim() ? prefix.trim() : null
+      const { error } = await supabase
+        .from('project_templates')
+        .update({ default_name_prefix: value })
+        .eq('id', templateId ?? '')
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
+      // Список шаблонов (['project-templates', ws]) читает CreateProjectDialog —
+      // его кэш надо сбросить, иначе при глобальном staleTime=LONG диалог покажет
+      // старый префикс. allList = ['project-templates'] покрывает list + names.
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.allList })
+    },
+    onError: () => {
+      toast.error('Не удалось сохранить название по умолчанию')
+    },
+  })
+
   // Обновление дефолтных вкладок боковой панели
   const updateDefaultPanelTabsMutation = useMutation({
     mutationFn: async (items: DefaultPanelTabItem[]) => {
@@ -421,6 +443,7 @@ export function useProjectTemplateMutations({
     updateIconColorModeMutation,
     updateIconColorMutation,
     updateIsLeadTemplateMutation,
+    updateDefaultNamePrefixMutation,
     updateModulesMutation,
     updateDefaultPanelTabsMutation,
     addFormsMutation,

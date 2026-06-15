@@ -13,6 +13,8 @@ type CreateBoardParams = {
   access_type?: 'workspace' | 'private' | 'custom'
   access_roles?: string[]
   created_by: string
+  /** participant_id'ы для access_type='custom' (board_members). */
+  memberIds?: string[]
 }
 
 type UpdateBoardParams = {
@@ -25,6 +27,8 @@ type UpdateBoardParams = {
   column_widths?: number[]
   /** Фильтр на уровне всей доски (этап 4.1) */
   global_filter?: BoardGlobalFilter
+  /** Если задано — пересинхронить board_members этим набором participant_id'ов. */
+  memberIds?: string[]
 }
 
 export function useCreateBoard() {
@@ -45,10 +49,21 @@ export function useCreateBoard() {
         .select()
         .single()
       if (error) throw error
-      return data as unknown as Board
+      const board = data as unknown as Board
+      // Конкретные участники (access_type='custom') → board_members.
+      if (params.memberIds && params.memberIds.length > 0) {
+        const rows = params.memberIds.map((pid) => ({
+          board_id: board.id,
+          participant_id: pid,
+        }))
+        const { error: mErr } = await supabase.from('board_members').insert(rows)
+        if (mErr) throw mErr
+      }
+      return board
     },
-    onSuccess: (_data, vars) => {
+    onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: boardKeys.byWorkspace(vars.workspace_id) })
+      qc.invalidateQueries({ queryKey: boardKeys.members(data.id) })
     },
   })
 }
@@ -58,7 +73,8 @@ export function useUpdateBoard() {
 
   return useMutation({
     mutationFn: async (params: UpdateBoardParams) => {
-      const { id, workspace_id, ...updates } = params
+      // memberIds — не колонка boards, синхроним отдельно в board_members.
+      const { id, workspace_id, memberIds, ...updates } = params
       void workspace_id // used in onSuccess
       const { data, error } = await supabase
         .from('boards')
@@ -69,11 +85,22 @@ export function useUpdateBoard() {
         .select()
         .single()
       if (error) throw error
+      // Пересинхрон участников: полностью заменяем набор (delete + insert).
+      if (memberIds !== undefined) {
+        const { error: dErr } = await supabase.from('board_members').delete().eq('board_id', id)
+        if (dErr) throw dErr
+        if (memberIds.length > 0) {
+          const rows = memberIds.map((pid) => ({ board_id: id, participant_id: pid }))
+          const { error: iErr } = await supabase.from('board_members').insert(rows)
+          if (iErr) throw iErr
+        }
+      }
       return data as unknown as Board
     },
     onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: boardKeys.byWorkspace(vars.workspace_id) })
       qc.invalidateQueries({ queryKey: boardKeys.detail(vars.id) })
+      qc.invalidateQueries({ queryKey: boardKeys.members(data.id) })
     },
   })
 }

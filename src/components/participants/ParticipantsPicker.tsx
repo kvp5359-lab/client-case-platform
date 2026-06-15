@@ -16,7 +16,7 @@ import { isStaffRole } from '@/types/permissions'
 const EXTERNAL_ROLES = ['Внешний сотрудник']
 const CLIENT_ROLES = ['Клиент']
 
-function getRoleGroup(roles?: string[]): 'staff' | 'external' | 'client' | 'other' {
+function getRoleGroup(roles?: string[] | null): 'staff' | 'external' | 'client' | 'other' {
   if (!roles) return 'other'
   if (roles.some((r) => isStaffRole(r))) return 'staff'
   if (roles.some((r) => EXTERNAL_ROLES.includes(r))) return 'external'
@@ -30,7 +30,7 @@ export type PickerParticipant = {
   last_name?: string | null
   avatar_url?: string | null
   user_id?: string | null
-  workspace_roles?: string[]
+  workspace_roles?: string[] | null
 }
 
 type ParticipantsPickerProps = {

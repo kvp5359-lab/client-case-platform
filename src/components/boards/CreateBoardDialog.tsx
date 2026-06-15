@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAuth } from '@/contexts/AuthContext'
+import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { ParticipantsPicker } from '@/components/participants/ParticipantsPicker'
 import { useCreateBoard } from './hooks/useBoardMutations'
 
 type CreateBoardDialogProps = {
@@ -32,10 +34,20 @@ export function CreateBoardDialog({ open, onClose, workspaceId }: CreateBoardDia
   const createBoard = useCreateBoard()
   const [name, setName] = useState('')
   const [accessType, setAccessType] = useState<'workspace' | 'private' | 'custom'>('workspace')
+  const [memberIds, setMemberIds] = useState<string[]>([])
+  const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
+  const myParticipantId = participants.find((p) => p.user_id === user?.id)?.id ?? null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim() || !user) return
+
+    // Для 'custom' гарантируем, что создатель в списке — иначе он потеряет
+    // доступ к собственной доске (read-side проверяет только roles/members).
+    const finalMembers =
+      accessType === 'custom'
+        ? Array.from(new Set([...memberIds, ...(myParticipantId ? [myParticipantId] : [])]))
+        : undefined
 
     createBoard.mutate(
       {
@@ -43,11 +55,13 @@ export function CreateBoardDialog({ open, onClose, workspaceId }: CreateBoardDia
         name: name.trim(),
         access_type: accessType,
         created_by: user.id,
+        memberIds: finalMembers,
       },
       {
         onSuccess: () => {
           setName('')
           setAccessType('workspace')
+          setMemberIds([])
           onClose()
         },
       },
@@ -74,7 +88,17 @@ export function CreateBoardDialog({ open, onClose, workspaceId }: CreateBoardDia
             </div>
             <div className="space-y-2">
               <Label>Доступ</Label>
-              <Select value={accessType} onValueChange={(v) => setAccessType(v as typeof accessType)}>
+              <Select
+                value={accessType}
+                onValueChange={(v) => {
+                  const next = v as typeof accessType
+                  setAccessType(next)
+                  // При переключении на «Выбранные» сразу добавляем создателя.
+                  if (next === 'custom' && memberIds.length === 0 && myParticipantId) {
+                    setMemberIds([myParticipantId])
+                  }
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -85,6 +109,17 @@ export function CreateBoardDialog({ open, onClose, workspaceId }: CreateBoardDia
                 </SelectContent>
               </Select>
             </div>
+            {accessType === 'custom' && (
+              <div className="space-y-2">
+                <Label>Кому доступна</Label>
+                <ParticipantsPicker
+                  participants={participants}
+                  selectedIds={memberIds}
+                  onChange={setMemberIds}
+                  placeholder="Выбрать участников"
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>

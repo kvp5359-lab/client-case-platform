@@ -5952,6 +5952,7 @@ export type Database = {
           icon_color: string
           icon_color_mode: string
           id: string
+          default_name_prefix: string | null
           is_lead_template: boolean
           name: string
           order_index: number
@@ -5974,6 +5975,7 @@ export type Database = {
           icon_color?: string
           icon_color_mode?: string
           id?: string
+          default_name_prefix?: string | null
           is_lead_template?: boolean
           name: string
           order_index?: number
@@ -5996,6 +5998,7 @@ export type Database = {
           icon_color?: string
           icon_color_mode?: string
           id?: string
+          default_name_prefix?: string | null
           is_lead_template?: boolean
           name?: string
           order_index?: number

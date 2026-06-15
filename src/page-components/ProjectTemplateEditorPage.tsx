@@ -72,6 +72,7 @@ export function ProjectTemplateEditorPage() {
     updateIconColorModeMutation,
     updateIconColorMutation,
     updateIsLeadTemplateMutation,
+    updateDefaultNamePrefixMutation,
     updateModulesMutation,
     addFormsMutation,
     removeFormMutation,
@@ -281,6 +282,31 @@ export function ProjectTemplateEditorPage() {
               в рабочие проекты.
             </p>
           </div>
+        </div>
+
+        {/* «Название по умолчанию» — префикс имени нового проекта этого типа. */}
+        <div className="mb-6 rounded-lg border bg-muted/30 px-4 py-3">
+          <label htmlFor="default-name-prefix" className="text-sm font-medium">
+            Название по умолчанию
+          </label>
+          <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+            Подставляется в начало имени нового проекта этого типа (напр. «Лид:»).
+            Имя можно изменить при создании.
+          </p>
+          <input
+            id="default-name-prefix"
+            type="text"
+            key={template.id}
+            defaultValue={template.default_name_prefix ?? ''}
+            placeholder="Напр. Лид:"
+            onBlur={(e) => {
+              const norm = e.target.value.trim() || null
+              if (norm !== (template.default_name_prefix ?? null)) {
+                updateDefaultNamePrefixMutation.mutate(e.target.value)
+              }
+            }}
+            className="w-full max-w-sm rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
         </div>
 
         {/*

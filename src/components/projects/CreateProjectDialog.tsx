@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -170,6 +170,27 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess, defaultName
       setName(defaultName)
     }
   }, [open, defaultName])
+
+  // «Название по умолчанию» шаблона: при выборе типа проекта подставляем его
+  // префикс в начало имени. При смене шаблона старый префикс заменяется на новый
+  // (не стекается), остальная часть имени (имя контакта/правки) сохраняется.
+  const appliedPrefixRef = useRef('')
+  useEffect(() => {
+    if (!open) {
+      appliedPrefixRef.current = ''
+      return
+    }
+    const tpl = projectTemplatesRaw.find((t) => t.id === activeTemplateId)
+    const newPrefix = (tpl?.default_name_prefix ?? '').trim()
+    if (newPrefix === appliedPrefixRef.current) return
+    setName((prev) => {
+      let base = prev
+      const old = appliedPrefixRef.current
+      if (old && base.startsWith(old)) base = base.slice(old.length).replace(/^\s+/, '')
+      return newPrefix ? (base ? `${newPrefix} ${base}` : newPrefix) : base
+    })
+    appliedPrefixRef.current = newPrefix
+  }, [activeTemplateId, open, projectTemplatesRaw])
 
   const toggleDocKit = (id: string) => {
     setSelectedDocKitIds((prev) => {

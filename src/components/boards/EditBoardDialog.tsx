@@ -18,8 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useAuth } from '@/contexts/AuthContext'
+import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { ParticipantsPicker } from '@/components/participants/ParticipantsPicker'
 import { useUpdateBoard, useDeleteBoard } from './hooks/useBoardMutations'
-import { useBoardLists } from './hooks/useBoardQuery'
+import { useBoardLists, useBoardMembers } from './hooks/useBoardQuery'
 import { DEFAULT_COLUMN_WIDTH, MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH, type Board } from './types'
 
 type EditBoardDialogProps = {
@@ -32,6 +35,13 @@ export function EditBoardDialog({ open, onClose, board }: EditBoardDialogProps) 
   const updateBoard = useUpdateBoard()
   const deleteBoard = useDeleteBoard()
   const { data: lists } = useBoardLists(board.id)
+  const { user } = useAuth()
+  const { data: participants = [] } = useWorkspaceParticipants(board.workspace_id)
+  const myParticipantId = participants.find((p) => p.user_id === user?.id)?.id ?? null
+  const { data: loadedMemberIds = [] } = useBoardMembers(board.id)
+  const [memberOverride, setMemberOverride] = useState<string[] | null>(null)
+  // Пока пользователь не трогал — показываем загруженный набор; после правки — свой.
+  const memberIds = memberOverride ?? loadedMemberIds
   const [name, setName] = useState(board.name)
   const [accessType, setAccessType] = useState(board.access_type)
 
@@ -83,6 +93,12 @@ export function EditBoardDialog({ open, onClose, board }: EditBoardDialogProps) 
         name: name.trim(),
         access_type: accessType,
         column_widths: parsedWidths,
+        // 'custom' → синкаем участников (создатель/редактор всегда внутри);
+        // иначе очищаем board_members.
+        memberIds:
+          accessType === 'custom'
+            ? Array.from(new Set([...memberIds, ...(myParticipantId ? [myParticipantId] : [])]))
+            : [],
       },
       { onSuccess: onClose },
     )
@@ -117,7 +133,13 @@ export function EditBoardDialog({ open, onClose, board }: EditBoardDialogProps) 
               <Label>Доступ</Label>
               <Select
                 value={accessType}
-                onValueChange={(v) => setAccessType(v as typeof accessType)}
+                onValueChange={(v) => {
+                  const next = v as typeof accessType
+                  setAccessType(next)
+                  if (next === 'custom' && memberIds.length === 0 && myParticipantId) {
+                    setMemberOverride([myParticipantId])
+                  }
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -129,6 +151,17 @@ export function EditBoardDialog({ open, onClose, board }: EditBoardDialogProps) 
                 </SelectContent>
               </Select>
             </div>
+            {accessType === 'custom' && (
+              <div className="space-y-2">
+                <Label>Кому доступна</Label>
+                <ParticipantsPicker
+                  participants={participants}
+                  selectedIds={memberIds}
+                  onChange={setMemberOverride}
+                  placeholder="Выбрать участников"
+                />
+              </div>
+            )}
             {columnCount > 0 && (
               <div className="space-y-2">
                 <Label>Ширина колонок (px)</Label>
