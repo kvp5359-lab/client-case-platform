@@ -40,7 +40,10 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
         .select('id, name, description, template_id, status_id, project_templates ( name )')
         .eq('workspace_id', workspaceId!)
         .eq('is_deleted', false)
-        .order('name')
+        // По свежести: last_activity_at обновляется триггерами при сообщениях,
+        // комментариях, документах, задачах, формах и изменении проекта —
+        // недавно активные проекты вверху, далее по убыванию.
+        .order('last_activity_at', { ascending: false, nullsFirst: false })
       if (error) throw error
       return (data ?? []) as {
         id: string
