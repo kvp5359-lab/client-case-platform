@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { ArrowDown, ArrowUp, Eye, EyeOff } from 'lucide-react'
+import { ArrowDown, ArrowUp, Eye, EyeOff, ListChecks, FolderOpen } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -32,14 +32,20 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { FilterGroupEditor } from '@/components/filters/FilterGroupEditor'
-import { useUpdateItemList, type ItemList, type ItemListColumnConfig } from '@/hooks/useItemLists'
+import { cn } from '@/lib/utils'
+import {
+  useUpdateItemList,
+  type ItemList,
+  type ItemListColumnConfig,
+  type ItemListEntityType,
+} from '@/hooks/useItemLists'
 import {
   defaultColumnsForEntity,
   getColumnDef,
   getColumnsForEntity,
   type ItemListColumnKey,
 } from '@/page-components/ItemListsPage/columns'
-import type { FilterGroup, SortDir, SortField } from '@/lib/filters/types'
+import { EMPTY_FILTER_GROUP, type FilterGroup, type SortDir, type SortField } from '@/lib/filters/types'
 
 type Props = {
   open: boolean
@@ -71,6 +77,7 @@ export function ItemListSettingsDialog({ open, onClose, list, workspaceId }: Pro
   const updateList = useUpdateItemList()
 
   const [name, setName] = useState(list.name)
+  const [entityType, setEntityType] = useState<ItemListEntityType>(list.entity_type)
   const [color, setColor] = useState(list.color ?? '#6B7280')
   const [filters, setFilters] = useState<FilterGroup>(list.filter_config)
   const [sortBy, setSortBy] = useState<SortField | ''>((list.sort_by as SortField) ?? 'created_at')
@@ -86,6 +93,7 @@ export function ItemListSettingsDialog({ open, onClose, list, workspaceId }: Pro
   useEffect(() => {
     if (!open) return
     setName(list.name)
+    setEntityType(list.entity_type)
     setColor(list.color ?? '#6B7280')
     setFilters(list.filter_config)
     setSortBy((list.sort_by as SortField) ?? 'created_at')
@@ -94,7 +102,27 @@ export function ItemListSettingsDialog({ open, onClose, list, workspaceId }: Pro
   }, [open, list])
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const sortOptions = list.entity_type === 'project' ? PROJECT_SORT_OPTIONS : THREAD_SORT_OPTIONS
+  const sortOptions = entityType === 'project' ? PROJECT_SORT_OPTIONS : THREAD_SORT_OPTIONS
+  const typeChanged = entityType !== list.entity_type
+
+  // Смена типа списка: фильтр и колонки старого типа несовместимы (поля
+  // разные), поэтому сбрасываем фильтр в пустой, колонки и сортировку — на
+  // дефолт нового типа. Возврат к исходному типу восстанавливает исходный
+  // фильтр/колонки/сортировку из props.
+  const handleEntityTypeChange = (next: ItemListEntityType) => {
+    if (next === entityType) return
+    setEntityType(next)
+    if (next === list.entity_type) {
+      setFilters(list.filter_config)
+      setSortBy((list.sort_by as SortField) ?? 'created_at')
+      setSortDir((list.sort_dir as SortDir) ?? 'desc')
+      setColumns(list.columns?.length ? list.columns : defaultColumnsForEntity(list.entity_type))
+    } else {
+      setFilters(EMPTY_FILTER_GROUP)
+      setSortBy('created_at')
+      setColumns(defaultColumnsForEntity(next))
+    }
+  }
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -106,6 +134,7 @@ export function ItemListSettingsDialog({ open, onClose, list, workspaceId }: Pro
         id: list.id,
         workspace_id: workspaceId,
         name: name.trim(),
+        entity_type: entityType,
         color,
         filter_config: filters,
         sort_by: (sortBy || null) as SortField | null,
@@ -156,6 +185,29 @@ export function ItemListSettingsDialog({ open, onClose, list, workspaceId }: Pro
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label>Что показывать</Label>
+              <div className="flex gap-2">
+                <TypeButton
+                  active={entityType === 'thread'}
+                  onClick={() => handleEntityTypeChange('thread')}
+                  icon={<ListChecks className="h-3.5 w-3.5" />}
+                  label="Треды"
+                />
+                <TypeButton
+                  active={entityType === 'project'}
+                  onClick={() => handleEntityTypeChange('project')}
+                  icon={<FolderOpen className="h-3.5 w-3.5" />}
+                  label="Проекты"
+                />
+              </div>
+              {typeChanged && (
+                <p className="text-xs text-amber-600 dark:text-amber-500">
+                  Тип изменён — фильтр и колонки сброшены на дефолт нового типа. Применится после «Сохранить».
+                </p>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Сортировать по</Label>
@@ -185,13 +237,13 @@ export function ItemListSettingsDialog({ open, onClose, list, workspaceId }: Pro
           {/* Фильтр */}
           <TabsContent value="filters" className="pt-4 overflow-y-auto">
             <p className="text-xs text-muted-foreground mb-3">
-              Условия применяются к {list.entity_type === 'thread' ? 'тредам' : 'проектам'} воркспейса.
+              Условия применяются к {entityType === 'thread' ? 'тредам' : 'проектам'} воркспейса.
               Если в фильтре указать тип треда (task/chat/email) — список доступных полей сузится.
             </p>
             <FilterGroupEditor
               group={filters}
               onChange={setFilters}
-              entityType={list.entity_type}
+              entityType={entityType}
               depth={0}
               workspaceId={workspaceId}
             />
@@ -205,7 +257,7 @@ export function ItemListSettingsDialog({ open, onClose, list, workspaceId }: Pro
             <ColumnsEditor
               columns={columns}
               onChange={setColumns}
-              availableEntity={list.entity_type}
+              availableEntity={entityType}
             />
           </TabsContent>
         </Tabs>
@@ -218,6 +270,34 @@ export function ItemListSettingsDialog({ open, onClose, list, workspaceId }: Pro
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function TypeButton({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors',
+        active
+          ? 'border-primary bg-primary/5 text-primary'
+          : 'border-border text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {icon}
+      {label}
+    </button>
   )
 }
 
@@ -317,6 +397,34 @@ function ColumnsEditor({
             <ArrowDown className="h-3.5 w-3.5" />
           </button>
           <span className="text-sm flex-1">{def.label}</span>
+          {def.key === 'assignees' && cfg.visible && (
+            <div className="flex items-center rounded-md border overflow-hidden mr-1">
+              <button
+                type="button"
+                className={cn(
+                  'px-2 py-0.5 text-[11px] transition-colors',
+                  (cfg.display ?? 'avatars') === 'avatars'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                onClick={() => updateColumn(def.key, { display: 'avatars' })}
+              >
+                Аватарки
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'px-2 py-0.5 text-[11px] transition-colors border-l',
+                  cfg.display === 'names'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                onClick={() => updateColumn(def.key, { display: 'names' })}
+              >
+                Имена
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-1">
             <Input
               type="number"

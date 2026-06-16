@@ -99,6 +99,32 @@ export function formatSmartDateTime(dateStr: string | null): string {
 }
 
 /**
+ * «Умная» компактная дата для табличных колонок (Создано/Обновлено):
+ *   сегодня → время «14:30», вчера → «вчера», в пределах недели → день недели «пн»,
+ *   этот год → «5 мар», иначе → «5 мар 24».
+ */
+export function formatSmartDateCompact(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return '—'
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const diffDays = Math.round((today.getTime() - target.getTime()) / 86400000)
+
+  if (diffDays === 0) {
+    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  }
+  if (diffDays === 1) return 'вчера'
+  if (diffDays > 1 && diffDays < 7) return DAYS_SHORT_RU[date.getDay()]
+
+  if (date.getFullYear() === now.getFullYear()) {
+    return `${date.getDate()} ${MONTHS_SHORT_RU[date.getMonth()]}`
+  }
+  return `${date.getDate()} ${MONTHS_SHORT_RU[date.getMonth()]} ${String(date.getFullYear()).slice(2)}`
+}
+
+/**
  * Короткая дата: "15 мар", "3 янв"
  * Используется в строках документов (DocumentRow, TrashedDocumentRow и т.д.)
  */

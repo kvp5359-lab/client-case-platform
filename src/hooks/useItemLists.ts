@@ -30,6 +30,9 @@ export type ItemListColumnConfig = {
   width: number
   order: number
   visible: boolean
+  /** Режим отображения для колонок-людей (исполнители/участники):
+   *  аватарки внахлёст или текстовый список имён. По умолчанию 'avatars'. */
+  display?: 'avatars' | 'names'
 }
 
 export type ItemList = {
@@ -142,6 +145,7 @@ type UpdateItemListParams = {
   id: string
   workspace_id: string
   name?: string
+  entity_type?: ItemListEntityType
   icon?: string | null
   color?: string | null
   filter_config?: FilterGroup
@@ -158,6 +162,7 @@ export function useUpdateItemList() {
       void workspace_id
       const update: TablesUpdate<'item_lists'> = {}
       if (rest.name !== undefined) update.name = rest.name.trim()
+      if (rest.entity_type !== undefined) update.entity_type = rest.entity_type
       if (rest.icon !== undefined) update.icon = rest.icon
       if (rest.color !== undefined) update.color = rest.color
       if (rest.filter_config !== undefined) update.filter_config = rest.filter_config as unknown as Json
@@ -189,6 +194,7 @@ export function useUpdateItemList() {
       const patch = (list: ItemList): ItemList => ({
         ...list,
         ...(params.name !== undefined ? { name: params.name.trim() } : {}),
+        ...(params.entity_type !== undefined ? { entity_type: params.entity_type } : {}),
         ...(params.icon !== undefined ? { icon: params.icon } : {}),
         ...(params.color !== undefined ? { color: params.color } : {}),
         ...(params.filter_config !== undefined ? { filter_config: params.filter_config } : {}),

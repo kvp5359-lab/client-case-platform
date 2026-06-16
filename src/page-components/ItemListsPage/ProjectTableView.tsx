@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useAccessibleProjects } from '@/hooks/shared/useAccessibleProjects'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
 import { useFilteredProjects } from '@/components/boards/hooks/useFilteredListData'
@@ -58,7 +58,7 @@ export function ProjectTableView({
     sortDir ?? 'desc',
   ) as unknown as BoardProject[]
 
-  const router = useRouter()
+  const layoutPanel = useLayoutTaskPanel()
 
   return (
     <TableShell
@@ -92,7 +92,14 @@ export function ProjectTableView({
             else next.add(project.id)
             onSelectedChange(next)
           }}
-          onOpen={() => router.push(`/workspaces/${workspaceId}/projects/${project.id}`)}
+          onOpen={() =>
+            layoutPanel?.openProject?.({
+              id: project.id,
+              name: project.name,
+              created_at: project.created_at,
+              description: project.description,
+            })
+          }
           projectStatuses={projectStatuses}
         />
       )}

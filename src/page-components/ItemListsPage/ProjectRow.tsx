@@ -1,6 +1,6 @@
 "use client"
 
-import { format } from 'date-fns'
+import { formatSmartDateCompact } from '@/utils/format/dateFormat'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { StatusOption } from '@/components/common/status-dropdown'
 import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProjects'
@@ -63,7 +63,7 @@ export function ProjectRow({ project, columns, checked, onToggle, onOpen, projec
               c.key === 'created_at' ? project.created_at : project.updated_at
             return (
               <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground">
-                {v ? format(new Date(v as string), 'dd.MM.yyyy') : '—'}
+                {formatSmartDateCompact(v as string | null)}
               </td>
             )
           }

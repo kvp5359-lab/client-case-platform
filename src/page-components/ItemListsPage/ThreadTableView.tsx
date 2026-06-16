@@ -1,8 +1,8 @@
 "use client"
 
 import { useMemo, useRef, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useWorkspaceThreads, type WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
+import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
 import { useThreadCounterpartNameMap } from '@/hooks/messenger/useThreadCounterpartName'
 import { useTaskStatuses } from '@/hooks/useStatuses'
@@ -61,7 +61,7 @@ export function ThreadTableView({
     sortDir ?? 'desc',
   )
 
-  const router = useRouter()
+  const layoutPanel = useLayoutTaskPanel()
 
   // Стабильные колбэки строк: держим актуальный selectedIds в ref, чтобы
   // handleToggle не пересоздавался при каждом выделении → memo(ThreadRow)
@@ -81,11 +81,26 @@ export function ThreadTableView({
   )
   const handleOpen = useCallback(
     (task: WorkspaceTask) => {
-      if (task.project_id) {
-        router.push(`/workspaces/${workspaceId}/projects/${task.project_id}?thread=${task.id}`)
-      }
+      layoutPanel?.openThread({
+        id: task.id,
+        name: task.name,
+        type: task.type ?? 'task',
+        project_id: task.project_id,
+        workspace_id: task.workspace_id,
+        status_id: task.status_id,
+        deadline: task.deadline,
+        start_at: task.start_at,
+        end_at: task.end_at,
+        accent_color: task.accent_color,
+        icon: task.icon,
+        is_pinned: task.is_pinned,
+        created_at: task.created_at,
+        created_by: task.created_by,
+        sort_order: task.sort_order,
+        project_name: task.project_name,
+      })
     },
-    [router, workspaceId],
+    [layoutPanel],
   )
 
   return (

@@ -2,14 +2,16 @@
 
 import { memo } from 'react'
 import { Pin } from 'lucide-react'
-import { format } from 'date-fns'
+import { formatSmartDateCompact } from '@/utils/format/dateFormat'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
-import { DatePicker } from '@/components/ui/date-picker'
+import { DeadlinePopover } from '@/components/tasks/DeadlinePopover'
+import { AssigneesPopover } from '@/components/tasks/AssigneesPopover'
 import { useUpdateTaskStatus, useUpdateTaskDeadline } from '@/components/tasks/useTaskMutations'
 import { workspaceThreadKeys } from '@/hooks/queryKeys'
 import { usePrefetchThreadMessages } from '@/hooks/messenger/usePrefetchThreadMessages'
+import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { TableShellColumn } from './TableShell'
 import type { ItemListColumnKey } from './columns'
@@ -22,7 +24,7 @@ type ThreadRowProps = {
    *  при каждом изменении выделения (раньше onToggle замыкался на selectedIds). */
   onToggle: (id: string) => void
   onOpen: (task: WorkspaceTask) => void
-  assigneesMap: Record<string, { id: string; name?: string | null; last_name?: string | null }[]>
+  assigneesMap: Record<string, AvatarParticipant[]>
   taskStatuses: StatusOption[]
   /** Имя собеседника из карты на уровне таблицы (P4b: не звать per-row хук). */
   counterpartName: string | null
@@ -91,23 +93,48 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
           case 'deadline':
             return (
               <td key={c.key} className="px-3 py-2 text-xs" onClick={(e) => e.stopPropagation()}>
-                <DatePicker
-                  date={task.deadline ? new Date(task.deadline) : undefined}
-                  onDateChange={(d) =>
-                    updateDeadline.mutate({ threadId: task.id, deadline: d ? d.toISOString() : null })
+                <DeadlinePopover
+                  deadline={task.deadline}
+                  startAt={task.start_at}
+                  endAt={task.end_at}
+                  onChange={(v) =>
+                    updateDeadline.mutate({
+                      threadId: task.id,
+                      deadline: v.deadline,
+                      start_at: v.startAt,
+                      end_at: v.endAt,
+                    })
                   }
-                  placeholder="—"
+                  isPending={updateDeadline.isPending}
                 />
               </td>
             )
           case 'assignees':
             return (
-              <td key={c.key} className="px-3 py-2 text-xs">
-                {assignees.length === 0 ? (
-                  <span className="text-muted-foreground">—</span>
-                ) : (
-                  <span>{assignees.length} чел.</span>
-                )}
+              <td key={c.key} className="px-3 py-2 text-xs" onClick={(e) => e.stopPropagation()}>
+                <AssigneesPopover
+                  threadId={task.id}
+                  projectId={task.project_id}
+                  workspaceId={task.workspace_id}
+                  assignees={assignees}
+                  triggerOverride={
+                    c.display === 'names' ? (
+                      <button
+                        type="button"
+                        className="text-left truncate w-full hover:text-foreground transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {assignees.length === 0 ? (
+                          <span className="text-muted-foreground/50">Назначить</span>
+                        ) : (
+                          assignees
+                            .map((a) => `${a.name}${a.last_name ? ` ${a.last_name}` : ''}`)
+                            .join(', ')
+                        )}
+                      </button>
+                    ) : undefined
+                  }
+                />
               </td>
             )
           case 'is_pinned':
@@ -121,7 +148,7 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
             const value = c.key === 'created_at' ? task.created_at : task.updated_at
             return (
               <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground">
-                {value ? format(new Date(value), 'dd.MM.yyyy') : '—'}
+                {formatSmartDateCompact(value)}
               </td>
             )
           }

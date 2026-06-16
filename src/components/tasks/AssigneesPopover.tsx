@@ -79,6 +79,9 @@ type ThreadModeProps = {
   assignees: AvatarParticipant[]
   /** Задача в финальном статусе — аватарки отображаются тусклыми */
   dimmed?: boolean
+  /** Кастомный триггер (напр. список имён в табличной колонке). Если не задан —
+   *  стандартный триггер с аватарками / иконкой UserPlus. */
+  triggerOverride?: React.ReactNode
 }
 
 /** Controlled-режим: state в родителе, компонент только рендерит и вызывает onToggle. */
@@ -261,7 +264,9 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
     ? participants.filter((p) => assigneeSet.has(p.id))
     : []
 
-  const trigger = isControlled && props.triggerOverride ? (
+  const trigger = !isControlled && props.triggerOverride ? (
+    props.triggerOverride
+  ) : isControlled && props.triggerOverride ? (
     props.triggerOverride
   ) : isControlled ? (
     <button

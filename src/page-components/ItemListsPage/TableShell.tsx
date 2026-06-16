@@ -11,6 +11,8 @@ export type TableShellColumn = {
   key: string
   width: number
   def: NonNullable<ReturnType<typeof getColumnDef>>
+  /** Режим отображения для колонок-людей (исполнители/участники). */
+  display?: 'avatars' | 'names'
 }
 
 type TableShellProps<T extends { id: string }> = {
