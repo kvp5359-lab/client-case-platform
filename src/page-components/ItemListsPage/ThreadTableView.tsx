@@ -1,7 +1,8 @@
 "use client"
 
 import { useMemo, useRef, useCallback, useEffect } from 'react'
-import { useWorkspaceThreads, type WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
+import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
+import { useListThreads } from './useListData'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useTaskAssigneesMap } from '@/components/tasks/useTaskAssignees'
 import { useThreadCounterpartNameMap } from '@/hooks/messenger/useThreadCounterpartName'
@@ -35,7 +36,9 @@ export function ThreadTableView({
   onSelectedChange,
   onResizeCommit,
 }: ThreadTableViewProps) {
-  const { data: threads = [], isLoading } = useWorkspaceThreads(workspaceId)
+  // Серверная фильтрация (Фаза 1): тянем только подходящие под фильтр треды,
+  // не весь воркспейс. Клиентский useFilteredTasks ниже дорезает точно + сортирует.
+  const { data: threads = [], isLoading } = useListThreads(workspaceId, filters)
   const taskIds = useMemo(() => threads.map((t) => t.id), [threads])
   const { data: assigneesMap = {} } = useTaskAssigneesMap(taskIds)
   const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)

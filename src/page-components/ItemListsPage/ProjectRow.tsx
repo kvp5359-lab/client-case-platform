@@ -59,7 +59,7 @@ export function ProjectRow({ project, columns, checked, onToggle, onOpen, projec
           case 'updated_at': {
             const v =
               c.key === 'deadline' ? project.deadline :
-              c.key === 'next_task_deadline' ? null :
+              c.key === 'next_task_deadline' ? project.next_task_deadline ?? null :
               c.key === 'created_at' ? project.created_at : project.updated_at
             return (
               <td key={c.key} className="px-3 py-2 text-xs text-muted-foreground">

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
-import { useAccessibleProjects } from '@/hooks/shared/useAccessibleProjects'
+import { useListProjects } from './useListData'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
 import { useFilteredProjects } from '@/components/boards/hooks/useFilteredListData'
 import type { FilterContext, FilterGroup } from '@/lib/filters/types'
@@ -34,7 +34,9 @@ export function ProjectTableView({
   onSelectedChange,
   onResizeCommit,
 }: ProjectTableViewProps) {
-  const { data: projects = [], isLoading } = useAccessibleProjects(workspaceId)
+  // Серверная фильтрация (Фаза 1): только подходящие проекты + поля ближайшей
+  // задачи (next_task_*). useFilteredProjects ниже дорезает точно + сортирует.
+  const { data: projects = [], isLoading } = useListProjects(workspaceId, filters)
   const { data: projectStatuses = [] } = useAllProjectStatuses(workspaceId)
 
   const ctx = useMemo<FilterContext>(
