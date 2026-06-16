@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useItemLists, type ItemList } from '@/hooks/useItemLists'
-import { useSections } from '@/hooks/useSections'
+import { useSections, useCreateSection } from '@/hooks/useSections'
 import {
   useUpdateWorkspaceSidebarSettings,
   useWorkspaceSidebarSettings,
@@ -57,6 +57,7 @@ export function SidebarSettingsTab() {
   const { data: boards = [] } = useBoardsQuery(workspaceId)
   const { data: itemLists = [] } = useItemLists(workspaceId)
   const { data: sections = [] } = useSections(workspaceId)
+  const createSection = useCreateSection()
   const update = useUpdateWorkspaceSidebarSettings()
 
   const [override, setOverride] = useState<SidebarSlot[] | null>(null)
@@ -105,6 +106,9 @@ export function SidebarSettingsTab() {
       boards={boards.map((b) => ({ id: b.id, name: b.name }))}
       itemLists={itemLists}
       sections={sections.map((s) => ({ id: s.id, name: s.name }))}
+      onCreateSection={(name) => {
+        if (workspaceId) createSection.mutate({ workspace_id: workspaceId, name })
+      }}
       onChange={setOverride}
       onSave={handleSave}
       onReset={handleResetDefaults}
@@ -119,6 +123,7 @@ function SidebarSettingsView({
   boards,
   itemLists,
   sections,
+  onCreateSection,
   onChange,
   onSave,
   onReset,
@@ -129,6 +134,7 @@ function SidebarSettingsView({
   boards: { id: string; name: string }[]
   itemLists: ItemList[]
   sections: { id: string; name: string }[]
+  onCreateSection: (name: string) => void
   onChange: (next: SidebarSlot[]) => void
   onSave: () => void
   onReset: () => void
@@ -371,6 +377,7 @@ function SidebarSettingsView({
         availableNav={availableNav}
         availableSections={availableSections}
         onAdd={addToZone}
+        onCreateSection={onCreateSection}
       />
 
       <div className="flex flex-wrap gap-2 sticky bottom-0 bg-white py-3 border-t border-gray-200">
