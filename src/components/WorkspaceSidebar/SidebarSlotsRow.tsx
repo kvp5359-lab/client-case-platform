@@ -9,7 +9,8 @@
  */
 
 import { useState } from 'react'
-import { Folder as FolderIcon, FolderOpen, Kanban, ListChecks, PinOff } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Folder as FolderIcon, FolderOpen, FolderTree, Kanban, ListChecks, PinOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   Popover,
@@ -24,6 +25,7 @@ import {
   childrenOfFolder,
   getBadgeColorMeta,
   listIdFromSlotId,
+  sectionIdFromSlotId,
   navKeyFromSlotId,
   topLevelSlots,
   type SidebarBadgeMode,
@@ -39,6 +41,7 @@ type SidebarSlotsRowProps = {
   direction?: 'row' | 'column'
   allBoards: { id: string; name: string; short_id: number | null }[] | undefined
   allItemLists: ItemList[] | undefined
+  allSections: { id: string; name: string }[] | undefined
   isOwner: boolean
   pathname: string
   buildHref: (path: string) => string
@@ -83,6 +86,7 @@ function SingleSlot({
   compact,
   allBoards,
   allItemLists,
+  allSections,
   isOwner,
   pathname,
   buildHref,
@@ -94,6 +98,24 @@ function SingleSlot({
   toggleListPin,
 }: { slot: SidebarSlot } & SidebarSlotsRowProps) {
   const badge = computeBadge(slot.badge_mode)
+  const searchParams = useSearchParams()
+
+  if (slot.type === 'section') {
+    const sectionId = sectionIdFromSlotId(slot.id)!
+    const section = allSections?.find((s) => s.id === sectionId)
+    if (!section) return null
+    return (
+      <SidebarNavButton
+        icon={FolderTree}
+        label={section.name}
+        href={`${buildHref('boards')}?section=${sectionId}`}
+        badge={badge}
+        badgeColor={slot.badge_color}
+        isActive={pathname.includes('/boards') && searchParams.get('section') === sectionId}
+        compact={compact || undefined}
+      />
+    )
+  }
 
   if (slot.type === 'nav') {
     const key = navKeyFromSlotId(slot.id)!

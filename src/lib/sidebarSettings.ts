@@ -58,8 +58,8 @@ export type SidebarBadgeColor =
   | 'gray'
 
 export type SidebarSlot = {
-  id: string // 'nav:<key>' | 'board:<uuid>' | 'list:<uuid>' | 'folder:<uuid>'
-  type: 'nav' | 'board' | 'list' | 'folder'
+  id: string // 'nav:<key>' | 'board:<uuid>' | 'list:<uuid>' | 'section:<uuid>' | 'folder:<uuid>'
+  type: 'nav' | 'board' | 'list' | 'section' | 'folder'
   placement: SidebarPlacement
   order: number
   badge_mode: SidebarBadgeMode
@@ -352,7 +352,8 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
     const obj = item as Record<string, unknown>
     const id = typeof obj.id === 'string' ? obj.id : null
     const type =
-      obj.type === 'nav' || obj.type === 'board' || obj.type === 'list' || obj.type === 'folder'
+      obj.type === 'nav' || obj.type === 'board' || obj.type === 'list' ||
+      obj.type === 'section' || obj.type === 'folder'
         ? obj.type
         : null
     const placement =
@@ -372,6 +373,9 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
       if (!uuid || !UUID_RE.test(uuid)) continue
     } else if (type === 'list') {
       const uuid = id.startsWith('list:') ? id.slice(5) : null
+      if (!uuid || !UUID_RE.test(uuid)) continue
+    } else if (type === 'section') {
+      const uuid = id.startsWith('section:') ? id.slice(8) : null
       if (!uuid || !UUID_RE.test(uuid)) continue
     } else {
       // type === 'folder'
@@ -460,6 +464,12 @@ export function boardIdFromSlotId(id: string): string | null {
 export function listIdFromSlotId(id: string): string | null {
   if (!id.startsWith('list:')) return null
   return id.slice(5)
+}
+
+/** Извлекает section uuid из id вида 'section:<uuid>'. */
+export function sectionIdFromSlotId(id: string): string | null {
+  if (!id.startsWith('section:')) return null
+  return id.slice(8)
 }
 
 /** Форматирует число в badge-строку (>99 → "99+"). undefined если 0/нет. */

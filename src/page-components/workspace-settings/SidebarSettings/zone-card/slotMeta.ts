@@ -6,6 +6,7 @@
 import {
   Folder as FolderIcon,
   FolderOpen,
+  FolderTree,
   Kanban,
   ListChecks,
   type LucideIcon,
@@ -14,6 +15,7 @@ import type { ItemList } from '@/hooks/useItemLists'
 import {
   boardIdFromSlotId,
   listIdFromSlotId,
+  sectionIdFromSlotId,
   navKeyFromSlotId,
   SIDEBAR_NAV_ITEMS,
   type SidebarSlot,
@@ -28,6 +30,7 @@ export function resolveSlotMeta(
   slot: SidebarSlot,
   boards: { id: string; name: string }[],
   itemLists: ItemList[],
+  sections: { id: string; name: string }[] = [],
 ): SlotMeta {
   if (slot.type === 'nav') {
     const k = navKeyFromSlotId(slot.id)!
@@ -43,6 +46,10 @@ export function resolveSlotMeta(
       label: list?.name ?? '— удалённый список —',
       Icon: list?.entity_type === 'project' ? FolderOpen : ListChecks,
     }
+  }
+  if (slot.type === 'section') {
+    const section = sections.find((s) => s.id === sectionIdFromSlotId(slot.id))
+    return { label: section?.name ?? '— удалённый раздел —', Icon: FolderTree }
   }
   // folder
   return { label: slot.name ?? 'Папка', Icon: FolderIcon }

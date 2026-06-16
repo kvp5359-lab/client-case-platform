@@ -42,6 +42,7 @@ export type FolderRowProps = {
   children_: SidebarSlot[]
   boards: { id: string; name: string }[]
   itemLists: ItemList[]
+  sections: { id: string; name: string }[]
   otherZone: SidebarPlacement
   otherZoneLabel: string
   OtherZoneIcon: LucideIcon
@@ -62,6 +63,7 @@ export function FolderRow({
   children_,
   boards,
   itemLists,
+  sections,
   otherZone,
   otherZoneLabel,
   OtherZoneIcon,
@@ -200,7 +202,7 @@ export function FolderRow({
             <SlotRow
               key={child.id}
               slot={child}
-              meta={resolveSlotMeta(child, boards, itemLists)}
+              meta={resolveSlotMeta(child, boards, itemLists, sections)}
               canUp={idx > 0}
               canDown={idx < children_.length - 1}
               otherZone={otherZone}

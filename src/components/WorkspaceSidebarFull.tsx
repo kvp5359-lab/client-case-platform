@@ -12,7 +12,6 @@ import { PanelLeftClose } from 'lucide-react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
-import { SidebarSections } from './WorkspaceSidebar/SidebarSections'
 import { SidebarGlobalSearch } from './WorkspaceSidebar/SidebarGlobalSearch'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
 import { UserProfile } from './WorkspaceSidebar/UserProfile'
@@ -30,6 +29,7 @@ import { usePinnedBoards } from './WorkspaceSidebar/usePinnedBoards'
 import { usePinnedItemLists } from './WorkspaceSidebar/usePinnedItemLists'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useItemLists } from '@/hooks/useItemLists'
+import { useSections } from '@/hooks/useSections'
 import { useProjectTemplate } from '@/hooks/projects/useProjectData'
 import { useProjectModules } from '@/hooks/projects/useProjectModules'
 import { NO_PROJECT_ID as NO_PROJECT_VIRTUAL_ID } from '@/components/tasks/useTaskFilters'
@@ -230,6 +230,11 @@ export function WorkspaceSidebarFull({
   const { togglePin: toggleListPin } = usePinnedItemLists(workspaceId)
   const { data: allBoards } = useBoardsQuery(workspaceId)
   const { data: allItemLists } = useItemLists(workspaceId)
+  const { data: allSectionsRaw } = useSections(workspaceId)
+  const allSections = useMemo(
+    () => (allSectionsRaw ?? []).map((s) => ({ id: s.id, name: s.name })),
+    [allSectionsRaw],
+  )
 
   // Сохраняем legacy-формат /workspaces/<uuid>/... для совместимости с localhost-разработкой.
   // На production-поддоменах proxy сам редиректит /workspaces/<uuid>/<path> → чистый /<path>
@@ -382,6 +387,7 @@ export function WorkspaceSidebarFull({
         listSlots={listSlots}
         allBoards={allBoards}
         allItemLists={allItemLists}
+        allSections={allSections}
         isOwner={isOwner}
         isClientOnly={isClientOnly}
         pathname={pathname}
@@ -442,6 +448,7 @@ export function WorkspaceSidebarFull({
           compact
           allBoards={allBoards}
           allItemLists={allItemLists}
+          allSections={allSections}
           isOwner={isOwner}
           pathname={pathname}
           buildHref={buildHref}
@@ -460,6 +467,7 @@ export function WorkspaceSidebarFull({
               compact={false}
               allBoards={allBoards}
               allItemLists={allItemLists}
+              allSections={allSections}
               isOwner={isOwner}
               pathname={pathname}
               buildHref={buildHref}
@@ -473,13 +481,6 @@ export function WorkspaceSidebarFull({
           </div>
         )}
 
-        {!isClientOnly && workspaceId && (
-          <SidebarSections
-            workspaceId={workspaceId}
-            canManage={isOwner || hasPermission('manage_workspace_settings')}
-            buildHref={buildHref}
-          />
-        )}
       </div>
 
       <div className="flex-1 overflow-hidden px-2 pt-1 relative after:absolute after:inset-x-0 after:bottom-0 after:h-3 after:bg-gradient-to-b after:from-transparent after:to-black/[0.06] after:pointer-events-none">

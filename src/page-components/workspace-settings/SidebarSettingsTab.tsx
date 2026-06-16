@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useItemLists, type ItemList } from '@/hooks/useItemLists'
+import { useSections } from '@/hooks/useSections'
 import {
   useUpdateWorkspaceSidebarSettings,
   useWorkspaceSidebarSettings,
@@ -33,6 +34,7 @@ import {
   boardIdFromSlotId,
   DEFAULT_SIDEBAR_SLOTS,
   listIdFromSlotId,
+  sectionIdFromSlotId,
   reorderWithinZones,
   SIDEBAR_NAV_ITEMS,
   SIDEBAR_NAV_KEYS,
@@ -54,6 +56,7 @@ export function SidebarSettingsTab() {
   const { data: settings, isLoading } = useWorkspaceSidebarSettings(workspaceId)
   const { data: boards = [] } = useBoardsQuery(workspaceId)
   const { data: itemLists = [] } = useItemLists(workspaceId)
+  const { data: sections = [] } = useSections(workspaceId)
   const update = useUpdateWorkspaceSidebarSettings()
 
   const [override, setOverride] = useState<SidebarSlot[] | null>(null)
@@ -101,6 +104,7 @@ export function SidebarSettingsTab() {
       slots={slots}
       boards={boards.map((b) => ({ id: b.id, name: b.name }))}
       itemLists={itemLists}
+      sections={sections.map((s) => ({ id: s.id, name: s.name }))}
       onChange={setOverride}
       onSave={handleSave}
       onReset={handleResetDefaults}
@@ -114,6 +118,7 @@ function SidebarSettingsView({
   slots,
   boards,
   itemLists,
+  sections,
   onChange,
   onSave,
   onReset,
@@ -123,6 +128,7 @@ function SidebarSettingsView({
   slots: SidebarSlot[]
   boards: { id: string; name: string }[]
   itemLists: ItemList[]
+  sections: { id: string; name: string }[]
   onChange: (next: SidebarSlot[]) => void
   onSave: () => void
   onReset: () => void
@@ -148,38 +154,36 @@ function SidebarSettingsView({
     return entries
   }, [placedIds])
 
-  // Незакреплённые конкретные доски и списки — для поповеров «Доска» / «Список»
-  // в секции «Доступные». Внутри попапа клик добавляет в нужную зону.
-  const availableBoards = useMemo(
+  // Незакреплённые разделы — для группового пункта «Раздел» в «Доступных».
+  const availableSections = useMemo(
     () =>
-      boards
-        .filter((b) => !placedIds.has(`board:${b.id}`))
+      sections
+        .filter((s) => !placedIds.has(`section:${s.id}`))
         .sort((a, b) => a.name.localeCompare(b.name, 'ru')),
-    [placedIds, boards],
-  )
-  const availableLists = useMemo(
-    () =>
-      itemLists
-        .filter((l) => !placedIds.has(`list:${l.id}`))
-        .sort((a, b) => a.name.localeCompare(b.name, 'ru')),
-    [placedIds, itemLists],
+    [placedIds, sections],
   )
 
-  // Очистка слотов от мёртвых досок/списков (удалённых из воркспейса).
+  // Очистка слотов от мёртвых элементов (удалённых из воркспейса досок/списков/
+  // разделов). nav/folder — всегда живые.
   const liveSlots = useMemo(() => {
     const boardIds = new Set(boards.map((b) => b.id))
     const listIds = new Set(itemLists.map((l) => l.id))
+    const sectionIds = new Set(sections.map((s) => s.id))
     return slots.filter((s) => {
-      if (s.type === 'nav') return true
+      if (s.type === 'nav' || s.type === 'folder') return true
       if (s.type === 'board') {
         const bid = boardIdFromSlotId(s.id)
         return bid ? boardIds.has(bid) : false
       }
-      // type === 'list'
-      const lid = listIdFromSlotId(s.id)
-      return lid ? listIds.has(lid) : false
+      if (s.type === 'list') {
+        const lid = listIdFromSlotId(s.id)
+        return lid ? listIds.has(lid) : false
+      }
+      // type === 'section'
+      const sid = sectionIdFromSlotId(s.id)
+      return sid ? sectionIds.has(sid) : false
     })
-  }, [slots, boards, itemLists])
+  }, [slots, boards, itemLists, sections])
   const hasDeadSlots = liveSlots.length !== slots.length
 
   const moveWithinZone = (slotId: string, delta: -1 | 1) => {
@@ -326,6 +330,7 @@ function SidebarSettingsView({
         slots={topbar}
         boards={boards}
         itemLists={itemLists}
+        sections={sections}
         zone="topbar"
         onMove={moveWithinZone}
         onSetBadge={setBadge}
@@ -349,6 +354,7 @@ function SidebarSettingsView({
         slots={list}
         boards={boards}
         itemLists={itemLists}
+        sections={sections}
         zone="list"
         onMove={moveWithinZone}
         onSetBadge={setBadge}
@@ -363,8 +369,7 @@ function SidebarSettingsView({
 
       <AvailableCard
         availableNav={availableNav}
-        availableBoards={availableBoards}
-        availableLists={availableLists}
+        availableSections={availableSections}
         onAdd={addToZone}
       />
 

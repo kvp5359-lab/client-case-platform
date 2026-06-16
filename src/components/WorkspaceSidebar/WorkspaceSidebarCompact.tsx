@@ -20,6 +20,7 @@ type Props = {
   listSlots: SidebarSlot[]
   allBoards: { id: string; name: string; short_id: number | null }[] | undefined
   allItemLists: ItemList[] | undefined
+  allSections: { id: string; name: string }[] | undefined
   isOwner: boolean
   isClientOnly: boolean
   pathname: string
@@ -41,6 +42,7 @@ export function WorkspaceSidebarCompact({
   listSlots,
   allBoards,
   allItemLists,
+  allSections,
   isOwner,
   isClientOnly,
   pathname,
@@ -88,6 +90,7 @@ export function WorkspaceSidebarCompact({
           direction="column"
           allBoards={allBoards}
           allItemLists={allItemLists}
+          allSections={allSections}
           isOwner={isOwner}
           pathname={pathname}
           buildHref={buildHref}
@@ -108,6 +111,7 @@ export function WorkspaceSidebarCompact({
             direction="column"
             allBoards={allBoards}
             allItemLists={allItemLists}
+            allSections={allSections}
             isOwner={isOwner}
             pathname={pathname}
             buildHref={buildHref}

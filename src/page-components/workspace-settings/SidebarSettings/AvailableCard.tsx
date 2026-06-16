@@ -1,33 +1,27 @@
 "use client"
 
 import { useMemo, useState } from 'react'
-import { FolderOpen, Kanban, ListChecks, Plus } from 'lucide-react'
+import { FolderTree, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import type { ItemList } from '@/hooks/useItemLists'
 import { SIDEBAR_NAV_ITEMS, type SidebarPlacement } from '@/lib/sidebarSettings'
 import { plural } from './plural'
 import type { AvailableEntry } from './types'
 
 type AvailableCardProps = {
   availableNav: AvailableEntry[]
-  availableBoards: { id: string; name: string }[]
-  availableLists: ItemList[]
+  availableSections: { id: string; name: string }[]
   onAdd: (entry: AvailableEntry, placement: SidebarPlacement) => void
 }
 
 export function AvailableCard({
   availableNav,
-  availableBoards,
-  availableLists,
+  availableSections,
   onAdd,
 }: AvailableCardProps) {
-  const total =
-    availableNav.length +
-    (availableBoards.length > 0 ? 1 : 0) +
-    (availableLists.length > 0 ? 1 : 0)
+  const total = availableNav.length + (availableSections.length > 0 ? 1 : 0)
 
   return (
     <Card>
@@ -35,7 +29,7 @@ export function AvailableCard({
         <CardTitle>Доступные</CardTitle>
         <CardDescription>
           Элементы, которые сейчас не в сайдбаре. Нажми «в верх» или «в список», чтобы добавить.
-          «Доска» и «Список» — групповые пункты: при клике откроется список конкретных, для добавления одного из них.
+          «Раздел» — групповой пункт: при клике откроется список разделов, для добавления одного из них.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -58,58 +52,23 @@ export function AvailableCard({
               )
             })}
 
-            {availableBoards.length > 0 && (
+            {availableSections.length > 0 && (
               <AvailableGroupRow
-                icon={<Kanban className="w-4 h-4 shrink-0 text-gray-400" />}
-                label="Доска"
-                hint={`${availableBoards.length} ${plural(availableBoards.length, 'доска', 'доски', 'досок')} доступны`}
-                onAdd={(boardId, placement) =>
-                  onAdd(
-                    {
-                      kind: 'board',
-                      id: `board:${boardId}`,
-                      label: availableBoards.find((b) => b.id === boardId)?.name ?? '',
-                      boardId,
-                    },
-                    placement,
-                  )
-                }
-                items={availableBoards.map((b) => ({
-                  id: b.id,
-                  label: b.name,
-                  icon: <Kanban className="w-3.5 h-3.5 text-gray-400" />,
-                }))}
-              />
-            )}
-
-            {availableLists.length > 0 && (
-              <AvailableGroupRow
-                icon={<ListChecks className="w-4 h-4 shrink-0 text-gray-400" />}
-                label="Список"
-                hint={`${availableLists.length} ${plural(availableLists.length, 'список', 'списка', 'списков')} доступны`}
-                onAdd={(listId, placement) => {
-                  const target = availableLists.find((l) => l.id === listId)
+                icon={<FolderTree className="w-4 h-4 shrink-0 text-gray-400" />}
+                label="Раздел"
+                hint={`${availableSections.length} ${plural(availableSections.length, 'раздел', 'раздела', 'разделов')} доступны`}
+                onAdd={(sectionId, placement) => {
+                  const target = availableSections.find((s) => s.id === sectionId)
                   if (!target) return
                   onAdd(
-                    {
-                      kind: 'list',
-                      id: `list:${listId}`,
-                      label: target.name,
-                      listId,
-                      entityType: target.entity_type,
-                    },
+                    { kind: 'section', id: `section:${sectionId}`, label: target.name, sectionId },
                     placement,
                   )
                 }}
-                items={availableLists.map((l) => ({
-                  id: l.id,
-                  label: l.name,
-                  icon:
-                    l.entity_type === 'project' ? (
-                      <FolderOpen className="w-3.5 h-3.5 text-gray-400" />
-                    ) : (
-                      <ListChecks className="w-3.5 h-3.5 text-gray-400" />
-                    ),
+                items={availableSections.map((s) => ({
+                  id: s.id,
+                  label: s.name,
+                  icon: <FolderTree className="w-3.5 h-3.5 text-gray-400" />,
                 }))}
               />
             )}

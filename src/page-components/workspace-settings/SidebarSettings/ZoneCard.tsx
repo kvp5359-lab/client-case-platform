@@ -29,6 +29,7 @@ type ZoneCardProps = {
   slots: SidebarSlot[]
   boards: { id: string; name: string }[]
   itemLists: ItemList[]
+  sections: { id: string; name: string }[]
   zone: SidebarPlacement
   onMove: (id: string, delta: -1 | 1) => void
   onSetBadge: (id: string, mode: SidebarBadgeMode) => void
@@ -48,6 +49,7 @@ export function ZoneCard({
   slots: allSlots,
   boards,
   itemLists,
+  sections,
   zone,
   onMove,
   onSetBadge,
@@ -116,6 +118,7 @@ export function ZoneCard({
                     children_={childrenOfFolder(inZone, slot.id)}
                     boards={boards}
                     itemLists={itemLists}
+                    sections={sections}
                     otherZone={otherZone}
                     otherZoneLabel={otherZoneLabel}
                     OtherZoneIcon={OtherZoneIcon}
@@ -136,7 +139,7 @@ export function ZoneCard({
                   slot={slot}
                   canUp={canUp}
                   canDown={canDown}
-                  meta={resolveSlotMeta(slot, boards, itemLists)}
+                  meta={resolveSlotMeta(slot, boards, itemLists, sections)}
                   otherZone={otherZone}
                   otherZoneLabel={otherZoneLabel}
                   OtherZoneIcon={OtherZoneIcon}
