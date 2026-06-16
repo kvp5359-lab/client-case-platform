@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreVertical, Plus } from 'lucide-react'
+import { MoreVertical, Plus, Sparkles } from 'lucide-react'
 import { useDocumentKitsQuery } from '@/hooks/documents/useDocumentKitsQuery'
 import { useFormKitsQuery } from '@/hooks/forms/useFormKitsQuery'
 import { projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
@@ -41,6 +41,7 @@ import {
   ClientProjectHeader,
   ProjectPageState,
 } from './ProjectPage/components'
+import { GeneratePlanDialog } from './ProjectPage/components/GeneratePlanDialog'
 import {
   useProjectData,
   useProjectAccess,
@@ -61,6 +62,7 @@ export default function ProjectPage() {
   // Состояния UI
   const addKitDialog = useDialog()
   const addFormKitDialog = useDialog()
+  const generatePlanDialog = useDialog()
 
   // === РЕФАКТОРЕННЫЕ ХУКИ ===
 
@@ -337,6 +339,27 @@ export default function ProjectPage() {
                           >
                             <Icon className="w-4 h-4" />
                             {!m.iconOnly && <span className="hidden md:inline">{m.label}</span>}
+                            {m.id === 'tasks' && activeTab === 'tasks' && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <span
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                    className="ml-0.5 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                                  >
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </span>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start">
+                                  <DropdownMenuItem onClick={generatePlanDialog.open}>
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                    Сформировать план
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                             {m.id === 'forms' && activeTab === 'forms' && canAddForms && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -409,6 +432,13 @@ export default function ProjectPage() {
           addKitDialog={addKitDialog}
           addFormKitDialog={addFormKitDialog}
           onTabChange={handleTabChange}
+        />
+
+        <GeneratePlanDialog
+          open={generatePlanDialog.isOpen}
+          onOpenChange={(o) => (o ? generatePlanDialog.open() : generatePlanDialog.close())}
+          projectId={projectId ?? ''}
+          workspaceId={workspaceId ?? ''}
         />
       </ErrorBoundary>
     </WorkspaceLayout>
