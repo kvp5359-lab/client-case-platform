@@ -87,6 +87,13 @@ export type InboxThreadEntry = {
    * Источник правды: единая строка inbox v2 для всех мест UI.
    */
   last_read_at: string | null
+  /**
+   * Аватар автора последнего события (кто менял статус/дедлайн и т.п.).
+   * Используется в многоучастниковых тредах (задачи, TG-группы), где аватар
+   * строки = тот, чьё действие сейчас показано. `null`, если события нет или
+   * у автора нет аватара.
+   */
+  last_event_sender_avatar_url: string | null
 }
 
 export async function getInboxThreadsV2(

@@ -194,20 +194,37 @@ export const InboxChatItem = memo(function InboxChatItem({
   const hasCounterpart = !!chat.counterpart_name
   const isEmailWithoutCounterpart =
     !hasCounterpart && chat.channel_type === 'email' && !!chat.email_contact
-  const avatarUrl = reactionIsNewer
-    ? chat.last_reaction_sender_avatar_url
-    : hasCounterpart
-      ? chat.counterpart_avatar_url
-      : isEmailWithoutCounterpart
-        ? null
-        : chat.last_sender_avatar_url
-  const avatarFallbackName = reactionIsNewer
-    ? chat.last_reaction_sender_name
-    : hasCounterpart
-      ? chat.counterpart_name
-      : isEmailWithoutCounterpart
-        ? chat.email_contact
-        : chat.last_sender_name
+  // Многоучастниковый тред (задача внутри проекта или TG-группа): единого
+  // «собеседника» нет, поэтому аватар = автор показанного действия. В диалогах
+  // 1:1 оставляем собеседника (иначе в исходящем висела бы своя же аватарка).
+  const isMultiParticipant = chat.thread_type === 'task' || chat.channel_type === 'telegram'
+  // Имя автора события зашито в начало last_event_text («Имя · …»).
+  const eventActorName =
+    eventIsNewer && chat.last_event_text?.includes(' · ')
+      ? chat.last_event_text.split(' · ')[0]
+      : null
+
+  let avatarUrl: string | null
+  let avatarFallbackName: string | null
+  if (reactionIsNewer) {
+    avatarUrl = chat.last_reaction_sender_avatar_url
+    avatarFallbackName = chat.last_reaction_sender_name
+  } else if (isMultiParticipant) {
+    // событие → автор события; иначе → автор последнего сообщения
+    avatarUrl = eventIsNewer ? chat.last_event_sender_avatar_url : chat.last_sender_avatar_url
+    avatarFallbackName = eventIsNewer
+      ? eventActorName ?? chat.last_sender_name
+      : chat.last_sender_name
+  } else if (hasCounterpart) {
+    avatarUrl = chat.counterpart_avatar_url
+    avatarFallbackName = chat.counterpart_name
+  } else if (isEmailWithoutCounterpart) {
+    avatarUrl = null
+    avatarFallbackName = chat.email_contact
+  } else {
+    avatarUrl = chat.last_sender_avatar_url
+    avatarFallbackName = chat.last_sender_name
+  }
 
   const accent = accentStyles[chat.thread_accent_color] ?? defaultAccent
   const ChannelIcon = channelIcons[chat.channel_type]
@@ -300,17 +317,25 @@ export const InboxChatItem = memo(function InboxChatItem({
                 )}
               </span>
             ) : eventIsNewer && chat.last_event_text ? (
-              chat.last_event_status_color &&
-              chat.last_event_text.startsWith(STATUS_PREFIX) ? (
-                <span className="italic">
-                  <span className="text-gray-500">{STATUS_PREFIX}</span>
-                  <span style={{ color: safeCssColor(chat.last_event_status_color) }}>
-                    {chat.last_event_text.slice(STATUS_PREFIX.length)}
-                  </span>
-                </span>
-              ) : (
-                <span className="text-amber-600 italic">{chat.last_event_text}</span>
-              )
+              (() => {
+                // Текст события может начинаться с автора: «Имя · Статус: …».
+                // Подсвечиваем имя статуса (после «Статус: »), всё до него — серым.
+                const evt = chat.last_event_text
+                const idx = evt.indexOf(STATUS_PREFIX)
+                if (chat.last_event_status_color && idx >= 0) {
+                  return (
+                    <span className="italic">
+                      <span className="text-gray-500">
+                        {evt.slice(0, idx + STATUS_PREFIX.length)}
+                      </span>
+                      <span style={{ color: safeCssColor(chat.last_event_status_color) }}>
+                        {evt.slice(idx + STATUS_PREFIX.length)}
+                      </span>
+                    </span>
+                  )
+                }
+                return <span className="text-amber-600 italic">{evt}</span>
+              })()
             ) : (() => {
               // Текстовое превью: есть осмысленный текст (не плейсхолдер, не пустота).
               const strippedText = chat.last_message_text
