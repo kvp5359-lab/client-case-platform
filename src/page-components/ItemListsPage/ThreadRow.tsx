@@ -25,9 +25,9 @@ type ThreadRowProps = {
   task: WorkspaceTask
   columns: TableShellColumn[]
   checked: boolean
-  /** Стабильный колбэк — принимает id, чтобы memo'нутая строка не перерисовывалась
-   *  при каждом изменении выделения (раньше onToggle замыкался на selectedIds). */
-  onToggle: (id: string) => void
+  /** Стабильный колбэк — принимает id+индекс+shift (для диапазонного выделения),
+   *  чтобы memo'нутая строка не перерисовывалась при каждом изменении выделения. */
+  onToggle: (id: string, index: number, shift: boolean) => void
   onOpen: (task: WorkspaceTask) => void
   assigneesMap: Record<string, AvatarParticipant[]>
   taskStatuses: StatusOption[]
@@ -92,8 +92,14 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
       className={cn('border-b hover:bg-muted/30', focused && 'bg-muted/60')}
       onMouseEnter={() => prefetchMessages(task.id)}
     >
-      <td className="px-3 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
-        <Checkbox checked={checked} onCheckedChange={() => onToggle(task.id)} />
+      <td
+        className="px-3 py-2 align-middle select-none"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggle(task.id, dataIndex ?? 0, e.shiftKey)
+        }}
+      >
+        <Checkbox checked={checked} className="pointer-events-none" />
       </td>
       {columns.map((c) => {
         switch (c.key as ItemListColumnKey) {

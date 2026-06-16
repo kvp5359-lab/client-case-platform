@@ -119,11 +119,31 @@ export function ThreadTableView({
   useEffect(() => {
     selectedRef.current = selectedIds
   }, [selectedIds])
+  // Для shift-диапазона: актуальный список отображаемых строк + якорь (индекс
+  // последнего обычного клика). В ref'ах, чтобы handleToggle оставался стабильным
+  // (иначе memo(ThreadRow) перерисует все строки).
+  const displayedRef = useRef(displayed)
+  useEffect(() => {
+    displayedRef.current = displayed
+  }, [displayed])
+  const anchorRef = useRef<number | null>(null)
   const handleToggle = useCallback(
-    (id: string) => {
+    (id: string, index: number, shift: boolean) => {
       const next = new Set(selectedRef.current)
+      if (shift && anchorRef.current != null) {
+        const arr = displayedRef.current
+        const a = anchorRef.current
+        const [lo, hi] = a < index ? [a, index] : [index, a]
+        for (let i = lo; i <= hi; i++) {
+          const item = arr[i]
+          if (item) next.add(item.id)
+        }
+        onSelectedChange(next)
+        return
+      }
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      anchorRef.current = index
       onSelectedChange(next)
     },
     [onSelectedChange],

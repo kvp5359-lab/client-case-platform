@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect, useCallback } from 'react'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useListProjects } from './useListData'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
@@ -90,6 +90,34 @@ export function ProjectTableView({
   const { apply: applyQuick, columnFilter } = useQuickFilters(filtered, quickConfig)
   const displayed = useMemo(() => applyQuick(filtered), [applyQuick, filtered])
 
+  // Shift-диапазон выделения: якорь + актуальный список в ref'ах.
+  const displayedRef = useRef(displayed)
+  useEffect(() => { displayedRef.current = displayed }, [displayed])
+  const selectedRef = useRef(selectedIds)
+  useEffect(() => { selectedRef.current = selectedIds }, [selectedIds])
+  const anchorRef = useRef<number | null>(null)
+  const handleToggle = useCallback(
+    (id: string, index: number, shift: boolean) => {
+      const next = new Set(selectedRef.current)
+      if (shift && anchorRef.current != null) {
+        const arr = displayedRef.current
+        const a = anchorRef.current
+        const [lo, hi] = a < index ? [a, index] : [index, a]
+        for (let i = lo; i <= hi; i++) {
+          const item = arr[i]
+          if (item) next.add(item.id)
+        }
+        onSelectedChange(next)
+        return
+      }
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      anchorRef.current = index
+      onSelectedChange(next)
+    },
+    [onSelectedChange],
+  )
+
   const layoutPanel = useLayoutTaskPanel()
 
   const handleOpen = (project: BoardProject) =>
@@ -133,12 +161,7 @@ export function ProjectTableView({
           measureRef={meta.measureRef}
           dataIndex={meta.dataIndex}
           focused={meta.focused}
-          onToggle={() => {
-            const next = new Set(selectedIds)
-            if (next.has(project.id)) next.delete(project.id)
-            else next.add(project.id)
-            onSelectedChange(next)
-          }}
+          onToggle={(shift) => handleToggle(project.id, meta.dataIndex ?? 0, shift)}
           onOpen={() => handleOpen(project)}
           projectStatuses={projectStatuses}
         />

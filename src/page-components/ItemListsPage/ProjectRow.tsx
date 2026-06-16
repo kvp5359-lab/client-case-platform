@@ -12,7 +12,7 @@ type ProjectRowProps = {
   project: BoardProject
   columns: TableShellColumn[]
   checked: boolean
-  onToggle: () => void
+  onToggle: (shift: boolean) => void
   onOpen: () => void
   projectStatuses: StatusOption[]
   /** Виртуализация: ref для measureElement + индекс строки (см. TableShell). */
@@ -31,8 +31,14 @@ export function ProjectRow({ project, columns, checked, onToggle, onOpen, projec
       data-index={dataIndex}
       className={cn('border-b hover:bg-muted/30', focused && 'bg-muted/60')}
     >
-      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-        <Checkbox checked={checked} onCheckedChange={onToggle} />
+      <td
+        className="px-3 py-2 select-none"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggle(e.shiftKey)
+        }}
+      >
+        <Checkbox checked={checked} className="pointer-events-none" />
       </td>
       {columns.map((c) => {
         switch (c.key as ItemListColumnKey) {
