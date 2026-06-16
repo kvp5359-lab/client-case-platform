@@ -28,6 +28,76 @@ export type BoardFilteredProject = BoardProject & {
 // (баг: задачи с дальней позицией пропадали из колонок). Грузим постранично.
 const PAGE = 1000
 
+// ── Постраничная загрузка для списков (item_lists, infinite scroll) ──────────
+//
+// В отличие от досок (которым нужны ВСЕ строки сразу для раскладки по колонкам),
+// списки грузят данные порциями по скроллу. PostgREST умеет .order()/.range()
+// поверх результата table-функции, поэтому сортировка и пагинация делаются на
+// СЕРВЕРЕ над тем же get_board_filtered_threads/projects — без новой миграции.
+// Сервер отдаёт глобально отсортированную страницу; клиент дорезает её точным
+// движком фильтров (даты/__creator__), сохраняя серверный порядок.
+
+/** Размер страницы списка. */
+export const LIST_PAGE_SIZE = 60
+
+/** Белый список колонок сортировки тредов (защита от инъекций в .order()). */
+const THREAD_SORT_COLUMNS: Record<string, string> = {
+  created_at: 'created_at',
+  updated_at: 'updated_at',
+  deadline: 'deadline',
+  name: 'name',
+}
+const PROJECT_SORT_COLUMNS: Record<string, string> = {
+  created_at: 'created_at',
+  updated_at: 'updated_at',
+  name: 'name',
+  next_task_deadline: 'next_task_deadline',
+}
+
+export async function getListThreadsPage(
+  workspaceId: string,
+  userId: string,
+  filter: FilterGroup,
+  sortBy: string | null,
+  sortDir: 'asc' | 'desc',
+  offset: number,
+): Promise<WorkspaceTask[]> {
+  const col = THREAD_SORT_COLUMNS[sortBy ?? 'created_at'] ?? 'created_at'
+  const { data, error } = await supabase
+    .rpc('get_board_filtered_threads', {
+      p_workspace_id: workspaceId,
+      p_user_id: userId,
+      p_filter: filter as unknown as Json,
+    })
+    .order(col, { ascending: sortDir === 'asc', nullsFirst: false })
+    .order('id', { ascending: true }) // детерминированный tiebreak для стабильной пагинации
+    .range(offset, offset + LIST_PAGE_SIZE - 1)
+  if (error) throw new ApiError(`Ошибка загрузки списка тредов: ${error.message}`)
+  return (data ?? []) as unknown as WorkspaceTask[]
+}
+
+export async function getListProjectsPage(
+  workspaceId: string,
+  userId: string,
+  filter: FilterGroup,
+  sortBy: string | null,
+  sortDir: 'asc' | 'desc',
+  offset: number,
+): Promise<BoardFilteredProject[]> {
+  const col = PROJECT_SORT_COLUMNS[sortBy ?? 'created_at'] ?? 'created_at'
+  const { data, error } = await supabase
+    .rpc('get_board_filtered_projects', {
+      p_workspace_id: workspaceId,
+      p_user_id: userId,
+      p_filter: filter as unknown as Json,
+    })
+    .order(col, { ascending: sortDir === 'asc', nullsFirst: false })
+    .order('id', { ascending: true })
+    .range(offset, offset + LIST_PAGE_SIZE - 1)
+  if (error) throw new ApiError(`Ошибка загрузки списка проектов: ${error.message}`)
+  return (data ?? []) as unknown as BoardFilteredProject[]
+}
+
 export async function getBoardFilteredThreads(
   workspaceId: string,
   userId: string,

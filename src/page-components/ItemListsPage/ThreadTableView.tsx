@@ -37,9 +37,16 @@ export function ThreadTableView({
   onSelectedChange,
   onResizeCommit,
 }: ThreadTableViewProps) {
-  // Серверная фильтрация (Фаза 1): тянем только подходящие под фильтр треды,
-  // не весь воркспейс. Клиентский useFilteredTasks ниже дорезает точно + сортирует.
-  const { data: threads = [], isLoading } = useListThreads(workspaceId, filters)
+  // Серверная фильтрация + пагинация (Вариант A): сервер фильтрует, сортирует и
+  // отдаёт страницами по скроллу. Клиентский useFilteredTasks ниже дорезает
+  // каждую загруженную страницу точно, сохраняя серверный порядок.
+  const {
+    rows: threads,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useListThreads(workspaceId, filters, sortBy, sortDir ?? 'desc')
   const taskIds = useMemo(() => threads.map((t) => t.id), [threads])
   const { data: assigneesMap = {} } = useTaskAssigneesMap(taskIds)
   const { data: taskStatuses = [] } = useTaskStatuses(workspaceId)
@@ -157,6 +164,8 @@ export function ThreadTableView({
       onResizeCommit={onResizeCommit}
       onActivateRow={handleOpen}
       columnFilter={columnFilter}
+      onEndReached={() => { if (hasNextPage) fetchNextPage() }}
+      isFetchingMore={isFetchingNextPage}
       bulkActions={
         <BulkActionsBar
           entityType="thread"

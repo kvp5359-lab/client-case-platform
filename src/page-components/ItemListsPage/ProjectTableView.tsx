@@ -35,9 +35,15 @@ export function ProjectTableView({
   onSelectedChange,
   onResizeCommit,
 }: ProjectTableViewProps) {
-  // Серверная фильтрация (Фаза 1): только подходящие проекты + поля ближайшей
-  // задачи (next_task_*). useFilteredProjects ниже дорезает точно + сортирует.
-  const { data: projects = [], isLoading } = useListProjects(workspaceId, filters)
+  // Серверная фильтрация + пагинация (Вариант A): подходящие проекты страницами
+  // по скроллу. useFilteredProjects ниже дорезает точно, сохраняя порядок.
+  const {
+    rows: projects,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useListProjects(workspaceId, filters, sortBy, sortDir ?? 'desc')
   const { data: projectStatuses = [] } = useAllProjectStatuses(workspaceId)
 
   const ctx = useMemo<FilterContext>(
@@ -106,6 +112,8 @@ export function ProjectTableView({
       onResizeCommit={onResizeCommit}
       onActivateRow={handleOpen}
       columnFilter={columnFilter}
+      onEndReached={() => { if (hasNextPage) fetchNextPage() }}
+      isFetchingMore={isFetchingNextPage}
       bulkActions={
         <BulkActionsBar
           entityType="project"

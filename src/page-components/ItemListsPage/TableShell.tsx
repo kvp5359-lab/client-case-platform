@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Rows3, Rows4, ListFilter, X } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
@@ -21,9 +21,10 @@ export const CHECKBOX_COL_WIDTH = 36
 
 /** Оценка высоты строки (px) для виртуализатора. Уточняется measureElement'ом. */
 const ROW_ESTIMATE = { comfortable: 37, compact: 29 }
-/** Порог числа строк, выше которого включаем виртуализацию.
- *  Ниже — обычный render (проще, без spacer-строк, нет дёрганья при resize). */
-const VIRTUALIZE_THRESHOLD = 80
+/** Порог числа строк, выше которого включаем виртуализацию. Должен быть МЕНЬШЕ
+ *  размера страницы (LIST_PAGE_SIZE=60), иначе первая полная страница не
+ *  виртуализируется и подгрузка по скроллу (onEndReached) не срабатывает. */
+const VIRTUALIZE_THRESHOLD = 40
 
 const DENSITY_LS_KEY = 'cc-list-density'
 type Density = 'comfortable' | 'compact'
@@ -67,11 +68,16 @@ type TableShellProps<T extends { id: string }> = {
   onActivateRow?: (item: T) => void
   /** Быстрый фильтр по колонке. Вернуть null — для колонки фильтр недоступен. */
   columnFilter?: (columnKey: string) => ColumnFilterMeta | null
+  /** Пагинация: вызвать подгрузку следующей страницы (достигли конца прокрутки). */
+  onEndReached?: () => void
+  /** Идёт ли догрузка следующей страницы (показываем строку-лоадер снизу). */
+  isFetchingMore?: boolean
 }
 
 export function TableShell<T extends { id: string }>({
   isLoading, isEmpty, total, columns, selectedIds, allItemIds,
   onSelectedChange, onResizeCommit, bulkActions, renderRow, items, onActivateRow, columnFilter,
+  onEndReached, isFetchingMore,
 }: TableShellProps<T>) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const virtualize = items.length > VIRTUALIZE_THRESHOLD
@@ -100,6 +106,15 @@ export function TableShell<T extends { id: string }>({
     virtualRows.length > 0
       ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
       : 0
+
+  // Подгрузка следующей страницы: когда видимый «хвост» подобрался к концу
+  // загруженных строк. React Query сам дедуплицирует и стопает на последней
+  // странице (getNextPageParam=undefined), плюс гейтим по isFetchingMore.
+  const lastVisibleIndex = virtualRows.length > 0 ? virtualRows[virtualRows.length - 1].index : -1
+  useEffect(() => {
+    if (!onEndReached || isFetchingMore || items.length === 0) return
+    if (lastVisibleIndex >= items.length - 8) onEndReached()
+  }, [lastVisibleIndex, items.length, onEndReached, isFetchingMore])
 
   const allChecked = allItemIds.length > 0 && allItemIds.every((id) => selectedIds.has(id))
   const someChecked = !allChecked && allItemIds.some((id) => selectedIds.has(id))
@@ -271,7 +286,12 @@ export function TableShell<T extends { id: string }>({
         </table>
         {!isLoading && !isEmpty && (
           <div className="px-3 py-2 text-xs text-muted-foreground border-t bg-white flex items-center gap-3 sticky bottom-0">
-            <span>Всего: {total}</span>
+            <span>Показано: {total}</span>
+            {isFetchingMore && (
+              <span className="flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" /> Загружаю ещё…
+              </span>
+            )}
             <button
               type="button"
               onClick={toggleDensity}

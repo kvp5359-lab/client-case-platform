@@ -1,65 +1,89 @@
 "use client"
 
 /**
- * Серверно-фильтрованные данные одного item_list (Фаза 1 перф-доработки).
+ * Серверно-фильтрованные + постранично подгружаемые данные одного item_list.
  *
- * Раньше списки грузили ВЕСЬ воркспейс (useWorkspaceThreads / useAccessibleProjects)
- * и фильтровали на клиенте — на больших воркспейсах это тянуло тысячи строк и
- * фризило UI. Теперь список (= один фильтр) отправляет его на сервер и получает
- * только подходящие строки, как это уже делают доски (вариант A — prefilter).
+ * Фаза 1 (серверная фильтрация) + Вариант A (настоящая пагинация по скроллу).
+ * Список НЕ грузит весь воркспейс: сервер фильтрует (через ту же инфраструктуру
+ * досок — get_board_filtered_threads/projects), сортирует и отдаёт страницами
+ * по LIST_PAGE_SIZE (через PostgREST .order()/.range(), без новой миграции).
+ * Клиентский движок (useFilteredTasks/Projects в *TableView) дорезает каждую
+ * загруженную страницу ТОЧНО (даты/__creator__), сохраняя серверный порядок.
  *
- * Переиспользуем инфраструктуру досок целиком:
- *   - RPC get_board_filtered_threads / get_board_filtered_projects;
- *   - сервис boardFilterService (постраничная загрузка .range, обходит лимит 1000);
- *   - ключи boardFilteredKeys (тот же кэш, что у досок) — поэтому правки статуса/
- *     дедлайна, инвалидирующие префикс ['workspace-threads', ws] / ['accessible-
- *     projects', ws], обновляют и список автоматически.
+ * useInfiniteQuery: первая страница на маунте, остальные — по достижении конца
+ * прокрутки (onEndReached из TableShell). Исполнители (useTaskAssigneesMap) при
+ * этом грузятся только для уже загруженных строк — оверфетч на весь список ушёл.
  *
- * Сервер сужает ГРУБО (с запасом: даты/__creator__ → true, неразрешённый __me__ →
- * noop), клиентский движок (useFilteredTasks/Projects в *TableView) дорезает ТОЧНО
- * по тому же фильтру и сортирует. Итоговый набор идентичен прежнему клиентскому —
- * меняется только объём данных по сети.
- *
- * ⚠️ Контракт __me__: server-lowering и клиентский FilterContext ОБЯЗАНЫ получать
- * одинаковые ids. Здесь оба используют currentParticipantId=null (как в *TableView),
- * поэтому assignee=__me__ сервер не сужает (noop → superset), а клиент фильтрует
- * как раньше. При желании включить серверное сужение по исполнителю — резолвить
- * participantId и передавать его И сюда, И в FilterContext одновременно.
+ * ⚠️ Контракт __me__: server-lowering и клиентский FilterContext держат
+ * одинаковые ids (оба currentParticipantId=null, как в *TableView).
  */
 
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { boardFilteredKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { lowerFilterForServer } from '@/lib/filters/lowerForServer'
-import { getBoardFilteredThreads, getBoardFilteredProjects } from '@/services/api/boardFilterService'
+import {
+  getListThreadsPage,
+  getListProjectsPage,
+  LIST_PAGE_SIZE,
+} from '@/services/api/boardFilterService'
 import type { FilterGroup } from '@/lib/filters/types'
+import type { WorkspaceTask } from '@/types/board'
 
-/** Ids для разворачивания __me__ при серверном сужении. См. контракт в шапке. */
 const LIST_SERVER_IDS = { currentParticipantId: null, currentUserId: null }
 
-export function useListThreads(workspaceId: string, filter: FilterGroup) {
+type SortDir = 'asc' | 'desc'
+
+export function useListThreads(
+  workspaceId: string,
+  filter: FilterGroup,
+  sortBy: string | null,
+  sortDir: SortDir,
+) {
   const { user } = useAuth()
   const serverFilter = useMemo(() => lowerFilterForServer(filter, LIST_SERVER_IDS), [filter])
   const filterKey = useMemo(() => JSON.stringify(serverFilter), [serverFilter])
 
-  return useQuery({
-    queryKey: boardFilteredKeys.threads(workspaceId, user?.id, filterKey),
-    queryFn: () => getBoardFilteredThreads(workspaceId, user!.id, serverFilter),
+  const query = useInfiniteQuery({
+    queryKey: [...boardFilteredKeys.threads(workspaceId, user?.id, filterKey), 'page', sortBy, sortDir],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      getListThreadsPage(workspaceId, user!.id, serverFilter, sortBy, sortDir, pageParam as number),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === LIST_PAGE_SIZE ? allPages.length * LIST_PAGE_SIZE : undefined,
     enabled: !!workspaceId && !!user?.id,
     staleTime: STALE_TIME.SHORT,
   })
+
+  const rows = useMemo<WorkspaceTask[]>(
+    () => query.data?.pages.flat() ?? [],
+    [query.data],
+  )
+  return { rows, ...query }
 }
 
-export function useListProjects(workspaceId: string, filter: FilterGroup) {
+export function useListProjects(
+  workspaceId: string,
+  filter: FilterGroup,
+  sortBy: string | null,
+  sortDir: SortDir,
+) {
   const { user } = useAuth()
   const serverFilter = useMemo(() => lowerFilterForServer(filter, LIST_SERVER_IDS), [filter])
   const filterKey = useMemo(() => JSON.stringify(serverFilter), [serverFilter])
 
-  return useQuery({
-    queryKey: boardFilteredKeys.projects(workspaceId, user?.id, filterKey),
-    queryFn: () => getBoardFilteredProjects(workspaceId, user!.id, serverFilter),
+  const query = useInfiniteQuery({
+    queryKey: [...boardFilteredKeys.projects(workspaceId, user?.id, filterKey), 'page', sortBy, sortDir],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      getListProjectsPage(workspaceId, user!.id, serverFilter, sortBy, sortDir, pageParam as number),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === LIST_PAGE_SIZE ? allPages.length * LIST_PAGE_SIZE : undefined,
     enabled: !!workspaceId && !!user?.id,
     staleTime: STALE_TIME.MEDIUM,
   })
+
+  const rows = useMemo(() => query.data?.pages.flat() ?? [], [query.data])
+  return { rows, ...query }
 }
