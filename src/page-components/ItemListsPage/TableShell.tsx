@@ -1,11 +1,25 @@
 "use client"
 
+import { useRef } from 'react'
 import { Loader2 } from 'lucide-react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ColumnResizeHandle } from './ColumnResizeHandle'
 import type { getColumnDef } from './columns'
 
 export const CHECKBOX_COL_WIDTH = 36
+
+/** Оценка высоты строки (px) для виртуализатора. Уточняется measureElement'ом. */
+const ROW_ESTIMATE = 37
+/** Порог числа строк, выше которого включаем виртуализацию.
+ *  Ниже — обычный render (проще, без spacer-строк, нет дёрганья при resize). */
+const VIRTUALIZE_THRESHOLD = 80
+
+/** Колбэки для виртуализованной строки: ref для measureElement + data-index. */
+export type RowRenderMeta = {
+  measureRef?: (el: HTMLTableRowElement | null) => void
+  dataIndex?: number
+}
 
 export type TableShellColumn = {
   key: string
@@ -25,7 +39,7 @@ type TableShellProps<T extends { id: string }> = {
   onSelectedChange: (next: Set<string>) => void
   onResizeCommit: (key: string, width: number) => void
   bulkActions: React.ReactNode
-  renderRow: (item: T) => React.ReactNode
+  renderRow: (item: T, meta: RowRenderMeta) => React.ReactNode
   items: T[]
 }
 
@@ -33,6 +47,26 @@ export function TableShell<T extends { id: string }>({
   isLoading, isEmpty, total, columns, selectedIds, allItemIds,
   onSelectedChange, onResizeCommit, bulkActions, renderRow, items,
 }: TableShellProps<T>) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const virtualize = items.length > VIRTUALIZE_THRESHOLD
+
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const rowVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_ESTIMATE,
+    overscan: 12,
+    // Когда виртуализация выключена — отдаём пустой набор, рендерим всё обычным map.
+    enabled: virtualize,
+  })
+
+  const virtualRows = virtualize ? rowVirtualizer.getVirtualItems() : []
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0
+  const paddingBottom =
+    virtualRows.length > 0
+      ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
+      : 0
+
   const allChecked = allItemIds.length > 0 && allItemIds.every((id) => selectedIds.has(id))
   const someChecked = !allChecked && allItemIds.some((id) => selectedIds.has(id))
 
@@ -64,7 +98,7 @@ export function TableShell<T extends { id: string }>({
         </div>
       )}
 
-      <div className="flex-1 overflow-auto bg-white">
+      <div ref={scrollRef} className="flex-1 overflow-auto bg-white">
         <table
           className="text-sm border-collapse table-fixed"
           style={{ width: CHECKBOX_COL_WIDTH + columns.reduce((s, c) => s + c.width, 0) }}
@@ -111,7 +145,28 @@ export function TableShell<T extends { id: string }>({
                 Нет элементов, удовлетворяющих фильтру
               </td></tr>
             )}
-            {!isLoading && !isEmpty && items.map(renderRow)}
+            {!isLoading && !isEmpty && !virtualize &&
+              items.map((item) => renderRow(item, {}))}
+            {!isLoading && !isEmpty && virtualize && (
+              <>
+                {paddingTop > 0 && (
+                  <tr aria-hidden style={{ height: paddingTop }}>
+                    <td colSpan={columns.length + 1} className="p-0 border-0" />
+                  </tr>
+                )}
+                {virtualRows.map((vr) =>
+                  renderRow(items[vr.index], {
+                    measureRef: rowVirtualizer.measureElement,
+                    dataIndex: vr.index,
+                  }),
+                )}
+                {paddingBottom > 0 && (
+                  <tr aria-hidden style={{ height: paddingBottom }}>
+                    <td colSpan={columns.length + 1} className="p-0 border-0" />
+                  </tr>
+                )}
+              </>
+            )}
           </tbody>
         </table>
         {!isLoading && !isEmpty && (

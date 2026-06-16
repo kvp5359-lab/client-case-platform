@@ -4,7 +4,7 @@ import { formatSmartDateCompact } from '@/utils/format/dateFormat'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { StatusOption } from '@/components/common/status-dropdown'
 import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProjects'
-import type { TableShellColumn } from './TableShell'
+import type { TableShellColumn, RowRenderMeta } from './TableShell'
 import type { ItemListColumnKey } from './columns'
 
 type ProjectRowProps = {
@@ -14,13 +14,16 @@ type ProjectRowProps = {
   onToggle: () => void
   onOpen: () => void
   projectStatuses: StatusOption[]
+  /** Виртуализация: ref для measureElement + индекс строки (см. TableShell). */
+  measureRef?: RowRenderMeta['measureRef']
+  dataIndex?: number
 }
 
-export function ProjectRow({ project, columns, checked, onToggle, onOpen, projectStatuses }: ProjectRowProps) {
+export function ProjectRow({ project, columns, checked, onToggle, onOpen, projectStatuses, measureRef, dataIndex }: ProjectRowProps) {
   const currentStatus = projectStatuses.find((s) => s.id === project.status_id) ?? null
 
   return (
-    <tr className="border-b hover:bg-muted/30">
+    <tr ref={measureRef} data-index={dataIndex} className="border-b hover:bg-muted/30">
       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
         <Checkbox checked={checked} onCheckedChange={onToggle} />
       </td>

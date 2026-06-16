@@ -82,12 +82,14 @@ export function ProjectTableView({
           projectStatuses={projectStatuses}
         />
       }
-      renderRow={(project) => (
+      renderRow={(project, meta) => (
         <ProjectRow
           key={project.id}
           project={project}
           columns={columns}
           checked={selectedIds.has(project.id)}
+          measureRef={meta.measureRef}
+          dataIndex={meta.dataIndex}
           onToggle={() => {
             const next = new Set(selectedIds)
             if (next.has(project.id)) next.delete(project.id)

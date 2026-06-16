@@ -126,7 +126,7 @@ export function ThreadTableView({
           taskStatuses={taskStatuses}
         />
       }
-      renderRow={(task: WorkspaceTask) => (
+      renderRow={(task: WorkspaceTask, meta) => (
         <ThreadRow
           key={task.id}
           task={task}
@@ -137,6 +137,8 @@ export function ThreadTableView({
           assigneesMap={assigneesMap}
           taskStatuses={taskStatuses}
           counterpartName={counterpartNameMap.get(task.id) ?? null}
+          measureRef={meta.measureRef}
+          dataIndex={meta.dataIndex}
         />
       )}
       items={filtered}

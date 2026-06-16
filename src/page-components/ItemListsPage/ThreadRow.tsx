@@ -13,7 +13,7 @@ import { workspaceThreadKeys } from '@/hooks/queryKeys'
 import { usePrefetchThreadMessages } from '@/hooks/messenger/usePrefetchThreadMessages'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
-import type { TableShellColumn } from './TableShell'
+import type { TableShellColumn, RowRenderMeta } from './TableShell'
 import type { ItemListColumnKey } from './columns'
 
 type ThreadRowProps = {
@@ -28,9 +28,12 @@ type ThreadRowProps = {
   taskStatuses: StatusOption[]
   /** Имя собеседника из карты на уровне таблицы (P4b: не звать per-row хук). */
   counterpartName: string | null
+  /** Виртуализация: ref для measureElement + индекс строки (см. TableShell). */
+  measureRef?: RowRenderMeta['measureRef']
+  dataIndex?: number
 }
 
-export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, taskStatuses, counterpartName }: ThreadRowProps) {
+export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, taskStatuses, counterpartName, measureRef, dataIndex }: ThreadRowProps) {
   const updateStatus = useUpdateTaskStatus([
     workspaceThreadKeys.workspace(task.workspace_id),
   ])
@@ -43,7 +46,12 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
   const prefetchMessages = usePrefetchThreadMessages()
 
   return (
-    <tr className="border-b hover:bg-muted/30" onMouseEnter={() => prefetchMessages(task.id)}>
+    <tr
+      ref={measureRef}
+      data-index={dataIndex}
+      className="border-b hover:bg-muted/30"
+      onMouseEnter={() => prefetchMessages(task.id)}
+    >
       <td className="px-3 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
         <Checkbox checked={checked} onCheckedChange={() => onToggle(task.id)} />
       </td>
