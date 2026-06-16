@@ -36,21 +36,24 @@ export type ColumnDef = {
   required?: boolean
 }
 
+// minWidth = 30 везде: пользователь может ужать колонку почти полностью
+// (например, исполнители — до одних аватарок). Название чуть больше (60),
+// чтобы не схлопывалось в нечитаемое.
 export const ALL_COLUMNS: ColumnDef[] = [
-  { key: 'name', label: 'Название', defaultWidth: 320, minWidth: 200, entityTypes: ['thread', 'project'], required: true },
-  { key: 'type', label: 'Тип', defaultWidth: 110, minWidth: 80, entityTypes: ['thread'] },
-  { key: 'status', label: 'Статус', defaultWidth: 160, minWidth: 100, entityTypes: ['thread', 'project'] },
-  { key: 'project', label: 'Проект', defaultWidth: 200, minWidth: 120, entityTypes: ['thread'] },
-  { key: 'deadline', label: 'Дедлайн', defaultWidth: 130, minWidth: 100, entityTypes: ['thread', 'project'] },
-  { key: 'assignees', label: 'Исполнители', defaultWidth: 140, minWidth: 100, entityTypes: ['thread'] },
-  { key: 'is_pinned', label: 'Закреп', defaultWidth: 80, minWidth: 60, entityTypes: ['thread'] },
-  { key: 'last_message_at', label: 'Последнее сообщение', defaultWidth: 160, minWidth: 120, entityTypes: ['thread'] },
-  { key: 'unread', label: 'Непрочитанные', defaultWidth: 120, minWidth: 90, entityTypes: ['thread'] },
-  { key: 'template', label: 'Шаблон', defaultWidth: 160, minWidth: 100, entityTypes: ['project'] },
-  { key: 'next_task_deadline', label: 'Ближайшая задача', defaultWidth: 160, minWidth: 120, entityTypes: ['project'] },
-  { key: 'participants', label: 'Участники', defaultWidth: 140, minWidth: 100, entityTypes: ['project'] },
-  { key: 'created_at', label: 'Создано', defaultWidth: 130, minWidth: 100, entityTypes: ['thread', 'project'] },
-  { key: 'updated_at', label: 'Обновлено', defaultWidth: 130, minWidth: 100, entityTypes: ['thread', 'project'] },
+  { key: 'name', label: 'Название', defaultWidth: 320, minWidth: 60, entityTypes: ['thread', 'project'], required: true },
+  { key: 'type', label: 'Тип', defaultWidth: 110, minWidth: 30, entityTypes: ['thread'] },
+  { key: 'status', label: 'Статус', defaultWidth: 160, minWidth: 30, entityTypes: ['thread', 'project'] },
+  { key: 'project', label: 'Проект', defaultWidth: 200, minWidth: 30, entityTypes: ['thread'] },
+  { key: 'deadline', label: 'Дедлайн', defaultWidth: 130, minWidth: 30, entityTypes: ['thread', 'project'] },
+  { key: 'assignees', label: 'Исполнители', defaultWidth: 140, minWidth: 30, entityTypes: ['thread'] },
+  { key: 'is_pinned', label: 'Закреп', defaultWidth: 80, minWidth: 30, entityTypes: ['thread'] },
+  { key: 'last_message_at', label: 'Последнее сообщение', defaultWidth: 160, minWidth: 30, entityTypes: ['thread'] },
+  { key: 'unread', label: 'Непрочитанные', defaultWidth: 120, minWidth: 30, entityTypes: ['thread'] },
+  { key: 'template', label: 'Шаблон', defaultWidth: 160, minWidth: 30, entityTypes: ['project'] },
+  { key: 'next_task_deadline', label: 'Ближайшая задача', defaultWidth: 160, minWidth: 30, entityTypes: ['project'] },
+  { key: 'participants', label: 'Участники', defaultWidth: 140, minWidth: 30, entityTypes: ['project'] },
+  { key: 'created_at', label: 'Создано', defaultWidth: 130, minWidth: 30, entityTypes: ['thread', 'project'] },
+  { key: 'updated_at', label: 'Обновлено', defaultWidth: 130, minWidth: 30, entityTypes: ['thread', 'project'] },
 ]
 
 export function getColumnsForEntity(entityType: 'thread' | 'project'): ColumnDef[] {

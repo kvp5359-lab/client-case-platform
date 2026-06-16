@@ -10,6 +10,7 @@ import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProject
 import { TableShell, type TableShellColumn } from './TableShell'
 import { ProjectRow } from './ProjectRow'
 import { BulkActionsBar } from './BulkActionsBar'
+import { useQuickFilters, type QuickFilterColumn } from './useQuickFilters'
 
 export type ProjectTableViewProps = {
   workspaceId: string
@@ -60,6 +61,29 @@ export function ProjectTableView({
     sortDir ?? 'desc',
   ) as unknown as BoardProject[]
 
+  // Быстрый фильтр по заголовкам (значения только из текущего списка).
+  const quickConfig = useMemo<QuickFilterColumn<BoardProject>[]>(
+    () => [
+      {
+        key: 'status',
+        getValues: (p) => [{
+          value: p.status_id ?? '__none__',
+          label: p.status_id ? (projectStatuses.find((s) => s.id === p.status_id)?.name ?? '—') : 'Без статуса',
+        }],
+      },
+      {
+        key: 'template',
+        getValues: (p) => {
+          const v = p.template_name ?? '__none__'
+          return [{ value: v, label: v === '__none__' ? 'Без шаблона' : v }]
+        },
+      },
+    ],
+    [projectStatuses],
+  )
+  const { apply: applyQuick, columnFilter } = useQuickFilters(filtered, quickConfig)
+  const displayed = useMemo(() => applyQuick(filtered), [applyQuick, filtered])
+
   const layoutPanel = useLayoutTaskPanel()
 
   const handleOpen = (project: BoardProject) =>
@@ -73,21 +97,22 @@ export function ProjectTableView({
   return (
     <TableShell
       isLoading={isLoading}
-      isEmpty={filtered.length === 0}
-      total={filtered.length}
+      isEmpty={displayed.length === 0}
+      total={displayed.length}
       columns={columns}
       selectedIds={selectedIds}
-      allItemIds={filtered.map((p) => p.id)}
+      allItemIds={displayed.map((p) => p.id)}
       onSelectedChange={onSelectedChange}
       onResizeCommit={onResizeCommit}
       onActivateRow={handleOpen}
+      columnFilter={columnFilter}
       bulkActions={
         <BulkActionsBar
           entityType="project"
           selectedIds={selectedIds}
           onClearSelection={() => onSelectedChange(new Set())}
           workspaceId={workspaceId}
-          items={filtered}
+          items={displayed}
           projectStatuses={projectStatuses}
         />
       }
@@ -110,7 +135,7 @@ export function ProjectTableView({
           projectStatuses={projectStatuses}
         />
       )}
-      items={filtered}
+      items={displayed}
     />
   )
 }

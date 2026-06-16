@@ -159,7 +159,7 @@ export function ItemListSettingsDialog({ open, onClose, list, workspaceId }: Pro
         </DialogHeader>
 
         <Tabs defaultValue="general" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="w-full grid grid-cols-3">
+          <TabsList className="self-start">
             <TabsTrigger value="general">Общее</TabsTrigger>
             <TabsTrigger value="filters">Фильтр</TabsTrigger>
             <TabsTrigger value="columns">Колонки</TabsTrigger>
@@ -380,6 +380,15 @@ function ColumnsEditor({
         >
           <button
             type="button"
+            className="text-muted-foreground hover:text-foreground p-1 disabled:opacity-30"
+            disabled={def.required}
+            onClick={() => updateColumn(def.key, { visible: !cfg.visible })}
+            title={cfg.visible ? 'Скрыть' : 'Показать'}
+          >
+            {cfg.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
             className="text-muted-foreground hover:text-foreground p-1"
             disabled={!cfg.visible || def.required}
             onClick={() => move(def.key, -1)}
@@ -396,7 +405,9 @@ function ColumnsEditor({
           >
             <ArrowDown className="h-3.5 w-3.5" />
           </button>
-          <span className="text-sm flex-1">{def.label}</span>
+          <span className={cn('text-sm flex-1', !cfg.visible && 'text-muted-foreground/40')}>
+            {def.label}
+          </span>
           {def.key === 'assignees' && cfg.visible && (
             <div className="flex items-center rounded-md border overflow-hidden mr-1">
               <button
@@ -439,15 +450,6 @@ function ColumnsEditor({
             />
             <span className="text-xs text-muted-foreground">px</span>
           </div>
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-foreground p-1 disabled:opacity-30"
-            disabled={def.required}
-            onClick={() => updateColumn(def.key, { visible: !cfg.visible })}
-            title={cfg.visible ? 'Скрыть' : 'Показать'}
-          >
-            {cfg.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-          </button>
         </div>
       ))}
     </div>

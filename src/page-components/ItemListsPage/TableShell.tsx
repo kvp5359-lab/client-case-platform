@@ -1,12 +1,21 @@
 "use client"
 
 import { useCallback, useRef, useState } from 'react'
-import { Loader2, Rows3, Rows4 } from 'lucide-react'
+import { Loader2, Rows3, Rows4, ListFilter, X } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { ColumnResizeHandle } from './ColumnResizeHandle'
 import type { getColumnDef } from './columns'
+
+/** Быстрый фильтр по колонке (значения только из текущего списка). */
+export type ColumnFilterMeta = {
+  options: { value: string; label: string }[]
+  selected: Set<string>
+  onToggle: (value: string) => void
+  onClear: () => void
+}
 
 export const CHECKBOX_COL_WIDTH = 36
 
@@ -56,11 +65,13 @@ type TableShellProps<T extends { id: string }> = {
   items: T[]
   /** Открыть строку (Enter / клик). Используется клавиатурной навигацией. */
   onActivateRow?: (item: T) => void
+  /** Быстрый фильтр по колонке. Вернуть null — для колонки фильтр недоступен. */
+  columnFilter?: (columnKey: string) => ColumnFilterMeta | null
 }
 
 export function TableShell<T extends { id: string }>({
   isLoading, isEmpty, total, columns, selectedIds, allItemIds,
-  onSelectedChange, onResizeCommit, bulkActions, renderRow, items, onActivateRow,
+  onSelectedChange, onResizeCommit, bulkActions, renderRow, items, onActivateRow, columnFilter,
 }: TableShellProps<T>) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const virtualize = items.length > VIRTUALIZE_THRESHOLD
@@ -178,20 +189,6 @@ export function TableShell<T extends { id: string }>({
 
   return (
     <>
-      {selectedIds.size > 0 && (
-        <div className="px-6 py-2 border-b bg-primary/5 flex items-center gap-3 text-sm">
-          <span className="font-medium">{selectedIds.size} выделено</span>
-          <button
-            type="button"
-            className="text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => onSelectedChange(new Set())}
-          >
-            Снять выделение
-          </button>
-          <div className="ml-auto flex items-center gap-2">{bulkActions}</div>
-        </div>
-      )}
-
       <div
         ref={scrollRef}
         className="flex-1 overflow-auto bg-white focus:outline-none"
@@ -217,20 +214,26 @@ export function TableShell<T extends { id: string }>({
                   onCheckedChange={toggleAll}
                 />
               </th>
-              {columns.map((c, idx) => (
-                <th
-                  key={c.key}
-                  className="relative text-left text-xs font-medium text-muted-foreground px-3 py-2 truncate select-none"
-                >
-                  {c.def.label}
-                  <ColumnResizeHandle
-                    columnKey={c.key}
-                    colIndex={idx + 1}
-                    minWidth={c.def.minWidth}
-                    onCommit={onResizeCommit}
-                  />
-                </th>
-              ))}
+              {columns.map((c, idx) => {
+                const filterMeta = columnFilter?.(c.key) ?? null
+                return (
+                  <th
+                    key={c.key}
+                    className="relative text-left text-xs font-medium text-muted-foreground px-3 py-2 select-none"
+                  >
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="truncate">{c.def.label}</span>
+                      {filterMeta && <ColumnFilterPopover meta={filterMeta} />}
+                    </div>
+                    <ColumnResizeHandle
+                      columnKey={c.key}
+                      colIndex={idx + 1}
+                      minWidth={c.def.minWidth}
+                      onCommit={onResizeCommit}
+                    />
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
@@ -281,6 +284,77 @@ export function TableShell<T extends { id: string }>({
           </div>
         )}
       </div>
+
+      {/* Панель выделения — закреплена снизу, чтобы при отметке элементов
+          таблица не «прыгала» вниз (раньше панель была сверху). */}
+      {selectedIds.size > 0 && (
+        <div className="shrink-0 px-6 py-2 border-t bg-primary/5 flex items-center gap-3 text-sm">
+          <span className="font-medium">{selectedIds.size} выделено</span>
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => onSelectedChange(new Set())}
+          >
+            Снять выделение
+          </button>
+          <div className="ml-auto flex items-center gap-2">{bulkActions}</div>
+        </div>
+      )}
     </>
+  )
+}
+
+/** Поповер быстрого фильтра колонки: чекбоксы значений, присутствующих в списке. */
+function ColumnFilterPopover({ meta }: { meta: ColumnFilterMeta }) {
+  const active = meta.selected.size > 0
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'shrink-0 p-0.5 rounded hover:bg-muted transition-colors',
+            active ? 'text-primary' : 'text-muted-foreground/50 hover:text-foreground',
+          )}
+          title="Фильтр по колонке"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ListFilter className="h-3 w-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-56 p-0" onWheel={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-3 py-2 border-b">
+          <span className="text-xs font-medium">Фильтр</span>
+          {active && (
+            <button
+              type="button"
+              className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+              onClick={meta.onClear}
+            >
+              <X className="h-3 w-3" /> Сбросить
+            </button>
+          )}
+        </div>
+        <div className="max-h-72 overflow-y-auto py-1">
+          {meta.options.length === 0 && (
+            <p className="px-3 py-2 text-xs text-muted-foreground">Нет значений</p>
+          )}
+          {meta.options.map((o) => {
+            const checked = meta.selected.has(o.value)
+            return (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => meta.onToggle(o.value)}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted/50 transition-colors"
+              >
+                <Checkbox checked={checked} className="pointer-events-none" />
+                <span className="truncate">{o.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }

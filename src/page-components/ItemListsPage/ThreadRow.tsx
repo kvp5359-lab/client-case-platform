@@ -1,11 +1,14 @@
 "use client"
 
-import { memo } from 'react'
+import { memo, createElement } from 'react'
 import { Pin } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatSmartDateCompact } from '@/utils/format/dateFormat'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
+import { getChatIconComponent } from '@/components/messenger/chatVisuals'
+import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 import { DeadlinePopover } from '@/components/tasks/DeadlinePopover'
 import { AssigneesPopover } from '@/components/tasks/AssigneesPopover'
@@ -100,6 +103,13 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
                 <div className="flex items-center gap-2 min-w-0">
                   {task.is_pinned && <Pin className="h-3 w-3 text-amber-500 shrink-0" />}
                   <span className="truncate font-medium">{task.name}</span>
+                  {task.type && task.type !== 'task' && (
+                    <span className="shrink-0">
+                      {createElement(getChatIconComponent(task.icon), {
+                        className: `w-3.5 h-3.5 ${COLOR_TEXT[task.accent_color as ThreadAccentColor] ?? 'text-blue-500'}`,
+                      })}
+                    </span>
+                  )}
                 </div>
               </td>
             )

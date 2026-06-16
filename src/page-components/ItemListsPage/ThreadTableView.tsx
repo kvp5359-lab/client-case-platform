@@ -12,6 +12,7 @@ import type { FilterContext, FilterGroup } from '@/lib/filters/types'
 import { TableShell, type TableShellColumn } from './TableShell'
 import { ThreadRow } from './ThreadRow'
 import { BulkActionsBar } from './BulkActionsBar'
+import { useQuickFilters, type QuickFilterColumn } from './useQuickFilters'
 
 export type ThreadTableViewProps = {
   workspaceId: string
@@ -64,6 +65,44 @@ export function ThreadTableView({
     sortDir ?? 'desc',
   )
 
+  // Быстрый фильтр по заголовкам (значения только из текущего списка).
+  const quickConfig = useMemo<QuickFilterColumn<WorkspaceTask>[]>(
+    () => [
+      {
+        key: 'status',
+        getValues: (t) => [{
+          value: t.status_id ?? '__none__',
+          label: t.status_id ? (taskStatuses.find((s) => s.id === t.status_id)?.name ?? '—') : 'Без статуса',
+        }],
+      },
+      {
+        key: 'project',
+        getValues: (t) => {
+          const v = t.project_name ?? counterpartNameMap.get(t.id) ?? '__none__'
+          return [{ value: v, label: v === '__none__' ? 'Без проекта' : v }]
+        },
+      },
+      {
+        key: 'type',
+        getValues: (t) => {
+          const v = t.type ?? 'task'
+          return [{ value: v, label: v === 'task' ? 'Задача' : 'Чат' }]
+        },
+      },
+      {
+        key: 'assignees',
+        getValues: (t) => {
+          const a = assigneesMap[t.id] ?? []
+          if (a.length === 0) return [{ value: '__none__', label: 'Без исполнителя' }]
+          return a.map((x) => ({ value: x.id, label: `${x.name}${x.last_name ? ` ${x.last_name}` : ''}` }))
+        },
+      },
+    ],
+    [taskStatuses, counterpartNameMap, assigneesMap],
+  )
+  const { apply: applyQuick, columnFilter } = useQuickFilters(filtered, quickConfig)
+  const displayed = useMemo(() => applyQuick(filtered), [applyQuick, filtered])
+
   const layoutPanel = useLayoutTaskPanel()
 
   // Стабильные колбэки строк: держим актуальный selectedIds в ref, чтобы
@@ -109,21 +148,22 @@ export function ThreadTableView({
   return (
     <TableShell
       isLoading={isLoading}
-      isEmpty={filtered.length === 0}
-      total={filtered.length}
+      isEmpty={displayed.length === 0}
+      total={displayed.length}
       columns={columns}
       selectedIds={selectedIds}
-      allItemIds={filtered.map((t) => t.id)}
+      allItemIds={displayed.map((t) => t.id)}
       onSelectedChange={onSelectedChange}
       onResizeCommit={onResizeCommit}
       onActivateRow={handleOpen}
+      columnFilter={columnFilter}
       bulkActions={
         <BulkActionsBar
           entityType="thread"
           selectedIds={selectedIds}
           onClearSelection={() => onSelectedChange(new Set())}
           workspaceId={workspaceId}
-          items={filtered}
+          items={displayed}
           taskStatuses={taskStatuses}
         />
       }
@@ -143,7 +183,7 @@ export function ThreadTableView({
           focused={meta.focused}
         />
       )}
-      items={filtered}
+      items={displayed}
     />
   )
 }
