@@ -120,6 +120,14 @@ export const boardFilteredKeys = {
     ['accessible-projects', workspaceId, 'board', userId, filterKey] as const,
 }
 
+/** Разделы (workspace_sections) — группировка досок и списков. */
+export const sectionKeys = {
+  all: ['sections'] as const,
+  byWorkspace: (workspaceId: string) => ['sections', workspaceId] as const,
+  /** Все членства (section_items) воркспейса — карта раздел↔элемент. */
+  items: (workspaceId: string) => ['section-items', workspaceId] as const,
+}
+
 export const myTaskCountsKeys = {
   /** Префикс для broad-invalidate во всех воркспейсах. */
   all: ['my-task-counts'] as const,

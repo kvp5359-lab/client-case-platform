@@ -12,6 +12,7 @@ import { PanelLeftClose } from 'lucide-react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
+import { SidebarSections } from './WorkspaceSidebar/SidebarSections'
 import { SidebarGlobalSearch } from './WorkspaceSidebar/SidebarGlobalSearch'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
 import { UserProfile } from './WorkspaceSidebar/UserProfile'
@@ -470,6 +471,14 @@ export function WorkspaceSidebarFull({
               toggleListPin={toggleListPin}
             />
           </div>
+        )}
+
+        {!isClientOnly && workspaceId && (
+          <SidebarSections
+            workspaceId={workspaceId}
+            canManage={isOwner || hasPermission('manage_workspace_settings')}
+            buildHref={buildHref}
+          />
         )}
       </div>
 

@@ -15,7 +15,7 @@
  * вкладок — отдельной задачей (нужно общее поле порядка в БД).
  */
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Kanban, ListChecks, FolderOpen } from 'lucide-react'
 import { toast } from 'sonner'
@@ -42,6 +42,7 @@ import { usePinnedBoards } from '@/components/WorkspaceSidebar/usePinnedBoards'
 import { usePinnedItemLists } from '@/components/WorkspaceSidebar/usePinnedItemLists'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useItemLists, useSoftDeleteItemList, type ItemList } from '@/hooks/useItemLists'
+import { useSections, useSectionMaps } from '@/hooks/useSections'
 import { CreateItemListDialog } from '@/components/itemLists/CreateItemListDialog'
 import { ItemListSettingsDialog } from '@/components/itemLists/ItemListSettingsDialog'
 import type { Board } from '@/components/boards/types'
@@ -69,8 +70,27 @@ export default function BoardsPage() {
   const createItemListDialog = useDialog()   // новый item_list
   const settingsListDialog = useDialog()     // настройки item_list
 
-  const { data: boards, isLoading: boardsLoading } = useBoardsQuery(workspaceId)
-  const { data: itemLists = [], isLoading: listsLoading } = useItemLists(workspaceId)
+  const { data: allBoards, isLoading: boardsLoading } = useBoardsQuery(workspaceId)
+  const { data: allItemLists = [], isLoading: listsLoading } = useItemLists(workspaceId)
+  const { data: sections = [] } = useSections(workspaceId)
+  const { bySection } = useSectionMaps(workspaceId)
+
+  // Активный раздел сужает таб-бар до своих членов (?section=<id>). Без него —
+  // показываем все доски и списки воркспейса.
+  const sectionId = searchParams.get('section')
+  const activeSection = sectionId ? sections.find((s) => s.id === sectionId) ?? null : null
+  const sectionMemberKeys = useMemo(() => {
+    if (!sectionId) return null
+    return new Set((bySection.get(sectionId) ?? []).map((i) => `${i.item_type}:${i.item_id}`))
+  }, [sectionId, bySection])
+  const boards = useMemo(
+    () => (sectionMemberKeys ? (allBoards ?? []).filter((b) => sectionMemberKeys.has(`board:${b.id}`)) : allBoards),
+    [allBoards, sectionMemberKeys],
+  )
+  const itemLists = useMemo(
+    () => (sectionMemberKeys ? allItemLists.filter((l) => sectionMemberKeys.has(`list:${l.id}`)) : allItemLists),
+    [allItemLists, sectionMemberKeys],
+  )
   const deleteBoard = useDeleteBoard()
   const softDeleteList = useSoftDeleteItemList()
   const { isPinned: isBoardPinned, togglePin: toggleBoardPin } = usePinnedBoards(workspaceId)
@@ -110,28 +130,32 @@ export default function BoardsPage() {
     ? Math.max(0, ...activeBoardLists.map((l) => l.column_index + 1))
     : 0
 
+  // Навигация сохраняет активный раздел (?section), чтобы переключение вкладок
+  // не «выбрасывало» из раздела.
+  const sectionQS = sectionId ? `?section=${sectionId}` : ''
   const navigateToBoard = (id: string | null) => {
     if (!workspaceId) return
-    router.push(id ? `/workspaces/${workspaceId}/boards/${id}` : `/workspaces/${workspaceId}/boards`)
+    router.push(id ? `/workspaces/${workspaceId}/boards/${id}${sectionQS}` : `/workspaces/${workspaceId}/boards${sectionQS}`)
   }
   const navigateToList = (id: string) => {
     if (!workspaceId) return
-    router.push(`/workspaces/${workspaceId}/boards/${LIST_PREFIX}${id}`)
+    router.push(`/workspaces/${workspaceId}/boards/${LIST_PREFIX}${id}${sectionQS}`)
   }
 
   // Синхронизация URL: если путь не совпадает с резолвнутой вкладкой — переписываем,
   // чтобы URL был полным и шарабельным (legacy ?board=, дефолтная первая вкладка).
   useEffect(() => {
     if (!workspaceId || isLoading) return
-    const desired = activeBoard
+    const base = activeBoard
       ? `/workspaces/${workspaceId}/boards/${activeBoard.id}`
       : activeList
         ? `/workspaces/${workspaceId}/boards/${LIST_PREFIX}${activeList.id}`
         : null
-    if (!desired) return
-    const current = `/workspaces/${workspaceId}/boards/${tabParam ?? ''}`.replace(/\/$/, '')
+    if (!base) return
+    const desired = base + sectionQS
+    const current = `/workspaces/${workspaceId}/boards/${tabParam ?? ''}`.replace(/\/$/, '') + sectionQS
     if (current !== desired) router.replace(desired)
-  }, [workspaceId, isLoading, tabParam, activeBoard, activeList, router])
+  }, [workspaceId, isLoading, tabParam, activeBoard, activeList, router, sectionQS])
 
   const handleDeleteBoard = (board: Board) => {
     if (!confirm(`Удалить доску «${board.name}»?`)) return
@@ -162,6 +186,20 @@ export default function BoardsPage() {
   return (
     <WorkspaceLayout>
       <div className="h-full flex flex-col bg-gray-100/60">
+        {/* Шапка активного раздела */}
+        {activeSection && (
+          <div className="flex items-center gap-2 px-4 pt-3 pb-1 shrink-0">
+            <span className="text-sm font-semibold">{activeSection.name}</span>
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => router.push(`/workspaces/${workspaceId}/boards`)}
+            >
+              × Все
+            </button>
+          </div>
+        )}
+
         {/* Строка вкладок */}
         <div className="flex items-center px-3 py-2 shrink-0">
           <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
@@ -181,6 +219,8 @@ export default function BoardsPage() {
                         const f = normalizeBoardGlobalFilter(board.global_filter)
                         return f.project.rules.length > 0 || f.thread.rules.length > 0
                       })()}
+                      workspaceId={workspaceId}
+                      canManageSections={canManageShared}
                       onSelect={() => navigateToBoard(board.id)}
                       onEdit={() => { navigateToBoard(board.id); editDialog.open() }}
                       onEditFilter={() => { navigateToBoard(board.id); filterDialog.open() }}
@@ -200,6 +240,8 @@ export default function BoardsPage() {
                         isPinned={isListPinned(list.id)}
                         canPin={canManageShared}
                         canManage={canManage}
+                        workspaceId={workspaceId}
+                        canManageSections={canManageShared}
                         onSelect={() => navigateToList(list.id)}
                         onEditSettings={() => { navigateToList(list.id); settingsListDialog.open() }}
                         onDelete={() => handleDeleteList(list)}
@@ -236,15 +278,24 @@ export default function BoardsPage() {
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground gap-3">
             <Kanban className="h-12 w-12 opacity-30" />
-            <p className="text-sm">Пока нет досок и списков</p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={createBoardDialog.open}>
-                <Kanban className="h-4 w-4 mr-1.5" /> Доска
-              </Button>
-              <Button variant="outline" size="sm" onClick={createItemListDialog.open}>
-                <FolderOpen className="h-4 w-4 mr-1.5" /> Список
-              </Button>
-            </div>
+            {activeSection ? (
+              <p className="text-sm max-w-xs text-center">
+                В этом разделе пока нет досок и списков. Добавьте их через меню «⋯» доски или
+                списка → «Разделы…».
+              </p>
+            ) : (
+              <>
+                <p className="text-sm">Пока нет досок и списков</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={createBoardDialog.open}>
+                    <Kanban className="h-4 w-4 mr-1.5" /> Доска
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={createItemListDialog.open}>
+                    <FolderOpen className="h-4 w-4 mr-1.5" /> Список
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         ) : activeBoard ? (
           <BoardTabContent

@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { SectionAssignSubmenu } from '@/components/sections/SectionAssignSubmenu'
 import type { ItemList } from '@/hooks/useItemLists'
 
 type ItemListTabProps = {
@@ -24,6 +25,10 @@ type ItemListTabProps = {
   canPin: boolean
   /** Может ли текущий пользователь редактировать/удалять этот список. */
   canManage: boolean
+  /** workspaceId — для под-меню разделов. */
+  workspaceId: string
+  /** Может ли менять разделы (владелец/менеджер). */
+  canManageSections: boolean
   onSelect: () => void
   onEditSettings: () => void
   onDelete: () => void
@@ -36,6 +41,8 @@ export function ItemListTab({
   isPinned,
   canPin,
   canManage,
+  workspaceId,
+  canManageSections,
   onSelect,
   onEditSettings,
   onDelete,
@@ -112,6 +119,12 @@ export function ItemListTab({
                   )}
                 </DropdownMenuItem>
               )}
+              <SectionAssignSubmenu
+                workspaceId={workspaceId}
+                itemType="list"
+                itemId={list.id}
+                canManage={canManageSections}
+              />
               {canManage && (
                 <>
                   <DropdownMenuSeparator />

@@ -8043,6 +8043,82 @@ export type Database = {
           },
         ]
       }
+      workspace_sections: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string
+          icon: string | null
+          id: string
+          is_deleted: boolean
+          name: string
+          order_index: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          icon?: string | null
+          id?: string
+          is_deleted?: boolean
+          name: string
+          order_index?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          icon?: string | null
+          id?: string
+          is_deleted?: boolean
+          name?: string
+          order_index?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_sections_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_section_items: {
+        Row: {
+          item_id: string
+          item_type: string
+          order_index: number
+          section_id: string
+        }
+        Insert: {
+          item_id: string
+          item_type: string
+          order_index?: number
+          section_id: string
+        }
+        Update: {
+          item_id?: string
+          item_type?: string
+          order_index?: number
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_section_items_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_sidebar_settings: {
         Row: {
           slots: Json

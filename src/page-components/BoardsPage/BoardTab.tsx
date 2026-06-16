@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { SectionAssignSubmenu } from '@/components/sections/SectionAssignSubmenu'
 import type { Board } from '@/components/boards/types'
 
 type BoardTabProps = {
@@ -19,6 +20,9 @@ type BoardTabProps = {
   canPin: boolean
   /** Активен ли board.global_filter — для бейджа на иконке фильтра. */
   hasBoardFilter: boolean
+  workspaceId: string
+  /** Может ли менять разделы (владелец/менеджер). */
+  canManageSections: boolean
   onSelect: () => void
   onEdit: () => void
   onEditFilter: () => void
@@ -34,6 +38,8 @@ export function BoardTab({
   isPinned,
   canPin,
   hasBoardFilter,
+  workspaceId,
+  canManageSections,
   onSelect,
   onEdit,
   onEditFilter,
@@ -132,6 +138,12 @@ export function BoardTab({
                   <span className="ml-auto inline-block w-1.5 h-1.5 rounded-full bg-amber-500" />
                 )}
               </DropdownMenuItem>
+              <SectionAssignSubmenu
+                workspaceId={workspaceId}
+                itemType="board"
+                itemId={board.id}
+                canManage={canManageSections}
+              />
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={(e) => {
