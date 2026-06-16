@@ -25,6 +25,10 @@ type AddExecutorsDialogProps = {
   projectCount: number
   pending: boolean
   onConfirm: (participantIds: string[]) => void
+  /** Заголовок диалога (по умолчанию «Добавить исполнителей»). */
+  title?: string
+  /** Текст-описание (по умолчанию — про роль «Исполнитель» в проектах). */
+  description?: string
 }
 
 export function AddExecutorsDialog({
@@ -34,6 +38,8 @@ export function AddExecutorsDialog({
   projectCount,
   pending,
   onConfirm,
+  title = 'Добавить исполнителей',
+  description,
 }: AddExecutorsDialogProps) {
   const [selected, setSelected] = useState<string[]>([])
 
@@ -47,10 +53,10 @@ export function AddExecutorsDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Добавить исполнителей</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            Роль «Исполнитель» будет добавлена выбранным участникам в {projectCount} выделенных
-            проектах.
+            {description ??
+              `Роль «Исполнитель» будет добавлена выбранным участникам в ${projectCount} выделенных проектах.`}
           </DialogDescription>
         </DialogHeader>
 

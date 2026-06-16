@@ -36,7 +36,18 @@ import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipant
 import type { PickerParticipant } from '@/components/participants/ParticipantsPicker'
 import { AddExecutorsDialog } from './AddExecutorsDialog'
 import { RemoveExecutorDialog } from './RemoveExecutorDialog'
+import { BulkRemovePeopleDialog } from './BulkRemovePeopleDialog'
+import { BulkDeadlineDialog } from './BulkDeadlineDialog'
 import { addExecutors, removeExecutor, removeAllExecutors } from './bulkExecutorActions'
+import {
+  addThreadAssignees,
+  removeAllThreadAssignees,
+  removeThreadAssignees,
+  removeThreadMembers,
+  loadAssigneesOfThreads,
+  loadMembersOfThreads,
+  setThreadsDeadline,
+} from './bulkThreadActions'
 
 type BulkActionsBarProps = {
   entityType: 'thread' | 'project'
@@ -62,10 +73,13 @@ export function BulkActionsBar({
   const [pending, setPending] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [removeOpen, setRemoveOpen] = useState(false)
+  // Thread-диалоги
+  const [addAssigneesOpen, setAddAssigneesOpen] = useState(false)
+  const [removeAssigneesOpen, setRemoveAssigneesOpen] = useState(false)
+  const [removeMembersOpen, setRemoveMembersOpen] = useState(false)
+  const [deadlineOpen, setDeadlineOpen] = useState(false)
 
-  const { data: rawParticipants = [] } = useWorkspaceParticipants(
-    entityType === 'project' ? workspaceId : undefined,
-  )
+  const { data: rawParticipants = [] } = useWorkspaceParticipants(workspaceId)
   const workspaceParticipants: PickerParticipant[] = rawParticipants.map((p) => ({
     id: p.id,
     name: p.name,
@@ -77,6 +91,7 @@ export function BulkActionsBar({
 
   const selectedItems = items.filter((it) => selectedIds.has(it.id))
   const projectIds = selectedItems.map((it) => it.id)
+  const threadIds = selectedItems.map((it) => it.id)
 
   // Для тредов — есть ли в выделении не-task (чат/email)? Если да, операции,
   // относящиеся только к task, дизейблятся.
@@ -92,6 +107,62 @@ export function BulkActionsBar({
       qc.invalidateQueries({ queryKey: accessibleProjectKeys.workspace(workspaceId) })
     }
   }
+
+  // Инвалидация карт исполнителей (аватарки в колонке) после пакетных правок.
+  const refreshAssignees = () => {
+    qc.invalidateQueries({ queryKey: ['task-assignees-map'] })
+    qc.invalidateQueries({ queryKey: ['task-assignees'] })
+  }
+
+  // ── Пакетные thread-действия ──────────────────────────────────────────────
+  const runThread = async (fn: () => Promise<void>, okMsg: string, closers: Array<() => void> = []) => {
+    setPending(true)
+    try {
+      await fn()
+      toast.success(okMsg)
+      closers.forEach((c) => c())
+      refresh()
+      refreshAssignees()
+      onClearSelection()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Не удалось выполнить действие')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  const handleAddThreadAssignees = (participantIds: string[]) =>
+    runThread(
+      () => addThreadAssignees(threadIds, participantIds),
+      `Исполнители добавлены в ${threadIds.length}`,
+      [() => setAddAssigneesOpen(false)],
+    )
+
+  const handleRemoveAllThreadAssignees = () => {
+    if (!confirm(`Отстранить всех исполнителей из ${threadIds.length} тредов?`)) return
+    runThread(() => removeAllThreadAssignees(threadIds), 'Все исполнители отстранены')
+  }
+
+  const handleRemoveThreadAssignees = (participantIds: string[]) =>
+    runThread(
+      () => removeThreadAssignees(threadIds, participantIds),
+      'Исполнители отстранены',
+      [() => setRemoveAssigneesOpen(false)],
+    )
+
+  const handleRemoveThreadMembers = (participantIds: string[]) =>
+    runThread(
+      () => removeThreadMembers(threadIds, participantIds),
+      'Доступ закрыт',
+      [() => setRemoveMembersOpen(false)],
+    )
+
+  const handleSetDeadline = (deadline: string | null) =>
+    runThread(
+      () => setThreadsDeadline(threadIds, deadline),
+      deadline ? `Срок установлен у ${threadIds.length}` : `Срок снят у ${threadIds.length}`,
+      [() => setDeadlineOpen(false)],
+    )
 
   const setThreadStatus = async (statusId: string | null) => {
     setPending(true)
@@ -270,6 +341,28 @@ export function BulkActionsBar({
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 
+          {/* Треды: исполнители, участники, срок */}
+          {entityType === 'thread' && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setAddAssigneesOpen(true)}>
+                Добавить исполнителей
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setRemoveAssigneesOpen(true)}>
+                Отстранить конкретных исполнителей
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleRemoveAllThreadAssignees}>
+                Отстранить всех исполнителей
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setRemoveMembersOpen(true)}>
+                Убрать из участников (закрыть доступ)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setDeadlineOpen(true)}>
+                Установить срок
+              </DropdownMenuItem>
+            </>
+          )}
+
           {/* Исполнители — только для проектов */}
           {entityType === 'project' && (
             <>
@@ -314,6 +407,45 @@ export function BulkActionsBar({
             projectIds={projectIds}
             pending={pending}
             onConfirm={handleRemoveExecutor}
+          />
+        </>
+      )}
+
+      {entityType === 'thread' && (
+        <>
+          <AddExecutorsDialog
+            open={addAssigneesOpen}
+            onOpenChange={setAddAssigneesOpen}
+            participants={workspaceParticipants}
+            projectCount={threadIds.length}
+            pending={pending}
+            onConfirm={handleAddThreadAssignees}
+            description={`Выбранные участники станут исполнителями ${threadIds.length} выделенных тредов.`}
+          />
+          <BulkRemovePeopleDialog
+            open={removeAssigneesOpen}
+            onOpenChange={setRemoveAssigneesOpen}
+            title="Отстранить исполнителей"
+            description="Снимутся выбранные исполнители со всех выделенных тредов."
+            loader={() => loadAssigneesOfThreads(threadIds)}
+            pending={pending}
+            onConfirm={handleRemoveThreadAssignees}
+          />
+          <BulkRemovePeopleDialog
+            open={removeMembersOpen}
+            onOpenChange={setRemoveMembersOpen}
+            title="Убрать из участников"
+            description="Выбранные потеряют доступ к просмотру выделенных тредов и их переписки."
+            loader={() => loadMembersOfThreads(threadIds)}
+            pending={pending}
+            onConfirm={handleRemoveThreadMembers}
+          />
+          <BulkDeadlineDialog
+            open={deadlineOpen}
+            onOpenChange={setDeadlineOpen}
+            count={threadIds.length}
+            pending={pending}
+            onConfirm={handleSetDeadline}
           />
         </>
       )}
