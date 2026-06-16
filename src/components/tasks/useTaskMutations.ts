@@ -5,7 +5,7 @@
  * invalidateKeys — список query keys для инвалидации (передаётся потребителем).
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logAuditAction } from '@/services/auditService'
@@ -17,6 +17,38 @@ import {
   invalidateMessengerCaches,
 } from '@/hooks/queryKeys'
 import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
+
+// ── Оптимистичный патч списочных кэшей тредов ─────────────────────────────
+// Все кэши под префиксом ['workspace-threads', …] (useWorkspaceThreads.forUser +
+// серверно-фильтрованные boardFilteredKeys досок/списков) — массивы WorkspaceTask.
+// Точечно правим строку по id, чтобы статус/срок в таблицах и на досках менялись
+// синхронно, без ожидания network round-trip. onSuccess-инвалидация сверяет с БД.
+const THREAD_LIST_PREFIX = ['workspace-threads'] as const
+
+type ThreadListSnapshot = ReturnType<QueryClient['getQueriesData']>
+
+function snapshotThreadLists(qc: QueryClient): ThreadListSnapshot {
+  return qc.getQueriesData({ queryKey: THREAD_LIST_PREFIX })
+}
+
+function patchThreadInLists(
+  qc: QueryClient,
+  threadId: string,
+  patch: Record<string, unknown>,
+) {
+  qc.setQueriesData({ queryKey: THREAD_LIST_PREFIX }, (old: unknown) => {
+    if (!Array.isArray(old)) return old
+    return (old as unknown[]).map((t) =>
+      t && typeof t === 'object' && (t as { id?: string }).id === threadId
+        ? { ...(t as object), ...patch }
+        : t,
+    )
+  })
+}
+
+function restoreThreadLists(qc: QueryClient, snapshot: ThreadListSnapshot) {
+  for (const [key, data] of snapshot) qc.setQueryData(key, data)
+}
 
 export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unknown[]>) {
   const queryClient = useQueryClient()
@@ -49,6 +81,13 @@ export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unkno
       })
       return { workspaceId: old?.workspace_id ?? null }
     },
+    // Оптимистичный патч: статус в строке таблицы/карточке доски меняется сразу.
+    onMutate: async ({ threadId, statusId }) => {
+      await queryClient.cancelQueries({ queryKey: THREAD_LIST_PREFIX })
+      const snapshot = snapshotThreadLists(queryClient)
+      patchThreadInLists(queryClient, threadId, { status_id: statusId })
+      return { snapshot }
+    },
     onSuccess: async (result, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: projectThreadKeys.byId(threadId) })
@@ -72,7 +111,10 @@ export function useUpdateTaskStatus(invalidateKeys: ReadonlyArray<readonly unkno
         queryClient.invalidateQueries({ queryKey: projectKeys.detail(thread.project_id) })
       }
     },
-    onError: () => toast.error('Не удалось обновить статус'),
+    onError: (_e, _v, ctx) => {
+      if (ctx?.snapshot) restoreThreadLists(queryClient, ctx.snapshot)
+      toast.error('Не удалось обновить статус')
+    },
   })
 }
 
@@ -116,12 +158,20 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
 
       return { workspaceId: old?.workspace_id ?? null }
     },
-    onMutate: async ({ threadId, start_at, end_at }) => {
+    onMutate: async ({ threadId, deadline, start_at, end_at }) => {
+      // Оптимистичный патч списочных кэшей — дедлайн-чип в таблице/карточке
+      // меняется сразу. Снимок для отката при ошибке.
+      await queryClient.cancelQueries({ queryKey: THREAD_LIST_PREFIX })
+      const snapshot = snapshotThreadLists(queryClient)
+      const listPatch: Record<string, unknown> = { deadline }
+      if (start_at !== undefined) listPatch.start_at = start_at
+      if (end_at !== undefined) listPatch.end_at = end_at
+      patchThreadInLists(queryClient, threadId, listPatch)
+
       // Optimistic update для board-list-times — чтобы блок в календаре
-      // менялся синхронно с дедлайн-чипом (без ожидания network round-trip).
-      // start_at/end_at могут быть undefined (мутация только меняет deadline)
-      // — в этом случае ничего не оптимистируем.
-      if (start_at === undefined && end_at === undefined) return
+      // менялся синхронно с дедлайн-чипом. start_at/end_at могут быть undefined
+      // (мутация только меняет deadline) — тогда календарь не трогаем.
+      if (start_at === undefined && end_at === undefined) return { snapshot }
       await queryClient.cancelQueries({ queryKey: calendarKeys.all })
       queryClient.setQueriesData(
         { queryKey: calendarKeys.all },
@@ -137,6 +187,7 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
           return next
         },
       )
+      return { snapshot }
     },
     onSuccess: (result, { threadId }) => {
       for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: key })
@@ -152,7 +203,10 @@ export function useUpdateTaskDeadline(invalidateKeys: ReadonlyArray<readonly unk
       // смена дедлайна должна перестроить список «Входящие».
       if (result?.workspaceId) invalidateMessengerCaches(queryClient, result.workspaceId)
     },
-    onError: () => toast.error('Не удалось обновить срок'),
+    onError: (_e, _v, ctx) => {
+      if (ctx?.snapshot) restoreThreadLists(queryClient, ctx.snapshot)
+      toast.error('Не удалось обновить срок')
+    },
   })
 }
 
