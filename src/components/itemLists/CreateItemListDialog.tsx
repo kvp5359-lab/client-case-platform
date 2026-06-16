@@ -65,7 +65,7 @@ export function CreateItemListDialog({
           reset()
           onClose()
           if (navigateAfterCreate) {
-            router.push(`/workspaces/${workspaceId}/lists/${created.id}`)
+            router.push(`/workspaces/${workspaceId}/boards/list-${created.id}`)
           }
         },
       },

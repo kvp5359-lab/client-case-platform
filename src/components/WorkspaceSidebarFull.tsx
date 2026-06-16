@@ -324,17 +324,6 @@ export function WorkspaceSidebarFull({
         !pinnedBoardPathTokens.some((token) => pathname.includes(`/boards/${token}`))
       )
     }
-    if (key === 'lists') {
-      // /lists активен, но не внутри закреплённого списка (у него свой пункт).
-      const pinnedListIds = listSlots
-        .filter((s) => s.type === 'list')
-        .map((s) => listIdFromSlotId(s.id))
-        .filter((id): id is string => Boolean(id))
-      return (
-        isNavActive('lists') &&
-        !pinnedListIds.some((id) => pathname.includes(`/lists/${id}`))
-      )
-    }
     return isNavActive(meta.path)
   }
 
@@ -344,7 +333,9 @@ export function WorkspaceSidebarFull({
     const accessible = slots.filter((s) => {
       if (s.type === 'nav') {
         const key = navKeyFromSlotId(s.id)
-        return key ? SIDEBAR_NAV_ITEMS[key].hasAccess(permissionsCtx) : false
+        // Удалённые nav-ключи (напр. упразднённый 'lists') → нет def → слот отбрасываем.
+        const def = key ? SIDEBAR_NAV_ITEMS[key] : undefined
+        return def ? def.hasAccess(permissionsCtx) : false
       }
       if (s.type === 'board') {
         const boardId = boardIdFromSlotId(s.id)

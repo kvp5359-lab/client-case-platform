@@ -174,9 +174,9 @@ function SingleSlot({
     <SidebarNavButton
       icon={Icon}
       label={list.name}
-      href={buildHref(`lists/${list.id}`)}
+      href={buildHref(`boards/list-${list.id}`)}
       badge={badge}
-      isActive={pathname.includes(`/lists/${list.id}`)}
+      isActive={pathname.includes(`/boards/list-${list.id}`)}
       compact={compact || undefined}
       hoverIconSlot={hoverSlot}
     />
