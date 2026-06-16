@@ -62,6 +62,14 @@ export function ProjectTableView({
 
   const layoutPanel = useLayoutTaskPanel()
 
+  const handleOpen = (project: BoardProject) =>
+    layoutPanel?.openProject?.({
+      id: project.id,
+      name: project.name,
+      created_at: project.created_at,
+      description: project.description,
+    })
+
   return (
     <TableShell
       isLoading={isLoading}
@@ -72,6 +80,7 @@ export function ProjectTableView({
       allItemIds={filtered.map((p) => p.id)}
       onSelectedChange={onSelectedChange}
       onResizeCommit={onResizeCommit}
+      onActivateRow={handleOpen}
       bulkActions={
         <BulkActionsBar
           entityType="project"
@@ -90,20 +99,14 @@ export function ProjectTableView({
           checked={selectedIds.has(project.id)}
           measureRef={meta.measureRef}
           dataIndex={meta.dataIndex}
+          focused={meta.focused}
           onToggle={() => {
             const next = new Set(selectedIds)
             if (next.has(project.id)) next.delete(project.id)
             else next.add(project.id)
             onSelectedChange(next)
           }}
-          onOpen={() =>
-            layoutPanel?.openProject?.({
-              id: project.id,
-              name: project.name,
-              created_at: project.created_at,
-              description: project.description,
-            })
-          }
+          onOpen={() => handleOpen(project)}
           projectStatuses={projectStatuses}
         />
       )}

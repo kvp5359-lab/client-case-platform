@@ -1,6 +1,7 @@
 "use client"
 
 import { formatSmartDateCompact } from '@/utils/format/dateFormat'
+import { cn } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { StatusOption } from '@/components/common/status-dropdown'
 import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProjects'
@@ -17,13 +18,19 @@ type ProjectRowProps = {
   /** Виртуализация: ref для measureElement + индекс строки (см. TableShell). */
   measureRef?: RowRenderMeta['measureRef']
   dataIndex?: number
+  /** Строка под клавиатурным фокусом — подсветка. */
+  focused?: boolean
 }
 
-export function ProjectRow({ project, columns, checked, onToggle, onOpen, projectStatuses, measureRef, dataIndex }: ProjectRowProps) {
+export function ProjectRow({ project, columns, checked, onToggle, onOpen, projectStatuses, measureRef, dataIndex, focused }: ProjectRowProps) {
   const currentStatus = projectStatuses.find((s) => s.id === project.status_id) ?? null
 
   return (
-    <tr ref={measureRef} data-index={dataIndex} className="border-b hover:bg-muted/30">
+    <tr
+      ref={measureRef}
+      data-index={dataIndex}
+      className={cn('border-b hover:bg-muted/30', focused && 'bg-muted/60')}
+    >
       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
         <Checkbox checked={checked} onCheckedChange={onToggle} />
       </td>

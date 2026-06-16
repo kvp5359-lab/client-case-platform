@@ -1,24 +1,37 @@
 "use client"
 
-import { useRef } from 'react'
-import { Loader2 } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
+import { Loader2, Rows3, Rows4 } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
 import { ColumnResizeHandle } from './ColumnResizeHandle'
 import type { getColumnDef } from './columns'
 
 export const CHECKBOX_COL_WIDTH = 36
 
 /** Оценка высоты строки (px) для виртуализатора. Уточняется measureElement'ом. */
-const ROW_ESTIMATE = 37
+const ROW_ESTIMATE = { comfortable: 37, compact: 29 }
 /** Порог числа строк, выше которого включаем виртуализацию.
  *  Ниже — обычный render (проще, без spacer-строк, нет дёрганья при resize). */
 const VIRTUALIZE_THRESHOLD = 80
 
-/** Колбэки для виртуализованной строки: ref для measureElement + data-index. */
+const DENSITY_LS_KEY = 'cc-list-density'
+type Density = 'comfortable' | 'compact'
+
+function readDensity(): Density {
+  if (typeof window === 'undefined') return 'comfortable'
+  return window.localStorage.getItem(DENSITY_LS_KEY) === 'compact' ? 'compact' : 'comfortable'
+}
+
+/** Колбэки/флаги для строки таблицы (виртуализация + навигация + плотность). */
 export type RowRenderMeta = {
   measureRef?: (el: HTMLTableRowElement | null) => void
   dataIndex?: number
+  /** Строка под клавиатурным фокусом (↑/↓) — подсветка. */
+  focused?: boolean
+  /** Компактная плотность строк. */
+  dense?: boolean
 }
 
 export type TableShellColumn = {
@@ -41,20 +54,30 @@ type TableShellProps<T extends { id: string }> = {
   bulkActions: React.ReactNode
   renderRow: (item: T, meta: RowRenderMeta) => React.ReactNode
   items: T[]
+  /** Открыть строку (Enter / клик). Используется клавиатурной навигацией. */
+  onActivateRow?: (item: T) => void
 }
 
 export function TableShell<T extends { id: string }>({
   isLoading, isEmpty, total, columns, selectedIds, allItemIds,
-  onSelectedChange, onResizeCommit, bulkActions, renderRow, items,
+  onSelectedChange, onResizeCommit, bulkActions, renderRow, items, onActivateRow,
 }: TableShellProps<T>) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const virtualize = items.length > VIRTUALIZE_THRESHOLD
+
+  const [density, setDensity] = useState<Density>(readDensity)
+  const dense = density === 'compact'
+
+  // Клавиатурная навигация: индекс строки под фокусом (↑/↓), Enter открывает,
+  // Space переключает чекбокс. focusedIndex держим в ref, чтобы memo-строки не
+  // перерисовывались все при каждом шаге (только старая и новая focused-строка).
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => ROW_ESTIMATE,
+    estimateSize: () => ROW_ESTIMATE[density],
     overscan: 12,
     // Когда виртуализация выключена — отдаём пустой набор, рендерим всё обычным map.
     enabled: virtualize,
@@ -82,6 +105,77 @@ export function TableShell<T extends { id: string }>({
     }
   }
 
+  const toggleDensity = () => {
+    const next: Density = dense ? 'comfortable' : 'compact'
+    setDensity(next)
+    if (typeof window !== 'undefined') window.localStorage.setItem(DENSITY_LS_KEY, next)
+  }
+
+  const scrollToRow = useCallback(
+    (index: number) => {
+      if (virtualize) {
+        rowVirtualizer.scrollToIndex(index, { align: 'auto' })
+      } else {
+        scrollRef.current
+          ?.querySelector(`[data-index="${index}"]`)
+          ?.scrollIntoView({ block: 'nearest' })
+      }
+    },
+    [virtualize, rowVirtualizer],
+  )
+
+  const toggleSelect = useCallback(
+    (id: string) => {
+      const next = new Set(selectedIds)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      onSelectedChange(next)
+    },
+    [selectedIds, onSelectedChange],
+  )
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      // Не перехватываем ввод в полях / попапах (поиск исполнителей и т.п.).
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable) return
+      if (items.length === 0) return
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        setFocusedIndex((cur) => {
+          const base = cur ?? -1
+          const next = e.key === 'ArrowDown'
+            ? Math.min(items.length - 1, base + 1)
+            : Math.max(0, base + (cur === null ? 1 : -1))
+          scrollToRow(next)
+          return next
+        })
+      } else if (e.key === 'Enter' && focusedIndex != null) {
+        e.preventDefault()
+        onActivateRow?.(items[focusedIndex])
+      } else if (e.key === ' ' && focusedIndex != null) {
+        e.preventDefault()
+        toggleSelect(items[focusedIndex].id)
+      }
+    },
+    [items, focusedIndex, scrollToRow, onActivateRow, toggleSelect],
+  )
+
+  // Клик по строке делает её активной для последующей навигации с клавиатуры.
+  const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const tr = (e.target as HTMLElement).closest('[data-index]')
+    const idx = tr?.getAttribute('data-index')
+    if (idx != null) setFocusedIndex(Number(idx))
+  }, [])
+
+  const buildMeta = (index: number, measureRef?: RowRenderMeta['measureRef']): RowRenderMeta => ({
+    measureRef,
+    dataIndex: index,
+    focused: focusedIndex === index,
+    dense,
+  })
+
   return (
     <>
       {selectedIds.size > 0 && (
@@ -98,9 +192,15 @@ export function TableShell<T extends { id: string }>({
         </div>
       )}
 
-      <div ref={scrollRef} className="flex-1 overflow-auto bg-white">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-auto bg-white focus:outline-none"
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+        onClick={handleContainerClick}
+      >
         <table
-          className="text-sm border-collapse table-fixed"
+          className={cn('text-sm border-collapse table-fixed', dense && '[&_td]:!py-1')}
           style={{ width: CHECKBOX_COL_WIDTH + columns.reduce((s, c) => s + c.width, 0) }}
         >
           <colgroup>
@@ -146,7 +246,7 @@ export function TableShell<T extends { id: string }>({
               </td></tr>
             )}
             {!isLoading && !isEmpty && !virtualize &&
-              items.map((item) => renderRow(item, {}))}
+              items.map((item, idx) => renderRow(item, buildMeta(idx)))}
             {!isLoading && !isEmpty && virtualize && (
               <>
                 {paddingTop > 0 && (
@@ -155,10 +255,7 @@ export function TableShell<T extends { id: string }>({
                   </tr>
                 )}
                 {virtualRows.map((vr) =>
-                  renderRow(items[vr.index], {
-                    measureRef: rowVirtualizer.measureElement,
-                    dataIndex: vr.index,
-                  }),
+                  renderRow(items[vr.index], buildMeta(vr.index, rowVirtualizer.measureElement)),
                 )}
                 {paddingBottom > 0 && (
                   <tr aria-hidden style={{ height: paddingBottom }}>
@@ -170,8 +267,17 @@ export function TableShell<T extends { id: string }>({
           </tbody>
         </table>
         {!isLoading && !isEmpty && (
-          <div className="px-3 py-2 text-xs text-muted-foreground border-t bg-white">
-            Всего: {total}
+          <div className="px-3 py-2 text-xs text-muted-foreground border-t bg-white flex items-center gap-3 sticky bottom-0">
+            <span>Всего: {total}</span>
+            <button
+              type="button"
+              onClick={toggleDensity}
+              className="ml-auto flex items-center gap-1 hover:text-foreground transition-colors"
+              title={dense ? 'Обычная плотность' : 'Компактная плотность'}
+            >
+              {dense ? <Rows3 className="h-3.5 w-3.5" /> : <Rows4 className="h-3.5 w-3.5" />}
+              {dense ? 'Обычно' : 'Компактно'}
+            </button>
           </div>
         )}
       </div>

@@ -116,6 +116,7 @@ export function ThreadTableView({
       allItemIds={filtered.map((t) => t.id)}
       onSelectedChange={onSelectedChange}
       onResizeCommit={onResizeCommit}
+      onActivateRow={handleOpen}
       bulkActions={
         <BulkActionsBar
           entityType="thread"
@@ -139,6 +140,7 @@ export function ThreadTableView({
           counterpartName={counterpartNameMap.get(task.id) ?? null}
           measureRef={meta.measureRef}
           dataIndex={meta.dataIndex}
+          focused={meta.focused}
         />
       )}
       items={filtered}

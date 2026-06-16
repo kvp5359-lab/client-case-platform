@@ -2,6 +2,7 @@
 
 import { memo } from 'react'
 import { Pin } from 'lucide-react'
+import { toast } from 'sonner'
 import { formatSmartDateCompact } from '@/utils/format/dateFormat'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +12,7 @@ import { AssigneesPopover } from '@/components/tasks/AssigneesPopover'
 import { useUpdateTaskStatus, useUpdateTaskDeadline } from '@/components/tasks/useTaskMutations'
 import { workspaceThreadKeys } from '@/hooks/queryKeys'
 import { usePrefetchThreadMessages } from '@/hooks/messenger/usePrefetchThreadMessages'
+import { cn } from '@/lib/utils'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { TableShellColumn, RowRenderMeta } from './TableShell'
@@ -31,9 +33,11 @@ type ThreadRowProps = {
   /** Виртуализация: ref для measureElement + индекс строки (см. TableShell). */
   measureRef?: RowRenderMeta['measureRef']
   dataIndex?: number
+  /** Строка под клавиатурным фокусом — подсветка. */
+  focused?: boolean
 }
 
-export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, taskStatuses, counterpartName, measureRef, dataIndex }: ThreadRowProps) {
+export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onToggle, onOpen, assigneesMap, taskStatuses, counterpartName, measureRef, dataIndex, focused }: ThreadRowProps) {
   const updateStatus = useUpdateTaskStatus([
     workspaceThreadKeys.workspace(task.workspace_id),
   ])
@@ -45,11 +49,44 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
   const assignees = assigneesMap[task.id] ?? []
   const prefetchMessages = usePrefetchThreadMessages()
 
+  // Inline-правки с undo: меняем сразу (оптимистично), но даём «Отменить» (best
+  // practice для табличного редактирования). Undo-мутация без toast — не плодит цепочку.
+  const handleStatusChange = (newId: string | null) => {
+    const prev = task.status_id
+    updateStatus.mutate(
+      { threadId: task.id, statusId: newId },
+      {
+        onSuccess: () =>
+          toast('Статус изменён', {
+            action: {
+              label: 'Отменить',
+              onClick: () => updateStatus.mutate({ threadId: task.id, statusId: prev }),
+            },
+          }),
+      },
+    )
+  }
+  const handleDeadlineChange = (deadline: string | null, startAt: string | null, endAt: string | null) => {
+    const prev = { deadline: task.deadline, start_at: task.start_at, end_at: task.end_at }
+    updateDeadline.mutate(
+      { threadId: task.id, deadline, start_at: startAt, end_at: endAt },
+      {
+        onSuccess: () =>
+          toast('Срок изменён', {
+            action: {
+              label: 'Отменить',
+              onClick: () => updateDeadline.mutate({ threadId: task.id, ...prev }),
+            },
+          }),
+      },
+    )
+  }
+
   return (
     <tr
       ref={measureRef}
       data-index={dataIndex}
-      className="border-b hover:bg-muted/30"
+      className={cn('border-b hover:bg-muted/30', focused && 'bg-muted/60')}
       onMouseEnter={() => prefetchMessages(task.id)}
     >
       <td className="px-3 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
@@ -81,9 +118,7 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
                   <StatusDropdown
                     currentStatus={currentStatus}
                     statuses={taskStatuses}
-                    onStatusChange={(newId) =>
-                      updateStatus.mutate({ threadId: task.id, statusId: newId })
-                    }
+                    onStatusChange={handleStatusChange}
                     size="sm"
                   />
                   {currentStatus && (
@@ -105,14 +140,7 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
                   deadline={task.deadline}
                   startAt={task.start_at}
                   endAt={task.end_at}
-                  onChange={(v) =>
-                    updateDeadline.mutate({
-                      threadId: task.id,
-                      deadline: v.deadline,
-                      start_at: v.startAt,
-                      end_at: v.endAt,
-                    })
-                  }
+                  onChange={(v) => handleDeadlineChange(v.deadline, v.startAt, v.endAt)}
                   isPending={updateDeadline.isPending}
                 />
               </td>
