@@ -32,5 +32,9 @@ CREATE POLICY perf_traces_select_own ON public.perf_traces
   USING (user_id = auth.uid());
 
 REVOKE ALL ON public.perf_traces FROM PUBLIC, anon;
+-- Дефолтные привилегии проекта грантят новым таблицам широкий набор для
+-- authenticated. RLS режет UPDATE/DELETE (нет политик), но TRUNCATE идёт мимо
+-- RLS — поэтому явно снимаем всё лишнее, оставляя только INSERT/SELECT.
+REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.perf_traces FROM authenticated;
 GRANT INSERT, SELECT ON public.perf_traces TO authenticated;
 GRANT ALL ON public.perf_traces TO service_role;
