@@ -62,6 +62,58 @@ export async function loadExecutorsOfProjects(projectIds: string[]): Promise<Exe
     .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
 }
 
+/**
+ * Переключить произвольную проектную роль у одного участника в одном проекте
+ * (для inline-редактирования роль-колонок в списке проектов). При снятии
+ * последней роли строка project_participants удаляется.
+ */
+export async function toggleProjectRole(
+  projectId: string,
+  participantId: string,
+  role: string,
+  present: boolean,
+) {
+  const { data, error } = await supabase
+    .from('project_participants')
+    .select('id, project_roles')
+    .eq('project_id', projectId)
+    .eq('participant_id', participantId)
+    .maybeSingle()
+  if (error) throw error
+  const roles: string[] = data?.project_roles ?? []
+
+  if (present) {
+    const next = roles.filter((r) => r !== role)
+    if (!data) return
+    if (next.length === 0) {
+      const { error: delErr } = await supabase.from('project_participants').delete().eq('id', data.id)
+      if (delErr) throw delErr
+    } else {
+      const { error: updErr } = await supabase
+        .from('project_participants')
+        .update({ project_roles: next })
+        .eq('id', data.id)
+      if (updErr) throw updErr
+    }
+    return
+  }
+
+  // Добавление роли.
+  if (data) {
+    if (roles.includes(role)) return
+    const { error: updErr } = await supabase
+      .from('project_participants')
+      .update({ project_roles: [...roles, role] })
+      .eq('id', data.id)
+    if (updErr) throw updErr
+  } else {
+    const { error: insErr } = await supabase
+      .from('project_participants')
+      .insert({ project_id: projectId, participant_id: participantId, project_roles: [role] })
+    if (insErr) throw insErr
+  }
+}
+
 /** Добавить роль «Исполнитель» каждому из participantIds во всех projectIds. */
 export async function addExecutors(projectIds: string[], participantIds: string[]) {
   const rows = await loadRows(projectIds)

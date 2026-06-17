@@ -23,6 +23,10 @@ export type ItemListColumnKey =
   | 'template'
   | 'next_task_deadline'
   | 'participants'
+  | 'executors'
+  | 'admins'
+  | 'clients'
+  | 'watchers'
 
 export type ColumnDef = {
   key: ItemListColumnKey
@@ -52,6 +56,10 @@ export const ALL_COLUMNS: ColumnDef[] = [
   { key: 'template', label: 'Шаблон', defaultWidth: 160, minWidth: 30, entityTypes: ['project'] },
   { key: 'next_task_deadline', label: 'Ближайшая задача', defaultWidth: 160, minWidth: 30, entityTypes: ['project'] },
   { key: 'participants', label: 'Участники', defaultWidth: 140, minWidth: 30, entityTypes: ['project'] },
+  { key: 'executors', label: 'Исполнители', defaultWidth: 140, minWidth: 30, entityTypes: ['project'] },
+  { key: 'admins', label: 'Администраторы', defaultWidth: 140, minWidth: 30, entityTypes: ['project'] },
+  { key: 'clients', label: 'Клиенты', defaultWidth: 140, minWidth: 30, entityTypes: ['project'] },
+  { key: 'watchers', label: 'Наблюдатели', defaultWidth: 140, minWidth: 30, entityTypes: ['project'] },
   { key: 'created_at', label: 'Создано', defaultWidth: 130, minWidth: 30, entityTypes: ['thread', 'project'] },
   { key: 'updated_at', label: 'Обновлено', defaultWidth: 130, minWidth: 30, entityTypes: ['thread', 'project'] },
 ]

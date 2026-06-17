@@ -3,6 +3,10 @@
 import { useMemo, useRef, useEffect, useCallback } from 'react'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useListProjects } from './useListData'
+import { useProjectPeopleByRole } from '@/hooks/useProjectPeopleByRole'
+import { toggleProjectRole } from './bulkExecutorActions'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
 import { useFilteredProjects } from '@/components/boards/hooks/useFilteredListData'
 import type { FilterContext, FilterGroup } from '@/lib/filters/types'
@@ -45,6 +49,8 @@ export function ProjectTableView({
     isFetchingNextPage,
   } = useListProjects(workspaceId, filters, sortBy, sortDir ?? 'desc')
   const { data: projectStatuses = [] } = useAllProjectStatuses(workspaceId)
+  const projectIds = useMemo(() => projects.map((p) => p.id), [projects])
+  const peopleByRole = useProjectPeopleByRole(projectIds)
 
   const ctx = useMemo<FilterContext>(
     () => ({
@@ -68,6 +74,14 @@ export function ProjectTableView({
   ) as unknown as BoardProject[]
 
   // Быстрый фильтр по заголовкам (значения только из текущего списка).
+  const roleColumn = (key: string, role: string, emptyLabel: string): QuickFilterColumn<BoardProject> => ({
+    key,
+    getValues: (p) => {
+      const ppl = peopleByRole.get(`${p.id}:${role}`) ?? []
+      if (ppl.length === 0) return [{ value: '__none__', label: emptyLabel }]
+      return ppl.map((x) => ({ value: x.id, label: `${x.name}${x.last_name ? ` ${x.last_name}` : ''}` }))
+    },
+  })
   const quickConfig = useMemo<QuickFilterColumn<BoardProject>[]>(
     () => [
       {
@@ -84,8 +98,13 @@ export function ProjectTableView({
           return [{ value: v, label: v === '__none__' ? 'Без шаблона' : v }]
         },
       },
+      roleColumn('executors', 'Исполнитель', 'Без исполнителя'),
+      roleColumn('admins', 'Администратор', 'Без администратора'),
+      roleColumn('clients', 'Клиент', 'Без клиента'),
+      roleColumn('watchers', 'Участник', 'Без наблюдателя'),
     ],
-    [projectStatuses],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projectStatuses, peopleByRole],
   )
   const { apply: applyQuick, columnFilter } = useQuickFilters(filtered, quickConfig)
   const displayed = useMemo(() => applyQuick(filtered), [applyQuick, filtered])
@@ -116,6 +135,20 @@ export function ProjectTableView({
       onSelectedChange(next)
     },
     [onSelectedChange],
+  )
+
+  // Inline-смена роли участника прямо из роль-колонки (переиспозует AssigneesPopover).
+  const qc = useQueryClient()
+  const handleToggleRole = useCallback(
+    async (projectId: string, participantId: string, role: string, present: boolean) => {
+      try {
+        await toggleProjectRole(projectId, participantId, role, present)
+        qc.invalidateQueries({ queryKey: ['project-people-by-role'] })
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Не удалось изменить роль')
+      }
+    },
+    [qc],
   )
 
   const layoutPanel = useLayoutTaskPanel()
@@ -164,6 +197,9 @@ export function ProjectTableView({
           onToggle={(shift) => handleToggle(project.id, meta.dataIndex ?? 0, shift)}
           onOpen={() => handleOpen(project)}
           projectStatuses={projectStatuses}
+          peopleByRole={peopleByRole}
+          workspaceId={workspaceId}
+          onToggleRole={handleToggleRole}
         />
       )}
       items={displayed}
