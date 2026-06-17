@@ -82,8 +82,11 @@ function ProjectField({
       )
 
     case 'name':
+      // Без flex-1 (grow): иначе название растягивается на всё свободное место
+      // и отрывает шаблон к правому краю. Шаблон/прочие поля жмутся первыми
+      // (shrink-[3]), поэтому название всё равно получает приоритет по ширине.
       return (
-        <span className={cn(classes, 'min-w-0 flex-1 leading-snug')}>
+        <span className={cn(classes, 'min-w-0 leading-snug')}>
           {project.name}
         </span>
       )
@@ -115,7 +118,7 @@ function ProjectField({
     case 'template':
       if (!project.template_name) return null
       return (
-        <span className={cn(classes, 'shrink min-w-0 max-w-[30%] text-muted-foreground/60')}>
+        <span className={cn(classes, 'shrink-[3] min-w-0 max-w-[40%] text-muted-foreground/60')}>
           {project.template_name}
         </span>
       )

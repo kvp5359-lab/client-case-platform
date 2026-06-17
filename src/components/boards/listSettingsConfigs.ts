@@ -156,8 +156,8 @@ export function defaultCardLayout(entityType: 'thread' | 'project' | 'inbox'): C
           fields: [
             fp('icon', true, S),
             fp('name', true, M),
+            fp('template', true, S),
             fp('deadline', true, SR),
-            fp('template', true, SR),
           ],
         },
       ],

@@ -310,8 +310,9 @@ export function visibleFieldsToLayout(
       { fieldId: 'icon', style: S },
       { fieldId: 'name', style: M },
     ]
+    // Шаблон — слева, прижат к названию; дедлайн уходит вправо.
+    if (has('template')) row.push({ fieldId: 'template', style: S })
     if (has('deadline')) row.push({ fieldId: 'deadline', style: SR })
-    if (has('template')) row.push({ fieldId: 'template', style: SR })
     return [{ fields: row }]
   }
 

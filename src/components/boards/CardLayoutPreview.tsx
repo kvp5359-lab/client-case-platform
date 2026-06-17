@@ -103,7 +103,7 @@ function PreviewField({
     <span
       className={cn(
         classes,
-        isName ? 'min-w-0 flex-1' : 'shrink-0',
+        isName ? 'min-w-0' : 'shrink-0',
         fieldId === 'deadline' && 'text-muted-foreground',
         fieldId === 'project' && 'text-muted-foreground',
         fieldId === 'template' && 'text-muted-foreground/60',
