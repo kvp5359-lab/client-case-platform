@@ -23,6 +23,7 @@ import {
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys, projectAiKeys } from '@/hooks/queryKeys'
 import { logger } from '@/utils/logger'
+import { perfMark } from '@/utils/perfTrace'
 
 export function useProjectMessages(
   projectId: string | undefined,
@@ -38,7 +39,15 @@ export function useProjectMessages(
   const query = useInfiniteQuery({
     queryKey: messagesKey ?? ['messenger', 'messages', 'no-thread'],
     queryFn: async ({ pageParam, signal }) => {
+      const isFirstPage = !pageParam
+      if (isFirstPage && threadId) {
+        const warm = !!queryClient.getQueryData(messengerKeys.messagesByThreadId(threadId))
+        perfMark(threadId, 'query:start', { warm })
+      }
       const result = await getMessages(threadId!, { before: pageParam as string | undefined, signal })
+      if (isFirstPage && threadId) {
+        perfMark(threadId, 'query:end', { count: result.messages.length, hasMore: result.hasMore })
+      }
 
       // Только для первой страницы (pageParam=undefined): если идёт активная
       // мутация sendMessage, забираем оптимистики из кэша и мержим в результат —
@@ -89,6 +98,9 @@ export function useProjectMessages(
     if (!threadId) return
     const key = messengerKeys.messagesByThreadId(threadId)
     if (queryClient.isMutating({ mutationKey: ['sendMessage', threadId] }) > 0) return
+    perfMark(threadId, 'mount:invalidate', {
+      hadCache: !!queryClient.getQueryData(key),
+    })
     queryClient.invalidateQueries({ queryKey: key })
   }, [threadId, queryClient])
 

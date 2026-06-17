@@ -7,6 +7,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { ConversationError } from '@/services/errors/AppError'
+import { perfMark } from '@/utils/perfTrace'
 import {
   MESSAGE_SELECT,
   castToProjectMessages,
@@ -45,6 +46,8 @@ export async function getMessages(
     query = query.abortSignal(options.signal)
   }
 
+  const netStart =
+    typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()
   const { data, error } = await query
 
   if (error) throw new ConversationError(`Ошибка загрузки сообщений: ${error.message}`)
@@ -53,7 +56,22 @@ export async function getMessages(
   const hasMore = messages.length > limit
   if (hasMore) messages.pop()
 
+  if (!options.before) {
+    const netMs =
+      (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()) -
+      netStart
+    perfMark(threadId, 'query:net', { netMs: Math.round(netMs), rows: messages.length })
+  }
+
+  const hydrateStart =
+    typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()
   await hydrateReplyMessages(messages)
+  if (!options.before) {
+    const hydrateMs =
+      (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()) -
+      hydrateStart
+    perfMark(threadId, 'query:hydrateReplies', { hydrateMs: Math.round(hydrateMs) })
+  }
 
   return { messages: messages.reverse(), hasMore }
 }

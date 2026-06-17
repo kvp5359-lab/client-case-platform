@@ -9,6 +9,7 @@ import type { ThreadAuditEvent } from '@/hooks/messenger/useThreadAuditEvents'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useDeleteMessage } from '@/hooks/messenger/useDeleteMessage'
+import { perfEnd } from '@/utils/perfTrace'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
 type MessageListProps = {
@@ -143,6 +144,15 @@ export function MessageList({
   // здесь достаточно показать кнопку всем admin'ам — попытку без прав
   // отобьёт PostgreSQL и onError useDeleteMessage покажет toast.
   const deleteMutation = useDeleteMessage(currentThreadId ?? '')
+
+  // perfTrace: лента разблокирована (isLoading=false) — закрываем сессию
+  // открытия треда и печатаем сводную таблицу таймингов. perfEnd идемпотентна.
+  useEffect(() => {
+    if (!isLoading && currentThreadId) {
+      perfEnd(currentThreadId, 'painted', { count: messages.length })
+    }
+  }, [isLoading, currentThreadId, messages.length])
+
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const prevFirstIdRef = useRef<string | null>(null)

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { perfOpen } from '@/utils/perfTrace'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import {
   useFilteredInbox,
@@ -262,7 +263,13 @@ export function BoardInboxList({
                 key={chat.thread_id}
                 chat={chat}
                 isSelected={selectedThreadId === chat.thread_id}
-                onClick={() => onOpenThread(threadToTaskItem(chat))}
+                onClick={() => {
+                  perfOpen(chat.thread_id, {
+                    channel: chat.channel_type,
+                    type: chat.thread_type,
+                  })
+                  onOpenThread(threadToTaskItem(chat))
+                }}
                 onMarkAsRead={() => markReadMutation.mutate(chat)}
                 onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
                 deliveryStatus={deliveryStatuses.get(chat.thread_id)}

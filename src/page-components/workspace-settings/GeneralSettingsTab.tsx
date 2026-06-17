@@ -13,6 +13,7 @@ import { KnowledgeSummaryPromptSection } from './components/KnowledgeSummaryProm
 import { NotificationSettingsSection } from './components/NotificationSettingsSection'
 import { SendDelaySettingsSection } from './components/SendDelaySettingsSection'
 import { DeadlineFormatSection } from './components/DeadlineFormatSection'
+import { PerfTraceSection } from './components/PerfTraceSection'
 
 export function GeneralSettingsTab() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -35,6 +36,7 @@ export function GeneralSettingsTab() {
       <TranslationSettingsSection workspaceId={workspaceId} />
       <VoyageAISettingsSection workspaceId={workspaceId} />
       <KnowledgeSummaryPromptSection workspaceId={workspaceId} />
+      <PerfTraceSection />
 
       <p className="text-xs text-muted-foreground/40 pt-4">v{process.env.NEXT_PUBLIC_APP_VERSION ?? '—'}</p>
     </div>
