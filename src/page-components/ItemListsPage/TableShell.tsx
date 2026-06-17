@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Loader2, Rows3, Rows4, ListFilter, X } from 'lucide-react'
+import { Loader2, Rows3, Rows4, ListFilter, X, Check } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -368,7 +368,16 @@ function ColumnFilterPopover({ meta }: { meta: ColumnFilterMeta }) {
                 onClick={() => meta.onToggle(o.value)}
                 className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted/50 transition-colors"
               >
-                <Checkbox checked={checked} className="pointer-events-none" />
+                {/* div-галочка, НЕ <Checkbox> (Radix рендерит <button> → nested-button
+                    hydration error внутри этой строки-кнопки). */}
+                <span
+                  className={cn(
+                    'w-4 h-4 rounded border shrink-0 flex items-center justify-center',
+                    checked ? 'bg-primary border-primary text-primary-foreground' : 'border-input',
+                  )}
+                >
+                  {checked && <Check className="w-3 h-3" />}
+                </span>
                 <span className="truncate">{o.label}</span>
               </button>
             )
