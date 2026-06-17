@@ -77,14 +77,11 @@ export function ParticipantsTab() {
     )
   }
 
-  const handleAddParticipant = (data: Partial<Participant>) => {
+  const handleAddParticipant = async (data: Partial<Participant>) => {
     if (!workspaceId) return
-    addMutation.mutate(data, {
-      onSuccess: () => {
-        setIsAddDialogOpen(false)
-        setDefaultRoleForNewParticipant('')
-      },
-    })
+    await addMutation.mutateAsync(data)
+    setIsAddDialogOpen(false)
+    setDefaultRoleForNewParticipant('')
   }
 
   const handleOpenAddDialog = (role?: string) => {

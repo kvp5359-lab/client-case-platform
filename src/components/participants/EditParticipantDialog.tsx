@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select'
 import { Crown, Users, Link, HandshakeIcon, Contact, Camera, X, type LucideIcon } from 'lucide-react'
 import { ParticipantChannelsBlock } from './ParticipantChannelsBlock'
+import { isEmailDuplicateError } from '@/hooks/permissions/useParticipantsMutations'
 
 export type RoleOption = {
   value: string
@@ -51,7 +52,7 @@ type EditParticipantDialogProps = {
   participant: Participant | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (data: Partial<Participant>) => void
+  onSave: (data: Partial<Participant>) => void | Promise<void>
   isLoading: boolean
   defaultRole?: string
   roles?: RoleOption[]
@@ -73,6 +74,7 @@ export function EditParticipantDialog({
   const [telegramUserId, setTelegramUserId] = useState('')
   const [telegramUsername, setTelegramUsername] = useState('')
   const [role, setRole] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [canLogin, setCanLogin] = useState(true)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -85,6 +87,7 @@ export function EditParticipantDialog({
   // Синхронизация формы с пропсами — необходимо для инициализации полей при редактировании
    
   useEffect(() => {
+    setEmailError(null)
     if (participant) {
       setName(participant.name || '')
       setLastName(participant.last_name || '')
@@ -176,19 +179,27 @@ export function EditParticipantDialog({
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onSave({
-      name,
-      last_name: lastName,
-      email,
-      phone,
-      telegram_user_id: telegramUserId ? Number(telegramUserId) : null,
-      telegram_username: telegramUsername.trim().replace(/^@/, '') || null,
-      avatar_url: avatarUrl,
-      workspace_roles: role ? [role] : [],
-      can_login: canLogin,
-    })
+    setEmailError(null)
+    try {
+      await onSave({
+        name,
+        last_name: lastName,
+        email,
+        phone,
+        telegram_user_id: telegramUserId ? Number(telegramUserId) : null,
+        telegram_username: telegramUsername.trim().replace(/^@/, '') || null,
+        avatar_url: avatarUrl,
+        workspace_roles: role ? [role] : [],
+        can_login: canLogin,
+      })
+    } catch (err) {
+      // Тост об ошибке показывает мутация; здесь — подсветка поля при дубле email
+      if (isEmailDuplicateError(err)) {
+        setEmailError('Этот email уже используется другим участником')
+      }
+    }
   }
 
   const displayName = [name, lastName].filter(Boolean).join(' ') || 'Участник'
@@ -291,11 +302,19 @@ export function EditParticipantDialog({
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (emailError) setEmailError(null)
+                }}
                 placeholder="email@example.com"
                 required
                 disabled={isLoading}
+                aria-invalid={!!emailError}
+                className={
+                  emailError ? 'border-destructive focus-visible:ring-destructive' : ''
+                }
               />
+              {emailError && <p className="text-sm text-destructive">{emailError}</p>}
             </div>
 
             <div className="space-y-2">

@@ -16,6 +16,18 @@ const participantKeys = {
 
 export { participantKeys }
 
+/**
+ * Дубль email среди участников воркспейса — нарушение partial-unique индекса
+ * uq_participants_workspace_email_active (PostgreSQL код 23505).
+ */
+export function isEmailDuplicateError(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null
+  return (
+    e?.code === '23505' &&
+    (e.message ?? '').includes('uq_participants_workspace_email_active')
+  )
+}
+
 export function useParticipantsMutations(workspaceId: string | undefined) {
   const queryClient = useQueryClient()
 
@@ -202,8 +214,12 @@ export function useParticipantsMutations(workspaceId: string | undefined) {
       invalidateParticipants()
       toast.success('Участник добавлен')
     },
-    onError: () => {
-      toast.error('Не удалось добавить участника')
+    onError: (error) => {
+      toast.error(
+        isEmailDuplicateError(error)
+          ? 'Этот email уже используется другим участником'
+          : 'Не удалось добавить участника',
+      )
     },
   })
 
