@@ -163,7 +163,9 @@ export type ProjectMessage = {
 
 /** Метаданные вложения для пересылки (без повторной загрузки в Storage) */
 export type ForwardedAttachment = {
-  file_id: string
+  // MTProto-вложения хранятся только по storage_path (file_id = null);
+  // send-функции каналов резолвят файл по storage_path при отсутствии file_id.
+  file_id: string | null
   file_name: string
   file_size: number | null
   mime_type: string | null
