@@ -116,18 +116,24 @@ export function perfOpen(threadId: string | undefined, meta?: Record<string, unk
   logMark(threadId, 'open', 0, 0, meta)
 }
 
-/** Промежуточная метка. Если сессии нет (метка пришла без open) — создаётся ленивая. */
+/**
+ * Промежуточная метка. Привязывается к активной сессии открытия (perfOpen).
+ * Если сессии нет — метка ИГНОРИРУЕТСЯ (а не создаёт ленивую сессию).
+ *
+ * Почему так: на тёплом кэше `painted` срабатывает мгновенно и закрывает
+ * сессию ещё до фонового refetch'а. Если бы поздние метки (query:start от
+ * фонового запроса) создавали новую сессию, она висела бы открытой до
+ * следующего действия пользователя и записывала «время до клика» как мнимую
+ * задержку открытия (баг замеров 2026-06-17). Игнор поздних меток это убирает.
+ */
 export function perfMark(
   threadId: string | undefined,
   label: string,
   meta?: Record<string, unknown>,
 ): void {
   if (!isEnabled() || !threadId) return
-  let s = sessions.get(threadId)
-  if (!s) {
-    s = { threadId, start: nowMs(), marks: [], done: false }
-    sessions.set(threadId, s)
-  }
+  const s = sessions.get(threadId)
+  if (!s || s.done) return
   const t = nowMs() - s.start
   const prev = s.marks[s.marks.length - 1]
   const delta = prev ? t - prev.t : t
