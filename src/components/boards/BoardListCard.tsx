@@ -105,6 +105,7 @@ export function BoardListCard({
     sortByDeadline,
     nextTaskByProjectId,
     authorNameByUserId,
+    peopleByRole,
     filteredTasks,
     filteredProjects,
     groups,
@@ -217,6 +218,7 @@ export function BoardListCard({
                               cardLayout={list.card_layout}
                               nextTask={nextTaskByProjectId[project.id]}
                               authorName={project.created_by ? authorNameByUserId[project.created_by] : null}
+                              peopleByRole={peopleByRole}
                               dropIndicator={indicatorForRow('project', project.id)}
                               justDropped={boardCardDnd?.recentlyDroppedId === `project:${project.id}`}
                             />

@@ -11,6 +11,16 @@ type CardLayoutPreviewProps = {
   columnWidth?: number
 }
 
+/** Мок аватарок участников для превью роль-полей. */
+function PreviewAvatars() {
+  return (
+    <div className="flex -space-x-1 shrink-0">
+      <div className="w-[18px] h-[18px] rounded-full bg-violet-200 border-2 border-background" />
+      <div className="w-[18px] h-[18px] rounded-full bg-amber-200 border-2 border-background" />
+    </div>
+  )
+}
+
 /** Фейковые данные для превью */
 const MOCK: Record<CardFieldId, React.ReactNode> = {
   status: (
@@ -31,6 +41,10 @@ const MOCK: Record<CardFieldId, React.ReactNode> = {
   next_task: 'Подготовить документы · 18 апр',
   created_at: '12 апр',
   created_by: 'Иван Петров',
+  executors: <PreviewAvatars />,
+  admins: <PreviewAvatars />,
+  clients: <PreviewAvatars />,
+  watchers: <PreviewAvatars />,
   unread: <div className="h-2 w-2 rounded-full bg-primary shrink-0" />,
   spacer: null,
   // Меню действий — в превью показываем именно иконку, чтобы было видно, где
@@ -74,7 +88,7 @@ function PreviewField({
   if (!content) return null
 
   // Для компонентных полей (status, icon, assignees, unread) не применяем текстовые стили
-  const isComponent = ['status', 'icon', 'assignees', 'unread', 'spacer'].includes(fieldId)
+  const isComponent = ['status', 'icon', 'assignees', 'unread', 'spacer', 'executors', 'admins', 'clients', 'watchers'].includes(fieldId)
 
   if (isComponent) {
     const alignClass =

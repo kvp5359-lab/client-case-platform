@@ -12,6 +12,8 @@ import { useDeadlineFormat } from '@/hooks/useDeadlineFormat'
 import { formatDeadline } from './boardListUtils'
 import { resolveCardLayout, fieldStyleToClasses, visibleFieldsToLayout } from './cardLayoutUtils'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
+import { PROJECT_ROLE_FIELDS } from './listSettingsConfigs'
+import { ParticipantAvatars, type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
 /** Минимум данных о ближайшей активной задаче проекта для подписи в строке.
  *  Считается на сервере (get_board_filtered_projects → next_task_*). */
@@ -28,6 +30,9 @@ type BoardProjectRowProps = {
   nextTask?: NextTaskInfo
   /** Имя автора проекта (resolved from created_by uuid) — используется полем `created_by`. */
   authorName?: string | null
+  /** Карта `${projectId}:${roleName}` → участники роли — для роль-полей карточки
+   *  (Исполнители/Администраторы/Клиенты/Наблюдатели). */
+  peopleByRole?: Map<string, AvatarParticipant[]>
 }
 
 function ProjectField({
@@ -40,6 +45,7 @@ function ProjectField({
   authorName,
   statusName,
   statusColor,
+  peopleByRole,
 }: {
   fieldId: CardFieldId
   style: CardFieldStyle
@@ -50,8 +56,21 @@ function ProjectField({
   authorName?: string | null
   statusName: string | null
   statusColor: string | null
+  peopleByRole?: Map<string, AvatarParticipant[]>
 }) {
   const classes = fieldStyleToClasses(style)
+
+  // Роль-поля участников (Исполнители/Администраторы/Клиенты/Наблюдатели).
+  const roleName = PROJECT_ROLE_FIELDS[fieldId]
+  if (roleName) {
+    const people = peopleByRole?.get(`${project.id}:${roleName}`) ?? []
+    if (people.length === 0) return null
+    return (
+      <span className={cn('shrink-0', style.align === 'right' && 'ml-auto')}>
+        <ParticipantAvatars participants={people} size="sm" maxVisible={4} />
+      </span>
+    )
+  }
 
   switch (fieldId) {
     case 'spacer':
@@ -64,7 +83,7 @@ function ProjectField({
 
     case 'name':
       return (
-        <span className={cn(classes, 'min-w-0 leading-snug')}>
+        <span className={cn(classes, 'min-w-0 flex-1 leading-snug')}>
           {project.name}
         </span>
       )
@@ -96,7 +115,7 @@ function ProjectField({
     case 'template':
       if (!project.template_name) return null
       return (
-        <span className={cn(classes, 'shrink-0 text-muted-foreground/60')}>
+        <span className={cn(classes, 'shrink min-w-0 max-w-[30%] text-muted-foreground/60')}>
           {project.template_name}
         </span>
       )
@@ -152,6 +171,7 @@ export function BoardProjectRow({
   cardLayout,
   nextTask,
   authorName,
+  peopleByRole,
 }: BoardProjectRowProps) {
   const router = useRouter()
   const layoutPanel = useLayoutTaskPanel()
@@ -187,7 +207,7 @@ export function BoardProjectRow({
     }
   }
 
-  const fieldProps = { project, deadline, deadlineFormat, nextTask, authorName, statusName, statusColor }
+  const fieldProps = { project, deadline, deadlineFormat, nextTask, authorName, statusName, statusColor, peopleByRole }
   const isCards = displayMode === 'cards'
   const selectedOutlineColor = statusColor ?? 'hsl(var(--brand-500))'
   const selectedStyle = isSelected

@@ -110,10 +110,23 @@ export const CARD_FIELD_DEFS: CardFieldDef[] = [
   { id: 'next_task', label: 'Ближайшая задача', entityTypes: ['project'] },
   { id: 'created_at', label: 'Дата создания', entityTypes: ['project'] },
   { id: 'created_by', label: 'Автор',         entityTypes: ['project'] },
+  { id: 'executors', label: 'Исполнители',   entityTypes: ['project'] },
+  { id: 'admins',    label: 'Администраторы', entityTypes: ['project'] },
+  { id: 'clients',   label: 'Клиенты',        entityTypes: ['project'] },
+  { id: 'watchers',  label: 'Наблюдатели',    entityTypes: ['project'] },
   { id: 'unread',    label: 'Непрочитанные', entityTypes: ['thread'] },
   { id: 'spacer',    label: 'Отступ',        entityTypes: ['thread', 'project'] },
   { id: 'menu',      label: 'Меню',          entityTypes: ['thread'] },
 ]
+
+/** Поля-участники по ролям → имя project_role в БД.
+ *  «Наблюдатели» в UI = роль «Участник» в БД. */
+export const PROJECT_ROLE_FIELDS: Partial<Record<CardFieldId, string>> = {
+  executors: 'Исполнитель',
+  admins: 'Администратор',
+  clients: 'Клиент',
+  watchers: 'Участник',
+}
 
 export function getFieldDefsForEntity(entityType: 'thread' | 'project'): CardFieldDef[] {
   return CARD_FIELD_DEFS.filter((f) => f.entityTypes.includes(entityType))

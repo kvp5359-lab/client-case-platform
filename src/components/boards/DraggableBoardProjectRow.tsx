@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { BoardProjectRow, type NextTaskInfo } from './BoardProjectRow'
 import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { CardLayout, DisplayMode, VisibleField } from './types'
+import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
 type DraggableBoardProjectRowProps = {
   project: BoardProject
@@ -21,6 +22,8 @@ type DraggableBoardProjectRowProps = {
   cardLayout?: CardLayout | null
   nextTask?: NextTaskInfo
   authorName?: string | null
+  /** Карта `${projectId}:${roleName}` → участники роли (для роль-полей карточки). */
+  peopleByRole?: Map<string, AvatarParticipant[]>
   /** Подсветка позиции drop'а при ручной сортировке (manual_order). */
   dropIndicator?: 'top' | 'bottom' | null
   /** Только что отпущена сюда — кратко подсвечиваем фон. */

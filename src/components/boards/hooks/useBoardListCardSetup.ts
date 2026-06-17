@@ -18,6 +18,7 @@ import { useFilteredTasks, useFilteredProjects } from './useFilteredListData'
 import { useReorderBoardListItems } from './useBoardListItemOrders'
 import { useUpdateList } from './useListMutations'
 import { useWorkspaceProjectParticipants } from './useWorkspaceProjectParticipants'
+import { useProjectPeopleByRole } from '@/hooks/useProjectPeopleByRole'
 import { useCreateTaskHandler } from '@/components/tasks/useCreateTaskMutation'
 import { useQueueThreadInitialMessage } from '@/components/tasks/useQueueThreadInitialMessage'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
@@ -197,6 +198,14 @@ export function useBoardListCardSetup({
     isProject,
   )
 
+  // Участники проектов по ролям — для роль-полей карточки (Исполнители/
+  // Администраторы/Клиенты/Наблюдатели). Грузим только в project-листах.
+  const projectIds = useMemo(
+    () => (isProject ? projects.map((p) => p.id) : []),
+    [isProject, projects],
+  )
+  const peopleByRole = useProjectPeopleByRole(projectIds)
+
   const filteredProjects = useFilteredProjects(
     isProject ? projects : [],
     safeFilters,
@@ -295,6 +304,7 @@ export function useBoardListCardSetup({
     // Data maps
     nextTaskByProjectId,
     authorNameByUserId,
+    peopleByRole,
     // Filtered
     filteredTasks,
     filteredProjects,

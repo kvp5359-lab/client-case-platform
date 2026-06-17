@@ -120,6 +120,11 @@ export type CardFieldId =
   | 'next_task'
   | 'created_at'
   | 'created_by'
+  // Участники проекта по ролям (для project-листов)
+  | 'executors'
+  | 'admins'
+  | 'clients'
+  | 'watchers'
   | 'spacer'
   | 'menu'
 
