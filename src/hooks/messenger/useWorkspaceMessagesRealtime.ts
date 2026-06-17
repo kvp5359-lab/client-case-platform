@@ -29,35 +29,40 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
     // Уникальное имя канала для монтирования (защита от React StrictMode).
     const channelName = `ws-messages:${workspaceId}:${instanceId}`
 
-    const doInvalidate = () => {
-      // Инвалидируем все ключи, которые зависят от project_messages workspace-level:
-      // - threadsV2: единый inbox-кеш для UI-списка тредов (вкладка «Все»)
-      // - unread: отдельный полный список непрочитанных (вкладка «Непрочитанные»)
-      // - awaitingReply: внешние диалоги, где мы написали последними (вкладка «Ждём клиента»)
-      // - needsReply: внешние диалоги, где клиент написал последним + прочитано (вкладка «Нужно ответить»)
-      // - messageStatuses: статусы доставки для галочек в превью
-      // - aggregates: лёгкий RPC для сайдбар-бейджей и favicon (с 2026-05-27)
-      // - projectsBase: сайдбар проектов с last_activity_at
-      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.awaitingReply(workspaceId) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.needsReply(workspaceId) })
+    // ── Фаза 0 масштабирования (2026-06-17): два темпа инвалидации ──
+    // Раньше КАЖДОЕ событие realtime инвалидировало все 7 ключей, включая
+    // тяжёлые списки (get_inbox_threads_page/unread/needs/awaiting — каждый
+    // = полный скан воркспейса ~574 мс). Под потоком сообщений это давало
+    // 2–3 полных скана на каждое событие × число онлайн → главный источник
+    // нагрузки (см. docs/feature-backlog/2026-06-17-inbox-materialization-scaling.md).
+    //
+    // Разводим на два темпа, не теряя корректности (рефетч всё равно идёт):
+    //  • ЛЁГКИЕ (бейджи/счётчики/сайдбар) — быстрый темп (leading+trailing 400 мс),
+    //    чтобы непрочитанность пересчитывалась «онлайн».
+    //  • ТЯЖЁЛЫЕ (полные inbox-списки) — коалесцируем до ≤1 раза в HEAVY_MS,
+    //    список обновляется с задержкой ≤1.5 с (визуально «динамично»), но
+    //    дорогой скан перестаёт дёргаться на каждое сообщение.
+
+    // Лёгкие: агрегаты (сайдбар-бейджи/favicon), статусы галочек, проекты сайдбара.
+    const doInvalidateLight = () => {
       queryClient.invalidateQueries({ queryKey: inboxKeys.messageStatuses(workspaceId) })
       queryClient.invalidateQueries({ queryKey: inboxKeys.aggregates(workspaceId) })
       queryClient.invalidateQueries({ queryKey: sidebarKeys.projectsBase(workspaceId) })
     }
 
-    // Throttle с leading + trailing edge: при первом событии — мгновенная
-    // инвалидация (юзер видит обновление без задержки). Последующие события
-    // в окне 400 мс схлопываются в один trailing-вызов. Это критично при
-    // активной переписке (5-10 сообщений/сек в воркспейсе) — раньше каждое
-    // дёргало 2 RPC, теперь — пачка обновлений идёт одним батчем.
-    //
-    // 400 мс — компромисс: визуально неощутимо, но достаточно чтобы поймать
-    // типичный «всплеск» сообщений и обновления project_threads вместе.
-    const THROTTLE_MS = 400
-    let lastFireAt = 0
-    let trailingTimer: ReturnType<typeof setTimeout> | null = null
+    // Тяжёлые: полные inbox-списки (каждый = полный скан v2).
+    const doInvalidateHeavy = () => {
+      queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.awaitingReply(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.needsReply(workspaceId) })
+    }
+
+    const LIGHT_MS = 400
+    const HEAVY_MS = 1500
+    let lightLastAt = 0
+    let lightTimer: ReturnType<typeof setTimeout> | null = null
+    let heavyTimer: ReturnType<typeof setTimeout> | null = null
     const pendingProjectIds = new Set<string>()
 
     const flushProjectThreads = () => {
@@ -67,24 +72,32 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
       pendingProjectIds.clear()
     }
 
+    const fireLight = () => {
+      lightLastAt = Date.now()
+      doInvalidateLight()
+      flushProjectThreads()
+    }
+
     const invalidateAll = () => {
+      // Лёгкие — throttle leading+trailing 400 мс (мгновенный отклик бейджей).
       const now = Date.now()
-      const elapsed = now - lastFireAt
-      if (elapsed >= THROTTLE_MS) {
-        // Leading edge — выполняем немедленно.
-        lastFireAt = now
-        doInvalidate()
-        flushProjectThreads()
-        return
+      const elapsed = now - lightLastAt
+      if (elapsed >= LIGHT_MS) {
+        fireLight()
+      } else if (!lightTimer) {
+        lightTimer = setTimeout(() => {
+          lightTimer = null
+          fireLight()
+        }, LIGHT_MS - elapsed)
       }
-      // Внутри окна — ставим/обновляем trailing-таймер.
-      if (trailingTimer) return
-      trailingTimer = setTimeout(() => {
-        trailingTimer = null
-        lastFireAt = Date.now()
-        doInvalidate()
-        flushProjectThreads()
-      }, THROTTLE_MS - elapsed)
+      // Тяжёлые — trailing-only коалесценция: один рефетч на окно HEAVY_MS,
+      // даже при непрерывном потоке (≤1 полный скан в 1.5 с на онлайн-юзера).
+      if (!heavyTimer) {
+        heavyTimer = setTimeout(() => {
+          heavyTimer = null
+          doInvalidateHeavy()
+        }, HEAVY_MS)
+      }
     }
 
     const channel = supabase
@@ -161,7 +174,8 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
       .subscribe()
 
     return () => {
-      if (trailingTimer) clearTimeout(trailingTimer)
+      if (lightTimer) clearTimeout(lightTimer)
+      if (heavyTimer) clearTimeout(heavyTimer)
       supabase.removeChannel(channel)
     }
   }, [workspaceId, queryClient, instanceId])
