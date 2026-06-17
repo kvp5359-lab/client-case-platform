@@ -10,6 +10,7 @@ import { Toaster } from 'sonner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { DismissAllToasts } from '@/components/DismissAllToasts'
+import { PerfSinkRegistrar } from '@/components/providers/PerfSinkRegistrar'
 import { STALE_TIME, GC_TIME } from '@/hooks/queryKeys'
 import { isImpersonationWriteError } from '@/lib/impersonation'
 
@@ -52,6 +53,7 @@ export function Providers({ children }: { children: ReactNode }) {
         style={{ '--width': '356px' } as React.CSSProperties}
       />
       <DismissAllToasts />
+      <PerfSinkRegistrar />
       <ErrorBoundary title="Ошибка приложения" fullPageReload>
         <AuthProvider>{children}</AuthProvider>
       </ErrorBoundary>

@@ -6685,6 +6685,45 @@ export type Database = {
           },
         ]
       }
+      perf_traces: {
+        Row: {
+          channel: string | null
+          created_at: string
+          id: string
+          marks: Json
+          thread_id: string | null
+          thread_type: string | null
+          total_ms: number | null
+          user_agent: string | null
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          channel?: string | null
+          created_at?: string
+          id?: string
+          marks: Json
+          thread_id?: string | null
+          thread_type?: string | null
+          total_ms?: number | null
+          user_agent?: string | null
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          channel?: string | null
+          created_at?: string
+          id?: string
+          marks?: Json
+          thread_id?: string | null
+          thread_type?: string | null
+          total_ms?: number | null
+          user_agent?: string | null
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
       recently_viewed: {
         Row: {
           entity_id: string

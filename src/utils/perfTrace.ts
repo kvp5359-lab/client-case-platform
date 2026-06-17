@@ -31,6 +31,25 @@ const sessions = new Map<string, Session>()
 const history: Session[] = []
 const listeners = new Set<() => void>()
 
+/**
+ * Опциональный «приёмник» завершённых сессий — отправляет сводку на сервер
+ * (таблица perf_traces), чтобы логи можно было анализировать постфактум.
+ * Регистрируется из клиентского провайдера (где доступен supabase). Если не
+ * зарегистрирован — работает только консольный вывод.
+ */
+export type PerfSinkPayload = {
+  threadId: string
+  totalMs: number
+  channel?: string
+  threadType?: string
+  marks: { label: string; t: number; meta?: Record<string, unknown> }[]
+}
+let sink: ((payload: PerfSinkPayload) => void) | null = null
+
+export function setPerfSink(fn: ((payload: PerfSinkPayload) => void) | null): void {
+  sink = fn
+}
+
 /** Подписка на смену состояния трассировки (для useSyncExternalStore в UI). */
 export function subscribePerfTrace(cb: () => void): () => void {
   listeners.add(cb)
@@ -144,6 +163,23 @@ export function perfEnd(
   history.push(s)
   if (history.length > HISTORY_LIMIT) history.shift()
   sessions.delete(threadId)
+
+  // Отправка сводки на сервер (если приёмник зарегистрирован). Канал/тип треда
+  // лежат в meta стартовой метки 'open'. Ошибки приёмника не должны ничего ронять.
+  if (sink) {
+    const openMeta = s.marks[0]?.meta as { channel?: unknown; type?: unknown } | undefined
+    try {
+      sink({
+        threadId,
+        totalMs: total,
+        channel: typeof openMeta?.channel === 'string' ? openMeta.channel : undefined,
+        threadType: typeof openMeta?.type === 'string' ? openMeta.type : undefined,
+        marks: s.marks.map((m) => ({ label: m.label, t: Math.round(m.t), meta: m.meta })),
+      })
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 // Установка глобального хелпера управления (один раз, только в браузере).
