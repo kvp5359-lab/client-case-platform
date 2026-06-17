@@ -22,9 +22,23 @@
 
 const LS_KEY = 'cc_perf_trace'
 const HISTORY_LIMIT = 50
+// Если открытие не отрисовалось за STUCK_MS — фиксируем «зависание» (stuck) на
+// сервер, не дожидаясь отрисовки. Если потом всё же доедет — пишем 'recovered'.
+const STUCK_MS = 4000
+// Если после stuck отрисовка так и не пришла за HARD_MS — окончательно
+// выбрасываем сессию (защита от утечки «мёртвых» открытий).
+const HARD_MS = 60_000
 
 type Mark = { label: string; t: number; meta?: Record<string, unknown> }
-type Session = { threadId: string; start: number; marks: Mark[]; done: boolean }
+type Session = {
+  threadId: string
+  start: number
+  marks: Mark[]
+  done: boolean
+  stuckFlushed: boolean
+  timer?: ReturnType<typeof setTimeout>
+  hardTimer?: ReturnType<typeof setTimeout>
+}
 
 let enabled: boolean | null = null
 const sessions = new Map<string, Session>()
@@ -40,6 +54,8 @@ const listeners = new Set<() => void>()
 export type PerfSinkPayload = {
   threadId: string
   totalMs: number
+  /** painted — отрисовалось; stuck — зависло >4с; recovered — зависло, но доехало. */
+  outcome: 'painted' | 'stuck' | 'recovered'
   channel?: string
   threadType?: string
   marks: { label: string; t: number; meta?: Record<string, unknown> }[]
@@ -107,13 +123,67 @@ function logMark(threadId: string, label: string, t: number, delta: number, meta
   )
 }
 
+function clearTimers(s: Session) {
+  if (s.timer) clearTimeout(s.timer)
+  if (s.hardTimer) clearTimeout(s.hardTimer)
+  s.timer = undefined
+  s.hardTimer = undefined
+}
+
+/** Отправка сводки сессии на сервер (если приёмник зарегистрирован). */
+function sendToSink(s: Session, total: number, outcome: PerfSinkPayload['outcome']) {
+  if (!sink) return
+  const openMeta = s.marks.find((m) => m.label === 'open')?.meta as
+    | { channel?: unknown; type?: unknown }
+    | undefined
+  try {
+    sink({
+      threadId: s.threadId,
+      totalMs: total,
+      outcome,
+      channel: typeof openMeta?.channel === 'string' ? openMeta.channel : undefined,
+      threadType: typeof openMeta?.type === 'string' ? openMeta.type : undefined,
+      marks: s.marks.map((m) => ({ label: m.label, t: Math.round(m.t), meta: m.meta })),
+    })
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Сторож зависаний: если за STUCK_MS открытие не дошло до 'painted', пишем
+ * запись 'stuck' на сервер (с указанием, после какой метки застряло). Это
+ * ловит именно проблемные случаи (долгая загрузка / «второй клик»), которые
+ * иначе не записываются вовсе — ведь обычная запись идёт только при отрисовке.
+ */
+function startWatchdog(s: Session) {
+  if (typeof window === 'undefined') return
+  s.timer = setTimeout(() => {
+    if (s.done || s.stuckFlushed || !isEnabled()) return
+    s.stuckFlushed = true
+    const t = nowMs() - s.start
+    const lastLabel = s.marks[s.marks.length - 1]?.label ?? 'open'
+    s.marks.push({ label: 'stuck', t, meta: { afterMs: Math.round(t), lastLabel } })
+    console.warn(
+      `%c⏱ ЗАВИСЛО ${short(s.threadId)} — нет отрисовки ${Math.round(t)}ms (застряло после "${lastLabel}")`,
+      'color:#dc2626;font-weight:bold',
+    )
+    sendToSink(s, Math.round(t), 'stuck')
+    // Если так и не отрисуется — выбросить сессию, чтобы не текла память.
+    s.hardTimer = setTimeout(() => sessions.delete(s.threadId), HARD_MS)
+  }, STUCK_MS)
+}
+
 /** Старт новой сессии открытия треда. Сбрасывает предыдущую сессию того же треда. */
 export function perfOpen(threadId: string | undefined, meta?: Record<string, unknown>): void {
   if (!isEnabled() || !threadId) return
-  const s: Session = { threadId, start: nowMs(), marks: [], done: false }
+  const existing = sessions.get(threadId)
+  if (existing) clearTimers(existing)
+  const s: Session = { threadId, start: nowMs(), marks: [], done: false, stuckFlushed: false }
   sessions.set(threadId, s)
   s.marks.push({ label: 'open', t: 0, meta })
   logMark(threadId, 'open', 0, 0, meta)
+  startWatchdog(s)
 }
 
 /**
@@ -152,10 +222,13 @@ export function perfEnd(
   if (!s || s.done) return
   perfMark(threadId, label, meta)
   s.done = true
+  clearTimers(s)
   const total = Math.round(nowMs() - s.start)
+  // Если ранее уже записали 'stuck' — это «доехало с опозданием».
+  const outcome: PerfSinkPayload['outcome'] = s.stuckFlushed ? 'recovered' : 'painted'
   console.groupCollapsed(
-    `%c⏱ perf ${short(threadId)} — итого ${total}ms (${s.marks.length} меток)`,
-    'color:#16a34a;font-weight:bold',
+    `%c⏱ perf ${short(threadId)} — ${outcome} ${total}ms (${s.marks.length} меток)`,
+    outcome === 'recovered' ? 'color:#d97706;font-weight:bold' : 'color:#16a34a;font-weight:bold',
   )
   console.table(
     s.marks.map((m, i) => ({
@@ -170,22 +243,7 @@ export function perfEnd(
   if (history.length > HISTORY_LIMIT) history.shift()
   sessions.delete(threadId)
 
-  // Отправка сводки на сервер (если приёмник зарегистрирован). Канал/тип треда
-  // лежат в meta стартовой метки 'open'. Ошибки приёмника не должны ничего ронять.
-  if (sink) {
-    const openMeta = s.marks[0]?.meta as { channel?: unknown; type?: unknown } | undefined
-    try {
-      sink({
-        threadId,
-        totalMs: total,
-        channel: typeof openMeta?.channel === 'string' ? openMeta.channel : undefined,
-        threadType: typeof openMeta?.type === 'string' ? openMeta.type : undefined,
-        marks: s.marks.map((m) => ({ label: m.label, t: Math.round(m.t), meta: m.meta })),
-      })
-    } catch {
-      /* ignore */
-    }
-  }
+  sendToSink(s, total, outcome)
 }
 
 // Установка глобального хелпера управления (один раз, только в браузере).

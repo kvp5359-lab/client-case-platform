@@ -6691,6 +6691,7 @@ export type Database = {
           created_at: string
           id: string
           marks: Json
+          outcome: string | null
           thread_id: string | null
           thread_type: string | null
           total_ms: number | null
@@ -6703,6 +6704,7 @@ export type Database = {
           created_at?: string
           id?: string
           marks: Json
+          outcome?: string | null
           thread_id?: string | null
           thread_type?: string | null
           total_ms?: number | null
@@ -6715,6 +6717,7 @@ export type Database = {
           created_at?: string
           id?: string
           marks?: Json
+          outcome?: string | null
           thread_id?: string | null
           thread_type?: string | null
           total_ms?: number | null

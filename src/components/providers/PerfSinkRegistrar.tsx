@@ -26,6 +26,7 @@ export function PerfSinkRegistrar() {
         .insert({
           thread_id: payload.threadId,
           total_ms: payload.totalMs,
+          outcome: payload.outcome,
           channel: payload.channel ?? null,
           thread_type: payload.threadType ?? null,
           // marks по построению JSON-сериализуемы (label/t/meta из примитивов).
