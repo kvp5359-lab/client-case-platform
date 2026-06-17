@@ -261,11 +261,14 @@ async function handleDelete(
   const threadIds = (threads ?? []).map((t) => t.id as string)
   if (threadIds.length === 0) return
 
-  // Помечаем как удалённые. У нас нет soft-delete у project_messages,
-  // поэтому физически удаляем. Это совпадает с поведением Telegram.
+  // Soft-delete: НЕ стираем строку физически (иначе потеря переписки навсегда,
+  // в т.ч. когда клиент удалил сообщение "только у себя" — у нас нет способа
+  // отличить это от "удалить у всех"). Помечаем is_deleted=true — в ленте
+  // сообщение остаётся плашкой «Сообщение удалено» с возможностью раскрыть текст.
   await supabase
     .from("project_messages")
-    .delete()
+    .update({ is_deleted: true, deleted_at: new Date().toISOString() })
     .in("thread_id", threadIds)
     .in("telegram_message_id", telegramMessageIds)
+    .eq("is_deleted", false)
 }

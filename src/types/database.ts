@@ -5016,6 +5016,8 @@ export type Database = {
           forwarded_from_name: string | null
           has_attachments: boolean
           id: string
+          deleted_at: string | null
+          is_deleted: boolean
           is_draft: boolean
           is_edited: boolean
           original_content: string | null
@@ -5068,6 +5070,8 @@ export type Database = {
           forwarded_from_name?: string | null
           has_attachments?: boolean
           id?: string
+          deleted_at?: string | null
+          is_deleted?: boolean
           is_draft?: boolean
           is_edited?: boolean
           original_content?: string | null
@@ -5120,6 +5124,8 @@ export type Database = {
           forwarded_from_name?: string | null
           has_attachments?: boolean
           id?: string
+          deleted_at?: string | null
+          is_deleted?: boolean
           is_draft?: boolean
           is_edited?: boolean
           original_content?: string | null

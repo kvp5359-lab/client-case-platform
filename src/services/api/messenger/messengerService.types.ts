@@ -97,6 +97,11 @@ export type ProjectMessage = {
   /** Статус доставки в Wazzup: sent / delivered / read / error. */
   wazzup_status?: 'sent' | 'delivered' | 'read' | 'error' | null
   is_edited: boolean
+  /** Сообщение удалено в Telegram (soft-delete). Строка остаётся в БД,
+   *  в ленте рисуется плашкой «Сообщение удалено» с возможностью раскрыть текст. */
+  is_deleted?: boolean | null
+  /** Когда сообщение было помечено удалённым (UpdateDeleteMessages из Telegram). */
+  deleted_at?: string | null
   is_draft: boolean
   forwarded_from_name: string | null
   forwarded_date: string | null

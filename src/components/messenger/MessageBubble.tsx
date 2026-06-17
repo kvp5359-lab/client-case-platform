@@ -1,5 +1,5 @@
 import { memo, useState } from 'react'
-import { CornerDownRight, Loader2 } from 'lucide-react'
+import { CornerDownRight, Loader2, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageAttachments } from './MessageAttachment'
@@ -122,6 +122,11 @@ function MessageBubbleImpl({
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [emailViewOpen, setEmailViewOpen] = useState(false)
+  // Сообщение удалено в Telegram (soft-delete): по умолчанию скрываем контент
+  // плашкой «Сообщение удалено», по клику раскрываем текст с пометкой «Удалено».
+  const isDeleted = !!message.is_deleted
+  const [revealDeleted, setRevealDeleted] = useState(false)
+  const showRealContent = !isDeleted || revealDeleted
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [reactionPopoverOpen, setReactionPopoverOpen] = useState(false)
 
@@ -319,8 +324,24 @@ function MessageBubbleImpl({
 
             <BubbleHeader message={message} isOwn={isOwn} showAvatar={showAvatar} accent={accent} />
 
+            {/* Сообщение удалено в Telegram (soft-delete). По умолчанию — плашка,
+                по клику раскрывается исходный текст/вложения с пометкой «Удалено». */}
+            {isDeleted && (
+              <button
+                type="button"
+                onClick={() => setRevealDeleted((v) => !v)}
+                className={cn(
+                  'flex items-center gap-1.5 text-xs italic mb-1',
+                  isOwn ? 'opacity-80 hover:opacity-100' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <Trash2 className="h-3 w-3 shrink-0" />
+                <span>{revealDeleted ? 'Удалено · скрыть' : 'Сообщение удалено · показать'}</span>
+              </button>
+            )}
+
             {/* Text content — displayMessage может содержать переведённый content вместо оригинала */}
-            {!hasAttachmentsOnly && (
+            {showRealContent && !hasAttachmentsOnly && (
               <BubbleTextContent
                 message={displayMessage}
                 isOwn={isOwn}
@@ -341,7 +362,7 @@ function MessageBubbleImpl({
             {/* Failed attachment plate — файл должен был быть, но webhook не смог его загрузить из Telegram.
                 Источник правды — project_messages.attachment_status='failed' (см. миграцию 20260527_telegram_attachment_status).
                 Без этой плашки потерянные файлы выглядели в UI как обычные текстовые сообщения, и юзер о потере не знал. */}
-            {message.attachment_status === 'failed' && (
+            {showRealContent && message.attachment_status === 'failed' && (
               <div className="mt-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-900">
                 <div className="flex items-start gap-2">
                   <span className="text-sm leading-none">⚠️</span>
@@ -367,14 +388,14 @@ function MessageBubbleImpl({
             )}
 
             {/* Pending attachment — webhook качает прямо сейчас. Тонкая полоска без алёрта. */}
-            {message.attachment_status === 'pending' && (
+            {showRealContent && message.attachment_status === 'pending' && (
               <div className="mt-2 text-[11px] text-muted-foreground italic">
                 Загружаю файл из Telegram…
               </div>
             )}
 
             {/* Attachments */}
-            {hasAttachments && (
+            {showRealContent && hasAttachments && (
               <MessageAttachments
                 attachments={message.attachments!}
                 isOwn={isOwn}
