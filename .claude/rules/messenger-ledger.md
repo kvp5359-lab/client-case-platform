@@ -46,6 +46,15 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-17 — Инструмент: трассировщик таймингов открытия тредов во «Входящих» (диагностика, не фикс) 🔬 В ПРОДЕ
+- **Запрос (пользователь):** открытие чата из «Входящих» нестабильно — иногда мгновенно, иногда требует второго клика, иногда долго грузится. Нужно измерять, а не гадать.
+- **Что сделано:** новый `src/utils/perfTrace.ts` — включаемый по флагу (localStorage `cc_perf_trace`) трассировщик. Сессия на открытие треда (ключ — threadId), метки с дельтами, сводная `console.table` на `painted`. Управление: **чекбокс** Настройки → Общие → «Диагностика производительности» (`PerfTraceSection`, личная настройка через `useSyncExternalStore`) ИЛИ консоль `__ccPerf.on()/off()/dump()/clear()`. Работает в проде, по умолчанию ВЫКЛ (ранний `return`, нулевой оверхед). Коммит `4e982ee`.
+- **Метки пути:** `open` (клик, `BoardInboxList`) → `query:start {warm}` + `mount:invalidate {hadCache}` (`useProjectMessages`) → `query:net {netMs,rows}` + `query:hydrateReplies {hydrateMs}` (`getMessages` в `messengerService.read.ts`) → `query:end` → `painted {count}` (`MessageList`, по `isLoading=false`).
+- **Подозреваемый (ещё НЕ подтверждён — ждём логи с прода):** `useProjectMessages.ts:88-93` при каждом монтировании панели делает **безусловный** `invalidateQueries` → форс-refetch даже на тёплом кэше. Метки `mount:invalidate {hadCache:true}` + `query:start {warm:true}` это покажут. Если подтвердится — гейтить инвалидацию по возрасту кэша/`staleTime`, а не дёргать всегда.
+- **Грабли:** метки — чистое логирование, логику открытия не трогают. `MessageList` берёт `currentThreadId` из `useMessengerContext` (он есть). `perfEnd` идемпотентна (флаг `done`), поэтому повторные ре-рендеры `MessageList` не плодят таблицы. Не путать с откаченным 2026-06-15 IndexedDB-персистом — тут только in-memory замеры, без персиста кэша.
+- **Статус:** ждёт логов от пользователя (открыть быстрые и зависающие треды с включённым тумблером, прислать таблицы) → по ним точечный фикс.
+- **Файлы:** `perfTrace.ts`(нов), `PerfTraceSection.tsx`(нов), `useProjectMessages.ts`, `messengerService.read.ts`, `BoardInboxList.tsx`, `MessageList.tsx`, `GeneralSettingsTab.tsx`.
+
 ### 2026-06-17 — Дубли email-тредов во «Входящих» (один тред в двух строках) ✅ БД в проде, миграции в репо
 - **Симптом (пользователь, прод):** в списке «Входящие» один email-диалог («Илья Гордейко», `info@abcspain.ru`) показан несколькими строками; обе/все строки подсвечены одновременно как один тред; «спустя время добавляется ещё дубль». На скрине 6 строк (5 «ABC-spain:» + 1 «info@abcspain.ru:»).
 - **Гипотезы:** ✗ «дубли тредов — входящее/исходящее создают разные треды» (матчинг по `email_send_account_id`+`email_last_external_address`+`subject_root` консистентен; 3 строки = 3 РАЗНЫЕ темы, by design) · ✗ «баг ключа/selected в `BoardInboxList`» (там `key={thread_id}` и `selectedThreadId===thread_id` корректны — но ломаются, если две строки несут ОДИН thread_id) · ✓ **фан-аут в `get_inbox_threads_v2` по дублю контакта.**
