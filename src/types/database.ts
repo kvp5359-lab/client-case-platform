@@ -8826,6 +8826,10 @@ export type Database = {
           unread_reaction_count: number
         }[]
       }
+      reconcile_inbox_report: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_inbox_thread_one: {
         Args: { p_thread_id: string; p_user_id: string; p_workspace_id: string }
         Returns: {
