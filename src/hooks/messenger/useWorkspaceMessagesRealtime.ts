@@ -1,56 +1,47 @@
 "use client"
 
 /**
- * useWorkspaceMessagesRealtime — единая Realtime-подписка workspace-уровня
- * на project_messages и message_reactions.
+ * useWorkspaceMessagesRealtime — единая Realtime-подписка workspace-уровня на
+ * изменения мессенджера (сообщения, реакции, треды).
  *
- * До этого каждый из 4+ компонентов (сайдбар, useInboxThreadsV2, useNewMessageToast)
- * создавал свой WebSocket-канал на одни и те же события — Supabase получал одно
- * сообщение и рассылал его 4+ раза по разным каналам. Теперь один канал — все
- * инвалидации кэшей выполняются здесь.
+ * Транспорт — **Broadcast из БД** (Фаза 3, 2026-06-18). Триггер `trg_inbox_broadcast`
+ * шлёт `realtime.send` в приватный топик `inbox:<workspace_id>` на изменения
+ * project_messages / message_reactions / project_threads; клиент подписан на этот
+ * топик и по сигналу инвалидирует кэши инбокса (два темпа, см. ниже).
  *
- * Подключается в WorkspaceLayoutShell (самый верхний layout workspace), так что активен
- * всегда пока пользователь внутри workspace. Не используй этот хук в дочерних компонентах.
+ * Почему Broadcast, а не Postgres Changes: Postgres Changes проверяет RLS для
+ * КАЖДОГО подписчика на КАЖДОЕ событие — не масштабируется на много онлайн.
+ * Broadcast шлёт один сигнал в топик без поштучной проверки (RLS на realtime.messages
+ * проверяется один раз при подписке). См. docs/feature-backlog/2026-06-17-inbox-materialization-scaling.md.
+ *
+ * Подключается в WorkspaceLayout (самый верхний layout workspace) — активен пока
+ * пользователь внутри workspace. Не использовать в дочерних компонентах.
  */
 
-import { useEffect, useId } from 'react'
+import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { inboxKeys, messengerKeys, sidebarKeys } from '@/hooks/queryKeys'
 
 export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
   const queryClient = useQueryClient()
-  // Уникальный ID инстанса — useId() стабилен и безопасен на рендере.
-  const instanceId = useId()
 
   useEffect(() => {
     if (!workspaceId) return
 
-    // Уникальное имя канала для монтирования (защита от React StrictMode).
-    const channelName = `ws-messages:${workspaceId}:${instanceId}`
-
-    // ── Фаза 0 масштабирования (2026-06-17): два темпа инвалидации ──
-    // Раньше КАЖДОЕ событие realtime инвалидировало все 7 ключей, включая
-    // тяжёлые списки (get_inbox_threads_page/unread/needs/awaiting — каждый
-    // = полный скан воркспейса ~574 мс). Под потоком сообщений это давало
-    // 2–3 полных скана на каждое событие × число онлайн → главный источник
-    // нагрузки (см. docs/feature-backlog/2026-06-17-inbox-materialization-scaling.md).
-    //
-    // Разводим на два темпа, не теряя корректности (рефетч всё равно идёт):
+    // ── Два темпа инвалидации (Фаза 0) ──
+    // Не теряя корректности (рефетч всё равно идёт):
     //  • ЛЁГКИЕ (бейджи/счётчики/сайдбар) — быстрый темп (leading+trailing 400 мс),
     //    чтобы непрочитанность пересчитывалась «онлайн».
     //  • ТЯЖЁЛЫЕ (полные inbox-списки) — коалесцируем до ≤1 раза в HEAVY_MS,
-    //    список обновляется с задержкой ≤1.5 с (визуально «динамично»), но
-    //    дорогой скан перестаёт дёргаться на каждое сообщение.
+    //    список обновляется с задержкой ≤1.5 с (визуально «динамично»).
 
-    // Лёгкие: агрегаты (сайдбар-бейджи/favicon), статусы галочек, проекты сайдбара.
     const doInvalidateLight = () => {
       queryClient.invalidateQueries({ queryKey: inboxKeys.messageStatuses(workspaceId) })
       queryClient.invalidateQueries({ queryKey: inboxKeys.aggregates(workspaceId) })
       queryClient.invalidateQueries({ queryKey: sidebarKeys.projectsBase(workspaceId) })
     }
 
-    // Тяжёлые: полные inbox-списки (каждый = полный скан v2).
     const doInvalidateHeavy = () => {
       queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
       queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
@@ -79,7 +70,6 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
     }
 
     const invalidateAll = () => {
-      // Лёгкие — throttle leading+trailing 400 мс (мгновенный отклик бейджей).
       const now = Date.now()
       const elapsed = now - lightLastAt
       if (elapsed >= LIGHT_MS) {
@@ -90,8 +80,6 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
           fireLight()
         }, LIGHT_MS - elapsed)
       }
-      // Тяжёлые — trailing-only коалесценция: один рефетч на окно HEAVY_MS,
-      // даже при непрерывном потоке (≤1 полный скан в 1.5 с на онлайн-юзера).
       if (!heavyTimer) {
         heavyTimer = setTimeout(() => {
           heavyTimer = null
@@ -100,86 +88,7 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
       }
     }
 
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'project_messages',
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        invalidateAll,
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'project_messages',
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        invalidateAll,
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'message_reactions',
-        },
-        invalidateAll,
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'message_reactions',
-        },
-        invalidateAll,
-      )
-      // project_threads: новые треды (например, созданные resend-webhook'ом
-      // при письме на p+<id>@) должны мгновенно появляться в списке тредов
-      // проекта без перезагрузки страницы.
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'project_threads',
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        (payload) => {
-          const projectId = (payload.new as { project_id?: string } | null)?.project_id
-          if (projectId) pendingProjectIds.add(projectId)
-          invalidateAll()
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'project_threads',
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        (payload) => {
-          const projectId = (payload.new as { project_id?: string } | null)?.project_id
-          if (projectId) pendingProjectIds.add(projectId)
-          invalidateAll()
-        },
-      )
-      .subscribe()
-
-    // ── Фаза 3 (dual rollout): дополнительно слушаем Broadcast из БД ──
-    // Postgres Changes (выше) проверяет доступ для КАЖДОГО подписчика на КАЖДОЕ
-    // событие — не масштабируется на много онлайн. Broadcast из БД (триггер
-    // realtime.send в приватный топик inbox:<ws>) шлёт один сигнал в топик без
-    // поштучной RLS-проверки. Пока активны ОБА транспорта — нулевая регрессия:
-    // если broadcast не долетит, Postgres Changes всё равно держит инбокс живым.
-    // После подтверждения доставки broadcast — Postgres Changes уберём.
+    // ── Подписка на Broadcast из БД (приватный топик inbox:<ws>) ──
     let cancelled = false
     let broadcastChannel: ReturnType<typeof supabase.channel> | null = null
     void supabase.auth.getSession().then(({ data }) => {
@@ -191,8 +100,6 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
         .on('broadcast', { event: 'inbox_changed' }, (msg) => {
           const projectId = (msg.payload as { project_id?: string } | undefined)?.project_id
           if (projectId) pendingProjectIds.add(projectId)
-          // Временный сигнал для смок-теста — увидеть в консоли, что broadcast долетает.
-          console.debug('[inbox-broadcast] received', msg.payload)
           invalidateAll()
         })
         .subscribe()
@@ -202,8 +109,7 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
       cancelled = true
       if (lightTimer) clearTimeout(lightTimer)
       if (heavyTimer) clearTimeout(heavyTimer)
-      supabase.removeChannel(channel)
       if (broadcastChannel) supabase.removeChannel(broadcastChannel)
     }
-  }, [workspaceId, queryClient, instanceId])
+  }, [workspaceId, queryClient])
 }
