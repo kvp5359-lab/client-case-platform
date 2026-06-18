@@ -173,10 +173,37 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
       )
       .subscribe()
 
+    // ── Фаза 3 (dual rollout): дополнительно слушаем Broadcast из БД ──
+    // Postgres Changes (выше) проверяет доступ для КАЖДОГО подписчика на КАЖДОЕ
+    // событие — не масштабируется на много онлайн. Broadcast из БД (триггер
+    // realtime.send в приватный топик inbox:<ws>) шлёт один сигнал в топик без
+    // поштучной RLS-проверки. Пока активны ОБА транспорта — нулевая регрессия:
+    // если broadcast не долетит, Postgres Changes всё равно держит инбокс живым.
+    // После подтверждения доставки broadcast — Postgres Changes уберём.
+    let cancelled = false
+    let broadcastChannel: ReturnType<typeof supabase.channel> | null = null
+    void supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return
+      const token = data.session?.access_token
+      if (token) supabase.realtime.setAuth(token)
+      broadcastChannel = supabase
+        .channel(`inbox:${workspaceId}`, { config: { private: true } })
+        .on('broadcast', { event: 'inbox_changed' }, (msg) => {
+          const projectId = (msg.payload as { project_id?: string } | undefined)?.project_id
+          if (projectId) pendingProjectIds.add(projectId)
+          // Временный сигнал для смок-теста — увидеть в консоли, что broadcast долетает.
+          console.debug('[inbox-broadcast] received', msg.payload)
+          invalidateAll()
+        })
+        .subscribe()
+    })
+
     return () => {
+      cancelled = true
       if (lightTimer) clearTimeout(lightTimer)
       if (heavyTimer) clearTimeout(heavyTimer)
       supabase.removeChannel(channel)
+      if (broadcastChannel) supabase.removeChannel(broadcastChannel)
     }
   }, [workspaceId, queryClient, instanceId])
 }
