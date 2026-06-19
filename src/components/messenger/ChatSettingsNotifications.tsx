@@ -91,7 +91,7 @@ export function ChatSettingsNotifications({
             onClick={() => setManageOpen((o) => !o)}
             title="Настроить подписчиков"
             className={cn(
-              'shrink-0 px-2.5 border-l flex items-center justify-center transition-colors',
+              'shrink-0 px-2.5 flex items-center justify-center transition-colors',
               manageOpen ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50',
             )}
           >
