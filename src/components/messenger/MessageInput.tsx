@@ -592,7 +592,7 @@ export function MessageInput({
       )}
 
       <div
-        className="px-4 pt-1 min-w-0"
+        className="px-4 min-w-0"
         onKeyDown={(e) => {
           if (e.key === '/' && !hasText && editorRef.current) {
             e.preventDefault()
