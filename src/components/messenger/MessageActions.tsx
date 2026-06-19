@@ -31,6 +31,12 @@ type MessageActionsProps = {
   message: ProjectMessage
   isOwn: boolean
   accent?: MessengerAccent
+  /** Классы фона бабла (с учётом visibility: team=нейтраль, self=жёлтый) —
+   *  чтобы пилюля действий совпадала с цветом бабла, а не акцента. */
+  bubbleOwnClass?: string
+  bubbleIncomingClass?: string
+  /** Светлый фон бабла (self) — иконки действий тёмные, не белые. */
+  lightBubble?: boolean
   onReply: (msg: ProjectMessage) => void
   onQuote?: (text: string) => void
   onReact: (messageId: string, emoji: string) => void
@@ -71,6 +77,9 @@ export function MessageActions({
   message,
   isOwn,
   accent = 'blue',
+  bubbleOwnClass,
+  bubbleIncomingClass,
+  lightBubble = false,
   onReply,
   onQuote,
   onReact,
@@ -105,7 +114,9 @@ export function MessageActions({
   const actionBtnClass = cn(
     'h-6 w-6 rounded-full transition-colors',
     isOwn
-      ? 'text-white/60 hover:text-white hover:bg-white/20'
+      ? lightBubble
+        ? 'text-amber-900/60 hover:text-amber-900 hover:bg-black/10'
+        : 'text-white/60 hover:text-white hover:bg-white/20'
       : 'text-foreground/45 hover:text-foreground hover:bg-foreground/10',
   )
   // Фон пилюли — цвет бабла. Для своих — солид (bg-blue-500 text-white),
@@ -122,8 +133,8 @@ export function MessageActions({
   const pillClass = message.is_draft
     ? draftPillClass
     : isOwn
-      ? colors.own
-      : colors.incoming
+      ? bubbleOwnClass ?? colors.own
+      : bubbleIncomingClass ?? colors.incoming
 
   // Пилюля-toggle перевода живёт в том же контейнере, но видна всегда, без
   // group-hover: иначе юзер не догадается, что у сообщения есть готовый перевод.

@@ -52,7 +52,7 @@ export function BubbleTimestamp({
       {isOwn && isEmailSource(message.source) && <Mail className="h-3 w-3" />}
       {formatTime(message.created_at)}
       {message.is_edited && <span className="italic">ред.</span>}
-      {deliveryStatus && <DeliveryIcon status={deliveryStatus} />}
+      {deliveryStatus && <DeliveryIcon status={deliveryStatus} light={lightBubble} />}
     </span>
   )
 }

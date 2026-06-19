@@ -14,8 +14,16 @@ export function formatTime(dateStr: string): string {
   return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 
-export function DeliveryIcon({ status }: { status: DeliveryStatus }) {
+export function DeliveryIcon({
+  status,
+  light = false,
+}: {
+  status: DeliveryStatus
+  /** Светлый фон бабла (self/жёлтый) — белая галочка нечитаема, красим тёмным. */
+  light?: boolean
+}) {
   if (!status) return null
+  const c = light ? 'text-amber-900' : 'text-white'
   // Wrapping in <span title="..."> because lucide-react icons don't accept
   // `title` as a prop — only via a surrounding element.
   if (status === 'pending')
@@ -23,7 +31,7 @@ export function DeliveryIcon({ status }: { status: DeliveryStatus }) {
       'span',
       { title: 'Отправляется...' },
       createElement(Clock, {
-        className: 'h-3.5 w-3.5 text-white opacity-60',
+        className: cn('h-3.5 w-3.5 opacity-60', c),
         strokeWidth: 2.5,
       }),
     )
@@ -32,7 +40,7 @@ export function DeliveryIcon({ status }: { status: DeliveryStatus }) {
       'span',
       { title: 'Прочитано' },
       createElement(CheckCheck, {
-        className: cn('h-3.5 w-3.5 text-white'),
+        className: cn('h-3.5 w-3.5', c),
         strokeWidth: 2.5,
       }),
     )
@@ -40,7 +48,7 @@ export function DeliveryIcon({ status }: { status: DeliveryStatus }) {
     'span',
     { title: 'Отправлено' },
     createElement(Check, {
-      className: 'h-3.5 w-3.5 text-white opacity-80',
+      className: cn('h-3.5 w-3.5 opacity-80', c),
       strokeWidth: 2.5,
     }),
   )

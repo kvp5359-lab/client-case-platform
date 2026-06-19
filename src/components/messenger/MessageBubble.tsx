@@ -523,6 +523,9 @@ function MessageBubbleImpl({
               message={message}
               isOwn={isOwn}
               accent={accent}
+              bubbleOwnClass={ownBubbleClass}
+              bubbleIncomingClass={incomingBubbleClass}
+              lightBubble={isSelfVis}
               onReply={onReply}
               onQuote={onQuote}
               onReact={onReact}
