@@ -46,6 +46,14 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-19 — @-упоминания (Фаза 3, фича) ⏳ ЖДЁТ ДЕПЛОЯ ФРОНТА + СМОК
+- **Поведение (выбор пользователя):** @тег **подписывает** упомянутого на тред (source=auto_mention, перебивает mute); человек может отписаться снова.
+- **БД (прод):** `message_mentions(message_id, participant_id)` + RLS (select=доступ к треду, insert=автор сообщения) + триггер `trg_mention_autosubscribe` (upsert subscription 'subscribed' → subscription-триггер пересчитывает непрочитанное). Формула `recompute_thread_unread_for` обновлена: @-упоминание **пробивает silent «Заметку»** (`notify_subscribers=false` → всё равно считается непрочитанным для упомянутого).
+- **Фронт:** Tiptap Mention (`@tiptap/extension-mention@3.22.4` под core 3.22.4) + попап участников на чистом DOM (`messengerMention.ts`, без tippy). Список упоминаемых = сотрудники воркспейса (`useWorkspaceParticipants`, без Клиент/Telegram-контакт). `extractMentionIds(editor)` при отправке → проброс `mentions` по цепочке (композер→onSend→handlers→useSendMessage→sendMessage service) → insert `message_mentions` (цепляется к текстовой записи, в split — к textMessage). Рендер: бабл стилизует `[data-type=mention]` через CSS в globals.css (class вычищает санитайзер, `data-*` DOMPurify пропускает по умолчанию). В редакторе mention подсвечен своим class.
+- **Грабли:** (1) peer-deps mention строго на версию core — ставить ТОЧНУЮ `@3.22.4`, не `^`. (2) suggestion-типы: `onStart/onUpdate` = `SuggestionProps`, `onKeyDown` = `SuggestionKeyDownProps` (разные!). (3) `message_mentions` тип добавлен в database.ts вручную. (4) внешние каналы: mention деградирует в plain «@Имя» (span чистится htmlToTelegramHtml) — приемлемо; упоминания в основном в team/self (наружу не уходят). (5) ⚠️ database.ts drift: полные тела inbox-функций в проде, тут только recompute обновлён.
+- **Проверки:** tsc 0, lint 0, 726 тестов, build ✓. **⏳ Ждёт деплоя фронта + смок:** набрать `@` → выбрать → отправить → упомянутый подписан и видит непрочитанное (в т.ч. если был отписан / в «Заметке»); проверить деградацию в внешнем канале если client+mention.
+- **Файлы:** миграции `20260619_message_mentions.sql`, `20260619_unread_mention_override.sql`; `messengerMention.ts`(нов), `MinimalTiptapEditor.tsx`, `MessageInput.tsx`, `useMessengerHandlers.ts`, `useSendMessage.ts`, `messengerService.send.ts`, `MessengerTabContent.tsx`, `database.ts`, `globals.css`. Коммиты `d4fd2fd` (БД+dep), `5a0957f` (фронт+override).
+
 ### 2026-06-18 — Видимость сообщения client/team/self + 4-режимный переключатель (Фаза 2, фича) ⚠️ КАРАНТИН ТРОНУТ, БД В ПРОДЕ, ⏳ СМОК-ТЕСТ КАНАЛОВ ЗА ПОЛЬЗОВАТЕЛЕМ
 - **Контекст:** продолжение Фазы 1 (см. ниже). Модель видимости: 4 режима над композером = шкала охвата `Клиенту → Команде → Заметка → Только я`. Под капотом 2 поля: `visibility ∈ client/team/self` + `notify_subscribers` (team+false = «Заметка», тихо).
 - **БД (прод через MCP, additive + 1 карантинная правка):**
