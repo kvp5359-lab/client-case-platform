@@ -9,6 +9,7 @@ import { getBadgeDisplay, formatBadgeCount } from '@/utils/inboxUnread'
 import { formatShortDate } from '@/utils/format/dateFormat'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { usePrefetchThreadMessages } from '@/hooks/messenger/usePrefetchThreadMessages'
+import { THREAD_ICONS } from './threadConstants'
 
 const STATUS_PREFIX = 'Статус: '
 
@@ -132,6 +133,25 @@ const channelIcons: Record<InboxChannelType, typeof Send> = {
   web: MessageSquare,
 }
 
+/** Полная мапа thread_icon → компонент (строится один раз при загрузке модуля,
+ *  не в рендере). Для канальных тредов даёт самолётик/конверт/whatsapp, для
+ *  задач/чатов — их собственную иконку. */
+const iconByThreadIcon: Record<string, typeof Send> = Object.fromEntries(
+  THREAD_ICONS.map((i) => [i.value, i.icon as typeof Send]),
+)
+
+/** Цвет САМОЙ ИКОНКИ значка канала под фирменный цвет приложения. */
+const channelColorByThreadIcon: Record<string, string> = {
+  whatsapp: 'text-[#25D366]', // WhatsApp green
+  telegram: 'text-[#229ED9]', // Telegram blue
+  send: 'text-[#229ED9]',
+  mail: 'text-[#EA4335]', // email red
+}
+const channelColorByType: Partial<Record<InboxChannelType, string>> = {
+  telegram: 'text-[#229ED9]',
+  email: 'text-[#EA4335]',
+}
+
 type InboxChatItemProps = {
   chat: InboxThreadEntry
   isSelected: boolean
@@ -227,7 +247,18 @@ export const InboxChatItem = memo(function InboxChatItem({
   }
 
   const accent = accentStyles[chat.thread_accent_color] ?? defaultAccent
-  const ChannelIcon = channelIcons[chat.channel_type]
+  // Значок канала на аватаре: backend схлопывает WhatsApp/Business/MTProto/group
+  // в channel_type='telegram', но thread_icon различает прямой канал
+  // (whatsapp/telegram/mail/send). Берём иконку по thread_icon, чтобы WhatsApp,
+  // Telegram и Email были визуально разными; иначе fallback по channel_type.
+  // Иконка значка: по thread_icon (канал ИЛИ иконка задачи/чата), иначе по
+  // каналу, иначе дефолт. Цвет — фирменный для каналов, серый для прочих.
+  const ChannelIcon =
+    iconByThreadIcon[chat.thread_icon] ?? channelIcons[chat.channel_type] ?? MessageSquare
+  const channelColor =
+    channelColorByThreadIcon[chat.thread_icon] ??
+    channelColorByType[chat.channel_type] ??
+    'text-gray-500'
 
   return (
     <button
@@ -264,12 +295,10 @@ export const InboxChatItem = memo(function InboxChatItem({
             {(avatarFallbackName ?? chat.thread_name).charAt(0).toUpperCase()}
           </div>
         )}
-        {/* Бейдж типа канала */}
-        {chat.channel_type !== 'web' && (
-          <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full bg-white flex items-center justify-center">
-            <ChannelIcon className="h-3 w-3 text-gray-500" />
-          </div>
-        )}
+        {/* Значок в углу аватара: канал (в фирменном цвете) или иконка треда */}
+        <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full bg-white border border-gray-200 flex items-center justify-center">
+          <ChannelIcon className={cn('h-3 w-3', channelColor)} />
+        </div>
       </div>
 
       {/* Контент */}

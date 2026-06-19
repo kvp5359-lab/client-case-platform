@@ -46,6 +46,14 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-18 — Значки каналов на аватарах «Входящих» + подложка кнопок бабла (фичи) ⏳ ЖДЁТ ДЕПЛОЯ ФРОНТА
+- **Запрос:** в углу аватара во «Входящих» показывать значок канала прямого диалога (WhatsApp/Telegram/Email) в фирменном цвете; для остальных тредов — их иконку (задача и т.п.).
+- **Замеры (RPC `get_inbox_threads_v2`, read-only):** backend схлопывает каналы в `channel_type ∈ {web, telegram, email}` — WhatsApp/Business/MTProto **все** идут как `telegram` ИЛИ `web` (личные диалоги без проекта = `channel_type='web'`). Различает канал **`thread_icon`** (`whatsapp`/`telegram`/`send`/`mail`). Поэтому опираемся на `thread_icon`, а не на `channel_type` — **без правки карантинной RPC** (фронт-only). Доли: web+telegram 63, web+send 11, web+whatsapp 7, email+mail 309.
+- **Сделано (`InboxChatItem.tsx`):** значок строится из общей мапы `THREAD_ICONS` по `thread_icon` (канал ИЛИ иконка задачи/чата). Цвет ИКОНКИ (не контур) фирменный: Telegram `#229ED9`, WhatsApp `#25D366`, Email `#EA4335`; прочие — серый. Показывается всем тредам.
+- **Грабли:** (1) личные MTProto/WhatsApp/Business имеют `channel_type='web'` — фильтр по `channel_type !== 'web'` их прятал, опираться на `thread_icon`. (2) `react-hooks/static-components`: компонент-иконку нельзя резолвить в рендере — мапа `iconByThreadIcon` строится на module-level из `THREAD_ICONS`.
+- **Доп:** `MessageActions.tsx` (не из этой сессии, закоммичено заодно) — непрозрачная подложка `bg-background` под ряд кнопок бабла, чтобы у входящих полупрозрачный тинт не просвечивал текст.
+- **Проверки:** tsc 0, lint 0. Смок (preview) не делал — ждёт деплоя фронта.
+
 ### 2026-06-18 — UX-правки бабла + честная метка вложения TG (не баги, фичи/фикс) ⏳ ЖДЁТ ДЕПЛОЯ; смок не делал
 - **Быстрые действия на бабле при наведении** (`MessageActions.tsx`): ряд иконок Ответить / Цитировать / Копировать / Реакция (раньше пряталось в меню «три точки»). Иконки приглушены, hover-подсветка, единая подложка в цвет бабла. Реакция — отдельный popover (`quickReactOpen`), гейт `isReactionSupportedForSource(message.source)` + `!is_draft`. Логика «Копировать текст» вынесена в общий `utils/messenger/copyMessageText.ts` (text/html для Word/Docs + text/plain) — общий для меню и быстрой иконки.
 - **Перенос строк → `<br>`** (`BubbleTextContent.tsx`): рендерим `content.replace(/\n/g,'<br>')` вместо CSS pre-wrap. Иначе при копировании из бабла браузер кладёт в `text/html` плоский текст без разрывов → форматирование слетало при вставке в Tiptap/Docs. «Цитировать» теперь через `stripHtmlKeepNewlines` (сохраняет переносы).
