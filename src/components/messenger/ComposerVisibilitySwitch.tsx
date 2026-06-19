@@ -39,12 +39,12 @@ const MODES: {
   },
   {
     key: 'team', label: 'Команде', Icon: Bell,
-    active: 'bg-neutral-200 text-neutral-900', border: 'border-neutral-400',
+    active: 'bg-neutral-700 text-white', border: 'border-neutral-700',
     title: 'Только команда · уведомляет подписчиков',
   },
   {
     key: 'note', label: 'Заметка', Icon: BellOff,
-    active: 'bg-neutral-100 text-neutral-500', border: 'border-neutral-300',
+    active: 'bg-neutral-400 text-white', border: 'border-neutral-400',
     title: 'Только команда · тихо (лишь @теги)',
   },
   {
