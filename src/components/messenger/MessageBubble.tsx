@@ -100,16 +100,22 @@ function MessageBubbleImpl({
   const isTeamVis = vis === 'team'
   // «Заметка» = team + тихо (notify_subscribers=false).
   const isNoteVis = isTeamVis && message.notify_subscribers === false
+  // Палитра аудитории: self=жёлтый; «Команде» — почти чёрный; «Заметка» —
+  // тёмно-серый (визуально отличается от «Команде»); client — акцент чата.
   const ownBubbleClass = isSelfVis
     ? 'bg-amber-200 text-amber-950'
-    : isTeamVis
-      ? 'bg-neutral-800 text-neutral-50'
-      : colors.own
+    : isNoteVis
+      ? 'bg-neutral-600 text-neutral-50'
+      : isTeamVis
+        ? 'bg-neutral-900 text-neutral-50'
+        : colors.own
   const incomingBubbleClass = isSelfVis
     ? 'bg-amber-200 text-amber-950'
-    : isTeamVis
-      ? 'bg-neutral-200 text-neutral-900'
-      : colors.incoming
+    : isNoteVis
+      ? 'bg-neutral-300 text-neutral-900'
+      : isTeamVis
+        ? 'bg-neutral-200 text-neutral-900'
+        : colors.incoming
   const showStaffMark = !!isClientThread && isTeamSender(message.sender_role)
   // Имя отправителя берём из join'нутого participant'а (актуальное на момент рендера).
   // sender_name на сообщении — это исторический snapshot, может быть устаревший

@@ -7,7 +7,7 @@
  *
  * Шкала охвата: Клиенту → Команде → Заметка → Только я.
  */
-import { Send, Users, BellOff, Lock } from 'lucide-react'
+import { MessageSquare, Users, BellOff, Lock } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -33,7 +33,7 @@ const MODES: {
   title: string
 }[] = [
   {
-    key: 'client', label: 'Клиенту', Icon: Send,
+    key: 'client', label: 'Клиенту', Icon: MessageSquare,
     active: 'bg-blue-100 text-blue-800', border: 'border-blue-300',
     title: 'Клиент + команда · уходит в Telegram/email',
   },

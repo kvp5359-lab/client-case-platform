@@ -114,9 +114,12 @@ export function MessageActions({
   const actionBtnClass = cn(
     'h-6 w-6 rounded-full transition-colors',
     isOwn
-      ? lightBubble
-        ? 'text-amber-900/60 hover:text-amber-900 hover:bg-black/10'
-        : 'text-white/60 hover:text-white hover:bg-white/20'
+      ? message.is_draft
+        ? // Черновик — светлый бабл (белый фон + цветной бордер), белая иконка невидима.
+          'text-foreground/55 hover:text-foreground hover:bg-foreground/10'
+        : lightBubble
+          ? 'text-amber-900/60 hover:text-amber-900 hover:bg-black/10'
+          : 'text-white/60 hover:text-white hover:bg-white/20'
       : 'text-foreground/45 hover:text-foreground hover:bg-foreground/10',
   )
   // Фон пилюли — цвет бабла. Для своих — солид (bg-blue-500 text-white),
