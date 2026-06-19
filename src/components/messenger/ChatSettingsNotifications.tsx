@@ -61,44 +61,44 @@ export function ChatSettingsNotifications({
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <Label>Уведомления</Label>
+      <Label>Уведомления</Label>
+
+      {/* Личная подписка + шестерёнка управления подписчиками (справа, в один ряд) */}
+      <div className="flex items-stretch gap-1.5">
+        <button
+          type="button"
+          disabled={pending || loading}
+          onClick={() => setSubscribed(!subscribed)}
+          className={cn(
+            'flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-md border text-sm transition-colors',
+            'hover:bg-muted/50 disabled:opacity-50 disabled:cursor-default',
+            subscribed ? 'text-foreground' : 'text-muted-foreground',
+          )}
+        >
+          {subscribed ? <Bell className="h-4 w-4 shrink-0" /> : <BellOff className="h-4 w-4 shrink-0" />}
+          <span className="truncate">
+            {loading ? 'Загрузка…' : subscribed ? 'Вы подписаны на уведомления' : 'Вы не подписаны'}
+          </span>
+          {!loading && (
+            <span className="ml-auto text-xs text-muted-foreground shrink-0">
+              {subscribed ? 'Отписаться' : 'Подписаться'}
+            </span>
+          )}
+        </button>
         {canManage && (
           <button
             type="button"
             onClick={() => setManageOpen((o) => !o)}
             title="Настроить подписчиков"
             className={cn(
-              'p-1 rounded-md transition-colors',
+              'shrink-0 self-stretch px-2.5 rounded-md border flex items-center justify-center transition-colors',
               manageOpen ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50',
             )}
           >
-            <Settings className="h-3.5 w-3.5" />
+            <Settings className="h-4 w-4" />
           </button>
         )}
       </div>
-
-      {/* Личная подписка */}
-      <button
-        type="button"
-        disabled={pending || loading}
-        onClick={() => setSubscribed(!subscribed)}
-        className={cn(
-          'flex items-center gap-2 w-full px-3 py-2 rounded-md border text-sm transition-colors',
-          'hover:bg-muted/50 disabled:opacity-50 disabled:cursor-default',
-          subscribed ? 'text-foreground' : 'text-muted-foreground',
-        )}
-      >
-        {subscribed ? <Bell className="h-4 w-4 shrink-0" /> : <BellOff className="h-4 w-4 shrink-0" />}
-        <span className="truncate">
-          {loading ? 'Загрузка…' : subscribed ? 'Вы подписаны на уведомления' : 'Вы не подписаны'}
-        </span>
-        {!loading && (
-          <span className="ml-auto text-xs text-muted-foreground shrink-0">
-            {subscribed ? 'Отписаться' : 'Подписаться'}
-          </span>
-        )}
-      </button>
 
       {/* Управление подписчиками (менеджеры) */}
       {canManage && manageOpen && (
