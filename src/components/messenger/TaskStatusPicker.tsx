@@ -76,7 +76,7 @@ export const TaskStatusPicker = memo(function TaskStatusPicker({
         <button
           type="button"
           className={cn(
-            'flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-medium',
+            'flex items-center gap-1.5 h-6 px-2.5 rounded-full text-xs font-medium',
             'transition-colors shrink-0 max-w-[180px] truncate',
             isChanged
               ? 'border-[0.5px] text-foreground'

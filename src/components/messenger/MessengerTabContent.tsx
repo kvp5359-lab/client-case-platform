@@ -372,7 +372,7 @@ export function MessengerTabContent({
 
         {/* Линия над композером (наезжает на список через negative margin):
             слева тип сообщения + статус задачи, справа — «Прочитано/Непрочитано». */}
-        <div className="flex items-center justify-between gap-2 -mt-8 mb-3 relative z-10 px-3 pointer-events-none">
+        <div className="flex items-center justify-between gap-2 -mt-8 mb-2 relative z-10 px-3 pointer-events-none">
           <div className="flex items-center gap-2 pointer-events-auto">
             {!state.editingMessage && (
               <ComposerVisibilitySwitch mode={composerMode} onChange={setComposerMode} />

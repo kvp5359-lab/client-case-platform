@@ -66,7 +66,7 @@ export function ComposerVisibilitySwitch({
   return (
     <div
       className={cn(
-        'inline-flex items-stretch h-7 rounded-full border overflow-hidden bg-background shadow-sm',
+        'inline-flex items-stretch h-6 rounded-full border overflow-hidden bg-background shadow-sm',
         activeBorder,
       )}
     >

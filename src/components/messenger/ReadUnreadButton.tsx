@@ -23,7 +23,7 @@ export function ReadUnreadButton({
     return (
       <button
         type="button"
-        className="pointer-events-auto h-7 px-3 text-xs gap-1 inline-flex items-center rounded-full bg-white/80 backdrop-blur-sm border border-red-300 shadow-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+        className="pointer-events-auto h-6 px-3 text-xs gap-1 inline-flex items-center rounded-full bg-white/80 backdrop-blur-sm border border-red-300 shadow-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
         onClick={onMarkRead}
         disabled={isMarkReadPending}
       >
@@ -36,7 +36,7 @@ export function ReadUnreadButton({
   return (
     <button
       type="button"
-      className="pointer-events-auto h-7 px-3 text-xs gap-1 inline-flex items-center rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 shadow-sm text-muted-foreground hover:text-foreground hover:bg-gray-50 transition-colors disabled:opacity-50"
+      className="pointer-events-auto h-6 px-3 text-xs gap-1 inline-flex items-center rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 shadow-sm text-muted-foreground hover:text-foreground hover:bg-gray-50 transition-colors disabled:opacity-50"
       onClick={onMarkUnread}
       disabled={isMarkUnreadPending}
     >
