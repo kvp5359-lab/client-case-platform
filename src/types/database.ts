@@ -5000,6 +5000,8 @@ export type Database = {
           attachment_error: Json | null
           attachment_status: string | null
           channel: string
+          notify_subscribers: boolean
+          visibility: Database["public"]["Enums"]["message_visibility"]
           content: string
           created_at: string
           email_delivery_status: string | null
@@ -5054,6 +5056,8 @@ export type Database = {
           attachment_error?: Json | null
           attachment_status?: string | null
           channel?: string
+          notify_subscribers?: boolean
+          visibility?: Database["public"]["Enums"]["message_visibility"]
           content: string
           created_at?: string
           email_delivery_status?: string | null
@@ -5108,6 +5112,8 @@ export type Database = {
           attachment_error?: Json | null
           attachment_status?: string | null
           channel?: string
+          notify_subscribers?: boolean
+          visibility?: Database["public"]["Enums"]["message_visibility"]
           content?: string
           created_at?: string
           email_delivery_status?: string | null
@@ -9748,6 +9754,7 @@ export type Database = {
         | "telegram_mtproto"
         | "wazzup"
         | "email_internal"
+      message_visibility: "client" | "team" | "self"
       outgoing_send_status: "pending" | "sent" | "failed"
       recent_entity_type:
         | "thread"
@@ -9946,6 +9953,7 @@ export const Constants = {
         "wazzup",
         "email_internal",
       ],
+      message_visibility: ["client", "team", "self"],
       outgoing_send_status: ["pending", "sent", "failed"],
       recent_entity_type: [
         "thread",

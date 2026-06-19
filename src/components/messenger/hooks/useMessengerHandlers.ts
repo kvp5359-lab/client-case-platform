@@ -52,6 +52,8 @@ type UseMessengerHandlersParams = {
       forwardedAttachments?: ForwardedAttachment[]
       originalContent?: string | null
       originalLanguage?: string | null
+      visibility?: 'client' | 'team' | 'self'
+      notifySubscribers?: boolean
     }) => void
   }
   sendEmail: { mutate: (args: { threadId: string; content: string; files?: File[] }) => void }
@@ -149,7 +151,12 @@ export function useMessengerHandlers({
       content: string,
       replyToId?: string | null,
       files?: File[],
-      options?: { originalContent?: string | null; originalLanguage?: string | null },
+      options?: {
+        originalContent?: string | null
+        originalLanguage?: string | null
+        visibility?: 'client' | 'team' | 'self'
+        notifySubscribers?: boolean
+      },
     ) => {
       // Email-чаты теперь идут через обычный sendMessage → INSERT project_messages
       // (source='web') → триггер notify_telegram_on_new_message видит type='email'
@@ -173,7 +180,15 @@ export function useMessengerHandlers({
         }
       }
 
-      if (sendDelay > 0 && currentParticipant && !replyToId && forwardedAttachments.length === 0) {
+      // Отложенная отправка (с «Отменить») — только для обычного сообщения клиенту.
+      // Внутренние (team/self) идут сразу через mutate, минуя delay-путь.
+      if (
+        sendDelay > 0 &&
+        (options?.visibility ?? 'client') === 'client' &&
+        currentParticipant &&
+        !replyToId &&
+        forwardedAttachments.length === 0
+      ) {
         const delayed = await sendWithDelay({
           content,
           senderParticipantId: currentParticipant.participantId,
@@ -200,6 +215,8 @@ export function useMessengerHandlers({
         forwardedAttachments: forwardedAttachments.length > 0 ? forwardedAttachments : undefined,
         originalContent: options?.originalContent ?? null,
         originalLanguage: options?.originalLanguage ?? null,
+        visibility: options?.visibility ?? 'client',
+        notifySubscribers: options?.notifySubscribers ?? true,
       })
       setReplyTo(null)
       setForwardedAttachments([])

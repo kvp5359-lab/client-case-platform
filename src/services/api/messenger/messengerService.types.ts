@@ -107,6 +107,16 @@ export type ProjectMessage = {
   forwarded_date: string | null
   scheduled_send_at: string | null
   channel: MessageChannel
+  /**
+   * Видимость сообщения (Фаза 2):
+   *  client — клиент + команда (уходит наружу),
+   *  team   — только команда (наружу НЕ уходит),
+   *  self   — только автор.
+   * Цвет бабла: client=акцент чата, team=нейтральный чёрно-серый, self=жёлтый.
+   */
+  visibility?: 'client' | 'team' | 'self' | null
+  /** Для team: false = «Заметка» (тихо, не копит непрочитанное у подписчиков). */
+  notify_subscribers?: boolean | null
   thread_id: string | null
   email_metadata: EmailMetadata | null
   /** Resend email id (исходящие через email-internal-send + входящие). */

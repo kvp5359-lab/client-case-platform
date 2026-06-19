@@ -93,6 +93,21 @@ function MessageBubbleImpl({
   // Визуальный эффект непрерывный: бабл засветлён до финальной галочки.
   const isOptimisticId = message.id.startsWith('optimistic-')
   const colors = bubbleStyles[accent]
+  // Цвет бабла по видимости (Фаза 2): палитра = аудитория.
+  //  client → акцент чата; team/note → нейтральный чёрно-серый; self → жёлтый.
+  const vis = message.visibility ?? 'client'
+  const isSelfVis = vis === 'self'
+  const isTeamVis = vis === 'team'
+  const ownBubbleClass = isSelfVis
+    ? 'bg-amber-200 text-amber-950'
+    : isTeamVis
+      ? 'bg-neutral-800 text-neutral-50'
+      : colors.own
+  const incomingBubbleClass = isSelfVis
+    ? 'bg-amber-200 text-amber-950'
+    : isTeamVis
+      ? 'bg-neutral-200 text-neutral-900'
+      : colors.incoming
   const showStaffMark = !!isClientThread && isTeamSender(message.sender_role)
   // Имя отправителя берём из join'нутого participant'а (актуальное на момент рендера).
   // sender_name на сообщении — это исторический snapshot, может быть устаревший
@@ -315,8 +330,8 @@ function MessageBubbleImpl({
                 : isOwn
                   ? deliveryFailed
                     ? 'bg-transparent border-2 border-red-500 text-red-600'
-                    : colors.own
-                  : cn(colors.incoming, showAvatar && 'rounded-tl-md'),
+                    : ownBubbleClass
+                  : cn(incomingBubbleClass, showAvatar && 'rounded-tl-md'),
             )}
           >
             {/* Failed delivery badge */}

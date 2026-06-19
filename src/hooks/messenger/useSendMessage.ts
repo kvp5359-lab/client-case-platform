@@ -46,6 +46,10 @@ export function useSendMessage(
     forwardedAttachments?: ForwardedAttachment[]
     originalContent?: string | null
     originalLanguage?: string | null
+    /** Видимость (Фаза 2): client (по умолч.) / team / self. */
+    visibility?: 'client' | 'team' | 'self'
+    /** Для team: false = «Заметка» (тихо). */
+    notifySubscribers?: boolean
     /** Явный override isEmailChat — для свежесозданных тредов, где
      *  useEmailLink/threadRow ещё не успели загрузиться (race). */
     isEmailChat?: boolean
@@ -65,6 +69,8 @@ export function useSendMessage(
       forwardedAttachments,
       originalContent,
       originalLanguage,
+      visibility,
+      notifySubscribers,
     }) => {
       if (!user) throw new Error('Не авторизован')
 
@@ -87,6 +93,8 @@ export function useSendMessage(
         threadId,
         originalContent,
         originalLanguage,
+        visibility,
+        notifySubscribers,
       })
     },
     // Оптимистичное обновление
@@ -96,6 +104,7 @@ export function useSendMessage(
       replyToMessage,
       attachments,
       forwardedAttachments,
+      visibility,
       isEmailChat: isEmailChatOverride,
     }) => {
       const qk = messagesKey
@@ -147,6 +156,7 @@ export function useSendMessage(
           forwarded_date: null,
           scheduled_send_at: null,
           channel,
+          visibility: visibility ?? 'client',
           thread_id: threadId,
           email_metadata: null,
           created_at: now,

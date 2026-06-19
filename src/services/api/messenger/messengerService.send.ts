@@ -37,6 +37,10 @@ export type SendMessageParams = {
    * но не используется для выбора кеша на фронте (см. audit S1).
    */
   channel?: MessageChannel
+  /** Видимость (Фаза 2): client (по умолч.) / team / self. */
+  visibility?: 'client' | 'team' | 'self'
+  /** Для team: false = «Заметка» (тихо). По умолчанию true. */
+  notifySubscribers?: boolean
   /** Тред, в который пишется сообщение. Обязателен — legacy-режим без треда удалён. */
   threadId: string
   /** Если перед отправкой пользователь нажал «Перевести» — здесь оригинал
@@ -95,6 +99,8 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     sender_role: params.senderRole,
     source: 'web' as const,
     channel,
+    visibility: params.visibility ?? 'client',
+    notify_subscribers: params.notifySubscribers ?? true,
     thread_id: params.threadId,
   }
 

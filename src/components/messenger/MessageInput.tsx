@@ -6,6 +6,7 @@ import { MinimalTiptapEditor } from './MinimalTiptapEditor'
 import { EditingBanner, ReplyBanner, TranslationBanner } from './MessageInputBanners'
 import { MessageAttachmentsRow } from './MessageAttachmentsRow'
 import { MessageInputToolbar } from './MessageInputToolbar'
+import { ComposerVisibilitySwitch, MODE_VISIBILITY, type ComposerMode } from './ComposerVisibilitySwitch'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 import { isHtmlContent, plainTextToHtml } from '@/utils/format/messengerHtml'
 import { useDraftMessage } from './hooks/useDraftMessage'
@@ -25,7 +26,12 @@ type MessageInputProps = {
     content: string,
     replyToId?: string | null,
     files?: File[],
-    options?: { originalContent?: string | null; originalLanguage?: string | null },
+    options?: {
+      originalContent?: string | null
+      originalLanguage?: string | null
+      visibility?: 'client' | 'team' | 'self'
+      notifySubscribers?: boolean
+    },
   ) => void
   isPending: boolean
   onTyping?: () => void
@@ -95,6 +101,16 @@ export function MessageInput({
   threadStatusId,
 }: MessageInputProps) {
   const [hasText, setHasText] = useState(false)
+  // Видимость сообщения (Фаза 2): client/team/note/self. Sticky в пределах
+  // открытого треда (сбрасывается на 'client' при смене треда — см. useEffect).
+  // Режим видимости хранится per-thread: вывод из threadId даёт и sticky в
+  // пределах треда, и автосброс на 'client' при открытии другого (без эффекта/ref).
+  const [modeByThread, setModeByThread] = useState<Record<string, ComposerMode>>({})
+  const mode: ComposerMode = (threadId && modeByThread[threadId]) || 'client'
+  const setMode = useCallback(
+    (m: ComposerMode) => setModeByThread((prev) => ({ ...prev, [threadId ?? '']: m })),
+    [threadId],
+  )
   const [editor, setEditor] = useState<Editor | null>(null)
   const [openQuickReplyPicker, setOpenQuickReplyPicker] = useState(false)
   // Состояние перевода исходящего: если задано — пользователь нажал «Перевести»,
@@ -372,12 +388,17 @@ export function MessageInput({
           /* quota */
         }
       }
-      const options = translation
-        ? {
-            originalContent: translation.originalContent,
-            originalLanguage: translation.sourceLanguage,
-          }
-        : undefined
+      const vis = MODE_VISIBILITY[mode]
+      const options = {
+        ...(translation
+          ? {
+              originalContent: translation.originalContent,
+              originalLanguage: translation.sourceLanguage,
+            }
+          : {}),
+        visibility: vis.visibility,
+        notifySubscribers: vis.notifySubscribers,
+      }
       onSend(
         textContent ? htmlContent : '📎',
         replyTo?.id,
@@ -429,6 +450,7 @@ export function MessageInput({
     clearPending,
     translation,
     clearPersistedTranslation,
+    mode,
   ])
 
   const handleTranslated = useCallback(
@@ -572,6 +594,12 @@ export function MessageInput({
           targetLanguage={translation.targetLanguage}
           onRevert={handleRevertTranslation}
         />
+      )}
+
+      {!editingMessage && (
+        <div className="px-4 pt-2">
+          <ComposerVisibilitySwitch mode={mode} onChange={setMode} />
+        </div>
       )}
 
       <div
