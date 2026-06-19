@@ -183,7 +183,7 @@ export function ChatSettingsAccess({
     return selected.map((pp) => (
       <span
         key={pp.id}
-        className="inline-flex items-center gap-1.5 px-1.5 py-1 rounded-md bg-brand-100 text-xs font-medium"
+        className="inline-flex items-center gap-1.5 pl-1.5 pr-1 py-1 rounded-md bg-brand-100 text-xs font-medium"
       >
         {pp.avatar_url ? (
           <Image src={pp.avatar_url} alt="" width={16} height={16} className="w-4 h-4 rounded-full object-cover" />
@@ -193,6 +193,30 @@ export function ChatSettingsAccess({
           </span>
         )}
         {pp.user_id === userId ? 'Я' : [pp.name, pp.last_name].filter(Boolean).join(' ')}
+        <span
+          role="button"
+          tabIndex={-1}
+          aria-label="Убрать"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            if (isEditMode) {
+              if (accessType !== 'custom') onAccessChange('custom')
+              onToggleMember(pp.id)
+            } else {
+              if (accessType !== 'custom') onSetAccessType('custom')
+              onSetSelectedMemberIds((prev) => {
+                const next = new Set(prev)
+                next.delete(pp.id)
+                return next
+              })
+            }
+          }}
+          className="ml-0.5 rounded-sm p-0.5 text-muted-foreground hover:text-foreground hover:bg-black/5 cursor-pointer"
+        >
+          <X className="w-3 h-3" />
+        </span>
       </span>
     ))
   }
