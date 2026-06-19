@@ -172,8 +172,11 @@ export function MessageActions({
     >
       {renderTranslationToggle()}
       {/* Единая подложка ряда — в цвет бабла, чтобы иконки не налезали на
-          содержимое. Сами иконки приглушены, подсветка — на hover. */}
-      <div className={cn('flex items-center gap-0.5 rounded-full px-0.5 shadow-sm', pillClass)}>
+          содержимое. Сами иконки приглушены, подсветка — на hover.
+          Непрозрачный bg-background снизу — иначе у входящих полупрозрачный
+          тинт бабла (/70) просвечивает текст под кнопками. */}
+      <div className="rounded-full bg-background shadow-sm">
+      <div className={cn('flex items-center gap-0.5 rounded-full px-0.5', pillClass)}>
       {/* Быстрые действия при наведении: Ответить, Цитировать, Копировать.
           Полный набор (перевод, удалить) — в меню «три точки». */}
       {!message.is_draft && (
@@ -293,6 +296,7 @@ export function MessageActions({
           })}
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
       </div>
     </div>
   )
