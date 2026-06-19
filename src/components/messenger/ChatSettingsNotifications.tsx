@@ -63,14 +63,14 @@ export function ChatSettingsNotifications({
     <div className="space-y-1.5">
       <Label>Уведомления</Label>
 
-      {/* Личная подписка + шестерёнка управления подписчиками (справа, в один ряд) */}
-      <div className="flex items-stretch gap-1.5">
+      {/* Один контур: слева кнопка подписки, справа внутри — шестерёнка */}
+      <div className="flex items-stretch rounded-md border overflow-hidden">
         <button
           type="button"
           disabled={pending || loading}
           onClick={() => setSubscribed(!subscribed)}
           className={cn(
-            'flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-md border text-sm transition-colors',
+            'flex items-center gap-2 flex-1 min-w-0 px-3 py-2 text-sm transition-colors',
             'hover:bg-muted/50 disabled:opacity-50 disabled:cursor-default',
             subscribed ? 'text-foreground' : 'text-muted-foreground',
           )}
@@ -91,7 +91,7 @@ export function ChatSettingsNotifications({
             onClick={() => setManageOpen((o) => !o)}
             title="Настроить подписчиков"
             className={cn(
-              'shrink-0 self-stretch px-2.5 rounded-md border flex items-center justify-center transition-colors',
+              'shrink-0 px-2.5 border-l flex items-center justify-center transition-colors',
               manageOpen ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50',
             )}
           >
