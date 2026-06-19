@@ -103,7 +103,11 @@ export function BubbleTextContent({
                 ref={contentContainerRef}
                 className="text-sm whitespace-pre-wrap break-words min-w-0 messenger-links"
                 dangerouslySetInnerHTML={{
-                  __html: sanitizeMessengerHtml(linkifyText(message.content)),
+                  // Переносы строк рендерим настоящими <br>, а не CSS pre-wrap по
+                  // символам \n. Иначе при копировании из бабла браузер кладёт в
+                  // text/html плоский текст без разрывов (CSS-перенос не даёт <br>)
+                  // → форматирование слетает при вставке в Tiptap/Google Docs.
+                  __html: sanitizeMessengerHtml(linkifyText(message.content).replace(/\n/g, '<br>')),
                 }}
               />
             )}

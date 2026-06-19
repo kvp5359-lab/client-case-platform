@@ -707,7 +707,7 @@ async function handleAttachments(
     files.push({ fileId: animation.thumbnail.file_id, originalName: name, safeFileName: name, mimeType: "image/jpeg" });
   }
 
-  const skippedFiles: string[] = [];
+  const skippedFiles: { name: string; tooBig: boolean }[] = [];
   for (const file of files) {
     try {
       const fileInfoRes = await fetch(
@@ -716,7 +716,15 @@ async function handleAttachments(
       const fileInfo = await fileInfoRes.json();
 
       if (!fileInfo.ok || !fileInfo.result?.file_path) {
-        skippedFiles.push(file.originalName);
+        // getFile падает по разным причинам — НЕ только размер. «Слишком
+        // большой» Telegram сообщает явно в description (file is too big).
+        // Иначе это просроченный/недоступный file_id, временный сбой и т.п.
+        // (в т.ч. multi-bot: file_id привязан к конкретному боту). Раньше
+        // ВСЁ помечалось «слишком большой» — ложь для маленьких файлов.
+        const desc = typeof fileInfo.description === "string" ? fileInfo.description : "";
+        const tooBig = /too big/i.test(desc);
+        console.error("getFile failed:", file.originalName, "desc:", desc);
+        skippedFiles.push({ name: file.originalName, tooBig });
         continue;
       }
 
@@ -776,9 +784,13 @@ async function handleAttachments(
       .eq("id", messageId)
       .single();
 
+    const label = (f: { name: string; tooBig: boolean }) =>
+      f.tooBig
+        ? `«${f.name}» слишком большой (макс. 20 МБ через Telegram)`
+        : `«${f.name}» не удалось загрузить из Telegram — попросите отправить файл ещё раз`;
     const warning = skippedFiles.length === 1
-      ? `\n\n⚠️ Файл «${skippedFiles[0]}» слишком большой (макс. 20 МБ через Telegram)`
-      : `\n\n⚠️ Файлы слишком большие (макс. 20 МБ через Telegram):\n${skippedFiles.map((n) => `• ${n}`).join("\n")}`;
+      ? `\n\n⚠️ Файл ${label(skippedFiles[0])}`
+      : `\n\n⚠️ Файлы не загрузились:\n${skippedFiles.map((f) => `• ${label(f)}`).join("\n")}`;
 
     await serviceClient
       .from("project_messages")

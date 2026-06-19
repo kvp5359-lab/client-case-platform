@@ -12,7 +12,9 @@
 
 import { useSyncExternalStore } from 'react'
 import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Gauge } from 'lucide-react'
+import { CardContent } from '@/components/ui/card'
+import { SettingsCard } from './SettingsCard'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
@@ -38,17 +40,12 @@ export function PerfTraceSection() {
       : undefined)
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Диагностика производительности</CardTitle>
-        <CardDescription>
-          Замер таймингов открытия тредов во «Входящих». Когда включено, по
-          каждому открытию чата в консоли браузера (F12 → вкладка Console)
-          печатается таблица этапов: клик → загрузка из сети → отрисовка, с
-          временем каждого шага в миллисекундах. Настройка личная — действует
-          только в этом браузере. Когда выключено — на скорость не влияет.
-        </CardDescription>
-      </CardHeader>
+    <SettingsCard
+      title="Диагностика производительности"
+      description="Замер таймингов открытия тредов во «Входящих». Когда включено, по каждому открытию чата в консоли браузера (F12 → вкладка Console) печатается таблица этапов: клик → загрузка из сети → отрисовка, с временем каждого шага в миллисекундах. Настройка личная — действует только в этом браузере. Когда выключено — на скорость не влияет."
+      icon={Gauge}
+      padded={false}
+    >
       <CardContent>
         <div className="space-y-4">
           <div className="flex items-center justify-between rounded-md border px-3 py-3">
@@ -92,6 +89,6 @@ export function PerfTraceSection() {
           </p>
         </div>
       </CardContent>
-    </Card>
+    </SettingsCard>
   )
 }

@@ -5,7 +5,9 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Bell } from 'lucide-react'
+import { CardContent } from '@/components/ui/card'
+import { SettingsCard } from './SettingsCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -75,13 +77,12 @@ export function NotificationSettingsSection({ workspaceId }: NotificationSetting
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Уведомления мессенджера</CardTitle>
-        <CardDescription>
-          Сколько времени уведомление о новом сообщении остаётся на экране
-        </CardDescription>
-      </CardHeader>
+    <SettingsCard
+      title="Уведомления мессенджера"
+      description="Сколько времени уведомление о новом сообщении остаётся на экране"
+      icon={Bell}
+      padded={false}
+    >
       <CardContent>
         <div className="space-y-4">
           <div className="space-y-3">
@@ -124,6 +125,6 @@ export function NotificationSettingsSection({ workspaceId }: NotificationSetting
           </Button>
         </div>
       </CardContent>
-    </Card>
+    </SettingsCard>
   )
 }

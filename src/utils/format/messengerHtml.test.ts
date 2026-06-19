@@ -85,4 +85,18 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     // Должен остаться хотя бы один <br> или пустой блок-разделитель.
     expect(out).toMatch(/<br|<p[^>]*><\/p>|<div[^>]*><\/div>/)
   })
+
+  it('обрезает хвостовую пустоту email (br/nbsp/пустой блок в конце)', () => {
+    // Так заканчивается тело входящего email (Gmail): текст + <br><br><br> +
+    // &nbsp; + пустой mail-quote-collapse div (класс вычищает DOMPurify).
+    const dirty = 'Текст.<br><br><br>&nbsp;<div class="mail-quote-collapse"></div>'
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).toBe('Текст.')
+  })
+
+  it('обрезает начальную пустоту', () => {
+    const dirty = '<br>&nbsp;<br>Текст'
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).toBe('Текст')
+  })
 })

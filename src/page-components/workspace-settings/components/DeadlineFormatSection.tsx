@@ -9,7 +9,9 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { CalendarClock } from 'lucide-react'
+import { CardContent } from '@/components/ui/card'
+import { SettingsCard } from './SettingsCard'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -69,15 +71,12 @@ export function DeadlineFormatSection({ workspaceId }: Props) {
   const farExample = formatDeadlineDisplay(farDate, { near, far })
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Формат отображения сроков</CardTitle>
-        <CardDescription>
-          Как показывать даты дедлайнов во всём воркспейсе — в задачах, на досках
-          и в поле «Срок». «Близкая» дата — сегодня/завтра/вчера/послезавтра
-          (есть ярлык), «дальняя» — все остальные.
-        </CardDescription>
-      </CardHeader>
+    <SettingsCard
+      title="Формат отображения сроков"
+      description="Как показывать даты дедлайнов во всём воркспейсе — в задачах, на досках и в поле «Срок». «Близкая» дата — сегодня/завтра/вчера/послезавтра (есть ярлык), «дальняя» — все остальные."
+      icon={CalendarClock}
+      padded={false}
+    >
       <CardContent>
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -124,6 +123,6 @@ export function DeadlineFormatSection({ workspaceId }: Props) {
           </div>
         </div>
       </CardContent>
-    </Card>
+    </SettingsCard>
   )
 }

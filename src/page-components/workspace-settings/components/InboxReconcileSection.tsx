@@ -12,7 +12,8 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { RefreshCw } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { CardContent } from '@/components/ui/card'
+import { SettingsCard } from './SettingsCard'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
 
@@ -54,16 +55,19 @@ export function InboxReconcileSection() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Сверка данных «Входящих»</CardTitle>
-        <CardDescription>
+    <SettingsCard
+      title="Сверка данных «Входящих»"
+      icon={RefreshCw}
+      description={
+        <>
           Счётчики непрочитанного, превью и бейджи хранятся в предпосчитанном виде и
           обновляются автоматически в реальном времени (плюс ночная авто-сверка). Эта
           кнопка запускает полный пересчёт вручную и показывает, сколько расхождений
           найдено и исправлено. На здоровой системе — 0. Может занять несколько секунд.
-        </CardDescription>
-      </CardHeader>
+        </>
+      }
+      padded={false}
+    >
       <CardContent>
         <div className="space-y-4">
           <Button type="button" onClick={run} disabled={running} className="gap-2">
@@ -96,6 +100,6 @@ export function InboxReconcileSection() {
           )}
         </div>
       </CardContent>
-    </Card>
+    </SettingsCard>
   )
 }

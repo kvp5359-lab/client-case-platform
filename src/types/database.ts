@@ -8208,6 +8208,8 @@ export type Database = {
           deadline_near_format: string
           default_ai_check_prompt: string | null
           default_ai_naming_prompt: string | null
+          default_task_accent: string
+          default_task_icon: string
           default_lead_template_per_source: Json
           deleted_at: string | null
           description: string | null
@@ -8242,6 +8244,8 @@ export type Database = {
           deadline_near_format?: string
           default_ai_check_prompt?: string | null
           default_ai_naming_prompt?: string | null
+          default_task_accent?: string
+          default_task_icon?: string
           default_lead_template_per_source?: Json
           deleted_at?: string | null
           description?: string | null
@@ -8276,6 +8280,8 @@ export type Database = {
           deadline_near_format?: string
           default_ai_check_prompt?: string | null
           default_ai_naming_prompt?: string | null
+          default_task_accent?: string
+          default_task_icon?: string
           default_lead_template_per_source?: Json
           deleted_at?: string | null
           description?: string | null

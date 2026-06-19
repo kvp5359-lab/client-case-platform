@@ -7,7 +7,8 @@
  */
 
 import { Languages } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { CardContent } from '@/components/ui/card'
+import { SettingsCard } from './SettingsCard'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -33,16 +34,12 @@ export function TranslationSettingsSection({ workspaceId }: { workspaceId: strin
   const useContext = settings?.translation_use_thread_context ?? false
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Languages className="h-5 w-5" />
-          Перевод сообщений
-        </CardTitle>
-        <CardDescription>
-          Модель и опции для перевода входящих и исходящих сообщений
-        </CardDescription>
-      </CardHeader>
+    <SettingsCard
+      title="Перевод сообщений"
+      description="Модель и опции для перевода входящих и исходящих сообщений"
+      icon={Languages}
+      padded={false}
+    >
       <CardContent className="space-y-5">
         <div className="space-y-2 max-w-[600px]">
           <Label htmlFor="translation-model">Модель</Label>
@@ -92,6 +89,6 @@ export function TranslationSettingsSection({ workspaceId }: { workspaceId: strin
           />
         </div>
       </CardContent>
-    </Card>
+    </SettingsCard>
   )
 }

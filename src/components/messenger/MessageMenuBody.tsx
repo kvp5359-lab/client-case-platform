@@ -19,8 +19,8 @@ import { trackReactionUsage } from '@/utils/messenger/recentReactions'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import { isReactionSupportedForSource } from '@/services/api/messenger/reactionStrategies'
-import { stripHtml, isHtmlContent, sanitizeMessengerHtml } from '@/utils/format/messengerHtml'
-import { toast } from 'sonner'
+import { stripHtmlKeepNewlines } from '@/utils/format/messengerHtml'
+import { copyMessageText } from '@/utils/messenger/copyMessageText'
 
 /**
  * Общая модель действий над сообщением: используется и в dropdown «три точки»,
@@ -83,28 +83,7 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
   } = props
   const { Item, Separator } = comps
 
-  const handleCopyText = () => {
-    const raw = message.content
-    const plain = stripHtml(raw)
-    // Если контент HTML — копируем и как text/html, и как text/plain,
-    // чтобы редакторы (Word, Notion, Google Docs) получили форматирование,
-    // а терминалы/textarea — обычный текст.
-    if (isHtmlContent(raw) && typeof ClipboardItem !== 'undefined') {
-      const html = sanitizeMessengerHtml(raw)
-      const item = new ClipboardItem({
-        'text/html': new Blob([html], { type: 'text/html' }),
-        'text/plain': new Blob([plain], { type: 'text/plain' }),
-      })
-      navigator.clipboard
-        .write([item])
-        .then(() => toast.success('Скопировано'))
-        .catch(() => {
-          navigator.clipboard.writeText(plain).then(() => toast.success('Скопировано'))
-        })
-      return
-    }
-    navigator.clipboard.writeText(plain).then(() => toast.success('Скопировано'))
-  }
+  const handleCopyText = () => copyMessageText(message)
 
   if (message.is_draft) {
     return (
@@ -215,7 +194,7 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
       </Item>
 
       {onQuote && (
-        <Item onClick={() => onQuote(stripHtml(message.content))}>
+        <Item onClick={() => onQuote(stripHtmlKeepNewlines(message.content))}>
           <Quote className="h-4 w-4 mr-2" />
           Цитировать
         </Item>

@@ -6,7 +6,9 @@
 import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Clock } from 'lucide-react'
+import { CardContent } from '@/components/ui/card'
+import { SettingsCard } from './SettingsCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -65,13 +67,12 @@ export function SendDelaySettingsSection({ workspaceId }: SendDelaySettingsSecti
   })
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Задержка отправки сообщений</CardTitle>
-        <CardDescription>
-          После нажатия &laquo;Отправить&raquo; сообщение можно отменить в течение заданного времени
-        </CardDescription>
-      </CardHeader>
+    <SettingsCard
+      title="Задержка отправки сообщений"
+      description="После «Отправить» сообщение можно отменить в течение заданного времени"
+      icon={Clock}
+      padded={false}
+    >
       <CardContent>
         <div className="space-y-4">
           <div className="space-y-1">
@@ -98,6 +99,6 @@ export function SendDelaySettingsSection({ workspaceId }: SendDelaySettingsSecti
           </Button>
         </div>
       </CardContent>
-    </Card>
+    </SettingsCard>
   )
 }

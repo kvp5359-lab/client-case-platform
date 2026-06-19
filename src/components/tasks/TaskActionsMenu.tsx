@@ -13,7 +13,7 @@
  * один раз и появляются во всех местах автоматически.
  */
 
-import { MoreVertical, ExternalLink, Trash2, CheckCircle2, Calendar as CalendarIcon, X } from 'lucide-react'
+import { MoreVertical, ExternalLink, Trash2, CheckCircle2, Calendar as CalendarIcon, X, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { Button } from '@/components/ui/button'
@@ -51,6 +51,9 @@ export type TaskActionsMenuProps = {
   /** Идёт ли запрос на смену дедлайна (для индикации). */
   deadlinePending?: boolean
 
+  /** Открыть настройки треда/чата. Если не передан — пункт скрыт. */
+  onOpenSettings?: () => void
+
   /** Удалить задачу (мягко, в корзину). Если не передан — пункт скрыт. */
   onRequestDelete?: () => void
 
@@ -69,6 +72,7 @@ export function TaskActionsMenu({
   onDeadlineSet,
   onDeadlineClear,
   deadlinePending,
+  onOpenSettings,
   onRequestDelete,
   triggerClassName,
   align = 'start',
@@ -77,9 +81,10 @@ export function TaskActionsMenu({
   const hasDeadline = !!onDeadlineSet
   const hasDelete = !!onRequestDelete
   const hasOpen = !!onOpen
+  const hasSettings = !!onOpenSettings
 
   // Если вообще нечего показывать — не рендерим триггер.
-  if (!hasOpen && !hasStatuses && !hasDeadline && !hasDelete) return null
+  if (!hasOpen && !hasStatuses && !hasDeadline && !hasSettings && !hasDelete) return null
 
   const deadlineDate = deadline ? new Date(deadline) : undefined
 
@@ -181,9 +186,19 @@ export function TaskActionsMenu({
             </DropdownMenuSub>
           )}
 
-          {hasDelete && (
+          {hasSettings && (
             <>
               {(hasOpen || hasStatuses || hasDeadline) && <DropdownMenuSeparator />}
+              <DropdownMenuItem onClick={onOpenSettings} className="text-xs cursor-pointer">
+                <Settings className="mr-2 h-3.5 w-3.5" />
+                Настройки
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {hasDelete && (
+            <>
+              {(hasOpen || hasStatuses || hasDeadline || hasSettings) && <DropdownMenuSeparator />}
               <DropdownMenuItem
                 onClick={onRequestDelete}
                 className="text-xs cursor-pointer text-destructive focus:text-destructive"

@@ -326,6 +326,7 @@ export function TaskPanelTaskHeader({
             onDeadlineSet={onDeadlineSet}
             onDeadlineClear={onDeadlineClear}
             deadlinePending={deadlinePending}
+            onOpenSettings={onSettingsOpen}
             onRequestDelete={onRequestDelete}
             triggerClassName="opacity-0 group-hover/panel-header:opacity-100"
             align="end"

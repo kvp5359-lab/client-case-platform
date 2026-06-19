@@ -5,7 +5,9 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { FileText } from 'lucide-react'
+import { CardContent } from '@/components/ui/card'
+import { SettingsCard } from './SettingsCard'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -61,14 +63,12 @@ export function KnowledgeSummaryPromptSection({ workspaceId }: KnowledgeSummaryP
   })
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Промпт для AI Summary</CardTitle>
-        <CardDescription>
-          Промпт, который используется для автоматической генерации краткого описания (summary)
-          статей базы знаний. Summary помогает AI точнее подбирать источники при поиске.
-        </CardDescription>
-      </CardHeader>
+    <SettingsCard
+      title="Промпт для AI Summary"
+      description="Промпт, который используется для автоматической генерации краткого описания (summary) статей базы знаний. Summary помогает AI точнее подбирать источники при поиске."
+      icon={FileText}
+      padded={false}
+    >
       <CardContent>
         {isLoading ? (
           <div className="text-center py-4 text-gray-500">Загрузка...</div>
@@ -96,6 +96,6 @@ export function KnowledgeSummaryPromptSection({ workspaceId }: KnowledgeSummaryP
           </div>
         )}
       </CardContent>
-    </Card>
+    </SettingsCard>
   )
 }

@@ -80,6 +80,14 @@ export function stripHtmlKeepNewlines(html: string): string {
  * и/или `<br>` внутри, без img/svg/hr/picture/video/audio. Для SSR (где нет
  * document) — fallback на regex.
  */
+/** Обрезает пустоту (пробелы, &nbsp;, <br>) по краям HTML. Email-клиенты
+ *  (Gmail) часто оставляют хвост из `<br><br>&nbsp;` + пустых блоков — после
+ *  схлопывания он давал видимую пустую полосу под сообщением. */
+function trimEdgeWhitespaceHtml(html: string): string {
+  const EDGE = /^(?:\s|&nbsp;|&#160;|&#xA0;|<br\s*\/?>)+|(?:\s|&nbsp;|&#160;|&#xA0;|<br\s*\/?>)+$/gi
+  return html.replace(EDGE, '')
+}
+
 function collapseEmptyLines(html: string): string {
   if (typeof document === 'undefined') return collapseEmptyLinesRegex(html)
 
@@ -113,7 +121,7 @@ function collapseEmptyLines(html: string): string {
   let result = root.innerHTML
   // 3+ подряд <br> → 2 (= одна пустая строка).
   result = result.replace(/(<br\s*\/?>\s*){3,}/gi, '<br><br>')
-  return result
+  return trimEdgeWhitespaceHtml(result)
 }
 
 /** SSR-fallback. Покрывает базовые случаи `<div></div>` / `<p><br></p>` /
@@ -129,7 +137,7 @@ function collapseEmptyLinesRegex(html: string): string {
     )
   } while (curr !== prev)
   curr = curr.replace(/(<br\s*\/?>\s*){3,}/gi, '<br><br>')
-  return curr
+  return trimEdgeWhitespaceHtml(curr)
 }
 
 /** Санитизация HTML для мессенджера — строгий whitelist тегов.

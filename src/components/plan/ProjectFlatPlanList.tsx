@@ -34,7 +34,8 @@ import { useProjectPlan } from '@/hooks/plan/useProjectPlan'
 import { useFolderSlots } from '@/hooks/documents/useFolderSlots'
 import { useProjectPermissions } from '@/hooks/permissions'
 import { isStaffRole } from '@/types/permissions'
-import { useCreateThread } from '@/hooks/messenger/useProjectThreads'
+import { useCreateThread, type ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import { PlanDocsProvider } from './PlanDocsProvider'
 import { QuickAddModal, type QuickAddItem } from './QuickAddModal'
 import { SortableRow } from './PlanSortableRow'
@@ -219,6 +220,7 @@ export function ProjectFlatPlanList({
 
   // ── Быстрое добавление: создаём элементы и вставляем ПОСЛЕ строки с «+» ──
   const createTask = useCreateThread(projectId, workspaceId)
+  const { data: workspace } = useWorkspace(workspaceId)
   const [quickAddPending, setQuickAddPending] = useState(false)
 
   const handleQuickAddSubmit = async (items: QuickAddItem[]) => {
@@ -252,6 +254,10 @@ export function ProjectFlatPlanList({
             name: it.value,
             accessType: 'all',
             type: 'task',
+            ...(workspace?.default_task_accent && {
+              accentColor: workspace.default_task_accent as ThreadAccentColor,
+            }),
+            ...(workspace?.default_task_icon && { icon: workspace.default_task_icon }),
           })
           taskNewSorts.push({ id: thread.id, sort_order: target })
         }

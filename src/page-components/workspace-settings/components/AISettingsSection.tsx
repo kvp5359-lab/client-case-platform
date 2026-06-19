@@ -5,7 +5,9 @@
  * Показывает поле API-ключа в зависимости от выбранного провайдера.
  */
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Bot } from 'lucide-react'
+import { CardContent } from '@/components/ui/card'
+import { SettingsCard } from './SettingsCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -43,13 +45,12 @@ export function AISettingsSection({ workspaceId }: AISettingsSectionProps) {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>🤖 Настройки AI проверки документов</CardTitle>
-          <CardDescription>
-            Настройте интеграцию с AI для автоматической проверки документов
-          </CardDescription>
-        </CardHeader>
+      <SettingsCard
+        title="Настройки AI проверки документов"
+        description="Настройте интеграцию с AI для автоматической проверки документов"
+        icon={Bot}
+        padded={false}
+      >
         <CardContent>
           {isLoading ? (
             <div className="text-center py-4 text-gray-500">Загрузка настроек...</div>
@@ -208,7 +209,7 @@ export function AISettingsSection({ workspaceId }: AISettingsSectionProps) {
             </div>
           )}
         </CardContent>
-      </Card>
+      </SettingsCard>
 
       <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </>

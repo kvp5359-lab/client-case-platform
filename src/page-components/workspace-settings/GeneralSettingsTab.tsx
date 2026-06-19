@@ -13,6 +13,7 @@ import { KnowledgeSummaryPromptSection } from './components/KnowledgeSummaryProm
 import { NotificationSettingsSection } from './components/NotificationSettingsSection'
 import { SendDelaySettingsSection } from './components/SendDelaySettingsSection'
 import { DeadlineFormatSection } from './components/DeadlineFormatSection'
+import { DefaultTaskIconColorSection } from './components/DefaultTaskIconColorSection'
 import { PerfTraceSection } from './components/PerfTraceSection'
 import { InboxReconcileSection } from './components/InboxReconcileSection'
 
@@ -22,10 +23,10 @@ export function GeneralSettingsTab() {
   if (!workspaceId) return null
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Общие настройки</h2>
-        <p className="text-gray-600">Основная информация о рабочем пространстве</p>
+    <div className="space-y-3">
+      <div className="mb-1">
+        <h2 className="text-xl font-semibold text-gray-900 mb-1">Общие настройки</h2>
+        <p className="text-sm text-gray-600">Основная информация о рабочем пространстве</p>
       </div>
 
       <WorkspaceInfoSection workspaceId={workspaceId} />
@@ -33,6 +34,7 @@ export function GeneralSettingsTab() {
       <NotificationSettingsSection workspaceId={workspaceId} />
       <SendDelaySettingsSection workspaceId={workspaceId} />
       <DeadlineFormatSection workspaceId={workspaceId} />
+      <DefaultTaskIconColorSection workspaceId={workspaceId} />
       <AISettingsSection workspaceId={workspaceId} />
       <TranslationSettingsSection workspaceId={workspaceId} />
       <VoyageAISettingsSection workspaceId={workspaceId} />

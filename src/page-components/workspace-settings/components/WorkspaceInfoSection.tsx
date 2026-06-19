@@ -5,7 +5,8 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Info } from 'lucide-react'
+import { CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { supabase } from '@/lib/supabase'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { workspaceKeys } from '@/hooks/queryKeys'
+import { SettingsCard } from './SettingsCard'
 
 type WorkspaceInfoSectionProps = {
   workspaceId: string
@@ -87,11 +89,13 @@ export function WorkspaceInfoSection({ workspaceId }: WorkspaceInfoSectionProps)
   const { data: workspace } = useWorkspace(workspaceId)
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Информация о workspace</CardTitle>
-        <CardDescription>Название и описание рабочего пространства</CardDescription>
-      </CardHeader>
+    <SettingsCard
+      title="Информация о workspace"
+      description="Название и описание рабочего пространства"
+      icon={Info}
+      defaultOpen
+      padded={false}
+    >
       {workspace && (
         <WorkspaceInfoForm
           key={`${workspace.id}-${workspace.updated_at}`}
@@ -100,6 +104,6 @@ export function WorkspaceInfoSection({ workspaceId }: WorkspaceInfoSectionProps)
           initialDescription={workspace.description ?? ''}
         />
       )}
-    </Card>
+    </SettingsCard>
   )
 }

@@ -1,7 +1,13 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { MoreVertical, Eye, Languages, Loader2 } from 'lucide-react'
+import { MoreVertical, Eye, Languages, Loader2, Reply, Quote, Copy, SmilePlus } from 'lucide-react'
+import { stripHtml, stripHtmlKeepNewlines } from '@/utils/format/messengerHtml'
+import { copyMessageText } from '@/utils/messenger/copyMessageText'
+import { REACTIONS } from './ReactionPicker'
+import { trackReactionUsage } from '@/utils/messenger/recentReactions'
+import { isReactionSupportedForSource } from '@/services/api/messenger/reactionStrategies'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,6 +94,20 @@ export function MessageActions({
   const quickReactions = useQuickReactions()
   const colors = bubbleStyles[accent] ?? bubbleStyles.blue
   const isScheduled = !!message.is_draft && !!message.scheduled_send_at
+  // Есть ли текст для Цитировать/Копировать (у вложений без подписи — нет).
+  const hasText = !!stripHtml(message.content).trim()
+  // Быстрая реакция из ряда иконок (отдельный popover, не путать с меню).
+  const [quickReactOpen, setQuickReactOpen] = useState(false)
+  const reactionsAllowed =
+    !message.is_draft && !reactionsDisabled && isReactionSupportedForSource(message.source)
+  // Кнопки действий: по умолчанию приглушённые без фона (не яркая пилюля),
+  // подложка и полный цвет — только при наведении.
+  const actionBtnClass = cn(
+    'h-6 w-6 rounded-full transition-colors',
+    isOwn
+      ? 'text-white/60 hover:text-white hover:bg-white/20'
+      : 'text-foreground/45 hover:text-foreground hover:bg-foreground/10',
+  )
   // Фон пилюли — цвет бабла. Для своих — солид (bg-blue-500 text-white),
   // для входящих — лёгкий тинт (bg-blue-100/70 ...). В обоих случаях цвет
   // совпадает с баблом — кнопка не выглядит «чужеродным» кружком и перекрывает
@@ -146,21 +166,97 @@ export function MessageActions({
   return (
     <div
       className={cn(
-        'absolute top-1 right-1 z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity',
-        (moreMenuOpen || reactionPopoverOpen) && 'opacity-100',
+        'absolute top-1 right-1 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
+        (moreMenuOpen || reactionPopoverOpen || quickReactOpen) && 'opacity-100',
       )}
     >
       {renderTranslationToggle()}
+      {/* Единая подложка ряда — в цвет бабла, чтобы иконки не налезали на
+          содержимое. Сами иконки приглушены, подсветка — на hover. */}
+      <div className={cn('flex items-center gap-0.5 rounded-full px-0.5 shadow-sm', pillClass)}>
+      {/* Быстрые действия при наведении: Ответить, Цитировать, Копировать.
+          Полный набор (перевод, удалить) — в меню «три точки». */}
+      {!message.is_draft && (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Ответить"
+            title="Ответить"
+            className={actionBtnClass}
+            onClick={() => onReply(message)}
+          >
+            <Reply className="h-4 w-4" />
+          </Button>
+          {onQuote && hasText && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Цитировать"
+              title="Цитировать"
+              className={actionBtnClass}
+              onClick={() => onQuote(stripHtmlKeepNewlines(message.content))}
+            >
+              <Quote className="h-4 w-4" />
+            </Button>
+          )}
+          {hasText && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Копировать текст"
+              title="Копировать текст"
+              className={actionBtnClass}
+              onClick={() => copyMessageText(message)}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          )}
+        </>
+      )}
       {onViewEmail && (
         <Button
           variant="ghost"
           size="icon"
           aria-label="Открыть письмо"
-          className={cn('h-6 w-6 rounded-full hover:brightness-110', pillClass)}
+          className={actionBtnClass}
           onClick={onViewEmail}
         >
           <Eye className="h-4 w-4" />
         </Button>
+      )}
+      {reactionsAllowed && (
+        <Popover open={quickReactOpen} onOpenChange={setQuickReactOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Реакция"
+              title="Реакция"
+              className={actionBtnClass}
+            >
+              <SmilePlus className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-2" align="end" side="top">
+            <div className="grid grid-cols-6 gap-1">
+              {REACTIONS.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => {
+                    trackReactionUsage(e)
+                    onReact(message.id, e)
+                    setQuickReactOpen(false)
+                  }}
+                  className="h-8 w-8 flex items-center justify-center rounded hover:bg-muted text-lg transition-colors"
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
       )}
       <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
         <DropdownMenuTrigger asChild>
@@ -168,10 +264,7 @@ export function MessageActions({
             variant="ghost"
             size="icon"
             aria-label="Ещё действия"
-            className={cn(
-              'h-6 w-6 rounded-full hover:brightness-110',
-              pillClass,
-            )}
+            className={actionBtnClass}
           >
             <MoreVertical className="h-4 w-4" />
           </Button>
@@ -200,6 +293,7 @@ export function MessageActions({
           })}
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </div>
   )
 }
