@@ -178,8 +178,9 @@ export function MessageActions({
       <div className="rounded-full bg-background shadow-sm">
       <div className={cn('flex items-center gap-0.5 rounded-full px-0.5', pillClass)}>
       {/* Быстрые действия при наведении: Ответить, Цитировать, Копировать.
+          У СВОИХ сообщений их прячем — оставляем только «три точки».
           Полный набор (перевод, удалить) — в меню «три точки». */}
-      {!message.is_draft && (
+      {!isOwn && !message.is_draft && (
         <>
           <Button
             variant="ghost"
@@ -217,7 +218,7 @@ export function MessageActions({
           )}
         </>
       )}
-      {onViewEmail && (
+      {!isOwn && onViewEmail && (
         <Button
           variant="ghost"
           size="icon"
@@ -228,7 +229,7 @@ export function MessageActions({
           <Eye className="h-4 w-4" />
         </Button>
       )}
-      {reactionsAllowed && (
+      {!isOwn && reactionsAllowed && (
         <Popover open={quickReactOpen} onOpenChange={setQuickReactOpen}>
           <PopoverTrigger asChild>
             <Button

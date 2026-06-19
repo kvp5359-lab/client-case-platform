@@ -64,10 +64,15 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
           })
         }
 
+        // Композер у нижнего края окна → попап над курсором (под ним не влезает).
+        // Если над не помещается — падаем под.
         const place = (rect: DOMRect | null | undefined) => {
           if (!popup || !rect) return
+          const h = popup.offsetHeight
+          const above = rect.top - h - 6
+          const top = above >= 4 ? above : rect.bottom + 6
           popup.style.left = `${rect.left}px`
-          popup.style.top = `${rect.bottom + 4}px`
+          popup.style.top = `${Math.max(4, top)}px`
         }
 
         return {
@@ -79,15 +84,15 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
             popup.className =
               'fixed z-[200] min-w-[180px] max-h-64 overflow-y-auto rounded-md border bg-popover shadow-md py-1'
             document.body.appendChild(popup)
-            place(props.clientRect?.())
             paint()
+            place(props.clientRect?.())
           },
           onUpdate: (props: SuggestionProps<MentionItem>) => {
             items = props.items
             selected = 0
             command = props.command as (item: MentionItem) => void
-            place(props.clientRect?.())
             paint()
+            place(props.clientRect?.())
           },
           onKeyDown: (props: SuggestionKeyDownProps) => {
             const key = props.event?.key

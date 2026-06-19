@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { ChevronDown, RefreshCw, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -27,6 +27,11 @@ type BubbleTextContentProps = {
   toggleCollapsed: () => void
   onPublishDraft?: (msg: ProjectMessage) => void
   onRetrySend?: (msg: ProjectMessage) => void
+  /** Своё сообщение на светлом фоне (self/жёлтый) — тёмный цвет времени. */
+  lightBubble?: boolean
+  /** Иконка-метка режима перед текстом (Заметка/Только я) — flex-соседом, чтобы
+   *  ширина бабла учитывала её и текст переносился естественно. */
+  leadingIcon?: ReactNode
 }
 
 export function BubbleTextContent({
@@ -43,6 +48,8 @@ export function BubbleTextContent({
   toggleCollapsed,
   onPublishDraft,
   onRetrySend,
+  lightBubble = false,
+  leadingIcon,
 }: BubbleTextContentProps) {
   // Fade-out для свёрнутого текста через mask-image — работает поверх любого
   // фона бабла (акцентный цвет / подсветка поиска / draft) без подстановки
@@ -83,7 +90,9 @@ export function BubbleTextContent({
 
   return (
     <div>
-      <div className="relative">
+      <div className="flex items-start gap-1">
+        {leadingIcon && <span className="mt-[3px] shrink-0 opacity-80">{leadingIcon}</span>}
+        <div className="relative min-w-0 flex-1">
         <div
           ref={textRef}
           className={cn(isOverflowing && isCollapsed && 'overflow-hidden')}
@@ -117,6 +126,7 @@ export function BubbleTextContent({
                 isOwn={isOwn}
                 deliveryStatus={deliveryStatus}
                 deliveryFailed={deliveryFailed}
+                lightBubble={lightBubble}
                 className="flex-shrink-0 mb-[3px] ml-auto"
               />
             )}
@@ -127,6 +137,7 @@ export function BubbleTextContent({
               цветов акцента или highlight. */}
         </div>
 
+        </div>
       </div>
 
       {isOverflowing && (
@@ -138,7 +149,7 @@ export function BubbleTextContent({
               'inline-flex items-center gap-1 text-xs font-semibold hover:opacity-80 transition-opacity',
               // Собственные сообщения имеют тёмный акцентный фон — текст белый.
               // Draft/tg-failed и входящие — светлый фон, текст тёмный.
-              isOwn && !message.is_draft && !deliveryFailed
+              isOwn && !message.is_draft && !deliveryFailed && !lightBubble
                 ? 'text-white'
                 : 'text-foreground',
             )}
@@ -155,6 +166,7 @@ export function BubbleTextContent({
                 isOwn={isOwn}
                 deliveryStatus={!message.is_draft ? deliveryStatus : null}
                 deliveryFailed={deliveryFailed}
+                lightBubble={lightBubble}
               />
             )}
             {message.is_draft && !message.scheduled_send_at && onPublishDraft && (

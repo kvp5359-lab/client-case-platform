@@ -1,5 +1,5 @@
 import { memo, useState } from 'react'
-import { CornerDownRight, Loader2, Trash2 } from 'lucide-react'
+import { CornerDownRight, Loader2, Trash2, BellOff, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageAttachments } from './MessageAttachment'
@@ -98,6 +98,8 @@ function MessageBubbleImpl({
   const vis = message.visibility ?? 'client'
   const isSelfVis = vis === 'self'
   const isTeamVis = vis === 'team'
+  // «Заметка» = team + тихо (notify_subscribers=false).
+  const isNoteVis = isTeamVis && message.notify_subscribers === false
   const ownBubbleClass = isSelfVis
     ? 'bg-amber-200 text-amber-950'
     : isTeamVis
@@ -355,12 +357,22 @@ function MessageBubbleImpl({
               </button>
             )}
 
-            {/* Text content — displayMessage может содержать переведённый content вместо оригинала */}
+            {/* Text content — displayMessage может содержать переведённый content вместо оригинала.
+                leadingIcon: «Заметка» — перечёркнутый колокол, «Только я» — замок
+                (рендерится flex-соседом текста, чтобы ширина бабла учитывала иконку). */}
             {showRealContent && !hasAttachmentsOnly && (
               <BubbleTextContent
                 message={displayMessage}
                 isOwn={isOwn}
                 accent={accent}
+                lightBubble={isSelfVis}
+                leadingIcon={
+                  isSelfVis ? (
+                    <Lock className="h-3.5 w-3.5" />
+                  ) : isNoteVis ? (
+                    <BellOff className="h-3.5 w-3.5" />
+                  ) : undefined
+                }
                 hasAttachments={hasAttachments}
                 deliveryStatus={deliveryStatus}
                 deliveryFailed={deliveryFailed}

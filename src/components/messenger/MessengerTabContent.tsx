@@ -54,6 +54,17 @@ type MessengerTabContentProps = {
   toolbarPortalContainer?: HTMLDivElement | null
 }
 
+const COMPOSER_MODES: ComposerMode[] = ['client', 'team', 'note', 'self']
+function readStoredComposerMode(key: string | null): ComposerMode | null {
+  if (!key || typeof window === 'undefined') return null
+  try {
+    const v = window.localStorage.getItem(key)
+    return v && (COMPOSER_MODES as string[]).includes(v) ? (v as ComposerMode) : null
+  } catch {
+    return null
+  }
+}
+
 export function MessengerTabContent({
   projectId,
   workspaceId,
@@ -67,14 +78,25 @@ export function MessengerTabContent({
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [jumpToMessageId, setJumpToMessageId] = useState<string | null>(null)
-  // Режим видимости композера (Клиенту/Команде/Заметка/Только я) — per-thread,
-  // sticky в пределах треда. Поднят сюда, чтобы селектор жил в одной линии с
-  // кнопкой «Прочитано/Непрочитано», а MessageInput читал режим для отправки.
+  const { user } = useAuth()
+  // Режим видимости композера (Клиенту/Команде/Заметка/Только я) — сохраняется
+  // per-user-per-thread в localStorage; в памяти держим выбор текущей сессии.
+  const modeStorageKey = user?.id ? `cc:composer-mode:${user.id}:${threadId}` : null
   const [modeByThread, setModeByThread] = useState<Record<string, ComposerMode>>({})
-  const composerMode: ComposerMode = modeByThread[threadId] || 'client'
+  const composerMode: ComposerMode =
+    modeByThread[threadId] ?? readStoredComposerMode(modeStorageKey) ?? 'client'
   const setComposerMode = useCallback(
-    (m: ComposerMode) => setModeByThread((prev) => ({ ...prev, [threadId]: m })),
-    [threadId],
+    (m: ComposerMode) => {
+      setModeByThread((prev) => ({ ...prev, [threadId]: m }))
+      if (modeStorageKey) {
+        try {
+          localStorage.setItem(modeStorageKey, m)
+        } catch {
+          /* quota */
+        }
+      }
+    },
+    [threadId, modeStorageKey],
   )
   // Кандидаты для @-упоминаний — сотрудники воркспейса (без клиентов/контактов).
   const { data: wsParticipants = [] } = useWorkspaceParticipants(workspaceId)
@@ -110,7 +132,6 @@ export function MessengerTabContent({
     threadType: currentThread?.type,
     threadStatusId: currentThread?.status_id ?? null,
   })
-  const { user } = useAuth()
 
   // Чужой личный диалог: тред без проекта, владелец которого — не текущий
   // пользователь (владелец воркспейса / менеджер смотрит переписку сотрудника).

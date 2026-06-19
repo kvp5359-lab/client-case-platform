@@ -11,6 +11,9 @@ type BubbleTimestampProps = {
   deliveryStatus: DeliveryStatus
   deliveryFailed?: boolean
   className?: string
+  /** Своё сообщение на СВЕТЛОМ фоне (visibility='self', жёлтый бабл) — белый
+   *  цвет времени/галочек нечитаем, используем тёмный. */
+  lightBubble?: boolean
 }
 
 export function BubbleTimestamp({
@@ -19,6 +22,7 @@ export function BubbleTimestamp({
   deliveryStatus,
   deliveryFailed = false,
   className,
+  lightBubble = false,
 }: BubbleTimestampProps) {
   return (
     <span
@@ -29,7 +33,9 @@ export function BubbleTimestamp({
             ? 'text-muted-foreground'
             : deliveryFailed
               ? 'text-muted-foreground'
-              : 'text-white/60'
+              : lightBubble
+                ? 'text-amber-900/70'
+                : 'text-white/60'
           : 'text-muted-foreground',
         className,
       )}
