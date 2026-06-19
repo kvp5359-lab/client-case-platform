@@ -50,6 +50,8 @@ export function useSendMessage(
     visibility?: 'client' | 'team' | 'self'
     /** Для team: false = «Заметка» (тихо). */
     notifySubscribers?: boolean
+    /** participant_id упомянутых через @ (Фаза 3) — подписываются на тред. */
+    mentions?: string[]
     /** Явный override isEmailChat — для свежесозданных тредов, где
      *  useEmailLink/threadRow ещё не успели загрузиться (race). */
     isEmailChat?: boolean
@@ -71,6 +73,7 @@ export function useSendMessage(
       originalLanguage,
       visibility,
       notifySubscribers,
+      mentions,
     }) => {
       if (!user) throw new Error('Не авторизован')
 
@@ -95,6 +98,7 @@ export function useSendMessage(
         originalLanguage,
         visibility,
         notifySubscribers,
+        mentions,
       })
     },
     // Оптимистичное обновление

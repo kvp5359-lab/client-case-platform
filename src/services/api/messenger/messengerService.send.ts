@@ -41,6 +41,8 @@ export type SendMessageParams = {
   visibility?: 'client' | 'team' | 'self'
   /** Для team: false = «Заметка» (тихо). По умолчанию true. */
   notifySubscribers?: boolean
+  /** participant_id упомянутых через @ — пишутся в message_mentions (автоподписка). */
+  mentions?: string[]
   /** Тред, в который пишется сообщение. Обязателен — legacy-режим без треда удалён. */
   threadId: string
   /** Если перед отправкой пользователь нажал «Перевести» — здесь оригинал
@@ -183,6 +185,16 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     if (fwdError) {
       logger.error('Failed to create forwarded attachments:', fwdError)
     }
+  }
+
+  // @-упоминания — пишем в message_mentions (триггер подпишет упомянутых на тред).
+  // Цепляем к записи с текстом (в split-режиме — textMessage).
+  if (params.mentions && params.mentions.length > 0) {
+    const mentionTargetId = textMessage?.id ?? message.id
+    const { error: mErr } = await supabase
+      .from('message_mentions')
+      .insert(params.mentions.map((pid) => ({ message_id: mentionTargetId, participant_id: pid })))
+    if (mErr) logger.error('Failed to insert message_mentions:', mErr)
   }
 
   const hasAnyAttachments = totalAttachments > 0

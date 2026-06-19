@@ -7,6 +7,7 @@ import { EditingBanner, ReplyBanner, TranslationBanner } from './MessageInputBan
 import { MessageAttachmentsRow } from './MessageAttachmentsRow'
 import { MessageInputToolbar } from './MessageInputToolbar'
 import { MODE_VISIBILITY, type ComposerMode } from './ComposerVisibilitySwitch'
+import { extractMentionIds } from './messengerMention'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 import { isHtmlContent, plainTextToHtml } from '@/utils/format/messengerHtml'
 import { useDraftMessage } from './hooks/useDraftMessage'
@@ -30,6 +31,7 @@ type MessageInputProps = {
       originalLanguage?: string | null
       visibility?: 'client' | 'team' | 'self'
       notifySubscribers?: boolean
+      mentions?: string[]
     },
   ) => void
   isPending: boolean
@@ -65,6 +67,8 @@ type MessageInputProps = {
   ) => void
   /** Режим видимости (Клиенту/Команде/Заметка/Только я) — поднят в MessengerTabContent. */
   composerMode?: ComposerMode
+  /** Участники для @-упоминаний. */
+  mentionItems?: { id: string; label: string }[]
   /**
    * Pending-статус задачи (Planfix-style) — пикер поднят в MessengerTabContent,
    * сюда передаётся для коммита статуса при отправке. undefined — не task-тред.
@@ -111,6 +115,7 @@ export function MessageInput({
   onSchedule,
   composerMode = 'client',
   statusPending,
+  mentionItems,
 }: MessageInputProps) {
   const [hasText, setHasText] = useState(false)
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -385,6 +390,8 @@ export function MessageInput({
         }
       }
       const vis = MODE_VISIBILITY[composerMode]
+      const ed = editorRef.current
+      const mentions = ed ? extractMentionIds(ed) : []
       const options = {
         ...(translation
           ? {
@@ -394,6 +401,7 @@ export function MessageInput({
           : {}),
         visibility: vis.visibility,
         notifySubscribers: vis.notifySubscribers,
+        mentions,
       }
       onSend(
         textContent ? htmlContent : '📎',
@@ -620,6 +628,7 @@ export function MessageInput({
           disabled={isPending}
           onEditorReady={setEditor}
           editorMaxHeight={editorMaxHeight}
+          mentionItems={mentionItems}
         />
       </div>
 

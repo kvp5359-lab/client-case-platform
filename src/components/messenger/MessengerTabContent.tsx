@@ -2,7 +2,7 @@
  * Main container for "Messages" tab
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
@@ -22,6 +22,7 @@ import { ReadUnreadButton } from './ReadUnreadButton'
 import { ComposerVisibilitySwitch, type ComposerMode } from './ComposerVisibilitySwitch'
 import { useTaskStatusPending } from './hooks/useTaskStatusPending'
 import { TaskStatusPicker } from './TaskStatusPicker'
+import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { EmailSubjectBar } from './EmailSubjectBar'
 import { EmailSendMethodSelector } from './EmailSendMethodSelector'
 import { useMessengerState } from './hooks/useMessengerState'
@@ -74,6 +75,20 @@ export function MessengerTabContent({
   const setComposerMode = useCallback(
     (m: ComposerMode) => setModeByThread((prev) => ({ ...prev, [threadId]: m })),
     [threadId],
+  )
+  // Кандидаты для @-упоминаний — сотрудники воркспейса (без клиентов/контактов).
+  const { data: wsParticipants = [] } = useWorkspaceParticipants(workspaceId)
+  const mentionItems = useMemo(
+    () =>
+      wsParticipants
+        .filter(
+          (p) =>
+            !(p.workspace_roles ?? []).some(
+              (r) => r === 'Клиент' || r === 'Telegram-контакт',
+            ),
+        )
+        .map((p) => ({ id: p.id, label: [p.name, p.last_name].filter(Boolean).join(' ') })),
+    [wsParticipants],
   )
   const { data: allThreads = [] } = useProjectThreads(projectId)
   const forwardBuffer = useSidePanelStore((s) => s.forwardBuffer)
@@ -425,6 +440,7 @@ export function MessengerTabContent({
           onTyping={state.startTyping}
           accent={accent}
           composerMode={composerMode}
+          mentionItems={mentionItems}
           editingMessage={state.editingMessage}
           onClearEdit={() => state.setEditingMessage(null)}
           onEdit={handlers.handleEdit}

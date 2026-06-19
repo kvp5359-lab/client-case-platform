@@ -4265,6 +4265,24 @@ export type Database = {
           },
         ]
       }
+      message_mentions: {
+        Row: {
+          created_at: string
+          message_id: string
+          participant_id: string
+        }
+        Insert: {
+          created_at?: string
+          message_id: string
+          participant_id: string
+        }
+        Update: {
+          created_at?: string
+          message_id?: string
+          participant_id?: string
+        }
+        Relationships: []
+      }
       message_reactions: {
         Row: {
           created_at: string

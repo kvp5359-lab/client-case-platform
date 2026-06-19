@@ -12,6 +12,7 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Link from '@tiptap/extension-link'
+import { buildMentionExtension, type MentionItem } from './messengerMention'
 import {
   Bold,
   Italic,
@@ -33,6 +34,8 @@ type MinimalTiptapEditorProps = {
   disabled?: boolean
   onEditorReady?: (editor: Editor | null) => void
   editorMaxHeight?: number
+  /** Участники для @-упоминаний (id = participant_id, label = имя). */
+  mentionItems?: MentionItem[]
 }
 
 /**
@@ -134,7 +137,14 @@ export function MinimalTiptapEditor({
   disabled = false,
   onEditorReady,
   editorMaxHeight,
+  mentionItems,
 }: MinimalTiptapEditorProps) {
+  // Список участников для @-упоминаний читается через ref (extensions
+  // инициализируются один раз, а список грузится асинхронно).
+  const mentionItemsRef = useRef<MentionItem[]>(mentionItems ?? [])
+  useEffect(() => {
+    mentionItemsRef.current = mentionItems ?? []
+  }, [mentionItems])
   // Всплывашка «изменить номер» — открывается кликом по цифре пункта
   // нумерованного списка. index — позиция кликнутого пункта внутри <ol>,
   // нужна чтобы пересчитать start (число первого пункта).
@@ -216,6 +226,8 @@ export function MinimalTiptapEditor({
       Placeholder.configure({ placeholder }),
       // eslint-disable-next-line react-hooks/refs -- Tiptap extensions init once; stableSend reads ref only on keypress, not during render
       SendOnEnter.configure({ onSend: stableSend }),
+      // eslint-disable-next-line react-hooks/refs -- extension init once; getItems reads ref only on @-trigger
+      buildMentionExtension(() => mentionItemsRef.current),
     ],
     editable: !disabled,
     editorProps: {

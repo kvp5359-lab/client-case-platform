@@ -54,6 +54,7 @@ type UseMessengerHandlersParams = {
       originalLanguage?: string | null
       visibility?: 'client' | 'team' | 'self'
       notifySubscribers?: boolean
+      mentions?: string[]
     }) => void
   }
   sendEmail: { mutate: (args: { threadId: string; content: string; files?: File[] }) => void }
@@ -156,6 +157,7 @@ export function useMessengerHandlers({
         originalLanguage?: string | null
         visibility?: 'client' | 'team' | 'self'
         notifySubscribers?: boolean
+        mentions?: string[]
       },
     ) => {
       // Email-чаты теперь идут через обычный sendMessage → INSERT project_messages
@@ -217,6 +219,7 @@ export function useMessengerHandlers({
         originalLanguage: options?.originalLanguage ?? null,
         visibility: options?.visibility ?? 'client',
         notifySubscribers: options?.notifySubscribers ?? true,
+        mentions: options?.mentions ?? [],
       })
       setReplyTo(null)
       setForwardedAttachments([])
