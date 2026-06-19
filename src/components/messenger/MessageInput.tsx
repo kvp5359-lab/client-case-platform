@@ -6,7 +6,7 @@ import { MinimalTiptapEditor } from './MinimalTiptapEditor'
 import { EditingBanner, ReplyBanner, TranslationBanner } from './MessageInputBanners'
 import { MessageAttachmentsRow } from './MessageAttachmentsRow'
 import { MessageInputToolbar } from './MessageInputToolbar'
-import { ComposerVisibilitySwitch, MODE_VISIBILITY, type ComposerMode } from './ComposerVisibilitySwitch'
+import { MODE_VISIBILITY, type ComposerMode } from './ComposerVisibilitySwitch'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 import { isHtmlContent, plainTextToHtml } from '@/utils/format/messengerHtml'
 import { useDraftMessage } from './hooks/useDraftMessage'
@@ -596,12 +596,6 @@ export function MessageInput({
         />
       )}
 
-      {!editingMessage && (
-        <div className="px-4 pt-2">
-          <ComposerVisibilitySwitch mode={mode} onChange={setMode} />
-        </div>
-      )}
-
       <div
         className="px-4 pt-2 min-w-0"
         onKeyDown={(e) => {
@@ -662,6 +656,7 @@ export function MessageInput({
         onQuickReplyPickerHandled={() => setOpenQuickReplyPicker(false)}
         onSend={handleSend}
         onSaveDraft={handleSaveDraft}
+        visibility={editingMessage ? undefined : { mode, onChange: setMode }}
         onSchedule={
           onSchedule && !editingMessage ? handleSchedule : undefined
         }
