@@ -91,7 +91,14 @@ export function MessageInputToolbar({
   onSchedule,
 }: MessageInputToolbarProps) {
   return (
-    <div className="flex items-center pb-2 pt-0">
+    <div className="relative flex items-center pb-2 pt-0">
+      {/* Селектор видимости — над кнопкой отправки (в пустом месте над тулбаром),
+          чтобы не теснить ряд кнопок. Варианты всплывают по наведению/клику. */}
+      {visibility && (
+        <div className="absolute bottom-full right-2 mb-1 z-20">
+          <ComposerVisibilitySwitch mode={visibility.mode} onChange={visibility.onChange} />
+        </div>
+      )}
       {/* Left: attach + separator + quick reply + separator + formatting toolbar */}
       <div className="flex items-center gap-0 px-1.5 flex-1 min-w-0">
         <AttachmentButton
@@ -141,11 +148,8 @@ export function MessageInputToolbar({
           </>
         )}
       </div>
-      {/* Right: visibility + save + send */}
+      {/* Right: save + send */}
       <div className="flex items-center gap-1 pr-1.5">
-        {visibility && (
-          <ComposerVisibilitySwitch mode={visibility.mode} onChange={visibility.onChange} />
-        )}
         {showSaveDraft && (
           <Button
             variant="outline"
