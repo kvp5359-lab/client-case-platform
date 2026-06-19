@@ -64,7 +64,12 @@ export function ComposerVisibilitySwitch({
   const activeBorder = MODES.find((m) => m.key === mode)?.border ?? 'border-border'
 
   return (
-    <div className={cn('inline-flex items-center rounded-full border overflow-hidden', activeBorder)}>
+    <div
+      className={cn(
+        'inline-flex items-center rounded-full border overflow-hidden bg-background shadow-sm',
+        activeBorder,
+      )}
+    >
       {MODES.map((m, i) => {
         const isActive = m.key === mode
         const Icon = m.Icon
