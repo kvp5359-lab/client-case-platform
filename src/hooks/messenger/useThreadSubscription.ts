@@ -54,3 +54,59 @@ export function useThreadSubscription(
     pending: mutation.isPending,
   }
 }
+
+/**
+ * Управление подписчиками треда (для владельца/менеджеров): карта
+ * participant_id → подписан + сеттер за конкретного участника. RPC сам
+ * проверяет право (сам участник ИЛИ manage_workspace_settings).
+ */
+export function useThreadSubscribers(
+  threadId: string | undefined,
+  workspaceId: string | undefined,
+  enabled: boolean,
+) {
+  const qc = useQueryClient()
+
+  const query = useQuery({
+    queryKey: threadSubscriptionKeys.subscribers(threadId ?? ''),
+    enabled: !!threadId && enabled,
+    queryFn: async (): Promise<Record<string, boolean>> => {
+      const { data, error } = await supabase.rpc('get_thread_subscribers', {
+        p_thread_id: threadId!,
+      })
+      if (error) throw error
+      const map: Record<string, boolean> = {}
+      for (const row of data ?? []) map[row.participant_id] = row.subscribed
+      return map
+    },
+  })
+
+  const mutation = useMutation({
+    mutationFn: async (vars: { participantId: string; subscribed: boolean }) => {
+      const { error } = await supabase.rpc('set_thread_subscription_for', {
+        p_thread_id: threadId!,
+        p_participant_id: vars.participantId,
+        p_subscribed: vars.subscribed,
+      })
+      if (error) throw error
+      return vars
+    },
+    onSuccess: ({ participantId, subscribed }) => {
+      qc.setQueryData<Record<string, boolean>>(
+        threadSubscriptionKeys.subscribers(threadId ?? ''),
+        (prev) => ({ ...(prev ?? {}), [participantId]: subscribed }),
+      )
+      // Своя подписка и бейджи могли поменяться.
+      qc.invalidateQueries({ queryKey: threadSubscriptionKeys.byThread(threadId ?? '') })
+      if (workspaceId) invalidateMessengerCaches(qc, workspaceId)
+    },
+  })
+
+  return {
+    subscribers: query.data ?? {},
+    isLoading: query.isLoading,
+    setFor: (participantId: string, subscribed: boolean) =>
+      mutation.mutate({ participantId, subscribed }),
+    pending: mutation.isPending,
+  }
+}

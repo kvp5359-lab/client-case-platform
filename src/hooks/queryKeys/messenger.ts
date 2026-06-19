@@ -138,6 +138,8 @@ export const inboxThreadDetailKeys = {
 export const threadSubscriptionKeys = {
   all: ['thread-subscription'] as const,
   byThread: (threadId: string) => ['thread-subscription', threadId] as const,
+  /** Карта подписки всех участников треда (для управления подписчиками — менеджеры). */
+  subscribers: (threadId: string) => ['thread-subscription', 'subscribers', threadId] as const,
 }
 
 /** Кеш списка тредов контакта (используется в карточке контакта). */

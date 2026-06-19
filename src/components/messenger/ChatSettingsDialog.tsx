@@ -38,6 +38,7 @@ import { ChatSettingsProjectSelector } from './ChatSettingsProjectSelector'
 import { ChatSettingsAssignees } from './ChatSettingsAssignees'
 import { ChatSettingsAccess } from './ChatSettingsAccess'
 import { ChatSettingsNotifications } from './ChatSettingsNotifications'
+import { useWorkspacePermissions } from '@/hooks/permissions'
 import { ChatSettingsChannels } from './ChatSettingsChannels'
 import { ChatSettingsChannelInfo } from './ChatSettingsChannelInfo'
 import { ChatSettingsTimeRangePicker } from './ChatSettingsTimeRangePicker'
@@ -67,6 +68,8 @@ export function ChatSettingsDialog({
 }: ChatSettingsDialogProps) {
   const { user } = useAuth()
   const resolvedWorkspaceId = chat ? chat.workspace_id : propWorkspaceId
+  const wsPerms = useWorkspacePermissions({ workspaceId: resolvedWorkspaceId })
+  const canManageSubscribers = wsPerms.isOwner || wsPerms.can('manage_workspace_settings')
   const composeRef = useRef<ComposeFieldHandle>(null)
 
   // Личный диалог (без проекта), привязанный к каналу Wazzup / TG Business —
@@ -272,9 +275,15 @@ export function ChatSettingsDialog({
             hasProject={!!(form.selectedProjectId ?? propProjectId)}
           />
 
-          {/* Уведомления — личная подписка на тред (только для существующего) */}
+          {/* Уведомления — личная подписка + (для менеджеров) управление подписчиками */}
           {chat && (
-            <ChatSettingsNotifications threadId={chat.id} workspaceId={chat.workspace_id} />
+            <ChatSettingsNotifications
+              threadId={chat.id}
+              workspaceId={chat.workspace_id}
+              participants={actions.effectiveParticipants}
+              canManage={canManageSubscribers}
+              userId={user?.id}
+            />
           )}
 
           {/* Канал личного диалога (Wazzup / TG Business): показываем тип + номер

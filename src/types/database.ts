@@ -9467,6 +9467,14 @@ export type Database = {
         Args: { p_subscribed: boolean; p_thread_id: string }
         Returns: boolean
       }
+      get_thread_subscribers: {
+        Args: { p_thread_id: string }
+        Returns: { participant_id: string; subscribed: boolean }[]
+      }
+      set_thread_subscription_for: {
+        Args: { p_participant_id: string; p_subscribed: boolean; p_thread_id: string }
+        Returns: boolean
+      }
       move_thread_to_project: {
         Args: { p_target_project_id: string | null; p_thread_id: string }
         Returns: undefined
