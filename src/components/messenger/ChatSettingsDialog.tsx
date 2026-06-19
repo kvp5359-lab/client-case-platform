@@ -37,6 +37,7 @@ import { ChatSettingsIconColorPicker } from './ChatSettingsIconColorPicker'
 import { ChatSettingsProjectSelector } from './ChatSettingsProjectSelector'
 import { ChatSettingsAssignees } from './ChatSettingsAssignees'
 import { ChatSettingsAccess } from './ChatSettingsAccess'
+import { ChatSettingsNotifications } from './ChatSettingsNotifications'
 import { ChatSettingsChannels } from './ChatSettingsChannels'
 import { ChatSettingsChannelInfo } from './ChatSettingsChannelInfo'
 import { ChatSettingsTimeRangePicker } from './ChatSettingsTimeRangePicker'
@@ -270,6 +271,11 @@ export function ChatSettingsDialog({
             onSetSelectedRoles={form.setSelectedRoles}
             hasProject={!!(form.selectedProjectId ?? propProjectId)}
           />
+
+          {/* Уведомления — личная подписка на тред (только для существующего) */}
+          {chat && (
+            <ChatSettingsNotifications threadId={chat.id} workspaceId={chat.workspace_id} />
+          )}
 
           {/* Канал личного диалога (Wazzup / TG Business): показываем тип + номер
               + передачу ответственному. Для таких тредов блок «Подключить канал»
