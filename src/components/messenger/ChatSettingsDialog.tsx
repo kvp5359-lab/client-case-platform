@@ -129,7 +129,7 @@ export function ChatSettingsDialog({
         }
       }}
     >
-      <DialogContent className="sm:max-w-[540px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[540px] max-h-[85vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="mr-1">
@@ -173,7 +173,7 @@ export function ChatSettingsDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-3 py-2">
+        <div className="flex flex-col gap-3 py-2 min-w-0">
           {/* Название */}
           <div className="flex flex-col gap-1 min-w-0">
             <Label htmlFor="chat-name" className="text-sm text-muted-foreground">
