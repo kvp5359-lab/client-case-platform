@@ -213,7 +213,7 @@ export function ChatSettingsAccess({
               })
             }
           }}
-          className="absolute inset-y-0 right-0 hidden group-hover:flex items-center justify-end pl-4 pr-1.5 rounded-r-md bg-gradient-to-r from-transparent to-brand-100 text-brand-700 hover:text-foreground cursor-pointer"
+          className="absolute inset-y-0 right-0 hidden group-hover:flex items-center justify-end pl-4 pr-1.5 rounded-r-md bg-gradient-to-r from-transparent to-brand-100 to-40% text-brand-700 hover:text-foreground cursor-pointer"
         >
           <X className="w-3 h-3" />
         </span>
