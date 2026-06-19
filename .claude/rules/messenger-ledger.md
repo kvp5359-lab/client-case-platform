@@ -46,6 +46,22 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-18 — Видимость сообщения client/team/self + 4-режимный переключатель (Фаза 2, фича) ⚠️ КАРАНТИН ТРОНУТ, БД В ПРОДЕ, ⏳ СМОК-ТЕСТ КАНАЛОВ ЗА ПОЛЬЗОВАТЕЛЕМ
+- **Контекст:** продолжение Фазы 1 (см. ниже). Модель видимости: 4 режима над композером = шкала охвата `Клиенту → Команде → Заметка → Только я`. Под капотом 2 поля: `visibility ∈ client/team/self` + `notify_subscribers` (team+false = «Заметка», тихо).
+- **БД (прод через MCP, additive + 1 карантинная правка):**
+  - enum `message_visibility` + `project_messages.visibility (DEFAULT client) / notify_subscribers (DEFAULT true)` — no-op на текущих (все client).
+  - **RLS restrictive `project_messages_visibility`** (AND с permissive select): `team` видят только `is_internal_member` (staff), `self` только автор. Закрывает утечку: легаси-колонка `channel` у team-сообщения остаётся `'client'`, без этой политики залогиненный клиент-участник увидел бы team.
+  - `recompute_thread_unread_for` — гейт видимости: `self` не считается никому; `team` считается только staff-участнику И при `notify_subscribers=true` (silent «Заметка» → 0). Плюс гейт подписки Фазы 1.
+  - **🔴 КАРАНТИН `dispatch_message_to_channels`:** добавлен ОДИН guard после проверки пустого контента — `visibility IS DISTINCT FROM 'client'` → `send_status='sent'` + RETURN (наружу не слать). Тело снято с прода ДОСЛОВНО, сверено: все 5 веток отправки (email-internal/mtproto/business/wazzup/telegram-send) целы, 5 вызовов `dispatch_send_http`. No-op на текущих (все client).
+- **Фронт (фронт-only, ждёт деплоя):** `ComposerVisibilitySwitch` (4 сегмента, цвет = будущий цвет бабла, sticky per-thread через `modeByThread[threadId]` — без эффекта/ref, смена треда → дефолт client). Цвет бабла `MessageBubble`: client=акцент чата, team/note=нейтральный чёрно-серый, self=жёлтый. Проброс `visibility/notify_subscribers` по всей цепочке отправки (композер → onSend → useMessengerHandlers → useSendMessage → sendMessage service → insert + оптимистик). Внутренние минуют delay-путь («Отменить»). Типы: `ProjectMessage` + `database.ts` (колонки + enum).
+- **⚠️ ЖДЁТ ЖИВОГО СМОК-ТЕСТА (за пользователем, я слать реальному клиенту не могу):** (1) обычное «Клиенту» по-прежнему доходит во ВСЕ каналы (TG group/Business/MTProto/Wazzup/Email) — регрессия skip'а; (2) «Команде»/«Заметка»/«Только я» наружу НЕ уходят (остаются в ЛК как `sent`); (3) «Только я» не видно другим (RLS); (4) цвет баблов; (5) непрочитанное у подписчиков от team-сообщения, тишина от «Заметки».
+- **Грабли (новое):**
+  - Любая правка `dispatch_message_to_channels` = карантин: снимать ЖИВОЕ тело (drift repo↔prod), сверять число веток `dispatch_send_http` (=5) после правки.
+  - Видимость гейтит непрочитанное по staff-ности участника (`is_staff_role` по `workspace_roles`) — клиент-участник не копит непрочитанное от team.
+  - RLS restrictive — потому что легаси `channel` не различает internal; не путать `channel` (легаси) и `visibility` (новое).
+  - Sticky-режим per-thread держится в `modeByThread` (state), НЕ в ref/effect — иначе ловишь конфликт `set-state-in-effect` ↔ `react-hooks/refs`.
+- **Коммиты:** `9065494` (БД), `43b7f50` (фронт). **НЕ сделано:** @упоминания (Фаза 3); in-bubble метка «только команда/я» (полировка); sticky дефолт от последнего сообщения треда (сейчас дефолт всегда client при первом открытии).
+
 ### 2026-06-18 — Подписка на тред: разделение «доступ» vs «непрочитанное» (Фаза 1, фича) ✅ БД+ФРОНТ В ПРОДЕ (БД), ⏳ ФРОНТ ЖДЁТ ДЕПЛОЯ
 - **Контекст:** большое продуктовое обсуждение (см. план [`docs/feature-backlog/2026-06-18-message-visibility-modes-and-subscription.md`](../../docs/feature-backlog/2026-06-18-message-visibility-modes-and-subscription.md)). Модель: 3 слоя — **доступ** (кто читает) / **видимость сообщения** (4 режима, Фаза 2) / **подписка на тред** (кому прилетает непрочитанное, личное право). Заменяет Planfix-набросок per-message получателей (там нашли дыру: чужая правка получателей протекала в членство).
 - **Проблема:** «доступ» = «кому прилетает непрочитанное» → пассивный view_all-админ видел фантомное непрочитанное на чужих тредах (старый костыль `suppressUnread`, отложенная Фаза 2 от 2026-06-09).
