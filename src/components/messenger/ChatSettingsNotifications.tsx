@@ -117,7 +117,7 @@ export function ChatSettingsNotifications({
                 subscribedChips.map((p) => (
                   <span
                     key={p.id}
-                    className="group inline-flex items-center gap-1.5 pl-1.5 pr-1.5 py-1 rounded-md bg-brand-100 text-xs font-medium"
+                    className="group relative inline-flex items-center gap-1.5 px-1.5 py-1 rounded-md bg-brand-100 text-xs font-medium"
                   >
                     {p.avatar_url ? (
                       <Image src={p.avatar_url} alt="" width={16} height={16} className="w-4 h-4 rounded-full object-cover" />
@@ -137,7 +137,7 @@ export function ChatSettingsNotifications({
                         e.preventDefault()
                         if (!subs.pending) subs.setFor(p.id, false)
                       }}
-                      className="hidden group-hover:inline-flex ml-0.5 rounded-sm p-0.5 text-muted-foreground hover:text-foreground hover:bg-black/5 cursor-pointer"
+                      className="absolute right-0.5 top-1/2 -translate-y-1/2 hidden group-hover:inline-flex items-center justify-center rounded-sm p-0.5 bg-brand-100 text-muted-foreground hover:text-foreground cursor-pointer"
                     >
                       <X className="w-3 h-3" />
                     </span>
