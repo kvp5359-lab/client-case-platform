@@ -64,6 +64,8 @@ type MessageInputProps = {
     replyToId?: string | null,
     files?: File[],
   ) => void
+  /** Режим видимости (Клиенту/Команде/Заметка/Только я) — поднят в MessengerTabContent. */
+  composerMode?: ComposerMode
   /** Тип треда. Если 'task' — показываем переключатель статуса. */
   threadType?: 'chat' | 'task'
   /** Текущий статус задачи (nullable). */
@@ -97,20 +99,11 @@ export function MessageInput({
   onSaveDraft,
   isSavingDraft,
   onSchedule,
+  composerMode = 'client',
   threadType,
   threadStatusId,
 }: MessageInputProps) {
   const [hasText, setHasText] = useState(false)
-  // Видимость сообщения (Фаза 2): client/team/note/self. Sticky в пределах
-  // открытого треда (сбрасывается на 'client' при смене треда — см. useEffect).
-  // Режим видимости хранится per-thread: вывод из threadId даёт и sticky в
-  // пределах треда, и автосброс на 'client' при открытии другого (без эффекта/ref).
-  const [modeByThread, setModeByThread] = useState<Record<string, ComposerMode>>({})
-  const mode: ComposerMode = (threadId && modeByThread[threadId]) || 'client'
-  const setMode = useCallback(
-    (m: ComposerMode) => setModeByThread((prev) => ({ ...prev, [threadId ?? '']: m })),
-    [threadId],
-  )
   const [editor, setEditor] = useState<Editor | null>(null)
   const [openQuickReplyPicker, setOpenQuickReplyPicker] = useState(false)
   // Состояние перевода исходящего: если задано — пользователь нажал «Перевести»,
@@ -388,7 +381,7 @@ export function MessageInput({
           /* quota */
         }
       }
-      const vis = MODE_VISIBILITY[mode]
+      const vis = MODE_VISIBILITY[composerMode]
       const options = {
         ...(translation
           ? {
@@ -450,7 +443,7 @@ export function MessageInput({
     clearPending,
     translation,
     clearPersistedTranslation,
-    mode,
+    composerMode,
   ])
 
   const handleTranslated = useCallback(
@@ -656,7 +649,6 @@ export function MessageInput({
         onQuickReplyPickerHandled={() => setOpenQuickReplyPicker(false)}
         onSend={handleSend}
         onSaveDraft={handleSaveDraft}
-        visibility={editingMessage ? undefined : { mode, onChange: setMode }}
         onSchedule={
           onSchedule && !editingMessage ? handleSchedule : undefined
         }

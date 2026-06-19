@@ -19,6 +19,7 @@ import { TypingIndicator } from './TypingIndicator'
 import { DocumentPickerDialog } from './DocumentPickerDialog'
 import { ChatToolbar } from './ChatToolbar'
 import { ReadUnreadButton } from './ReadUnreadButton'
+import { ComposerVisibilitySwitch, type ComposerMode } from './ComposerVisibilitySwitch'
 import { EmailSubjectBar } from './EmailSubjectBar'
 import { EmailSendMethodSelector } from './EmailSendMethodSelector'
 import { useMessengerState } from './hooks/useMessengerState'
@@ -63,6 +64,15 @@ export function MessengerTabContent({
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [jumpToMessageId, setJumpToMessageId] = useState<string | null>(null)
+  // Режим видимости композера (Клиенту/Команде/Заметка/Только я) — per-thread,
+  // sticky в пределах треда. Поднят сюда, чтобы селектор жил в одной линии с
+  // кнопкой «Прочитано/Непрочитано», а MessageInput читал режим для отправки.
+  const [modeByThread, setModeByThread] = useState<Record<string, ComposerMode>>({})
+  const composerMode: ComposerMode = modeByThread[threadId] || 'client'
+  const setComposerMode = useCallback(
+    (m: ComposerMode) => setModeByThread((prev) => ({ ...prev, [threadId]: m })),
+    [threadId],
+  )
   const { data: allThreads = [] } = useProjectThreads(projectId)
   const forwardBuffer = useSidePanelStore((s) => s.forwardBuffer)
   const removeFromForwardBuffer = useSidePanelStore((s) => s.removeFromForwardBuffer)
@@ -348,8 +358,14 @@ export function MessengerTabContent({
           suppressUnread={isForeignPersonalThread}
         />
 
-        {/* Кнопка Прочитано/Непрочитано — наезжает на список через negative margin */}
+        {/* Кнопка Прочитано/Непрочитано — наезжает на список через negative margin.
+            Слева на той же линии — селектор видимости композера. */}
         <div className="flex justify-center -mt-8 mb-3 relative z-10 pointer-events-none">
+          {!state.editingMessage && (
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-auto">
+              <ComposerVisibilitySwitch mode={composerMode} onChange={setComposerMode} />
+            </div>
+          )}
           <ReadUnreadButton
             showUnread={state.showUnread}
             onMarkRead={() => state.markAsRead.mutate()}
@@ -385,6 +401,7 @@ export function MessengerTabContent({
           }
           onTyping={state.startTyping}
           accent={accent}
+          composerMode={composerMode}
           editingMessage={state.editingMessage}
           onClearEdit={() => state.setEditingMessage(null)}
           onEdit={handlers.handleEdit}

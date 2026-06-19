@@ -10,7 +10,6 @@ import { TaskStatusPicker } from './TaskStatusPicker'
 import type { TaskStatus } from '@/hooks/useStatuses'
 import { TranslateActionButton } from './TranslateActionButton'
 import { ScheduleSendButton } from './ScheduleSendButton'
-import { ComposerVisibilitySwitch, type ComposerMode } from './ComposerVisibilitySwitch'
 
 export const sendButtonStyles: Record<MessengerAccent, string> = {
   blue: 'bg-blue-500 hover:bg-blue-600 text-white',
@@ -51,8 +50,6 @@ type MessageInputToolbarProps = {
     pendingStatusId: string | null
     onPick: (statusId: string | null) => void
   }
-  /** Селектор видимости сообщения (Клиенту/Команде/Заметка/Только я). Скрыт при редактировании. */
-  visibility?: { mode: ComposerMode; onChange: (mode: ComposerMode) => void }
   /** Если задан — рендерим кнопку «Отправить позже». */
   onSchedule?: (sendAt: Date) => void
   /** Если задан — рендерим иконку «Перевести» в тулбаре. */
@@ -87,18 +84,10 @@ export function MessageInputToolbar({
   onSaveDraft,
   taskStatusPicker,
   translate,
-  visibility,
   onSchedule,
 }: MessageInputToolbarProps) {
   return (
-    <div className="relative flex items-center pb-2 pt-0">
-      {/* Селектор видимости — над кнопкой отправки (в пустом месте над тулбаром),
-          чтобы не теснить ряд кнопок. Варианты всплывают по наведению/клику. */}
-      {visibility && (
-        <div className="absolute bottom-full right-2 mb-1 z-20">
-          <ComposerVisibilitySwitch mode={visibility.mode} onChange={visibility.onChange} />
-        </div>
-      )}
+    <div className="flex items-center pb-2 pt-0">
       {/* Left: attach + separator + quick reply + separator + formatting toolbar */}
       <div className="flex items-center gap-0 px-1.5 flex-1 min-w-0">
         <AttachmentButton
