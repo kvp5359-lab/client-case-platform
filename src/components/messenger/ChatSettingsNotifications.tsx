@@ -137,9 +137,13 @@ export function ChatSettingsNotifications({
                         e.preventDefault()
                         if (!subs.pending) subs.setFor(p.id, false)
                       }}
-                      className="absolute inset-y-0 right-0 hidden group-hover:flex items-center px-1.5 bg-brand-100 rounded-r-md text-brand-700 hover:text-foreground cursor-pointer"
+                      className="absolute inset-y-0 right-0 hidden group-hover:flex items-center rounded-r-md text-brand-700 hover:text-foreground cursor-pointer"
                     >
-                      <X className="w-3 h-3" />
+                      <span aria-hidden className="absolute inset-0 rounded-r-md bg-background" />
+                      <span aria-hidden className="absolute inset-0 rounded-r-md bg-brand-100" />
+                      <span className="relative px-1.5">
+                        <X className="w-3 h-3" />
+                      </span>
                     </span>
                   </span>
                 ))
