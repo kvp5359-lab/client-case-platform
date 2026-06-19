@@ -3,11 +3,12 @@
 /**
  * Переключатель видимости сообщения над композером (Фаза 2).
  * Одна шкала охвата от широкого к узкому: Клиенту → Команде → Заметка → Только я.
- *
- * Цвет акцента каждого режима совпадает с цветом будущего бабла (палитра =
- * аудитория): client=акцент, team/note=нейтраль, self=жёлтый. Это видно ДО
- * нажатия — защита от случайной отправки клиенту.
+ * Визуально — как селектор источников AI-ассистента (SourceToggles): одна
+ * пилюля rounded-full, активный сегмент подсвечен своим цветом (палитра =
+ * аудитория), контур группы — под активный режим. Цвет виден ДО отправки.
  */
+import { Send, Bell, BellOff, Lock } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type ComposerMode = 'client' | 'team' | 'note' | 'self'
@@ -23,11 +24,34 @@ export const MODE_VISIBILITY: Record<
   self: { visibility: 'self', notifySubscribers: false },
 }
 
-const MODES: { key: ComposerMode; label: string; accent: string; title: string }[] = [
-  { key: 'client', label: 'Клиенту', accent: 'bg-blue-600', title: 'Клиент + команда · уходит в Telegram/email' },
-  { key: 'team', label: 'Команде', accent: 'bg-neutral-800', title: 'Только команда · уведомляет подписчиков' },
-  { key: 'note', label: 'Заметка', accent: 'bg-neutral-400', title: 'Только команда · тихо (лишь @теги)' },
-  { key: 'self', label: 'Только я', accent: 'bg-amber-400', title: 'Вижу только я · никого не уведомляет' },
+const MODES: {
+  key: ComposerMode
+  label: string
+  Icon: LucideIcon
+  active: string
+  border: string
+  title: string
+}[] = [
+  {
+    key: 'client', label: 'Клиенту', Icon: Send,
+    active: 'bg-blue-100 text-blue-800', border: 'border-blue-300',
+    title: 'Клиент + команда · уходит в Telegram/email',
+  },
+  {
+    key: 'team', label: 'Команде', Icon: Bell,
+    active: 'bg-neutral-200 text-neutral-900', border: 'border-neutral-400',
+    title: 'Только команда · уведомляет подписчиков',
+  },
+  {
+    key: 'note', label: 'Заметка', Icon: BellOff,
+    active: 'bg-neutral-100 text-neutral-500', border: 'border-neutral-300',
+    title: 'Только команда · тихо (лишь @теги)',
+  },
+  {
+    key: 'self', label: 'Только я', Icon: Lock,
+    active: 'bg-amber-100 text-amber-800', border: 'border-amber-300',
+    title: 'Вижу только я · никого не уведомляет',
+  },
 ]
 
 export function ComposerVisibilitySwitch({
@@ -37,10 +61,13 @@ export function ComposerVisibilitySwitch({
   mode: ComposerMode
   onChange: (mode: ComposerMode) => void
 }) {
+  const activeBorder = MODES.find((m) => m.key === mode)?.border ?? 'border-border'
+
   return (
-    <div className="flex items-stretch rounded-lg border border-border overflow-hidden text-xs font-medium select-none">
-      {MODES.map((m) => {
-        const active = m.key === mode
+    <div className={cn('inline-flex items-center rounded-full border overflow-hidden', activeBorder)}>
+      {MODES.map((m, i) => {
+        const isActive = m.key === mode
+        const Icon = m.Icon
         return (
           <button
             key={m.key}
@@ -48,16 +75,13 @@ export function ComposerVisibilitySwitch({
             title={m.title}
             onClick={() => onChange(m.key)}
             className={cn(
-              'flex-1 px-2 py-1.5 border-b-2 transition-colors',
-              active
-                ? cn('text-foreground', m.accent.replace('bg-', 'border-'))
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 transition-colors cursor-pointer',
+              i > 0 && 'border-l border-border',
+              isActive ? m.active : 'bg-muted/50 text-muted-foreground hover:bg-muted',
             )}
           >
-            <span className="inline-flex items-center gap-1.5">
-              <span className={cn('h-2 w-2 rounded-full', active ? m.accent : 'bg-muted-foreground/40')} />
-              {m.label}
-            </span>
+            <Icon className="h-3 w-3" />
+            {m.label}
           </button>
         )
       })}
