@@ -20,6 +20,8 @@ import { DocumentPickerDialog } from './DocumentPickerDialog'
 import { ChatToolbar } from './ChatToolbar'
 import { ReadUnreadButton } from './ReadUnreadButton'
 import { ComposerVisibilitySwitch, type ComposerMode } from './ComposerVisibilitySwitch'
+import { useTaskStatusPending } from './hooks/useTaskStatusPending'
+import { TaskStatusPicker } from './TaskStatusPicker'
 import { EmailSubjectBar } from './EmailSubjectBar'
 import { EmailSendMethodSelector } from './EmailSendMethodSelector'
 import { useMessengerState } from './hooks/useMessengerState'
@@ -83,6 +85,16 @@ export function MessengerTabContent({
   const { data: directThread } = useProjectThreadById(threadId, true)
   const currentThread = allThreads.find((t) => t.id === threadId) ?? directThread ?? undefined
   const hasClientParticipant = useThreadHasClient(currentThread)
+  // Пикер статуса (Planfix-style) — поднят сюда, чтобы стоять в одной линии с
+  // кнопкой read/unread и селектором видимости. Статус коммитится при отправке
+  // (логика в MessageInput, ему передаём statusPending).
+  const statusPending = useTaskStatusPending({
+    threadId,
+    projectId: projectId ?? '',
+    workspaceId,
+    threadType: currentThread?.type,
+    threadStatusId: currentThread?.status_id ?? null,
+  })
   const { user } = useAuth()
 
   // Чужой личный диалог: тред без проекта, владелец которого — не текущий
@@ -358,21 +370,32 @@ export function MessengerTabContent({
           suppressUnread={isForeignPersonalThread}
         />
 
-        {/* Кнопка Прочитано/Непрочитано — наезжает на список через negative margin.
-            Слева на той же линии — селектор видимости композера. */}
-        <div className="flex justify-center -mt-8 mb-3 relative z-10 pointer-events-none">
-          {!state.editingMessage && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-auto">
+        {/* Линия над композером (наезжает на список через negative margin):
+            слева «Прочитано/Непрочитано», справа — статус задачи + тип сообщения. */}
+        <div className="flex items-center justify-between gap-2 -mt-8 mb-3 relative z-10 px-3 pointer-events-none">
+          <div className="pointer-events-auto">
+            <ReadUnreadButton
+              showUnread={state.showUnread}
+              onMarkRead={() => state.markAsRead.mutate()}
+              onMarkUnread={() => state.markAsUnread.mutate()}
+              isMarkReadPending={state.markAsRead.isPending}
+              isMarkUnreadPending={state.markAsUnread.isPending}
+            />
+          </div>
+          <div className="flex items-center gap-2 pointer-events-auto">
+            {statusPending.isTaskThread && (
+              <TaskStatusPicker
+                statuses={statusPending.taskStatuses}
+                currentStatusId={currentThread?.status_id ?? null}
+                pendingStatusId={statusPending.effectivePendingStatusId}
+                onPick={statusPending.handlePickStatus}
+                disabled={state.sendMessage.isPending}
+              />
+            )}
+            {!state.editingMessage && (
               <ComposerVisibilitySwitch mode={composerMode} onChange={setComposerMode} />
-            </div>
-          )}
-          <ReadUnreadButton
-            showUnread={state.showUnread}
-            onMarkRead={() => state.markAsRead.mutate()}
-            onMarkUnread={() => state.markAsUnread.mutate()}
-            isMarkReadPending={state.markAsRead.isPending}
-            isMarkUnreadPending={state.markAsUnread.isPending}
-          />
+            )}
+          </div>
         </div>
 
         <TypingIndicator typingUsers={state.typingUsers} />
@@ -420,8 +443,7 @@ export function MessengerTabContent({
           onSaveDraft={handlers.handleSaveDraft}
           isSavingDraft={state.saveDraftMutation.isPending}
           onSchedule={handleSchedule}
-          threadType={currentThread?.type}
-          threadStatusId={currentThread?.status_id ?? null}
+          statusPending={statusPending}
         />
       </div>
 

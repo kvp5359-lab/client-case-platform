@@ -12,7 +12,6 @@ import { isHtmlContent, plainTextToHtml } from '@/utils/format/messengerHtml'
 import { useDraftMessage } from './hooks/useDraftMessage'
 import { useMessageFiles } from './hooks/useMessageFiles'
 import { useEditorResizer } from './hooks/useEditorResizer'
-import { useTaskStatusPending } from './hooks/useTaskStatusPending'
 import { useQuoteInsertion } from './hooks/useQuoteInsertion'
 
 type MessageInputProps = {
@@ -66,10 +65,21 @@ type MessageInputProps = {
   ) => void
   /** Режим видимости (Клиенту/Команде/Заметка/Только я) — поднят в MessengerTabContent. */
   composerMode?: ComposerMode
-  /** Тип треда. Если 'task' — показываем переключатель статуса. */
-  threadType?: 'chat' | 'task'
-  /** Текущий статус задачи (nullable). */
-  threadStatusId?: string | null
+  /**
+   * Pending-статус задачи (Planfix-style) — пикер поднят в MessengerTabContent,
+   * сюда передаётся для коммита статуса при отправке. undefined — не task-тред.
+   */
+  statusPending?: {
+    isTaskThread: boolean
+    effectivePendingStatusId: string | null
+    updateStatusMutation: {
+      mutate: (
+        vars: { threadId: string; statusId: string },
+        opts?: { onSuccess?: () => void },
+      ) => void
+    }
+    clearPending: () => void
+  }
 }
 
 export function MessageInput({
@@ -100,8 +110,7 @@ export function MessageInput({
   isSavingDraft,
   onSchedule,
   composerMode = 'client',
-  threadType,
-  threadStatusId,
+  statusPending,
 }: MessageInputProps) {
   const [hasText, setHasText] = useState(false)
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -153,14 +162,8 @@ export function MessageInput({
     }
   }, [translationKey])
 
-  const {
-    isTaskThread,
-    taskStatuses,
-    effectivePendingStatusId,
-    handlePickStatus,
-    updateStatusMutation,
-    clearPending,
-  } = useTaskStatusPending({ threadId, projectId, workspaceId, threadType, threadStatusId })
+  const isTaskThread = statusPending?.isTaskThread ?? false
+  const effectivePendingStatusId = statusPending?.effectivePendingStatusId ?? null
 
   const {
     files,
@@ -409,12 +412,12 @@ export function MessageInput({
 
     // Если в пикере выбран новый статус — сначала меняем его, потом (только если
     // есть текст/файлы) отправляем сообщение. При пустом поле просто смена статуса.
-    if (hasPendingStatus) {
-      updateStatusMutation.mutate(
+    if (hasPendingStatus && statusPending) {
+      statusPending.updateStatusMutation.mutate(
         { threadId: threadId!, statusId: effectivePendingStatusId! },
         {
           onSuccess: () => {
-            clearPending()
+            statusPending.clearPending()
             if (hasMessageContent) sendMessage()
           },
         },
@@ -439,8 +442,7 @@ export function MessageInput({
     isTaskThread,
     threadId,
     effectivePendingStatusId,
-    updateStatusMutation,
-    clearPending,
+    statusPending,
     translation,
     clearPersistedTranslation,
     composerMode,
@@ -651,16 +653,6 @@ export function MessageInput({
         onSaveDraft={handleSaveDraft}
         onSchedule={
           onSchedule && !editingMessage ? handleSchedule : undefined
-        }
-        taskStatusPicker={
-          isTaskThread
-            ? {
-                statuses: taskStatuses,
-                currentStatusId: threadStatusId ?? null,
-                pendingStatusId: effectivePendingStatusId,
-                onPick: handlePickStatus,
-              }
-            : undefined
         }
         translate={
           editingMessage
