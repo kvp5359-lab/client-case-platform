@@ -66,7 +66,7 @@ export function ComposerVisibilitySwitch({
   return (
     <div
       className={cn(
-        'inline-flex items-center rounded-full border overflow-hidden bg-background shadow-sm',
+        'inline-flex items-stretch h-7 rounded-full border overflow-hidden bg-background shadow-sm',
         activeBorder,
       )}
     >
@@ -80,12 +80,12 @@ export function ComposerVisibilitySwitch({
             title={m.title}
             onClick={() => onChange(m.key)}
             className={cn(
-              'inline-flex items-center gap-1 text-[11px] py-0.5 transition-colors cursor-pointer whitespace-nowrap',
-              isActive ? cn('px-2', m.active) : 'px-1.5 text-muted-foreground hover:bg-muted',
+              'inline-flex items-center gap-1 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap',
+              isActive ? cn('px-2.5', m.active) : 'px-2 text-muted-foreground hover:bg-muted',
               i > 0 && 'border-l border-border',
             )}
           >
-            <Icon className="h-3 w-3 shrink-0" />
+            <Icon className="h-3.5 w-3.5 shrink-0" />
             {isActive && m.label}
           </button>
         )
