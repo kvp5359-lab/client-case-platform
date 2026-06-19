@@ -137,7 +137,7 @@ export function ChatSettingsNotifications({
                         e.preventDefault()
                         if (!subs.pending) subs.setFor(p.id, false)
                       }}
-                      className="absolute right-0.5 top-1/2 -translate-y-1/2 hidden group-hover:inline-flex items-center justify-center rounded-full p-0.5 bg-brand-200 text-brand-700 hover:bg-brand-300 shadow-sm cursor-pointer"
+                      className="absolute right-0.5 top-1/2 -translate-y-1/2 hidden group-hover:inline-flex items-center justify-center rounded-full p-0.5 bg-gradient-to-br from-brand-200 to-brand-400 text-brand-800 hover:brightness-95 shadow-sm cursor-pointer"
                     >
                       <X className="w-3 h-3" />
                     </span>
