@@ -9453,6 +9453,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      is_thread_subscribed_me: {
+        Args: { p_thread_id: string }
+        Returns: boolean
+      }
+      set_my_thread_subscription: {
+        Args: { p_subscribed: boolean; p_thread_id: string }
+        Returns: boolean
+      }
       move_thread_to_project: {
         Args: { p_target_project_id: string | null; p_thread_id: string }
         Returns: undefined

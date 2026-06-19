@@ -13,7 +13,7 @@
  * один раз и появляются во всех местах автоматически.
  */
 
-import { MoreVertical, ExternalLink, Trash2, CheckCircle2, Calendar as CalendarIcon, X, Settings } from 'lucide-react'
+import { MoreVertical, ExternalLink, Trash2, CheckCircle2, Calendar as CalendarIcon, X, Settings, Bell, BellOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { Button } from '@/components/ui/button'
@@ -54,6 +54,15 @@ export type TaskActionsMenuProps = {
   /** Открыть настройки треда/чата. Если не передан — пункт скрыт. */
   onOpenSettings?: () => void
 
+  /**
+   * Подписка на уведомления по треду. Если `onToggleSubscribe` не передан —
+   * пункт скрыт (показывается только в шапке открытого треда).
+   * `isSubscribed`: true=подписан, false=отписан, null=грузится.
+   */
+  isSubscribed?: boolean | null
+  onToggleSubscribe?: (next: boolean) => void
+  subscribePending?: boolean
+
   /** Удалить задачу (мягко, в корзину). Если не передан — пункт скрыт. */
   onRequestDelete?: () => void
 
@@ -73,6 +82,9 @@ export function TaskActionsMenu({
   onDeadlineClear,
   deadlinePending,
   onOpenSettings,
+  isSubscribed,
+  onToggleSubscribe,
+  subscribePending,
   onRequestDelete,
   triggerClassName,
   align = 'start',
@@ -82,9 +94,10 @@ export function TaskActionsMenu({
   const hasDelete = !!onRequestDelete
   const hasOpen = !!onOpen
   const hasSettings = !!onOpenSettings
+  const hasSubscribe = !!onToggleSubscribe
 
   // Если вообще нечего показывать — не рендерим триггер.
-  if (!hasOpen && !hasStatuses && !hasDeadline && !hasSettings && !hasDelete) return null
+  if (!hasOpen && !hasStatuses && !hasDeadline && !hasSettings && !hasSubscribe && !hasDelete) return null
 
   const deadlineDate = deadline ? new Date(deadline) : undefined
 
@@ -196,9 +209,27 @@ export function TaskActionsMenu({
             </>
           )}
 
-          {hasDelete && (
+          {hasSubscribe && (
             <>
               {(hasOpen || hasStatuses || hasDeadline || hasSettings) && <DropdownMenuSeparator />}
+              <DropdownMenuItem
+                onClick={() => onToggleSubscribe!(!isSubscribed)}
+                disabled={subscribePending || isSubscribed === null || isSubscribed === undefined}
+                className="text-xs cursor-pointer"
+              >
+                {isSubscribed ? (
+                  <BellOff className="mr-2 h-3.5 w-3.5" />
+                ) : (
+                  <Bell className="mr-2 h-3.5 w-3.5" />
+                )}
+                {isSubscribed ? 'Отписаться от уведомлений' : 'Подписаться на уведомления'}
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {hasDelete && (
+            <>
+              {(hasOpen || hasStatuses || hasDeadline || hasSettings || hasSubscribe) && <DropdownMenuSeparator />}
               <DropdownMenuItem
                 onClick={onRequestDelete}
                 className="text-xs cursor-pointer text-destructive focus:text-destructive"

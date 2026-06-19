@@ -16,6 +16,7 @@ import { ChatIconColorGrid } from '@/components/messenger/ChatSettingsIconColorP
 import { ChatSettingsProjectSelector } from '@/components/messenger/ChatSettingsProjectSelector'
 import { useWorkspaceProjects } from '@/components/messenger/hooks/useChatSettingsData'
 import { useMoveThreadToProject } from '@/hooks/messenger/useMoveThreadToProject'
+import { useThreadSubscription } from '@/hooks/messenger/useThreadSubscription'
 import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useUpdateThread } from '@/hooks/messenger/useProjectThreads'
@@ -96,6 +97,9 @@ export function TaskPanelTaskHeader({
   const { data: workspaceProjects = [] } = useWorkspaceProjects(workspaceId)
   const moveThreadToProject = useMoveThreadToProject(workspaceId)
   const [attachedProjectId, setAttachedProjectId] = useState<string | null>(task.project_id ?? null)
+
+  // Подписка на уведомления по треду (пункт в меню «⋮»).
+  const subscription = useThreadSubscription(task.id, workspaceId)
 
   const handleSelectProject = (projectId: string | null) => {
     if (!projectId || projectId === attachedProjectId) return
@@ -327,6 +331,9 @@ export function TaskPanelTaskHeader({
             onDeadlineClear={onDeadlineClear}
             deadlinePending={deadlinePending}
             onOpenSettings={onSettingsOpen}
+            isSubscribed={subscription.isSubscribed}
+            onToggleSubscribe={subscription.setSubscribed}
+            subscribePending={subscription.pending}
             onRequestDelete={onRequestDelete}
             triggerClassName="opacity-0 group-hover/panel-header:opacity-100"
             align="end"
