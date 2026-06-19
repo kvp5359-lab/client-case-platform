@@ -46,6 +46,25 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-18 — Подписка на тред: разделение «доступ» vs «непрочитанное» (Фаза 1, фича) ✅ БД+ФРОНТ В ПРОДЕ (БД), ⏳ ФРОНТ ЖДЁТ ДЕПЛОЯ
+- **Контекст:** большое продуктовое обсуждение (см. план [`docs/feature-backlog/2026-06-18-message-visibility-modes-and-subscription.md`](../../docs/feature-backlog/2026-06-18-message-visibility-modes-and-subscription.md)). Модель: 3 слоя — **доступ** (кто читает) / **видимость сообщения** (4 режима, Фаза 2) / **подписка на тред** (кому прилетает непрочитанное, личное право). Заменяет Planfix-набросок per-message получателей (там нашли дыру: чужая правка получателей протекала в членство).
+- **Проблема:** «доступ» = «кому прилетает непрочитанное» → пассивный view_all-админ видел фантомное непрочитанное на чужих тредах (старый костыль `suppressUnread`, отложенная Фаза 2 от 2026-06-09).
+- **Фаза 1 (БД, прод через MCP, additive→cutover):**
+  - `project_thread_subscriptions(thread_id, participant_id, state ∈ subscribed/muted, source)` — ТОЛЬКО явные оверрайды. RLS «только своя подписка» (по `participants.user_id = auth.uid()`).
+  - `inbox_default_subscribed(thread, participant)` — дефолт = «активный участник» (project_participant/assignee/thread_member/владелец личного треда); **зеркало `inbox_accessible_participant_ids` БЕЗ ветки view_all** → пассивный наблюдатель по умолчанию НЕ подписан.
+  - `is_thread_subscribed(participant, thread)` — оверрайд → иначе дефолт.
+  - **Гейт в `recompute_thread_unread_for`:** не подписан → авто-счётчики (unread/event/reaction/has_reaction) обнуляются; `manually_unread` СОХРАНЯЕТСЯ (отдельный явный сигнал). Тело снято с прода (drift) + гейт.
+  - Триггер `thread_unread_on_subscription` пересчитывает пару при смене подписки.
+  - RPC `is_thread_subscribed_me(thread)` / `set_my_thread_subscription(thread, bool)` (резолв participant по auth.uid, REVOKE public + GRANT authenticated/service_role).
+- **Сверка на проде (read-only ДО гейта, потом reconcile):** было 95 пар с непрочитанным → обнулились **35**, ВСЕ у одного юзера (Владелец/Администратор, view_all); `active_but_zeroing=0` (ни одного реального участника); после `reconcile_thread_unread()` (2372 пары) → 60 пар, утечек 0, 60 подписчиков целы. Фикс фантомов подтверждён.
+- **Фронт:** `useThreadSubscription` + пункт «Подписаться/Отписаться» в `TaskActionsMenu` (опциональный, виден только в шапке треда через `onToggleSubscribe`). tsc/lint/726 тестов 0. Коммиты `9c4be7f` (БД), `6009fea` (фронт).
+- **Грабли (новое):**
+  - **Семантика непрочитанного изменена НАМЕРЕННО** — НЕ сверять со старой формулой/v2; кнопка «Сверка Входящих» на затронутых тредах покажет «расхождения» by design → обновить эталон сверки при правке reconcile-репорта.
+  - Любой потребитель «непрочитанного» уже читает материализованный `thread_unread_state` (Фаза 2.6 от 2026-06-17) → гейт подписки протекает в бейджи/счётчики/кнопку автоматически, без правок фронта.
+  - Дефолт подписки вычисляется на лету (нет бэкафилла); новый участник подписан сразу по факту членства, view_all — нет.
+  - `inbox_default_subscribed` и `inbox_accessible_participant_ids` должны меняться согласованно (первый = подмножество второго без view_all).
+- **Осталось:** Фаза 2 (видимость сообщения `client/team/self` + 4-режимный переключатель + цвет баблов + **skip внешней доставки в `dispatch_message_to_channels` — КАРАНТИН, смок всех каналов**); Фаза 3 (@упоминания, с нуля).
+
 ### 2026-06-18 — Значки каналов на аватарах «Входящих» + подложка кнопок бабла (фичи) ⏳ ЖДЁТ ДЕПЛОЯ ФРОНТА
 - **Запрос:** в углу аватара во «Входящих» показывать значок канала прямого диалога (WhatsApp/Telegram/Email) в фирменном цвете; для остальных тредов — их иконку (задача и т.п.).
 - **Замеры (RPC `get_inbox_threads_v2`, read-only):** backend схлопывает каналы в `channel_type ∈ {web, telegram, email}` — WhatsApp/Business/MTProto **все** идут как `telegram` ИЛИ `web` (личные диалоги без проекта = `channel_type='web'`). Различает канал **`thread_icon`** (`whatsapp`/`telegram`/`send`/`mail`). Поэтому опираемся на `thread_icon`, а не на `channel_type` — **без правки карантинной RPC** (фронт-only). Доли: web+telegram 63, web+send 11, web+whatsapp 7, email+mail 309.
