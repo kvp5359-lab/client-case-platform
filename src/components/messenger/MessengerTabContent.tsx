@@ -109,7 +109,11 @@ export function MessengerTabContent({
               (r) => r === 'Клиент' || r === 'Telegram-контакт',
             ),
         )
-        .map((p) => ({ id: p.id, label: [p.name, p.last_name].filter(Boolean).join(' ') })),
+        .map((p) => ({
+          id: p.id,
+          label: [p.name, p.last_name].filter(Boolean).join(' '),
+          avatarUrl: p.avatar_url,
+        })),
     [wsParticipants],
   )
   const { data: allThreads = [] } = useProjectThreads(projectId)

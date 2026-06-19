@@ -68,7 +68,7 @@ type MessageInputProps = {
   /** Режим видимости (Клиенту/Команде/Заметка/Только я) — поднят в MessengerTabContent. */
   composerMode?: ComposerMode
   /** Участники для @-упоминаний. */
-  mentionItems?: { id: string; label: string }[]
+  mentionItems?: { id: string; label: string; avatarUrl?: string | null }[]
   /**
    * Pending-статус задачи (Planfix-style) — пикер поднят в MessengerTabContent,
    * сюда передаётся для коммита статуса при отправке. undefined — не task-тред.

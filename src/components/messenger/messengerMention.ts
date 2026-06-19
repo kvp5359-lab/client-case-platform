@@ -1,13 +1,16 @@
 /**
- * @-упоминания в композере (Tiptap Mention + suggestion).
- * Попап участников строится на чистом DOM (без tippy/доп. зависимостей).
- * Выбор вставляет mention-узел { id: participant_id, label }.
+ * @-упоминания в композере (Tiptap Mention + suggestion) с МУЛЬТИВЫБОРОМ.
+ * `@` открывает попап участников (аватарки/поиск-через-ввод/чекбоксы); отмечаешь
+ * нескольких → «Упомянуть» вставляет все инлайн-теги сразу (@A @B @C).
  */
 import Mention from '@tiptap/extension-mention'
 import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
-import type { Editor } from '@tiptap/core'
+import type { Editor, JSONContent, Range } from '@tiptap/core'
+import { createElement } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { MentionMultiSelectPopup } from './MentionMultiSelectPopup'
 
-export type MentionItem = { id: string; label: string }
+export type MentionItem = { id: string; label: string; avatarUrl?: string | null }
 
 /** Извлекает participant_id всех @-упоминаний из текущего документа редактора. */
 export function extractMentionIds(editor: Editor): string[] {
@@ -29,95 +32,92 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
       char: '@',
       items: ({ query }: { query: string }): MentionItem[] => {
         const q = query.trim().toLowerCase()
-        return getItems()
-          .filter((i) => !q || i.label.toLowerCase().includes(q))
-          .slice(0, 8)
+        return getItems().filter((i) => !q || i.label.toLowerCase().includes(q))
       },
       render: () => {
-        let popup: HTMLDivElement | null = null
-        let items: MentionItem[] = []
-        let selected = 0
-        let command: (item: MentionItem) => void = () => {}
+        let container: HTMLDivElement | null = null
+        let root: Root | null = null
+        let editor: Editor | null = null
+        let range: Range | null = null
+        let filtered: MentionItem[] = []
+        const selected = new Set<string>()
 
-        const paint = () => {
-          if (!popup) return
-          popup.innerHTML = ''
-          if (items.length === 0) {
-            const empty = document.createElement('div')
-            empty.className = 'px-3 py-1.5 text-xs text-muted-foreground'
-            empty.textContent = 'Никого не найдено'
-            popup.appendChild(empty)
-            return
-          }
-          items.forEach((item, i) => {
-            const btn = document.createElement('button')
-            btn.type = 'button'
-            btn.className =
-              'flex w-full items-center px-3 py-1.5 text-sm text-left ' +
-              (i === selected ? 'bg-accent' : 'hover:bg-muted/50')
-            btn.textContent = item.label
-            btn.addEventListener('mousedown', (e) => {
-              e.preventDefault()
-              command(item)
-            })
-            popup!.appendChild(btn)
-          })
+        const cleanup = () => {
+          root?.unmount()
+          root = null
+          container?.remove()
+          container = null
         }
 
-        // Композер у нижнего края окна → попап над курсором (под ним не влезает).
-        // Если над не помещается — падаем под.
+        const insert = () => {
+          if (!editor || !range || selected.size === 0) return
+          const chosen = getItems().filter((i) => selected.has(i.id))
+          const content: JSONContent[] = []
+          chosen.forEach((it) => {
+            content.push({ type: 'mention', attrs: { id: it.id, label: it.label } })
+            content.push({ type: 'text', text: ' ' })
+          })
+          editor.chain().focus().insertContentAt(range, content).run()
+          cleanup()
+        }
+
+        const renderPopup = () => {
+          root?.render(
+            createElement(MentionMultiSelectPopup, {
+              items: filtered,
+              selectedIds: selected,
+              onToggle: (id: string) => {
+                if (selected.has(id)) selected.delete(id)
+                else selected.add(id)
+                renderPopup()
+              },
+              onConfirm: insert,
+            }),
+          )
+        }
+
+        // Композер у нижнего края окна → попап над курсором (под не влезает).
         const place = (rect: DOMRect | null | undefined) => {
-          if (!popup || !rect) return
-          const h = popup.offsetHeight
+          if (!container || !rect) return
+          const h = container.offsetHeight
           const above = rect.top - h - 6
           const top = above >= 4 ? above : rect.bottom + 6
-          popup.style.left = `${rect.left}px`
-          popup.style.top = `${Math.max(4, top)}px`
+          container.style.left = `${rect.left}px`
+          container.style.top = `${Math.max(4, top)}px`
         }
 
         return {
           onStart: (props: SuggestionProps<MentionItem>) => {
-            items = props.items
-            selected = 0
-            command = props.command as (item: MentionItem) => void
-            popup = document.createElement('div')
-            popup.className =
-              'fixed z-[200] min-w-[180px] max-h-64 overflow-y-auto rounded-md border bg-popover shadow-md py-1'
-            document.body.appendChild(popup)
-            paint()
+            editor = props.editor
+            range = props.range
+            filtered = props.items
+            container = document.createElement('div')
+            container.className = 'fixed z-[200]'
+            document.body.appendChild(container)
+            root = createRoot(container)
+            renderPopup()
             place(props.clientRect?.())
           },
           onUpdate: (props: SuggestionProps<MentionItem>) => {
-            items = props.items
-            selected = 0
-            command = props.command as (item: MentionItem) => void
-            paint()
+            editor = props.editor
+            range = props.range
+            filtered = props.items
+            renderPopup()
             place(props.clientRect?.())
           },
           onKeyDown: (props: SuggestionKeyDownProps) => {
             const key = props.event?.key
-            if (!items.length) return key === 'Escape'
-            if (key === 'ArrowDown') {
-              selected = (selected + 1) % items.length
-              paint()
-              return true
-            }
-            if (key === 'ArrowUp') {
-              selected = (selected - 1 + items.length) % items.length
-              paint()
+            if (key === 'Escape') {
+              cleanup()
               return true
             }
             if (key === 'Enter') {
-              command(items[selected])
+              insert()
               return true
             }
-            if (key === 'Escape') return true
             return false
           },
-          onExit: () => {
-            popup?.remove()
-            popup = null
-          },
+          onExit: () => cleanup(),
         }
       },
     },
