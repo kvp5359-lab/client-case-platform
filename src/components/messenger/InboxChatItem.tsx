@@ -136,9 +136,12 @@ const channelIcons: Record<InboxChannelType, typeof Send> = {
 /** Полная мапа thread_icon → компонент (строится один раз при загрузке модуля,
  *  не в рендере). Для канальных тредов даёт самолётик/конверт/whatsapp, для
  *  задач/чатов — их собственную иконку. */
-const iconByThreadIcon: Record<string, typeof Send> = Object.fromEntries(
-  THREAD_ICONS.map((i) => [i.value, i.icon as typeof Send]),
-)
+const iconByThreadIcon: Record<string, typeof Send> = {
+  ...Object.fromEntries(THREAD_ICONS.map((i) => [i.value, i.icon as typeof Send])),
+  // MTProto-треды иногда создаются с icon='send' — его нет в реестре
+  // THREAD_ICONS, без алиаса значок падал в fallback (квадрат вместо самолётика).
+  send: Send,
+}
 
 /** Цвет САМОЙ ИКОНКИ значка канала под фирменный цвет приложения. */
 const channelColorByThreadIcon: Record<string, string> = {
