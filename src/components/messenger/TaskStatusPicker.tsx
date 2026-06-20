@@ -78,7 +78,7 @@ export const TaskStatusPicker = memo(function TaskStatusPicker({
           className={cn(
             'flex items-center gap-1.5 h-6 px-2.5 rounded-full text-xs font-medium',
             'transition-colors shrink-0 max-w-[180px] truncate',
-            'bg-white/70 backdrop-blur-sm shadow-[0_0_6px_2px_rgba(255,255,255,0.9)]',
+            'bg-white/70 backdrop-blur-sm shadow-[0_0_18px_6px_rgba(255,255,255,0.9)]',
             isChanged
               ? 'border-[0.5px] text-foreground'
               : 'border border-dashed border-muted-foreground/20 text-muted-foreground/50 hover:bg-accent/40',
