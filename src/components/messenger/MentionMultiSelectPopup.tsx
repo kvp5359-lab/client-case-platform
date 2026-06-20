@@ -1,45 +1,86 @@
 "use client"
 
 /**
- * Попап мультивыбора для @-упоминаний. Вид как у пикера исполнителей:
- * аватарки, поиск (через ввод после @), чекбоксы. Отмечаешь нескольких →
- * «Упомянуть» вставляет все инлайн-теги сразу.
+ * Попап мультивыбора для @-упоминаний — как пикер исполнителей: видимое поле
+ * поиска, аватарки, чекбоксы. Отмечаешь нескольких → «Упомянуть» вставляет все
+ * инлайн-теги сразу.
  *
- * onMouseDown preventDefault на корне — чтобы клики не уводили фокус из
- * редактора (иначе Tiptap-suggestion закроется).
+ * Поле поиска автофокусится; клики по строкам/кнопкам — onMouseDown preventDefault,
+ * чтобы не уводить фокус из поля (а сам Tiptap-suggestion остаётся активным, т.к.
+ * @ в доке не меняется при блюре редактора).
  */
+import { useState } from 'react'
 import Image from 'next/image'
-import { Check } from 'lucide-react'
+import { Check, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MentionItem } from './messengerMention'
 
 export function MentionMultiSelectPopup({
   items,
-  selectedIds,
-  onToggle,
   onConfirm,
+  onClose,
 }: {
   items: MentionItem[]
-  selectedIds: Set<string>
-  onToggle: (id: string) => void
-  onConfirm: () => void
+  onConfirm: (ids: string[]) => void
+  onClose: () => void
 }) {
+  const [q, setQ] = useState('')
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
+
+  const query = q.trim().toLowerCase()
+  const filtered = items.filter((i) => !query || i.label.toLowerCase().includes(query))
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const keepFocus = (e: React.MouseEvent) => e.preventDefault()
+
   return (
-    <div
-      className="min-w-[220px] max-h-72 flex flex-col rounded-md border bg-popover shadow-md overflow-hidden"
-      onMouseDown={(e) => e.preventDefault()}
-    >
+    <div className="w-[260px] max-h-80 flex flex-col rounded-md border bg-popover shadow-md overflow-hidden">
+      {/* Поиск */}
+      <div className="px-2 py-2 border-b">
+        <div className="flex items-center gap-2 border rounded-md px-2 py-1">
+          <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                if (selected.size > 0) onConfirm([...selected])
+              } else if (e.key === 'Escape') {
+                e.preventDefault()
+                onClose()
+              }
+            }}
+            placeholder="Поиск..."
+            className="text-sm bg-transparent focus:outline-none w-full"
+          />
+          {q && (
+            <button type="button" onMouseDown={keepFocus} onClick={() => setQ('')} className="shrink-0">
+              <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Список */}
       <div className="overflow-y-auto py-1">
-        {items.length === 0 && (
+        {filtered.length === 0 && (
           <div className="px-3 py-2 text-xs text-muted-foreground">Никого не найдено</div>
         )}
-        {items.map((it) => {
-          const on = selectedIds.has(it.id)
+        {filtered.map((it) => {
+          const on = selected.has(it.id)
           return (
             <button
               key={it.id}
               type="button"
-              onClick={() => onToggle(it.id)}
+              onMouseDown={keepFocus}
+              onClick={() => toggle(it.id)}
               className={cn(
                 'w-full flex items-center gap-2.5 px-3 py-1.5 text-left transition-colors',
                 on ? 'bg-accent' : 'hover:bg-muted/50',
@@ -71,14 +112,17 @@ export function MentionMultiSelectPopup({
           )
         })}
       </div>
+
+      {/* Подтверждение */}
       <div className="border-t p-1.5">
         <button
           type="button"
-          onClick={onConfirm}
-          disabled={selectedIds.size === 0}
+          onMouseDown={keepFocus}
+          onClick={() => onConfirm([...selected])}
+          disabled={selected.size === 0}
           className="w-full rounded-md bg-primary text-primary-foreground text-xs font-medium py-1.5 disabled:opacity-50 transition-opacity"
         >
-          Упомянуть{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+          Упомянуть{selected.size > 0 ? ` (${selected.size})` : ''}
         </button>
       </div>
     </div>

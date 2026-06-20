@@ -30,17 +30,13 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
     },
     suggestion: {
       char: '@',
-      items: ({ query }: { query: string }): MentionItem[] => {
-        const q = query.trim().toLowerCase()
-        return getItems().filter((i) => !q || i.label.toLowerCase().includes(q))
-      },
+      // Отдаём ВСЕХ — поиск делает само поле в попапе (видимый input).
+      items: (): MentionItem[] => getItems(),
       render: () => {
         let container: HTMLDivElement | null = null
         let root: Root | null = null
         let editor: Editor | null = null
         let range: Range | null = null
-        let filtered: MentionItem[] = []
-        const selected = new Set<string>()
 
         const cleanup = () => {
           root?.unmount()
@@ -49,9 +45,12 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
           container = null
         }
 
-        const insert = () => {
-          if (!editor || !range || selected.size === 0) return
-          const chosen = getItems().filter((i) => selected.has(i.id))
+        const insert = (ids: string[]) => {
+          if (!editor || !range || ids.length === 0) {
+            cleanup()
+            return
+          }
+          const chosen = getItems().filter((i) => ids.includes(i.id))
           const content: JSONContent[] = []
           chosen.forEach((it) => {
             content.push({ type: 'mention', attrs: { id: it.id, label: it.label } })
@@ -61,24 +60,8 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
           cleanup()
         }
 
-        const renderPopup = () => {
-          root?.render(
-            createElement(MentionMultiSelectPopup, {
-              items: filtered,
-              selectedIds: selected,
-              onToggle: (id: string) => {
-                if (selected.has(id)) selected.delete(id)
-                else selected.add(id)
-                renderPopup()
-              },
-              onConfirm: insert,
-            }),
-          )
-        }
-
         // Композер у нижнего края окна → попап НАД курсором. Якорим низ попапа
-        // к курсору (растёт вверх) — без замера высоты (createRoot рисует
-        // асинхронно, offsetHeight на момент place ещё 0 → раньше уезжал вниз).
+        // к курсору (растёт вверх) — без замера высоты.
         const place = (rect: DOMRect | null | undefined) => {
           if (!container || !rect) return
           container.style.left = `${rect.left}px`
@@ -87,32 +70,32 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
         }
 
         return {
+          // Монтируем попап ОДИН раз — он держит своё состояние (поиск/выбор).
           onStart: (props: SuggestionProps<MentionItem>) => {
             editor = props.editor
             range = props.range
-            filtered = props.items
             container = document.createElement('div')
             container.className = 'fixed z-[200]'
             document.body.appendChild(container)
             root = createRoot(container)
-            renderPopup()
+            root.render(
+              createElement(MentionMultiSelectPopup, {
+                items: props.items,
+                onConfirm: insert,
+                onClose: cleanup,
+              }),
+            )
             place(props.clientRect?.())
           },
+          // Только репозиция (не ре-рендерим — иначе сбросится поиск/выбор).
           onUpdate: (props: SuggestionProps<MentionItem>) => {
             editor = props.editor
             range = props.range
-            filtered = props.items
-            renderPopup()
             place(props.clientRect?.())
           },
           onKeyDown: (props: SuggestionKeyDownProps) => {
-            const key = props.event?.key
-            if (key === 'Escape') {
+            if (props.event?.key === 'Escape') {
               cleanup()
-              return true
-            }
-            if (key === 'Enter') {
-              insert()
               return true
             }
             return false
