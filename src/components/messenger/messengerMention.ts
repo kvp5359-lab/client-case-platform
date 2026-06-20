@@ -42,27 +42,32 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
         let range: Range | null = null
         let inserted = false
         let outsideHandler: ((e: MouseEvent) => void) | null = null
+        let done = false
 
-        // Закрытие. removeTrigger=true (отмена) → удаляем незавершённый «@…»,
-        // чтобы не оставлять висячий символ. После вставки (inserted) триггер уже
-        // заменён на упоминания — не трогаем.
+        // Закрытие. removeTrigger=true (отмена) → удаляем незавершённый «@…».
+        // Идемпотентно: removeTrigger (deleteRange) синхронно завершает suggestion
+        // → onExit → вложенный cleanup; флаг done + снапшот рефов защищают от гонки.
         const cleanup = (removeTrigger = false) => {
-          if (!container) return
-          if (removeTrigger && !inserted && editor && range) {
+          if (done) return
+          done = true
+          const c = container
+          const r = root
+          const ed = editor
+          const rng = range
+          const oh = outsideHandler
+          container = null
+          root = null
+          outsideHandler = null
+          if (oh) document.removeEventListener('mousedown', oh, true)
+          if (removeTrigger && !inserted && ed && rng) {
             try {
-              editor.chain().focus().deleteRange(range).run()
+              ed.chain().focus().deleteRange(rng).run()
             } catch {
               /* range мог сдвинуться — игнорируем */
             }
           }
-          if (outsideHandler) {
-            document.removeEventListener('mousedown', outsideHandler, true)
-            outsideHandler = null
-          }
-          root?.unmount()
-          root = null
-          container.remove()
-          container = null
+          r?.unmount()
+          c?.remove()
         }
 
         const insert = (ids: string[]) => {
