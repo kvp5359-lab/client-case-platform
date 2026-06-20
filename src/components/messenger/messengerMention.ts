@@ -37,17 +37,34 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
         let root: Root | null = null
         let editor: Editor | null = null
         let range: Range | null = null
+        let inserted = false
+        let outsideHandler: ((e: MouseEvent) => void) | null = null
 
-        const cleanup = () => {
+        // Закрытие. removeTrigger=true (отмена) → удаляем незавершённый «@…»,
+        // чтобы не оставлять висячий символ. После вставки (inserted) триггер уже
+        // заменён на упоминания — не трогаем.
+        const cleanup = (removeTrigger = false) => {
+          if (!container) return
+          if (removeTrigger && !inserted && editor && range) {
+            try {
+              editor.chain().focus().deleteRange(range).run()
+            } catch {
+              /* range мог сдвинуться — игнорируем */
+            }
+          }
+          if (outsideHandler) {
+            document.removeEventListener('mousedown', outsideHandler, true)
+            outsideHandler = null
+          }
           root?.unmount()
           root = null
-          container?.remove()
+          container.remove()
           container = null
         }
 
         const insert = (ids: string[]) => {
           if (!editor || !range || ids.length === 0) {
-            cleanup()
+            cleanup(true)
             return
           }
           const chosen = getItems().filter((i) => ids.includes(i.id))
@@ -57,6 +74,7 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
             content.push({ type: 'text', text: ' ' })
           })
           editor.chain().focus().insertContentAt(range, content).run()
+          inserted = true
           cleanup()
         }
 
@@ -77,12 +95,17 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
             container = document.createElement('div')
             container.className = 'fixed z-[200]'
             document.body.appendChild(container)
+            // Клик мимо попапа = отмена (удаляем висячий «@»).
+            outsideHandler = (e: MouseEvent) => {
+              if (container && !container.contains(e.target as Node)) cleanup(true)
+            }
+            document.addEventListener('mousedown', outsideHandler, true)
             root = createRoot(container)
             root.render(
               createElement(MentionMultiSelectPopup, {
                 items: props.items,
                 onConfirm: insert,
-                onClose: cleanup,
+                onClose: () => cleanup(true),
               }),
             )
             place(props.clientRect?.())
@@ -95,7 +118,7 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
           },
           onKeyDown: (props: SuggestionKeyDownProps) => {
             if (props.event?.key === 'Escape') {
-              cleanup()
+              cleanup(true)
               return true
             }
             return false

@@ -114,12 +114,15 @@ export function MessengerTabContent({
   )
   const mentionItems = useMemo(
     () =>
-      projectParticipants.map((p) => ({
-        id: p.id,
-        label: [p.name, p.last_name].filter(Boolean).join(' '),
-        avatarUrl: p.avatar_url,
-      })),
-    [projectParticipants],
+      projectParticipants
+        // Себя не упоминаем — убираем текущего пользователя из списка.
+        .filter((p) => p.user_id !== user?.id)
+        .map((p) => ({
+          id: p.id,
+          label: [p.name, p.last_name].filter(Boolean).join(' '),
+          avatarUrl: p.avatar_url,
+        })),
+    [projectParticipants, user?.id],
   )
   // Пикер статуса (Planfix-style) — поднят сюда, чтобы стоять в одной линии с
   // кнопкой read/unread и селектором видимости. Статус коммитится при отправке
