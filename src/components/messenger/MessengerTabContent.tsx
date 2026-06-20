@@ -22,7 +22,7 @@ import { ReadUnreadButton } from './ReadUnreadButton'
 import { ComposerVisibilitySwitch, type ComposerMode } from './ComposerVisibilitySwitch'
 import { useTaskStatusPending } from './hooks/useTaskStatusPending'
 import { TaskStatusPicker } from './TaskStatusPicker'
-import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { useProjectParticipants } from './hooks/useChatSettingsData'
 import { EmailSubjectBar } from './EmailSubjectBar'
 import { EmailSendMethodSelector } from './EmailSendMethodSelector'
 import { useMessengerState } from './hooks/useMessengerState'
@@ -98,27 +98,6 @@ export function MessengerTabContent({
     },
     [threadId, modeStorageKey],
   )
-  // Кандидаты для @-упоминаний — только реальные сотрудники: у них есть учётка
-  // (user_id). Внешние контакты (email/telegram-отправители без аккаунта) и
-  // явные клиенты/контакты — исключаются (их нельзя «уведомить» в ЛК).
-  const { data: wsParticipants = [] } = useWorkspaceParticipants(workspaceId)
-  const mentionItems = useMemo(
-    () =>
-      wsParticipants
-        .filter(
-          (p) =>
-            !!p.user_id &&
-            !(p.workspace_roles ?? []).some(
-              (r) => r === 'Клиент' || r === 'Telegram-контакт',
-            ),
-        )
-        .map((p) => ({
-          id: p.id,
-          label: [p.name, p.last_name].filter(Boolean).join(' '),
-          avatarUrl: p.avatar_url,
-        })),
-    [wsParticipants],
-  )
   const { data: allThreads = [] } = useProjectThreads(projectId)
   const forwardBuffer = useSidePanelStore((s) => s.forwardBuffer)
   const removeFromForwardBuffer = useSidePanelStore((s) => s.removeFromForwardBuffer)
@@ -129,6 +108,20 @@ export function MessengerTabContent({
   const { data: directThread } = useProjectThreadById(threadId, true)
   const currentThread = allThreads.find((t) => t.id === threadId) ?? directThread ?? undefined
   const hasClientParticipant = useThreadHasClient(currentThread)
+  // Кандидаты для @-упоминаний — участники проекта этого треда (у личных тредов
+  // без проекта список пуст).
+  const { data: projectParticipants = [] } = useProjectParticipants(
+    currentThread?.project_id ?? undefined,
+  )
+  const mentionItems = useMemo(
+    () =>
+      projectParticipants.map((p) => ({
+        id: p.id,
+        label: [p.name, p.last_name].filter(Boolean).join(' '),
+        avatarUrl: p.avatar_url,
+      })),
+    [projectParticipants],
+  )
   // Пикер статуса (Planfix-style) — поднят сюда, чтобы стоять в одной линии с
   // кнопкой read/unread и селектором видимости. Статус коммитится при отправке
   // (логика в MessageInput, ему передаём statusPending).
