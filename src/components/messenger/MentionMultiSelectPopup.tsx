@@ -40,9 +40,9 @@ export function MentionMultiSelectPopup({
 
   return (
     <div className="w-[260px] max-h-80 flex flex-col rounded-md border bg-popover shadow-md overflow-hidden">
-      {/* Поиск */}
-      <div className="px-2 py-2 border-b">
-        <div className="flex items-center gap-2 border rounded-md px-2 py-1">
+      {/* Поиск + крестик закрытия */}
+      <div className="px-2 py-2 border-b flex items-center gap-1.5">
+        <div className="flex-1 flex items-center gap-2 border rounded-md px-2 py-1 min-w-0">
           <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
           <input
             autoFocus
@@ -66,6 +66,15 @@ export function MentionMultiSelectPopup({
             </button>
           )}
         </div>
+        <button
+          type="button"
+          title="Закрыть"
+          onMouseDown={keepFocus}
+          onClick={onClose}
+          className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Список */}
