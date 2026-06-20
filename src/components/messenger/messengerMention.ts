@@ -44,22 +44,10 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
         let outsideHandler: ((e: MouseEvent) => void) | null = null
         let done = false
 
-        // [DIAG] временное логирование — убрать после диагностики.
-        const docText = () => {
-          try {
-            return editor?.state.doc.textContent ?? '(no editor)'
-          } catch {
-            return '(err)'
-          }
-        }
-        const log = (label: string, extra?: Record<string, unknown>) =>
-          console.log(`[mention] ${label}`, { text: JSON.stringify(docText()), range, inserted, done, ...extra })
-
         // Закрытие. removeTrigger=true (отмена) → удаляем незавершённый «@…».
         // Идемпотентно: removeTrigger (deleteRange) синхронно завершает suggestion
         // → onExit → вложенный cleanup; флаг done + снапшот рефов защищают от гонки.
         const cleanup = (removeTrigger = false) => {
-          log('cleanup:enter', { removeTrigger })
           if (done) return
           done = true
           const c = container
@@ -83,7 +71,6 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
         }
 
         const insert = (ids: string[]) => {
-          log('insert', { ids })
           if (!editor || !range || ids.length === 0) {
             cleanup(true)
             return
@@ -113,14 +100,12 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
           onStart: (props: SuggestionProps<MentionItem>) => {
             editor = props.editor
             range = props.range
-            log('onStart', { rangeFromProps: { from: props.range.from, to: props.range.to }, query: props.query })
             container = document.createElement('div')
             container.className = 'fixed z-[200]'
             document.body.appendChild(container)
             // Клик мимо попапа = отмена (удаляем висячий «@»).
             outsideHandler = (e: MouseEvent) => {
               const inside = !!container && container.contains(e.target as Node)
-              log('outside-mousedown', { inside })
               if (container && !inside) cleanup(true)
             }
             document.addEventListener('mousedown', outsideHandler, true)
@@ -138,11 +123,9 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
           onUpdate: (props: SuggestionProps<MentionItem>) => {
             editor = props.editor
             range = props.range
-            log('onUpdate', { rangeFromProps: { from: props.range.from, to: props.range.to }, query: props.query })
             place(props.clientRect?.())
           },
           onKeyDown: (props: SuggestionKeyDownProps) => {
-            log('keydown', { key: props.event?.key })
             if (props.event?.key === 'Escape') {
               cleanup(true)
               return true
@@ -150,7 +133,6 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
             return false
           },
           onExit: () => {
-            log('onExit')
             cleanup()
           },
         }
