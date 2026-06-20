@@ -731,7 +731,7 @@ body[data-task-panel-open] [data-sonner-toaster][data-x-position='right'] {
   border-radius: 0.25rem;
   padding: 0.05rem 0.25rem;
   font-weight: 400;
-  background-color: rgb(219 234 254);
-  color: rgb(30 64 175);
+  background-color: rgb(229 229 229);
+  color: rgb(38 38 38);
   white-space: nowrap;
 }
