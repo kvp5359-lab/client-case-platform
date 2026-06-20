@@ -229,7 +229,7 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
       {onForward && (
         <Item onClick={() => onForward(message)}>
           <Forward className="h-4 w-4 mr-2" />
-          Переслать сообщение
+          Переслать
         </Item>
       )}
 
