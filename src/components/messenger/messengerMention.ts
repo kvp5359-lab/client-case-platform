@@ -44,6 +44,8 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
         let inserted = false
         let outsideHandler: ((e: MouseEvent) => void) | null = null
         let done = false
+        // Текущий выбор в попапе — чтобы Enter из РЕДАКТОРА подтверждал «Упомянуть».
+        let selectedIds: string[] = []
 
         // Закрытие. removeTrigger=true (отмена) → удаляем незавершённый «@…».
         // Идемпотентно: removeTrigger (deleteRange) синхронно завершает suggestion
@@ -67,8 +69,14 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
               /* range мог сдвинуться — игнорируем */
             }
           }
-          r?.unmount()
-          c?.remove()
+          // Размонтируем ВНЕ текущего цикла событий: root.unmount() синхронно из
+          // обработчика внутри этого же React-рута (клик по «×»/«Упомянуть»)
+          // React 19 откладывает/глотает → попап не закрывался. setTimeout(0)
+          // выводит из render-фазы. Outside-click шёл от document → закрывал ок.
+          setTimeout(() => {
+            r?.unmount()
+            c?.remove()
+          }, 0)
         }
 
         const insert = (ids: string[]) => {
@@ -99,10 +107,20 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
         return {
           // Монтируем попап ОДИН раз — он держит своё состояние (поиск/выбор).
           onStart: (props: SuggestionProps<MentionItem>) => {
+            // ⚠️ render() вызывается ОДИН раз на плагин — переменные замыкания
+            // общие для ВСЕХ открытий. Без сброса `done` остаётся true после
+            // первого закрытия → cleanup() второго попапа упирается в `if (done)
+            // return` и НИЧЕГО не закрывает. Сбрасываем состояние сессии здесь.
+            done = false
+            inserted = false
+            selectedIds = []
             editor = props.editor
             range = props.range
+            // Самолечение: сносим осиротевшие попапы (HMR/гонки teardown могут
+            // оставить «зомби»-контейнер). Гарантирует ровно один живой попап.
+            document.querySelectorAll('.cc-mention-popup').forEach((el) => el.remove())
             container = document.createElement('div')
-            container.className = 'fixed z-[200]'
+            container.className = 'cc-mention-popup fixed z-[200]'
             document.body.appendChild(container)
             // Клик мимо попапа = отмена (удаляем висячий «@»).
             outsideHandler = (e: MouseEvent) => {
@@ -116,6 +134,9 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
                 items: props.items,
                 onConfirm: insert,
                 onClose: () => cleanup(true),
+                onSelectionChange: (ids) => {
+                  selectedIds = ids
+                },
               }),
             )
             place(props.clientRect?.())
@@ -129,6 +150,14 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
           onKeyDown: (props: SuggestionKeyDownProps) => {
             if (props.event?.key === 'Escape') {
               cleanup(true)
+              return true
+            }
+            // Enter из редактора (фокус не в поле поиска): есть выбор → вставляем
+            // упоминания, иначе отменяем висячий «@». В любом случае гасим Enter,
+            // чтобы ProseMirror не разбил блок и не оставил «@».
+            if (props.event?.key === 'Enter') {
+              if (selectedIds.length > 0) insert(selectedIds)
+              else cleanup(true)
               return true
             }
             return false

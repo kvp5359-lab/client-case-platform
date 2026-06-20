@@ -95,7 +95,7 @@ export const TaskStatusPicker = memo(function TaskStatusPicker({
           title={isChanged ? `Статус будет изменён: ${label}` : label}
         >
           <StatusDot status={displayed} muted={!isChanged} />
-          <span className="truncate">{label}</span>
+          <span className="truncate">Новый статус</span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-1">

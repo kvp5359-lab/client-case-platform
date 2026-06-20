@@ -21,7 +21,6 @@ import { ChatToolbar } from './ChatToolbar'
 import { ReadUnreadButton } from './ReadUnreadButton'
 import { ComposerVisibilitySwitch, type ComposerMode } from './ComposerVisibilitySwitch'
 import { useTaskStatusPending } from './hooks/useTaskStatusPending'
-import { TaskStatusPicker } from './TaskStatusPicker'
 import { useProjectParticipants } from './hooks/useChatSettingsData'
 import { EmailSubjectBar } from './EmailSubjectBar'
 import { useMessengerState } from './hooks/useMessengerState'
@@ -158,6 +157,21 @@ export function MessengerTabContent({
     threadId,
     telegramDialogOpen,
   })
+
+  // Есть ли у треда внешний собеседник/клиент. Если нет (внутренний тред
+  // команды) — режим «Клиенту» в композере прячем, дефолт сводим к «Команде».
+  // Личные диалоги (Business/Wazzup/MTProto) — клиент есть, режим оставляем.
+  const allowClientMode =
+    hasClientParticipant ||
+    state.isLinked ||
+    !!state.emailLink ||
+    !!currentThread?.business_connection_id ||
+    !!currentThread?.wazzup_channel_id ||
+    isMtprotoThread
+  // Эффективный режим: при скрытом «Клиенту» сохранённый/дефолтный 'client'
+  // съезжает на 'team' (иначе активной кнопки нет).
+  const effectiveComposerMode: ComposerMode =
+    !allowClientMode && composerMode === 'client' ? 'team' : composerMode
 
   const handlers = useMessengerHandlers({
     channel,
@@ -409,11 +423,15 @@ export function MessengerTabContent({
         />
 
         {/* Линия над композером (наезжает на список через negative margin):
-            слева тип сообщения + статус задачи, справа — «Прочитано/Непрочитано». */}
-        <div className="flex items-center justify-between gap-2 -mt-6 mb-2 relative z-10 pl-3 pr-5 pointer-events-none">
+            слева — тип сообщения + @, по центру — «Прочитано/Непрочитано». */}
+        <div className="relative flex items-center -mt-6 mb-2 z-10 pl-3 pr-5 pointer-events-none">
           <div className="flex items-center gap-2 pointer-events-auto">
             {!state.editingMessage && (
-              <ComposerVisibilitySwitch mode={composerMode} onChange={setComposerMode} />
+              <ComposerVisibilitySwitch
+                mode={effectiveComposerMode}
+                onChange={setComposerMode}
+                allowClient={allowClientMode}
+              />
             )}
             {!state.editingMessage && (
               <button
@@ -425,17 +443,8 @@ export function MessengerTabContent({
                 @
               </button>
             )}
-            {statusPending.isTaskThread && (
-              <TaskStatusPicker
-                statuses={statusPending.taskStatuses}
-                currentStatusId={currentThread?.status_id ?? null}
-                pendingStatusId={statusPending.effectivePendingStatusId}
-                onPick={statusPending.handlePickStatus}
-                disabled={state.sendMessage.isPending}
-              />
-            )}
           </div>
-          <div className="pointer-events-auto">
+          <div className="absolute left-1/2 -translate-x-1/2 pointer-events-auto">
             <ReadUnreadButton
               showUnread={state.showUnread}
               onMarkRead={() => state.markAsRead.mutate()}
@@ -474,7 +483,7 @@ export function MessengerTabContent({
           }
           onTyping={state.startTyping}
           accent={accent}
-          composerMode={composerMode}
+          composerMode={effectiveComposerMode}
           mentionItems={mentionItems}
           editingMessage={state.editingMessage}
           onClearEdit={() => state.setEditingMessage(null)}
@@ -494,7 +503,10 @@ export function MessengerTabContent({
           onSaveDraft={handlers.handleSaveDraft}
           isSavingDraft={state.saveDraftMutation.isPending}
           onSchedule={handleSchedule}
-          statusPending={statusPending}
+          statusPending={{
+            ...statusPending,
+            currentStatusId: currentThread?.status_id ?? null,
+          }}
         />
       </div>
 

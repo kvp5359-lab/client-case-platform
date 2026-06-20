@@ -8,6 +8,8 @@ import { AttachmentButton } from './AttachmentButton'
 import { QuickReplyPicker } from './QuickReplyPicker'
 import { TranslateActionButton } from './TranslateActionButton'
 import { ScheduleSendButton } from './ScheduleSendButton'
+import { TaskStatusPicker } from './TaskStatusPicker'
+import type { TaskStatus } from '@/hooks/useStatuses'
 
 export const sendButtonStyles: Record<MessengerAccent, string> = {
   blue: 'bg-blue-500 hover:bg-blue-600 text-white',
@@ -42,6 +44,13 @@ type MessageInputToolbarProps = {
   onQuickReplyPickerHandled: () => void
   onSend: () => void
   onSaveDraft: () => void
+  /** Pending-пикер статуса задачи справа от форматирования (task-треды). */
+  taskStatusPicker?: {
+    statuses: TaskStatus[]
+    currentStatusId: string | null
+    pendingStatusId: string | null
+    onPick: (statusId: string | null) => void
+  }
   /** Если задан — рендерим кнопку «Отправить позже». */
   onSchedule?: (sendAt: Date) => void
   /** Если задан — рендерим иконку «Перевести» в тулбаре. */
@@ -74,6 +83,7 @@ export function MessageInputToolbar({
   onQuickReplyPickerHandled,
   onSend,
   onSaveDraft,
+  taskStatusPicker,
   translate,
   onSchedule,
 }: MessageInputToolbarProps) {
@@ -111,6 +121,18 @@ export function MessageInputToolbar({
               threadId={translate.threadId}
               getCurrentContent={translate.getCurrentContent}
               onTranslated={translate.onTranslated}
+              disabled={isPending}
+            />
+          </>
+        )}
+        {taskStatusPicker && (
+          <>
+            <div className="ml-2 shrink-0" />
+            <TaskStatusPicker
+              statuses={taskStatusPicker.statuses}
+              currentStatusId={taskStatusPicker.currentStatusId}
+              pendingStatusId={taskStatusPicker.pendingStatusId}
+              onPick={taskStatusPicker.onPick}
               disabled={isPending}
             />
           </>

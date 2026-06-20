@@ -8,6 +8,7 @@ import { MessageAttachmentsRow } from './MessageAttachmentsRow'
 import { MessageInputToolbar } from './MessageInputToolbar'
 import { MODE_VISIBILITY, type ComposerMode } from './ComposerVisibilitySwitch'
 import { extractMentionIds } from './messengerMention'
+import type { TaskStatus } from '@/hooks/useStatuses'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 import { isHtmlContent, plainTextToHtml } from '@/utils/format/messengerHtml'
 import { useDraftMessage } from './hooks/useDraftMessage'
@@ -75,7 +76,10 @@ type MessageInputProps = {
    */
   statusPending?: {
     isTaskThread: boolean
+    taskStatuses: TaskStatus[]
+    currentStatusId: string | null
     effectivePendingStatusId: string | null
+    handlePickStatus: (statusId: string | null) => void
     updateStatusMutation: {
       mutate: (
         vars: { threadId: string; statusId: string },
@@ -647,6 +651,16 @@ export function MessageInput({
         editor={editor}
         projectId={projectId}
         workspaceId={workspaceId}
+        taskStatusPicker={
+          statusPending?.isTaskThread
+            ? {
+                statuses: statusPending.taskStatuses,
+                currentStatusId: statusPending.currentStatusId,
+                pendingStatusId: statusPending.effectivePendingStatusId,
+                onPick: statusPending.handlePickStatus,
+              }
+            : undefined
+        }
         totalFiles={totalFiles}
         hasContent={hasContent}
         isPending={isPending}

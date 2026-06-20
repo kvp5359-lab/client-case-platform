@@ -57,11 +57,15 @@ const MODES: {
 export function ComposerVisibilitySwitch({
   mode,
   onChange,
+  allowClient = true,
 }: {
   mode: ComposerMode
   onChange: (mode: ComposerMode) => void
+  /** В тредах без клиента режим «Клиенту» прячем (отправлять некому). */
+  allowClient?: boolean
 }) {
-  const activeBorder = MODES.find((m) => m.key === mode)?.border ?? 'border-border'
+  const modes = allowClient ? MODES : MODES.filter((m) => m.key !== 'client')
+  const activeBorder = modes.find((m) => m.key === mode)?.border ?? 'border-border'
 
   return (
     <div
@@ -70,7 +74,7 @@ export function ComposerVisibilitySwitch({
         activeBorder,
       )}
     >
-      {MODES.map((m, i) => {
+      {modes.map((m, i) => {
         const isActive = m.key === mode
         const Icon = m.Icon
         return (
