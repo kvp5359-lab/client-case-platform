@@ -13,8 +13,12 @@ import { formatSmartDate } from '@/utils/format/dateFormat'
 import { TaskPanelContext, useLayoutTaskPanel } from './TaskPanelContext'
 import type { ProjectHeaderInfo, TaskItem } from './types'
 
-const TaskListView = lazy(() =>
-  import('./TaskListView').then((m) => ({ default: m.TaskListView })),
+// Универсальное тело вкладки задач (список + блок «Заметки»). Одно и то же,
+// что на полной странице проекта — доработки делать в TasksTabContent.
+const TasksTabContent = lazy(() =>
+  import('@/page-components/ProjectPage/components/TasksTabContent').then((m) => ({
+    default: m.TasksTabContent,
+  })),
 )
 
 type TaskPanelProjectViewProps = {
@@ -151,7 +155,7 @@ export function TaskPanelProjectView({
                 </div>
               }
             >
-              <TaskListView
+              <TasksTabContent
                 workspaceId={workspaceId}
                 projectId={project.id}
                 showProject={false}

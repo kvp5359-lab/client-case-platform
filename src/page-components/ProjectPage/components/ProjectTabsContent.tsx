@@ -45,9 +45,6 @@ const HistoryTabContent = lazy(() =>
 const DigestTabContent = lazy(() =>
   import('./DigestTabContent').then((m) => ({ default: m.DigestTabContent })),
 )
-const ProjectContextTabContent = lazy(() =>
-  import('./ProjectContextTabContent').then((m) => ({ default: m.ProjectContextTabContent })),
-)
 const FinanceTabContent = lazy(() =>
   import('@/components/projects/finance/FinanceTabContent').then((m) => ({
     default: m.FinanceTabContent,
@@ -230,15 +227,12 @@ export function ProjectTabsContent({
         </div>
       )}
 
-      {/* Вкладка "Задачи" — список задач; в проекте он же план (текст/слоты
-          встраиваются прямо в список, см. ProjectFlatPlanList).
-          Сверху — блок «Материалы команды» (контекст проекта), если модуль включён. */}
+      {/* Вкладка "Задачи" — список задач + блок «Заметки» (см. TasksTabContent).
+          ТО ЖЕ тело используется в боковой панели (TaskPanelProjectView) —
+          доработки вкладки задач делать в TasksTabContent, не здесь. */}
       {activeTab === 'tasks' && modules.tasks && (
-        <div className="space-y-6 mt-2">
+        <div className="mt-2">
           <TasksTabContent projectId={projectId} workspaceId={workspaceId} />
-          {modules.projectContext && (
-            <ProjectContextTabContent projectId={projectId} workspaceId={workspaceId} />
-          )}
         </div>
       )}
 
