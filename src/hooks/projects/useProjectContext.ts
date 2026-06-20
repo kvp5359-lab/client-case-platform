@@ -10,10 +10,12 @@ import {
   createFileItem,
   renameItem,
   updateTextItem,
+  updateItemAccess,
   softDeleteItem,
   restoreItem,
   hardDeleteItem,
   runExtraction,
+  type ContextItemAccess,
   type ProjectContextItemWithFile,
 } from '@/services/api/projectContext/projectContextService'
 
@@ -63,6 +65,19 @@ export function useUpdateContextText(projectId: string | undefined) {
   return useMutation({
     mutationFn: ({ id, contentHtml }: { id: string; contentHtml: string }) =>
       updateTextItem(id, contentHtml),
+    onSuccess: () => {
+      if (projectId) {
+        qc.invalidateQueries({ queryKey: projectContextKeys.byProject(projectId) })
+      }
+    },
+  })
+}
+
+export function useUpdateContextAccess(projectId: string | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, access }: { id: string; access: ContextItemAccess }) =>
+      updateItemAccess(id, access),
     onSuccess: () => {
       if (projectId) {
         qc.invalidateQueries({ queryKey: projectContextKeys.byProject(projectId) })

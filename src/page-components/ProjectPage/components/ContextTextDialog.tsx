@@ -5,7 +5,7 @@
  * Использует полноценный TiptapEditor (тот же, что и для статей знаний).
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -17,6 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useAuth } from '@/contexts/AuthContext'
+import { ChatSettingsAccess } from '@/components/messenger/ChatSettingsAccess'
+import { useProjectParticipants } from '@/components/messenger/hooks/useChatSettingsData'
+import type { AccessType } from '@/components/messenger/chatSettingsTypes'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,8 +32,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { TiptapEditor } from '@/components/tiptap-editor/tiptap-editor'
-import { useRenameContextItem, useUpdateContextText } from '@/hooks/projects/useProjectContext'
+import {
+  useRenameContextItem,
+  useUpdateContextText,
+  useUpdateContextAccess,
+} from '@/hooks/projects/useProjectContext'
 import type { ProjectContextItemWithFile } from '@/services/api/projectContext/projectContextService'
+
+function setsEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false
+  for (const v of a) if (!b.has(v)) return false
+  return true
+}
 
 type Props = {
   item: ProjectContextItemWithFile
@@ -39,14 +53,40 @@ type Props = {
 }
 
 export function ContextTextDialog({ item, projectId, workspaceId, onClose }: Props) {
+  const { user } = useAuth()
+  const { data: participants = [] } = useProjectParticipants(projectId)
+
   const [name, setName] = useState(item.name)
   const [content, setContent] = useState(item.content_html ?? '')
   const [confirmOpen, setConfirmOpen] = useState(false)
+
+  // Доступ к заметке (кто видит) — локальное состояние, сохраняется по «Сохранить»
+  const [accessType, setAccessType] = useState<AccessType>(
+    (item.access_type as AccessType) ?? 'all',
+  )
+  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(
+    new Set(item.access_roles ?? []),
+  )
+  const [memberIds, setMemberIds] = useState<Set<string>>(
+    new Set((item.members ?? []).map((m) => m.participant_id)),
+  )
+
   const renameMutation = useRenameContextItem(projectId)
   const updateMutation = useUpdateContextText(projectId)
+  const accessMutation = useUpdateContextAccess(projectId)
+
+  const accessDirty = useMemo(() => {
+    const initialRoles = new Set(item.access_roles ?? [])
+    const initialMembers = new Set((item.members ?? []).map((m) => m.participant_id))
+    return (
+      accessType !== ((item.access_type as AccessType) ?? 'all') ||
+      !setsEqual(selectedRoles, initialRoles) ||
+      !setsEqual(memberIds, initialMembers)
+    )
+  }, [accessType, selectedRoles, memberIds, item.access_type, item.access_roles, item.members])
 
   const isDirty =
-    name.trim() !== item.name || content !== (item.content_html ?? '')
+    name.trim() !== item.name || content !== (item.content_html ?? '') || accessDirty
 
   // Закрытие с подтверждением, если есть несохранённые изменения
   const requestClose = () => {
@@ -71,6 +111,18 @@ export function ContextTextDialog({ item, projectId, workspaceId, onClose }: Pro
       if (content !== (item.content_html ?? '')) {
         tasks.push(updateMutation.mutateAsync({ id: item.id, contentHtml: content }))
       }
+      if (accessDirty) {
+        tasks.push(
+          accessMutation.mutateAsync({
+            id: item.id,
+            access: {
+              accessType,
+              accessRoles: Array.from(selectedRoles),
+              memberIds: Array.from(memberIds),
+            },
+          }),
+        )
+      }
       await Promise.all(tasks)
       toast.success('Сохранено')
       onClose()
@@ -81,7 +133,8 @@ export function ContextTextDialog({ item, projectId, workspaceId, onClose }: Pro
     }
   }
 
-  const isSaving = renameMutation.isPending || updateMutation.isPending
+  const isSaving =
+    renameMutation.isPending || updateMutation.isPending || accessMutation.isPending
 
   return (
     <Dialog open onOpenChange={(o) => !o && requestClose()}>
@@ -113,6 +166,35 @@ export function ContextTextDialog({ item, projectId, workspaceId, onClose }: Pro
             )}
           </div>
         </DialogHeader>
+
+        <ChatSettingsAccess
+          participants={participants}
+          userId={user?.id}
+          isEditMode
+          isTask={false}
+          accessType={accessType}
+          memberIds={memberIds}
+          selectedMemberIds={memberIds}
+          selectedRoles={selectedRoles}
+          onAccessChange={(newAccess, roles) => {
+            setAccessType(newAccess)
+            if (roles) setSelectedRoles(new Set(roles))
+          }}
+          onToggleMember={(pid) =>
+            setMemberIds((prev) => {
+              const next = new Set(prev)
+              if (next.has(pid)) next.delete(pid)
+              else next.add(pid)
+              return next
+            })
+          }
+          onSetAccessType={setAccessType}
+          onSetSelectedMemberIds={setMemberIds}
+          onSetSelectedRoles={setSelectedRoles}
+          label="Кто видит заметку"
+          hint="Добавленный участник увидит эту заметку, даже если по умолчанию она доступна только команде."
+        />
+
         <div className="border rounded-md">
           <TiptapEditor
             content={content}

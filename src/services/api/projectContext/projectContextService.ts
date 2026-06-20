@@ -20,7 +20,19 @@ export type ProjectContextItemWithFile = {
         'id' | 'file_name' | 'file_size' | 'mime_type' | 'storage_path' | 'bucket'
       >
     | null
+  /** Индивидуальные участники (режим access_type='custom'). */
+  members: { participant_id: string }[]
 } & ProjectContextItem
+
+/** Дефолтный доступ новой заметки — видят Администраторы и Исполнители. */
+const DEFAULT_ACCESS_TYPE = 'roles'
+const DEFAULT_ACCESS_ROLES = ['Администратор', 'Исполнитель']
+
+export type ContextItemAccess = {
+  accessType: string
+  accessRoles: string[]
+  memberIds: string[]
+}
 
 type BaseCreateParams = {
   workspaceId: string
@@ -77,7 +89,8 @@ async function insertFileRecord(workspaceId: string, projectId: string, file: Fi
 
 const SELECT_WITH_FILE = `
   *,
-  file:files(id, file_name, file_size, mime_type, storage_path, bucket)
+  file:files(id, file_name, file_size, mime_type, storage_path, bucket),
+  members:project_context_item_members(participant_id)
 ` as const
 
 export async function listProjectContextItems(
@@ -108,6 +121,8 @@ export async function createTextItem({
       name,
       item_type: 'text',
       content_html: contentHtml,
+      access_type: DEFAULT_ACCESS_TYPE,
+      access_roles: DEFAULT_ACCESS_ROLES,
     })
     .select(SELECT_WITH_FILE)
     .single()
@@ -133,6 +148,8 @@ export async function createFileItem({
       name,
       item_type: itemType,
       file_id: fileRecord.id,
+      access_type: DEFAULT_ACCESS_TYPE,
+      access_roles: DEFAULT_ACCESS_ROLES,
     })
     .select(SELECT_WITH_FILE)
     .single()
@@ -188,6 +205,32 @@ export async function updateTextItem(id: string, contentHtml: string): Promise<v
     .update({ content_html: contentHtml })
     .eq('id', id)
   if (error) throw error
+}
+
+/** Сохранить «кто видит заметку»: режим + роли + индивидуальные участники. */
+export async function updateItemAccess(id: string, access: ContextItemAccess): Promise<void> {
+  const { error } = await supabase
+    .from('project_context_items')
+    .update({
+      access_type: access.accessType,
+      access_roles: access.accessType === 'roles' ? access.accessRoles : [],
+    })
+    .eq('id', id)
+  if (error) throw error
+
+  // Перезаписываем список индивидуальных участников (актуален только для 'custom')
+  const { error: delErr } = await supabase
+    .from('project_context_item_members')
+    .delete()
+    .eq('item_id', id)
+  if (delErr) throw delErr
+
+  if (access.accessType === 'custom' && access.memberIds.length > 0) {
+    const { error: insErr } = await supabase
+      .from('project_context_item_members')
+      .insert(access.memberIds.map((participant_id) => ({ item_id: id, participant_id })))
+    if (insErr) throw insErr
+  }
 }
 
 export async function softDeleteItem(id: string): Promise<void> {

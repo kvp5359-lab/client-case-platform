@@ -36,6 +36,10 @@ type ChatSettingsAccessProps = {
    * и форсируем accessType='custom'.
    */
   hasProject?: boolean
+  /** Переопределить подпись «Кто видит …» (по умолчанию — задача/чат). */
+  label?: string
+  /** Переопределить жёлтую подсказку под поиском. */
+  hint?: string
 }
 
 export function ChatSettingsAccess({
@@ -53,6 +57,8 @@ export function ChatSettingsAccess({
   onSetSelectedMemberIds,
   onSetSelectedRoles,
   hasProject = true,
+  label,
+  hint,
 }: ChatSettingsAccessProps) {
   const [search, setSearch] = useState('')
 
@@ -228,7 +234,7 @@ export function ChatSettingsAccess({
   return (
     <div className="flex flex-col gap-1">
       <Label className="text-sm text-muted-foreground">
-        {isTask ? 'Кто видит задачу' : 'Кто видит чат'}
+        {label ?? (isTask ? 'Кто видит задачу' : 'Кто видит чат')}
       </Label>
       <Popover
         onOpenChange={(v) => {
@@ -265,7 +271,8 @@ export function ChatSettingsAccess({
           </div>
 
           <p className="px-3 py-1.5 text-[11px] leading-snug text-amber-700 dark:text-amber-400 bg-amber-50/70 dark:bg-amber-950/30 border-b">
-            Добавленный участник увидит {isTask ? 'задачу' : 'чат'} и всю переписку с самого начала, даже без доступа к проекту.
+            {hint ??
+              `Добавленный участник увидит ${isTask ? 'задачу' : 'чат'} и всю переписку с самого начала, даже без доступа к проекту.`}
           </p>
 
           <div

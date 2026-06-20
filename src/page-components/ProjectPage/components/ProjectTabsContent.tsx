@@ -231,10 +231,14 @@ export function ProjectTabsContent({
       )}
 
       {/* Вкладка "Задачи" — список задач; в проекте он же план (текст/слоты
-          встраиваются прямо в список, см. ProjectFlatPlanList). */}
+          встраиваются прямо в список, см. ProjectFlatPlanList).
+          Сверху — блок «Материалы команды» (контекст проекта), если модуль включён. */}
       {activeTab === 'tasks' && modules.tasks && (
         <div className="space-y-6 mt-2">
           <TasksTabContent projectId={projectId} workspaceId={workspaceId} />
+          {modules.projectContext && (
+            <ProjectContextTabContent projectId={projectId} workspaceId={workspaceId} />
+          )}
         </div>
       )}
 
@@ -258,13 +262,6 @@ export function ProjectTabsContent({
       {activeTab === 'digest' && modules.digest && (
         <div className="mt-2">
           <DigestTabContent projectId={projectId} workspaceId={workspaceId} />
-        </div>
-      )}
-
-      {/* Вкладка "Контекст проекта" — внутренние материалы команды */}
-      {activeTab === 'project-context' && modules.projectContext && (
-        <div className="mt-2">
-          <ProjectContextTabContent projectId={projectId} workspaceId={workspaceId} />
         </div>
       )}
 

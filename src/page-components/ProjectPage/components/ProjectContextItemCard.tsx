@@ -45,6 +45,17 @@ type ProjectContextItemCardProps = {
   projectId: string
   workspaceId: string
   onDelete: () => void
+  /** Компактный вид — меньше отступы, короче превью (для блока на вкладке «Задачи»). */
+  compact?: boolean
+  /** Имя автора заметки (резолвится в родителе по created_by). */
+  authorName?: string
+}
+
+const META_DATE_FMT: Intl.DateTimeFormatOptions = {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
 }
 
 export function ProjectContextItemCard({
@@ -52,6 +63,8 @@ export function ProjectContextItemCard({
   projectId,
   workspaceId,
   onDelete,
+  compact = false,
+  authorName,
 }: ProjectContextItemCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [editingName, setEditingName] = useState(false)
@@ -82,6 +95,14 @@ export function ProjectContextItemCard({
       })
     } finally {
       setEditingName(false)
+    }
+  }
+
+  const handleOpen = () => {
+    if (item.item_type === 'text') {
+      setTextDialogOpen(true)
+    } else if (item.file) {
+      void handleDownload()
     }
   }
 
@@ -133,9 +154,9 @@ export function ProjectContextItemCard({
   }, [item.file])
 
   return (
-    <div className="rounded-lg border bg-card p-3 flex flex-col gap-2 min-w-0">
-      <div className="flex items-start gap-2 min-w-0">
-        <Icon className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
+    <div className={`rounded-lg flex flex-col min-w-0 w-fit max-w-[260px] bg-muted/50 hover:bg-muted transition-colors ${compact ? 'p-2 gap-1.5' : 'p-3 gap-2'}`}>
+      <div className="flex items-center gap-2.5 min-w-0">
+        <Icon className="h-7 w-7 text-muted-foreground shrink-0" strokeWidth={1.25} />
         <div className="flex-1 min-w-0">
           {editingName ? (
             <Input
@@ -155,18 +176,23 @@ export function ProjectContextItemCard({
           ) : (
             <button
               type="button"
-              onClick={() => setEditingName(true)}
-              className="text-left text-sm font-medium truncate w-full hover:text-primary transition-colors"
-              title="Переименовать"
+              onClick={handleOpen}
+              className="text-left text-sm font-medium truncate w-full leading-tight hover:text-primary transition-colors"
+              title="Открыть"
             >
               {item.name}
             </button>
           )}
-          {item.file && (
+          {item.file && !compact && (
             <div className="text-xs text-muted-foreground truncate mt-0.5">
               {item.file.file_name} · {formatBytes(item.file.file_size)}
             </div>
           )}
+          {/* Автор и дата создания — под названием, выровнены по нему */}
+          <div className="text-[11px] text-muted-foreground truncate leading-tight -mt-0.5">
+            {authorName ? `${authorName} · ` : ''}
+            {new Date(item.created_at).toLocaleString('ru-RU', META_DATE_FMT)}
+          </div>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -175,6 +201,11 @@ export function ProjectContextItemCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {item.item_type === 'text' && (
+              <DropdownMenuItem onClick={() => setTextDialogOpen(true)}>
+                <FileText className="h-4 w-4 mr-2" /> Открыть
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => setEditingName(true)}>
               <Pencil className="h-4 w-4 mr-2" /> Переименовать
             </DropdownMenuItem>
@@ -190,43 +221,42 @@ export function ProjectContextItemCard({
         </DropdownMenu>
       </div>
 
-      {/* preview / body */}
-      {item.item_type === 'text' && (
-        <>
-          <button
-            type="button"
-            onClick={() => setTextDialogOpen(true)}
-            className="w-full text-left rounded-md border bg-muted/30 p-2 hover:bg-muted/50 transition-colors text-xs"
-            title="Открыть редактор"
-          >
-            {item.content_html?.trim() ? (
-              <div
-                className="prose prose-xs max-w-none line-clamp-6 dark:prose-invert [&_*]:!my-0 [&_*]:!leading-snug"
-                dangerouslySetInnerHTML={{ __html: item.content_html }}
-              />
-            ) : (
-              <span className="text-muted-foreground italic">
-                Пусто. Нажмите, чтобы добавить текст.
-              </span>
-            )}
-          </button>
-          {textDialogOpen && (
-            <ContextTextDialog
-              item={item}
-              projectId={projectId}
-              workspaceId={workspaceId}
-              onClose={() => setTextDialogOpen(false)}
+      {/* preview / body — в компактном виде скрыто, остаётся только заголовок */}
+      {item.item_type === 'text' && !compact && (
+        <button
+          type="button"
+          onClick={() => setTextDialogOpen(true)}
+          className="w-full text-left rounded-md border bg-muted/30 p-2 hover:bg-muted/50 transition-colors text-xs"
+          title="Открыть редактор"
+        >
+          {item.content_html?.trim() ? (
+            <div
+              className="prose prose-xs max-w-none dark:prose-invert [&_*]:!my-0 [&_*]:!leading-snug line-clamp-6"
+              dangerouslySetInnerHTML={{ __html: item.content_html }}
             />
+          ) : (
+            <span className="text-muted-foreground italic">
+              Пусто. Нажмите, чтобы добавить текст.
+            </span>
           )}
-        </>
+        </button>
+      )}
+      {/* Диалог редактора текста — доступен в любом виде (компактный открывает из меню) */}
+      {item.item_type === 'text' && textDialogOpen && (
+        <ContextTextDialog
+          item={item}
+          projectId={projectId}
+          workspaceId={workspaceId}
+          onClose={() => setTextDialogOpen(false)}
+        />
       )}
 
-      {item.item_type === 'screenshot' && item.file && (
-        <ScreenshotPreview file={item.file} />
+      {item.item_type === 'screenshot' && item.file && !compact && (
+        <ScreenshotPreview file={item.file} compact={compact} />
       )}
 
       {/* extraction display (auto при создании; ручная кнопка — fallback при ошибке) */}
-      {canExtract && (
+      {canExtract && !compact && (
         <div className="border-t pt-2 mt-1">
           {item.extracted_text ? (
             <div>
@@ -275,8 +305,10 @@ export function ProjectContextItemCard({
 
 function ScreenshotPreview({
   file,
+  compact = false,
 }: {
   file: NonNullable<ProjectContextItemWithFile['file']>
+  compact?: boolean
 }) {
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
@@ -296,7 +328,7 @@ function ScreenshotPreview({
 
   if (!url) {
     return (
-      <div className="flex items-center justify-center h-32 rounded-md border bg-muted/30">
+      <div className={`flex items-center justify-center rounded-md border bg-muted/30 ${compact ? 'h-20' : 'h-32'}`}>
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
       </div>
     )
@@ -312,7 +344,7 @@ function ScreenshotPreview({
       <img
         src={url}
         alt="screenshot"
-        className="w-full max-h-40 object-contain"
+        className={`w-full object-contain ${compact ? 'max-h-24' : 'max-h-40'}`}
         loading="lazy"
       />
     </a>

@@ -4819,6 +4819,8 @@ export type Database = {
       }
       project_context_items: {
         Row: {
+          access_roles: string[]
+          access_type: string
           content_html: string | null
           created_at: string
           created_by: string | null
@@ -4840,6 +4842,8 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          access_roles?: string[]
+          access_type?: string
           content_html?: string | null
           created_at?: string
           created_by?: string | null
@@ -4861,6 +4865,8 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          access_roles?: string[]
+          access_type?: string
           content_html?: string | null
           created_at?: string
           created_by?: string | null
@@ -4901,6 +4907,42 @@ export type Database = {
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_context_item_members: {
+        Row: {
+          added_at: string
+          id: string
+          item_id: string
+          participant_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          item_id: string
+          participant_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          item_id?: string
+          participant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_context_item_members_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "project_context_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_context_item_members_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
             referencedColumns: ["id"]
           },
         ]

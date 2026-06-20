@@ -153,6 +153,9 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     templateKey: 'project_context',
     permissionKey: 'project_context',
     iconOnly: true,
+    // Своей вкладки НЕ имеет (showTab: false): материалы команды рендерятся
+    // блоком сверху на вкладке «Задачи». Модуль управляет видимостью блока.
+    showTab: false,
   },
   {
     id: 'settings',
