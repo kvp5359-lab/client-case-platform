@@ -725,13 +725,13 @@ body[data-task-panel-open] [data-sonner-toaster][data-x-position='right'] {
   flex: 0 0 auto;
 }
 
-/* @-упоминания (Tiptap Mention) — подсветка в редакторе и в баббле.
-   В баббле class вычищается санитайзером, поэтому стилизуем по data-type. */
-[data-type='mention'] {
-  border-radius: 0.25rem;
-  padding: 0.05rem 0.25rem;
+/* @-упоминания в БАББЛЕ — без фона (чужеродный бейдж на цветном баббле),
+   просто текст, цвет наследует бабл. В редакторе чип стилизуется Tailwind-классом
+   из HTMLAttributes (там class не вычищается). Скоуп на .messenger-links, чтобы
+   не задеть редактор. */
+.messenger-links [data-type='mention'],
+.messenger-content [data-type='mention'] {
+  color: inherit;
   font-weight: 400;
-  background-color: rgb(229 229 229);
-  color: rgb(38 38 38);
   white-space: nowrap;
 }
