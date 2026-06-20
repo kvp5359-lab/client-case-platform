@@ -98,13 +98,16 @@ export function MessengerTabContent({
     },
     [threadId, modeStorageKey],
   )
-  // Кандидаты для @-упоминаний — сотрудники воркспейса (без клиентов/контактов).
+  // Кандидаты для @-упоминаний — только реальные сотрудники: у них есть учётка
+  // (user_id). Внешние контакты (email/telegram-отправители без аккаунта) и
+  // явные клиенты/контакты — исключаются (их нельзя «уведомить» в ЛК).
   const { data: wsParticipants = [] } = useWorkspaceParticipants(workspaceId)
   const mentionItems = useMemo(
     () =>
       wsParticipants
         .filter(
           (p) =>
+            !!p.user_id &&
             !(p.workspace_roles ?? []).some(
               (r) => r === 'Клиент' || r === 'Telegram-контакт',
             ),
