@@ -422,7 +422,7 @@ export function MessengerTabContent({
                 type="button"
                 title="Упомянуть участника"
                 onClick={() => insertContentRef.current?.('@')}
-                className="h-6 w-6 shrink-0 rounded-full border bg-white/80 backdrop-blur-sm shadow-sm flex items-center justify-center text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                className="h-6 w-6 shrink-0 rounded-full border border-neutral-400 bg-white/80 backdrop-blur-sm shadow-sm flex items-center justify-center text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50"
               >
                 @
               </button>

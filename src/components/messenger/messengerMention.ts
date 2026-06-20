@@ -76,14 +76,14 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
           )
         }
 
-        // Композер у нижнего края окна → попап над курсором (под не влезает).
+        // Композер у нижнего края окна → попап НАД курсором. Якорим низ попапа
+        // к курсору (растёт вверх) — без замера высоты (createRoot рисует
+        // асинхронно, offsetHeight на момент place ещё 0 → раньше уезжал вниз).
         const place = (rect: DOMRect | null | undefined) => {
           if (!container || !rect) return
-          const h = container.offsetHeight
-          const above = rect.top - h - 6
-          const top = above >= 4 ? above : rect.bottom + 6
           container.style.left = `${rect.left}px`
-          container.style.top = `${Math.max(4, top)}px`
+          container.style.top = 'auto'
+          container.style.bottom = `${Math.max(4, window.innerHeight - rect.top + 6)}px`
         }
 
         return {
