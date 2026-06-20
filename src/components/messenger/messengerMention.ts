@@ -28,9 +28,10 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
     HTMLAttributes: {
       class: 'mention rounded px-1 py-0.5 bg-neutral-200 text-neutral-800',
     },
-    // Backspace на упоминании стирает его ЦЕЛИКОМ — не оставляет «@» и не
-    // переоткрывает поиск (иначе при удалении вылезает список и висит символ).
-    deleteTriggerWithBackspace: false,
+    // Backspace удаляет упоминание ВМЕСТЕ с триггером «@» (true). При false
+    // (дефолт) символ «@» остаётся → курсор сразу после него → suggestion
+    // переоткрывает список. Поэтому именно true.
+    deleteTriggerWithBackspace: true,
     suggestion: {
       char: '@',
       // Отдаём ВСЕХ — поиск делает само поле в попапе (видимый input).
