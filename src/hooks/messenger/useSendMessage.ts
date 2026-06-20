@@ -21,6 +21,7 @@ import {
   type ForwardedAttachment,
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
+import { useEmailAccounts } from '@/hooks/email/useEmailAccounts'
 import { patchCachesForMarkRead } from './useUnreadCount'
 import { dismissProjectToasts } from './useMessageToastPayload'
 import { logSendFailure } from '@/services/api/messenger/logSendFailure'
@@ -35,6 +36,10 @@ export function useSendMessage(
 ) {
   const isEmailChat = !!opts?.isEmailChat
   const { user } = useAuth()
+  // Email-аккаунт текущего пользователя (отправителя) — письма в email-тредах
+  // уходят от него, а не от фиксированного аккаунта треда.
+  const { data: emailAccounts = [] } = useEmailAccounts()
+  const senderEmailAccountId = emailAccounts.find((a) => a.is_active)?.id ?? null
   const queryClient = useQueryClient()
   const messagesKey = messengerKeys.messagesByThreadId(threadId)
 
@@ -99,6 +104,7 @@ export function useSendMessage(
         visibility,
         notifySubscribers,
         mentions,
+        emailSendAccountId: senderEmailAccountId,
       })
     },
     // Оптимистичное обновление

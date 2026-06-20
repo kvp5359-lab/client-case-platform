@@ -43,6 +43,9 @@ export type SendMessageParams = {
   notifySubscribers?: boolean
   /** participant_id упомянутых через @ — пишутся в message_mentions (автоподписка). */
   mentions?: string[]
+  /** Email-аккаунт ОТПРАВИТЕЛЯ (текущего пользователя) — для email-тредов письмо
+   *  уходит от него (email-internal-send: m.email_send_account_id приоритетнее треда). */
+  emailSendAccountId?: string | null
   /** Тред, в который пишется сообщение. Обязателен — legacy-режим без треда удалён. */
   threadId: string
   /** Если перед отправкой пользователь нажал «Перевести» — здесь оригинал
@@ -103,6 +106,10 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     channel,
     visibility: params.visibility ?? 'client',
     notify_subscribers: params.notifySubscribers ?? true,
+    // В email-треде — аккаунт отправителя (письмо уходит от пишущего).
+    ...(isEmailThread && params.emailSendAccountId
+      ? { email_send_account_id: params.emailSendAccountId }
+      : {}),
     thread_id: params.threadId,
   }
 
