@@ -24,7 +24,6 @@ import { useTaskStatusPending } from './hooks/useTaskStatusPending'
 import { TaskStatusPicker } from './TaskStatusPicker'
 import { useProjectParticipants } from './hooks/useChatSettingsData'
 import { EmailSubjectBar } from './EmailSubjectBar'
-import { EmailSendMethodSelector } from './EmailSendMethodSelector'
 import { useMessengerState } from './hooks/useMessengerState'
 import { useMessengerHandlers } from './hooks/useMessengerHandlers'
 import { useOptimisticEmail } from './hooks/useOptimisticEmail'
@@ -446,7 +445,9 @@ export function MessengerTabContent({
 
         <TypingIndicator typingUsers={state.typingUsers} />
 
-        <EmailSendMethodSelector threadId={threadId} />
+        {/* Селектор «Отправлять от» скрыт по просьбе — письма уходят от текущего
+            аккаунта треда (email_send_account_id). EmailSendMethodSelector оставлен
+            в коде на случай возврата. */}
 
         <ForwardBufferBar
           items={forwardBuffer}
