@@ -26,7 +26,7 @@ export function extractMentionIds(editor: Editor): string[] {
 export function buildMentionExtension(getItems: () => MentionItem[]) {
   return Mention.configure({
     HTMLAttributes: {
-      class: 'mention rounded px-1 py-0.5 font-medium bg-blue-100 text-blue-800',
+      class: 'mention rounded px-1 py-0.5 bg-blue-100 text-blue-800',
     },
     suggestion: {
       char: '@',
