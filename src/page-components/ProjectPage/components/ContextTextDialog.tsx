@@ -6,7 +6,7 @@
  */
 
 import { useMemo, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -139,7 +139,8 @@ export function ContextTextDialog({ item, projectId, workspaceId, onClose }: Pro
   return (
     <Dialog open onOpenChange={(o) => !o && requestClose()}>
       <DialogContent
-        className="max-w-3xl"
+        className="max-w-3xl !overflow-visible"
+        hideClose
         onInteractOutside={(e) => {
           // Не закрываем по клику вне, если есть несохранённые изменения —
           // сначала спросим подтверждение
@@ -149,21 +150,30 @@ export function ContextTextDialog({ item, projectId, workspaceId, onClose }: Pro
           }
         }}
       >
+        {/* Крестик-кружок в верхнем правом углу */}
+        <button
+          type="button"
+          onClick={requestClose}
+          title="Закрыть"
+          aria-label="Закрыть"
+          className="absolute -right-3 -top-3 z-10 h-7 w-7 rounded-full border bg-background shadow-md flex items-center justify-center text-muted-foreground transition-all hover:scale-110 hover:bg-muted hover:text-foreground active:scale-95"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
         <DialogHeader>
           <DialogTitle className="sr-only">Заметка контекста проекта</DialogTitle>
-          <div className="flex items-center gap-2 pr-8">
+          <div className="flex items-center gap-2">
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="flex-1 text-lg font-semibold h-9 px-3"
               placeholder="Название записи"
             />
-            {isDirty && (
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-                Сохранить
-              </Button>
-            )}
+            <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+              {isSaving && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              Сохранить
+            </Button>
           </div>
         </DialogHeader>
 
