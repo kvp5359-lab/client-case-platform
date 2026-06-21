@@ -2,46 +2,35 @@
 
 /**
  * Настройки сайдбара воркспейса: read + upsert.
- * Чтение — любому участнику; upsert — только владельцу (RLS).
+ *
+ * С 2026-06-21 сайдбар-слоты живут внутри «Профиля настроек» (interface_presets),
+ * а не в workspace_sidebar_settings. Эти хуки — тонкие адаптеры над активным
+ * профилем пользователя, чтобы потребители (WorkspaceSidebarFull, SidebarSettingsTab)
+ * не переписывать. Чтение — любому участнику; запись — владельцу (RLS профиля).
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import {
-  GC_TIME,
   STALE_TIME,
-  workspaceSidebarSettingsKeys,
   myTaskCountsKeys,
+  interfacePresetKeys,
+  workspaceSidebarSettingsKeys,
 } from '@/hooks/queryKeys'
+import { supabase } from '@/lib/supabase'
+import { type SidebarSlot } from '@/lib/sidebarSettings'
 import {
-  type SidebarSlot,
-  normalizeSidebarSlots,
-  DEFAULT_SIDEBAR_SLOTS,
-} from '@/lib/sidebarSettings'
-import { toSupabaseJson } from '@/utils/supabaseJson'
+  useActiveInterfacePreset,
+  writeSlotsToActivePreset,
+} from '@/hooks/useInterfacePresets'
 
-/** Чтение настроек. Если строки нет — возвращает дефолты. */
+/** Чтение слотов активного профиля. Если профилей нет — дефолты. */
 export function useWorkspaceSidebarSettings(workspaceId: string | undefined) {
-  return useQuery({
-    queryKey: workspaceId
-      ? workspaceSidebarSettingsKeys.byWorkspace(workspaceId)
-      : ['workspace-sidebar-settings', 'noop'],
-    enabled: Boolean(workspaceId),
-    staleTime: STALE_TIME.LONG,
-    gcTime: GC_TIME.STANDARD,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('workspace_sidebar_settings')
-        .select('*')
-        .eq('workspace_id', workspaceId!)
-        .maybeSingle()
-      if (error) throw error as Error
-      const slots = data?.slots
-        ? normalizeSidebarSlots(data.slots)
-        : DEFAULT_SIDEBAR_SLOTS
-      return { slots, exists: Boolean(data) }
-    },
-  })
+  const { slots, presetId, isLoading } = useActiveInterfacePreset(workspaceId)
+  return {
+    data: { slots, exists: Boolean(presetId) },
+    isLoading,
+  }
 }
 
 export type UpdateSidebarSettingsParams = {
@@ -51,21 +40,18 @@ export type UpdateSidebarSettingsParams = {
 
 export function useUpdateWorkspaceSidebarSettings() {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   return useMutation({
     mutationFn: async (params: UpdateSidebarSettingsParams) => {
-      const { error } = await supabase
-        .from('workspace_sidebar_settings')
-        .upsert(
-          {
-            workspace_id: params.workspaceId,
-            slots: toSupabaseJson(params.slots),
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'workspace_id' },
-        )
-      if (error) throw error as Error
+      await writeSlotsToActivePreset(params.workspaceId, user?.id, params.slots)
     },
     onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: interfacePresetKeys.byWorkspace(vars.workspaceId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: interfacePresetKeys.active(vars.workspaceId, user?.id),
+      })
       queryClient.invalidateQueries({
         queryKey: workspaceSidebarSettingsKeys.byWorkspace(vars.workspaceId),
       })

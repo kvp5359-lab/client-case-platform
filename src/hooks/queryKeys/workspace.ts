@@ -53,6 +53,18 @@ export const workspaceSidebarSettingsKeys = {
 }
 
 /**
+ * Профили настроек интерфейса (UI: «Профиль настроек»). Список профилей воркспейса
+ * + активный профиль текущего пользователя.
+ */
+export const interfacePresetKeys = {
+  all: ['interface-presets'] as const,
+  byWorkspace: (workspaceId: string | undefined) =>
+    ['interface-presets', workspaceId] as const,
+  active: (workspaceId: string | undefined, userId: string | undefined) =>
+    ['interface-presets', 'active', workspaceId, userId] as const,
+}
+
+/**
  * Workspace-level задачи (список задач, assignees-map).
  */
 export const workspaceTaskKeys = {
