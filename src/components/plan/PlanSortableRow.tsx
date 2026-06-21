@@ -137,7 +137,7 @@ export function SortableRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group/row relative flex gap-3 px-3 py-1.5 transition-colors hover:bg-muted/30 ${
+      className={`group/row relative flex gap-3 px-3 py-1 transition-colors hover:bg-muted/30 ${
         isHeading
           ? 'mt-3 items-center'
           : bt === 'text'
