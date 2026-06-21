@@ -103,74 +103,34 @@ jobs:
     needs: build
 
     steps:
-      - name: Deploy to VPS via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            set -e
-            cd /opt/clientcase
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
-            # Авторизация в GitHub Container Registry
-            echo ${{ secrets.GH_PAT }} | docker login ghcr.io -u kvp5359-lab --password-stdin
-
-            # Загружаем новый образ
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-
-            # ----- Zero-downtime blue/green switch -----
-            UPSTREAM_FILE=/opt/relostart/nginx/conf.d/clientcase-upstream.conf
-            CURRENT=$(grep -oE 'clientcase-app-(blue|green)' "$UPSTREAM_FILE" | head -1 | sed 's/.*-//')
-            [ -z "$CURRENT" ] && CURRENT=blue
-            if [ "$CURRENT" = "blue" ]; then NEXT=green; PORT=3006; else NEXT=blue; PORT=3005; fi
-            echo "Active: $CURRENT  →  Deploying to: $NEXT (port $PORT)"
-
-            # Поднимаем второй цвет на новом образе
-            docker compose up -d --force-recreate app-$NEXT
-
-            # Ждём пока новый контейнер начнёт отдавать 200/302/307
-            echo "Waiting for app-$NEXT to become ready..."
-            READY=0
-            for i in $(seq 1 60); do
-              code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$PORT/ || echo 000)
-              if [ "$code" = "200" ] || [ "$code" = "302" ] || [ "$code" = "307" ]; then
-                echo "app-$NEXT ready (HTTP $code) after ${i} attempts"
-                READY=1
-                break
-              fi
-              sleep 2
-            done
-            if [ "$READY" != "1" ]; then
-              echo "ERROR: app-$NEXT did not become ready — aborting, keeping $CURRENT live"
-              docker compose logs --tail 80 app-$NEXT
-              docker compose stop app-$NEXT
-              exit 1
-            fi
-
-            # Атомарно переключаем nginx upstream на новый цвет
-            cat > "$UPSTREAM_FILE" <<EOF
-            # Managed by ClientCase deploy.yml — do not edit manually.
-            # Active blue/green target. Switched atomically by deploy script.
-            upstream clientcase {
-                server clientcase-app-$NEXT:3000;
-                keepalive 64;
-            }
-            EOF
-            cd /opt/relostart
-            docker compose exec -T nginx nginx -t
-            docker compose exec -T nginx nginx -s reload
-
-            # Даём активным соединениям дотечь и гасим старый цвет
-            sleep 5
-            cd /opt/clientcase
-            docker compose stop app-$CURRENT
-
-            # Очищаем старые образы
-            docker image prune -f
-
-            # Финальная проверка
-            curl -fsSI https://clientcase.kvp-projects.com/ -o /dev/null && echo "✓ Site live on $NEXT"
+      # Деплой обёрнут в retry: SSH Actions->VPS периодически даёт сетевой
+      # i/o timeout (пакеты теряются по пути, VPS при этом исправен). Логика
+      # в scripts/deploy-vps.sh идемпотентна — повтор безопасен.
+      - name: Deploy to VPS via SSH (retry on transient network timeout)
+        uses: nick-fields/retry@v3
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        with:
+          timeout_minutes: 12
+          max_attempts: 3
+          retry_wait_seconds: 20
+          command: >-
+            ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=60
+            "$VPS_USER@$VPS_HOST"
+            "GH_PAT='$GH_PAT' REGISTRY='$REGISTRY' IMAGE_NAME='$IMAGE_NAME' bash -s"
+            < scripts/deploy-vps.sh
 
       - name: Deployment successful
-        run: echo "✅ ClientCase deployment successful!"
+        run: echo "ClientCase deployment successful!"
