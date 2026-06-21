@@ -30,8 +30,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Crown, Users, Link, HandshakeIcon, Contact, Camera, X, type LucideIcon } from 'lucide-react'
+import { Crown, Users, Link, HandshakeIcon, Contact, Camera, X, KeyRound, type LucideIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { ParticipantChannelsBlock } from './ParticipantChannelsBlock'
+import { ClientAccessDialog } from './ClientAccessDialog'
 import { isEmailDuplicateError } from '@/hooks/permissions/useParticipantsMutations'
 
 export type RoleOption = {
@@ -81,6 +83,11 @@ export function EditParticipantDialog({
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Доступ в личный кабинет (выдача/сброс пароля) — отдельное окно
+  const [accessDialogOpen, setAccessDialogOpen] = useState(false)
+  const [accessGrantedNow, setAccessGrantedNow] = useState(false)
+  const hasLoginAccess = !!participant?.user_id || accessGrantedNow
+
   const availableRoles = roles
 
   // Обновляем форму при открытии диалога
@@ -88,6 +95,7 @@ export function EditParticipantDialog({
    
   useEffect(() => {
     setEmailError(null)
+    setAccessGrantedNow(false)
     if (participant) {
       setName(participant.name || '')
       setLastName(participant.last_name || '')
@@ -221,19 +229,22 @@ export function EditParticipantDialog({
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
-            {/* Аватарка — только для редактирования (нужен participant.id для пути в Storage) */}
-            {participant && (
-              <div className="flex justify-center">
-                <div className="relative group/avatar">
+            {/* Шапка из двух блоков: слева — аватар, справа — роль/статус
+                (мета участника, визуально отделена от полей-данных ниже). */}
+            <div className="flex items-stretch gap-3">
+              {/* Блок 1 — аватар (только при редактировании: нужен participant.id для Storage) */}
+              {participant && (
+                <div className="flex items-center justify-center rounded-xl border bg-muted/30 p-4">
+                  <div className="relative group/avatar shrink-0">
                   <button
                     type="button"
                     className="relative block"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isLoading || isUploading}
                   >
-                    <Avatar className="h-20 w-20">
+                    <Avatar className="h-16 w-16 ring-2 ring-border shadow-sm">
                       {currentAvatarSrc && <AvatarImage src={currentAvatarSrc} alt={displayName} />}
-                      <AvatarFallback className="text-lg font-medium bg-muted">
+                      <AvatarFallback className="text-lg font-semibold bg-primary/10 text-primary">
                         {getInitials(displayName)}
                       </AvatarFallback>
                     </Avatar>
@@ -246,29 +257,113 @@ export function EditParticipantDialog({
                       </div>
                     )}
                   </button>
-                  {/* Кнопка очистки аватарки — серая, поверх, появляется при наведении */}
                   {currentAvatarSrc && !isUploading && (
                     <button
                       type="button"
                       onClick={handleClearAvatar}
                       disabled={isLoading}
-                      className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm ring-1 ring-border opacity-0 transition-opacity group-hover/avatar:opacity-100 hover:bg-muted/80 hover:text-foreground"
+                      className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border opacity-0 transition-opacity group-hover/avatar:opacity-100 hover:bg-muted hover:text-foreground"
                       aria-label="Удалить аватарку"
                       title="Удалить аватарку"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
                   )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                  </div>
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarChange}
-                />
+              )}
+
+              {/* Блок 2 — роль + статус доступа компактными пилюлями */}
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-2.5 rounded-xl border bg-muted/30 p-4">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-12 shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Роль
+                  </span>
+                  <Select value={role} onValueChange={setRole} disabled={isLoading}>
+                    <SelectTrigger
+                      id="role"
+                      className="h-8 flex-1 rounded-full border-transparent bg-background px-3.5 text-sm font-medium shadow-sm hover:bg-background/70"
+                    >
+                      <SelectValue placeholder="Выберите роль" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableRoles.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>
+                          <div className="flex items-center gap-2">
+                            <r.icon className="size-4" />
+                            {r.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <span className="w-12 shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Доступ
+                  </span>
+                  <Select
+                    value={canLogin ? 'active' : 'blocked'}
+                    onValueChange={(value) => setCanLogin(value === 'active')}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger
+                      id="status"
+                      className={cn(
+                        'h-8 flex-1 rounded-full border-transparent px-3.5 text-sm font-medium shadow-sm',
+                        canLogin
+                          ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400'
+                          : 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400',
+                      )}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            'h-2 w-2 rounded-full',
+                            canLogin ? 'bg-emerald-500' : 'bg-rose-500',
+                          )}
+                        />
+                        <SelectValue />
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Активен</SelectItem>
+                      <SelectItem value="blocked">Заблокирован</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Доступ в личный кабинет — круглая кнопка открывает окно выдачи/сброса пароля */}
+                  {participant && (
+                    <button
+                      type="button"
+                      onClick={() => setAccessDialogOpen(true)}
+                      disabled={isLoading}
+                      title={
+                        hasLoginAccess
+                          ? 'Доступ в личный кабинет — сбросить пароль'
+                          : 'Выдать доступ в личный кабинет по паролю'
+                      }
+                      className={cn(
+                        'h-8 w-8 shrink-0 flex items-center justify-center rounded-full border shadow-sm transition-colors',
+                        hasLoginAccess
+                          ? 'bg-brand-100 text-brand-700 border-transparent hover:bg-brand-200'
+                          : 'bg-background hover:bg-muted/70',
+                      )}
+                    >
+                      <KeyRound className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
 
             {/* Имя и Фамилия в одну строку */}
             <div className="grid grid-cols-2 gap-4">
@@ -296,68 +391,72 @@ export function EditParticipantDialog({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value)
-                  if (emailError) setEmailError(null)
-                }}
-                placeholder="email@example.com"
-                required
-                disabled={isLoading}
-                aria-invalid={!!emailError}
-                className={
-                  emailError ? 'border-destructive focus-visible:ring-destructive' : ''
-                }
-              />
-              {emailError && <p className="text-sm text-destructive">{emailError}</p>}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (emailError) setEmailError(null)
+                  }}
+                  placeholder="email@example.com"
+                  required
+                  disabled={isLoading}
+                  aria-invalid={!!emailError}
+                  className={
+                    emailError ? 'border-destructive focus-visible:ring-destructive' : ''
+                  }
+                />
+                {emailError && <p className="text-sm text-destructive">{emailError}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Телефон</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+7 (999) 123-45-67"
+                  disabled={isLoading}
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="phone">Телефон</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+7 (999) 123-45-67"
-                disabled={isLoading}
-              />
-            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="telegramUserId">Telegram ID</Label>
+                <Input
+                  id="telegramUserId"
+                  type="text"
+                  inputMode="numeric"
+                  value={telegramUserId}
+                  onChange={(e) => setTelegramUserId(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Числовой ID"
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Узнать свой ID: напишите @userinfobot в Telegram
+                </p>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="telegramUserId">Telegram ID</Label>
-              <Input
-                id="telegramUserId"
-                type="text"
-                inputMode="numeric"
-                value={telegramUserId}
-                onChange={(e) => setTelegramUserId(e.target.value.replace(/\D/g, ''))}
-                placeholder="Числовой ID"
-                disabled={isLoading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Узнать свой ID: напишите @userinfobot в Telegram
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="telegramUsername">Telegram username</Label>
-              <Input
-                id="telegramUsername"
-                type="text"
-                value={telegramUsername}
-                onChange={(e) => setTelegramUsername(e.target.value)}
-                placeholder="@username"
-                disabled={isLoading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Ник в Telegram — чтобы найти диалог по @username
-              </p>
+              <div className="space-y-2">
+                <Label htmlFor="telegramUsername">Telegram username</Label>
+                <Input
+                  id="telegramUsername"
+                  type="text"
+                  value={telegramUsername}
+                  onChange={(e) => setTelegramUsername(e.target.value)}
+                  placeholder="@username"
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Ник в Telegram — чтобы найти диалог по @username
+                </p>
+              </div>
             </div>
 
             {/* Каналы связи — доступны только для существующего participant'а
@@ -372,41 +471,6 @@ export function EditParticipantDialog({
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="role">Роль в workspace</Label>
-              <Select value={role} onValueChange={setRole} disabled={isLoading}>
-                <SelectTrigger id="role">
-                  <SelectValue placeholder="Выберите роль" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableRoles.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>
-                      <div className="flex items-center gap-2">
-                        <r.icon className="size-4" />
-                        {r.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Статус доступа</Label>
-              <Select
-                value={canLogin ? 'active' : 'blocked'}
-                onValueChange={(value) => setCanLogin(value === 'active')}
-                disabled={isLoading}
-              >
-                <SelectTrigger id="status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">✓ Активен</SelectItem>
-                  <SelectItem value="blocked">✗ Заблокирован</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <DialogFooter>
@@ -423,6 +487,18 @@ export function EditParticipantDialog({
             </Button>
           </DialogFooter>
         </form>
+
+        {participant && (
+          <ClientAccessDialog
+            open={accessDialogOpen}
+            onOpenChange={setAccessDialogOpen}
+            participantId={participant.id}
+            workspaceId={participant.workspace_id}
+            email={email}
+            hasAccess={hasLoginAccess}
+            onGranted={() => setAccessGrantedNow(true)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

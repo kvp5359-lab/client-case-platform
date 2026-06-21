@@ -25,6 +25,8 @@ type ContactCardDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onOpenThread?: (threadId: string) => void
+  /** Открыть сразу форму полного редактирования участника. */
+  initialFullEdit?: boolean
 }
 
 const CHANNEL_LABEL: Record<string, string> = {
@@ -40,11 +42,15 @@ export function ContactCardDialog({
   open,
   onOpenChange,
   onOpenThread,
+  initialFullEdit = false,
 }: ContactCardDialogProps) {
   const { data: contact } = useContactParticipant(participantId)
   const { data: threads = [] } = useContactThreads(participantId)
   const [mergeMode, setMergeMode] = useState(false)
-  const [fullEditOpen, setFullEditOpen] = useState(false)
+  // initialFullEdit разворачивает форму полного редактирования сразу при
+  // открытии. Корректность держится на key={participantId} в
+  // GlobalContactCardDialog — диалог пересоздаётся на каждый новый контакт.
+  const [fullEditOpen, setFullEditOpen] = useState(initialFullEdit)
   const { editMutation } = useParticipantsMutations(contact?.workspace_id)
 
   const handleSaveFull = (data: Partial<Participant>) => {

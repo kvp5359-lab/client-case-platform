@@ -6,12 +6,13 @@
  */
 
 import { useState, useMemo } from 'react'
-import { Check, Users, Search, X, Plus } from 'lucide-react'
+import { Check, Users, Search, X, Plus, IdCard } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { ParticipantAvatar } from './ParticipantAvatar'
 import { isStaffRole } from '@/types/permissions'
+import { useContactCardStore } from '@/store/contactCardStore'
 
 const EXTERNAL_ROLES = ['Внешний сотрудник']
 const CLIENT_ROLES = ['Клиент']
@@ -71,15 +72,21 @@ export function ParticipantsPicker({
   }, [participants, search, user?.id])
 
   const groups = useMemo(() => {
-    const staff = filtered.filter((p) => getRoleGroup(p.workspace_roles) === 'staff')
-    const external = filtered.filter((p) => getRoleGroup(p.workspace_roles) === 'external')
-    const clients = filtered.filter((p) => getRoleGroup(p.workspace_roles) === 'client')
+    // Выбранные участники всегда наверху — отдельной секцией, без дублей в
+    // ролевых группах ниже. Порядок внутри секции наследует сортировку filtered
+    // («Я» первым, далее по алфавиту).
+    const selected = filtered.filter((p) => selectedSet.has(p.id))
+    const rest = filtered.filter((p) => !selectedSet.has(p.id))
+    const staff = rest.filter((p) => getRoleGroup(p.workspace_roles) === 'staff')
+    const external = rest.filter((p) => getRoleGroup(p.workspace_roles) === 'external')
+    const clients = rest.filter((p) => getRoleGroup(p.workspace_roles) === 'client')
     return [
+      { items: selected, label: 'Выбранные' },
       { items: staff, label: 'Сотрудники' },
       { items: external, label: 'Внешние сотрудники' },
       { items: clients, label: 'Клиенты' },
     ].filter((g) => g.items.length > 0)
-  }, [filtered])
+  }, [filtered, selectedSet])
 
   const toggleParticipant = (id: string) => {
     if (selectedSet.has(id)) {
@@ -115,10 +122,28 @@ export function ParticipantsPicker({
               return (
                 <span
                   key={pp.id}
-                  className="inline-flex items-center gap-1.5 px-1.5 py-1 rounded-md bg-brand-100 text-xs font-medium"
+                  className="group relative inline-flex items-center gap-1.5 px-1.5 py-1 rounded-md bg-brand-100 text-xs font-medium"
                 >
                   <ParticipantAvatar name={pp.name ?? '?'} avatarUrl={pp.avatar_url} size="sm" />
                   {isMe ? 'Я' : [pp.name, pp.last_name].filter(Boolean).join(' ')}
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    aria-label="Убрать"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      e.preventDefault()
+                      onChange(selectedIds.filter((sid) => sid !== pp.id))
+                    }}
+                    className="absolute inset-y-0 right-0 hidden group-hover:flex items-center rounded-r-md text-brand-700 hover:text-foreground cursor-pointer"
+                  >
+                    <span aria-hidden className="absolute inset-0 rounded-r-md bg-background" />
+                    <span aria-hidden className="absolute inset-0 rounded-r-md bg-brand-100" />
+                    <span className="relative px-1.5">
+                      <X className="w-3 h-3" />
+                    </span>
+                  </span>
                 </span>
               )
             })
@@ -170,30 +195,52 @@ export function ParticipantsPicker({
                 const isMe = p.user_id === user?.id
                 const isSel = selectedSet.has(p.id)
                 return (
-                  <button
+                  <div
                     key={p.id}
-                    type="button"
-                    onClick={() => toggleParticipant(p.id)}
                     className={cn(
-                      'w-full flex items-center gap-2.5 px-3 py-1 text-left transition-colors',
+                      'group w-full flex items-center transition-colors',
                       isSel ? 'bg-brand-100 hover:bg-brand-200' : 'hover:bg-muted/50',
                     )}
                   >
-                    <ParticipantAvatar name={p.name ?? '?'} avatarUrl={p.avatar_url} size="md" />
-                    <span className="text-sm truncate flex-1">
-                      {isMe ? 'Я' : [p.name, p.last_name].filter(Boolean).join(' ')}
-                    </span>
-                    <div
-                      className={cn(
-                        'w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors',
-                        isSel
-                          ? 'bg-primary border-primary text-primary-foreground'
-                          : 'border-input',
-                      )}
+                    <button
+                      type="button"
+                      onClick={() => toggleParticipant(p.id)}
+                      className="flex items-center gap-2.5 pl-3 py-1 min-w-0 text-left"
                     >
-                      {isSel && <Check className="w-3 h-3" />}
-                    </div>
-                  </button>
+                      <ParticipantAvatar name={p.name ?? '?'} avatarUrl={p.avatar_url} size="md" />
+                      <span className="text-sm truncate">
+                        {isMe ? 'Я' : [p.name, p.last_name].filter(Boolean).join(' ')}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false)
+                        useContactCardStore.getState().open(p.id, true)
+                      }}
+                      title="Открыть карточку участника"
+                      className="ml-1.5 shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-background/60 hover:text-foreground focus:opacity-100 transition-opacity"
+                    >
+                      <IdCard className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleParticipant(p.id)}
+                      className="flex-1 flex justify-end px-3 py-1"
+                      aria-label={isSel ? 'Убрать из выбранных' : 'Добавить в выбранные'}
+                    >
+                      <div
+                        className={cn(
+                          'w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors',
+                          isSel
+                            ? 'bg-primary border-primary text-primary-foreground'
+                            : 'border-input',
+                        )}
+                      >
+                        {isSel && <Check className="w-3 h-3" />}
+                      </div>
+                    </button>
+                  </div>
                 )
               })}
             </div>

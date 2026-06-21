@@ -22,7 +22,7 @@ export function ParticipantsSidebar({
   const isTelegramSection = selectedRole === TELEGRAM_ROLE
 
   return (
-    <aside className="w-56 border-r bg-white p-3 flex-shrink-0">
+    <aside className="w-56 border-r bg-white p-3 flex-shrink-0 overflow-y-auto">
       <nav className="space-y-1">
         {/* Все участники */}
         <button

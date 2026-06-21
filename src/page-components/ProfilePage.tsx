@@ -24,6 +24,7 @@ import { GoogleDriveSection } from './ProfilePage/GoogleDriveSection'
 import { GmailSection } from './ProfilePage/GmailSection'
 import { AppSettingsSection } from './ProfilePage/AppSettingsSection'
 import { TranslationLanguageSection } from './ProfilePage/TranslationLanguageSection'
+import { ChangePasswordSection } from './ProfilePage/ChangePasswordSection'
 import { ProfilePersonalTelegramSection } from './ProfilePage/PersonalTelegramSection'
 import { WazzupNumbersSection } from './ProfilePage/WazzupNumbersSection'
 import { Database } from '@/types/database'
@@ -377,6 +378,7 @@ export function ProfilePage() {
               <CardDescription>Личные предпочтения и параметры</CardDescription>
             </CardHeader>
             <CardContent className="p-0 divide-y border-t">
+              <ChangePasswordSection />
               <TranslationLanguageSection />
               <AppSettingsSection
                 settings={localSettings}

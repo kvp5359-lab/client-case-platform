@@ -10,12 +10,15 @@ import { create } from 'zustand'
 
 type ContactCardStore = {
   participantId: string | null
-  open: (participantId: string) => void
+  /** Открыть карточку сразу в режиме полного редактирования участника. */
+  fullEdit: boolean
+  open: (participantId: string, fullEdit?: boolean) => void
   close: () => void
 }
 
 export const useContactCardStore = create<ContactCardStore>((set) => ({
   participantId: null,
-  open: (participantId) => set({ participantId }),
-  close: () => set({ participantId: null }),
+  fullEdit: false,
+  open: (participantId, fullEdit = false) => set({ participantId, fullEdit }),
+  close: () => set({ participantId: null, fullEdit: false }),
 }))

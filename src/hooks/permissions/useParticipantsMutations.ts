@@ -223,6 +223,42 @@ export function useParticipantsMutations(workspaceId: string | undefined) {
     },
   })
 
+  /**
+   * Выдать доступ по паролю / сбросить пароль участнику (обычно клиенту).
+   * Edge function генерит пароль, создаёт/привязывает auth-аккаунт, открывает
+   * доступ. Возвращает логин + сгенерированный пароль для показа менеджеру.
+   */
+  const setPasswordMutation = useMutation({
+    mutationFn: async (participantId: string) => {
+      const { data, error } = await supabase.functions.invoke<{
+        ok?: boolean
+        login?: string
+        password?: string
+        error?: string
+      }>('set-client-password', {
+        body: { participant_id: participantId },
+      })
+      if (error || !data?.ok || !data.password || !data.login) {
+        const msg =
+          data?.error === 'no_email'
+            ? 'У участника не указан email — добавьте его, чтобы выдать доступ'
+            : data?.error === 'Forbidden'
+              ? 'Недостаточно прав'
+              : data?.error === 'Participant not found'
+                ? 'Участник не найден'
+                : data?.error || error?.message || 'Не удалось выдать пароль'
+        throw new Error(msg)
+      }
+      return { login: data.login, password: data.password }
+    },
+    onSuccess: () => {
+      invalidateParticipants()
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Не удалось выдать пароль')
+    },
+  })
+
   const mergeMutation = useMutation({
     mutationFn: async ({ sourceId, targetId }: { sourceId: string; targetId: string }) => {
       const { error } = await supabase.rpc('merge_telegram_contact', {
@@ -260,6 +296,7 @@ export function useParticipantsMutations(workspaceId: string | undefined) {
     editMutation,
     addMutation,
     mergeMutation,
+    setPasswordMutation,
     actionInProgressId,
   }
 }

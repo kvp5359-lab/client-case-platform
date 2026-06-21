@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { GoogleIcon } from '@/components/ui/google-icon'
+import { KeyRound } from 'lucide-react'
 import { AuthAlert } from './AuthAlert'
 
 type OtpEmailStepProps = {
@@ -85,16 +86,17 @@ export function OtpEmailStep({
         </Button>
       </form>
 
-      {/* Ссылка на логин/пароль */}
-      <div className="pt-4">
-        <button
-          type="button"
-          onClick={onShowPasswordForm}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors mx-auto block"
-        >
-          Вход через логин и пароль
-        </button>
-      </div>
+      {/* Вход по логину и паролю — равноправный способ (для клиентов с выданным паролем) */}
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full h-11 border-2"
+        onClick={onShowPasswordForm}
+        disabled={loading}
+      >
+        <KeyRound className="mr-2 h-5 w-5" />
+        <span className="font-medium">Войти по логину и паролю</span>
+      </Button>
     </div>
   )
 }

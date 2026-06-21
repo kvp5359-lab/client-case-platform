@@ -4,10 +4,10 @@
  * Мутации вынесены в useParticipantsMutations
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { UserPlus, MessageSquare } from 'lucide-react'
+import { UserPlus, MessageSquare, Search, X } from 'lucide-react'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EditParticipantDialog } from '@/components/participants/EditParticipantDialog'
@@ -28,6 +28,12 @@ export function ParticipantsTab() {
   const [selectedRole, setSelectedRole] = useState<string | 'all'>('all')
   const [defaultRoleForNewParticipant, setDefaultRoleForNewParticipant] = useState<string>('')
   const [mergingContact, setMergingContact] = useState<Participant | null>(null)
+  const [search, setSearch] = useState('')
+  const [visibleCount, setVisibleCount] = useState(50)
+
+  const PAGE_SIZE = 50
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   const { can, isOwner } = useWorkspacePermissions({ workspaceId })
   const canManageParticipants = can('manage_participants')
@@ -41,11 +47,20 @@ export function ParticipantsTab() {
     editMutation,
     addMutation,
     mergeMutation,
+    setPasswordMutation,
     actionInProgressId,
   } = useParticipantsMutations(workspaceId)
 
   const handleToggleAccess = (participantId: string, currentCanLogin: boolean) => {
     toggleAccessMutation.mutate({ participantId, canLogin: !currentCanLogin })
+  }
+
+  const handleSetPassword = async (participantId: string) => {
+    try {
+      return await setPasswordMutation.mutateAsync(participantId)
+    } catch {
+      return null // ошибку показывает onError мутации (toast)
+    }
   }
 
   const handleDeleteParticipant = async (participantId: string) => {
@@ -97,7 +112,7 @@ export function ParticipantsTab() {
 
   // Фильтрация участников по выбранной роли
   const isTelegramSection = selectedRole === TELEGRAM_ROLE
-  const filteredParticipants = isTelegramSection
+  const byRole = isTelegramSection
     ? telegramContacts
     : selectedRole === 'all'
       ? regularParticipants
@@ -107,6 +122,60 @@ export function ParticipantsTab() {
             Array.isArray(p.workspace_roles) &&
             p.workspace_roles.includes(selectedRole),
         )
+
+  // Поиск по всем полям участника
+  const q = search.trim().toLowerCase()
+  const filteredParticipants = !q
+    ? byRole
+    : byRole.filter((p) =>
+        [
+          p.name,
+          p.last_name,
+          p.email,
+          p.phone,
+          p.telegram_username,
+          p.telegram_user_id != null ? String(p.telegram_user_id) : '',
+          ...(Array.isArray(p.workspace_roles) ? p.workspace_roles : []),
+        ].some((v) => (v ?? '').toString().toLowerCase().includes(q)),
+      )
+
+  // Бесконечная подгрузка при прокрутке: показываем первые visibleCount строк,
+  // увеличиваем при достижении конца списка (IntersectionObserver на sentinel).
+  const totalCount = filteredParticipants.length
+  const shownCount = Math.min(visibleCount, totalCount)
+  const pagedParticipants = filteredParticipants.slice(0, shownCount)
+
+  const resetScroll = () => {
+    setVisibleCount(PAGE_SIZE)
+    if (scrollRef.current) scrollRef.current.scrollTop = 0
+  }
+
+  const handleSelectRole = (role: string | 'all') => {
+    setSelectedRole(role)
+    resetScroll()
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
+    resetScroll()
+  }
+
+  // Догрузка следующей порции при появлении sentinel в зоне видимости списка
+  useEffect(() => {
+    const root = scrollRef.current
+    const target = sentinelRef.current
+    if (!root || !target) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((c) => (c < totalCount ? c + PAGE_SIZE : c))
+        }
+      },
+      { root, rootMargin: '200px' },
+    )
+    io.observe(target)
+    return () => io.disconnect()
+  }, [totalCount])
 
   // Подсчёт участников по ролям (без Telegram-контактов)
   const roleStats = useMemo(() => {
@@ -120,17 +189,17 @@ export function ParticipantsTab() {
   }, [regularParticipants])
 
   return (
-    <div className="flex bg-white rounded-lg border min-h-[600px]">
+    <div className="flex bg-white rounded-lg border overflow-hidden h-[calc(100vh-13rem)]">
       <ParticipantsSidebar
         selectedRole={selectedRole}
-        onSelectRole={setSelectedRole}
+        onSelectRole={handleSelectRole}
         roleStats={roleStats}
         telegramCount={telegramContacts.length}
       />
 
-      {/* Контент с таблицей участников */}
-      <div className="flex-1 min-w-0 p-6">
-        <div className="flex items-center justify-between mb-6">
+      {/* Контент с таблицей участников — header/поиск фиксированы, скроллится только список */}
+      <div className="flex-1 min-w-0 p-6 flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between mb-6 shrink-0">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-1 flex items-center gap-2">
               {(() => {
@@ -152,7 +221,7 @@ export function ParticipantsTab() {
               })()}
             </h2>
             <p className="text-sm text-gray-600">
-              {filteredParticipants.length} {isTelegramSection ? 'контакт(ов)' : 'участник(ов)'}
+              {totalCount} {isTelegramSection ? 'контакт(ов)' : 'участник(ов)'}
             </p>
           </div>
           {canManageParticipants && !isTelegramSection && (
@@ -165,35 +234,70 @@ export function ParticipantsTab() {
           )}
         </div>
 
-        <div className="bg-white border rounded-lg overflow-x-auto">
+        {/* Поиск по всем полям */}
+        <div className="mb-4 flex items-center gap-2 rounded-md border px-3 py-2 max-w-md shrink-0">
+          <Search className="h-4 w-4 text-gray-400 shrink-0" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Поиск по имени, email, телефону, Telegram, роли…"
+            className="w-full bg-transparent text-sm focus:outline-none"
+          />
+          {search && (
+            <button type="button" onClick={() => handleSearchChange('')} className="shrink-0">
+              <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+            </button>
+          )}
+        </div>
+
+        {/* Прокручиваемая область — только список. pr-3 даёт зазор справа,
+            чтобы overlay-скроллбар (macOS) не накрывал кнопку меню в последней
+            колонке. */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto border rounded-lg pr-3">
+
           {loading ? (
             <div className="text-center py-8 text-gray-500">Загрузка...</div>
           ) : filteredParticipants.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              {isTelegramSection
-                ? 'Нет Telegram-контактов'
-                : selectedRole === 'all'
-                  ? 'Нет участников в рабочем пространстве'
-                  : 'Нет участников с этой ролью'}
+              {search
+                ? 'Ничего не найдено'
+                : isTelegramSection
+                  ? 'Нет Telegram-контактов'
+                  : selectedRole === 'all'
+                    ? 'Нет участников в рабочем пространстве'
+                    : 'Нет участников с этой ролью'}
             </div>
-          ) : isTelegramSection ? (
-            <TelegramContactsTable
-              contacts={filteredParticipants}
-              canManage={canManageParticipants}
-              hasRegularParticipants={regularParticipants.length > 0}
-              onMerge={setMergingContact}
-            />
           ) : (
-            <ParticipantsTable
-              participants={filteredParticipants}
-              onEdit={handleEditParticipant}
-              onToggleAccess={handleToggleAccess}
-              onDelete={handleDeleteParticipant}
-              actionInProgressId={actionInProgressId}
-              canManage={canManageParticipants}
-              canImpersonate={isOwner}
-              workspaceId={workspaceId}
-            />
+            <>
+              {isTelegramSection ? (
+                <TelegramContactsTable
+                  contacts={pagedParticipants}
+                  canManage={canManageParticipants}
+                  hasRegularParticipants={regularParticipants.length > 0}
+                  onMerge={setMergingContact}
+                />
+              ) : (
+                <ParticipantsTable
+                  participants={pagedParticipants}
+                  onEdit={handleEditParticipant}
+                  onToggleAccess={handleToggleAccess}
+                  onDelete={handleDeleteParticipant}
+                  onSetPassword={handleSetPassword}
+                  actionInProgressId={actionInProgressId}
+                  canManage={canManageParticipants}
+                  canImpersonate={isOwner}
+                  workspaceId={workspaceId}
+                />
+              )}
+              {/* sentinel для догрузки + индикатор */}
+              <div ref={sentinelRef} />
+              {shownCount < totalCount && (
+                <div className="text-center py-3 text-xs text-gray-400">
+                  Показано {shownCount} из {totalCount}…
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
