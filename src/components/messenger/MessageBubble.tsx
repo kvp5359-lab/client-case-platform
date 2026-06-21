@@ -66,6 +66,7 @@ function MessageBubbleImpl({
     workspaceId,
     channel,
     isClientThread,
+    viewerIsClient,
     isEmailThread,
     isBusinessThread,
     isWazzupThread,
@@ -116,7 +117,9 @@ function MessageBubbleImpl({
       : isTeamVis
         ? 'bg-neutral-200 text-neutral-900'
         : colors.incoming
-  const showStaffMark = !!isClientThread && isTeamSender(message.sender_role)
+  // Подсветка «сотрудник» — внутренний маркер команды; клиенту его не показываем.
+  const showStaffMark =
+    !!isClientThread && !viewerIsClient && isTeamSender(message.sender_role)
   // Имя отправителя берём из join'нутого participant'а (актуальное на момент рендера).
   // sender_name на сообщении — это исторический snapshot, может быть устаревший
   // (например, после переименования контакта).

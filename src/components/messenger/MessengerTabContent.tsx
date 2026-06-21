@@ -19,7 +19,14 @@ import { TypingIndicator } from './TypingIndicator'
 import { DocumentPickerDialog } from './DocumentPickerDialog'
 import { ChatToolbar } from './ChatToolbar'
 import { ReadUnreadButton } from './ReadUnreadButton'
-import { ComposerVisibilitySwitch, type ComposerMode } from './ComposerVisibilitySwitch'
+import {
+  ComposerVisibilitySwitch,
+  type ComposerMode,
+  type NotifyRecipients,
+} from './ComposerVisibilitySwitch'
+import { useThreadSubscribers } from '@/hooks/messenger/useThreadSubscription'
+import { CLIENT_ROLES } from './chatSettingsTypes'
+import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import { useTaskStatusPending } from './hooks/useTaskStatusPending'
 import { useProjectParticipants } from './hooks/useChatSettingsData'
 import { EmailSubjectBar } from './EmailSubjectBar'
@@ -101,6 +108,8 @@ export function MessengerTabContent({
   const removeFromForwardBuffer = useSidePanelStore((s) => s.removeFromForwardBuffer)
   const clearForwardBuffer = useSidePanelStore((s) => s.clearForwardBuffer)
   const insertContentRef = useRef<((html: string) => void) | null>(null)
+  // Текущий зритель — клиент: ему не показываем внутреннюю подсветку «сотрудник».
+  const { isClientOnly } = useWorkspacePermissions({ workspaceId })
   // Тред догружаем напрямую — нужен contact_participant_id (для personal-тредов
   // его нет в allThreads). React Query дедуплицирует с useProjectThreadById в TaskPanel.
   const { data: directThread } = useProjectThreadById(threadId, true)
@@ -172,6 +181,53 @@ export function MessengerTabContent({
   // съезжает на 'team' (иначе активной кнопки нет).
   const effectiveComposerMode: ComposerMode =
     !allowClientMode && composerMode === 'client' ? 'team' : composerMode
+
+  // «Кто получит уведомление» для подсказки при наведении на режим. Лениво:
+  // подписчики тянутся только после первого наведения (primed), кэш — на тред.
+  const [recipientsPrimed, setRecipientsPrimed] = useState(false)
+  const threadSubscribers = useThreadSubscribers(threadId, workspaceId, recipientsPrimed)
+  const composerRecipients = useMemo<NotifyRecipients>(() => {
+    // get_thread_subscribers отдаёт ВСЕХ с доступом к треду + флаг подписки.
+    // Доступ = все сотрудники тут; уведомление = из них подписанные.
+    const byId = new Map(projectParticipants.map((p) => [p.id, p]))
+    const clientRoles = CLIENT_ROLES as readonly string[]
+    const accessStaff: string[] = []
+    const notifyStaff: string[] = []
+    let accessExtra = 0
+    let notifyExtra = 0
+    let hasClient = false
+    for (const [id, subscribed] of Object.entries(threadSubscribers.subscribers)) {
+      const p = byId.get(id)
+      if (!p) {
+        accessExtra++ // доступ есть (assignee/member вне проекта), имя неизвестно
+        if (subscribed) notifyExtra++
+        continue
+      }
+      if (p.user_id && p.user_id === user?.id) continue // себя не показываем
+      if ((p.project_roles ?? []).some((r) => clientRoles.includes(r))) {
+        hasClient = true // клиент — в командные списки не кладём
+        continue
+      }
+      const name = [p.name, p.last_name].filter(Boolean).join(' ') || 'Без имени'
+      accessStaff.push(name)
+      if (subscribed) notifyStaff.push(name)
+    }
+    return {
+      loading: recipientsPrimed && threadSubscribers.isLoading,
+      accessStaff,
+      notifyStaff,
+      accessExtra,
+      notifyExtra,
+      hasClient: hasClient || allowClientMode,
+    }
+  }, [
+    threadSubscribers.subscribers,
+    threadSubscribers.isLoading,
+    recipientsPrimed,
+    projectParticipants,
+    user?.id,
+    allowClientMode,
+  ])
 
   const handlers = useMessengerHandlers({
     channel,
@@ -370,6 +426,7 @@ export function MessengerTabContent({
         isAdmin={state.isAdmin}
         isTelegramLinked={state.isLinked}
         isClientThread={hasClientParticipant || state.isLinked || !!state.emailLink}
+        viewerIsClient={isClientOnly}
         isEmailThread={state.isEmailChat}
         isBusinessThread={!!currentThread?.business_connection_id}
         isWazzupThread={!!currentThread?.wazzup_channel_id}
@@ -431,6 +488,8 @@ export function MessengerTabContent({
                 mode={effectiveComposerMode}
                 onChange={setComposerMode}
                 allowClient={allowClientMode}
+                recipients={composerRecipients}
+                onPrimeRecipients={() => setRecipientsPrimed(true)}
               />
             )}
             {!state.editingMessage && (

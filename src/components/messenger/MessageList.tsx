@@ -390,7 +390,9 @@ export function MessageList({
           </div>
         </div>
       )}
-      <div className="p-4 pb-8 space-y-2" onCopy={handleCopy}>
+      {/* pb-16: запас снизу, чтобы плавающая строка композера (режимы/«Прочитано»,
+          поднятая через -mt-6) не налезала на последний бабл. */}
+      <div className="p-4 pb-16 space-y-2" onCopy={handleCopy}>
         {/* Sentinel для подгрузки старых */}
         <div ref={sentinelRef} className="h-1" />
 

@@ -15,6 +15,12 @@ export type MessengerContextValue = {
   /** В треде участвует клиент — включает подсветку сообщений сотрудников. */
   isClientThread?: boolean
   /**
+   * Текущий зритель — клиент (все его workspace-роли = «Клиент»). Для клиента
+   * подсветку «сотрудник» (кольцо/полоса) НЕ показываем — это внутренний маркер
+   * команды, клиенту он не нужен.
+   */
+  viewerIsClient?: boolean
+  /**
    * Тред — почтовый. Все исходящие в нём шлются email'ом, у которого нет
    * понятия реакции. Управляет видимостью UI быстрых реакций — независимо
    * от source конкретного сообщения, потому что наши исходящие через
@@ -87,6 +93,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       isAdmin: value.isAdmin,
       isTelegramLinked: value.isTelegramLinked,
       isClientThread: value.isClientThread,
+      viewerIsClient: value.viewerIsClient,
       isEmailThread: value.isEmailThread,
       isBusinessThread: value.isBusinessThread,
       isWazzupThread: value.isWazzupThread,
@@ -121,6 +128,7 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       value.isAdmin,
       value.isTelegramLinked,
       value.isClientThread,
+      value.viewerIsClient,
       value.isEmailThread,
       value.isBusinessThread,
       value.isWazzupThread,
