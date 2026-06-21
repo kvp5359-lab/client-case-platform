@@ -16,15 +16,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { User } from '@supabase/supabase-js'
+import { ProfileSwitcherSection } from './ProfileSwitcherSection'
 
 export type UserProfileProps = {
   user: User
+  workspaceId: string | undefined
   onProfileClick: () => void
   onSignOut: () => Promise<void>
 }
 
 export const UserProfile = memo(function UserProfile({
   user,
+  workspaceId,
   onProfileClick,
   onSignOut,
 }: UserProfileProps) {
@@ -69,6 +72,8 @@ export const UserProfile = memo(function UserProfile({
         </div>
 
         <DropdownMenuSeparator />
+
+        <ProfileSwitcherSection workspaceId={workspaceId} />
 
         <DropdownMenuItem onClick={onProfileClick} className="cursor-pointer">
           <UserIcon className="mr-2 h-4 w-4" />

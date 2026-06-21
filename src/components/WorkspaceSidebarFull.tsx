@@ -522,6 +522,7 @@ export function WorkspaceSidebarFull({
         {user && (
           <UserProfile
             user={user}
+            workspaceId={workspaceId}
             onProfileClick={() => router.push('/profile')}
             onSignOut={handleSignOut}
           />
