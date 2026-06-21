@@ -5,7 +5,7 @@
  * показан иконкой + текстом в его цвете, остальные три — только иконками.
  * Любой кликабелен. Цвет = цвет будущего бабла (палитра = аудитория).
  *
- * Шкала охвата: Клиенту → Команде → Заметка → Только я.
+ * Шкала охвата: Всем → Команде → Заметка → Только я.
  */
 import { MessageSquare, Users, BellOff, Lock } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -33,7 +33,7 @@ const MODES: {
   title: string
 }[] = [
   {
-    key: 'client', label: 'Клиенту', Icon: MessageSquare,
+    key: 'client', label: 'Всем', Icon: MessageSquare,
     active: 'bg-blue-100 text-blue-800', border: 'border-blue-300',
     title: 'Клиент + команда · уходит в Telegram/email',
   },
