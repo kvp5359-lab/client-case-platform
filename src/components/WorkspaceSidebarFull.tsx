@@ -12,6 +12,7 @@ import { PanelLeftClose } from 'lucide-react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { QuickAddMenu } from '@/components/quick-actions/QuickAddMenu'
+import { QuickActionsProvider } from '@/components/quick-actions/QuickActionsProvider'
 import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
 import { SidebarGlobalSearch } from './WorkspaceSidebar/SidebarGlobalSearch'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
@@ -409,6 +410,7 @@ export function WorkspaceSidebarFull({
       className="relative bg-[#f7f7f7] flex-shrink-0 flex flex-col h-full overflow-hidden border-r border-gray-200"
       style={{ width: sidebarWidth }}
     >
+      <QuickActionsProvider workspaceId={workspaceId}>
       {!isClientOnly && !permissionsLoading && (
         <div className={onCollapse ? 'relative pr-10' : 'relative'}>
           <WorkspacePicker
@@ -453,6 +455,7 @@ export function WorkspaceSidebarFull({
         <SidebarSlotsRow
           slots={topbarSlots}
           compact
+          workspaceId={workspaceId}
           allBoards={allBoards}
           allItemLists={allItemLists}
           allSections={allSections}
@@ -472,6 +475,7 @@ export function WorkspaceSidebarFull({
             <SidebarSlotsRow
               slots={listSlots}
               compact={false}
+              workspaceId={workspaceId}
               allBoards={allBoards}
               allItemLists={allItemLists}
               allSections={allSections}
@@ -551,6 +555,7 @@ export function WorkspaceSidebarFull({
           if (workspaceId) router.push(`/workspaces/${workspaceId}/projects/${project.id}`)
         }}
       />
+      </QuickActionsProvider>
     </aside>
   )
 }

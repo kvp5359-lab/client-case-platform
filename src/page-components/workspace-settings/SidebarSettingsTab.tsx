@@ -97,6 +97,7 @@ export function SidebarSettingsTab() {
       )}
       {workspaceId && <QuickActionsEditor workspaceId={workspaceId} />}
       <SidebarSettingsView
+        workspaceId={workspaceId}
         slots={slots}
         boards={boards.map((b) => ({ id: b.id, name: b.name }))}
         itemLists={itemLists}
@@ -115,6 +116,7 @@ export function SidebarSettingsTab() {
 }
 
 function SidebarSettingsView({
+  workspaceId,
   slots,
   boards,
   itemLists,
@@ -126,6 +128,7 @@ function SidebarSettingsView({
   dirty,
   saving,
 }: {
+  workspaceId: string
   slots: SidebarSlot[]
   boards: { id: string; name: string }[]
   itemLists: ItemList[]
@@ -144,7 +147,7 @@ function SidebarSettingsView({
     const listIds = new Set(itemLists.map((l) => l.id))
     const sectionIds = new Set(sections.map((s) => s.id))
     return slots.filter((s) => {
-      if (s.type === 'nav' || s.type === 'folder') return true
+      if (s.type === 'nav' || s.type === 'folder' || s.type === 'quickaction') return true
       if (s.type === 'board') {
         const bid = boardIdFromSlotId(s.id)
         return bid ? boardIds.has(bid) : false
@@ -181,6 +184,7 @@ function SidebarSettingsView({
         boards={boards}
         itemLists={itemLists}
         sections={sections}
+        workspaceId={workspaceId}
         onChange={onChange}
         onCreateSection={onCreateSection}
       />

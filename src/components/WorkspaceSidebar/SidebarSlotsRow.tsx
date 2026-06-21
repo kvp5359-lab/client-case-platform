@@ -27,11 +27,15 @@ import {
   listIdFromSlotId,
   sectionIdFromSlotId,
   navKeyFromSlotId,
+  quickActionIdFromSlotId,
   topLevelSlots,
   type SidebarBadgeMode,
   type SidebarNavKey,
   type SidebarSlot,
 } from '@/lib/sidebarSettings'
+import { useActiveInterfacePreset } from '@/hooks/useInterfacePresets'
+import { useQuickActionsRunner } from '@/components/quick-actions/QuickActionsProvider'
+import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 
 type SidebarSlotsRowProps = {
   /** ВСЕ слоты зоны (топбар или список), включая папки и их детей. */
@@ -52,6 +56,8 @@ type SidebarSlotsRowProps = {
   listSlots: SidebarSlot[]
   toggleBoardPin: (boardId: string) => void
   toggleListPin: (listId: string) => void
+  /** Для слотов-кнопок быстрых действий (quickaction). */
+  workspaceId?: string
 }
 
 export function SidebarSlotsRow(props: SidebarSlotsRowProps) {
@@ -96,9 +102,14 @@ function SingleSlot({
   listSlots,
   toggleBoardPin,
   toggleListPin,
+  workspaceId,
 }: { slot: SidebarSlot } & SidebarSlotsRowProps) {
   const badge = computeBadge(slot.badge_mode)
   const searchParams = useSearchParams()
+
+  if (slot.type === 'quickaction') {
+    return <QuickActionSlotButton slot={slot} compact={compact} workspaceId={workspaceId} />
+  }
 
   if (slot.type === 'section') {
     const sectionId = sectionIdFromSlotId(slot.id)!
@@ -204,6 +215,50 @@ function SingleSlot({
     />
   )
   return compact ? <div>{button}</div> : <div className="group/pin">{button}</div>
+}
+
+// ── Renderer кнопки быстрого действия (quickaction) ─────────────────
+
+function QuickActionSlotButton({
+  slot,
+  compact,
+  workspaceId,
+}: {
+  slot: SidebarSlot
+  compact: boolean
+  workspaceId: string | undefined
+}) {
+  const { quickActions } = useActiveInterfacePreset(workspaceId)
+  const { run } = useQuickActionsRunner()
+  const actionId = quickActionIdFromSlotId(slot.id)
+  const action = quickActions.find((a) => a.id === actionId)
+  if (!action) return null
+  const m = { Icon: getChatIconComponent(action.icon) }
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        title={action.label}
+        onClick={() => run(action)}
+        className="relative flex items-center gap-2 px-2 h-[30px] rounded-[6px] text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 transition-colors"
+      >
+        <m.Icon className="h-[18px] w-[18px] shrink-0" />
+      </button>
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => run(action)}
+      className="w-full flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] text-gray-700 hover:bg-gray-100/50 transition-colors"
+    >
+      <span className="relative shrink-0 w-[22px] h-[22px] flex items-center justify-center">
+        <m.Icon className="h-[18px] w-[18px]" />
+      </span>
+      <span className="flex-1 truncate text-left">{action.label}</span>
+    </button>
+  )
 }
 
 // ── Renderer папки: кнопка + popover со вложенными ──────────────────

@@ -58,8 +58,8 @@ export type SidebarBadgeColor =
   | 'gray'
 
 export type SidebarSlot = {
-  id: string // 'nav:<key>' | 'board:<uuid>' | 'list:<uuid>' | 'section:<uuid>' | 'folder:<uuid>'
-  type: 'nav' | 'board' | 'list' | 'section' | 'folder'
+  id: string // 'nav:<key>' | 'board:<uuid>' | 'list:<uuid>' | 'section:<uuid>' | 'folder:<uuid>' | 'quickaction:<id>'
+  type: 'nav' | 'board' | 'list' | 'section' | 'folder' | 'quickaction'
   placement: SidebarPlacement
   order: number
   badge_mode: SidebarBadgeMode
@@ -353,7 +353,7 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
     const id = typeof obj.id === 'string' ? obj.id : null
     const type =
       obj.type === 'nav' || obj.type === 'board' || obj.type === 'list' ||
-      obj.type === 'section' || obj.type === 'folder'
+      obj.type === 'section' || obj.type === 'folder' || obj.type === 'quickaction'
         ? obj.type
         : null
     const placement =
@@ -377,6 +377,10 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
     } else if (type === 'section') {
       const uuid = id.startsWith('section:') ? id.slice(8) : null
       if (!uuid || !UUID_RE.test(uuid)) continue
+    } else if (type === 'quickaction') {
+      // id = 'quickaction:<actionId>'; actionId — произвольный непустой (не строго UUID).
+      const actionId = id.startsWith('quickaction:') ? id.slice(12) : null
+      if (!actionId) continue
     } else {
       // type === 'folder'
       const uuid = id.startsWith('folder:') ? id.slice(7) : null
@@ -470,6 +474,12 @@ export function listIdFromSlotId(id: string): string | null {
 export function sectionIdFromSlotId(id: string): string | null {
   if (!id.startsWith('section:')) return null
   return id.slice(8)
+}
+
+/** Извлекает id быстрого действия из id вида 'quickaction:<actionId>'. */
+export function quickActionIdFromSlotId(id: string): string | null {
+  if (!id.startsWith('quickaction:')) return null
+  return id.slice(12)
 }
 
 /** Форматирует число в badge-строку (>99 → "99+"). undefined если 0/нет. */

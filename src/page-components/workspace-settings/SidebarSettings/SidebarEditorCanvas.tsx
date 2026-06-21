@@ -55,11 +55,15 @@ import {
   SIDEBAR_NAV_ITEMS,
   SIDEBAR_NAV_KEYS,
   getBadgeColorMeta,
+  quickActionIdFromSlotId,
   type SidebarBadgeMode,
   type SidebarPlacement,
   type SidebarSlot,
 } from '@/lib/sidebarSettings'
-import { resolveSlotMeta } from './zone-card/slotMeta'
+import { useActiveInterfacePreset } from '@/hooks/useInterfacePresets'
+import { getChatIconComponent } from '@/components/messenger/chatVisuals'
+import type { QuickAction } from '@/types/quickActions'
+import { resolveSlotMeta, type SlotMeta } from './zone-card/slotMeta'
 import type { AvailableEntry } from './types'
 import {
   FOLDER_BODY_PREFIX,
@@ -76,12 +80,27 @@ type DataCtx = {
   boards: { id: string; name: string }[]
   itemLists: ItemList[]
   sections: { id: string; name: string }[]
+  quickActions: QuickAction[]
 }
 
-export type SidebarEditorCanvasProps = DataCtx & {
+export type SidebarEditorCanvasProps = {
   slots: SidebarSlot[]
+  boards: { id: string; name: string }[]
+  itemLists: ItemList[]
+  sections: { id: string; name: string }[]
+  workspaceId: string
   onChange: (next: SidebarSlot[]) => void
   onCreateSection: (name: string) => void
+}
+
+/** Мета слота с учётом quickaction (иконка/имя из активного профиля). */
+function metaFor(slot: SidebarSlot, data: DataCtx): SlotMeta {
+  if (slot.type === 'quickaction') {
+    const aid = quickActionIdFromSlotId(slot.id)
+    const a = data.quickActions.find((x) => x.id === aid)
+    return { label: a?.label ?? 'Действие', Icon: getChatIconComponent(a?.icon ?? 'message-square') }
+  }
+  return resolveSlotMeta(slot, data.boards, data.itemLists, data.sections)
 }
 
 function newUuid(): string {
@@ -101,10 +120,12 @@ export function SidebarEditorCanvas({
   boards,
   itemLists,
   sections,
+  workspaceId,
   onChange,
   onCreateSection,
 }: SidebarEditorCanvasProps) {
-  const data: DataCtx = { boards, itemLists, sections }
+  const { quickActions } = useActiveInterfacePreset(workspaceId)
+  const data: DataCtx = { boards, itemLists, sections, quickActions }
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
 
@@ -150,6 +171,20 @@ export function SidebarEditorCanvas({
     [placedIds, sections],
   )
 
+  const availableQuickActions: AvailableEntry[] = useMemo(
+    () =>
+      quickActions
+        .filter((a) => !placedIds.has(`quickaction:${a.id}`))
+        .map((a) => ({
+          kind: 'quickaction' as const,
+          id: `quickaction:${a.id}`,
+          label: a.label,
+          actionId: a.id,
+          icon: a.icon,
+        })),
+    [quickActions, placedIds],
+  )
+
   const selectedSlot = selectedId ? slots.find((s) => s.id === selectedId) ?? null : null
 
   const entryFromActive = (id: string): AvailableEntry | null => {
@@ -165,6 +200,13 @@ export function SidebarEditorCanvas({
       const sec = sections.find((s) => s.id === sid)
       return sec
         ? { kind: 'section', id: `section:${sid}`, label: sec.name, sectionId: sid }
+        : null
+    }
+    if (id.startsWith('avail:quickaction:')) {
+      const aid = id.slice('avail:quickaction:'.length)
+      const a = quickActions.find((x) => x.id === aid)
+      return a
+        ? { kind: 'quickaction', id: `quickaction:${aid}`, label: a.label, actionId: aid, icon: a.icon }
         : null
     }
     return null
@@ -338,6 +380,7 @@ export function SidebarEditorCanvas({
           <PaletteBox
             availableNav={availableNav}
             availableSections={availableSections}
+            availableQuickActions={availableQuickActions}
             onCreateSection={onCreateSection}
           />
           <Inspector
@@ -418,7 +461,7 @@ function SlotRow({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: slot.id })
-  const meta = resolveSlotMeta(slot, data.boards, data.itemLists, data.sections)
+  const meta = metaFor(slot, data)
   const badge = BADGE_MODES.find((m) => m.value === slot.badge_mode)
   const hasBadge = slot.badge_mode !== 'disabled'
   const colorMeta = getBadgeColorMeta(slot.badge_color)
@@ -488,7 +531,7 @@ function TopbarChip({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: slot.id })
-  const meta = resolveSlotMeta(slot, data.boards, data.itemLists, data.sections)
+  const meta = metaFor(slot, data)
   return (
     <div
       ref={setNodeRef}
@@ -619,10 +662,12 @@ function FolderBox({
 function PaletteBox({
   availableNav,
   availableSections,
+  availableQuickActions,
   onCreateSection,
 }: {
   availableNav: AvailableEntry[]
   availableSections: AvailableEntry[]
+  availableQuickActions: AvailableEntry[]
   onCreateSection: (name: string) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: PALETTE })
@@ -647,12 +692,14 @@ function PaletteBox({
         {isOver && <div className="text-[11px] text-red-500">Отпусти, чтобы убрать</div>}
       </div>
       <div className="flex flex-col gap-1.5">
-        {[...availableNav, ...availableSections].map((entry) => (
+        {[...availableNav, ...availableSections, ...availableQuickActions].map((entry) => (
           <PaletteItem key={entry.id} entry={entry} />
         ))}
-        {availableNav.length === 0 && availableSections.length === 0 && (
-          <div className="text-[11px] text-gray-400 px-2 py-1">Все пункты уже в сайдбаре</div>
-        )}
+        {availableNav.length === 0 &&
+          availableSections.length === 0 &&
+          availableQuickActions.length === 0 && (
+            <div className="text-[11px] text-gray-400 px-2 py-1">Все пункты уже в сайдбаре</div>
+          )}
 
         {creating ? (
           <Input
@@ -689,8 +736,14 @@ function PaletteItem({ entry }: { entry: AvailableEntry }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: dragId,
   })
-  const Icon =
-    entry.kind === 'nav' ? SIDEBAR_NAV_ITEMS[entry.navKey].icon : undefined
+  const m = {
+    Icon:
+      entry.kind === 'nav'
+        ? SIDEBAR_NAV_ITEMS[entry.navKey].icon
+        : entry.kind === 'quickaction'
+          ? getChatIconComponent(entry.icon)
+          : FolderPlus,
+  }
   return (
     <div
       ref={setNodeRef}
@@ -702,11 +755,7 @@ function PaletteItem({ entry }: { entry: AvailableEntry }) {
       }`}
     >
       <GripVertical className="w-3.5 h-3.5 text-gray-300" />
-      {Icon ? (
-        <Icon className="w-4 h-4 text-gray-500" />
-      ) : (
-        <FolderPlus className="w-4 h-4 text-gray-500" />
-      )}
+      <m.Icon className="w-4 h-4 text-gray-500" />
       <span className="truncate">{entry.label}</span>
     </div>
   )
@@ -734,7 +783,7 @@ function Inspector({
       </div>
     )
   }
-  const meta = resolveSlotMeta(slot, data.boards, data.itemLists, data.sections)
+  const meta = metaFor(slot, data)
   const isFolder = slot.type === 'folder'
 
   return (
@@ -827,7 +876,7 @@ function DragGhost({
   }
   const slot = slots.find((s) => s.id === activeId)
   if (!slot) return null
-  const meta = resolveSlotMeta(slot, data.boards, data.itemLists, data.sections)
+  const meta = metaFor(slot, data)
   return (
     <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-gray-300 bg-white text-sm shadow-sm">
       <meta.Icon className="w-4 h-4 text-gray-600" />
