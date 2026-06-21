@@ -11,6 +11,7 @@ import { useDebounce } from '@/hooks/shared/useDebounce'
 import { PanelLeftClose } from 'lucide-react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { QuickAddMenu } from '@/components/quick-actions/QuickAddMenu'
 import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
 import { SidebarGlobalSearch } from './WorkspaceSidebar/SidebarGlobalSearch'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
@@ -439,6 +440,12 @@ export function WorkspaceSidebarFull({
       {!isClientOnly && (
         <div className="px-2 pt-2">
           <SidebarGlobalSearch workspaceId={workspaceId} />
+        </div>
+      )}
+
+      {!isClientOnly && (
+        <div className="px-2 pt-2">
+          <QuickAddMenu workspaceId={workspaceId} />
         </div>
       )}
 

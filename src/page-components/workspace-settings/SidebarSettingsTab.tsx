@@ -33,6 +33,7 @@ import {
 } from '@/lib/sidebarSettings'
 import { SidebarEditorCanvas } from './SidebarSettings/SidebarEditorCanvas'
 import { ProfilesManagerBar } from './SidebarSettings/ProfilesManagerBar'
+import { QuickActionsEditor } from './SidebarSettings/QuickActionsEditor'
 
 export function SidebarSettingsTab() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -94,6 +95,7 @@ export function SidebarSettingsTab() {
           onBeforeSwitch={() => setOverride(null)}
         />
       )}
+      {workspaceId && <QuickActionsEditor workspaceId={workspaceId} />}
       <SidebarSettingsView
         slots={slots}
         boards={boards.map((b) => ({ id: b.id, name: b.name }))}

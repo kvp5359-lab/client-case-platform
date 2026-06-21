@@ -27,11 +27,12 @@ import {
   DEFAULT_SIDEBAR_SLOTS,
 } from '@/lib/sidebarSettings'
 import { fromSupabaseJson, toSupabaseJson } from '@/utils/supabaseJson'
+import type { QuickAction } from '@/types/quickActions'
 
-/** Структура config профиля. Расширяется по мере роста (quick_actions, custom_menus…). */
+/** Структура config профиля. Расширяется по мере роста (custom_menus…). */
 export type InterfacePresetConfig = {
   slots?: SidebarSlot[]
-  // quick_actions?: QuickAction[]   // Фаза «+»
+  quick_actions?: QuickAction[]
   // custom_menus?: CustomMenu[]     // Фаза кастомных меню
   // default_route?: string
 }
@@ -143,6 +144,7 @@ export function useActiveInterfacePreset(workspaceId: string | undefined) {
     presets,
     activeId,
     slots,
+    quickActions: preset?.config.quick_actions ?? [],
     isLoading: presetsQuery.isLoading || activeQuery.isLoading,
   }
 }
@@ -182,13 +184,13 @@ async function resolveActivePresetId(
 }
 
 /**
- * Записать слоты в активный профиль. Если профиля ещё нет (свежий воркспейс) —
- * создаём дефолтный «Основное» с этими слотами. Прочие ключи config сохраняем.
+ * Записать частичный config в активный профиль (мерж с существующим). Если профиля
+ * ещё нет (свежий воркспейс) — создаём дефолтный «Основное» с этим config.
  */
-export async function writeSlotsToActivePreset(
+export async function writeConfigPatchToActivePreset(
   workspaceId: string,
   userId: string | undefined,
-  slots: SidebarSlot[],
+  patch: Partial<InterfacePresetConfig>,
 ): Promise<void> {
   const presetId = await resolveActivePresetId(workspaceId, userId)
   const now = new Date().toISOString()
@@ -199,7 +201,7 @@ export async function writeSlotsToActivePreset(
       name: 'Основное',
       is_default: true,
       owner_user_id: null,
-      config: toSupabaseJson({ slots } satisfies InterfacePresetConfig),
+      config: toSupabaseJson(patch as InterfacePresetConfig),
       created_by: userId ?? null,
     })
     if (error) throw error as Error
@@ -219,11 +221,29 @@ export async function writeSlotsToActivePreset(
   const { error } = await supabase
     .from('interface_presets')
     .update({
-      config: toSupabaseJson({ ...prevConfig, slots }),
+      config: toSupabaseJson({ ...prevConfig, ...patch }),
       updated_at: now,
     })
     .eq('id', presetId)
   if (error) throw error as Error
+}
+
+/** Записать слоты сайдбара в активный профиль. */
+export function writeSlotsToActivePreset(
+  workspaceId: string,
+  userId: string | undefined,
+  slots: SidebarSlot[],
+): Promise<void> {
+  return writeConfigPatchToActivePreset(workspaceId, userId, { slots })
+}
+
+/** Записать список быстрых действий в активный профиль. */
+export function writeQuickActionsToActivePreset(
+  workspaceId: string,
+  userId: string | undefined,
+  quick_actions: import('@/types/quickActions').QuickAction[],
+): Promise<void> {
+  return writeConfigPatchToActivePreset(workspaceId, userId, { quick_actions })
 }
 
 function invalidatePresets(
@@ -359,6 +379,25 @@ export function useDuplicateInterfacePreset() {
         copyFromPresetId: params.preset.id,
       })
     },
+  })
+}
+
+/** Сохранить список быстрых действий («+») в активный профиль. */
+export function useUpdateActiveQuickActions() {
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  return useMutation({
+    mutationFn: async (params: {
+      workspaceId: string
+      quickActions: import('@/types/quickActions').QuickAction[]
+    }) => {
+      await writeQuickActionsToActivePreset(
+        params.workspaceId,
+        user?.id,
+        params.quickActions,
+      )
+    },
+    onSuccess: (_d, vars) => invalidatePresets(qc, vars.workspaceId, user?.id),
   })
 }
 

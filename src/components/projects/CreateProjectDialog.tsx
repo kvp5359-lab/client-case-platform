@@ -24,9 +24,17 @@ type CreateProjectDialogProps = {
   onSuccess: (project: { id: string }) => void
   /** Префилл поля «Название» при открытии (напр. имя контакта при создании сделки из чата). */
   defaultName?: string
+  /** Предвыбор шаблона проекта при открытии (быстрое действие «+»). */
+  defaultTemplateId?: string | null
 }
 
-export function CreateProjectDialog({ open, onOpenChange, onSuccess, defaultName }: CreateProjectDialogProps) {
+export function CreateProjectDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+  defaultName,
+  defaultTemplateId,
+}: CreateProjectDialogProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [templateId, setTemplateId] = useState<string>('')
@@ -165,11 +173,12 @@ export function CreateProjectDialog({ open, onOpenChange, onSuccess, defaultName
       setSelectedFormIds(new Set())
       setSelectedTaskIds(new Set())
       setSelectedBlockIds(new Set())
-    } else if (defaultName) {
-      // Префилл имени при открытии (создание проекта/сделки из чата).
-      setName(defaultName)
+    } else {
+      // Префилл имени и/или предвыбор шаблона при открытии.
+      if (defaultName) setName(defaultName)
+      if (defaultTemplateId) setTemplateId(defaultTemplateId)
     }
-  }, [open, defaultName])
+  }, [open, defaultName, defaultTemplateId])
 
   // «Название по умолчанию» шаблона: при выборе типа проекта подставляем его
   // префикс в начало имени. При смене шаблона старый префикс заменяется на новый
