@@ -9,7 +9,7 @@
  * профилями (`ProfilesManagerBar`). Доступ: только владелец воркспейса.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { AlertTriangle, Loader2 } from 'lucide-react'
@@ -88,30 +88,31 @@ export function SidebarSettingsTab() {
   const dirty = override !== null
 
   return (
-    <div className="space-y-4">
-      {workspaceId && (
-        <ProfilesManagerBar
-          workspaceId={workspaceId}
-          onBeforeSwitch={() => setOverride(null)}
-        />
-      )}
-      {workspaceId && <QuickActionsEditor workspaceId={workspaceId} />}
-      <SidebarSettingsView
-        workspaceId={workspaceId}
-        slots={slots}
-        boards={boards.map((b) => ({ id: b.id, name: b.name }))}
-        itemLists={itemLists}
-        sections={sections.map((s) => ({ id: s.id, name: s.name }))}
-        onCreateSection={(name) => {
-          if (workspaceId) createSection.mutate({ workspace_id: workspaceId, name })
-        }}
-        onChange={setOverride}
-        onSave={handleSave}
-        onReset={handleResetDefaults}
-        dirty={dirty}
-        saving={update.isPending}
-      />
-    </div>
+    <SidebarSettingsView
+      workspaceId={workspaceId}
+      slots={slots}
+      boards={boards.map((b) => ({ id: b.id, name: b.name }))}
+      itemLists={itemLists}
+      sections={sections.map((s) => ({ id: s.id, name: s.name }))}
+      onCreateSection={(name) => {
+        if (workspaceId) createSection.mutate({ workspace_id: workspaceId, name })
+      }}
+      onChange={setOverride}
+      onSave={handleSave}
+      onReset={handleResetDefaults}
+      dirty={dirty}
+      saving={update.isPending}
+      leftColumn={
+        workspaceId ? (
+          <ProfilesManagerBar
+            workspaceId={workspaceId}
+            vertical
+            onBeforeSwitch={() => setOverride(null)}
+          />
+        ) : null
+      }
+      rightExtra={workspaceId ? <QuickActionsEditor workspaceId={workspaceId} /> : null}
+    />
   )
 }
 
@@ -127,6 +128,8 @@ function SidebarSettingsView({
   onReset,
   dirty,
   saving,
+  leftColumn,
+  rightExtra,
 }: {
   workspaceId: string
   slots: SidebarSlot[]
@@ -139,6 +142,8 @@ function SidebarSettingsView({
   onReset: () => void
   dirty: boolean
   saving: boolean
+  leftColumn: ReactNode
+  rightExtra: ReactNode
 }) {
   // Очистка слотов от мёртвых элементов (удалённых из воркспейса досок/списков/
   // разделов). nav/folder — всегда живые.
@@ -179,15 +184,22 @@ function SidebarSettingsView({
         </div>
       )}
 
-      <SidebarEditorCanvas
-        slots={slots}
-        boards={boards}
-        itemLists={itemLists}
-        sections={sections}
-        workspaceId={workspaceId}
-        onChange={onChange}
-        onCreateSection={onCreateSection}
-      />
+      {/* 3 колонки: 20% профили+действия · 40% зоны · 40% палитра+инспектор. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr_2fr] gap-4 items-start">
+        <div className="space-y-3">{leftColumn}</div>
+        <div className="lg:col-span-2">
+          <SidebarEditorCanvas
+            slots={slots}
+            boards={boards}
+            itemLists={itemLists}
+            sections={sections}
+            workspaceId={workspaceId}
+            onChange={onChange}
+            onCreateSection={onCreateSection}
+            rightExtra={rightExtra}
+          />
+        </div>
+      </div>
 
       <div className="flex flex-wrap gap-2 sticky bottom-0 bg-white py-3 border-t border-gray-200">
         <Button onClick={onSave} disabled={saving || !dirty}>

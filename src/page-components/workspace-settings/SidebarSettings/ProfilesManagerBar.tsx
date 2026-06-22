@@ -31,9 +31,12 @@ import {
 export function ProfilesManagerBar({
   workspaceId,
   onBeforeSwitch,
+  vertical,
 }: {
   workspaceId: string
   onBeforeSwitch: () => void
+  /** Вертикальная раскладка (левая колонка трёхколоночной страницы). */
+  vertical?: boolean
 }) {
   const { data: presets = [] } = useInterfacePresets(workspaceId)
   const { presetId: activeId } = useActiveInterfacePreset(workspaceId)
@@ -111,8 +114,14 @@ export function ProfilesManagerBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-sm font-medium text-gray-700 mr-1">Профиль:</span>
+    <div
+      className={
+        vertical
+          ? 'flex flex-col items-stretch gap-1.5 rounded-xl border border-gray-200 bg-white p-3'
+          : 'flex flex-wrap items-center gap-2'
+      }
+    >
+      <span className="text-sm font-medium text-gray-700 mb-0.5">Профиль</span>
 
       {presets.map((preset) => {
         const isActive = preset.id === activeId
@@ -128,7 +137,7 @@ export function ProfilesManagerBar({
                 if (e.key === 'Enter') commitRename()
                 if (e.key === 'Escape') setRenamingId(null)
               }}
-              className="h-8 w-40"
+              className={vertical ? 'h-8 w-full' : 'h-8 w-40'}
             />
           )
         }
@@ -136,6 +145,8 @@ export function ProfilesManagerBar({
           <div
             key={preset.id}
             className={`flex items-center rounded-lg border transition-colors ${
+              vertical ? 'w-full' : ''
+            } ${
               isActive
                 ? 'border-primary bg-primary/5'
                 : 'border-gray-200 hover:border-gray-300'
@@ -144,10 +155,14 @@ export function ProfilesManagerBar({
             <button
               type="button"
               onClick={() => handleSwitch(preset.id)}
-              className="flex items-center gap-1.5 pl-3 pr-2 py-1.5 text-sm"
+              className={`flex items-center gap-1.5 pl-3 pr-2 py-1.5 text-sm ${
+                vertical ? 'flex-1 min-w-0' : ''
+              }`}
             >
-              {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
-              <span className="truncate max-w-[160px]">{preset.name}</span>
+              {isActive && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+              <span className={`truncate ${vertical ? 'text-left' : 'max-w-[160px]'}`}>
+                {preset.name}
+              </span>
             </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -193,7 +208,7 @@ export function ProfilesManagerBar({
         size="sm"
         onClick={handleCreate}
         disabled={create.isPending}
-        className="h-8 gap-1"
+        className={`h-8 gap-1 ${vertical ? 'w-full justify-center mt-1' : ''}`}
       >
         {create.isPending ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />

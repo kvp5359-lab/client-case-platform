@@ -91,6 +91,8 @@ export type SidebarEditorCanvasProps = {
   workspaceId: string
   onChange: (next: SidebarSlot[]) => void
   onCreateSection: (name: string) => void
+  /** Доп. блок в правой колонке (под палитрой и инспектором). */
+  rightExtra?: ReactNode
 }
 
 /** Мета слота с учётом quickaction (иконка/имя из активного профиля). */
@@ -123,6 +125,7 @@ export function SidebarEditorCanvas({
   workspaceId,
   onChange,
   onCreateSection,
+  rightExtra,
 }: SidebarEditorCanvasProps) {
   const { quickActions } = useActiveInterfacePreset(workspaceId)
   const data: DataCtx = { boards, itemLists, sections, quickActions }
@@ -299,7 +302,7 @@ export function SidebarEditorCanvas({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Левая колонка — макет сайдбара */}
         <div className="flex flex-col gap-3">
           <ZoneBox
@@ -391,6 +394,7 @@ export function SidebarEditorCanvas({
             onRenameFolder={renameFolder}
             onRemove={removeSlot}
           />
+          {rightExtra}
         </div>
       </div>
 
