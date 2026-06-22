@@ -12,7 +12,7 @@
 
 "use client"
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, createElement } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   DndContext,
@@ -24,9 +24,17 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { Button } from '@/components/ui/button'
-import { Plus, Heading, Type as TypeIcon } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Plus, Heading, Type as TypeIcon, Search, FilePlus } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import { getChatIconComponent } from '@/components/messenger/chatVisuals'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { threadTemplateKeys, planKeys } from '@/hooks/queryKeys'
-import { useThreadTemplatesByProjectTemplate } from '@/hooks/messenger/useThreadTemplates'
+import {
+  useThreadTemplatesByProjectTemplate,
+  useGlobalThreadTemplates,
+} from '@/hooks/messenger/useThreadTemplates'
 import { useTemplatePlan } from '@/hooks/plan/useTemplatePlan'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { useTaskStatuses } from '@/hooks/useStatuses'
@@ -121,13 +129,30 @@ export function ProjectTemplateThreadList({
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ThreadTemplate | null>(null)
 
-  const { saveMutation, deleteMutation, copyMutation, reorderMutation } =
+  const { saveMutation, deleteMutation, copyMutation, reorderMutation, attachMutation } =
     useProjectTemplateThreadListMutations({
       workspaceId,
       projectTemplateId,
       maxSort,
       setBlockOrders,
     })
+
+  // Библиотека для добавления: глобальные шаблоны, ещё не привязанные к этому
+  // типу, с учётом фильтра по типу треда (если задан).
+  const { data: library = [] } = useGlobalThreadTemplates(workspaceId)
+  const [addOpen, setAddOpen] = useState(false)
+  const [addSearch, setAddSearch] = useState('')
+  const attachedIds = useMemo(() => new Set(all.map((t) => t.id)), [all])
+  const libraryOptions = useMemo(() => {
+    const q = addSearch.trim().toLowerCase()
+    return library.filter((t) => {
+      if (attachedIds.has(t.id)) return false
+      if (threadType === 'task' && !(t.thread_type === 'task' && !t.is_email)) return false
+      if (threadType === 'chat' && !(t.thread_type === 'chat' && !t.is_email)) return false
+      if (q && !t.name.toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [library, attachedIds, threadType, addSearch])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -266,15 +291,71 @@ export function ProjectTemplateThreadList({
           </SortableContext>
         </DndContext>
         <div className="pt-1 flex flex-wrap items-center gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={handleCreate}
-            className="h-7 px-2 text-xs text-muted-foreground"
-          >
-            <Plus className="w-3 h-3 mr-1" />
-            {addLabel ?? 'Добавить шаблон'}
-          </Button>
+          <Popover open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) setAddSearch('') }}>
+            <PopoverTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs text-muted-foreground"
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                {addLabel ?? 'Добавить шаблон'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-72 p-0">
+              <div className="relative border-b">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  value={addSearch}
+                  onChange={(e) => setAddSearch(e.target.value)}
+                  placeholder="Поиск в библиотеке..."
+                  className="w-full pl-8 pr-2 py-2 text-sm bg-transparent outline-none"
+                />
+              </div>
+              <div className="max-h-64 overflow-y-auto py-1">
+                {libraryOptions.length === 0 ? (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">
+                    {library.length === 0 ? 'Библиотека пуста' : 'Все подходящие уже добавлены'}
+                  </p>
+                ) : (
+                  libraryOptions.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-sm hover:bg-muted"
+                      onClick={() => {
+                        attachMutation.mutate(t)
+                        setAddOpen(false)
+                        setAddSearch('')
+                      }}
+                    >
+                      {createElement(getChatIconComponent(t.icon), {
+                        className: cn(
+                          'w-4 h-4 flex-shrink-0',
+                          COLOR_TEXT[t.accent_color as ThreadAccentColor] ?? 'text-blue-500',
+                        ),
+                      })}
+                      <span className="truncate">{t.name}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <div className="border-t">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted"
+                  onClick={() => {
+                    setAddOpen(false)
+                    setAddSearch('')
+                    handleCreate()
+                  }}
+                >
+                  <FilePlus className="w-4 h-4" />
+                  Создать новый шаблон
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
           {showBlocks && (
             <>
               <Button

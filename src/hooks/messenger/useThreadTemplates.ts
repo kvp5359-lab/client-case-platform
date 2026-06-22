@@ -68,8 +68,35 @@ export function useGlobalThreadTemplates(workspaceId: string | undefined) {
 }
 
 /**
- * Шаблоны, видимые внутри проекта: глобальные + привязанные к типу этого
- * проекта. Если projectTemplateId === null — эквивалент useGlobalThreadTemplates.
+ * Разворачивает строку junction project_template_thread_templates в форму
+ * ThreadTemplate: тело берётся из связанного глобального thread_templates,
+ * а пер-проектные поля (sort_order/default_status_id/on_complete...) — из
+ * самой junction-строки. Так все потребители работают с привычной формой.
+ */
+type JunctionRow = {
+  sort_order: number
+  default_status_id: string | null
+  on_complete_set_project_status_id: string | null
+  thread_templates: ThreadTemplate | null
+}
+
+function mapJunctionRow(r: JunctionRow): ThreadTemplate | null {
+  if (!r.thread_templates) return null
+  return {
+    ...r.thread_templates,
+    sort_order: r.sort_order,
+    default_status_id: r.default_status_id,
+    on_complete_set_project_status_id: r.on_complete_set_project_status_id,
+  }
+}
+
+const JUNCTION_SELECT =
+  'sort_order, default_status_id, on_complete_set_project_status_id, thread_templates(*, thread_template_assignees(participant_id))'
+
+/**
+ * Шаблоны, видимые внутри проекта: привязанные к типу этого проекта (через
+ * junction) + «отдельные» глобальные, не привязанные ни к одному типу. Если
+ * projectTemplateId === null — вся библиотека (как было: глобальные везде).
  */
 export function useThreadTemplatesForProject(
   workspaceId: string | undefined,
@@ -82,20 +109,46 @@ export function useThreadTemplatesForProject(
     ),
     queryFn: async () => {
       if (!workspaceId) return []
-      let query = supabase
+
+      // Все глобальные шаблоны воркспейса (вся библиотека).
+      const { data: globals, error: gErr } = await supabase
         .from('thread_templates')
         .select('*, thread_template_assignees(participant_id)')
         .eq('workspace_id', workspaceId)
-      query = projectTemplateId
-        ? query.or(
-            `owner_project_template_id.is.null,owner_project_template_id.eq.${projectTemplateId}`,
-          )
-        : query.is('owner_project_template_id', null)
-      const { data, error } = await query
+        .is('owner_project_template_id', null)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: false })
-      if (error) throw error
-      return (data ?? []) as ThreadTemplate[]
+      if (gErr) throw gErr
+      const allGlobals = (globals ?? []) as ThreadTemplate[]
+
+      // Без контекста типа проекта — показываем всю библиотеку.
+      if (!projectTemplateId) return allGlobals
+
+      // Этапы этого типа проекта (с пер-проектными настройками из junction).
+      const { data: jrows, error: jErr } = await supabase
+        .from('project_template_thread_templates')
+        .select(JUNCTION_SELECT)
+        .eq('template_id', projectTemplateId)
+        .order('sort_order', { ascending: true })
+      if (jErr) throw jErr
+      const scoped = ((jrows ?? []) as unknown as JunctionRow[])
+        .map(mapJunctionRow)
+        .filter((t): t is ThreadTemplate => t !== null)
+      const scopedIds = new Set(scoped.map((t) => t.id))
+
+      // «Отдельные» глобальные — не привязанные НИ к одному типу проекта.
+      const { data: attached } = await supabase
+        .from('project_template_thread_templates')
+        .select('thread_template_id, thread_templates!inner(workspace_id)')
+        .eq('thread_templates.workspace_id', workspaceId)
+      const attachedIds = new Set(
+        ((attached ?? []) as { thread_template_id: string }[]).map((r) => r.thread_template_id),
+      )
+      const standalone = allGlobals.filter(
+        (g) => !attachedIds.has(g.id) && !scopedIds.has(g.id),
+      )
+
+      return [...scoped, ...standalone]
     },
     enabled: !!workspaceId,
     staleTime: STALE_TIME.STANDARD,
@@ -103,8 +156,9 @@ export function useThreadTemplatesForProject(
 }
 
 /**
- * Только шаблоны, привязанные к конкретному типу проекта. Для редактора
- * типа проекта в настройках workspace (модули "Задачи" и "Чаты").
+ * Только этапы, привязанные к конкретному типу проекта (через junction). Для
+ * редактора типа проекта в настройках workspace (модули "Задачи" и "Чаты").
+ * Пер-проектные sort_order/default_status_id/on_complete... — из junction.
  */
 export function useThreadTemplatesByProjectTemplate(
   projectTemplateId: string | undefined,
@@ -114,13 +168,14 @@ export function useThreadTemplatesByProjectTemplate(
     queryFn: async () => {
       if (!projectTemplateId) return []
       const { data, error } = await supabase
-        .from('thread_templates')
-        .select('*, thread_template_assignees(participant_id)')
-        .eq('owner_project_template_id', projectTemplateId)
+        .from('project_template_thread_templates')
+        .select(JUNCTION_SELECT)
+        .eq('template_id', projectTemplateId)
         .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: false })
       if (error) throw error
-      return (data ?? []) as ThreadTemplate[]
+      return ((data ?? []) as unknown as JunctionRow[])
+        .map(mapJunctionRow)
+        .filter((t): t is ThreadTemplate => t !== null)
     },
     enabled: !!projectTemplateId,
     staleTime: STALE_TIME.STANDARD,

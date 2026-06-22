@@ -156,10 +156,10 @@ export function ProjectTemplateEditorPage() {
 
   return (
     <WorkspaceLayout>
-      <div className="container max-w-6xl py-8 px-6">
+      <div className="container max-w-6xl py-5 px-6">
         {/* Шапка */}
-        <div className="mb-6">
-          <Button variant="ghost" size="sm" className="mb-4" onClick={handleBack}>
+        <div className="mb-3">
+          <Button variant="ghost" size="sm" className="mb-2" onClick={handleBack}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Назад к типам проектов
           </Button>
@@ -208,7 +208,7 @@ export function ProjectTemplateEditorPage() {
                     </div>
                   }
                 />
-                <h1 className="text-3xl font-bold flex-1 min-w-0 truncate">
+                <h1 className="text-2xl font-bold flex-1 min-w-0 truncate">
                   {template.name}
                 </h1>
                 <Button
@@ -257,56 +257,50 @@ export function ProjectTemplateEditorPage() {
           )}
         </div>
 
-        {/* Флаг «это шаблон лида» — CRM-фрейм этап 3.
-            Влияет на: воронку лидов в досках (этап 4), маршрутизацию
-            входящих от новых контактов (этап 9), кнопку конверсии (этап 11). */}
-        <div className="mb-6 flex items-center gap-3 rounded-lg border bg-muted/30 px-4 py-3">
-          <Target className="size-4 text-muted-foreground shrink-0" />
-          <div className="flex-1 min-w-0">
-            <label
-              htmlFor="is-lead-template"
-              className="flex items-center gap-2 cursor-pointer select-none"
-            >
-              <Checkbox
-                id="is-lead-template"
-                checked={template.is_lead_template}
-                disabled={updateIsLeadTemplateMutation.isPending}
-                onCheckedChange={(checked) =>
-                  updateIsLeadTemplateMutation.mutate(checked === true)
-                }
-              />
-              <span className="text-sm font-medium">Это шаблон лида</span>
-            </label>
-            <p className="text-xs text-muted-foreground mt-0.5 ml-6">
-              Проекты с этим шаблоном попадают в воронку продаж и могут быть конвертированы
-              в рабочие проекты.
-            </p>
-          </div>
-        </div>
-
-        {/* «Название по умолчанию» — префикс имени нового проекта этого типа. */}
-        <div className="mb-6 rounded-lg border bg-muted/30 px-4 py-3">
-          <label htmlFor="default-name-prefix" className="text-sm font-medium">
-            Название по умолчанию
-          </label>
-          <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-            Подставляется в начало имени нового проекта этого типа (напр. «Лид:»).
-            Имя можно изменить при создании.
-          </p>
-          <input
-            id="default-name-prefix"
-            type="text"
-            key={template.id}
-            defaultValue={template.default_name_prefix ?? ''}
-            placeholder="Напр. Лид:"
-            onBlur={(e) => {
-              const norm = e.target.value.trim() || null
-              if (norm !== (template.default_name_prefix ?? null)) {
-                updateDefaultNamePrefixMutation.mutate(e.target.value)
+        {/* Компактная строка настроек: флаг «шаблон лида» (CRM-фрейм этап 3 —
+            влияет на воронку, маршрутизацию входящих, кнопку конверсии) +
+            префикс имени нового проекта. Пояснения — в тултипах. */}
+        <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border bg-muted/30 px-4 py-2.5">
+          <label
+            htmlFor="is-lead-template"
+            className="flex items-center gap-2 cursor-pointer select-none"
+            title="Проекты с этим шаблоном попадают в воронку продаж и могут быть конвертированы в рабочие проекты."
+          >
+            <Checkbox
+              id="is-lead-template"
+              checked={template.is_lead_template}
+              disabled={updateIsLeadTemplateMutation.isPending}
+              onCheckedChange={(checked) =>
+                updateIsLeadTemplateMutation.mutate(checked === true)
               }
-            }}
-            className="w-full max-w-sm rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          />
+            />
+            <Target className="size-4 text-muted-foreground shrink-0" />
+            <span className="text-sm font-medium">Шаблон лида</span>
+          </label>
+
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="default-name-prefix"
+              className="text-sm font-medium whitespace-nowrap"
+              title="Подставляется в начало имени нового проекта этого типа (напр. «Лид:»). Имя можно изменить при создании."
+            >
+              Название по умолчанию
+            </label>
+            <input
+              id="default-name-prefix"
+              type="text"
+              key={template.id}
+              defaultValue={template.default_name_prefix ?? ''}
+              placeholder="Напр. Лид:"
+              onBlur={(e) => {
+                const norm = e.target.value.trim() || null
+                if (norm !== (template.default_name_prefix ?? null)) {
+                  updateDefaultNamePrefixMutation.mutate(e.target.value)
+                }
+              }}
+              className="w-44 rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
         </div>
 
         {/*

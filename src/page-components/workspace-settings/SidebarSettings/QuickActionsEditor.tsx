@@ -235,10 +235,13 @@ function QuickActionFormDialog({
     queryKey: ['qa-thread-templates', workspaceId],
     enabled: true,
     queryFn: async () => {
+      // Только глобальная библиотека шаблонов тредов (без пер-проектных
+      // дублей) — owner_project_template_id IS NULL.
       const { data } = await supabase
         .from('thread_templates')
         .select('id, name')
         .eq('workspace_id', workspaceId)
+        .is('owner_project_template_id', null)
         .order('name')
       return data ?? []
     },

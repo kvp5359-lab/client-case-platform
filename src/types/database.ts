@@ -6124,6 +6124,48 @@ export type Database = {
           },
         ]
       }
+      project_template_thread_templates: {
+        Row: {
+          created_at: string
+          default_status_id: string | null
+          on_complete_set_project_status_id: string | null
+          sort_order: number
+          template_id: string
+          thread_template_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_status_id?: string | null
+          on_complete_set_project_status_id?: string | null
+          sort_order?: number
+          template_id: string
+          thread_template_id: string
+        }
+        Update: {
+          created_at?: string
+          default_status_id?: string | null
+          on_complete_set_project_status_id?: string | null
+          sort_order?: number
+          template_id?: string
+          thread_template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_template_thread_templates_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "project_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_template_thread_templates_thread_template_id_fkey"
+            columns: ["thread_template_id"]
+            isOneToOne: false
+            referencedRelation: "thread_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_templates: {
         Row: {
           brief_template_sheet_id: string | null
@@ -6386,6 +6428,7 @@ export type Database = {
           mtproto_client_tg_user_id: number | null
           mtproto_session_user_id: string | null
           name: string
+          on_complete_set_project_status_id: string | null
           owner_user_id: string | null
           project_id: string | null
           search_vector: unknown
@@ -6431,6 +6474,7 @@ export type Database = {
           mtproto_client_tg_user_id?: number | null
           mtproto_session_user_id?: string | null
           name: string
+          on_complete_set_project_status_id?: string | null
           owner_user_id?: string | null
           project_id?: string | null
           search_vector?: unknown
@@ -6476,6 +6520,7 @@ export type Database = {
           mtproto_client_tg_user_id?: number | null
           mtproto_session_user_id?: string | null
           name?: string
+          on_complete_set_project_status_id?: string | null
           owner_user_id?: string | null
           project_id?: string | null
           search_vector?: unknown

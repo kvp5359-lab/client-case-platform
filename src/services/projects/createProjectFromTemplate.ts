@@ -173,6 +173,8 @@ export async function createProjectFromTemplate(
             deadline,
             sort_order: tpl.sort_order + 100,
             source_template_id: tpl.id,
+            // Снапшот правила автоперехода: рантайм проекта не зависит от шаблона.
+            on_complete_set_project_status_id: tpl.on_complete_set_project_status_id ?? null,
           })
           .select('id')
           .single()

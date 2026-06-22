@@ -6,11 +6,36 @@
 import { useState, useCallback, createElement } from 'react'
 import { useParams } from 'next/navigation'
 import { useQueryClient, useMutation } from '@tanstack/react-query'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PageLoader } from '@/components/ui/loaders'
-import { Plus, Search, Copy, Pencil, Trash2, MessageSquare, CheckSquare, Mail } from 'lucide-react'
+import {
+  Plus,
+  Search,
+  Copy,
+  Pencil,
+  Trash2,
+  MessageSquare,
+  CheckSquare,
+  Mail,
+  GripVertical,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -20,7 +45,8 @@ import { useGlobalThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ThreadTemplateDialog } from './ThreadTemplateDialog'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
-import { COLOR_BG } from '@/components/messenger/threadConstants'
+import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTemplate'
 
 function getTypeBadge(t: ThreadTemplate) {
@@ -40,6 +66,102 @@ function getTypeBadge(t: ThreadTemplate) {
     <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-700">
       <MessageSquare className="w-3 h-3" /> Чат
     </span>
+  )
+}
+
+/** Строка шаблона. Перетаскиваемая, когда передан draggable=true. */
+function TemplateRow({
+  t,
+  draggable,
+  onEdit,
+  onCopy,
+  onDelete,
+}: {
+  t: ThreadTemplate
+  draggable: boolean
+  onEdit: (t: ThreadTemplate) => void
+  onCopy: (t: ThreadTemplate) => void
+  onDelete: (id: string) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: t.id,
+    disabled: !draggable,
+  })
+  const style = { transform: CSS.Transform.toString(transform), transition }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'flex items-center gap-2 px-3 py-1.5 hover:bg-muted/50 group bg-background',
+        isDragging && 'opacity-50',
+      )}
+    >
+      {draggable && (
+        <button
+          type="button"
+          className="cursor-grab touch-none text-muted-foreground/50 hover:text-muted-foreground"
+          aria-label="Перетащить"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="w-3.5 h-3.5" />
+        </button>
+      )}
+
+      {/* Icon в цвет акцента, без плашки */}
+      {createElement(getChatIconComponent(t.icon), {
+        className: cn(
+          'w-4 h-4 flex-shrink-0',
+          COLOR_TEXT[t.accent_color as ThreadAccentColor] ?? 'text-blue-500',
+        ),
+      })}
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm truncate">{t.name}</span>
+          {getTypeBadge(t)}
+          {/* Actions — сразу справа от типа треда */}
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => onEdit(t)}
+              title="Редактировать"
+              aria-label="Редактировать шаблон"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => onCopy(t)}
+              title="Копировать"
+              aria-label="Копировать шаблон"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-destructive hover:text-destructive"
+              onClick={() => onDelete(t.id)}
+              title="Удалить"
+              aria-label="Удалить шаблон"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+        {t.description && (
+          <p className="text-xs text-muted-foreground truncate">{t.description}</p>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -145,6 +267,28 @@ export function ThreadTemplatesContent() {
     },
   })
 
+  // ── Reorder mutation (порядок библиотеки = thread_templates.sort_order) ──
+  const reorderMutation = useMutation({
+    mutationFn: async (orders: { id: string; sort_order: number }[]) => {
+      const results = await Promise.all(
+        orders.map((o) =>
+          supabase.from('thread_templates').update({ sort_order: o.sort_order }).eq('id', o.id),
+        ),
+      )
+      const firstError = results.find((r) => r.error)?.error
+      if (firstError) throw firstError
+    },
+    onError: (error) => {
+      logger.error('Ошибка переупорядочивания шаблонов:', error)
+      toast.error('Не удалось сохранить порядок')
+      invalidate()
+    },
+  })
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  )
+
   // ── Handlers ──
   const handleCreate = () => {
     setEditingItem(null)
@@ -176,6 +320,36 @@ export function ThreadTemplatesContent() {
     const q = searchQuery.toLowerCase()
     return t.name.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q) ?? false)
   })
+
+  // Перетаскивание доступно только без активного поиска (иначе индексы списка
+  // не совпадают с полным набором → порядок сохранился бы неверно).
+  const dndEnabled = searchQuery.trim() === ''
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const ids = templates.map((t) => t.id)
+    const oldIndex = ids.indexOf(active.id as string)
+    const newIndex = ids.indexOf(over.id as string)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const reordered = arrayMove(templates, oldIndex, newIndex)
+    const orders = reordered.map((t, i) => ({ id: t.id, sort_order: i }))
+
+    // Оптимистично обновляем кэш глобальной библиотеки.
+    const orderMap = new Map(orders.map((o) => [o.id, o.sort_order]))
+    queryClient.setQueryData<ThreadTemplate[]>(
+      threadTemplateKeys.globalByWorkspace(workspaceId ?? ''),
+      (prev) =>
+        prev
+          ? [...prev]
+              .map((t) => (orderMap.has(t.id) ? { ...t, sort_order: orderMap.get(t.id)! } : t))
+              .sort((a, b) => a.sort_order - b.sort_order)
+          : prev,
+    )
+
+    reorderMutation.mutate(orders)
+  }
 
   return (
     <div>
@@ -215,66 +389,27 @@ export function ThreadTemplatesContent() {
         </p>
       ) : (
         <div className="border rounded-lg divide-y">
-          {filtered.map((t) => (
-            <div key={t.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 group">
-              {/* Icon with color */}
-              <div
-                className={cn(
-                  'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
-                  COLOR_BG[t.accent_color] ?? 'bg-blue-500',
-                )}
-              >
-                {createElement(getChatIconComponent(t.icon), {
-                  className: 'w-4 h-4 text-white',
-                })}
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm truncate">{t.name}</span>
-                  {getTypeBadge(t)}
-                </div>
-                {t.description && (
-                  <p className="text-xs text-muted-foreground truncate">{t.description}</p>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => handleEdit(t)}
-                  title="Редактировать"
-                  aria-label="Редактировать шаблон"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => copyMutation.mutate(t)}
-                  title="Копировать"
-                  aria-label="Копировать шаблон"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-destructive hover:text-destructive"
-                  onClick={() => handleDelete(t.id)}
-                  title="Удалить"
-                  aria-label="Удалить шаблон"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </div>
-          ))}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={filtered.map((t) => t.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {filtered.map((t) => (
+                <TemplateRow
+                  key={t.id}
+                  t={t}
+                  draggable={dndEnabled}
+                  onEdit={handleEdit}
+                  onCopy={(tpl) => copyMutation.mutate(tpl)}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
       )}
 
