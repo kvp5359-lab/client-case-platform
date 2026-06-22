@@ -57,8 +57,13 @@ upstream clientcase {
 }
 EOF
 cd /opt/relostart
-docker compose exec -T nginx nginx -t
-docker compose exec -T nginx nginx -s reload
+# ВАЖНО: скрипт подаётся в `bash -s` через stdin (ssh ... < deploy-vps.sh).
+# `docker compose exec` читает stdin и без `</dev/null` «съедает» остаток
+# скрипта — тогда reload/stop/prune/финальный curl не выполнятся, а job
+# завершится с кодом 0 («успех»), но трафик останется на старом цвете
+# (инцидент 2026-06-22). Поэтому отвязываем stdin у всех exec-команд.
+docker compose exec -T nginx nginx -t </dev/null
+docker compose exec -T nginx nginx -s reload </dev/null
 
 # Даём активным соединениям дотечь и гасим старый цвет
 sleep 5
