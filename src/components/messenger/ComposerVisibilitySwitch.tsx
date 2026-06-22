@@ -11,6 +11,8 @@ import { useState, type ReactNode } from 'react'
 import { MessageSquare, Users, BellOff, Lock } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { MessengerAccent } from './MessageBubble'
+import { sendButtonStyles } from './MessageInputToolbar'
 import {
   Tooltip,
   TooltipContent,
@@ -19,6 +21,39 @@ import {
 } from '@/components/ui/tooltip'
 
 export type ComposerMode = 'client' | 'team' | 'note' | 'self'
+
+/**
+ * Светлая «пилюля» режима «Всем» под акцент треда (Tailwind не умеет
+ * динамические имена классов — нужен статический разбор по акценту).
+ */
+const CLIENT_ACCENT_PILL: Record<MessengerAccent, { active: string; border: string }> = {
+  blue: { active: 'bg-blue-100 text-blue-800', border: 'border-blue-300' },
+  slate: { active: 'bg-stone-100 text-stone-800', border: 'border-stone-300' },
+  emerald: { active: 'bg-emerald-100 text-emerald-800', border: 'border-emerald-300' },
+  amber: { active: 'bg-amber-100 text-amber-800', border: 'border-amber-300' },
+  rose: { active: 'bg-rose-100 text-rose-800', border: 'border-rose-300' },
+  violet: { active: 'bg-violet-100 text-violet-800', border: 'border-violet-300' },
+  orange: { active: 'bg-orange-100 text-orange-800', border: 'border-orange-300' },
+  cyan: { active: 'bg-cyan-100 text-cyan-800', border: 'border-cyan-300' },
+  pink: { active: 'bg-pink-100 text-pink-800', border: 'border-pink-300' },
+  indigo: { active: 'bg-indigo-100 text-indigo-800', border: 'border-indigo-300' },
+  green: { active: 'bg-green-100 text-green-800', border: 'border-green-300' },
+  dark: { active: 'bg-stone-100 text-stone-800', border: 'border-stone-300' },
+}
+
+/** Цвет кнопки отправки под выбранный режим (solid). «Всем» = акцент треда. */
+export function composerSendButtonClass(mode: ComposerMode, accent: MessengerAccent): string {
+  switch (mode) {
+    case 'team':
+      return 'bg-neutral-700 hover:bg-neutral-800 text-white'
+    case 'note':
+      return 'bg-neutral-400 hover:bg-neutral-500 text-white'
+    case 'self':
+      return 'bg-amber-500 hover:bg-amber-600 text-white'
+    default:
+      return sendButtonStyles[accent] ?? sendButtonStyles.blue
+  }
+}
 
 /** Получатели/доступ — считается в MessengerTabContent, тянется лениво. */
 export type NotifyRecipients = {
@@ -105,7 +140,10 @@ function RecipientsTooltip({ mode, r }: { mode: ComposerMode; r?: NotifyRecipien
   }
   if (!r || r.loading) return <span className="opacity-80">Загрузка…</span>
 
-  const team = fmtNames(r.accessStaff, r.accessExtra)
+  const hasTeam = r.accessStaff.length > 0 || r.accessExtra > 0
+  const hasNotify = r.notifyStaff.length > 0 || r.notifyExtra > 0
+  // Нет другой команды (личный диалог) → доступ только у тебя.
+  const accessLine = hasTeam ? `команда — ${fmtNames(r.accessStaff, r.accessExtra)}` : 'только вы'
   const notify = fmtNames(r.notifyStaff, r.notifyExtra)
 
   if (mode === 'note') {
@@ -114,15 +152,15 @@ function RecipientsTooltip({ mode, r }: { mode: ComposerMode; r?: NotifyRecipien
         <Row label="Уведомление">
           никто · только <b>@упомянутые</b>
         </Row>
-        <Row label="Доступ">команда — {team}</Row>
+        <Row label="Доступ">{accessLine}</Row>
       </>
     )
   }
   if (mode === 'team') {
     return (
       <>
-        <Row label="Уведомление">{notify}</Row>
-        <Row label="Доступ">команда — {team}</Row>
+        <Row label="Уведомление">{hasNotify ? notify : 'никто'}</Row>
+        <Row label="Доступ">{accessLine}</Row>
       </>
     )
   }
@@ -130,9 +168,9 @@ function RecipientsTooltip({ mode, r }: { mode: ComposerMode; r?: NotifyRecipien
   return (
     <>
       <Row label="Уведомление">
-        клиент (внешний канал){r.notifyStaff.length || r.notifyExtra ? `, ${notify}` : ''}
+        клиент (внешний канал){hasNotify ? `, ${notify}` : ''}
       </Row>
-      <Row label="Доступ">клиент + команда — {team}</Row>
+      <Row label="Доступ">клиент{hasTeam ? ` + команда — ${fmtNames(r.accessStaff, r.accessExtra)}` : ''}</Row>
     </>
   )
 }
@@ -141,6 +179,7 @@ export function ComposerVisibilitySwitch({
   mode,
   onChange,
   allowClient = true,
+  accent = 'blue',
   recipients,
   onPrimeRecipients,
 }: {
@@ -148,13 +187,22 @@ export function ComposerVisibilitySwitch({
   onChange: (mode: ComposerMode) => void
   /** В тредах без клиента режим «Клиенту» прячем (отправлять некому). */
   allowClient?: boolean
+  /** Акцент треда — режим «Всем» окрашивается под него. */
+  accent?: MessengerAccent
   /** Кто получит уведомление (для подсказки при наведении). */
   recipients?: NotifyRecipients
   /** Зовётся при первом наведении — лениво подтянуть подписчиков. */
   onPrimeRecipients?: () => void
 }) {
   const modes = allowClient ? MODES : MODES.filter((m) => m.key !== 'client')
-  const activeBorder = modes.find((m) => m.key === mode)?.border ?? 'border-border'
+  // «Всем» (client) красим под акцент треда; остальные режимы — статично.
+  const activeOf = (m: (typeof MODES)[number]) =>
+    m.key === 'client' ? CLIENT_ACCENT_PILL[accent].active : m.active
+  const borderOf = (m: (typeof MODES)[number]) =>
+    m.key === 'client' ? CLIENT_ACCENT_PILL[accent].border : m.border
+  const activeBorder = modes.find((m) => m.key === mode)
+    ? borderOf(modes.find((m) => m.key === mode)!)
+    : 'border-border'
   // Контролируемый hover: соседние Radix-Tooltip со своим таймингом не
   // переключаются при переводе мыши. Единый `hovered` → переключение мгновенное.
   const [hovered, setHovered] = useState<ComposerMode | null>(null)
@@ -183,7 +231,7 @@ export function ComposerVisibilitySwitch({
                   onMouseLeave={() => setHovered((h) => (h === m.key ? null : h))}
                   className={cn(
                     'inline-flex items-center gap-1 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap',
-                    isActive ? cn('px-2.5', m.active) : 'px-2 text-muted-foreground hover:bg-muted',
+                    isActive ? cn('px-2.5', activeOf(m)) : 'px-2 text-muted-foreground hover:bg-muted',
                     i > 0 && 'border-l border-border',
                   )}
                 >
@@ -193,7 +241,7 @@ export function ComposerVisibilitySwitch({
               </TooltipTrigger>
               <TooltipContent
                 side="top"
-                className={cn('max-w-[260px] leading-snug border', m.active, m.border)}
+                className={cn('max-w-[260px] leading-snug border', activeOf(m), borderOf(m))}
               >
                 <div className="font-medium mb-0.5">{m.label}</div>
                 <RecipientsTooltip mode={m.key} r={recipients} />

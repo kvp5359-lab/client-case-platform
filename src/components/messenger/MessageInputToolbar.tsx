@@ -44,6 +44,8 @@ type MessageInputToolbarProps = {
   onQuickReplyPickerHandled: () => void
   onSend: () => void
   onSaveDraft: () => void
+  /** Цвет кнопки отправки (под выбранный режим). По умолчанию — акцент треда. */
+  sendButtonClassName?: string
   /** Pending-пикер статуса задачи справа от форматирования (task-треды). */
   taskStatusPicker?: {
     statuses: TaskStatus[]
@@ -83,6 +85,7 @@ export function MessageInputToolbar({
   onQuickReplyPickerHandled,
   onSend,
   onSaveDraft,
+  sendButtonClassName,
   taskStatusPicker,
   translate,
   onSchedule,
@@ -160,7 +163,7 @@ export function MessageInputToolbar({
         )}
         <Button
           size="icon"
-          className={cn('h-8 w-8', sendButtonStyles[accent] ?? sendButtonStyles.blue)}
+          className={cn('h-8 w-8', sendButtonClassName ?? sendButtonStyles[accent] ?? sendButtonStyles.blue)}
           disabled={!hasContent || isPending}
           onClick={onSend}
         >

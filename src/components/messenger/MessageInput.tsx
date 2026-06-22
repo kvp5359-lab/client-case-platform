@@ -6,7 +6,11 @@ import { MinimalTiptapEditor } from './MinimalTiptapEditor'
 import { EditingBanner, ReplyBanner, TranslationBanner } from './MessageInputBanners'
 import { MessageAttachmentsRow } from './MessageAttachmentsRow'
 import { MessageInputToolbar } from './MessageInputToolbar'
-import { MODE_VISIBILITY, type ComposerMode } from './ComposerVisibilitySwitch'
+import {
+  MODE_VISIBILITY,
+  composerSendButtonClass,
+  type ComposerMode,
+} from './ComposerVisibilitySwitch'
 import { extractMentionIds } from './messengerMention'
 import type { TaskStatus } from '@/hooks/useStatuses'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
@@ -673,6 +677,7 @@ export function MessageInput({
         projectDocumentsCount={projectDocumentsCount}
         onQuickReplyPickerHandled={() => setOpenQuickReplyPicker(false)}
         onSend={handleSend}
+        sendButtonClassName={composerSendButtonClass(composerMode, accent)}
         onSaveDraft={handleSaveDraft}
         onSchedule={
           onSchedule && !editingMessage ? handleSchedule : undefined

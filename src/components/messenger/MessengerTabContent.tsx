@@ -173,7 +173,7 @@ export function MessengerTabContent({
   const allowClientMode =
     hasClientParticipant ||
     state.isLinked ||
-    !!state.emailLink ||
+    state.isEmailChat || // email-тред внешний по определению (link ИЛИ type='email')
     !!currentThread?.business_connection_id ||
     !!currentThread?.wazzup_channel_id ||
     isMtprotoThread
@@ -191,19 +191,23 @@ export function MessengerTabContent({
     // Доступ = все сотрудники тут; уведомление = из них подписанные.
     const byId = new Map(projectParticipants.map((p) => [p.id, p]))
     const clientRoles = CLIENT_ROLES as readonly string[]
+    const myParticipantId = state.currentParticipant?.participantId ?? null
     const accessStaff: string[] = []
     const notifyStaff: string[] = []
     let accessExtra = 0
     let notifyExtra = 0
     let hasClient = false
     for (const [id, subscribed] of Object.entries(threadSubscribers.subscribers)) {
+      // Себя не показываем — исключаем по participant_id (работает и в личных
+      // диалогах без проекта, где participant по имени не разрешается).
+      if (myParticipantId && id === myParticipantId) continue
       const p = byId.get(id)
       if (!p) {
         accessExtra++ // доступ есть (assignee/member вне проекта), имя неизвестно
         if (subscribed) notifyExtra++
         continue
       }
-      if (p.user_id && p.user_id === user?.id) continue // себя не показываем
+      if (p.user_id && p.user_id === user?.id) continue // подстраховка по user_id
       if ((p.project_roles ?? []).some((r) => clientRoles.includes(r))) {
         hasClient = true // клиент — в командные списки не кладём
         continue
@@ -225,6 +229,7 @@ export function MessengerTabContent({
     threadSubscribers.isLoading,
     recipientsPrimed,
     projectParticipants,
+    state.currentParticipant?.participantId,
     user?.id,
     allowClientMode,
   ])
@@ -483,16 +488,18 @@ export function MessengerTabContent({
             слева — тип сообщения + @, по центру — «Прочитано/Непрочитано». */}
         <div className="relative flex items-center -mt-6 mb-2 z-10 pl-3 pr-5 pointer-events-none">
           <div className="flex items-center gap-2 pointer-events-auto">
-            {!state.editingMessage && (
+            {/* Выбор режима — внутренний инструмент команды; клиенту не показываем. */}
+            {!state.editingMessage && !isClientOnly && (
               <ComposerVisibilitySwitch
                 mode={effectiveComposerMode}
                 onChange={setComposerMode}
                 allowClient={allowClientMode}
+                accent={accent}
                 recipients={composerRecipients}
                 onPrimeRecipients={() => setRecipientsPrimed(true)}
               />
             )}
-            {!state.editingMessage && (
+            {!state.editingMessage && !isClientOnly && (
               <button
                 type="button"
                 title="Упомянуть участника"
