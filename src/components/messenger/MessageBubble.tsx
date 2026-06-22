@@ -94,15 +94,15 @@ function MessageBubbleImpl({
   // Визуальный эффект непрерывный: бабл засветлён до финальной галочки.
   const isOptimisticId = message.id.startsWith('optimistic-')
   const colors = bubbleStyles[accent]
-  // Цвет бабла по видимости (Фаза 2): палитра = аудитория.
-  //  client → акцент чата; team/note → нейтральный чёрно-серый; self → жёлтый.
+  // Цвет бабла по видимости (Фаза 2) — подсказка ОТПРАВИТЕЛЮ, видна только у
+  // СВОИХ сообщений: «Всем»/клиенту = акцент чата; «Команде» (внутреннее) =
+  // чёрный; «Заметка» = серый; «Только я» = жёлтый. ВХОДЯЩИЕ всегда обычные
+  // (получателю видимость не важна — он просто читает сообщение).
   const vis = message.visibility ?? 'client'
   const isSelfVis = vis === 'self'
   const isTeamVis = vis === 'team'
   // «Заметка» = team + тихо (notify_subscribers=false).
   const isNoteVis = isTeamVis && message.notify_subscribers === false
-  // Палитра аудитории: self=жёлтый; «Команде» — почти чёрный; «Заметка» —
-  // тёмно-серый (визуально отличается от «Команде»); client — акцент чата.
   const ownBubbleClass = isSelfVis
     ? 'bg-amber-200 text-amber-950'
     : isNoteVis
@@ -110,13 +110,10 @@ function MessageBubbleImpl({
       : isTeamVis
         ? 'bg-neutral-900 text-neutral-50'
         : colors.own
-  const incomingBubbleClass = isSelfVis
-    ? 'bg-amber-200 text-amber-950'
-    : isNoteVis
-      ? 'bg-neutral-300 text-neutral-900'
-      : isTeamVis
-        ? 'bg-neutral-200 text-neutral-900'
-        : colors.incoming
+  const incomingBubbleClass = colors.incoming
+  // Метка видимости (иконка/жёлтый текст) — только у своих сообщений.
+  const showVisMarkSelf = isOwn && isSelfVis
+  const showVisMarkNote = isOwn && isNoteVis
   // Подсветка «сотрудник» — внутренний маркер команды; клиенту его не показываем.
   const showStaffMark =
     !!isClientThread && !viewerIsClient && isTeamSender(message.sender_role)
@@ -374,11 +371,11 @@ function MessageBubbleImpl({
                 message={displayMessage}
                 isOwn={isOwn}
                 accent={accent}
-                lightBubble={isSelfVis}
+                lightBubble={showVisMarkSelf}
                 leadingIcon={
-                  isSelfVis ? (
+                  showVisMarkSelf ? (
                     <Lock className="h-3.5 w-3.5" />
-                  ) : isNoteVis ? (
+                  ) : showVisMarkNote ? (
                     <BellOff className="h-3.5 w-3.5" />
                   ) : undefined
                 }
@@ -534,7 +531,7 @@ function MessageBubbleImpl({
               accent={accent}
               bubbleOwnClass={ownBubbleClass}
               bubbleIncomingClass={incomingBubbleClass}
-              lightBubble={isSelfVis}
+              lightBubble={showVisMarkSelf}
               onReply={onReply}
               onQuote={onQuote}
               onReact={onReact}
