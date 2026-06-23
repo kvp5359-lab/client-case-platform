@@ -72,7 +72,11 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
       const { data: { user: currentUser } } = await supabase.auth.getUser()
 
       // Если тред email — определяем выставляемые поля для нового унифицированного канала.
-      const isEmailChannel = !!params.emailData && params.emailData.contactEmails.length > 0
+      // Черновик письма можно создать БЕЗ получателя (его дописывают в треде) —
+      // тогда email-намерение приходит через type='email'.
+      const isEmailChannel =
+        params.type === 'email' || (!!params.emailData && params.emailData.contactEmails.length > 0)
+      const firstRecipient = params.emailData?.contactEmails?.[0] ?? null
       let emailSendAccountId: string | null = null
       if (isEmailChannel && currentUser) {
         // Берём первый активный email_account текущего пользователя — отправлять будем
@@ -113,8 +117,8 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
           ...(params.statusId !== undefined && { status_id: params.statusId }),
           ...(params.sourceTemplateId && { source_template_id: params.sourceTemplateId }),
           ...(isEmailChannel && {
-            email_last_external_address: params.emailData!.contactEmails[0],
-            email_subject_root: params.emailData!.subject ?? null,
+            email_last_external_address: firstRecipient,
+            email_subject_root: params.emailData?.subject ?? null,
             email_send_account_id: emailSendAccountId,
             email_send_method: emailSendAccountId ? 'employee_mailbox' : 'system_postmark',
           }),
@@ -461,6 +465,47 @@ export function useChangeThreadOwner(workspaceId: string | undefined) {
     },
     onError: (err: Error) => {
       toast.error(`Не удалось передать диалог: ${err.message}`)
+    },
+  })
+}
+
+/**
+ * Обновить тему и/или получателя email-треда (колонки `email_subject_root`,
+ * `email_last_external_address` на `project_threads`). Используется для правки
+ * черновика письма из шапки треда до его отправки. Передавай только то, что
+ * меняешь (undefined-поля не трогаются).
+ */
+export function useUpdateEmailThreadMeta(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (params: {
+      threadId: string
+      projectId?: string | null
+      subject?: string
+      contactEmail?: string
+    }) => {
+      const patch: Record<string, string | null> = {}
+      if (params.subject !== undefined) patch.email_subject_root = params.subject.trim() || null
+      if (params.contactEmail !== undefined)
+        patch.email_last_external_address = params.contactEmail.trim() || null
+      if (Object.keys(patch).length === 0) return params
+      const { error } = await supabase
+        .from('project_threads')
+        .update(patch)
+        .eq('id', params.threadId)
+      if (error) throw error
+      return params
+    },
+    onSuccess: (params) => {
+      queryClient.invalidateQueries({ queryKey: projectThreadKeys.byId(params.threadId) })
+      if (params.projectId) {
+        queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(params.projectId) })
+      }
+      queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
+    },
+    onError: (err: Error) => {
+      toast.error(`Не удалось обновить письмо: ${err.message}`)
     },
   })
 }

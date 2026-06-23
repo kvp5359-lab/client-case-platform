@@ -349,7 +349,9 @@ export function ChatSettingsDialog({
               initialHtml={actions.pendingInitialHtml}
               onChange={form.setHasInitialMessage}
               onFilesChange={setComposeFiles}
-              onSubmit={form.canSave && !emailAttachmentsTooBig ? actions.handleSave : undefined}
+              onSubmit={
+                form.canSave && !emailAttachmentsTooBig ? () => actions.handleSave() : undefined
+              }
               projectId={form.selectedProjectId ?? propProjectId}
               workspaceId={resolvedWorkspaceId}
               onOpenDocPicker={actions.composeProjectId ? actions.handleOpenDocPicker : undefined}
@@ -374,8 +376,21 @@ export function ChatSettingsDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {form.isEditMode ? 'Закрыть' : 'Отмена'}
           </Button>
+          {/* Email в режиме создания: «Сохранить черновик» создаёт тред без
+              отправки — текст/файлы/тема/получатели переезжают в композер треда,
+              письмо уйдёт при отправке оттуда. Защита от потери набранного при
+              закрытии модалки. */}
+          {!form.isEditMode && form.tabMode === 'email' && (
+            <Button
+              variant="outline"
+              onClick={() => actions.handleSave({ asDraft: true })}
+              disabled={isPending || emailAttachmentsTooBig}
+            >
+              Сохранить черновик
+            </Button>
+          )}
           <Button
-            onClick={actions.handleSave}
+            onClick={() => actions.handleSave()}
             disabled={!form.canSave || isPending || emailAttachmentsTooBig}
           >
             {form.isEditMode

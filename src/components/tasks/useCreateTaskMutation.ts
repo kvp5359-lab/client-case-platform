@@ -30,11 +30,11 @@ export function useCreateTaskHandler({
           accessType: result.accessType,
           accentColor: result.accentColor,
           icon: result.icon,
-          type: result.threadType,
+          type: result.channelType === 'email' ? 'email' : result.threadType,
           emailData:
-            result.channelType === 'email' && result.contactEmails?.length
+            result.channelType === 'email'
               ? {
-                  contactEmails: result.contactEmails.map((e) => e.email),
+                  contactEmails: (result.contactEmails ?? []).map((e) => e.email),
                   subject: result.emailSubject,
                 }
               : undefined,

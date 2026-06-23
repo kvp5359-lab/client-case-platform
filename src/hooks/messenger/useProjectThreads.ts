@@ -25,5 +25,6 @@ export {
   useDeleteThread,
   usePinThread,
   useRenameThread,
+  useUpdateEmailThreadMeta,
   useUpdateThread,
 } from './useProjectThreads.mutations'

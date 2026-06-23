@@ -33,6 +33,8 @@ export type TaskItem = {
   email_subject?: string | null
   /** Контакт собеседника — используется как scope боковой панели, если project_id=null. */
   contact_participant_id?: string | null
+  /** Email-черновик: письмо ещё не отправлено (нет сообщений). Для метки в списке. */
+  email_unsent?: boolean
 }
 
 /** Минимальная информация о проекте для шапки Режима 2 TaskPanel. */

@@ -41,6 +41,7 @@ import { InboxSidebar } from './InboxSidebar'
 import { useInboxFilters, type InboxFilter } from './useInboxFilters'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { LazyChatSettingsDialog as ChatSettingsDialog } from '@/components/lazyChatSettingsDialog'
+import { stashThreadDraft } from '@/components/messenger/hooks/stashThreadDraft'
 
 export default function InboxPage() {
   usePageTitle('Входящие')
@@ -198,11 +199,11 @@ export default function InboxPage() {
           accessType: result.accessType,
           accentColor: result.accentColor,
           icon: result.icon,
-          type: result.threadType,
+          type: result.channelType === 'email' ? 'email' : result.threadType,
           emailData:
-            result.channelType === 'email' && result.contactEmails?.length
+            result.channelType === 'email'
               ? {
-                  contactEmails: result.contactEmails.map((e) => e.email),
+                  contactEmails: (result.contactEmails ?? []).map((e) => e.email),
                   subject: result.emailSubject,
                 }
               : undefined,
@@ -215,8 +216,18 @@ export default function InboxPage() {
           sourceTemplateId: result.sourceTemplateId,
         },
         {
-          onSuccess: (newChat) => {
-            if (result.initialMessage) {
+          onSuccess: async (newChat) => {
+            if (result.asDraft) {
+              // Черновик: не отправляем, кладём в черновик треда (composer
+              // подхватит при открытии; переживает перезагрузку).
+              if (result.initialMessage) {
+                await stashThreadDraft(
+                  newChat.id,
+                  result.initialMessage.html,
+                  result.initialMessage.files,
+                )
+              }
+            } else if (result.initialMessage) {
               setPendingInitialMessage({
                 threadId: newChat.id,
                 html: result.initialMessage.html,

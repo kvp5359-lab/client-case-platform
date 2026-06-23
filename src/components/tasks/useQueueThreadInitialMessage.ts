@@ -4,6 +4,7 @@ import { useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { getCurrentWorkspaceParticipant } from '@/services/api/messenger/messengerService'
+import { stashThreadDraft } from '@/components/messenger/hooks/stashThreadDraft'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
 
@@ -22,7 +23,20 @@ export function useQueueThreadInitialMessage(workspaceId: string) {
 
   return useCallback(
     async (thread: ProjectThread, result: ChatSettingsResult) => {
-      if (!result.initialMessage || !user) return
+      if (!user) return
+      // Черновик: первое сообщение не отправляем — текст/файлы кладём в черновик
+      // треда (composer подхватит при открытии). Получатели/тема уже в треде.
+      if (result.asDraft) {
+        if (result.initialMessage) {
+          await stashThreadDraft(
+            thread.id,
+            result.initialMessage.html,
+            result.initialMessage.files,
+          )
+        }
+        return
+      }
+      if (!result.initialMessage) return
       let senderName = 'Вы'
       try {
         const p = await getCurrentWorkspaceParticipant(workspaceId, user.id)

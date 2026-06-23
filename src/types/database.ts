@@ -9785,6 +9785,7 @@ export type Database = {
           created_at: string
           created_by: string
           deadline: string
+          email_unsent: boolean
           end_at: string
           icon: string
           id: string

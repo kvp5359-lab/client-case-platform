@@ -30,6 +30,8 @@ import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermiss
 import { useTaskStatusPending } from './hooks/useTaskStatusPending'
 import { useProjectParticipants } from './hooks/useChatSettingsData'
 import { EmailSubjectBar } from './EmailSubjectBar'
+import { useUpdateEmailThreadMeta } from '@/hooks/messenger/useProjectThreads'
+import { useEmailSuggestions } from './hooks/useChatSettingsData'
 import { useMessengerState } from './hooks/useMessengerState'
 import { useMessengerHandlers } from './hooks/useMessengerHandlers'
 import { useOptimisticEmail } from './hooks/useOptimisticEmail'
@@ -114,6 +116,13 @@ export function MessengerTabContent({
   // его нет в allThreads). React Query дедуплицирует с useProjectThreadById в TaskPanel.
   const { data: directThread } = useProjectThreadById(threadId, true)
   const currentThread = allThreads.find((t) => t.id === threadId) ?? directThread ?? undefined
+  const updateEmailMeta = useUpdateEmailThreadMeta(workspaceId)
+  // Подсказки контактов для пикера получателя в шапке email-черновика.
+  // type у email-треда в рантайме 'email' (TS-union сужен до chat|task — каст).
+  const isEmailTypeThread = (currentThread?.type as string | undefined) === 'email'
+  const { data: emailSuggestions = [] } = useEmailSuggestions(
+    isEmailTypeThread ? workspaceId : undefined,
+  )
   const hasClientParticipant = useThreadHasClient(currentThread)
   // Кандидаты для @-упоминаний — участники проекта этого треда (у личных тредов
   // без проекта список пуст).
@@ -390,6 +399,10 @@ export function MessengerTabContent({
     sendEmail: state.sendEmail,
   })
 
+  // Черновик письма: email-тред без единого сообщения = ещё не отправлено.
+  // Включает редактирование темы/получателя в шапке + подсказку у низа ленты.
+  const isEmailDraft = state.isEmailChat && !state.isLoading && displayMessages.length === 0
+
   const toolbarContent = (
     <ChatToolbar
       searchQuery={state.searchQuery}
@@ -456,14 +469,39 @@ export function MessengerTabContent({
         onJumpToMessage={handleJumpToMessage}
       >
       <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
+        {/* Полоса темы/получателей email — над лентой. Для черновика
+            (письмо ещё не отправлено) — редактируемая. */}
         {state.isEmailChat && (
           <EmailSubjectBar
-            subject={state.emailLink?.subject}
-            contactEmail={state.emailLink?.contact_email}
+            subject={state.emailLink?.subject ?? currentThread?.email_subject_root}
+            contactEmail={state.emailLink?.contact_email ?? currentThread?.email_last_external_address}
+            editable={isEmailDraft}
+            suggestions={emailSuggestions}
+            onSave={(next) =>
+              updateEmailMeta.mutate({
+                threadId,
+                projectId: currentThread?.project_id ?? null,
+                ...next,
+              })
+            }
           />
         )}
 
         <ThreadHealthBanner threadId={threadId} workspaceId={workspaceId} />
+
+        {/* Email-тред без единого сообщения = письмо ещё не отправлено (черновик).
+            Подсказка по центру пустой ленты. Исчезнет, как только письмо уйдёт
+            (появится первое сообщение). */}
+        {isEmailDraft && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8">
+            <div className="max-w-xs text-center text-sm text-muted-foreground">
+              <span className="font-medium text-red-700">Черновик письма</span>
+              <br />
+              Оно ещё не отправлено. Допишите текст и нажмите «Отправить» — письмо
+              уйдёт получателю.
+            </div>
+          </div>
+        )}
 
         <MessageList
           messages={displayMessages}

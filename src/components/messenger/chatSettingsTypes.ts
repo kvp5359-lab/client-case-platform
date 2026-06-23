@@ -40,6 +40,12 @@ export type ChatSettingsResult = {
   // First message (optional)
   initialMessage?: { html: string; files: File[] }
   /**
+   * true — тред создаётся как черновик: первое сообщение НЕ отправляется,
+   * а текст/файлы перекладываются в композер открытого треда. Получатели и
+   * тема email уже сохранены в треде. Кнопка «Сохранить черновик» (email).
+   */
+  asDraft?: boolean
+  /**
    * ID шаблона, из которого заполнена форма. Прокидывается в create-mutation,
    * чтобы в новом треде проставить source_template_id.
    */

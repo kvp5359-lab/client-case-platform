@@ -34,6 +34,9 @@ export type WorkspaceTask = {
   updated_at: string
   created_by: string | null
   sort_order: number
+  /** Email-тред без отправленных писем = черновик (письмо ещё не ушло).
+   *  Считается в RPC get_workspace_threads. true только для type='email'. */
+  email_unsent?: boolean
 }
 
 /** Проект воркспейса с денормализованными полями для досок/фильтров. */

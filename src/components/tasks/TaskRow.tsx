@@ -149,6 +149,12 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
             })}
           </span>
         )}
+        {/* Email-черновик — письмо ещё не отправлено */}
+        {task.email_unsent && (
+          <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide bg-amber-100 text-amber-700">
+            Черновик
+          </span>
+        )}
         {/* Имя проекта — показываем только если оно есть. У задач без
             проекта плейсхолдер не нужен: отсутствие имени само по себе
             достаточный сигнал (особенно на странице «Без проекта»). */}

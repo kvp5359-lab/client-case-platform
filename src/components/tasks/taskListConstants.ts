@@ -80,6 +80,7 @@ export function workspaceTaskToItem(t: WorkspaceTask): TaskItem {
     status_show_to_creator: t.status_show_to_creator,
     project_name: t.project_name,
     sort_order: t.sort_order ?? 0,
+    email_unsent: t.email_unsent,
   }
 }
 

@@ -53,7 +53,8 @@ export function useChatSettingsSave({
   onCreate,
   onUpdate,
 }: UseChatSettingsSaveParams) {
-  return useCallback(() => {
+  return useCallback((opts?: { asDraft?: boolean }) => {
+    const asDraft = opts?.asDraft ?? false
     // Срок: режим определяется чекбоксом «Указать длительность».
     //   showDuration=false → только deadline без слота в календаре
     //   showDuration=true + оба времени пустые + одна дата → deadline
@@ -134,9 +135,15 @@ export function useChatSettingsSave({
 
     // Обычный чат или email
     const isEmail = form.channelType === 'email'
-    if (isEmail && form.selectedEmails.length === 0) return
+    // Черновик письма можно сохранить без получателя — его дописывают в треде.
+    if (isEmail && !asDraft && form.selectedEmails.length === 0) return
     if (!isEmail && !form.name.trim()) return
-    const chatName = isEmail ? form.name.trim() || form.emailSubject.trim() : form.name.trim()
+    const chatName = isEmail
+      ? form.name.trim() ||
+        form.emailSubject.trim() ||
+        form.selectedEmails[0]?.email ||
+        'Черновик письма'
+      : form.name.trim()
     const compose = composeRef.current
     const initialMessage =
       compose && !compose.isEmpty()
@@ -162,6 +169,7 @@ export function useChatSettingsSave({
       assigneeIds: Array.from(form.taskAssignees),
       projectId: form.selectedProjectId,
       initialMessage,
+      asDraft,
       sourceTemplateId: appliedTemplateId,
     })
   }, [form, composeRef, onCreate, onUpdate, appliedTemplateId])

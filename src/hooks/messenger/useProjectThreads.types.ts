@@ -57,6 +57,10 @@ export type ProjectThread = {
   owner_user_id: string | null
   /** Контакт-собеседник треда (для личных диалогов email/wazzup/telegram). NULL для проектных тредов и тредов между сотрудниками. */
   contact_participant_id: string | null
+  /** Тема email-треда (корень переписки). NULL для не-email. */
+  email_subject_root?: string | null
+  /** Последний внешний email-адрес собеседника. NULL для не-email. */
+  email_last_external_address?: string | null
   created_at: string
   updated_at: string
 }

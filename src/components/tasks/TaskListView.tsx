@@ -29,6 +29,7 @@ import { DeleteThreadDialog } from '@/components/messenger/DeleteThreadDialog'
 import { useAccessibleThreadIds } from '@/hooks/messenger/useAccessibleThreadIds'
 import type { ChatSettingsResult } from '@/components/messenger/chatSettingsTypes'
 import { useQueueThreadInitialMessage } from './useQueueThreadInitialMessage'
+import { useUnsentEmailThreads } from '@/hooks/messenger/useUnsentEmailThreads'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import { useThreadTemplatesForProject, useThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
 import { useQuery } from '@tanstack/react-query'
@@ -130,14 +131,30 @@ export const TaskListView = memo(function TaskListView({
 
   const isLoading = isProjectMode ? isLoadingThreads : isLoadingWorkspace
 
+  // Email-черновики в режиме проекта: project_threads не несёт email_unsent
+  // (он есть только в RPC get_workspace_threads). Досчитываем «неотправленные»
+  // отдельным лёгким запросом по email-тредам проекта.
+  const projectEmailThreadIds = useMemo(
+    () =>
+      isProjectMode
+        ? rawThreads.filter((t) => (t.type as string) === 'email').map((t) => t.id)
+        : [],
+    [isProjectMode, rawThreads],
+  )
+  const unsentEmailIds = useUnsentEmailThreads(projectEmailThreadIds)
+
   const allTasks = useMemo(() => {
     if (isProjectMode) {
       return rawThreads
         .filter((t) => !t.is_deleted && accessibleThreadIds.has(t.id))
-        .map(threadToItem)
+        .map((t) => {
+          const item = threadToItem(t)
+          if ((t.type as string) === 'email') item.email_unsent = unsentEmailIds.has(t.id)
+          return item
+        })
     }
     return rawWorkspaceTasks.map(workspaceTaskToItem)
-  }, [isProjectMode, rawWorkspaceTasks, rawThreads, accessibleThreadIds])
+  }, [isProjectMode, rawWorkspaceTasks, rawThreads, accessibleThreadIds, unsentEmailIds])
 
   const taskIds = useMemo(() => allTasks.map((t) => t.id), [allTasks])
   const { data: rawMembersMap } = useTaskAssigneesMap(taskIds)
