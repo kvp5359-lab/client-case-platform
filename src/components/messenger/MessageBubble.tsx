@@ -103,14 +103,26 @@ function MessageBubbleImpl({
   const isTeamVis = vis === 'team'
   // «Заметка» = team + тихо (notify_subscribers=false).
   const isNoteVis = isTeamVis && message.notify_subscribers === false
-  const ownBubbleClass = isSelfVis
+  // Цвет по видимости красит бабл и у автора, и у получателя — чтобы все видели,
+  // что сообщение внутреннее. Сохраняем привычную иерархию «своё тёмное / входящее
+  // светлое»: у себя — насыщенный тёмный, у получателя — светло-серый. Для «Всем»/
+  // клиенту (client) — обычный цвет акцента чата.
+  const visOwnClass = isSelfVis
     ? 'bg-amber-200 text-amber-950'
     : isNoteVis
       ? 'bg-neutral-600 text-neutral-50'
       : isTeamVis
         ? 'bg-neutral-900 text-neutral-50'
-        : colors.own
-  const incomingBubbleClass = colors.incoming
+        : null
+  const visIncomingClass = isSelfVis
+    ? 'bg-amber-100 text-amber-950'
+    : isNoteVis
+      ? 'bg-neutral-100 text-neutral-600'
+      : isTeamVis
+        ? 'bg-neutral-200 text-neutral-900'
+        : null
+  const ownBubbleClass = visOwnClass ?? colors.own
+  const incomingBubbleClass = visIncomingClass ?? colors.incoming
   // Метка видимости (иконка/жёлтый текст) — только у своих сообщений.
   const showVisMarkSelf = isOwn && isSelfVis
   const showVisMarkNote = isOwn && isNoteVis
