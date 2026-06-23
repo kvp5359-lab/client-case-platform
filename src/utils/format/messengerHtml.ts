@@ -89,11 +89,95 @@ function trimEdgeWhitespaceHtml(html: string): string {
   return html.replace(EDGE, '')
 }
 
+/** Белый список inline-CSS, который оставляем у элементов письма. Только
+ *  «косметика» — цвет/жирность/фон/выравнивание/отступы/скругление. НЕ пускаем
+ *  width/height/position/float/margin — они ломают вёрстку внутри узкого бабла
+ *  (фиксированные 600px, плавающие блоки, наезды). */
+const ALLOWED_CSS_PROPS = new Set([
+  'color',
+  'font-weight',
+  'font-style',
+  'text-align',
+  'text-decoration',
+  'text-decoration-line',
+  'text-decoration-color',
+  'padding',
+  'padding-top',
+  'padding-right',
+  'padding-bottom',
+  'padding-left',
+  'display',
+])
+/** Безопасные значения display — без none (не прячем контент) и табличных
+ *  трюков с фикс-шириной. */
+const ALLOWED_DISPLAY = new Set(['inline', 'inline-block', 'block', 'table', 'table-row', 'table-cell'])
+
+/** Парсит CSS-цвет (#rgb/#rrggbb/rgb()/rgba()/white/black) в RGB. null — если
+ *  не распознали (тогда цвет оставляем как есть). */
+function parseColorRgb(v: string): { r: number; g: number; b: number } | null {
+  const s = v.trim().toLowerCase()
+  if (s === 'white') return { r: 255, g: 255, b: 255 }
+  if (s === 'black') return { r: 0, g: 0, b: 0 }
+  const hex = s.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/)
+  if (hex) {
+    const h = hex[1]
+    const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
+    return {
+      r: parseInt(full.slice(0, 2), 16),
+      g: parseInt(full.slice(2, 4), 16),
+      b: parseInt(full.slice(4, 6), 16),
+    }
+  }
+  const rgb = s.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
+  if (rgb) return { r: +rgb[1], g: +rgb[2], b: +rgb[3] }
+  return null
+}
+
+/** Светлый текст письма (расчёт на цветной фон) нечитаем на светлом баббле.
+ *  Отбрасываем такие цвета → текст падает на тёмный дефолт баббла. Тёмные и
+ *  насыщенные цвета (синие ссылки, чёрный текст) остаются. */
+function isTooLightForBubble(color: string): boolean {
+  const rgb = parseColorRgb(color)
+  if (!rgb) return false
+  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255
+  return luminance > 0.65
+}
+
+/** Оставляет в style только свойства из белого списка; режет url()/expression
+ *  и слишком светлый цвет текста (нечитаемый на баббле). */
+function filterStyleAttr(style: string): string {
+  const kept: string[] = []
+  for (const decl of style.split(';')) {
+    const idx = decl.indexOf(':')
+    if (idx === -1) continue
+    const prop = decl.slice(0, idx).trim().toLowerCase()
+    const val = decl.slice(idx + 1).trim()
+    if (!val || !ALLOWED_CSS_PROPS.has(prop)) continue
+    const low = val.toLowerCase()
+    if (low.includes('url(') || low.includes('expression') || low.includes('javascript:')) continue
+    if (prop === 'display' && !ALLOWED_DISPLAY.has(low)) continue
+    if (prop === 'color' && isTooLightForBubble(val)) continue
+    kept.push(`${prop}: ${val}`)
+  }
+  return kept.join('; ')
+}
+
+/** Прогоняет все inline-стили письма через белый список (см. filterStyleAttr). */
+function restrictInlineStyles(root: Element): void {
+  root.querySelectorAll('[style]').forEach((el) => {
+    const filtered = filterStyleAttr(el.getAttribute('style') ?? '')
+    if (filtered) el.setAttribute('style', filtered)
+    else el.removeAttribute('style')
+  })
+}
+
 function collapseEmptyLines(html: string): string {
   if (typeof document === 'undefined') return collapseEmptyLinesRegex(html)
 
   const root = document.createElement('div')
   root.innerHTML = html
+
+  restrictInlineStyles(root)
 
   const BLOCK_TAGS = new Set(['DIV', 'P', 'BLOCKQUOTE', 'OL', 'UL', 'LI'])
   const NON_EMPTY_DESCENDANTS = 'img, svg, hr, picture, video, audio'
@@ -179,7 +263,9 @@ export function sanitizeMessengerHtml(dirty: string): string {
       'colgroup',
       'col',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'start', 'type', 'colspan', 'rowspan'],
+    // style/align пропускаем, но style потом режется белым списком CSS-свойств
+    // (restrictInlineStyles) — иначе письма ломали вёрстку бабла.
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'start', 'type', 'colspan', 'rowspan', 'style', 'align'],
     FORBID_ATTR: [],
     ALLOW_UNKNOWN_PROTOCOLS: false,
   })
