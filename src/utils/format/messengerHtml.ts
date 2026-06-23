@@ -38,7 +38,7 @@ export function stripHtml(html: string): string {
   if (!html) return ''
   const noTags = html
     .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/(?:p|div|li|blockquote|h[1-6])>/gi, ' ')
+    .replace(/<\/(?:p|div|li|blockquote|h[1-6]|td|th|tr|caption)>/gi, ' ')
     .replace(/<[^>]*>/g, '')
   return decodeHtmlEntities(noTags).replace(/\s+/g, ' ').trim()
 }
@@ -61,7 +61,8 @@ export function stripHtmlKeepNewlines(html: string): string {
   if (!html) return ''
   return html
     .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(?:p|div|li|blockquote|h[1-6])>/gi, '\n')
+    .replace(/<\/(?:p|div|li|blockquote|h[1-6]|tr|caption)>/gi, '\n')
+    .replace(/<\/(?:td|th)>/gi, ' ')
     .replace(/<[^>]*>/g, '')
     .replace(/[ \t]+/g, ' ')
     .replace(/\n /g, '\n')
@@ -165,8 +166,20 @@ export function sanitizeMessengerHtml(dirty: string): string {
       'ul',
       'li',
       'a',
+      // Таблицы из писем (Gmail/Outlook рендерят формы-заявки таблицей).
+      // Без них теги вырезались и ячейки слипались в сплошной текст.
+      'table',
+      'thead',
+      'tbody',
+      'tfoot',
+      'tr',
+      'td',
+      'th',
+      'caption',
+      'colgroup',
+      'col',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'start', 'type'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'start', 'type', 'colspan', 'rowspan'],
     FORBID_ATTR: [],
     ALLOW_UNKNOWN_PROTOCOLS: false,
   })

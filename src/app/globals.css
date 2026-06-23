@@ -373,6 +373,23 @@
   display: block;
   margin: 0;
 }
+/* Таблицы из писем (формы-заявки и т.п.) */
+.messenger-content table {
+  border-collapse: collapse;
+  margin: 0.4rem 0;
+  max-width: 100%;
+  font-size: 0.8125rem;
+}
+.messenger-content th,
+.messenger-content td {
+  padding: 0.15rem 0.4rem;
+  text-align: left;
+  vertical-align: top;
+  word-break: break-word;
+}
+.messenger-content th {
+  font-weight: 600;
+}
 
 /* Messenger: clickable links in message bubbles */
 .messenger-links a {
