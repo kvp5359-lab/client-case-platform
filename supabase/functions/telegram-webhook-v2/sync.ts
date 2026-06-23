@@ -86,11 +86,11 @@ export async function handleMessage(msg: TgMessage, isEdited: boolean, ctx: Inte
     if (hasFile && msg.from) {
       const session = await getSession(chatId, msg.from.id);
       if (session?.state === "awaiting_file" && session.context.slot_id) {
-        await handleSlotFileUpload(msg, binding, session.context.slot_id as string);
+        await handleSlotFileUpload(msg, binding, session.context.slot_id as string, ctx.botToken);
         return;
       }
       if (session?.state === "awaiting_free_file") {
-        await handleFreeFileUpload(msg, binding);
+        await handleFreeFileUpload(msg, binding, ctx.botToken);
         return;
       }
     }
@@ -219,7 +219,16 @@ async function syncGroupMessage(
   // `duplicate` (secretary вторым) sync.rowId уже null, downloadAttachments
   // и так бы не запустился.
   if (sync.outcome === "inserted" && sync.rowId) {
-    await downloadAttachments(msg, sync.rowId, binding.workspace_id, binding.project_id);
+    // Токен берём из ctx (не из глобали getBotToken) — к этому моменту было
+    // несколько await'ов, и параллельный webhook другого бота уже мог перетереть
+    // глобальный _botToken. file_id привязан к боту → нужен ИМЕННО наш токен.
+    await downloadAttachments(
+      msg,
+      sync.rowId,
+      binding.workspace_id,
+      binding.project_id,
+      ctx.botToken,
+    );
   }
 }
 

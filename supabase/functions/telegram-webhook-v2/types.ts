@@ -151,4 +151,13 @@ export interface IntegrationContext {
   workspaceId: string;
   botId: number | null;
   mode: "workspace" | "employee";
+  /**
+   * Токен бота этого запроса. КРИТИЧНО для скачивания вложений: глобальный
+   * `getBotToken()` — мутабельная переменная модуля, и при параллельных
+   * webhook'ах от РАЗНЫХ ботов одной группы её перетирает соседний запрос.
+   * `file_id` в Telegram привязан к конкретному боту → getFile чужим токеном
+   * возвращает «no file_path». Поэтому токен скачивания берём отсюда, а не из
+   * глобали (см. media.ts, баг 2026-06-22).
+   */
+  botToken: string;
 }

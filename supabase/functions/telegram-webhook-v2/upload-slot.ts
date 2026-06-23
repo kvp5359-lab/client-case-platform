@@ -497,6 +497,7 @@ async function uploadDocumentCore(
   msg: TgMessage,
   binding: TgChatBinding,
   folderId: string | null,
+  botToken: string,
 ): Promise<{ ok: true; docId: string; fileName: string } | { ok: false; reason: string }> {
   const chatId = msg.chat.id;
   const files = collectFiles(msg);
@@ -510,7 +511,7 @@ async function uploadDocumentCore(
     return { ok: false, reason: "too_large" };
   }
 
-  const dl = await fetchTelegramFile(f.fileId);
+  const dl = await fetchTelegramFile(f.fileId, botToken);
   if (!dl.ok) return { ok: false, reason: "download_failed" };
 
   const { data: doc, error: docErr } = await service
@@ -597,7 +598,7 @@ async function uploadDocumentCore(
   return { ok: true, docId: doc.id, fileName: f.originalName };
 }
 
-export async function handleFreeFileUpload(msg: TgMessage, binding: TgChatBinding) {
+export async function handleFreeFileUpload(msg: TgMessage, binding: TgChatBinding, botToken: string) {
   const chatId = msg.chat.id;
   const from = msg.from!;
 
@@ -610,7 +611,7 @@ export async function handleFreeFileUpload(msg: TgMessage, binding: TgChatBindin
   const targetFolderId = ctxBefore.target_folder_id ?? null;
   const targetFolderName = ctxBefore.target_folder_name ?? null;
 
-  const result = await uploadDocumentCore(msg, binding, targetFolderId);
+  const result = await uploadDocumentCore(msg, binding, targetFolderId, botToken);
   if (!result.ok) {
     if (result.reason === "no_file") {
       await clearSession(chatId, from.id);
@@ -689,7 +690,7 @@ export async function handleFreeFileUpload(msg: TgMessage, binding: TgChatBindin
   );
 }
 
-export async function handleSlotFileUpload(msg: TgMessage, binding: TgChatBinding, slotId: string) {
+export async function handleSlotFileUpload(msg: TgMessage, binding: TgChatBinding, slotId: string, botToken: string) {
   const chatId = msg.chat.id;
   const from = msg.from!;
 
@@ -710,7 +711,7 @@ export async function handleSlotFileUpload(msg: TgMessage, binding: TgChatBindin
   // fire-and-forget extract-text. Раньше эта логика (~90 строк) дублировалась
   // здесь байт-в-байт — теперь делегируем uploadDocumentCore. Документ
   // создаётся сразу в папке слота (slot.folder_id).
-  const result = await uploadDocumentCore(msg, binding, slot.folder_id);
+  const result = await uploadDocumentCore(msg, binding, slot.folder_id, botToken);
   if (!result.ok) {
     // no_file: сессию слота НЕ чистим — ждём, что пользователь пришлёт файл.
     // Тексты ошибок — общий mapUploadError (no_file/multiple_files/too_large/

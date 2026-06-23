@@ -93,6 +93,9 @@ Deno.serve(async (req) => {
         | number
         | undefined) ?? null,
     mode: integration.type === "telegram_workspace_bot" ? "workspace" : "employee",
+    // Токен этого запроса — для скачивания вложений в обход гонки глобали
+    // (см. IntegrationContext.botToken / media.ts).
+    botToken: tokenFromDb,
   };
 
   try {

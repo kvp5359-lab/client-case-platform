@@ -17,8 +17,7 @@
  * клиент должен прислать файл иначе, не наш баг).
  */
 
-import { service, getBotToken } from "./shared.ts";
-import { tgCall } from "./tg-api.ts";
+import { service } from "./shared.ts";
 import { collectFiles, MAX_FILE_SIZE_MB } from "./pure.ts";
 import type { TgFileDescriptor, TgMessage } from "./types.ts";
 
@@ -34,24 +33,50 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** getFile через ЯВНЫЙ токен (не глобаль) — иначе гонка между ботами группы. */
+async function getFilePath(
+  fileId: string,
+  botToken: string,
+): Promise<{ file_path?: string } | null> {
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/getFile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_id: fileId }),
+    });
+    const json = await res.json();
+    if (!json.ok) {
+      console.error("[tg getFile] error:", json.description, { file_id: fileId });
+      return null;
+    }
+    return json.result as { file_path?: string };
+  } catch (err) {
+    console.error("[tg getFile] fetch failed:", err);
+    return null;
+  }
+}
+
 /**
  * Скачать файл из Telegram с ретраями. Возвращает успех или причину провала.
  * Ретраит при 429, 5xx и сетевых ошибках. Не ретраит при 400/404 — это
  * "файл больше нельзя получить", повторять бессмысленно.
+ *
+ * `botToken` передаётся ЯВНО (см. IntegrationContext.botToken). НЕ брать из
+ * глобального getBotToken() — при параллельных ботах группы её перетирают.
  */
-export async function fetchTelegramFile(fileId: string): Promise<FetchResult> {
+export async function fetchTelegramFile(
+  fileId: string,
+  botToken: string,
+): Promise<FetchResult> {
   let lastReason = "unknown";
   let lastHttpStatus: number | null = null;
 
   for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt++) {
     try {
-      const info = await tgCall<{ file_path?: string; file_size?: number }>(
-        "getFile",
-        { file_id: fileId },
-      );
+      const info = await getFilePath(fileId, botToken);
       if (!info?.file_path) {
-        // tgCall на ошибке вернул null — например 400 (file_id просрочен).
-        // Повторять бесполезно, выходим.
+        // getFile на ошибке вернул null — например 400 (file_id просрочен) либо
+        // file_id чужого бота. Повторять бесполезно, выходим.
         return {
           ok: false,
           reason: "getFile returned no file_path",
@@ -60,7 +85,7 @@ export async function fetchTelegramFile(fileId: string): Promise<FetchResult> {
         };
       }
 
-      const url = `https://api.telegram.org/file/bot${getBotToken()}/${info.file_path}`;
+      const url = `https://api.telegram.org/file/bot${botToken}/${info.file_path}`;
       const res = await fetch(url);
       if (!res.ok) {
         lastHttpStatus = res.status;
@@ -104,6 +129,7 @@ export async function downloadAttachments(
   messageId: string,
   workspaceId: string,
   projectId: string,
+  botToken: string,
 ): Promise<{ ok: number; failed: FailedFile[] }> {
   const files = collectFiles(msg);
   if (files.length === 0) {
@@ -121,7 +147,7 @@ export async function downloadAttachments(
   let ok = 0;
 
   for (const f of files) {
-    const result = await processSingleFile(f, messageId, workspaceId, projectId);
+    const result = await processSingleFile(f, messageId, workspaceId, projectId, botToken);
     if (result.kind === "ok") ok++;
     else if (result.kind === "too_large") {
       skippedTooLarge.push({ name: f.originalName, sizeMb: result.sizeMb });
@@ -198,8 +224,9 @@ async function processSingleFile(
   messageId: string,
   workspaceId: string,
   projectId: string,
+  botToken: string,
 ): Promise<ProcessResult> {
-  const dl = await fetchTelegramFile(f.fileId);
+  const dl = await fetchTelegramFile(f.fileId, botToken);
   if (!dl.ok) {
     return {
       kind: "failed",
