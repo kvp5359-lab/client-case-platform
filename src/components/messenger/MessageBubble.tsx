@@ -261,7 +261,7 @@ function MessageBubbleImpl({
         </div>
       )}
 
-      <div className={cn('max-w-[75%] min-w-0 flex flex-col', isOwn ? 'items-end' : 'items-start')}>
+      <div className={cn('max-w-[82%] min-w-0 flex flex-col', isOwn ? 'items-end' : 'items-start')}>
         {/* Bubble + reactions */}
         <MessageContextMenu
           disabled={isDelayedPending}

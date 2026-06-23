@@ -5,7 +5,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import type { MessageChannel } from '@/services/api/messenger/messengerService'
+import type { MessageChannel, ProjectMessage } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
 import { MessageList } from './MessageList'
 import type { MessengerAccent } from './MessageBubble'
@@ -62,6 +62,13 @@ type MessengerTabContentProps = {
 }
 
 const COMPOSER_MODES: ComposerMode[] = ['client', 'team', 'note', 'self']
+
+/** Видимость сообщения → режим композера (для подхвата режима при «Ответить»). */
+function visibilityToMode(msg: ProjectMessage): ComposerMode {
+  if (msg.visibility === 'self') return 'self'
+  if (msg.visibility === 'team') return msg.notify_subscribers === false ? 'note' : 'team'
+  return 'client' // client / undefined → «Всем»
+}
 function readStoredComposerMode(key: string | null): ComposerMode | null {
   if (!key || typeof window === 'undefined') return null
   try {
@@ -175,6 +182,14 @@ export function MessengerTabContent({
     threadId,
     telegramDialogOpen,
   })
+
+  // «Ответить» подхватывает режим отвечаемого сообщения (отвечаешь на «Команде»
+  // → композер встаёт в «Команде»). Фокус в поле ввода ставит MessageInput по
+  // изменению replyTo.
+  const handleReply = (msg: ProjectMessage) => {
+    state.setReplyTo(msg)
+    setComposerMode(visibilityToMode(msg))
+  }
 
   // Есть ли у треда внешний собеседник/клиент. Если нет (внутренний тред
   // команды) — режим «Клиенту» в композере прячем, дефолт сводим к «Команде».
@@ -449,7 +464,7 @@ export function MessengerTabContent({
         isBusinessThread={!!currentThread?.business_connection_id}
         isWazzupThread={!!currentThread?.wazzup_channel_id}
         threadContactParticipantId={currentThread?.contact_participant_id ?? null}
-        onReply={state.setReplyTo}
+        onReply={handleReply}
         onReact={handleReact}
         onEdit={handlers.handleStartEdit}
         onDelete={handleDelete}
