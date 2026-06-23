@@ -8,7 +8,7 @@ import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
 import { useContactCardStore } from '@/store/contactCardStore'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { isEmailSource } from '@/services/api/messenger/messengerService.types'
-import { bubbleStyles } from './utils/messageStyles'
+import { bubbleStyles, TEAM_GRAY } from './utils/messageStyles'
 import { useCollapsibleText } from './hooks/useCollapsibleText'
 import { useMessageTranslation } from './hooks/useMessageTranslation'
 import { useQuotePopup } from './hooks/useQuotePopup'
@@ -94,35 +94,34 @@ function MessageBubbleImpl({
   // Визуальный эффект непрерывный: бабл засветлён до финальной галочки.
   const isOptimisticId = message.id.startsWith('optimistic-')
   const colors = bubbleStyles[accent]
-  // Цвет бабла по видимости (Фаза 2) — подсказка ОТПРАВИТЕЛЮ, видна только у
-  // СВОИХ сообщений: «Всем»/клиенту = акцент чата; «Команде» (внутреннее) =
-  // чёрный; «Заметка» = серый; «Только я» = жёлтый. ВХОДЯЩИЕ всегда обычные
-  // (получателю видимость не важна — он просто читает сообщение).
+  // Цвет бабла по видимости (Фаза 2) — зависит от направления, видимости И от
+  // того, КЛИЕНТСКИЙ ли тред:
+  //  СВОЁ — клиентский: Всем=акцент, Команде=чёрный, Заметка=тёмно-серый;
+  //         внутренний: Всем/Команде=акцент, Заметка=акцент засветлённый;
+  //         Только я=жёлтый (везде).
+  //  ВХОДЯЩЕЕ — обычно акцент чата; НО в клиентском треде team/note → светло-серый
+  //         (маркер «внутреннее, клиент не получил»); во внутреннем — акцент.
   const vis = message.visibility ?? 'client'
   const isSelfVis = vis === 'self'
   const isTeamVis = vis === 'team'
   // «Заметка» = team + тихо (notify_subscribers=false).
   const isNoteVis = isTeamVis && message.notify_subscribers === false
-  // Цвет по видимости красит бабл и у автора, и у получателя — чтобы все видели,
-  // что сообщение внутреннее. Сохраняем привычную иерархию «своё тёмное / входящее
-  // светлое»: у себя — насыщенный тёмный, у получателя — светло-серый. Для «Всем»/
-  // клиенту (client) — обычный цвет акцента чата.
-  const visOwnClass = isSelfVis
+  const clientThread = !!isClientThread
+  const ownBubbleClass = isSelfVis
     ? 'bg-amber-200 text-amber-950'
-    : isNoteVis
-      ? 'bg-neutral-600 text-neutral-50'
-      : isTeamVis
-        ? 'bg-neutral-900 text-neutral-50'
-        : null
-  const visIncomingClass = isSelfVis
-    ? 'bg-amber-100 text-amber-950'
-    : isNoteVis
-      ? 'bg-neutral-100 text-neutral-600'
-      : isTeamVis
-        ? 'bg-neutral-200 text-neutral-900'
-        : null
-  const ownBubbleClass = visOwnClass ?? colors.own
-  const incomingBubbleClass = visIncomingClass ?? colors.incoming
+    : clientThread
+      ? isNoteVis
+        ? 'bg-neutral-600 text-neutral-50' // заметка в клиентском треде — тёмно-серый
+        : isTeamVis
+          ? 'bg-neutral-900 text-neutral-50' // команде в клиентском треде — чёрный
+          : colors.own // всем — акцент
+      : isNoteVis
+        ? colors.ownNote // заметка во внутреннем — акцент засветлённый
+        : colors.own // всем/команде во внутреннем — акцент
+  // Входящее team/note в клиентском треде — светло-серый (внутреннее, клиент не
+  // видит); в прочих случаях — обычный акцент чата.
+  const incomingBubbleClass =
+    clientThread && isTeamVis ? TEAM_GRAY : colors.incoming
   // Метка видимости (иконка/жёлтый текст) — только у своих сообщений.
   const showVisMarkSelf = isOwn && isSelfVis
   const showVisMarkNote = isOwn && isNoteVis
