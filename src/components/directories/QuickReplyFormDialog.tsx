@@ -6,7 +6,7 @@ import { lazy, Suspense, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import {
   Dialog,
   DialogDescription,
@@ -86,7 +86,7 @@ export function QuickReplyFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <EditorDialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-0">
+      <EditorDialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-0" hideClose>
         {/* Sticky-шапка: название (слева) + «Сохранить» (справа). Прилипает
             при прокрутке тела диалога, как в основном диалоге заметки. */}
         <div className="sticky top-0 z-10 bg-background border-b px-6 py-4">
@@ -114,6 +114,16 @@ export function QuickReplyFormDialog({
               {saving && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
               Сохранить
             </Button>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              disabled={saving}
+              aria-label="Закрыть"
+              title="Закрыть"
+              className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
 
