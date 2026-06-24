@@ -31,7 +31,14 @@ export function EmailSubjectBar({
   suggestions = [],
   onSave,
 }: EmailSubjectBarProps) {
-  const [open, setOpen] = useState(true)
+  // Черновик (editable) — раскрыта; отправленное письмо — свёрнута.
+  // При смене editable обновляем дефолт (ручное переключение до этого сохраняется).
+  const [open, setOpen] = useState(editable)
+  const [prevEditable, setPrevEditable] = useState(editable)
+  if (editable !== prevEditable) {
+    setPrevEditable(editable)
+    setOpen(editable)
+  }
   const [subjectVal, setSubjectVal] = useState(subject ?? '')
 
   // Синхронизация локального поля темы при смене пропсов (другой тред / приход
