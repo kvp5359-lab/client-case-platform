@@ -143,6 +143,15 @@ export function PlanDocsProvider({
       onFolderDragOver={noop}
       onFolderDragLeave={noop}
       onFolderDrop={noop}
+      draggedSlotId={null}
+      dragOverSlotId={null}
+      slotDragOverPosition="bottom"
+      onSlotDragStart={noop}
+      onSlotItemDragOver={noop}
+      onSlotItemDragLeave={noop}
+      onSlotItemDragEnd={noop}
+      onSlotItemDrop={noop}
+      onFolderSlotDrop={noop}
     >
       <PlanSlotHandlersContext.Provider value={slotHandlers}>
         <HiddenFileInputs

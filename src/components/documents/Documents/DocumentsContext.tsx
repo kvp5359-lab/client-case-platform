@@ -6,7 +6,7 @@
  */
 
 import { createContext, useContext, useMemo } from 'react'
-import type { DocumentStatus } from '@/components/documents/types'
+import type { DocumentStatus, FolderSlotWithDocument } from '@/components/documents/types'
 
 type DocumentsContextValue = {
   projectId?: string
@@ -68,6 +68,16 @@ type DocumentsContextValue = {
   onFolderDragOver: (e: React.DragEvent, folderId: string) => void
   onFolderDragLeave: (e: React.DragEvent) => void
   onFolderDrop: (e: React.DragEvent, folderId: string) => void
+  // Empty slot drag & drop
+  draggedSlotId: string | null
+  dragOverSlotId: string | null
+  slotDragOverPosition: 'top' | 'bottom'
+  onSlotDragStart: (e: React.DragEvent, slotId: string) => void
+  onSlotItemDragOver: (e: React.DragEvent, targetSlotId: string) => void
+  onSlotItemDragLeave: () => void
+  onSlotItemDragEnd: () => void
+  onSlotItemDrop: (e: React.DragEvent, targetSlot: FolderSlotWithDocument) => void
+  onFolderSlotDrop: (e: React.DragEvent, folderId: string) => void
 }
 
 const DocumentsContext = createContext<DocumentsContextValue | null>(null)
@@ -134,6 +144,16 @@ export type DocumentsProviderProps = {
   onFolderDragOver: (e: React.DragEvent, folderId: string) => void
   onFolderDragLeave: (e: React.DragEvent) => void
   onFolderDrop: (e: React.DragEvent, folderId: string) => void
+  // Empty slot drag & drop
+  draggedSlotId: string | null
+  dragOverSlotId: string | null
+  slotDragOverPosition: 'top' | 'bottom'
+  onSlotDragStart: (e: React.DragEvent, slotId: string) => void
+  onSlotItemDragOver: (e: React.DragEvent, targetSlotId: string) => void
+  onSlotItemDragLeave: () => void
+  onSlotItemDragEnd: () => void
+  onSlotItemDrop: (e: React.DragEvent, targetSlot: FolderSlotWithDocument) => void
+  onFolderSlotDrop: (e: React.DragEvent, folderId: string) => void
 }
 
 export function DocumentsProvider({
@@ -178,6 +198,15 @@ export function DocumentsProvider({
   onFolderDragOver,
   onFolderDragLeave,
   onFolderDrop,
+  draggedSlotId,
+  dragOverSlotId,
+  slotDragOverPosition,
+  onSlotDragStart,
+  onSlotItemDragOver,
+  onSlotItemDragLeave,
+  onSlotItemDragEnd,
+  onSlotItemDrop,
+  onFolderSlotDrop,
 }: DocumentsProviderProps) {
   const value = useMemo<DocumentsContextValue>(
     () => ({
@@ -221,6 +250,15 @@ export function DocumentsProvider({
       onFolderDragOver,
       onFolderDragLeave,
       onFolderDrop,
+      draggedSlotId,
+      dragOverSlotId,
+      slotDragOverPosition,
+      onSlotDragStart,
+      onSlotItemDragOver,
+      onSlotItemDragLeave,
+      onSlotItemDragEnd,
+      onSlotItemDrop,
+      onFolderSlotDrop,
     }),
     [
       projectId,
@@ -263,6 +301,15 @@ export function DocumentsProvider({
       onFolderDragOver,
       onFolderDragLeave,
       onFolderDrop,
+      draggedSlotId,
+      dragOverSlotId,
+      slotDragOverPosition,
+      onSlotDragStart,
+      onSlotItemDragOver,
+      onSlotItemDragLeave,
+      onSlotItemDragEnd,
+      onSlotItemDrop,
+      onFolderSlotDrop,
     ],
   )
 

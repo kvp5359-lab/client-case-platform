@@ -12,6 +12,7 @@ import type { DocumentStatus } from '@/components/documents/types'
 import type { useDocumentsDocumentActions } from './useDocumentsDocumentActions'
 import type { useDocumentsFileUpload } from './useDocumentsFileUpload'
 import type { useDocumentsDragDrop } from './useDocumentsDragDrop'
+import type { useSlotsDragDrop } from './useSlotsDragDrop'
 import type { useSourceDocumentDrop } from './useSourceDocumentDrop'
 import type { useMessengerAttachmentDrop } from './useMessengerAttachmentDrop'
 import type { useCompressAnalysis } from './useCompressAnalysis'
@@ -19,6 +20,7 @@ import type { useCompressAnalysis } from './useCompressAnalysis'
 type DocActions = ReturnType<typeof useDocumentsDocumentActions>
 type FileUpload = ReturnType<typeof useDocumentsFileUpload>
 type DragDrop = ReturnType<typeof useDocumentsDragDrop>
+type SlotsDragDrop = ReturnType<typeof useSlotsDragDrop>
 type SourceDrop = ReturnType<typeof useSourceDocumentDrop>
 type MessengerDrop = ReturnType<typeof useMessengerAttachmentDrop>
 type CompressAnalysis = ReturnType<typeof useCompressAnalysis>
@@ -34,6 +36,7 @@ type UseDocumentsProviderPropsParams = {
   fileUpload: FileUpload
   docActions: DocActions
   dragDrop: DragDrop
+  slotsDragDrop: SlotsDragDrop
   sourceDrop: SourceDrop
   messengerDrop: MessengerDrop
   selectedDocuments: Set<string>
@@ -56,6 +59,7 @@ export function useDocumentsProviderProps({
   fileUpload,
   docActions,
   dragDrop,
+  slotsDragDrop,
   sourceDrop,
   messengerDrop,
   selectedDocuments,
@@ -108,6 +112,15 @@ export function useDocumentsProviderProps({
       onFolderDragOver: dragDrop.onFolderDragOver,
       onFolderDragLeave: dragDrop.onFolderDragLeave,
       onFolderDrop: dragDrop.onFolderDrop,
+      draggedSlotId: slotsDragDrop.draggedSlotId,
+      dragOverSlotId: slotsDragDrop.dragOverSlotId,
+      slotDragOverPosition: slotsDragDrop.slotDragOverPosition,
+      onSlotDragStart: slotsDragDrop.onSlotDragStart,
+      onSlotItemDragOver: slotsDragDrop.onSlotItemDragOver,
+      onSlotItemDragLeave: slotsDragDrop.onSlotItemDragLeave,
+      onSlotItemDragEnd: slotsDragDrop.onSlotItemDragEnd,
+      onSlotItemDrop: slotsDragDrop.onSlotItemDrop,
+      onFolderSlotDrop: slotsDragDrop.onFolderSlotDrop,
     }),
     [
       projectId,
@@ -120,6 +133,7 @@ export function useDocumentsProviderProps({
       fileUpload.uploadingSlotId,
       docActions,
       dragDrop,
+      slotsDragDrop,
       sourceDrop,
       messengerDrop,
       selectedDocuments,

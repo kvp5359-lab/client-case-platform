@@ -12,6 +12,7 @@ import { FileUp, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { DocumentItem } from './DocumentItem'
 import { SlotHelpButton } from './SlotHelpButton'
 import { useDocumentsContext } from './DocumentsContext'
+import { SLOT_DND_MIME } from './hooks/useSlotsDragDrop'
 import type { FolderSlotWithDocument } from '@/components/documents/types'
 
 export type SlotItemProps = {
@@ -37,10 +38,20 @@ export const SlotItem = memo(function SlotItem({
     uploadingSlotId,
     onSourceDocSlotDrop,
     onMessengerAttachmentSlotDrop,
+    draggedSlotId,
+    dragOverSlotId,
+    slotDragOverPosition,
+    onSlotDragStart,
+    onSlotItemDragOver,
+    onSlotItemDragLeave,
+    onSlotItemDragEnd,
+    onSlotItemDrop,
   } = useDocumentsContext()
   const doc = slot.document
   const isUploading = uploadingSlotId === slot.id
   const isEmpty = !slot.document_id
+  const isSlotDragging = draggedSlotId === slot.id
+  const isSlotOver = dragOverSlotId === slot.id && draggedSlotId !== slot.id
   const startInEditMode = !!(isNew && isEmpty)
   const [isDragOver, setIsDragOver] = useState(false)
   const [isDropLoading, setIsDropLoading] = useState(false)
@@ -56,23 +67,37 @@ export const SlotItem = memo(function SlotItem({
     onNewSlotCreatedRef.current = onNewSlotCreated
   })
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    // source doc и обычные документы используют effectAllowed='move',
-    // messenger attachments — 'copy'
-    e.dataTransfer.dropEffect = e.dataTransfer.types.includes('application/x-messenger-attachment')
-      ? 'copy'
-      : 'move'
-    setIsDragOver(true)
-  }, [])
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      // Перетаскивание другого слота — реордер, обрабатываем отдельно (линия сверху/снизу)
+      if (e.dataTransfer.types.includes(SLOT_DND_MIME)) {
+        onSlotItemDragOver(e, slot.id)
+        return
+      }
+      e.preventDefault()
+      e.stopPropagation()
+      // source doc и обычные документы используют effectAllowed='move',
+      // messenger attachments — 'copy'
+      e.dataTransfer.dropEffect = e.dataTransfer.types.includes('application/x-messenger-attachment')
+        ? 'copy'
+        : 'move'
+      setIsDragOver(true)
+    },
+    [onSlotItemDragOver, slot.id],
+  )
 
   const handleDragLeave = useCallback(() => {
     setIsDragOver(false)
-  }, [])
+    onSlotItemDragLeave()
+  }, [onSlotItemDragLeave])
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
+      // Реордер слотов
+      if (e.dataTransfer.types.includes(SLOT_DND_MIME)) {
+        onSlotItemDrop(e, slot)
+        return
+      }
       e.preventDefault()
       e.stopPropagation()
       setIsDragOver(false)
@@ -106,7 +131,13 @@ export const SlotItem = memo(function SlotItem({
         onSlotDrop(slot.id, documentId)
       }
     },
-    [onSlotDrop, onSourceDocSlotDrop, onMessengerAttachmentSlotDrop, slot.id, slot.folder_id],
+    [
+      onSlotDrop,
+      onSourceDocSlotDrop,
+      onMessengerAttachmentSlotDrop,
+      onSlotItemDrop,
+      slot,
+    ],
   )
 
   // Notify parent that new slot was created (runs once on mount)
@@ -143,7 +174,15 @@ export const SlotItem = memo(function SlotItem({
       <div
         role="button"
         tabIndex={0}
-        className={`group/slot inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-dashed transition-all duration-200 cursor-pointer ${
+        draggable={!isEditing}
+        onDragStart={(e) => {
+          if (isEditing) return
+          onSlotDragStart(e, slot.id)
+        }}
+        onDragEnd={onSlotItemDragEnd}
+        className={`group/slot relative inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-dashed transition-all duration-200 ${
+          isEditing ? 'cursor-text' : 'cursor-grab active:cursor-grabbing'
+        } ${isSlotDragging ? 'opacity-40' : ''} ${
           isDragOver
             ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500'
             : 'border-brand-500 hover:border-brand-600 hover:bg-brand-50'
@@ -165,6 +204,13 @@ export const SlotItem = memo(function SlotItem({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
+        {isSlotOver && (
+          <span
+            className={`absolute left-1 right-1 h-0.5 rounded-full bg-brand-500 ${
+              slotDragOverPosition === 'top' ? '-top-1' : '-bottom-1'
+            }`}
+          />
+        )}
         <FileUp
           className={`h-4 w-4 flex-shrink-0 transition-all duration-200 ${isDragOver ? 'text-brand-500' : 'text-brand-600 group-hover/slot:text-brand-700 group-hover/slot:-translate-y-0.5'}`}
         />

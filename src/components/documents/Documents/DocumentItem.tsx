@@ -18,6 +18,7 @@ import { formatSize } from '@/utils/files/formatSize'
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { useDocumentsContext } from './DocumentsContext'
+import { SLOT_DND_MIME } from './hooks/useSlotsDragDrop'
 import { DocumentStatusIconDropdown, DocumentStatusLabelDropdown } from './DocumentStatusDropdown'
 import type { DocumentWithFiles } from '@/components/documents/types'
 
@@ -95,6 +96,8 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
 
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
+      // Слот тащат — не подсвечиваем строку документа, пусть всплывёт к папке
+      if (e.dataTransfer.types.includes(SLOT_DND_MIME)) return
       onDocDragOver(e, document.id)
     },
     [onDocDragOver, document.id],
@@ -102,6 +105,8 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
+      // Слот нельзя вставить между документами — пропускаем дроп к карточке папки
+      if (e.dataTransfer.types.includes(SLOT_DND_MIME)) return
       if (e.dataTransfer.getData('application/x-source-doc') === 'true') {
         e.preventDefault()
         e.stopPropagation()

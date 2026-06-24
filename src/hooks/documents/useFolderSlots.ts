@@ -87,6 +87,31 @@ export function useFolderSlots(projectId: string) {
     },
   })
 
+  // Реордеринг пустых слотов (порядок + перенос в другую папку).
+  // Батч UPDATE — слотов в папке немного, отдельная RPC не нужна.
+  const reorderSlotsMutation = useMutation({
+    mutationFn: async (
+      updates: Array<{ id: string; sort_order: number; folder_id?: string }>,
+    ) => {
+      await Promise.all(
+        updates.map((u) => {
+          const patch: { sort_order: number; folder_id?: string } = { sort_order: u.sort_order }
+          if (u.folder_id !== undefined) patch.folder_id = u.folder_id
+          return supabase
+            .from('folder_slots')
+            .update(patch)
+            .eq('id', u.id)
+            .then(({ error }) => {
+              if (error) throw error
+            })
+        }),
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: folderSlotKeys.byProject(projectId) })
+    },
+  })
+
   // Удаление слота (документ не удаляется)
   const deleteSlotMutation = useMutation({
     mutationFn: async (slotId: string) => {
@@ -159,6 +184,7 @@ export function useFolderSlots(projectId: string) {
     createSlot: createSlotMutation.mutateAsync,
     updateSlot: updateSlotMutation.mutateAsync,
     deleteSlot: deleteSlotMutation.mutateAsync,
+    reorderSlots: reorderSlotsMutation.mutateAsync,
     deleteEmptySlots: deleteEmptySlotsMutation.mutateAsync,
     fillSlot: fillSlotMutation.mutateAsync,
     unlinkSlot: unlinkSlotMutation.mutateAsync,

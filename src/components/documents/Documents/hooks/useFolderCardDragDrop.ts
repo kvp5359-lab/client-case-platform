@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useDocumentsContext } from '../DocumentsContext'
+import { SLOT_DND_MIME } from './useSlotsDragDrop'
 
 export function useFolderCardDragDrop(folderId: string) {
   const {
@@ -17,6 +18,8 @@ export function useFolderCardDragDrop(folderId: string) {
     onFolderDragOver,
     onFolderDragLeave,
     onFolderDrop,
+    draggedSlotId,
+    onFolderSlotDrop,
   } = useDocumentsContext()
 
   const [isSourceDragOver, setIsSourceDragOver] = useState(false)
@@ -32,7 +35,7 @@ export function useFolderCardDragDrop(folderId: string) {
     }
   }, [])
 
-  const isDocDragOver = dragOverFolderId === folderId && !!draggedDocId
+  const isDocDragOver = dragOverFolderId === folderId && (!!draggedDocId || !!draggedSlotId)
 
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
@@ -67,6 +70,13 @@ export function useFolderCardDragDrop(folderId: string) {
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       setIsSourceDragOver(false)
+
+      // Перенос пустого слота в эту папку (в конец её блока слотов)
+      if (e.dataTransfer.types.includes(SLOT_DND_MIME)) {
+        onFolderSlotDrop(e, folderId)
+        return
+      }
+
       const isSourceDoc = e.dataTransfer.getData('application/x-source-doc') === 'true'
       if (isSourceDoc) {
         e.preventDefault()
@@ -92,7 +102,7 @@ export function useFolderCardDragDrop(folderId: string) {
 
       onFolderDrop(e, folderId)
     },
-    [onSourceDocDrop, onMessengerAttachmentDrop, onFolderDrop, folderId],
+    [onSourceDocDrop, onMessengerAttachmentDrop, onFolderDrop, onFolderSlotDrop, folderId],
   )
 
   return {

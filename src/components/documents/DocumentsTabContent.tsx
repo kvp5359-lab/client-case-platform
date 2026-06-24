@@ -37,6 +37,7 @@ import {
   useDocumentsSlotActions,
   useDocumentsDocumentActions,
   useDocumentsDragDrop,
+  useSlotsDragDrop,
   useFolderCRUD,
   useSourceDocumentDrop,
   useMessengerAttachmentDrop,
@@ -121,6 +122,7 @@ export function DocumentsTabContent({
     deleteSlot,
     updateSlot,
     unlinkSlot,
+    reorderSlots,
   } = useFolderSlots(projectId)
 
   // allUngroupedDocuments + allDocumentsFlat — мемоизированные списки, вынесены в хук
@@ -241,6 +243,11 @@ export function DocumentsTabContent({
     reorderDocuments,
     invalidateDocumentKits,
   })
+  const slotsDragDrop = useSlotsDragDrop({
+    projectId,
+    folderSlots,
+    reorderSlots,
+  })
   const sourceDrop = useSourceDocumentDrop({
     documentKits,
     projectId,
@@ -328,6 +335,7 @@ export function DocumentsTabContent({
     fileUpload,
     docActions,
     dragDrop,
+    slotsDragDrop,
     sourceDrop,
     messengerDrop,
     selectedDocuments,
