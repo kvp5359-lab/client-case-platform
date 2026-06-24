@@ -397,21 +397,25 @@ export const InboxChatItem = memo(function InboxChatItem({
                   chat.last_message_attachment_mime ?? null,
                   chat.last_message_attachment_name,
                 )
+                // ВАЖНО: рендерим эмодзи+подпись ОБЫЧНЫМ инлайн-текстом, без
+                // inline-flex. Контейнер строки — `truncate` (text-overflow:
+                // ellipsis), а inline-flex = атомарный строчный блок: его нельзя
+                // обрезать многоточием, при переполнении он отсекается целиком и
+                // ellipsis встаёт сразу после имени отправителя → «Имя: …», файл
+                // не виден. Инлайн-текст обрезается корректно.
                 return (
                   <>
                     {chat.last_sender_name && (
                       <span className="font-semibold text-gray-900">{chat.last_sender_name}: </span>
                     )}
-                    <span className="inline-flex items-center gap-1 align-middle">
-                      <span aria-hidden>{media.emoji}</span>
-                      {truncateText(media.label, 36)}
-                      {chat.last_message_attachment_count > 1 && (
-                        <span className="text-gray-400">
-                          {' +'}
-                          {chat.last_message_attachment_count - 1}
-                        </span>
-                      )}
-                    </span>
+                    <span aria-hidden>{media.emoji}</span>{' '}
+                    {truncateText(media.label, 36)}
+                    {chat.last_message_attachment_count > 1 && (
+                      <span className="text-gray-400">
+                        {' +'}
+                        {chat.last_message_attachment_count - 1}
+                      </span>
+                    )}
                   </>
                 )
               }
