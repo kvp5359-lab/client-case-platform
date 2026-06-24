@@ -128,6 +128,18 @@ function MessageBubbleImpl({
   // Подсветка «сотрудник» — внутренний маркер команды; клиенту его не показываем.
   const showStaffMark =
     !!isClientThread && !viewerIsClient && isTeamSender(message.sender_role)
+  // Цвет контура/кольца сотрудника — по видимости сообщения (как тело своих
+  // таких же): «Команде» = чёрный, «Заметка» = тёмно-серый, иначе акцент чата.
+  const staffRingColor = isNoteVis
+    ? 'ring-neutral-600'
+    : isTeamVis
+      ? 'ring-neutral-900'
+      : colors.staffRing
+  const staffBorderColor = isNoteVis
+    ? 'border-neutral-600'
+    : isTeamVis
+      ? 'border-neutral-900'
+      : colors.staffBorder
   // Имя отправителя берём из join'нутого participant'а (актуальное на момент рендера).
   // sender_name на сообщении — это исторический snapshot, может быть устаревший
   // (например, после переименования контакта).
@@ -242,7 +254,7 @@ function MessageBubbleImpl({
               <Avatar
                 className={cn(
                   'h-8 w-8',
-                  showStaffMark && cn('ring-2 ring-offset-1', colors.staffRing),
+                  showStaffMark && cn('ring-2 ring-offset-1', staffRingColor),
                 )}
               >
                 {message.sender?.avatar_url && (
@@ -335,7 +347,7 @@ function MessageBubbleImpl({
               //  - 2px цвета акцента — прочитанное от сотрудника в клиентском чате.
               isUnread && !isOwn
                 ? 'border-l-4 border-red-500'
-                : !isOwn && showStaffMark && cn('border-l-2', colors.staffBorder),
+                : !isOwn && showStaffMark && cn('border-l-2', staffBorderColor),
               // Нижний padding только для аудио/файлов: у них таймстамп лежит абсолютно
               // под бабла. Если в сообщении есть картинки — таймстамп уезжает поверх
               // картинки, и лишний отступ снизу не нужен.
