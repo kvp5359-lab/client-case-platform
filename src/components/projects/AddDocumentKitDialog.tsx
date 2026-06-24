@@ -204,11 +204,18 @@ export function AddDocumentKitDialog({
   const renderTemplateRow = (template: TemplateWithFolders, bgHover: string) => {
     const isAlreadyAdded = existingKitTemplateIds.includes(template.id)
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         key={template.id}
         className={`flex items-center gap-3 py-1.5 px-2 rounded transition-colors ${bgHover} cursor-pointer w-full text-left`}
         onClick={() => handleTemplateToggle(template.id)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            handleTemplateToggle(template.id)
+          }
+        }}
       >
         <Checkbox
           checked={selectedTemplateIds.has(template.id)}
@@ -221,7 +228,7 @@ export function AddDocumentKitDialog({
             <p className="text-xs text-muted-foreground">Уже добавлен (можно добавить ещё)</p>
           )}
         </div>
-      </button>
+      </div>
     )
   }
 

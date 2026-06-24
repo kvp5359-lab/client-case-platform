@@ -10,6 +10,8 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
+import { Plus } from 'lucide-react'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useDocumentStatuses, useDocumentKitStatuses } from '@/hooks/useStatuses'
@@ -383,9 +385,17 @@ export function DocumentsTabContent({
       <div className="rounded-lg border p-12">
         <div className="text-center">
           <h3 className="text-lg font-medium mb-2">Нет наборов документов</h3>
-          <p className="text-muted-foreground">
-            Добавьте первый набор документов, нажав кнопку выше
+          <p className="text-muted-foreground mb-4">
+            {onOpenAddKitDialog
+              ? 'Добавьте первый набор документов'
+              : 'Наборов документов пока нет'}
           </p>
+          {onOpenAddKitDialog && (
+            <Button onClick={onOpenAddKitDialog}>
+              <Plus className="h-4 w-4 mr-2" />
+              Добавить набор документов
+            </Button>
+          )}
         </div>
       </div>
     )
