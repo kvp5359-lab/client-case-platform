@@ -16,6 +16,7 @@ import {
 } from '@/hooks/messenger/useFilteredInbox'
 import { useDebounce } from '@/hooks/shared/useDebounce'
 import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
+import { useMySenderName } from '@/hooks/messenger/useMySenderName'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
 
@@ -58,6 +59,7 @@ export function BoardInboxList({
   const [filter, setFilter] = useState<InboxFilter>(defaultFilter)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const selfSenderName = useMySenderName(workspaceId)
 
   // Подписываемся на тот же infinite query, что родитель — получаем
   // hasNextPage/fetchNextPage без drilling props. TanStack Query
@@ -273,6 +275,7 @@ export function BoardInboxList({
                 onMarkAsRead={() => markReadMutation.mutate(chat)}
                 onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
                 deliveryStatus={deliveryStatuses.get(chat.thread_id)}
+                selfSenderName={selfSenderName}
               />
             ))}
             {showLoadMore && (

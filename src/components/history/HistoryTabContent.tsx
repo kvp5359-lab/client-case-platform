@@ -34,6 +34,7 @@ import { inboxKeys } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import { MessengerTabContent } from '@/components/messenger/MessengerTabContent'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
+import { useMySenderName } from '@/hooks/messenger/useMySenderName'
 import type { AuditLogEntry } from '@/types/history'
 
 type HistoryTabContentProps = {
@@ -57,6 +58,7 @@ const RESOURCE_ITEMS: { value: string; label: string; icon: typeof FileText }[] 
 
 export function HistoryTabContent({ projectId, workspaceId }: HistoryTabContentProps) {
   const { user } = useAuth()
+  const selfSenderName = useMySenderName(workspaceId)
   const [selected, setSelected] = useState<SidebarItem>({ kind: 'all' })
 
   const { mutate: markHistoryRead } = useMarkHistoryAsRead(projectId)
@@ -132,6 +134,7 @@ export function HistoryTabContent({ projectId, workspaceId }: HistoryTabContentP
                         if (thread) setSelected({ kind: 'thread', thread })
                       }}
                       hideProjectName
+                      selfSenderName={selfSenderName}
                     />
                   )
                 })}

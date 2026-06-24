@@ -165,7 +165,13 @@ type InboxChatItemProps = {
   hideProjectName?: boolean
   /** Статус доставки последнего исходящего сообщения (для галочки в превью). */
   deliveryStatus?: DeliveryStatus
+  /** Имя текущего пользователя (в формате `last_sender_name` из RPC). Если автор
+   *  последнего сообщения/реакции совпал — в превью показываем «Я» вместо имени. */
+  selfSenderName?: string | null
 }
+
+/** Стиль имени отправителя в превью (нежирный, синий). */
+const SENDER_NAME_CLASS = 'font-normal text-[#337acc]'
 
 export const InboxChatItem = memo(function InboxChatItem({
   chat,
@@ -175,8 +181,15 @@ export const InboxChatItem = memo(function InboxChatItem({
   onMarkAsRead,
   hideProjectName,
   deliveryStatus,
+  selfSenderName,
 }: InboxChatItemProps) {
   const prefetchMessages = usePrefetchThreadMessages()
+
+  /** Имя автора для превью: «Я», если это текущий пользователь. */
+  const displaySenderName = (name: string | null): string | null => {
+    if (!name) return null
+    return selfSenderName && name === selfSenderName ? 'Я' : name
+  }
 
   // Черновик из localStorage
   const draftHtml = localStorage.getItem(`msg_draft:${chat.project_id}:${chat.thread_id}`)
@@ -335,8 +348,8 @@ export const InboxChatItem = memo(function InboxChatItem({
             ) : reactionIsNewer && chat.last_reaction_emoji ? (
               <span className="italic text-gray-500">
                 {chat.last_reaction_sender_name && (
-                  <span className="font-semibold text-gray-900 not-italic">
-                    {chat.last_reaction_sender_name}
+                  <span className={cn('not-italic', SENDER_NAME_CLASS)}>
+                    {displaySenderName(chat.last_reaction_sender_name)}
                   </span>
                 )}
                 {chat.last_reaction_sender_name ? ' отреагировал(а) ' : 'Реакция '}
@@ -383,7 +396,9 @@ export const InboxChatItem = memo(function InboxChatItem({
                 return (
                   <>
                     {chat.last_sender_name && (
-                      <span className="font-semibold text-gray-900">{chat.last_sender_name}: </span>
+                      <span className={SENDER_NAME_CLASS}>
+                        {displaySenderName(chat.last_sender_name)}:{' '}
+                      </span>
                     )}
                     {truncateText(strippedText)}
                   </>
@@ -406,7 +421,9 @@ export const InboxChatItem = memo(function InboxChatItem({
                 return (
                   <>
                     {chat.last_sender_name && (
-                      <span className="font-semibold text-gray-900">{chat.last_sender_name}: </span>
+                      <span className={SENDER_NAME_CLASS}>
+                        {displaySenderName(chat.last_sender_name)}:{' '}
+                      </span>
                     )}
                     <span aria-hidden>{media.emoji}</span>{' '}
                     {truncateText(media.label, 36)}

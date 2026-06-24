@@ -22,6 +22,7 @@ import {
 import { useDebounce } from '@/hooks/shared/useDebounce'
 import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
 import { useAuth } from '@/contexts/AuthContext'
+import { useMySenderName } from '@/hooks/messenger/useMySenderName'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import {
   getCurrentWorkspaceParticipant,
@@ -47,6 +48,7 @@ export default function InboxPage() {
   usePageTitle('Входящие')
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const { user } = useAuth()
+  const selfSenderName = useMySenderName(workspaceId)
   const queryClient = useQueryClient()
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
@@ -285,6 +287,7 @@ export default function InboxPage() {
             hasNextPage={showLoadMore}
             isFetchingNextPage={isFetchingNextPage}
             onLoadMore={fetchNextPage}
+            selfSenderName={selfSenderName}
           />
 
           {/* Правая панель — мессенджер конкретного чата */}

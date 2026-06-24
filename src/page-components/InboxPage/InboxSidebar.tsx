@@ -37,6 +37,8 @@ type InboxSidebarProps = {
   isFetchingNextPage?: boolean
   /** Триггер догрузки — подписывается на intersection sentinel в конце списка. */
   onLoadMore?: () => void
+  /** Имя текущего пользователя — для замены своего имени отправителя на «Я». */
+  selfSenderName?: string | null
 }
 
 export const InboxSidebar = memo(function InboxSidebar({
@@ -60,6 +62,7 @@ export const InboxSidebar = memo(function InboxSidebar({
   hasNextPage = false,
   isFetchingNextPage = false,
   onLoadMore,
+  selfSenderName,
 }: InboxSidebarProps) {
   const sentinelRef = useRef<HTMLDivElement | null>(null)
 
@@ -244,6 +247,7 @@ export const InboxSidebar = memo(function InboxSidebar({
                 onMarkAsRead={() => onMarkAsRead(chat)}
                 onMarkAsUnread={() => onMarkAsUnread(chat)}
                 deliveryStatus={deliveryStatuses?.get(chat.thread_id)}
+                selfSenderName={selfSenderName}
               />
             ))}
             {hasNextPage && (
