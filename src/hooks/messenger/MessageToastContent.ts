@@ -166,6 +166,10 @@ export function buildToastContent(
           title: 'Прочитано',
           className:
             'p-0.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors',
+          // pointerdown гасим тоже: Radix DismissableLayer (открытые модалки)
+          // слушает именно pointerdown, он срабатывает раньше click → без этого
+          // клик по кнопке тоста закрывал открытый диалог.
+          onPointerDown: (e: { stopPropagation: () => void }) => e.stopPropagation(),
           onClick: (e: { stopPropagation: () => void }) => {
             e.stopPropagation()
             onMarkRead()
@@ -180,6 +184,7 @@ export function buildToastContent(
           title: 'Закрыть',
           className:
             'p-0.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors',
+          onPointerDown: (e: { stopPropagation: () => void }) => e.stopPropagation(),
           onClick: (e: { stopPropagation: () => void }) => {
             e.stopPropagation()
             onDismiss()

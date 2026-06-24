@@ -80,6 +80,9 @@ export function DismissAllToasts() {
       type="button"
       className="fixed z-[999] flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/90 backdrop-blur text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-sm border cursor-pointer"
       style={{ top: pos.top - 32, right: pos.right }}
+      // pointerdown гасим: Radix DismissableLayer (открытые модалки) слушает
+      // pointerdown раньше click → без этого «Скрыть все» закрывало диалог.
+      onPointerDown={(e) => e.stopPropagation()}
       onClick={() => {
         groupedLines.clear()
         toast.dismiss()
