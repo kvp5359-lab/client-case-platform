@@ -179,6 +179,13 @@ export async function proxy(request: NextRequest) {
   // Pass-through для custom-домена реализован в handleWorkspaceHost ниже.
   if (isPortalOnlyPath(pathname) && hostType.type === 'subdomain') {
     const url = new URL(`https://${PORTAL_HOST}${pathname}${search}`)
+    // Сохраняем привязку к воркспейсу: пользователь зашёл по ссылке поддомена
+    // (rs.clientcase.app/login) — после входа на портале вернуть его на этот
+    // поддомен, а не показывать выбор воркспейса. Только для /login и /register;
+    // /auth/callback и /select-workspace остаются на портале.
+    if ((pathname === '/login' || pathname === '/register') && !url.searchParams.get('next')) {
+      url.searchParams.set('next', `https://${host}/`)
+    }
     return NextResponse.redirect(url, 307)
   }
 

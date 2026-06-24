@@ -33,7 +33,14 @@ export function useGoogleAuth({
 
   const handleGoogleLogin = useCallback(async () => {
     setGoogleLoading(true)
-    const savedRedirect = localStorage.getItem('auth_redirect')
+    // Цель возврата: сначала ?next= из URL (proxy кладёт туда поддомен воркспейса
+    // при редиректе rs.clientcase.app/login → my.clientcase.app/login), потом
+    // localStorage. Без этого вход через Google терял привязку к воркспейсу.
+    const fromQuery =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('next')
+        : null
+    const savedRedirect = fromQuery || localStorage.getItem('auth_redirect')
     const { error } = await signInWithGoogle(savedRedirect || undefined)
     if (error) {
       onError?.(formatAuthError(error as Error))

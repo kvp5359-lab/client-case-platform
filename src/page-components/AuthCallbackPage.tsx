@@ -11,6 +11,7 @@ import { useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { safeRedirectUrl } from '@/hooks/shared/useAuthRedirect'
 
 export function AuthCallbackPage() {
   const router = useRouter()
@@ -32,10 +33,17 @@ export function AuthCallbackPage() {
     if (!user) return
 
     const next = searchParams.get('next')
-    const safeNext = next?.startsWith('/') ? next : null
-    const redirectTo = safeNext || localStorage.getItem('auth_redirect') || '/app'
+    // safeRedirectUrl пропускает абсолютные URL на *.clientcase.app (поддомен
+    // воркспейса), а не только относительные пути — иначе привязка к воркспейсу
+    // из ссылки терялась и пользователя кидало на выбор воркспейса.
+    const safeNext = next ? safeRedirectUrl(next) : (localStorage.getItem('auth_redirect') || '/app')
     localStorage.removeItem('auth_redirect')
-    router.replace(redirectTo)
+    if (/^https?:\/\//i.test(safeNext)) {
+      // Кросс-доменный возврат на поддомен воркспейса — полная перезагрузка
+      window.location.href = safeNext
+    } else {
+      router.replace(safeNext)
+    }
   }, [user, loading, router, searchParams])
 
   return (
