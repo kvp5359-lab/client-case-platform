@@ -36,6 +36,25 @@ export type CreateProjectFromTemplateResult = {
   kitFormFailures: number
 }
 
+export type SeedProjectContentInput = {
+  workspaceId: string
+  projectId: string
+  templateId: string | undefined
+  selectedDocKitIds: string[]
+  selectedFormIds: string[]
+  /** Шаблоны тредов (задачи/чаты), отмеченные к созданию. */
+  selectedThreadTemplates: ThreadTemplate[]
+  /** id блоков плана-шаблона, отмеченных к разворачиванию. */
+  selectedBlockIds: Set<string>
+  /**
+   * Добавление в УЖЕ существующий проект (не создание с нуля):
+   *  - задачи, чьи шаблоны уже инстанциированы (по source_template_id), пропускаются;
+   *  - новые задачи и блоки плана аппендятся в КОНЕЦ (sort_order после существующих),
+   *    а не перенумеровывают проект с нуля.
+   */
+  appendMode?: boolean
+}
+
 type PlanContentBlock = {
   id: string
   block_type: string
@@ -69,8 +88,17 @@ export function buildPlanSeed(params: {
   selectedThreadTemplates: ThreadTemplate[]
   contentBlocks: PlanContentBlock[]
   threadByTemplate: Map<string, string>
+  /** Сдвиг нумерации — для аппенда в существующий проект (по умолчанию 0). */
+  sortOffset?: number
 }): PlanSeedPlan {
-  const { workspaceId, projectId, selectedThreadTemplates, contentBlocks, threadByTemplate } = params
+  const {
+    workspaceId,
+    projectId,
+    selectedThreadTemplates,
+    contentBlocks,
+    threadByTemplate,
+    sortOffset = 0,
+  } = params
 
   type SeedItem =
     | { kind: 'task'; threadId: string; sort: number }
@@ -87,7 +115,8 @@ export function buildPlanSeed(params: {
 
   const taskOrder: PlanSeedPlan['taskOrder'] = []
   const planRows: PlanSeedPlan['planRows'] = []
-  items.forEach((it, index) => {
+  items.forEach((it, i) => {
+    const index = i + sortOffset
     if (it.kind === 'task') {
       taskOrder.push({ threadId: it.threadId, index })
     } else {
@@ -108,16 +137,7 @@ export function buildPlanSeed(params: {
 export async function createProjectFromTemplate(
   input: CreateProjectFromTemplateInput,
 ): Promise<CreateProjectFromTemplateResult> {
-  const {
-    workspaceId,
-    name,
-    description,
-    templateId,
-    selectedDocKitIds,
-    selectedFormIds,
-    selectedThreadTemplates,
-    selectedBlockIds,
-  } = input
+  const { workspaceId, name, description, templateId } = input
 
   const {
     data: { user },
@@ -137,16 +157,78 @@ export async function createProjectFromTemplate(
 
   if (insertError) throw insertError
 
+  const { kitFormFailures } = await seedProjectContent({
+    workspaceId,
+    projectId: project.id,
+    templateId,
+    selectedDocKitIds: input.selectedDocKitIds,
+    selectedFormIds: input.selectedFormIds,
+    selectedThreadTemplates: input.selectedThreadTemplates,
+    selectedBlockIds: input.selectedBlockIds,
+  })
+
+  return { projectId: project.id, kitFormFailures }
+}
+
+/**
+ * Наполнение проекта контентом из шаблона (наборы документов, анкеты, задачи из
+ * thread_templates, разворачивание плана) — для УЖЕ существующего проекта.
+ * Используется и при создании проекта (createProjectFromTemplate), и при
+ * добавлении из шаблона в существующий проект (appendMode).
+ */
+export async function seedProjectContent(
+  input: SeedProjectContentInput,
+): Promise<{ kitFormFailures: number }> {
+  const {
+    workspaceId,
+    projectId,
+    templateId,
+    selectedDocKitIds,
+    selectedFormIds,
+    selectedBlockIds,
+    appendMode = false,
+  } = input
+
+  // Дедуп задач: в существующем проекте не создаём повторно шаблоны тредов,
+  // которые уже инстанциированы (по source_template_id). Наборы/анкеты повтор
+  // допускают by design, их не фильтруем.
+  let selectedThreadTemplates = input.selectedThreadTemplates
+  let sortOffset = 0
+  if (appendMode) {
+    const { data: existing } = await supabase
+      .from('project_threads')
+      .select('source_template_id, sort_order')
+      .eq('project_id', projectId)
+      .eq('is_deleted', false)
+    const usedTemplateIds = new Set(
+      (existing ?? []).map((t) => t.source_template_id).filter(Boolean) as string[],
+    )
+    selectedThreadTemplates = selectedThreadTemplates.filter((t) => !usedTemplateIds.has(t.id))
+
+    // Аппенд: новые элементы уходят в конец — за максимальный sort существующих
+    // тредов и блоков плана проекта.
+    const { data: existingBlocks } = await supabase
+      .from('project_plan_blocks')
+      .select('sort_order')
+      .eq('project_id', projectId)
+    const maxSort = Math.max(
+      -1,
+      ...(existing ?? []).map((t) => t.sort_order ?? 0),
+      ...(existingBlocks ?? []).map((b) => b.sort_order ?? 0),
+    )
+    sortOffset = maxSort + 1
+  }
+
   const promises: Promise<void>[] = []
 
   for (const docKitTemplateId of selectedDocKitIds) {
     promises.push(
-      createDocumentKitFromTemplate(docKitTemplateId, project.id, workspaceId).then(() => {}),
+      createDocumentKitFromTemplate(docKitTemplateId, projectId, workspaceId).then(() => {}),
     )
   }
 
   for (const formTemplateId of selectedFormIds) {
-    promises.push(createFormKitFromTemplate(formTemplateId, project.id, workspaceId).then(() => {}))
+    promises.push(createFormKitFromTemplate(formTemplateId, projectId, workspaceId).then(() => {}))
   }
 
   // Инстанциация шаблонов тредов: создаём project_threads, копируем assignees,
@@ -161,7 +243,7 @@ export async function createProjectFromTemplate(
         const { data: thread, error: threadErr } = await supabase
           .from('project_threads')
           .insert({
-            project_id: project.id,
+            project_id: projectId,
             workspace_id: workspaceId,
             name: tpl.name,
             type: tpl.thread_type,
@@ -171,7 +253,7 @@ export async function createProjectFromTemplate(
             icon: tpl.icon,
             status_id: tpl.default_status_id,
             deadline,
-            sort_order: tpl.sort_order + 100,
+            sort_order: sortOffset + tpl.sort_order + 100,
             source_template_id: tpl.id,
             // Снапшот правила автоперехода: рантайм проекта не зависит от шаблона.
             on_complete_set_project_status_id: tpl.on_complete_set_project_status_id ?? null,
@@ -220,7 +302,7 @@ export async function createProjectFromTemplate(
         const { data: createdThreads } = await supabase
           .from('project_threads')
           .select('id, source_template_id')
-          .eq('project_id', project.id)
+          .eq('project_id', projectId)
         const threadByTemplate = new Map<string, string>()
         for (const t of createdThreads ?? []) {
           if (t.source_template_id) threadByTemplate.set(t.source_template_id, t.id)
@@ -228,10 +310,11 @@ export async function createProjectFromTemplate(
 
         const { taskOrder, planRows } = buildPlanSeed({
           workspaceId,
-          projectId: project.id,
+          projectId,
           selectedThreadTemplates,
           contentBlocks,
           threadByTemplate,
+          sortOffset,
         })
 
         if (taskOrder.length > 0) {
@@ -255,5 +338,5 @@ export async function createProjectFromTemplate(
     }
   }
 
-  return { projectId: project.id, kitFormFailures }
+  return { kitFormFailures }
 }

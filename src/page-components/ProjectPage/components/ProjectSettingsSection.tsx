@@ -6,6 +6,7 @@
  */
 
 import { useRef } from 'react'
+import { FolderPlus } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -32,6 +33,8 @@ type ProjectSettingsSectionProps = {
   onDeadlineChange: (date: Date | undefined) => void
   onDescriptionChange: (description: string) => void
   onTemplateChange: (templateId: string | null) => void
+  /** Открыть диалог «Добавить из шаблона». Иконка-кнопка рядом с селектором. */
+  onAddFromTemplate?: () => void
 }
 
 export function ProjectSettingsSection({
@@ -43,6 +46,7 @@ export function ProjectSettingsSection({
   onDeadlineChange,
   onDescriptionChange,
   onTemplateChange,
+  onAddFromTemplate,
 }: ProjectSettingsSectionProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -98,6 +102,18 @@ export function ProjectSettingsSection({
           <div className="h-8 inline-flex items-center px-2 rounded-md border text-muted-foreground bg-background">
             {templateName ?? 'Без шаблона'}
           </div>
+        )}
+        {/* Добавить задачи/наборы/анкеты из шаблона проекта */}
+        {onAddFromTemplate && canEditProjectInfo && project.template_id && (
+          <button
+            type="button"
+            onClick={onAddFromTemplate}
+            title="Добавить задачи, наборы и анкеты из шаблона"
+            aria-label="Добавить из шаблона"
+            className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-md border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <FolderPlus className="h-4 w-4" />
+          </button>
         )}
       </div>
 

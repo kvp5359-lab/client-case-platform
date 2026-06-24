@@ -6,7 +6,8 @@
  * Диалоги — ProjectPageDialogs, вкладки — ProjectTabsContent
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, lazy, Suspense } from 'react'
+import { toast } from 'sonner'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -53,6 +54,12 @@ import { useClientChatAutoOpen } from './ProjectPage/hooks/useClientChatAutoOpen
 import { useProjectGoogleDrive } from './ProjectPage/hooks/useProjectGoogleDrive'
 import { useProjectGoogleDriveActions } from './ProjectPage/hooks/useProjectGoogleDriveActions'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+
+const AddFromTemplateDialog = lazy(() =>
+  import('@/components/projects/AddFromTemplateDialog').then((m) => ({
+    default: m.AddFromTemplateDialog,
+  })),
+)
 
 export default function ProjectPage() {
   const { workspaceId, projectId } = useParams<{ workspaceId: string; projectId: string }>()
@@ -236,8 +243,23 @@ export default function ProjectPage() {
     updateProjectFields.mutate({ description })
   }
 
+  const [addFromTemplateOpen, setAddFromTemplateOpen] = useState(false)
+  const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null)
+
   const handleTemplateChange = (templateId: string | null) => {
     updateProjectFields.mutate({ template_id: templateId })
+    // Ненавязчивое предложение добавить элементы нового шаблона. Старое не
+    // трогаем — диалог только добавляет недостающее.
+    if (templateId) {
+      setPendingTemplateId(templateId)
+      toast.info('Шаблон проекта изменён', {
+        description: 'Добавить задачи, наборы и анкеты нового шаблона?',
+        action: {
+          label: 'Добавить',
+          onClick: () => setAddFromTemplateOpen(true),
+        },
+      })
+    }
   }
 
   const {
@@ -402,6 +424,10 @@ export default function ProjectPage() {
                 onDeadlineChange={handleDeadlineChange}
                 onDescriptionChange={handleDescriptionChange}
                 onTemplateChange={handleTemplateChange}
+                onAddFromTemplate={() => {
+                  setPendingTemplateId(null)
+                  setAddFromTemplateOpen(true)
+                }}
                 googleDrive={googleDrive}
                 isSavingGoogleDrive={updateProjectGoogleDrive.isPending}
                 onSaveGoogleDriveLink={handleSaveGoogleDriveLink}
@@ -440,6 +466,18 @@ export default function ProjectPage() {
           projectId={projectId ?? ''}
           workspaceId={workspaceId ?? ''}
         />
+
+        {addFromTemplateOpen && (
+          <Suspense fallback={null}>
+            <AddFromTemplateDialog
+              open={addFromTemplateOpen}
+              onOpenChange={setAddFromTemplateOpen}
+              projectId={projectId ?? ''}
+              workspaceId={workspaceId ?? ''}
+              templateId={pendingTemplateId ?? project?.template_id ?? undefined}
+            />
+          </Suspense>
+        )}
       </ErrorBoundary>
     </WorkspaceLayout>
   )

@@ -80,6 +80,7 @@ type ProjectTabsContentProps = {
   onDeadlineChange: (date: Date | undefined) => void
   onDescriptionChange: (description: string) => void
   onTemplateChange: (templateId: string | null) => void
+  onAddFromTemplate?: () => void
   googleDrive: GoogleDriveState
   isSavingGoogleDrive: boolean
   onSaveGoogleDriveLink: () => Promise<void>
@@ -114,6 +115,7 @@ export function ProjectTabsContent({
   onDeadlineChange,
   onDescriptionChange,
   onTemplateChange,
+  onAddFromTemplate,
   googleDrive,
   isSavingGoogleDrive,
   onSaveGoogleDriveLink,
@@ -147,6 +149,7 @@ export function ProjectTabsContent({
               onDeadlineChange={onDeadlineChange}
               onDescriptionChange={onDescriptionChange}
               onTemplateChange={onTemplateChange}
+              onAddFromTemplate={onAddFromTemplate}
             />
           </div>
 

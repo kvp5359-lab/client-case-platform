@@ -13,8 +13,7 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { TemplateSelector } from './create-project/TemplateSelector'
 import { TemplateItemsList } from './create-project/TemplateItemsList'
-import { useThreadTemplatesByProjectTemplate } from '@/hooks/messenger/useThreadTemplates'
-import { useTemplatePlan } from '@/hooks/plan/useTemplatePlan'
+import { useProjectTemplateContent } from './create-project/useProjectTemplateContent'
 import { projectTemplateKeys } from '@/hooks/queryKeys'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
@@ -71,73 +70,8 @@ export function CreateProjectDialog({
     [projectTemplatesRaw],
   )
 
-  const { data: linkedDocKits = [] } = useQuery({
-    queryKey: projectTemplateKeys.documentKits(activeTemplateId),
-    queryFn: async () => {
-      if (!activeTemplateId) return []
-      const { data, error } = await supabase
-        .from('project_template_document_kits')
-        .select('*, document_kit_template:document_kit_templates(id, name)')
-        .eq('project_template_id', activeTemplateId)
-        .order('order_index', { ascending: true })
-      if (error) throw error
-      return data || []
-    },
-    enabled: !!activeTemplateId && open,
-  })
-
-  // Шаблоны тредов (задачи и чаты в одной секции), привязанные к типу проекта.
-  const { data: scopedThreadTemplates = [] } = useThreadTemplatesByProjectTemplate(
-    activeTemplateId,
-  )
-
-  const { data: linkedForms = [] } = useQuery({
-    queryKey: projectTemplateKeys.forms(activeTemplateId),
-    queryFn: async () => {
-      if (!activeTemplateId) return []
-      const { data, error } = await supabase
-        .from('project_template_forms')
-        .select('*, form_template:form_templates(id, name)')
-        .eq('project_template_id', activeTemplateId)
-        .order('order_index', { ascending: true })
-      if (error) throw error
-      return data || []
-    },
-    enabled: !!activeTemplateId && open,
-  })
-
-  // Структурные блоки плана шаблона (заголовки/текст) — для превью списка
-  // «Задачи и чаты». Переиспользуем тот же запрос, что и редактор шаблона.
-  const { blocks: templatePlanBlocks } = useTemplatePlan(activeTemplateId, currentWorkspaceId)
-  const planContentBlocks = useMemo(
-    () =>
-      templatePlanBlocks.filter((b) => b.block_type === 'heading' || b.block_type === 'text'),
-    [templatePlanBlocks],
-  )
-
-  const docKitTemplates = useMemo(
-    () =>
-      linkedDocKits
-        .map((item) => {
-          const tpl = Array.isArray(item.document_kit_template)
-            ? item.document_kit_template[0]
-            : item.document_kit_template
-          return tpl as { id: string; name: string } | null
-        })
-        .filter((t): t is { id: string; name: string } => t !== null),
-    [linkedDocKits],
-  )
-
-  const formTemplates = useMemo(
-    () =>
-      linkedForms
-        .map((item) => {
-          const tpl = Array.isArray(item.form_template) ? item.form_template[0] : item.form_template
-          return tpl as { id: string; name: string } | null
-        })
-        .filter((t): t is { id: string; name: string } => t !== null),
-    [linkedForms],
-  )
+  const { docKitTemplates, formTemplates, scopedThreadTemplates, planContentBlocks } =
+    useProjectTemplateContent(activeTemplateId, currentWorkspaceId, open)
 
   const docKitKey = docKitTemplates.map((t) => t.id).join(',')
   const formKey = formTemplates.map((t) => t.id).join(',')

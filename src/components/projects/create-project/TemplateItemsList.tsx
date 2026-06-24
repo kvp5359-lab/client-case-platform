@@ -33,6 +33,8 @@ type TemplateItemsListProps = {
   onToggleThread: (id: string) => void
   onToggleBlock: (id: string) => void
   disabled?: boolean
+  /** Заголовок списка. По умолчанию — «Будут созданы вместе с проектом:». */
+  title?: string
 }
 
 type MergedRow =
@@ -56,6 +58,7 @@ export function TemplateItemsList({
   onToggleThread,
   onToggleBlock,
   disabled,
+  title = 'Будут созданы вместе с проектом:',
 }: TemplateItemsListProps) {
   // Задачи и структурные блоки — в одном списке по общей шкале sort_order
   // (как на вкладке «Задачи» в проекте).
@@ -68,7 +71,7 @@ export function TemplateItemsList({
 
   return (
     <div className="space-y-3 rounded-lg border p-3 bg-muted/20">
-      <p className="text-xs font-medium text-muted-foreground">Будут созданы вместе с проектом:</p>
+      <p className="text-xs font-medium text-muted-foreground">{title}</p>
 
       {docKitTemplates.length > 0 && (
         <div className="space-y-0.5">
