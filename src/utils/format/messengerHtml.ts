@@ -101,17 +101,7 @@ const ALLOWED_CSS_PROPS = new Set([
   'text-decoration',
   'text-decoration-line',
   'text-decoration-color',
-  'padding',
-  'padding-top',
-  'padding-right',
-  'padding-bottom',
-  'padding-left',
-  'display',
 ])
-/** Безопасные значения display — без none (не прячем контент) и табличных
- *  трюков с фикс-шириной. */
-const ALLOWED_DISPLAY = new Set(['inline', 'inline-block', 'block', 'table', 'table-row', 'table-cell'])
-
 /** Парсит CSS-цвет (#rgb/#rrggbb/rgb()/rgba()/white/black) в RGB. null — если
  *  не распознали (тогда цвет оставляем как есть). */
 function parseColorRgb(v: string): { r: number; g: number; b: number } | null {
@@ -155,7 +145,6 @@ function filterStyleAttr(style: string): string {
     if (!val || !ALLOWED_CSS_PROPS.has(prop)) continue
     const low = val.toLowerCase()
     if (low.includes('url(') || low.includes('expression') || low.includes('javascript:')) continue
-    if (prop === 'display' && !ALLOWED_DISPLAY.has(low)) continue
     if (prop === 'color' && isTooLightForBubble(val)) continue
     kept.push(`${prop}: ${val}`)
   }
@@ -180,6 +169,13 @@ function collapseEmptyLines(html: string): string {
   restrictInlineStyles(root)
 
   const BLOCK_TAGS = new Set(['DIV', 'P', 'BLOCKQUOTE', 'OL', 'UL', 'LI'])
+  // Пустые элементы таблиц (ячейки-распорки, строки под вырезанные картинки)
+  // не схлопываем в <br> (сломало бы структуру таблицы), а УДАЛЯЕМ целиком —
+  // иначе layout-таблицы маркетинговых писем оставляют большие пустые боксы и
+  // сдвиги текста.
+  const TABLE_TAGS = new Set([
+    'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TD', 'TH', 'CAPTION', 'COLGROUP', 'COL',
+  ])
   const NON_EMPTY_DESCENDANTS = 'img, svg, hr, picture, video, audio'
 
   const isVisuallyEmpty = (el: Element): boolean => {
@@ -195,7 +191,10 @@ function collapseEmptyLines(html: string): string {
   const walk = (node: Element) => {
     const children = Array.from(node.children)
     for (const child of children) walk(child)
-    if (node.parentElement && BLOCK_TAGS.has(node.tagName) && isVisuallyEmpty(node)) {
+    if (!node.parentElement) return
+    if (TABLE_TAGS.has(node.tagName) && isVisuallyEmpty(node)) {
+      node.remove()
+    } else if (BLOCK_TAGS.has(node.tagName) && isVisuallyEmpty(node)) {
       const br = document.createElement('br')
       node.replaceWith(br)
     }
