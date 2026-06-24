@@ -46,6 +46,9 @@ type MessageInputToolbarProps = {
   onSaveDraft: () => void
   /** Цвет кнопки отправки (под выбранный режим). По умолчанию — акцент треда. */
   sendButtonClassName?: string
+  /** Если задан — отправка заблокирована, текст показывается тултипом
+   *  (напр. у email-черновика без темы/получателя). */
+  sendBlockedReason?: string | null
   /** Pending-пикер статуса задачи справа от форматирования (task-треды). */
   taskStatusPicker?: {
     statuses: TaskStatus[]
@@ -86,10 +89,12 @@ export function MessageInputToolbar({
   onSend,
   onSaveDraft,
   sendButtonClassName,
+  sendBlockedReason,
   taskStatusPicker,
   translate,
   onSchedule,
 }: MessageInputToolbarProps) {
+  const sendBlocked = !!sendBlockedReason
   return (
     <div className="flex items-center pb-2 pt-0">
       {/* Left: attach + separator + quick reply + separator + formatting toolbar */}
@@ -157,18 +162,21 @@ export function MessageInputToolbar({
         )}
         {onSchedule && (
           <ScheduleSendButton
-            disabled={!hasContent || isPending}
+            disabled={!hasContent || isPending || sendBlocked}
             onSchedule={onSchedule}
           />
         )}
-        <Button
-          size="icon"
-          className={cn('h-8 w-8', sendButtonClassName ?? sendButtonStyles[accent] ?? sendButtonStyles.blue)}
-          disabled={!hasContent || isPending}
-          onClick={onSend}
-        >
-          <Send className="h-4 w-4" />
-        </Button>
+        {/* span-обёртка с title: у disabled-кнопки нативный тултип не всплывает */}
+        <span title={sendBlockedReason ?? undefined} className="inline-flex">
+          <Button
+            size="icon"
+            className={cn('h-8 w-8', sendButtonClassName ?? sendButtonStyles[accent] ?? sendButtonStyles.blue)}
+            disabled={!hasContent || isPending || sendBlocked}
+            onClick={onSend}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </span>
       </div>
     </div>
   )

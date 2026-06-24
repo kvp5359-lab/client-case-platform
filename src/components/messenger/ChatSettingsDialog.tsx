@@ -104,6 +104,17 @@ export function ChatSettingsDialog({
   const emailAttachmentsTooBig =
     form.tabMode === 'email' && !attachmentsLimitCheck.ok && composeFiles.length > 0
 
+  // Отправка первого письма («Создать и отправить») требует получателя И тему.
+  // Без первого сообщения тред создаётся как черновик — тему не требуем.
+  const emailSendBlockReason =
+    !form.isEditMode && form.tabMode === 'email' && form.hasInitialMessage
+      ? form.selectedEmails.length === 0
+        ? 'Укажите получателя письма'
+        : !form.emailSubject.trim()
+          ? 'Укажите тему письма'
+          : null
+      : null
+
   // ── Actions, data queries, handlers ──
   const actions = useChatSettingsActions({
     chat,
@@ -350,7 +361,9 @@ export function ChatSettingsDialog({
               onChange={form.setHasInitialMessage}
               onFilesChange={setComposeFiles}
               onSubmit={
-                form.canSave && !emailAttachmentsTooBig ? () => actions.handleSave() : undefined
+                form.canSave && !emailAttachmentsTooBig && !emailSendBlockReason
+                  ? () => actions.handleSave()
+                  : undefined
               }
               projectId={form.selectedProjectId ?? propProjectId}
               workspaceId={resolvedWorkspaceId}
@@ -389,16 +402,22 @@ export function ChatSettingsDialog({
               Сохранить черновик
             </Button>
           )}
-          <Button
-            onClick={() => actions.handleSave()}
-            disabled={!form.canSave || isPending || emailAttachmentsTooBig}
-          >
-            {form.isEditMode
-              ? 'Сохранить'
-              : form.hasInitialMessage
-                ? 'Создать и отправить'
-                : 'Создать'}
-          </Button>
+          {/* Отправка письма (есть первое сообщение) требует и получателя, и тему.
+              Без сообщения «Создать» делает фактически черновик — тему не требуем. */}
+          <span title={emailSendBlockReason ?? undefined} className="inline-flex">
+            <Button
+              onClick={() => actions.handleSave()}
+              disabled={
+                !form.canSave || isPending || emailAttachmentsTooBig || !!emailSendBlockReason
+              }
+            >
+              {form.isEditMode
+                ? 'Сохранить'
+                : form.hasInitialMessage
+                  ? 'Создать и отправить'
+                  : 'Создать'}
+            </Button>
+          </span>
         </DialogFooter>
       </DialogContent>
 

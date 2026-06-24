@@ -414,9 +414,25 @@ export function MessengerTabContent({
     sendEmail: state.sendEmail,
   })
 
-  // Черновик письма: email-тред без единого сообщения = ещё не отправлено.
-  // Включает редактирование темы/получателя в шапке + подсказку у низа ленты.
-  const isEmailDraft = state.isEmailChat && !state.isLoading && displayMessages.length === 0
+  // Черновик письма: email-тред БЕЗ отправленных сообщений (сохранённый
+  // is_draft-баббл не считается отправкой — иначе тред «выходил» из режима
+  // черновика и нельзя было поправить получателя). Зеркалит серверный
+  // email_unsent (NOT EXISTS is_draft=false), чтобы фронт и список совпадали.
+  const hasSentEmail = displayMessages.some((m) => !m.is_draft)
+  const isEmailUnsent = state.isEmailChat && !state.isLoading && !hasSentEmail
+
+  // Блокировка отправки email без темы/получателя (Enter + кнопка + тултип).
+  const emailRecipient =
+    state.emailLink?.contact_email ?? currentThread?.email_last_external_address
+  const emailSubjectValue = state.emailLink?.subject ?? currentThread?.email_subject_root
+  const sendBlockedReason = useMemo(() => {
+    if (!state.isEmailChat) return null
+    const missing: string[] = []
+    if (!emailRecipient) missing.push('получателя')
+    if (!emailSubjectValue) missing.push('тему')
+    if (missing.length === 0) return null
+    return `Перед отправкой укажите ${missing.join(' и ')} письма`
+  }, [state.isEmailChat, emailRecipient, emailSubjectValue])
 
   const toolbarContent = (
     <ChatToolbar
@@ -471,7 +487,14 @@ export function MessengerTabContent({
         onQuote={state.setQuoteText}
         onForward={handlers.handleForward}
         currentThreadId={threadId}
-        onPublishDraft={handlers.handlePublishDraft}
+        onPublishDraft={(msg) => {
+          // Публикация черновик-баббла = отправка. Для email требуем тему/получателя.
+          if (sendBlockedReason) {
+            toast.error(sendBlockedReason)
+            return
+          }
+          handlers.handlePublishDraft(msg)
+        }}
         onEditDraft={handlers.handleEditDraft}
         onRetryTelegramSend={handlers.handleRetryTelegramSend}
         isDelayedPending={state.isDelayedPending}
@@ -490,7 +513,7 @@ export function MessengerTabContent({
           <EmailSubjectBar
             subject={state.emailLink?.subject ?? currentThread?.email_subject_root}
             contactEmail={state.emailLink?.contact_email ?? currentThread?.email_last_external_address}
-            editable={isEmailDraft}
+            editable={isEmailUnsent}
             suggestions={emailSuggestions}
             onSave={(next) =>
               updateEmailMeta.mutate({
@@ -505,9 +528,9 @@ export function MessengerTabContent({
         <ThreadHealthBanner threadId={threadId} workspaceId={workspaceId} />
 
         {/* Email-тред без единого сообщения = письмо ещё не отправлено (черновик).
-            Подсказка по центру пустой ленты. Исчезнет, как только письмо уйдёт
-            (появится первое сообщение). */}
-        {isEmailDraft && (
+            Показываем только на ПУСТОЙ ленте (если есть сохранённый черновик-баббл,
+            подсказка по центру наезжала бы на него). */}
+        {isEmailUnsent && displayMessages.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8">
             <div className="max-w-xs text-center text-sm text-muted-foreground">
               <span className="font-medium text-red-700">Черновик письма</span>
@@ -622,6 +645,7 @@ export function MessengerTabContent({
           onSaveDraft={handlers.handleSaveDraft}
           isSavingDraft={state.saveDraftMutation.isPending}
           onSchedule={handleSchedule}
+          sendBlockedReason={sendBlockedReason}
           statusPending={{
             ...statusPending,
             currentStatusId: currentThread?.status_id ?? null,

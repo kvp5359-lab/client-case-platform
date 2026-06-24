@@ -70,6 +70,9 @@ type MessageInputProps = {
     replyToId?: string | null,
     files?: File[],
   ) => void
+  /** Если задан — отправка заблокирована (тултип на кнопке + Enter не шлёт).
+   *  Напр. email-черновик без темы/получателя. */
+  sendBlockedReason?: string | null
   /** Режим видимости (Клиенту/Команде/Заметка/Только я) — поднят в MessengerTabContent. */
   composerMode?: ComposerMode
   /** Участники для @-упоминаний. */
@@ -121,6 +124,7 @@ export function MessageInput({
   onSaveDraft,
   isSavingDraft,
   onSchedule,
+  sendBlockedReason,
   composerMode = 'client',
   statusPending,
   mentionItems,
@@ -381,6 +385,9 @@ export function MessageInput({
     }
 
     if (isPending) return
+    // Email-черновик без темы/получателя — отправку не пускаем (кнопка тоже
+    // disabled, но Enter идёт мимо неё).
+    if (sendBlockedReason) return
 
     const hasMessageContent = !!textContent || files.length > 0
     const hasPendingStatus = !!(isTaskThread && threadId && effectivePendingStatusId)
@@ -462,6 +469,7 @@ export function MessageInput({
     translation,
     clearPersistedTranslation,
     composerMode,
+    sendBlockedReason,
   ])
 
   const handleTranslated = useCallback(
@@ -504,6 +512,8 @@ export function MessageInput({
     (sendAt: Date) => {
       const editor = editorRef.current
       if (!editor || !onSchedule) return
+      // Отложенная отправка email тоже требует темы/получателя.
+      if (sendBlockedReason) return
       const textContent = editor.getText().trim()
       const htmlContent = editor.getHTML()
       if (!textContent && files.length === 0) return
@@ -521,7 +531,7 @@ export function MessageInput({
       clearDraft()
       onClearReply()
     },
-    [onSchedule, files, replyTo, clearFiles, clearDraft, onClearReply],
+    [onSchedule, files, replyTo, clearFiles, clearDraft, onClearReply, sendBlockedReason],
   )
 
   const handleSaveDraft = useCallback(() => {
@@ -678,6 +688,7 @@ export function MessageInput({
         onQuickReplyPickerHandled={() => setOpenQuickReplyPicker(false)}
         onSend={handleSend}
         sendButtonClassName={composerSendButtonClass(composerMode, accent)}
+        sendBlockedReason={sendBlockedReason}
         onSaveDraft={handleSaveDraft}
         onSchedule={
           onSchedule && !editingMessage ? handleSchedule : undefined
