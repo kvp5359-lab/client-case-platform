@@ -13,11 +13,11 @@ import { Input } from '@/components/ui/input'
 import { TiptapEditor } from '@/components/tiptap-editor/tiptap-editor'
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EditorDialogContent } from '@/components/ui/editor-dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -87,15 +87,7 @@ export function AddTextDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : requestClose())}>
-      <DialogContent
-        className="max-w-3xl"
-        onInteractOutside={(e) => {
-          if (isDirty) {
-            e.preventDefault()
-            setConfirmOpen(true)
-          }
-        }}
-      >
+      <EditorDialogContent className="max-w-3xl">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2 pr-8">
             <div>
@@ -128,7 +120,7 @@ export function AddTextDialog({
             />
           </div>
         </div>
-      </DialogContent>
+      </EditorDialogContent>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>

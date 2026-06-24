@@ -13,10 +13,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EditorDialogContent } from '@/components/ui/editor-dialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { ChatSettingsAccess } from '@/components/messenger/ChatSettingsAccess'
 import { useProjectParticipants } from '@/components/messenger/hooks/useChatSettingsData'
@@ -138,18 +138,7 @@ export function ContextTextDialog({ item, projectId, workspaceId, onClose }: Pro
 
   return (
     <Dialog open onOpenChange={(o) => !o && requestClose()}>
-      <DialogContent
-        className="max-w-3xl !overflow-visible"
-        hideClose
-        onInteractOutside={(e) => {
-          // Не закрываем по клику вне, если есть несохранённые изменения —
-          // сначала спросим подтверждение
-          if (isDirty) {
-            e.preventDefault()
-            setConfirmOpen(true)
-          }
-        }}
-      >
+      <EditorDialogContent className="max-w-3xl !overflow-visible" hideClose>
         {/* Крестик-кружок в верхнем правом углу */}
         <button
           type="button"
@@ -215,7 +204,7 @@ export function ContextTextDialog({ item, projectId, workspaceId, onClose }: Pro
             imageUpload={{ workspaceId, articleId: item.id }}
           />
         </div>
-      </DialogContent>
+      </EditorDialogContent>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>

@@ -6,14 +6,14 @@ import { lazy, Suspense, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Loader2 } from 'lucide-react'
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EditorDialogContent } from '@/components/ui/editor-dialog'
 import {
   Select,
   SelectContent,
@@ -86,29 +86,38 @@ export function QuickReplyFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{editingReply ? 'Редактировать шаблон' : 'Новый шаблон'}</DialogTitle>
-          <DialogDescription>
-            {editingReply
-              ? 'Измените название, группу и текст шаблона быстрого ответа'
-              : 'Создайте новый шаблон быстрого ответа'}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="qr-name">Название *</Label>
+      <EditorDialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-0">
+        {/* Sticky-шапка: название (слева) + «Сохранить» (справа). Прилипает
+            при прокрутке тела диалога, как в основном диалоге заметки. */}
+        <div className="sticky top-0 z-10 bg-background border-b px-6 py-4">
+          <DialogHeader className="space-y-0">
+            <DialogTitle className="sr-only">
+              {editingReply ? 'Редактировать шаблон' : 'Новый шаблон'}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {editingReply
+                ? 'Измените название, группу и текст шаблона быстрого ответа'
+                : 'Создайте новый шаблон быстрого ответа'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
             <Input
               id="qr-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Например: Приветствие нового клиента"
+              placeholder="Название шаблона"
               disabled={saving}
               autoFocus
+              className="flex-1 text-base font-semibold h-9"
             />
+            <Button onClick={handleSave} disabled={saving || !name.trim()} className="shrink-0">
+              {saving && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              Сохранить
+            </Button>
           </div>
+        </div>
 
+        <div className="space-y-4 px-6 pb-6 pt-4">
           {showGroupSelect && (
             <div className="space-y-2">
               <Label htmlFor="qr-group">Группа</Label>
@@ -147,16 +156,7 @@ export function QuickReplyFormDialog({
             </div>
           </div>
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Отмена
-          </Button>
-          <Button onClick={handleSave} disabled={saving || !name.trim()}>
-            {saving ? 'Сохранение...' : 'Сохранить'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
+      </EditorDialogContent>
     </Dialog>
   )
 }
