@@ -19,6 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { isMobileViewport } from '@/lib/isMobile'
 import { useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { useContactThreads } from '@/hooks/useContactCard'
 import { useTrackRecentView } from '@/hooks/useGlobalSearch'
@@ -126,6 +127,10 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
         standaloneTabs.reset()
       }
       if (knowledgeMode) setKnowledgeMode(false)
+      // На мобиле не открываем правую панель автоматически при заходе в проект
+      // (восстановленные вкладки не должны разворачивать fullscreen-панель).
+      // Пользователь откроет её явно тапом по треду/задаче.
+      if (isMobileViewport()) setHidden(true)
     }
   }
 

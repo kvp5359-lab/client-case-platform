@@ -98,11 +98,13 @@ export function MessageInputToolbar({
   return (
     <div className="flex items-center pb-2 pt-0">
       {/* Left: attach + separator + quick reply + separator + formatting toolbar.
-          Горизонтальный скролл — на узком экране кнопки не влезают; листаются
-          свайпом, fade справа подсказывает, что есть ещё. Кнопки внутри shrink-0,
-          поэтому не сжимаются, а уезжают в прокрутку. Отправка/сохранение справа
-          (вне этого контейнера) всегда на месте. */}
-      <div className="flex items-center gap-0 px-1.5 flex-1 min-w-0 overflow-x-auto scrollbar-hide scroll-fade-right">
+          ⚠️ НЕ оборачивать в overflow-x-auto/mask: CSS overflow-x:auto делает
+          overflow-y:auto, что обрезает инлайновые всплывашки вверх
+          (QuickReplyPicker `absolute bottom-full` и др. — они не в портале).
+          Регрессия 2026-06-25: список быстрых ответов переставал показываться
+          (видна только тень). Для «кнопки не влезают» нужен другой подход
+          (портал-меню «⋯»), не клиппинг-контейнер. */}
+      <div className="flex items-center gap-0 px-1.5 flex-1 min-w-0">
         <AttachmentButton
           onFilesSelected={onFilesSelected}
           onOpenDocPicker={onOpenDocPicker}

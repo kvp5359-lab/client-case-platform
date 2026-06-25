@@ -188,7 +188,7 @@ export default function BoardsPage() {
       <div className="h-full flex flex-col bg-gray-100/60">
         {/* Шапка активного раздела */}
         {activeSection && (
-          <div className="flex items-center gap-2 pl-14 md:pl-4 pr-4 pt-3 pb-1 shrink-0">
+          <div className="flex items-center gap-2 px-4 pt-3 pb-1 shrink-0">
             <span className="text-sm font-semibold">{activeSection.name}</span>
             <button
               type="button"
@@ -201,7 +201,7 @@ export default function BoardsPage() {
         )}
 
         {/* Строка вкладок */}
-        <div className="flex items-center pl-14 md:pl-3 pr-3 py-2 shrink-0">
+        <div className="flex items-center px-3 py-2 shrink-0">
           <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none scroll-fade-right">
             <div className="flex items-center gap-1 bg-muted rounded-full p-1 w-fit group/tabs">
               {isLoading ? (

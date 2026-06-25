@@ -15,6 +15,7 @@ import { extractMentionIds } from './messengerMention'
 import type { TaskStatus } from '@/hooks/useStatuses'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 import { isHtmlContent, plainTextToHtml } from '@/utils/format/messengerHtml'
+import { isMobileViewport } from '@/lib/isMobile'
 import { useDraftMessage } from './hooks/useDraftMessage'
 import { useMessageFiles } from './hooks/useMessageFiles'
 import { useEditorResizer } from './hooks/useEditorResizer'
@@ -260,8 +261,12 @@ export function MessageInput({
     }
   }, [translationKey, editor, editingMessage])
 
-  // Auto-focus editor when thread changes or component mounts (задержка — анимация панели)
+  // Auto-focus editor when thread changes or component mounts (задержка — анимация панели).
+  // На мобиле НЕ фокусируем при открытии треда — иначе сразу всплывает экранная
+  // клавиатура и перекрывает ленту. Фокус по реальному действию (тап в поле,
+  // «Ответить», «Цитировать») работает как раньше.
   useEffect(() => {
+    if (isMobileViewport()) return
     if (editorRef.current) {
       const timer = setTimeout(() => editorRef.current?.commands.focus('end'), 150)
       return () => clearTimeout(timer)

@@ -194,7 +194,7 @@ export function QuickReplyPicker({
         </Button>
 
         {open && (
-          <div className="absolute bottom-full left-0 mb-2 w-[440px] max-w-[calc(100vw-32px)] rounded-md border bg-popover text-popover-foreground shadow-[0_4px_24px_-2px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.07)] overflow-hidden z-50">
+          <div className="absolute bottom-full left-0 mb-2 w-[440px] max-w-[calc(100vw-56px)] md:max-w-[calc(100vw-32px)] rounded-md border bg-popover text-popover-foreground shadow-[0_4px_24px_-2px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.07)] overflow-hidden z-50">
             {/* Поиск */}
             <div className="p-2 border-b">
               <div className="relative">

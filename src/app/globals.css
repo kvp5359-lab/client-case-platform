@@ -532,8 +532,10 @@
      понятно, что это выезжающая панель (тап по полоске закрывает её).
      Перебивает inline-ширину (--sidebar-width) на мобильном drawer'е. */
   [data-workspace-sidebar] {
-    width: calc(100vw - 44px) !important;
-    max-width: 460px;
+    /* Уже на 20%: было calc(100vw - 44px), стало ×0.8 — слева/справа больше
+       видно фон, drawer компактнее. */
+    width: calc((100vw - 44px) * 0.8) !important;
+    max-width: 368px;
     /* Укорачиваем снизу на высоту таб-бара — drawer встаёт НАД нижней панелью,
        не перекрывая её (нижняя навигация видна и кликабельна всегда). */
     height: calc(100dvh - var(--cc-bottom-nav-h)) !important;
