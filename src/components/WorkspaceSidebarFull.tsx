@@ -11,7 +11,6 @@ import { useDebounce } from '@/hooks/shared/useDebounce'
 import { PanelLeftClose, X } from 'lucide-react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { QuickAddMenu } from '@/components/quick-actions/QuickAddMenu'
 import { QuickActionsProvider } from '@/components/quick-actions/QuickActionsProvider'
 import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
 import { SidebarGlobalSearch } from './WorkspaceSidebar/SidebarGlobalSearch'
@@ -49,6 +48,7 @@ import {
   navKeyFromSlotId,
   boardIdFromSlotId,
   listIdFromSlotId,
+  slotRef,
 } from '@/lib/sidebarSettings'
 
 type WorkspaceSidebarFullProps = {
@@ -323,7 +323,7 @@ export function WorkspaceSidebarFull({
       // через allBoards и проверяем pathname.
       const pinnedBoardUuids = listSlots
         .filter((s) => s.type === 'board')
-        .map((s) => boardIdFromSlotId(s.id))
+        .map((s) => boardIdFromSlotId(slotRef(s)))
         .filter((id): id is string => Boolean(id))
       const pinnedBoardPathTokens: string[] = []
       for (const uuid of pinnedBoardUuids) {
@@ -344,17 +344,17 @@ export function WorkspaceSidebarFull({
     const slots = sidebarSettings?.slots ?? []
     const accessible = slots.filter((s) => {
       if (s.type === 'nav') {
-        const key = navKeyFromSlotId(s.id)
+        const key = navKeyFromSlotId(slotRef(s))
         // Удалённые nav-ключи (напр. упразднённый 'lists') → нет def → слот отбрасываем.
         const def = key ? SIDEBAR_NAV_ITEMS[key] : undefined
         return def ? def.hasAccess(permissionsCtx) : false
       }
       if (s.type === 'board') {
-        const boardId = boardIdFromSlotId(s.id)
+        const boardId = boardIdFromSlotId(slotRef(s))
         return boardId ? Boolean(allBoards?.find((b) => b.id === boardId)) : false
       }
       if (s.type === 'list') {
-        const listId = listIdFromSlotId(s.id)
+        const listId = listIdFromSlotId(slotRef(s))
         return listId ? Boolean(allItemLists?.find((l) => l.id === listId)) : false
       }
       // type === 'folder' — папки доступны всегда (дочерние элементы фильтруются по доступу выше).
@@ -459,12 +459,6 @@ export function WorkspaceSidebarFull({
       {!isClientOnly && (
         <div className="px-2 pt-2">
           <SidebarGlobalSearch workspaceId={workspaceId} />
-        </div>
-      )}
-
-      {!isClientOnly && (
-        <div className="px-2 pt-2">
-          <QuickAddMenu workspaceId={workspaceId} />
         </div>
       )}
 

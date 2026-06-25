@@ -28,6 +28,7 @@ import {
   sectionIdFromSlotId,
   navKeyFromSlotId,
   quickActionIdFromSlotId,
+  slotRef,
   topLevelSlots,
   type SidebarBadgeMode,
   type SidebarNavKey,
@@ -111,8 +112,12 @@ function SingleSlot({
     return <QuickActionSlotButton slot={slot} compact={compact} workspaceId={workspaceId} />
   }
 
+  if (slot.type === 'link') {
+    return <LinkSlotButton slot={slot} compact={compact} buildHref={buildHref} />
+  }
+
   if (slot.type === 'section') {
-    const sectionId = sectionIdFromSlotId(slot.id)!
+    const sectionId = sectionIdFromSlotId(slotRef(slot))!
     const section = allSections?.find((s) => s.id === sectionId)
     if (!section) return null
     return (
@@ -129,7 +134,7 @@ function SingleSlot({
   }
 
   if (slot.type === 'nav') {
-    const key = navKeyFromSlotId(slot.id)!
+    const key = navKeyFromSlotId(slotRef(slot))!
     const meta = SIDEBAR_NAV_ITEMS[key]
     return (
       <SidebarNavButton
@@ -145,7 +150,7 @@ function SingleSlot({
   }
 
   if (slot.type === 'board') {
-    const boardId = boardIdFromSlotId(slot.id)!
+    const boardId = boardIdFromSlotId(slotRef(slot))!
     const board = allBoards?.find((b) => b.id === boardId)
     if (!board) return null
     const hoverSlot =
@@ -184,7 +189,7 @@ function SingleSlot({
   }
 
   // type === 'list'
-  const listId = listIdFromSlotId(slot.id)!
+  const listId = listIdFromSlotId(slotRef(slot))!
   const list = allItemLists?.find((l) => l.id === listId)
   if (!list) return null
   const hoverSlot =
@@ -230,7 +235,7 @@ function QuickActionSlotButton({
 }) {
   const { quickActions } = useActiveInterfacePreset(workspaceId)
   const { run } = useQuickActionsRunner()
-  const actionId = quickActionIdFromSlotId(slot.id)
+  const actionId = quickActionIdFromSlotId(slotRef(slot))
   const action = quickActions.find((a) => a.id === actionId)
   if (!action) return null
   const m = { Icon: getChatIconComponent(action.icon) }
@@ -261,6 +266,52 @@ function QuickActionSlotButton({
   )
 }
 
+// ── Renderer слота-ссылки (link) ────────────────────────────────────
+
+function LinkSlotButton({
+  slot,
+  compact,
+  buildHref,
+}: {
+  slot: SidebarSlot
+  compact: boolean
+  buildHref: (path: string) => string
+}) {
+  const label = slot.name?.trim() || 'Ссылка'
+  const raw = (slot.url ?? '').trim()
+  const isExternal = /^https?:\/\//i.test(raw)
+  // Абсолютный http → внешняя вкладка; путь с «/» → как есть; иначе — относительно воркспейса.
+  const href = !raw ? '#' : isExternal ? raw : raw.startsWith('/') ? raw : buildHref(raw)
+  const m = { Icon: getChatIconComponent(slot.link_icon ?? 'globe') }
+
+  if (compact) {
+    return (
+      <a
+        href={href}
+        title={label}
+        target={isExternal ? '_blank' : undefined}
+        rel={isExternal ? 'noopener noreferrer' : undefined}
+        className="relative flex items-center gap-2 px-3 h-10 md:px-2 md:h-[30px] rounded-[6px] text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 transition-colors"
+      >
+        <m.Icon className="h-[18px] w-[18px] shrink-0" />
+      </a>
+    )
+  }
+  return (
+    <a
+      href={href}
+      target={isExternal ? '_blank' : undefined}
+      rel={isExternal ? 'noopener noreferrer' : undefined}
+      className="w-full flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] text-gray-700 hover:bg-gray-100/50 transition-colors"
+    >
+      <span className="relative shrink-0 w-[22px] h-[22px] flex items-center justify-center">
+        <m.Icon className="h-[18px] w-[18px]" />
+      </span>
+      <span className="flex-1 truncate text-left">{label}</span>
+    </a>
+  )
+}
+
 // ── Renderer папки: кнопка + popover со вложенными ──────────────────
 
 function FolderSlot({
@@ -287,6 +338,8 @@ function FolderSlot({
 
   const folderBadgeMeta = getBadgeColorMeta(folder.badge_color)
   const triggerLabel = folder.name ?? 'Папка'
+  // Иконка папки: выбранная (folder_icon из THREAD_ICONS) или дефолтная Folder.
+  const fm = { Icon: folder.folder_icon ? getChatIconComponent(folder.folder_icon) : FolderIcon }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -302,7 +355,7 @@ function FolderSlot({
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50',
             )}
           >
-            <FolderIcon className="h-[18px] w-[18px] shrink-0" />
+            <fm.Icon className="h-[18px] w-[18px] shrink-0" />
             {folderBadge && (
               <span className={cn(
                 'absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-bold leading-none flex items-center justify-center',
@@ -321,7 +374,7 @@ function FolderSlot({
             )}
           >
             <span className="relative shrink-0 w-[22px] h-[22px] flex items-center justify-center">
-              <FolderIcon className="h-[18px] w-[18px]" />
+              <fm.Icon className="h-[18px] w-[18px]" />
             </span>
             <span className="flex-1 truncate text-left">{triggerLabel}</span>
             {folderBadge && (

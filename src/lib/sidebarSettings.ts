@@ -58,8 +58,19 @@ export type SidebarBadgeColor =
   | 'gray'
 
 export type SidebarSlot = {
-  id: string // 'nav:<key>' | 'board:<uuid>' | 'list:<uuid>' | 'section:<uuid>' | 'folder:<uuid>' | 'quickaction:<id>'
-  type: 'nav' | 'board' | 'list' | 'section' | 'folder' | 'quickaction'
+  /**
+   * Уникальный id ЭКЗЕМПЛЯРА слота. Для слотов, созданных перетаскиванием из
+   * палитры — `slot:<uuid>` (чтобы один пункт можно было разместить несколько
+   * раз). Легаси-слоты имеют id, совпадающий со ссылкой (`board:<uuid>` и т.п.).
+   */
+  id: string
+  /**
+   * На что ссылается слот: 'nav:<key>' | 'board:<uuid>' | 'list:<uuid>' |
+   * 'section:<uuid>' | 'quickaction:<id>'. Если не задан — ссылкой считается
+   * сам `id` (легаси). Для folder/link не используется (они самодостаточны).
+   */
+  ref?: string | null
+  type: 'nav' | 'board' | 'list' | 'section' | 'folder' | 'quickaction' | 'link'
   placement: SidebarPlacement
   order: number
   badge_mode: SidebarBadgeMode
@@ -72,10 +83,15 @@ export type SidebarSlot = {
    * не задано (undefined/null).
    */
   parent_id?: string | null
-  /** Имя папки (только для type='folder'). */
+  /** Имя папки (type='folder') или подпись ссылки (type='link'). */
   name?: string
   /** Имя lucide-иконки для папки (опционально, дефолт — Folder). */
   folder_icon?: string
+  /** URL ссылки (только для type='link'). Абсолютный (http…) → внешняя вкладка,
+   *  относительный → путь внутри воркспейса. */
+  url?: string
+  /** Значение иконки из THREAD_ICONS (только для type='link'). */
+  link_icon?: string
 }
 
 export type SidebarSettingsRow = {
@@ -353,7 +369,8 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
     const id = typeof obj.id === 'string' ? obj.id : null
     const type =
       obj.type === 'nav' || obj.type === 'board' || obj.type === 'list' ||
-      obj.type === 'section' || obj.type === 'folder' || obj.type === 'quickaction'
+      obj.type === 'section' || obj.type === 'folder' || obj.type === 'quickaction' ||
+      obj.type === 'link'
         ? obj.type
         : null
     const placement =
@@ -364,29 +381,40 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
         ? (obj.badge_mode as SidebarBadgeMode)
         : 'disabled'
     if (!id || !type || !placement) continue
-    // Валидация по типу.
+    // Ссылка слота: явный ref, иначе сам id (легаси). Валидируем именно ссылку —
+    // id экземпляра может быть произвольным (`slot:<uuid>`), если задан ref.
+    const refRaw = typeof obj.ref === 'string' && obj.ref ? obj.ref : null
+    const refStr = refRaw ?? id
+    // Валидация по типу (folder/link — самодостаточны, валидируем по id).
     if (type === 'nav') {
-      const key = id.startsWith('nav:') ? id.slice(4) : null
+      const key = refStr.startsWith('nav:') ? refStr.slice(4) : null
       if (!key || !VALID_NAV_KEYS.has(key)) continue
     } else if (type === 'board') {
-      const uuid = id.startsWith('board:') ? id.slice(6) : null
+      const uuid = refStr.startsWith('board:') ? refStr.slice(6) : null
       if (!uuid || !UUID_RE.test(uuid)) continue
     } else if (type === 'list') {
-      const uuid = id.startsWith('list:') ? id.slice(5) : null
+      const uuid = refStr.startsWith('list:') ? refStr.slice(5) : null
       if (!uuid || !UUID_RE.test(uuid)) continue
     } else if (type === 'section') {
-      const uuid = id.startsWith('section:') ? id.slice(8) : null
+      const uuid = refStr.startsWith('section:') ? refStr.slice(8) : null
       if (!uuid || !UUID_RE.test(uuid)) continue
     } else if (type === 'quickaction') {
-      // id = 'quickaction:<actionId>'; actionId — произвольный непустой (не строго UUID).
-      const actionId = id.startsWith('quickaction:') ? id.slice(12) : null
+      // ref = 'quickaction:<actionId>'; actionId — произвольный непустой (не строго UUID).
+      const actionId = refStr.startsWith('quickaction:') ? refStr.slice(12) : null
       if (!actionId) continue
+    } else if (type === 'link') {
+      const uuid = id.startsWith('link:') ? id.slice(5) : null
+      if (!uuid || !UUID_RE.test(uuid)) continue
     } else {
       // type === 'folder'
       const uuid = id.startsWith('folder:') ? id.slice(7) : null
       if (!uuid || !UUID_RE.test(uuid)) continue
     }
     const slot: SidebarSlot = { id, type, placement, order, badge_mode: badgeMode }
+    // Сохраняем ref только если он отличается от id (легаси-слоты без ref).
+    if (refRaw && refRaw !== id && type !== 'folder' && type !== 'link') {
+      slot.ref = refRaw
+    }
     if (typeof obj.badge_color === 'string' && VALID_BADGE_COLORS.has(obj.badge_color)) {
       slot.badge_color = obj.badge_color as SidebarBadgeColor
     }
@@ -398,6 +426,11 @@ export function normalizeSidebarSlots(raw: unknown): SidebarSlot[] {
       if (typeof obj.folder_icon === 'string') slot.folder_icon = obj.folder_icon
       // Папка не может быть в папке — гарантируем.
       slot.parent_id = null
+    }
+    if (type === 'link') {
+      slot.name = typeof obj.name === 'string' && obj.name.trim() ? obj.name : 'Ссылка'
+      slot.url = typeof obj.url === 'string' ? obj.url : ''
+      if (typeof obj.link_icon === 'string') slot.link_icon = obj.link_icon
     }
     out.push(slot)
   }
@@ -480,6 +513,21 @@ export function sectionIdFromSlotId(id: string): string | null {
 export function quickActionIdFromSlotId(id: string): string | null {
   if (!id.startsWith('quickaction:')) return null
   return id.slice(12)
+}
+
+/** Извлекает uuid ссылки из id вида 'link:<uuid>'. */
+export function linkIdFromSlotId(id: string): string | null {
+  if (!id.startsWith('link:')) return null
+  return id.slice(5)
+}
+
+/**
+ * Ссылка слота — строка `nav:…`/`board:…`/`list:…`/`section:…`/`quickaction:…`,
+ * по которой резолвится сущность. Для легаси-слотов без `ref` это сам `id`.
+ * ВСЕ парсеры id (navKeyFromSlotId, boardIdFromSlotId, …) применять к ней.
+ */
+export function slotRef(slot: { id: string; ref?: string | null }): string {
+  return slot.ref && slot.ref.length > 0 ? slot.ref : slot.id
 }
 
 /** Форматирует число в badge-строку (>99 → "99+"). undefined если 0/нет. */

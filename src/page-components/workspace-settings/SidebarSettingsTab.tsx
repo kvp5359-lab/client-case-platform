@@ -29,6 +29,7 @@ import {
   listIdFromSlotId,
   sectionIdFromSlotId,
   reorderWithinZones,
+  slotRef,
   type SidebarSlot,
 } from '@/lib/sidebarSettings'
 import { SidebarEditorCanvas } from './SidebarSettings/SidebarEditorCanvas'
@@ -152,17 +153,18 @@ function SidebarSettingsView({
     const listIds = new Set(itemLists.map((l) => l.id))
     const sectionIds = new Set(sections.map((s) => s.id))
     return slots.filter((s) => {
-      if (s.type === 'nav' || s.type === 'folder' || s.type === 'quickaction') return true
+      if (s.type === 'nav' || s.type === 'folder' || s.type === 'quickaction' || s.type === 'link')
+        return true
       if (s.type === 'board') {
-        const bid = boardIdFromSlotId(s.id)
+        const bid = boardIdFromSlotId(slotRef(s))
         return bid ? boardIds.has(bid) : false
       }
       if (s.type === 'list') {
-        const lid = listIdFromSlotId(s.id)
+        const lid = listIdFromSlotId(slotRef(s))
         return lid ? listIds.has(lid) : false
       }
       // type === 'section'
-      const sid = sectionIdFromSlotId(s.id)
+      const sid = sectionIdFromSlotId(slotRef(s))
       return sid ? sectionIds.has(sid) : false
     })
   }, [slots, boards, itemLists, sections])

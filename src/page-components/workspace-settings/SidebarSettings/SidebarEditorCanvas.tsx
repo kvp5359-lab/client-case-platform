@@ -34,8 +34,13 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import {
   ChevronDown,
+  FolderOpen,
   FolderPlus,
+  FolderTree,
   GripVertical,
+  Kanban,
+  Link2,
+  ListChecks,
   Plus,
   Trash2,
   X,
@@ -56,12 +61,14 @@ import {
   SIDEBAR_NAV_KEYS,
   getBadgeColorMeta,
   quickActionIdFromSlotId,
+  slotRef,
   type SidebarBadgeMode,
   type SidebarPlacement,
   type SidebarSlot,
 } from '@/lib/sidebarSettings'
 import { useActiveInterfacePreset } from '@/hooks/useInterfacePresets'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
+import { THREAD_ICONS } from '@/components/messenger/threadConstants'
 import type { QuickAction } from '@/types/quickActions'
 import { resolveSlotMeta, type SlotMeta } from './zone-card/slotMeta'
 import type { AvailableEntry } from './types'
@@ -98,9 +105,15 @@ export type SidebarEditorCanvasProps = {
 /** Мета слота с учётом quickaction (иконка/имя из активного профиля). */
 function metaFor(slot: SidebarSlot, data: DataCtx): SlotMeta {
   if (slot.type === 'quickaction') {
-    const aid = quickActionIdFromSlotId(slot.id)
+    const aid = quickActionIdFromSlotId(slotRef(slot))
     const a = data.quickActions.find((x) => x.id === aid)
     return { label: a?.label ?? 'Действие', Icon: getChatIconComponent(a?.icon ?? 'message-square') }
+  }
+  if (slot.type === 'link') {
+    return { label: slot.name?.trim() || 'Ссылка', Icon: getChatIconComponent(slot.link_icon ?? 'globe') }
+  }
+  if (slot.type === 'folder' && slot.folder_icon) {
+    return { label: slot.name?.trim() || 'Папка', Icon: getChatIconComponent(slot.folder_icon) }
   }
   return resolveSlotMeta(slot, data.boards, data.itemLists, data.sections)
 }
@@ -146,24 +159,23 @@ export function SidebarEditorCanvas({
     [sorted],
   )
 
-  const placedIds = useMemo(() => new Set(slots.map((s) => s.id)), [slots])
+  // Палитра показывает ВСЕ доступные сущности — даже уже размещённые: один и тот
+  // же пункт можно добавить в сайдбар несколько раз (в разные папки/зоны).
   const availableNav: AvailableEntry[] = useMemo(() => {
-    const entries = SIDEBAR_NAV_KEYS.filter((key) => !placedIds.has(`nav:${key}`)).map(
-      (key) => ({
-        kind: 'nav' as const,
-        id: `nav:${key}`,
-        label: SIDEBAR_NAV_ITEMS[key].label,
-        navKey: key,
-      }),
-    )
+    const entries = SIDEBAR_NAV_KEYS.map((key) => ({
+      kind: 'nav' as const,
+      id: `nav:${key}`,
+      label: SIDEBAR_NAV_ITEMS[key].label,
+      navKey: key,
+    }))
     entries.sort((a, b) => a.label.localeCompare(b.label, 'ru'))
     return entries
-  }, [placedIds])
+  }, [])
 
   const availableSections: AvailableEntry[] = useMemo(
     () =>
       sections
-        .filter((s) => !placedIds.has(`section:${s.id}`))
+        .slice()
         .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
         .map((s) => ({
           kind: 'section' as const,
@@ -171,21 +183,43 @@ export function SidebarEditorCanvas({
           label: s.name,
           sectionId: s.id,
         })),
-    [placedIds, sections],
+    [sections],
   )
 
   const availableQuickActions: AvailableEntry[] = useMemo(
     () =>
-      quickActions
-        .filter((a) => !placedIds.has(`quickaction:${a.id}`))
-        .map((a) => ({
-          kind: 'quickaction' as const,
-          id: `quickaction:${a.id}`,
-          label: a.label,
-          actionId: a.id,
-          icon: a.icon,
+      quickActions.map((a) => ({
+        kind: 'quickaction' as const,
+        id: `quickaction:${a.id}`,
+        label: a.label,
+        actionId: a.id,
+        icon: a.icon,
+      })),
+    [quickActions],
+  )
+
+  const availableBoards: AvailableEntry[] = useMemo(
+    () =>
+      boards
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+        .map((b) => ({ kind: 'board' as const, id: `board:${b.id}`, label: b.name, boardId: b.id })),
+    [boards],
+  )
+
+  const availableLists: AvailableEntry[] = useMemo(
+    () =>
+      itemLists
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+        .map((l) => ({
+          kind: 'list' as const,
+          id: `list:${l.id}`,
+          label: l.name,
+          listId: l.id,
+          entityType: l.entity_type,
         })),
-    [quickActions, placedIds],
+    [itemLists],
   )
 
   const selectedSlot = selectedId ? slots.find((s) => s.id === selectedId) ?? null : null
@@ -210,6 +244,18 @@ export function SidebarEditorCanvas({
       const a = quickActions.find((x) => x.id === aid)
       return a
         ? { kind: 'quickaction', id: `quickaction:${aid}`, label: a.label, actionId: aid, icon: a.icon }
+        : null
+    }
+    if (id.startsWith('avail:board:')) {
+      const bid = id.slice('avail:board:'.length)
+      const b = boards.find((x) => x.id === bid)
+      return b ? { kind: 'board', id: `board:${bid}`, label: b.name, boardId: bid } : null
+    }
+    if (id.startsWith('avail:list:')) {
+      const lid = id.slice('avail:list:'.length)
+      const l = itemLists.find((x) => x.id === lid)
+      return l
+        ? { kind: 'list', id: `list:${lid}`, label: l.name, listId: lid, entityType: l.entity_type }
         : null
     }
     return null
@@ -237,8 +283,11 @@ export function SidebarEditorCanvas({
       if (!targetContainer || targetContainer === PALETTE) return
       const entry = entryFromActive(activeStr)
       if (!entry) return
+      // Уникальный id экземпляра + ref на сущность — один пункт можно разместить
+      // несколько раз (в разных папках/зонах), он не исчезает из палитры.
       const newSlot: SidebarSlot = {
-        id: entry.id,
+        id: `slot:${newUuid()}`,
+        ref: entry.id,
         type: entry.kind,
         placement: targetContainer === ZONE_TOPBAR ? 'topbar' : 'list',
         order: 0,
@@ -277,6 +326,8 @@ export function SidebarEditorCanvas({
     )
   const renameFolder = (id: string, name: string) =>
     onChange(slots.map((s) => (s.id === id ? { ...s, name } : s)))
+  const setFolderIcon = (id: string, icon: string) =>
+    onChange(slots.map((s) => (s.id === id ? { ...s, folder_icon: icon } : s)))
   const removeSlot = (id: string) => {
     onChange(applyRemove(slots, id))
     if (selectedId === id) setSelectedId(null)
@@ -295,6 +346,24 @@ export function SidebarEditorCanvas({
     setSelectedId(slot.id)
   }
 
+  const createLink = () => {
+    const slot: SidebarSlot = {
+      id: `link:${newUuid()}`,
+      type: 'link',
+      placement: 'list',
+      order: 999,
+      badge_mode: 'disabled',
+      name: 'Новая ссылка',
+      url: '',
+      link_icon: 'globe',
+    }
+    onChange(applyAdd(slots, slot, ZONE_LIST, null))
+    setSelectedId(slot.id)
+  }
+
+  const setLinkField = (id: string, patch: Partial<Pick<SidebarSlot, 'name' | 'url' | 'link_icon'>>) =>
+    onChange(slots.map((s) => (s.id === id ? { ...s, ...patch } : s)))
+
   return (
     <DndContext
       sensors={sensors}
@@ -302,9 +371,9 @@ export function SidebarEditorCanvas({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* Левая колонка — макет сайдбара */}
-        <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-start">
+        {/* Левая колонка — макет сайдбара. Независимый скролл от палитры. */}
+        <div className="flex flex-col gap-3 lg:sticky lg:top-2 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto lg:pr-1">
           <ZoneBox
             containerId={ZONE_TOPBAR}
             title="Верхняя строка"
@@ -378,21 +447,26 @@ export function SidebarEditorCanvas({
           </ZoneBox>
         </div>
 
-        {/* Правая колонка — палитра + инспектор */}
-        <div className="flex flex-col gap-3">
-          <PaletteBox
-            availableNav={availableNav}
-            availableSections={availableSections}
-            availableQuickActions={availableQuickActions}
-            onCreateSection={onCreateSection}
-          />
+        {/* Правая колонка — палитра + инспектор. Независимый скролл от макета. */}
+        <div className="flex flex-col gap-3 lg:sticky lg:top-2 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto lg:pr-1">
           <Inspector
             slot={selectedSlot}
             data={data}
             onSetBadge={setBadge}
             onSetBadgeColor={setBadgeColor}
             onRenameFolder={renameFolder}
+            onSetFolderIcon={setFolderIcon}
+            onSetLinkField={setLinkField}
             onRemove={removeSlot}
+          />
+          <PaletteBox
+            availableNav={availableNav}
+            availableSections={availableSections}
+            availableBoards={availableBoards}
+            availableLists={availableLists}
+            availableQuickActions={availableQuickActions}
+            onCreateSection={onCreateSection}
+            onCreateLink={createLink}
           />
           {rightExtra}
         </div>
@@ -663,16 +737,34 @@ function FolderBox({
   )
 }
 
+function PaletteGroup({ title, entries }: { title: string; entries: AvailableEntry[] }) {
+  if (entries.length === 0) return null
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="text-[11px] font-medium text-gray-400 px-1 pt-1">{title}</div>
+      {entries.map((entry) => (
+        <PaletteItem key={entry.id} entry={entry} />
+      ))}
+    </div>
+  )
+}
+
 function PaletteBox({
   availableNav,
   availableSections,
+  availableBoards,
+  availableLists,
   availableQuickActions,
   onCreateSection,
+  onCreateLink,
 }: {
   availableNav: AvailableEntry[]
   availableSections: AvailableEntry[]
+  availableBoards: AvailableEntry[]
+  availableLists: AvailableEntry[]
   availableQuickActions: AvailableEntry[]
   onCreateSection: (name: string) => void
+  onCreateLink: () => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: PALETTE })
   const [creating, setCreating] = useState(false)
@@ -683,6 +775,13 @@ function PaletteBox({
     setName('')
     setCreating(false)
   }
+
+  const totalEntries =
+    availableNav.length +
+    availableSections.length +
+    availableBoards.length +
+    availableLists.length +
+    availableQuickActions.length
 
   return (
     <div
@@ -695,41 +794,53 @@ function PaletteBox({
         <div className="text-xs font-medium text-gray-500">Доступные</div>
         {isOver && <div className="text-[11px] text-red-500">Отпусти, чтобы убрать</div>}
       </div>
-      <div className="flex flex-col gap-1.5">
-        {[...availableNav, ...availableSections, ...availableQuickActions].map((entry) => (
-          <PaletteItem key={entry.id} entry={entry} />
-        ))}
-        {availableNav.length === 0 &&
-          availableSections.length === 0 &&
-          availableQuickActions.length === 0 && (
-            <div className="text-[11px] text-gray-400 px-2 py-1">Все пункты уже в сайдбаре</div>
-          )}
+      <div className="text-[11px] text-gray-400 mb-2">
+        Перетащи в верхнюю строку, список или внутрь папки-меню.
+      </div>
+      <div className="flex flex-col gap-2">
+        <PaletteGroup title="Навигация" entries={availableNav} />
+        <PaletteGroup title="Действия" entries={availableQuickActions} />
+        <PaletteGroup title="Разделы" entries={availableSections} />
+        <PaletteGroup title="Доски" entries={availableBoards} />
+        <PaletteGroup title="Списки" entries={availableLists} />
+        {totalEntries === 0 && (
+          <div className="text-[11px] text-gray-400 px-2 py-1">Все пункты уже в сайдбаре</div>
+        )}
 
-        {creating ? (
-          <Input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commit()
-              if (e.key === 'Escape') {
-                setCreating(false)
-                setName('')
-              }
-            }}
-            placeholder="Название раздела"
-            className="h-8 text-sm"
-          />
-        ) : (
+        <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-gray-100 mt-1">
+          {creating ? (
+            <Input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commit()
+                if (e.key === 'Escape') {
+                  setCreating(false)
+                  setName('')
+                }
+              }}
+              placeholder="Название раздела"
+              className="h-8 text-sm"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 px-2 py-1"
+            >
+              <Plus className="w-3.5 h-3.5" /> Создать раздел
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setCreating(true)}
+            onClick={onCreateLink}
             className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 px-2 py-1"
           >
-            <Plus className="w-3.5 h-3.5" /> Создать раздел
+            <Link2 className="w-3.5 h-3.5" /> Создать ссылку
           </button>
-        )}
+        </div>
       </div>
     </div>
   )
@@ -746,7 +857,13 @@ function PaletteItem({ entry }: { entry: AvailableEntry }) {
         ? SIDEBAR_NAV_ITEMS[entry.navKey].icon
         : entry.kind === 'quickaction'
           ? getChatIconComponent(entry.icon)
-          : FolderPlus,
+          : entry.kind === 'board'
+            ? Kanban
+            : entry.kind === 'list'
+              ? entry.entityType === 'project'
+                ? FolderOpen
+                : ListChecks
+              : FolderTree,
   }
   return (
     <div
@@ -771,6 +888,8 @@ function Inspector({
   onSetBadge,
   onSetBadgeColor,
   onRenameFolder,
+  onSetFolderIcon,
+  onSetLinkField,
   onRemove,
 }: {
   slot: SidebarSlot | null
@@ -778,22 +897,31 @@ function Inspector({
   onSetBadge: (id: string, mode: SidebarBadgeMode) => void
   onSetBadgeColor: (id: string, color: string) => void
   onRenameFolder: (id: string, name: string) => void
+  onSetFolderIcon: (id: string, icon: string) => void
+  onSetLinkField: (
+    id: string,
+    patch: Partial<Pick<SidebarSlot, 'name' | 'url' | 'link_icon'>>,
+  ) => void
   onRemove: (id: string) => void
 }) {
   if (!slot) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white p-3 text-xs text-gray-400">
-        Выбери пункт слева, чтобы настроить бейдж и цвет.
+      <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 text-xs text-gray-500 text-center">
+        Выбери пункт слева — здесь появятся его настройки (иконка, бейдж, цвет, ссылка).
       </div>
     )
   }
   const meta = metaFor(slot, data)
   const isFolder = slot.type === 'folder'
+  const isLink = slot.type === 'link'
 
   return (
-    <div className="rounded-xl border border-primary/40 bg-white p-3">
+    <div className="rounded-xl border-2 border-primary bg-primary/5 ring-2 ring-primary/15 shadow-sm p-3">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-primary/80 mb-2">
+        Настройка пункта
+      </div>
       <div className="flex items-center gap-2 mb-3">
-        <meta.Icon className="w-4 h-4 text-gray-600" />
+        <meta.Icon className="w-4 h-4 text-gray-700" />
         <span className="text-sm font-medium truncate flex-1">{meta.label}</span>
         <button
           type="button"
@@ -805,15 +933,89 @@ function Inspector({
         </button>
       </div>
 
-      {isFolder ? (
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">Название папки</label>
-          <Input
-            value={slot.name ?? ''}
-            onChange={(e) => onRenameFolder(slot.id, e.target.value)}
-            placeholder="Папка"
-            className="h-8 text-sm"
-          />
+      {isLink ? (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Название</label>
+            <Input
+              value={slot.name ?? ''}
+              onChange={(e) => onSetLinkField(slot.id, { name: e.target.value })}
+              placeholder="Напр. «Сайт компании»"
+              className="h-8 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Ссылка (URL)</label>
+            <Input
+              value={slot.url ?? ''}
+              onChange={(e) => onSetLinkField(slot.id, { url: e.target.value })}
+              placeholder="https://… или внутренний путь"
+              className="h-8 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Иконка</label>
+            <Select
+              value={slot.link_icon ?? 'globe'}
+              onValueChange={(v) => onSetLinkField(slot.id, { link_icon: v })}
+            >
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {THREAD_ICONS.map((i) => {
+                  const Ic = i.icon
+                  return (
+                    <SelectItem key={i.value} value={i.value}>
+                      <span className="flex items-center gap-2">
+                        <Ic className="w-4 h-4" /> {i.label}
+                      </span>
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      ) : isFolder ? (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Название папки</label>
+            <Input
+              value={slot.name ?? ''}
+              onChange={(e) => onRenameFolder(slot.id, e.target.value)}
+              placeholder="Папка"
+              className="h-8 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Иконка</label>
+            <Select
+              value={slot.folder_icon ?? '__default__'}
+              onValueChange={(v) => onSetFolderIcon(slot.id, v === '__default__' ? '' : v)}
+            >
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__default__">
+                  <span className="flex items-center gap-2">
+                    <FolderPlus className="w-4 h-4" /> Папка (по умолчанию)
+                  </span>
+                </SelectItem>
+                {THREAD_ICONS.map((i) => {
+                  const Ic = i.icon
+                  return (
+                    <SelectItem key={i.value} value={i.value}>
+                      <span className="flex items-center gap-2">
+                        <Ic className="w-4 h-4" /> {i.label}
+                      </span>
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       ) : (
         <>

@@ -17,6 +17,7 @@ import {
   listIdFromSlotId,
   sectionIdFromSlotId,
   navKeyFromSlotId,
+  slotRef,
   SIDEBAR_NAV_ITEMS,
   type SidebarSlot,
 } from '@/lib/sidebarSettings'
@@ -32,23 +33,24 @@ export function resolveSlotMeta(
   itemLists: ItemList[],
   sections: { id: string; name: string }[] = [],
 ): SlotMeta {
+  const ref = slotRef(slot)
   if (slot.type === 'nav') {
-    const k = navKeyFromSlotId(slot.id)!
+    const k = navKeyFromSlotId(ref)!
     return { label: SIDEBAR_NAV_ITEMS[k].label, Icon: SIDEBAR_NAV_ITEMS[k].icon }
   }
   if (slot.type === 'board') {
-    const board = boards.find((b) => b.id === boardIdFromSlotId(slot.id))
+    const board = boards.find((b) => b.id === boardIdFromSlotId(ref))
     return { label: board?.name ?? '— удалённая доска —', Icon: Kanban }
   }
   if (slot.type === 'list') {
-    const list = itemLists.find((l) => l.id === listIdFromSlotId(slot.id))
+    const list = itemLists.find((l) => l.id === listIdFromSlotId(ref))
     return {
       label: list?.name ?? '— удалённый список —',
       Icon: list?.entity_type === 'project' ? FolderOpen : ListChecks,
     }
   }
   if (slot.type === 'section') {
-    const section = sections.find((s) => s.id === sectionIdFromSlotId(slot.id))
+    const section = sections.find((s) => s.id === sectionIdFromSlotId(ref))
     return { label: section?.name ?? '— удалённый раздел —', Icon: FolderTree }
   }
   // folder

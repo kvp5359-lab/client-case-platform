@@ -14,7 +14,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useWorkspaceSidebarSettings } from '@/hooks/useWorkspaceSidebarSettings'
 import { workspaceSidebarSettingsKeys } from '@/hooks/queryKeys'
-import { type SidebarSlot, reorderWithinZones } from '@/lib/sidebarSettings'
+import { type SidebarSlot, reorderWithinZones, slotRef } from '@/lib/sidebarSettings'
 import { toSupabaseJson } from '@/utils/supabaseJson'
 
 type PinnedSlotType = 'board' | 'list'
@@ -28,10 +28,13 @@ export function usePinnedSlots(
 
   const slots: SidebarSlot[] = useMemo(() => settings?.slots ?? [], [settings])
 
+  // Парсим entityId из ССЫЛКИ слота (ref ?? id) — слот-экземпляр имеет id
+  // вида `slot:<uuid>`, а сущность — в ref `board:<uuid>`/`list:<uuid>`.
   const idFromSlot = useCallback(
-    (id: string): string | null => {
+    (slot: SidebarSlot): string | null => {
       const prefix = `${slotType}:`
-      return id.startsWith(prefix) ? id.slice(prefix.length) : null
+      const ref = slotRef(slot)
+      return ref.startsWith(prefix) ? ref.slice(prefix.length) : null
     },
     [slotType],
   )
@@ -40,7 +43,7 @@ export function usePinnedSlots(
     return slots
       .filter((s) => s.type === slotType)
       .sort((a, b) => a.order - b.order)
-      .map((s) => idFromSlot(s.id))
+      .map((s) => idFromSlot(s))
       .filter((id): id is string => Boolean(id))
   }, [slots, slotType, idFromSlot])
 
@@ -50,19 +53,23 @@ export function usePinnedSlots(
 
   const buildNext = useCallback(
     (entityId: string, current: SidebarSlot[]): SidebarSlot[] => {
-      const slotId = `${slotType}:${entityId}`
-      const exists = current.some((s) => s.id === slotId)
+      const targetRef = `${slotType}:${entityId}`
+      // «Закреплено» = есть ХОТЯ БЫ один слот с этой ссылкой (включая экземпляры
+      // из редактора). Открепление убирает ВСЕ такие слоты.
+      const exists = current.some((s) => s.type === slotType && slotRef(s) === targetRef)
       if (exists) {
-        return reorderWithinZones(current.filter((s) => s.id !== slotId))
+        return reorderWithinZones(
+          current.filter((s) => !(s.type === slotType && slotRef(s) === targetRef)),
+        )
       }
-      // Закрепляем в конец зоны «список».
+      // Закрепляем в конец зоны «список» (легаси-id == ref).
       const listMax = current
         .filter((s) => s.placement === 'list')
         .reduce((m, s) => Math.max(m, s.order), -1)
       return reorderWithinZones([
         ...current,
         {
-          id: slotId,
+          id: targetRef,
           type: slotType,
           placement: 'list',
           order: listMax + 1,
