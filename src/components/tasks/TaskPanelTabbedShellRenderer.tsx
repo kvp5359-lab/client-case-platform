@@ -295,12 +295,18 @@ function TaskPanelTabbedShellRenderer({
   // hidden=true прячет панель UI, но не трогает вкладки в БД.
   const open = tabs.length > 0 && !hidden
   const [painted, setPainted] = useState(false)
+  // render держится ещё 300мс после закрытия — чтобы проиграть слайд ВЫЕЗДА
+  // (translate-x-full). Без этого `hidden` срабатывал мгновенно и анимации
+  // закрытия не было видно. Та же скорость, что у чат-панели инбокса (300мс).
+  const [render, setRender] = useState(open)
   useEffect(() => {
     if (!open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- сброс painted при закрытии панели; альтернатива (key-based remount) ломает анимацию
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- сброс painted → слайд выезда
       setPainted(false)
-      return
+      const t = setTimeout(() => setRender(false), 300)
+      return () => clearTimeout(t)
     }
+    setRender(true)
     const id = requestAnimationFrame(() => setPainted(true))
     document.body.setAttribute('data-task-panel-open', '')
     return () => {
@@ -386,8 +392,8 @@ function TaskPanelTabbedShellRenderer({
     <div
       className={cn(
         'side-panel flex flex-col z-50',
-        'transition-transform duration-200 ease-out',
-        !open && 'hidden',
+        'transition-transform duration-300 ease-out',
+        !render && 'hidden',
         visible ? 'translate-x-0' : 'translate-x-full',
       )}
     >
@@ -436,7 +442,7 @@ function TaskPanelTabbedShellRenderer({
           (ComposeField) инициализируется в hidden-контейнере с display:none,
           получает 0×0 и после показа панели остаётся неотзывчивым к кликам. */}
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-        {open && activeContent}
+        {render && activeContent}
       </div>
     </div>
   )

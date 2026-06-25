@@ -212,7 +212,29 @@ function MessageBubbleImpl({
       : colors.incoming.split(' ').find((c) => c.startsWith('bg-')) ?? ''
 
   return (
-    <div className={cn('flex group items-start', isOwn ? 'justify-end' : 'justify-start')}>
+    <div
+      className={cn('flex group items-start', isOwn ? 'justify-end' : 'justify-start')}
+      onMouseDown={(e) => {
+        // Второй клик двойного клика по ПУСТОМУ месту ряда браузер по умолчанию
+        // расширяет на ближайшее слово в баббле → выделение → всплывает
+        // «Цитировать». Гасим это выделение (preventDefault на mousedown с
+        // detail===2), только когда цель — сам ряд. Двойной клик для «Ответить»
+        // (событие dblclick) при этом срабатывает как обычно.
+        if (e.detail === 2 && e.target === e.currentTarget) e.preventDefault()
+      }}
+      onDoubleClick={(e) => {
+        // Двойной клик по ПУСТОМУ месту сбоку от бабла (свободное пространство
+        // flex-ряда) = «Ответить» на это сообщение. Срабатывает только когда
+        // цель — сам ряд (e.target === e.currentTarget), не бабл/аватар/кнопки
+        // внутри. Черновики не отвечаемы.
+        if (e.target === e.currentTarget && !message.is_draft) {
+          // На случай, если выделение всё же возникло — снимаем, чтобы не
+          // показывался popup «Цитировать».
+          window.getSelection()?.removeAllRanges()
+          onReply(message)
+        }
+      }}
+    >
       {/* Кнопка «Перейти к сообщению» — только в режиме поиска и только
           на hover над конкретным сообщением */}
       {isSearchActive && onJumpToMessage && (

@@ -185,10 +185,15 @@ export const InboxChatItem = memo(function InboxChatItem({
 }: InboxChatItemProps) {
   const prefetchMessages = usePrefetchThreadMessages()
 
-  /** Имя автора для превью: «Я», если это текущий пользователь. */
+  /** Имя автора для превью: «Я», если это текущий пользователь; для email-адреса
+   *  (содержит «@») — локальная часть до «@»; иначе первое слово имени
+   *  (Telegram-style — без фамилии). */
   const displaySenderName = (name: string | null): string | null => {
     if (!name) return null
-    return selfSenderName && name === selfSenderName ? 'Я' : name
+    if (selfSenderName && name === selfSenderName) return 'Я'
+    const trimmed = name.trim()
+    if (trimmed.includes('@')) return trimmed.split('@')[0] || trimmed
+    return trimmed.split(/\s+/)[0] || trimmed
   }
 
   // Черновик из localStorage

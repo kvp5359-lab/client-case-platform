@@ -5,7 +5,9 @@
 
 import { useState, useCallback, useEffect, useMemo, Suspense } from 'react'
 import { useParams } from 'next/navigation'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, ArrowLeft, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { isMobileViewport } from '@/lib/isMobile'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
@@ -116,8 +118,25 @@ export default function InboxPage() {
   // Активный чат — выбранный или первый из списка
   const activeChat = useMemo(() => {
     if (selectedThreadId) return chats.find((c) => c.thread_id === selectedThreadId) ?? null
+    // На мобиле НЕ авто-выбираем первый чат — открываем список (master-detail),
+    // в чат заходим тапом. На десктопе двухпанельный режим → дефолт на первый.
+    if (isMobileViewport()) return null
     return displayChats.length > 0 ? displayChats[0] : null
   }, [selectedThreadId, chats, displayChats])
+
+  // Чат для рендера контента — лагает за activeChat при закрытии: панель уезжает
+  // (translate по activeChat), а содержимое держим ещё 300мс, пока идёт анимация
+  // выезда. Иначе при закрытии контент пропадёт мгновенно и слайда не видно.
+  const [renderChat, setRenderChat] = useState<typeof activeChat>(activeChat)
+  useEffect(() => {
+    if (activeChat) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- синхронизация renderChat с задержкой на закрытие
+      setRenderChat(activeChat)
+      return
+    }
+    const t = setTimeout(() => setRenderChat(null), 300)
+    return () => clearTimeout(t)
+  }, [activeChat])
 
   // Участники проекта для хедера. Для workspace-level тредов (project_id=null)
   // участников проекта нет — передаём undefined, хук отключает запрос.
@@ -263,10 +282,14 @@ export default function InboxPage() {
 
   return (
     <WorkspaceLayout>
-      <div className="h-full overflow-hidden bg-white p-6 pr-[72px]">
-        <div className="flex h-full overflow-hidden max-w-7xl mx-auto rounded-lg border bg-white">
-          {/* Левая панель — список чатов */}
+      <div className="h-full overflow-hidden bg-white p-0 md:p-6 md:pr-[72px]">
+        <div className="relative flex h-full overflow-hidden max-w-7xl mx-auto md:rounded-lg md:border bg-white">
+          {/* Левая панель — список чатов. На мобиле при открытом чате
+              сжимается в узкую полоску слева (как фон под правой панелью),
+              иначе на весь экран. Десктоп — колонка 35%. */}
           <InboxSidebar
+            className={activeChat ? 'w-[28px] md:w-[35%]' : undefined}
+            narrow={!!activeChat}
             filter={filter}
             onSetFilter={handleSetFilter}
             searchQuery={searchQuery}
@@ -290,13 +313,43 @@ export default function InboxPage() {
             selfSenderName={selfSenderName}
           />
 
-          {/* Правая панель — мессенджер конкретного чата */}
-          <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
-            {activeChat && workspaceId ? (
+          {/* Правая панель — мессенджер конкретного чата. На мобиле: абсолютный
+              оверлей, выезжающий справа (translate), left-[28px] оставляет полоску
+              списка, тень слева. Десктоп: обычная колонка в потоке. Контент —
+              renderChat (лагает при закрытии, чтобы был виден слайд выезда). */}
+          <div
+            className={cn(
+              'absolute inset-y-0 right-0 left-[28px] z-10 flex flex-col overflow-hidden min-w-0',
+              'transition-transform duration-300 ease-out shadow-[-6px_0_16px_-4px_rgba(0,0,0,0.18)]',
+              activeChat ? 'translate-x-0' : 'translate-x-full',
+              'md:static md:flex-1 md:left-auto md:translate-x-0 md:shadow-none md:z-auto md:transition-none',
+            )}
+          >
+            {renderChat && workspaceId ? (
               <>
+                {/* Строка «назад/закрыть» к списку — только мобила. Слева —
+                    «← Входящие», справа — крестик. Оба закрывают чат. */}
+                <div className="md:hidden flex items-center justify-between border-b shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedThreadId(null)}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Входящие
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedThreadId(null)}
+                    aria-label="Закрыть чат"
+                    className="px-3 py-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
                 <InboxChatHeader
-                  key={`header-${activeChat.thread_id}`}
-                  chat={activeChat}
+                  key={`header-${renderChat.thread_id}`}
+                  chat={renderChat}
                   workspaceId={workspaceId}
                   participants={participants}
                   toolbarRef={setToolbarContainer}
@@ -305,12 +358,12 @@ export default function InboxPage() {
                 />
                 <div className="flex-1 min-h-0">
                   <MessengerTabContent
-                    key={activeChat.thread_id}
-                    projectId={activeChat.project_id ?? undefined}
+                    key={renderChat.thread_id}
+                    projectId={renderChat.project_id ?? undefined}
                     workspaceId={workspaceId}
-                    channel={(activeChat.legacy_channel as MessageChannel) ?? 'client'}
-                    threadId={activeChat.thread_id}
-                    accent={(activeChat.thread_accent_color as MessengerAccent) ?? 'blue'}
+                    channel={(renderChat.legacy_channel as MessageChannel) ?? 'client'}
+                    threadId={renderChat.thread_id}
+                    accent={(renderChat.thread_accent_color as MessengerAccent) ?? 'blue'}
                     toolbarPortalContainer={toolbarContainer}
                   />
                 </div>

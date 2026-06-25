@@ -39,6 +39,10 @@ type InboxSidebarProps = {
   onLoadMore?: () => void
   /** Имя текущего пользователя — для замены своего имени отправителя на «Я». */
   selfSenderName?: string | null
+  /** Доп. классы корня (управление шириной на мобиле). */
+  className?: string
+  /** Узкая полоска (мобила, открыт чат): шапка списка скрыта, видны аватары. */
+  narrow?: boolean
 }
 
 export const InboxSidebar = memo(function InboxSidebar({
@@ -63,6 +67,8 @@ export const InboxSidebar = memo(function InboxSidebar({
   isFetchingNextPage = false,
   onLoadMore,
   selfSenderName,
+  className,
+  narrow = false,
 }: InboxSidebarProps) {
   const sentinelRef = useRef<HTMLDivElement | null>(null)
 
@@ -85,9 +91,16 @@ export const InboxSidebar = memo(function InboxSidebar({
   }, [hasNextPage, isFetchingNextPage, onLoadMore])
 
   return (
-    <div className="w-[35%] min-w-[220px] max-w-[352px] flex flex-col border-r overflow-hidden">
-      {/* Заголовок + поиск */}
-      <div className="px-4 py-3 border-b shrink-0">
+    <div
+      className={cn(
+        // Мобила — на весь экран (master-detail), десктоп — узкая колонка списка.
+        'w-full md:w-[35%] md:min-w-[220px] md:max-w-[352px] flex flex-col border-r overflow-hidden',
+        className,
+      )}
+    >
+      {/* Заголовок + поиск. В узкой полоске (мобила, открыт чат) скрыт —
+          обрезался бы; на десктопе виден всегда. */}
+      <div className={cn('px-4 py-3 border-b shrink-0', narrow && 'hidden md:block')}>
         <div className="flex items-center gap-2 mb-2">
           <Inbox className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-semibold text-sm">Входящие</h2>
