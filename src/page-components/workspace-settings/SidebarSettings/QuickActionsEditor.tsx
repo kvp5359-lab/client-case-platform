@@ -206,6 +206,8 @@ function QuickActionFormDialog({
   const [icon, setIcon] = useState<string>(
     () => initial?.icon ?? DEFAULT_QUICK_ACTION_ICON.new_project,
   )
+  // Иконку выбрали вручную — больше не перетираем её автоподстановкой из шаблона.
+  const [iconTouched, setIconTouched] = useState(false)
   const [projectTemplateId, setProjectTemplateId] = useState<string>(
     () => initial?.projectTemplateId ?? 'none',
   )
@@ -239,7 +241,7 @@ function QuickActionFormDialog({
       // дублей) — owner_project_template_id IS NULL.
       const { data } = await supabase
         .from('thread_templates')
-        .select('id, name')
+        .select('id, name, icon')
         .eq('workspace_id', workspaceId)
         .is('owner_project_template_id', null)
         .order('name')
@@ -310,7 +312,7 @@ function QuickActionFormDialog({
               onValueChange={(v) => {
                 const k = v as QuickActionKind
                 setKind(k)
-                if (!initial) setIcon(DEFAULT_QUICK_ACTION_ICON[k])
+                if (!iconTouched) setIcon(DEFAULT_QUICK_ACTION_ICON[k])
               }}
             >
               <SelectTrigger>
@@ -328,7 +330,13 @@ function QuickActionFormDialog({
 
           <div>
             <label className="block text-xs text-gray-500 mb-1">Иконка</label>
-            <Select value={icon} onValueChange={setIcon}>
+            <Select
+              value={icon}
+              onValueChange={(v) => {
+                setIcon(v)
+                setIconTouched(true)
+              }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -370,7 +378,17 @@ function QuickActionFormDialog({
             <>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Шаблон треда</label>
-                <Select value={threadTemplateId} onValueChange={setThreadTemplateId}>
+                <Select
+                  value={threadTemplateId}
+                  onValueChange={(v) => {
+                    setThreadTemplateId(v)
+                    // Иконку действия подставляем из шаблона, если её не меняли вручную.
+                    if (!iconTouched) {
+                      const tpl = threadTemplates.find((t) => t.id === v)
+                      if (tpl?.icon) setIcon(tpl.icon)
+                    }
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Выбери шаблон" />
                   </SelectTrigger>

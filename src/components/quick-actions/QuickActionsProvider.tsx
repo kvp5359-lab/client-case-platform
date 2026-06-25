@@ -12,9 +12,9 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useCreateThread } from '@/hooks/messenger/useProjectThreads.mutations'
 import { useParticipantsMutations } from '@/hooks/permissions/useParticipantsMutations'
-import { applyTemplate } from '@/hooks/messenger/useThreadTemplates'
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
 import { EditParticipantDialog } from '@/components/participants/EditParticipantDialog'
+import { ChatSettingsDialog, type ChatSettingsResult } from '@/components/messenger/ChatSettingsDialog'
 import type { Participant } from '@/types/entities'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import type { QuickAction } from '@/types/quickActions'
@@ -49,7 +49,14 @@ export function QuickActionsProvider({
     open: boolean
     role: string | null
   }>({ open: false, role: null })
+  const [threadDialog, setThreadDialog] = useState<{
+    open: boolean
+    template: ThreadTemplate | null
+    targetProjectId: string | null
+  }>({ open: false, template: null, targetProjectId: null })
 
+  // Быстрое действие «Задача/Чат» открывает форму создания треда с предзаполненным
+  // шаблоном и проектом — пользователь правит название/срок/исполнителя и подтверждает.
   const runNewThread = async (action: QuickAction) => {
     if (!workspaceId || !action.threadTemplateId) {
       toast.error('У действия не выбран шаблон треда')
@@ -66,35 +73,55 @@ export function QuickActionsProvider({
         toast.error('Шаблон треда не найден')
         return
       }
-      const template = data as unknown as ThreadTemplate
-      const applied = applyTemplate(template, {
-        projectParticipantIds: new Set<string>(),
-        allParticipants: [],
-        taskStatusIds: new Set<string>(),
+      setThreadDialog({
+        open: true,
+        template: data as unknown as ThreadTemplate,
+        targetProjectId: action.targetProjectId ?? null,
       })
-      const thread = await createThread.mutateAsync({
-        name: applied.name,
-        accessType: applied.accessType,
-        accentColor: applied.accentColor,
-        icon: applied.icon,
-        type: applied.tabMode,
-        accessRoles: applied.accessRoles,
-        deadline: applied.taskDeadline ? applied.taskDeadline.toISOString() : null,
-        statusId: applied.taskStatusId,
-        assigneeIds: applied.taskAssigneeIds,
-        projectIdOverride: action.targetProjectId ?? null,
-        sourceTemplateId: template.id,
-        emailData:
-          applied.channelType === 'email'
-            ? { contactEmails: applied.contactEmails, subject: applied.emailSubject }
-            : undefined,
-      })
-      toast.success(`Создан тред «${thread.name}»`)
     } catch (err) {
-      toast.error('Не удалось создать тред', {
+      toast.error('Не удалось загрузить шаблон треда', {
         description: err instanceof Error ? err.message : String(err),
       })
     }
+  }
+
+  const handleCreateThread = (result: ChatSettingsResult) => {
+    createThread.mutate(
+      {
+        name: result.name,
+        accessType: result.accessType,
+        accentColor: result.accentColor,
+        icon: result.icon,
+        type: result.channelType === 'email' ? 'email' : result.threadType,
+        emailData:
+          result.channelType === 'email'
+            ? {
+                contactEmails: (result.contactEmails ?? []).map((e) => e.email),
+                subject: result.emailSubject,
+              }
+            : undefined,
+        memberIds: result.memberIds,
+        accessRoles: result.accessRoles,
+        deadline: result.deadline,
+        startAt: result.startAt,
+        endAt: result.endAt,
+        statusId: result.statusId,
+        assigneeIds: result.assigneeIds,
+        projectIdOverride: result.projectId !== undefined ? result.projectId : undefined,
+        sourceTemplateId: result.sourceTemplateId,
+      },
+      {
+        onSuccess: (thread) => {
+          setThreadDialog({ open: false, template: null, targetProjectId: null })
+          toast.success(`Создан тред «${thread.name}»`)
+        },
+        onError: (err) => {
+          toast.error('Не удалось создать тред', {
+            description: err instanceof Error ? err.message : String(err),
+          })
+        },
+      },
+    )
   }
 
   const run = (action: QuickAction) => {
@@ -144,6 +171,34 @@ export function QuickActionsProvider({
         isLoading={addMutation.isPending}
         defaultRole={contactDialog.role ?? undefined}
       />
+
+      {threadDialog.template && (
+        <ChatSettingsDialog
+          chat={null}
+          workspaceId={workspaceId}
+          projectId={threadDialog.targetProjectId ?? undefined}
+          defaultThreadType={threadDialog.template.thread_type}
+          defaultTabMode={
+            threadDialog.template.is_email ? 'email' : threadDialog.template.thread_type
+          }
+          initialTemplate={threadDialog.template}
+          initialValues={
+            threadDialog.targetProjectId
+              ? { projectId: threadDialog.targetProjectId }
+              : undefined
+          }
+          open={threadDialog.open}
+          onOpenChange={(open) =>
+            setThreadDialog((d) =>
+              open
+                ? { ...d, open }
+                : { open: false, template: null, targetProjectId: null },
+            )
+          }
+          onCreate={handleCreateThread}
+          isPending={createThread.isPending}
+        />
+      )}
     </QuickActionsContext.Provider>
   )
 }
