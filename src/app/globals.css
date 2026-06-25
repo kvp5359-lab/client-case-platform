@@ -481,14 +481,40 @@
    видимом scrollbar (Chrome «always show scrollbars» на macOS) panel и handle
    разъезжаются ровно на ширину scrollbar — handle оказывается внутри panel. */
 .side-panel {
-  @apply fixed top-0 right-0 h-screen min-w-[360px] border-l border-gray-200 bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.08)];
+  @apply fixed top-0 right-0 min-w-[360px] border-l border-gray-200 bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.08)];
   width: var(--panel-width, 600px);
+  /* Высота — динамический viewport (dvh): на мобильных браузерах 100vh
+     включает зону адресной строки/нижней панели, из-за чего низ панели
+     (композер) уезжает под хром браузера и поле ввода не видно. 100dvh
+     равен реально видимой высоте. vh оставлен фолбэком для старых движков. */
+  height: 100vh;
+  height: 100dvh;
   /* Когда внутри панели открыта Radix-модалка (Popover modal, Dialog),
      Radix выставляет body{pointer-events:none}. Без явного auto тут
      панель становится прозрачной для кликов, и клики «проваливаются»
      на нижележащий контент (например, .rbc-event у календаря, у которого
      pointer-events:auto явно). */
   pointer-events: auto;
+}
+
+/* ───────── Мобильная адаптация (телефон/узкий планшет, < md = 768px) ───────── */
+@media (max-width: 767px) {
+  /* Правая боковая панель (чат/задача) — во весь экран, без торчащих по краям
+     кусков списка/соседней панели. Inline-ширина (--panel-width) перебивается
+     !important. Высоту 100dvh задаёт основное правило .side-panel выше. */
+  .side-panel {
+    width: 100vw !important;
+    min-width: 0 !important;
+  }
+
+  /* Левое меню-«ящик»: шире, чем на десктопе, но НЕ во весь экран — справа
+     остаётся ~44px затемнённого фона, чтобы было видно границу сайдбара и
+     понятно, что это выезжающая панель (тап по полоске закрывает её).
+     Перебивает inline-ширину (--sidebar-width) на мобильном drawer'е. */
+  [data-workspace-sidebar] {
+    width: calc(100vw - 44px) !important;
+    max-width: 460px;
+  }
 }
 
 /* Push-режим правой панели: на страницах с task-списком (data-panel-mode="push")

@@ -561,32 +561,39 @@ export function MessengerTabContent({
         />
 
         {/* Линия над композером (наезжает на список через negative margin):
-            слева — тип сообщения + @, по центру — «Прочитано/Непрочитано». */}
+            слева — тип сообщения + @, по центру — «Прочитано/Непрочитано».
+            Layout: левая группа и правый пустой спейсер — оба flex-1 (равный
+            рост), кнопка между ними shrink-0. Пока хватает места, равные
+            распорки держат кнопку по центру строки; когда режимы шире своей
+            доли, левая группа не сжимается ниже контента и толкает кнопку
+            вправо — наслаивания нет. */}
         <div className="relative flex items-center -mt-6 mb-2 z-10 pl-3 pr-5 pointer-events-none">
-          <div className="flex items-center gap-2 pointer-events-auto">
+          <div className="flex-1 flex items-center gap-2">
             {/* Выбор режима — внутренний инструмент команды; клиенту не показываем. */}
             {!state.editingMessage && !isClientOnly && (
-              <ComposerVisibilitySwitch
-                mode={effectiveComposerMode}
-                onChange={setComposerMode}
-                allowClient={allowClientMode}
-                accent={accent}
-                recipients={composerRecipients}
-                onPrimeRecipients={() => setRecipientsPrimed(true)}
-              />
+              <div className="shrink-0 pointer-events-auto">
+                <ComposerVisibilitySwitch
+                  mode={effectiveComposerMode}
+                  onChange={setComposerMode}
+                  allowClient={allowClientMode}
+                  accent={accent}
+                  recipients={composerRecipients}
+                  onPrimeRecipients={() => setRecipientsPrimed(true)}
+                />
+              </div>
             )}
             {!state.editingMessage && !isClientOnly && (
               <button
                 type="button"
                 title="Упомянуть участника"
                 onClick={() => insertContentRef.current?.('@')}
-                className="h-6 w-6 shrink-0 rounded-full border border-neutral-400 bg-white/80 backdrop-blur-sm shadow-[0_0_18px_6px_rgba(255,255,255,0.9)] flex items-center justify-center text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                className="h-6 w-6 shrink-0 pointer-events-auto rounded-full border border-neutral-400 bg-white/80 backdrop-blur-sm shadow-[0_0_18px_6px_rgba(255,255,255,0.9)] flex items-center justify-center text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50"
               >
                 @
               </button>
             )}
           </div>
-          <div className="absolute left-1/2 -translate-x-1/2 pointer-events-auto">
+          <div className="shrink-0 px-2 pointer-events-auto">
             <ReadUnreadButton
               showUnread={state.showUnread}
               onMarkRead={() => state.markAsRead.mutate()}
@@ -595,6 +602,7 @@ export function MessengerTabContent({
               isMarkUnreadPending={state.markAsUnread.isPending}
             />
           </div>
+          <div className="flex-1" aria-hidden />
         </div>
 
         <TypingIndicator typingUsers={state.typingUsers} />

@@ -252,7 +252,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
             панелью во время drag (без ре-рендеров React). */}
         {panelVisible && (
           <div
-            className="fixed top-0 z-[60] h-full w-1 cursor-col-resize hover:bg-primary/30 transition-colors"
+            className="hidden md:block fixed top-0 z-[60] h-full w-1 cursor-col-resize hover:bg-primary/30 transition-colors"
             style={{ right: 'calc(var(--panel-width, 600px) - 2px)', touchAction: 'none' }}
             onPointerDown={handlePanelResize}
           />

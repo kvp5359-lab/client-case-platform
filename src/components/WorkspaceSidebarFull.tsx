@@ -540,9 +540,9 @@ export function WorkspaceSidebarFull({
         )}
       </div>
 
-      {/* Resize handle */}
+      {/* Resize handle (только десктоп — на мобиле ширина фиксирована CSS) */}
       <div
-        className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20"
+        className="hidden md:block absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20"
         onMouseDown={handleMouseDown}
       />
 
