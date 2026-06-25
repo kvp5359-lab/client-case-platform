@@ -157,7 +157,7 @@ export function BoardInboxList({
         ) : (
           <>
             {/* Вкладки в одну строку с горизонтальным скроллом (без переноса, без видимой полосы). */}
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0 flex-1">
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide scroll-fade-right min-w-0 flex-1">
               <button
                 type="button"
                 onClick={() => setFilter('unread')}

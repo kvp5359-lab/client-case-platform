@@ -52,7 +52,7 @@ export const SidebarNavButton = memo(function SidebarNavButton({
         onClick={onClick}
         title={label}
         className={cn(
-          'relative flex items-center justify-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] transition-colors',
+          'relative flex items-center justify-center gap-2 px-3 h-10 md:px-2 md:h-[30px] text-[14px] rounded-[6px] transition-colors',
           isActive
             ? 'bg-gray-200 text-gray-900 font-medium'
             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50',

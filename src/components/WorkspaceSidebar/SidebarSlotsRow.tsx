@@ -241,7 +241,7 @@ function QuickActionSlotButton({
         type="button"
         title={action.label}
         onClick={() => run(action)}
-        className="relative flex items-center gap-2 px-2 h-[30px] rounded-[6px] text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 transition-colors"
+        className="relative flex items-center gap-2 px-3 h-10 md:px-2 md:h-[30px] rounded-[6px] text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 transition-colors"
       >
         <m.Icon className="h-[18px] w-[18px] shrink-0" />
       </button>

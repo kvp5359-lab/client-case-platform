@@ -188,7 +188,7 @@ export default function BoardsPage() {
       <div className="h-full flex flex-col bg-gray-100/60">
         {/* Шапка активного раздела */}
         {activeSection && (
-          <div className="flex items-center gap-2 px-4 pt-3 pb-1 shrink-0">
+          <div className="flex items-center gap-2 pl-14 md:pl-4 pr-4 pt-3 pb-1 shrink-0">
             <span className="text-sm font-semibold">{activeSection.name}</span>
             <button
               type="button"
@@ -201,8 +201,8 @@ export default function BoardsPage() {
         )}
 
         {/* Строка вкладок */}
-        <div className="flex items-center px-3 py-2 shrink-0">
-          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
+        <div className="flex items-center pl-14 md:pl-3 pr-3 py-2 shrink-0">
+          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none scroll-fade-right">
             <div className="flex items-center gap-1 bg-muted rounded-full p-1 w-fit group/tabs">
               {isLoading ? (
                 <div className="px-3 py-0.5 text-xs text-muted-foreground">Загрузка...</div>
@@ -253,7 +253,7 @@ export default function BoardsPage() {
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className="p-1 rounded-full shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all opacity-0 group-hover/tabs:opacity-100"
+                        className="p-1 rounded-full shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all opacity-100 md:opacity-0 md:group-hover/tabs:opacity-100"
                         title="Добавить"
                       >
                         <Plus className="h-3.5 w-3.5" />
