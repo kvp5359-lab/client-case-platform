@@ -132,9 +132,13 @@ export function DeadlinePopover({
           title="Срок выполнения"
         >
           <Calendar className="w-3 h-3" />
-          {deadline
-            ? buildChipSummary(deadline, startAt ?? null, endAt ?? null, deadlineFormat)
-            : 'Срок'}
+          {deadline ? (
+            buildChipSummary(deadline, startAt ?? null, endAt ?? null, deadlineFormat)
+          ) : (
+            // На мобиле прячем подпись-плейсхолдер — иконки достаточно, экономим
+            // ширину тесной шапки чата. На десктопе подпись остаётся.
+            <span className="hidden md:inline">Срок</span>
+          )}
         </button>
       )}
     />

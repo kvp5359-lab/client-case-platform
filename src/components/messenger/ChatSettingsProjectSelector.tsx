@@ -44,6 +44,9 @@ type ChatSettingsProjectSelectorProps = {
   triggerClassName?: string
   /** Классы иконки папки в триггере (по умолчанию `w-3.5 h-3.5`). */
   iconClassName?: string
+  /** Классы для текста-подписи (когда проект не выбран). Напр. `hidden md:inline`,
+   *  чтобы спрятать подпись на мобиле и оставить только иконку. */
+  labelClassName?: string
 }
 
 export function ChatSettingsProjectSelector({
@@ -57,6 +60,7 @@ export function ChatSettingsProjectSelector({
   label,
   triggerClassName,
   iconClassName,
+  labelClassName,
 }: ChatSettingsProjectSelectorProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -98,9 +102,11 @@ export function ChatSettingsProjectSelector({
           }
         >
           <FolderOpen className={iconClassName ?? 'w-3.5 h-3.5'} />
-          {selectedProjectId
-            ? (workspaceProjects.find((p) => p.id === selectedProjectId)?.name ?? 'Проект')
-            : (label ?? 'Выбрать проект')}
+          {selectedProjectId ? (
+            workspaceProjects.find((p) => p.id === selectedProjectId)?.name ?? 'Проект'
+          ) : (
+            <span className={labelClassName}>{label ?? 'Выбрать проект'}</span>
+          )}
         </button>
       </PopoverTrigger>
         <PopoverContent className="w-[346px] p-0" align="start">

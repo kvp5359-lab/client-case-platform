@@ -314,6 +314,7 @@ export function TaskPanelTaskHeader({
             createDefaultName={task.name}
             workspaceId={workspaceId}
             label="Проект"
+            labelClassName="hidden md:inline"
             iconClassName="w-3 h-3"
             triggerClassName="flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0 whitespace-nowrap text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50"
           />
@@ -335,7 +336,7 @@ export function TaskPanelTaskHeader({
             onToggleSubscribe={subscription.setSubscribed}
             subscribePending={subscription.pending}
             onRequestDelete={onRequestDelete}
-            triggerClassName="opacity-0 group-hover/panel-header:opacity-100"
+            triggerClassName="opacity-100 md:opacity-0 md:group-hover/panel-header:opacity-100"
             align="end"
           />
         )}
