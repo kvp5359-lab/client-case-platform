@@ -1,13 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { MoreVertical, Eye, Languages, Loader2, Reply, Quote, Copy, SmilePlus } from 'lucide-react'
-import { stripHtml, stripHtmlKeepNewlines } from '@/utils/format/messengerHtml'
-import { copyMessageText } from '@/utils/messenger/copyMessageText'
-import { REACTIONS } from './ReactionPicker'
-import { trackReactionUsage } from '@/utils/messenger/recentReactions'
-import { isReactionSupportedForSource } from '@/services/api/messenger/reactionStrategies'
+import { MoreVertical, Languages, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,12 +97,6 @@ export function MessageActions({
   const quickReactions = useQuickReactions()
   const colors = bubbleStyles[accent] ?? bubbleStyles.blue
   const isScheduled = !!message.is_draft && !!message.scheduled_send_at
-  // Есть ли текст для Цитировать/Копировать (у вложений без подписи — нет).
-  const hasText = !!stripHtml(message.content).trim()
-  // Быстрая реакция из ряда иконок (отдельный popover, не путать с меню).
-  const [quickReactOpen, setQuickReactOpen] = useState(false)
-  const reactionsAllowed =
-    !message.is_draft && !reactionsDisabled && isReactionSupportedForSource(message.source)
   // Кнопки действий: по умолчанию приглушённые без фона (не яркая пилюля),
   // подложка и полный цвет — только при наведении.
   const actionBtnClass = cn(
@@ -181,7 +169,7 @@ export function MessageActions({
     <div
       className={cn(
         'absolute top-1 right-1 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
-        (moreMenuOpen || reactionPopoverOpen || quickReactOpen) && 'opacity-100',
+        (moreMenuOpen || reactionPopoverOpen) && 'opacity-100',
       )}
     >
       {renderTranslationToggle()}
@@ -191,91 +179,9 @@ export function MessageActions({
           тинт бабла (/70) просвечивает текст под кнопками. */}
       <div className="rounded-full bg-background shadow-sm">
       <div className={cn('flex items-center gap-0.5 rounded-full px-0.5', pillClass)}>
-      {/* Быстрые действия при наведении: Ответить, Цитировать, Копировать.
-          У СВОИХ сообщений их прячем — оставляем только «три точки».
-          Полный набор (перевод, удалить) — в меню «три точки». */}
-      {!isOwn && !message.is_draft && (
-        <>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Ответить"
-            title="Ответить"
-            className={actionBtnClass}
-            onClick={() => onReply(message)}
-          >
-            <Reply className="h-4 w-4" />
-          </Button>
-          {onQuote && hasText && (
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Цитировать"
-              title="Цитировать"
-              className={actionBtnClass}
-              onClick={() => onQuote(stripHtmlKeepNewlines(message.content))}
-            >
-              <Quote className="h-4 w-4" />
-            </Button>
-          )}
-          {hasText && (
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Копировать текст"
-              title="Копировать текст"
-              className={actionBtnClass}
-              onClick={() => copyMessageText(message)}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-          )}
-        </>
-      )}
-      {!isOwn && onViewEmail && (
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Открыть письмо"
-          className={actionBtnClass}
-          onClick={onViewEmail}
-        >
-          <Eye className="h-4 w-4" />
-        </Button>
-      )}
-      {!isOwn && reactionsAllowed && (
-        <Popover open={quickReactOpen} onOpenChange={setQuickReactOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Реакция"
-              title="Реакция"
-              className={actionBtnClass}
-            >
-              <SmilePlus className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-2" align="end" side="top">
-            <div className="grid grid-cols-6 gap-1">
-              {REACTIONS.map((e) => (
-                <button
-                  key={e}
-                  type="button"
-                  onClick={() => {
-                    trackReactionUsage(e)
-                    onReact(message.id, e)
-                    setQuickReactOpen(false)
-                  }}
-                  className="h-8 w-8 flex items-center justify-center rounded hover:bg-muted text-lg transition-colors"
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-      )}
+      {/* Быстрые действия (Ответить/Цитировать/Копировать/Реакция) убраны и у
+          входящих, и у своих — перекрывали текст бабла. Все действия доступны
+          через меню «три точки» (и правым кликом). */}
       <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button
