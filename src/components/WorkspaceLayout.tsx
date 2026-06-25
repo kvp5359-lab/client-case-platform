@@ -10,10 +10,10 @@
  */
 
 import { useState, useEffect, useMemo, createContext, useContext } from 'react'
-import { useParams } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { useParams, usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { WorkspaceSidebarFull } from './WorkspaceSidebarFull'
+import { MobileBottomNav } from './WorkspaceSidebar/MobileBottomNav'
 import { useSidebarCollapsed } from './WorkspaceSidebar/useSidebarCollapsed'
 import { useRightPanelResize } from '@/hooks/useRightPanelResize'
 import { useWorkspacePermissions } from '@/hooks/permissions'
@@ -69,6 +69,14 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
   const { isClientOnly } = useWorkspacePermissions({ workspaceId })
 
   const [mobileOpen, setMobileOpen] = useState(false)
+  const pathname = usePathname()
+  // Закрываем мобильный drawer при смене маршрута — тап по пункту навигации
+  // (Входящие/Задачи/проект/доска) уводит на новую страницу, сайдбар должен
+  // уйти сам. На десктопе mobileOpen всегда false → эффект безвреден.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- сброс UI-флага при смене маршрута
+    setMobileOpen(false)
+  }, [pathname])
   const { isCollapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebarCollapsed()
   const { panelWidth, handlePointerDown: handlePanelResize } = useRightPanelResize()
 
@@ -197,13 +205,16 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
       <div className="flex h-screen bg-background relative">
         {!isClientOnly && (
           <>
-            {/* Мобильная кнопка меню */}
-            <button
-              className="fixed top-3 left-3 z-50 md:hidden p-2 rounded-md bg-background border"
-              onClick={() => setMobileOpen(!mobileOpen)}
-            >
-              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
+            {/* Нижняя панель навигации (мобила) — заменяет плавающий бургер,
+                ВСЕГДА снизу независимо от раздела. «Меню» открывает/закрывает
+                выезжающий сайдбар. И сайдбар, и правая панель укорочены снизу
+                на высоту таб-бара (globals.css) — ничто его не перекрывает. */}
+            {workspaceId && (
+              <MobileBottomNav
+                workspaceId={workspaceId}
+                onOpenMenu={() => setMobileOpen((v) => !v)}
+              />
+            )}
 
             {/* Sidebar */}
             <div
@@ -220,7 +231,11 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
                   onExpand={toggleSidebar}
                 />
               ) : (
-                <WorkspaceSidebarFull workspaceId={workspaceId} onCollapse={toggleSidebar} />
+                <WorkspaceSidebarFull
+                  workspaceId={workspaceId}
+                  onCollapse={toggleSidebar}
+                  onMobileClose={() => setMobileOpen(false)}
+                />
               )}
             </div>
 
@@ -236,7 +251,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
 
         {/* Main content + right panel root (портал для shell) */}
         <div id="workspace-panel-root" className="flex-1 flex min-w-0 relative overflow-hidden">
-          <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[var(--cc-bottom-nav-h)] md:pb-0">
             {children}
           </main>
         </div>

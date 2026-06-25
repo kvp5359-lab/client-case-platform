@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -183,7 +184,12 @@ export function BoardView({
   const updateProjectStatus = useUpdateProjectStatusOnBoard(workspaceId)
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // Мышь — старт перетаскивания после смещения 5px (как было).
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    // Тач — только по ДОЛГОМУ нажатию (250мс). Если палец сдвинулся раньше
+    // (>8px) — это свайп/прокрутка, drag не стартует. Так свайп листает
+    // списки, а перетаскивание задачи начинается только удержанием.
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
   )
 
   const activeList = activeListId ? lists.find((l) => l.id === activeListId) ?? null : null
@@ -392,8 +398,10 @@ export function BoardView({
             <ColumnGap gapIndex={col.index + 1} active={gapTarget === col.index + 1} visible={isDragging} />
           </div>
         ))}
-        {/* Распорка: при открытой боковой панели (45% ширины) контент можно доскроллить */}
-        <div className="shrink-0 w-[45vw]" aria-hidden />
+        {/* Распорка: при открытой боковой панели (45% ширины) контент можно доскроллить.
+            На мобиле панель — fullscreen overlay, распорка не нужна (иначе свайп
+            уезжает в пустоту за последним списком). */}
+        <div className="shrink-0 w-0 md:w-[45vw]" aria-hidden />
       </div>
       <DragOverlay dropAnimation={activeList ? null : cardDropAnimation}>
         <BoardDragOverlayContent

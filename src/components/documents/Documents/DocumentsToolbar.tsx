@@ -74,14 +74,14 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
   const compact = compactProp ?? sidePanelOpen
 
   return (
-    <div className="flex items-center gap-2 h-9">
+    <div className="flex items-center gap-2 h-9 min-w-0">
       {/* Кнопка загрузки документов */}
       {(onKitlessDocument || onAddDocument) && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="self-stretch flex items-center gap-1.5 px-3 text-sm rounded-lg border border-dashed border-blue-400 text-blue-600 hover:text-blue-700 hover:border-2 hover:border-blue-500 hover:bg-blue-50 hover:px-[11px] transition-all whitespace-nowrap"
+              className="shrink-0 self-stretch flex items-center gap-1.5 px-3 text-sm rounded-lg border border-dashed border-blue-400 text-blue-600 hover:text-blue-700 hover:border-2 hover:border-blue-500 hover:bg-blue-50 hover:px-[11px] transition-all whitespace-nowrap"
             >
               <Upload className="h-3.5 w-3.5" />
               Загрузить
@@ -117,15 +117,15 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
         </DropdownMenu>
       )}
 
-      {/* Поиск по документам */}
-      <div className="relative">
+      {/* Поиск по документам — на мобиле гибкий (flex-1), на десктопе фикс w-48. */}
+      <div className="relative flex-1 min-w-0 md:flex-none">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Поиск..."
-          className="h-8 w-48 pl-8 pr-7 text-sm rounded-lg bg-muted/50 placeholder:text-muted-foreground focus:outline-none focus:bg-muted/80"
+          className="h-8 w-full md:w-48 pl-8 pr-7 text-sm rounded-lg bg-muted/50 placeholder:text-muted-foreground focus:outline-none focus:bg-muted/80"
         />
         {searchQuery && (
           <button
@@ -138,32 +138,48 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
         )}
       </div>
 
-      {/* Фильтр: Все документы / Требуется действие */}
-      <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1 w-fit">
+      {/* Фильтр: Все документы / Требуется действие. На мобиле — короткие
+          подписи (Все / Действие), на десктопе — полные (или короткие при
+          открытой панели через compact). */}
+      <div className="shrink-0 flex items-center gap-1 bg-muted/50 rounded-lg p-1 w-fit">
         <button
           type="button"
           onClick={() => setFilterMode('all')}
           className={cn(
-            'px-3 py-1 text-sm rounded-md transition-colors',
+            'px-3 py-1 text-sm rounded-md transition-colors whitespace-nowrap',
             filterMode === 'all'
               ? 'bg-white text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.2)] font-medium'
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          {compact ? 'Все' : 'Все документы'}
+          {compact ? (
+            'Все'
+          ) : (
+            <>
+              <span className="md:hidden">Все</span>
+              <span className="hidden md:inline">Все документы</span>
+            </>
+          )}
         </button>
         <button
           type="button"
           onClick={() => setFilterMode('action-required')}
           className={cn(
-            'px-3 py-1 text-sm rounded-md transition-colors',
+            'px-3 py-1 text-sm rounded-md transition-colors whitespace-nowrap',
             filterMode === 'action-required'
               ? 'bg-orange-50 text-orange-600 shadow-[0_1px_3px_rgba(0,0,0,0.2)] font-medium'
               : 'text-muted-foreground hover:text-foreground',
           )}
-          title={compact ? 'Требуется действие' : undefined}
+          title="Требуется действие"
         >
-          {compact ? 'Действие' : 'Требуется действие'}
+          {compact ? (
+            'Действие'
+          ) : (
+            <>
+              <span className="md:hidden">Действие</span>
+              <span className="hidden md:inline">Требуется действие</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -172,7 +188,7 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="self-stretch aspect-square flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              className="shrink-0 self-stretch aspect-square flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             >
               <MoreHorizontal className="h-4 w-4" />
             </button>

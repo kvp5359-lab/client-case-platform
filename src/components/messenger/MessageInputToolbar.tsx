@@ -97,8 +97,12 @@ export function MessageInputToolbar({
   const sendBlocked = !!sendBlockedReason
   return (
     <div className="flex items-center pb-2 pt-0">
-      {/* Left: attach + separator + quick reply + separator + formatting toolbar */}
-      <div className="flex items-center gap-0 px-1.5 flex-1 min-w-0">
+      {/* Left: attach + separator + quick reply + separator + formatting toolbar.
+          Горизонтальный скролл — на узком экране кнопки не влезают; листаются
+          свайпом, fade справа подсказывает, что есть ещё. Кнопки внутри shrink-0,
+          поэтому не сжимаются, а уезжают в прокрутку. Отправка/сохранение справа
+          (вне этого контейнера) всегда на месте. */}
+      <div className="flex items-center gap-0 px-1.5 flex-1 min-w-0 overflow-x-auto scrollbar-hide scroll-fade-right">
         <AttachmentButton
           onFilesSelected={onFilesSelected}
           onOpenDocPicker={onOpenDocPicker}

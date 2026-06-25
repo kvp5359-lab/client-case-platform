@@ -159,7 +159,14 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
             проекта плейсхолдер не нужен: отсутствие имени само по себе
             достаточный сигнал (особенно на странице «Без проекта»). */}
         {showProject && task.project_name && (
-          <span className="text-sm truncate shrink-0 text-muted-foreground/60">
+          // Проект тоже сжимается при нехватке ширины (как в списках на досках),
+          // но слабее имени: shrink 0.7 vs 1 у name — имя сохраняет приоритет,
+          // но проект больше не душит его до пары символов. min-w-0 включает
+          // truncate. grow 0 — справа есть исполнители/срок (right-aligned).
+          <span
+            className="text-sm truncate min-w-0 text-muted-foreground/60"
+            style={{ flex: '0 0.7 auto' }}
+          >
             · {task.project_name}
           </span>
         )}

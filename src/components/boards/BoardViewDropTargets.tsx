@@ -23,8 +23,12 @@ export function DroppableColumn({
   return (
     <div
       ref={setNodeRef}
+      data-board-column
       className={
-        'shrink-0 h-full rounded-lg transition-colors ' +
+        // snap-start — точка прилипания свайпа на мобиле (на десктопе контейнер
+        // отключает snap через md:snap-none). Ширина на мобиле перебивается
+        // на 100vw в globals.css по селектору [data-board-column].
+        'shrink-0 h-full rounded-lg transition-colors snap-start ' +
         (isOver || isActiveTarget ? 'bg-blue-100/40' : '')
       }
       style={{ width: `${width}px` }}

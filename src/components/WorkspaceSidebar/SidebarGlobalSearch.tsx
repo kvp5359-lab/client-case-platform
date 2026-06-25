@@ -38,6 +38,11 @@ type Props = {
   workspaceId: string | undefined
   /** В compact-режиме рендерится кнопка-иконка, во full — input. */
   compact?: boolean
+  /** Переопределить классы compact-кнопки-триггера (для подгонки под соседей,
+   *  напр. ячейку нижней навигации). Если задан — заменяет дефолтные. */
+  triggerClassName?: string
+  /** Размер иконки лупы в compact-режиме (по умолчанию 16). */
+  iconSize?: number
 }
 
 /** Унифицированный row для рендера (recent + search). */
@@ -85,7 +90,12 @@ function hrefForRow(row: DisplayRow, workspaceId: string): string | null {
   }
 }
 
-export function SidebarGlobalSearch({ workspaceId, compact = false }: Props) {
+export function SidebarGlobalSearch({
+  workspaceId,
+  compact = false,
+  triggerClassName,
+  iconSize = 16,
+}: Props) {
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -323,16 +333,20 @@ export function SidebarGlobalSearch({ workspaceId, compact = false }: Props) {
             type="button"
             aria-label="Поиск"
             title="Поиск"
-            className="flex items-center justify-center h-8 w-8 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-200/70 transition-colors"
+            className={
+              triggerClassName ??
+              'flex items-center justify-center h-8 w-8 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-200/70 transition-colors'
+            }
           >
-            <Search size={16} />
+            <Search size={iconSize} />
           </button>
         </PopoverTrigger>
         <PopoverContent
           side="right"
           align="start"
           sideOffset={8}
-          className="w-[440px] p-0"
+          collisionPadding={8}
+          className="w-[min(440px,calc(100vw-16px))] p-0"
           onOpenAutoFocus={(e) => {
             e.preventDefault()
             setTimeout(() => inputRef.current?.focus(), 0)

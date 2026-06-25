@@ -122,7 +122,9 @@ export function buildToastContent(
     'div',
     {
       className: `relative flex items-start gap-3 bg-white rounded-lg shadow-lg border-2 ${borderColor} px-4 py-3 text-foreground cursor-pointer`,
-      style: { width: 420 },
+      // Десктоп — 420px; на узком экране ужимаемся по ширине вьюпорта, иначе
+      // фикс-420 вылезает за край мобильного экрана.
+      style: { width: 'min(420px, calc(100vw - 24px))' },
       onClick: onOpen,
     },
     buildAvatar(senderName, avatarUrl, threadIcon),

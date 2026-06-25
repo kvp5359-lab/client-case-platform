@@ -8,7 +8,7 @@
 
 import { useEffect, useState, useMemo, startTransition } from 'react'
 import { useDebounce } from '@/hooks/shared/useDebounce'
-import { PanelLeftClose } from 'lucide-react'
+import { PanelLeftClose, X } from 'lucide-react'
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { QuickAddMenu } from '@/components/quick-actions/QuickAddMenu'
@@ -58,6 +58,9 @@ type WorkspaceSidebarFullProps = {
   compact?: boolean
   /** Кнопка-«развернуть» в сжатом режиме. */
   onExpand?: () => void
+  /** Закрыть мобильный выезжающий сайдбар — крестик справа от воркспейс-пикера
+   *  (только на мобиле, на месте десктопной кнопки сворачивания). */
+  onMobileClose?: () => void
 }
 
 export function WorkspaceSidebarFull({
@@ -65,6 +68,7 @@ export function WorkspaceSidebarFull({
   onCollapse,
   compact = false,
   onExpand,
+  onMobileClose,
 }: WorkspaceSidebarFullProps = {}) {
   const router = useRouter()
   const params = useParams<{ workspaceId?: string; projectId?: string }>()
@@ -412,7 +416,7 @@ export function WorkspaceSidebarFull({
     >
       <QuickActionsProvider workspaceId={workspaceId}>
       {!isClientOnly && !permissionsLoading && (
-        <div className={onCollapse ? 'relative pr-10' : 'relative'}>
+        <div className={onCollapse || onMobileClose ? 'relative pr-10' : 'relative'}>
           <WorkspacePicker
             workspaces={workspaces}
             currentWorkspace={currentWorkspace}
@@ -430,6 +434,19 @@ export function WorkspaceSidebarFull({
               className="absolute top-2 right-2 z-10 hidden md:flex items-center justify-center h-8 w-8 rounded-md bg-background border shadow-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               <PanelLeftClose size={14} />
+            </button>
+          )}
+          {/* Крестик закрытия мобильного drawer — на месте десктопной кнопки
+              сворачивания (она `hidden md:flex`, этот — `md:hidden`, не пересекаются). */}
+          {onMobileClose && (
+            <button
+              type="button"
+              onClick={onMobileClose}
+              aria-label="Закрыть меню"
+              title="Закрыть меню"
+              className="absolute top-2 right-2 z-10 flex md:hidden items-center justify-center h-8 w-8 rounded-md bg-background border shadow-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <X size={16} />
             </button>
           )}
         </div>

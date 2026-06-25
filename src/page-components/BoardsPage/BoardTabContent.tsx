@@ -137,7 +137,7 @@ export function BoardTabContent({
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <div className="flex-1 overflow-x-auto overflow-y-hidden">
+      <div className="flex-1 overflow-x-auto overflow-y-hidden snap-x snap-mandatory md:snap-none">
         <BoardView
           boardId={board.id}
           lists={lists ?? []}

@@ -33,6 +33,7 @@ import {
 import { useDialog } from '@/hooks/shared/useDialog'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { useAutoTrackRecentView } from '@/hooks/useGlobalSearch'
+import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe'
 
 // Рефакторенные компоненты и хуки
 import {
@@ -170,6 +171,22 @@ export default function ProjectPage() {
     router.replace(`/workspaces/${workspaceId}/projects/${projectId}?tab=${tab}`)
   }
 
+  // Свайп влево/вправо по контенту → соседний модуль проекта (тач).
+  const swipeTabIds = availableModules
+    .filter((m) => m.showTab !== false)
+    .map((m) => m.id)
+  const goAdjacentTab = (dir: 1 | -1) => {
+    const idx = swipeTabIds.indexOf(activeTab)
+    if (idx === -1) return
+    const next = idx + dir
+    if (next < 0 || next >= swipeTabIds.length) return
+    handleTabChange(swipeTabIds[next])
+  }
+  const swipeHandlers = useHorizontalSwipe({
+    onPrev: () => goAdjacentTab(-1),
+    onNext: () => goAdjacentTab(1),
+  })
+
   // === ЭФФЕКТЫ ===
 
   // Боковая панель: передаём контекст проекта + messenger
@@ -306,6 +323,7 @@ export default function ProjectPage() {
       <ErrorBoundary title="Ошибка в проекте">
         <div
           data-project-scroll
+          {...swipeHandlers}
           onScroll={(e) => {
             // Гарантия: левая граница контента проекта никогда не уходит под сайдбар.
             // overflow-x:hidden не блокирует программный scrollLeft (его может выставить
@@ -360,7 +378,14 @@ export default function ProjectPage() {
                             title={m.label}
                           >
                             <Icon className="w-4 h-4" />
-                            {!m.iconOnly && <span className="hidden md:inline">{m.label}</span>}
+                            {/* Подпись: у активной вкладки видна всегда (в т.ч. на
+                                мобиле — «у текущей показывать название»), у
+                                остальных на мобиле скрыта, на десктопе видна. */}
+                            {!m.iconOnly && (
+                              <span className={cn(activeTab === m.id ? 'inline' : 'hidden md:inline')}>
+                                {m.label}
+                              </span>
+                            )}
                             {m.id === 'tasks' && activeTab === 'tasks' && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

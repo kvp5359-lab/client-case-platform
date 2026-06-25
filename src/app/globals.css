@@ -509,12 +509,22 @@
 
 /* ───────── Мобильная адаптация (телефон/узкий планшет, < md = 768px) ───────── */
 @media (max-width: 767px) {
-  /* Правая боковая панель (чат/задача) — во весь экран, без торчащих по краям
-     кусков списка/соседней панели. Inline-ширина (--panel-width) перебивается
-     !important. Высоту 100dvh задаёт основное правило .side-panel выше. */
+  /* Высота нижней панели навигации (таб-бар) — единый источник для самой
+     панели, укорачивания правой панели и отступа контента. +safe-area iOS. */
+  :root {
+    --cc-bottom-nav-h: calc(56px + env(safe-area-inset-bottom));
+  }
+
+  /* Правая боковая панель (чат/задача) — почти во весь экран, но слева остаётся
+     ~44px пустоты (панель привязана к правому краю, зазор уходит влево) — как у
+     левого сайдбара справа: видно границу панели и что под ней что-то есть.
+     Inline-ширина (--panel-width) перебивается !important. */
   .side-panel {
-    width: 100vw !important;
+    width: calc(100vw - 22px) !important;
     min-width: 0 !important;
+    /* Укорачиваем снизу на высоту таб-бара — панель встаёт НАД ним, не
+       перекрывая нижнюю навигацию. */
+    height: calc(100dvh - var(--cc-bottom-nav-h)) !important;
   }
 
   /* Левое меню-«ящик»: шире, чем на десктопе, но НЕ во весь экран — справа
@@ -524,6 +534,35 @@
   [data-workspace-sidebar] {
     width: calc(100vw - 44px) !important;
     max-width: 460px;
+    /* Укорачиваем снизу на высоту таб-бара — drawer встаёт НАД нижней панелью,
+       не перекрывая её (нижняя навигация видна и кликабельна всегда). */
+    height: calc(100dvh - var(--cc-bottom-nav-h)) !important;
+  }
+
+  /* Доска: каждый список-колонка во всю ширину экрана, свайп листает к
+     соседнему (snap задан на контейнере + snap-start на колонке). Inline
+     px-ширина (column_widths) перебивается. Внутренний BoardColumn тоже
+     растягиваем на 100%, иначе остался бы своей фикс-ширины внутри 100vw. */
+  [data-board-column] {
+    width: 100vw !important;
+    /* Небольшой отступ от краёв экрана (snap-ширина остаётся 100vw —
+       box-sizing border-box, паддинг внутри). */
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  [data-board-column] > * {
+    width: 100% !important;
+  }
+
+  /* Тосты-уведомления: на мобиле во всю ширину экрана с небольшими полями.
+     Фикс-ширина 356px вылезает за узкий экран. Также сбрасываем сдвиг вправо
+     на ширину панели (правило body[data-panel-open] ниже) — на мобиле панель
+     fullscreen, иначе тост уезжал бы за правый край. */
+  [data-sonner-toaster] {
+    --width: calc(100vw - 24px) !important;
+    right: 12px !important;
+    /* Поднимаем над нижней панелью навигации, иначе тост наезжает на таб-бар. */
+    bottom: calc(var(--cc-bottom-nav-h) + 8px) !important;
   }
 }
 
@@ -568,6 +607,16 @@ body[data-task-panel-open] [data-sonner-toaster][data-x-position='right'] {
   right: calc(var(--panel-width, 600px) + 16px) !important;
 }
 
+/* На мобиле панель — fullscreen overlay, поэтому сдвиг тостов под её ширину
+   не нужен (иначе тост уезжает за правый край). Правило идёт ПОСЛЕ блока выше
+   и матчит ту же специфичность → перебивает его на узком экране. */
+@media (max-width: 767px) {
+  body[data-panel-open] [data-sonner-toaster][data-x-position='right'],
+  body[data-task-panel-open] [data-sonner-toaster][data-x-position='right'] {
+    right: 12px !important;
+  }
+}
+
 /* Sonner toast: крестик закрытия — верхний правый угол */
 [data-sonner-toast] [data-close-button] {
   position: absolute !important;
@@ -586,6 +635,13 @@ body[data-task-panel-open] [data-sonner-toaster][data-x-position='right'] {
 [data-sonner-toast]:hover .toast-actions {
   opacity: 1;
   pointer-events: auto;
+}
+/* На мобиле ховера нет — крестик и галочка «прочитано» показываем постоянно. */
+@media (max-width: 767px) {
+  [data-sonner-toast] .toast-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 /* Кнопка-полоска боковой панели: выезжает справа налево */
