@@ -160,12 +160,82 @@ function restrictInlineStyles(root: Element): void {
   })
 }
 
+/**
+ * Разворачивает layout-таблицы маркетинговых писем (Stripe/Gmail/Outlook
+ * рендерят КАЖДУЮ строку текста как `<table><tbody><tr><td><span>…`). Такие
+ * одно-ячеечные таблицы вложены на 5-7 уровней → наш CSS `.messenger-content
+ * table { margin } / td { padding }` накапливает левый отступ (визуальный
+ * сдвиг текста вправо) и вертикальные зазоры (пустые строки между строчками).
+ *
+ * Разворачиваем ТОЛЬКО таблицы с ровно одной собственной ячейкой (обёртки) —
+ * заменяем `<table>` на `<div>` с содержимым ячейки. Реальные таблицы данных
+ * (строки чека «метка | сумма», 2+ ячеек) не трогаем — выравнивание колонок
+ * сохраняется. Идём от глубоких к внешним: после разворота внутренней обёртки
+ * внешняя тоже становится одно-ячеечной и сворачивается.
+ */
+function unwrapLayoutTables(root: Element): void {
+  const ownCellCount = (table: Element): number =>
+    Array.from(table.querySelectorAll('td, th')).filter(
+      (cell) => cell.closest('table') === table,
+    ).length
+  // Глубина вложенности таблиц — сортируем по убыванию, чтобы внутренние
+  // обёртки разворачивались первыми.
+  const depthOf = (el: Element): number => {
+    let d = 0
+    let p = el.parentElement
+    while (p) {
+      if (p.tagName === 'TABLE') d++
+      p = p.parentElement
+    }
+    return d
+  }
+  const tables = Array.from(root.querySelectorAll('table')).sort(
+    (a, b) => depthOf(b) - depthOf(a),
+  )
+  for (const table of tables) {
+    if (ownCellCount(table) !== 1) continue
+    const cell = Array.from(table.querySelectorAll('td, th')).find(
+      (c) => c.closest('table') === table,
+    )
+    if (!cell) continue
+    const div = document.createElement('div')
+    while (cell.firstChild) div.appendChild(cell.firstChild)
+    table.replaceWith(div)
+  }
+}
+
+/**
+ * Невидимые символы-распорки. Маркетинговые письма набивают «preheader»
+ * (скрытый текст превью) комбинирующими/zero-width символами: combining
+ * grapheme joiner (U+034F), soft hyphen (U+00AD, рисуется как «-»), zero-width
+ * space/joiner, word joiner, BOM. Так как мы режем `display:none` (чтобы письма
+ * не прятали реальный контент), preheader становится видимым — куча «пустых»
+ * строк + артефакт «-». Вычищаем эти символы из текстовых узлов → блок
+ * становится визуально пустым и сворачивается collapseEmptyLines.
+ */
+const INVISIBLE_CHARS = /[\u00AD\u034F\u200B\u200C\u200D\u2060\uFEFF]/g
+// \u041F\u0440\u043E\u0431\u0435\u043B\u044B \u0444\u0438\u043A\u0441\u0438\u0440\u043E\u0432\u0430\u043D\u043D\u043E\u0439 \u0448\u0438\u0440\u0438\u043D\u044B (figure U+2007, en/em/thin U+2000\u2013U+200A,
+// narrow/medium/ideographic U+202F/U+205F/U+3000) \u2014 \u041D\u0415 \u0441\u0445\u043B\u043E\u043F\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u043F\u043E\u0434
+// white-space:normal. \u041A\u043E\u043D\u0432\u0435\u0440\u0442\u0438\u0440\u0443\u0435\u043C \u0432 \u043E\u0431\u044B\u0447\u043D\u044B\u0439 \u043F\u0440\u043E\u0431\u0435\u043B.
+const FIXED_WIDTH_SPACES = /[\u2000-\u200A\u202F\u205F\u3000]/g
+function stripInvisibleChars(root: Element): void {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  const texts: Text[] = []
+  let n: Node | null
+  while ((n = walker.nextNode())) texts.push(n as Text)
+  for (const t of texts) {
+    const cleaned = t.data.replace(INVISIBLE_CHARS, '').replace(FIXED_WIDTH_SPACES, ' ')
+    if (cleaned !== t.data) t.data = cleaned
+  }
+}
+
 function collapseEmptyLines(html: string): string {
   if (typeof document === 'undefined') return collapseEmptyLinesRegex(html)
 
   const root = document.createElement('div')
   root.innerHTML = html
 
+  stripInvisibleChars(root)
   restrictInlineStyles(root)
 
   const BLOCK_TAGS = new Set(['DIV', 'P', 'BLOCKQUOTE', 'OL', 'UL', 'LI'])
@@ -201,6 +271,8 @@ function collapseEmptyLines(html: string): string {
   }
 
   Array.from(root.children).forEach(walk)
+
+  unwrapLayoutTables(root)
 
   let result = root.innerHTML
   // 3+ подряд <br> → 2 (= одна пустая строка).

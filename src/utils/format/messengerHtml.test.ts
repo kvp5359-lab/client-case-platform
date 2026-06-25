@@ -99,4 +99,48 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     const out = sanitizeMessengerHtml(dirty)
     expect(out).toBe('Текст')
   })
+
+  it('разворачивает вложенные одно-ячеечные layout-таблицы письма в div', () => {
+    // Stripe/marketing-письма оборачивают каждую строку в свою таблицу,
+    // вложенную на несколько уровней → накопленный левый отступ и зазоры.
+    const dirty =
+      '<table><tbody><tr><td><table><tbody><tr><td>' +
+      '<span>Строка</span>' +
+      '</td></tr></tbody></table></td></tr></tbody></table>'
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).not.toContain('<table')
+    expect(out).toContain('Строка')
+  })
+
+  it('сохраняет реальную таблицу данных (2+ ячейки в строке)', () => {
+    const dirty =
+      '<table><tbody><tr><td>Итого</td><td>$12.14</td></tr></tbody></table>'
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).toContain('<table')
+    expect(out).toContain('Итого')
+    expect(out).toContain('$12.14')
+  })
+
+  it('вычищает preheader-распорки (soft hyphen / zero-width) и сворачивает блок', () => {
+    // preheader письма: невидимые символы между пробелами создают высокий
+    // пустой бокс + артефакт «-» (soft hyphen). После чистки блок пуст.
+    const dirty =
+      '<div>­ ­ ͏ ​ ­ ‍</div><div>Текст</div>'
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).not.toContain('­')
+    expect(out).not.toContain('͏')
+    expect(out).not.toContain('​')
+    expect(out).toContain('Текст')
+  })
+  it('конвертирует пробелы фиксированной ширины (figure space U+2007) в обычные', () => {
+    // Stripe-письма набивают preheader figure-space (U+2007) — он НЕ схлопывается
+    // под white-space:normal, сотня штук даёт высокий пустой бокс.
+    const figureSpaces = '\u2007'.repeat(50)
+    const dirty = `<span>Тема${figureSpaces}конец</span>`
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).not.toContain('\u2007')
+    expect(out).toContain('Тема')
+    expect(out).toContain('конец')
+  })
+
 })

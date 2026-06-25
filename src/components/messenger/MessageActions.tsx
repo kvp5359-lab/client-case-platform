@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { MoreVertical, Languages, Loader2 } from 'lucide-react'
+import { MoreVertical, Languages, Loader2, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -181,7 +181,21 @@ export function MessageActions({
       <div className={cn('flex items-center gap-0.5 rounded-full px-0.5', pillClass)}>
       {/* Быстрые действия (Ответить/Цитировать/Копировать/Реакция) убраны и у
           входящих, и у своих — перекрывали текст бабла. Все действия доступны
-          через меню «три точки» (и правым кликом). */}
+          через меню «три точки» (и правым кликом). Исключение — «Открыть письмо»
+          у входящих email: главное действие для письма, оставляем быстрым
+          значком (один маленький значок, не весь ряд). */}
+      {!isOwn && onViewEmail && (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Открыть письмо"
+          title="Открыть письмо"
+          className={actionBtnClass}
+          onClick={onViewEmail}
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+      )}
       <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button
