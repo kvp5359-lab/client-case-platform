@@ -8578,6 +8578,36 @@ export type Database = {
           },
         ]
       }
+      user_favorites: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          sort_order: number
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          sort_order?: number
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          sort_order?: number
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       workspace_sidebar_settings: {
         Row: {
           slots: Json

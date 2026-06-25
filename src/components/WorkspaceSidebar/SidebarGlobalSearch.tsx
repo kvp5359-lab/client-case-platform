@@ -14,7 +14,7 @@
  * сайдбарным списком проектов.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Clock, Loader2, X } from 'lucide-react'
 import {
@@ -43,6 +43,9 @@ type Props = {
   triggerClassName?: string
   /** Размер иконки лупы в compact-режиме (по умолчанию 16). */
   iconSize?: number
+  /** Элемент, вставляемый внутрь поля поиска справа (full-режим), когда строка
+   *  пуста — например кнопка «Избранное». */
+  trailing?: ReactNode
 }
 
 /** Унифицированный row для рендера (recent + search). */
@@ -95,6 +98,7 @@ export function SidebarGlobalSearch({
   compact = false,
   triggerClassName,
   iconSize = 16,
+  trailing,
 }: Props) {
   const router = useRouter()
   const [query, setQuery] = useState('')
@@ -404,7 +408,7 @@ export function SidebarGlobalSearch({
             placeholder="Поиск"
             className="w-full h-8 pl-8 pr-7 text-sm bg-white border border-gray-200 rounded-md text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           />
-          {query.length > 0 && (
+          {query.length > 0 ? (
             <button
               type="button"
               aria-label="Очистить"
@@ -416,6 +420,10 @@ export function SidebarGlobalSearch({
             >
               <X size={12} />
             </button>
+          ) : (
+            trailing && (
+              <div className="absolute right-1 top-1/2 -translate-y-1/2">{trailing}</div>
+            )
           )}
         </div>
       </PopoverAnchor>

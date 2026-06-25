@@ -13,6 +13,7 @@ import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigat
 import { useAuth } from '@/contexts/AuthContext'
 import { QuickActionsProvider } from '@/components/quick-actions/QuickActionsProvider'
 import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
+import { SidebarFavoritesButton } from './WorkspaceSidebar/SidebarFavoritesButton'
 import { SidebarGlobalSearch } from './WorkspaceSidebar/SidebarGlobalSearch'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
 import { UserProfile } from './WorkspaceSidebar/UserProfile'
@@ -458,7 +459,10 @@ export function WorkspaceSidebarFull({
 
       {!isClientOnly && (
         <div className="px-2 pt-2">
-          <SidebarGlobalSearch workspaceId={workspaceId} />
+          <SidebarGlobalSearch
+            workspaceId={workspaceId}
+            trailing={<SidebarFavoritesButton workspaceId={workspaceId} />}
+          />
         </div>
       )}
 
