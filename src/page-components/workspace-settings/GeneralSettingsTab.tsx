@@ -14,6 +14,7 @@ import { NotificationSettingsSection } from './components/NotificationSettingsSe
 import { SendDelaySettingsSection } from './components/SendDelaySettingsSection'
 import { DeadlineFormatSection } from './components/DeadlineFormatSection'
 import { DefaultTaskIconColorSection } from './components/DefaultTaskIconColorSection'
+import { AccentPaletteSection } from './components/AccentPaletteSection'
 import { PerfTraceSection } from './components/PerfTraceSection'
 import { InboxReconcileSection } from './components/InboxReconcileSection'
 
@@ -35,6 +36,7 @@ export function GeneralSettingsTab() {
       <SendDelaySettingsSection workspaceId={workspaceId} />
       <DeadlineFormatSection workspaceId={workspaceId} />
       <DefaultTaskIconColorSection workspaceId={workspaceId} />
+      <AccentPaletteSection workspaceId={workspaceId} />
       <AISettingsSection workspaceId={workspaceId} />
       <TranslationSettingsSection workspaceId={workspaceId} />
       <VoyageAISettingsSection workspaceId={workspaceId} />

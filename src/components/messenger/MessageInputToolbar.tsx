@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Send, Save } from 'lucide-react'
 import type { Editor } from '@tiptap/react'
 import type { MessengerAccent } from './MessageBubble'
+import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
 import { MessengerToolbar } from './MinimalTiptapEditor'
 import { AttachmentButton } from './AttachmentButton'
 import { QuickReplyPicker } from './QuickReplyPicker'
@@ -12,23 +13,9 @@ import { TaskStatusPicker } from './TaskStatusPicker'
 import type { TaskStatus } from '@/hooks/useStatuses'
 
 export const sendButtonStyles: Record<MessengerAccent, string> = {
-  blue: 'bg-blue-500 hover:bg-blue-600 text-white',
-  slate: 'bg-stone-600 hover:bg-stone-700 text-white',
-  emerald: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-  amber: 'bg-amber-500 hover:bg-amber-600 text-white',
-  rose: 'bg-rose-500 hover:bg-rose-600 text-white',
-  violet: 'bg-violet-600 hover:bg-violet-700 text-white',
-  orange: 'bg-orange-500 hover:bg-orange-600 text-white',
-  cyan: 'bg-cyan-600 hover:bg-cyan-700 text-white',
-  pink: 'bg-pink-500 hover:bg-pink-600 text-white',
-  indigo: 'bg-indigo-600 hover:bg-indigo-700 text-white',
-  green: 'bg-green-600 hover:bg-green-700 text-white',
-  sky: 'bg-sky-500 hover:bg-sky-600 text-white',
-  brown: 'bg-amber-800 hover:bg-amber-900 text-white',
-  taupe: 'bg-stone-500 hover:bg-stone-600 text-white',
-  red: 'bg-red-700 hover:bg-red-800 text-white',
-  black: 'bg-neutral-900 hover:bg-neutral-950 text-white',
-  graphite: 'bg-neutral-600 hover:bg-neutral-700 text-white',
+  ...(Object.fromEntries(
+    ACCENT_SLUGS.map((s) => [s, `${acc.bgMain(s)} ${acc.textOn(s)} hover:opacity-90`]),
+  ) as Record<MessengerAccent, string>),
   // Legacy
   dark: 'bg-stone-600 hover:bg-stone-700 text-white',
 }

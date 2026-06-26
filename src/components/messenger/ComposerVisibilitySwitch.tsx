@@ -12,6 +12,7 @@ import { MessageSquare, Users, BellOff, Lock } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MessengerAccent } from './MessageBubble'
+import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
 import { sendButtonStyles } from './MessageInputToolbar'
 import {
   Tooltip,
@@ -27,23 +28,12 @@ export type ComposerMode = 'client' | 'team' | 'note' | 'self'
  * динамические имена классов — нужен статический разбор по акценту).
  */
 const CLIENT_ACCENT_PILL: Record<MessengerAccent, { active: string; border: string }> = {
-  blue: { active: 'bg-blue-100 text-blue-800', border: 'border-blue-300' },
-  slate: { active: 'bg-stone-100 text-stone-800', border: 'border-stone-300' },
-  emerald: { active: 'bg-emerald-100 text-emerald-800', border: 'border-emerald-300' },
-  amber: { active: 'bg-amber-100 text-amber-800', border: 'border-amber-300' },
-  rose: { active: 'bg-rose-100 text-rose-800', border: 'border-rose-300' },
-  violet: { active: 'bg-violet-100 text-violet-800', border: 'border-violet-300' },
-  orange: { active: 'bg-orange-100 text-orange-800', border: 'border-orange-300' },
-  cyan: { active: 'bg-cyan-100 text-cyan-800', border: 'border-cyan-300' },
-  pink: { active: 'bg-pink-100 text-pink-800', border: 'border-pink-300' },
-  indigo: { active: 'bg-indigo-100 text-indigo-800', border: 'border-indigo-300' },
-  green: { active: 'bg-green-100 text-green-800', border: 'border-green-300' },
-  sky: { active: 'bg-sky-100 text-sky-800', border: 'border-sky-300' },
-  brown: { active: 'bg-amber-100 text-amber-900', border: 'border-amber-400' },
-  taupe: { active: 'bg-stone-100 text-stone-800', border: 'border-stone-300' },
-  red: { active: 'bg-red-100 text-red-800', border: 'border-red-300' },
-  black: { active: 'bg-neutral-200 text-neutral-900', border: 'border-neutral-400' },
-  graphite: { active: 'bg-neutral-100 text-neutral-800', border: 'border-neutral-300' },
+  ...(Object.fromEntries(
+    ACCENT_SLUGS.map((s) => [
+      s,
+      { active: `${acc.bgLight(s)} ${acc.textMain(s)}`, border: acc.borderSoft(s) },
+    ]),
+  ) as Record<MessengerAccent, { active: string; border: string }>),
   dark: { active: 'bg-stone-100 text-stone-800', border: 'border-stone-300' },
 }
 

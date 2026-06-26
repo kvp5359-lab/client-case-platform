@@ -4,48 +4,21 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { MessageReaction } from '@/services/api/messenger/messengerService'
 import { groupReactions } from './utils/reactionHelpers'
 import type { MessengerAccent } from './utils/messageStyles'
+import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
 
-/** Accent-colored backgrounds for own reactions */
+/** Accent-colored backgrounds for own reactions (из настраиваемой палитры) */
 const OWN_REACTION_STYLES: Record<MessengerAccent, string> = {
-  blue: 'bg-blue-500 hover:bg-blue-600 text-white',
-  slate: 'bg-stone-600 hover:bg-stone-700 text-white',
-  emerald: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-  amber: 'bg-amber-500 hover:bg-amber-600 text-white',
-  rose: 'bg-red-500 hover:bg-red-600 text-white',
-  violet: 'bg-violet-600 hover:bg-violet-700 text-white',
-  orange: 'bg-orange-500 hover:bg-orange-600 text-white',
-  cyan: 'bg-cyan-600 hover:bg-cyan-700 text-white',
-  pink: 'bg-pink-500 hover:bg-pink-600 text-white',
-  indigo: 'bg-indigo-600 hover:bg-indigo-700 text-white',
-  green: 'bg-green-600 hover:bg-green-700 text-white',
-  sky: 'bg-sky-500 hover:bg-sky-600 text-white',
-  brown: 'bg-amber-800 hover:bg-amber-900 text-white',
-  taupe: 'bg-stone-500 hover:bg-stone-600 text-white',
-  red: 'bg-red-700 hover:bg-red-800 text-white',
-  black: 'bg-neutral-900 hover:bg-neutral-950 text-white',
-  graphite: 'bg-neutral-600 hover:bg-neutral-700 text-white',
+  ...(Object.fromEntries(
+    ACCENT_SLUGS.map((s) => [s, `${acc.bgMain(s)} ${acc.textOn(s)} hover:opacity-90`]),
+  ) as Record<MessengerAccent, string>),
   dark: 'bg-stone-600 hover:bg-stone-700 text-white',
 }
 
 /** Accent-colored backgrounds for other users' reactions */
 const OTHER_REACTION_STYLES: Record<MessengerAccent, string> = {
-  blue: 'bg-blue-100 hover:bg-blue-200',
-  slate: 'bg-stone-100 hover:bg-stone-200',
-  emerald: 'bg-emerald-100 hover:bg-emerald-200',
-  amber: 'bg-amber-100 hover:bg-amber-200',
-  rose: 'bg-red-100 hover:bg-red-200',
-  violet: 'bg-violet-100 hover:bg-violet-200',
-  orange: 'bg-orange-100 hover:bg-orange-200',
-  cyan: 'bg-cyan-100 hover:bg-cyan-200',
-  pink: 'bg-pink-100 hover:bg-pink-200',
-  indigo: 'bg-indigo-100 hover:bg-indigo-200',
-  green: 'bg-green-100 hover:bg-green-200',
-  sky: 'bg-sky-100 hover:bg-sky-200',
-  brown: 'bg-amber-100 hover:bg-amber-200',
-  taupe: 'bg-stone-100 hover:bg-stone-200',
-  red: 'bg-red-100 hover:bg-red-200',
-  black: 'bg-neutral-200 hover:bg-neutral-300',
-  graphite: 'bg-neutral-100 hover:bg-neutral-200',
+  ...(Object.fromEntries(
+    ACCENT_SLUGS.map((s) => [s, `${acc.bgLight(s)} hover:brightness-95`]),
+  ) as Record<MessengerAccent, string>),
   dark: 'bg-stone-100 hover:bg-stone-200',
 }
 

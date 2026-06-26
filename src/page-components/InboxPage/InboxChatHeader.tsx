@@ -8,6 +8,7 @@ import {
   type AvatarParticipant,
 } from '@/components/participants/ParticipantAvatars'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
+import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,25 +43,9 @@ export function useProjectChatParticipants(projectId: string | undefined) {
   })
 }
 
-const ACCENT_BG: Record<ThreadAccentColor, string> = {
-  blue: 'bg-blue-500',
-  slate: 'bg-stone-600',
-  emerald: 'bg-emerald-600',
-  amber: 'bg-amber-500',
-  rose: 'bg-red-500',
-  violet: 'bg-violet-600',
-  orange: 'bg-orange-500',
-  cyan: 'bg-cyan-600',
-  pink: 'bg-pink-500',
-  indigo: 'bg-indigo-600',
-  green: 'bg-green-500',
-  sky: 'bg-sky-500',
-  brown: 'bg-amber-800',
-  taupe: 'bg-stone-500',
-  red: 'bg-red-700',
-  black: 'bg-neutral-900',
-  graphite: 'bg-neutral-600',
-}
+const ACCENT_BG: Record<ThreadAccentColor, string> = Object.fromEntries(
+  ACCENT_SLUGS.map((s) => [s, acc.bgMain(s)]),
+) as Record<ThreadAccentColor, string>
 
 const THREAD_TYPES = [
   { tab: 'task' as const, label: 'Задача', icon: CheckSquare },

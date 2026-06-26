@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { MessageBubble } from '@/components/messenger/MessageBubble'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
+import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
 import { MessengerProvider } from '@/components/messenger/MessengerContext'
 import { ServiceMessage } from '@/components/messenger/ServiceMessage'
 import { AuditPill } from './AuditPill'
@@ -321,42 +322,10 @@ function ChatDivider({
   )
 }
 
-const ACCENT_TEXT: Record<ThreadAccentColor, string> = {
-  blue: 'text-blue-600',
-  slate: 'text-stone-600',
-  emerald: 'text-emerald-600',
-  amber: 'text-amber-600',
-  rose: 'text-red-600',
-  violet: 'text-violet-600',
-  orange: 'text-orange-600',
-  cyan: 'text-cyan-600',
-  pink: 'text-pink-600',
-  indigo: 'text-indigo-600',
-  green: 'text-green-600',
-  sky: 'text-sky-600',
-  brown: 'text-amber-800',
-  taupe: 'text-stone-600',
-  red: 'text-red-700',
-  black: 'text-neutral-800',
-  graphite: 'text-neutral-700',
-}
+const ACCENT_TEXT: Record<ThreadAccentColor, string> = Object.fromEntries(
+  ACCENT_SLUGS.map((s) => [s, acc.textMain(s)]),
+) as Record<ThreadAccentColor, string>
 
-const ACCENT_BG: Record<ThreadAccentColor, string> = {
-  blue: 'bg-blue-50/70',
-  slate: 'bg-stone-50/70',
-  emerald: 'bg-emerald-50/70',
-  amber: 'bg-amber-50/70',
-  rose: 'bg-red-50/70',
-  violet: 'bg-violet-50/70',
-  orange: 'bg-orange-50/70',
-  cyan: 'bg-cyan-50/70',
-  pink: 'bg-pink-50/70',
-  indigo: 'bg-indigo-50/70',
-  green: 'bg-green-50/70',
-  sky: 'bg-sky-50/70',
-  brown: 'bg-amber-50/70',
-  taupe: 'bg-stone-50/70',
-  red: 'bg-red-50/70',
-  black: 'bg-neutral-100/70',
-  graphite: 'bg-neutral-50/70',
-}
+const ACCENT_BG: Record<ThreadAccentColor, string> = Object.fromEntries(
+  ACCENT_SLUGS.map((s) => [s, acc.bgSoft(s)]),
+) as Record<ThreadAccentColor, string>

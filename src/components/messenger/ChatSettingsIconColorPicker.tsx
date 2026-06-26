@@ -3,7 +3,7 @@
  */
 
 import { Hash } from 'lucide-react'
-import { ACCENT_COLORS, ACCENT_COLOR_GROUPS, THREAD_ICONS } from './threadConstants'
+import { ACCENT_COLORS, ACCENT_COLOR_GROUPS, COLOR_TEXT, THREAD_ICONS } from './threadConstants'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
@@ -85,24 +85,7 @@ export function ChatSettingsIconColorPicker(props: PickerProps) {
           title="Иконка и цвет"
           className={cn(
             'w-9 h-9 rounded-r-md flex items-center justify-center shrink-0 transition-colors hover:bg-muted/50',
-            {
-              'text-blue-500': accentColor === 'blue',
-              'text-stone-600': accentColor === 'slate' || accentColor === 'taupe',
-              'text-emerald-600': accentColor === 'emerald',
-              'text-amber-500': accentColor === 'amber',
-              'text-rose-500': accentColor === 'rose',
-              'text-violet-600': accentColor === 'violet',
-              'text-orange-500': accentColor === 'orange',
-              'text-cyan-600': accentColor === 'cyan',
-              'text-pink-500': accentColor === 'pink',
-              'text-indigo-600': accentColor === 'indigo',
-              'text-green-600': accentColor === 'green',
-              'text-sky-600': accentColor === 'sky',
-              'text-amber-800': accentColor === 'brown',
-              'text-red-700': accentColor === 'red',
-              'text-neutral-900': accentColor === 'black',
-              'text-neutral-600': accentColor === 'graphite',
-            },
+            COLOR_TEXT[accentColor] ?? COLOR_TEXT.blue,
           )}
         >
           <IconComp className="h-4 w-4" />

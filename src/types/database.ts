@@ -8646,6 +8646,7 @@ export type Database = {
           custom_domain_status: string | null
           custom_domain_verified_at: string | null
           channel_defaults: Json
+          accent_overrides: Json
           deadline_far_format: string
           deadline_near_format: string
           default_ai_check_prompt: string | null
@@ -8683,6 +8684,7 @@ export type Database = {
           custom_domain_status?: string | null
           custom_domain_verified_at?: string | null
           channel_defaults?: Json
+          accent_overrides?: Json
           deadline_far_format?: string
           deadline_near_format?: string
           default_ai_check_prompt?: string | null
@@ -8720,6 +8722,7 @@ export type Database = {
           custom_domain_status?: string | null
           custom_domain_verified_at?: string | null
           channel_defaults?: Json
+          accent_overrides?: Json
           deadline_far_format?: string
           deadline_near_format?: string
           default_ai_check_prompt?: string | null

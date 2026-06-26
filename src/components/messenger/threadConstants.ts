@@ -62,6 +62,7 @@ import {
 } from 'lucide-react'
 import { WhatsAppIcon } from './brandIcons'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
+import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
 
 /**
  * Палитра акцентов треда. Сгруппирована по парам оттенков (`group`) — пикер
@@ -78,31 +79,31 @@ export const ACCENT_COLORS: {
   hidden?: boolean
 }[] = [
   // Зелёные
-  { value: 'emerald', label: 'Зелёный', bg: 'bg-emerald-600', ring: 'ring-emerald-600', group: 'green' },
-  { value: 'green', label: 'Зелёный (свет.)', bg: 'bg-green-500', ring: 'ring-green-500', group: 'green' },
+  { value: 'emerald', label: 'Зелёный', bg: acc.bgMain('emerald'), ring: acc.ringMain('emerald'), group: 'green' },
+  { value: 'green', label: 'Зелёный (свет.)', bg: acc.bgMain('green'), ring: acc.ringMain('green'), group: 'green' },
   // Синие
-  { value: 'blue', label: 'Синий', bg: 'bg-blue-500', ring: 'ring-blue-500', group: 'blue' },
-  { value: 'sky', label: 'Голубой', bg: 'bg-sky-500', ring: 'ring-sky-500', group: 'blue' },
+  { value: 'blue', label: 'Синий', bg: acc.bgMain('blue'), ring: acc.ringMain('blue'), group: 'blue' },
+  { value: 'sky', label: 'Голубой', bg: acc.bgMain('sky'), ring: acc.ringMain('sky'), group: 'blue' },
   // Фиолетовые
-  { value: 'violet', label: 'Фиолетовый', bg: 'bg-violet-600', ring: 'ring-violet-600', group: 'purple' },
-  { value: 'indigo', label: 'Индиго', bg: 'bg-indigo-600', ring: 'ring-indigo-600', group: 'purple' },
+  { value: 'violet', label: 'Фиолетовый', bg: acc.bgMain('violet'), ring: acc.ringMain('violet'), group: 'purple' },
+  { value: 'indigo', label: 'Индиго', bg: acc.bgMain('indigo'), ring: acc.ringMain('indigo'), group: 'purple' },
   // Оранжевые
-  { value: 'orange', label: 'Оранжевый', bg: 'bg-orange-500', ring: 'ring-orange-500', group: 'orange' },
-  { value: 'amber', label: 'Жёлтый', bg: 'bg-amber-500', ring: 'ring-amber-500', group: 'orange' },
+  { value: 'orange', label: 'Оранжевый', bg: acc.bgMain('orange'), ring: acc.ringMain('orange'), group: 'orange' },
+  { value: 'amber', label: 'Жёлтый', bg: acc.bgMain('amber'), ring: acc.ringMain('amber'), group: 'orange' },
   // Коричневые
-  { value: 'brown', label: 'Коричневый', bg: 'bg-amber-800', ring: 'ring-amber-800', group: 'brown' },
-  { value: 'taupe', label: 'Серо-коричневый', bg: 'bg-stone-500', ring: 'ring-stone-500', group: 'brown' },
+  { value: 'brown', label: 'Коричневый', bg: acc.bgMain('brown'), ring: acc.ringMain('brown'), group: 'brown' },
+  { value: 'taupe', label: 'Серо-коричневый', bg: acc.bgMain('taupe'), ring: acc.ringMain('taupe'), group: 'brown' },
   // Красные
-  { value: 'rose', label: 'Красный', bg: 'bg-red-500', ring: 'ring-red-500', group: 'red' },
-  { value: 'red', label: 'Тёмно-красный', bg: 'bg-red-700', ring: 'ring-red-700', group: 'red' },
+  { value: 'rose', label: 'Красный', bg: acc.bgMain('rose'), ring: acc.ringMain('rose'), group: 'red' },
+  { value: 'red', label: 'Тёмно-красный', bg: acc.bgMain('red'), ring: acc.ringMain('red'), group: 'red' },
   // Чёрный / тёмно-серый
-  { value: 'black', label: 'Чёрный', bg: 'bg-neutral-900', ring: 'ring-neutral-900', group: 'dark' },
-  { value: 'graphite', label: 'Тёмно-серый', bg: 'bg-neutral-600', ring: 'ring-neutral-600', group: 'dark' },
+  { value: 'black', label: 'Чёрный', bg: acc.bgMain('black'), ring: acc.ringMain('black'), group: 'dark' },
+  { value: 'graphite', label: 'Тёмно-серый', bg: acc.bgMain('graphite'), ring: acc.ringMain('graphite'), group: 'dark' },
   // Розовый (одиночный)
-  { value: 'pink', label: 'Розовый', bg: 'bg-pink-500', ring: 'ring-pink-500', group: 'mono' },
+  { value: 'pink', label: 'Розовый', bg: acc.bgMain('pink'), ring: acc.ringMain('pink'), group: 'mono' },
   // Legacy — скрыты из пикера, сохранены для старых тредов
-  { value: 'slate', label: 'Серый', bg: 'bg-stone-600', ring: 'ring-stone-600', group: 'legacy', hidden: true },
-  { value: 'cyan', label: 'Бирюзовый', bg: 'bg-cyan-600', ring: 'ring-cyan-600', group: 'legacy', hidden: true },
+  { value: 'slate', label: 'Серый', bg: acc.bgMain('slate'), ring: acc.ringMain('slate'), group: 'legacy', hidden: true },
+  { value: 'cyan', label: 'Бирюзовый', bg: acc.bgMain('cyan'), ring: acc.ringMain('cyan'), group: 'legacy', hidden: true },
 ]
 
 /** Порядок видимых групп цветов для пикера (пары оттенков + одиночные). */
@@ -174,22 +175,6 @@ export const COLOR_BG: Record<string, string> = Object.fromEntries(
 /** Маппинг accent_color → Tailwind text class.
  *  Record<ThreadAccentColor>: добавление акцента в union даёт ошибку компиляции
  *  здесь (а не молчаливый fallback). Индекс-сайты кастуют free-string accent. */
-export const COLOR_TEXT: Record<ThreadAccentColor, string> = {
-  blue: 'text-blue-500',
-  slate: 'text-stone-600',
-  emerald: 'text-emerald-600',
-  amber: 'text-amber-500',
-  rose: 'text-red-500',
-  violet: 'text-violet-600',
-  orange: 'text-orange-500',
-  cyan: 'text-cyan-600',
-  pink: 'text-pink-500',
-  indigo: 'text-indigo-600',
-  green: 'text-green-600',
-  sky: 'text-sky-600',
-  brown: 'text-amber-800',
-  taupe: 'text-stone-600',
-  red: 'text-red-700',
-  black: 'text-neutral-900',
-  graphite: 'text-neutral-600',
-}
+export const COLOR_TEXT: Record<ThreadAccentColor, string> = Object.fromEntries(
+  ACCENT_SLUGS.map((s) => [s, acc.textMain(s)]),
+) as Record<ThreadAccentColor, string>

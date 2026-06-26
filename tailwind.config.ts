@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss'
 import tailwindcssAnimate from 'tailwindcss-animate'
 import typography from '@tailwindcss/typography'
+import { accentSafelist } from './src/lib/accentPalette'
 
 const config: Config = {
   darkMode: ['class'],
@@ -8,6 +9,9 @@ const config: Config = {
     './src/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  // Динамические arbitrary-классы акцентов (bg-[var(--acc-…)] и т.п.) не видны
+  // сканеру по исходникам — перечисляем явно. Источник — src/lib/accentPalette.
+  safelist: accentSafelist(),
   theme: {
     extend: {
       borderRadius: {

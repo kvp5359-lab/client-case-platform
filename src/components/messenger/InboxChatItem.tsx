@@ -10,6 +10,7 @@ import { formatShortDate } from '@/utils/format/dateFormat'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { usePrefetchThreadMessages } from '@/hooks/messenger/usePrefetchThreadMessages'
 import { THREAD_ICONS } from './threadConstants'
+import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
 
 const STATUS_PREFIX = 'Статус: '
 
@@ -68,66 +69,14 @@ function getMediaPreview(
   return { emoji: '📎', label: 'Вложение' }
 }
 
-/** Цвета фона и текста иконки по accent_color чата */
-const accentStyles: Record<string, { bg: string; text: string; badge: string; ring: string }> = {
-  blue: { bg: 'bg-blue-100', text: 'text-blue-600', badge: 'bg-blue-500', ring: 'ring-blue-400' },
-  slate: {
-    bg: 'bg-stone-100',
-    text: 'text-stone-600',
-    badge: 'bg-stone-600',
-    ring: 'ring-stone-400',
-  },
-  emerald: {
-    bg: 'bg-emerald-100',
-    text: 'text-emerald-600',
-    badge: 'bg-emerald-500',
-    ring: 'ring-emerald-400',
-  },
-  amber: {
-    bg: 'bg-amber-100',
-    text: 'text-amber-600',
-    badge: 'bg-amber-500',
-    ring: 'ring-amber-400',
-  },
-  rose: { bg: 'bg-rose-100', text: 'text-rose-600', badge: 'bg-rose-500', ring: 'ring-rose-400' },
-  violet: {
-    bg: 'bg-violet-100',
-    text: 'text-violet-600',
-    badge: 'bg-violet-500',
-    ring: 'ring-violet-400',
-  },
-  orange: {
-    bg: 'bg-orange-100',
-    text: 'text-orange-600',
-    badge: 'bg-orange-500',
-    ring: 'ring-orange-400',
-  },
-  cyan: { bg: 'bg-cyan-100', text: 'text-cyan-600', badge: 'bg-cyan-500', ring: 'ring-cyan-400' },
-  pink: { bg: 'bg-pink-100', text: 'text-pink-600', badge: 'bg-pink-500', ring: 'ring-pink-400' },
-  indigo: {
-    bg: 'bg-indigo-100',
-    text: 'text-indigo-600',
-    badge: 'bg-indigo-500',
-    ring: 'ring-indigo-400',
-  },
-  green: { bg: 'bg-green-100', text: 'text-green-600', badge: 'bg-green-500', ring: 'ring-green-400' },
-  sky: { bg: 'bg-sky-100', text: 'text-sky-600', badge: 'bg-sky-500', ring: 'ring-sky-400' },
-  brown: { bg: 'bg-amber-100', text: 'text-amber-800', badge: 'bg-amber-800', ring: 'ring-amber-500' },
-  taupe: { bg: 'bg-stone-100', text: 'text-stone-600', badge: 'bg-stone-500', ring: 'ring-stone-400' },
-  red: { bg: 'bg-red-100', text: 'text-red-700', badge: 'bg-red-700', ring: 'ring-red-400' },
-  black: {
-    bg: 'bg-neutral-200',
-    text: 'text-neutral-800',
-    badge: 'bg-neutral-900',
-    ring: 'ring-neutral-400',
-  },
-  graphite: {
-    bg: 'bg-neutral-100',
-    text: 'text-neutral-700',
-    badge: 'bg-neutral-600',
-    ring: 'ring-neutral-400',
-  },
-}
+/** Цвета фона и текста иконки по accent_color чата (из настраиваемой палитры) */
+const accentStyles: Record<string, { bg: string; text: string; badge: string; ring: string }> =
+  Object.fromEntries(
+    ACCENT_SLUGS.map((s) => [
+      s,
+      { bg: acc.bgLight(s), text: acc.textMain(s), badge: acc.bgMain(s), ring: acc.ringMain(s) },
+    ]),
+  )
 
 const defaultAccent = accentStyles.blue
 
