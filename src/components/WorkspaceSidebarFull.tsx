@@ -16,6 +16,7 @@ import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
 import { SidebarFavoritesButton } from './WorkspaceSidebar/SidebarFavoritesButton'
 import { SidebarGlobalSearch } from './WorkspaceSidebar/SidebarGlobalSearch'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
+import { SettingsNav } from './WorkspaceSidebar/SettingsNav'
 import { UserProfile } from './WorkspaceSidebar/UserProfile'
 import { WorkspacePicker } from './WorkspaceSidebar/WorkspacePicker'
 import { useSidebarData } from './WorkspaceSidebar/useSidebarData'
@@ -62,6 +63,9 @@ type WorkspaceSidebarFullProps = {
   /** Закрыть мобильный выезжающий сайдбар — крестик справа от воркспейс-пикера
    *  (только на мобиле, на месте десктопной кнопки сворачивания). */
   onMobileClose?: () => void
+  /** Режим настроек — вместо поиска/проектов показываем меню разделов настроек
+   *  (та же обёртка/шапка/низ сайдбара). */
+  settingsMode?: boolean
 }
 
 export function WorkspaceSidebarFull({
@@ -70,6 +74,7 @@ export function WorkspaceSidebarFull({
   compact = false,
   onExpand,
   onMobileClose,
+  settingsMode = false,
 }: WorkspaceSidebarFullProps = {}) {
   const router = useRouter()
   const params = useParams<{ workspaceId?: string; projectId?: string }>()
@@ -457,39 +462,25 @@ export function WorkspaceSidebarFull({
           незакрытых ошибок отправки у текущего юзера в этом воркспейсе. */}
       <SendFailuresIndicator workspaceId={workspaceId} />
 
-      {!isClientOnly && (
-        <div className="px-2 pt-2">
-          <SidebarGlobalSearch
-            workspaceId={workspaceId}
-            trailing={<SidebarFavoritesButton workspaceId={workspaceId} />}
-          />
+      {settingsMode ? (
+        <div className="flex-1 overflow-y-auto px-2 pt-3">
+          <SettingsNav onNavigate={onMobileClose} />
         </div>
-      )}
+      ) : (
+        <>
+          {!isClientOnly && (
+            <div className="px-2 pt-2">
+              <SidebarGlobalSearch
+                workspaceId={workspaceId}
+                trailing={<SidebarFavoritesButton workspaceId={workspaceId} />}
+              />
+            </div>
+          )}
 
-      <div className="px-2 pt-2 pb-2">
-        <SidebarSlotsRow
-          slots={topbarSlots}
-          compact
-          workspaceId={workspaceId}
-          allBoards={allBoards}
-          allItemLists={allItemLists}
-          allSections={allSections}
-          isOwner={isOwner}
-          pathname={pathname}
-          buildHref={buildHref}
-          computeBadge={computeBadge}
-          isNavActive={isNavActive}
-          isNavItemActive={isNavItemActive}
-          listSlots={listSlots}
-          toggleBoardPin={toggleBoardPin}
-          toggleListPin={toggleListPin}
-        />
-
-        {!isClientOnly && (
-          <div className={topbarSlots.length > 0 ? 'mt-1.5' : ''}>
+          <div className="px-2 pt-2 pb-2">
             <SidebarSlotsRow
-              slots={listSlots}
-              compact={false}
+              slots={topbarSlots}
+              compact
               workspaceId={workspaceId}
               allBoards={allBoards}
               allItemLists={allItemLists}
@@ -504,45 +495,67 @@ export function WorkspaceSidebarFull({
               toggleBoardPin={toggleBoardPin}
               toggleListPin={toggleListPin}
             />
+
+            {!isClientOnly && (
+              <div className={topbarSlots.length > 0 ? 'mt-1.5' : ''}>
+                <SidebarSlotsRow
+                  slots={listSlots}
+                  compact={false}
+                  workspaceId={workspaceId}
+                  allBoards={allBoards}
+                  allItemLists={allItemLists}
+                  allSections={allSections}
+                  isOwner={isOwner}
+                  pathname={pathname}
+                  buildHref={buildHref}
+                  computeBadge={computeBadge}
+                  isNavActive={isNavActive}
+                  isNavItemActive={isNavItemActive}
+                  listSlots={listSlots}
+                  toggleBoardPin={toggleBoardPin}
+                  toggleListPin={toggleListPin}
+                />
+              </div>
+            )}
+
           </div>
-        )}
 
-      </div>
-
-      <div className="flex-1 overflow-hidden px-2 pt-1 relative after:absolute after:inset-x-0 after:bottom-0 after:h-3 after:bg-gradient-to-b after:from-transparent after:to-black/[0.06] after:pointer-events-none">
-        <ProjectsList
-          projects={projects}
-          loading={loadingProjects}
-          onSearchChange={setRawSearchQuery}
-          badgeDisplays={badgeDisplays}
-          clientUnreadCounts={clientUnreadCounts}
-          internalUnreadCounts={internalUnreadCounts}
-          badgeColors={badgeColors}
-          activeProjectId={activeProjectId}
-          onProjectClick={(projectId) => {
-            // Виртуальная запись «Без проекта» → /tasks?filter=no_project
-            if (projectId === NO_PROJECT_VIRTUAL_ID) {
-              handleNavigate('tasks?filter=no_project')
-              return
-            }
-            setOptimisticProjectSegment(projectId)
-            handleNavigate(`projects/${projectId}`)
-          }}
-          getProjectHref={(projectId) =>
-            projectId === NO_PROJECT_VIRTUAL_ID
-              ? buildHref('tasks?filter=no_project')
-              : buildHref(`projects/${projectId}`)
-          }
-          onBadgeClick={handleBadgeClick}
-          onCreateProject={isClientOnly ? undefined : createProjectDialog.open}
-          onTitleClick={() => handleNavigate('projects')}
-          isClientOnly={isClientOnly}
-          clientTabs={isClientOnly ? displayModules : undefined}
-          activeTab={activeTab}
-          onTabClick={(projectId, tabId) => handleNavigate(`projects/${projectId}?tab=${tabId}`)}
-          workspaceId={workspaceId}
-        />
-      </div>
+          <div className="flex-1 overflow-hidden px-2 pt-1 relative after:absolute after:inset-x-0 after:bottom-0 after:h-3 after:bg-gradient-to-b after:from-transparent after:to-black/[0.06] after:pointer-events-none">
+            <ProjectsList
+              projects={projects}
+              loading={loadingProjects}
+              onSearchChange={setRawSearchQuery}
+              badgeDisplays={badgeDisplays}
+              clientUnreadCounts={clientUnreadCounts}
+              internalUnreadCounts={internalUnreadCounts}
+              badgeColors={badgeColors}
+              activeProjectId={activeProjectId}
+              onProjectClick={(projectId) => {
+                // Виртуальная запись «Без проекта» → /tasks?filter=no_project
+                if (projectId === NO_PROJECT_VIRTUAL_ID) {
+                  handleNavigate('tasks?filter=no_project')
+                  return
+                }
+                setOptimisticProjectSegment(projectId)
+                handleNavigate(`projects/${projectId}`)
+              }}
+              getProjectHref={(projectId) =>
+                projectId === NO_PROJECT_VIRTUAL_ID
+                  ? buildHref('tasks?filter=no_project')
+                  : buildHref(`projects/${projectId}`)
+              }
+              onBadgeClick={handleBadgeClick}
+              onCreateProject={isClientOnly ? undefined : createProjectDialog.open}
+              onTitleClick={() => handleNavigate('projects')}
+              isClientOnly={isClientOnly}
+              clientTabs={isClientOnly ? displayModules : undefined}
+              activeTab={activeTab}
+              onTabClick={(projectId, tabId) => handleNavigate(`projects/${projectId}?tab=${tabId}`)}
+              workspaceId={workspaceId}
+            />
+          </div>
+        </>
+      )}
 
       <div className="px-2 py-2 border-t border-gray-200">
         {user && (

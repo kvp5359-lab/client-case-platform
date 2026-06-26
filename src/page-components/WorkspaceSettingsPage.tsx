@@ -8,14 +8,15 @@
 import React, { Suspense, useEffect } from 'react'
 import { useParams, useRouter, usePathname } from 'next/navigation'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GeneralSettingsTab } from './workspace-settings/GeneralSettingsTab'
+import { AccentPaletteSection } from './workspace-settings/components/AccentPaletteSection'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { usePageTitle } from '@/hooks/usePageTitle'
 
 const SETTINGS_TAB_TITLES: Record<string, string> = {
   general: 'Настройки',
+  palette: 'Палитра цветов',
   participants: 'Участники',
   permissions: 'Права',
   directories: 'Справочники',
@@ -89,6 +90,7 @@ export function WorkspaceSettingsPage() {
 
   // Определяем активный таб по URL
   const getActiveTab = () => {
+    if (pathname.includes('/palette')) return 'palette'
     if (pathname.includes('/participants')) return 'participants'
     if (pathname.includes('/permissions')) return 'permissions'
     if (pathname.includes('/directories')) return 'directories'
@@ -102,10 +104,6 @@ export function WorkspaceSettingsPage() {
     return 'general'
   }
 
-  const handleTabChange = (tab: string) => {
-    router.push(`/workspaces/${workspaceId}/settings/${tab}`)
-  }
-
   const activeTab = getActiveTab()
   usePageTitle(SETTINGS_TAB_TITLES[activeTab] ?? 'Настройки')
 
@@ -117,7 +115,7 @@ export function WorkspaceSettingsPage() {
       router.replace(`/workspaces/${workspaceId}`)
       return
     }
-    if (activeTab === 'general' && !canManageSettings) {
+    if ((activeTab === 'general' || activeTab === 'palette') && !canManageSettings) {
       router.replace(`/workspaces/${workspaceId}/settings/directories`)
     } else if (activeTab === 'participants' && !canManageParticipants) {
       router.replace(`/workspaces/${workspaceId}/settings/general`)
@@ -152,85 +150,19 @@ export function WorkspaceSettingsPage() {
     <WorkspaceLayout>
       <main className="flex-1 p-8 overflow-auto">
         <div className="max-w-6xl mx-auto space-y-6">
-          {/* Page Title */}
+          {/* Page Title — навигация теперь в боковом меню настроек (SettingsSidebar) */}
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Настройки рабочего пространства</h1>
-            <p className="text-gray-600 mt-1">
-              Управление настройками и конфигурацией рабочего пространства
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {SETTINGS_TAB_TITLES[activeTab] ?? 'Настройки'}
+            </h1>
           </div>
-
-          {/* Tabs */}
-          <Tabs value={activeTab} className="w-full">
-            <TabsList>
-              {canManageSettings && (
-                <TabsTrigger value="general" onClick={() => handleTabChange('general')}>
-                  Настройки
-                </TabsTrigger>
-              )}
-              {canManageParticipants && (
-                <TabsTrigger value="participants" onClick={() => handleTabChange('participants')}>
-                  Участники
-                </TabsTrigger>
-              )}
-              {canManageRoles && (
-                <TabsTrigger value="permissions" onClick={() => handleTabChange('permissions')}>
-                  Права доступа
-                </TabsTrigger>
-              )}
-              <TabsTrigger
-                value="directories"
-                onClick={() => handleTabChange('directories')}
-              >
-                Справочники
-              </TabsTrigger>
-              {canManageTemplates && (
-                <TabsTrigger
-                  value="templates"
-                  onClick={() => handleTabChange('templates')}
-                >
-                  Шаблоны
-                </TabsTrigger>
-              )}
-              {permissions.isOwner && (
-                <TabsTrigger value="integrations" onClick={() => handleTabChange('integrations')}>
-                  Интеграции
-                </TabsTrigger>
-              )}
-              {permissions.isOwner && (
-                <TabsTrigger value="digest" onClick={() => handleTabChange('digest')}>
-                  Дневник проекта
-                </TabsTrigger>
-              )}
-              {permissions.isOwner && (
-                <TabsTrigger value="sidebar" onClick={() => handleTabChange('sidebar')}>
-                  Сайдбар
-                </TabsTrigger>
-              )}
-              {permissions.isOwner && (
-                <TabsTrigger value="domain" onClick={() => handleTabChange('domain')}>
-                  Домен
-                </TabsTrigger>
-              )}
-              {(permissions.isOwner || permissions.can('manage_workspace_settings')) && (
-                <TabsTrigger value="trash" onClick={() => handleTabChange('trash')}>
-                  Корзина
-                </TabsTrigger>
-              )}
-              {(permissions.isOwner || permissions.can('manage_workspace_settings')) && (
-                <TabsTrigger
-                  value="send-failures"
-                  onClick={() => handleTabChange('send-failures')}
-                >
-                  Не отправленные
-                </TabsTrigger>
-              )}
-            </TabsList>
-          </Tabs>
 
           {/* Tab content */}
           <Suspense fallback={<div className="p-4">Загрузка...</div>}>
             {activeTab === 'general' && canManageSettings && <GeneralSettingsTab />}
+            {activeTab === 'palette' && canManageSettings && workspaceId && (
+              <AccentPaletteSection workspaceId={workspaceId} />
+            )}
             {activeTab === 'participants' && canManageParticipants && <ParticipantsTab />}
             {activeTab === 'permissions' && canManageRoles && <PermissionsTab />}
             {(activeTab === 'directories' || pathname.includes('/directories')) && <DirectoriesTab />}

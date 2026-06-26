@@ -152,8 +152,17 @@ export function accentSafelist(): string[] {
 
 // ── Переопределения воркспейса ───────────────────────────────────────────────
 
-export type AccentOverride = { main?: string; light?: string }
+export type AccentOverride = { main?: string; light?: string; name?: string }
 export type AccentOverrides = Partial<Record<AccentSlug, AccentOverride>>
+
+/** Отображаемое название цвета: кастомное (override.name) или дефолтное. */
+export function resolveAccentLabel(
+  slug: AccentSlug,
+  overrides: AccentOverrides | null | undefined,
+  defaultLabel: string,
+): string {
+  return overrides?.[slug]?.name?.trim() || defaultLabel
+}
 
 /** Превью-цвета для пикеров/настроек (override → иначе дефолт). */
 export function resolveAccentHex(

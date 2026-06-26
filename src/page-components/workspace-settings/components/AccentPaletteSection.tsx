@@ -21,7 +21,12 @@ import { useWorkspace } from '@/hooks/useWorkspace'
 import { workspaceKeys } from '@/hooks/queryKeys'
 import { ACCENT_COLORS } from '@/components/messenger/threadConstants'
 import { bubbleStyles } from '@/components/messenger/utils/messageStyles'
-import { resolveAccentHex, type AccentOverrides, type AccentSlug } from '@/lib/accentPalette'
+import {
+  resolveAccentHex,
+  resolveAccentLabel,
+  type AccentOverrides,
+  type AccentSlug,
+} from '@/lib/accentPalette'
 
 type Props = { workspaceId: string }
 
@@ -65,6 +70,15 @@ export function AccentPaletteSection({ workspaceId }: Props) {
     saveMutation.mutate(next)
   }
 
+  const setName = (slug: AccentSlug, value: string) => {
+    const trimmed = value.trim()
+    const entry = { ...overrides[slug] }
+    if (trimmed) entry.name = trimmed
+    else delete entry.name
+    const next: AccentOverrides = { ...overrides, [slug]: entry }
+    saveMutation.mutate(next)
+  }
+
   const resetSlug = (slug: AccentSlug) => {
     const next: AccentOverrides = { ...overrides }
     delete next[slug]
@@ -83,24 +97,35 @@ export function AccentPaletteSection({ workspaceId }: Props) {
           {VISIBLE.map((c) => {
             const slug = c.value as AccentSlug
             const cur = resolveAccentHex(slug, overrides)
-            const isOverridden = !!overrides[slug]?.main || !!overrides[slug]?.light
+            const label = resolveAccentLabel(slug, overrides, c.label)
+            const ov = overrides[slug]
+            const isOverridden = !!ov?.main || !!ov?.light || !!ov?.name
             return (
               <div key={slug} className="flex flex-col gap-2 py-3 first:pt-0 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-3 sm:w-56 shrink-0">
-                  <span className="text-sm flex-1 min-w-0 truncate">{c.label}</span>
+                <div className="flex items-center gap-2 sm:w-80 shrink-0">
+                  <input
+                    key={`${slug}:${label}`}
+                    type="text"
+                    defaultValue={label}
+                    onBlur={(e) => {
+                      if (e.target.value.trim() !== label) setName(slug, e.target.value)
+                    }}
+                    title="Название цвета (можно переименовать)"
+                    className="flex-1 min-w-0 text-sm bg-transparent rounded px-2 py-1 border border-transparent hover:border-border focus:border-border focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                  />
                   <input
                     type="color"
                     value={cur.main}
                     onChange={(e) => setTone(slug, 'main', e.target.value)}
                     title="Основной (тёмный) тон"
-                    className="w-7 h-7 rounded cursor-pointer border border-border bg-transparent p-0"
+                    className="w-7 h-7 shrink-0 rounded cursor-pointer border border-border bg-transparent p-0"
                   />
                   <input
                     type="color"
                     value={cur.light}
                     onChange={(e) => setTone(slug, 'light', e.target.value)}
                     title="Светлый тон"
-                    className="w-7 h-7 rounded cursor-pointer border border-border bg-transparent p-0"
+                    className="w-7 h-7 shrink-0 rounded cursor-pointer border border-border bg-transparent p-0"
                   />
                   <Button
                     type="button"
@@ -122,8 +147,8 @@ export function AccentPaletteSection({ workspaceId }: Props) {
           })}
         </div>
         <p className="text-xs text-muted-foreground mt-3">
-          Левый квадрат — основной (тёмный) тон, правый — светлый. Цвет текста на тёмном баббле
-          подбирается автоматически по яркости.
+          Название можно переименовать. Левый квадрат — основной (тёмный) тон, правый — светлый.
+          Цвет текста на тёмном баббле подбирается автоматически по яркости.
         </p>
       </CardContent>
     </SettingsCard>

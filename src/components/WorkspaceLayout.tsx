@@ -70,6 +70,8 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
 
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
+  // Режим настроек: сайдбар проектов заменяется на вертикальное меню настроек.
+  const isSettingsRoute = pathname.includes('/settings')
   // Закрываем мобильный drawer при смене маршрута — тап по пункту навигации
   // (Входящие/Задачи/проект/доска) уводит на новую страницу, сайдбар должен
   // уйти сам. На десктопе mobileOpen всегда false → эффект безвреден.
@@ -224,7 +226,15 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
                 mobileOpen ? 'translate-x-0' : '-translate-x-full',
               )}
             >
-              {sidebarCollapsed ? (
+              {isSettingsRoute ? (
+                /* Режим настроек: та же обёртка сайдбара (шапка/низ/фон), но
+                   средняя часть — меню разделов настроек вместо поиска/проектов. */
+                <WorkspaceSidebarFull
+                  workspaceId={workspaceId}
+                  settingsMode
+                  onMobileClose={() => setMobileOpen(false)}
+                />
+              ) : sidebarCollapsed ? (
                 <WorkspaceSidebarFull
                   workspaceId={workspaceId}
                   compact
