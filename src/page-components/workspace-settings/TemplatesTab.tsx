@@ -19,6 +19,7 @@ import { FolderTemplatesContent } from '@/components/templates/FolderTemplatesCo
 import { SlotTemplatesContent } from '@/components/templates/SlotTemplatesContent'
 import { DocumentTemplatesContent } from '@/components/templates/DocumentTemplatesContent'
 import { ThreadTemplatesContent } from '@/components/templates/ThreadTemplatesContent'
+import { SettingsSubNav, type SettingsSubNavGroup } from './components/SettingsSubNav'
 
 type TemplateSection =
   | 'project-templates' // project_templates
@@ -98,80 +99,28 @@ export function TemplatesTab() {
     },
   ]
 
-  const handleSectionChange = (section: TemplateSection) => {
+  const handleSectionChange = (section: string) => {
     router.push(`/workspaces/${workspaceId}/settings/templates/${section}`)
   }
 
-  const renderMenuItem = (item: (typeof menuItems)[0]) => (
-    <button
-      key={item.id}
-      onClick={() => handleSectionChange(item.id)}
-      className={`
-        w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors
-        ${
-          activeSection === item.id
-            ? 'bg-amber-100 text-amber-900 font-medium'
-            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-        }
-      `}
-    >
-      {item.label}
-    </button>
-  )
+  const byId = (id: TemplateSection) => {
+    const m = menuItems.find((x) => x.id === id)!
+    return { id: m.id, label: m.label }
+  }
+  const groups: SettingsSubNavGroup[] = [
+    { items: [byId('project-templates')] },
+    { title: 'Анкеты', items: [byId('form-templates'), byId('field-templates')] },
+    {
+      title: 'Наборы документов',
+      items: [byId('document-kit-templates'), byId('folder-templates'), byId('slot-templates')],
+    },
+    { title: 'Треды', items: [byId('thread-templates')] },
+    { title: 'Генерация', items: [byId('document-templates')] },
+  ]
 
   return (
     <div className="flex bg-white rounded-lg border min-h-[500px]">
-      {/* Боковая навигация в стиле Notion */}
-      <aside className="w-56 border-r bg-white p-3 flex-shrink-0">
-        <nav className="space-y-1">
-          {/* Типы проектов (project_templates) */}
-          {renderMenuItem(menuItems[0])}
-
-          {/* Секция АНКЕТЫ */}
-          <div className="pt-4">
-            <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
-              Анкеты
-            </p>
-            <div className="space-y-0.5 pl-2">
-              {renderMenuItem(menuItems[1])} {/* form_templates */}
-              {renderMenuItem(menuItems[2])} {/* field_definitions */}
-            </div>
-          </div>
-
-          {/* Секция НАБОРЫ ДОКУМЕНТОВ */}
-          <div className="pt-4">
-            <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
-              Наборы документов
-            </p>
-            <div className="space-y-0.5 pl-2">
-              {renderMenuItem(menuItems[3])} {/* document_kit_templates */}
-              {renderMenuItem(menuItems[4])} {/* folder_templates */}
-              {renderMenuItem(menuItems[5])} {/* slot_templates */}
-            </div>
-          </div>
-
-          {/* Секция ТРЕДЫ */}
-          <div className="pt-4">
-            <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
-              Треды
-            </p>
-            <div className="space-y-0.5 pl-2">
-              {renderMenuItem(menuItems.find((m) => m.id === 'thread-templates')!)}{' '}
-              {/* thread_templates */}
-            </div>
-          </div>
-
-          {/* Секция ГЕНЕРАЦИЯ */}
-          <div className="pt-4">
-            <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
-              Генерация
-            </p>
-            <div className="space-y-0.5 pl-2">
-              {renderMenuItem(menuItems[6])} {/* document_templates */}
-            </div>
-          </div>
-        </nav>
-      </aside>
+      <SettingsSubNav groups={groups} activeId={activeSection} onSelect={handleSectionChange} />
 
       {/* Контент */}
       <div className="flex-1 min-w-0 p-6 overflow-hidden">

@@ -24,11 +24,6 @@ export function GeneralSettingsTab() {
 
   return (
     <div className="space-y-3">
-      <div className="mb-1">
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Общие настройки</h2>
-        <p className="text-sm text-gray-600">Основная информация о рабочем пространстве</p>
-      </div>
-
       <WorkspaceInfoSection workspaceId={workspaceId} />
 
       <NotificationSettingsSection workspaceId={workspaceId} />

@@ -154,12 +154,6 @@ export function DomainSettingsTab() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Домен</h2>
-        <p className="text-gray-600">
-          Адреса для доступа к рабочему пространству.
-        </p>
-      </div>
 
       {error && (
         <Alert variant="destructive">

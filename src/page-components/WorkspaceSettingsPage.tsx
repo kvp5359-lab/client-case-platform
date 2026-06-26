@@ -29,6 +29,22 @@ const SETTINGS_TAB_TITLES: Record<string, string> = {
   'send-failures': 'Журнал неотправленных',
 }
 
+// Описание под общим заголовком раздела (единый стиль; вкладки больше не
+// рендерят свои дублирующие h2 + описание).
+const SETTINGS_TAB_DESCRIPTIONS: Record<string, string> = {
+  general: 'Основная информация о рабочем пространстве',
+  palette: 'Цвета акцента для чатов и задач',
+  participants: 'Команда воркспейса и контакты',
+  permissions: 'Роли и права доступа участников',
+  directories: 'Управление справочниками и настройками',
+  templates: 'Шаблоны проектов, анкет, документов и тредов',
+  integrations: 'Подключение каналов связи',
+  digest: 'Настройки автоматического дневника проекта',
+  domain: 'Собственный домен и почтовый адрес',
+  trash: 'Удалённые проекты и треды',
+  'send-failures': 'Сообщения, которые не удалось отправить',
+}
+
 const ParticipantsTab = React.lazy(() =>
   import('./workspace-settings/ParticipantsTab').then((m) => ({ default: m.ParticipantsTab })),
 )
@@ -155,6 +171,9 @@ export function WorkspaceSettingsPage() {
             <h1 className="text-2xl font-bold text-gray-900">
               {SETTINGS_TAB_TITLES[activeTab] ?? 'Настройки'}
             </h1>
+            {SETTINGS_TAB_DESCRIPTIONS[activeTab] && (
+              <p className="text-gray-600 mt-1">{SETTINGS_TAB_DESCRIPTIONS[activeTab]}</p>
+            )}
           </div>
 
           {/* Tab content */}

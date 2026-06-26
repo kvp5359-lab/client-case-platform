@@ -1,10 +1,11 @@
 /**
- * Боковая панель фильтрации участников по ролям
+ * Боковая панель фильтрации участников по ролям.
+ * Использует общий SettingsSubNav (единый стиль панелей настроек).
  */
 
-import { Badge } from '@/components/ui/badge'
 import { MessageSquare } from 'lucide-react'
 import { ROLE_CONFIG, TELEGRAM_ROLE } from '../constants/roleConfig'
+import { SettingsSubNav, type SettingsSubNavGroup } from './SettingsSubNav'
 
 type ParticipantsSidebarProps = {
   selectedRole: string | 'all'
@@ -19,91 +20,39 @@ export function ParticipantsSidebar({
   roleStats,
   telegramCount,
 }: ParticipantsSidebarProps) {
-  const isTelegramSection = selectedRole === TELEGRAM_ROLE
+  const groups: SettingsSubNavGroup[] = [
+    { items: [{ id: 'all', label: 'Все участники', count: roleStats.all }] },
+    {
+      title: 'По ролям',
+      items: ROLE_CONFIG.map((role) => ({
+        id: role.key,
+        label: role.label,
+        icon: role.icon,
+        count: roleStats[role.statsKey],
+      })),
+    },
+    ...(telegramCount > 0
+      ? [
+          {
+            title: 'Telegram',
+            items: [
+              {
+                id: TELEGRAM_ROLE,
+                label: 'Telegram-контакты',
+                icon: MessageSquare,
+                count: telegramCount,
+              },
+            ],
+          } satisfies SettingsSubNavGroup,
+        ]
+      : []),
+  ]
 
   return (
-    <aside className="w-56 border-r bg-white p-3 flex-shrink-0 overflow-y-auto">
-      <nav className="space-y-1">
-        {/* Все участники */}
-        <button
-          onClick={() => onSelectRole('all')}
-          className={`
-            w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors flex items-center justify-between
-            ${
-              selectedRole === 'all'
-                ? 'bg-amber-100 text-amber-900 font-medium'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-            }
-          `}
-        >
-          <span>Все участники</span>
-          <Badge variant="secondary" className="ml-2 text-xs">
-            {roleStats.all}
-          </Badge>
-        </button>
-
-        {/* Роли */}
-        <div className="pt-4">
-          <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
-            По ролям
-          </p>
-          <div className="space-y-0.5">
-            {ROLE_CONFIG.map((role) => {
-              const Icon = role.icon
-              return (
-                <button
-                  key={role.key}
-                  onClick={() => onSelectRole(role.key)}
-                  className={`
-                    w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors flex items-center justify-between
-                    ${
-                      selectedRole === role.key
-                        ? 'bg-amber-100 text-amber-900 font-medium'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }
-                  `}
-                >
-                  <span className="flex items-center gap-2">
-                    <Icon className="h-4 w-4" />
-                    {role.label}
-                  </span>
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    {roleStats[role.statsKey]}
-                  </Badge>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Telegram-контакты */}
-        {telegramCount > 0 && (
-          <div className="pt-4">
-            <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
-              Telegram
-            </p>
-            <button
-              onClick={() => onSelectRole(TELEGRAM_ROLE)}
-              className={`
-                w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors flex items-center justify-between
-                ${
-                  isTelegramSection
-                    ? 'bg-amber-100 text-amber-900 font-medium'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }
-              `}
-            >
-              <span className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Telegram-контакты
-              </span>
-              <Badge variant="secondary" className="ml-2 text-xs">
-                {telegramCount}
-              </Badge>
-            </button>
-          </div>
-        )}
-      </nav>
-    </aside>
+    <SettingsSubNav
+      groups={groups}
+      activeId={selectedRole}
+      onSelect={(id) => onSelectRole(id)}
+    />
   )
 }

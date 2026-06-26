@@ -16,6 +16,7 @@ import {
   CustomDirectoriesList,
   CustomDirectoryPage,
 } from '@/components/directories/custom-directories'
+import { SettingsSubNav } from './components/SettingsSubNav'
 
 type DirectorySection =
   | 'statuses' // Статусы (для разных сущностей)
@@ -85,51 +86,17 @@ export function DirectoriesTab() {
     },
   ]
 
-  const handleSectionChange = (section: DirectorySection) => {
+  const handleSectionChange = (section: string) => {
     router.push(`/workspaces/${workspaceId}/settings/directories/${section}`)
   }
 
-  const renderMenuItem = (item: { id: DirectorySection; label: string }) => (
-    <button
-      key={item.id}
-      onClick={() => handleSectionChange(item.id)}
-      className={`
-        w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors
-        ${
-          activeSection === item.id
-            ? 'bg-amber-100 text-amber-900 font-medium'
-            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-        }
-      `}
-    >
-      {item.label}
-    </button>
-  )
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Справочники</h2>
-        <p className="text-gray-600">Управление справочниками и настройками</p>
-      </div>
+    <div className="flex bg-white rounded-lg border min-h-[500px]">
+      <SettingsSubNav groups={groups} activeId={activeSection} onSelect={handleSectionChange} />
 
-      <div className="flex bg-white rounded-lg border min-h-[500px]">
-        {/* Боковая навигация */}
-        <aside className="w-56 border-r bg-white p-3 flex-shrink-0">
-          <nav className="space-y-1">
-            {groups.map((group, idx) => (
-              <div key={group.title} className={idx === 0 ? '' : 'pt-4'}>
-                <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
-                  {group.title}
-                </p>
-                <div className="space-y-0.5 pl-2">{group.items.map(renderMenuItem)}</div>
-              </div>
-            ))}
-          </nav>
-        </aside>
-
-        {/* Контент */}
-        <div className="flex-1 p-6">
+      {/* Контент */}
+      <div className="flex-1 p-6">{(
+        <>
           {activeSection === 'statuses' && <StatusesDirectory />}
           {activeSection === 'workspace-roles' && <WorkspaceRolesDirectory />}
           {activeSection === 'project-roles' && <ProjectRolesDirectory />}
@@ -144,8 +111,8 @@ export function DirectoriesTab() {
           )}
           {activeSection === 'custom' && <CustomDirectoriesList />}
           {activeSection === 'custom-detail' && <CustomDirectoryPage />}
-        </div>
-      </div>
+        </>
+      )}</div>
     </div>
   )
 }

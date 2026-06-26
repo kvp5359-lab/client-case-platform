@@ -126,11 +126,6 @@ export function PermissionsTab() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Права доступа</h2>
-        <p className="text-gray-600">Управление ролями и разрешениями workspace и проектов</p>
-      </div>
-
       {/* Роли Workspace */}
       <Card>
         <CardHeader

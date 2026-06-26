@@ -223,13 +223,6 @@ export function TrashTab() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold">Корзина</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Удалённые проекты и треды (задачи, чаты, email). Восстановите или удалите навсегда.
-        </p>
-      </div>
-
       {isLoading && (
         <div className="flex justify-center py-16">
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />

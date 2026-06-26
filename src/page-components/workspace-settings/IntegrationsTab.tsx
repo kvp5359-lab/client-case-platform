@@ -37,6 +37,7 @@ import { GmailSection } from './IntegrationsTab/GmailSection'
 import { GoogleCalendarSection } from './IntegrationsTab/GoogleCalendarSection'
 import { PersonalTelegramSection } from './IntegrationsTab/PersonalTelegramSection'
 import { TelegramSecretarySection } from './IntegrationsTab/TelegramSecretarySection'
+import { SettingsSubNav } from './components/SettingsSubNav'
 import {
   IntegrationOverview,
   OVERVIEW_TELEGRAM_SECRETARY,
@@ -186,27 +187,14 @@ export function IntegrationsTab() {
   ]
 
   return (
-    <div className="flex gap-6">
-      <nav className="w-56 shrink-0 flex flex-col gap-0.5">
-        {sections.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => setSection(s.id)}
-            className={
-              'flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left transition-colors ' +
-              (section === s.id
-                ? 'bg-muted text-foreground font-medium'
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground')
-            }
-          >
-            <s.icon className="h-4 w-4 shrink-0" />
-            {s.label}
-          </button>
-        ))}
-      </nav>
+    <div className="flex bg-white rounded-lg border min-h-[500px]">
+      <SettingsSubNav
+        groups={[{ items: sections.map((s) => ({ id: s.id, label: s.label, icon: s.icon })) }]}
+        activeId={section}
+        onSelect={(id) => setSection(id as SectionKey)}
+      />
 
-      <div className="flex-1 min-w-0 space-y-4">
+      <div className="flex-1 min-w-0 p-6 space-y-4">
         {section === 'telegram' && (
           <>
             <IntegrationOverview {...OVERVIEW_TELEGRAM_SECRETARY} />
