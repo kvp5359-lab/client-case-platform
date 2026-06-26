@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useMemo } from 'react'
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
 import { MessageBubble } from './MessageBubble'
@@ -52,25 +52,25 @@ type MessageListProps = {
 }
 
 /** Разделитель дат */
-function DateSeparator({ date }: { date: string }) {
+/** Метка дня: «Сегодня» / «Вчера» / «5 июня 2026». Общая для инлайн-разделителя
+ *  и плавающего бейджа даты. */
+function formatDayLabel(date: string): string {
   const d = new Date(date)
   const today = new Date()
   const yesterday = new Date()
   yesterday.setDate(yesterday.getDate() - 1)
+  if (d.toDateString() === today.toDateString()) return 'Сегодня'
+  if (d.toDateString() === yesterday.toDateString()) return 'Вчера'
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+}
 
-  let label: string
-  if (d.toDateString() === today.toDateString()) {
-    label = 'Сегодня'
-  } else if (d.toDateString() === yesterday.toDateString()) {
-    label = 'Вчера'
-  } else {
-    label = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
-  }
-
+function DateSeparator({ date }: { date: string }) {
+  // data-sep-day — маркер для плавающего бейджа: по разделителям (их мало, по
+  // одному на день) дёшево определяем текущий день при скролле.
   return (
-    <div className="flex justify-center py-3">
+    <div className="flex justify-center py-3" data-sep-day={formatDayLabel(date)}>
       <span className="text-xs text-muted-foreground bg-muted/60 px-3 py-1 rounded-full">
-        {label}
+        {formatDayLabel(date)}
       </span>
     </div>
   )
@@ -169,6 +169,42 @@ export function MessageList({
   const observerRef = useRef<IntersectionObserver | null>(null)
   // Высота viewport ДО добавления старых сообщений — нужна для компенсации scrollTop
   const preLoadScrollHeightRef = useRef<number | null>(null)
+
+  // Плавающий бейдж даты: при прокрутке показывает текущий день и гаснет в
+  // простое (как в Telegram/WhatsApp). Без rAF — обработчик считает по
+  // разделителям дат (`[data-sep-day]`, их мало) текущий день: последний
+  // разделитель, чей верх уже выше/на уровне верха вьюпорта. setState только
+  // при смене дня → лишних ре-рендеров нет даже при частых scroll-событиях.
+  const [floatingDate, setFloatingDate] = useState<string | null>(null)
+  const [floatingVisible, setFloatingVisible] = useState(false)
+  const floatingHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    const el = scrollAreaRef.current
+    if (!el) return
+    const update = () => {
+      const seps = el.querySelectorAll<HTMLElement>('[data-sep-day]')
+      if (!seps.length) return
+      const top = el.getBoundingClientRect().top
+      let label = seps[0].dataset.sepDay ?? null
+      for (const sep of seps) {
+        if (sep.getBoundingClientRect().top <= top + 24) label = sep.dataset.sepDay ?? label
+        else break
+      }
+      if (!label) return
+      setFloatingDate((prev) => (prev === label ? prev : label))
+      setFloatingVisible(true)
+      if (floatingHideTimerRef.current) clearTimeout(floatingHideTimerRef.current)
+      floatingHideTimerRef.current = setTimeout(() => setFloatingVisible(false), 1800)
+    }
+    el.addEventListener('scroll', update, { passive: true })
+    return () => {
+      el.removeEventListener('scroll', update)
+      if (floatingHideTimerRef.current) clearTimeout(floatingHideTimerRef.current)
+    }
+    // Зависимость от isLoading ОБЯЗАТЕЛЬНА: при первой загрузке треда рендерится
+    // скелетон (early return ниже), и scrollAreaRef.current === null на маунте.
+    // Без переподключения после isLoading→false слушатель скролла не повесился бы.
+  }, [isLoading])
 
   const getViewport = useCallback((): HTMLElement | null => {
     return scrollAreaRef.current
@@ -388,6 +424,26 @@ export function MessageList({
           <div className="bg-background/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
+        </div>
+      )}
+      {/* Плавающий бейдж даты — по центру сверху, виден при прокрутке, гаснет в
+          простое. ВАЖНО: position:sticky, НЕ absolute — absolute внутри
+          скролл-контейнера уезжает вместе с контентом (оказывался далеко выше
+          вьюпорта). sticky top-2 держит его у видимого верха. h-0 — чтобы не
+          толкать контент вниз (пилюля «свисает» поверх ленты). Прячем во время
+          догрузки старых (чтобы не накладывался на лоадер). */}
+      {floatingDate && !isFetchingOlder && (
+        <div className="sticky top-2 z-20 h-0 flex justify-center items-start pointer-events-none">
+          <span
+            className={cn(
+              // Тот же вид, что у инлайн-разделителя дат (bg-muted), + лёгкий
+              // blur и тень, чтобы читался поверх ленты. Не «белая коробка».
+              'text-xs text-muted-foreground bg-muted/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm transition-opacity duration-300',
+              floatingVisible ? 'opacity-100' : 'opacity-0',
+            )}
+          >
+            {floatingDate}
+          </span>
         </div>
       )}
       {/* pb-16: запас снизу, чтобы плавающая строка композера (режимы/«Прочитано»,
