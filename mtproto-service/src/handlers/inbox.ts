@@ -42,6 +42,16 @@ export async function ensureMTProtoThread(args: {
     return existing.id as string
   }
 
+  // Дефолтные иконка+цвет нового личного диалога — из настраиваемых
+  // дефолтов канала (workspaces.channel_defaults, ключ telegram_personal).
+  const { data: defRows } = await supabase.rpc("resolve_channel_default", {
+    p_workspace_id: args.workspace_id,
+    p_channel_key: "telegram_personal",
+  })
+  const def = Array.isArray(defRows) ? defRows[0] : defRows
+  const defIcon = (def?.icon as string) ?? "telegram"
+  const defAccent = (def?.accent_color as string) ?? "blue"
+
   const { data: created, error } = await supabase
     .from("project_threads")
     .insert({
@@ -53,8 +63,8 @@ export async function ensureMTProtoThread(args: {
       access_type: "all",
       mtproto_session_user_id: args.session_user_id,
       mtproto_client_tg_user_id: args.client_tg_user_id,
-      icon: "telegram",
-      accent_color: "blue",
+      icon: defIcon,
+      accent_color: defAccent,
     })
     .select("id")
     .single()

@@ -29,6 +29,7 @@ import {
 } from '@/hooks/shared/useWorkspaceParticipants'
 import { WazzupSection } from './WazzupSection'
 import { LeadTemplateSetting } from './LeadTemplateSetting'
+import { ChannelDefaultIconColorSetting } from './ChannelDefaultIconColorSetting'
 import { EmailSection } from './EmailSection'
 import { BotTokenDialog } from './IntegrationsTab/BotTokenDialog'
 import { EmployeeBotsSection } from './IntegrationsTab/EmployeeBotsSection'
@@ -225,6 +226,11 @@ export function IntegrationsTab() {
               onAction={setDialog}
             />
             <LeadTemplateSetting workspaceId={workspaceId!} source="telegram" />
+            <ChannelDefaultIconColorSetting
+              workspaceId={workspaceId!}
+              channelKey="telegram"
+              title="Telegram-группа"
+            />
           </>
         )}
         {section === 'gmail' && (
@@ -232,6 +238,11 @@ export function IntegrationsTab() {
             <IntegrationOverview {...OVERVIEW_GMAIL} />
             <GmailSection emailAccounts={emailAccounts} participants={participants} />
             <LeadTemplateSetting workspaceId={workspaceId!} source="email" />
+            <ChannelDefaultIconColorSetting
+              workspaceId={workspaceId!}
+              channelKey="email"
+              title="Email"
+            />
           </>
         )}
         {section === 'business' && (
@@ -241,6 +252,11 @@ export function IntegrationsTab() {
             <PersonalTelegramSection workspaceId={workspaceId!} employees={employees} />
             <LeadTemplateSetting workspaceId={workspaceId!} source="telegram_business" />
             <LeadTemplateSetting workspaceId={workspaceId!} source="telegram_mtproto" />
+            <ChannelDefaultIconColorSetting
+              workspaceId={workspaceId!}
+              channelKey="telegram_personal"
+              title="Личный Telegram"
+            />
           </>
         )}
         {section === 'wazzup' && (
@@ -248,12 +264,22 @@ export function IntegrationsTab() {
             <IntegrationOverview {...OVERVIEW_WAZZUP} />
             <WazzupSection workspaceId={workspaceId!} employees={employees} />
             <LeadTemplateSetting workspaceId={workspaceId!} source="wazzup" />
+            <ChannelDefaultIconColorSetting
+              workspaceId={workspaceId!}
+              channelKey="wazzup"
+              title="WhatsApp"
+            />
           </>
         )}
         {section === 'email' && (
           <>
             <IntegrationOverview {...OVERVIEW_EMAIL_RESEND} />
             <EmailSection workspaceId={workspaceId!} />
+            <ChannelDefaultIconColorSetting
+              workspaceId={workspaceId!}
+              channelKey="email"
+              title="Email"
+            />
           </>
         )}
         {section === 'google_calendar' && (

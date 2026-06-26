@@ -8645,6 +8645,7 @@ export type Database = {
           custom_domain: string | null
           custom_domain_status: string | null
           custom_domain_verified_at: string | null
+          channel_defaults: Json
           deadline_far_format: string
           deadline_near_format: string
           default_ai_check_prompt: string | null
@@ -8681,6 +8682,7 @@ export type Database = {
           custom_domain?: string | null
           custom_domain_status?: string | null
           custom_domain_verified_at?: string | null
+          channel_defaults?: Json
           deadline_far_format?: string
           deadline_near_format?: string
           default_ai_check_prompt?: string | null
@@ -8717,6 +8719,7 @@ export type Database = {
           custom_domain?: string | null
           custom_domain_status?: string | null
           custom_domain_verified_at?: string | null
+          channel_defaults?: Json
           deadline_far_format?: string
           deadline_near_format?: string
           default_ai_check_prompt?: string | null
@@ -10127,6 +10130,13 @@ export type Database = {
           project_id: string
           status: string
           thread_id: string
+        }[]
+      }
+      resolve_channel_default: {
+        Args: { p_channel_key: string; p_workspace_id: string }
+        Returns: {
+          accent_color: string
+          icon: string
         }[]
       }
       scan_dispatch_failures: { Args: never; Returns: number }

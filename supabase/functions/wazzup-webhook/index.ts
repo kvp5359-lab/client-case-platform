@@ -187,12 +187,12 @@ async function handleIncomingMessage(
       projectId = r.project_id as string;
       threadId = r.thread_id as string;
       // Дописываем wazzup-метаданные на тред — чтобы ответы и реакции находили его.
+      // icon/accent_color НЕ дописываем — их проставил route_incoming_to_project
+      // из настраиваемых дефолтов канала (workspaces.channel_defaults, wazzup).
       await service.from("project_threads").update({
         wazzup_channel_id: channel.id as string,
         wazzup_chat_id: msg.chatId,
         wazzup_chat_type: msg.chatType,
-        icon: "whatsapp",
-        accent_color: "emerald",
         name: clientName,
       }).eq("id", threadId);
       console.log(`[wazzup-webhook] CRM routed (${r.status}) → project ${projectId}, thread ${threadId}`);
@@ -473,6 +473,26 @@ async function handleChannelUpdate(
 // Helpers: Wazzup-тред (личный диалог сотрудника, без проекта)
 // ===========================================================================
 
+/**
+ * Дефолтные иконка+цвет нового чата канала из workspaces.channel_defaults
+ * (через SQL-хелпер resolve_channel_default — единый источник фолбэков).
+ */
+async function resolveChannelDefault(
+  service: SupabaseClient,
+  workspaceId: string,
+  channelKey: string,
+): Promise<{ icon: string; accent_color: string }> {
+  const { data } = await service.rpc("resolve_channel_default", {
+    p_workspace_id: workspaceId,
+    p_channel_key: channelKey,
+  });
+  const r = Array.isArray(data) ? data[0] : data;
+  return {
+    icon: (r?.icon as string) ?? "whatsapp",
+    accent_color: (r?.accent_color as string) ?? "emerald",
+  };
+}
+
 async function ensureWazzupThread(
   service: SupabaseClient,
   args: {
@@ -499,6 +519,8 @@ async function ensureWazzupThread(
     p_phone: phoneCandidate,
   });
 
+  const def = await resolveChannelDefault(service, args.workspaceId, "wazzup");
+
   const { data: created, error } = await service.from("project_threads").insert({
     project_id: null,
     owner_user_id: args.ownerUserId,
@@ -509,7 +531,7 @@ async function ensureWazzupThread(
     wazzup_channel_id: args.channelDbId,
     wazzup_chat_id: args.chatId,
     wazzup_chat_type: args.chatType,
-    icon: "whatsapp", accent_color: "emerald",
+    icon: def.icon, accent_color: def.accent_color,
     created_by: args.ownerUserId,
   }).select("id").single();
   if (error || !created) throw new Error(`Failed to create wazzup thread: ${error?.message}`);

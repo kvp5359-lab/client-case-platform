@@ -408,11 +408,12 @@ async function handleBusinessMessage(
       threadId = r.thread_id as string
       // Дописываем business-метаданные в свежесозданный тред — чтобы
       // следующие сообщения этого диалога находились этим же запросом.
+      // icon/accent_color НЕ дописываем — их уже проставил
+      // route_incoming_to_project из настраиваемых дефолтов канала
+      // (workspaces.channel_defaults, ключ telegram_personal).
       await service.from("project_threads").update({
         business_connection_id: conn.id,
         business_client_tg_user_id: clientTgUserId,
-        icon: "telegram",
-        accent_color: "blue",
       }).eq("id", threadId)
       console.log(`[telegram-business-webhook] CRM routed (${r.status}) → project ${projectId}, thread ${threadId}`)
     } else {
@@ -511,6 +512,26 @@ async function handleBusinessMessage(
 // Helpers: Business-тред (личный диалог сотрудника, без проекта)
 // ===========================================================================
 
+/**
+ * Дефолтные иконка+цвет нового чата канала из workspaces.channel_defaults
+ * (через SQL-хелпер resolve_channel_default — единый источник фолбэков).
+ */
+async function resolveChannelDefault(
+  service: SupabaseClient,
+  workspaceId: string,
+  channelKey: string,
+): Promise<{ icon: string; accent_color: string }> {
+  const { data } = await service.rpc("resolve_channel_default", {
+    p_workspace_id: workspaceId,
+    p_channel_key: channelKey,
+  });
+  const r = Array.isArray(data) ? data[0] : data;
+  return {
+    icon: (r?.icon as string) ?? "telegram",
+    accent_color: (r?.accent_color as string) ?? "blue",
+  };
+}
+
 async function ensureBusinessThread(
   service: SupabaseClient,
   ownerUserId: string,
@@ -535,6 +556,8 @@ async function ensureBusinessThread(
     p_telegram_user_id: clientTgUserId,
   });
 
+  const def = await resolveChannelDefault(service, workspaceId, "telegram_personal");
+
   const { data: created, error } = await service
     .from("project_threads")
     .insert({
@@ -547,8 +570,8 @@ async function ensureBusinessThread(
       access_type: "all",
       business_connection_id: connectionId,
       business_client_tg_user_id: clientTgUserId,
-      icon: "telegram",
-      accent_color: "blue",
+      icon: def.icon,
+      accent_color: def.accent_color,
       created_by: ownerUserId,
     })
     .select("id")

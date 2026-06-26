@@ -1,6 +1,25 @@
 import type { Resolution, ServiceClient } from './types'
 
 /**
+ * Дефолтные иконка+цвет нового email-чата из workspaces.channel_defaults
+ * (через SQL-хелпер resolve_channel_default — единый источник фолбэков).
+ */
+async function resolveEmailDefault(
+  supabase: ServiceClient,
+  workspaceId: string,
+): Promise<{ icon: string; accent_color: string }> {
+  const { data } = await supabase.rpc('resolve_channel_default', {
+    p_workspace_id: workspaceId,
+    p_channel_key: 'email',
+  })
+  const r = Array.isArray(data) ? data[0] : data
+  return {
+    icon: (r?.icon as string) ?? 'mail',
+    accent_color: (r?.accent_color as string) ?? 'rose',
+  }
+}
+
+/**
  * Создаёт новый тред в проекте — без поиска существующего. Используется
  * для p+<id>@: каждое письмо клиента на адрес проекта = новое обращение.
  */
@@ -26,6 +45,8 @@ export async function createNewThreadInProject(
     .maybeSingle()
   const nextSortOrder = ((maxRow as { sort_order: number | null } | null)?.sort_order ?? 0) + 10
 
+  const def = await resolveEmailDefault(supabase, opts.workspaceId)
+
   const { data: created, error } = await supabase
     .from('project_threads')
     .insert({
@@ -33,8 +54,8 @@ export async function createNewThreadInProject(
       workspace_id: opts.workspaceId,
       name: opts.subject?.trim() || `Email от ${opts.fromAddress}`,
       type: 'email',
-      icon: 'mail',
-      accent_color: 'rose',
+      icon: def.icon,
+      accent_color: def.accent_color,
       sort_order: nextSortOrder,
       email_subject_root: opts.subject ?? null,
       email_last_external_address: opts.fromAddress,
@@ -142,6 +163,8 @@ export async function ensurePersonalEmailThread(
     p_email: opts.fromAddress,
   })
 
+  const def = await resolveEmailDefault(supabase, opts.workspaceId)
+
   const { data: created, error } = await supabase
     .from('project_threads')
     .insert({
@@ -151,8 +174,8 @@ export async function ensurePersonalEmailThread(
       workspace_id: opts.workspaceId,
       name: opts.subject?.trim() || `Email от ${opts.fromAddress}`,
       type: 'email',
-      icon: 'mail',
-      accent_color: 'rose',
+      icon: def.icon,
+      accent_color: def.accent_color,
       email_subject_root: opts.subject ?? null,
       email_last_external_address: opts.fromAddress,
       email_send_account_id: opts.accountId,
