@@ -12,6 +12,24 @@ import { escapeHtmlEntities } from "../_shared/htmlFormatting.ts";
 import { resolveBotToken } from "../_shared/telegramBotToken.ts";
 import { isTelegramPhotoMime } from "./helpers.ts";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Какие категории вложений слать (для гранулярного повтора/фолбэка). */
+type AttachmentCategory = "images" | "documents";
+
+/**
+ * Результат sendAttachments по КАТЕГОРИЯМ. Нужен, чтобы при частичном провале
+ * (например, фото ушли, а документ упал) повторять/фолбэчить ТОЛЬКО упавшую
+ * часть, а не пересылать всё заново (иначе дублируются уже доставленные фото —
+ * баг 2026-06-26). `had*` = были ли вложения этого типа вообще.
+ */
+type SendAttachmentsResult = {
+  imagesOk: boolean;
+  documentsOk: boolean;
+  hadImages: boolean;
+  hadDocuments: boolean;
+};
+
 export async function resolveAttachment(
   att: Record<string, unknown>,
   supabaseClient: ReturnType<typeof createClient>,
@@ -86,63 +104,83 @@ export async function sendAttachmentsWithFallback(
     senderName?: string;
   },
 ): Promise<boolean> {
-  console.log(JSON.stringify({
-    sub: "sendAttachmentsWithFallback",
-    message_id: args.messageId,
-    event: "primary.start",
+  const trace = (event: string, data: Record<string, unknown> = {}) =>
+    console.log(JSON.stringify({ sub: "sendAttachmentsWithFallback", message_id: args.messageId, event, ...data }));
+
+  // Категории, которые НЕ удалось доставить (по ним и будем повторять/фолбэчить).
+  const failedCats = (r: SendAttachmentsResult): AttachmentCategory[] => {
+    const out: AttachmentCategory[] = [];
+    if (r.hadImages && !r.imagesOk) out.push("images");
+    if (r.hadDocuments && !r.documentsOk) out.push("documents");
+    return out;
+  };
+
+  trace("primary.start", {
     is_employee_bot: args.isEmployeeBot,
     primary_token_prefix: args.primaryToken.slice(0, 8),
     has_caption: !!args.caption,
-  }));
-  const ok = await sendAttachments(
+  });
+  const primary = await sendAttachments(
     args.messageId, args.chatId, args.supabaseClient,
     args.primaryToken, args.caption, args.replyTo, args.skipIdUpdate ?? false,
   );
-  console.log(JSON.stringify({
-    sub: "sendAttachmentsWithFallback",
-    message_id: args.messageId,
-    event: "primary.result",
-    ok,
-    will_fallback: !ok && args.isEmployeeBot,
-  }));
-  if (ok || !args.isEmployeeBot) return ok;
+  trace("primary.result", { ...primary });
 
-  console.warn("[telegram-send-message] employee bot attachments send failed, falling back to secretary");
-  // Пишем причину fallback'а в БД для post-mortem через SQL.
-  const attachmentsFallbackDetail = `employee_bot_attachments_failed; reply=${args.replyTo ?? "no"}; via=attachments`;
+  // Ничего слать не получилось (нет вложений в БД) — это ошибка.
+  if (!primary.hadImages && !primary.hadDocuments) return false;
+
+  let failed = failedCats(primary);
+  if (failed.length === 0) return true;
+
+  // ── Шаг 1: повтор УПАВШЕЙ части ТЕМ ЖЕ ботом. Частые провалы (rate-limit
+  // после альбома, транзиентка) лечатся повтором, и сообщение остаётся от
+  // одного бота — без дубля уже доставленного и без префикса секретаря. ──
+  await sleep(2000);
+  for (const cat of [...failed]) {
+    trace("retry.same_bot.start", { category: cat });
+    const rr = await sendAttachments(
+      args.messageId, args.chatId, args.supabaseClient,
+      args.primaryToken, args.caption, args.replyTo, args.skipIdUpdate ?? false, cat,
+    );
+    const catOk = cat === "images" ? rr.imagesOk : rr.documentsOk;
+    trace("retry.same_bot.result", { category: cat, ok: catOk });
+    if (catOk) failed = failed.filter((c) => c !== cat);
+  }
+  if (failed.length === 0) return true;
+
+  // Если слали уже секретарём (не личным) — другого бота нет, выходим.
+  if (!args.isEmployeeBot) return false;
+
+  // ── Шаг 2: фолбэк на бота-секретаря ТОЛЬКО для всё ещё упавших категорий
+  // (личный бот не в группе и т.п.). Картинки, что уже ушли личным, повторно
+  // НЕ шлём — нет дубля. ──
   await args.supabaseClient
     .from("project_messages")
-    .update({ telegram_error_detail: attachmentsFallbackDetail })
+    .update({ telegram_error_detail: `employee_bot_attachments_failed; cats=${failed.join(",")}; via=attachments` })
     .eq("id", args.messageId);
-  let fallback;
+  let secretary;
   try {
-    fallback = await resolveBotToken(args.supabaseClient, args.chatId);
+    secretary = await resolveBotToken(args.supabaseClient, args.chatId);
   } catch (e) {
     console.error("[telegram-send-message] secretary token resolve failed:", e);
     return false;
   }
-  console.log(JSON.stringify({
-    sub: "sendAttachmentsWithFallback",
-    message_id: args.messageId,
-    event: "fallback.start",
-    fallback_token_len: fallback.token.length,
-  }));
-
   const fallbackCaption = args.caption
     ? `<b>${escapeHtmlEntities(args.senderName ?? "")}:</b>\n${args.caption}`
     : args.caption;
 
-  const fallbackOk = await sendAttachments(
-    args.messageId, args.chatId, args.supabaseClient,
-    fallback.token, fallbackCaption, args.replyTo, args.skipIdUpdate ?? false,
-  );
-  console.log(JSON.stringify({
-    sub: "sendAttachmentsWithFallback",
-    message_id: args.messageId,
-    event: "fallback.result",
-    ok: fallbackOk,
-  }));
-  return fallbackOk;
+  let allOk = true;
+  for (const cat of failed) {
+    trace("fallback.secretary.start", { category: cat });
+    const rr = await sendAttachments(
+      args.messageId, args.chatId, args.supabaseClient,
+      secretary.token, fallbackCaption, args.replyTo, args.skipIdUpdate ?? false, cat,
+    );
+    const catOk = cat === "images" ? rr.imagesOk : rr.documentsOk;
+    trace("fallback.secretary.result", { category: cat, ok: catOk });
+    if (!catOk) allOk = false;
+  }
+  return allOk;
 }
 
 export async function sendAttachments(
@@ -153,7 +191,9 @@ export async function sendAttachments(
   caption?: string,
   replyToTelegramMessageId?: number,
   skipTelegramIdUpdate = false,
-): Promise<boolean> {
+  // Если задано — слать только эту категорию (для гранулярного повтора/фолбэка).
+  only?: AttachmentCategory,
+): Promise<SendAttachmentsResult> {
   const sendStart = Date.now();
   const sendTrace = (event: string, data: Record<string, unknown> = {}) => {
     console.log(JSON.stringify({
@@ -178,15 +218,20 @@ export async function sendAttachments(
       .from("project_messages")
       .update({ telegram_error_detail: "sendAttachments: no attachments found in DB" })
       .eq("id", messageId);
-    return false;
+    return { imagesOk: false, documentsOk: false, hadImages: false, hadDocuments: false };
   }
-
-  let allSucceeded = true;
 
   // Только JPEG/PNG/WEBP/GIF уходят как photo в Telegram.
   // Всё остальное (tiff, heic, bmp, svg, pdf, docs, ...) — как document.
   const images = attachments.filter((a: Record<string, unknown>) => isTelegramPhotoMime(a.mime_type));
   const others = attachments.filter((a: Record<string, unknown>) => !isTelegramPhotoMime(a.mime_type));
+
+  // Раздельные флаги по категориям. Пропущенная (через `only`) категория
+  // остаётся true — она не считается упавшей.
+  let imagesOk = true;
+  let documentsOk = true;
+  const doImages = only !== "documents";
+  const doDocuments = only !== "images";
 
   sendTrace("attachments.partition", {
     total: attachments.length,
@@ -195,7 +240,7 @@ export async function sendAttachments(
     mimes: attachments.map((a: Record<string, unknown>) => a.mime_type),
   });
 
-  if (images.length >= 2) {
+  if (doImages && images.length >= 2) {
     const chunks: typeof images[] = [];
     for (let i = 0; i < images.length; i += 10) {
       chunks.push(images.slice(i, i + 10));
@@ -208,7 +253,7 @@ export async function sendAttachments(
 
         const nullCount = resolved.filter((r) => !r).length;
         if (nullCount > 0) {
-          allSucceeded = false;
+          imagesOk = false;
           await supabaseClient
             .from("project_messages")
             .update({ telegram_error_detail: `sendMediaGroup(photo): ${nullCount}/${resolved.length} attachments failed to resolve` })
@@ -259,7 +304,7 @@ export async function sendAttachments(
         });
         if (!tgData.ok) {
           console.error("Telegram sendMediaGroup error:", JSON.stringify(tgData));
-          allSucceeded = false;
+          imagesOk = false;
         }
 
         if (isFirstChunk && !skipTelegramIdUpdate && tgData.ok) {
@@ -288,10 +333,10 @@ export async function sendAttachments(
         isFirstChunk = false;
       } catch (err) {
         console.error("Error sending media group to TG:", err);
-        allSucceeded = false;
+        imagesOk = false;
       }
     }
-  } else if (images.length === 1) {
+  } else if (doImages && images.length === 1) {
     try {
       const r = await resolveAttachment(images[0], supabaseClient);
       if (r) {
@@ -323,7 +368,7 @@ export async function sendAttachments(
         });
         if (!tgData.ok) {
           console.error("Telegram sendPhoto error:", JSON.stringify(tgData));
-          allSucceeded = false;
+          imagesOk = false;
         }
 
         if (!skipTelegramIdUpdate && tgData.ok && tgData.result?.message_id) {
@@ -335,16 +380,19 @@ export async function sendAttachments(
       }
     } catch (err) {
       console.error("Error sending photo to TG:", err);
-      allSucceeded = false;
+      imagesOk = false;
     }
   }
 
   // Документы: 2+ файла отправляем одним альбомом (sendMediaGroup type=document),
   // чтобы в TG получился один баббл. Один файл — обычный sendDocument с caption.
+  // Подпись/reply у документов — только если картинок НЕТ (иначе они уже у фото).
+  // При гранулярном фолбэке `only:'documents'` массив images всё ещё полон, так
+  // что caption к документам не приклеится повторно — дубля подписи нет.
   const documentsCaptionAvailable = images.length === 0 ? caption : undefined;
   const documentsReplyTo = images.length === 0 ? replyToTelegramMessageId : undefined;
 
-  if (others.length >= 2) {
+  if (doDocuments && others.length >= 2) {
     // Telegram API: media group принимает 2-10 элементов. Бьём на чанки по 10.
     const chunks: typeof others[] = [];
     for (let i = 0; i < others.length; i += 10) {
@@ -358,7 +406,7 @@ export async function sendAttachments(
 
         const nullCount = resolved.filter((r) => !r).length;
         if (nullCount > 0) {
-          allSucceeded = false;
+          documentsOk = false;
           await supabaseClient
             .from("project_messages")
             .update({ telegram_error_detail: `sendMediaGroup(document): ${nullCount}/${resolved.length} attachments failed to resolve` })
@@ -407,7 +455,7 @@ export async function sendAttachments(
         });
         if (!tgData.ok) {
           console.error("Telegram sendMediaGroup (document) error:", JSON.stringify(tgData));
-          allSucceeded = false;
+          documentsOk = false;
           await supabaseClient
             .from("project_messages")
             .update({ telegram_error_detail: `sendMediaGroup(document): ${JSON.stringify(tgData).slice(0, 500)}` })
@@ -438,15 +486,15 @@ export async function sendAttachments(
         isFirstChunk = false;
       } catch (err) {
         console.error("Error sending document group to TG:", err);
-        allSucceeded = false;
+        documentsOk = false;
       }
     }
-  } else if (others.length === 1) {
+  } else if (doDocuments && others.length === 1) {
     // Один документ — обычный sendDocument с caption.
     try {
       const r = await resolveAttachment(others[0], supabaseClient);
       if (!r) {
-        allSucceeded = false;
+        documentsOk = false;
       } else {
         const formData = new FormData();
         formData.append("chat_id", String(chatId));
@@ -478,7 +526,7 @@ export async function sendAttachments(
         });
         if (!tgData.ok) {
           console.error("Telegram sendDocument error:", JSON.stringify(tgData), "file:", r.fileName);
-          allSucceeded = false;
+          documentsOk = false;
         }
 
         if (!skipTelegramIdUpdate && images.length === 0 && tgData.ok && tgData.result?.message_id) {
@@ -497,9 +545,14 @@ export async function sendAttachments(
       }
     } catch (err) {
       console.error("Error sending document to TG:", err);
-      allSucceeded = false;
+      documentsOk = false;
     }
   }
 
-  return allSucceeded;
+  return {
+    imagesOk,
+    documentsOk,
+    hadImages: images.length > 0,
+    hadDocuments: others.length > 0,
+  };
 }
