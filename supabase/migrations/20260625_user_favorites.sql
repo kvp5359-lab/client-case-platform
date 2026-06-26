@@ -27,7 +27,14 @@ drop policy if exists user_favorites_delete on public.user_favorites;
 create policy user_favorites_delete on public.user_favorites
   for delete to authenticated using (user_id = (select auth.uid()));
 
+-- UPDATE нужен для ручного порядка (sort_order). Без него reorder молча не пишет.
+drop policy if exists user_favorites_update on public.user_favorites;
+create policy user_favorites_update on public.user_favorites
+  for update to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+
 create index if not exists idx_user_favorites_user_ws
   on public.user_favorites (user_id, workspace_id);
 
-grant select, insert, delete on public.user_favorites to authenticated;
+grant select, insert, update, delete on public.user_favorites to authenticated;
