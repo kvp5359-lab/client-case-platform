@@ -7,7 +7,7 @@ import { createElement } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { ACCENT_COLORS, THREAD_ICONS } from '@/components/messenger/threadConstants'
+import { ACCENT_COLORS, ACCENT_COLOR_GROUPS, THREAD_ICONS } from '@/components/messenger/threadConstants'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 
 type IconColorPickerProps = {
@@ -44,19 +44,23 @@ export function IconColorPicker({
       </PopoverTrigger>
       <PopoverContent className="w-[240px] p-3" align="end">
         <p className="text-xs font-medium text-muted-foreground mb-2">Цвет</p>
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {ACCENT_COLORS.map((c) => (
-            <button
-              key={c.value}
-              type="button"
-              className={cn(
-                'w-6 h-6 rounded-full ring-offset-2',
-                c.bg,
-                accentColor === c.value && `ring-2 ${c.ring}`,
-              )}
-              onClick={() => onColorChange(c.value)}
-              title={c.label}
-            />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-3">
+          {ACCENT_COLOR_GROUPS.map((group) => (
+            <div key={group} className="flex gap-1.5">
+              {ACCENT_COLORS.filter((c) => !c.hidden && c.group === group).map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  className={cn(
+                    'w-6 h-6 rounded-full ring-offset-2',
+                    c.bg,
+                    accentColor === c.value && `ring-2 ${c.ring}`,
+                  )}
+                  onClick={() => onColorChange(c.value)}
+                  title={c.label}
+                />
+              ))}
+            </div>
           ))}
         </div>
         <p className="text-xs font-medium text-muted-foreground mb-2">Иконка</p>

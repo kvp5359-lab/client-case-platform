@@ -22,8 +22,14 @@ export const sendButtonStyles: Record<MessengerAccent, string> = {
   cyan: 'bg-cyan-600 hover:bg-cyan-700 text-white',
   pink: 'bg-pink-500 hover:bg-pink-600 text-white',
   indigo: 'bg-indigo-600 hover:bg-indigo-700 text-white',
-  // Legacy
   green: 'bg-green-600 hover:bg-green-700 text-white',
+  sky: 'bg-sky-500 hover:bg-sky-600 text-white',
+  brown: 'bg-amber-800 hover:bg-amber-900 text-white',
+  taupe: 'bg-stone-500 hover:bg-stone-600 text-white',
+  red: 'bg-red-700 hover:bg-red-800 text-white',
+  black: 'bg-neutral-900 hover:bg-neutral-950 text-white',
+  graphite: 'bg-neutral-600 hover:bg-neutral-700 text-white',
+  // Legacy
   dark: 'bg-stone-600 hover:bg-stone-700 text-white',
 }
 

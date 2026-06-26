@@ -38,6 +38,12 @@ const CLIENT_ACCENT_PILL: Record<MessengerAccent, { active: string; border: stri
   pink: { active: 'bg-pink-100 text-pink-800', border: 'border-pink-300' },
   indigo: { active: 'bg-indigo-100 text-indigo-800', border: 'border-indigo-300' },
   green: { active: 'bg-green-100 text-green-800', border: 'border-green-300' },
+  sky: { active: 'bg-sky-100 text-sky-800', border: 'border-sky-300' },
+  brown: { active: 'bg-amber-100 text-amber-900', border: 'border-amber-400' },
+  taupe: { active: 'bg-stone-100 text-stone-800', border: 'border-stone-300' },
+  red: { active: 'bg-red-100 text-red-800', border: 'border-red-300' },
+  black: { active: 'bg-neutral-200 text-neutral-900', border: 'border-neutral-400' },
+  graphite: { active: 'bg-neutral-100 text-neutral-800', border: 'border-neutral-300' },
   dark: { active: 'bg-stone-100 text-stone-800', border: 'border-stone-300' },
 }
 

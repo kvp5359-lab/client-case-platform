@@ -9,8 +9,15 @@ export type MessengerAccent =
   | 'cyan'
   | 'pink'
   | 'indigo'
-  // Legacy aliases
+  // Расширенная палитра (пары оттенков)
   | 'green'
+  | 'sky'
+  | 'brown'
+  | 'taupe'
+  | 'red'
+  | 'black'
+  | 'graphite'
+  // Legacy alias
   | 'dark'
 
 /**
@@ -174,7 +181,84 @@ export const bubbleStyles: Record<
     staffRing: 'ring-indigo-600',
     staffShadow: 'shadow-[inset_2px_0_0_#4f46e5]',
   },
-  // Legacy aliases
+  sky: {
+    own: 'bg-sky-500 text-white',
+    ownNote: 'bg-sky-500/75 text-white',
+    incoming: 'bg-sky-100/70 text-gray-900',
+    ownTime: 'text-white/60 justify-end',
+    replyBorder: 'border-white/50',
+    reaction: 'bg-sky-50 border-sky-200 text-sky-700',
+    fadeGradient: 'from-sky-500/90',
+    fadeGradientIncoming: 'from-sky-100/90',
+    staffBorder: 'border-sky-500',
+    staffRing: 'ring-sky-500',
+    staffShadow: 'shadow-[inset_2px_0_0_#0ea5e9]',
+  },
+  brown: {
+    own: 'bg-amber-800 text-white',
+    ownNote: 'bg-amber-800/75 text-white',
+    incoming: 'bg-amber-100/70 text-gray-900',
+    ownTime: 'text-white/60 justify-end',
+    replyBorder: 'border-white/50',
+    reaction: 'bg-amber-50 border-amber-200 text-amber-800',
+    fadeGradient: 'from-amber-800/90',
+    fadeGradientIncoming: 'from-amber-100/90',
+    staffBorder: 'border-amber-800',
+    staffRing: 'ring-amber-800',
+    staffShadow: 'shadow-[inset_2px_0_0_#92400e]',
+  },
+  taupe: {
+    own: 'bg-stone-500 text-white',
+    ownNote: 'bg-stone-500/75 text-white',
+    incoming: 'bg-stone-100/70 text-gray-900',
+    ownTime: 'text-white/60 justify-end',
+    replyBorder: 'border-white/50',
+    reaction: 'bg-stone-50 border-stone-200 text-stone-700',
+    fadeGradient: 'from-stone-500/90',
+    fadeGradientIncoming: 'from-stone-100/90',
+    staffBorder: 'border-stone-500',
+    staffRing: 'ring-stone-500',
+    staffShadow: 'shadow-[inset_2px_0_0_#78716c]',
+  },
+  red: {
+    own: 'bg-red-700 text-white',
+    ownNote: 'bg-red-700/75 text-white',
+    incoming: 'bg-red-100/70 text-gray-900',
+    ownTime: 'text-white/60 justify-end',
+    replyBorder: 'border-white/50',
+    reaction: 'bg-red-50 border-red-200 text-red-800',
+    fadeGradient: 'from-red-700/90',
+    fadeGradientIncoming: 'from-red-100/90',
+    staffBorder: 'border-red-700',
+    staffRing: 'ring-red-700',
+    staffShadow: 'shadow-[inset_2px_0_0_#b91c1c]',
+  },
+  black: {
+    own: 'bg-neutral-900 text-white',
+    ownNote: 'bg-neutral-900/75 text-white',
+    incoming: 'bg-neutral-200/70 text-gray-900',
+    ownTime: 'text-white/60 justify-end',
+    replyBorder: 'border-white/50',
+    reaction: 'bg-neutral-100 border-neutral-300 text-neutral-700',
+    fadeGradient: 'from-neutral-900/90',
+    fadeGradientIncoming: 'from-neutral-200/90',
+    staffBorder: 'border-neutral-900',
+    staffRing: 'ring-neutral-900',
+    staffShadow: 'shadow-[inset_2px_0_0_#171717]',
+  },
+  graphite: {
+    own: 'bg-neutral-600 text-white',
+    ownNote: 'bg-neutral-600/75 text-white',
+    incoming: 'bg-neutral-200/70 text-gray-900',
+    ownTime: 'text-white/60 justify-end',
+    replyBorder: 'border-white/50',
+    reaction: 'bg-neutral-100 border-neutral-300 text-neutral-700',
+    fadeGradient: 'from-neutral-600/90',
+    fadeGradientIncoming: 'from-neutral-200/90',
+    staffBorder: 'border-neutral-600',
+    staffRing: 'ring-neutral-600',
+    staffShadow: 'shadow-[inset_2px_0_0_#525252]',
+  },
   green: {
     own: 'bg-green-600 text-white',
     ownNote: 'bg-green-600/75 text-white',

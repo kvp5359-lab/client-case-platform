@@ -63,23 +63,50 @@ import {
 import { WhatsAppIcon } from './brandIcons'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 
+/**
+ * Палитра акцентов треда. Сгруппирована по парам оттенков (`group`) — пикер
+ * рендерит группы с разделителями. `hidden` — legacy-значения (slate/cyan):
+ * не показываются в пикере, но остаются в COLOR_BG/COLOR_TEXT ради уже
+ * созданных тредов с этими цветами.
+ */
 export const ACCENT_COLORS: {
   value: ThreadAccentColor
   label: string
   bg: string
   ring: string
+  group: string
+  hidden?: boolean
 }[] = [
-  { value: 'blue', label: 'Синий', bg: 'bg-blue-500', ring: 'ring-blue-500' },
-  { value: 'slate', label: 'Серый', bg: 'bg-stone-600', ring: 'ring-stone-600' },
-  { value: 'emerald', label: 'Зелёный', bg: 'bg-emerald-600', ring: 'ring-emerald-600' },
-  { value: 'amber', label: 'Жёлтый', bg: 'bg-amber-500', ring: 'ring-amber-500' },
-  { value: 'rose', label: 'Красный', bg: 'bg-red-500', ring: 'ring-red-500' },
-  { value: 'violet', label: 'Фиолетовый', bg: 'bg-violet-600', ring: 'ring-violet-600' },
-  { value: 'orange', label: 'Оранжевый', bg: 'bg-orange-500', ring: 'ring-orange-500' },
-  { value: 'cyan', label: 'Бирюзовый', bg: 'bg-cyan-600', ring: 'ring-cyan-600' },
-  { value: 'pink', label: 'Малиновый', bg: 'bg-pink-500', ring: 'ring-pink-500' },
-  { value: 'indigo', label: 'Индиго', bg: 'bg-indigo-600', ring: 'ring-indigo-600' },
+  // Зелёные
+  { value: 'emerald', label: 'Зелёный', bg: 'bg-emerald-600', ring: 'ring-emerald-600', group: 'green' },
+  { value: 'green', label: 'Зелёный (свет.)', bg: 'bg-green-500', ring: 'ring-green-500', group: 'green' },
+  // Синие
+  { value: 'blue', label: 'Синий', bg: 'bg-blue-500', ring: 'ring-blue-500', group: 'blue' },
+  { value: 'sky', label: 'Голубой', bg: 'bg-sky-500', ring: 'ring-sky-500', group: 'blue' },
+  // Фиолетовые
+  { value: 'violet', label: 'Фиолетовый', bg: 'bg-violet-600', ring: 'ring-violet-600', group: 'purple' },
+  { value: 'indigo', label: 'Индиго', bg: 'bg-indigo-600', ring: 'ring-indigo-600', group: 'purple' },
+  // Оранжевые
+  { value: 'orange', label: 'Оранжевый', bg: 'bg-orange-500', ring: 'ring-orange-500', group: 'orange' },
+  { value: 'amber', label: 'Жёлтый', bg: 'bg-amber-500', ring: 'ring-amber-500', group: 'orange' },
+  // Коричневые
+  { value: 'brown', label: 'Коричневый', bg: 'bg-amber-800', ring: 'ring-amber-800', group: 'brown' },
+  { value: 'taupe', label: 'Серо-коричневый', bg: 'bg-stone-500', ring: 'ring-stone-500', group: 'brown' },
+  // Красные
+  { value: 'rose', label: 'Красный', bg: 'bg-red-500', ring: 'ring-red-500', group: 'red' },
+  { value: 'red', label: 'Тёмно-красный', bg: 'bg-red-700', ring: 'ring-red-700', group: 'red' },
+  // Чёрный / тёмно-серый
+  { value: 'black', label: 'Чёрный', bg: 'bg-neutral-900', ring: 'ring-neutral-900', group: 'dark' },
+  { value: 'graphite', label: 'Тёмно-серый', bg: 'bg-neutral-600', ring: 'ring-neutral-600', group: 'dark' },
+  // Розовый (одиночный)
+  { value: 'pink', label: 'Розовый', bg: 'bg-pink-500', ring: 'ring-pink-500', group: 'mono' },
+  // Legacy — скрыты из пикера, сохранены для старых тредов
+  { value: 'slate', label: 'Серый', bg: 'bg-stone-600', ring: 'ring-stone-600', group: 'legacy', hidden: true },
+  { value: 'cyan', label: 'Бирюзовый', bg: 'bg-cyan-600', ring: 'ring-cyan-600', group: 'legacy', hidden: true },
 ]
+
+/** Порядок видимых групп цветов для пикера (пары оттенков + одиночные). */
+export const ACCENT_COLOR_GROUPS: string[] = ['green', 'blue', 'purple', 'orange', 'brown', 'red', 'dark', 'mono']
 
 export const THREAD_ICONS: { value: string; icon: typeof MessageSquare; label: string }[] = [
   { value: 'message-square', icon: MessageSquare, label: 'Сообщение' },
@@ -158,4 +185,11 @@ export const COLOR_TEXT: Record<ThreadAccentColor, string> = {
   cyan: 'text-cyan-600',
   pink: 'text-pink-500',
   indigo: 'text-indigo-600',
+  green: 'text-green-600',
+  sky: 'text-sky-600',
+  brown: 'text-amber-800',
+  taupe: 'text-stone-600',
+  red: 'text-red-700',
+  black: 'text-neutral-900',
+  graphite: 'text-neutral-600',
 }

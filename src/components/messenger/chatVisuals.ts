@@ -30,6 +30,13 @@ export function getChatTabAccent(accentColor: ThreadAccentColor): {
     cyan: { active: 'bg-cyan-50 text-cyan-700', badge: 'bg-cyan-600' },
     pink: { active: 'bg-pink-50 text-pink-600', badge: 'bg-pink-500' },
     indigo: { active: 'bg-indigo-50 text-indigo-600', badge: 'bg-indigo-600' },
+    green: { active: 'bg-green-50 text-green-700', badge: 'bg-green-500' },
+    sky: { active: 'bg-sky-50 text-sky-700', badge: 'bg-sky-500' },
+    brown: { active: 'bg-amber-50 text-amber-800', badge: 'bg-amber-800' },
+    taupe: { active: 'bg-stone-50 text-stone-700', badge: 'bg-stone-500' },
+    red: { active: 'bg-red-50 text-red-700', badge: 'bg-red-700' },
+    black: { active: 'bg-neutral-100 text-neutral-800', badge: 'bg-neutral-900' },
+    graphite: { active: 'bg-neutral-100 text-neutral-700', badge: 'bg-neutral-600' },
   }
   return map[accentColor] ?? map.blue
 }

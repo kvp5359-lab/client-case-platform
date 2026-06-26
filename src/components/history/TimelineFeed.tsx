@@ -332,6 +332,13 @@ const ACCENT_TEXT: Record<ThreadAccentColor, string> = {
   cyan: 'text-cyan-600',
   pink: 'text-pink-600',
   indigo: 'text-indigo-600',
+  green: 'text-green-600',
+  sky: 'text-sky-600',
+  brown: 'text-amber-800',
+  taupe: 'text-stone-600',
+  red: 'text-red-700',
+  black: 'text-neutral-800',
+  graphite: 'text-neutral-700',
 }
 
 const ACCENT_BG: Record<ThreadAccentColor, string> = {
@@ -345,4 +352,11 @@ const ACCENT_BG: Record<ThreadAccentColor, string> = {
   cyan: 'bg-cyan-50/70',
   pink: 'bg-pink-50/70',
   indigo: 'bg-indigo-50/70',
+  green: 'bg-green-50/70',
+  sky: 'bg-sky-50/70',
+  brown: 'bg-amber-50/70',
+  taupe: 'bg-stone-50/70',
+  red: 'bg-red-50/70',
+  black: 'bg-neutral-100/70',
+  graphite: 'bg-neutral-50/70',
 }

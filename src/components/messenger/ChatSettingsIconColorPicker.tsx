@@ -3,7 +3,7 @@
  */
 
 import { Hash } from 'lucide-react'
-import { ACCENT_COLORS, THREAD_ICONS } from './threadConstants'
+import { ACCENT_COLORS, ACCENT_COLOR_GROUPS, THREAD_ICONS } from './threadConstants'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
@@ -26,21 +26,25 @@ export function ChatIconColorGrid({
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1.5">
         <span className="text-xs font-medium text-muted-foreground">Цвет</span>
-        <div className="flex flex-wrap gap-1.5">
-          {ACCENT_COLORS.map((color) => (
-            <button
-              key={color.value}
-              type="button"
-              onClick={() => onAccentColorChange(color.value)}
-              title={color.label}
-              className={cn(
-                'w-6 h-6 rounded-full transition-all',
-                color.bg,
-                accentColor === color.value
-                  ? `ring-2 ring-offset-1 ${color.ring}`
-                  : 'hover:scale-110',
-              )}
-            />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          {ACCENT_COLOR_GROUPS.map((group) => (
+            <div key={group} className="flex gap-1.5">
+              {ACCENT_COLORS.filter((c) => !c.hidden && c.group === group).map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  onClick={() => onAccentColorChange(color.value)}
+                  title={color.label}
+                  className={cn(
+                    'w-6 h-6 rounded-full transition-all',
+                    color.bg,
+                    accentColor === color.value
+                      ? `ring-2 ring-offset-1 ${color.ring}`
+                      : 'hover:scale-110',
+                  )}
+                />
+              ))}
+            </div>
           ))}
         </div>
       </div>
@@ -83,7 +87,7 @@ export function ChatSettingsIconColorPicker(props: PickerProps) {
             'w-9 h-9 rounded-r-md flex items-center justify-center shrink-0 transition-colors hover:bg-muted/50',
             {
               'text-blue-500': accentColor === 'blue',
-              'text-stone-600': accentColor === 'slate',
+              'text-stone-600': accentColor === 'slate' || accentColor === 'taupe',
               'text-emerald-600': accentColor === 'emerald',
               'text-amber-500': accentColor === 'amber',
               'text-rose-500': accentColor === 'rose',
@@ -92,6 +96,12 @@ export function ChatSettingsIconColorPicker(props: PickerProps) {
               'text-cyan-600': accentColor === 'cyan',
               'text-pink-500': accentColor === 'pink',
               'text-indigo-600': accentColor === 'indigo',
+              'text-green-600': accentColor === 'green',
+              'text-sky-600': accentColor === 'sky',
+              'text-amber-800': accentColor === 'brown',
+              'text-red-700': accentColor === 'red',
+              'text-neutral-900': accentColor === 'black',
+              'text-neutral-600': accentColor === 'graphite',
             },
           )}
         >

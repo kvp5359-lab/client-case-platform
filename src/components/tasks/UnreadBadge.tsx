@@ -36,6 +36,13 @@ const ACCENT_BADGE: Record<ThreadAccentColor, string> = {
   cyan: 'bg-cyan-500',
   pink: 'bg-pink-500',
   indigo: 'bg-indigo-500',
+  green: 'bg-green-500',
+  sky: 'bg-sky-500',
+  brown: 'bg-amber-800',
+  taupe: 'bg-stone-500',
+  red: 'bg-red-700',
+  black: 'bg-neutral-900',
+  graphite: 'bg-neutral-600',
 }
 
 type UnreadBadgeProps = {

@@ -110,6 +110,23 @@ const accentStyles: Record<string, { bg: string; text: string; badge: string; ri
     badge: 'bg-indigo-500',
     ring: 'ring-indigo-400',
   },
+  green: { bg: 'bg-green-100', text: 'text-green-600', badge: 'bg-green-500', ring: 'ring-green-400' },
+  sky: { bg: 'bg-sky-100', text: 'text-sky-600', badge: 'bg-sky-500', ring: 'ring-sky-400' },
+  brown: { bg: 'bg-amber-100', text: 'text-amber-800', badge: 'bg-amber-800', ring: 'ring-amber-500' },
+  taupe: { bg: 'bg-stone-100', text: 'text-stone-600', badge: 'bg-stone-500', ring: 'ring-stone-400' },
+  red: { bg: 'bg-red-100', text: 'text-red-700', badge: 'bg-red-700', ring: 'ring-red-400' },
+  black: {
+    bg: 'bg-neutral-200',
+    text: 'text-neutral-800',
+    badge: 'bg-neutral-900',
+    ring: 'ring-neutral-400',
+  },
+  graphite: {
+    bg: 'bg-neutral-100',
+    text: 'text-neutral-700',
+    badge: 'bg-neutral-600',
+    ring: 'ring-neutral-400',
+  },
 }
 
 const defaultAccent = accentStyles.blue

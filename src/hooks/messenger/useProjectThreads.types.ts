@@ -11,6 +11,15 @@ export type ThreadAccentColor =
   | 'cyan'
   | 'pink'
   | 'indigo'
+  // Расширенная палитра (пары оттенков). slate/cyan оставлены выше для
+  // совместимости со старыми тредами, но в новый пикер не выводятся.
+  | 'green'
+  | 'sky'
+  | 'brown'
+  | 'taupe'
+  | 'red'
+  | 'black'
+  | 'graphite'
 
 export type ProjectThread = {
   id: string

@@ -18,6 +18,12 @@ const OWN_REACTION_STYLES: Record<MessengerAccent, string> = {
   pink: 'bg-pink-500 hover:bg-pink-600 text-white',
   indigo: 'bg-indigo-600 hover:bg-indigo-700 text-white',
   green: 'bg-green-600 hover:bg-green-700 text-white',
+  sky: 'bg-sky-500 hover:bg-sky-600 text-white',
+  brown: 'bg-amber-800 hover:bg-amber-900 text-white',
+  taupe: 'bg-stone-500 hover:bg-stone-600 text-white',
+  red: 'bg-red-700 hover:bg-red-800 text-white',
+  black: 'bg-neutral-900 hover:bg-neutral-950 text-white',
+  graphite: 'bg-neutral-600 hover:bg-neutral-700 text-white',
   dark: 'bg-stone-600 hover:bg-stone-700 text-white',
 }
 
@@ -34,6 +40,12 @@ const OTHER_REACTION_STYLES: Record<MessengerAccent, string> = {
   pink: 'bg-pink-100 hover:bg-pink-200',
   indigo: 'bg-indigo-100 hover:bg-indigo-200',
   green: 'bg-green-100 hover:bg-green-200',
+  sky: 'bg-sky-100 hover:bg-sky-200',
+  brown: 'bg-amber-100 hover:bg-amber-200',
+  taupe: 'bg-stone-100 hover:bg-stone-200',
+  red: 'bg-red-100 hover:bg-red-200',
+  black: 'bg-neutral-200 hover:bg-neutral-300',
+  graphite: 'bg-neutral-100 hover:bg-neutral-200',
   dark: 'bg-stone-100 hover:bg-stone-200',
 }
 
