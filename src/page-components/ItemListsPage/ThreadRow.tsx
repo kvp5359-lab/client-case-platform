@@ -90,7 +90,7 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
       ref={measureRef}
       data-index={dataIndex}
       className={cn('border-b hover:bg-muted/30', focused && 'bg-muted/60')}
-      onMouseEnter={() => prefetchMessages(task.id)}
+      onMouseEnter={() => prefetchMessages(task.id, task.project_id)}
     >
       <td
         className="px-3 py-2 align-middle select-none"

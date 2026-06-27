@@ -80,7 +80,7 @@ export const DraggableBoardTaskRow = memo(function DraggableBoardTaskRow({
       {...attributes}
       {...listeners}
       // Прогрев кэша сообщений по наведению → клик открывает панель мгновенно.
-      onMouseEnter={() => prefetchMessages(task.id)}
+      onMouseEnter={() => prefetchMessages(task.id, task.project_id)}
       className={cn(
         'relative min-w-0 touch-none rounded-md',
         isDragging && 'opacity-40',

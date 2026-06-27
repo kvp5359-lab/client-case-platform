@@ -250,7 +250,7 @@ export const InboxChatItem = memo(function InboxChatItem({
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => prefetchMessages(chat.thread_id)}
+      onMouseEnter={() => prefetchMessages(chat.thread_id, chat.project_id)}
       className={cn(
         'group/chat w-full flex items-start gap-3 px-4 py-3 text-left transition-colors',
         isSelected
