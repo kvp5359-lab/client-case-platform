@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils'
 import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'
 import { TaskActionsMenu } from './TaskActionsMenu'
+import { RecurringRuleDialog } from '@/components/recurring/RecurringRuleDialog'
 import type { ProjectHeaderInfo, TaskItem } from './types'
 
 type TaskPanelTaskHeaderProps = {
@@ -100,6 +101,9 @@ export function TaskPanelTaskHeader({
 
   // Подписка на уведомления по треду (пункт в меню «⋮»).
   const subscription = useThreadSubscription(task.id, workspaceId)
+
+  // Диалог «Сделать повторяющейся» (только для задач).
+  const [recurringOpen, setRecurringOpen] = useState(false)
 
   const handleSelectProject = (projectId: string | null) => {
     if (!projectId || projectId === attachedProjectId) return
@@ -332,12 +336,30 @@ export function TaskPanelTaskHeader({
             onDeadlineClear={onDeadlineClear}
             deadlinePending={deadlinePending}
             onOpenSettings={onSettingsOpen}
+            onMakeRecurring={isTask ? () => setRecurringOpen(true) : undefined}
             isSubscribed={subscription.isSubscribed}
             onToggleSubscribe={subscription.setSubscribed}
             subscribePending={subscription.pending}
             onRequestDelete={onRequestDelete}
             triggerClassName="opacity-100 md:opacity-0 md:group-hover/panel-header:opacity-100"
             align="end"
+          />
+        )}
+
+        {isTask && (
+          <RecurringRuleDialog
+            open={recurringOpen}
+            onClose={() => setRecurringOpen(false)}
+            workspaceId={workspaceId}
+            prefill={{
+              title: task.name,
+              projectId: task.project_id ?? null,
+              projectName: resolvedProjectName,
+              statusId: task.status_id,
+              accentColor: task.accent_color,
+              icon: task.icon,
+              assigneeIds: members.map((m) => m.id),
+            }}
           />
         )}
 

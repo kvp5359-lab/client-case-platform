@@ -19,6 +19,7 @@ import { FolderTemplatesContent } from '@/components/templates/FolderTemplatesCo
 import { SlotTemplatesContent } from '@/components/templates/SlotTemplatesContent'
 import { DocumentTemplatesContent } from '@/components/templates/DocumentTemplatesContent'
 import { ThreadTemplatesContent } from '@/components/templates/ThreadTemplatesContent'
+import { RecurringTasksContent } from '@/components/recurring/RecurringTasksContent'
 import { SettingsSubNav, type SettingsSubNavGroup } from './components/SettingsSubNav'
 
 type TemplateSection =
@@ -30,6 +31,7 @@ type TemplateSection =
   | 'slot-templates' // slot_templates
   | 'document-templates' // document_templates
   | 'thread-templates' // thread_templates
+  | 'recurring' // recurring_task_rules
 
 export function TemplatesTab() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -48,6 +50,7 @@ export function TemplatesTab() {
       'slot-templates',
       'document-templates',
       'thread-templates',
+      'recurring',
     ]
     return validSections.includes(path as TemplateSection)
       ? (path as TemplateSection)
@@ -97,6 +100,11 @@ export function TemplatesTab() {
       label: 'Шаблоны тредов',
       dbTable: 'thread_templates',
     },
+    {
+      id: 'recurring' as const,
+      label: 'Повторяющиеся',
+      dbTable: 'recurring_task_rules',
+    },
   ]
 
   const handleSectionChange = (section: string) => {
@@ -114,7 +122,7 @@ export function TemplatesTab() {
       title: 'Наборы документов',
       items: [byId('document-kit-templates'), byId('folder-templates'), byId('slot-templates')],
     },
-    { title: 'Треды', items: [byId('thread-templates')] },
+    { title: 'Треды', items: [byId('thread-templates'), byId('recurring')] },
     { title: 'Генерация', items: [byId('document-templates')] },
   ]
 
@@ -132,6 +140,7 @@ export function TemplatesTab() {
         {activeSection === 'slot-templates' && <SlotTemplatesContent />}
         {activeSection === 'document-templates' && <DocumentTemplatesContent />}
         {activeSection === 'thread-templates' && <ThreadTemplatesContent />}
+        {activeSection === 'recurring' && <RecurringTasksContent />}
       </div>
     </div>
   )

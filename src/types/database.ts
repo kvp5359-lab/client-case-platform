@@ -6435,10 +6435,10 @@ export type Database = {
           assignee_participant_ids: string[]
           bymonthday: number | null
           byweekday: number[]
-          create_lead_days: number
+          create_lead_minutes: number
           created_at: string
           created_by: string | null
-          deadline_offset_days: number | null
+          end_time: string | null
           deleted_at: string | null
           deleted_by: string | null
           description: string | null
@@ -6472,10 +6472,10 @@ export type Database = {
           assignee_participant_ids?: string[]
           bymonthday?: number | null
           byweekday?: number[]
-          create_lead_days?: number
+          create_lead_minutes?: number
           created_at?: string
           created_by?: string | null
-          deadline_offset_days?: number | null
+          end_time?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           description?: string | null
@@ -6509,10 +6509,10 @@ export type Database = {
           assignee_participant_ids?: string[]
           bymonthday?: number | null
           byweekday?: number[]
-          create_lead_days?: number
+          create_lead_minutes?: number
           created_at?: string
           created_by?: string | null
-          deadline_offset_days?: number | null
+          end_time?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           description?: string | null

@@ -7,7 +7,6 @@
  * - Нет выбора проекта и Telegram
  */
 
-import { useState } from 'react'
 import { useThreadTemplateForm } from './useThreadTemplateForm'
 import {
   Dialog,
@@ -17,35 +16,13 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { cn } from '@/lib/utils'
-import { Users, UserCheck } from 'lucide-react'
 import { SegmentedToggle } from '@/components/ui/segmented-toggle'
 import { useTaskStatuses, useProjectStatusesForTemplate } from '@/hooks/useStatuses'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTemplate'
-import { IconColorPicker } from './IconColorPicker'
-import { StatusPicker } from './StatusPicker'
-import { AssigneesPopover } from '@/components/tasks/AssigneesPopover'
-import { EmailRecipientInput } from './EmailRecipientInput'
+import { ThreadTemplateFields } from './ThreadTemplateFields'
 import type { EmailChip } from './EmailRecipientInput'
 import { useEmailChips } from '@/hooks/messenger/useEmailChips'
-
-const PROJECT_ROLE_OPTIONS = [
-  { value: 'Администратор', label: 'Администраторы' },
-  { value: 'Исполнитель', label: 'Исполнители' },
-  { value: 'Клиент', label: 'Клиенты' },
-  { value: 'Участник', label: 'Наблюдатели' },
-] as const
 
 // ── Props ──
 
@@ -122,10 +99,6 @@ function ThreadTemplateDialogBody({
   )
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
 
-  // UI state (поповеры)
-  const [iconColorOpen, setIconColorOpen] = useState(false)
-  const [statusOpen, setStatusOpen] = useState(false)
-
   // Email chips
   const initialEmails: EmailChip[] = (template?.default_contact_email ?? '')
     .split(',')
@@ -199,236 +172,55 @@ function ThreadTemplateDialogBody({
         </DialogTitle>
       </DialogHeader>
 
-      <div className="flex flex-col gap-3 py-2">
-        {/* Название шаблона */}
-        <div className="flex flex-col gap-1">
-          <Label className="text-sm text-muted-foreground">Название шаблона *</Label>
-          <Input
-            value={templateName}
-            onChange={(e) => setTemplateName(e.target.value)}
-            placeholder="Например: Запрос документов"
-            autoFocus
-          />
-        </div>
-
-        {/* Описание */}
-        <div className="flex flex-col gap-1">
-          <Label className="text-sm text-muted-foreground">Описание</Label>
-          <Input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Краткое описание шаблона"
-          />
-        </div>
-
-        <hr className="border-dashed" />
-
-        {/* Название треда (шаблон) + Статус (task) + Иконка/Цвет */}
-        <div className="flex items-end gap-2">
-          <div className="flex flex-col gap-1 flex-1 min-w-0">
-            <Label className="text-sm text-muted-foreground">
-              Название треда
-              <span className="text-muted-foreground/60 ml-1 font-normal text-xs">
-                {'({project_name}, {date})'}
-              </span>
-            </Label>
-            <Input
-              value={threadNameTemplate}
-              onChange={(e) => setThreadNameTemplate(e.target.value)}
-              placeholder={
-                isTask
-                  ? 'Проверка анкеты: {project_name}'
-                  : isEmail
-                    ? 'Запрос: {project_name}'
-                    : 'Обсуждение: {project_name}'
-              }
-            />
-          </div>
-
-          {isTask && (
-            <StatusPicker
-              open={statusOpen}
-              onOpenChange={setStatusOpen}
-              statuses={taskStatuses}
-              statusId={statusId}
-              onStatusChange={setStatusId}
-            />
-          )}
-
-          <IconColorPicker
-            open={iconColorOpen}
-            onOpenChange={setIconColorOpen}
-            accentColor={accentColor}
-            icon={icon}
-            onColorChange={setAccentColor}
-            onIconChange={setIcon}
-          />
-        </div>
-
-        {/* Дедлайн (задачи) */}
-        {isTask && (
-          <div className="flex flex-col gap-1">
-            <Label className="text-sm text-muted-foreground">Дедлайн</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={0}
-                className="w-24"
-                value={deadlineDays}
-                onChange={(e) => setDeadlineDays(e.target.value)}
-                placeholder="—"
-              />
-              <span className="text-sm text-muted-foreground">дней после создания</span>
-            </div>
-          </div>
-        )}
-
-        {/* Автопереход статуса проекта при завершении задачи. Применяется
-            БД-триггером auto_advance_project_status — last write wins. */}
-        {isTask && (
-          <div className="flex flex-col gap-1">
-            <Label className="text-sm text-muted-foreground">
-              При завершении перевести проект в статус
-            </Label>
-            <Select
-              value={onCompleteStatusId ?? '__none__'}
-              onValueChange={(v) => setOnCompleteStatusId(v === '__none__' ? null : v)}
-              disabled={projectStatuses.length === 0}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Не менять" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Не менять</SelectItem>
-                {projectStatuses.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    <span className="inline-flex items-center gap-2">
-                      <span
-                        className="inline-block w-2 h-2 rounded-full"
-                        style={{ backgroundColor: s.color }}
-                      />
-                      {s.name}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        {/* Исполнители (задачи). Переиспользуем AssigneesPopover из
-            раздела задач в controlled-режиме — чтобы попап выглядел
-            одинаково везде. Родитель хранит выбор в локальном state
-            формы (assigneeIds) и передаёт участников, уже загруженных
-            через useWorkspaceParticipants. */}
-        {isTask && (
-          <div className="flex flex-col gap-1">
-            <Label className="text-sm text-muted-foreground">Исполнители</Label>
-            <AssigneesPopover
-              mode="controlled"
-              workspaceId={workspaceId}
-              assigneeIds={assigneeIds}
-              onToggle={toggleAssignee}
-              participantsOverride={participants}
-            />
-          </div>
-        )}
-
-        {/* Доступ */}
-        <div className="flex flex-col gap-1">
-          <Label className="text-sm text-muted-foreground">Доступ</Label>
-          <div className="flex gap-2">
-            <Button
-              variant={accessType === 'all' ? 'default' : 'outline'}
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setAccessType('all')}
-            >
-              <Users className="w-3.5 h-3.5" />
-              Все участники
-            </Button>
-            <Button
-              variant={accessType === 'roles' ? 'default' : 'outline'}
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setAccessType('roles')}
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              По ролям
-            </Button>
-          </div>
-          {accessType === 'roles' && (
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {PROJECT_ROLE_OPTIONS.map((r) => (
-                <button
-                  key={r.value}
-                  type="button"
-                  className={cn(
-                    'px-2.5 py-1 rounded-full text-xs border transition-colors',
-                    selectedRoles.has(r.value)
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background hover:bg-muted border-border',
-                  )}
-                  onClick={() => toggleRole(r.value)}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Email: адрес получателя (chips) */}
-        {isEmail && (
-          <div className="flex flex-col gap-1">
-            <Label className="text-sm text-muted-foreground">Email получателя</Label>
-            <EmailRecipientInput
-              chips={enrichedEmails}
-              inputValue={emailInput}
-              dropdownOpen={emailDropdownOpen}
-              suggestions={filteredEmailSuggestions}
-              onInputChange={setEmailInput}
-              onDropdownOpenChange={setEmailDropdownOpen}
-              onAddChip={addChip}
-              onRemoveChip={removeChip}
-              onRemoveLast={removeLast}
-            />
-          </div>
-        )}
-
-        {/* Email: тема */}
-        {isEmail && (
-          <div className="flex flex-col gap-1">
-            <Label className="text-sm text-muted-foreground">
-              Тема письма
-              <span className="text-muted-foreground/60 ml-1 font-normal text-xs">
-                {'({project_name}, {date})'}
-              </span>
-            </Label>
-            <Input
-              value={emailSubject}
-              onChange={(e) => setEmailSubject(e.target.value)}
-              placeholder="Запрос документов: {project_name}"
-            />
-          </div>
-        )}
-
-        {/* Шаблон первого сообщения */}
-        <div className="flex flex-col gap-1">
-          <Label className="text-sm text-muted-foreground">
-            Шаблон первого сообщения
-            <span className="text-muted-foreground/60 ml-1 font-normal text-xs">(HTML)</span>
-          </Label>
-          <Textarea
-            value={initialMessageHtml}
-            onChange={(e) => setInitialMessageHtml(e.target.value)}
-            placeholder={
-              isEmail ? 'Здравствуйте!\n\nПросим предоставить...' : 'Текст первого сообщения...'
-            }
-            rows={3}
-            className="resize-y text-sm"
-          />
-        </div>
+      <div className="py-2">
+        <ThreadTemplateFields
+          workspaceId={workspaceId}
+          isTask={isTask}
+          isEmail={isEmail}
+          showTemplateName
+          templateName={templateName}
+          onTemplateNameChange={setTemplateName}
+          description={description}
+          onDescriptionChange={setDescription}
+          threadNameTemplate={threadNameTemplate}
+          onThreadNameChange={setThreadNameTemplate}
+          taskStatuses={taskStatuses}
+          statusId={statusId}
+          onStatusChange={setStatusId}
+          accentColor={accentColor}
+          onAccentColorChange={setAccentColor}
+          icon={icon}
+          onIconChange={setIcon}
+          showDeadlineDays
+          deadlineDays={deadlineDays}
+          onDeadlineDaysChange={setDeadlineDays}
+          showOnComplete
+          projectStatuses={projectStatuses}
+          onCompleteStatusId={onCompleteStatusId}
+          onOnCompleteStatusChange={setOnCompleteStatusId}
+          participants={participants}
+          assigneeIds={assigneeIds}
+          onToggleAssignee={toggleAssignee}
+          accessType={accessType}
+          onAccessTypeChange={setAccessType}
+          selectedRoles={selectedRoles}
+          onToggleRole={toggleRole}
+          email={{
+            chips: enrichedEmails,
+            inputValue: emailInput,
+            dropdownOpen: emailDropdownOpen,
+            suggestions: filteredEmailSuggestions,
+            onInputChange: setEmailInput,
+            onDropdownOpenChange: setEmailDropdownOpen,
+            onAddChip: addChip,
+            onRemoveChip: removeChip,
+            onRemoveLast: removeLast,
+            subject: emailSubject,
+            onSubjectChange: setEmailSubject,
+          }}
+          initialMessageHtml={initialMessageHtml}
+          onInitialMessageChange={setInitialMessageHtml}
+        />
       </div>
 
       <DialogFooter>

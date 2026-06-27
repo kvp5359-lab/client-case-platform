@@ -13,7 +13,7 @@
  * один раз и появляются во всех местах автоматически.
  */
 
-import { MoreVertical, ExternalLink, Trash2, CheckCircle2, Calendar as CalendarIcon, X, Settings, Bell, BellOff } from 'lucide-react'
+import { MoreVertical, ExternalLink, Trash2, CheckCircle2, Calendar as CalendarIcon, X, Settings, Bell, BellOff, Repeat } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { Button } from '@/components/ui/button'
@@ -54,6 +54,9 @@ export type TaskActionsMenuProps = {
   /** Открыть настройки треда/чата. Если не передан — пункт скрыт. */
   onOpenSettings?: () => void
 
+  /** Сделать задачу повторяющейся. Если не передан — пункт скрыт. */
+  onMakeRecurring?: () => void
+
   /**
    * Подписка на уведомления по треду. Если `onToggleSubscribe` не передан —
    * пункт скрыт (показывается только в шапке открытого треда).
@@ -82,6 +85,7 @@ export function TaskActionsMenu({
   onDeadlineClear,
   deadlinePending,
   onOpenSettings,
+  onMakeRecurring,
   isSubscribed,
   onToggleSubscribe,
   subscribePending,
@@ -94,10 +98,11 @@ export function TaskActionsMenu({
   const hasDelete = !!onRequestDelete
   const hasOpen = !!onOpen
   const hasSettings = !!onOpenSettings
+  const hasMakeRecurring = !!onMakeRecurring
   const hasSubscribe = !!onToggleSubscribe
 
   // Если вообще нечего показывать — не рендерим триггер.
-  if (!hasOpen && !hasStatuses && !hasDeadline && !hasSettings && !hasSubscribe && !hasDelete) return null
+  if (!hasOpen && !hasStatuses && !hasDeadline && !hasSettings && !hasMakeRecurring && !hasSubscribe && !hasDelete) return null
 
   const deadlineDate = deadline ? new Date(deadline) : undefined
 
@@ -209,9 +214,19 @@ export function TaskActionsMenu({
             </>
           )}
 
-          {hasSubscribe && (
+          {hasMakeRecurring && (
             <>
               {(hasOpen || hasStatuses || hasDeadline || hasSettings) && <DropdownMenuSeparator />}
+              <DropdownMenuItem onClick={onMakeRecurring} className="text-xs cursor-pointer">
+                <Repeat className="mr-2 h-3.5 w-3.5" />
+                Сделать повторяющейся
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {hasSubscribe && (
+            <>
+              {(hasOpen || hasStatuses || hasDeadline || hasSettings || hasMakeRecurring) && <DropdownMenuSeparator />}
               <DropdownMenuItem
                 onClick={() => onToggleSubscribe!(!isSubscribed)}
                 disabled={subscribePending || isSubscribed === null || isSubscribed === undefined}
@@ -229,7 +244,7 @@ export function TaskActionsMenu({
 
           {hasDelete && (
             <>
-              {(hasOpen || hasStatuses || hasDeadline || hasSettings || hasSubscribe) && <DropdownMenuSeparator />}
+              {(hasOpen || hasStatuses || hasDeadline || hasSettings || hasMakeRecurring || hasSubscribe) && <DropdownMenuSeparator />}
               <DropdownMenuItem
                 onClick={onRequestDelete}
                 className="text-xs cursor-pointer text-destructive focus:text-destructive"
