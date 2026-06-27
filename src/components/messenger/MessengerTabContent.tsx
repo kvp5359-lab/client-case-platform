@@ -557,7 +557,11 @@ export function MessengerTabContent({
             isMtprotoThread ? () => backfillMutation.mutate() : undefined
           }
           isBackfilling={backfillMutation.isPending}
-          suppressUnread={isForeignPersonalThread}
+          // Контуры непрочитанного уважают подписку: гейтим по showUnread (он уже
+          // subscription-gated через счётчик thread_unread_state). Не подписан →
+          // showUnread=false → контуров нет (как и кнопка «прочитано»), убирает
+          // противоречие «красный контур vs кнопка прочитано» у view_all-владельца.
+          suppressUnread={isForeignPersonalThread || !state.showUnread}
         />
 
         {/* Линия над композером (наезжает на список через negative margin):

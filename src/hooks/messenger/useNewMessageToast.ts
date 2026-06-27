@@ -149,6 +149,36 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             if (ownerUserId && ownerUserId !== currentUserId) return
           }
 
+          // Проектные/клиентские треды: тост только если ты ПОДПИСАН на тред
+          // (или упомянут в этом сообщении). Единый принцип с контуром/счётчиком:
+          // view_all-владелец без подписки не тонет в тостах по чужим тредам.
+          // Упоминание авто-подписывает (триггер) → последующие тоже придут;
+          // плюс отдельная проверка @ на случай гонки подписки. Fail-open: при
+          // ошибке RPC показываем тост (лучше шум, чем потерять уведомление).
+          if (msg.project_id && msg.thread_id) {
+            let allowed = true
+            const { data: subscribed, error: subErr } = await supabase.rpc(
+              'is_thread_subscribed_me',
+              { p_thread_id: msg.thread_id },
+            )
+            if (!subErr) {
+              allowed = subscribed === true
+              if (!allowed) {
+                const myPids = [...myParticipantIdsRef.current]
+                if (myPids.length) {
+                  const { data: mentioned } = await supabase
+                    .from('message_mentions')
+                    .select('message_id')
+                    .eq('message_id', (payload.new as { id: string }).id)
+                    .in('participant_id', myPids)
+                    .limit(1)
+                  allowed = !!mentioned?.length
+                }
+              }
+            }
+            if (!allowed) return
+          }
+
           const ws = queryClient.getQueryData<Workspace>(workspaceKeys.detail(workspaceId))
           const durationSec = ws?.notification_toast_duration ?? 5
           const duration = durationSec === 0 ? Infinity : durationSec * 1000
