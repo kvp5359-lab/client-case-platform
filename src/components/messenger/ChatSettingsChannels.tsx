@@ -6,7 +6,6 @@
 import { useRef, memo } from 'react'
 import { Mail, Unlink, Loader2, Send, Copy, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import type { TabMode, ChannelType } from './chatSettingsTypes'
 
 type EmailChip = {
@@ -233,14 +232,14 @@ export const ChatSettingsChannels = memo(function ChatSettingsChannels({
 
       {/* Email — поля ввода (create mode) или привязка (edit mode) */}
       {channelType === 'email' && (
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-muted-foreground">Письмо</label>
+        <div className="flex flex-col gap-1.5">
           <div className="relative">
             {/* Chips + input wrapper */}
             <div
               className="flex flex-wrap items-center gap-1 min-h-[32px] px-2 py-1 rounded-md border bg-background text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 cursor-text"
               onClick={() => emailInputRef.current?.focus()}
             >
+              <span className="text-sm text-muted-foreground/70 shrink-0 select-none">Кому:</span>
               {selectedEmails.map((chip) => (
                 <span
                   key={chip.email}
@@ -300,7 +299,7 @@ export const ChatSettingsChannels = memo(function ChatSettingsChannels({
                     }
                   }
                 }}
-                placeholder={selectedEmails.length === 0 ? 'Email клиента' : ''}
+                placeholder=""
                 className="flex-1 min-w-[120px] bg-transparent outline-none placeholder:text-muted-foreground/40 text-sm"
                 autoComplete="off"
               />
@@ -337,15 +336,18 @@ export const ChatSettingsChannels = memo(function ChatSettingsChannels({
               </div>
             )}
           </div>
-          <Input
-            value={emailSubject}
-            onChange={(e) => {
-              onSetEmailSubject(e.target.value)
-              onSetSubjectTouched(true)
-            }}
-            placeholder="Тема письма"
-            className="h-8 text-sm"
-          />
+          <div className="flex items-center gap-2 h-9 px-2 rounded-md border bg-background text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1">
+            <span className="text-sm text-muted-foreground/70 shrink-0 select-none">Тема:</span>
+            <input
+              value={emailSubject}
+              onChange={(e) => {
+                onSetEmailSubject(e.target.value)
+                onSetSubjectTouched(true)
+              }}
+              placeholder=""
+              className="flex-1 min-w-0 bg-transparent outline-none text-sm"
+            />
+          </div>
           {isEditMode && (
             <Button
               size="sm"

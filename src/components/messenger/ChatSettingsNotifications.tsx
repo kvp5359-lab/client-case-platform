@@ -2,14 +2,17 @@
 
 /**
  * Секция «Уведомления» в настройках чата.
- *  - Личная подписка пользователя на тред (toggle).
- *  - Для владельца/менеджеров — шестерёнка: разворачивает поле выбора
- *    подписчиков (как «Кто видит чат») с возможностью подписать/отписать
- *    любого участника. Право проверяет RPC (сам участник ИЛИ manage_workspace_settings).
+ *  - variant='compact'  — компактная ghost-кнопка «Подписаться/Отписаться» (рядом с
+ *    «Подключить канал»): видна без разворачивания, минимум места.
+ *  - variant='personal' — личная подписка пользователя на тред (toggle, в рамке).
+ *  - variant='manage'   — управление подписчиками (для владельца/менеджеров): поле
+ *    выбора подписчиков (как «Кто видит чат»), всегда развёрнуто (живёт внутри
+ *    сворачиваемого блока «Доступ и подписки»). Право проверяет RPC.
+ *  - variant='full'     — оба блока вместе с шестерёнкой (legacy/совместимость).
  */
 import { useState } from 'react'
 import Image from 'next/image'
-import { Bell, BellOff, Settings, Check, Search, X, Users } from 'lucide-react'
+import { Bell, BellOff, Check, Search, X, Users } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -23,20 +26,26 @@ export function ChatSettingsNotifications({
   participants,
   canManage,
   userId,
+  variant = 'full',
 }: {
   threadId: string
   workspaceId: string
   participants: Participant[]
   canManage: boolean
   userId: string | undefined
+  variant?: 'full' | 'personal' | 'manage' | 'compact'
 }) {
+  const showPersonal = variant === 'full' || variant === 'personal'
+  const showManage = (variant === 'full' || variant === 'manage') && canManage
+
   const { isSubscribed, setSubscribed, pending } = useThreadSubscription(threadId, workspaceId)
   const subscribed = isSubscribed === true
   const loading = isSubscribed === null
 
-  const [manageOpen, setManageOpen] = useState(false)
+  // В variant='manage' поле подписчиков всегда развёрнуто (живёт в блоке «Доступ и подписки»).
+  const managerVisible = showManage && variant === 'manage'
   const [search, setSearch] = useState('')
-  const subs = useThreadSubscribers(threadId, workspaceId, canManage && manageOpen)
+  const subs = useThreadSubscribers(threadId, workspaceId, managerVisible)
 
   // Участники, у которых подписка вообще релевантна (есть в карте RPC).
   const known = participants.filter((p) => p.id in subs.subscribers)
@@ -59,18 +68,39 @@ export function ChatSettingsNotifications({
   const name = (p: Participant) =>
     p.user_id === userId ? 'Я' : [p.name, p.last_name].filter(Boolean).join(' ')
 
+  // Компактная ghost-кнопка (рядом с «Подключить канал»).
+  if (variant === 'compact') {
+    return (
+      <button
+        type="button"
+        disabled={pending || loading}
+        onClick={() => setSubscribed(!subscribed)}
+        title="Подписчики получают непрочитанное и уведомления по этому треду"
+        className={cn(
+          'flex items-center gap-1.5 text-xs transition-colors disabled:opacity-50 disabled:cursor-default',
+          subscribed
+            ? 'text-muted-foreground hover:text-foreground'
+            : 'text-muted-foreground/60 hover:text-muted-foreground',
+        )}
+      >
+        {subscribed ? <Bell className="w-3 h-3" /> : <BellOff className="w-3 h-3" />}
+        {loading ? 'Загрузка…' : subscribed ? 'Отписаться от уведомлений' : 'Подписаться на уведомления'}
+      </button>
+    )
+  }
+
   return (
     <div className="space-y-1.5">
-      <Label>Уведомления</Label>
+      {showPersonal && <Label>Уведомления</Label>}
 
-      {/* Один контур: слева кнопка подписки, справа внутри — шестерёнка */}
-      <div className="flex items-stretch rounded-md border overflow-hidden">
+      {/* Личная подписка */}
+      {showPersonal && (
         <button
           type="button"
           disabled={pending || loading}
           onClick={() => setSubscribed(!subscribed)}
           className={cn(
-            'flex items-center gap-2 flex-1 min-w-0 px-3 py-2 text-sm transition-colors',
+            'w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md border transition-colors',
             'hover:bg-muted/50 disabled:opacity-50 disabled:cursor-default',
             subscribed ? 'text-foreground' : 'text-muted-foreground',
           )}
@@ -85,23 +115,14 @@ export function ChatSettingsNotifications({
             </span>
           )}
         </button>
-        {canManage && (
-          <button
-            type="button"
-            onClick={() => setManageOpen((o) => !o)}
-            title="Настроить подписчиков"
-            className={cn(
-              'shrink-0 px-2.5 flex items-center justify-center transition-colors',
-              manageOpen ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50',
-            )}
-          >
-            <Settings className="h-4 w-4" />
-          </button>
-        )}
-      </div>
+      )}
+
+      {showManage && variant === 'manage' && (
+        <Label className="text-sm text-muted-foreground">Подписчики</Label>
+      )}
 
       {/* Управление подписчиками (менеджеры) */}
-      {canManage && manageOpen && (
+      {managerVisible && (
         <Popover onOpenChange={(v) => !v && setSearch('')}>
           <PopoverTrigger asChild>
             <button
@@ -224,11 +245,16 @@ export function ChatSettingsNotifications({
         </Popover>
       )}
 
-      <p className="text-xs text-muted-foreground">
-        {canManage
-          ? 'Подписчики получают непрочитанное и уведомления по треду. Шестерёнка — управлять подписчиками; доступ к чату это не меняет.'
-          : 'Личная настройка: вы получаете непрочитанное и уведомления по этому треду. Доступ к чату это не меняет.'}
-      </p>
+      {showPersonal && variant === 'personal' && (
+        <p className="text-xs text-muted-foreground">
+          Личная настройка: вы получаете непрочитанное и уведомления по этому треду. Доступ к чату это не меняет.
+        </p>
+      )}
+      {showManage && variant === 'manage' && (
+        <p className="text-xs text-muted-foreground">
+          Подписчики получают непрочитанное и уведомления по треду. Доступ к чату это не меняет.
+        </p>
+      )}
     </div>
   )
 }

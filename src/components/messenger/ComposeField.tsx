@@ -155,6 +155,7 @@ export type ComposeFieldHandle = {
 type ComposeFieldProps = {
   placeholder?: string
   editorMaxHeight?: number
+  editorMinHeight?: number
   disabled?: boolean
   /** Show attachment button (default: true) */
   showAttachments?: boolean
@@ -184,6 +185,7 @@ export const ComposeField = forwardRef<ComposeFieldHandle, ComposeFieldProps>(fu
   {
     placeholder = 'Введите сообщение...',
     editorMaxHeight = 200,
+    editorMinHeight,
     disabled = false,
     showAttachments = true,
     showToolbar = true,
@@ -310,6 +312,7 @@ export const ComposeField = forwardRef<ComposeFieldHandle, ComposeFieldProps>(fu
           disabled={disabled}
           onEditorReady={setEditor}
           editorMaxHeight={editorMaxHeight}
+          editorMinHeight={editorMinHeight}
           placeholder={placeholder}
         />
       </div>

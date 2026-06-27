@@ -34,6 +34,8 @@ type MinimalTiptapEditorProps = {
   disabled?: boolean
   onEditorReady?: (editor: Editor | null) => void
   editorMaxHeight?: number
+  /** Базовая (минимальная) высота поля редактора, px. По умолчанию 26 (~1 строка). */
+  editorMinHeight?: number
   /** Участники для @-упоминаний (id = participant_id, label = имя). */
   mentionItems?: MentionItem[]
 }
@@ -137,6 +139,7 @@ export function MinimalTiptapEditor({
   disabled = false,
   onEditorReady,
   editorMaxHeight,
+  editorMinHeight,
   mentionItems,
 }: MinimalTiptapEditorProps) {
   // Список участников для @-упоминаний читается через ref (extensions
@@ -234,7 +237,7 @@ export function MinimalTiptapEditor({
       attributes: {
         class:
           'prose prose-sm max-w-none focus:outline-none min-h-[26px] overflow-y-auto py-1 text-sm leading-snug break-words [overflow-wrap:anywhere]',
-        style: `max-height: ${editorMaxHeight ?? 255}px`,
+        style: `max-height: ${editorMaxHeight ?? 255}px${editorMinHeight ? `; min-height: ${editorMinHeight}px` : ''}`,
       },
       handlePaste: handlePasteImages,
     },
@@ -375,12 +378,12 @@ export function MinimalTiptapEditor({
         attributes: {
           class:
             'prose prose-sm max-w-none focus:outline-none min-h-[26px] overflow-y-auto py-1 text-sm leading-snug break-words [overflow-wrap:anywhere]',
-          style: `max-height: ${editorMaxHeight ?? 255}px`,
+          style: `max-height: ${editorMaxHeight ?? 255}px${editorMinHeight ? `; min-height: ${editorMinHeight}px` : ''}`,
         },
         handlePaste: handlePasteImages,
       },
     })
-  }, [editor, editorMaxHeight, handlePasteImages])
+  }, [editor, editorMaxHeight, editorMinHeight, handlePasteImages])
 
   if (!editor) return null
 

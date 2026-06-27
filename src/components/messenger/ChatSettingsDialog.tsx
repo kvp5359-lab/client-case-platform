@@ -14,8 +14,9 @@
  *  - hooks/useChatSettingsActions — все хендлеры и запросы данных
  */
 
-import { useMemo, useRef, useState } from 'react'
-import { AlertCircle } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertCircle, ChevronDown, ChevronRight, Mail } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { checkEmailAttachmentsLimit } from './hooks/useMessengerHandlers'
 import {
   Dialog,
@@ -33,6 +34,9 @@ import { SegmentedToggle } from '@/components/ui/segmented-toggle'
 import { ThreadTemplatePicker } from './ThreadTemplatePicker'
 
 import type { ChatSettingsDialogProps } from './chatSettingsTypes'
+import { PROJECT_ROLE_OPTIONS } from './chatSettingsTypes'
+import type { TabMode } from './chatSettingsTypes'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { ChatSettingsIconColorPicker } from './ChatSettingsIconColorPicker'
 import { ChatSettingsProjectSelector } from './ChatSettingsProjectSelector'
 import { ChatSettingsAssignees } from './ChatSettingsAssignees'
@@ -129,6 +133,31 @@ export function ChatSettingsDialog({
     onUpdate,
   })
 
+  // Сворачиваемый блок «Доступ и подписки» — свёрнут по умолчанию (нужен реже,
+  // чем «Исполнители»). В свёрнутом виде показываем краткую сводку «кто видит».
+  const [accessOpen, setAccessOpen] = useState(false)
+  // Email в режиме создания: получатель + тема + текст показываем единым блоком «Письмо».
+  const isEmailCompose = form.channelType === 'email' && !form.isEditMode
+
+  // Запоминаем иконку+цвет для каждого режима, чтобы возврат на вкладку восстановил
+  // ТО, что было (в т.ч. дефолт из шаблона/канала), а не хардкод-цвет. Сбрасываем
+  // при каждом открытии диалога.
+  const modeLooks = useRef<Partial<Record<TabMode, { accent: ThreadAccentColor; icon: string }>>>({})
+  useEffect(() => {
+    if (open) modeLooks.current = {}
+  }, [open])
+  const accessSummary = useMemo(() => {
+    if (form.accessType === 'all') return 'Все участники'
+    if (form.accessType === 'roles') {
+      if (form.selectedRoles.size === 0) return 'Роли не выбраны'
+      return Array.from(form.selectedRoles)
+        .map((r) => PROJECT_ROLE_OPTIONS.find((o) => o.value === r)?.label ?? r)
+        .join(', ')
+    }
+    const ids = form.isEditMode ? actions.memberIds : form.selectedMemberIds
+    return ids.size === 0 ? 'Никто не выбран' : `${ids.size} участн.`
+  }, [form.accessType, form.selectedRoles, form.isEditMode, form.selectedMemberIds, actions.memberIds])
+
   return (
     <Dialog
       open={open}
@@ -154,22 +183,33 @@ export function ChatSettingsDialog({
               ]}
               value={form.tabMode}
               onChange={(t) => {
+                if (t === form.tabMode) return
+                // Запоминаем текущий вид для покидаемого режима (вернёмся — восстановим).
+                modeLooks.current[form.tabMode] = { accent: form.accentColor, icon: form.icon }
                 form.setTabMode(t)
-                if (t === 'task') {
+                // Цвет/иконка: либо ранее запомненный для этого режима, либо дефолт.
+                const remembered = modeLooks.current[t]
+                if (remembered) {
+                  form.setAccentColor(remembered.accent)
+                  form.setIcon(remembered.icon)
+                } else if (t === 'task') {
                   form.setAccentColor('slate')
                   form.setIcon('check-square')
+                } else if (t === 'email') {
+                  form.setAccentColor('rose')
+                  form.setIcon('mail')
+                } else {
+                  form.setAccentColor('blue')
+                  form.setIcon('message-square')
+                }
+                if (t === 'task') {
                   form.setTelegramChannelType('none')
                   form.setChannelExpanded(false)
                   const def = actions.taskStatuses.find((s) => s.is_default)
                   if (def) form.setTaskStatusId(def.id)
                 } else if (t === 'email') {
-                  form.setAccentColor('rose')
-                  form.setIcon('mail')
                   form.setTelegramChannelType('none')
                   form.setChannelExpanded(false)
-                } else {
-                  form.setAccentColor('blue')
-                  form.setIcon('message-square')
                 }
               }}
               size="md"
@@ -268,35 +308,71 @@ export function ChatSettingsDialog({
             onSetTaskAssignees={form.setTaskAssignees}
           />
 
-          {/* Доступ */}
-          <ChatSettingsAccess
-            participants={actions.effectiveParticipants}
-            userId={user?.id}
-            isEditMode={form.isEditMode}
-            isTask={form.isTask}
-            accessType={form.accessType}
-            memberIds={actions.memberIds}
-            selectedMemberIds={form.selectedMemberIds}
-            selectedRoles={form.selectedRoles}
-            onAccessChange={actions.handleAccessChange}
-            onToggleMember={actions.handleToggleMember}
-            onSetAccessType={form.setAccessType}
-            onSetSelectedMemberIds={form.setSelectedMemberIds}
-            onSetSelectedRoles={form.setSelectedRoles}
-            hasProject={!!(form.selectedProjectId ?? propProjectId)}
-          />
+          {/* Доступ и подписки — сворачиваемый блок (кто видит чат + личная/общая подписка) */}
+          <div className="rounded-md border">
+            <button
+              type="button"
+              onClick={() => setAccessOpen((o) => !o)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/50"
+            >
+              {accessOpen ? (
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              )}
+              <span className="text-sm font-medium">Доступ и подписки</span>
+              {!accessOpen && (
+                <span className="ml-auto text-xs text-muted-foreground truncate max-w-[55%]">
+                  👁 {accessSummary}
+                </span>
+              )}
+            </button>
 
-          {/* Уведомления — личная подписка + (для менеджеров) управление подписчиками */}
-          {chat && (
-            <ChatSettingsNotifications
-              threadId={chat.id}
-              workspaceId={chat.workspace_id}
-              participants={actions.effectiveParticipants}
-              canManage={canManageSubscribers}
-              userId={user?.id}
-            />
+            {accessOpen && (
+              <div className="px-3 pb-3 pt-1 space-y-3 border-t">
+                <ChatSettingsAccess
+                  participants={actions.effectiveParticipants}
+                  userId={user?.id}
+                  isEditMode={form.isEditMode}
+                  isTask={form.isTask}
+                  accessType={form.accessType}
+                  memberIds={actions.memberIds}
+                  selectedMemberIds={form.selectedMemberIds}
+                  selectedRoles={form.selectedRoles}
+                  onAccessChange={actions.handleAccessChange}
+                  onToggleMember={actions.handleToggleMember}
+                  onSetAccessType={form.setAccessType}
+                  onSetSelectedMemberIds={form.setSelectedMemberIds}
+                  onSetSelectedRoles={form.setSelectedRoles}
+                  hasProject={!!(form.selectedProjectId ?? propProjectId)}
+                />
+
+                {chat && canManageSubscribers && (
+                  <ChatSettingsNotifications
+                    variant="manage"
+                    threadId={chat.id}
+                    workspaceId={chat.workspace_id}
+                    participants={actions.effectiveParticipants}
+                    canManage={canManageSubscribers}
+                    userId={user?.id}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Email-создание: получатель + тема + текст одним блоком «Письмо».
+              Для чатов/задач/edit — обычная раскладка без рамки. */}
+          <div className={cn('space-y-3', isEmailCompose && 'rounded-md border bg-muted/20 p-3')}>
+          {isEmailCompose && (
+            <Label className="text-sm font-medium flex items-center gap-1.5">
+              <Mail className="h-4 w-4 text-muted-foreground" /> Письмо
+            </Label>
           )}
 
+          {/* Каналы + компактная кнопка личной подписки в одной строке */}
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0 flex-1">
           {/* Канал личного диалога (Wazzup / TG Business): показываем тип + номер
               + передачу ответственному. Для таких тредов блок «Подключить канал»
               ниже не нужен — канал уже подключён. */}
@@ -345,18 +421,32 @@ export function ChatSettingsDialog({
             />
           )
           )}
-        </div>
+            </div>
+            {chat && (
+              <ChatSettingsNotifications
+                variant="compact"
+                threadId={chat.id}
+                workspaceId={chat.workspace_id}
+                participants={actions.effectiveParticipants}
+                canManage={canManageSubscribers}
+                userId={user?.id}
+              />
+            )}
+          </div>
 
-        {/* First message compose (create mode only) */}
-        {!form.isEditMode && (
+          {/* Первое сообщение / текст письма (create mode only) */}
+          {!form.isEditMode && (
           <div className="flex flex-col gap-1 min-w-0">
-            <label className="text-sm text-muted-foreground">Первое сообщение</label>
+            {!isEmailCompose && (
+              <label className="text-sm text-muted-foreground">Первое сообщение</label>
+            )}
             <ComposeField
               ref={composeRef}
               placeholder={
                 form.tabMode === 'email' ? 'Текст письма...' : 'Сообщение (опционально)...'
               }
               editorMaxHeight={150}
+              editorMinHeight={isEmailCompose ? 76 : undefined}
               initialHtml={actions.pendingInitialHtml}
               onChange={form.setHasInitialMessage}
               onFilesChange={setComposeFiles}
@@ -383,7 +473,9 @@ export function ChatSettingsDialog({
               </div>
             )}
           </div>
-        )}
+          )}
+          </div>
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
