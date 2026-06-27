@@ -109,18 +109,6 @@ const iconByThreadIcon: Record<string, typeof Send> = {
   send: Send,
 }
 
-/** Цвет САМОЙ ИКОНКИ значка канала под фирменный цвет приложения. */
-const channelColorByThreadIcon: Record<string, string> = {
-  whatsapp: 'text-[#25D366]', // WhatsApp green
-  telegram: 'text-[#229ED9]', // Telegram blue
-  send: 'text-[#229ED9]',
-  mail: 'text-[#EA4335]', // email red
-}
-const channelColorByType: Partial<Record<InboxChannelType, string>> = {
-  telegram: 'text-[#229ED9]',
-  email: 'text-[#EA4335]',
-}
-
 type InboxChatItemProps = {
   chat: InboxThreadEntry
   isSelected: boolean
@@ -244,10 +232,10 @@ export const InboxChatItem = memo(function InboxChatItem({
   // каналу, иначе дефолт. Цвет — фирменный для каналов, серый для прочих.
   const ChannelIcon =
     iconByThreadIcon[chat.thread_icon] ?? channelIcons[chat.channel_type] ?? MessageSquare
-  const channelColor =
-    channelColorByThreadIcon[chat.thread_icon] ??
-    channelColorByType[chat.channel_type] ??
-    'text-gray-500'
+  // Цвет значка канала = акцент треда (как кольцо аватара/бейдж), единообразно
+  // для всех типов. Раньше был фирменный цвет приложения (email-красный и т.п.),
+  // что рассинхронивалось с акцентом треда (фиолетовый тред + красный конверт).
+  const channelColor = accent.text
 
   return (
     <button
