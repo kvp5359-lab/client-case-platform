@@ -46,6 +46,12 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-27 — Hover-prefetch греет last_read_at + currentParticipant (перф, не баг) ⏳ ЖДЁТ ДЕПЛОЯ
+- **Контекст:** прогрев по наведению на тред (`usePrefetchThreadMessages`) грел только сообщения. При первом открытии треда красный контур непрочитанного и раскраска «своих» баблов появлялись с паузой (отдельные сетевые запросы после сообщений).
+- **Сделано:** на тот же hover добавлен `prefetchQuery` для (1) `last_read_at` — ТОТ ЖЕ ключ/queryFn, что `useLastReadAt` (`messengerKeys.lastReadAtByThreadId` + `getThreadLastReadAtForUser`); (2) «моей личности» — `messengerParticipantKeys.current(scopeId, user)` + `resolveParticipantFull` (как в `useMessengerState`; `scopeId = projectId ?? workspaceId`, staleTime Infinity). Хук принимает `projectId`; вызовы из `DraggableBoardTaskRow`/`InboxChatItem`/`ItemListsPage/ThreadRow` прокидывают `task.project_id`/`chat.project_id`.
+- **Грабли:** новый источник «моей личности»/last_read_at — звать те же ключи/queryFn, что и основные хуки, иначе кэш не переиспользуется и эффект пропадает. Без `projectId` currentParticipant резолвится по workspace-scope (owner-не-участник ок — каскад в `resolveParticipantFull`).
+- **Проверки:** tsc/lint 0, 752 теста. Чистый фронт. Коммит `b329b5a`. Смок после деплоя: навёл на тред → клик → контур и стороны баблов сразу, без паузы.
+
 ### 2026-06-27 — Режим «тишина» (Do Not Disturb) для всплывающих уведомлений (фича, карантин затронут точечно) ⏳ ЖДЁТ ДЕПЛОЯ ФРОНТА + СМОК
 - **Запрос:** кнопка, глушащая все всплывающие уведомления; вкл/выкл + заглушить заранее на время из пресетов.
 - **Решения (с пользователем):** хранение НА СЕРВЕРЕ пер-воркспейс; глушит тосты новых сообщений + звук (ошибки отправки НЕ трогаем); пресеты 30 мин / 1 ч / 4 ч / до утра (ближайшие 8:00 локально) / насовсем; кнопка в сайдбаре.
