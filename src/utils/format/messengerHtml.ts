@@ -214,10 +214,14 @@ function unwrapLayoutTables(root: Element): void {
  * становится визуально пустым и сворачивается collapseEmptyLines.
  */
 const INVISIBLE_CHARS = /[\u00AD\u034F\u200B\u200C\u200D\u2060\uFEFF]/g
-// \u041F\u0440\u043E\u0431\u0435\u043B\u044B \u0444\u0438\u043A\u0441\u0438\u0440\u043E\u0432\u0430\u043D\u043D\u043E\u0439 \u0448\u0438\u0440\u0438\u043D\u044B (figure U+2007, en/em/thin U+2000\u2013U+200A,
-// narrow/medium/ideographic U+202F/U+205F/U+3000) \u2014 \u041D\u0415 \u0441\u0445\u043B\u043E\u043F\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u043F\u043E\u0434
-// white-space:normal. \u041A\u043E\u043D\u0432\u0435\u0440\u0442\u0438\u0440\u0443\u0435\u043C \u0432 \u043E\u0431\u044B\u0447\u043D\u044B\u0439 \u043F\u0440\u043E\u0431\u0435\u043B.
-const FIXED_WIDTH_SPACES = /[\u2000-\u200A\u202F\u205F\u3000]/g
+
+// Символы-распорки фиксированной ширины, которые НЕ схлопываются под
+// white-space:normal (в отличие от обычного пробела) → сотня подряд в
+// preheader даёт высокий пустой бокс. Конвертируем в обычный пробел:
+//   figure U+2007, en/em/thin U+2000–U+200A, narrow/medium U+202F/U+205F,
+//   ideographic U+3000, BRAILLE PATTERN BLANK U+2800 (печатный «пробел»,
+//   Госуслуги и др. набивают им preheader, часто + color:transparent).
+const FIXED_WIDTH_SPACES = /[\u2000-\u200A\u202F\u205F\u2800\u3000]/g
 function stripInvisibleChars(root: Element): void {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
   const texts: Text[] = []

@@ -143,4 +143,14 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     expect(out).toContain('конец')
   })
 
+  it('конвертирует braille-blank U+2800 (preheader-распорка Госуслуг) в пробел', () => {
+    // Госуслуги набивают preheader символом U+2800 (печатный «пустой» braille,
+    // ширина пробела, НЕ схлопывается) + color:transparent → пустой бокс.
+    const braille = '\u2800'.repeat(80)
+    const dirty = `<div style="color: transparent">${braille}</div><div>Текст</div>`
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).not.toContain('\u2800')
+    expect(out).toContain('Текст')
+  })
+
 })
