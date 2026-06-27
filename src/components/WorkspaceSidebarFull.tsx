@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { QuickActionsProvider } from '@/components/quick-actions/QuickActionsProvider'
 import { SidebarSlotsRow } from './WorkspaceSidebar/SidebarSlotsRow'
 import { SidebarFavoritesButton } from './WorkspaceSidebar/SidebarFavoritesButton'
+import { NotificationMuteButton } from './WorkspaceSidebar/NotificationMuteButton'
 import { SidebarGlobalSearch } from './WorkspaceSidebar/SidebarGlobalSearch'
 import { ProjectsList } from './WorkspaceSidebar/ProjectsList'
 import { SettingsNav } from './WorkspaceSidebar/SettingsNav'
@@ -472,7 +473,12 @@ export function WorkspaceSidebarFull({
             <div className="px-2 pt-2">
               <SidebarGlobalSearch
                 workspaceId={workspaceId}
-                trailing={<SidebarFavoritesButton workspaceId={workspaceId} />}
+                trailing={
+                  <div className="flex items-center gap-0.5">
+                    <NotificationMuteButton workspaceId={workspaceId} />
+                    <SidebarFavoritesButton workspaceId={workspaceId} />
+                  </div>
+                }
               />
             </div>
           )}

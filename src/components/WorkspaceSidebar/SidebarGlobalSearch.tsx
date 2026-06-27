@@ -406,7 +406,7 @@ export function SidebarGlobalSearch({
               }
             }}
             placeholder="Поиск"
-            className="w-full h-8 pl-8 pr-7 text-sm bg-white border border-gray-200 rounded-md text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            className="w-full h-8 pl-8 pr-14 text-sm bg-white border border-gray-200 rounded-md text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           />
           {query.length > 0 ? (
             <button

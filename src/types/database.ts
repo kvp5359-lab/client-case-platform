@@ -4733,6 +4733,35 @@ export type Database = {
           },
         ]
       }
+      notification_mute: {
+        Row: {
+          muted_until: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          muted_until: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          muted_until?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_mute_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participants: {
         Row: {
           avatar_fetched_at: string | null
@@ -6398,6 +6427,120 @@ export type Database = {
           },
         ]
       }
+      recurring_task_rules: {
+        Row: {
+          accent_color: string
+          access_roles: string[] | null
+          access_type: string
+          assignee_participant_ids: string[]
+          bymonthday: number | null
+          byweekday: number[]
+          create_lead_days: number
+          created_at: string
+          created_by: string | null
+          deadline_offset_days: number | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          fire_time: string
+          freq: string
+          icon: string
+          id: string
+          initial_message_html: string | null
+          is_active: boolean
+          is_deleted: boolean
+          last_generated_thread_id: string | null
+          last_run_at: string | null
+          member_participant_ids: string[]
+          next_occurrence_at: string | null
+          occurrences_count: number
+          owner_user_id: string | null
+          project_id: string | null
+          source_template_id: string | null
+          starts_on: string | null
+          status_id: string | null
+          timezone: string
+          title: string
+          until_date: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          accent_color?: string
+          access_roles?: string[] | null
+          access_type?: string
+          assignee_participant_ids?: string[]
+          bymonthday?: number | null
+          byweekday?: number[]
+          create_lead_days?: number
+          created_at?: string
+          created_by?: string | null
+          deadline_offset_days?: number | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          fire_time?: string
+          freq?: string
+          icon?: string
+          id?: string
+          initial_message_html?: string | null
+          is_active?: boolean
+          is_deleted?: boolean
+          last_generated_thread_id?: string | null
+          last_run_at?: string | null
+          member_participant_ids?: string[]
+          next_occurrence_at?: string | null
+          occurrences_count?: number
+          owner_user_id?: string | null
+          project_id?: string | null
+          source_template_id?: string | null
+          starts_on?: string | null
+          status_id?: string | null
+          timezone?: string
+          title: string
+          until_date?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          accent_color?: string
+          access_roles?: string[] | null
+          access_type?: string
+          assignee_participant_ids?: string[]
+          bymonthday?: number | null
+          byweekday?: number[]
+          create_lead_days?: number
+          created_at?: string
+          created_by?: string | null
+          deadline_offset_days?: number | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          fire_time?: string
+          freq?: string
+          icon?: string
+          id?: string
+          initial_message_html?: string | null
+          is_active?: boolean
+          is_deleted?: boolean
+          last_generated_thread_id?: string | null
+          last_run_at?: string | null
+          member_participant_ids?: string[]
+          next_occurrence_at?: string | null
+          occurrences_count?: number
+          owner_user_id?: string | null
+          project_id?: string | null
+          source_template_id?: string | null
+          starts_on?: string | null
+          status_id?: string | null
+          timezone?: string
+          title?: string
+          until_date?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       project_threads: {
         Row: {
           accent_color: string
@@ -6431,6 +6574,7 @@ export type Database = {
           on_complete_set_project_status_id: string | null
           owner_user_id: string | null
           project_id: string | null
+          recurring_rule_id: string | null
           search_vector: unknown
           short_id: number | null
           sort_order: number
@@ -6477,6 +6621,7 @@ export type Database = {
           on_complete_set_project_status_id?: string | null
           owner_user_id?: string | null
           project_id?: string | null
+          recurring_rule_id?: string | null
           search_vector?: unknown
           short_id?: number | null
           sort_order?: number
@@ -6523,6 +6668,7 @@ export type Database = {
           on_complete_set_project_status_id?: string | null
           owner_user_id?: string | null
           project_id?: string | null
+          recurring_rule_id?: string | null
           search_vector?: unknown
           short_id?: number | null
           sort_order?: number

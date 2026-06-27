@@ -23,6 +23,7 @@ import {
   parseTextLine,
 } from './useMessageToastPayload'
 import { playIncomingSound } from './useMessageSound'
+import { useNotificationMute } from '@/hooks/useNotificationMute'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import type { TaskItem } from '@/components/tasks/types'
 
@@ -55,6 +56,15 @@ export function useNewMessageToast(workspaceId: string | undefined) {
   useEffect(() => {
     userRef.current = user
   }, [user])
+
+  // Режим «тишина» — глушит тост новых сообщений и звук. Читаем через ref,
+  // чтобы realtime-обработчик внутри подписки видел актуальное значение без
+  // переподписки на канал при каждом переключении.
+  const { isMuted } = useNotificationMute(workspaceId)
+  const isMutedRef = useRef(isMuted)
+  useEffect(() => {
+    isMutedRef.current = isMuted
+  }, [isMuted])
 
   const myParticipantIdsRef = useRef<Set<string>>(new Set())
 
@@ -90,6 +100,8 @@ export function useNewMessageToast(workspaceId: string | undefined) {
           filter: `workspace_id=eq.${workspaceId}`,
         },
         async (payload) => {
+          // Режим «тишина» — не показываем тост и не проигрываем звук.
+          if (isMutedRef.current) return
           const msg = payload.new as RealtimeMessagePayload
           const msgChannel: 'client' | 'internal' =
             msg.channel === 'internal' ? 'internal' : 'client'
@@ -316,6 +328,8 @@ export function useNewMessageToast(workspaceId: string | undefined) {
           filter: `workspace_id=eq.${workspaceId}`,
         },
         (payload) => {
+          // Режим «тишина» — не показываем тост «Новый диалог» и не проигрываем звук.
+          if (isMutedRef.current) return
           const t = payload.new as RealtimeThreadPayload
 
           // Только свежесозданные — отсекаем возможный реплей старых строк.

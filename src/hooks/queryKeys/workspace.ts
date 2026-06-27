@@ -92,6 +92,14 @@ export const workspaceSettingsKeys = {
     ['workspace-notification-settings', workspaceId] as const,
 }
 
+/**
+ * Режим «тишина» (Do Not Disturb) — пер-пользователь, пер-воркспейс.
+ */
+export const notificationMuteKeys = {
+  byWorkspace: (workspaceId: string, userId: string | undefined) =>
+    ['notification-mute', workspaceId, userId] as const,
+}
+
 export const workspaceDigestSettingsKeys = {
   byWorkspace: (workspaceId: string) =>
     ['workspace-digest-settings', workspaceId] as const,
