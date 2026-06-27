@@ -46,6 +46,9 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-25 — Цвет имени отправителя во «Входящих» = акцент треда (стиль, не баг) ⏳ ЖДЁТ ДЕПЛОЯ
+- `InboxChatItem`: имя отправителя в превью красилось фиксированным синим `#337acc`. Стало — цвет акцента треда (`accent.text`), совпадает с иконкой/бейджем. `SENDER_NAME_CLASS` несёт только вес (`font-normal`), цвет добавляется на месте `cn(SENDER_NAME_CLASS, accent.text)` во всех 3 ветках превью. Деталь — `docs/changelog/2026-06-25-inbox-sender-name-accent-color.md`. Чистый фронт.
+
 ### 2026-06-27 — Hover-prefetch греет last_read_at + currentParticipant (перф, не баг) ⏳ ЖДЁТ ДЕПЛОЯ
 - **Контекст:** прогрев по наведению на тред (`usePrefetchThreadMessages`) грел только сообщения. При первом открытии треда красный контур непрочитанного и раскраска «своих» баблов появлялись с паузой (отдельные сетевые запросы после сообщений).
 - **Сделано:** на тот же hover добавлен `prefetchQuery` для (1) `last_read_at` — ТОТ ЖЕ ключ/queryFn, что `useLastReadAt` (`messengerKeys.lastReadAtByThreadId` + `getThreadLastReadAtForUser`); (2) «моей личности» — `messengerParticipantKeys.current(scopeId, user)` + `resolveParticipantFull` (как в `useMessengerState`; `scopeId = projectId ?? workspaceId`, staleTime Infinity). Хук принимает `projectId`; вызовы из `DraggableBoardTaskRow`/`InboxChatItem`/`ItemListsPage/ThreadRow` прокидывают `task.project_id`/`chat.project_id`.

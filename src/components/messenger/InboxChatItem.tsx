@@ -137,7 +137,9 @@ type InboxChatItemProps = {
 }
 
 /** Стиль имени отправителя в превью (нежирный, синий). */
-const SENDER_NAME_CLASS = 'font-normal text-[#337acc]'
+// Только вес — цвет имени отправителя берём из акцента треда (accent.text),
+// чтобы совпадал с цветом самого треда (иконка/бейдж).
+const SENDER_NAME_CLASS = 'font-normal'
 
 export const InboxChatItem = memo(function InboxChatItem({
   chat,
@@ -319,7 +321,7 @@ export const InboxChatItem = memo(function InboxChatItem({
             ) : reactionIsNewer && chat.last_reaction_emoji ? (
               <span className="italic text-gray-500">
                 {chat.last_reaction_sender_name && (
-                  <span className={cn('not-italic', SENDER_NAME_CLASS)}>
+                  <span className={cn('not-italic', SENDER_NAME_CLASS, accent.text)}>
                     {displaySenderName(chat.last_reaction_sender_name)}
                   </span>
                 )}
@@ -367,7 +369,7 @@ export const InboxChatItem = memo(function InboxChatItem({
                 return (
                   <>
                     {chat.last_sender_name && (
-                      <span className={SENDER_NAME_CLASS}>
+                      <span className={cn(SENDER_NAME_CLASS, accent.text)}>
                         {displaySenderName(chat.last_sender_name)}:{' '}
                       </span>
                     )}
@@ -392,7 +394,7 @@ export const InboxChatItem = memo(function InboxChatItem({
                 return (
                   <>
                     {chat.last_sender_name && (
-                      <span className={SENDER_NAME_CLASS}>
+                      <span className={cn(SENDER_NAME_CLASS, accent.text)}>
                         {displaySenderName(chat.last_sender_name)}:{' '}
                       </span>
                     )}
