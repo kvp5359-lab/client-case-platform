@@ -59,6 +59,7 @@ export {
   markAsRead,
   markAsUnread,
   getLastReadAt,
+  getThreadLastReadAtForUser,
   getUnreadCount,
 } from './messengerReadStatusService'
 export {

@@ -11,9 +11,10 @@ import {
   markAsRead,
   markAsUnread,
   resolveParticipantId,
+  getThreadLastReadAtForUser,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
-import { getInboxThreadOne, getInboxThreadAggregates } from '@/services/api/inboxService'
+import { getInboxThreadAggregates } from '@/services/api/inboxService'
 import { supabase } from '@/lib/supabase'
 import {
   messengerKeys,
@@ -171,10 +172,11 @@ export function useLastReadAt(
   const { user } = useAuth()
   const query = useQuery({
     queryKey: messengerKeys.lastReadAtByThreadId(threadId ?? '__none__'),
-    queryFn: async (): Promise<string | null> => {
-      const row = await getInboxThreadOne(workspaceId, user!.id, threadId!)
-      return row?.last_read_at ?? null
-    },
+    // Прямой read из message_read_status (~0.2мс) вместо RPC get_inbox_thread_one
+    // (~750мс, скан всего инбокса) — красный контур появляется почти вместе с
+    // сообщениями, без паузы. Значение идентично (см. getThreadLastReadAtForUser).
+    queryFn: (): Promise<string | null> =>
+      getThreadLastReadAtForUser(workspaceId, user!.id, threadId!),
     enabled: !!workspaceId && !!user && !!threadId,
     staleTime: STALE_TIME.SHORT,
   })

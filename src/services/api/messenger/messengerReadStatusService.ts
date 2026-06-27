@@ -80,6 +80,38 @@ export async function getLastReadAt(
 }
 
 /**
+ * Быстрый last_read_at по (workspace, user, thread) для красного контура.
+ *
+ * Раньше `useLastReadAt` брал это поле через RPC `get_inbox_thread_one` —
+ * обёртку над `get_inbox_threads_v2`, которая ради ОДНОГО значения сканирует
+ * весь инбокс (~750мс на проде). Контур из-за этого появлялся с паузой после
+ * сообщений. Здесь — прямое чтение из `message_read_status` (~0.2мс).
+ *
+ * Участник резолвится так же, как `user_participant` в v2: единственная
+ * workspace-запись юзера (`participants` по workspace_id+user_id). Значение
+ * идентично тому, что отдавала RPC (в v2 last_read_at = просто
+ * `message_read_status.last_read_at` для этого участника, без доп. формулы).
+ */
+export async function getThreadLastReadAtForUser(
+  workspaceId: string,
+  userId: string,
+  threadId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('message_read_status')
+    .select('last_read_at, participants!inner(user_id, workspace_id, is_deleted)')
+    .eq('thread_id', threadId)
+    .eq('participants.user_id', userId)
+    .eq('participants.workspace_id', workspaceId)
+    .eq('participants.is_deleted', false)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw new ConversationError(`Ошибка получения last_read_at: ${error.message}`)
+  return data?.last_read_at ?? null
+}
+
+/**
  * Unread count via RPC
  */
 export async function getUnreadCount(
