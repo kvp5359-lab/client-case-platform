@@ -322,6 +322,8 @@ export function useSidebarInboxCounts(workspaceId: string) {
     let unreadPersonalDialogsCount = 0
     // Треды без project_id — для виртуальной записи «Без проекта» в сайдбаре.
     const noProjectThreads: typeof threads = []
+    /** Цвет бейджа «Без проекта»: accent непрочитанного треда (amber если разные). */
+    let noProjectBadgeColor: string | undefined
     /** Максимум last_message_at среди тредов без project_id — для сортировки виртуала среди проектов. */
     let noProjectLastActivityMs = 0
 
@@ -333,7 +335,13 @@ export function useSidebarInboxCounts(workspaceId: string) {
       if (hasAny) unreadThreadsCount += 1
       // Личные диалоги — отдельный счётчик + копим список для bage виртуала.
       if (!t.project_id) {
-        if (hasAny) unreadPersonalDialogsCount += 1
+        if (hasAny) {
+          unreadPersonalDialogsCount += 1
+          // Тот же подбор цвета, что у проектов: accent треда; при разных — amber.
+          if (!noProjectBadgeColor) noProjectBadgeColor = t.thread_accent_color ?? 'blue'
+          else if (noProjectBadgeColor !== 'amber' && noProjectBadgeColor !== t.thread_accent_color)
+            noProjectBadgeColor = 'amber'
+        }
         noProjectThreads.push(t)
         if (t.last_message_at) {
           const ms = Date.parse(t.last_message_at)
@@ -395,6 +403,7 @@ export function useSidebarInboxCounts(workspaceId: string) {
       unreadThreadsCount,
       unreadPersonalDialogsCount,
       noProjectBadgeDisplay,
+      noProjectBadgeColor,
       noProjectLastActivityAt,
       projectData: {
         badgeDisplays,

@@ -103,10 +103,17 @@ export function WorkspaceSidebarFull({
     unreadThreadsCount,
     unreadPersonalDialogsCount,
     noProjectBadgeDisplay,
+    noProjectBadgeColor,
     noProjectLastActivityAt,
     projectData: projectUnreadData,
   } = useSidebarInboxCounts(workspaceId ?? '')
-  const badgeColors = projectUnreadData.badgeColors
+  // Цвет бейджа «Без проекта» — как у проектов (accent треда). Без этого
+  // виртуал брал дефолтный цвет вместо акцента (баг 2026-06-27).
+  const badgeColors = useMemo(() => {
+    const next = new Map(projectUnreadData.badgeColors)
+    if (noProjectBadgeColor) next.set(NO_PROJECT_VIRTUAL_ID, noProjectBadgeColor)
+    return next
+  }, [projectUnreadData.badgeColors, noProjectBadgeColor])
   const clientUnreadCounts = projectUnreadData.clientUnreadCounts
   const internalUnreadCounts = projectUnreadData.internalUnreadCounts
   const projectThreadIds = projectUnreadData.threadIds
