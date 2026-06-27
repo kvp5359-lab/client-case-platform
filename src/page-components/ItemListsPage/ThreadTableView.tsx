@@ -68,6 +68,7 @@ export function ThreadTableView({
     filters,
     ctx,
     assigneesMap,
+    // sortBy в БД — свободная строка; applyFilters ждёт узкий SortField — каст
     (sortBy as never) ?? 'created_at',
     sortDir ?? 'desc',
   )

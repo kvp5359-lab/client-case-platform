@@ -16,6 +16,9 @@ import { workspaceTaskKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
 export const assigneeKeys = {
+  /** Broad-префиксы для инвалидации всех карт/списков исполнителей сразу. */
+  mapAll: ['task-assignees-map'] as const,
+  singleAll: ['task-assignees'] as const,
   map: (ids: string) => ['task-assignees-map', ids] as const,
   single: (threadId: string) => ['task-assignees', threadId] as const,
 }

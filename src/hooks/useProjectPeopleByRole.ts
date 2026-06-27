@@ -11,7 +11,7 @@
 import { useMemo } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { STALE_TIME, projectPeopleByRoleKeys } from '@/hooks/queryKeys'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
 const CHUNK = 40
@@ -25,7 +25,7 @@ type Row = {
 export function useProjectPeopleByRole(projectIds: string[]) {
   const key = [...projectIds].sort().join(',')
   const query = useQuery({
-    queryKey: ['project-people-by-role', key],
+    queryKey: projectPeopleByRoleKeys.byKey(key),
     enabled: projectIds.length > 0,
     staleTime: STALE_TIME.SHORT,
     placeholderData: keepPreviousData,

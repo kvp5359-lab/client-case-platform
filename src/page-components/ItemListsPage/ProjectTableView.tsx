@@ -4,6 +4,7 @@ import { useMemo, useRef, useEffect, useCallback } from 'react'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useListProjects } from './useListData'
 import { useProjectPeopleByRole } from '@/hooks/useProjectPeopleByRole'
+import { projectPeopleByRoleKeys } from '@/hooks/queryKeys'
 import { toggleProjectRole } from './bulkExecutorActions'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -69,6 +70,7 @@ export function ProjectTableView({
     filters,
     ctx,
     participantsMap,
+    // sortBy в БД — свободная строка; applyFilters ждёт узкий SortField — каст
     (sortBy as never) ?? 'created_at',
     sortDir ?? 'desc',
   ) as unknown as BoardProject[]
@@ -143,7 +145,7 @@ export function ProjectTableView({
     async (projectId: string, participantId: string, role: string, present: boolean) => {
       try {
         await toggleProjectRole(projectId, participantId, role, present)
-        qc.invalidateQueries({ queryKey: ['project-people-by-role'] })
+        qc.invalidateQueries({ queryKey: projectPeopleByRoleKeys.all })
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Не удалось изменить роль')
       }

@@ -30,6 +30,7 @@ import {
 import { THREAD_ICONS } from '@/components/messenger/threadConstants'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { useActiveInterfacePreset, useUpdateActiveQuickActions } from '@/hooks/useInterfacePresets'
+import { quickActionsEditorKeys } from '@/hooks/queryKeys'
 import {
   DEFAULT_QUICK_ACTION_ICON,
   QUICK_ACTION_KIND_LABELS,
@@ -221,7 +222,7 @@ function QuickActionFormDialog({
   const [route, setRoute] = useState<string>(() => initial?.route ?? 'inbox')
 
   const { data: projectTemplates = [] } = useQuery({
-    queryKey: ['qa-project-templates', workspaceId],
+    queryKey: quickActionsEditorKeys.projectTemplates(workspaceId),
     enabled: true,
     queryFn: async () => {
       const { data } = await supabase
@@ -234,7 +235,7 @@ function QuickActionFormDialog({
   })
 
   const { data: threadTemplates = [] } = useQuery({
-    queryKey: ['qa-thread-templates', workspaceId],
+    queryKey: quickActionsEditorKeys.threadTemplates(workspaceId),
     enabled: true,
     queryFn: async () => {
       // Только глобальная библиотека шаблонов тредов (без пер-проектных
@@ -250,7 +251,7 @@ function QuickActionFormDialog({
   })
 
   const { data: projects = [] } = useQuery({
-    queryKey: ['qa-projects', workspaceId],
+    queryKey: quickActionsEditorKeys.projects(workspaceId),
     enabled: true,
     queryFn: async () => {
       const { data } = await supabase

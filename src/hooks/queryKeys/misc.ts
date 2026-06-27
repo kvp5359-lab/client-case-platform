@@ -202,3 +202,34 @@ export const profileSectionKeys = {
   tgStatus: (workspaceId: string, userId: string) =>
     ['profile', 'tg-status', workspaceId, userId] as const,
 }
+
+/** Имена закреплённых тредов в сайдбаре (батч по id). */
+export const favoriteThreadNamesKeys = {
+  all: ['favorite-thread-names'] as const,
+  byWorkspaceThreads: (workspaceId: string, threadIds: string[]) =>
+    ['favorite-thread-names', workspaceId, threadIds] as const,
+}
+
+/** Уже существующие треды проекта при добавлении из шаблона. */
+export const addFromTemplateKeys = {
+  existingThreads: (projectId: string) =>
+    ['add-from-template', 'existing-threads', projectId] as const,
+}
+
+/** Участники проектов по ролям (для фильтров/таблиц списков). */
+export const projectPeopleByRoleKeys = {
+  all: ['project-people-by-role'] as const,
+  byKey: (key: string) => ['project-people-by-role', key] as const,
+}
+
+/** Справочники для редактора быстрых действий сайдбара. */
+export const quickActionsEditorKeys = {
+  projectTemplates: (workspaceId: string) => ['qa-project-templates', workspaceId] as const,
+  threadTemplates: (workspaceId: string) => ['qa-thread-templates', workspaceId] as const,
+  projects: (workspaceId: string) => ['qa-projects', workspaceId] as const,
+}
+
+/** Имя контакта проекта по participant_id (Google Drive секция). */
+export const projectContactNameKeys = {
+  byParticipant: (participantId: string) => ['project-contact-name', participantId] as const,
+}

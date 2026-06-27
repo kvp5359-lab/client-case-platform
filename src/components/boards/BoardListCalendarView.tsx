@@ -410,6 +410,7 @@ export function BoardListCalendarView({
           onView={setView}
           date={date}
           onNavigate={setDate}
+          // react-big-calendar не экспортирует тип для пропа `views` — каст
           views={viewsProp as never}
           defaultView={initialView}
           step={10}

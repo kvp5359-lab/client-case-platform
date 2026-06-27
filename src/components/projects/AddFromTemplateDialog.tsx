@@ -33,6 +33,7 @@ import {
   formKitKeys,
   workspaceThreadKeys,
   folderSlotKeys,
+  addFromTemplateKeys,
 } from '@/hooks/queryKeys'
 
 type Props = {
@@ -62,7 +63,7 @@ export function AddFromTemplateDialog({
 
   // Уже добавленные в проект шаблоны тредов — чтобы скрыть их из списка.
   const { data: existingTemplateIds } = useQuery({
-    queryKey: ['add-from-template', 'existing-threads', projectId],
+    queryKey: addFromTemplateKeys.existingThreads(projectId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_threads')

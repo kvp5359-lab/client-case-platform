@@ -31,6 +31,7 @@ import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProjects'
 import { useQueryClient } from '@tanstack/react-query'
 import { workspaceThreadKeys, accessibleProjectKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
+import { assigneeKeys } from '@/components/tasks/useTaskAssignees'
 import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import type { PickerParticipant } from '@/components/participants/ParticipantsPicker'
@@ -110,8 +111,8 @@ export function BulkActionsBar({
 
   // Инвалидация карт исполнителей (аватарки в колонке) после пакетных правок.
   const refreshAssignees = () => {
-    qc.invalidateQueries({ queryKey: ['task-assignees-map'] })
-    qc.invalidateQueries({ queryKey: ['task-assignees'] })
+    qc.invalidateQueries({ queryKey: assigneeKeys.mapAll })
+    qc.invalidateQueries({ queryKey: assigneeKeys.singleAll })
   }
 
   // ── Пакетные thread-действия ──────────────────────────────────────────────

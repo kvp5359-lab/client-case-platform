@@ -80,6 +80,7 @@ export function planListCardsDrop(card: CardDrag, targetListId: string, lists: B
   if (targetListId === card.sourceListId) return { type: 'noop' }
   const targetList = lists.find((l) => l.id === targetListId)
   if (!targetList) return { type: 'noop' }
+  // filters — jsonb-колонка (Json); extractStatusIdFromFilter ждёт FilterGroup, читает лишь status_id
   const newStatusId = extractStatusIdFromFilter(targetList.filters as never)
   if (newStatusId === null) return { type: 'noop' }
   return planStatusChange(card, newStatusId)

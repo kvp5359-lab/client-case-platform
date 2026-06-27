@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/popover'
 import { useTaskStatuses, useAllProjectStatuses } from '@/hooks/useStatuses'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
-import { useProjectTemplatesQuery } from '@/page-components/ProjectsPage/hooks/useProjectsPageData'
+import { useProjectTemplatesQuery } from '@/hooks/useProjectTemplates'
 import type { FilterFieldDef } from '@/lib/filters/types'
 
 export type FilterValueOption = {

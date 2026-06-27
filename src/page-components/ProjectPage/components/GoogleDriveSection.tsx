@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase'
-import { STALE_TIME } from '@/hooks/queryKeys'
+import { STALE_TIME, projectContactNameKeys } from '@/hooks/queryKeys'
 import { expandFolderNameTemplate } from '@/lib/folderNameTemplate'
 import {
   Dialog,
@@ -102,7 +102,7 @@ export function GoogleDriveSection({
   // Имя контакта для {contact_name} — нужно только когда шаблон его использует.
   const needsContact = !!folderNameTemplate?.includes('{contact_name}') && !!contactParticipantId
   const { data: contactName } = useQuery({
-    queryKey: ['project-contact-name', contactParticipantId],
+    queryKey: projectContactNameKeys.byParticipant(contactParticipantId ?? ''),
     enabled: needsContact,
     staleTime: STALE_TIME.STANDARD,
     queryFn: async () => {

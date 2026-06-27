@@ -1,13 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { projectKeys, projectTemplateKeys, trashKeys } from '@/hooks/queryKeys'
+import { projectKeys, trashKeys } from '@/hooks/queryKeys'
 import type { Project } from '@/types/entities'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
-import type {
-  ProjectAssigneeOption,
-  ProjectTemplateOption,
-} from '@/components/projects/filters'
+import type { ProjectAssigneeOption } from '@/components/projects/filters'
 import type { WorkspacePermissionsResult } from '@/hooks/permissions/useWorkspacePermissions'
 
 
@@ -44,24 +41,9 @@ export function useProjectsQuery(
   })
 }
 
-export function useProjectTemplatesQuery(workspaceId: string | null | undefined) {
-  return useQuery({
-    // Лёгкий список id+name → отдельный кеш namesByWorkspace, иначе обрезанные
-    // строки затирали бы полный кеш listByWorkspace (редактор шаблонов).
-    queryKey: projectTemplateKeys.namesByWorkspace(workspaceId ?? ''),
-    queryFn: async (): Promise<ProjectTemplateOption[]> => {
-      if (!workspaceId) return []
-      const { data, error } = await supabase
-        .from('project_templates')
-        .select('id, name')
-        .eq('workspace_id', workspaceId)
-        .order('name')
-      if (error) throw error
-      return (data ?? []) as ProjectTemplateOption[]
-    },
-    enabled: !!workspaceId,
-  })
-}
+// Перенесён в слой hooks (src/hooks/useProjectTemplates.ts), чтобы фильтр-примитивы
+// не импортировали внутренности страницы. Реэкспорт — для существующих потребителей.
+export { useProjectTemplatesQuery } from '@/hooks/useProjectTemplates'
 
 export function useProjectParticipantsQuery(workspaceId: string | null | undefined) {
   return useQuery<ProjectParticipantsData>({

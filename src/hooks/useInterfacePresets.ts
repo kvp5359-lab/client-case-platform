@@ -61,6 +61,7 @@ function mapPreset(row: Record<string, unknown>): InterfacePreset {
     color: (row.color as string | null) ?? null,
     is_default: Boolean(row.is_default),
     owner_user_id: (row.owner_user_id as string | null) ?? null,
+    // row.config — нетипизированный jsonb из generic-запроса; разбираем через sanctioned-хелпер
     config: fromSupabaseJson<InterfacePresetConfig>(row.config as never) ?? {},
     order_index: Number(row.order_index ?? 0),
   }
@@ -214,6 +215,7 @@ export async function writeConfigPatchToActivePreset(
     .eq('id', presetId)
     .maybeSingle()
   const prevConfig =
+    // config — нетипизированный jsonb; разбираем через sanctioned-хелпер
     fromSupabaseJson<InterfacePresetConfig>(
       (existing?.config as never) ?? null,
     ) ?? {}
@@ -300,6 +302,7 @@ export function useCreateInterfacePreset() {
           .eq('id', params.copyFromPresetId)
           .maybeSingle()
         config =
+          // config — нетипизированный jsonb; разбираем через sanctioned-хелпер
           fromSupabaseJson<InterfacePresetConfig>(
             (src?.config as never) ?? null,
           ) ?? config

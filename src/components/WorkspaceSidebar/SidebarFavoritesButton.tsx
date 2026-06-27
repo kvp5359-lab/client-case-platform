@@ -42,6 +42,7 @@ import {
 } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { supabase } from '@/lib/supabase'
+import { favoriteThreadNamesKeys } from '@/hooks/queryKeys'
 import {
   useFavorites,
   useToggleFavorite,
@@ -460,7 +461,7 @@ type FavThreadRow = { id: string; name: string; type: string | null; icon: strin
 
 function useThreadNames(workspaceId: string | undefined, threadIds: string[]) {
   return useQuery({
-    queryKey: ['favorite-thread-names', workspaceId, threadIds],
+    queryKey: favoriteThreadNamesKeys.byWorkspaceThreads(workspaceId ?? '', threadIds),
     enabled: !!workspaceId && threadIds.length > 0,
     queryFn: async (): Promise<FavThreadRow[]> => {
       const { data, error } = await supabase
