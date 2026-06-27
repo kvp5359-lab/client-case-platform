@@ -52,6 +52,9 @@ export type DocumentActionsMenuProps = {
   compressingDocIds: Set<string>
   /** Callback при изменении открытости меню */
   onOpenChange?: (open: boolean) => void
+  /** Контролируемое состояние открытости (для внешнего вызова — напр. тап по
+   *  названию документа на мобиле). undefined → неконтролируемый режим. */
+  open?: boolean
   /** Права доступа к действиям */
   permissions?: DocumentActionPermissions
   /** ID слота (если документ привязан к слоту) */
@@ -68,6 +71,7 @@ export const DocumentActionsMenu = memo(function DocumentActionsMenu({
   isUnassigned = false,
   compressingDocIds,
   onOpenChange,
+  open,
   permissions = {},
   slotId,
 }: DocumentActionsMenuProps) {
@@ -85,7 +89,7 @@ export const DocumentActionsMenu = memo(function DocumentActionsMenu({
   const isCompressing = compressingDocIds.has(docId)
 
   return (
-    <DropdownMenu onOpenChange={onOpenChange}>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"

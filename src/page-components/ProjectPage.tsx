@@ -332,7 +332,9 @@ export default function ProjectPage() {
             if (e.currentTarget.scrollLeft !== 0) e.currentTarget.scrollLeft = 0
           }}
           className={cn(
-            'flex-1 overflow-y-auto overflow-x-hidden scrollbar-auto-hide p-3 relative',
+            // На мобиле правый отступ контента минимальный (pr-1) — больше места
+            // под контент; левый/верх/низ прежние. Десктоп — md:pr-* как было.
+            'flex-1 overflow-y-auto overflow-x-hidden scrollbar-auto-hide p-3 pr-1 relative',
             'md:pt-4 md:pb-8 md:pl-8',
             sidePanelOpen ? 'md:pr-3' : 'md:pr-8',
             activeTab === 'documents' && 'bg-white',

@@ -61,7 +61,7 @@ export function FolderCardHeader({
       {/* Разделитель */}
       <div className="mt-5 ml-1 mr-3 border-t border-gray-100" />
       {/* Заголовок папки */}
-      <div className="group/header -mt-0.5 py-1 pl-1 pr-3 select-none">
+      <div className="group/header -mt-0.5 py-1 pl-1 pr-1 md:pr-3 select-none">
         <div className="flex items-center gap-2 w-full">
           <div className="text-sm font-medium tracking-tight text-brand-500 flex items-center gap-2 min-w-0">
             <span className="truncate">{folder.name}</span>
@@ -84,7 +84,7 @@ export function FolderCardHeader({
                   entityId={folder.id}
                   projectId={projectId}
                   workspaceId={workspaceId}
-                  emptyClassName="opacity-0 group-hover/card:opacity-100"
+                  emptyClassName="hidden md:inline-flex opacity-0 group-hover/card:opacity-100"
                 />
               </div>
             )}
@@ -123,30 +123,62 @@ export function FolderCardHeader({
               </div>
             )}
           </div>
-          {/* Кнопки добавления — прижаты к правому краю */}
+          {/* Кнопки добавления — прижаты к правому краю.
+              Десктоп: две кнопки (Слот/Документы), проявляются по ховеру.
+              Мобила: одна «+» (всегда видна) — иначе невидимые ховер-кнопки
+              занимали место и имя папки ужималось до нуля. */}
           {(onAddSlot || onAddDocument) && (
-            <div className="flex items-center gap-1.5 ml-auto opacity-0 group-hover/card:opacity-100 transition-opacity flex-shrink-0">
-              {onAddSlot && (
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 h-5 px-2 text-[12px] text-gray-500 border border-dashed border-gray-400 rounded-md hover:text-gray-700 hover:border-gray-500 hover:bg-gray-100 transition-colors"
-                  onClick={() => onAddSlot(folder.id)}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Слот
-                </button>
-              )}
-              {onAddDocument && (
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 h-5 px-2 text-[12px] text-blue-600 border border-dashed border-blue-400 rounded-md hover:text-blue-700 hover:border-blue-500 hover:bg-blue-50 transition-colors"
-                  onClick={() => onAddDocument(folder.id)}
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  Документы
-                </button>
-              )}
-            </div>
+            <>
+              <div className="hidden md:flex items-center gap-1.5 ml-auto opacity-0 group-hover/card:opacity-100 transition-opacity flex-shrink-0">
+                {onAddSlot && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 h-5 px-2 text-[12px] text-gray-500 border border-dashed border-gray-400 rounded-md hover:text-gray-700 hover:border-gray-500 hover:bg-gray-100 transition-colors"
+                    onClick={() => onAddSlot(folder.id)}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Слот
+                  </button>
+                )}
+                {onAddDocument && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 h-5 px-2 text-[12px] text-blue-600 border border-dashed border-blue-400 rounded-md hover:text-blue-700 hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                    onClick={() => onAddDocument(folder.id)}
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Документы
+                  </button>
+                )}
+              </div>
+              <div className="flex md:hidden ml-auto flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Добавить"
+                      className="inline-flex items-center justify-center h-6 w-6 rounded-md text-blue-600 border border-dashed border-blue-400"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {onAddDocument && (
+                      <DropdownMenuItem onClick={() => onAddDocument(folder.id)}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Загрузить документы
+                      </DropdownMenuItem>
+                    )}
+                    {onAddSlot && (
+                      <DropdownMenuItem onClick={() => onAddSlot(folder.id)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Добавить слот
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </>
           )}
         </div>
       </div>

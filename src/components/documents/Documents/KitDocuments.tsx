@@ -225,7 +225,7 @@ export const KitDocuments = memo(function KitDocuments({
 
   return (
     <div className={cn('flex flex-col gap-2 w-full', !sidePanelOpen && 'max-w-[789px]')}>
-      <div className="bg-white rounded-2xl py-2 pr-2">
+      <div className="bg-white rounded-2xl py-2 pr-0.5 md:pr-2">
         <div className="flex items-center gap-3 pl-1 pr-3 pt-0.5 pb-1">
           <button
             type="button"

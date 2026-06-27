@@ -187,7 +187,7 @@ export const FolderCard = memo(function FolderCard({
       />
 
       {/* Контент папки */}
-      <div className="-mt-1 pr-2 pb-2 group/content">
+      <div className="-mt-1 pr-0.5 md:pr-2 pb-2 group/content">
         {filteredDocuments.length > 0 || filledSlots.length > 0 || emptySlots.length > 0 ? (
           <>
             {allDocumentRows.length > 0 && (

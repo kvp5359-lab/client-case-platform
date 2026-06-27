@@ -7,6 +7,7 @@
 
 import { memo, useCallback, useState } from 'react'
 import { SquareArrowOutUpRight, Minimize2 } from 'lucide-react'
+import { isMobileViewport } from '@/lib/isMobile'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DocumentActionsMenu } from '@/components/documents/DocumentActionsMenu'
 import { CommentBadge } from '@/components/comments'
@@ -203,7 +204,7 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
         </div>
       </td>
       {/* Контент */}
-      <td className={`${cellClass} pl-0.5 pr-2.5`}>
+      <td className={`${cellClass} pl-0.5 pr-1 md:pr-2.5`}>
         <div
           className="docs-row flex items-center gap-2.5 min-w-0"
           style={{ minHeight: 20, marginTop: -1 }}
@@ -215,12 +216,20 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
             onStatusChange={onStatusChange}
           />
           <span
-            className={`min-w-0 text-[15px] leading-tight truncate ${!hasFile ? 'text-muted-foreground' : !currentStatus?.text_color ? (isFinal ? 'text-gray-400' : 'text-gray-900 font-medium') : 'font-medium'}`}
+            className={`flex-1 min-w-0 text-[15px] leading-tight truncate ${!hasFile ? 'text-muted-foreground' : !currentStatus?.text_color ? (isFinal ? 'text-gray-400' : 'text-gray-900 font-medium') : 'font-medium'}`}
             style={
               currentStatus?.text_color
                 ? { color: safeCssColor(currentStatus.text_color) }
                 : undefined
             }
+            onClick={(e) => {
+              // Мобила: тап по названию открывает меню «⋮» (там выбор действия),
+              // а не правит слот. Десктоп — даём всплыть к onClick строки (edit).
+              if (isMobileViewport()) {
+                e.stopPropagation()
+                setMenuOpen(true)
+              }
+            }}
           >
             {document.name}
           </span>
@@ -256,16 +265,18 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
               entityId={document.id}
               projectId={projectId}
               workspaceId={workspaceId}
-              emptyClassName="opacity-0 group-hover/doc:opacity-100"
+              emptyClassName="hidden md:inline-flex opacity-0 group-hover/doc:opacity-100"
             />
           )}
           <div
-            className={`shrink-0 flex items-center gap-0.5 transition-opacity duration-150 ${compressingDocIds.has(document.id) ? 'hidden' : menuOpen ? 'opacity-100' : 'opacity-0 group-hover/doc:opacity-100'}`}
+            className={`shrink-0 flex items-center gap-0.5 transition-opacity duration-150 ${compressingDocIds.has(document.id) ? 'hidden' : menuOpen ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover/doc:opacity-100'}`}
           >
             {hasFile && currentFile && (
               <button
                 type="button"
-                className="h-5 w-5 p-0 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                // На мобиле открытие — через меню «⋮» (тап по названию), эту
+                // иконку прячем, чтобы не занимала место. Десктоп — как было.
+                className="h-5 w-5 p-0 hidden md:flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                 onClick={(e) => {
                   e.stopPropagation()
                   onOpenDocument(document.id)
@@ -282,6 +293,7 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
                 handlers={docHandlers}
                 permissions={docPermissions}
                 compressingDocIds={compressingDocIds}
+                open={menuOpen}
                 onOpenChange={setMenuOpen}
                 slotId={slotId}
               />
