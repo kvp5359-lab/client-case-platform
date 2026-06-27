@@ -91,11 +91,11 @@ export function DirectoriesTab() {
   }
 
   return (
-    <div className="flex bg-white rounded-lg border min-h-[500px]">
+    <div className="flex h-full bg-white rounded-lg border overflow-hidden">
       <SettingsSubNav groups={groups} activeId={activeSection} onSelect={handleSectionChange} />
 
       {/* Контент */}
-      <div className="flex-1 p-6">{(
+      <div className="flex-1 p-6 overflow-y-auto">{(
         <>
           {activeSection === 'statuses' && <StatusesDirectory />}
           {activeSection === 'workspace-roles' && <WorkspaceRolesDirectory />}

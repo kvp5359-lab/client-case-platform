@@ -16,13 +16,13 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { safeCssColor } from '@/utils/isValidCssColor'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Crown, Shield, Users, Edit2, Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react'
+import { Crown, Shield, Users, Edit2, Trash2, Plus } from 'lucide-react'
 import type { Database } from '@/types/database'
 import { WorkspaceRoleEditDialog, ProjectRoleEditDialog } from './permissions'
 import { permissionKeys } from '@/hooks/queryKeys'
+import { SettingsSubNav } from './components/SettingsSubNav'
 
 type WorkspaceRole = Database['public']['Tables']['workspace_roles']['Row']
 type ProjectRole = Database['public']['Tables']['project_roles']['Row']
@@ -33,10 +33,7 @@ export function PermissionsTab() {
 
   const [editingWorkspaceRole, setEditingWorkspaceRole] = useState<WorkspaceRole | null>(null)
   const [editingProjectRole, setEditingProjectRole] = useState<ProjectRole | null>(null)
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    workspace: true,
-    project: true,
-  })
+  const [active, setActive] = useState<'workspace' | 'project'>('workspace')
 
   // Загрузка ролей workspace
   const { data: workspaceRoles, isLoading: loadingWsRoles } = useQuery({
@@ -102,10 +99,6 @@ export function PermissionsTab() {
     },
   })
 
-  const toggleSection = (section: string) => {
-    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
-  }
-
   const getRoleIcon = (role: WorkspaceRole) => {
     if (role.is_owner) return Crown
     if (role.is_system && !role.is_owner) return Shield
@@ -124,39 +117,33 @@ export function PermissionsTab() {
     )
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Роли Workspace */}
-      <Card>
-        <CardHeader
-          className="cursor-pointer"
-          onClick={() => toggleSection('workspace')}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e: React.KeyboardEvent) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              toggleSection('workspace')
-            }
-          }}
-          aria-expanded={expandedSections.workspace}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {expandedSections.workspace ? (
-                <ChevronDown className="h-5 w-5" />
-              ) : (
-                <ChevronRight className="h-5 w-5" />
-              )}
-              <CardTitle>Роли Workspace</CardTitle>
-              <Badge variant="secondary">{workspaceRoles?.length || 0}</Badge>
-            </div>
-          </div>
-          <CardDescription>Роли определяют доступ к функциям рабочего пространства</CardDescription>
-        </CardHeader>
+  const wsCount = workspaceRoles?.length || 0
+  const projCount = projectRoles?.length || 0
 
-        {expandedSections.workspace && (
-          <CardContent className="space-y-3">
+  return (
+    <div className="flex h-full bg-white rounded-lg border overflow-hidden">
+      <SettingsSubNav
+        groups={[
+          {
+            items: [
+              { id: 'workspace', label: 'Роли Workspace', icon: Shield, count: wsCount },
+              { id: 'project', label: 'Роли Проекта', icon: Users, count: projCount },
+            ],
+          },
+        ]}
+        activeId={active}
+        onSelect={(id) => setActive(id as 'workspace' | 'project')}
+      />
+
+      <div className="flex-1 min-w-0 overflow-y-auto p-6">
+        <p className="text-sm text-muted-foreground mb-4">
+          {active === 'workspace'
+            ? 'Роли определяют доступ к функциям рабочего пространства'
+            : 'Роли определяют доступ к модулям и действиям внутри проектов'}
+        </p>
+
+        {active === 'workspace' && (
+          <div className="space-y-3">
             {workspaceRoles?.map((role) => {
               const Icon = getRoleIcon(role)
               return (
@@ -215,43 +202,11 @@ export function PermissionsTab() {
               <Plus className="h-4 w-4 mr-2" />
               Добавить роль (скоро)
             </Button>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Роли Проекта */}
-      <Card>
-        <CardHeader
-          className="cursor-pointer"
-          onClick={() => toggleSection('project')}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e: React.KeyboardEvent) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              toggleSection('project')
-            }
-          }}
-          aria-expanded={expandedSections.project}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {expandedSections.project ? (
-                <ChevronDown className="h-5 w-5" />
-              ) : (
-                <ChevronRight className="h-5 w-5" />
-              )}
-              <CardTitle>Роли Проекта</CardTitle>
-              <Badge variant="secondary">{projectRoles?.length || 0}</Badge>
-            </div>
           </div>
-          <CardDescription>
-            Роли определяют доступ к модулям и действиям внутри проектов
-          </CardDescription>
-        </CardHeader>
+        )}
 
-        {expandedSections.project && (
-          <CardContent className="space-y-3">
+        {active === 'project' && (
+          <div className="space-y-3">
             {projectRoles?.map((role) => (
               <div
                 key={role.id}
@@ -296,9 +251,9 @@ export function PermissionsTab() {
               <Plus className="h-4 w-4 mr-2" />
               Добавить роль (скоро)
             </Button>
-          </CardContent>
+          </div>
         )}
-      </Card>
+      </div>
 
       {/* Диалог редактирования роли workspace */}
       <WorkspaceRoleEditDialog

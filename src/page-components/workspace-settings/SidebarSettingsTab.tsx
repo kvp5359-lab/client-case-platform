@@ -172,7 +172,7 @@ function SidebarSettingsView({
   const cleanDeadSlots = () => onChange(reorderWithinZones(liveSlots))
 
   return (
-    <div className="space-y-4">
+    <div className="h-full overflow-y-auto pr-1 space-y-4">
       {hasDeadSlots && (
         <div className="flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />

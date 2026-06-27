@@ -85,6 +85,7 @@ export function SendFailuresTab() {
   const unresolvedCount = failures.filter((f) => !f.resolved_at).length
 
   return (
+    <div className="h-full overflow-y-auto pr-1">
     <Card>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
         <div className="flex items-start gap-3">
@@ -209,5 +210,6 @@ export function SendFailuresTab() {
         )}
       </CardContent>
     </Card>
+    </div>
   )
 }

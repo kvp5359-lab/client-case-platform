@@ -112,7 +112,7 @@ export function DigestSettingsTab() {
   const handleResetEmpty = () => setSystemPrompt('')
 
   return (
-    <div className="space-y-6">
+    <div className="h-full overflow-y-auto pr-1 space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Промпт сводки</CardTitle>

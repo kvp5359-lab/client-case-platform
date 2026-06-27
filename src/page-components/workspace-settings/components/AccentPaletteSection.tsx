@@ -11,11 +11,9 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Palette, RotateCcw } from 'lucide-react'
-import { CardContent } from '@/components/ui/card'
+import { RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { SettingsCard } from './SettingsCard'
 import { supabase } from '@/lib/supabase'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { workspaceKeys } from '@/hooks/queryKeys'
@@ -86,13 +84,12 @@ export function AccentPaletteSection({ workspaceId }: Props) {
   }
 
   return (
-    <SettingsCard
-      title="Палитра цветов чатов"
-      description="Цвета акцента для чатов и задач. Под каждым цветом — живые примеры бабблов (тёмный = исходящее, светлый = входящее). Меняешь тон — примеры обновляются сразу. «Сбросить» возвращает стандартный цвет."
-      icon={Palette}
-      padded={false}
-    >
-      <CardContent>
+    <div className="h-full overflow-y-auto pr-1">
+      <div className="bg-white rounded-lg border p-5">
+        <p className="text-sm text-muted-foreground mb-4">
+          Под каждым цветом — живые примеры бабблов (тёмный = исходящее, светлый = входящее).
+          Меняешь тон — примеры обновляются сразу. «Сбросить» возвращает стандартный цвет.
+        </p>
         <div className="flex flex-col divide-y divide-border">
           {VISIBLE.map((c) => {
             const slug = c.value as AccentSlug
@@ -150,7 +147,7 @@ export function AccentPaletteSection({ workspaceId }: Props) {
           Название можно переименовать. Левый квадрат — основной (тёмный) тон, правый — светлый.
           Цвет текста на тёмном баббле подбирается автоматически по яркости.
         </p>
-      </CardContent>
-    </SettingsCard>
+      </div>
+    </div>
   )
 }

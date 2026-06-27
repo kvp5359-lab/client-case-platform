@@ -187,14 +187,14 @@ export function IntegrationsTab() {
   ]
 
   return (
-    <div className="flex bg-white rounded-lg border min-h-[500px]">
+    <div className="flex h-full bg-white rounded-lg border overflow-hidden">
       <SettingsSubNav
         groups={[{ items: sections.map((s) => ({ id: s.id, label: s.label, icon: s.icon })) }]}
         activeId={section}
         onSelect={(id) => setSection(id as SectionKey)}
       />
 
-      <div className="flex-1 min-w-0 p-6 space-y-4">
+      <div className="flex-1 min-w-0 p-6 space-y-4 overflow-y-auto">
         {section === 'telegram' && (
           <>
             <IntegrationOverview {...OVERVIEW_TELEGRAM_SECRETARY} />

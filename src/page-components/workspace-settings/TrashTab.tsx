@@ -222,7 +222,7 @@ export function TrashTab() {
     !isLoading && projects.length === 0 && threads.length === 0 && contextItems.length === 0
 
   return (
-    <div className="space-y-6">
+    <div className="h-full overflow-y-auto pr-1 space-y-6">
       {isLoading && (
         <div className="flex justify-center py-16">
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />

@@ -153,7 +153,7 @@ export function DomainSettingsTab() {
   const status = formatStatus(domain?.custom_domain_status ?? null)
 
   return (
-    <div className="space-y-6">
+    <div className="h-full overflow-y-auto pr-1 space-y-6">
 
       {error && (
         <Alert variant="destructive">

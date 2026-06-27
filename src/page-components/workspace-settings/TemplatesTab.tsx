@@ -119,11 +119,11 @@ export function TemplatesTab() {
   ]
 
   return (
-    <div className="flex bg-white rounded-lg border min-h-[500px]">
+    <div className="flex h-full bg-white rounded-lg border overflow-hidden">
       <SettingsSubNav groups={groups} activeId={activeSection} onSelect={handleSectionChange} />
 
       {/* Контент */}
-      <div className="flex-1 min-w-0 p-6 overflow-hidden">
+      <div className="flex-1 min-w-0 p-6 overflow-y-auto">
         {activeSection === 'project-templates' && <ProjectTemplatesContent />}
         {activeSection === 'form-templates' && <FormTemplatesContent />}
         {activeSection === 'field-templates' && <FieldTemplatesContent workspaceId={workspaceId} />}

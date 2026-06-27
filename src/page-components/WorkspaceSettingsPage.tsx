@@ -164,10 +164,12 @@ export function WorkspaceSettingsPage() {
 
   return (
     <WorkspaceLayout>
-      <main className="flex-1 p-8 overflow-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
-          {/* Page Title — навигация теперь в боковом меню настроек (SettingsSidebar) */}
-          <div>
+      {/* Каркас раздела настроек: фиксированная высота, БЕЗ внешнего скролла —
+          колонки контента прокручиваются независимо внутри себя. */}
+      <main className="flex-1 min-h-0 flex flex-col px-6 pt-6 pb-4 overflow-hidden">
+        <div className="max-w-6xl w-full mx-auto flex flex-col flex-1 min-h-0">
+          {/* Заголовок раздела (навигация — в боковом меню настроек) */}
+          <div className="shrink-0 mb-4">
             <h1 className="text-2xl font-bold text-gray-900">
               {SETTINGS_TAB_TITLES[activeTab] ?? 'Настройки'}
             </h1>
@@ -176,24 +178,26 @@ export function WorkspaceSettingsPage() {
             )}
           </div>
 
-          {/* Tab content */}
-          <Suspense fallback={<div className="p-4">Загрузка...</div>}>
-            {activeTab === 'general' && canManageSettings && <GeneralSettingsTab />}
-            {activeTab === 'palette' && canManageSettings && workspaceId && (
-              <AccentPaletteSection workspaceId={workspaceId} />
-            )}
-            {activeTab === 'participants' && canManageParticipants && <ParticipantsTab />}
-            {activeTab === 'permissions' && canManageRoles && <PermissionsTab />}
-            {(activeTab === 'directories' || pathname.includes('/directories')) && <DirectoriesTab />}
-            {(activeTab === 'templates' || pathname.includes('/templates')) &&
-              canManageTemplates && <TemplatesTab />}
-            {activeTab === 'integrations' && <IntegrationsTab />}
-            {activeTab === 'digest' && <DigestSettingsTab />}
-            {activeTab === 'sidebar' && <SidebarSettingsTab />}
-            {activeTab === 'domain' && permissions.isOwner && <DomainSettingsTab />}
-            {activeTab === 'trash' && <TrashTab />}
-            {activeTab === 'send-failures' && <SendFailuresTab />}
-          </Suspense>
+          {/* Контент вкладки — заполняет оставшуюся высоту; внутренний скролл. */}
+          <div className="flex-1 min-h-0">
+            <Suspense fallback={<div className="p-4">Загрузка...</div>}>
+              {activeTab === 'general' && canManageSettings && <GeneralSettingsTab />}
+              {activeTab === 'palette' && canManageSettings && workspaceId && (
+                <AccentPaletteSection workspaceId={workspaceId} />
+              )}
+              {activeTab === 'participants' && canManageParticipants && <ParticipantsTab />}
+              {activeTab === 'permissions' && canManageRoles && <PermissionsTab />}
+              {(activeTab === 'directories' || pathname.includes('/directories')) && <DirectoriesTab />}
+              {(activeTab === 'templates' || pathname.includes('/templates')) &&
+                canManageTemplates && <TemplatesTab />}
+              {activeTab === 'integrations' && <IntegrationsTab />}
+              {activeTab === 'digest' && <DigestSettingsTab />}
+              {activeTab === 'sidebar' && <SidebarSettingsTab />}
+              {activeTab === 'domain' && permissions.isOwner && <DomainSettingsTab />}
+              {activeTab === 'trash' && <TrashTab />}
+              {activeTab === 'send-failures' && <SendFailuresTab />}
+            </Suspense>
+          </div>
         </div>
       </main>
     </WorkspaceLayout>

@@ -189,7 +189,7 @@ export function ParticipantsTab() {
   }, [regularParticipants])
 
   return (
-    <div className="flex bg-white rounded-lg border overflow-hidden h-[calc(100vh-13rem)]">
+    <div className="flex h-full bg-white rounded-lg border overflow-hidden">
       <ParticipantsSidebar
         selectedRole={selectedRole}
         onSelectRole={handleSelectRole}
