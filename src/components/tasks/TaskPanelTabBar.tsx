@@ -13,7 +13,7 @@
  *  - В правом углу — кнопка скрытия панели (✕).
  */
 
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Plus,
   X,
@@ -22,6 +22,7 @@ import {
   Mail,
   MessageSquare,
   CheckCircle2,
+  Menu,
 } from 'lucide-react'
 import {
   DndContext,
@@ -37,13 +38,18 @@ import {
   SortableContext,
   arrayMove,
   horizontalListSortingStrategy,
+  verticalListSortingStrategy,
+  useSortable,
 } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 import { getChatIconComponent, getChatTabAccent } from '@/components/messenger/chatVisuals'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
@@ -86,6 +92,79 @@ function getTabIcon(tab: TaskPanelTab): React.ComponentType<{ className?: string
   }
   if (tab.type === 'knowledge_article') return BookOpen
   return SYSTEM_TAB_BY_TYPE.get(tab.type)?.icon ?? MessageSquare
+}
+
+/** Строка вкладки в меню «бутерброд» — sortable (вертикально), крестик по наведению. */
+function SortableTabRow({
+  tab,
+  isActive,
+  Icon,
+  onActivate,
+  onClose,
+  onCloseMenu,
+}: {
+  tab: TaskPanelTab
+  isActive: boolean
+  Icon: React.ComponentType<{ className?: string }>
+  onActivate: (id: string) => void
+  onClose: (id: string) => void
+  onCloseMenu: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: tab.id,
+  })
+  const style: React.CSSProperties = {
+    // X залочен — список вертикальный.
+    transform: transform ? CSS.Translate.toString({ ...transform, x: 0 }) : undefined,
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+  }
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      role="menuitem"
+      tabIndex={0}
+      onClick={() => {
+        onActivate(tab.id)
+        onCloseMenu()
+      }}
+      className={cn(
+        'group/row flex items-center gap-2 rounded px-2 py-1.5 text-sm cursor-pointer select-none',
+        isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60',
+        isDragging && 'bg-white shadow-md ring-1 ring-black/5',
+      )}
+    >
+      <Icon className="w-4 h-4 shrink-0 text-muted-foreground" />
+      <span className="flex-1 truncate">{tab.title}</span>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onClose(tab.id)
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-foreground hover:bg-black/5 transition-opacity"
+        aria-label="Закрыть вкладку"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  )
+}
+
+/** Разделитель закреплённых/обычных в меню — sortable-таргет (id = SEPARATOR_ID),
+ *  без drag-листенеров: участвует в раскладке, но схватить нельзя. Дроп на него
+ *  переключает закрепление (логика в handleDragEnd). */
+function SortableMenuSeparator() {
+  const { setNodeRef, transform, transition } = useSortable({ id: SEPARATOR_ID })
+  const style: React.CSSProperties = {
+    transform: transform ? CSS.Translate.toString({ ...transform, x: 0 }) : undefined,
+    transition,
+  }
+  return <div ref={setNodeRef} style={style} className="my-1 h-px bg-border" />
 }
 
 export function TaskPanelTabBar({
@@ -182,6 +261,38 @@ export function TaskPanelTabBar({
   // скролл. Нативный listener с passive:false, чтобы preventDefault сработал
   // (React onWheel — passive, preventDefault там не действует).
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Активная вкладка всегда видима: при смене активной — проматываем к ней.
+  useEffect(() => {
+    if (!activeTabId) return
+    const el = scrollRef.current?.querySelector<HTMLElement>(
+      `[data-tab-id="${activeTabId}"]`,
+    )
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' })
+  }, [activeTabId, orderedTabs])
+
+  // Меню «бутерброд»: все вкладки списком (закреплённые / обычные) + доступные
+  // для открытия системные разделы. Контролируемое, чтобы крестик закрытия
+  // вкладки не схлопывал меню.
+  const [listMenuOpen, setListMenuOpen] = useState(false)
+  const pinnedTabs = useMemo(() => orderedTabs.filter((t) => t.pinned), [orderedTabs])
+  const unpinnedTabs = useMemo(() => orderedTabs.filter((t) => !t.pinned), [orderedTabs])
+  const availableSystemDefs = useMemo(
+    () => visibleSystemDefs.filter((d) => !openedSystemTypes.has(d.type)),
+    [visibleSystemDefs, openedSystemTypes],
+  )
+
+  const renderTabRow = (tab: TaskPanelTab) => (
+    <SortableTabRow
+      key={tab.id}
+      tab={tab}
+      isActive={tab.id === activeTabId}
+      Icon={getTabIcon(tab)}
+      onActivate={onActivate}
+      onClose={onClose}
+      onCloseMenu={() => setListMenuOpen(false)}
+    />
+  )
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -272,6 +383,73 @@ export function TaskPanelTabBar({
               })}
             </DropdownMenuContent>
           </DropdownMenu>
+
+        {/* «Бутерброд» — список всех вкладок (закреплённые / обычные) + доступные
+            для открытия разделы. */}
+        <DropdownMenu open={listMenuOpen} onOpenChange={setListMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-white hover:text-foreground transition-colors shrink-0"
+              aria-label="Все вкладки"
+              title="Все вкладки"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64 max-h-[70vh] overflow-y-auto p-1">
+            {orderedTabs.length === 0 && (
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">Нет вкладок</div>
+            )}
+            {orderedTabs.length > 0 && (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={collisionDetection}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
+                  {/* Порядок узлов = sortableItems: pinned → разделитель → unpinned.
+                      Перетаскивание через разделитель меняет закрепление. */}
+                  {pinnedTabs.length > 0 && (
+                    <div className="px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+                      Закреплённые вкладки
+                    </div>
+                  )}
+                  {pinnedTabs.map(renderTabRow)}
+                  <SortableMenuSeparator />
+                  {unpinnedTabs.map(renderTabRow)}
+                </SortableContext>
+              </DndContext>
+            )}
+
+            {availableSystemDefs.length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+                  Добавить раздел
+                </div>
+                {availableSystemDefs.map((def) => {
+                  const Icon = def.icon
+                  return (
+                    <div
+                      key={def.type}
+                      role="menuitem"
+                      tabIndex={0}
+                      // Только добавляем раздел во вкладки — меню НЕ закрываем,
+                      // чтобы можно было добавить несколько подряд.
+                      onClick={() => onOpenSystem(def)}
+                      className="flex items-center gap-0 rounded px-2 py-1.5 text-sm cursor-pointer hover:bg-accent/60"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                      <Icon className="w-4 h-4 mr-2 text-muted-foreground" />
+                      <span className="flex-1">{def.title}</span>
+                    </div>
+                  )
+                })}
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {onHidePanel && (
           <button

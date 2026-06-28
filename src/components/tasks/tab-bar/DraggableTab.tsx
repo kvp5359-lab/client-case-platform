@@ -60,6 +60,7 @@ export function DraggableTab({
       <ContextMenuTrigger asChild>
         <div
           ref={setNodeRef}
+          data-tab-id={tab.id}
           {...attributes}
           {...listeners}
           style={dragStyle}

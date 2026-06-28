@@ -324,27 +324,15 @@ export function TaskPanelTaskHeader({
           />
         )}
 
-        {/* Меню «⋮» сразу после дедлайна — те же действия, что и в строке
-            задачи, кроме «Открыть» (тред уже открыт в этой панели). */}
-        {viewMode === 'thread' && (
-          <TaskActionsMenu
-            statuses={statuses}
-            currentStatusId={task.status_id}
-            onStatusChange={onStatusChange}
-            deadline={task.deadline}
-            onDeadlineSet={onDeadlineSet}
-            onDeadlineClear={onDeadlineClear}
-            deadlinePending={deadlinePending}
-            onOpenSettings={onSettingsOpen}
-            onMakeRecurring={isTask ? () => setRecurringOpen(true) : undefined}
-            isSubscribed={subscription.isSubscribed}
-            onToggleSubscribe={subscription.setSubscribed}
-            subscribePending={subscription.pending}
-            onRequestDelete={onRequestDelete}
-            triggerClassName="opacity-100 md:opacity-0 md:group-hover/panel-header:opacity-100"
-            align="end"
-          />
-        )}
+        {/* Шестерёнка настроек — слева от иконок поиска/почты; видна по наведению. */}
+        <button
+          type="button"
+          onClick={onSettingsOpen}
+          className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors opacity-100 md:opacity-0 md:group-hover/panel-header:opacity-100"
+          title="Настройки"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
 
         {isTask && (
           <RecurringRuleDialog
@@ -365,14 +353,27 @@ export function TaskPanelTaskHeader({
 
         <div ref={toolbarRef} className="flex items-center gap-1 ml-auto shrink-0" />
 
-        <button
-          type="button"
-          onClick={onSettingsOpen}
-          className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          title="Настройки"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
+        {/* Меню «⋮» — те же действия, что и в строке задачи, кроме «Открыть»
+            (тред уже открыт в этой панели). */}
+        {viewMode === 'thread' && (
+          <TaskActionsMenu
+            statuses={statuses}
+            currentStatusId={task.status_id}
+            onStatusChange={onStatusChange}
+            deadline={task.deadline}
+            onDeadlineSet={onDeadlineSet}
+            onDeadlineClear={onDeadlineClear}
+            deadlinePending={deadlinePending}
+            onOpenSettings={onSettingsOpen}
+            onMakeRecurring={isTask ? () => setRecurringOpen(true) : undefined}
+            isSubscribed={subscription.isSubscribed}
+            onToggleSubscribe={subscription.setSubscribed}
+            subscribePending={subscription.pending}
+            onRequestDelete={onRequestDelete}
+            triggerClassName="opacity-100"
+            align="end"
+          />
+        )}
 
         {!hideCloseButton && (
           <button
