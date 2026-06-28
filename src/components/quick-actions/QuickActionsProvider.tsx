@@ -89,6 +89,7 @@ export function QuickActionsProvider({
     createThread.mutate(
       {
         name: result.name,
+        description: result.description,
         accessType: result.accessType,
         accentColor: result.accentColor,
         icon: result.icon,

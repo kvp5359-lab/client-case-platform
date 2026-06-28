@@ -236,7 +236,7 @@ export const ChatSettingsChannels = memo(function ChatSettingsChannels({
           <div className="relative">
             {/* Chips + input wrapper */}
             <div
-              className="flex flex-wrap items-center gap-1 min-h-[32px] px-2 py-1 rounded-md border bg-background text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 cursor-text"
+              className="flex flex-wrap items-center gap-1 min-h-9 px-2 py-1 rounded-md border bg-background text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 cursor-text"
               onClick={() => emailInputRef.current?.focus()}
             >
               <span className="text-sm text-muted-foreground/70 shrink-0 select-none">Кому:</span>

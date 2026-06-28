@@ -15,8 +15,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertCircle, ChevronDown, ChevronRight, Mail } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { AlertCircle, ChevronDown, ChevronRight, EyeOff, Mail } from 'lucide-react'
 import { checkEmailAttachmentsLimit } from './hooks/useMessengerHandlers'
 import {
   Dialog,
@@ -37,6 +36,7 @@ import type { ChatSettingsDialogProps } from './chatSettingsTypes'
 import { PROJECT_ROLE_OPTIONS } from './chatSettingsTypes'
 import type { TabMode } from './chatSettingsTypes'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
+import { acc } from '@/lib/accentPalette'
 import { ChatSettingsIconColorPicker } from './ChatSettingsIconColorPicker'
 import { ChatSettingsProjectSelector } from './ChatSettingsProjectSelector'
 import { ChatSettingsAssignees } from './ChatSettingsAssignees'
@@ -158,6 +158,86 @@ export function ChatSettingsDialog({
     return ids.size === 0 ? 'Никто не выбран' : `${ids.size} участн.`
   }, [form.accessType, form.selectedRoles, form.isEditMode, form.selectedMemberIds, actions.memberIds])
 
+  // Канал: для email-создания рендерится внутри блока «Письмо» (поля Кому/Тема),
+  // для остальных — внизу окна (Подключить канал / личный канал / email-привязка).
+  const channelBlock =
+    isPersonalChannelThread && chat ? (
+      <ChatSettingsChannelInfo
+        thread={chat}
+        workspaceId={chat.workspace_id}
+        participants={actions.effectiveParticipants}
+      />
+    ) : form.isEditMode || form.tabMode !== 'task' ? (
+      <ChatSettingsChannels
+        tabMode={form.tabMode}
+        channelType={form.channelType}
+        isEditMode={form.isEditMode}
+        isTelegramLinked={actions.isTelegramLinked}
+        telegramLink={actions.telegramLink}
+        telegramLinkCode={actions.telegramLinkCode}
+        isTelegramCodeLoading={actions.isTelegramCodeLoading}
+        isTelegramUnlinking={actions.isTelegramUnlinking}
+        telegramCopied={actions.telegramCopied}
+        onUnlinkTelegram={actions.unlinkTelegram}
+        onCopyTelegramCode={actions.handleCopyTelegramCode}
+        channelExpanded={form.channelExpanded}
+        telegramChannelType={form.telegramChannelType}
+        onSetChannelExpanded={form.setChannelExpanded}
+        onSetTelegramChannelType={form.setTelegramChannelType}
+        emailLink={actions.emailLink}
+        onLinkEmail={actions.handleLinkEmail}
+        onUnlinkEmail={actions.handleUnlinkEmail}
+        isLinkingEmail={actions.isLinkingEmail}
+        isUnlinkingEmail={actions.isUnlinkingEmail}
+        selectedEmails={form.selectedEmails}
+        emailInput={form.emailInput}
+        emailSubject={form.emailSubject}
+        subjectTouched={form.subjectTouched}
+        emailSuggestions={actions.emailSuggestions}
+        filteredSuggestions={actions.filteredSuggestions}
+        emailDropdownOpen={form.emailDropdownOpen}
+        onSetSelectedEmails={form.setSelectedEmails}
+        onSetEmailInput={form.setEmailInput}
+        onSetEmailSubject={form.setEmailSubject}
+        onSetSubjectTouched={form.setSubjectTouched}
+        onSetEmailDropdownOpen={form.setEmailDropdownOpen}
+      />
+    ) : null
+
+  // Поле ввода первого сообщения (create mode). Без подписи — её ставим на месте.
+  const composeField = !form.isEditMode ? (
+    <>
+      <ComposeField
+        ref={composeRef}
+        placeholder={form.tabMode === 'email' ? 'Текст письма...' : 'Сообщение (опционально)...'}
+        editorMaxHeight={150}
+        editorMinHeight={isEmailCompose ? 76 : undefined}
+        initialHtml={actions.pendingInitialHtml}
+        onChange={form.setHasInitialMessage}
+        onFilesChange={setComposeFiles}
+        onSubmit={
+          form.canSave && !emailAttachmentsTooBig && !emailSendBlockReason
+            ? () => actions.handleSave()
+            : undefined
+        }
+        projectId={form.selectedProjectId ?? propProjectId}
+        workspaceId={resolvedWorkspaceId}
+        onOpenDocPicker={actions.composeProjectId ? actions.handleOpenDocPicker : undefined}
+        projectDocumentsCount={actions.projectDocuments.length}
+      />
+      {emailAttachmentsTooBig && (
+        <div className="flex items-start gap-2 px-2 py-1.5 mt-1 text-xs rounded-md bg-red-50 text-red-700 border border-red-200">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>
+            Слишком большой объём вложений: {attachmentsLimitCheck.totalMb} МБ. За одно письмо
+            принимается не больше 15 МБ. Удалите часть файлов или отправьте оставшиеся отдельным
+            письмом.
+          </span>
+        </div>
+      )}
+    </>
+  ) : null
+
   return (
     <Dialog
       open={open}
@@ -233,44 +313,60 @@ export function ChatSettingsDialog({
                 <span className="text-muted-foreground font-normal ml-1">(опционально)</span>
               )}
             </Label>
-            <div className="flex items-center rounded-md border border-input bg-background">
-              <ChatSettingsStatusPopover
-                taskStatuses={actions.taskStatuses}
-                currentStatusId={form.currentStatusId}
-                currentStatus={actions.currentStatus}
-                statusPopoverOpen={form.statusPopoverOpen}
-                onOpenChange={form.setStatusPopoverOpen}
-                onSelect={actions.handleStatusSelect}
-              />
-              <input
-                id="chat-name"
-                value={form.name}
-                onChange={(e) => {
-                  form.setName(e.target.value)
-                  if (form.channelType === 'email' && !form.subjectTouched) {
-                    form.setEmailSubject(e.target.value)
+            {/* Единая рамка «Название + Описание» (Gmail-стиль): название сверху,
+                тонкий разделитель, описание ниже. Описание — внутренняя заметка
+                команды (не уходит клиенту), одно поле для всех типов тредов. */}
+            <div className="rounded-md border border-input bg-background overflow-hidden focus-within:border-ring">
+              <div className="flex items-center">
+                <ChatSettingsStatusPopover
+                  taskStatuses={actions.taskStatuses}
+                  currentStatusId={form.currentStatusId}
+                  currentStatus={actions.currentStatus}
+                  statusPopoverOpen={form.statusPopoverOpen}
+                  onOpenChange={form.setStatusPopoverOpen}
+                  onSelect={actions.handleStatusSelect}
+                />
+                <input
+                  id="chat-name"
+                  value={form.name}
+                  onChange={(e) => {
+                    form.setName(e.target.value)
+                    if (form.channelType === 'email' && !form.subjectTouched) {
+                      form.setEmailSubject(e.target.value)
+                    }
+                  }}
+                  placeholder={
+                    !form.isEditMode && form.channelType === 'email'
+                      ? 'По умолчанию: тема или email'
+                      : form.isTask
+                        ? 'Название задачи'
+                        : 'Название чата'
                   }
-                }}
-                placeholder={
-                  !form.isEditMode && form.channelType === 'email'
-                    ? 'По умолчанию: тема или email'
-                    : form.isTask
-                      ? 'Название задачи'
-                      : 'Название чата'
-                }
-                autoFocus={form.isEditMode || form.channelType !== 'email'}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && form.canSave) actions.handleSave()
-                }}
-                className="flex-1 min-w-0 h-9 pl-1 pr-2 py-1 text-[15px] font-semibold bg-transparent outline-none placeholder:text-muted-foreground/40 placeholder:font-normal"
-              />
-              <ChatSettingsIconColorPicker
-                accentColor={form.accentColor}
-                icon={form.icon}
-                onAccentColorChange={form.setAccentColor}
-                onIconChange={form.setIcon}
+                  autoFocus={form.isEditMode || form.channelType !== 'email'}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && form.canSave) actions.handleSave()
+                  }}
+                  className="flex-1 min-w-0 h-9 pl-1 pr-2 py-1 text-[15px] font-semibold bg-transparent outline-none placeholder:text-muted-foreground/40 placeholder:font-normal"
+                />
+                <ChatSettingsIconColorPicker
+                  accentColor={form.accentColor}
+                  icon={form.icon}
+                  onAccentColorChange={form.setAccentColor}
+                  onIconChange={form.setIcon}
+                />
+              </div>
+              <div className="h-px bg-border" />
+              <textarea
+                value={form.description}
+                onChange={(e) => form.setDescription(e.target.value)}
+                placeholder="Описание — внутренняя заметка команды, клиент не видит…"
+                rows={2}
+                className="w-full resize-none bg-transparent px-3 py-2 text-sm leading-snug outline-none placeholder:text-muted-foreground/40"
               />
             </div>
+            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+              <EyeOff className="h-3 w-3 shrink-0" /> Описание видят только сотрудники
+            </p>
           </div>
 
           {/* Срок + Проект — одной строкой chip-ами */}
@@ -308,7 +404,32 @@ export function ChatSettingsDialog({
             onSetTaskAssignees={form.setTaskAssignees}
           />
 
-          {/* Доступ и подписки — сворачиваемый блок (кто видит чат + личная/общая подписка) */}
+          {/* Сообщение / письмо — единый блок со светлым акцентным фоном.
+              Email-создание — блок «Письмо» (Кому/Тема/Текст); задача/чат — «Первое сообщение». */}
+          {(isEmailCompose || composeField) && (
+            <div className={`rounded-md p-3 space-y-3 ${acc.bgSoft(form.accentColor)}`}>
+              {isEmailCompose ? (
+                <>
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    <Mail className="h-4 w-4 text-muted-foreground" /> Письмо
+                  </Label>
+                  {channelBlock}
+                  {composeField && (
+                    <div className="flex flex-col gap-1 min-w-0">{composeField}</div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col gap-1 min-w-0">
+                  <Label className="text-sm font-medium">Первое сообщение</Label>
+                  {composeField}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Низ окна: доступ, канал, подписка ── */}
+
+          {/* Доступ и подписки — сворачиваемый блок (кто видит чат + подписчики) */}
           <div className="rounded-md border">
             <button
               type="button"
@@ -361,120 +482,21 @@ export function ChatSettingsDialog({
             )}
           </div>
 
-          {/* Email-создание: получатель + тема + текст одним блоком «Письмо».
-              Для чатов/задач/edit — обычная раскладка без рамки. */}
-          <div className={cn('space-y-3', isEmailCompose && 'rounded-md border bg-muted/20 p-3')}>
-          {isEmailCompose && (
-            <Label className="text-sm font-medium flex items-center gap-1.5">
-              <Mail className="h-4 w-4 text-muted-foreground" /> Письмо
-            </Label>
-          )}
+          {/* Подключить канал / личный канал / email-привязка.
+              Для email-создания каналы (Кому/Тема) живут в блоке «Письмо» выше. */}
+          {!isEmailCompose && channelBlock}
 
-          {/* Каналы + компактная кнопка личной подписки в одной строке */}
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div className="min-w-0 flex-1">
-          {/* Канал личного диалога (Wazzup / TG Business): показываем тип + номер
-              + передачу ответственному. Для таких тредов блок «Подключить канал»
-              ниже не нужен — канал уже подключён. */}
-          {isPersonalChannelThread && chat ? (
-            <ChatSettingsChannelInfo
-              thread={chat}
+          {/* Личная подписка — компактной кнопкой (edit mode) */}
+          {chat && (
+            <ChatSettingsNotifications
+              variant="compact"
+              threadId={chat.id}
               workspaceId={chat.workspace_id}
               participants={actions.effectiveParticipants}
+              canManage={canManageSubscribers}
+              userId={user?.id}
             />
-          ) : (
-          /* Каналы */
-          (form.isEditMode || form.tabMode !== 'task') && (
-            <ChatSettingsChannels
-              tabMode={form.tabMode}
-              channelType={form.channelType}
-              isEditMode={form.isEditMode}
-              isTelegramLinked={actions.isTelegramLinked}
-              telegramLink={actions.telegramLink}
-              telegramLinkCode={actions.telegramLinkCode}
-              isTelegramCodeLoading={actions.isTelegramCodeLoading}
-              isTelegramUnlinking={actions.isTelegramUnlinking}
-              telegramCopied={actions.telegramCopied}
-              onUnlinkTelegram={actions.unlinkTelegram}
-              onCopyTelegramCode={actions.handleCopyTelegramCode}
-              channelExpanded={form.channelExpanded}
-              telegramChannelType={form.telegramChannelType}
-              onSetChannelExpanded={form.setChannelExpanded}
-              onSetTelegramChannelType={form.setTelegramChannelType}
-              emailLink={actions.emailLink}
-              onLinkEmail={actions.handleLinkEmail}
-              onUnlinkEmail={actions.handleUnlinkEmail}
-              isLinkingEmail={actions.isLinkingEmail}
-              isUnlinkingEmail={actions.isUnlinkingEmail}
-              selectedEmails={form.selectedEmails}
-              emailInput={form.emailInput}
-              emailSubject={form.emailSubject}
-              subjectTouched={form.subjectTouched}
-              emailSuggestions={actions.emailSuggestions}
-              filteredSuggestions={actions.filteredSuggestions}
-              emailDropdownOpen={form.emailDropdownOpen}
-              onSetSelectedEmails={form.setSelectedEmails}
-              onSetEmailInput={form.setEmailInput}
-              onSetEmailSubject={form.setEmailSubject}
-              onSetSubjectTouched={form.setSubjectTouched}
-              onSetEmailDropdownOpen={form.setEmailDropdownOpen}
-            />
-          )
           )}
-            </div>
-            {chat && (
-              <ChatSettingsNotifications
-                variant="compact"
-                threadId={chat.id}
-                workspaceId={chat.workspace_id}
-                participants={actions.effectiveParticipants}
-                canManage={canManageSubscribers}
-                userId={user?.id}
-              />
-            )}
-          </div>
-
-          {/* Первое сообщение / текст письма (create mode only) */}
-          {!form.isEditMode && (
-          <div className="flex flex-col gap-1 min-w-0">
-            {!isEmailCompose && (
-              <label className="text-sm text-muted-foreground">Первое сообщение</label>
-            )}
-            <ComposeField
-              ref={composeRef}
-              placeholder={
-                form.tabMode === 'email' ? 'Текст письма...' : 'Сообщение (опционально)...'
-              }
-              editorMaxHeight={150}
-              editorMinHeight={isEmailCompose ? 76 : undefined}
-              initialHtml={actions.pendingInitialHtml}
-              onChange={form.setHasInitialMessage}
-              onFilesChange={setComposeFiles}
-              onSubmit={
-                form.canSave && !emailAttachmentsTooBig && !emailSendBlockReason
-                  ? () => actions.handleSave()
-                  : undefined
-              }
-              projectId={form.selectedProjectId ?? propProjectId}
-              workspaceId={resolvedWorkspaceId}
-              onOpenDocPicker={actions.composeProjectId ? actions.handleOpenDocPicker : undefined}
-              projectDocumentsCount={actions.projectDocuments.length}
-            />
-            {/* Предупреждение о превышении лимита email-вложений — показываем
-                под полем ввода в момент превышения, не после отправки. */}
-            {emailAttachmentsTooBig && (
-              <div className="flex items-start gap-2 px-2 py-1.5 mt-1 text-xs rounded-md bg-red-50 text-red-700 border border-red-200">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>
-                  Слишком большой объём вложений: {attachmentsLimitCheck.totalMb} МБ. За одно
-                  письмо принимается не больше 15 МБ. Удалите часть файлов или отправьте
-                  оставшиеся отдельным письмом.
-                </span>
-              </div>
-            )}
-          </div>
-          )}
-          </div>
         </div>
 
         <DialogFooter>

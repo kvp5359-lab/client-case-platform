@@ -27,6 +27,7 @@ type UseChatSettingsSaveParams = {
     accent_color: ThreadAccentColor
     icon: string
     type?: string
+    description?: string | null
     deadline?: string | null
     start_at?: string | null
     end_at?: string | null
@@ -68,6 +69,9 @@ export function useChatSettingsSave({
     let endAtIso: string | null = null
     let deadlineIso: string | null = null
 
+    // Описание треда — внутренняя заметка команды. Пустая строка → null.
+    const descriptionValue = form.description.trim() ? form.description : null
+
     if (!form.taskShowDuration) {
       // Простой режим: только deadline
       deadlineIso = form.taskDeadline ? formatDateToString(form.taskDeadline) : null
@@ -98,6 +102,7 @@ export function useChatSettingsSave({
         accent_color: form.accentColor,
         icon: form.icon,
         type: form.threadType,
+        description: descriptionValue,
         deadline: deadlineIso,
         start_at: startAtIso,
         end_at: endAtIso,
@@ -115,6 +120,7 @@ export function useChatSettingsSave({
       onCreate?.({
         threadType: 'task',
         name: form.name.trim(),
+        description: descriptionValue,
         accessType: form.accessType,
         accentColor: 'slate',
         icon: 'check-square',
@@ -152,6 +158,7 @@ export function useChatSettingsSave({
     onCreate?.({
       threadType: 'chat',
       name: chatName,
+      description: descriptionValue,
       accessType: form.accessType,
       accentColor: form.accentColor,
       icon: isEmail ? 'mail' : form.icon,

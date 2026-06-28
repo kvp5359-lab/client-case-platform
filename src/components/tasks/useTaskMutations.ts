@@ -283,6 +283,7 @@ export function useUpdateTaskSettings(invalidateKeys: ReadonlyArray<readonly unk
       name,
       accent_color,
       icon,
+      description,
       deadline,
       start_at,
       end_at,
@@ -291,6 +292,8 @@ export function useUpdateTaskSettings(invalidateKeys: ReadonlyArray<readonly unk
       name: string
       accent_color: string
       icon: string
+      /** Описание треда — внутренняя заметка команды. */
+      description?: string | null
       /** Срок задачи. Триггер БД синхронизирует с end_at. */
       deadline?: string | null
       /** Запланированное начало (для календаря). */
@@ -305,6 +308,7 @@ export function useUpdateTaskSettings(invalidateKeys: ReadonlyArray<readonly unk
         .single()
 
       const update: Record<string, unknown> = { name, accent_color, icon }
+      if (description !== undefined) update.description = description
       if (deadline !== undefined) update.deadline = deadline
       if (start_at !== undefined) update.start_at = start_at
       if (end_at !== undefined) update.end_at = end_at

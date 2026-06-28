@@ -17,6 +17,8 @@ export type TabMode = 'task' | 'chat' | 'email'
 export type ChatSettingsResult = {
   threadType: ThreadType
   name: string
+  /** Описание треда — внутренняя заметка команды (не уходит клиенту). */
+  description?: string | null
   accessType: AccessType
   accentColor: ThreadAccentColor
   icon: string
@@ -88,6 +90,7 @@ export type ChatSettingsDialogProps = {
     accent_color: ThreadAccentColor
     icon: string
     type?: string
+    description?: string | null
   }) => void
   isPending?: boolean
 }

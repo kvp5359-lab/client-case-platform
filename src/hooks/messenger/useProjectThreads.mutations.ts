@@ -30,6 +30,7 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
   return useMutation({
     mutationFn: async (params: {
       name: string
+      description?: string | null
       accessType: 'all' | 'roles' | 'custom'
       accentColor?: ThreadAccentColor
       icon?: string
@@ -109,6 +110,7 @@ export function useCreateThread(projectId: string | null, workspaceId: string) {
           is_default: false,
           type: threadType,
           sort_order: nextSortOrder,
+          ...(params.description !== undefined && { description: params.description }),
           ...(params.accentColor && { accent_color: params.accentColor }),
           ...(params.icon && { icon: params.icon }),
           ...(params.deadline !== undefined && { deadline: params.deadline }),
@@ -365,6 +367,7 @@ export function useUpdateThread() {
       threadId: string
       projectId: string
       name?: string
+      description?: string | null
       accent_color?: ThreadAccentColor
       icon?: string
       type?: string
@@ -377,6 +380,7 @@ export function useUpdateThread() {
     }) => {
       const update: Record<string, unknown> = {}
       if (params.name !== undefined) update.name = params.name
+      if (params.description !== undefined) update.description = params.description
       if (params.accent_color !== undefined) update.accent_color = params.accent_color
       if (params.icon !== undefined) update.icon = params.icon
       if (params.type !== undefined) update.type = params.type

@@ -44,6 +44,7 @@ export function useChatSettingsFormState({
   const [tabMode, setTabMode] = useState<TabMode>(resolvedDefaultTab)
   const [telegramChannelType, setTelegramChannelType] = useState<'none' | 'telegram'>('none')
   const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
   const [accentColor, setAccentColor] = useState<ThreadAccentColor>(
     getDefaultAccent(resolvedDefaultTab),
   )
@@ -92,6 +93,7 @@ export function useChatSettingsFormState({
       const t = chat.type as string
       setTabMode(t === 'task' ? 'task' : t === 'email' ? 'email' : 'chat')
       setName(chat.name)
+      setDescription(chat.description ?? '')
       setAccentColor(chat.accent_color)
       setIcon(chat.icon)
       setAccessType(chat.access_type)
@@ -133,6 +135,7 @@ export function useChatSettingsFormState({
       }
     } else {
       setName('')
+      setDescription('')
       setAccentColor(getDefaultAccent(resolvedDefaultTab))
       setIcon(getDefaultIcon(resolvedDefaultTab))
       setAccessType('custom')
@@ -221,6 +224,7 @@ export function useChatSettingsFormState({
   const reset = () => {
     setTabMode(resolvedDefaultTab)
     setName('')
+    setDescription('')
     setAccentColor(getDefaultAccent(resolvedDefaultTab))
     setIcon(getDefaultIcon(resolvedDefaultTab))
     setAccessType('custom')
@@ -264,6 +268,8 @@ export function useChatSettingsFormState({
     setTelegramChannelType,
     name,
     setName,
+    description,
+    setDescription,
     accentColor,
     setAccentColor,
     icon,

@@ -385,7 +385,10 @@
   padding: 0.15rem 0.4rem;
   text-align: left;
   vertical-align: top;
-  word-break: break-word;
+  /* Целые слова не рвём посимвольно (иначе узкая первая колонка схлопывается
+     в «Соо/бще/ние»); длинные неразрывные строки (email/URL) всё же переносим. */
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 .messenger-content th {
   font-weight: 600;
