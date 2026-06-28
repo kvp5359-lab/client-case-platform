@@ -391,7 +391,7 @@ function FolderSlot({
       <PopoverContent
         align="start"
         side={compact ? 'bottom' : 'right'}
-        className="w-64 p-1"
+        className="w-auto min-w-[9rem] max-w-[16rem] p-1"
         onClick={() => setOpen(false)}
       >
         <div className="text-xs text-gray-500 px-2 py-1">{triggerLabel}</div>
