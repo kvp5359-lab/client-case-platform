@@ -58,6 +58,43 @@ export function useThreadTemplateForm({
   const [emailSubject, setEmailSubject] = useState(template?.email_subject_template ?? '')
   const [initialMessageHtml, setInitialMessageHtml] = useState(template?.initial_message_html ?? '')
 
+  // Зеркалирование: «Название треда» повторяет «Название шаблона», а «Тема
+  // письма» — «Название треда», пока пользователь не изменит их вручную. После
+  // ручной правки соответствующий touched-флаг отключает авто-подстановку.
+  // Для уже сохранённого шаблона с заполненными полями считаем их «тронутыми»,
+  // чтобы не перетирать.
+  const [threadNameTouched, setThreadNameTouched] = useState(
+    Boolean(template?.thread_name_template),
+  )
+  const [subjectTouched, setSubjectTouched] = useState(
+    Boolean(template?.email_subject_template),
+  )
+
+  const handleSetTemplateName = useCallback(
+    (v: string) => {
+      setTemplateName(v)
+      if (!threadNameTouched) {
+        setThreadNameTemplate(v)
+        if (!subjectTouched) setEmailSubject(v)
+      }
+    },
+    [threadNameTouched, subjectTouched],
+  )
+
+  const handleSetThreadNameTemplate = useCallback(
+    (v: string) => {
+      setThreadNameTouched(true)
+      setThreadNameTemplate(v)
+      if (!subjectTouched) setEmailSubject(v)
+    },
+    [subjectTouched],
+  )
+
+  const handleSetEmailSubject = useCallback((v: string) => {
+    setSubjectTouched(true)
+    setEmailSubject(v)
+  }, [])
+
   // Tab change side effects: при переключении табов меняем accent/icon и
   // подставляем default-статус для task-режима.
   const handleTabChange = useCallback(
@@ -146,12 +183,12 @@ export function useThreadTemplateForm({
   return {
     // state
     templateName,
-    setTemplateName,
+    setTemplateName: handleSetTemplateName,
     description,
     setDescription,
     tabMode,
     threadNameTemplate,
-    setThreadNameTemplate,
+    setThreadNameTemplate: handleSetThreadNameTemplate,
     accentColor,
     setAccentColor,
     icon,
@@ -167,7 +204,7 @@ export function useThreadTemplateForm({
     setDeadlineDays,
     assigneeIds,
     emailSubject,
-    setEmailSubject,
+    setEmailSubject: handleSetEmailSubject,
     initialMessageHtml,
     setInitialMessageHtml,
     // derived

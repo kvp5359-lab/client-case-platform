@@ -166,6 +166,7 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
             onChange={(e) => onTemplateNameChange?.(e.target.value)}
             placeholder="Например: Запрос документов"
             autoFocus
+            className="text-[15px] font-semibold focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_2px_8px_rgba(0,0,0,0.10)]"
           />
         </div>
       )}
@@ -200,6 +201,7 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
                   ? 'Запрос: {project_name}'
                   : 'Обсуждение: {project_name}')
             }
+            className="text-[15px] font-semibold focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_2px_8px_rgba(0,0,0,0.10)]"
           />
         </div>
 
