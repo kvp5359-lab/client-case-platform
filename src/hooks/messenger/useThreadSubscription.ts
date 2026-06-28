@@ -42,6 +42,9 @@ export function useThreadSubscription(
     },
     onSuccess: (subscribed) => {
       qc.setQueryData(threadSubscriptionKeys.byThread(threadId ?? ''), subscribed)
+      // Карта подписчиков (variant='manage') — отдельный кэш; без инвалидации
+      // она оставалась со старым «Я» после личной отписки (асимметрия с setFor).
+      qc.invalidateQueries({ queryKey: threadSubscriptionKeys.subscribers(threadId ?? '') })
       if (workspaceId) invalidateMessengerCaches(qc, workspaceId)
     },
   })

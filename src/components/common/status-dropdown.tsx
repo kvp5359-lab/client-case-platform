@@ -29,17 +29,19 @@ export type StatusDropdownProps = {
   onStatusChange: (statusId: string | null) => void
   emptyLabel?: string
   disabled?: boolean
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   align?: 'start' | 'center' | 'end'
 }
 
 const sizeClasses = {
+  xs: 'w-4 h-4',
   sm: 'w-[18px] h-[18px]',
   md: 'w-4.5 h-4.5',
   lg: 'w-5 h-5',
 }
 
 const circleSizeClasses = {
+  xs: 'w-[11px] h-[11px]',
   sm: 'w-[13px] h-[13px]',
   md: 'w-3 h-3',
   lg: 'w-4 h-4',
@@ -53,7 +55,7 @@ function StatusIndicator({
 }: {
   color: string
   icon?: string | null
-  size: 'sm' | 'md' | 'lg'
+  size: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
 }) {
   if (icon) {

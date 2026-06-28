@@ -26,7 +26,6 @@ import { PanelDocumentsContent } from '@/components/documents/PanelDocumentsCont
 import { cn } from '@/lib/utils'
 import { TaskPanelProjectView } from './TaskPanelProjectView'
 import { TaskPanelTaskHeader } from './TaskPanelTaskHeader'
-import { ThreadDescriptionBlock } from '@/components/messenger/ThreadDescriptionBlock'
 import { useTaskPanelInternal } from './useTaskPanelInternal'
 import type { StatusOption } from '@/components/common/status-dropdown'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
@@ -212,16 +211,6 @@ export function TaskPanel({
           }
           onRequestDelete={onRequestDelete}
         />
-
-        {/* Описание треда — закреплённый блок под шапкой (свёрнут по умолчанию).
-            Только в режиме чтения треда, не в history/documents. */}
-        {viewMode === 'thread' && fullThread && (
-          <ThreadDescriptionBlock
-            threadId={fullThread.id}
-            projectId={fullThread.project_id}
-            description={fullThread.description}
-          />
-        )}
 
         <div className="flex-1 min-h-0 overflow-hidden relative flex flex-col">
           {viewMode === 'documents' && task.project_id ? (

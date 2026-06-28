@@ -30,6 +30,7 @@ import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermiss
 import { useTaskStatusPending } from './hooks/useTaskStatusPending'
 import { useProjectParticipants } from './hooks/useChatSettingsData'
 import { EmailSubjectBar } from './EmailSubjectBar'
+import { ThreadDescriptionBlock } from './ThreadDescriptionBlock'
 import { useUpdateEmailThreadMeta } from '@/hooks/messenger/useProjectThreads'
 import { useEmailSuggestions } from './hooks/useChatSettingsData'
 import { useMessengerState } from './hooks/useMessengerState'
@@ -448,9 +449,26 @@ export function MessengerTabContent({
       isEmailChat={state.isEmailChat}
       isLinked={state.isLinked}
       telegramChatTitle={state.telegramLink?.telegram_chat_title ?? null}
-      contactEmail={state.emailLink?.contact_email ?? null}
       onTelegramClick={() => setTelegramDialogOpen(true)}
-      onEmailClick={() => setEmailDialogOpen(true)}
+      // Маленький индикатор подключения email-канала → диалог привязки/отвязки.
+      onEmailLinkClick={() => setEmailDialogOpen(true)}
+      // Кнопка email-канала в шапке = поповер темы/получателя (с правкой черновика).
+      emailBar={
+        <EmailSubjectBar
+          variant="compact"
+          subject={state.emailLink?.subject ?? currentThread?.email_subject_root}
+          contactEmail={state.emailLink?.contact_email ?? currentThread?.email_last_external_address}
+          editable={isEmailUnsent}
+          suggestions={emailSuggestions}
+          onSave={(next) =>
+            updateEmailMeta.mutate({
+              threadId,
+              projectId: currentThread?.project_id ?? null,
+              ...next,
+            })
+          }
+        />
+      }
     />
   )
 
@@ -507,25 +525,21 @@ export function MessengerTabContent({
         onJumpToMessage={handleJumpToMessage}
       >
       <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
-        {/* Полоса темы/получателей email — над лентой. Для черновика
-            (письмо ещё не отправлено) — редактируемая. */}
-        {state.isEmailChat && (
-          <EmailSubjectBar
-            subject={state.emailLink?.subject ?? currentThread?.email_subject_root}
-            contactEmail={state.emailLink?.contact_email ?? currentThread?.email_last_external_address}
-            editable={isEmailUnsent}
-            suggestions={emailSuggestions}
-            onSave={(next) =>
-              updateEmailMeta.mutate({
-                threadId,
-                projectId: currentThread?.project_id ?? null,
-                ...next,
-              })
-            }
-          />
-        )}
-
         <ThreadHealthBanner threadId={threadId} workspaceId={workspaceId} />
+
+        {/* Описание треда баблом во всю ширину вверху чата. Пустое → бабл с
+            подсказкой «Добавить описание». Клиенту не показываем (внутренняя
+            заметка команды). По клику — правка. */}
+        {!isClientOnly && (
+          <div className="shrink-0 px-3 pt-2">
+            <ThreadDescriptionBlock
+              variant="banner"
+              threadId={threadId}
+              projectId={currentThread?.project_id ?? null}
+              description={directThread?.description ?? null}
+            />
+          </div>
+        )}
 
         {/* Email-тред без единого сообщения = письмо ещё не отправлено (черновик).
             Показываем только на ПУСТОЙ ленте (если есть сохранённый черновик-баббл,

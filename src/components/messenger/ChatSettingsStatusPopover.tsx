@@ -46,7 +46,7 @@ export function ChatSettingsStatusPopover({
         currentStatus={current}
         statuses={statuses}
         onStatusChange={(id) => { if (id) onSelect(id) }}
-        size="md"
+        size="lg"
       />
     </div>
   )

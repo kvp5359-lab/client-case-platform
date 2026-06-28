@@ -1,15 +1,16 @@
 /**
- * Полоса над лентой email-треда: тема + получатель.
- * Сворачиваемая (по умолчанию развёрнута — удобно для черновика, где важно
- * видеть кому и с какой темой уйдёт письмо).
+ * Таблетка темы/получателя email-треда — компактный pill в ряду над лентой;
+ * по клику открывает поповер с Кому/Темой.
  *
  * `editable` (черновик — письмо ещё не отправлено) → получатель редактируется
  * тем же пикером, что в модалке (`EmailRecipientsField`: бейдж + поиск по
- * контактам), тема — инпутом. Коммит темы по blur/Enter.
+ * контактам), тема — инпутом. Коммит темы по blur/Enter. Отправленное письмо —
+ * read-only.
  */
 
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Mail } from 'lucide-react'
+import { Mail } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   EmailRecipientsField,
   type EmailChip,
@@ -22,6 +23,8 @@ type EmailSubjectBarProps = {
   editable?: boolean
   suggestions?: EmailSuggestion[]
   onSave?: (next: { subject?: string; contactEmail?: string }) => void
+  /** 'pill' — таблетка с темой; 'compact' — только иконка. */
+  variant?: 'pill' | 'compact'
 }
 
 export function EmailSubjectBar({
@@ -30,15 +33,8 @@ export function EmailSubjectBar({
   editable = false,
   suggestions = [],
   onSave,
+  variant = 'pill',
 }: EmailSubjectBarProps) {
-  // Черновик (editable) — раскрыта; отправленное письмо — свёрнута.
-  // При смене editable обновляем дефолт (ручное переключение до этого сохраняется).
-  const [open, setOpen] = useState(editable)
-  const [prevEditable, setPrevEditable] = useState(editable)
-  if (editable !== prevEditable) {
-    setPrevEditable(editable)
-    setOpen(editable)
-  }
   const [subjectVal, setSubjectVal] = useState(subject ?? '')
 
   // Синхронизация локального поля темы при смене пропсов (другой тред / приход
@@ -69,68 +65,61 @@ export function EmailSubjectBar({
     : []
 
   return (
-    <div className="border-b bg-red-50/50 shrink-0">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-1.5 px-3 py-1.5 text-left hover:bg-red-50"
-      >
-        {open ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+    <Popover>
+      <PopoverTrigger asChild>
+        {variant === 'compact' ? (
+          <button
+            type="button"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-red-500 hover:bg-red-50 transition-colors"
+            title={editable ? `Черновик письма: ${subject || contactEmail || ''}` : `Письмо: ${subject || contactEmail || ''}`}
+          >
+            <Mail className="w-4 h-4 shrink-0" />
+          </button>
         ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 max-w-[280px] rounded-full border border-red-200 bg-red-50/60 px-2.5 py-1 text-xs text-red-700 hover:bg-red-50 transition-colors"
+            title={editable ? 'Черновик письма' : 'Письмо'}
+          >
+            <Mail className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate font-medium">{subject || contactEmail || 'Письмо'}</span>
+          </button>
         )}
-        <Mail className="h-4 w-4 text-red-700 shrink-0" />
-        {!open && (
-          <span className="text-sm text-red-700 font-medium truncate">
-            {subject || contactEmail}
-            {subject && contactEmail && (
-              <span className="text-muted-foreground font-normal"> · {contactEmail}</span>
-            )}
-          </span>
-        )}
-        {open && (
-          <span className="text-sm text-muted-foreground">
-            {editable ? 'Черновик письма' : 'Письмо'}
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div className="px-3 pb-2 pl-9 flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm text-muted-foreground w-12 shrink-0">Кому:</span>
-            {editable ? (
-              <EmailRecipientsField
-                value={recipientChips}
-                onChange={(next) => onSave?.({ contactEmail: next[0]?.email ?? '' })}
-                suggestions={suggestions}
-                singleSelect
-                className="flex-1 min-w-0"
-              />
-            ) : (
-              <span className="text-sm font-medium text-red-700 truncate">{contactEmail}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm text-muted-foreground w-12 shrink-0">Тема:</span>
-            {editable ? (
-              <input
-                value={subjectVal}
-                onChange={(e) => setSubjectVal(e.target.value)}
-                onBlur={commitSubject}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') e.currentTarget.blur()
-                }}
-                placeholder="тема письма"
-                className="flex-1 min-w-0 h-7 px-1.5 text-sm rounded border border-input bg-background font-medium outline-none focus:border-ring"
-              />
-            ) : (
-              <span className="text-sm font-medium text-red-700 truncate">{subject}</span>
-            )}
-          </div>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-80 p-3 space-y-2">
+        <p className="text-xs text-muted-foreground">{editable ? 'Черновик письма' : 'Письмо'}</p>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm text-muted-foreground w-12 shrink-0">Кому:</span>
+          {editable ? (
+            <EmailRecipientsField
+              value={recipientChips}
+              onChange={(next) => onSave?.({ contactEmail: next[0]?.email ?? '' })}
+              suggestions={suggestions}
+              singleSelect
+              className="flex-1 min-w-0"
+            />
+          ) : (
+            <span className="text-sm font-medium text-red-700 truncate">{contactEmail}</span>
+          )}
         </div>
-      )}
-    </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm text-muted-foreground w-12 shrink-0">Тема:</span>
+          {editable ? (
+            <input
+              value={subjectVal}
+              onChange={(e) => setSubjectVal(e.target.value)}
+              onBlur={commitSubject}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur()
+              }}
+              placeholder="тема письма"
+              className="flex-1 min-w-0 h-7 px-1.5 text-sm rounded border border-input bg-background font-medium outline-none focus:border-ring"
+            />
+          ) : (
+            <span className="text-sm font-medium text-red-700 truncate">{subject}</span>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }

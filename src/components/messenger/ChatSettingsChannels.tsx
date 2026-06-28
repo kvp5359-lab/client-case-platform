@@ -109,30 +109,8 @@ export const ChatSettingsChannels = memo(function ChatSettingsChannels({
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Активные привязки (edit mode) */}
-      {isEditMode && isTelegramLinked && telegramLink && (
-        <div className="flex items-center justify-between rounded-lg border px-3 py-1.5 bg-sky-50/50">
-          <div className="flex items-center gap-2 min-w-0">
-            <Send className="h-3.5 w-3.5 text-[#2AABEE] shrink-0" />
-            <span className="text-sm font-medium truncate">
-              {telegramLink.telegram_chat_title || 'Telegram'}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => onUnlinkTelegram()}
-            disabled={isTelegramUnlinking}
-            className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1 shrink-0 ml-2"
-          >
-            {isTelegramUnlinking ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Unlink className="h-3 w-3" />
-            )}
-            Отвязать
-          </button>
-        </div>
-      )}
+      {/* Активная привязка email (edit mode). Telegram-привязка показывается
+          компактно на месте кнопки «Подключить канал» ниже. */}
       {isEditMode && emailLink && (
         <div className="flex items-center justify-between rounded-lg border px-3 py-1.5 bg-red-50/50">
           <div className="flex items-center gap-2 min-w-0">
@@ -155,42 +133,64 @@ export const ChatSettingsChannels = memo(function ChatSettingsChannels({
         </div>
       )}
 
-      {/* Кнопка подключения Telegram (только для режима Чат) */}
-      {tabMode === 'chat' && (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              if (channelExpanded) {
-                onSetChannelExpanded(false)
-                onSetTelegramChannelType('none')
-              } else {
-                onSetChannelExpanded(true)
-              }
-            }}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-          >
-            <Unlink className="w-3 h-3" />
-            Подключить канал
-          </button>
-          {channelExpanded && (
+      {/* Канал: подключён → компактное отображение на месте кнопки (тот же
+          ghost-стиль), не подключён → кнопка «Подключить канал». Один элемент. */}
+      {(tabMode === 'chat' || (isEditMode && isTelegramLinked && telegramLink)) &&
+        (isEditMode && isTelegramLinked && telegramLink ? (
+          <div className="flex items-center gap-1.5 text-xs">
+            <Send className="w-3 h-3 text-[#2AABEE] shrink-0" />
+            <span className="font-medium truncate max-w-[220px]">
+              {telegramLink.telegram_chat_title || 'Telegram'}
+            </span>
             <button
               type="button"
-              onClick={() =>
-                onSetTelegramChannelType(telegramChannelType === 'telegram' ? 'none' : 'telegram')
-              }
-              className={
-                telegramChannelType === 'telegram'
-                  ? 'flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs transition-colors border bg-brand-100 border-brand-200 text-brand-600 font-medium'
-                  : 'flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs transition-colors border text-muted-foreground border-transparent hover:bg-muted/50'
-              }
+              onClick={() => onUnlinkTelegram()}
+              disabled={isTelegramUnlinking}
+              className="flex items-center gap-1 text-muted-foreground/60 hover:text-destructive transition-colors shrink-0"
             >
-              <Send className="w-3 h-3" />
-              Telegram
+              {isTelegramUnlinking ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Unlink className="w-3 h-3" />
+              )}
+              Отвязать
             </button>
-          )}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (channelExpanded) {
+                  onSetChannelExpanded(false)
+                  onSetTelegramChannelType('none')
+                } else {
+                  onSetChannelExpanded(true)
+                }
+              }}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+            >
+              <Unlink className="w-3 h-3" />
+              Подключить канал
+            </button>
+            {channelExpanded && (
+              <button
+                type="button"
+                onClick={() =>
+                  onSetTelegramChannelType(telegramChannelType === 'telegram' ? 'none' : 'telegram')
+                }
+                className={
+                  telegramChannelType === 'telegram'
+                    ? 'flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs transition-colors border bg-brand-100 border-brand-200 text-brand-600 font-medium'
+                    : 'flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs transition-colors border text-muted-foreground border-transparent hover:bg-muted/50'
+                }
+              >
+                <Send className="w-3 h-3" />
+                Telegram
+              </button>
+            )}
+          </div>
+        ))}
 
       {/* Telegram — код привязки (edit mode) или подсказка (create mode) */}
       {channelType === 'telegram' &&
