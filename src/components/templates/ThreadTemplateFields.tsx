@@ -225,7 +225,7 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
         />
       </div>
 
-      {isTask && showDeadlineDays && (
+      {(isTask || isEmail) && showDeadlineDays && (
         <div className="flex flex-col gap-1">
           <Label className="text-sm text-muted-foreground">Дедлайн</Label>
           <div className="flex items-center gap-2">
@@ -273,7 +273,7 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
         </div>
       )}
 
-      {isTask && (
+      {(isTask || isEmail) && (
         <div className="flex flex-col gap-1">
           <Label className="text-sm text-muted-foreground">Исполнители</Label>
           <AssigneesPopover
