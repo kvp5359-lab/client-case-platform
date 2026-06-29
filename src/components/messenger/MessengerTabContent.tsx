@@ -44,6 +44,7 @@ import {
 } from '@/hooks/messenger/useBackfillTelegramHistory'
 import { useScheduleMessage } from '@/hooks/messenger/useScheduleMessage'
 import { useSidePanelStore } from '@/store/sidePanelStore'
+import { useContactCardStore } from '@/store/contactCardStore'
 import type { ForwardBufferItem } from '@/store/sidePanelStore'
 import { buildForwardContent, toForwardedAttachments, type ForwardMode } from '@/utils/messenger/forwardContent'
 import { useAuth } from '@/contexts/AuthContext'
@@ -114,6 +115,7 @@ export function MessengerTabContent({
     [threadId, modeStorageKey],
   )
   const { data: allThreads = [] } = useProjectThreads(projectId)
+  const openContactCard = useContactCardStore((s) => s.open)
   const forwardBuffer = useSidePanelStore((s) => s.forwardBuffer)
   const removeFromForwardBuffer = useSidePanelStore((s) => s.removeFromForwardBuffer)
   const clearForwardBuffer = useSidePanelStore((s) => s.clearForwardBuffer)
@@ -450,6 +452,19 @@ export function MessengerTabContent({
       isLinked={state.isLinked}
       telegramChatTitle={state.telegramLink?.telegram_chat_title ?? null}
       onTelegramClick={() => setTelegramDialogOpen(true)}
+      // Личные диалоги — статичный значок своего канала вместо групповой «розетки».
+      isMtproto={isMtprotoThread}
+      isBusiness={!!currentThread?.business_connection_id}
+      isWazzup={!!currentThread?.wazzup_channel_id}
+      wazzupKind={
+        /^\+?\d+$/.test(currentThread?.wazzup_chat_id ?? '') ? 'whatsapp' : 'instagram'
+      }
+      // Клик по значку личного канала → карточка контакта собеседника.
+      onChannelIconClick={
+        currentThread?.contact_participant_id
+          ? () => openContactCard(currentThread.contact_participant_id!)
+          : undefined
+      }
       // Маленький индикатор подключения email-канала → диалог привязки/отвязки.
       onEmailLinkClick={() => setEmailDialogOpen(true)}
       // Кнопка email-канала в шапке = поповер темы/получателя (с правкой черновика).
@@ -527,20 +542,6 @@ export function MessengerTabContent({
       <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
         <ThreadHealthBanner threadId={threadId} workspaceId={workspaceId} />
 
-        {/* Описание треда баблом во всю ширину вверху чата. Пустое → бабл с
-            подсказкой «Добавить описание». Клиенту не показываем (внутренняя
-            заметка команды). По клику — правка. */}
-        {!isClientOnly && (
-          <div className="shrink-0 px-3 pt-2">
-            <ThreadDescriptionBlock
-              variant="banner"
-              threadId={threadId}
-              projectId={currentThread?.project_id ?? null}
-              description={directThread?.description ?? null}
-            />
-          </div>
-        )}
-
         {/* Email-тред без единого сообщения = письмо ещё не отправлено (черновик).
             Показываем только на ПУСТОЙ ленте (если есть сохранённый черновик-баббл,
             подсказка по центру наезжала бы на него). */}
@@ -567,6 +568,19 @@ export function MessengerTabContent({
           auditEvents={state.auditEvents}
           jumpToMessageId={jumpToMessageId}
           onJumpComplete={() => setJumpToMessageId(null)}
+          // Описание треда — первый бабл ленты, скроллится вместе с ней (не
+          // закреплён). Пустое → подсказка «Добавить описание». Клиенту не
+          // показываем (внутренняя заметка команды).
+          headerSlot={
+            !isClientOnly ? (
+              <ThreadDescriptionBlock
+                variant="banner"
+                threadId={threadId}
+                projectId={currentThread?.project_id ?? null}
+                description={directThread?.description ?? null}
+              />
+            ) : undefined
+          }
           onBackfillFromTelegram={
             isMtprotoThread ? () => backfillMutation.mutate() : undefined
           }

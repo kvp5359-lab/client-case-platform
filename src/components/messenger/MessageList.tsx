@@ -49,6 +49,8 @@ type MessageListProps = {
    * на просмотр — там отметка прочтения не его, и подсветка бессмысленна.
    */
   suppressUnread?: boolean
+  /** Шапка-слот в начале ленты (бабл описания треда) — скроллится вместе с лентой. */
+  headerSlot?: React.ReactNode
 }
 
 /** Разделитель дат */
@@ -103,6 +105,7 @@ export function MessageList({
   auditEvents = [],
   jumpToMessageId,
   onJumpComplete,
+  headerSlot,
   onBackfillFromTelegram,
   isBackfilling = false,
   suppressUnread = false,
@@ -413,7 +416,15 @@ export function MessageList({
   }
 
   if (messages.length === 0 && auditEvents.length === 0) {
-    return <MessengerEmptyState />
+    // Пустой тред: бабл описания (если есть) — сверху, затем заглушка.
+    return (
+      <div className="flex-1 overflow-y-auto flex flex-col">
+        {headerSlot && <div className="pl-2.5 pr-3 pt-4">{headerSlot}</div>}
+        <div className="flex-1 min-h-0">
+          <MessengerEmptyState />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -451,6 +462,10 @@ export function MessageList({
       <div className="pl-2.5 pr-3 pt-4 pb-16 space-y-2" onCopy={handleCopy}>
         {/* Sentinel для подгрузки старых */}
         <div ref={sentinelRef} className="h-1" />
+
+        {/* Бабл описания треда — первый элемент ленты, скроллится вместе с ней
+            (не закреплён). */}
+        {headerSlot}
 
         {/*
           Кнопка догрузки из Telegram через MTProto. Показывается, когда
