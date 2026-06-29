@@ -216,7 +216,7 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
             onStatusChange={onStatusChange}
           />
           <span
-            className={`flex-1 min-w-0 text-[15px] leading-tight truncate ${!hasFile ? 'text-muted-foreground' : !currentStatus?.text_color ? (isFinal ? 'text-gray-400' : 'text-gray-900 font-medium') : 'font-medium'}`}
+            className={`min-w-0 text-[15px] leading-tight truncate ${!hasFile ? 'text-muted-foreground' : !currentStatus?.text_color ? (isFinal ? 'text-gray-400' : 'text-gray-900 font-medium') : 'font-medium'}`}
             style={
               currentStatus?.text_color
                 ? { color: safeCssColor(currentStatus.text_color) }
