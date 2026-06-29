@@ -548,6 +548,34 @@ function rfc2047EncodeName(name: string): string {
 // =============================================================
 
 /** ВЕТКА 1: employee_mailbox — через Gmail сотрудника (users.messages.send). */
+/**
+ * Находит Gmail-threadId письма по его RFC822 Message-ID в ящике сотрудника.
+ * Нужно для склейки ответа в существующую ветку у НАС, когда входящее пришло
+ * пересылкой→Resend и его Gmail-threadId не сохранён (или сохранён неверный —
+ * от нашей же прошлой ветки). Возвращает null при любой ошибке/отсутствии —
+ * безопасный фолбэк (тогда отправка идёт как раньше).
+ */
+async function findGmailThreadByMessageId(
+  accessToken: string,
+  messageId: string,
+): Promise<string | null> {
+  const rid = messageId.replace(/^<+|>+$/g, "").trim();
+  if (!rid) return null;
+  try {
+    const resp = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=1&q=${encodeURIComponent(
+        `rfc822msgid:${rid}`,
+      )}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!resp.ok) return null;
+    const j = (await resp.json()) as { messages?: Array<{ threadId?: string }> };
+    return j.messages?.[0]?.threadId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function sendViaEmployeeMailbox(ctx: OutboundEmailCtx, sendAccountId: string): Promise<Response> {
   const { service, m, t, req, senderName, subjectRaw, subjectRoot, inReplyTo, references, html, text, attachments } = ctx;
     const { data: account, error: accErr } = await service
@@ -616,8 +644,18 @@ async function sendViaEmployeeMailbox(ctx: OutboundEmailCtx, sendAccountId: stri
       .replace(/\//g, "_")
       .replace(/=+$/, "");
 
+    // Сначала ищем НАСТОЯЩИЙ Gmail-тред письма, на которое отвечаем (по его
+    // Message-ID). Это чинит случай, когда входящее пришло пересылкой→Resend
+    // и сохранённый gmail_thread_id отсутствует/указывает на нашу же новую
+    // ветку. Фолбэк — сохранённый gmail_thread_id, затем без threadId.
+    let resolvedThreadId: string | null = null;
+    if (inReplyTo) {
+      resolvedThreadId = await findGmailThreadByMessageId(accessToken, inReplyTo);
+    }
+    if (!resolvedThreadId) resolvedThreadId = existingGmailThreadId;
+
     const sendBody: { raw: string; threadId?: string } = { raw };
-    if (existingGmailThreadId) sendBody.threadId = existingGmailThreadId;
+    if (resolvedThreadId) sendBody.threadId = resolvedThreadId;
 
     let gmailResp = await fetch(
       "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",

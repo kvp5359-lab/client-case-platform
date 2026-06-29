@@ -148,10 +148,32 @@
 
 ## Email (Gmail OAuth + Resend)
 
-- Edge Functions: `gmail-auth`, `gmail-callback`, `gmail-disconnect`, `gmail-webhook`, `gmail-send`, `gmail-watch-refresh`, `email-internal-send`, `email-track`, `provision-email-domain`, `provision-domain`.
+### Два транспорта (источник всех «странностей» с почтой)
+
+Почта ходит **двумя независимыми способами**; какой использовать — решается на лету.
+
+| | Gmail (подключённый ящик) | Resend (наш домен) |
+|---|---|---|
+| **Адрес** | реальный `…@gmail.com` сотрудника | сервисный `…@<slug>.clientcase.app` / `t+<short_id>@…` |
+| **Отправка** | Gmail API (`email-internal-send` → `sendViaEmployeeMailbox`) | Resend API (`email-internal-send` → `sendViaResend`) |
+| **`email_send_method`** | `employee_mailbox` | `system_postmark` |
+| **Приём** | (а) родной `gmail-webhook` (нужен живой watch) **или** (б) пересылка из Gmail на Resend-домен | `/api/resend-webhook` (Next.js route) |
+
+- **Выбор метода отправки** ([email-internal-send/index.ts:377](../../supabase/functions/email-internal-send/index.ts:377)): явный `email_send_method` → иначе есть `email_send_account_id` (подключён Gmail) → `employee_mailbox`, иначе `system_postmark`. Один тред шлёт всегда одним способом.
+- **Текущая боевая связка `kvp5359@gmail.com`** (замер 2026-06-29): **входящие** — клиент пишет на личный Gmail → Gmail **пересылкой** кормит Resend-вход (`source='email_internal'`); **исходящие** — через подключённый Gmail API (`employee_mailbox`). Это **микс** (приём Resend-путём, отправка Gmail-путём) — он и есть причина хрупкости склейки.
+
+### Edge Functions / приём
+
+- Edge Functions: `gmail-auth`, `gmail-callback`, `gmail-disconnect`, `gmail-webhook`, `gmail-send` (legacy-путь, склейка по `source='email'`+`email_metadata` — **устаревшая**; основной путь отправки — `email-internal-send`), `gmail-watch-refresh`, `email-internal-send`, `email-track`, `provision-email-domain`, `provision-domain`.
 - **Gmail watch** живёт 7 дней. Продление: pg_cron `gmail-watch-refresh` (`0 3 * * *`). Симптом мёртвого крона — `email_accounts.watch_expires_at` в прошлом, входящие в Gmail видны, в сервис не приходят. Подробнее про секреты крона — [`infrastructure.md`](./infrastructure.md#pg_cron-и-service_role_key).
-- **Resend webhook**: `/api/resend-webhook` (Next.js API route, не Edge Function) — приём событий доставки.
+- **Resend webhook**: `/api/resend-webhook` (Next.js API route) — приём входящих (на Resend-домены) + событий доставки.
 - Read-receipt: пиксель + `email-track`.
+
+### Склейка писем в цепочку (threading) и её хрупкость
+
+- **Заголовки RFC 5322** (склейка у получателя): `email-internal-send` ([:212](../../supabase/functions/email-internal-send/index.ts:212)) вычисляет `In-Reply-To` = Message-ID последнего входящего (`source='email_internal'`), `References` = вся цепочка `email_message_id` треда.
+- **В ТВОЁМ Gmail** (отправка `employee_mailbox`) склейка требует Gmail-`threadId`: `sendViaEmployeeMailbox` ([:587](../../supabase/functions/email-internal-send/index.ts:587)) передаёт `threadId` из `project_thread_email_links.gmail_thread_id`, если он есть; при 404 — повтор без `threadId`.
+- **🪤 Где рвётся:** если входящее пришло **пересылкой→Resend** (а не родным `gmail-webhook`), мы НЕ знаем Gmail-`threadId` копии в твоём ящике → ответ уходит без него → у тебя письмо в отдельной ветке (у клиента склейка по `In-Reply-To` при этом работает). Фикс — резолвить `threadId` на лету по `rfc822msgid` того письма, на которое отвечаем. Разбор — [`messenger-ledger.md`](./messenger-ledger.md) 2026-06-29.
 
 ## Личные диалоги (Personal Dialogs)
 
