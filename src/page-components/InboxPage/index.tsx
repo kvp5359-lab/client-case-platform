@@ -23,13 +23,9 @@ import {
 } from '@/hooks/messenger/useFilteredInbox'
 import { useDebounce } from '@/hooks/shared/useDebounce'
 import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
-import { useAuth } from '@/contexts/AuthContext'
 import { useMySenderName } from '@/hooks/messenger/useMySenderName'
 import { useSidePanelStore } from '@/store/sidePanelStore'
-import {
-  getCurrentWorkspaceParticipant,
-  type MessageChannel,
-} from '@/services/api/messenger/messengerService'
+import { type MessageChannel } from '@/services/api/messenger/messengerService'
 import { invalidateMessengerCaches, projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
 import { usePageTitle } from '@/hooks/usePageTitle'
@@ -44,18 +40,17 @@ import { InboxSidebar } from './InboxSidebar'
 import { useInboxFilters, type InboxFilter } from './useInboxFilters'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { LazyChatSettingsDialog as ChatSettingsDialog } from '@/components/lazyChatSettingsDialog'
-import { stashThreadDraft } from '@/components/messenger/hooks/stashThreadDraft'
+import { useQueueThreadInitialMessage } from '@/components/tasks/useQueueThreadInitialMessage'
 
 export default function InboxPage() {
   usePageTitle('Входящие')
   const { workspaceId } = useParams<{ workspaceId: string }>()
-  const { user } = useAuth()
   const selfSenderName = useMySenderName(workspaceId)
   const queryClient = useQueryClient()
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
   const closePanel = useSidePanelStore((s) => s.closePanel)
-  const setPendingInitialMessage = useSidePanelStore((s) => s.setPendingInitialMessage)
+  const queueInitialMessage = useQueueThreadInitialMessage(workspaceId ?? '')
 
   // Стейт диалога создания треда
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -203,17 +198,7 @@ export default function InboxPage() {
   }, [workspaceId, queryClient])
 
   const handleCreateChat = useCallback(
-    async (result: ChatSettingsResult) => {
-      let senderName = 'Вы'
-      if (result.initialMessage && user && workspaceId) {
-        try {
-          const p = await getCurrentWorkspaceParticipant(workspaceId, user.id)
-          if (p) senderName = p.name
-        } catch {
-          /* fallback */
-        }
-      }
-
+    (result: ChatSettingsResult) => {
       createChatMutation.mutate(
         {
           name: result.name,
@@ -239,25 +224,9 @@ export default function InboxPage() {
         },
         {
           onSuccess: async (newChat) => {
-            if (result.asDraft) {
-              // Черновик: не отправляем, кладём в черновик треда (composer
-              // подхватит при открытии; переживает перезагрузку).
-              if (result.initialMessage) {
-                await stashThreadDraft(
-                  newChat.id,
-                  result.initialMessage.html,
-                  result.initialMessage.files,
-                )
-              }
-            } else if (result.initialMessage) {
-              setPendingInitialMessage({
-                threadId: newChat.id,
-                html: result.initialMessage.html,
-                files: result.initialMessage.files,
-                isEmail: result.channelType === 'email',
-                senderName,
-              })
-            }
+            // Единый механизм отправки/черновика первого сообщения — тот же хук,
+            // что у досок/списков и быстрых действий.
+            await queueInitialMessage(newChat as ProjectThread, result)
             setCreateDialogOpen(false)
             setCreateTemplate(null)
             invalidateInbox()
@@ -267,7 +236,7 @@ export default function InboxPage() {
         },
       )
     },
-    [createChatMutation, user, workspaceId, setPendingInitialMessage, invalidateInbox],
+    [createChatMutation, queueInitialMessage, invalidateInbox],
   )
 
   // Общие mark-read/unread мутации: одна реализация на InboxPage + BoardInboxList.

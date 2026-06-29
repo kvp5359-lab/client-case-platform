@@ -11,6 +11,10 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useCreateThread } from '@/hooks/messenger/useProjectThreads.mutations'
+import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
+import { useQueueThreadInitialMessage } from '@/components/tasks/useQueueThreadInitialMessage'
+import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
+import { newThreadToTaskItem } from '@/components/tasks/taskListConstants'
 import { useParticipantsMutations } from '@/hooks/permissions/useParticipantsMutations'
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
 import { EditParticipantDialog } from '@/components/participants/EditParticipantDialog'
@@ -39,6 +43,7 @@ export function QuickActionsProvider({
 }) {
   const router = useRouter()
   const createThread = useCreateThread(null, workspaceId ?? '')
+  const queueInitialMessage = useQueueThreadInitialMessage(workspaceId ?? '')
   const { addMutation } = useParticipantsMutations(workspaceId)
 
   const [projectDialog, setProjectDialog] = useState<{
@@ -112,9 +117,12 @@ export function QuickActionsProvider({
         sourceTemplateId: result.sourceTemplateId,
       },
       {
-        onSuccess: (thread) => {
+        onSuccess: async (thread) => {
+          // Единый механизм: отправка/черновик первого сообщения + открытие треда —
+          // тот же путь, что у инбокса/досок/списков (иначе письмо не уходило).
+          await queueInitialMessage(thread as ProjectThread, result)
           setThreadDialog({ open: false, template: null, targetProjectId: null })
-          toast.success(`Создан тред «${thread.name}»`)
+          globalOpenThread(newThreadToTaskItem(thread as ProjectThread, result))
         },
         onError: (err) => {
           toast.error('Не удалось создать тред', {
