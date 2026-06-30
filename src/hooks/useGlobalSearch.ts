@@ -167,6 +167,9 @@ export type ProjectTemplateMeta = {
   icon: string | null
   icon_color_mode: 'status' | 'fixed'
   icon_color: string
+  /** Префикс для сайдбара — null, если показ выключен. Делит кэш с useSidebarData,
+   *  поэтому queryFn ОБЯЗАН быть эквивалентен (тот же select + namePrefix). */
+  namePrefix: string | null
 }
 
 /**
@@ -181,7 +184,7 @@ export function useProjectTemplateIcons(workspaceId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_templates')
-        .select('id, icon, icon_color_mode, icon_color')
+        .select('id, icon, icon_color_mode, icon_color, default_name_prefix, show_name_prefix_in_sidebar')
         .eq('workspace_id', workspaceId!)
       if (error) throw error
       const map: Record<string, ProjectTemplateMeta> = {}
@@ -190,6 +193,9 @@ export function useProjectTemplateIcons(workspaceId: string | undefined) {
           icon: row.icon,
           icon_color_mode: row.icon_color_mode === 'fixed' ? 'fixed' : 'status',
           icon_color: row.icon_color,
+          namePrefix: row.show_name_prefix_in_sidebar
+            ? row.default_name_prefix?.trim() || null
+            : null,
         }
       }
       return map

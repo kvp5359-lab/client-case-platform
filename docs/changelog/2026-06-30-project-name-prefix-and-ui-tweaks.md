@@ -45,8 +45,21 @@
 префикс у **108** проектов (Лид ЮРИСТ — 106, Лид ВНЖ — 2). `Лид DN: Vanya` не
 тронут (другой префикс). Пустых имён после обрезки нет.
 
+### Фикс гонки общего кэша (префикс не показывался в сайдбаре)
+Сайдбар (`useSidebarData`) и поиск (`useProjectTemplateIcons` в `useGlobalSearch`)
+делят ОДИН кэш-ключ `sidebarMetaKeys.templatesIcons`, но имели РАЗНЫЕ queryFn:
+у поиска select был без `default_name_prefix`/`show_name_prefix_in_sidebar` и map
+без `namePrefix`. При монтировании обоих хуков React Query при первом fetch
+недетерминированно выбирал queryFn — часто выигрывал «старый» (поиска) → кэш без
+`namePrefix` → префикс в сайдбаре не появлялся (шапка работала, у неё свой ключ
+`detail`). Фикс: queryFn `useProjectTemplateIcons` выровнен с сайдбаром (тот же
+select + `namePrefix` в map + поле в `ProjectTemplateMeta`).
+**Грабли:** два хука на одном queryKey ОБЯЗАНЫ иметь эквивалентный queryFn —
+иначе содержимое общего кэша зависит от того, кто выиграл гонку первого fetch.
+
 ### Файлы
 - `supabase/migrations/20260630_project_template_show_name_prefix_in_sidebar.sql` (нов)
+- `src/hooks/useGlobalSearch.ts` (выравнивание queryFn общего кэша)
 - `src/types/database.ts`, `src/types/project.ts`
 - `src/page-components/ProjectTemplateEditorPage.tsx`
 - `src/components/templates/project-template-editor/useProjectTemplateMutations.ts`
