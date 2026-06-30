@@ -604,9 +604,10 @@ body[data-panel-open][data-panel-mode="push"] main {
 .composer-fmt-toggle {
   display: none;
 }
-/* Кнопка статуса задачи («Новый статус») — широкая, прячется первой при нехватке
-   места (статус доступен в шапке/меню «⋮»). */
-@container composer-tools (max-width: 400px) {
+/* Кнопка статуса задачи («Новый статус») — широкая (~110px), прячется ПЕРВОЙ и с
+   запасом: показываем только когда в ряду реально есть место под неё + весь набор
+   форматирования (иначе налезала на кнопки отправки). Статус доступен в шапке/«⋮». */
+@container composer-tools (max-width: 480px) {
   .composer-status-hide { display: none; }
 }
 @container composer-tools (max-width: 350px) {
