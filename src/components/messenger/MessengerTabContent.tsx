@@ -61,6 +61,8 @@ type MessengerTabContentProps = {
    */
   threadId: string
   toolbarPortalContainer?: HTMLDivElement | null
+  /** Контейнер для индикатора канала на мобиле (выдвижная панель шапки). */
+  channelPortalContainer?: HTMLDivElement | null
 }
 
 const COMPOSER_MODES: ComposerMode[] = ['client', 'team', 'note', 'self']
@@ -88,6 +90,7 @@ export function MessengerTabContent({
   channel = 'client',
   threadId,
   toolbarPortalContainer,
+  channelPortalContainer,
 }: MessengerTabContentProps) {
   const queryClient = useQueryClient()
   const [telegramDialogOpen, setTelegramDialogOpen] = useState(false)
@@ -484,6 +487,7 @@ export function MessengerTabContent({
           }
         />
       }
+      channelContainer={channelPortalContainer}
     />
   )
 

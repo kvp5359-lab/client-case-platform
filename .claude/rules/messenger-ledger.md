@@ -46,6 +46,17 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-30 — Мобильная шапка треда: выдвижная панель действий + канал в неё (фронт, не баг) ⏳ ЖДЁТ ДЕПЛОЯ
+- **Запрос:** в шапке `TaskPanelTaskHeader` на мобиле слишком много инлайновых действий → имя обрезалось. Спрятать в выдвижную панель (шеврон вниз), индикатор канала — в панель справа, поиск/⋮ оставить наверху.
+- **Сделано:** группа действий (исполнители/срок/проект) обёрнута в `md:contents` — на десктопе обёртка растворяется (inline как было), на мобиле = абсолютная панель снизу (скрыта до тапа по `ChevronDown`). `toolbarRef` (портал `ChatToolbar`) — один экземпляр, не дублируется.
+- **Канал в панель без дробления портала:** индикатор канала (не-email, stateless) **дублируется** — inline на десктопе (`hidden md:inline-flex`, рядом с поиском) + портал в `md:hidden`-слот шапки на мобиле. `ChatToolbar` получил `channelContainer`; `MessengerTabContent` — `channelPortalContainer`; `TaskPanel` держит 2-й контейнер и связывает слот (`channelToolbarRef`). Email-ветка НЕ дублируется (stateful `EmailSubjectBar`).
+- **Грабли:** (1) `md:contents` для «inline на десктопе / панель на мобиле» без дубля DOM. (2) Индикатор канала дублируется CSS-видимостью — ок для stateless-иконки, НЕ для stateful. (3) Два `ml-auto` в одном flex-ряду делят свободное место → зазор; для «прижать вправо» оставлять ОДИН `ml-auto`. (4) Только side-panel-шапка; инбокс (`InboxChatHeader`) — отдельный компонент, не затронут.
+- **Проверки:** tsc 0, lint 0, 753 теста. Деталь — `docs/changelog/2026-06-30-chat-header-mobile-actions-panel.md`.
+- **Файлы:** `TaskPanelTaskHeader.tsx`, `TaskPanel.tsx`, `DeadlinePopover.tsx`, `ChatToolbar.tsx`, `MessengerTabContent.tsx`.
+
+### 2026-06-30 — Автофокус названия в настройках чата — каретка в начало (фронт, не баг) ⏳ ЖДЁТ ДЕПЛОЯ
+- `ChatSettingsDialog`: `autoFocus` у поля «Название» заменён на эффект (rAF + `setSelectionRange(0,0)` + `scrollLeft=0`) — у длинного названия видно начало, а не хвост. Параллельная сессия. Деталь — `docs/changelog/2026-06-30-chat-settings-name-autofocus-start.md`.
+
 ### 2026-06-29 — Письма не склеиваются в цепочку в МОЁМ Gmail (исходящие employee_mailbox) ⭐ ЗАДЕПЛОЕНО, ⏳ ЖДЁТ СМОК
 - **Симптом (прод):** ответил из сервиса на входящее письмо (тред «Fra 13_2026», `jeremias.m@uatae.org`). У клиента/в сервисе ок, но в МОЁМ Gmail ответ («Re: FW…») лёг **отдельной веткой**, не склеился с входящим «FW…».
 - **Замеры (прод):** входящее `source='email_internal'` (= пришло **пересылкой Gmail→Resend**), Message-ID `<002801…@uatae.org>`. Исходящее — `email_send_method='employee_mailbox'` (Gmail API, Message-ID `@mail.gmail.com`), отправитель `kvp5359@gmail.com`. У треда в `project_thread_email_links` есть `gmail_thread_id=19f13719177a4a0c`, но он указывает на ветку нашего же ответа, а не на «FW».

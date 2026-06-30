@@ -5,10 +5,10 @@
  * Три строки: статус/имя/действия, мета-строка, email-получатели.
  */
 
-import { useState, useRef, useEffect, createElement } from 'react'
+import { useState, createElement } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Check, Settings, ExternalLink, X, ListTree, History, FolderOpen,
+  ExternalLink, X, ListTree, History, FolderOpen, ChevronDown,
 } from 'lucide-react'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
@@ -21,7 +21,6 @@ import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useUpdateThread } from '@/hooks/messenger/useProjectThreads'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
-import { Button } from '@/components/ui/button'
 import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { cn } from '@/lib/utils'
@@ -52,6 +51,8 @@ type TaskPanelTaskHeaderProps = {
   onOpenProjectInStack?: (project: ProjectHeaderInfo) => void
   resolvedProjectName: string | null
   toolbarRef: (node: HTMLDivElement | null) => void
+  /** Слот для индикатора канала на мобиле (в выдвижной панели действий). */
+  channelToolbarRef?: (node: HTMLDivElement | null) => void
   /** Текущий режим контента панели: тред или «Вся история» проекта */
   viewMode?: 'thread' | 'history' | 'documents'
   /** Переключатель «История» — undefined прячет кнопку (например, у треда без проекта) */
@@ -72,7 +73,6 @@ export function TaskPanelTaskHeader({
   onDeadlineClear,
   onTimeChange,
   deadlinePending,
-  onRename,
   onSettingsOpen,
   onClose,
   hideCloseButton = false,
@@ -81,6 +81,7 @@ export function TaskPanelTaskHeader({
   onOpenProjectInStack,
   resolvedProjectName,
   toolbarRef,
+  channelToolbarRef,
   viewMode = 'thread',
   onToggleHistory,
   onToggleDocuments,
@@ -128,38 +129,18 @@ export function TaskPanelTaskHeader({
     )
   }
 
-  // Inline-редактирование
-  const [editingName, setEditingName] = useState(false)
-  const [editNameValue, setEditNameValue] = useState('')
-  const editNameRef = useRef<HTMLInputElement>(null)
+  // Мобила: выдвижная панель действий (исполнители/срок/проект/поиск/⋮) —
+  // на узком экране они давят название, поэтому прячем в раскрывающийся ряд.
+  const [actionsOpen, setActionsOpen] = useState(false)
 
   const [prevTaskId, setPrevTaskId] = useState(task.id)
   if (task.id !== prevTaskId) {
     setPrevTaskId(task.id)
-    setEditingName(false)
     setAttachedProjectId(task.project_id ?? null)
   }
 
-  const startEditName = () => {
-    setEditNameValue(task.name)
-    setEditingName(true)
-  }
-
-  const commitEditName = () => {
-    const trimmed = editNameValue.trim()
-    if (trimmed && trimmed !== task.name) onRename(trimmed)
-    setEditingName(false)
-  }
-
-  useEffect(() => {
-    if (editingName && editNameRef.current) {
-      editNameRef.current.focus()
-      editNameRef.current.select()
-    }
-  }, [editingName])
-
   return (
-    <div className={cn('group/panel-header border-b shrink-0 flex flex-col', hideToolsRow ? 'h-10' : 'h-[65px]')}>
+    <div className={cn('group/panel-header relative border-b shrink-0 flex flex-col', hideToolsRow ? 'h-10' : 'h-[65px]')}>
       {/* Строка 1: статус/иконка + название + действия (жёсткая высота 30px,
           в bare-режиме растягивается на всю шапку h-9). */}
       <div className={cn('flex items-center gap-2 px-4 shrink-0', hideToolsRow ? 'h-full' : 'h-[30px]')}>
@@ -193,38 +174,17 @@ export function TaskPanelTaskHeader({
           >
             Документы
           </h2>
-        ) : editingName ? (
-          <form
-            className="flex items-center gap-1 min-w-0 flex-1"
-            onSubmit={(e) => { e.preventDefault(); commitEditName() }}
-          >
-            <input
-              ref={editNameRef}
-              value={editNameValue}
-              onChange={(e) => setEditNameValue(e.target.value)}
-              onBlur={commitEditName}
-              onKeyDown={(e) => { if (e.key === 'Escape') setEditingName(false) }}
-              className="flex-1 min-w-0 text-sm font-semibold bg-transparent border-b-2 border-primary outline-none py-0"
-            />
-            <Button
-              type="submit"
-              variant="ghost"
-              size="icon"
-              className="shrink-0 h-auto p-0.5 text-muted-foreground hover:text-foreground"
-            >
-              <Check className="w-4 h-4" />
-            </Button>
-          </form>
         ) : (
           <h2
             className="text-sm font-semibold leading-tight truncate min-w-0 cursor-pointer hover:text-primary transition-colors"
-            onClick={startEditName}
+            onClick={onSettingsOpen}
+            title="Открыть настройки треда"
           >
             {task.name}
           </h2>
         )}
 
-        {viewMode === 'thread' && !isTask && !editingName && (
+        {viewMode === 'thread' && !isTask && (
           <Popover>
             <PopoverTrigger asChild>
               <button
@@ -286,6 +246,18 @@ export function TaskPanelTaskHeader({
           </a>
         )}
 
+        {/* Группа действий. Десктоп: `md:contents` — обёртка растворяется,
+            действия inline в строке шапки как раньше. Мобила: выдвижная панель
+            под шапкой (абсолютная, поверх ленты), скрыта пока не открыта
+            шевроном — чтобы не давить название треда. */}
+        <div
+          className={cn(
+            'items-center gap-2',
+            'absolute top-full inset-x-0 z-20 bg-background border-b px-4 py-2 shadow-md',
+            actionsOpen ? 'flex' : 'hidden',
+            'md:contents',
+          )}
+        >
         <div className="shrink-0">
           <AssigneesPopover
             threadId={task.id}
@@ -304,6 +276,7 @@ export function TaskPanelTaskHeader({
             onSet={onDeadlineSet}
             onClear={onDeadlineClear}
             isPending={deadlinePending}
+            placeholderLabelClassName=""
           />
         )}
 
@@ -318,21 +291,10 @@ export function TaskPanelTaskHeader({
             createDefaultName={task.name}
             workspaceId={workspaceId}
             label="Проект"
-            labelClassName="hidden md:inline"
             iconClassName="w-3 h-3"
             triggerClassName="flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0 whitespace-nowrap text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50"
           />
         )}
-
-        {/* Шестерёнка настроек — слева от иконок поиска/почты; видна по наведению. */}
-        <button
-          type="button"
-          onClick={onSettingsOpen}
-          className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors opacity-100 md:opacity-0 md:group-hover/panel-header:opacity-100"
-          title="Настройки"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
 
         {isTask && (
           <RecurringRuleDialog
@@ -350,7 +312,13 @@ export function TaskPanelTaskHeader({
             }}
           />
         )}
+        {/* Слот индикатора канала — заполняется порталом ChatToolbar (только
+            мобила); прижат вправо в панели. На десктопе скрыт (канал inline
+            рядом с поиском). */}
+        <div ref={channelToolbarRef} className="md:hidden flex items-center ml-auto shrink-0" />
+        </div>
 
+        {/* Поиск (ChatToolbar) — остаётся на верхнем ряду. */}
         <div ref={toolbarRef} className="flex items-center gap-1 ml-auto shrink-0" />
 
         {/* Меню «⋮» — те же действия, что и в строке задачи, кроме «Открыть»
@@ -374,6 +342,16 @@ export function TaskPanelTaskHeader({
             align="end"
           />
         )}
+
+        {/* Шеврон — раскрывает панель действий (только мобила). */}
+        <button
+          type="button"
+          onClick={() => setActionsOpen((o) => !o)}
+          aria-label="Действия с тредом"
+          className="md:hidden shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+        >
+          <ChevronDown className={cn('w-4 h-4 transition-transform', actionsOpen && 'rotate-180')} />
+        </button>
 
         {!hideCloseButton && (
           <button

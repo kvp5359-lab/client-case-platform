@@ -3,6 +3,7 @@
  */
 
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Link2, Send, Camera, User, Users, Briefcase } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getChatIconComponent } from './chatVisuals'
@@ -83,6 +84,10 @@ type ChatToolbarProps = {
   emailBar?: ReactNode
   /** Маленький индикатор подключения email-канала — открывает диалог привязки. */
   onEmailLinkClick?: () => void
+  /** Контейнер для индикатора канала (не-email) на мобиле — портал в выдвижную
+   *  панель шапки. Если задан, индикатор рендерится И в него (виден на мобиле),
+   *  а inline-копия прячется на мобиле. Десктоп — inline как раньше. */
+  channelContainer?: HTMLElement | null
 }
 
 export function ChatToolbar({
@@ -103,22 +108,15 @@ export function ChatToolbar({
   onChannelIconClick,
   emailBar,
   onEmailLinkClick,
+  channelContainer,
 }: ChatToolbarProps) {
-  return (
-    <>
-      <MessageSearch
-        searchQuery={searchQuery}
-        onSearchChange={onSearchChange}
-        isOpen={searchOpen}
-        onToggle={onSearchToggle}
-        resultCount={resultCount}
-        isSearching={isSearching}
-      />
-      {!isEmailChat &&
+  // Индикатор канала (не-email). Выносим в переменную, чтобы показать его либо
+  // inline (десктоп), либо порталом в выдвижную панель шапки (мобила).
+  const channelIndicator = !isEmailChat ? (
         // Приоритет: личные TG (MTProto/Business) → самолётик + суб-значок
         // подтипа; Wazzup → WhatsApp/Instagram; иначе групповой бот (с
         // привязкой/отвязкой) — самолётик + значок «группа».
-        (isMtproto ? (
+        isMtproto ? (
           <ChannelBadgeIcon
             Icon={Send}
             SubIcon={User}
@@ -165,7 +163,28 @@ export function ChatToolbar({
               </span>
             )}
           </span>
-        ))}
+        )
+      ) : null
+
+  return (
+    <>
+      <MessageSearch
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
+        isOpen={searchOpen}
+        onToggle={onSearchToggle}
+        resultCount={resultCount}
+        isSearching={isSearching}
+      />
+      {/* Индикатор канала: inline на десктопе; на мобиле inline-копия скрыта
+          (`hidden md:inline-flex`), а сам индикатор уходит порталом в выдвижную
+          панель шапки (channelContainer). */}
+      {channelIndicator && (
+        <span className={channelContainer ? 'hidden md:inline-flex' : 'inline-flex'}>
+          {channelIndicator}
+        </span>
+      )}
+      {channelIndicator && channelContainer && createPortal(channelIndicator, channelContainer)}
       {isEmailChat && (
         <div className="relative inline-flex">
           {emailBar}

@@ -83,6 +83,9 @@ type DeadlinePopoverProps = {
   isFinal?: boolean
   /** Доп. классы на chip-триггер (напр. hover-only видимость для пустого срока). */
   triggerClassName?: string
+  /** Классы для подписи-плейсхолдера «Срок» (когда дедлайн не задан). По умолчанию
+   *  `hidden md:inline` — скрыта на мобиле. Передай `''`, чтобы показать всегда. */
+  placeholderLabelClassName?: string
 }
 
 export function DeadlinePopover({
@@ -95,6 +98,7 @@ export function DeadlinePopover({
   isPending,
   isFinal,
   triggerClassName,
+  placeholderLabelClassName = 'hidden md:inline',
 }: DeadlinePopoverProps) {
   const deadlineFormat = useDeadlineFormat()
 
@@ -135,9 +139,9 @@ export function DeadlinePopover({
           {deadline ? (
             buildChipSummary(deadline, startAt ?? null, endAt ?? null, deadlineFormat)
           ) : (
-            // На мобиле прячем подпись-плейсхолдер — иконки достаточно, экономим
-            // ширину тесной шапки чата. На десктопе подпись остаётся.
-            <span className="hidden md:inline">Срок</span>
+            // Подпись-плейсхолдер. По умолчанию скрыта на мобиле (`hidden md:inline`);
+            // в местах с запасом по ширине (выдвижная панель шапки) показываем всегда.
+            <span className={placeholderLabelClassName || undefined}>Срок</span>
           )}
         </button>
       )}

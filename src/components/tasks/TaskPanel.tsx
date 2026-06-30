@@ -95,6 +95,9 @@ export function TaskPanel({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
   const toolbarRef = useCallback((node: HTMLDivElement | null) => setToolbarContainer(node), [])
+  // Второй контейнер — индикатор канала на мобиле (выдвижная панель шапки).
+  const [channelContainer, setChannelContainer] = useState<HTMLDivElement | null>(null)
+  const channelToolbarRef = useCallback((node: HTMLDivElement | null) => setChannelContainer(node), [])
   const [viewMode, setViewMode] = useState<'thread' | 'history' | 'documents'>('thread')
 
   const {
@@ -198,6 +201,7 @@ export function TaskPanel({
           onOpenProjectInStack={onOpenProjectInStack}
           resolvedProjectName={resolvedProjectName}
           toolbarRef={toolbarRef}
+          channelToolbarRef={channelToolbarRef}
           viewMode={viewMode}
           onToggleHistory={
             task.project_id
@@ -261,6 +265,7 @@ export function TaskPanel({
               threadId={task.id}
               accent={liveTask.accent_color as MessengerAccent}
               toolbarPortalContainer={toolbarContainer}
+              channelPortalContainer={channelContainer}
             />
           )}
         </div>
