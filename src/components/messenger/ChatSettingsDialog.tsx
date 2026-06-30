@@ -148,7 +148,23 @@ export function ChatSettingsDialog({
   // Поле описания: в покое компактное (2 строки), на фокусе раскрывается вниз —
   // минимум ~8rem, дальше растёт под контент до 16rem, потом скролл.
   const descRef = useRef<HTMLTextAreaElement>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
   const [descFocused, setDescFocused] = useState(false)
+
+  // Автофокус названия: ставим каретку и прокрутку в НАЧАЛО, иначе у длинного
+  // названия input показывает его конец (каретка по умолчанию в конце).
+  useEffect(() => {
+    if (!open) return
+    if (!(form.isEditMode || form.channelType !== 'email')) return
+    const id = requestAnimationFrame(() => {
+      const el = nameRef.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(0, 0)
+      el.scrollLeft = 0
+    })
+    return () => cancelAnimationFrame(id)
+  }, [open, form.isEditMode, form.channelType])
   const growDescription = () => {
     const el = descRef.current
     if (!el) return
@@ -349,6 +365,7 @@ export function ChatSettingsDialog({
                   onSelect={actions.handleStatusSelect}
                 />
                 <input
+                  ref={nameRef}
                   id="chat-name"
                   value={form.name}
                   onChange={(e) => {
@@ -364,7 +381,6 @@ export function ChatSettingsDialog({
                         ? 'Название задачи'
                         : 'Название чата'
                   }
-                  autoFocus={form.isEditMode || form.channelType !== 'email'}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && form.canSave) actions.handleSave()
                   }}
