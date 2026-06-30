@@ -17,6 +17,8 @@ export type { Project }
 export type ProjectTemplateWithRelations = {
   id: string
   name: string
+  default_name_prefix: string | null
+  show_name_prefix_in_sidebar: boolean
   enabled_modules: string[] | null
   root_folder_id: string | null
   folder_name_template: string | null

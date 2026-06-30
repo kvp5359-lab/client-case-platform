@@ -6216,6 +6216,7 @@ export type Database = {
           name: string
           order_index: number
           root_folder_id: string | null
+          show_name_prefix_in_sidebar: boolean
           updated_at: string
           workspace_id: string
         }
@@ -6239,6 +6240,7 @@ export type Database = {
           name: string
           order_index?: number
           root_folder_id?: string | null
+          show_name_prefix_in_sidebar?: boolean
           updated_at?: string
           workspace_id: string
         }
@@ -6262,6 +6264,7 @@ export type Database = {
           name?: string
           order_index?: number
           root_folder_id?: string | null
+          show_name_prefix_in_sidebar?: boolean
           updated_at?: string
           workspace_id?: string
         }

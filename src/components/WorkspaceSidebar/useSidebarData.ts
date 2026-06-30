@@ -30,6 +30,8 @@ type ProjectRow = Database['public']['Tables']['projects']['Row']
 export type Project = ProjectRow & {
   iconId?: string | null
   iconColor?: string
+  /** Префикс названия из шаблона — заполнен только если шаблон разрешил показ в сайдбаре. */
+  namePrefix?: string | null
 }
 
 type UseSidebarDataOptions = {
@@ -240,13 +242,15 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
     icon: string | null
     icon_color_mode: 'status' | 'fixed'
     icon_color: string
+    /** Префикс для сайдбара — null, если показ выключен в шаблоне. */
+    namePrefix: string | null
   }
   const { data: templatesById } = useQuery<Record<string, TemplateMeta>>({
     queryKey: sidebarMetaKeys.templatesIcons(workspaceId ?? ''),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_templates')
-        .select('id, icon, icon_color_mode, icon_color')
+        .select('id, icon, icon_color_mode, icon_color, default_name_prefix, show_name_prefix_in_sidebar')
         .eq('workspace_id', workspaceId!)
       if (error) throw error
       const map: Record<string, TemplateMeta> = {}
@@ -255,6 +259,9 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
           icon: row.icon,
           icon_color_mode: (row.icon_color_mode === 'fixed' ? 'fixed' : 'status'),
           icon_color: row.icon_color,
+          namePrefix: row.show_name_prefix_in_sidebar
+            ? (row.default_name_prefix?.trim() || null)
+            : null,
         }
       }
       return map
@@ -295,7 +302,7 @@ export function useSidebarData({ workspaceId, searchQuery, unreadProjectIds }: U
         tpl.icon_color_mode === 'fixed'
           ? tpl.icon_color
           : (p.status_id && statusesById?.[p.status_id]?.color) || STATUS_FALLBACK_COLOR
-      return { ...p, iconId, iconColor }
+      return { ...p, iconId, iconColor, namePrefix: tpl.namePrefix }
     })
   }, [projectsBeforeEnrich, templatesById, statusesById])
 

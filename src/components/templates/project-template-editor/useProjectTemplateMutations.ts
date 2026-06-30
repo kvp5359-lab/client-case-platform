@@ -149,9 +149,33 @@ export function useProjectTemplateMutations({
       // его кэш надо сбросить, иначе при глобальном staleTime=LONG диалог покажет
       // старый префикс. allList = ['project-templates'] покрывает list + names.
       queryClient.invalidateQueries({ queryKey: projectTemplateKeys.allList })
+      // Сайдбар читает шаблоны отдельным запросом — если показ префикса включён,
+      // строки проектов должны подхватить новый префикс без перезагрузки.
+      queryClient.invalidateQueries({ queryKey: sidebarMetaKeys.templatesIconsAll })
     },
     onError: () => {
       toast.error('Не удалось сохранить название по умолчанию')
+    },
+  })
+
+  // Флаг «отображать префикс названия в сайдбаре» — рисует префикс перед
+  // именем проекта в боковом сайдбаре, не меняя само имя.
+  const updateShowNamePrefixInSidebarMutation = useMutation({
+    mutationFn: async (show: boolean) => {
+      const { error } = await supabase
+        .from('project_templates')
+        .update({ show_name_prefix_in_sidebar: show })
+        .eq('id', templateId ?? '')
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.detail(templateId) })
+      // Сайдбар тянет шаблоны ОТДЕЛЬНЫМ запросом (sidebarMetaKeys.templatesIcons) —
+      // сбрасываем по broad-префиксу, иначе префикс не появится без перезагрузки.
+      queryClient.invalidateQueries({ queryKey: sidebarMetaKeys.templatesIconsAll })
+    },
+    onError: () => {
+      toast.error('Не удалось обновить настройку сайдбара')
     },
   })
 
@@ -444,6 +468,7 @@ export function useProjectTemplateMutations({
     updateIconColorMutation,
     updateIsLeadTemplateMutation,
     updateDefaultNamePrefixMutation,
+    updateShowNamePrefixInSidebarMutation,
     updateModulesMutation,
     updateDefaultPanelTabsMutation,
     addFormsMutation,

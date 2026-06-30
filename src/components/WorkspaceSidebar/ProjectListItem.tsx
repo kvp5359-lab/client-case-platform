@@ -128,7 +128,12 @@ export const ProjectListItem = memo(function ProjectListItem({
             )}
           </button>
         </span>
-        <span className="flex-1 text-left truncate">{project.name}</span>
+        <span className="flex-1 text-left truncate">
+          {project.namePrefix ? (
+            <span className="text-muted-foreground">{project.namePrefix} </span>
+          ) : null}
+          {project.name}
+        </span>
         {badge.type === 'number' ? (
           <span
             role={onBadgeClick ? 'button' : undefined}

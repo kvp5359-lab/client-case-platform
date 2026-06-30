@@ -19,6 +19,8 @@ type ProjectHeaderProps = {
   canEdit: boolean
   updateProjectName: UseMutationResult<unknown, Error, string>
   templateName?: string | null
+  /** Префикс названия из шаблона (серым слева от имени). Заполнен, только если шаблон разрешил показ. */
+  namePrefix?: string | null
   participantGroups?: RoleGroup[]
   /** Поля для тега статуса в шапке. Если что-то из этого пропущено — тег не показывается. */
   workspaceId?: string
@@ -32,6 +34,7 @@ export function ProjectHeader({
   canEdit,
   updateProjectName,
   templateName,
+  namePrefix,
   participantGroups,
   workspaceId,
   projectTemplateId,
@@ -70,6 +73,9 @@ export function ProjectHeader({
 
   return (
     <div className="flex items-baseline gap-2 flex-nowrap" style={{ width: 'max-content' }}>
+      {namePrefix && (
+        <span className="text-lg font-bold text-gray-300 shrink-0 -mr-1">{namePrefix}</span>
+      )}
       {isEditing ? (
         <div className="flex items-center gap-2 w-full">
           <input

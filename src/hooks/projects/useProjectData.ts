@@ -30,6 +30,8 @@ export function useProjectTemplate(templateId: string | null | undefined) {
           `
           id,
           name,
+          default_name_prefix,
+          show_name_prefix_in_sidebar,
           enabled_modules,
           root_folder_id,
           folder_name_template,

@@ -355,6 +355,11 @@ export default function ProjectPage() {
                 canEdit={canEditProjectInfo}
                 updateProjectName={updateProjectName}
                 templateName={projectTemplate?.name}
+                namePrefix={
+                  projectTemplate?.show_name_prefix_in_sidebar
+                    ? projectTemplate.default_name_prefix?.trim() || null
+                    : null
+                }
                 participantGroups={participantGroups}
                 workspaceId={project.workspace_id}
                 projectTemplateId={project.template_id}

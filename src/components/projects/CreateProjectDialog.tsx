@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -114,26 +114,13 @@ export function CreateProjectDialog({
     }
   }, [open, defaultName, defaultTemplateId])
 
-  // «Название по умолчанию» шаблона: при выборе типа проекта подставляем его
-  // префикс в начало имени. При смене шаблона старый префикс заменяется на новый
-  // (не стекается), остальная часть имени (имя контакта/правки) сохраняется.
-  const appliedPrefixRef = useRef('')
-  useEffect(() => {
-    if (!open) {
-      appliedPrefixRef.current = ''
-      return
-    }
-    const tpl = projectTemplatesRaw.find((t) => t.id === activeTemplateId)
-    const newPrefix = (tpl?.default_name_prefix ?? '').trim()
-    if (newPrefix === appliedPrefixRef.current) return
-    setName((prev) => {
-      let base = prev
-      const old = appliedPrefixRef.current
-      if (old && base.startsWith(old)) base = base.slice(old.length).replace(/^\s+/, '')
-      return newPrefix ? (base ? `${newPrefix} ${base}` : newPrefix) : base
-    })
-    appliedPrefixRef.current = newPrefix
-  }, [activeTemplateId, open, projectTemplatesRaw])
+  // Префикс шаблона (default_name_prefix) в имя проекта НЕ вшивается. Если шаблон
+  // разрешил показ префикса — рисуем его серым внутри поля названия (как в шапке
+  // проекта и сайдбаре). Имя пользователь печатает без префикса.
+  const activeTemplate = projectTemplatesRaw.find((t) => t.id === activeTemplateId)
+  const namePrefix = activeTemplate?.show_name_prefix_in_sidebar
+    ? activeTemplate.default_name_prefix?.trim() || null
+    : null
 
   const toggleDocKit = (id: string) => {
     setSelectedDocKitIds((prev) => {
@@ -226,14 +213,32 @@ export function CreateProjectDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <Alert variant="destructive">{error}</Alert>}
 
-          <Input
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Название проекта"
-            disabled={isLoading}
-            className="!text-xl font-semibold !h-12 placeholder:text-muted-foreground/50"
-          />
+          {namePrefix ? (
+            // Поле с серым префиксом слева: рамка как у Input, внутри —
+            // нередактируемый префикс + borderless input.
+            <div className="flex items-center h-12 w-full rounded-md border border-input bg-transparent px-3 shadow-sm transition-colors focus-within:ring-1 focus-within:ring-ring">
+              <span className="text-xl font-semibold text-muted-foreground/50 shrink-0 mr-1 select-none">
+                {namePrefix}
+              </span>
+              <input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Название проекта"
+                disabled={isLoading}
+                className="flex-1 min-w-0 bg-transparent text-xl font-semibold outline-none placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+          ) : (
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Название проекта"
+              disabled={isLoading}
+              className="!text-xl font-semibold !h-12 placeholder:text-muted-foreground/50"
+            />
+          )}
 
           <Input
             id="description"

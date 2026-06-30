@@ -73,6 +73,7 @@ export function ProjectTemplateEditorPage() {
     updateIconColorMutation,
     updateIsLeadTemplateMutation,
     updateDefaultNamePrefixMutation,
+    updateShowNamePrefixInSidebarMutation,
     updateModulesMutation,
     addFormsMutation,
     removeFormMutation,
@@ -282,9 +283,9 @@ export function ProjectTemplateEditorPage() {
             <label
               htmlFor="default-name-prefix"
               className="text-sm font-medium whitespace-nowrap"
-              title="Подставляется в начало имени нового проекта этого типа (напр. «Лид:»). Имя можно изменить при создании."
+              title="Префикс, который можно показывать перед именем проекта в сайдбаре (напр. «Лид:»). Само имя проекта он не меняет."
             >
-              Название по умолчанию
+              Префикс названия проекта
             </label>
             <input
               id="default-name-prefix"
@@ -301,6 +302,22 @@ export function ProjectTemplateEditorPage() {
               className="w-44 rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
+
+          <label
+            htmlFor="show-name-prefix-in-sidebar"
+            className="flex items-center gap-2 cursor-pointer select-none"
+            title="Если включено — префикс показывается перед именем проекта в сайдбаре, в шапке проекта и при создании."
+          >
+            <Checkbox
+              id="show-name-prefix-in-sidebar"
+              checked={template.show_name_prefix_in_sidebar}
+              disabled={updateShowNamePrefixInSidebarMutation.isPending}
+              onCheckedChange={(checked) =>
+                updateShowNamePrefixInSidebarMutation.mutate(checked === true)
+              }
+            />
+            <span className="text-sm font-medium">Отображать префикс</span>
+          </label>
         </div>
 
         {/*
