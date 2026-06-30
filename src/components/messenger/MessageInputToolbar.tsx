@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Send, Save, Type } from 'lucide-react'
+import { Send, Save, Type, ChevronDown } from 'lucide-react'
 import type { Editor } from '@tiptap/react'
 import type { MessengerAccent } from './MessageBubble'
 import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
@@ -137,9 +137,10 @@ export function MessageInputToolbar({
                 type="button"
                 title="Форматирование"
                 aria-label="Форматирование"
-                className="composer-fmt-toggle shrink-0 h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                className="composer-fmt-toggle shrink-0 h-8 px-1.5 gap-0.5 items-center justify-center rounded-md border border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               >
                 <Type className="h-4 w-4" />
+                <ChevronDown className="h-3 w-3 opacity-70" />
               </button>
             </PopoverTrigger>
             <PopoverContent side="top" align="start" sideOffset={6} className="w-auto p-1">
