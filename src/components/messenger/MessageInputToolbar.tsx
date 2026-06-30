@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Send, Save } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Send, Save, Type } from 'lucide-react'
 import type { Editor } from '@tiptap/react'
 import type { MessengerAccent } from './MessageBubble'
 import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
@@ -97,7 +98,7 @@ export function MessageInputToolbar({
           Регрессия 2026-06-25: список быстрых ответов переставал показываться
           (видна только тень). Для «кнопки не влезают» нужен другой подход
           (портал-меню «⋯»), не клиппинг-контейнер. */}
-      <div className="flex items-center gap-0 px-1.5 flex-1 min-w-0">
+      <div className="composer-tools-cq flex items-center gap-0 px-1.5 flex-1 min-w-0">
         <AttachmentButton
           onFilesSelected={onFilesSelected}
           onOpenDocPicker={onOpenDocPicker}
@@ -119,7 +120,33 @@ export function MessageInputToolbar({
           />
         )}
         {editor && <div className="w-px h-5 bg-border/60 mx-0.5 shrink-0" />}
-        {editor && <MessengerToolbar editor={editor} />}
+        {/* Панель форматирования inline. Кнопки прячутся ПО ОДНОЙ по мере
+            нехватки ширины ряда (container query в globals.css, не md:-вьюпорт —
+            работает и в узкой десктоп-панели). Непоместившиеся доступны в кнопке
+            «Aa» (всплывающая панель-портал, не клиппит). MessengerToolbar
+            stateless → две копии безопасны. */}
+        {editor && (
+          <div className="composer-fmt-inline flex items-center shrink-0">
+            <MessengerToolbar editor={editor} />
+          </div>
+        )}
+        {editor && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                title="Форматирование"
+                aria-label="Форматирование"
+                className="composer-fmt-toggle shrink-0 h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                <Type className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" sideOffset={6} className="w-auto p-1">
+              <MessengerToolbar editor={editor} />
+            </PopoverContent>
+          </Popover>
+        )}
         {translate && (
           <>
             <div className="w-px h-5 bg-border/60 mx-0.5 shrink-0" />
@@ -133,8 +160,9 @@ export function MessageInputToolbar({
           </>
         )}
         {taskStatusPicker && (
-          <>
-            <div className="ml-2 shrink-0" />
+          // Кнопка статуса задачи — прячется при нехватке ширины ряда (container
+          // query), не только на мобиле. Статус доступен в шапке/меню «⋮».
+          <div className="composer-status-hide flex items-center ml-2 shrink-0">
             <TaskStatusPicker
               statuses={taskStatusPicker.statuses}
               currentStatusId={taskStatusPicker.currentStatusId}
@@ -142,7 +170,7 @@ export function MessageInputToolbar({
               onPick={taskStatusPicker.onPick}
               disabled={isPending}
             />
-          </>
+          </div>
         )}
       </div>
       {/* Right: save + send */}
