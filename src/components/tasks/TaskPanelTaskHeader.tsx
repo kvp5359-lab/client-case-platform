@@ -318,8 +318,14 @@ export function TaskPanelTaskHeader({
         <div ref={channelToolbarRef} className="md:hidden flex items-center ml-auto shrink-0" />
         </div>
 
+        {/* Зазор + вертикальный разделитель перед правым кластером иконок
+            (поиск/email/⋮), отделяет их от чипов слева. Разделитель несёт
+            ml-auto (отталкивает вправо). На мобиле скрыт — там тесно, и ml-auto
+            берёт сам тулбар. */}
+        <div aria-hidden className="hidden md:block ml-auto w-px h-5 bg-border shrink-0" />
+
         {/* Поиск (ChatToolbar) — остаётся на верхнем ряду. */}
-        <div ref={toolbarRef} className="flex items-center gap-1 ml-auto shrink-0" />
+        <div ref={toolbarRef} className="flex items-center gap-1 ml-auto md:ml-0 shrink-0" />
 
         {/* Меню «⋮» — те же действия, что и в строке задачи, кроме «Открыть»
             (тред уже открыт в этой панели). */}
