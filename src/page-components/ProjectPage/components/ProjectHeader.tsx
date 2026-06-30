@@ -74,7 +74,7 @@ export function ProjectHeader({
   return (
     <div className="flex items-baseline gap-2 flex-nowrap" style={{ width: 'max-content' }}>
       {namePrefix && (
-        <span className="text-lg font-bold text-gray-300 shrink-0 -mr-1">{namePrefix}</span>
+        <span className="text-lg font-bold text-gray-400 shrink-0 -mr-1">{namePrefix}</span>
       )}
       {isEditing ? (
         <div className="flex items-center gap-2 w-full">

@@ -130,7 +130,7 @@ export const ProjectListItem = memo(function ProjectListItem({
         </span>
         <span className="flex-1 text-left truncate">
           {project.namePrefix ? (
-            <span className="text-muted-foreground">{project.namePrefix} </span>
+            <span className="text-muted-foreground/70">{project.namePrefix} </span>
           ) : null}
           {project.name}
         </span>

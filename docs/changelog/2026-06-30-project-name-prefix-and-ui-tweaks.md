@@ -57,6 +57,10 @@ select + `namePrefix` в map + поле в `ProjectTemplateMeta`).
 **Грабли:** два хука на одном queryKey ОБЯЗАНЫ иметь эквивалентный queryFn —
 иначе содержимое общего кэша зависит от того, кто выиграл гонку первого fetch.
 
+### Тон префикса (подгонка)
+Цвет префикса: в шапке проекта чуть темнее (`text-gray-300` → `text-gray-400`),
+в сайдбаре чуть светлее (`text-muted-foreground` → `text-muted-foreground/70`).
+
 ### Файлы
 - `supabase/migrations/20260630_project_template_show_name_prefix_in_sidebar.sql` (нов)
 - `src/hooks/useGlobalSearch.ts` (выравнивание queryFn общего кэша)
