@@ -207,7 +207,7 @@ export function ComposerVisibilitySwitch({
     <TooltipProvider>
       <div
         className={cn(
-          'inline-flex items-stretch h-6 rounded-full border overflow-hidden bg-white/80 backdrop-blur-sm shadow-[0_0_18px_6px_rgba(255,255,255,0.9)]',
+          'inline-flex items-stretch h-6 rounded-full border overflow-hidden bg-white shadow-[0_0_8px_2px_rgba(255,255,255,0.55)]',
           activeBorder,
         )}
       >

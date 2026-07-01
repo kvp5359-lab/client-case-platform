@@ -18,7 +18,7 @@ import {
   Italic,
   Underline as UnderlineIcon,
   Strikethrough,
-  MessageSquareQuote,
+  Quote,
   ListOrdered,
   List,
 } from 'lucide-react'
@@ -109,7 +109,7 @@ export function MessengerToolbar({ editor }: { editor: Editor }) {
         title="Зачёркнутый (Ctrl+Shift+S)"
       />
       <ToolbarButton
-        icon={MessageSquareQuote}
+        icon={Quote}
         isActive={editor.isActive('blockquote')}
         onAction={() => editor.chain().focus().toggleBlockquote().run()}
         title="Цитата"
