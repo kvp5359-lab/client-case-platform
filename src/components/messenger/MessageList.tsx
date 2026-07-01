@@ -403,9 +403,12 @@ export function MessageList({
     if (auditEvents.length === 0) return messages.map((msg, idx) => ({ kind: 'message' as const, msg, idx }))
 
     // Событие непрочитано (чужое и после last_read_at) — та же формула, что при рендере.
+    // Перенос срока (change_deadline) непрочитанным НЕ считается — фоновое движение
+    // планов, согласовано с сервером (recompute_thread_unread_for исключает его из инбокса).
     const isEventUnread = (ev: ThreadAuditEvent) =>
       !suppressUnread &&
       isLastReadAtLoaded &&
+      ev.action !== 'change_deadline' &&
       ev.user_id !== currentUserId &&
       (lastReadAtMs === null || Date.parse(ev.created_at) > lastReadAtMs)
 
@@ -538,6 +541,7 @@ export function MessageList({
             const eventIsUnread =
               !suppressUnread &&
               isLastReadAtLoaded &&
+              item.event.action !== 'change_deadline' &&
               item.event.user_id !== currentUserId &&
               (lastReadAtMs === null || Date.parse(item.event.created_at) > lastReadAtMs)
             return (
