@@ -1,14 +1,24 @@
 /**
- * @-упоминания в композере (Tiptap Mention + suggestion) с МУЛЬТИВЫБОРОМ.
- * `@` открывает попап участников (аватарки/поиск-через-ввод/чекбоксы); отмечаешь
- * нескольких → «Упомянуть» вставляет все инлайн-теги сразу (@A @B @C).
+ * @-упоминания в композере (Tiptap Mention + suggestion), ОДИНОЧНЫЙ выбор — как
+ * в Telegram/Slack. `@` открывает попап участников (аватарки/поиск/навигация
+ * ↑↓); клик или Enter по строке сразу вставляет тег и закрывает попап. Ещё
+ * упоминание — снова «@».
  */
 import Mention from '@tiptap/extension-mention'
 import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
 import type { Editor, JSONContent, Range } from '@tiptap/core'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { MentionMultiSelectPopup } from './MentionMultiSelectPopup'
+import { MentionPickerPopup } from './MentionPickerPopup'
+
+// Флажок «сейчас идёт вставка из буфера». Пока он поднят, suggestion.allow не
+// открывает список — чтобы вставленный текст с «@» (например «@rs_help102_bot»
+// из буфера) НЕ триггерил попап. Ручной ввод «@» с клавиатуры / кнопкой попап
+// открывает как обычно. Флажок живёт один тик: handlePaste ставит его синхронно
+// перед стандартной вставкой, транзакция вставки обрабатывается плагином
+// suggestion в том же цикле (флажок ещё поднят), затем setTimeout(0) снимает.
+let pasteInProgress = false
 
 export type MentionItem = { id: string; label: string; avatarUrl?: string | null }
 
@@ -24,7 +34,26 @@ export function extractMentionIds(editor: Editor): string[] {
 }
 
 export function buildMentionExtension(getItems: () => MentionItem[]) {
-  return Mention.configure({
+  return Mention.extend({
+    // Плагин ловит вставку из буфера и поднимает флажок на один тик.
+    addProseMirrorPlugins() {
+      return [
+        ...(this.parent?.() ?? []),
+        new Plugin({
+          key: new PluginKey('mentionPasteGuard'),
+          props: {
+            handlePaste: () => {
+              pasteInProgress = true
+              setTimeout(() => {
+                pasteInProgress = false
+              }, 0)
+              return false // не мешаем стандартной вставке
+            },
+          },
+        }),
+      ]
+    },
+  }).configure({
     HTMLAttributes: {
       class: 'mention rounded px-1 py-0.5 bg-neutral-200 text-neutral-800',
     },
@@ -34,6 +63,8 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
     deleteTriggerWithBackspace: true,
     suggestion: {
       char: '@',
+      // Не открывать список, если «@» появился вставкой из буфера (см. флажок).
+      allow: () => !pasteInProgress,
       // Отдаём ВСЕХ — поиск делает само поле в попапе (видимый input).
       items: (): MentionItem[] => getItems(),
       render: () => {
@@ -44,8 +75,6 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
         let inserted = false
         let outsideHandler: ((e: MouseEvent) => void) | null = null
         let done = false
-        // Текущий выбор в попапе — чтобы Enter из РЕДАКТОРА подтверждал «Упомянуть».
-        let selectedIds: string[] = []
 
         // Закрытие. removeTrigger=true (отмена) → удаляем незавершённый «@…».
         // Идемпотентно: removeTrigger (deleteRange) синхронно завершает suggestion
@@ -79,17 +108,16 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
           }, 0)
         }
 
-        const insert = (ids: string[]) => {
-          if (!editor || !range || ids.length === 0) {
+        const insert = (id: string) => {
+          const it = getItems().find((i) => i.id === id)
+          if (!editor || !range || !it) {
             cleanup(true)
             return
           }
-          const chosen = getItems().filter((i) => ids.includes(i.id))
-          const content: JSONContent[] = []
-          chosen.forEach((it) => {
-            content.push({ type: 'mention', attrs: { id: it.id, label: it.label } })
-            content.push({ type: 'text', text: ' ' })
-          })
+          const content: JSONContent[] = [
+            { type: 'mention', attrs: { id: it.id, label: it.label } },
+            { type: 'text', text: ' ' },
+          ]
           editor.chain().focus().insertContentAt(range, content).run()
           inserted = true
           cleanup()
@@ -113,7 +141,6 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
             // return` и НИЧЕГО не закрывает. Сбрасываем состояние сессии здесь.
             done = false
             inserted = false
-            selectedIds = []
             editor = props.editor
             range = props.range
             // Самолечение: сносим осиротевшие попапы (HMR/гонки teardown могут
@@ -130,13 +157,10 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
             document.addEventListener('mousedown', outsideHandler, true)
             root = createRoot(container)
             root.render(
-              createElement(MentionMultiSelectPopup, {
+              createElement(MentionPickerPopup, {
                 items: props.items,
-                onConfirm: insert,
+                onSelect: insert,
                 onClose: () => cleanup(true),
-                onSelectionChange: (ids) => {
-                  selectedIds = ids
-                },
               }),
             )
             place(props.clientRect?.())
@@ -148,16 +172,12 @@ export function buildMentionExtension(getItems: () => MentionItem[]) {
             place(props.clientRect?.())
           },
           onKeyDown: (props: SuggestionKeyDownProps) => {
-            if (props.event?.key === 'Escape') {
+            // Навигация/выбор идут в поле поиска попапа (оно в фокусе). Здесь ловим
+            // только Escape/Enter на случай, если фокус всё же в редакторе:
+            // закрываем и гасим Enter, чтобы ProseMirror не разбил блок и не
+            // оставил висячий «@».
+            if (props.event?.key === 'Escape' || props.event?.key === 'Enter') {
               cleanup(true)
-              return true
-            }
-            // Enter из редактора (фокус не в поле поиска): есть выбор → вставляем
-            // упоминания, иначе отменяем висячий «@». В любом случае гасим Enter,
-            // чтобы ProseMirror не разбил блок и не оставил «@».
-            if (props.event?.key === 'Enter') {
-              if (selectedIds.length > 0) insert(selectedIds)
-              else cleanup(true)
               return true
             }
             return false

@@ -1,49 +1,44 @@
 "use client"
 
 /**
- * Попап мультивыбора для @-упоминаний — как пикер исполнителей: видимое поле
- * поиска, аватарки, чекбоксы. Отмечаешь нескольких → «Упомянуть» вставляет все
- * инлайн-теги сразу.
+ * Попап @-упоминаний (одиночный выбор, как в Telegram/Slack): видимое поле
+ * поиска, аватарки, список. Клик по человеку ИЛИ Enter по подсвеченной строке
+ * сразу вставляет тег и закрывает попап. Хочешь ещё упоминание — снова «@».
  *
- * Поле поиска автофокусится; клики по строкам/кнопкам — onMouseDown preventDefault,
+ * Поле поиска автофокусится; клики по строкам — onMouseDown preventDefault,
  * чтобы не уводить фокус из поля (а сам Tiptap-suggestion остаётся активным, т.к.
- * @ в доке не меняется при блюре редактора).
+ * @ в доке не меняется при блюре редактора). Навигация ↑/↓/Enter/Escape — в поле.
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { Check, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MentionItem } from './messengerMention'
 
-export function MentionMultiSelectPopup({
+export function MentionPickerPopup({
   items,
-  onConfirm,
+  onSelect,
   onClose,
-  onSelectionChange,
 }: {
   items: MentionItem[]
-  onConfirm: (ids: string[]) => void
+  onSelect: (id: string) => void
   onClose: () => void
-  /** Текущий выбор наружу — чтобы Enter из редактора подтвердил его. */
-  onSelectionChange?: (ids: string[]) => void
 }) {
   const [q, setQ] = useState('')
-  const [selected, setSelected] = useState<Set<string>>(() => new Set())
-
-  // Сообщаем выбор наружу (для Enter, когда фокус в редакторе, а не в поиске).
-  useEffect(() => {
-    onSelectionChange?.([...selected])
-  }, [selected, onSelectionChange])
+  const [activeIndex, setActiveIndex] = useState(0)
+  const listRef = useRef<HTMLDivElement>(null)
 
   const query = q.trim().toLowerCase()
   const filtered = items.filter((i) => !query || i.label.toLowerCase().includes(query))
-  const toggle = (id: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  // Активный индекс держим в границах на чтении (без эффекта-клампинга).
+  const active = filtered.length ? Math.min(activeIndex, filtered.length - 1) : 0
+
+  // Подскроллить активную строку в зону видимости.
+  useEffect(() => {
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-idx="${active}"]`)
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [active])
+
   const keepFocus = (e: React.MouseEvent) => e.preventDefault()
 
   return (
@@ -67,11 +62,21 @@ export function MentionMultiSelectPopup({
             <input
               autoFocus
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => {
+                setQ(e.target.value)
+                setActiveIndex(0)
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'ArrowDown') {
                   e.preventDefault()
-                  if (selected.size > 0) onConfirm([...selected])
+                  setActiveIndex(Math.min(active + 1, filtered.length - 1))
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  setActiveIndex(Math.max(active - 1, 0))
+                } else if (e.key === 'Enter') {
+                  e.preventDefault()
+                  const it = filtered[active]
+                  if (it) onSelect(it.id)
                 } else if (e.key === 'Escape') {
                   e.preventDefault()
                   onClose()
@@ -88,22 +93,22 @@ export function MentionMultiSelectPopup({
           </div>
         </div>
 
-      {/* Список */}
-      <div className="overflow-y-auto py-1">
-        {filtered.length === 0 && (
-          <div className="px-3 py-2 text-xs text-muted-foreground">Никого не найдено</div>
-        )}
-        {filtered.map((it) => {
-          const on = selected.has(it.id)
-          return (
+        {/* Список */}
+        <div ref={listRef} className="overflow-y-auto py-1">
+          {filtered.length === 0 && (
+            <div className="px-3 py-2 text-xs text-muted-foreground">Никого не найдено</div>
+          )}
+          {filtered.map((it, idx) => (
             <button
               key={it.id}
               type="button"
+              data-idx={idx}
               onMouseDown={keepFocus}
-              onClick={() => toggle(it.id)}
+              onMouseEnter={() => setActiveIndex(idx)}
+              onClick={() => onSelect(it.id)}
               className={cn(
                 'w-full flex items-center gap-2.5 px-3 py-1.5 text-left transition-colors',
-                on ? 'bg-accent' : 'hover:bg-muted/50',
+                idx === active ? 'bg-accent' : 'hover:bg-muted/50',
               )}
             >
               {it.avatarUrl ? (
@@ -120,31 +125,9 @@ export function MentionMultiSelectPopup({
                 </div>
               )}
               <span className="text-sm truncate flex-1">{it.label}</span>
-              <div
-                className={cn(
-                  'w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors',
-                  on ? 'bg-primary border-primary text-primary-foreground' : 'border-input',
-                )}
-              >
-                {on && <Check className="w-3 h-3" />}
-              </div>
             </button>
-          )
-        })}
-      </div>
-
-      {/* Подтверждение */}
-      <div className="border-t p-1.5">
-        <button
-          type="button"
-          onMouseDown={keepFocus}
-          onClick={() => onConfirm([...selected])}
-          disabled={selected.size === 0}
-          className="w-full rounded-md bg-primary text-primary-foreground text-xs font-medium py-1.5 disabled:opacity-50 transition-opacity"
-        >
-          Упомянуть{selected.size > 0 ? ` (${selected.size})` : ''}
-        </button>
-      </div>
+          ))}
+        </div>
       </div>
     </div>
   )
