@@ -33,6 +33,10 @@ import type { QuickAction } from '@/types/quickActions'
 export type InterfacePresetConfig = {
   slots?: SidebarSlot[]
   quick_actions?: QuickAction[]
+  /** Показывать иконки проектов в списке сайдбара (дефолт true). */
+  show_project_icons?: boolean
+  /** Показывать префиксы названий проектов в сайдбаре (дефолт true). */
+  show_project_prefixes?: boolean
   // custom_menus?: CustomMenu[]     // Фаза кастомных меню
   // default_route?: string
 }
@@ -146,6 +150,8 @@ export function useActiveInterfacePreset(workspaceId: string | undefined) {
     activeId,
     slots,
     quickActions: preset?.config.quick_actions ?? [],
+    showProjectIcons: preset?.config.show_project_icons ?? true,
+    showProjectPrefixes: preset?.config.show_project_prefixes ?? true,
     isLoading: presetsQuery.isLoading || activeQuery.isLoading,
   }
 }
@@ -399,6 +405,27 @@ export function useUpdateActiveQuickActions() {
         user?.id,
         params.quickActions,
       )
+    },
+    onSuccess: (_d, vars) => invalidatePresets(qc, vars.workspaceId, user?.id),
+  })
+}
+
+/** Сохранить флаги отображения проектов (иконки/префиксы) в активный профиль. */
+export function useUpdateProjectDisplayPrefs() {
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  return useMutation({
+    mutationFn: async (params: {
+      workspaceId: string
+      showProjectIcons?: boolean
+      showProjectPrefixes?: boolean
+    }) => {
+      const patch: Partial<InterfacePresetConfig> = {}
+      if (params.showProjectIcons !== undefined)
+        patch.show_project_icons = params.showProjectIcons
+      if (params.showProjectPrefixes !== undefined)
+        patch.show_project_prefixes = params.showProjectPrefixes
+      await writeConfigPatchToActivePreset(params.workspaceId, user?.id, patch)
     },
     onSuccess: (_d, vars) => invalidatePresets(qc, vars.workspaceId, user?.id),
   })

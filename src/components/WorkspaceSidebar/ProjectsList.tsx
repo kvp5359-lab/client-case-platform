@@ -37,6 +37,8 @@ export type ProjectsListProps = {
   activeTab?: string
   onTabClick?: (projectId: string, tabId: string) => void
   workspaceId?: string
+  showProjectIcons?: boolean
+  showProjectPrefixes?: boolean
 }
 
 export const ProjectsList = memo(function ProjectsList({
@@ -60,6 +62,8 @@ export const ProjectsList = memo(function ProjectsList({
   activeTab,
   onTabClick,
   workspaceId,
+  showProjectIcons,
+  showProjectPrefixes,
 }: ProjectsListProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [localSearchQuery, setLocalSearchQuery] = useState('')
@@ -139,6 +143,8 @@ export const ProjectsList = memo(function ProjectsList({
       activeTab,
       onTabClick,
       togglePin,
+      showProjectIcons,
+      showProjectPrefixes,
     }),
     [
       badgeDisplays,
@@ -154,6 +160,8 @@ export const ProjectsList = memo(function ProjectsList({
       activeTab,
       onTabClick,
       togglePin,
+      showProjectIcons,
+      showProjectPrefixes,
     ],
   )
 

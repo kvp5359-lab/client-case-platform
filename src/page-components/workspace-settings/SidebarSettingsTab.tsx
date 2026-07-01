@@ -15,6 +15,8 @@ import { toast } from 'sonner'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { useUpdateProjectDisplayPrefs } from '@/hooks/useInterfacePresets'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useBoardsQuery } from '@/components/boards/hooks/useBoardsQuery'
 import { useItemLists, type ItemList } from '@/hooks/useItemLists'
@@ -92,6 +94,8 @@ export function SidebarSettingsTab() {
     <SidebarSettingsView
       workspaceId={workspaceId}
       slots={slots}
+      showProjectIcons={settings?.showProjectIcons ?? true}
+      showProjectPrefixes={settings?.showProjectPrefixes ?? true}
       boards={boards.map((b) => ({ id: b.id, name: b.name }))}
       itemLists={itemLists}
       sections={sections.map((s) => ({ id: s.id, name: s.name }))}
@@ -120,6 +124,8 @@ export function SidebarSettingsTab() {
 function SidebarSettingsView({
   workspaceId,
   slots,
+  showProjectIcons,
+  showProjectPrefixes,
   boards,
   itemLists,
   sections,
@@ -134,6 +140,8 @@ function SidebarSettingsView({
 }: {
   workspaceId: string
   slots: SidebarSlot[]
+  showProjectIcons: boolean
+  showProjectPrefixes: boolean
   boards: { id: string; name: string }[]
   itemLists: ItemList[]
   sections: { id: string; name: string }[]
@@ -173,6 +181,12 @@ function SidebarSettingsView({
 
   return (
     <div className="h-full overflow-y-auto pr-1 space-y-4">
+      <ProjectDisplayToggles
+        workspaceId={workspaceId}
+        showProjectIcons={showProjectIcons}
+        showProjectPrefixes={showProjectPrefixes}
+      />
+
       {hasDeadSlots && (
         <div className="flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -213,5 +227,71 @@ function SidebarSettingsView({
         </Button>
       </div>
     </div>
+  )
+}
+
+/**
+ * Тумблеры «Иконки проектов» / «Префиксы проектов» — вид списка проектов в
+ * сайдбаре. Сохраняются сразу (в активный «Профиль настроек»), независимо от
+ * кнопки «Сохранить» редактора слотов.
+ */
+function ProjectDisplayToggles({
+  workspaceId,
+  showProjectIcons,
+  showProjectPrefixes,
+}: {
+  workspaceId: string
+  showProjectIcons: boolean
+  showProjectPrefixes: boolean
+}) {
+  const update = useUpdateProjectDisplayPrefs()
+
+  const setIcons = (value: boolean) => {
+    update.mutate(
+      { workspaceId, showProjectIcons: value },
+      {
+        onError: (err) =>
+          toast.error('Не удалось сохранить', {
+            description: err instanceof Error ? err.message : String(err),
+          }),
+      },
+    )
+  }
+  const setPrefixes = (value: boolean) => {
+    update.mutate(
+      { workspaceId, showProjectPrefixes: value },
+      {
+        onError: (err) =>
+          toast.error('Не удалось сохранить', {
+            description: err instanceof Error ? err.message : String(err),
+          }),
+      },
+    )
+  }
+
+  return (
+    <Card>
+      <CardContent className="py-4 space-y-3">
+        <p className="text-sm font-medium text-gray-800">Список проектов</p>
+        <label className="flex items-center justify-between gap-4 cursor-pointer">
+          <span className="text-sm text-gray-700">
+            Иконки проектов
+            <span className="block text-xs text-gray-500">
+              Показывать значок слева от названия проекта.
+            </span>
+          </span>
+          <Switch checked={showProjectIcons} onCheckedChange={setIcons} />
+        </label>
+        <label className="flex items-center justify-between gap-4 cursor-pointer">
+          <span className="text-sm text-gray-700">
+            Префиксы проектов
+            <span className="block text-xs text-gray-500">
+              Показывать приставку из шаблона (напр. «Лид Ю:», «CRM») перед названием.
+            </span>
+          </span>
+          <Switch checked={showProjectPrefixes} onCheckedChange={setPrefixes} />
+        </label>
+      </CardContent>
+    </Card>
   )
 }

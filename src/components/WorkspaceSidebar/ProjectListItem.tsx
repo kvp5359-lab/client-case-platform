@@ -35,6 +35,10 @@ export type ProjectListItemProps = {
   onTabClick?: (projectId: string, tabId: string) => void
   isPinned: boolean
   togglePin: (projectId: string) => void
+  /** Показывать иконку проекта (дефолт true). */
+  showProjectIcons?: boolean
+  /** Показывать префикс названия проекта (дефолт true). */
+  showProjectPrefixes?: boolean
 }
 
 export const ProjectListItem = memo(function ProjectListItem({
@@ -53,7 +57,11 @@ export const ProjectListItem = memo(function ProjectListItem({
   onTabClick,
   isPinned,
   togglePin,
+  showProjectIcons,
+  showProjectPrefixes,
 }: ProjectListItemProps) {
+  const showIcons = showProjectIcons !== false
+  const showPrefixes = showProjectPrefixes !== false
   // Иконка и её цвет уже посчитаны в useSidebarData: см. там логику по
   // template.icon_color_mode ('status' → цвет статуса с fallback в чёрный,
   // 'fixed' → template.icon_color). Если у проекта нет шаблона — серый дефолт.
@@ -93,7 +101,7 @@ export const ProjectListItem = memo(function ProjectListItem({
       <Link
         href={getProjectHref ? getProjectHref(project.id) : '#'}
         onClick={() => onProjectClick(project.id)}
-        className={`w-full flex items-center pl-px pr-1.5 h-[30px] text-[14px] rounded-[6px] transition-colors font-medium ${
+        className={`w-full flex items-center ${showIcons ? 'pl-px' : 'pl-2'} pr-1.5 h-[30px] text-[14px] rounded-[6px] transition-colors font-medium ${
           isActive
             ? showTabs
               ? 'text-gray-900'
@@ -101,35 +109,42 @@ export const ProjectListItem = memo(function ProjectListItem({
             : 'text-gray-700 hover:bg-gray-100/50'
         }`}
       >
-        <span className="relative shrink-0 w-[22px] h-[22px] mr-1.5 flex items-center justify-center">
-          {isPinned ? (
-            <Pin
-              className="h-[14px] w-[14px] group-hover/item:opacity-0 transition-opacity"
-              strokeWidth={1.5}
-              style={{ color: iconColor }}
-            />
-          ) : (
-            projectIconNode
-          )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              togglePin(project.id)
-            }}
-            title={isPinned ? 'Открепить' : 'Закрепить'}
-            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity"
-          >
-            {isPinned ? (
-              <PinOff className="h-[14px] w-[14px] text-gray-500 hover:text-gray-700" />
+        <span
+          className={`relative shrink-0 h-[22px] flex items-center justify-center ${
+            showIcons ? 'w-[22px] mr-1.5' : 'w-0 mr-0'
+          }`}
+        >
+          {showIcons &&
+            (isPinned ? (
+              <Pin
+                className="h-[14px] w-[14px] group-hover/item:opacity-0 transition-opacity"
+                strokeWidth={1.5}
+                style={{ color: iconColor }}
+              />
             ) : (
-              <Pin className="h-[14px] w-[14px] text-gray-400 hover:text-gray-600" />
-            )}
-          </button>
+              projectIconNode
+            ))}
+          {showIcons && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                togglePin(project.id)
+              }}
+              title={isPinned ? 'Открепить' : 'Закрепить'}
+              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity"
+            >
+              {isPinned ? (
+                <PinOff className="h-[14px] w-[14px] text-gray-500 hover:text-gray-700" />
+              ) : (
+                <Pin className="h-[14px] w-[14px] text-gray-400 hover:text-gray-600" />
+              )}
+            </button>
+          )}
         </span>
         <span className="flex-1 text-left truncate mr-1">
-          {project.namePrefix ? (
+          {showPrefixes && project.namePrefix ? (
             <span className="text-muted-foreground/70">{project.namePrefix} </span>
           ) : null}
           {project.name}
@@ -192,6 +207,26 @@ export const ProjectListItem = memo(function ProjectListItem({
           <ChevronRight className="h-3 w-3 text-gray-400" />
         )}
       </Link>
+      {/* Иконки скрыты — слева нет колонки под pin, поэтому переключатель
+          закрепления показываем справа (поверх шеврона) по наведению. */}
+      {!showIcons && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            togglePin(project.id)
+          }}
+          title={isPinned ? 'Открепить' : 'Закрепить'}
+          className="absolute right-1.5 top-[15px] -translate-y-1/2 z-10 flex items-center justify-center h-5 w-5 rounded bg-gray-100 opacity-0 group-hover/item:opacity-100 transition-opacity"
+        >
+          {isPinned ? (
+            <PinOff className="h-[14px] w-[14px] text-gray-500 hover:text-gray-700" />
+          ) : (
+            <Pin className="h-[14px] w-[14px] text-gray-400 hover:text-gray-600" />
+          )}
+        </button>
+      )}
       {/* Вкладки проекта для клиента — анимированное раскрытие через Radix Collapsible. */}
       {hasTabsWrapper && visibleTabs && (
         <CollapsiblePrimitive.Root open={showTabs}>

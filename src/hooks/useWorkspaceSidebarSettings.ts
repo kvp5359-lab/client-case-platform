@@ -26,9 +26,15 @@ import {
 
 /** Чтение слотов активного профиля. Если профилей нет — дефолты. */
 export function useWorkspaceSidebarSettings(workspaceId: string | undefined) {
-  const { slots, presetId, isLoading } = useActiveInterfacePreset(workspaceId)
+  const { slots, presetId, isLoading, showProjectIcons, showProjectPrefixes } =
+    useActiveInterfacePreset(workspaceId)
   return {
-    data: { slots, exists: Boolean(presetId) },
+    data: {
+      slots,
+      exists: Boolean(presetId),
+      showProjectIcons,
+      showProjectPrefixes,
+    },
     isLoading,
   }
 }

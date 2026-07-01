@@ -565,6 +565,8 @@ export function WorkspaceSidebarFull({
               activeTab={activeTab}
               onTabClick={(projectId, tabId) => handleNavigate(`projects/${projectId}?tab=${tabId}`)}
               workspaceId={workspaceId}
+              showProjectIcons={sidebarSettings?.showProjectIcons}
+              showProjectPrefixes={sidebarSettings?.showProjectPrefixes}
             />
           </div>
         </>
