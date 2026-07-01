@@ -58,7 +58,7 @@ export const SidebarNavButton = memo(function SidebarNavButton({
             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50',
         )}
       >
-        <Icon className="h-[18px] w-[18px] shrink-0" />
+        <Icon className="h-4 w-4 shrink-0" />
         {showLabel && <span>{label}</span>}
         {badge && (
           <span className={cn(
@@ -77,14 +77,14 @@ export const SidebarNavButton = memo(function SidebarNavButton({
       href={href}
       onClick={onClick}
       className={cn(
-        'w-full flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] transition-colors font-medium',
+        'w-full flex items-center pl-0.5 pr-1.5 h-[30px] text-[14px] rounded-[6px] transition-colors font-medium',
         isActive ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100/50',
       )}
     >
-      <span className="relative shrink-0 w-[22px] h-[22px] flex items-center justify-center">
+      <span className="relative shrink-0 w-[22px] h-[22px] mr-1.5 flex items-center justify-center">
         <Icon
           className={cn(
-            'h-[18px] w-[18px]',
+            'h-[14px] w-[14px]',
             hoverIconSlot && 'group-hover/pin:hidden',
           )}
         />

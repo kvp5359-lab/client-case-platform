@@ -63,7 +63,7 @@ export const ProjectListItem = memo(function ProjectListItem({
   const iconColor = safeCssColor(project.iconColor || DEFAULT_ICON_COLOR)
   // Размер 16px и тонкий strokeWidth=1.5 — компактный визуал в стиле Resend.
   const projectIconNode = createElement(getProjectIcon(project.iconId), {
-    className: 'h-4 w-4 group-hover/item:opacity-0 transition-opacity',
+    className: 'h-[14px] w-[14px] group-hover/item:opacity-0 transition-opacity',
     strokeWidth: 1.5,
     style: { color: iconColor },
   })
@@ -93,7 +93,7 @@ export const ProjectListItem = memo(function ProjectListItem({
       <Link
         href={getProjectHref ? getProjectHref(project.id) : '#'}
         onClick={() => onProjectClick(project.id)}
-        className={`w-full flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] transition-colors font-medium ${
+        className={`w-full flex items-center pl-px pr-1.5 h-[30px] text-[14px] rounded-[6px] transition-colors font-medium ${
           isActive
             ? showTabs
               ? 'text-gray-900'
@@ -101,10 +101,10 @@ export const ProjectListItem = memo(function ProjectListItem({
             : 'text-gray-700 hover:bg-gray-100/50'
         }`}
       >
-        <span className="relative shrink-0 w-[22px] h-[22px] flex items-center justify-center">
+        <span className="relative shrink-0 w-[22px] h-[22px] mr-1.5 flex items-center justify-center">
           {isPinned ? (
             <Pin
-              className="h-4 w-4 group-hover/item:opacity-0 transition-opacity"
+              className="h-[14px] w-[14px] group-hover/item:opacity-0 transition-opacity"
               strokeWidth={1.5}
               style={{ color: iconColor }}
             />
@@ -128,7 +128,7 @@ export const ProjectListItem = memo(function ProjectListItem({
             )}
           </button>
         </span>
-        <span className="flex-1 text-left truncate">
+        <span className="flex-1 text-left truncate mr-1">
           {project.namePrefix ? (
             <span className="text-muted-foreground/70">{project.namePrefix} </span>
           ) : null}
@@ -206,13 +206,13 @@ export const ProjectListItem = memo(function ProjectListItem({
                     type="button"
                     tabIndex={showTabs ? 0 : -1}
                     onClick={() => onTabClick?.(project.id, tab.id)}
-                    className={`w-full flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] transition-colors font-medium ${
+                    className={`w-full flex items-center pl-px pr-1.5 h-[30px] text-[14px] rounded-[6px] transition-colors font-medium ${
                       isTabActive
                         ? 'bg-gray-200 text-gray-900'
                         : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
                     }`}
                   >
-                    <Icon className="h-[16px] w-[16px] shrink-0" />
+                    <Icon className="h-[16px] w-[16px] shrink-0 mr-1.5" />
                     <span className="truncate">{tab.label}</span>
                   </button>
                 )

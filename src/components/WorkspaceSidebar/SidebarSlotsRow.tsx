@@ -248,7 +248,7 @@ function QuickActionSlotButton({
         onClick={() => run(action)}
         className="relative flex items-center gap-2 px-3 h-10 md:px-2 md:h-[30px] rounded-[6px] text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 transition-colors"
       >
-        <m.Icon className="h-[18px] w-[18px] shrink-0" />
+        <m.Icon className="h-4 w-4 shrink-0" />
       </button>
     )
   }
@@ -256,10 +256,10 @@ function QuickActionSlotButton({
     <button
       type="button"
       onClick={() => run(action)}
-      className="w-full flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] text-gray-700 hover:bg-gray-100/50 transition-colors"
+      className="w-full flex items-center pl-0.5 pr-1.5 h-[30px] text-[14px] rounded-[6px] text-gray-700 hover:bg-gray-100/50 transition-colors"
     >
-      <span className="relative shrink-0 w-[22px] h-[22px] flex items-center justify-center">
-        <m.Icon className="h-[18px] w-[18px]" />
+      <span className="relative shrink-0 w-[22px] h-[22px] mr-1.5 flex items-center justify-center">
+        <m.Icon className="h-[14px] w-[14px]" />
       </span>
       <span className="flex-1 truncate text-left">{action.label}</span>
     </button>
@@ -293,7 +293,7 @@ function LinkSlotButton({
         rel={isExternal ? 'noopener noreferrer' : undefined}
         className="relative flex items-center gap-2 px-3 h-10 md:px-2 md:h-[30px] rounded-[6px] text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 transition-colors"
       >
-        <m.Icon className="h-[18px] w-[18px] shrink-0" />
+        <m.Icon className="h-4 w-4 shrink-0" />
       </a>
     )
   }
@@ -302,10 +302,10 @@ function LinkSlotButton({
       href={href}
       target={isExternal ? '_blank' : undefined}
       rel={isExternal ? 'noopener noreferrer' : undefined}
-      className="w-full flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] text-gray-700 hover:bg-gray-100/50 transition-colors"
+      className="w-full flex items-center pl-0.5 pr-1.5 h-[30px] text-[14px] rounded-[6px] text-gray-700 hover:bg-gray-100/50 transition-colors"
     >
-      <span className="relative shrink-0 w-[22px] h-[22px] flex items-center justify-center">
-        <m.Icon className="h-[18px] w-[18px]" />
+      <span className="relative shrink-0 w-[22px] h-[22px] mr-1.5 flex items-center justify-center">
+        <m.Icon className="h-[14px] w-[14px]" />
       </span>
       <span className="flex-1 truncate text-left">{label}</span>
     </a>
@@ -349,13 +349,13 @@ function FolderSlot({
             type="button"
             title={triggerLabel}
             className={cn(
-              'relative flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] transition-colors',
+              'relative flex items-center pl-0.5 pr-1.5 h-[30px] text-[14px] rounded-[6px] transition-colors',
               open
                 ? 'bg-gray-200 text-gray-900'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50',
             )}
           >
-            <fm.Icon className="h-[18px] w-[18px] shrink-0" />
+            <fm.Icon className="h-4 w-4 shrink-0" />
             {folderBadge && (
               <span className={cn(
                 'absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-bold leading-none flex items-center justify-center',
@@ -369,12 +369,12 @@ function FolderSlot({
           <button
             type="button"
             className={cn(
-              'w-full flex items-center gap-2 px-2 h-[30px] text-[14px] rounded-[6px] transition-colors font-medium',
+              'w-full flex items-center pl-0.5 pr-1.5 h-[30px] text-[14px] rounded-[6px] transition-colors font-medium',
               open ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100/50',
             )}
           >
-            <span className="relative shrink-0 w-[22px] h-[22px] flex items-center justify-center">
-              <fm.Icon className="h-[18px] w-[18px]" />
+            <span className="relative shrink-0 w-[22px] h-[22px] mr-1.5 flex items-center justify-center">
+              <fm.Icon className="h-[14px] w-[14px]" />
             </span>
             <span className="flex-1 truncate text-left">{triggerLabel}</span>
             {folderBadge && (
