@@ -15,12 +15,26 @@
 | Reply-цитирование (отправка)      | ✅       | ✅          | ✅         | 🟡 fallback в текст | n/a   |
 | Reactions (приём)                 | ✅       | 🟡 как сообщение | ✅      | 🟡 как сообщение | ❌ |
 | Reactions (отправка)              | 🟡 если бот админ | 🟡 reply-эмодзи | ✅ native | 🟡 reply-эмодзи | ❌ |
-| Edit/Delete своих исходящих       | ✅       | ✅          | ✅         | ❌          | ❌    |
+| Edit своих исходящих              | ✅       | ✅          | ✅         | ❌          | ❌    |
+| Delete своих (сообщение/файл)     | ✅ 48ч   | ✅ право    | ✅         | 🟡 ~2 сут   | ❌    |
 | Read-receipts (от клиента)        | ❌       | ❌          | ✅ MTProto | ✅          | 🟡 пиксель |
 | Mark-as-read (мы → внешний)       | ❌       | ❌          | ✅         | ✅          | n/a   |
 | Голосовые с автотранскрипцией     | ✅       | ✅          | ✅         | ✅          | n/a   |
 
 Легенда: ✅ — нативно, 🟡 — эмуляция/частично, ❌ — не поддерживается каналом.
+
+### Удаление сообщений и файлов (2026-07-01)
+
+Удалять можно как всё сообщение (меню ⋮), так и **отдельный файл** (меню вложения, у своих). В сервисе — всегда; во внешнем канале — по возможности, иначе честный тост «останется в канале». Каждый канал — своим методом:
+- **TG-группа** — `deleteMessage` / `deleteMessages` (массив id альбома), лимит 48 ч. Функция `telegram-delete-message` (принимает `telegram_message_id` или `telegram_message_ids[]`).
+- **TG Business** — `deleteBusinessMessages(business_connection_id, message_ids)` (НЕ обычный `deleteMessage`!), нужно право бота `can_delete_sent_messages`. Функция `telegram-business-delete`.
+- **TG MTProto** — `deleteMessages(revoke=true)` через mtproto-service `/messages/delete`. Функция `telegram-mtproto-delete`.
+- **Wazzup** — `DELETE /v3/message/{id}`, окно WhatsApp ~2 суток. Функция `wazzup-delete`.
+- **Email** — удалить отправленное нельзя.
+
+**Per-file адрес.** Точечное удаление одного файла из мультифайла требует внешнего id КАЖДОГО файла — `message_attachments.telegram_message_id` / `.wazzup_message_id` (миграция `20260701_message_attachments_external_ids.sql`), заполняются при отправке. У сообщений до 2026-07-01 адресов нет → один файл из старого альбома удаляется только из сервиса. Одиночный файл — по адресу сообщения (работает и для старых).
+
+**Подпись на первом файле** (TG/MTProto/Business): при наличии текста файл в канале НЕ удаляем (можем снести подпись). Wazzup шлёт подпись отдельным сообщением — файл всегда безопасно. Маршрутизация удаления — по полям ТРЕДА (у исходящих `source='web'`), см. `resolveMessageChannelKind`.
 
 ## Общий слой Edge Functions
 

@@ -6,7 +6,7 @@
 import { supabase } from '@/lib/supabase'
 import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
-import { uploadAttachments } from './messengerAttachmentService'
+import { uploadAttachments, deleteAttachmentFileIfOrphaned } from './messengerAttachmentService'
 import {
   MESSAGE_SELECT,
   castToProjectMessage,
@@ -106,30 +106,7 @@ export async function updateDraftMessage(
       const toDelete = oldAtts.filter((a) => !keepSet.has(a.id))
 
       for (const att of toDelete) {
-        if (att.file_id) {
-          // Check if file is referenced elsewhere before deleting
-          const { count: maCount } = await supabase
-            .from('message_attachments')
-            .select('id', { count: 'exact', head: true })
-            .eq('file_id', att.file_id)
-            .neq('id', att.id)
-          const { count: dfCount } = await supabase
-            .from('document_files')
-            .select('id', { count: 'exact', head: true })
-            .eq('file_id', att.file_id)
-
-          if ((maCount || 0) + (dfCount || 0) === 0) {
-            const { data: fileRecord } = await supabase
-              .from('files')
-              .select('bucket, storage_path')
-              .eq('id', att.file_id)
-              .maybeSingle()
-            if (fileRecord) {
-              await supabase.storage.from(fileRecord.bucket).remove([fileRecord.storage_path])
-            }
-            await supabase.from('files').delete().eq('id', att.file_id)
-          }
-        }
+        await deleteAttachmentFileIfOrphaned(att)
         await supabase.from('message_attachments').delete().eq('id', att.id)
       }
     }

@@ -12,7 +12,10 @@ import { resolveBotToken, resolveTokenByIntegrationId } from "../_shared/telegra
 
 interface RequestBody {
   telegram_chat_id: number;
-  telegram_message_id: number;
+  /** Одиночный id (легаси). */
+  telegram_message_id?: number;
+  /** Несколько id (альбом/медиагруппа) — deleteMessages. */
+  telegram_message_ids?: number[];
 }
 
 Deno.serve(async (req: Request) => {
@@ -70,23 +73,26 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const missing = findMissingField(
-      body as unknown as Record<string, unknown>,
-      ["telegram_chat_id", "telegram_message_id"],
-    );
-    if (missing) {
+    if (typeof body.telegram_chat_id !== "number") {
       return new Response(
-        JSON.stringify({ error: `Missing field: ${missing}` }),
+        JSON.stringify({ error: "telegram_chat_id must be a number" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    if (typeof body.telegram_chat_id !== "number" || typeof body.telegram_message_id !== "number") {
+    // Собираем список id: массив (медиагруппа) имеет приоритет, иначе одиночный.
+    const idsToDelete: number[] = Array.isArray(body.telegram_message_ids)
+      && body.telegram_message_ids.length > 0
+      ? body.telegram_message_ids.filter((n) => typeof n === "number")
+      : (typeof body.telegram_message_id === "number" ? [body.telegram_message_id] : []);
+
+    if (idsToDelete.length === 0) {
       return new Response(
-        JSON.stringify({ error: "telegram_chat_id and telegram_message_id must be numbers" }),
+        JSON.stringify({ error: "telegram_message_id or telegram_message_ids required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+    const firstMessageId = idsToDelete[0];
 
     // Сначала ищем, через какого бота было отправлено сообщение — Telegram
     // позволяет удалять только тем же ботом. Если сохранён integration_id,
@@ -97,7 +103,7 @@ Deno.serve(async (req: Request) => {
         .from("project_messages")
         .select("telegram_bot_integration_id")
         .eq("telegram_chat_id", body.telegram_chat_id)
-        .eq("telegram_message_id", body.telegram_message_id)
+        .eq("telegram_message_id", firstMessageId)
         .maybeSingle();
       const savedIntegrationId =
         (msgRow?.telegram_bot_integration_id as string | null) ?? null;
@@ -137,17 +143,31 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const tgResponse = await fetch(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: body.telegram_chat_id,
-          message_id: body.telegram_message_id,
-        }),
-      },
-    );
+    // Один id → deleteMessage (как раньше). Несколько → deleteMessages
+    // (Bot API, до 100 id одного чата, тот же лимит 48 ч).
+    const tgResponse = idsToDelete.length === 1
+      ? await fetch(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: body.telegram_chat_id,
+            message_id: firstMessageId,
+          }),
+        },
+      )
+      : await fetch(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: body.telegram_chat_id,
+            message_ids: idsToDelete,
+          }),
+        },
+      );
 
     const tgData = await tgResponse.json();
 

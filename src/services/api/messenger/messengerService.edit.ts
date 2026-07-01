@@ -11,18 +11,79 @@ import {
   castToProjectMessage,
   hydrateReplyMessages,
 } from './messengerService.helpers'
+import { resolveMessageChannelKind } from './messengerAttachmentService'
 import type { ProjectMessage } from './messengerService.types'
+
+type DeleteMessageChannelCtx = {
+  thread_id: string | null
+  telegram_message_id: number | null
+  telegram_message_ids: number[] | null
+  telegram_chat_id: number | null
+  wazzup_message_id: string | null
+}
+
+/**
+ * Удалить ВСЁ сообщение во внешнем канале (все id альбома). Маршрут — по полям
+ * треда (у исходящих `source='web'`, канал определяется тредом). Вызывается ДО
+ * удаления строки: edge-функции mtproto/wazzup резолвят внешние id по message_id.
+ * Ошибки не пробрасываем — удаление у нас не должно падать из-за канала.
+ */
+async function deleteWholeMessageInChannel(
+  messageId: string,
+  msg: DeleteMessageChannelCtx,
+): Promise<void> {
+  try {
+    let thread: { mtproto_session_user_id: string | null; business_connection_id: string | null } | null =
+      null
+    if (msg.thread_id) {
+      const { data } = await supabase
+        .from('project_threads')
+        .select('mtproto_session_user_id, business_connection_id')
+        .eq('id', msg.thread_id)
+        .maybeSingle()
+      thread = data
+    }
+    const kind = resolveMessageChannelKind(msg, thread)
+    if (kind === 'wazzup') {
+      await supabase.functions.invoke('wazzup-delete', { body: { message_id: messageId } })
+    } else if (kind === 'mtproto') {
+      await supabase.functions.invoke('telegram-mtproto-delete', { body: { message_id: messageId } })
+    } else if (kind === 'telegram_group') {
+      const ids =
+        msg.telegram_message_ids && msg.telegram_message_ids.length > 0
+          ? msg.telegram_message_ids
+          : msg.telegram_message_id != null
+            ? [msg.telegram_message_id]
+            : []
+      if (ids.length > 0 && msg.telegram_chat_id != null) {
+        await supabase.functions.invoke('telegram-delete-message', {
+          body: { telegram_chat_id: msg.telegram_chat_id, telegram_message_ids: ids },
+        })
+      }
+    } else if (kind === 'business') {
+      // Business шлёт сообщение одним message_id; edge берёт его сам по message_id.
+      await supabase.functions.invoke('telegram-business-delete', {
+        body: { message_id: messageId },
+      })
+    }
+  } catch (err) {
+    logger.error('Failed to delete message in channel:', err)
+  }
+}
 
 export async function deleteMessage(messageId: string): Promise<void> {
   const { data: message, error: fetchError } = await supabase
     .from('project_messages')
     .select(
-      'telegram_message_id, telegram_chat_id, attachments:message_attachments(storage_path, file_id)',
+      'thread_id, telegram_message_id, telegram_message_ids, telegram_chat_id, wazzup_message_id, attachments:message_attachments(storage_path, file_id)',
     )
     .eq('id', messageId)
     .single()
 
   if (fetchError) throw new ConversationError(`Ошибка загрузки сообщения: ${fetchError.message}`)
+
+  // Сначала удаляем во внешнем канале (пока строка ещё есть в БД), потом чистим у себя.
+  await deleteWholeMessageInChannel(messageId, message as DeleteMessageChannelCtx)
 
   const attachments = (message.attachments ?? []) as {
     storage_path: string
@@ -63,21 +124,6 @@ export async function deleteMessage(messageId: string): Promise<void> {
     .eq('id', messageId)
 
   if (deleteError) throw new ConversationError(`Ошибка удаления сообщения: ${deleteError.message}`)
-
-  if (message.telegram_message_id && message.telegram_chat_id) {
-    await supabase.auth.getSession()
-
-    supabase.functions
-      .invoke('telegram-delete-message', {
-        body: {
-          telegram_chat_id: message.telegram_chat_id,
-          telegram_message_id: message.telegram_message_id,
-        },
-      })
-      .catch((err) => {
-        logger.error('Failed to delete message in Telegram:', err)
-      })
-  }
 }
 
 /**

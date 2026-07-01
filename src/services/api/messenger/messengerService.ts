@@ -53,6 +53,8 @@ export {
   canInlinePreview,
   downloadAttachmentBlob,
   downloadAttachmentAsFile,
+  deleteAttachment,
+  type DeleteAttachmentResult,
 } from './messengerAttachmentService'
 export { toggleReaction } from './messengerReactionService'
 export {

@@ -481,6 +481,7 @@ function MessageBubbleImpl({
                 isFailed={deliveryFailed}
                 projectId={projectId}
                 workspaceId={workspaceId}
+                threadId={message.thread_id ?? undefined}
                 imageTimestampOverlay={
                   hasImages ? (
                     <div

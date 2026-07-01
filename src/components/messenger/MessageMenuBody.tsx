@@ -10,7 +10,9 @@ import {
   ExternalLink,
   Quote,
   Languages,
+  Download,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -21,6 +23,7 @@ import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import { isReactionSupportedForSource } from '@/services/api/messenger/reactionStrategies'
 import { stripHtmlKeepNewlines } from '@/utils/format/messengerHtml'
 import { copyMessageText } from '@/utils/messenger/copyMessageText'
+import { downloadAttachmentBlob } from '@/services/api/messenger/messengerService'
 
 /**
  * Общая модель действий над сообщением: используется и в dropdown «три точки»,
@@ -84,6 +87,29 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
   const { Item, Separator } = comps
 
   const handleCopyText = () => copyMessageText(message)
+
+  const attachments = message.attachments ?? []
+  const handleDownloadAll = async () => {
+    let failed = 0
+    // Скачиваем по одному с паузой — браузер блокирует пакет из нескольких
+    // programmatic-загрузок, если дёргать их вплотную.
+    for (const att of attachments) {
+      try {
+        const blobUrl = await downloadAttachmentBlob(att.storage_path, att.file_id)
+        const a = document.createElement('a')
+        a.href = blobUrl
+        a.download = att.file_name
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+        await new Promise((r) => setTimeout(r, 400))
+      } catch {
+        failed += 1
+      }
+    }
+    if (failed > 0) toast.error(`Не удалось скачать файлов: ${failed}`)
+  }
 
   if (message.is_draft) {
     return (
@@ -223,6 +249,13 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
         <Item onClick={onViewEmail}>
           <ExternalLink className="h-4 w-4 mr-2" />
           Открыть письмо
+        </Item>
+      )}
+
+      {attachments.length > 1 && (
+        <Item onClick={handleDownloadAll}>
+          <Download className="h-4 w-4 mr-2" />
+          Скачать все файлы
         </Item>
       )}
 

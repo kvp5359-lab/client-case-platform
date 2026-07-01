@@ -17,6 +17,7 @@ type FileAttachmentProps = {
   isFailed?: boolean
   projectId?: string
   workspaceId?: string
+  threadId?: string
 }
 
 export function FileAttachment({
@@ -26,6 +27,7 @@ export function FileAttachment({
   isFailed,
   projectId,
   workspaceId,
+  threadId,
 }: FileAttachmentProps) {
   const [loading, setLoading] = useState(false)
 
@@ -135,6 +137,7 @@ export function FileAttachment({
         isOwn={isOwn}
         projectId={projectId}
         workspaceId={workspaceId}
+        threadId={threadId}
         openLabel="Открыть документ"
         loading={loading}
         setLoading={setLoading}

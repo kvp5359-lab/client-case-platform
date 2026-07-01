@@ -167,6 +167,12 @@ Deno.serve(async (req: Request) => {
 
       const result = await sendWazzup(settings.api_key, payload);
       if (result.ok && result.messageId) {
+        // Per-file id: запоминаем адрес ИМЕННО этого файла в Wazzup — чтобы
+        // потом можно было удалить один файл, не трогая остальные.
+        await service
+          .from("message_attachments")
+          .update({ wazzup_message_id: result.messageId })
+          .eq("id", att.id);
         // Запоминаем id только если не было текстового сообщения раньше.
         if (!firstWazzupMessageId) firstWazzupMessageId = result.messageId;
       } else if (!firstError) {

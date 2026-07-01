@@ -264,6 +264,9 @@ export async function sendAttachments(
         formData.append("chat_id", String(chatId));
 
         const media: Record<string, unknown>[] = [];
+        // Параллельный массив id вложений — media[k]/result[k] ↔ mediaAttachmentIds[k]
+        // (порядок sendMediaGroup гарантирован). Нужен для per-file удаления.
+        const mediaAttachmentIds: string[] = [];
         resolved.forEach((r: { blob: Blob; fileName: string; mimeType: string | null } | null, idx: number) => {
           if (!r) return;
           const attachKey = `attach_${idx}`;
@@ -277,6 +280,7 @@ export async function sendAttachments(
             item.parse_mode = "HTML";
           }
           media.push(item);
+          mediaAttachmentIds.push(chunk[idx].id as string);
         });
 
         formData.append("media", JSON.stringify(media));
@@ -330,6 +334,22 @@ export async function sendAttachments(
           }
         }
 
+        // Per-file id: адрес каждого фото в Telegram — для точечного удаления
+        // одного файла из альбома. Отдельная колонка message_attachments, пишем
+        // на успехе всегда (в т.ч. в split-text/skip-режиме — конфликта нет).
+        if (tgData.ok && Array.isArray(tgData.result)) {
+          for (let k = 0; k < tgData.result.length; k++) {
+            const tgMsgId = tgData.result[k]?.message_id;
+            const attId = mediaAttachmentIds[k];
+            if (tgMsgId && attId) {
+              await supabaseClient
+                .from("message_attachments")
+                .update({ telegram_message_id: tgMsgId })
+                .eq("id", attId);
+            }
+          }
+        }
+
         isFirstChunk = false;
       } catch (err) {
         console.error("Error sending media group to TG:", err);
@@ -377,6 +397,14 @@ export async function sendAttachments(
             .update({ telegram_message_id: tgData.result.message_id, telegram_chat_id: chatId })
             .eq("id", messageId);
         }
+
+        // Per-file id для точечного удаления одного файла в канале.
+        if (tgData.ok && tgData.result?.message_id) {
+          await supabaseClient
+            .from("message_attachments")
+            .update({ telegram_message_id: tgData.result.message_id })
+            .eq("id", (images[0] as Record<string, unknown>).id as string);
+        }
       }
     } catch (err) {
       console.error("Error sending photo to TG:", err);
@@ -417,6 +445,7 @@ export async function sendAttachments(
         formData.append("chat_id", String(chatId));
 
         const media: Record<string, unknown>[] = [];
+        const mediaAttachmentIds: string[] = [];
         resolved.forEach((r, idx) => {
           if (!r) return;
           const attachKey = `attach_doc_${idx}`;
@@ -430,6 +459,7 @@ export async function sendAttachments(
             item.parse_mode = "HTML";
           }
           media.push(item);
+          mediaAttachmentIds.push((chunk[idx] as Record<string, unknown>).id as string);
         });
 
         formData.append("media", JSON.stringify(media));
@@ -479,6 +509,21 @@ export async function sendAttachments(
                 p_tg_msg_id: item.message_id,
                 p_chat_id: chatId,
               });
+            }
+          }
+        }
+
+        // Per-file id: адрес каждого документа в Telegram — для точечного
+        // удаления одного файла из альбома.
+        if (tgData.ok && Array.isArray(tgData.result)) {
+          for (let k = 0; k < tgData.result.length; k++) {
+            const tgMsgId = tgData.result[k]?.message_id;
+            const attId = mediaAttachmentIds[k];
+            if (tgMsgId && attId) {
+              await supabaseClient
+                .from("message_attachments")
+                .update({ telegram_message_id: tgMsgId })
+                .eq("id", attId);
             }
           }
         }
@@ -541,6 +586,14 @@ export async function sendAttachments(
             p_tg_msg_id: tgData.result.message_id,
             p_chat_id: chatId,
           });
+        }
+
+        // Per-file id для точечного удаления одного файла в канале.
+        if (tgData.ok && tgData.result?.message_id) {
+          await supabaseClient
+            .from("message_attachments")
+            .update({ telegram_message_id: tgData.result.message_id })
+            .eq("id", (others[0] as Record<string, unknown>).id as string);
         }
       }
     } catch (err) {

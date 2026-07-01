@@ -198,6 +198,23 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
         if (sentIds.length === 0) {
           throw new Error("Не удалось отправить ни одного файла.")
         }
+
+        // Per-file id: gramjs возвращает сообщения в том же порядке, что files.
+        // Сохраняем адрес каждого файла в message_attachments — для точечного
+        // удаления одного файла в Telegram. Пишем только при точном совпадении
+        // длин (иначе безопасно откатываемся на удаление всего сообщения).
+        if (body.data.message_id_internal && files.length === sentIds.length) {
+          for (let i = 0; i < files.length; i++) {
+            const attachmentId = files[i]?.attachmentId
+            const tgId = sentIds[i]
+            if (attachmentId && tgId != null) {
+              await supabase
+                .from("message_attachments")
+                .update({ telegram_message_id: tgId })
+                .eq("id", attachmentId)
+            }
+          }
+        }
       } else {
         const result = await client.sendMessage(peer, {
           message: prepareTelegramText(body.data.text),
@@ -707,7 +724,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
  * пределах десятков MB. Этого достаточно.
  */
 async function fetchAttachments(messageId: string): Promise<
-  { buffer: Buffer; fileName: string; mimeType: string | null }[]
+  { buffer: Buffer; fileName: string; mimeType: string | null; attachmentId: string }[]
 > {
   // Гонка: PG-триггер срабатывает на INSERT в project_messages мгновенно,
   // а фронт заливает вложения в message_attachments отдельными запросами
@@ -716,12 +733,12 @@ async function fetchAttachments(messageId: string): Promise<
   // первого появления продолжаем опрашивать, и выходим только когда два
   // подряд опроса дали одинаковое количество. Жёсткий потолок — 8 попыток
   // (~5.6с) чтобы не висеть бесконечно при поломке.
-  let rows: Array<{ file_name: string; mime_type: string | null; storage_path: string; file_id: string | null }> = []
+  let rows: Array<{ id: string; file_name: string; mime_type: string | null; storage_path: string; file_id: string | null }> = []
   let prevCount = -1
   for (let attempt = 0; attempt < 8; attempt++) {
     const { data } = await supabase
       .from("message_attachments")
-      .select("file_name, mime_type, storage_path, file_id")
+      .select("id, file_name, mime_type, storage_path, file_id")
       .eq("message_id", messageId)
     const cur = data?.length ?? 0
     if (cur > 0 && cur === prevCount) {
@@ -733,7 +750,7 @@ async function fetchAttachments(messageId: string): Promise<
   }
   if (rows.length === 0) return []
 
-  const result: { buffer: Buffer; fileName: string; mimeType: string | null }[] = []
+  const result: { buffer: Buffer; fileName: string; mimeType: string | null; attachmentId: string }[] = []
   for (const row of rows) {
     let bucket = "message-attachments"
     let path = row.storage_path as string
@@ -761,6 +778,7 @@ async function fetchAttachments(messageId: string): Promise<
       buffer: Buffer.from(arrayBuf),
       fileName: row.file_name as string,
       mimeType: (row.mime_type as string) ?? null,
+      attachmentId: row.id as string,
     })
   }
   return result

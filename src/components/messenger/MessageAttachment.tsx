@@ -24,6 +24,8 @@ type MessageAttachmentsProps = {
   isFailed?: boolean
   projectId?: string
   workspaceId?: string
+  /** Тред сообщения — нужен для удаления отдельного файла. */
+  threadId?: string
   /** Оверлей в правом нижнем углу последней картинки (обычно — таймстамп). */
   imageTimestampOverlay?: ReactNode
 }
@@ -35,6 +37,7 @@ export function MessageAttachments({
   isFailed,
   projectId,
   workspaceId,
+  threadId,
   imageTimestampOverlay,
 }: MessageAttachmentsProps) {
   const images = attachments.filter((a) => isImage(a.mime_type))
@@ -59,8 +62,10 @@ export function MessageAttachments({
             <ImageAttachment
               key={att.id}
               attachment={att}
+              isOwn={isOwn}
               projectId={projectId}
               workspaceId={workspaceId}
+              threadId={threadId}
               timestampOverlay={
                 idx === images.length - 1 ? imageTimestampOverlay : undefined
               }
@@ -86,6 +91,7 @@ export function MessageAttachments({
               isFailed={isFailed}
               projectId={projectId}
               workspaceId={workspaceId}
+              threadId={threadId}
             />
           ))}
         </div>
@@ -99,13 +105,17 @@ export function MessageAttachments({
  */
 function ImageAttachment({
   attachment,
+  isOwn,
   projectId,
   workspaceId,
+  threadId,
   timestampOverlay,
 }: {
   attachment: AttachmentType
+  isOwn?: boolean
   projectId?: string
   workspaceId?: string
+  threadId?: string
   timestampOverlay?: ReactNode
 }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -197,8 +207,10 @@ function ImageAttachment({
           <div className="absolute top-1 right-1 opacity-0 group-hover/img:opacity-100 transition-opacity">
             <AttachmentMenuButton
               attachment={attachment}
+              isOwn={isOwn}
               projectId={projectId}
               workspaceId={workspaceId}
+              threadId={threadId}
               onOpen={() => setLightboxOpen(true)}
               openLabel="Открыть изображение"
               loading={menuLoading}

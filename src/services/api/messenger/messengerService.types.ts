@@ -58,6 +58,11 @@ export type MessageAttachment = {
   transcription: string | null
   file_id: string | null
   created_at: string
+  /** Внешний id этого файла в Telegram (группа/MTProto/Business) — для точечного
+   *  удаления файла в канале. NULL у файлов, отправленных до 2026-07-01. */
+  telegram_message_id?: number | null
+  /** Внешний id этого файла в Wazzup — для точечного удаления файла в канале. */
+  wazzup_message_id?: string | null
 }
 
 export type ProjectMessage = {

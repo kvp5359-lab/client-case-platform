@@ -118,6 +118,278 @@ export async function uploadAttachments(
   }
 }
 
+/**
+ * Удалить ФИЗИЧЕСКИЙ файл вложения (storage + запись `files`), ЕСЛИ на него
+ * больше никто не ссылается. Считает другие `message_attachments` (кроме самой
+ * этой строки — по `id`) и `document_files`. Саму строку `message_attachments`
+ * НЕ трогает — только физический файл. Общий код для удаления одного вложения и
+ * для правки черновика (снятие галки с файла).
+ *
+ * Важно: исключение по `id` (а не по `message_id`) — корректно для удаления
+ * ОДНОЙ строки вложения. Для удаления ВСЕГО сообщения используется отдельная
+ * ветка в `deleteMessage` (исключение по `message_id`, чтобы не считать соседние
+ * вложения того же сообщения ложными ссылками).
+ */
+export async function deleteAttachmentFileIfOrphaned(att: {
+  id: string
+  storage_path: string
+  file_id: string | null
+}): Promise<void> {
+  if (att.file_id) {
+    const { count: maCount } = await supabase
+      .from('message_attachments')
+      .select('id', { count: 'exact', head: true })
+      .eq('file_id', att.file_id)
+      .neq('id', att.id)
+    const { count: dfCount } = await supabase
+      .from('document_files')
+      .select('id', { count: 'exact', head: true })
+      .eq('file_id', att.file_id)
+    if ((maCount || 0) + (dfCount || 0) === 0) {
+      const { data: fileRecord } = await supabase
+        .from('files')
+        .select('bucket, storage_path')
+        .eq('id', att.file_id)
+        .maybeSingle()
+      if (fileRecord) {
+        await supabase.storage.from(fileRecord.bucket).remove([fileRecord.storage_path])
+      }
+      await supabase.from('files').delete().eq('id', att.file_id)
+    }
+  } else {
+    // Legacy-путь (file_id=null): файл лежит в bucket message-attachments по storage_path.
+    await supabase.storage.from('message-attachments').remove([att.storage_path])
+  }
+}
+
+/** Тип внешнего канала, куда реально ушёл файл/сообщение (резолвится по полям треда). */
+export type MessageChannelKind = 'wazzup' | 'mtproto' | 'business' | 'telegram_group' | 'none'
+
+type DeleteAttachmentMessageCtx = {
+  id: string
+  thread_id: string | null
+  content: string | null
+  telegram_message_id: number | null
+  telegram_message_ids: number[] | null
+  telegram_chat_id: number | null
+  wazzup_message_id: string | null
+}
+
+/** Контекст ОДНОГО вложения (с per-file внешними id, Стадия 2). */
+type DeleteAttachmentFileCtx = {
+  id: string
+  storage_path: string
+  file_id: string | null
+  telegram_message_id: number | null
+  wazzup_message_id: string | null
+}
+
+type DeleteAttachmentThreadCtx = {
+  mtproto_session_user_id: string | null
+  business_connection_id: string | null
+  wazzup_channel_id: string | null
+} | null
+
+/**
+ * Куда реально ушло сообщение/файл. У ИСХОДЯЩИХ `source='web'`, поэтому канал
+ * определяется полями треда/сообщения, а не `source`. Порядок — как в триггере
+ * `dispatch_message_to_channels`: wazzup → mtproto → business → группа.
+ * Переиспользуется удалением одного файла и удалением всего сообщения.
+ */
+export function resolveMessageChannelKind(
+  msg: { wazzup_message_id: string | null; telegram_chat_id: number | null },
+  thread: { mtproto_session_user_id: string | null; business_connection_id: string | null } | null,
+): MessageChannelKind {
+  if (msg.wazzup_message_id) return 'wazzup'
+  if (thread?.mtproto_session_user_id) return 'mtproto'
+  if (thread?.business_connection_id) return 'business'
+  if (msg.telegram_chat_id) return 'telegram_group'
+  return 'none'
+}
+
+/**
+ * Итог удаления одного вложения.
+ * `channel`:
+ *  - 'deleted' — файл убран и во внешнем канале;
+ *  - 'kept' — убран только у нас, в канале остался (см. `reason`);
+ *  - 'none' — внешнего канала нет (внутренний тред) — удаление у нас и есть всё.
+ * `messageEmptied` — после удаления в сообщении не осталось ни текста, ни файлов,
+ *  поэтому пустая запись удалена целиком (UI должен убрать сообщение).
+ */
+export type DeleteAttachmentResult = {
+  channel: 'deleted' | 'kept' | 'none'
+  reason?: string
+  messageEmptied: boolean
+}
+
+/**
+ * Удалить ОДИН файл во внешнем канале по его собственному адресу (per-file id).
+ * Для одиночного файла адрес совпадает с адресом сообщения, поэтому работает и
+ * для старых сообщений. Edge-функции возвращают `{ ok, reason }` — уважаем для
+ * честного статуса (Telegram-бот отказывает после 48 ч, WhatsApp — после окна,
+ * Business — при отсутствии права).
+ */
+async function deleteFileInChannel(
+  kind: MessageChannelKind,
+  msg: DeleteAttachmentMessageCtx,
+  att: DeleteAttachmentFileCtx,
+): Promise<{ ok: boolean; reason?: string }> {
+  // Адрес(а) для удаления: per-file id (точечно) → иначе id сообщения (одиночный файл).
+  const tgIds =
+    att.telegram_message_id != null
+      ? [att.telegram_message_id]
+      : msg.telegram_message_ids && msg.telegram_message_ids.length > 0
+        ? msg.telegram_message_ids
+        : msg.telegram_message_id != null
+          ? [msg.telegram_message_id]
+          : []
+  try {
+    if (kind === 'telegram_group') {
+      if (tgIds.length === 0 || msg.telegram_chat_id == null)
+        return { ok: false, reason: 'нет данных для удаления в Telegram' }
+      const { data, error } = await supabase.functions.invoke('telegram-delete-message', {
+        body: { telegram_chat_id: msg.telegram_chat_id, telegram_message_ids: tgIds },
+      })
+      if (error) return { ok: false, reason: 'не удалось удалить в Telegram (возможно, старше 48 часов)' }
+      if (data && data.ok === false)
+        return { ok: false, reason: data.reason ?? 'Telegram не дал удалить (возможно, старше 48 часов)' }
+      return { ok: true }
+    }
+    if (kind === 'mtproto') {
+      if (tgIds.length === 0) return { ok: false, reason: 'нет данных для удаления в Telegram' }
+      const { data, error } = await supabase.functions.invoke('telegram-mtproto-delete', {
+        body: { message_id: msg.id, telegram_message_ids: tgIds },
+      })
+      if (error) return { ok: false, reason: 'не удалось удалить в Telegram' }
+      if (data && data.ok === false) return { ok: false, reason: data.reason ?? 'не удалось удалить в Telegram' }
+      return { ok: true }
+    }
+    if (kind === 'wazzup') {
+      const wid = att.wazzup_message_id ?? msg.wazzup_message_id
+      const { data, error } = await supabase.functions.invoke('wazzup-delete', {
+        body: { message_id: msg.id, wazzup_message_id: wid },
+      })
+      if (error) return { ok: false, reason: 'не удалось удалить в WhatsApp (возможно, истёк срок удаления)' }
+      if (data && data.ok === false)
+        return { ok: false, reason: data.reason ?? 'WhatsApp не дал удалить (возможно, истёк срок)' }
+      return { ok: true }
+    }
+    if (kind === 'business') {
+      if (tgIds.length === 0) return { ok: false, reason: 'нет данных для удаления в Business' }
+      const { data, error } = await supabase.functions.invoke('telegram-business-delete', {
+        body: { message_id: msg.id, telegram_message_ids: tgIds },
+      })
+      if (error) return { ok: false, reason: 'не удалось удалить в Telegram Business' }
+      if (data && data.ok === false)
+        return { ok: false, reason: data.reason ?? 'Telegram Business не дал удалить (возможно, нет права на удаление у бота)' }
+      return { ok: true }
+    }
+    return { ok: false, reason: 'канал не поддерживает удаление' }
+  } catch (e) {
+    logger.error('deleteFileInChannel failed:', e)
+    return { ok: false, reason: 'не удалось удалить в канале' }
+  }
+}
+
+/**
+ * Удалить ОДНО вложение сообщения.
+ *
+ * Всегда убираем файл у нас. Во внешнем канале удаляем, когда это безопасно:
+ *  - Wazzup: подпись — отдельное сообщение, любой файл можно удалить точечно;
+ *  - TG-группа / MTProto / Business: подпись «висит» на первом файле, поэтому при
+ *    наличии текста файл в канале НЕ трогаем (можем задеть подпись) — оставляем + reason;
+ *  - адрес файла берём из per-file id (Стадия 2), а для одиночного файла — из адреса
+ *    сообщения (работает и для старых сообщений). Старый файл из мультифайла без
+ *    адреса — только из сервиса + честная подсказка.
+ *
+ * Если после удаления сообщение пустое (нет текста и файлов) — удаляем его целиком.
+ */
+export async function deleteAttachment(
+  attachmentId: string,
+  messageId: string,
+): Promise<DeleteAttachmentResult> {
+  const { data: att, error: attErr } = await supabase
+    .from('message_attachments')
+    .select('id, storage_path, file_id, telegram_message_id, wazzup_message_id')
+    .eq('id', attachmentId)
+    .eq('message_id', messageId)
+    .maybeSingle()
+  if (attErr) throw new ConversationError(`Ошибка загрузки вложения: ${attErr.message}`)
+  if (!att) return { channel: 'none', messageEmptied: false } // уже удалено
+  const attachment = att as DeleteAttachmentFileCtx
+
+  const { data: msg, error: msgErr } = await supabase
+    .from('project_messages')
+    .select('id, thread_id, content, telegram_message_id, telegram_message_ids, telegram_chat_id, wazzup_message_id')
+    .eq('id', messageId)
+    .single()
+  if (msgErr) throw new ConversationError(`Ошибка загрузки сообщения: ${msgErr.message}`)
+  const message = msg as DeleteAttachmentMessageCtx
+
+  const { count: totalCount } = await supabase
+    .from('message_attachments')
+    .select('id', { count: 'exact', head: true })
+    .eq('message_id', messageId)
+  const isSingle = (totalCount || 0) <= 1
+  const hasText = !!(message.content && message.content.trim())
+
+  let thread: DeleteAttachmentThreadCtx = null
+  if (message.thread_id) {
+    const { data } = await supabase
+      .from('project_threads')
+      .select('mtproto_session_user_id, business_connection_id, wazzup_channel_id')
+      .eq('id', message.thread_id)
+      .maybeSingle()
+    thread = (data as DeleteAttachmentThreadCtx) ?? null
+  }
+
+  const kind = resolveMessageChannelKind(message, thread)
+
+  let channel: DeleteAttachmentResult['channel'] = 'none'
+  let reason: string | undefined
+  if (kind === 'none') {
+    channel = 'none'
+  } else {
+    // Wazzup — подпись отдельным сообщением, файл всегда безопасно удалить.
+    // TG/MTProto/Business — подпись на первом файле, при тексте не рискуем.
+    const captionSafe = kind === 'wazzup' || !hasText
+    const perFileId = kind === 'wazzup' ? attachment.wazzup_message_id : attachment.telegram_message_id
+    // Адрес файла: per-file id ИЛИ (для одиночного) адрес сообщения.
+    const haveAddress = perFileId != null || isSingle
+    if (!captionSafe) {
+      channel = 'kept'
+      reason = 'в сообщении есть текст — файл в канале удалить нельзя, не задев подпись'
+    } else if (!haveAddress) {
+      channel = 'kept'
+      reason = 'файл отправлен до обновления — точечное удаление в канале недоступно'
+    } else {
+      const res = await deleteFileInChannel(kind, message, attachment)
+      channel = res.ok ? 'deleted' : 'kept'
+      reason = res.ok ? undefined : res.reason
+    }
+  }
+
+  // Удаляем файл и запись у нас (порядок: сначала канал выше, потом наша БД).
+  await deleteAttachmentFileIfOrphaned(attachment)
+  await supabase.from('message_attachments').delete().eq('id', attachment.id)
+
+  const { count: remaining } = await supabase
+    .from('message_attachments')
+    .select('id', { count: 'exact', head: true })
+    .eq('message_id', messageId)
+  const messageEmptied = (remaining || 0) === 0 && !hasText
+  if (messageEmptied) {
+    await supabase.from('project_messages').delete().eq('id', messageId)
+  } else {
+    await supabase
+      .from('project_messages')
+      .update({ has_attachments: (remaining || 0) > 0 })
+      .eq('id', messageId)
+  }
+
+  return { channel, reason, messageEmptied }
+}
+
 /** Resolve bucket and path from file_id or fallback to legacy storage_path */
 async function resolveBucketAndPath(
   storagePath: string,

@@ -4249,7 +4249,9 @@ export type Database = {
           mime_type: string | null
           storage_path: string
           telegram_file_id: string | null
+          telegram_message_id: number | null
           transcription: string | null
+          wazzup_message_id: string | null
         }
         Insert: {
           created_at?: string
@@ -4261,7 +4263,9 @@ export type Database = {
           mime_type?: string | null
           storage_path: string
           telegram_file_id?: string | null
+          telegram_message_id?: number | null
           transcription?: string | null
+          wazzup_message_id?: string | null
         }
         Update: {
           created_at?: string
@@ -4273,7 +4277,9 @@ export type Database = {
           mime_type?: string | null
           storage_path?: string
           telegram_file_id?: string | null
+          telegram_message_id?: number | null
           transcription?: string | null
+          wazzup_message_id?: string | null
         }
         Relationships: [
           {

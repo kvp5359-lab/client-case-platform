@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { MoreHorizontal, Eye, Download, FolderPlus, Forward, Loader2 } from 'lucide-react'
+import { MoreHorizontal, Eye, Download, FolderPlus, Forward, Trash2, Loader2 } from 'lucide-react'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,11 +10,22 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   getAttachmentUrl,
   canInlinePreview,
   downloadAttachmentBlob,
   type MessageAttachment as AttachmentType,
 } from '@/services/api/messenger/messengerService'
+import { useDeleteAttachment } from '@/hooks/messenger/useDeleteAttachment'
 import { toast } from 'sonner'
 import { AddToProjectDialog } from './AddToProjectDialog'
 
@@ -23,6 +34,8 @@ type AttachmentMenuButtonProps = {
   isOwn?: boolean
   projectId?: string
   workspaceId?: string
+  /** Тред сообщения — нужен для удаления файла (инвалидация кэша ленты). */
+  threadId?: string
   /** Custom handler for "Open" (e.g. lightbox for images) */
   onOpen?: () => void
   openLabel?: string
@@ -35,13 +48,18 @@ export function AttachmentMenuButton({
   isOwn,
   projectId,
   workspaceId,
+  threadId,
   onOpen,
   openLabel = 'Открыть документ',
   loading,
   setLoading,
 }: AttachmentMenuButtonProps) {
   const [addToProjectOpen, setAddToProjectOpen] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const addToForwardBuffer = useSidePanelStore((s) => s.addToForwardBuffer)
+  const deleteAttachmentMutation = useDeleteAttachment(threadId ?? '')
+  // «Удалить файл» — только у своих сообщений и когда известен тред.
+  const canDeleteAttachment = !!isOwn && !!threadId
 
   const handleForward = () => {
     addToForwardBuffer({
@@ -168,8 +186,49 @@ export function AttachmentMenuButton({
                 Добавить к документам проекта
               </DropdownMenuItem>
             )}
+            {canDeleteAttachment && (
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  setConfirmDeleteOpen(true)
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Удалить
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
+      )}
+      {canDeleteAttachment && (
+        <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Удалить файл?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Файл будет удалён из сервиса. Если возможно, он также удалится в
+                подключённом канале (Telegram/WhatsApp) — иначе останется там, о
+                чём вы получите уведомление.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() =>
+                  deleteAttachmentMutation.mutate({
+                    attachmentId: attachment.id,
+                    messageId: attachment.message_id,
+                  })
+                }
+              >
+                Удалить
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
       {projectId && workspaceId && (
         <AddToProjectDialog
