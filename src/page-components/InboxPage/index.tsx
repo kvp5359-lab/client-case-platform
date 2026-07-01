@@ -61,6 +61,33 @@ export default function InboxPage() {
     closePanel()
   }, [closePanel])
 
+  // Мобильный master-detail: открытие чата = отдельный шаг в истории браузера,
+  // чтобы системная «Назад»/свайп закрывали чат и возвращали к списку, а не
+  // уводили со страницы. На десктопе (двухпанельный режим) историю не трогаем.
+  const handleSelectThread = useCallback((id: string | null) => {
+    setSelectedThreadId(id)
+    if (id && isMobileViewport() && !window.history.state?.ccInboxChat) {
+      // Сохраняем служебный state Next (routing keys), добавляя свой маркер.
+      window.history.pushState({ ...(window.history.state ?? {}), ccInboxChat: true }, '')
+    }
+  }, [])
+
+  const handleCloseChat = useCallback(() => {
+    // На мобиле при открытии добавляли запись истории — снимаем её через back()
+    // (popstate-обработчик ниже закроет чат). На десктопе просто сбрасываем.
+    if (isMobileViewport() && window.history.state?.ccInboxChat) {
+      window.history.back()
+    } else {
+      setSelectedThreadId(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    const onPop = () => setSelectedThreadId((cur) => (cur ? null : cur))
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
   const {
     data: chats = [],
     isLoading,
@@ -273,7 +300,7 @@ export default function InboxPage() {
             isLoading={isLoading}
             filteredChats={displayChats}
             activeThreadId={activeChat?.thread_id ?? null}
-            onSelectThread={setSelectedThreadId}
+            onSelectThread={handleSelectThread}
             onMarkAsRead={(chat) => markReadMutation.mutate(chat)}
             onMarkAsUnread={(chat) => markUnreadMutation.mutate(chat)}
             deliveryStatuses={deliveryStatuses}
@@ -302,7 +329,7 @@ export default function InboxPage() {
                 <div className="md:hidden flex items-center justify-between border-b shrink-0">
                   <button
                     type="button"
-                    onClick={() => setSelectedThreadId(null)}
+                    onClick={handleCloseChat}
                     className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -310,7 +337,7 @@ export default function InboxPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedThreadId(null)}
+                    onClick={handleCloseChat}
                     aria-label="Закрыть чат"
                     className="px-3 py-2 text-muted-foreground hover:text-foreground"
                   >

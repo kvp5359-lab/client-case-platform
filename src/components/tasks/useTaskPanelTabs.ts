@@ -43,20 +43,6 @@ function canonicalizeTabId(rawId: string | null, threads: ThreadShortIdInfo[]): 
   return rawId
 }
 
-/**
- * Преобразует tabId с UUID в URL-формат с short_id (если найден).
- * Используется при записи URL: `thread:<uuid>` → `thread:<short>`.
- */
-function shortenTabId(tabId: string | null, threads: ThreadShortIdInfo[]): string | null {
-  if (!tabId || !tabId.startsWith('thread:')) return tabId
-  const uuid = tabId.slice('thread:'.length)
-  // Уже short — оставляем как есть
-  if (/^\d+$/.test(uuid)) return tabId
-  const t = threads.find((x) => x.id === uuid)
-  if (t && t.short_id != null) return `thread:${t.short_id}`
-  return tabId
-}
-
 type PersistedRow = TaskPanelPersistedRow
 
 /**
@@ -91,12 +77,15 @@ type UseTaskPanelTabsResult = {
   isReady: boolean
   /** true если для проекта/пользователя ещё нет записи в БД — можно засеять дефолтные вкладки. */
   isNewProject: boolean
-  /** Открыть/активировать вкладку. Если такой уже есть — просто активирует, без дубля. */
-  openTab: (tab: TaskPanelTab) => void
+  /** Открыть/активировать вкладку. Если такой уже есть — просто активирует, без дубля.
+   *  urlMode: 'push' (по умолчанию) — запись в историю браузера; 'replace' — без записи;
+   *  'none' — URL вообще не трогаем (открытие по кнопке «Назад», URL уже верный). */
+  openTab: (tab: TaskPanelTab, urlMode?: 'push' | 'replace' | 'none') => void
   /** Закрыть вкладку. Если активную — активирует соседнюю (правую, иначе левую). */
   closeTab: (id: string) => void
-  /** Активировать существующую вкладку. */
-  activateTab: (id: string | null) => void
+  /** Активировать существующую вкладку. urlMode: 'push' (по умолчанию) — переключение
+   *  попадает в историю браузера; 'replace' — без записи; 'none' — URL не трогаем. */
+  activateTab: (id: string | null, urlMode?: 'push' | 'replace' | 'none') => void
   /** Закрыть все вкладки (полный сброс). */
   closeAll: () => void
   /** Переключить закрепление вкладки. Закреплённые рендерятся слева. */
@@ -110,8 +99,10 @@ type UseTaskPanelTabsResult = {
   clearUrlActive: () => void
   /** Записать любой tabId в URL `?panelTab=...` без изменения активной вкладки
    *  в текущем scope. Используется standalone-режимом (свой in-memory state),
-   *  чтобы shareable-ссылка обновлялась так же, как для project/contact tabs. */
-  setUrlActive: (tabId: string | null) => void
+   *  чтобы shareable-ссылка обновлялась так же, как для project/contact tabs.
+   *  `history='push'` добавляет запись в историю браузера (кнопка «Назад»
+   *  вернёт предыдущий тред); по умолчанию `'replace'` — без новой записи. */
+  setUrlActive: (tabId: string | null, history?: 'push' | 'replace') => void
 }
 
 const EMPTY_STATE: PersistedRow = { tabs: [], active_tab_id: null }
@@ -267,12 +258,15 @@ export function useTaskPanelTabs({
   })
 
   // Обновление URL: ставим/убираем ?panelTab=
-  // При записи UUID вида `thread:<uuid>` — конвертируем в короткий `thread:<short>` если знаем short_id.
+  // Пишем tabId как есть (`thread:<uuid>`) — стабильный формат, не завязанный на
+  // кэш short_id. На чтении canonicalizeTabId по-прежнему принимает и старые
+  // короткие ссылки `thread:<short>`. Стабильный uuid критичен для навигации
+  // «Назад»: обработчик popstate матчит URL по uuid, без гонок резолва.
   const setUrlActive = useCallback(
-    (tabId: string | null) => {
+    (tabId: string | null, history: 'push' | 'replace' = 'replace') => {
       if (typeof window === 'undefined') return
       const params = new URLSearchParams(searchParams?.toString() ?? '')
-      const writeId = shortenTabId(tabId, threadShortMap)
+      const writeId = tabId
       if (writeId) {
         if (params.get('panelTab') === writeId) return
         params.set('panelTab', writeId)
@@ -281,9 +275,14 @@ export function useTaskPanelTabs({
         params.delete('panelTab')
       }
       const qs = params.toString()
-      router.replace(`${window.location.pathname}${qs ? `?${qs}` : ''}`, { scroll: false })
+      const url = `${window.location.pathname}${qs ? `?${qs}` : ''}`
+      // push — только при открытии треда (openTab): каждая новая вкладка = запись
+      // в истории браузера, «Назад» возвращает предыдущий тред. Остальные операции
+      // (закрытие/реордер/seed/очистка) — replace, чтобы не засорять историю.
+      if (history === 'push') router.push(url, { scroll: false })
+      else router.replace(url, { scroll: false })
     },
-    [router, searchParams, threadShortMap],
+    [router, searchParams],
   )
 
   // Debounce сохранения в БД: при быстрых переключениях вкладок (open/close/activate)
@@ -385,12 +384,14 @@ export function useTaskPanelTabs({
   }, [])
 
   const openTab = useCallback(
-    (tab: TaskPanelTab) => {
+    (tab: TaskPanelTab, urlMode: 'push' | 'replace' | 'none' = 'push') => {
       const exists = localTabs.some((t) => t.id === tab.id)
       const next = exists ? localTabs : [...localTabs, tab]
       if (!exists) setLocalTabs(next)
       persist(next, tab.id)
-      setUrlActive(tab.id)
+      // push → открытие треда попадает в историю браузера (см. setUrlActive).
+      // 'none' — URL уже верный (открытие по кнопке «Назад»), историю не трогаем.
+      if (urlMode !== 'none') setUrlActive(tab.id, urlMode)
     },
     [localTabs, persist, setUrlActive],
   )
@@ -415,8 +416,11 @@ export function useTaskPanelTabs({
   )
 
   const activateTab = useCallback(
-    (id: string | null) => {
-      setUrlActive(id)
+    (id: string | null, urlMode: 'push' | 'replace' | 'none' = 'push') => {
+      // push → переключение вкладки попадает в историю браузера (кнопка «Назад»
+      // вернёт предыдущую активную вкладку). 'none' — URL уже верный (открытие по
+      // «Назад»), историю не трогаем.
+      if (urlMode !== 'none') setUrlActive(id, urlMode)
       const cur = localTabs
       persist(cur, id)
     },

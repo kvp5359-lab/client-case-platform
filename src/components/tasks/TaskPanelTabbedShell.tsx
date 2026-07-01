@@ -150,6 +150,17 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   const resolvedFromUrl = useThreadFromPanelTab(workspaceId)
   const userInteractedRef = useRef(false)
 
+  // Историческая навигация браузера (Назад/Вперёд). popstate стреляет ТОЛЬКО на
+  // неё (не на router.push/replace), поэтому по нему отличаем «переоткрыть тред из
+  // URL» от собственной записи. Цель берём напрямую из window.location (без лага
+  // useSearchParams), тик будит эффект.
+  const historyNavRef = useRef(false)
+  const historyTargetRef = useRef<string | null>(null)
+  const [historyTick, setHistoryTick] = useState(0)
+  // Сессионная карта открытых тредов (uuid → TaskItem) — «Назад» открывает тред
+  // мгновенно и с ТОЧНЫМ scope (project_id из доски), без гонки резолвера URL.
+  const openedThreadsRef = useRef<Map<string, TaskItem>>(new Map())
+
   // Очередь pending-вкладок: когда нужно сменить projectId перед openTab,
   // ждём готовности хука с новым projectId. ВАЖНО: храним вместе с
   // targetProjectId — если за время ожидания scope перешёл на другой
@@ -158,7 +169,13 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   // и зальётся в task_panel_tabs (мусорные вкладки в правой панели).
   // Объявлено до URL-restore эффекта — он использует setPendingOpen
   // чтобы открыть вкладку треда после установки scope.
-  const [pendingOpen, setPendingOpen] = useState<{ tab: TaskPanelTab; projectId: string | null } | null>(null)
+  const [pendingOpen, setPendingOpen] = useState<{
+    tab: TaskPanelTab
+    projectId: string | null
+    /** Режим записи URL при открытии вкладки. 'none' — открытие по «Назад»/из URL,
+     *  историю браузера не трогаем (URL уже верный). По умолчанию push. */
+    urlMode?: 'push' | 'replace' | 'none'
+  } | null>(null)
 
   // Один раз восстанавливаем scope из URL — иначе при каждом render-цикле
   // снова поднимали бы standalone-режим, перетирая ручные действия пользователя.
@@ -182,7 +199,9 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     if (resolvedFromUrl.projectId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- scope-resolver: восстановление scope из URL
       setActiveProjectId(resolvedFromUrl.projectId)
-      setPendingOpen({ tab: threadTab, projectId: resolvedFromUrl.projectId })
+      // urlMode 'none' — URL уже содержит этот panelTab (открыли по ссылке/reload),
+      // повторно писать историю не нужно.
+      setPendingOpen({ tab: threadTab, projectId: resolvedFromUrl.projectId, urlMode: 'none' })
       return
     }
 
@@ -191,7 +210,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     // с activeProjectId=null в pendingOpen-эффекте.
     if (resolvedFromUrl.contactParticipantId) {
       setActiveContactId(resolvedFromUrl.contactParticipantId)
-      setPendingOpen({ tab: threadTab, projectId: null })
+      setPendingOpen({ tab: threadTab, projectId: null, urlMode: 'none' })
       return
     }
 
@@ -232,7 +251,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       setPendingOpen(null)
       return
     }
-    tabs.openTab(pendingOpen.tab)
+    tabs.openTab(pendingOpen.tab, pendingOpen.urlMode ?? 'push')
     setPendingOpen(null)
   }, [pendingOpen, tabs, activeProjectId])
 
@@ -312,8 +331,14 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
 
   const tabsOpenTab = tabs.openTab
   const openThreadTab = useCallback(
-    async (task: TaskItem) => {
+    async (task: TaskItem, opts?: { fromHistory?: boolean }) => {
       userInteractedRef.current = true
+      // Запоминаем тред в сессионной карте — чтобы «Назад» переоткрыл его мгновенно
+      // и с точным project_id (без гонки резолвера URL, который может вернуть null).
+      openedThreadsRef.current.set(task.id, task)
+      // fromHistory — открытие по кнопке «Назад»/«Вперёд»: URL уже указывает на этот
+      // тред, историю браузера повторно не трогаем ('none'), иначе — обычный push.
+      const urlMode: 'push' | 'none' = opts?.fromHistory ? 'none' : 'push'
       const targetPid = task.project_id ?? null
       let targetContactId = targetPid ? null : task.contact_participant_id ?? null
       // Если тред без проекта, а контакт не пришёл — резолвим из БД,
@@ -358,13 +383,91 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       if (scopeChanged) {
         setActiveProjectId(targetPid)
         setActiveContactId(targetContactId)
-        setPendingOpen({ tab, projectId: targetPid })
+        setPendingOpen({ tab, projectId: targetPid, urlMode })
       } else {
-        tabsOpenTab(tab)
+        tabsOpenTab(tab, urlMode)
       }
     },
     [activeProjectId, activeContactId, tabsOpenTab, standaloneTabs],
   )
+
+  // Свежая ссылка на openThreadTab для popstate-эффекта (без пере-подписки listener'а).
+  const openThreadTabRef = useRef(openThreadTab)
+  useEffect(() => {
+    openThreadTabRef.current = openThreadTab
+  }, [openThreadTab])
+
+  // Подписка на «Назад»/«Вперёд» браузера. popstate НЕ стреляет на наши
+  // router.push/replace — значит любой его вызов = историческая навигация.
+  // Цель снимаем ПРЯМО из window.location (authoritative, без лага useSearchParams),
+  // тик будит эффект переоткрытия.
+  useEffect(() => {
+    const onPop = () => {
+      historyTargetRef.current = new URLSearchParams(window.location.search).get('panelTab')
+      historyNavRef.current = true
+      setHistoryTick((t) => t + 1)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  // Переоткрытие треда при исторической навигации. Цель — authoritative из
+  // historyTargetRef (снята из window.location). Сначала пробуем сессионную карту
+  // (мгновенно, точный project_id); треда там нет (пришли по shared-ссылке и
+  // вернулись) — ждём резолвер URL, сверяя его с целью (резолвер лагает).
+  // fromHistory=true → без новой записи в историю. Пустой panelTab (ушли за первый
+  // тред) → прячем панель.
+  useEffect(() => {
+    if (!historyNavRef.current) return
+    const target = historyTargetRef.current
+    if (!target) {
+      historyNavRef.current = false
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- реакция на popstate (Назад/Вперёд браузера)
+      setHidden(true)
+      setStandaloneThread(null)
+      standaloneTabs.reset()
+      setPendingOpen(null)
+      return
+    }
+    const ref = target.startsWith('thread:') ? target.slice('thread:'.length) : null
+    // Не-тредовая вкладка (Документы/История/Ассистент/Задачи/статья KB) — она в
+    // текущем scope проекта; активную покажет URL-производный activeTabId. Просто
+    // снимаем флаг и показываем панель.
+    if (!ref) {
+      historyNavRef.current = false
+      setHidden(false)
+      return
+    }
+    // Быстрый путь — тред уже открывался в этой сессии (точный scope из доски).
+    if (openedThreadsRef.current.has(ref)) {
+      historyNavRef.current = false
+      setHidden(false)
+      void openThreadTabRef.current(openedThreadsRef.current.get(ref)!, { fromHistory: true })
+      return
+    }
+    // Фолбэк — резолвер URL. Он лагает, поэтому ждём совпадения с целью.
+    if (!resolvedFromUrl || `thread:${resolvedFromUrl.threadUuid}` !== target) return
+    historyNavRef.current = false
+    const threadType = resolvedFromUrl.type === 'task' ? 'task' : 'chat'
+    const task: TaskItem = {
+      id: resolvedFromUrl.threadUuid,
+      name: resolvedFromUrl.name,
+      type: threadType,
+      project_id: resolvedFromUrl.projectId,
+      contact_participant_id: resolvedFromUrl.contactParticipantId,
+      workspace_id: workspaceId ?? '',
+      status_id: null,
+      deadline: null,
+      accent_color: resolvedFromUrl.accentColor ?? 'blue',
+      icon: resolvedFromUrl.icon ?? 'message-square',
+      is_pinned: false,
+      created_at: '',
+      project_name: null,
+      sort_order: 0,
+    }
+    setHidden(false)
+    void openThreadTabRef.current(task, { fromHistory: true })
+  }, [historyTick, resolvedFromUrl, workspaceId, standaloneTabs])
 
   const openProjectTab = useCallback(
     (project: ProjectHeaderInfo) => {
@@ -449,13 +552,14 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   const showPanel = useCallback(() => {
     setHidden(false)
     // Восстанавливаем ?panelTab=… при показе панели обратно (после hidePanel
-    // мы его чистили) — иначе URL и UI расходятся.
-    if (tabs.activeTabId) tabs.activateTab(tabs.activeTabId)
+    // мы его чистили) — иначе URL и UI расходятся. replace — это не навигация,
+    // в историю не пишем.
+    if (tabs.activeTabId) tabs.activateTab(tabs.activeTabId, 'replace')
   }, [tabs])
   const togglePanel = useCallback(() => {
     setHidden((h) => {
       const next = !h
-      if (next === false && tabs.activeTabId) tabs.activateTab(tabs.activeTabId)
+      if (next === false && tabs.activeTabId) tabs.activateTab(tabs.activeTabId, 'replace')
       else if (next === true) tabs.clearUrlActive()
       return next
     })
