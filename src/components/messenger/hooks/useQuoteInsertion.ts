@@ -46,11 +46,23 @@ export function useQuoteInsertion(
       })
       .join('')
     const content = `<blockquote>${paragraphs}</blockquote><p></p>`
-    if (wasFocusedRef.current) {
-      editor.chain().focus().insertContent(content).run()
-    } else {
-      editor.chain().focus('end').insertContent(content).run()
-    }
-    onClearRef.current?.()
+    // Фокус+вставку откладываем на след. кадр: пункт «Цитировать» живёт в
+    // Radix-меню бабла, а Radix при закрытии возвращает фокус на свой триггер
+    // в отложенном тике. Синхронный editor.focus() эту гонку проигрывал —
+    // каретка не оставалась в поле. rAF гарантирует, что наш фокус случится
+    // ПОСЛЕ восстановления фокуса Radix. Позицию не трогаем: focus() без
+    // аргумента восстанавливает сохранённый в редакторе курсор (в т.ч. в
+    // середине), focus('end') — только если фокуса ни разу не было.
+    const raf = requestAnimationFrame(() => {
+      if (editor.isDestroyed) return
+      const chain = editor.chain()
+      ;(wasFocusedRef.current ? chain.focus() : chain.focus('end'))
+        .insertContent(content)
+        .run()
+      // Чистим триггер ПОСЛЕ вставки — иначе сброс quoteText перезапустит
+      // эффект, и его cleanup отменит ещё не сработавший rAF (вставка потеряется).
+      onClearRef.current?.()
+    })
+    return () => cancelAnimationFrame(raf)
   }, [editor, quoteText, nonce, wasFocusedRef])
 }
