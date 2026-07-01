@@ -46,6 +46,32 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-06-30 — Telegram Business не сохранял @username собеседника в карточку ⭐ ЗАДЕПЛОЕНО, ⏳ ЖДЁТ СМОК
+- **Симптом:** у Business-контакта в карточке `tg:<id>` вместо `@username` (пример «Алексей Доронин» `tg:490472932`, создан 30.06 — уже после username-фикса, но `telegram_username=null`).
+- **Замер (прод):** username работает у MTProto (50/158 контактов имеют `telegram_username`). У Business — нет.
+- **Корень:** `telegram-business-webhook` **извлекает** `clientUsername`, но использовал его только для отображаемого имени (`@username`/`tg:id`). Контакт создаётся через RPC `find_or_create_contact_participant(ws, name, tg_user_id)` — **без параметра username**, `telegram_username` нигде не писался. (MTProto пишет через `ensureClientParticipant({username})`.)
+- **Фикс:** после резолва треда (контакт уже существует) — `UPDATE participants SET telegram_username = clientUsername WHERE workspace_id=… AND telegram_user_id=… AND (telegram_username IS NULL OR ≠ new)`. По `tg_user_id` → покрывает новые/существующие/бэкафилл; не затирает без изменений. Зеркало MTProto.
+- **Грабли:** обновляем по `(workspace_id, telegram_user_id)`, не по contactId (его в CRM-ветке под рукой нет); `.or('telegram_username.is.null,telegram_username.neq.<u>')` чтобы не делать no-op записи и не пропустить NULL-строки (просто `.neq` исключил бы NULL). Wazzup — тот же пробел, НЕ трогал (не просили).
+- **Проверки:** deno check — 3 ошибки, все пред-существующие (strict-null `project_id` в ChatBinding), мой блок чист; lock не тронут. **✅ Задеплоено** `telegram-business-webhook --no-verify-jwt`. **⏳ Смок:** входящее в Business-диалог от контакта с публичным @username → в карточке появляется `@username` (у кого username нет — остаётся `tg:<id>`, это норма).
+- **Файлы:** `supabase/functions/telegram-business-webhook/index.ts`.
+
+### 2026-06-30 — Единый предикат «клиентский тред» + фикс серого цвета команд. сообщений в MTProto (фронт) ⏳ ЖДЁТ ДЕПЛОЯ ФРОНТА + СМОК
+- **Симптом:** в личном MTProto-диалоге командное сообщение коллеги (`visibility='team'`, staff-роль) красилось обычным акцентом чата, а не светло-серым, и без левого контура staff.
+- **Корень (замер на проде):** сообщение реально `visibility='team'`, отправитель staff — данные верные. Но раскраска в `MessageBubble` (серый + staff-контур) включается только при `isClientThread`. Определение «клиентского треда» было в ДВУХ местах и РАЗОШЛОСЬ: композер `allowClientMode` включал личные каналы (Business/Wazzup/**MTProto**), а проп `isClientThread` для баблов — нет (`hasClientParticipant ‖ isLinked ‖ emailLink`). У MTProto-треда `hasClientParticipant=false` (собеседник — MTProto-контакт, не project-участник «Клиент») → `isClientThread=false` → серый/контур не применялись.
+- **Фикс (унификация):** новый единый предикат `isClientFacingThread(signals)` (`src/utils/messenger/isClientFacingThread.ts`) — ОДНО определение: `hasClientParticipant ‖ TG-группа ‖ email ‖ Business ‖ Wazzup ‖ MTProto`. В `MessengerTabContent` считается один раз (`clientFacingThread`) и идёт И в `allowClientMode` (композер), И в проп `isClientThread` (баблы). Больше не разъедутся; MTProto/Business/Wazzup теперь корректно клиентские → командные сообщения серые + контур.
+- **Грабли:** НЕ путать с понятием «личный диалог без проекта» (тосты `useNewMessageToast:375`, `isPersonalChannelThread` в ChatSettings) — это ДРУГая семантика (owner-гейт/показ канала), её НЕ сливали. Сигналы в предикат передаются явно (часть асинхронна: `hasClientParticipant`, `isLinked`, `isMtproto` через `useIsMtprotoThread` = `mtproto_session_user_id && mtproto_client_tg_user_id`).
+- **Проверки:** tsc 0, lint 0, 753 теста. Чистый фронт. ⏳ Смок после деплоя: в MTProto/Business/Wazzup-диалоге командное сообщение коллеги → светло-серое + левый контур; клиентское входящее → обычное; поведение группового TG/email не изменилось.
+- **Файлы:** `isClientFacingThread.ts` (нов), `MessengerTabContent.tsx`.
+
+### 2026-06-30 — Вкладка «Непрочитанные»: ручной «непрочитанный» сортируется по моменту нажатия кнопки ✅ RPC В ПРОДЕ, ⏳ ФРОНТ (коммент)
+- **Запрос (итог):** не «всегда сверху» и не «по дате последнего сообщения», а **по моменту нажатия кнопки** «пометить непрочитанным» — тред встаёт наверх в момент клика, дальше уезжает вниз по мере новых событий.
+- **Было (ledger 2026-06-13):** `ORDER BY manually_unread DESC, GREATEST(last_message_at,last_event_at) DESC, id` — ручные всегда первыми.
+- **Стало:** `ORDER BY GREATEST(last_message_at, last_event_at, CASE WHEN manually_unread THEN last_read_at ELSE 'epoch' END) DESC, thread_id DESC`. Ключ: `markAsUnread` пишет `last_read_at = now()` (момент нажатия), а RPC его возвращает (`v.last_read_at`) → для ручных берём max(активность, момент пометки). Обычные непрочитанные — по активности, как раньше. `CREATE OR REPLACE`, гранты целы. Тело с ПРОДА (drift: `thread_unread_state`+`get_inbox_threads_v3_for`). Применено через MCP + миграция `20260630_inbox_unread_sort_by_mark_time.sql`.
+- **Проверено на проде:** у `manually_unread=true` строк `message_read_status.last_read_at` = момент пометки (тред «Клиенты» — 07-01 07:57), значит сортировка по нему рабочая.
+- **Грабли:** сортировочный «момент пометки» = `last_read_at` для manually_unread. Это то же поле, что обновляет markRead — но у прочитанного `manually_unread=false` (и он не в списке), так что пока флаг стоит, `last_read_at` = момент пометки, не сбивается. Если новое сообщение придёт позже пометки — тред уедет по времени сообщения (естественно).
+- **Фронт:** `useFilteredInboxUnread` только access-фильтрует (порядок RPC сохраняет) — правка не нужна, только комментарий.
+- **Файлы:** миграция выше; `useFilteredInbox.ts` (коммент).
+
 ### 2026-06-30 — «Цитировать» из меню бабла: каретка не оставалась в поле (гонка фокуса Radix) ⏳ ЖДЁТ ДЕПЛОЯ + СМОК
 - **Симптом (повтор):** клик «Цитировать» вставлял цитату, но курсор не возвращался в поле ввода — надо было кликать, чтобы печатать.
 - **Корень:** `useQuoteInsertion` фокусировал редактор СИНХРОННО в эффекте. Пункт «Цитировать» живёт в Radix-меню бабла; Radix при закрытии возвращает фокус на свой триггер в отложенном тике → наш синхронный `editor.focus()` проигрывал гонку, фокус тут же отбирался. Тот же класс, что @-попап/быстрые ответы.

@@ -431,6 +431,20 @@ async function handleBusinessMessage(
     projectId = null
   }
 
+  // Сохраняем @username клиента в карточку (зеркало MTProto — Business раньше
+  // username не писал, в карточке был tg:<id>). Обновляем по tg_user_id, только
+  // если пусто или изменилось; прочие поля не трогаем. Старые контакты добьют
+  // username при следующем входящем. Контакт к этому моменту уже существует
+  // (создан ensureBusinessThread / route_incoming_to_project).
+  if (clientUsername) {
+    await service
+      .from("participants")
+      .update({ telegram_username: clientUsername })
+      .eq("workspace_id", conn.workspace_id)
+      .eq("telegram_user_id", clientTgUserId)
+      .or(`telegram_username.is.null,telegram_username.neq.${clientUsername}`);
+  }
+
   const content = msg.text ?? msg.caption ?? "";
 
   // Детектор реакции: если клиент шлёт короткий эмодзи-only reply на наше

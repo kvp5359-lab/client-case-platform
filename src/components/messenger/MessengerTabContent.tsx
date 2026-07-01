@@ -38,6 +38,7 @@ import { useMessengerHandlers } from './hooks/useMessengerHandlers'
 import { useOptimisticEmail } from './hooks/useOptimisticEmail'
 import { useProjectThreads, useProjectThreadById } from '@/hooks/messenger/useProjectThreads'
 import { useThreadHasClient } from '@/hooks/messenger/useThreadHasClient'
+import { isClientFacingThread } from '@/utils/messenger/isClientFacingThread'
 import {
   useBackfillTelegramHistory,
   useIsMtprotoThread,
@@ -197,16 +198,20 @@ export function MessengerTabContent({
     setComposerMode(visibilityToMode(msg))
   }
 
-  // Есть ли у треда внешний собеседник/клиент. Если нет (внутренний тред
-  // команды) — режим «Клиенту» в композере прячем, дефолт сводим к «Команде».
-  // Личные диалоги (Business/Wazzup/MTProto) — клиент есть, режим оставляем.
-  const allowClientMode =
-    hasClientParticipant ||
-    state.isLinked ||
-    state.isEmailChat || // email-тред внешний по определению (link ИЛИ type='email')
-    !!currentThread?.business_connection_id ||
-    !!currentThread?.wazzup_channel_id ||
-    isMtprotoThread
+  // Клиентский (внешний) тред — ЕДИНЫЙ предикат `isClientFacingThread`. Тот же
+  // результат используется и для раскраски баблов (проп isClientThread ниже),
+  // чтобы композер и рендер не расходились (иначе команд. сообщения в MTProto
+  // не красились в серый). Если внутренний тред команды — режим «Клиенту» в
+  // композере прячем, дефолт сводим к «Команде».
+  const clientFacingThread = isClientFacingThread({
+    hasClientParticipant,
+    isTgGroupLinked: state.isLinked,
+    isEmailChat: state.isEmailChat, // link ИЛИ type='email'
+    isBusiness: !!currentThread?.business_connection_id,
+    isWazzup: !!currentThread?.wazzup_channel_id,
+    isMtproto: isMtprotoThread,
+  })
+  const allowClientMode = clientFacingThread
   // Эффективный режим: при скрытом «Клиенту» сохранённый/дефолтный 'client'
   // съезжает на 'team' (иначе активной кнопки нет).
   const effectiveComposerMode: ComposerMode =
@@ -511,7 +516,7 @@ export function MessengerTabContent({
         channel={channel}
         isAdmin={state.isAdmin}
         isTelegramLinked={state.isLinked}
-        isClientThread={hasClientParticipant || state.isLinked || !!state.emailLink}
+        isClientThread={clientFacingThread}
         viewerIsClient={isClientOnly}
         isEmailThread={state.isEmailChat}
         isBusinessThread={!!currentThread?.business_connection_id}
