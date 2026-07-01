@@ -74,13 +74,23 @@ Deno.serve(async (req: Request) => {
     .maybeSingle();
   if (!settings?.api_key) return jsonRes({ ok: false, reason: "нет api-ключа Wazzup" }, 200, req);
 
-  const res = await fetch(
-    `https://api.wazzup24.com/v3/message/${encodeURIComponent(wazzupMessageId)}`,
-    {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${settings.api_key}` },
-    },
-  );
+  let res: Response;
+  try {
+    res = await fetch(
+      `https://api.wazzup24.com/v3/message/${encodeURIComponent(wazzupMessageId)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${settings.api_key}` },
+      },
+    );
+  } catch (e) {
+    // Сеть до Wazzup недоступна/таймаут — честный {ok:false}, а не 500.
+    return jsonRes(
+      { ok: false, reason: `не удалось связаться с Wazzup: ${String(e)}` },
+      200,
+      req,
+    );
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
