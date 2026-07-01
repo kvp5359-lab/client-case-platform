@@ -13,7 +13,12 @@
  * один раз и появляются во всех местах автоматически.
  */
 
-import { MoreVertical, ExternalLink, Trash2, CheckCircle2, Calendar as CalendarIcon, X, Settings, Bell, BellOff, Repeat } from 'lucide-react'
+import { MoreVertical, ExternalLink, Trash2, CheckCircle2, Calendar as CalendarIcon, X, Settings, Check, Repeat } from 'lucide-react'
+import {
+  NOTIFY_LEVELS,
+  NotifyLevelIcon,
+} from '@/components/messenger/NotifyLevelControl'
+import type { NotifyLevel } from '@/hooks/messenger/useThreadSubscription'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { Button } from '@/components/ui/button'
@@ -58,12 +63,12 @@ export type TaskActionsMenuProps = {
   onMakeRecurring?: () => void
 
   /**
-   * Подписка на уведомления по треду. Если `onToggleSubscribe` не передан —
-   * пункт скрыт (показывается только в шапке открытого треда).
-   * `isSubscribed`: true=подписан, false=отписан, null=грузится.
+   * Уровень уведомлений по треду. Если `onSetNotifyLevel` не передан — подменю
+   * скрыто (показывается только в шапке открытого треда).
+   * `notifyLevel`: 'all' | 'messages' | 'off' | null (грузится).
    */
-  isSubscribed?: boolean | null
-  onToggleSubscribe?: (next: boolean) => void
+  notifyLevel?: NotifyLevel | null
+  onSetNotifyLevel?: (level: NotifyLevel) => void
   subscribePending?: boolean
 
   /** Удалить задачу (мягко, в корзину). Если не передан — пункт скрыт. */
@@ -86,8 +91,8 @@ export function TaskActionsMenu({
   deadlinePending,
   onOpenSettings,
   onMakeRecurring,
-  isSubscribed,
-  onToggleSubscribe,
+  notifyLevel,
+  onSetNotifyLevel,
   subscribePending,
   onRequestDelete,
   triggerClassName,
@@ -99,7 +104,7 @@ export function TaskActionsMenu({
   const hasOpen = !!onOpen
   const hasSettings = !!onOpenSettings
   const hasMakeRecurring = !!onMakeRecurring
-  const hasSubscribe = !!onToggleSubscribe
+  const hasSubscribe = !!onSetNotifyLevel
 
   // Если вообще нечего показывать — не рендерим триггер.
   if (!hasOpen && !hasStatuses && !hasDeadline && !hasSettings && !hasMakeRecurring && !hasSubscribe && !hasDelete) return null
@@ -225,21 +230,29 @@ export function TaskActionsMenu({
           )}
 
           {hasSubscribe && (
-            <>
-              {(hasOpen || hasStatuses || hasDeadline || hasSettings || hasMakeRecurring) && <DropdownMenuSeparator />}
-              <DropdownMenuItem
-                onClick={() => onToggleSubscribe!(!isSubscribed)}
-                disabled={subscribePending || isSubscribed === null || isSubscribed === undefined}
-                className="text-xs cursor-pointer"
-              >
-                {isSubscribed ? (
-                  <BellOff className="mr-2 h-3.5 w-3.5" />
-                ) : (
-                  <Bell className="mr-2 h-3.5 w-3.5" />
-                )}
-                {isSubscribed ? 'Отписаться от уведомлений' : 'Подписаться на уведомления'}
-              </DropdownMenuItem>
-            </>
+              <>
+                {(hasOpen || hasStatuses || hasDeadline || hasSettings || hasMakeRecurring) && <DropdownMenuSeparator />}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="text-xs cursor-pointer">
+                    <NotifyLevelIcon level={notifyLevel ?? 'all'} className="mr-2 h-3.5 w-3.5" />
+                    Уведомления
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {NOTIFY_LEVELS.map(({ value, label, Icon }) => (
+                      <DropdownMenuItem
+                        key={value}
+                        onClick={() => onSetNotifyLevel!(value)}
+                        disabled={subscribePending || notifyLevel == null}
+                        className="text-xs cursor-pointer"
+                      >
+                        <Icon className={cn('mr-2 h-3.5 w-3.5', value === 'off' && 'text-amber-500')} />
+                        <span className="flex-1">{label}</span>
+                        {notifyLevel === value && <Check className="ml-2 h-3.5 w-3.5" />}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </>
           )}
 
           {hasDelete && (

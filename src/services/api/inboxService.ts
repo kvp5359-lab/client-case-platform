@@ -240,6 +240,28 @@ export async function getInboxNeedsReplyThreads(
 }
 
 /**
+ * Заглушённые (mute) треды с непрочитанным одним запросом
+ * (RPC `get_inbox_muted_threads`) — источник вкладки «Заглушённые».
+ * Возвращает те же поля, что `get_inbox_threads_v2`, но счётчик-бейдж (`unread_count`
+ * и др.) заполнен АРХИВНЫМИ значениями (muted_*) — серый счётчик непрочитанного,
+ * которое накопилось в замьюченном треде. Заглушённый тред остаётся заглушённым;
+ * в обычные вкладки он не попадает (кроме прямого упоминания/ответа тебе).
+ * Без пагинации (как unread) — клиентский access-фильтр.
+ */
+export async function getInboxMutedThreads(
+  workspaceId: string,
+  userId: string,
+): Promise<InboxThreadEntry[]> {
+  const { data, error } = await supabase.rpc('get_inbox_muted_threads', {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+  })
+
+  if (error) throw new ApiError(`Ошибка загрузки «Заглушённые»: ${error.message}`)
+  return (data ?? []) as unknown as InboxThreadEntry[]
+}
+
+/**
  * Лёгкая строка-агрегат — только поля для счётчиков сайдбара/favicon.
  * Без имён, текстов, аватаров. Источник — RPC `get_inbox_thread_aggregates`.
  */

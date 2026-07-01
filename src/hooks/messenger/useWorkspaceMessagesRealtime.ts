@@ -47,6 +47,7 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
       queryClient.invalidateQueries({ queryKey: inboxKeys.awaitingReply(workspaceId) })
       queryClient.invalidateQueries({ queryKey: inboxKeys.needsReply(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.muted(workspaceId) })
     }
 
     const LIGHT_MS = 400

@@ -17,6 +17,7 @@ import { ChatSettingsProjectSelector } from '@/components/messenger/ChatSettings
 import { useWorkspaceProjects } from '@/components/messenger/hooks/useChatSettingsData'
 import { useMoveThreadToProject } from '@/hooks/messenger/useMoveThreadToProject'
 import { useThreadSubscription } from '@/hooks/messenger/useThreadSubscription'
+import { NotifyLevelOptions, NotifyLevelIcon } from '@/components/messenger/NotifyLevelControl'
 import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useUpdateThread } from '@/hooks/messenger/useProjectThreads'
@@ -100,7 +101,8 @@ export function TaskPanelTaskHeader({
   const moveThreadToProject = useMoveThreadToProject(workspaceId)
   const [attachedProjectId, setAttachedProjectId] = useState<string | null>(task.project_id ?? null)
 
-  // Подписка на уведомления по треду (пункт в меню «⋮»).
+  // Подписка на уведомления по треду: колокольчик-индикатор в правом кластере
+  // шапки + дублирующий пункт в меню «⋮».
   const subscription = useThreadSubscription(task.id, workspaceId)
 
   // Диалог «Сделать повторяющейся» (только для задач).
@@ -327,6 +329,37 @@ export function TaskPanelTaskHeader({
         {/* Поиск (ChatToolbar) — остаётся на верхнем ряду. */}
         <div ref={toolbarRef} className="flex items-center gap-1 ml-auto md:ml-0 shrink-0" />
 
+        {/* Колокольчик = уровень уведомлений по треду. Клик открывает выбор из
+            трёх: Все / Только сообщения / Выключены. Иконка отражает уровень
+            (🔔 / 🔔− / 🔕 амбер). Рендерится, только когда уровень известен. */}
+        {viewMode === 'thread' && subscription.level !== null && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                disabled={subscription.pending}
+                title="Уведомления по треду"
+                aria-label="Уведомления по треду"
+                className={cn(
+                  'shrink-0 p-1 rounded-md transition-colors disabled:opacity-50',
+                  subscription.level === 'off'
+                    ? 'text-amber-600 hover:bg-amber-50'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                )}
+              >
+                <NotifyLevelIcon level={subscription.level} className="w-4 h-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64 p-0">
+              <NotifyLevelOptions
+                level={subscription.level}
+                onSelect={(lvl) => subscription.setLevel(lvl)}
+                pending={subscription.pending}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
+
         {/* Меню «⋮» — те же действия, что и в строке задачи, кроме «Открыть»
             (тред уже открыт в этой панели). */}
         {viewMode === 'thread' && (
@@ -340,8 +373,8 @@ export function TaskPanelTaskHeader({
             deadlinePending={deadlinePending}
             onOpenSettings={onSettingsOpen}
             onMakeRecurring={isTask ? () => setRecurringOpen(true) : undefined}
-            isSubscribed={subscription.isSubscribed}
-            onToggleSubscribe={subscription.setSubscribed}
+            notifyLevel={subscription.level}
+            onSetNotifyLevel={subscription.setLevel}
             subscribePending={subscription.pending}
             onRequestDelete={onRequestDelete}
             triggerClassName="opacity-100"

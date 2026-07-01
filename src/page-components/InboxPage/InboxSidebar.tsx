@@ -23,6 +23,8 @@ type InboxSidebarProps = {
   awaitingCount: number
   /** «Нужно ответить» — внешние диалоги, где последним писал клиент (прочитано). */
   needsReplyCount: number
+  /** «Заглушённые» — число замьюченных тредов с непрочитанным (архив). */
+  mutedCount: number
   isLoading: boolean
   filteredChats: InboxThreadEntry[]
   activeThreadId: string | null
@@ -56,6 +58,7 @@ export const InboxSidebar = memo(function InboxSidebar({
   unreadCount,
   awaitingCount,
   needsReplyCount,
+  mutedCount,
   isLoading,
   filteredChats,
   activeThreadId,
@@ -218,6 +221,26 @@ export const InboxSidebar = memo(function InboxSidebar({
                     </span>
                   )}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => onSetFilter('muted')}
+                  title="Заглушённые треды — уведомлений нет, но непрочитанное сохраняется. Прямое упоминание/ответ тебе всё равно всплывёт в «Непрочитанных»"
+                  className={cn(
+                    'shrink-0 whitespace-nowrap text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1',
+                    filter === 'muted'
+                      ? 'bg-gray-200 text-gray-700 font-medium'
+                      : 'text-gray-500 hover:bg-gray-100',
+                  )}
+                >
+                  Заглушённые
+                  {mutedCount > 0 && (
+                    <span
+                      className="min-w-[16px] h-4 px-1 rounded-full text-[10px] font-medium flex items-center justify-center bg-gray-300 text-gray-700"
+                    >
+                      {mutedCount}
+                    </span>
+                  )}
+                </button>
               </div>
               <button
                 type="button"
@@ -245,9 +268,11 @@ export const InboxSidebar = memo(function InboxSidebar({
                 ? 'Нет диалогов, ждущих ответа'
                 : filter === 'awaiting'
                   ? 'Нет диалогов в ожидании клиента'
-                  : searchQuery
-                    ? 'Ничего не найдено'
-                    : 'Нет активных чатов'}
+                  : filter === 'muted'
+                    ? 'Нет заглушённых с непрочитанным'
+                    : searchQuery
+                      ? 'Ничего не найдено'
+                      : 'Нет активных чатов'}
           </div>
         ) : (
           <>
@@ -261,6 +286,7 @@ export const InboxSidebar = memo(function InboxSidebar({
                 onMarkAsUnread={() => onMarkAsUnread(chat)}
                 deliveryStatus={deliveryStatuses?.get(chat.thread_id)}
                 selfSenderName={selfSenderName}
+                mutedBadge={filter === 'muted'}
               />
             ))}
             {hasNextPage && (

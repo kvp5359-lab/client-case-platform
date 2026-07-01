@@ -44,6 +44,8 @@ type MessageBubbleProps = {
   onCancelDelayed?: (messageId: string) => void
   /** Чужое сообщение, пришедшее после last_read_at — подсветить как непрочитанное. */
   isUnread?: boolean
+  /** Тон контура непрочитанного: 'red' (обычный) или 'slate' (заглушённый тред). */
+  unreadTone?: 'red' | 'slate'
   /** Нужен ReactionBadges, чтобы определить непрочитанные реакции. */
   lastReadAt?: string
 }
@@ -57,6 +59,7 @@ function MessageBubbleImpl({
   delayedExpiresAt,
   onCancelDelayed,
   isUnread,
+  unreadTone = 'red',
   lastReadAt,
 }: MessageBubbleProps) {
   const {
@@ -366,9 +369,10 @@ function MessageBubbleImpl({
               isOptimistic && 'opacity-70',
               // Левый индикатор бабла:
               //  - 4px красный — непрочитанное (приоритет, перебивает «сотрудник»);
+              //    в заглушённом треде тон 'slate' — тёмно-серый (спокойное непрочитанное);
               //  - 2px цвета акцента — прочитанное от сотрудника в клиентском чате.
               isUnread && !isOwn
-                ? 'border-l-4 border-red-500'
+                ? cn('border-l-4', unreadTone === 'slate' ? 'border-slate-500' : 'border-red-500')
                 : !isOwn && showStaffMark && cn('border-l-2', staffBorderColor),
               // Нижний padding только для аудио/файлов: у них таймстамп лежит абсолютно
               // под бабла. Если в сообщении есть картинки — таймстамп уезжает поверх

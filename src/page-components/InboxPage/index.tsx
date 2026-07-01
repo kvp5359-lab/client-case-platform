@@ -17,6 +17,7 @@ import {
   useFilteredInboxUnread,
   useFilteredInboxAwaitingReply,
   useFilteredInboxNeedsReply,
+  useFilteredInboxMuted,
   useFilteredInboxSearch,
   useInboxMessageStatuses,
   useInboxSegmentCounts,
@@ -112,6 +113,8 @@ export default function InboxPage() {
     workspaceId ?? '',
     filter === 'needs_reply',
   )
+  // «Заглушённые» — весь список одним запросом (как unread), бейдж = длина списка.
+  const { data: mutedChats = [] } = useFilteredInboxMuted(workspaceId ?? '')
   // Счётчики бейджей вкладок — из лёгких агрегатов (тот же RPC, что сайдбар).
   const { needsReply: needsReplyCount, awaiting: awaitingCount } =
     useInboxSegmentCounts(workspaceId ?? '')
@@ -125,7 +128,8 @@ export default function InboxPage() {
     closeSearch,
     filteredChats,
     unreadCount,
-  } = useInboxFilters(chats, unreadChats, awaitingChats, needsReplyChats, filter, setFilter)
+    mutedCount,
+  } = useInboxFilters(chats, unreadChats, awaitingChats, needsReplyChats, mutedChats, filter, setFilter)
 
   // Серверный поиск по тредам инбокса (по названию треда/проекта) — по всем
   // тредам, а не по загруженным страницам. При активном поиске он заменяет
@@ -297,6 +301,7 @@ export default function InboxPage() {
             unreadCount={unreadCount}
             awaitingCount={awaitingCount}
             needsReplyCount={needsReplyCount}
+            mutedCount={mutedCount}
             isLoading={isLoading}
             filteredChats={displayChats}
             activeThreadId={activeChat?.thread_id ?? null}

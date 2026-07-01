@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { useThreadSubscription, useThreadSubscribers } from '@/hooks/messenger/useThreadSubscription'
+import { NotifyLevelOptions, NotifyLevelIcon, NOTIFY_LEVELS } from './NotifyLevelControl'
 import type { Participant } from './chatSettingsTypes'
 import { getRoleGroup } from './chatSettingsTypes'
 
@@ -38,7 +39,7 @@ export function ChatSettingsNotifications({
   const showPersonal = variant === 'full' || variant === 'personal'
   const showManage = (variant === 'full' || variant === 'manage') && canManage
 
-  const { isSubscribed, setSubscribed, pending } = useThreadSubscription(threadId, workspaceId)
+  const { isSubscribed, setSubscribed, level, setLevel, pending } = useThreadSubscription(threadId, workspaceId)
   const subscribed = isSubscribed === true
   const loading = isSubscribed === null
 
@@ -68,24 +69,31 @@ export function ChatSettingsNotifications({
   const name = (p: Participant) =>
     p.user_id === userId ? 'Я' : [p.name, p.last_name].filter(Boolean).join(' ')
 
-  // Компактная ghost-кнопка (рядом с «Подключить канал»).
+  // Компактный триггер (рядом с «Подключить канал») → поповер с 3 уровнями.
   if (variant === 'compact') {
+    const curLabel = NOTIFY_LEVELS.find((l) => l.value === level)?.label
     return (
-      <button
-        type="button"
-        disabled={pending || loading}
-        onClick={() => setSubscribed(!subscribed)}
-        title="Подписчики получают непрочитанное и уведомления по этому треду"
-        className={cn(
-          'flex items-center gap-1.5 text-xs transition-colors disabled:opacity-50 disabled:cursor-default',
-          subscribed
-            ? 'text-muted-foreground hover:text-foreground'
-            : 'text-muted-foreground/60 hover:text-muted-foreground',
-        )}
-      >
-        {subscribed ? <Bell className="w-3 h-3" /> : <BellOff className="w-3 h-3" />}
-        {loading ? 'Загрузка…' : subscribed ? 'Отписаться от уведомлений' : 'Подписаться на уведомления'}
-      </button>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={pending || loading}
+            title="Уровень уведомлений по этому треду"
+            className={cn(
+              'flex items-center gap-1.5 text-xs transition-colors disabled:opacity-50 disabled:cursor-default',
+              level === 'off'
+                ? 'text-amber-600 hover:text-amber-700'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <NotifyLevelIcon level={level ?? 'all'} className="w-3 h-3" />
+            {loading ? 'Загрузка…' : `Уведомления: ${curLabel ?? ''}`}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-64 p-0">
+          <NotifyLevelOptions level={level} onSelect={setLevel} pending={pending} />
+        </PopoverContent>
+      </Popover>
     )
   }
 

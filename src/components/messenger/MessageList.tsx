@@ -50,6 +50,12 @@ type MessageListProps = {
    * на просмотр — там отметка прочтения не его, и подсветка бессмысленна.
    */
   suppressUnread?: boolean
+  /**
+   * Тон подсветки непрочитанного: 'red' (обычный, подписанный тред — «ответь»)
+   * или 'slate' (тёмно-серый — заглушённый тред: непрочитанное сохраняется, но
+   * спокойно). Влияет на разделитель, левый контур бабла и цвет события.
+   */
+  unreadTone?: 'red' | 'slate'
   /** Шапка-слот в начале ленты (бабл описания треда) — скроллится вместе с лентой. */
   headerSlot?: React.ReactNode
 }
@@ -80,12 +86,14 @@ function DateSeparator({ date }: { date: string }) {
 }
 
 /** Разделитель непрочитанных */
-function UnreadSeparator() {
+function UnreadSeparator({ tone = 'red' }: { tone?: 'red' | 'slate' }) {
+  const line = tone === 'slate' ? 'border-slate-400' : 'border-red-400'
+  const text = tone === 'slate' ? 'text-slate-500' : 'text-red-500'
   return (
     <div className="flex items-center gap-3 py-2">
-      <div className="flex-1 border-t border-red-400" />
-      <span className="text-xs font-medium text-red-500">Непрочитанные</span>
-      <div className="flex-1 border-t border-red-400" />
+      <div className={cn('flex-1 border-t', line)} />
+      <span className={cn('text-xs font-medium', text)}>Непрочитанные</span>
+      <div className={cn('flex-1 border-t', line)} />
     </div>
   )
 }
@@ -110,6 +118,7 @@ export function MessageList({
   onBackfillFromTelegram,
   isBackfilling = false,
   suppressUnread = false,
+  unreadTone = 'red',
 }: MessageListProps) {
   const {
     currentParticipantId,
@@ -536,6 +545,7 @@ export function MessageList({
                 key={`event-${item.event.id}`}
                 event={item.event}
                 isUnread={eventIsUnread}
+                unreadTone={unreadTone}
               />
             )
           }
@@ -591,7 +601,7 @@ export function MessageList({
           return (
             <div key={msg.id}>
               {showDate && <DateSeparator date={msg.created_at} />}
-              {showUnreadSeparator && <UnreadSeparator />}
+              {showUnreadSeparator && <UnreadSeparator tone={unreadTone} />}
               {msg.source === 'telegram_service' || msg.source === 'bot_event' ? (
                 <ServiceMessage
                   text={msg.content}
@@ -610,6 +620,7 @@ export function MessageList({
                   delayedExpiresAt={getDelayedExpiresAt?.(msg.id) ?? undefined}
                   onCancelDelayed={onCancelDelayed}
                   isUnread={isUnread}
+                  unreadTone={unreadTone}
                   lastReadAt={lastReadAt}
                 />
               )}

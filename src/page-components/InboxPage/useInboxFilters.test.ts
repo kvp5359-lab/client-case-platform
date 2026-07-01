@@ -23,9 +23,10 @@ function useTestFilters(
   awaiting: InboxThreadEntry[],
   needs: InboxThreadEntry[],
   initial: InboxFilter = 'unread',
+  muted: InboxThreadEntry[] = [],
 ) {
   const [filter, setFilter] = useState<InboxFilter>(initial)
-  return useInboxFilters(chats, unread, awaiting, needs, filter, setFilter)
+  return useInboxFilters(chats, unread, awaiting, needs, muted, filter, setFilter)
 }
 
 function entry(over: Partial<InboxThreadEntry> & { thread_id: string }): InboxThreadEntry {

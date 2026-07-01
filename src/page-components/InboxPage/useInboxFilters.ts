@@ -6,7 +6,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 
-export type InboxFilter = 'all' | 'unread' | 'awaiting' | 'needs_reply'
+export type InboxFilter = 'all' | 'unread' | 'awaiting' | 'needs_reply' | 'muted'
 
 /** Ключ сортировки треда — как в RPC: max(last_message_at, last_event_at). */
 function sortKey(c: InboxThreadEntry): number {
@@ -34,6 +34,7 @@ export function useInboxFilters(
   unreadChats: InboxThreadEntry[],
   awaitingChats: InboxThreadEntry[],
   needsReplyChats: InboxThreadEntry[],
+  mutedChats: InboxThreadEntry[],
   filter: InboxFilter,
   setFilter: (f: InboxFilter) => void,
 ) {
@@ -78,6 +79,9 @@ export function useInboxFilters(
     } else if (filter === 'needs_reply') {
       // Полный список «Нужно ответить» одним запросом.
       result = [...needsReplyChats].sort((a, b) => sortKey(b) - sortKey(a))
+    } else if (filter === 'muted') {
+      // Заглушённые треды с непрочитанным (архивные счётчики). Снимок не нужен.
+      result = [...mutedChats].sort((a, b) => sortKey(b) - sortKey(a))
     } else {
       result = chats
     }
@@ -92,9 +96,10 @@ export function useInboxFilters(
     }
 
     return result
-  }, [chats, unreadChats, awaitingChats, needsReplyChats, filter, searchQuery, unreadSnapshot])
+  }, [chats, unreadChats, awaitingChats, needsReplyChats, mutedChats, filter, searchQuery, unreadSnapshot])
 
   const unreadCount = useMemo(() => unreadChats.length, [unreadChats])
+  const mutedCount = useMemo(() => mutedChats.length, [mutedChats])
 
   const closeSearch = useCallback(() => {
     setSearchOpen(false)
@@ -111,5 +116,6 @@ export function useInboxFilters(
     closeSearch,
     filteredChats,
     unreadCount,
+    mutedCount,
   }
 }

@@ -8151,6 +8151,11 @@ export type Database = {
           last_reaction_emoji: string | null
           last_read_at: string | null
           manually_unread: boolean
+          muted_has_unread_reaction: boolean
+          muted_last_reaction_emoji: string | null
+          muted_unread_count: number
+          muted_unread_event_count: number
+          muted_unread_reaction_count: number
           participant_id: string
           thread_id: string
           unread_count: number
@@ -8163,6 +8168,11 @@ export type Database = {
           last_reaction_emoji?: string | null
           last_read_at?: string | null
           manually_unread?: boolean
+          muted_has_unread_reaction?: boolean
+          muted_last_reaction_emoji?: string | null
+          muted_unread_count?: number
+          muted_unread_event_count?: number
+          muted_unread_reaction_count?: number
           participant_id: string
           thread_id: string
           unread_count?: number
@@ -8175,6 +8185,11 @@ export type Database = {
           last_reaction_emoji?: string | null
           last_read_at?: string | null
           manually_unread?: boolean
+          muted_has_unread_reaction?: boolean
+          muted_last_reaction_emoji?: string | null
+          muted_unread_count?: number
+          muted_unread_event_count?: number
+          muted_unread_reaction_count?: number
           participant_id?: string
           thread_id?: string
           unread_count?: number
@@ -9743,6 +9758,46 @@ export type Database = {
           unread_reaction_count: number
         }[]
       }
+      get_inbox_muted_threads: {
+        Args: { p_user_id: string; p_workspace_id: string }
+        Returns: {
+          channel_type: string
+          counterpart_avatar_url: string
+          counterpart_name: string
+          email_contact: string
+          email_subject: string
+          has_unread_reaction: boolean
+          last_event_at: string
+          last_event_sender_avatar_url: string
+          last_event_status_color: string
+          last_event_text: string
+          last_message_at: string
+          last_message_attachment_count: number
+          last_message_attachment_mime: string
+          last_message_attachment_name: string
+          last_message_text: string
+          last_reaction_at: string
+          last_reaction_emoji: string
+          last_reaction_message_preview: string
+          last_reaction_sender_avatar_url: string
+          last_reaction_sender_name: string
+          last_read_at: string
+          last_sender_avatar_url: string
+          last_sender_name: string
+          legacy_channel: string
+          manually_unread: boolean
+          project_id: string
+          project_name: string
+          thread_accent_color: string
+          thread_icon: string
+          thread_id: string
+          thread_name: string
+          thread_type: string
+          unread_count: number
+          unread_event_count: number
+          unread_reaction_count: number
+        }[]
+      }
       get_inbox_unread_threads: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: {
@@ -9784,6 +9839,11 @@ export type Database = {
         }[]
       }
       get_my_task_counts: { Args: { p_workspace_id: string }; Returns: Json }
+      get_my_thread_notify_level: { Args: { p_thread_id: string }; Returns: string }
+      set_my_thread_notify_level: {
+        Args: { p_thread_id: string; p_level: string }
+        Returns: string
+      }
       get_owner_permissions: { Args: never; Returns: Json }
       get_personal_dialogs: {
         Args: { p_target_user_id: string; p_workspace_id: string }

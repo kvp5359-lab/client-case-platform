@@ -36,6 +36,12 @@ export const inboxKeys = {
    * одноимённой вкладки. Отдельно, без пагинации (как awaiting/unread).
    */
   needsReply: (workspaceId: string) => ['inbox', 'needs-reply', workspaceId] as const,
+  /**
+   * Все заглушённые (mute) треды с непрочитанным одним запросом
+   * (get_inbox_muted_threads) — источник вкладки «Заглушённые». Читает архивные
+   * счётчики (muted_*). Отдельно, без пагинации (как unread).
+   */
+  muted: (workspaceId: string) => ['inbox', 'muted', workspaceId] as const,
   /** Серверный поиск по тредам инбокса (по названию треда/проекта). */
   search: (workspaceId: string, query: string) =>
     ['inbox', 'search', workspaceId, query] as const,
@@ -182,6 +188,7 @@ export function invalidateMessengerCaches(
   queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
   queryClient.invalidateQueries({ queryKey: inboxKeys.awaitingReply(workspaceId) })
   queryClient.invalidateQueries({ queryKey: inboxKeys.needsReply(workspaceId) })
+  queryClient.invalidateQueries({ queryKey: inboxKeys.muted(workspaceId) })
   queryClient.invalidateQueries({ queryKey: inboxKeys.messageStatuses(workspaceId) })
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, true) })
   queryClient.invalidateQueries({ queryKey: sidebarKeys.projects(workspaceId, false) })

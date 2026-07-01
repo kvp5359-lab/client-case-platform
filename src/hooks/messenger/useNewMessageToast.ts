@@ -149,12 +149,11 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             if (ownerUserId && ownerUserId !== currentUserId) return
           }
 
-          // Проектные/клиентские треды: тост только если ты ПОДПИСАН на тред
-          // (или упомянут в этом сообщении). Единый принцип с контуром/счётчиком:
-          // view_all-владелец без подписки не тонет в тостах по чужим тредам.
-          // Упоминание авто-подписывает (триггер) → последующие тоже придут;
-          // плюс отдельная проверка @ на случай гонки подписки. Fail-open: при
-          // ошибке RPC показываем тост (лучше шум, чем потерять уведомление).
+          // Проектные/клиентские треды: тост только если ты ПОДПИСАН на тред,
+          // ЛИБО тебя @упомянули в этом сообщении, ЛИБО это ОТВЕТ на твоё сообщение.
+          // Заглушённый (mute) тред не даёт тостов — но прямое упоминание/ответ тебе
+          // всё равно «высовывается» (как в Telegram), не снимая mute. Fail-open:
+          // при ошибке RPC показываем тост (лучше шум, чем потерять уведомление).
           if (msg.project_id && msg.thread_id) {
             let allowed = true
             const { data: subscribed, error: subErr } = await supabase.rpc(
@@ -166,6 +165,7 @@ export function useNewMessageToast(workspaceId: string | undefined) {
               if (!allowed) {
                 const myPids = [...myParticipantIdsRef.current]
                 if (myPids.length) {
+                  // @упоминание меня в этом сообщении
                   const { data: mentioned } = await supabase
                     .from('message_mentions')
                     .select('message_id')
@@ -173,6 +173,21 @@ export function useNewMessageToast(workspaceId: string | undefined) {
                     .in('participant_id', myPids)
                     .limit(1)
                   allowed = !!mentioned?.length
+                  // ответ на моё сообщение
+                  if (!allowed) {
+                    const replyToId = (payload.new as { reply_to_message_id?: string | null })
+                      .reply_to_message_id
+                    if (replyToId) {
+                      const { data: orig } = await supabase
+                        .from('project_messages')
+                        .select('sender_participant_id')
+                        .eq('id', replyToId)
+                        .maybeSingle()
+                      const origSender = (orig as { sender_participant_id?: string | null } | null)
+                        ?.sender_participant_id
+                      allowed = !!origSender && myParticipantIdsRef.current.has(origSender)
+                    }
+                  }
                 }
               }
             }

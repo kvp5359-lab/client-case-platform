@@ -122,6 +122,9 @@ type InboxChatItemProps = {
   /** Имя текущего пользователя (в формате `last_sender_name` из RPC). Если автор
    *  последнего сообщения/реакции совпал — в превью показываем «Я» вместо имени. */
   selfSenderName?: string | null
+  /** Тред заглушён (вкладка «Заглушённые») — бейдж непрочитанного светло-серый
+   *  (как архив в Telegram), а не в акцент треда. */
+  mutedBadge?: boolean
 }
 
 /** Стиль имени отправителя в превью (нежирный, синий). */
@@ -138,6 +141,7 @@ export const InboxChatItem = memo(function InboxChatItem({
   hideProjectName,
   deliveryStatus,
   selfSenderName,
+  mutedBadge = false,
 }: InboxChatItemProps) {
   const prefetchMessages = usePrefetchThreadMessages()
 
@@ -224,6 +228,10 @@ export const InboxChatItem = memo(function InboxChatItem({
   }
 
   const accent = accentStyles[chat.thread_accent_color] ?? defaultAccent
+  // Заглушённый тред — бейдж непрочитанного светло-серый (архив Telegram),
+  // а не в акцент треда.
+  const badgeBg = mutedBadge ? 'bg-gray-300' : accent.badge
+  const badgeText = mutedBadge ? 'text-gray-600' : 'text-white'
   // Значок канала на аватаре: backend схлопывает WhatsApp/Business/MTProto/group
   // в channel_type='telegram', но thread_icon различает прямой канал
   // (whatsapp/telegram/mail/send). Берём иконку по thread_icon, чтобы WhatsApp,
@@ -423,8 +431,9 @@ export const InboxChatItem = memo(function InboxChatItem({
               {badge.type === 'number' && (
                 <span
                   className={cn(
-                    'h-5 min-w-5 text-[10px] px-1.5 rounded-full group-hover/badge:hidden text-white font-medium flex items-center justify-center leading-none',
-                    accent.badge,
+                    'h-5 min-w-5 text-[10px] px-1.5 rounded-full group-hover/badge:hidden font-medium flex items-center justify-center leading-none',
+                    badgeText,
+                    badgeBg,
                   )}
                 >
                   {formatBadgeCount(badge.value)}
@@ -434,7 +443,7 @@ export const InboxChatItem = memo(function InboxChatItem({
                 <span
                   className={cn(
                     'h-5 w-5 rounded-full flex items-center justify-center text-[11px] leading-none group-hover/badge:hidden',
-                    accent.badge,
+                    badgeBg,
                   )}
                 >
                   {badge.value}
@@ -442,7 +451,7 @@ export const InboxChatItem = memo(function InboxChatItem({
               )}
               {badge.type === 'dot' && (
                 <span
-                  className={cn('h-5 min-w-5 rounded-full group-hover/badge:hidden', accent.badge)}
+                  className={cn('h-5 min-w-5 rounded-full group-hover/badge:hidden', badgeBg)}
                 />
               )}
               <span className="hidden group-hover/badge:flex w-5 h-5 items-center justify-center rounded-full bg-blue-100">

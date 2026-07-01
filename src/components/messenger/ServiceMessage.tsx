@@ -25,6 +25,8 @@ type ServiceMessageProps =
   | {
       event: ThreadAuditEvent
       isUnread?: boolean
+      /** Тон непрочитанного события: 'red' (обычный) / 'slate' (заглушённый тред). */
+      unreadTone?: 'red' | 'slate'
       canDelete?: false
     }
   | {
@@ -68,6 +70,7 @@ export function ServiceMessage(props: ServiceMessageProps) {
   }
 
   const isUnread = 'event' in props && !!props.isUnread
+  const unreadTone = ('event' in props && props.unreadTone) || 'red'
   const canDelete = !('event' in props) && props.canDelete && !!props.messageId && !!props.onDelete
   const messageId = !('event' in props) ? props.messageId : undefined
   const onDelete = !('event' in props) ? props.onDelete : undefined
@@ -90,7 +93,9 @@ export function ServiceMessage(props: ServiceMessageProps) {
         className={cn(
           'relative inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full border',
           isUnread
-            ? 'text-red-600 bg-red-50 border-red-300'
+            ? unreadTone === 'slate'
+              ? 'text-slate-600 bg-slate-100 border-slate-300'
+              : 'text-red-600 bg-red-50 border-red-300'
             : 'text-muted-foreground bg-muted/60 border-transparent',
         )}
       >

@@ -24,7 +24,7 @@ import {
   type ComposerMode,
   type NotifyRecipients,
 } from './ComposerVisibilitySwitch'
-import { useThreadSubscribers } from '@/hooks/messenger/useThreadSubscription'
+import { useThreadSubscribers, useIsThreadMutedByMe } from '@/hooks/messenger/useThreadSubscription'
 import { CLIENT_ROLES } from './chatSettingsTypes'
 import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import { useTaskStatusPending } from './hooks/useTaskStatusPending'
@@ -425,6 +425,30 @@ export function MessengerTabContent({
     sendEmail: state.sendEmail,
   })
 
+  // Заглушённый (mute) МНОЙ тред: непрочитанное не теряется — показываем его
+  // внутри треда «тихой» серой подсветкой (в отличие от красной у подписанных)
+  // и даём кнопку «Прочитано», чтобы очистить. Пассивное состояние (доступ есть,
+  // но не подписан по дефолту) сюда не попадает — там явной mute-строки нет.
+  const isMutedByMe = useIsThreadMutedByMe(threadId)
+  const hasUnreadByLastRead = useMemo(() => {
+    if (state.isLastReadAtPending) return false // ждём last_read_at — не мигаем
+    const myPid = state.currentParticipant?.participantId ?? null
+    const lr = state.lastReadAt ? Date.parse(state.lastReadAt) : null
+    return displayMessages.some(
+      (m) =>
+        m.sender_participant_id !== myPid &&
+        (lr === null || Date.parse(m.created_at) > lr),
+    )
+  }, [
+    displayMessages,
+    state.lastReadAt,
+    state.isLastReadAtPending,
+    state.currentParticipant?.participantId,
+  ])
+  // Показывать «тихую» подсветку только у заглушённого треда с непрочитанным.
+  const mutedUnreadActive = isMutedByMe && !state.showUnread && hasUnreadByLastRead
+  const unreadTone: 'red' | 'slate' = state.showUnread ? 'red' : 'slate'
+
   // Черновик письма: email-тред БЕЗ отправленных сообщений (сохранённый
   // is_draft-баббл не считается отправкой — иначе тред «выходил» из режима
   // черновика и нельзя было поправить получателя). Зеркалит серверный
@@ -598,7 +622,10 @@ export function MessengerTabContent({
           // subscription-gated через счётчик thread_unread_state). Не подписан →
           // showUnread=false → контуров нет (как и кнопка «прочитано»), убирает
           // противоречие «красный контур vs кнопка прочитано» у view_all-владельца.
-          suppressUnread={isForeignPersonalThread || !state.showUnread}
+          suppressUnread={
+            isForeignPersonalThread || (!state.showUnread && !mutedUnreadActive)
+          }
+          unreadTone={unreadTone}
         />
 
         {/* Линия над композером (наезжает на список через negative margin):
@@ -636,7 +663,8 @@ export function MessengerTabContent({
           </div>
           <div className="shrink-0 px-2 pointer-events-auto">
             <ReadUnreadButton
-              showUnread={state.showUnread}
+              showUnread={state.showUnread || mutedUnreadActive}
+              tone={mutedUnreadActive && !state.showUnread ? 'slate' : 'red'}
               onMarkRead={() => state.markAsRead.mutate()}
               onMarkUnread={() => state.markAsUnread.mutate()}
               isMarkReadPending={state.markAsRead.isPending}

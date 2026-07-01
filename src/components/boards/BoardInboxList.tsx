@@ -10,6 +10,7 @@ import {
   useFilteredInboxUnread,
   useFilteredInboxAwaitingReply,
   useFilteredInboxNeedsReply,
+  useFilteredInboxMuted,
   useFilteredInboxSearch,
   useInboxMessageStatuses,
   useInboxSegmentCounts,
@@ -20,7 +21,7 @@ import { useMySenderName } from '@/hooks/messenger/useMySenderName'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
 
-type InboxFilter = 'all' | 'unread' | 'awaiting' | 'needs_reply'
+type InboxFilter = 'all' | 'unread' | 'awaiting' | 'needs_reply' | 'muted'
 
 /** Convert InboxThreadEntry → TaskItem for opening in TaskPanel */
 function threadToTaskItem(thread: InboxThreadEntry): TaskItem {
@@ -77,6 +78,8 @@ export function BoardInboxList({
     workspaceId,
     filter === 'needs_reply',
   )
+  // «Заглушённые» — весь список одним запросом (как unread), бейдж = длина списка.
+  const { data: mutedThreads = [] } = useFilteredInboxMuted(workspaceId)
   // Серверный поиск по тредам инбокса (по названию треда/проекта) — ищет по всем,
   // а не по загруженным страницам. Debounce, чтобы не дёргать RPC на каждую букву.
   const debouncedSearch = useDebounce(searchQuery.trim(), 300)
@@ -113,6 +116,7 @@ export function BoardInboxList({
 
   // Точный счётчик непрочитанных — из полного списка, не из загруженных страниц.
   const unreadCount = unreadThreads.length
+  const mutedCount = mutedThreads.length
   // Счётчики «Ждём клиента» / «Нужно ответить» — из лёгких агрегатов, а не из
   // тяжёлых списков (они теперь грузятся лениво). Дешёвый бейдж без RPC-обёрток.
   const { needsReply: needsReplyCount, awaiting: awaitingCount } =
@@ -128,8 +132,10 @@ export function BoardInboxList({
     if (filter === 'needs_reply') return needsReplyThreads
     // «Ждём клиента» — внешние диалоги, где мы написали последними.
     if (filter === 'awaiting') return awaitingThreads
+    // «Заглушённые» — замьюченные треды с непрочитанным (архивные счётчики).
+    if (filter === 'muted') return mutedThreads
     return threads
-  }, [threads, unreadThreads, awaitingThreads, needsReplyThreads, searchResults, filter, q])
+  }, [threads, unreadThreads, awaitingThreads, needsReplyThreads, mutedThreads, searchResults, filter, q])
 
   return (
     <div>
@@ -232,6 +238,24 @@ export function BoardInboxList({
                   </span>
                 )}
               </button>
+              <button
+                type="button"
+                onClick={() => setFilter('muted')}
+                title="Заглушённые треды — уведомлений нет, непрочитанное сохраняется. Прямое упоминание/ответ тебе всплывёт в «Непрочитанных»"
+                className={cn(
+                  'shrink-0 whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full transition-colors flex items-center gap-1',
+                  filter === 'muted'
+                    ? 'bg-gray-200 text-gray-700 font-medium'
+                    : 'text-gray-500 hover:bg-gray-100',
+                )}
+              >
+                Заглушённые
+                {mutedCount > 0 && (
+                  <span className="min-w-[14px] h-3.5 px-1 rounded-full text-[9px] font-medium flex items-center justify-center bg-gray-300 text-gray-700">
+                    {mutedCount}
+                  </span>
+                )}
+              </button>
             </div>
             <button
               type="button"
@@ -254,9 +278,11 @@ export function BoardInboxList({
                 ? 'Нет диалогов, ждущих ответа'
                 : filter === 'awaiting'
                   ? 'Нет диалогов в ожидании клиента'
-                  : searchQuery
-                    ? 'Ничего не найдено'
-                    : 'Пусто'}
+                  : filter === 'muted'
+                    ? 'Нет заглушённых с непрочитанным'
+                    : searchQuery
+                      ? 'Ничего не найдено'
+                      : 'Пусто'}
           </div>
         ) : (
           <>
@@ -276,6 +302,7 @@ export function BoardInboxList({
                 onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
                 deliveryStatus={deliveryStatuses.get(chat.thread_id)}
                 selfSenderName={selfSenderName}
+                mutedBadge={filter === 'muted'}
               />
             ))}
             {showLoadMore && (

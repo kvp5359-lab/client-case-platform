@@ -21,6 +21,7 @@ import {
   getInboxUnreadThreads,
   getInboxAwaitingReplyThreads,
   getInboxNeedsReplyThreads,
+  getInboxMutedThreads,
   getInboxSearchThreads,
   getInboxMessageStatuses,
   type InboxThreadAggregate,
@@ -295,6 +296,28 @@ export function useFilteredInboxNeedsReply(workspaceId: string, enabled = true) 
   })
 
   const data = useAccessFilter(rawNeeds, workspaceId)
+  return { data, ...queryRest }
+}
+
+/**
+ * useFilteredInboxMuted — все заглушённые (mute) треды с непрочитанным одним
+ * запросом (RPC `get_inbox_muted_threads`), отфильтрованные тем же access-фильтром.
+ * Источник вкладки «Заглушённые». Счётчик-бейдж каждого треда — АРХИВНЫЙ (серый):
+ * непрочитанное, накопленное в замьюченном треде. Заглушённый тред остаётся
+ * заглушённым и в другие вкладки не попадает (кроме прямого упоминания/ответа тебе,
+ * которые высовываются в «Непрочитанные»). Без пагинации (как unread).
+ */
+export function useFilteredInboxMuted(workspaceId: string) {
+  const { user } = useAuth()
+
+  const { data: rawMuted = [], ...queryRest } = useQuery({
+    queryKey: inboxKeys.muted(workspaceId),
+    queryFn: () => getInboxMutedThreads(workspaceId, user!.id),
+    enabled: !!workspaceId && !!user,
+    staleTime: STALE_TIME.SHORT,
+  })
+
+  const data = useAccessFilter(rawMuted, workspaceId)
   return { data, ...queryRest }
 }
 

@@ -13,6 +13,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { threadSubscriptionKeys, invalidateMessengerCaches } from '@/hooks/queryKeys/messenger'
 
+/** Уровень уведомлений по треду. */
+export type NotifyLevel = 'all' | 'messages' | 'off'
+
 export function useThreadSubscription(
   threadId: string | undefined,
   workspaceId: string | undefined,
@@ -22,40 +25,76 @@ export function useThreadSubscription(
   const query = useQuery({
     queryKey: threadSubscriptionKeys.byThread(threadId ?? ''),
     enabled: !!threadId,
-    queryFn: async (): Promise<boolean | null> => {
-      const { data, error } = await supabase.rpc('is_thread_subscribed_me', {
+    queryFn: async (): Promise<NotifyLevel | null> => {
+      const { data, error } = await supabase.rpc('get_my_thread_notify_level', {
         p_thread_id: threadId!,
       })
       if (error) throw error
-      return data
+      return (data as NotifyLevel | null) ?? null
     },
   })
 
   const mutation = useMutation({
-    mutationFn: async (subscribed: boolean): Promise<boolean> => {
-      const { error } = await supabase.rpc('set_my_thread_subscription', {
+    mutationFn: async (level: NotifyLevel): Promise<NotifyLevel> => {
+      const { error } = await supabase.rpc('set_my_thread_notify_level', {
         p_thread_id: threadId!,
-        p_subscribed: subscribed,
+        p_level: level,
       })
       if (error) throw error
-      return subscribed
+      return level
     },
-    onSuccess: (subscribed) => {
-      qc.setQueryData(threadSubscriptionKeys.byThread(threadId ?? ''), subscribed)
+    onSuccess: (level) => {
+      qc.setQueryData(threadSubscriptionKeys.byThread(threadId ?? ''), level)
       // Карта подписчиков (variant='manage') — отдельный кэш; без инвалидации
       // она оставалась со старым «Я» после личной отписки (асимметрия с setFor).
       qc.invalidateQueries({ queryKey: threadSubscriptionKeys.subscribers(threadId ?? '') })
+      // Тон подсветки непрочитанного (серый у mute) — зависит от факта mute.
+      qc.invalidateQueries({ queryKey: ['thread-muted-by-me', threadId ?? ''] })
       if (workspaceId) invalidateMessengerCaches(qc, workspaceId)
     },
   })
 
+  const level = query.data ?? null
+
   return {
-    /** true = подписан, false = отписан, null = ещё грузится / нет участника. */
-    isSubscribed: query.data ?? null,
+    /** Уровень уведомлений: 'all' | 'messages' | 'off' | null (грузится/нет участника). */
+    level,
+    setLevel: (v: NotifyLevel) => mutation.mutate(v),
+    /** true = подписан (all/messages), false = off, null = грузится. Совместимость. */
+    isSubscribed: level === null ? null : level !== 'off',
     isLoading: query.isLoading,
-    setSubscribed: (v: boolean) => mutation.mutate(v),
+    /** Совместимость: подписать = 'all', отписать = 'off'. */
+    setSubscribed: (v: boolean) => mutation.mutate(v ? 'all' : 'off'),
     pending: mutation.isPending,
   }
+}
+
+/**
+ * useIsThreadMutedByMe — явно ли Я заглушил (mute) этот тред.
+ *
+ * Отличает mute (осознанное «тихо, но не теряй») от «пассивного» состояния
+ * (доступ есть, но не подписан по дефолту — напр. view_all-владелец): у пассива
+ * явной строки нет, у mute — state='muted'. RLS `pts_select` возвращает ТОЛЬКО
+ * мою строку, поэтому фильтровать по participant_id не нужно.
+ *
+ * Используется для «тихой» (серой) подсветки непрочитанного внутри заглушённого
+ * треда — в отличие от красной у подписанных.
+ */
+export function useIsThreadMutedByMe(threadId: string | undefined): boolean {
+  const { data } = useQuery({
+    queryKey: ['thread-muted-by-me', threadId ?? ''],
+    enabled: !!threadId,
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await supabase
+        .from('project_thread_subscriptions')
+        .select('state')
+        .eq('thread_id', threadId!)
+        .maybeSingle()
+      if (error) throw error
+      return (data as { state?: string } | null)?.state === 'muted'
+    },
+  })
+  return data ?? false
 }
 
 /**
