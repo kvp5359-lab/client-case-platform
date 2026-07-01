@@ -13,12 +13,7 @@
  * один раз и появляются во всех местах автоматически.
  */
 
-import { MoreVertical, ExternalLink, Trash2, CheckCircle2, Calendar as CalendarIcon, X, Settings, Check, Repeat } from 'lucide-react'
-import {
-  NOTIFY_LEVELS,
-  NotifyLevelIcon,
-} from '@/components/messenger/NotifyLevelControl'
-import type { NotifyLevel } from '@/hooks/messenger/useThreadSubscription'
+import { MoreVertical, ExternalLink, Trash2, CheckCircle2, Calendar as CalendarIcon, X, Settings, Bell, BellOff, Repeat } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { Button } from '@/components/ui/button'
@@ -63,12 +58,12 @@ export type TaskActionsMenuProps = {
   onMakeRecurring?: () => void
 
   /**
-   * Уровень уведомлений по треду. Если `onSetNotifyLevel` не передан — подменю
-   * скрыто (показывается только в шапке открытого треда).
-   * `notifyLevel`: 'all' | 'messages' | 'off' | null (грузится).
+   * Подписка на тред (уведомления вкл/выкл). Если `onToggleSubscribe` не передан —
+   * пункт скрыт (показывается только в шапке открытого треда).
+   * `isSubscribed`: true | false | null (грузится).
    */
-  notifyLevel?: NotifyLevel | null
-  onSetNotifyLevel?: (level: NotifyLevel) => void
+  isSubscribed?: boolean | null
+  onToggleSubscribe?: (v: boolean) => void
   subscribePending?: boolean
 
   /** Удалить задачу (мягко, в корзину). Если не передан — пункт скрыт. */
@@ -91,8 +86,8 @@ export function TaskActionsMenu({
   deadlinePending,
   onOpenSettings,
   onMakeRecurring,
-  notifyLevel,
-  onSetNotifyLevel,
+  isSubscribed,
+  onToggleSubscribe,
   subscribePending,
   onRequestDelete,
   triggerClassName,
@@ -104,7 +99,7 @@ export function TaskActionsMenu({
   const hasOpen = !!onOpen
   const hasSettings = !!onOpenSettings
   const hasMakeRecurring = !!onMakeRecurring
-  const hasSubscribe = !!onSetNotifyLevel
+  const hasSubscribe = !!onToggleSubscribe
 
   // Если вообще нечего показывать — не рендерим триггер.
   if (!hasOpen && !hasStatuses && !hasDeadline && !hasSettings && !hasMakeRecurring && !hasSubscribe && !hasDelete) return null
@@ -232,26 +227,23 @@ export function TaskActionsMenu({
           {hasSubscribe && (
               <>
                 {(hasOpen || hasStatuses || hasDeadline || hasSettings || hasMakeRecurring) && <DropdownMenuSeparator />}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="text-xs cursor-pointer">
-                    <NotifyLevelIcon level={notifyLevel ?? 'all'} className="mr-2 h-3.5 w-3.5" />
-                    Уведомления
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    {NOTIFY_LEVELS.map(({ value, label, Icon }) => (
-                      <DropdownMenuItem
-                        key={value}
-                        onClick={() => onSetNotifyLevel!(value)}
-                        disabled={subscribePending || notifyLevel == null}
-                        className="text-xs cursor-pointer"
-                      >
-                        <Icon className={cn('mr-2 h-3.5 w-3.5', value === 'off' && 'text-amber-500')} />
-                        <span className="flex-1">{label}</span>
-                        {notifyLevel === value && <Check className="ml-2 h-3.5 w-3.5" />}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
+                <DropdownMenuItem
+                  onClick={() => onToggleSubscribe!(!isSubscribed)}
+                  disabled={subscribePending || isSubscribed == null}
+                  className="text-xs cursor-pointer"
+                >
+                  {isSubscribed ? (
+                    <>
+                      <BellOff className="mr-2 h-3.5 w-3.5 text-amber-500" />
+                      Выключить уведомления
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="mr-2 h-3.5 w-3.5" />
+                      Включить уведомления
+                    </>
+                  )}
+                </DropdownMenuItem>
               </>
           )}
 

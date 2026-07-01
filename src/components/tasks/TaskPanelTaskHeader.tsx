@@ -8,7 +8,7 @@
 import { useState, createElement } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ExternalLink, X, ListTree, History, FolderOpen, ChevronDown,
+  ExternalLink, X, ListTree, History, FolderOpen, ChevronDown, Bell, BellOff,
 } from 'lucide-react'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
@@ -17,7 +17,6 @@ import { ChatSettingsProjectSelector } from '@/components/messenger/ChatSettings
 import { useWorkspaceProjects } from '@/components/messenger/hooks/useChatSettingsData'
 import { useMoveThreadToProject } from '@/hooks/messenger/useMoveThreadToProject'
 import { useThreadSubscription } from '@/hooks/messenger/useThreadSubscription'
-import { NotifyLevelOptions, NotifyLevelIcon } from '@/components/messenger/NotifyLevelControl'
 import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useUpdateThread } from '@/hooks/messenger/useProjectThreads'
@@ -332,32 +331,22 @@ export function TaskPanelTaskHeader({
         {/* Колокольчик = уровень уведомлений по треду. Клик открывает выбор из
             трёх: Все / Только сообщения / Выключены. Иконка отражает уровень
             (🔔 / 🔔− / 🔕 амбер). Рендерится, только когда уровень известен. */}
-        {viewMode === 'thread' && subscription.level !== null && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                disabled={subscription.pending}
-                title="Уведомления по треду"
-                aria-label="Уведомления по треду"
-                className={cn(
-                  'shrink-0 p-1 rounded-md transition-colors disabled:opacity-50',
-                  subscription.level === 'off'
-                    ? 'text-amber-600 hover:bg-amber-50'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-                )}
-              >
-                <NotifyLevelIcon level={subscription.level} className="w-4 h-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-64 p-0">
-              <NotifyLevelOptions
-                level={subscription.level}
-                onSelect={(lvl) => subscription.setLevel(lvl)}
-                pending={subscription.pending}
-              />
-            </PopoverContent>
-          </Popover>
+        {viewMode === 'thread' && subscription.isSubscribed !== null && (
+          <button
+            type="button"
+            disabled={subscription.pending}
+            onClick={() => subscription.setSubscribed(!subscription.isSubscribed)}
+            title={subscription.isSubscribed ? 'Уведомления включены — выключить' : 'Уведомления выключены — включить'}
+            aria-label="Уведомления по треду"
+            className={cn(
+              'shrink-0 p-1 rounded-md transition-colors disabled:opacity-50',
+              subscription.isSubscribed
+                ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                : 'text-amber-600 hover:bg-amber-50',
+            )}
+          >
+            {subscription.isSubscribed ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+          </button>
         )}
 
         {/* Меню «⋮» — те же действия, что и в строке задачи, кроме «Открыть»
@@ -373,8 +362,8 @@ export function TaskPanelTaskHeader({
             deadlinePending={deadlinePending}
             onOpenSettings={onSettingsOpen}
             onMakeRecurring={isTask ? () => setRecurringOpen(true) : undefined}
-            notifyLevel={subscription.level}
-            onSetNotifyLevel={subscription.setLevel}
+            isSubscribed={subscription.isSubscribed}
+            onToggleSubscribe={subscription.setSubscribed}
             subscribePending={subscription.pending}
             onRequestDelete={onRequestDelete}
             triggerClassName="opacity-100"
