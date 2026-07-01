@@ -173,6 +173,26 @@ export const InboxSidebar = memo(function InboxSidebar({
                 </button>
                 <button
                   type="button"
+                  onClick={() => onSetFilter('muted')}
+                  title="Заглушённые треды — уведомлений нет, но непрочитанное сохраняется. Прямое упоминание/ответ тебе всё равно всплывёт в «Непрочитанных»"
+                  className={cn(
+                    'shrink-0 whitespace-nowrap text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1',
+                    filter === 'muted'
+                      ? 'bg-gray-200 text-gray-700 font-medium'
+                      : 'text-gray-500 hover:bg-gray-100',
+                  )}
+                >
+                  Заглушённые
+                  {mutedCount > 0 && (
+                    <span
+                      className="min-w-[16px] h-4 px-1 rounded-full text-[10px] font-medium flex items-center justify-center bg-gray-300 text-gray-700"
+                    >
+                      {mutedCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
                   onClick={() => onSetFilter('needs_reply')}
                   title="Внешние диалоги, где последним написал клиент и всё прочитано — нужен твой ответ"
                   className={cn(
@@ -218,26 +238,6 @@ export const InboxSidebar = memo(function InboxSidebar({
                       )}
                     >
                       {awaitingCount}
-                    </span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSetFilter('muted')}
-                  title="Заглушённые треды — уведомлений нет, но непрочитанное сохраняется. Прямое упоминание/ответ тебе всё равно всплывёт в «Непрочитанных»"
-                  className={cn(
-                    'shrink-0 whitespace-nowrap text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1',
-                    filter === 'muted'
-                      ? 'bg-gray-200 text-gray-700 font-medium'
-                      : 'text-gray-500 hover:bg-gray-100',
-                  )}
-                >
-                  Заглушённые
-                  {mutedCount > 0 && (
-                    <span
-                      className="min-w-[16px] h-4 px-1 rounded-full text-[10px] font-medium flex items-center justify-center bg-gray-300 text-gray-700"
-                    >
-                      {mutedCount}
                     </span>
                   )}
                 </button>

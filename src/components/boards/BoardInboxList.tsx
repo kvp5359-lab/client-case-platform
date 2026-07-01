@@ -198,6 +198,24 @@ export function BoardInboxList({
               </button>
               <button
                 type="button"
+                onClick={() => setFilter('muted')}
+                title="Заглушённые треды — уведомлений нет, непрочитанное сохраняется. Прямое упоминание/ответ тебе всплывёт в «Непрочитанных»"
+                className={cn(
+                  'shrink-0 whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full transition-colors flex items-center gap-1',
+                  filter === 'muted'
+                    ? 'bg-gray-200 text-gray-700 font-medium'
+                    : 'text-gray-500 hover:bg-gray-100',
+                )}
+              >
+                Заглушённые
+                {mutedCount > 0 && (
+                  <span className="min-w-[14px] h-3.5 px-1 rounded-full text-[9px] font-medium flex items-center justify-center bg-gray-300 text-gray-700">
+                    {mutedCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={() => setFilter('needs_reply')}
                 title="Внешние диалоги, где последним написал клиент и всё прочитано — нужен твой ответ"
                 className={cn(
@@ -235,24 +253,6 @@ export function BoardInboxList({
                     filter === 'awaiting' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600',
                   )}>
                     {awaitingCount}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilter('muted')}
-                title="Заглушённые треды — уведомлений нет, непрочитанное сохраняется. Прямое упоминание/ответ тебе всплывёт в «Непрочитанных»"
-                className={cn(
-                  'shrink-0 whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full transition-colors flex items-center gap-1',
-                  filter === 'muted'
-                    ? 'bg-gray-200 text-gray-700 font-medium'
-                    : 'text-gray-500 hover:bg-gray-100',
-                )}
-              >
-                Заглушённые
-                {mutedCount > 0 && (
-                  <span className="min-w-[14px] h-3.5 px-1 rounded-full text-[9px] font-medium flex items-center justify-center bg-gray-300 text-gray-700">
-                    {mutedCount}
                   </span>
                 )}
               </button>
