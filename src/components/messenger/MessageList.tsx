@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useDeleteMessage } from '@/hooks/messenger/useDeleteMessage'
 import { perfEnd } from '@/utils/perfTrace'
+import { wrapOrphanListItems } from '@/utils/messenger/listAwareCopy'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
 type MessageListProps = {
@@ -353,6 +354,9 @@ export function MessageList({
     for (let i = 0; i < selection.rangeCount; i++) {
       container.appendChild(selection.getRangeAt(i).cloneContents())
     }
+    // Выделение пунктов списка теряет обёртку <ol>/<ul> → вставка делает
+    // нумерованный список маркированным. Восстанавливаем обёртку.
+    wrapOrphanListItems(container, selection.getRangeAt(0))
     const html = container.innerHTML
     if (!html) return
 
