@@ -12,8 +12,12 @@
  */
 
 import { useState, type ReactNode } from 'react'
-import { Loader2, X } from 'lucide-react'
-import { formatAuditEvent, type ThreadAuditEvent } from '@/hooks/messenger/useThreadAuditEvents'
+import { ChevronDown, ChevronUp, Loader2, X } from 'lucide-react'
+import {
+  formatAuditEvent,
+  summarizeEventGroup,
+  type ThreadAuditEvent,
+} from '@/hooks/messenger/useThreadAuditEvents'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { cn } from '@/lib/utils'
 
@@ -114,6 +118,58 @@ export function ServiceMessage(props: ServiceMessageProps) {
           </button>
         )}
       </span>
+    </div>
+  )
+}
+
+/**
+ * Свёрнутая группа подряд идущих однотипных ПРОЧИТАННЫХ событий (например,
+ * задача, у которой срок переносили изо дня в день). По умолчанию показывает
+ * одну строку-сводку «Срок переносили 7 раз: 28 мая → 2 июл»; по клику
+ * разворачивает полный список отдельных событий. Непрочитанные события сюда
+ * не попадают — их собирает MessageList и рендерит поштучно.
+ */
+export function ServiceEventGroup({ events }: { events: ThreadAuditEvent[] }) {
+  const [open, setOpen] = useState(false)
+  const last = events[events.length - 1]
+  const timeStr = new Date(last.created_at).toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+
+  if (open) {
+    return (
+      <>
+        {events.map((ev) => (
+          <ServiceMessage key={`event-${ev.id}`} event={ev} isUnread={false} />
+        ))}
+        <div className="flex justify-center py-1">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded-full border border-transparent text-muted-foreground bg-muted/60 hover:bg-muted transition-colors"
+          >
+            Свернуть
+            <ChevronUp className="w-3 h-3" />
+          </button>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="flex justify-center py-1">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="Показать все изменения"
+        className="inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border border-transparent text-muted-foreground bg-muted/60 hover:bg-muted transition-colors"
+      >
+        <span>
+          {summarizeEventGroup(events)} · {timeStr}
+        </span>
+        <ChevronDown className="w-3 h-3 shrink-0" />
+      </button>
     </div>
   )
 }

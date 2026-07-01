@@ -1,10 +1,10 @@
-import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
+import { useRef, useEffect, useState, useCallback, useMemo, Fragment } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
 import { MessageBubble } from './MessageBubble'
 import { MessengerEmptyState } from './MessengerEmptyState'
 import { useMessengerContext } from './MessengerContext'
-import { ServiceMessage } from './ServiceMessage'
+import { ServiceMessage, ServiceEventGroup } from './ServiceMessage'
 import type { ThreadAuditEvent } from '@/hooks/messenger/useThreadAuditEvents'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
@@ -381,31 +381,56 @@ export function MessageList({
   }, [messages, lastReadAtMs, currentParticipantId, suppressUnread])
 
   // Build a set of audit event timestamps to insert between messages
-  // Each event maps to: insert AFTER the last message with created_at <= event.created_at
+  // Each event maps to: insert AFTER the last message with created_at <= event.created_at.
+  // Прочитанные события одного типа, идущие подряд (без сообщения между ними),
+  // складываются в 'event-group' — чтобы «Кирилл перенёс срок» изо дня в день
+  // не забивали ленту. Непрочитанные события в группу не попадают (kind 'event').
   type TimelineItem =
     | { kind: 'message'; msg: ProjectMessage; idx: number }
     | { kind: 'event'; event: ThreadAuditEvent }
+    | { kind: 'event-group'; events: ThreadAuditEvent[] }
 
   const timeline = useMemo<TimelineItem[]>(() => {
     if (auditEvents.length === 0) return messages.map((msg, idx) => ({ kind: 'message' as const, msg, idx }))
 
+    // Событие непрочитано (чужое и после last_read_at) — та же формула, что при рендере.
+    const isEventUnread = (ev: ThreadAuditEvent) =>
+      !suppressUnread &&
+      isLastReadAtLoaded &&
+      ev.user_id !== currentUserId &&
+      (lastReadAtMs === null || Date.parse(ev.created_at) > lastReadAtMs)
+
     const items: TimelineItem[] = []
+    // Кладём событие: прочитанные однотипные, идущие подряд, копятся в группу.
+    const pushEvent = (ev: ThreadAuditEvent) => {
+      if (isEventUnread(ev)) {
+        items.push({ kind: 'event', event: ev })
+        return
+      }
+      const last = items[items.length - 1]
+      if (last && last.kind === 'event-group' && last.events[0].action === ev.action) {
+        last.events.push(ev)
+      } else {
+        items.push({ kind: 'event-group', events: [ev] })
+      }
+    }
+
     let ei = 0
     for (let mi = 0; mi < messages.length; mi++) {
       // Insert events that happened before this message
       while (ei < auditEvents.length && auditEvents[ei].created_at <= messages[mi].created_at) {
-        items.push({ kind: 'event', event: auditEvents[ei] })
+        pushEvent(auditEvents[ei])
         ei++
       }
       items.push({ kind: 'message', msg: messages[mi], idx: mi })
     }
     // Remaining events after last message
     while (ei < auditEvents.length) {
-      items.push({ kind: 'event', event: auditEvents[ei] })
+      pushEvent(auditEvents[ei])
       ei++
     }
     return items
-  }, [messages, auditEvents])
+  }, [messages, auditEvents, suppressUnread, isLastReadAtLoaded, currentUserId, lastReadAtMs])
 
   if (isLoading) {
     return (
@@ -513,6 +538,21 @@ export function MessageList({
                 isUnread={eventIsUnread}
               />
             )
+          }
+
+          if (item.kind === 'event-group') {
+            // Группа из 1-2 событий — не сворачиваем (нет смысла), рисуем поштучно.
+            // 3+ — одна свёрнутая строка-сводка с разворотом (все события прочитаны).
+            if (item.events.length < 3) {
+              return (
+                <Fragment key={`event-${item.events[0].id}`}>
+                  {item.events.map((ev) => (
+                    <ServiceMessage key={`event-${ev.id}`} event={ev} isUnread={false} />
+                  ))}
+                </Fragment>
+              )
+            }
+            return <ServiceEventGroup key={`event-group-${item.events[0].id}`} events={item.events} />
           }
 
           const { msg, idx: i } = item

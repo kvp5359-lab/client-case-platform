@@ -83,6 +83,57 @@ export function formatAuditEvent(event: ThreadAuditEvent): string {
   return event.display_text
 }
 
+/** «раз / раза / раз» по правилам русского числа. */
+function pluralRaz(n: number): string {
+  const mod100 = n % 100
+  const mod10 = n % 10
+  if (mod100 >= 11 && mod100 <= 14) return 'раз'
+  if (mod10 >= 2 && mod10 <= 4) return 'раза'
+  return 'раз'
+}
+
+/** Существительные для свёрнутой группы однотипных событий. */
+const GROUP_NOUN: Record<string, string> = {
+  change_deadline: 'Срок переносили',
+  change_status: 'Статус меняли',
+  rename: 'Переименовывали',
+  change_assignees: 'Исполнителей меняли',
+  change_settings: 'Настройки меняли',
+  pin: 'Закрепляли',
+  unpin: 'Открепляли',
+}
+
+/**
+ * Сводка для группы подряд идущих однотипных событий: показывает, сколько раз
+ * и итоговый диапазон (первое «было» → последнее «стало»). Все события в группе
+ * гарантированно одного `action` (собираются в MessageList).
+ */
+export function summarizeEventGroup(events: ThreadAuditEvent[]): string {
+  const n = events.length
+  const first = events[0]
+  const last = events[n - 1]
+  const times = `${n} ${pluralRaz(n)}`
+
+  if (first.action === 'change_deadline') {
+    const oldD = formatDeadline(first.details.old_deadline as string | null)
+    const newD = formatDeadline(last.details.new_deadline as string | null)
+    return `Срок переносили ${times}: ${oldD} → ${newD}`
+  }
+
+  if (first.action === 'change_status') {
+    const oldN = first.status_change?.oldName ?? 'без статуса'
+    const newN = last.status_change?.newName ?? 'без статуса'
+    return `Статус меняли ${times}: ${oldN} → ${newN}`
+  }
+
+  if (first.action === 'rename') {
+    return `Переименовывали ${times}: «${first.details.old_name}» → «${last.details.new_name}»`
+  }
+
+  const noun = GROUP_NOUN[first.action] ?? ACTION_LABELS[first.action] ?? first.action
+  return `${noun} · ${times}`
+}
+
 export function useThreadAuditEvents(threadId: string | undefined) {
   const query = useQuery({
     queryKey: projectThreadKeys.auditEvents(threadId),
