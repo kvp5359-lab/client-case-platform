@@ -186,7 +186,24 @@ export const TaskListView = memo(function TaskListView({
   const { data: globalThreadTemplates = [] } = useThreadTemplates(
     isProjectMode ? undefined : workspaceId,
   )
-  const threadTemplates = isProjectMode ? projectThreadTemplates : globalThreadTemplates
+  const allThreadTemplates = isProjectMode ? projectThreadTemplates : globalThreadTemplates
+
+  // В режиме проекта прячем из меню создания шаблоны, по которым в проекте уже
+  // есть живой (не удалённый) тред — чтобы не плодить дубликаты. source_template_id
+  // приходит на project_threads. Удалишь тред — шаблон снова появится в меню.
+  const usedTemplateIds = useMemo(() => {
+    if (!isProjectMode) return null
+    const s = new Set<string>()
+    for (const t of rawThreads) {
+      if (!t.is_deleted && t.source_template_id) s.add(t.source_template_id)
+    }
+    return s
+  }, [isProjectMode, rawThreads])
+
+  const threadTemplates = useMemo(() => {
+    if (!usedTemplateIds || usedTemplateIds.size === 0) return allThreadTemplates
+    return allThreadTemplates.filter((t) => !usedTemplateIds.has(t.id))
+  }, [allThreadTemplates, usedTemplateIds])
 
   // ── Фильтры ──
 

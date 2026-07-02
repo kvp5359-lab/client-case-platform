@@ -37,17 +37,17 @@ const TYPE_LABELS: Record<ThreadKind, { label: string; icon: typeof CheckSquare 
   email: { label: 'Email', icon: Mail },
 }
 
-const ACCENT_BG: Record<string, string> = {
-  blue: 'bg-blue-500',
-  slate: 'bg-stone-600',
-  emerald: 'bg-emerald-600',
-  amber: 'bg-amber-500',
-  rose: 'bg-red-500',
-  violet: 'bg-violet-600',
-  orange: 'bg-orange-500',
-  cyan: 'bg-cyan-600',
-  pink: 'bg-pink-500',
-  indigo: 'bg-indigo-600',
+const ACCENT_TEXT: Record<string, string> = {
+  blue: 'text-blue-500',
+  slate: 'text-stone-600',
+  emerald: 'text-emerald-600',
+  amber: 'text-amber-500',
+  rose: 'text-red-500',
+  violet: 'text-violet-600',
+  orange: 'text-orange-500',
+  cyan: 'text-cyan-600',
+  pink: 'text-pink-500',
+  indigo: 'text-indigo-600',
 }
 
 export function CreateThreadButtonGroup({
@@ -82,7 +82,11 @@ export function CreateThreadButtonGroup({
             <ChevronDown className="w-3.5 h-3.5" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-56 p-1" align="end" sideOffset={6}>
+        <PopoverContent
+          className="w-56 p-1 max-h-[min(70vh,28rem)] overflow-y-auto"
+          align="end"
+          sideOffset={6}
+        >
           {/* Типы тредов */}
           {(['task', 'chat', 'email'] as ThreadKind[]).map((k) => {
             const m = TYPE_LABELS[k]
@@ -91,7 +95,7 @@ export function CreateThreadButtonGroup({
               <button
                 key={k}
                 type="button"
-                className="flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm hover:bg-muted text-left"
+                className="flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-muted text-left"
                 onClick={() => {
                   setOpen(false)
                   onCreate(k)
@@ -120,20 +124,18 @@ export function CreateThreadButtonGroup({
                   <button
                     key={t.id}
                     type="button"
-                    className="flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm hover:bg-muted text-left"
+                    className="flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-muted text-left"
                     onClick={() => {
                       setOpen(false)
                       onCreate(kind, t)
                     }}
                   >
-                    <div
+                    <IconComp
                       className={cn(
-                        'w-5 h-5 rounded flex items-center justify-center flex-shrink-0',
-                        ACCENT_BG[t.accent_color ?? ''] ?? 'bg-muted',
+                        'w-4 h-4 shrink-0',
+                        ACCENT_TEXT[t.accent_color ?? ''] ?? 'text-muted-foreground',
                       )}
-                    >
-                      <IconComp className="w-3 h-3 text-white" />
-                    </div>
+                    />
                     <span className="truncate">{t.name}</span>
                   </button>
                 )
