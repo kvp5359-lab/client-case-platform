@@ -28,7 +28,8 @@ import { useThreadSubscribers, useIsThreadMutedByMe } from '@/hooks/messenger/us
 import { CLIENT_ROLES } from './chatSettingsTypes'
 import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import { useTaskStatusPending } from './hooks/useTaskStatusPending'
-import { useProjectParticipants } from './hooks/useChatSettingsData'
+import { useProjectParticipants, useThreadMembers } from './hooks/useChatSettingsData'
+import { useTaskAssigneeIds } from '@/components/tasks/useTaskAssignees'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { EmailSubjectBar } from './EmailSubjectBar'
 import { ThreadDescriptionBlock } from './ThreadDescriptionBlock'
@@ -139,32 +140,37 @@ export function MessengerTabContent({
     isEmailTypeThread ? workspaceId : undefined,
   )
   const hasClientParticipant = useThreadHasClient(currentThread)
-  // Кандидаты для @-упоминаний. Проектный тред → участники проекта. Задача/чат
-  // без проекта (project_id NULL) → сотрудники воркспейса (проектных участников
-  // нет); берём только с аккаунтом (user_id), исключая telegram-контакты —
-  // упоминать их бессмысленно, они не видят ЛК.
-  const isOrphanThread = !!currentThread && currentThread.project_id == null
+  // Кандидаты для @-упоминаний — ТОЛЬКО люди, связанные с этой задачей:
+  // участники проекта ∪ участники задачи (thread members) ∪ исполнители.
+  // Больше никого (лишние сотрудники воркспейса не выводятся). Берём только с
+  // аккаунтом (user_id) — telegram-контакты упоминать бессмысленно, они не видят ЛК.
   const { data: projectParticipants = [] } = useProjectParticipants(
     currentThread?.project_id ?? undefined,
   )
-  const { data: workspaceParticipants = [] } = useWorkspaceParticipants(
-    isOrphanThread ? workspaceId : undefined,
-  )
+  const { data: threadMemberIds } = useThreadMembers(threadId)
+  const { data: assigneeIds = [] } = useTaskAssigneeIds(threadId)
+  // Полный справочник участников воркспейса — источник имён/аватаров/user_id для
+  // резолва id (участники проекта/треда/исполнители — все участники воркспейса).
+  const { data: workspaceParticipants = [] } = useWorkspaceParticipants(workspaceId)
   const mentionItems = useMemo(() => {
-    const pool = isOrphanThread
-      ? workspaceParticipants.filter((p) => p.user_id)
-      : projectParticipants
-    return (
-      pool
-        // Себя не упоминаем — убираем текущего пользователя из списка.
-        .filter((p) => p.user_id !== user?.id)
-        .map((p) => ({
-          id: p.id,
-          label: [p.name, p.last_name].filter(Boolean).join(' '),
-          avatarUrl: p.avatar_url,
-        }))
-    )
-  }, [isOrphanThread, workspaceParticipants, projectParticipants, user?.id])
+    // Множество id, кому разрешено попасть в список: три источника.
+    const allowed = new Set<string>()
+    for (const p of projectParticipants) allowed.add(p.id)
+    if (threadMemberIds) for (const id of threadMemberIds) allowed.add(id)
+    for (const id of assigneeIds) allowed.add(id)
+    return workspaceParticipants
+      .filter(
+        (p) =>
+          p.user_id && // только с аккаунтом (без telegram-контактов)
+          p.user_id !== user?.id && // себя не упоминаем
+          allowed.has(p.id),
+      )
+      .map((p) => ({
+        id: p.id,
+        label: [p.name, p.last_name].filter(Boolean).join(' '),
+        avatarUrl: p.avatar_url,
+      }))
+  }, [workspaceParticipants, projectParticipants, threadMemberIds, assigneeIds, user?.id])
   // Пикер статуса (Planfix-style) — поднят сюда, чтобы стоять в одной линии с
   // кнопкой read/unread и селектором видимости. Статус коммитится при отправке
   // (логика в MessageInput, ему передаём statusPending).
