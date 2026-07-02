@@ -313,10 +313,30 @@ export function TaskPanelTaskHeader({
             }}
           />
         )}
+        {/* Колокольчик уведомлений в выдвижной панели — ТОЛЬКО мобила (на десктопе
+            он inline в правом кластере). Только иконка, прижата вправо (ml-auto). */}
+        {viewMode === 'thread' && subscription.isSubscribed !== null && (
+          <button
+            type="button"
+            disabled={subscription.pending}
+            onClick={() => subscription.setSubscribed(!subscription.isSubscribed)}
+            title={subscription.isSubscribed ? 'Уведомления включены — выключить' : 'Уведомления выключены — включить'}
+            aria-label="Уведомления по треду"
+            className={cn(
+              'md:hidden ml-auto inline-flex items-center justify-center shrink-0 p-1 rounded-md transition-colors disabled:opacity-50',
+              subscription.isSubscribed
+                ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                : 'text-amber-600 hover:bg-amber-50',
+            )}
+          >
+            {subscription.isSubscribed ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+          </button>
+        )}
+
         {/* Слот индикатора канала — заполняется порталом ChatToolbar (только
-            мобила); прижат вправо в панели. На десктопе скрыт (канал inline
-            рядом с поиском). */}
-        <div ref={channelToolbarRef} className="md:hidden flex items-center ml-auto shrink-0" />
+            мобила). ml-auto НЕ ставим: вправо толкает колокольчик выше, канал
+            идёт сразу за ним. На десктопе скрыт (канал inline рядом с поиском). */}
+        <div ref={channelToolbarRef} className="md:hidden flex items-center shrink-0" />
         </div>
 
         {/* Зазор + вертикальный разделитель перед правым кластером иконок
@@ -328,9 +348,9 @@ export function TaskPanelTaskHeader({
         {/* Поиск (ChatToolbar) — остаётся на верхнем ряду. */}
         <div ref={toolbarRef} className="flex items-center gap-1 ml-auto md:ml-0 shrink-0" />
 
-        {/* Колокольчик = уровень уведомлений по треду. Клик открывает выбор из
-            трёх: Все / Только сообщения / Выключены. Иконка отражает уровень
-            (🔔 / 🔔− / 🔕 амбер). Рендерится, только когда уровень известен. */}
+        {/* Колокольчик = тумблер уведомлений по треду. На ДЕСКТОПЕ — inline в
+            правом кластере. На мобиле скрыт здесь и продублирован в выдвижной
+            панели действий (ниже), чтобы не теснить шапку. */}
         {viewMode === 'thread' && subscription.isSubscribed !== null && (
           <button
             type="button"
@@ -339,7 +359,7 @@ export function TaskPanelTaskHeader({
             title={subscription.isSubscribed ? 'Уведомления включены — выключить' : 'Уведомления выключены — включить'}
             aria-label="Уведомления по треду"
             className={cn(
-              'shrink-0 p-1 rounded-md transition-colors disabled:opacity-50',
+              'hidden md:inline-flex items-center justify-center shrink-0 p-1 rounded-md transition-colors disabled:opacity-50',
               subscription.isSubscribed
                 ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 : 'text-amber-600 hover:bg-amber-50',
