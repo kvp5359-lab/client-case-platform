@@ -23,7 +23,7 @@ import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import { isReactionSupportedForSource } from '@/services/api/messenger/reactionStrategies'
 import { stripHtmlKeepNewlines } from '@/utils/format/messengerHtml'
 import { copyMessageText } from '@/utils/messenger/copyMessageText'
-import { downloadAttachmentBlob } from '@/services/api/messenger/messengerService'
+import { fetchAttachmentBlob } from '@/services/api/messenger/messengerService'
 
 /**
  * Общая модель действий над сообщением: используется и в dropdown «три точки»,
@@ -90,25 +90,55 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
 
   const attachments = message.attachments ?? []
   const handleDownloadAll = async () => {
+    // Собираем все файлы в ОДИН zip-архив и отдаём одной загрузкой.
+    // jszip грузим динамически — чтобы не тянуть его в бандл этого меню.
+    const { default: JSZip } = await import('jszip')
+    const zip = new JSZip()
+    const used = new Map<string, number>()
     let failed = 0
-    // Скачиваем по одному с паузой — браузер блокирует пакет из нескольких
-    // programmatic-загрузок, если дёргать их вплотную.
+
     for (const att of attachments) {
       try {
-        const blobUrl = await downloadAttachmentBlob(att.storage_path, att.file_id)
-        const a = document.createElement('a')
-        a.href = blobUrl
-        a.download = att.file_name
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
-        await new Promise((r) => setTimeout(r, 400))
+        const blob = await fetchAttachmentBlob(att.storage_path, att.file_id)
+        // Уникализируем имена (в сообщении бывают одинаковые): «file (2).pdf».
+        let name = att.file_name || 'file'
+        if (used.has(name)) {
+          const n = used.get(name)! + 1
+          used.set(name, n)
+          const dot = name.lastIndexOf('.')
+          name =
+            dot > 0 ? `${name.slice(0, dot)} (${n})${name.slice(dot)}` : `${name} (${n})`
+        } else {
+          used.set(name, 1)
+        }
+        zip.file(name, blob)
       } catch {
         failed += 1
       }
     }
-    if (failed > 0) toast.error(`Не удалось скачать файлов: ${failed}`)
+
+    const packed = Object.keys(zip.files).length
+    if (packed === 0) {
+      toast.error('Не удалось скачать файлы')
+      return
+    }
+
+    try {
+      const archive = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(archive)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'вложения.zip'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch {
+      toast.error('Не удалось собрать архив')
+      return
+    }
+
+    if (failed > 0) toast.error(`Не удалось добавить в архив файлов: ${failed}`)
   }
 
   if (message.is_draft) {

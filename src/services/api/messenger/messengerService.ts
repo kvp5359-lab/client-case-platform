@@ -52,6 +52,7 @@ export {
   getAttachmentUrl,
   canInlinePreview,
   downloadAttachmentBlob,
+  fetchAttachmentBlob,
   downloadAttachmentAsFile,
   deleteAttachment,
   type DeleteAttachmentResult,

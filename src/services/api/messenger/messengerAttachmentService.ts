@@ -479,15 +479,24 @@ export async function downloadAttachmentAsFile(
  * Download attachment as blob URL (for image previews).
  * Caller MUST call URL.revokeObjectURL(url) on unmount.
  */
-export async function downloadAttachmentBlob(
+/** Скачивает вложение из Storage и отдаёт СЫРОЙ Blob (для упаковки в ZIP и т.п.). */
+export async function fetchAttachmentBlob(
   storagePath: string,
   fileId?: string | null,
-): Promise<string> {
+): Promise<Blob> {
   const { bucket, path } = await resolveBucketAndPath(storagePath, fileId)
 
   const { data, error } = await supabase.storage.from(bucket).download(path)
 
   if (error) throw new ConversationError(`Ошибка скачивания: ${error.message}`)
 
-  return URL.createObjectURL(data)
+  return data
+}
+
+export async function downloadAttachmentBlob(
+  storagePath: string,
+  fileId?: string | null,
+): Promise<string> {
+  const blob = await fetchAttachmentBlob(storagePath, fileId)
+  return URL.createObjectURL(blob)
 }
