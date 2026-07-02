@@ -38,6 +38,7 @@ export type RendererProps = {
   onActivate: (id: string) => void
   onCloseTab: (id: string) => void
   onOpenSystem: (def: SystemTabDef) => void
+  onPinSystem?: (def: SystemTabDef) => void
   onOpenThreadTab: (task: TaskItem) => void
   onHidePanel: () => void
   onTogglePin: (id: string) => void
@@ -69,6 +70,7 @@ function TaskPanelTabbedShellRenderer({
   onActivate,
   onCloseTab,
   onOpenSystem,
+  onPinSystem,
   onOpenThreadTab,
   onHidePanel,
   onTogglePin,
@@ -431,6 +433,7 @@ function TaskPanelTabbedShellRenderer({
         onActivate={onActivate}
         onClose={onCloseTab}
         onOpenSystem={onOpenSystem}
+        onPinSystem={onPinSystem}
         badgeByThreadId={badgeByThreadId}
         visibleSystemTypes={visibleSystemTypes}
         onHidePanel={infoRowVisible || standaloneThread ? undefined : onHidePanel}

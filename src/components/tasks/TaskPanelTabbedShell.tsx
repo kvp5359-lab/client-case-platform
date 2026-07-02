@@ -699,6 +699,31 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     [tabsOpenTab, activeProjectId, inStandalone, standaloneTabs],
   )
 
+  // Открыть доступный раздел СРАЗУ закреплённым (кнопка «закрепить» в «Добавить раздел»).
+  // Зеркалит onOpenSystemTab, но кладёт вкладку с pinned:true — openTab сохраняет её
+  // в закреплённом блоке (сортировка pinned-first при рендере).
+  const onPinSystemTab = useCallback(
+    (def: SystemTabDef) => {
+      if (def.type === 'tasks') {
+        if (!activeProjectId || inStandalone) return
+        tabsOpenTab({
+          id: `tasks:${activeProjectId}`,
+          type: 'tasks',
+          refId: activeProjectId,
+          title: def.title,
+          pinned: true,
+        })
+        return
+      }
+      if (inStandalone) {
+        standaloneTabs.openTab({ ...buildSystemTab(def.type, def.title), pinned: true })
+        return
+      }
+      tabsOpenTab({ ...buildSystemTab(def.type, def.title), pinned: true })
+    },
+    [tabsOpenTab, activeProjectId, inStandalone, standaloneTabs],
+  )
+
   // Эффективные tabs/handlers — в зависимости от режима.
   const effectiveTabs = inStandalone ? standaloneTabs.tabs : tabs.tabs
   const effectiveActiveTabId = inStandalone ? standaloneTabs.activeTabId : tabs.activeTabId
@@ -714,6 +739,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       onActivate={effectiveActivate}
       onCloseTab={closeTabUnified}
       onOpenSystem={onOpenSystemTab}
+      onPinSystem={onPinSystemTab}
       onOpenThreadTab={openThreadTab}
       onHidePanel={hidePanel}
       onTogglePin={effectiveTogglePin}

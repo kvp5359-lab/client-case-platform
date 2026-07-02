@@ -17,12 +17,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Plus,
   X,
-  Check,
   BookOpen,
   Mail,
   MessageSquare,
   CheckCircle2,
   Menu,
+  Pin,
 } from 'lucide-react'
 import {
   DndContext,
@@ -45,7 +45,6 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -64,6 +63,9 @@ type TaskPanelTabBarProps = {
   onActivate: (id: string) => void
   onClose: (id: string) => void
   onOpenSystem: (def: SystemTabDef) => void
+  /** Открыть доступный системный раздел СРАЗУ закреплённым (кнопка «закрепить» в
+   *  разделе «Добавить»). Если не передан — кнопка не показывается. */
+  onPinSystem?: (def: SystemTabDef) => void
   /** Что показать в бейдже per-thread: число, точка (manually_unread) или эмодзи. */
   badgeByThreadId?: Record<string, BadgeDisplay>
   /** Какие системные типы доступны пользователю по правам (для фильтра [+] меню). */
@@ -99,16 +101,22 @@ function SortableTabRow({
   tab,
   isActive,
   Icon,
+  badge,
+  accentBadge,
   onActivate,
   onClose,
   onCloseMenu,
+  onTogglePin,
 }: {
   tab: TaskPanelTab
   isActive: boolean
   Icon: React.ComponentType<{ className?: string }>
+  badge?: BadgeDisplay
+  accentBadge?: string
   onActivate: (id: string) => void
   onClose: (id: string) => void
   onCloseMenu: () => void
+  onTogglePin?: (id: string) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tab.id,
@@ -138,7 +146,42 @@ function SortableTabRow({
       )}
     >
       <Icon className="w-4 h-4 shrink-0 text-muted-foreground" />
-      <span className="flex-1 truncate">{tab.title}</span>
+      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+        <span className="truncate min-w-0">{tab.title}</span>
+        {badge && badge.type !== 'none' && (
+          <span
+            className={cn(
+              'shrink-0 flex items-center justify-center rounded-full text-white ring-1 ring-white',
+              badge.type === 'number'
+                ? 'min-w-[16px] h-4 px-1 text-[10px] leading-none font-semibold'
+                : badge.type === 'emoji'
+                  ? 'w-4 h-4 text-[10px] leading-none'
+                  : 'w-2 h-2',
+              accentBadge ?? 'bg-blue-600',
+            )}
+          >
+            {badge.type === 'number' && (badge.value > 99 ? '99+' : badge.value)}
+            {badge.type === 'emoji' && badge.value}
+          </span>
+        )}
+      </div>
+      {onTogglePin && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onTogglePin(tab.id)
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          // Пин только на hover (и у закреплённых, и у обычных). Признак «закреплено»
+          // несёт заголовок группы, а не яркий значок в каждой строке.
+          className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-foreground hover:bg-black/5 transition-opacity"
+          aria-label={tab.pinned ? 'Открепить вкладку' : 'Закрепить вкладку'}
+          title={tab.pinned ? 'Открепить' : 'Закрепить'}
+        >
+          <Pin className={cn('w-3.5 h-3.5', tab.pinned && 'fill-current')} />
+        </button>
+      )}
       <button
         type="button"
         onClick={(e) => {
@@ -173,6 +216,7 @@ export function TaskPanelTabBar({
   onActivate,
   onClose,
   onOpenSystem,
+  onPinSystem,
   badgeByThreadId = {},
   visibleSystemTypes,
   onHidePanel,
@@ -282,17 +326,30 @@ export function TaskPanelTabBar({
     [visibleSystemDefs, openedSystemTypes],
   )
 
-  const renderTabRow = (tab: TaskPanelTab) => (
-    <SortableTabRow
-      key={tab.id}
-      tab={tab}
-      isActive={tab.id === activeTabId}
-      Icon={getTabIcon(tab)}
-      onActivate={onActivate}
-      onClose={onClose}
-      onCloseMenu={() => setListMenuOpen(false)}
-    />
-  )
+  const renderTabRow = (tab: TaskPanelTab) => {
+    // Бейдж непрочитанного берём из ТОГО ЖЕ badgeByThreadId, что и лента вкладок —
+    // никаких новых запросов к сервису.
+    const isThread = tab.type === 'thread'
+    const badge = isThread && tab.refId ? badgeByThreadId[tab.refId] : undefined
+    const accent =
+      isThread && tab.meta?.accentColor
+        ? getChatTabAccent(tab.meta.accentColor as ThreadAccentColor)
+        : null
+    return (
+      <SortableTabRow
+        key={tab.id}
+        tab={tab}
+        isActive={tab.id === activeTabId}
+        Icon={getTabIcon(tab)}
+        badge={badge}
+        accentBadge={accent?.badge}
+        onActivate={onActivate}
+        onClose={onClose}
+        onCloseMenu={() => setListMenuOpen(false)}
+        onTogglePin={onTogglePin}
+      />
+    )
+  }
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -311,7 +368,7 @@ export function TaskPanelTabBar({
     <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragEnd={handleDragEnd}>
       <SortableContext items={sortableItems} strategy={horizontalListSortingStrategy}>
       <div className="flex items-center gap-1 px-2 h-10 border-b bg-gray-50/80 shrink-0 min-w-0">
-        <div ref={scrollRef} className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto scrollbar-hide">
+        <div ref={scrollRef} className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto scrollbar-hide py-2">
           {sortableItems.map((id) => {
             if (id === SEPARATOR_ID) {
               return <SortableSeparator key={SEPARATOR_ID} />
@@ -343,58 +400,25 @@ export function TaskPanelTabBar({
           })}
         </div>
 
-        {/* «+» — вне прокручиваемой ленты вкладок, чтобы не уезжал при большом
-            числе вкладок. */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-white hover:text-foreground transition-colors shrink-0"
-                aria-label="Открыть раздел"
-                title="Открыть раздел"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              {visibleSystemDefs.length === 0 && (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                  Нет доступных разделов
-                </div>
-              )}
-              {visibleSystemDefs.map((def) => {
-                const Icon = def.icon
-                const isOpen = openedSystemTypes.has(def.type)
-                return (
-                  <DropdownMenuItem
-                    key={def.type}
-                    disabled={isOpen}
-                    className={isOpen ? 'data-[disabled]:opacity-30' : ''}
-                    onClick={() => {
-                      if (isOpen) return
-                      onOpenSystem(def)
-                    }}
-                  >
-                    <Icon className="w-4 h-4 mr-2" />
-                    <span className="flex-1">{def.title}</span>
-                    {isOpen && <Check className="w-4 h-4 text-muted-foreground" />}
-                  </DropdownMenuItem>
-                )
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {/* Кнопка «+» удалена — добавление разделов живёт в блоке «Добавить раздел»
+            внутри «бутерброда» (единая точка управления вкладками). */}
 
         {/* «Бутерброд» — список всех вкладок (закреплённые / обычные) + доступные
-            для открытия разделы. */}
+            для открытия разделы. На иконке — маленький «+» (подсказка, что тут и
+            добавляют разделы). */}
         <DropdownMenu open={listMenuOpen} onOpenChange={setListMenuOpen}>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-white hover:text-foreground transition-colors shrink-0"
-              aria-label="Все вкладки"
-              title="Все вкладки"
+              className="relative flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-white hover:text-foreground transition-colors shrink-0"
+              aria-label="Все вкладки и разделы"
+              title="Все вкладки · добавить раздел"
             >
               <Menu className="w-4 h-4" />
+              <Plus
+                className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-gray-50 text-muted-foreground"
+                strokeWidth={3}
+              />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64 max-h-[70vh] overflow-y-auto p-1">
@@ -411,12 +435,18 @@ export function TaskPanelTabBar({
                   {/* Порядок узлов = sortableItems: pinned → разделитель → unpinned.
                       Перетаскивание через разделитель меняет закрепление. */}
                   {pinnedTabs.length > 0 && (
-                    <div className="px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+                    <div className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+                      <Pin className="w-3 h-3 fill-current shrink-0" />
                       Закреплённые вкладки
                     </div>
                   )}
                   {pinnedTabs.map(renderTabRow)}
                   <SortableMenuSeparator />
+                  {unpinnedTabs.length > 0 && (
+                    <div className="px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+                      Открытые
+                    </div>
+                  )}
                   {unpinnedTabs.map(renderTabRow)}
                 </SortableContext>
               </DndContext>
@@ -438,11 +468,26 @@ export function TaskPanelTabBar({
                       // Только добавляем раздел во вкладки — меню НЕ закрываем,
                       // чтобы можно было добавить несколько подряд.
                       onClick={() => onOpenSystem(def)}
-                      className="flex items-center gap-0 rounded px-2 py-1.5 text-sm cursor-pointer hover:bg-accent/60"
+                      className="group/row flex items-center gap-0 rounded px-2 py-1.5 text-sm cursor-pointer hover:bg-accent/60"
                     >
-                      <Plus className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-                      <Icon className="w-4 h-4 mr-2 text-muted-foreground" />
-                      <span className="flex-1">{def.title}</span>
+                      <Plus className="w-3.5 h-3.5 mr-1.5 text-muted-foreground/60" />
+                      <Icon className="w-4 h-4 mr-2 text-muted-foreground/50" />
+                      <span className="flex-1 truncate text-muted-foreground/70">{def.title}</span>
+                      {onPinSystem && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            // Открыть раздел сразу закреплённым. Меню НЕ закрываем.
+                            onPinSystem(def)
+                          }}
+                          className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-foreground hover:bg-black/5 transition-opacity"
+                          aria-label="Закрепить раздел"
+                          title="Закрепить"
+                        >
+                          <Pin className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   )
                 })}
