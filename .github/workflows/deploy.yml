@@ -112,8 +112,11 @@ jobs:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
       # Деплой обёрнут в retry: SSH Actions->VPS периодически даёт сетевой
-      # i/o timeout (пакеты теряются по пути, VPS при этом исправен). Логика
-      # в scripts/deploy-vps.sh идемпотентна — повтор безопасен.
+      # i/o timeout (пакеты теряются по пути на ~5 мин, VPS при этом исправен —
+      # ufw/fail2ban выключены, sshd:22 слушает). Логика в scripts/deploy-vps.sh
+      # идемпотентна — повтор безопасен. Ретраи растянуты так, чтобы пережить
+      # окно провала: 6 попыток × (ConnectTimeout 30с + пауза 45с) ≈ 7.5 мин.
+      # ServerAliveInterval держит уже установленную сессию (deploy-скрипт ~2 мин).
       - name: Deploy to VPS via SSH (retry on transient network timeout)
         uses: nick-fields/retry@v3
         env:
@@ -123,11 +126,12 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
         with:
-          timeout_minutes: 12
-          max_attempts: 3
-          retry_wait_seconds: 20
+          timeout_minutes: 20
+          max_attempts: 6
+          retry_wait_seconds: 45
           command: >-
-            ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=60
+            ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30
+            -o ServerAliveInterval=15 -o ServerAliveCountMax=4
             "$VPS_USER@$VPS_HOST"
             "GH_PAT='$GH_PAT' REGISTRY='$REGISTRY' IMAGE_NAME='$IMAGE_NAME' bash -s"
             < scripts/deploy-vps.sh
