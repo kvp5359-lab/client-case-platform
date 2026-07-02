@@ -29,6 +29,7 @@ import { CLIENT_ROLES } from './chatSettingsTypes'
 import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import { useTaskStatusPending } from './hooks/useTaskStatusPending'
 import { useProjectParticipants } from './hooks/useChatSettingsData'
+import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { EmailSubjectBar } from './EmailSubjectBar'
 import { ThreadDescriptionBlock } from './ThreadDescriptionBlock'
 import { useUpdateEmailThreadMeta } from '@/hooks/messenger/useProjectThreads'
@@ -138,23 +139,32 @@ export function MessengerTabContent({
     isEmailTypeThread ? workspaceId : undefined,
   )
   const hasClientParticipant = useThreadHasClient(currentThread)
-  // Кандидаты для @-упоминаний — участники проекта этого треда (у личных тредов
-  // без проекта список пуст).
+  // Кандидаты для @-упоминаний. Проектный тред → участники проекта. Задача/чат
+  // без проекта (project_id NULL) → сотрудники воркспейса (проектных участников
+  // нет); берём только с аккаунтом (user_id), исключая telegram-контакты —
+  // упоминать их бессмысленно, они не видят ЛК.
+  const isOrphanThread = !!currentThread && currentThread.project_id == null
   const { data: projectParticipants = [] } = useProjectParticipants(
     currentThread?.project_id ?? undefined,
   )
-  const mentionItems = useMemo(
-    () =>
-      projectParticipants
+  const { data: workspaceParticipants = [] } = useWorkspaceParticipants(
+    isOrphanThread ? workspaceId : undefined,
+  )
+  const mentionItems = useMemo(() => {
+    const pool = isOrphanThread
+      ? workspaceParticipants.filter((p) => p.user_id)
+      : projectParticipants
+    return (
+      pool
         // Себя не упоминаем — убираем текущего пользователя из списка.
         .filter((p) => p.user_id !== user?.id)
         .map((p) => ({
           id: p.id,
           label: [p.name, p.last_name].filter(Boolean).join(' '),
           avatarUrl: p.avatar_url,
-        })),
-    [projectParticipants, user?.id],
-  )
+        }))
+    )
+  }, [isOrphanThread, workspaceParticipants, projectParticipants, user?.id])
   // Пикер статуса (Planfix-style) — поднят сюда, чтобы стоять в одной линии с
   // кнопкой read/unread и селектором видимости. Статус коммитится при отправке
   // (логика в MessageInput, ему передаём statusPending).
