@@ -79,6 +79,12 @@
 - **⏳ ЖДЁТ (деплой строго ВМЕСТЕ, иначе отправка пишет в несуществующие колонки):** миграция `20260701_message_attachments_external_ids.sql`; edge `telegram-mtproto-delete`/`wazzup-delete`/`telegram-business-delete` (verify_jwt default) + `telegram-delete-message` (redeploy `--no-verify-jwt`) + `wazzup-send`/`telegram-send-message` (`--no-verify-jwt`); mtproto-service rsync+rebuild. Смок: удалить свой файл (одиночный/из альбома) в TG-группе/MTProto/Wazzup/Business; честный тост при старом мультифайле и истёкшем окне.
 - **Файлы:** миграция; `messengerAttachmentService.ts`, `messengerDraftService.ts`, `messengerService.edit.ts`, `messengerService.{ts,types.ts}`, `useDeleteAttachment.ts`(нов), `AttachmentMenuButton.tsx`, `MessageAttachment.tsx`, `FileAttachment.tsx`, `MessageBubble.tsx`, `types/database.ts`; edge `telegram-mtproto-delete`/`wazzup-delete`/`telegram-business-delete`(нов), `telegram-delete-message`, `wazzup-send`, `telegram-send-message/attachments.ts`; `mtproto-service/src/routes/commands.ts`.
 
+### 2026-07-01 — Бейдж «разные цвета» у проекта: оранжевый → системный красный (rose) (стиль) ⏳ ЖДЁТ ДЕПЛОЯ
+- Когда у проекта в сайдбаре непрочитанные треды РАЗНЫХ акцентов, «смешанный» бейдж красился `amber` (#f59e0b). Оранжевый закреплён за другими целями → системным цветом сделан красный `rose` (#ef4444, red-500).
+- Правка сентинела в ДВУХ хуках подбора цвета бейджа: `useInbox.ts` (`badgeColorMap`) и `useFilteredInbox.ts` (`badgeColors` проектов + `noProjectBadgeColor` виртуала «Без проекта»). В каждом менять И присваивание, И guard `!== 'rose'`.
+- Грабля: сентинел = реальное значение акцента (`rose`), теоретическая коллизия с тредом accent=`rose` визуально безвредна (смешанный == красный == rose). `amber` остался валидным акцентом треда (в палитре не тронут). `getAggregateBadgeDisplay` цвет не считает.
+- tsc/lint/753 теста 0. Детали — changelog `2026-07-01-sidebar-mixed-unread-badge-red.md`.
+
 ### 2026-07-01 — Уведомления по треду: три уровня → бинарный вкл/выкл (упрощение UI)
 - **Запрос:** после того как перенос срока перестал считаться непрочитанным, промежуточный уровень «Только сообщения» (`muted_events`) стал избыточным. Вернули простой тумблер вкл/выкл **без списка/попапа**.
 - **Сделано (чистый фронт):** все три точки переведены с выбора уровня на прямой бинарный тумблер через уже существующий компат `isSubscribed`/`setSubscribed` (маппится на `set_my_thread_notify_level('all'|'off')`):

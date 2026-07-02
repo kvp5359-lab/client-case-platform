@@ -375,13 +375,14 @@ export function useProjectUnreadCounts(workspaceId: string) {
         threadIdMap.set(pid, existing)
       }
 
-      // Цвет бейджа: accent_color треда с непрочитанными
+      // Цвет бейджа: accent_color треда с непрочитанными.
+      // Если у проекта непрочитанные треды РАЗНЫХ цветов — системный красный (rose).
       if (hasAny) {
         const currentColor = badgeColorMap.get(pid)
         if (!currentColor) {
           badgeColorMap.set(pid, thread.thread_accent_color ?? 'blue')
-        } else if (currentColor !== 'amber' && currentColor !== thread.thread_accent_color) {
-          badgeColorMap.set(pid, 'amber')
+        } else if (currentColor !== 'rose' && currentColor !== thread.thread_accent_color) {
+          badgeColorMap.set(pid, 'rose')
         }
       }
     }

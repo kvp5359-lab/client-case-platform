@@ -347,7 +347,7 @@ export function useSidebarInboxCounts(workspaceId: string) {
     let unreadPersonalDialogsCount = 0
     // Треды без project_id — для виртуальной записи «Без проекта» в сайдбаре.
     const noProjectThreads: typeof threads = []
-    /** Цвет бейджа «Без проекта»: accent непрочитанного треда (amber если разные). */
+    /** Цвет бейджа «Без проекта»: accent непрочитанного треда (системный красный rose если разные). */
     let noProjectBadgeColor: string | undefined
     /** Максимум last_message_at среди тредов без project_id — для сортировки виртуала среди проектов. */
     let noProjectLastActivityMs = 0
@@ -362,10 +362,10 @@ export function useSidebarInboxCounts(workspaceId: string) {
       if (!t.project_id) {
         if (hasAny) {
           unreadPersonalDialogsCount += 1
-          // Тот же подбор цвета, что у проектов: accent треда; при разных — amber.
+          // Тот же подбор цвета, что у проектов: accent треда; при разных — системный красный (rose).
           if (!noProjectBadgeColor) noProjectBadgeColor = t.thread_accent_color ?? 'blue'
-          else if (noProjectBadgeColor !== 'amber' && noProjectBadgeColor !== t.thread_accent_color)
-            noProjectBadgeColor = 'amber'
+          else if (noProjectBadgeColor !== 'rose' && noProjectBadgeColor !== t.thread_accent_color)
+            noProjectBadgeColor = 'rose'
         }
         noProjectThreads.push(t)
         if (t.last_message_at) {
@@ -398,13 +398,14 @@ export function useSidebarInboxCounts(workspaceId: string) {
         threadIds.set(pid, existing)
       }
 
-      // Цвет бейджа: accent_color треда с непрочитанными
+      // Цвет бейджа: accent_color треда с непрочитанными.
+      // Если у проекта непрочитанные треды РАЗНЫХ цветов — системный красный (rose).
       if (hasAny) {
         const currentColor = badgeColors.get(pid)
         if (!currentColor) {
           badgeColors.set(pid, t.thread_accent_color ?? 'blue')
-        } else if (currentColor !== 'amber' && currentColor !== t.thread_accent_color) {
-          badgeColors.set(pid, 'amber')
+        } else if (currentColor !== 'rose' && currentColor !== t.thread_accent_color) {
+          badgeColors.set(pid, 'rose')
         }
       }
     }
