@@ -226,27 +226,35 @@ Deno.serve(async (req: Request) => {
     }
 
     if (authenticatedUserId) {
-      if (!body.project_id || !isValidUUID(body.project_id)) {
+      // Резолвим воркспейс: по проекту (если есть) ИЛИ из самого сообщения —
+      // групповые чаты уровня воркспейса не привязаны к проекту (project_id=NULL),
+      // тогда project_id в body отсутствует. Раньше это давало 403 и вложения в
+      // такие чаты не отправлялись (текст уходил триггером мимо этой проверки).
+      let accessWorkspaceId: string | null = null;
+      if (body.project_id && isValidUUID(body.project_id)) {
+        const { data: project } = await serviceClient
+          .from("projects")
+          .select("workspace_id")
+          .eq("id", body.project_id)
+          .maybeSingle();
+        accessWorkspaceId = project?.workspace_id ?? null;
+      } else if (body.message_id && isValidUUID(body.message_id)) {
+        const { data: msgRow } = await serviceClient
+          .from("project_messages")
+          .select("workspace_id")
+          .eq("id", body.message_id)
+          .maybeSingle();
+        accessWorkspaceId = (msgRow as { workspace_id: string | null } | null)?.workspace_id ?? null;
+      }
+
+      if (!accessWorkspaceId) {
         return new Response(
           JSON.stringify({ error: "Access denied" }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
-      const { data: project } = await serviceClient
-        .from("projects")
-        .select("workspace_id")
-        .eq("id", body.project_id)
-        .maybeSingle();
-
-      if (!project?.workspace_id) {
-        return new Response(
-          JSON.stringify({ error: "Access denied" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
-      const isMember = await checkWorkspaceMembership(serviceClient, authenticatedUserId, project.workspace_id);
+      const isMember = await checkWorkspaceMembership(serviceClient, authenticatedUserId, accessWorkspaceId);
       if (!isMember) {
         return new Response(
           JSON.stringify({ error: "Access denied" }),

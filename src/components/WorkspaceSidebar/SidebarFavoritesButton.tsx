@@ -56,6 +56,10 @@ import { useWorkspaceProjects } from '@/components/messenger/hooks/useChatSettin
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
+import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
+import { getProjectIcon } from '@/components/common/project-icons'
+import { useProjectIconResolver, useProjectTemplateIcons } from '@/hooks/useGlobalSearch'
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
 
@@ -66,11 +70,17 @@ type ResolvedFavorite = {
   id: string
   name: string
   Icon: LucideIcon
+  /** Tailwind text-класс цвета иконки (для тредов — акцент). По умолчанию серый. */
+  iconClass?: string
+  /** CSS-цвет иконки (для проектов — из template/статуса, как в сайдбаре). */
+  iconColorStyle?: string
+  /** Префикс имени проекта (как в сайдбаре, приглушённым). */
+  namePrefix?: string
 }
 
 const TYPE_GROUPS: { type: FavoriteEntityType; label: string }[] = [
-  { type: 'project', label: 'Проекты' },
   { type: 'thread', label: 'Треды и задачи' },
+  { type: 'project', label: 'Проекты' },
   { type: 'board', label: 'Доски' },
   { type: 'list', label: 'Списки' },
 ]
@@ -91,6 +101,9 @@ export function SidebarFavoritesButton({ workspaceId }: { workspaceId: string | 
   const { data: projects = [] } = useWorkspaceProjects(workspaceId)
   const { data: boards = [] } = useBoardsQuery(workspaceId)
   const { data: lists = [] } = useItemLists(workspaceId)
+  // Иконка + префикс проекта — как в сайдбаре (template.icon + цвет, namePrefix).
+  const resolveProjIcon = useProjectIconResolver(workspaceId)
+  const { data: templatesById } = useProjectTemplateIcons(workspaceId)
 
   // Имена избранных тредов резолвим точечным запросом по их id.
   const favThreadIds = useMemo(
@@ -130,7 +143,7 @@ export function SidebarFavoritesButton({ workspaceId }: { workspaceId: string | 
 
   // ── Резолв названий избранного по типам ──
   const resolved = useMemo(() => {
-    const projMap = new Map(projects.map((p) => [p.id, p.name]))
+    const projById = new Map(projects.map((p) => [p.id, p]))
     const boardMap = new Map(boards.map((b) => [b.id, b.name]))
     const listMap = new Map(lists.map((l) => [l.id, l]))
     const threadMap = new Map(threadRows.map((t) => [t.id, t]))
@@ -142,12 +155,17 @@ export function SidebarFavoritesButton({ workspaceId }: { workspaceId: string | 
     }
     for (const f of favorites) {
       if (f.entity_type === 'project') {
+        const p = projById.get(f.entity_id)
+        const { iconId, iconColor } = resolveProjIcon(p?.template_id ?? null, p?.status_id ?? null)
+        const prefix = p?.template_id ? templatesById?.[p.template_id]?.namePrefix : null
         byType.project.push({
           favId: f.id,
           type: 'project',
           id: f.entity_id,
-          name: projMap.get(f.entity_id) ?? '— удалён —',
-          Icon: FolderOpen,
+          name: p?.name ?? '— удалён —',
+          Icon: p ? getProjectIcon(iconId) : FolderOpen,
+          iconColorStyle: p ? iconColor || '#6B7280' : undefined,
+          namePrefix: prefix ?? undefined,
         })
       } else if (f.entity_type === 'board') {
         byType.board.push({
@@ -174,11 +192,12 @@ export function SidebarFavoritesButton({ workspaceId }: { workspaceId: string | 
           id: f.entity_id,
           name: t?.name ?? '— удалён —',
           Icon: t?.icon ? getChatIconComponent(t.icon) : t?.type === 'task' ? CheckSquare : MessageSquare,
+          iconClass: t?.accent_color ? (COLOR_TEXT[t.accent_color as ThreadAccentColor] ?? undefined) : undefined,
         })
       }
     }
     return byType
-  }, [favorites, projects, boards, lists, threadRows])
+  }, [favorites, projects, boards, lists, threadRows, resolveProjIcon, templatesById])
 
   // ── Текущая открытая сущность («Добавить текущее») ──
   const current = useMemo<ResolvedFavorite | null>(() => {
@@ -213,10 +232,16 @@ export function SidebarFavoritesButton({ workspaceId }: { workspaceId: string | 
       const b = boards.find((x) => x.id === token || String(x.short_id) === token)
       if (b) return { favId: '', type: 'board', id: b.id, name: b.name, Icon: Kanban }
     }
-    // Проект: ctx.activeProjectId либо uuid в /projects/<uuid>.
+    // Проект: ctx.activeProjectId либо токен в /projects/<token> (uuid ИЛИ
+    // short_id, напр. /projects/22). Резолвим токен в uuid по списку проектов,
+    // чтобы в избранное всегда попадал uuid.
     const projMatch = pathname.match(/\/projects\/([^/]+)/)
-    const projId =
-      activeProjectId ?? (projMatch && UUID_RE.test(projMatch[1]) ? projMatch[1] : null)
+    let projId = activeProjectId ?? null
+    if (!projId && projMatch && projMatch[1] !== undefined) {
+      const token = projMatch[1]
+      const p = projects.find((x) => x.id === token || String(x.short_id) === token)
+      if (p) projId = p.id
+    }
     if (projId) {
       const name = projects.find((p) => p.id === projId)?.name ?? 'Текущий проект'
       return { favId: '', type: 'project', id: projId, name, Icon: FolderOpen }
@@ -410,8 +435,14 @@ function FavItemRow({
       onClick={onOpen}
       className="group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
     >
-      <item.Icon className="h-4 w-4 shrink-0 text-gray-500" />
-      <span className="flex-1 min-w-0 truncate text-sm">{item.name}</span>
+      <item.Icon
+        className={`h-4 w-4 shrink-0 ${item.iconClass ?? (item.iconColorStyle ? '' : 'text-gray-500')}`}
+        style={item.iconColorStyle ? { color: item.iconColorStyle } : undefined}
+      />
+      <span className="flex-1 min-w-0 truncate text-sm">
+        {item.namePrefix ? <span className="text-muted-foreground/70">{item.namePrefix} </span> : null}
+        {item.name}
+      </span>
       <button
         type="button"
         aria-label="Убрать из избранного"
@@ -449,15 +480,27 @@ function SortableFavItem({ item }: { item: ResolvedFavorite }) {
       >
         <GripVertical className="h-3.5 w-3.5" />
       </button>
-      <item.Icon className="h-4 w-4 shrink-0 text-gray-500" />
-      <span className="flex-1 min-w-0 truncate text-sm">{item.name}</span>
+      <item.Icon
+        className={`h-4 w-4 shrink-0 ${item.iconClass ?? (item.iconColorStyle ? '' : 'text-gray-500')}`}
+        style={item.iconColorStyle ? { color: item.iconColorStyle } : undefined}
+      />
+      <span className="flex-1 min-w-0 truncate text-sm">
+        {item.namePrefix ? <span className="text-muted-foreground/70">{item.namePrefix} </span> : null}
+        {item.name}
+      </span>
     </div>
   )
 }
 
 // ── Имена избранных тредов (точечный запрос по id) ──
 
-type FavThreadRow = { id: string; name: string; type: string | null; icon: string | null }
+type FavThreadRow = {
+  id: string
+  name: string
+  type: string | null
+  icon: string | null
+  accent_color: string | null
+}
 
 function useThreadNames(workspaceId: string | undefined, threadIds: string[]) {
   return useQuery({
@@ -466,7 +509,7 @@ function useThreadNames(workspaceId: string | undefined, threadIds: string[]) {
     queryFn: async (): Promise<FavThreadRow[]> => {
       const { data, error } = await supabase
         .from('project_threads')
-        .select('id, name, type, icon')
+        .select('id, name, type, icon, accent_color')
         .in('id', threadIds)
       if (error) throw error
       return (data ?? []) as FavThreadRow[]

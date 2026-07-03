@@ -87,6 +87,11 @@ export function ProjectTableView({
   const quickConfig = useMemo<QuickFilterColumn<BoardProject>[]>(
     () => [
       {
+        kind: 'text',
+        key: 'name',
+        getText: (p) => p.name ?? '',
+      },
+      {
         key: 'status',
         getValues: (p) => [{
           value: p.status_id ?? '__none__',

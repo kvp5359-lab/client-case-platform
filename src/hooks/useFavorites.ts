@@ -68,11 +68,21 @@ export function useToggleFavorite(workspaceId: string | undefined) {
         if (error) throw error
         return 'removed'
       }
+      // Новый элемент — в КОНЕЦ своей группы: sort_order = max(группы) + 1.
+      const { data: maxRow } = await supabase
+        .from('user_favorites')
+        .select('sort_order')
+        .eq('workspace_id', workspaceId)
+        .eq('entity_type', target.type)
+        .order('sort_order', { ascending: false })
+        .limit(1)
+      const nextOrder = (maxRow?.[0]?.sort_order ?? -1) + 1
       const { error } = await supabase.from('user_favorites').insert({
         user_id: user.id,
         workspace_id: workspaceId,
         entity_type: target.type,
         entity_id: target.id,
+        sort_order: nextOrder,
       })
       if (error) throw error
       return 'added'
@@ -81,17 +91,22 @@ export function useToggleFavorite(workspaceId: string | undefined) {
       await qc.cancelQueries({ queryKey: key })
       const prev = qc.getQueryData<FavoriteRow[]>(key) ?? []
       const existing = prev.find((f) => f.entity_type === target.type && f.entity_id === target.id)
+      // Новый элемент — в КОНЕЦ (большой sort_order), чтобы оптимистично он
+      // сразу оказался внизу своей группы, а не вверху.
+      const maxOrder = prev
+        .filter((f) => f.entity_type === target.type)
+        .reduce((m, f) => Math.max(m, f.sort_order), -1)
       const next = existing
         ? prev.filter((f) => f.id !== existing.id)
         : [
+            ...prev,
             {
               id: `optimistic-${target.type}-${target.id}`,
               entity_type: target.type,
               entity_id: target.id,
-              sort_order: -1,
+              sort_order: maxOrder + 1,
               created_at: new Date().toISOString(),
             },
-            ...prev,
           ]
       qc.setQueryData(key, next)
       return { prev }

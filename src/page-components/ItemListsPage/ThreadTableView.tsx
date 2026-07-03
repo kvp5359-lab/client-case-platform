@@ -77,6 +77,11 @@ export function ThreadTableView({
   const quickConfig = useMemo<QuickFilterColumn<WorkspaceTask>[]>(
     () => [
       {
+        kind: 'text',
+        key: 'name',
+        getText: (t) => t.name ?? '',
+      },
+      {
         key: 'status',
         getValues: (t) => [{
           value: t.status_id ?? '__none__',

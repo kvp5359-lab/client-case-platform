@@ -8,6 +8,8 @@ import { createElement } from 'react'
 import Image from 'next/image'
 import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
+import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
 
 // SVG icons (inline, no lucide dependency in module scope)
 const iconClose = createElement(
@@ -82,18 +84,26 @@ function buildAvatar(
   return createElement('div', { className: 'relative shrink-0' }, inner, badge)
 }
 
-/** Маппинг accent_color чата → Tailwind border-цвет */
+/** Маппинг accent_color чата → Tailwind border-цвет.
+ *  Держать синхронно с палитрой в threadConstants.ts (ACCENT_COLORS). */
 const ACCENT_BORDER: Record<string, string> = {
   blue: 'border-blue-400',
+  sky: 'border-sky-400',
   slate: 'border-stone-400',
   emerald: 'border-emerald-400',
+  green: 'border-green-400',
   amber: 'border-amber-400',
   rose: 'border-rose-400',
+  red: 'border-red-700',
   violet: 'border-violet-400',
   orange: 'border-orange-400',
   cyan: 'border-cyan-400',
   pink: 'border-pink-400',
   indigo: 'border-indigo-400',
+  brown: 'border-amber-700',
+  taupe: 'border-stone-500',
+  black: 'border-neutral-800',
+  graphite: 'border-neutral-500',
 }
 
 /** Build toast content: avatar + message lines + action buttons */
@@ -129,32 +139,38 @@ export function buildToastContent(
     },
     buildAvatar(senderName, avatarUrl, threadIcon),
     (() => {
-      // Строка 1 — как во «Входящих»: Проект жирным + (Тред) серым. Личный
-      // диалог (без проекта) → имя треда. Строка 2 — отправитель (не дублируем,
-      // если совпал с заголовком). Дальше — текст сообщений.
-      const topTitle = projectName ?? threadName ?? senderName
+      // Строка 1: имя отправителя обычным размером + в скобках мелким шрифтом
+      // проект (чёрным) и тред (акцентным цветом треда). У личного диалога без
+      // проекта — только тред. Дальше — текст сообщений.
+      const hasMeta = Boolean(projectName || threadName)
+      const threadAccentClass = accentColor
+        ? (COLOR_TEXT[accentColor as ThreadAccentColor] ?? 'text-muted-foreground')
+        : 'text-muted-foreground'
       return createElement(
         'div',
         { className: 'flex-1 min-w-0' },
         createElement(
           'div',
-          { className: 'font-medium text-sm truncate' },
-          topTitle,
-          projectName && threadName
+          { className: 'flex items-baseline gap-1 min-w-0' },
+          createElement('span', { className: 'font-medium text-sm truncate' }, senderName),
+          hasMeta
             ? createElement(
                 'span',
-                { className: 'font-normal text-muted-foreground ml-1' },
-                `(${threadName})`,
+                { className: 'shrink-0 truncate max-w-[55%] text-xs' },
+                '(',
+                projectName
+                  ? createElement('span', { className: 'text-foreground' }, projectName)
+                  : null,
+                projectName && threadName
+                  ? createElement('span', { className: 'text-muted-foreground' }, ' · ')
+                  : null,
+                threadName
+                  ? createElement('span', { className: threadAccentClass }, threadName)
+                  : null,
+                ')',
               )
             : null,
         ),
-        senderName !== topTitle
-          ? createElement(
-              'div',
-              { className: 'text-xs font-medium text-foreground/70 mt-0.5 truncate' },
-              senderName,
-            )
-          : null,
         createElement(
           'div',
           { className: 'flex flex-col gap-0.5 mt-0.5' },

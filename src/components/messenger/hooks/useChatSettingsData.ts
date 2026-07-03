@@ -37,7 +37,7 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('id, name, description, template_id, status_id, project_templates ( name )')
+        .select('id, short_id, name, description, template_id, status_id, project_templates ( name )')
         .eq('workspace_id', workspaceId!)
         .eq('is_deleted', false)
         // По свежести: last_activity_at обновляется триггерами при сообщениях,
@@ -47,6 +47,7 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
       if (error) throw error
       return (data ?? []) as {
         id: string
+        short_id: number | null
         name: string
         description: string | null
         template_id: string | null

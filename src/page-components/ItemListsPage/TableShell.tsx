@@ -9,13 +9,22 @@ import { cn } from '@/lib/utils'
 import { ColumnResizeHandle } from './ColumnResizeHandle'
 import type { getColumnDef } from './columns'
 
-/** Быстрый фильтр по колонке (значения только из текущего списка). */
-export type ColumnFilterMeta = {
-  options: { value: string; label: string }[]
-  selected: Set<string>
-  onToggle: (value: string) => void
-  onClear: () => void
-}
+/** Быстрый фильтр по колонке. `enum` — чекбоксы значений из текущего списка;
+ *  `text` — поиск по вхождению подстроки (для «Название» и подобных). */
+export type ColumnFilterMeta =
+  | {
+      kind?: 'enum'
+      options: { value: string; label: string }[]
+      selected: Set<string>
+      onToggle: (value: string) => void
+      onClear: () => void
+    }
+  | {
+      kind: 'text'
+      query: string
+      onChange: (q: string) => void
+      onClear: () => void
+    }
 
 export const CHECKBOX_COL_WIDTH = 36
 
@@ -324,8 +333,10 @@ export function TableShell<T extends { id: string }>({
   )
 }
 
-/** Поповер быстрого фильтра колонки: чекбоксы значений, присутствующих в списке. */
+/** Поповер быстрого фильтра колонки: чекбоксы значений (enum) или поиск по
+ *  вхождению (text). */
 function ColumnFilterPopover({ meta }: { meta: ColumnFilterMeta }) {
+  if (meta.kind === 'text') return <ColumnTextFilterPopover meta={meta} />
   const active = meta.selected.size > 0
   return (
     <Popover>
@@ -382,6 +393,54 @@ function ColumnFilterPopover({ meta }: { meta: ColumnFilterMeta }) {
               </button>
             )
           })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+/** Поповер текстового фильтра колонки: поиск по вхождению подстроки. */
+function ColumnTextFilterPopover({
+  meta,
+}: {
+  meta: Extract<ColumnFilterMeta, { kind: 'text' }>
+}) {
+  const active = meta.query.trim().length > 0
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'shrink-0 p-0.5 rounded hover:bg-muted transition-colors',
+            active ? 'text-primary' : 'text-muted-foreground/50 hover:text-foreground',
+          )}
+          title="Поиск по колонке"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ListFilter className="h-3 w-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-60 p-2">
+        <div className="flex items-center gap-1.5">
+          <input
+            type="text"
+            autoFocus
+            value={meta.query}
+            onChange={(e) => meta.onChange(e.target.value)}
+            placeholder="Поиск по вхождению…"
+            className="flex-1 min-w-0 h-8 rounded-md border border-input bg-transparent px-2.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+          />
+          {active && (
+            <button
+              type="button"
+              onClick={meta.onClear}
+              title="Сбросить"
+              className="shrink-0 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </PopoverContent>
     </Popover>
