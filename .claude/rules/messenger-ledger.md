@@ -46,6 +46,14 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-07-03 — Тост нового сообщения: полировка верхней строки + прямой чат без дубля (фронт, не баг) ⏳ ЖДЁТ ДЕПЛОЯ
+- **Серия UI-правок `MessageToastContent`/`useNewMessageToast`** (чистый фронт, канальной логики не касался):
+  - **Фикс синего контура (баг):** карта `ACCENT_BORDER` не знала расширенную палитру (17 акцентов) → у `brown`/`taupe`/`red`/`black`/`graphite`/`sky`/`green` фолбэк `border-blue-400` (коричневый тред → синий контур). Добавлены все цвета. **Грабля:** `ACCENT_BORDER` — ещё одна точка синхронизации палитры (не входила в «13 точек»), держать с `threadConstants.ts`.
+  - **Верхняя строка:** было **Проект** *(Тред)* + отправитель строкой ниже. Стало одной строкой: **имя отправителя** обычным размером + в скобках мелким проект (**чёрным**) и тред (**в цвет акцента**, `COLOR_TEXT`, разделитель `·`).
+  - **Прямой 1:1 диалог — без дубля:** у прямого чата (WhatsApp/Email/TG Business/MTProto) имя треда = контакт = отправитель → выходил дубль `София (Sofya) (София (Sofya))`. Теперь для прямого чата тред в скобках НЕ показываем: есть проект → только проект; нет проекта → скобок нет. Признак прямого чата: `threadIcon ∈ {mail, whatsapp}` ИЛИ `threadName === senderName` (у Business/MTProto тред назван по контакту). ⚠️ `msg` в тосте — тип `RealtimeMessagePayload` (payload `project_messages`), полей канала (`business_connection_id`/`wazzup_channel_id`/`mtproto_session_user_id`) НЕ несёт — опираться на `threadIcon`/имя, не на `msg.*`.
+- **Проверки:** tsc 0, lint 0, 753 теста. Смок после деплоя: коричневый тред → коричневый контур; проектное сообщение → `Отправитель (Проект · Тред)`; прямой WhatsApp/Email/TG-контакт без проекта → только имя, с проектом → только проект.
+- **Файлы:** `MessageToastContent.ts`, `useNewMessageToast.ts`. Changelog `2026-07-03-favorites-list-name-filter-toast-polish.md`.
+
 ### 2026-07-03 — Вложения не отправляются в БЕСПРОЕКТНЫЙ групповой чат (403 из telegram-send-message) ⭐ ЗАДЕПЛОЕНО, ⏳ ЖДЁТ СМОК
 - **Симптом (прод):** сообщение с картинкой в группу «Релостарт - база знаний, чаты» зависло в `send_status='pending'` (UI «Отправляется» → «Повторить»), в Telegram не пришло. Ошибки/`telegram_message_id` нет.
 - **Замеры:** тред `project_id=NULL` (**чат уровня воркспейса, без проекта**), `type='chat'`; привязка `project_telegram_chats` есть (chat `-5222704929`, `bot_version=v2`, `integration_id=NULL`). Триггер `dispatch_message_to_channels` для `has_attachments` **пропускает** отправку (`IF has_attachments AND NOT p_force_attachments THEN RETURN`) — вложения шлёт ФРОНТ прямым invoke `telegram-send-message` (`messengerService.send.ts:315`, `attachments_only:true`, `project_id: params.projectId`). В логах edge — `telegram-send-message → 403`.
