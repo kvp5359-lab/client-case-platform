@@ -557,13 +557,14 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     if (tabs.activeTabId) tabs.activateTab(tabs.activeTabId, 'replace')
   }, [tabs])
   const togglePanel = useCallback(() => {
-    setHidden((h) => {
-      const next = !h
-      if (next === false && tabs.activeTabId) tabs.activateTab(tabs.activeTabId, 'replace')
-      else if (next === true) tabs.clearUrlActive()
-      return next
-    })
-  }, [tabs])
+    // Побочки (навигация роутера) — вне функционального апдейтера setHidden:
+    // апдейтер выполняется во время рендера, а router.replace/clearUrlActive там
+    // триггерят обновление роутера → «Cannot update a component while rendering».
+    const next = !hidden
+    setHidden(next)
+    if (!next && tabs.activeTabId) tabs.activateTab(tabs.activeTabId, 'replace')
+    else if (next) tabs.clearUrlActive()
+  }, [hidden, tabs])
   const hasTabs = tabs.tabs.length > 0 || standaloneTabs.tabs.length > 0
 
   const closeAll = useCallback(() => {

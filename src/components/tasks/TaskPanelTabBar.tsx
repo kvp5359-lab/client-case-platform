@@ -304,12 +304,17 @@ export function TaskPanelTabBar({
   // Прокрутка ленты вкладок колесом мыши: вертикальный wheel → горизонтальный
   // скролл. Нативный listener с passive:false, чтобы preventDefault сработал
   // (React onWheel — passive, preventDefault там не действует).
+  // scrollRef — только контейнер НЕзакреплённых вкладок (закреплённые не скроллятся).
   const scrollRef = useRef<HTMLDivElement>(null)
+  // rowRef — весь ряд (закреплённые + разделитель + скролл), для поиска активной вкладки.
+  const rowRef = useRef<HTMLDivElement>(null)
 
   // Активная вкладка всегда видима: при смене активной — проматываем к ней.
+  // Закреплённые всегда на экране (не в скролле), для них scrollIntoView безвреден;
+  // незакреплённые проматываются внутри своего контейнера.
   useEffect(() => {
     if (!activeTabId) return
-    const el = scrollRef.current?.querySelector<HTMLElement>(
+    const el = rowRef.current?.querySelector<HTMLElement>(
       `[data-tab-id="${activeTabId}"]`,
     )
     el?.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' })
@@ -325,6 +330,33 @@ export function TaskPanelTabBar({
     () => visibleSystemDefs.filter((d) => !openedSystemTypes.has(d.type)),
     [visibleSystemDefs, openedSystemTypes],
   )
+
+  // Рендер одной вкладки в горизонтальном ряду (DraggableTab).
+  const renderDraggableTab = (tab: TaskPanelTab) => {
+    const isActive = tab.id === activeTabId
+    const isThread = tab.type === 'thread'
+    const Icon = getTabIcon(tab)
+    const accent =
+      isThread && tab.meta?.accentColor
+        ? getChatTabAccent(tab.meta.accentColor as ThreadAccentColor)
+        : null
+    const badge = isThread && tab.refId ? badgeByThreadId[tab.refId] : undefined
+    const hasBadge = !!badge && badge.type !== 'none'
+    return (
+      <DraggableTab
+        key={tab.id}
+        tab={tab}
+        isActive={isActive}
+        accent={accent}
+        Icon={Icon}
+        badge={badge}
+        hasBadge={hasBadge}
+        onActivate={onActivate}
+        onClose={onClose}
+        onTogglePin={onTogglePin}
+      />
+    )
+  }
 
   const renderTabRow = (tab: TaskPanelTab) => {
     // Бейдж непрочитанного берём из ТОГО ЖЕ badgeByThreadId, что и лента вкладок —
@@ -367,37 +399,18 @@ export function TaskPanelTabBar({
   return (
     <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragEnd={handleDragEnd}>
       <SortableContext items={sortableItems} strategy={horizontalListSortingStrategy}>
-      <div className="flex items-center gap-1 px-2 h-10 border-b bg-gray-50/80 shrink-0 min-w-0">
+      <div ref={rowRef} className="flex items-center gap-1 px-2 h-10 border-b bg-gray-50/80 shrink-0 min-w-0">
+        {/* Закреплённые вкладки — всегда на экране, не прокручиваются. */}
+        {pinnedTabs.length > 0 && (
+          <div className="flex items-center gap-1 shrink-0">
+            {pinnedTabs.map(renderDraggableTab)}
+          </div>
+        )}
+        {/* Разделитель pinned/unpinned — drop-таргет переключения закрепления. */}
+        <SortableSeparator />
+        {/* Обычные вкладки — прокручиваются, если не помещаются. */}
         <div ref={scrollRef} className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto scrollbar-hide py-2">
-          {sortableItems.map((id) => {
-            if (id === SEPARATOR_ID) {
-              return <SortableSeparator key={SEPARATOR_ID} />
-            }
-            const tab = orderedTabs.find((t) => t.id === id)
-            if (!tab) return null
-            const isActive = tab.id === activeTabId
-            const isThread = tab.type === 'thread'
-            const Icon = getTabIcon(tab)
-            const accent = isThread && tab.meta?.accentColor
-              ? getChatTabAccent(tab.meta.accentColor as ThreadAccentColor)
-              : null
-            const badge = isThread && tab.refId ? badgeByThreadId[tab.refId] : undefined
-            const hasBadge = !!badge && badge.type !== 'none'
-            return (
-              <DraggableTab
-                key={tab.id}
-                tab={tab}
-                isActive={isActive}
-                accent={accent}
-                Icon={Icon}
-                badge={badge}
-                hasBadge={hasBadge}
-                onActivate={onActivate}
-                onClose={onClose}
-                onTogglePin={onTogglePin}
-              />
-            )
-          })}
+          {unpinnedTabs.map(renderDraggableTab)}
         </div>
 
         {/* Кнопка «+» удалена — добавление разделов живёт в блоке «Добавить раздел»
