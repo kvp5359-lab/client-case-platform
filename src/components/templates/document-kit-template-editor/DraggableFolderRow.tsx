@@ -77,7 +77,7 @@ export function DraggableFolderRow({
               <Folder className="w-4 h-4 text-amber-500" />
               {folder.name}
             </span>
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
               <Button
                 variant="ghost"
                 size="sm"

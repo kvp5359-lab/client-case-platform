@@ -127,7 +127,7 @@ export function FileChipRow({
               e.stopPropagation()
               onRemove()
             }}
-            className="absolute right-1 top-1/2 -translate-y-1/2 bg-gray-100/90 rounded p-0.5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute right-1 top-1/2 -translate-y-1/2 bg-gray-100/90 rounded p-0.5 text-muted-foreground hover:text-foreground md:opacity-0 md:group-hover:opacity-100 transition-opacity"
           >
             <X className="h-3 w-3" />
           </button>

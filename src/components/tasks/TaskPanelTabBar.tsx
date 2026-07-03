@@ -175,7 +175,7 @@ function SortableTabRow({
           onPointerDown={(e) => e.stopPropagation()}
           // Пин только на hover (и у закреплённых, и у обычных). Признак «закреплено»
           // несёт заголовок группы, а не яркий значок в каждой строке.
-          className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-foreground hover:bg-black/5 transition-opacity"
+          className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full md:opacity-0 md:group-hover/row:opacity-100 text-muted-foreground hover:text-foreground hover:bg-black/5 transition-opacity"
           aria-label={tab.pinned ? 'Открепить вкладку' : 'Закрепить вкладку'}
           title={tab.pinned ? 'Открепить' : 'Закрепить'}
         >
@@ -189,7 +189,7 @@ function SortableTabRow({
           onClose(tab.id)
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-foreground hover:bg-black/5 transition-opacity"
+        className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full md:opacity-0 md:group-hover/row:opacity-100 text-muted-foreground hover:text-foreground hover:bg-black/5 transition-opacity"
         aria-label="Закрыть вкладку"
       >
         <X className="w-3.5 h-3.5" />
@@ -494,7 +494,7 @@ export function TaskPanelTabBar({
                             // Открыть раздел сразу закреплённым. Меню НЕ закрываем.
                             onPinSystem(def)
                           }}
-                          className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-foreground hover:bg-black/5 transition-opacity"
+                          className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full md:opacity-0 md:group-hover/row:opacity-100 text-muted-foreground hover:text-foreground hover:bg-black/5 transition-opacity"
                           aria-label="Закрепить раздел"
                           title="Закрепить"
                         >

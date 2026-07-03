@@ -95,7 +95,7 @@ export function GroupTreeItem({
           </span>
           {/* Кнопки рядом с названием: + и редактировать */}
           <div
-            className="flex items-center gap-0.5 invisible group-hover:visible transition-all ml-1 flex-shrink-0"
+            className="flex items-center gap-0.5 md:invisible md:group-hover:visible transition-all ml-1 flex-shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
             <Button
@@ -132,7 +132,7 @@ export function GroupTreeItem({
           <div className="flex-1" />
           {/* Кнопки у правого края: доступ и удалить */}
           <div
-            className="flex items-center gap-0.5 invisible group-hover:visible transition-all flex-shrink-0"
+            className="flex items-center gap-0.5 md:invisible md:group-hover:visible transition-all flex-shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
             <TemplateAccessButton

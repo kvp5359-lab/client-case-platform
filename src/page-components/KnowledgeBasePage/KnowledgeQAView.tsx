@@ -306,7 +306,7 @@ export function KnowledgeQAView({ workspaceId }: KnowledgeQAViewProps) {
                   {/* Удалить */}
                   <NativeTableCell withDivider={false}>
                     <button
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                       onClick={(e) => handleDeleteClick(qa, e)}
                       title="Удалить"
                     >

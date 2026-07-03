@@ -111,7 +111,7 @@ export function ProjectHeader({
               className="relative text-lg font-bold hover:text-primary transition-colors cursor-pointer group shrink-0"
             >
               {projectName}
-              <Pencil className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity absolute -right-5 top-1/2 -translate-y-1/2" />
+              <Pencil className="w-4 h-4 md:opacity-0 md:group-hover:opacity-100 transition-opacity absolute -right-5 top-1/2 -translate-y-1/2" />
             </div>
           ) : (
             <h1 className="text-lg font-bold shrink-0">{projectName}</h1>
@@ -140,7 +140,7 @@ export function ProjectHeader({
                   </div>
                 ))}
                 {/* Сгруппированный tooltip — по ролям */}
-                <div className="absolute top-full left-0 mt-1.5 hidden group-hover/projectAvatars:block z-50 pointer-events-none">
+                <div className="absolute top-full left-0 mt-1.5 md:hidden md:group-hover/projectAvatars:block z-50 pointer-events-none">
                   <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg whitespace-nowrap min-w-[160px]">
                     {participantGroups.map((group, idx) => (
                       <div

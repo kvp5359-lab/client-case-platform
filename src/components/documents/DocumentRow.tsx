@@ -127,7 +127,7 @@ export const DocumentRow = memo(function DocumentRow({
                 e.stopPropagation()
                 handlers.onSelectDocument(doc.id, e)
               }}
-              className={`transition-opacity flex-shrink-0 ${hasSelection ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+              className={`transition-opacity flex-shrink-0 ${hasSelection ? 'opacity-100' : 'md:opacity-0 md:group-hover:opacity-100'}`}
             />
 
             {/* Пиктограмма статуса */}

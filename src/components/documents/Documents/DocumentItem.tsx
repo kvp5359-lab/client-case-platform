@@ -199,7 +199,7 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
               e.stopPropagation()
               onSelectDocument(document.id, e as unknown as React.MouseEvent)
             }}
-            className={`transition-opacity flex-shrink-0 ${hasSelection || isSelected ? 'opacity-100' : 'opacity-0 group-hover/doc:opacity-100'}`}
+            className={`transition-opacity flex-shrink-0 ${hasSelection || isSelected ? 'opacity-100' : 'md:opacity-0 md:group-hover/doc:opacity-100'}`}
           />
         </div>
       </td>
@@ -265,11 +265,11 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
               entityId={document.id}
               projectId={projectId}
               workspaceId={workspaceId}
-              emptyClassName="hidden md:inline-flex opacity-0 group-hover/doc:opacity-100"
+              emptyClassName="md:hidden md:inline-flex md:opacity-0 md:group-hover/doc:opacity-100"
             />
           )}
           <div
-            className={`shrink-0 flex items-center gap-0.5 transition-opacity duration-150 ${compressingDocIds.has(document.id) ? 'hidden' : menuOpen ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover/doc:opacity-100'}`}
+            className={`shrink-0 flex items-center gap-0.5 transition-opacity duration-150 ${compressingDocIds.has(document.id) ? 'md:hidden' : menuOpen ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover/doc:opacity-100'}`}
           >
             {hasFile && currentFile && (
               <button

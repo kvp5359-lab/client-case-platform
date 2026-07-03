@@ -111,7 +111,7 @@ export function TableColumnsEditor({ columns, onChange }: TableColumnsEditorProp
                       variant="ghost"
                       size="sm"
                       onClick={() => removeColumn(index)}
-                      className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-red-50 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                       title="Удалить колонку"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

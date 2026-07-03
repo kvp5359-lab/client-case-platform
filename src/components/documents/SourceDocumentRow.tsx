@@ -55,7 +55,7 @@ export function SourceDocumentRow({
                 e.stopPropagation()
                 onSelect(file.id, e)
               }}
-              className={`transition-opacity flex-shrink-0 ${hasSelection ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+              className={`transition-opacity flex-shrink-0 ${hasSelection ? 'opacity-100' : 'md:opacity-0 md:group-hover:opacity-100'}`}
             />
             <div className="flex items-center gap-1.5 min-w-0">
               <button
@@ -82,7 +82,7 @@ export function SourceDocumentRow({
               {file.webViewLink && (
                 <button
                   type="button"
-                  className="flex-shrink-0 p-0.5 rounded hover:bg-accent text-muted-foreground/40 hover:text-muted-foreground transition-all opacity-0 group-hover:opacity-100"
+                  className="flex-shrink-0 p-0.5 rounded hover:bg-accent text-muted-foreground/40 hover:text-muted-foreground transition-all md:opacity-0 md:group-hover:opacity-100"
                   title="Открыть документ"
                   onClick={(e) => {
                     e.stopPropagation()
@@ -96,7 +96,7 @@ export function SourceDocumentRow({
           </div>
 
           {/* Меню действий */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

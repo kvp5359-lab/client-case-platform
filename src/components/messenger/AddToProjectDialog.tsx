@@ -125,7 +125,7 @@ export function AddToProjectDialog({
                       >
                         <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="text-sm flex-1 truncate">Без группы</span>
-                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0" />
                       </button>
                       <Separator className="!my-1 bg-gray-200" />
                       {folders.map((folder) => (
@@ -137,7 +137,7 @@ export function AddToProjectDialog({
                         >
                           <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
                           <span className="text-sm flex-1 truncate">{folder.name}</span>
-                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0" />
                         </button>
                       ))}
                     </div>

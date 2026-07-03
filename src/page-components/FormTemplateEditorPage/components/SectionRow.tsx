@@ -72,7 +72,7 @@ export function SectionRow({
               {section.name}{' '}
               <span className="text-muted-foreground font-normal">({sectionFields.length})</span>
             </span>
-            <div className="flex items-center gap-0.5 opacity-0 group-hover/section:opacity-100 transition-opacity">
+            <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover/section:opacity-100 transition-opacity">
               <Button
                 variant="ghost"
                 size="sm"

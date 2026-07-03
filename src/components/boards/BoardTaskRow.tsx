@@ -190,7 +190,7 @@ function TaskField({
       // длинным контактом справа). Видно только на hover, появляется
       // поверх правого края (контент за ним всё равно затемнён ховером).
       return (
-        <div className="absolute right-1 top-1/2 -translate-y-1/2 bg-background rounded opacity-0 group-hover/board-row:opacity-100 transition-opacity">
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 bg-background rounded md:opacity-0 md:group-hover/board-row:opacity-100 transition-opacity">
           <TaskActionsMenu
             onOpen={() => onOpenTask(task.id)}
             statuses={statuses}

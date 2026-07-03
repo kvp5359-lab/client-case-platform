@@ -124,7 +124,7 @@ function TemplateRow({
           <span className="font-medium text-sm truncate">{t.name}</span>
           {getTypeBadge(t)}
           {/* Actions — сразу справа от типа треда */}
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <Button
               variant="ghost"
               size="icon"

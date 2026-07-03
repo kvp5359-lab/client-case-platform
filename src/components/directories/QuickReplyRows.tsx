@@ -52,7 +52,7 @@ function ReplyRowContent({
           <Button
             variant="ghost"
             size="sm"
-            className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground"
+            className="h-5 w-5 p-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground"
             title="Редактировать"
             onClick={() => page.openEditReply(reply)}
           >
@@ -61,7 +61,7 @@ function ReplyRowContent({
           <Button
             variant="ghost"
             size="sm"
-            className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500"
+            className="h-5 w-5 p-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500"
             title="Удалить"
             onClick={() => page.handleDeleteReply(reply.id, reply.name)}
           >
@@ -138,7 +138,7 @@ export function DraggableReplyRow({
         }}
       >
         <div
-          className="absolute top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing md:opacity-0 md:group-hover:opacity-100 transition-opacity"
           style={{ left: `${BASE_PAD + depth * INDENT + ARTICLE_EXTRA - 14}px` }}
           onClick={(e) => e.stopPropagation()}
           {...attributes}

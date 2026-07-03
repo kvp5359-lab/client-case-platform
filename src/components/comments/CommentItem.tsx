@@ -100,7 +100,7 @@ export function CommentItem({
         {comment.updated_at !== comment.created_at && (
           <span className="text-[10px] text-muted-foreground italic">ред.</span>
         )}
-        <div className="flex items-center gap-1 ml-auto opacity-0 group-hover/comment:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 ml-auto md:opacity-0 md:group-hover/comment:opacity-100 transition-opacity">
           {isRoot && onResolve && canEdit && !comment.is_resolved && (
             <button
               type="button"
@@ -141,7 +141,7 @@ export function CommentItem({
             <button
               type="button"
               onClick={onReply}
-              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors align-baseline opacity-0 group-hover/comment:opacity-100"
+              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors align-baseline md:opacity-0 md:group-hover/comment:opacity-100"
             >
               <Reply className="h-3 w-3" />
               Ответить

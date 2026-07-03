@@ -40,7 +40,7 @@ export function RiskLevelPopover({ value, onChange, className }: RiskLevelPopove
           className={cn(
             'flex items-center justify-center rounded-full transition-opacity',
             // виден на ховере поля или при открытом попапе
-            'opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100',
+            'md:opacity-0 md:group-hover:opacity-100 data-[state=open]:opacity-100',
             className,
           )}
         >

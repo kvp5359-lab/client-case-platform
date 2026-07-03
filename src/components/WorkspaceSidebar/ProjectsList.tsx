@@ -205,7 +205,7 @@ export const ProjectsList = memo(function ProjectsList({
             ) : (
               <p className="text-[12px] text-gray-500 font-medium">Проекты</p>
             )}
-            <div className="flex items-center gap-0.5 opacity-0 group-hover/projects:opacity-100 transition-opacity">
+            <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover/projects:opacity-100 transition-opacity">
               <button
                 type="button"
                 onClick={handleOpenSearch}

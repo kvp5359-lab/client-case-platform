@@ -136,7 +136,7 @@ export function ParticipantsPicker({
                       e.preventDefault()
                       onChange(selectedIds.filter((sid) => sid !== pp.id))
                     }}
-                    className="absolute inset-y-0 right-0 hidden group-hover:flex items-center rounded-r-md text-brand-700 hover:text-foreground cursor-pointer"
+                    className="absolute inset-y-0 right-0 md:hidden md:group-hover:flex items-center rounded-r-md text-brand-700 hover:text-foreground cursor-pointer"
                   >
                     <span aria-hidden className="absolute inset-0 rounded-r-md bg-background" />
                     <span aria-hidden className="absolute inset-0 rounded-r-md bg-brand-100" />
@@ -219,7 +219,7 @@ export function ParticipantsPicker({
                         useContactCardStore.getState().open(p.id, true)
                       }}
                       title="Открыть карточку участника"
-                      className="ml-1.5 shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-background/60 hover:text-foreground focus:opacity-100 transition-opacity"
+                      className="ml-1.5 shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground md:opacity-0 md:group-hover:opacity-100 hover:bg-background/60 hover:text-foreground focus:opacity-100 transition-opacity"
                     >
                       <IdCard className="w-4 h-4" />
                     </button>

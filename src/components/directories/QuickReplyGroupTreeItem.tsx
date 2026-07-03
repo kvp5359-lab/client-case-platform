@@ -116,7 +116,7 @@ export function QuickReplyGroupTreeItem({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground"
+                    className="h-6 w-6 p-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground"
                     title="Добавить шаблон"
                     onClick={() => page.openCreateReplyDialog(group.id)}
                   >
@@ -125,7 +125,7 @@ export function QuickReplyGroupTreeItem({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground"
+                    className="h-6 w-6 p-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground"
                     title="Добавить подгруппу"
                     onClick={() => {
                       page.setAddingGroupParentId(group.id)
@@ -137,7 +137,7 @@ export function QuickReplyGroupTreeItem({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground"
+                    className="h-6 w-6 p-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground"
                     title="Переименовать"
                     onClick={() => {
                       page.setEditingGroupId(group.id)
@@ -149,7 +149,7 @@ export function QuickReplyGroupTreeItem({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500"
+                    className="h-6 w-6 p-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500"
                     title="Удалить"
                     onClick={() => page.handleDeleteGroup(group.id, group.name)}
                   >

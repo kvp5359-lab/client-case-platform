@@ -133,7 +133,7 @@ export const ProjectListItem = memo(function ProjectListItem({
                 togglePin(project.id)
               }}
               title={isPinned ? 'Открепить' : 'Закрепить'}
-              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity"
+              className="absolute inset-0 flex items-center justify-center md:opacity-0 md:group-hover/item:opacity-100 transition-opacity"
             >
               {isPinned ? (
                 <PinOff className="h-[14px] w-[14px] text-gray-500 hover:text-gray-700" />
@@ -218,7 +218,7 @@ export const ProjectListItem = memo(function ProjectListItem({
             togglePin(project.id)
           }}
           title={isPinned ? 'Открепить' : 'Закрепить'}
-          className="absolute right-1.5 top-[15px] -translate-y-1/2 z-10 flex items-center justify-center h-5 w-5 rounded bg-gray-100 opacity-0 group-hover/item:opacity-100 transition-opacity"
+          className="absolute right-1.5 top-[15px] -translate-y-1/2 z-10 flex items-center justify-center h-5 w-5 rounded bg-gray-100 md:opacity-0 md:group-hover/item:opacity-100 transition-opacity"
         >
           {isPinned ? (
             <PinOff className="h-[14px] w-[14px] text-gray-500 hover:text-gray-700" />

@@ -69,7 +69,7 @@ export function ParticipantAvatars({
       )}
       {/* Тултип со списком имён */}
       {showTooltip && (
-        <div className="absolute top-full left-0 mt-1.5 hidden group-hover/avatars:block z-50">
+        <div className="absolute top-full left-0 mt-1.5 md:hidden md:group-hover/avatars:block z-50">
           <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg whitespace-nowrap">
             {participants.map((p) => (
               <div key={p.id} className="py-0.5">

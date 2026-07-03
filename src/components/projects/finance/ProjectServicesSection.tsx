@@ -164,7 +164,7 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
         <Button
           size="sm"
           onClick={openCreate}
-          className="opacity-0 group-hover/section:opacity-100 transition-opacity"
+          className="md:opacity-0 md:group-hover/section:opacity-100 transition-opacity"
         >
           <Plus className="h-4 w-4 mr-1" />
           Добавить

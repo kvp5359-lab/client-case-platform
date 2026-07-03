@@ -84,13 +84,13 @@ export function FolderCardHeader({
                   entityId={folder.id}
                   projectId={projectId}
                   workspaceId={workspaceId}
-                  emptyClassName="hidden md:inline-flex opacity-0 group-hover/card:opacity-100"
+                  emptyClassName="md:hidden md:inline-flex md:opacity-0 md:group-hover/card:opacity-100"
                 />
               </div>
             )}
             {(onEditFolder || onDeleteFolder) && (
               <div
-                className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                className="md:opacity-0 md:group-hover/card:opacity-100 transition-opacity"
                 onClick={(e) => e.stopPropagation()}
               >
                 <DropdownMenu>
@@ -129,7 +129,7 @@ export function FolderCardHeader({
               занимали место и имя папки ужималось до нуля. */}
           {(onAddSlot || onAddDocument) && (
             <>
-              <div className="hidden md:flex items-center gap-1.5 ml-auto opacity-0 group-hover/card:opacity-100 transition-opacity flex-shrink-0">
+              <div className="md:hidden md:flex items-center gap-1.5 ml-auto md:opacity-0 md:group-hover/card:opacity-100 transition-opacity flex-shrink-0">
                 {onAddSlot && (
                   <button
                     type="button"

@@ -65,7 +65,7 @@ export function SortableArticleRow({
         onClick={() => onArticleClick(article)}
       >
         <div
-          className="absolute top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing md:opacity-0 md:group-hover:opacity-100 transition-opacity"
           style={{ left: `${BASE_PAD + depth * INDENT + ARTICLE_EXTRA - 14}px` }}
           onClick={(e) => e.stopPropagation()}
           {...attributes}
@@ -95,7 +95,7 @@ export function SortableArticleRow({
           <Button
             variant="ghost"
             size="sm"
-            className="h-5 w-5 p-0 flex-shrink-0 text-muted-foreground/30 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+            className="h-5 w-5 p-0 flex-shrink-0 text-muted-foreground/30 hover:text-foreground md:opacity-0 md:group-hover:opacity-100 transition-opacity"
             title="Редактировать"
             onClick={(e) => {
               e.stopPropagation()
@@ -115,7 +115,7 @@ export function SortableArticleRow({
         />
 
         <div
-          className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
           onClick={(e) => e.stopPropagation()}
         >
           <Button
@@ -178,7 +178,7 @@ export function ArticleRow({
           <Button
             variant="ghost"
             size="sm"
-            className="h-5 w-5 p-0 flex-shrink-0 text-muted-foreground/30 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+            className="h-5 w-5 p-0 flex-shrink-0 text-muted-foreground/30 hover:text-foreground md:opacity-0 md:group-hover:opacity-100 transition-opacity"
             title="Редактировать"
             onClick={(e) => {
               e.stopPropagation()
@@ -198,7 +198,7 @@ export function ArticleRow({
         />
 
         <div
-          className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
           onClick={(e) => e.stopPropagation()}
         >
           <Button

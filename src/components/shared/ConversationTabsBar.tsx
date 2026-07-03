@@ -156,7 +156,7 @@ export function ConversationTabsBar({
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="shrink-0 p-0.5 mr-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+                      className="shrink-0 p-0.5 mr-1 rounded md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-muted"
                     >
                       <MoreVertical className="h-3 w-3" />
                     </button>

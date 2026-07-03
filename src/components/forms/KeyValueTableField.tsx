@@ -274,7 +274,7 @@ export function KeyValueTableField({
                               size="sm"
                               onClick={() => handleDeleteRow(rowIndex)}
                               disabled={disabled}
-                              className="h-5 w-5 p-0 shrink-0 text-destructive hover:text-destructive hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="h-5 w-5 p-0 shrink-0 text-destructive hover:text-destructive hover:bg-red-50 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                               title="Удалить строку"
                               aria-label="Удалить строку"
                             >
@@ -317,7 +317,7 @@ export function KeyValueTableField({
           size="sm"
           onClick={handleAddRow}
           disabled={disabled}
-          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground opacity-0 group-hover/table:opacity-100 transition-opacity"
+          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground md:opacity-0 md:group-hover/table:opacity-100 transition-opacity"
         >
           <Plus className="h-3.5 w-3.5 mr-1" />
           Добавить строку

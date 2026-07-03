@@ -158,12 +158,12 @@ function Row({
     <div className="group/row flex items-center gap-2 rounded px-2 py-1 hover:bg-muted/40">
       <span className="flex-1 truncate text-sm">{title}</span>
       {badge && <Badge variant="outline" className="shrink-0 text-[10px] font-normal">{badge}</Badge>}
-      <Button size="sm" variant="ghost" className="h-7 w-7 shrink-0 p-0 opacity-0 group-hover/row:opacity-100"
+      <Button size="sm" variant="ghost" className="h-7 w-7 shrink-0 p-0 md:opacity-0 md:group-hover/row:opacity-100"
         onClick={onEdit}>
         <Pencil className="h-3.5 w-3.5" />
       </Button>
       <Button size="sm" variant="ghost"
-        className="h-7 w-7 shrink-0 p-0 text-muted-foreground opacity-0 hover:text-destructive group-hover/row:opacity-100"
+        className="h-7 w-7 shrink-0 p-0 text-muted-foreground md:opacity-0 hover:text-destructive md:group-hover/row:opacity-100"
         onClick={onDelete}>
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
@@ -213,12 +213,12 @@ function StatusesTab({ countryId }: { countryId: string }) {
             ) : (
               <>
                 <span className="flex-1 text-sm">{s.name_ru}</span>
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 opacity-0 group-hover/row:opacity-100"
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 md:opacity-0 md:group-hover/row:opacity-100"
                   onClick={() => { setEditId(s.id); setEditName(s.name_ru) }}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button size="sm" variant="ghost"
-                  className="h-7 w-7 p-0 text-muted-foreground opacity-0 hover:text-destructive group-hover/row:opacity-100"
+                  className="h-7 w-7 p-0 text-muted-foreground md:opacity-0 hover:text-destructive md:group-hover/row:opacity-100"
                   disabled={busy} onClick={() => remove.mutate(s.id)}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

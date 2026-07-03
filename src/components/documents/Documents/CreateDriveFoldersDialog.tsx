@@ -310,7 +310,7 @@ export function CreateDriveFoldersDialog({
                     <button
                       type="button"
                       onClick={() => handleRemoveFolder(item.id)}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded text-muted-foreground md:opacity-0 transition-opacity hover:text-destructive md:group-hover:opacity-100 focus-visible:opacity-100"
                       title="Удалить из списка"
                     >
                       <X className="h-4 w-4" />

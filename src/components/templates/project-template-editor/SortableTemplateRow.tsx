@@ -61,7 +61,7 @@ export function SortableTemplateRow({
       {/* Drag handle — grip-иконка слева, видна только при hover. */}
       <button
         type="button"
-        className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+        className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0"
         aria-label="Переупорядочить"
         {...attributes}
         {...listeners}
@@ -145,7 +145,7 @@ export function SortableTemplateRow({
           )}
         </div>
       )}
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+      <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0">
         <Button
           variant="ghost"
           size="icon"

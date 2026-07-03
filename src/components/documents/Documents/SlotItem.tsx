@@ -249,7 +249,7 @@ export const SlotItem = memo(function SlotItem({
               description={slot.description}
               knowledgeArticleId={slot.knowledge_article_id}
             />
-            <div className="hidden group-hover/slot:flex items-center gap-0.5">
+            <div className="md:hidden md:group-hover/slot:flex items-center gap-0.5">
               <button
                 type="button"
                 className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground/40 hover:text-muted-foreground transition-colors"

@@ -44,7 +44,7 @@ export function SortableTemplateRow({ id, disabled, children }: SortableTemplate
             'flex h-7 w-6 items-center justify-center text-muted-foreground/40 transition-opacity',
             disabled
               ? 'cursor-not-allowed opacity-0'
-              : 'cursor-grab opacity-0 group-hover:opacity-100 active:cursor-grabbing hover:text-muted-foreground',
+              : 'cursor-grab md:opacity-0 md:group-hover:opacity-100 active:cursor-grabbing hover:text-muted-foreground',
           )}
           {...attributes}
           {...listeners}

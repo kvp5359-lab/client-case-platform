@@ -353,7 +353,7 @@ export default function ListSettingsAppearanceTab({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-6 text-xs text-muted-foreground opacity-0 group-hover/rows:opacity-100 transition-opacity"
+                className="h-6 text-xs text-muted-foreground md:opacity-0 md:group-hover/rows:opacity-100 transition-opacity"
                 onClick={handleAddRow}
               >
                 <Plus className="h-3 w-3 mr-1" />

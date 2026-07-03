@@ -204,7 +204,7 @@ function ImageAttachment({
             />
           </button>
           {/* Menu overlay */}
-          <div className="absolute top-1 right-1 opacity-0 group-hover/img:opacity-100 transition-opacity">
+          <div className="absolute top-1 right-1 md:opacity-0 md:group-hover/img:opacity-100 transition-opacity">
             <AttachmentMenuButton
               attachment={attachment}
               isOwn={isOwn}

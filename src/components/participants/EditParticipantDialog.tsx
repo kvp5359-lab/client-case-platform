@@ -248,7 +248,7 @@ export function EditParticipantDialog({
                         {getInitials(displayName)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 md:opacity-0 md:group-hover/avatar:opacity-100 transition-opacity">
                       <Camera className="h-5 w-5 text-white" />
                     </div>
                     {isUploading && (
@@ -262,7 +262,7 @@ export function EditParticipantDialog({
                       type="button"
                       onClick={handleClearAvatar}
                       disabled={isLoading}
-                      className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border opacity-0 transition-opacity group-hover/avatar:opacity-100 hover:bg-muted hover:text-foreground"
+                      className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border md:opacity-0 transition-opacity md:group-hover/avatar:opacity-100 hover:bg-muted hover:text-foreground"
                       aria-label="Удалить аватарку"
                       title="Удалить аватарку"
                     >

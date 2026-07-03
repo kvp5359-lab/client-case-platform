@@ -45,7 +45,7 @@ export function SortableContentRow({
     >
       <button
         type="button"
-        className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+        className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 mt-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0"
         aria-label="Переупорядочить"
         {...attributes}
         {...listeners}
@@ -89,7 +89,7 @@ export function SortableContentRow({
       <Button
         variant="ghost"
         size="icon"
-        className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+        className="h-6 w-6 text-muted-foreground hover:text-destructive md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0"
         onClick={onDelete}
         title="Удалить"
       >

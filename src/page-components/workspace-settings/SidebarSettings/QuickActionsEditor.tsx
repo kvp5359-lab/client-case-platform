@@ -130,7 +130,7 @@ export function QuickActionsEditor({ workspaceId }: { workspaceId: string }) {
                 <span className="text-[11px] text-gray-400">
                   {QUICK_ACTION_KIND_LABELS[action.kind]}
                 </span>
-                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button
                     type="button"
                     className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"

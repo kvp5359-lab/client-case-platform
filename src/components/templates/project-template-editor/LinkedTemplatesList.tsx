@@ -70,7 +70,7 @@ function SortableRow({
       <div className="flex items-center gap-2 min-w-0">
         <button
           type="button"
-          className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+          className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0"
           aria-label="Переупорядочить"
           {...attributes}
           {...listeners}
@@ -83,7 +83,7 @@ function SortableRow({
       <Button
         variant="ghost"
         size="sm"
-        className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+        className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 md:opacity-0 md:group-hover:opacity-100 transition-all"
         onClick={(e) => {
           e.stopPropagation()
           onRemove(item.id)
@@ -155,7 +155,7 @@ export function LinkedTemplatesList({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 md:opacity-0 md:group-hover:opacity-100 transition-all"
                 onClick={(e) => {
                   e.stopPropagation()
                   onRemove(item.id)

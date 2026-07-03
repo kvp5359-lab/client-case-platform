@@ -144,7 +144,7 @@ function GroupSection({
                   <button
                     type="button"
                     onClick={() => onAddCondition(groupId, rtId)}
-                    className="mt-0.5 w-full px-3 py-0.5 text-left text-xs text-muted-foreground opacity-0 transition-opacity group-hover/cell:opacity-100 hover:text-foreground"
+                    className="mt-0.5 w-full px-3 py-0.5 text-left text-xs text-muted-foreground md:opacity-0 transition-opacity md:group-hover/cell:opacity-100 hover:text-foreground"
                   >
                     + добавить условие
                   </button>
@@ -193,7 +193,7 @@ function CriterionRow({
         </>
       )}
       {onEdit && (
-        <Pencil className="ml-1 inline h-3 w-3 align-text-top opacity-0 transition-opacity group-hover/row:opacity-100 text-muted-foreground" />
+        <Pencil className="ml-1 inline h-3 w-3 align-text-top md:opacity-0 transition-opacity md:group-hover/row:opacity-100 text-muted-foreground" />
       )}
     </div>
   )

@@ -192,10 +192,10 @@ const EmptySlotChip = memo(function EmptySlotChip({ slot }: { slot: FolderSlotWi
         entityId={slot.id}
         projectId={projectId || ''}
         workspaceId={workspaceId || ''}
-        emptyClassName="opacity-0 group-hover/chip:opacity-100"
+        emptyClassName="md:opacity-0 md:group-hover/chip:opacity-100"
       />
       {/* Меню слота */}
-      <div className="opacity-0 group-hover/chip:opacity-100 transition-opacity flex-shrink-0 flex items-center">
+      <div className="md:opacity-0 md:group-hover/chip:opacity-100 transition-opacity flex-shrink-0 flex items-center">
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button

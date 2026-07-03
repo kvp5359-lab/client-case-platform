@@ -85,7 +85,7 @@ export const SourceSection = memo(function SourceSection({
               <button
                 type="button"
                 onClick={() => onToggleFolderHidden(folderName, true)}
-                className="ml-auto flex-shrink-0 p-0.5 rounded hover:bg-accent text-muted-foreground/40 hover:text-muted-foreground transition-all opacity-0 group-hover/folder:opacity-100"
+                className="ml-auto flex-shrink-0 p-0.5 rounded hover:bg-accent text-muted-foreground/40 hover:text-muted-foreground transition-all md:opacity-0 md:group-hover/folder:opacity-100"
                 title="Скрыть всю папку"
               >
                 <EyeOff className="h-3 w-3" />

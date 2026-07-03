@@ -279,7 +279,7 @@ export function SlotsEditor({ config, description, workspaceId }: SlotsEditorPro
                     aria-label="Свой AI-промпт"
                   />
                 )}
-                <div className="hidden group-hover/chip:inline-flex items-center gap-0.5 flex-shrink-0">
+                <div className="md:hidden md:group-hover/chip:inline-flex items-center gap-0.5 flex-shrink-0">
                   <button
                     type="button"
                     className="inline-flex items-center justify-center h-4 w-4 text-amber-700/60 hover:text-amber-700"

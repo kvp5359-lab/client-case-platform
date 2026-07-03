@@ -117,7 +117,7 @@ export function ProjectContextTabContent({
             <Button
               size="icon"
               variant="ghost"
-              className="h-6 w-6 ml-1 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 transition-opacity"
+              className="h-6 w-6 ml-1 text-muted-foreground hover:text-foreground md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 transition-opacity"
               title="Добавить"
             >
               <Plus className="h-4 w-4" />

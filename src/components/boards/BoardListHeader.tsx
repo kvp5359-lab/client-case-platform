@@ -83,7 +83,7 @@ export function BoardListHeader({
           onClick={onCreateThread}
           aria-label="Создать в этом списке"
           title="Создать в этом списке"
-          className="shrink-0 h-6 w-6 hidden group-hover/header:inline-flex items-center justify-center rounded-full hover:brightness-95"
+          className="shrink-0 h-6 w-6 md:hidden md:group-hover/header:inline-flex items-center justify-center rounded-full hover:brightness-95"
           style={{ backgroundColor: hs.bg, color: hs.text }}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -93,7 +93,7 @@ export function BoardListHeader({
         className="flex-1 h-0.5 rounded-full ml-1"
         style={{ backgroundColor: hs.bg }}
       />
-      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/header:opacity-100 transition-opacity absolute right-0 bg-[#f6f6f7] rounded">
+      <div className="flex items-center gap-0.5 shrink-0 md:opacity-0 md:group-hover/header:opacity-100 transition-opacity absolute right-0 bg-[#f6f6f7] rounded">
         <button
           ref={setDragRef}
           type="button"

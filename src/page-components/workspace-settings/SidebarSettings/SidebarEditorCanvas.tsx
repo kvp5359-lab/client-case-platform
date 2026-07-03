@@ -586,7 +586,7 @@ function SlotRow({
           onRemove()
         }}
         aria-label="Убрать из сайдбара"
-        className="text-gray-300 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity"
+        className="text-gray-300 md:opacity-0 md:group-hover:opacity-100 hover:text-red-500 transition-opacity"
       >
         <X className="w-4 h-4" />
       </button>
@@ -638,7 +638,7 @@ function TopbarChip({
           onRemove()
         }}
         aria-label="Убрать из сайдбара"
-        className="text-gray-300 opacity-0 group-hover:opacity-100 hover:text-red-500"
+        className="text-gray-300 md:opacity-0 md:group-hover:opacity-100 hover:text-red-500"
       >
         <X className="w-3.5 h-3.5" />
       </button>
@@ -700,7 +700,7 @@ function FolderBox({
             onRemove(folder.id)
           }}
           aria-label="Убрать папку"
-          className="text-gray-300 opacity-0 group-hover:opacity-100 hover:text-red-500"
+          className="text-gray-300 md:opacity-0 md:group-hover:opacity-100 hover:text-red-500"
         >
           <X className="w-4 h-4" />
         </button>

@@ -225,7 +225,7 @@ export function KnowledgeTableView({ page }: { page: PageReturn }) {
                         {formatSmartDate(article.updated_at)}
                       </span>
                       <button
-                        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        className="md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0"
                         onClick={(e) => {
                           e.stopPropagation()
                           page.handleDeleteArticle(article.id, article.title)

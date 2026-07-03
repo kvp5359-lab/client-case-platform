@@ -89,7 +89,7 @@ export const SidebarNavButton = memo(function SidebarNavButton({
           )}
         />
         {hoverIconSlot && (
-          <span className="hidden group-hover/pin:flex absolute inset-0 items-center justify-center">
+          <span className="md:hidden md:group-hover/pin:flex absolute inset-0 items-center justify-center">
             {hoverIconSlot}
           </span>
         )}

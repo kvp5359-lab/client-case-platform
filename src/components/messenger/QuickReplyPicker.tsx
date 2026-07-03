@@ -319,7 +319,7 @@ function ReplyRow({
       )}
       {/* Кнопка редактирования — поверх текста справа с градиентным fade */}
       <div
-        className="absolute right-0 top-0 bottom-0 flex items-center pr-1.5 pl-6 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto"
+        className="absolute right-0 top-0 bottom-0 flex items-center pr-1.5 pl-6 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto"
         style={{ background: 'linear-gradient(to right, transparent, var(--color-accent) 40%)' }}
       >
         <button

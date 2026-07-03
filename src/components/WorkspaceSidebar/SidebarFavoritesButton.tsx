@@ -450,7 +450,7 @@ function FavItemRow({
           e.stopPropagation()
           onRemove()
         }}
-        className="text-gray-300 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity shrink-0"
+        className="text-gray-300 md:opacity-0 md:group-hover:opacity-100 hover:text-red-500 transition-opacity shrink-0"
       >
         <X className="h-4 w-4" />
       </button>

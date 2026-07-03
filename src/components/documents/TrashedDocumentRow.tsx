@@ -50,7 +50,7 @@ export function TrashedDocumentRow({
                 e.stopPropagation()
                 onSelect(doc.id, e as unknown as React.MouseEvent)
               }}
-              className={`transition-opacity flex-shrink-0 ${hasSelection ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+              className={`transition-opacity flex-shrink-0 ${hasSelection ? 'opacity-100' : 'md:opacity-0 md:group-hover:opacity-100'}`}
             />
             <div
               role="button"

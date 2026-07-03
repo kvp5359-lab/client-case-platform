@@ -89,7 +89,7 @@ export function ManageTagsDialog({ page }: { page: PageReturn }) {
                     <NotionPill name={tag.name} bg={c.bg} text={c.text} />
                     <span className="flex-1" />
                     <button
-                      className="opacity-0 group-hover/item:opacity-100 transition-opacity"
+                      className="md:opacity-0 md:group-hover/item:opacity-100 transition-opacity"
                       onClick={() => startEdit(tag)}
                       title="Редактировать"
                       aria-label={`Редактировать тег ${tag.name}`}
@@ -97,7 +97,7 @@ export function ManageTagsDialog({ page }: { page: PageReturn }) {
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
                     </button>
                     <button
-                      className="opacity-0 group-hover/item:opacity-100 transition-opacity"
+                      className="md:opacity-0 md:group-hover/item:opacity-100 transition-opacity"
                       aria-label={`Удалить тег ${tag.name}`}
                       onClick={async () => {
                         const ok = await confirm({

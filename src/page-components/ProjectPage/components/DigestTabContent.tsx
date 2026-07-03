@@ -196,7 +196,7 @@ function DigestCard({
             · {modeLabel} · событий: {digest.events_count}
           </span>
         </CardTitle>
-        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-0.5 shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           <Button
             variant="ghost"
             size="icon"

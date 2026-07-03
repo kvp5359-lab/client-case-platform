@@ -103,7 +103,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
       {dragHandleProps && (
         <button
           type="button"
-          className="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-none p-0.5 shrink-0"
+          className="absolute -left-6 top-1/2 -translate-y-1/2 md:opacity-0 md:group-hover/row:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-none p-0.5 shrink-0"
           {...dragHandleProps.attributes}
           {...dragHandleProps.listeners}
         >
@@ -194,7 +194,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
             isPending={deadlinePending}
             isFinal={isFinal}
             triggerClassName={
-              !task.deadline ? 'hidden group-hover/row:inline-flex' : undefined
+              !task.deadline ? 'md:hidden md:group-hover/row:inline-flex' : undefined
             }
           />
         </span>
@@ -213,7 +213,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
           onDeadlineClear={onDeadlineClear}
           deadlinePending={deadlinePending}
           onRequestDelete={onRequestDelete}
-          triggerClassName="opacity-0 group-hover/row:opacity-100"
+          triggerClassName="md:opacity-0 md:group-hover/row:opacity-100"
         />
       </div>
     </div>

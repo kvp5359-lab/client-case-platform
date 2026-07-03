@@ -109,7 +109,7 @@ export function ServiceMessage(props: ServiceMessageProps) {
             disabled={deleting}
             title="Удалить"
             className={cn(
-              'opacity-0 group-hover:opacity-100 transition-opacity',
+              'md:opacity-0 md:group-hover:opacity-100 transition-opacity',
               'inline-flex items-center justify-center w-4 h-4 rounded-full',
               'text-muted-foreground hover:text-red-600 hover:bg-red-100',
               deleting && 'opacity-100',

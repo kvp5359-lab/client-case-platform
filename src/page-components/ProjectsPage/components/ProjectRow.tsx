@@ -191,7 +191,7 @@ export function ProjectRow({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-6 w-6 p-0 opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 transition-opacity flex items-center justify-center rounded hover:bg-muted shrink-0"
+                className="h-6 w-6 p-0 md:opacity-0 md:group-hover/row:opacity-100 data-[state=open]:opacity-100 transition-opacity flex items-center justify-center rounded hover:bg-muted shrink-0"
                 aria-label="Меню проекта"
               >
                 <MoreHorizontal className="h-4 w-4 text-muted-foreground" />

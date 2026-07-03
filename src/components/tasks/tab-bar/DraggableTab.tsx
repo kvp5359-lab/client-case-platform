@@ -164,7 +164,7 @@ export function DraggableTab({
                 type="button"
                 className={cn(
                   'absolute right-1 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full',
-                  'opacity-0 group-hover:opacity-100 transition-opacity',
+                  'md:opacity-0 md:group-hover:opacity-100 transition-opacity',
                   isActive ? 'bg-white shadow-sm' : 'bg-gray-100 hover:bg-gray-200',
                   'text-muted-foreground hover:text-foreground',
                 )}

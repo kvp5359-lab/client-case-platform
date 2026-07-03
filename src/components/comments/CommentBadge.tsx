@@ -27,7 +27,7 @@ type CommentBadgeProps = {
   count?: number
   /**
    * CSS-класс для скрытия пустого бейджа (без комментариев).
-   * Например: "opacity-0 group-hover/doc:opacity-100" — бейдж без комментариев
+   * Например: "md:opacity-0 md:group-hover/doc:opacity-100" — бейдж без комментариев
    * появляется только при наведении, а с комментариями виден всегда.
    */
   emptyClassName?: string

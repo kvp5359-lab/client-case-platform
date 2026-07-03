@@ -204,12 +204,12 @@ function DividerRow({
       onDragEnd={ctx.onFieldDragEnd}
     >
       <div className="flex items-center gap-2">
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity cursor-move hover:bg-gray-200 p-1 rounded inline-flex">
+        <div className="md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-move hover:bg-gray-200 p-1 rounded inline-flex">
           <GripVertical className="w-4 h-4 text-muted-foreground" />
         </div>
         <span className="text-sm font-medium text-gray-500">{field.field_definition.name}</span>
       </div>
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
         <Button
           variant="ghost"
           size="sm"

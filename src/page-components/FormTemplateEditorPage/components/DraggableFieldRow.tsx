@@ -75,7 +75,7 @@ export function DraggableFieldRow({
     return (
       <NativeTableRow className={`group transition-colors ${dragClassName}`} {...dragHandlers}>
         <NativeTableCell withDivider={false}>
-          <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <div className="cursor-move hover:bg-gray-200 p-1 rounded transition-colors inline-flex">
               <GripVertical className="w-4 h-4 text-muted-foreground" />
             </div>
@@ -84,7 +84,7 @@ export function DraggableFieldRow({
         <NativeTableCell withDivider={false} colSpan={2}>
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-400">{field.field_definition.name}</span>
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
               <Button
                 variant="ghost"
                 size="sm"
@@ -145,7 +145,7 @@ export function DraggableFieldRow({
                 </span>
               </span>
             )}
-            <div className="hidden group-hover:flex items-center gap-0.5">
+            <div className="md:hidden md:group-hover:flex items-center gap-0.5">
               <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => onEdit(field)}>
                 <Pencil className="w-3 h-3" />
               </Button>

@@ -43,7 +43,7 @@ export function ColumnView({ node, updateAttributes, editor, getPos }: NodeViewP
         <NodeViewContent className="focus:outline-none [&>p]:m-0 [&>p:not(:last-child)]:mb-2" />
 
         {/* Кнопка настроек */}
-        <div className="absolute top-1 right-1 opacity-0 group-hover/column:opacity-100 transition-opacity z-10">
+        <div className="absolute top-1 right-1 md:opacity-0 md:group-hover/column:opacity-100 transition-opacity z-10">
           <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
             <PopoverTrigger asChild>
               <Button variant="secondary" size="icon" className="h-6 w-6 shadow-sm">

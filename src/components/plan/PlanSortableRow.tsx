@@ -123,7 +123,7 @@ export function SortableRow({
           dragHandleProps={canEdit ? { attributes, listeners } : undefined}
         />
         {onQuickAddHere && (
-          <QuickAddBelow onClick={onQuickAddHere} revealClass="group-hover/planrow:opacity-100" />
+          <QuickAddBelow onClick={onQuickAddHere} revealClass="md:group-hover/planrow:opacity-100" />
         )}
       </div>
     )
@@ -148,7 +148,7 @@ export function SortableRow({
       {canEdit && (
         <button
           type="button"
-          className="absolute -left-6 top-2 cursor-grab touch-none p-0.5 opacity-0 transition-opacity group-hover/row:opacity-100"
+          className="absolute -left-6 top-2 cursor-grab touch-none p-0.5 md:opacity-0 transition-opacity md:group-hover/row:opacity-100"
           {...attributes}
           {...listeners}
           aria-label="Перетащить"
@@ -159,7 +159,7 @@ export function SortableRow({
 
       {/* «+» под заголовком (для текста/слотов не показываем). */}
       {onQuickAddHere && isHeading && (
-        <QuickAddBelow onClick={onQuickAddHere} revealClass="group-hover/row:opacity-100" />
+        <QuickAddBelow onClick={onQuickAddHere} revealClass="md:group-hover/row:opacity-100" />
       )}
 
       <div className="min-w-0 flex-1">
@@ -209,7 +209,7 @@ export function SortableRow({
       {/* Текст: карандаш (редактировать) + корзина — оверлеем в правом верхнем
           углу, не резервируют место и не ограничивают ширину текста. */}
       {canEdit && bt === 'text' && (
-        <div className="absolute right-1 top-1 z-10 flex gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100">
+        <div className="absolute right-1 top-1 z-10 flex gap-0.5 md:opacity-0 transition-opacity md:group-hover/row:opacity-100">
           <Button
             type="button"
             variant="ghost"
@@ -241,7 +241,7 @@ export function SortableRow({
           type="button"
           variant="ghost"
           size="icon"
-          className="mt-0.5 size-7 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/row:opacity-100"
+          className="mt-0.5 size-7 shrink-0 text-muted-foreground md:opacity-0 transition-opacity hover:text-destructive md:group-hover/row:opacity-100"
           onClick={onDeleteBlock}
           aria-label="Удалить блок"
         >
