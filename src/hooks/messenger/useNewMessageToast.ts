@@ -249,6 +249,18 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             (isEmailLike && threadEntry?.counterpart_name && !/@/.test(threadEntry.counterpart_name)
               ? threadEntry.counterpart_name
               : msg.sender_name) ?? 'Участник'
+
+          // Прямой 1:1 диалог (WhatsApp / Email / прямой TG-контакт): имя треда =
+          // имя контакта = отправитель → в скобках его НЕ показываем. Остаётся
+          // только проект (если есть); без проекта — скобок нет вовсе. Прямой TG
+          // определяем по совпадению имени треда с отправителем (у TG Business/
+          // MTProto тред назван по контакту); WhatsApp/Email — по иконке канала.
+          const isDirectChat =
+            threadIcon === 'mail' ||
+            threadIcon === 'whatsapp' ||
+            (!!threadName && threadName === senderName)
+          if (isDirectChat) threadName = null
+
           const messageId = (payload.new as { id: string }).id
 
           const textLine = await parseTextLine(msg.content, messageId)
