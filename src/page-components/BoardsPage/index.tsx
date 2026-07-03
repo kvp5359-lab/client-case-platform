@@ -42,6 +42,8 @@ import { usePinnedBoards } from '@/components/WorkspaceSidebar/usePinnedBoards'
 import { usePinnedItemLists } from '@/components/WorkspaceSidebar/usePinnedItemLists'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useItemLists, useSoftDeleteItemList, type ItemList } from '@/hooks/useItemLists'
+import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useSections, useSectionMaps } from '@/hooks/useSections'
 import { CreateItemListDialog } from '@/components/itemLists/CreateItemListDialog'
 import { ItemListSettingsDialog } from '@/components/itemLists/ItemListSettingsDialog'
@@ -97,6 +99,7 @@ export default function BoardsPage() {
   const { isPinned: isListPinned, togglePin: toggleListPin } = usePinnedItemLists(workspaceId)
   const { isOwner, can } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
   const canManageShared = isOwner || can('manage_workspace_settings')
+  const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
   const isLoading = boardsLoading || listsLoading
 
@@ -157,16 +160,26 @@ export default function BoardsPage() {
     if (current !== desired) router.replace(desired)
   }, [workspaceId, isLoading, tabParam, activeBoard, activeList, router, sectionQS])
 
-  const handleDeleteBoard = (board: Board) => {
-    if (!confirm(`Удалить доску «${board.name}»?`)) return
+  const handleDeleteBoard = async (board: Board) => {
+    const ok = await confirm({
+      title: 'Удалить доску?',
+      description: `Доска «${board.name}» и все её списки будут удалены.`,
+      variant: 'destructive',
+    })
+    if (!ok) return
     deleteBoard.mutate(
       { id: board.id, workspace_id: workspaceId! },
       { onSuccess: () => { if (activeBoard?.id === board.id) navigateToBoard(null) } },
     )
   }
 
-  const handleDeleteList = (list: ItemList) => {
-    if (!confirm(`Удалить список «${list.name}»?`)) return
+  const handleDeleteList = async (list: ItemList) => {
+    const ok = await confirm({
+      title: 'Удалить список?',
+      description: `Список «${list.name}» будет перемещён в корзину.`,
+      variant: 'destructive',
+    })
+    if (!ok) return
     softDeleteList.mutate(
       { id: list.id, workspace_id: workspaceId! },
       {
@@ -348,6 +361,8 @@ export default function BoardsPage() {
           workspaceId={workspaceId}
         />
       )}
+
+      <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </WorkspaceLayout>
   )
 }

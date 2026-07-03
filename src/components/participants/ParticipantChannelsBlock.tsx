@@ -31,6 +31,8 @@ import {
   useSetPrimaryChannel,
   type ParticipantChannel,
 } from '@/hooks/useParticipantChannels'
+import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 type Props = {
   participantId: string
@@ -61,6 +63,7 @@ export function ParticipantChannelsBlock({ participantId, workspaceId }: Props) 
   const createMut = useCreateParticipantChannel()
   const deleteMut = useDeleteParticipantChannel()
   const primaryMut = useSetPrimaryChannel()
+  const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
   // Локальное состояние формы добавления нового канала
   const [adding, setAdding] = useState(false)
@@ -102,7 +105,12 @@ export function ParticipantChannelsBlock({ participantId, workspaceId }: Props) 
   }
 
   async function handleDelete(channel: ParticipantChannel) {
-    if (!confirm(`Удалить канал «${channel.external_id}»?`)) return
+    const ok = await confirm({
+      title: 'Удалить канал?',
+      description: `Канал «${channel.external_id}» будет отвязан от участника.`,
+      variant: 'destructive',
+    })
+    if (!ok) return
     try {
       await deleteMut.mutateAsync(channel.id)
       toast.success('Канал удалён')
@@ -243,6 +251,8 @@ export function ParticipantChannelsBlock({ participantId, workspaceId }: Props) 
           </div>
         </div>
       )}
+
+      <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   )
 }

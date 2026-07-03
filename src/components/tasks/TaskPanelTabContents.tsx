@@ -36,6 +36,8 @@ import { PanelDocumentsContent } from '@/components/documents/PanelDocumentsCont
 import { AllHistoryContent } from '@/components/history/AllHistoryContent'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspacePermissions } from '@/hooks/permissions'
+import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const ExtraPanelContent = lazy(() =>
   import('@/components/extra-panel/ExtraPanelContent').then((m) => ({
@@ -83,6 +85,7 @@ export function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabCo
   const deleteThread = useDeleteThread(workspaceId)
   // Удаление в шапке боковой панели — только владельцу воркспейса.
   const { isOwner: isWorkspaceOwner } = useWorkspacePermissions({ workspaceId })
+  const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
   // Тред не найден после загрузки — либо удалён, либо RLS не пускает
   // (нет доступа к проекту/треду). Показываем заглушку.
@@ -120,8 +123,13 @@ export function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabCo
       onSettingsSave={(p) => updateSettings.mutate({ threadId: task.id, ...p })}
       onRequestDelete={
         isWorkspaceOwner
-          ? () => {
-              if (!confirm(`Удалить «${task.name}»? Можно восстановить из корзины.`)) return
+          ? async () => {
+              const ok = await confirm({
+                title: 'Удалить тред?',
+                description: `«${task.name}» будет удалён. Можно восстановить из корзины.`,
+                variant: 'destructive',
+              })
+              if (!ok) return
               deleteThread.mutate(
                 { id: task.id, name: task.name, type: task.type ?? 'task', project_id: task.project_id },
                 { onSuccess: () => onClose() },
@@ -133,6 +141,7 @@ export function ThreadTabContent({ threadId, workspaceId, onClose }: ThreadTabCo
       settingsPending={updateSettings.isPending}
       showProjectLink
     />
+    <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </Suspense>
   )
 }

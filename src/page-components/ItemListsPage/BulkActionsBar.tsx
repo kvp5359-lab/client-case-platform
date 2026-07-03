@@ -33,6 +33,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { workspaceThreadKeys, accessibleProjectKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
 import { assigneeKeys } from '@/components/tasks/useTaskAssignees'
 import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
+import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import type { PickerParticipant } from '@/components/participants/ParticipantsPicker'
 import { AddExecutorsDialog } from './AddExecutorsDialog'
@@ -71,6 +73,7 @@ export function BulkActionsBar({
 }: BulkActionsBarProps) {
   const qc = useQueryClient()
   const markReadIfFinal = useMarkThreadReadIfFinal()
+  const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
   const [pending, setPending] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [removeOpen, setRemoveOpen] = useState(false)
@@ -139,8 +142,13 @@ export function BulkActionsBar({
       [() => setAddAssigneesOpen(false)],
     )
 
-  const handleRemoveAllThreadAssignees = () => {
-    if (!confirm(`Отстранить всех исполнителей из ${threadIds.length} тредов?`)) return
+  const handleRemoveAllThreadAssignees = async () => {
+    const ok = await confirm({
+      title: 'Отстранить всех исполнителей?',
+      description: `Все исполнители будут сняты с ${threadIds.length} тредов.`,
+      variant: 'destructive',
+    })
+    if (!ok) return
     runThread(() => removeAllThreadAssignees(threadIds), 'Все исполнители отстранены')
   }
 
@@ -275,7 +283,12 @@ export function BulkActionsBar({
   }
 
   const handleRemoveAllExecutors = async () => {
-    if (!confirm(`Отстранить всех исполнителей из ${projectIds.length} проектов?`)) return
+    const ok = await confirm({
+      title: 'Отстранить всех исполнителей?',
+      description: `Все исполнители будут сняты с ${projectIds.length} проектов.`,
+      variant: 'destructive',
+    })
+    if (!ok) return
     setPending(true)
     try {
       await removeAllExecutors(projectIds)
@@ -382,8 +395,13 @@ export function BulkActionsBar({
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
-            onClick={() => {
-              if (!confirm(`Перенести ${selectedIds.size} в корзину?`)) return
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'Перенести в корзину?',
+                description: `${selectedIds.size} элементов будут перемещены в корзину.`,
+                variant: 'destructive',
+              })
+              if (!ok) return
               archive()
             }}
           >
@@ -450,6 +468,8 @@ export function BulkActionsBar({
           />
         </>
       )}
+
+      <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </>
   )
 }

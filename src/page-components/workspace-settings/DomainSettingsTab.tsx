@@ -25,6 +25,8 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { workspaceKeys, workspaceDomainKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
 
 const ROOT_DOMAIN = 'clientcase.app'
@@ -69,6 +71,7 @@ function formatStatus(status: DomainStatus): { text: string; variant: 'default' 
 export function DomainSettingsTab() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const queryClient = useQueryClient()
+  const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
   const { data: domain, isLoading, error } = useQuery({
     queryKey: workspaceDomainKeys.domain(workspaceId),
@@ -277,8 +280,13 @@ export function DomainSettingsTab() {
                     <Button
                       variant="ghost"
                       className="text-destructive"
-                      onClick={() => {
-                        if (confirm('Отключить свой домен? Клиенты больше не смогут заходить по нему.')) {
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: 'Отключить свой домен?',
+                          description: 'Клиенты больше не смогут заходить по нему.',
+                          variant: 'destructive',
+                        })
+                        if (ok) {
                           saveCustomDomain.mutate(null)
                         }
                       }}
@@ -327,6 +335,8 @@ export function DomainSettingsTab() {
           </Card>
         </>
       )}
+
+      <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   )
 }

@@ -19,6 +19,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { loadExecutorsOfProjects, type ExecutorOption } from './bulkExecutorActions'
 
 type RemoveExecutorDialogProps = {
@@ -39,6 +41,7 @@ export function RemoveExecutorDialog({
   const [loading, setLoading] = useState(false)
   const [options, setOptions] = useState<ExecutorOption[]>([])
   const [selected, setSelected] = useState<string | null>(null)
+  const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
   useEffect(() => {
     if (!open) return
@@ -62,6 +65,7 @@ export function RemoveExecutorDialog({
   }, [open, projectIds])
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -109,10 +113,15 @@ export function RemoveExecutorDialog({
           <Button
             variant="destructive"
             disabled={pending || !selected}
-            onClick={() => {
+            onClick={async () => {
               if (!selected) return
               const name = options.find((o) => o.participantId === selected)?.name ?? ''
-              if (!confirm(`Отстранить «${name}» из выделенных проектов?`)) return
+              const ok = await confirm({
+                title: 'Отстранить исполнителя?',
+                description: `«${name}» будет снят со всех выделенных проектов.`,
+                variant: 'destructive',
+              })
+              if (!ok) return
               onConfirm(selected)
             }}
           >
@@ -122,5 +131,7 @@ export function RemoveExecutorDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
+    </>
   )
 }

@@ -17,6 +17,8 @@ import {
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { useParticipantsMutations } from '@/hooks/permissions/useParticipantsMutations'
 import { EditParticipantDialog } from '@/components/participants/EditParticipantDialog'
+import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { Participant } from '@/types/entities'
 import { cn } from '@/lib/utils'
 
@@ -209,6 +211,7 @@ function MergePicker({ contact, onCancel, onDone }: MergePickerProps) {
   const [search, setSearch] = useState('')
   const { data: allParticipants = [] } = useWorkspaceParticipants(contact.workspace_id)
   const mergeMutation = useMergeParticipants(contact.workspace_id)
+  const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
   const candidates = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -253,13 +256,15 @@ function MergePicker({ contact, onCancel, onDone }: MergePickerProps) {
               key={p.id}
               type="button"
               disabled={mergeMutation.isPending}
-              onClick={() => {
-                if (
-                  !confirm(
-                    `Объединить «${contact.name}» в «${p.name}»? ` +
-                      `Все переписки текущего контакта перейдут в выбранный, а текущий будет скрыт.`,
-                  )
-                ) return
+              onClick={async () => {
+                const ok = await confirm({
+                  title: 'Объединить контакты?',
+                  description:
+                    `«${contact.name}» будет влит в «${p.name}». ` +
+                    `Все переписки текущего контакта перейдут в выбранный, а текущий будет скрыт.`,
+                  variant: 'destructive',
+                })
+                if (!ok) return
                 mergeMutation.mutate(
                   { targetId: p.id, sourceId: contact.id },
                   { onSuccess: onDone },
@@ -293,6 +298,7 @@ function MergePicker({ contact, onCancel, onDone }: MergePickerProps) {
           Отмена
         </button>
       </div>
+      <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   )
 }

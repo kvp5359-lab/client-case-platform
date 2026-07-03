@@ -21,6 +21,8 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { ParticipantsPicker } from '@/components/participants/ParticipantsPicker'
+import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useUpdateBoard, useDeleteBoard } from './hooks/useBoardMutations'
 import { useBoardLists, useBoardMembers } from './hooks/useBoardQuery'
 import { DEFAULT_COLUMN_WIDTH, MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH, type Board } from './types'
@@ -34,6 +36,7 @@ type EditBoardDialogProps = {
 export function EditBoardDialog({ open, onClose, board }: EditBoardDialogProps) {
   const updateBoard = useUpdateBoard()
   const deleteBoard = useDeleteBoard()
+  const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
   const { data: lists } = useBoardLists(board.id)
   const { user } = useAuth()
   const { data: participants = [] } = useWorkspaceParticipants(board.workspace_id)
@@ -104,8 +107,13 @@ export function EditBoardDialog({ open, onClose, board }: EditBoardDialogProps) 
     )
   }
 
-  const handleDelete = () => {
-    if (!confirm('Удалить доску и все её списки?')) return
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: 'Удалить доску?',
+      description: 'Доска и все её списки будут удалены.',
+      variant: 'destructive',
+    })
+    if (!ok) return
     deleteBoard.mutate(
       { id: board.id, workspace_id: board.workspace_id },
       { onSuccess: onClose },
@@ -113,6 +121,7 @@ export function EditBoardDialog({ open, onClose, board }: EditBoardDialogProps) 
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-[400px]">
         <form onSubmit={handleSubmit}>
@@ -207,5 +216,7 @@ export function EditBoardDialog({ open, onClose, board }: EditBoardDialogProps) 
         </form>
       </DialogContent>
     </Dialog>
+    <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
+    </>
   )
 }

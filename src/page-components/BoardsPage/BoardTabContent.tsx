@@ -11,6 +11,8 @@ import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useUpdateTaskStatus, useUpdateTaskDeadline } from '@/components/tasks/useTaskMutations'
 import { useDeleteThread } from '@/hooks/messenger/useProjectThreads'
 import { useWorkspacePermissions } from '@/hooks/permissions'
+import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { BoardView } from '@/components/boards/BoardView'
@@ -84,10 +86,16 @@ export function BoardTabContent({
   // Гейтим «Удалить» в карточном меню — только владельцу воркспейса (см.
   // комментарий в TaskListView.tsx — RLS пропускает любого с access к треду).
   const { isOwner: isWorkspaceOwner } = useWorkspacePermissions({ workspaceId })
+  const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
   const handleDeleteTask = useCallback(
-    (t: WorkspaceTask) => {
-      if (!confirm(`Удалить «${t.name}»? Можно восстановить из корзины.`)) return
+    async (t: WorkspaceTask) => {
+      const ok = await confirm({
+        title: 'Удалить тред?',
+        description: `«${t.name}» будет удалён. Можно восстановить из корзины.`,
+        variant: 'destructive',
+      })
+      if (!ok) return
       deleteThreadMutation.mutate({
         id: t.id,
         name: t.name,
@@ -95,7 +103,7 @@ export function BoardTabContent({
         project_id: t.project_id,
       })
     },
-    [deleteThreadMutation],
+    [deleteThreadMutation, confirm],
   )
 
   const handleDeadlineChange = useCallback(
@@ -168,6 +176,8 @@ export function BoardTabContent({
         boardId={board.id}
         existingColumns={lists ? Math.max(0, ...lists.map((l) => l.column_index)) + 1 : 1}
       />
+
+      <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   )
 }
