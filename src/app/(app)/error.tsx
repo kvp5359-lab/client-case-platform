@@ -8,6 +8,7 @@
 
 import { useEffect } from 'react'
 import { logger } from '@/utils/logger'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 
 export default function AppError({
   error,
@@ -20,14 +21,17 @@ export default function AppError({
     logger.error('[app/(app)/error]', error)
   }, [error])
 
+  const message = getUserFacingErrorMessage(error, 'Не удалось загрузить содержимое')
+
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
       <h2 className="text-lg font-semibold text-gray-900 mb-2">
         Ошибка при загрузке раздела
       </h2>
-      <p className="text-sm text-gray-600 mb-4 max-w-md">
-        {error.message || 'Не удалось загрузить содержимое'}
-      </p>
+      <p className="text-sm text-gray-600 mb-4 max-w-md">{message}</p>
+      {process.env.NODE_ENV === 'development' && error.message && (
+        <pre className="text-xs text-gray-400 mb-4 max-w-md overflow-auto whitespace-pre-wrap">{error.message}</pre>
+      )}
       <button
         type="button"
         onClick={reset}
