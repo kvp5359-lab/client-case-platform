@@ -23,6 +23,8 @@ type EmailRecipientInputProps = {
   onAddChip: (chip: EmailChip) => void
   onRemoveChip: (email: string) => void
   onRemoveLast: () => void
+  /** Префикс-подпись внутри поля (напр. «Кому:»), как в форме задачи. */
+  prefix?: string
 }
 
 export function EmailRecipientInput({
@@ -35,6 +37,7 @@ export function EmailRecipientInput({
   onAddChip,
   onRemoveChip,
   onRemoveLast,
+  prefix,
 }: EmailRecipientInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -58,6 +61,9 @@ export function EmailRecipientInput({
         className="flex flex-wrap items-center gap-1 min-h-[36px] px-3 py-1 rounded-md border bg-background text-sm ring-offset-background focus-within:ring-1 focus-within:ring-ring cursor-text"
         onClick={() => inputRef.current?.focus()}
       >
+        {prefix && (
+          <span className="text-sm text-muted-foreground/70 shrink-0 select-none">{prefix}</span>
+        )}
         {chips.map((chip) => (
           <span
             key={chip.email}

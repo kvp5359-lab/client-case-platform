@@ -210,6 +210,8 @@ type ApplyTemplateContext = {
 export type AppliedTemplate = {
   tabMode: 'task' | 'chat' | 'email'
   name: string
+  /** Описание по умолчанию для треда (project_threads.description). */
+  description: string
   accentColor: ThreadAccentColor
   icon: string
   accessType: 'all' | 'roles'
@@ -240,6 +242,11 @@ export function applyTemplate(
     ? replacePlaceholders(template.thread_name_template, placeholderCtx)
     : ''
 
+  // Default description (внутренняя заметка треда)
+  const description = template.default_description
+    ? replacePlaceholders(template.default_description, placeholderCtx)
+    : ''
+
   // Status — проверяем что существует
   const taskStatusId =
     template.default_status_id && ctx.taskStatusIds.has(template.default_status_id)
@@ -250,23 +257,16 @@ export function applyTemplate(
   const taskDeadline =
     template.deadline_days != null ? addDays(new Date(), template.deadline_days) : undefined
 
-  // Assignees — фильтруем по участникам проекта
-  const templateAssigneeIds = (template.thread_template_assignees ?? []).map(
+  // Assignees — применяем ВСЕХ исполнителей шаблона безусловно. Раньше отсеивали
+  // тех, кого нет в участниках проекта (owner/сотрудник вне проекта терялся) —
+  // но назначение и так даёт доступ к задаче без доступа к проекту. Плюс это
+  // убирает гонку: applyTemplate срабатывает при открытии, до загрузки участников
+  // проекта — фильтр по ним ронял исполнителей. Список участников используется
+  // только чтобы отобразить чип в форме (см. assigneeParticipants), не для отбора.
+  const foundIds: string[] = (template.thread_template_assignees ?? []).map(
     (a) => a.participant_id,
   )
-  const foundIds: string[] = []
   const missingAssignees: string[] = []
-
-  for (const pid of templateAssigneeIds) {
-    if (ctx.projectParticipantIds.has(pid)) {
-      foundIds.push(pid)
-    } else {
-      const p = ctx.allParticipants.find((pp) => pp.id === pid)
-      if (p) {
-        missingAssignees.push(`${p.name}${p.last_name ? ' ' + p.last_name : ''}`)
-      }
-    }
-  }
 
   // Channel type
   const channelType = template.is_email ? 'email' : ('none' as const)
@@ -301,6 +301,7 @@ export function applyTemplate(
   return {
     tabMode,
     name,
+    description,
     accentColor: template.accent_color as ThreadAccentColor,
     icon: template.icon,
     accessType: template.access_type,

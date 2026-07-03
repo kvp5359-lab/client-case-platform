@@ -78,10 +78,13 @@ export function QuickActionsProvider({
         toast.error('Шаблон треда не найден')
         return
       }
+      const tpl = data as unknown as ThreadTemplate
+      // Проект: явно заданный в быстром действии перебивает; иначе — «проект по
+      // умолчанию» из самого шаблона (тут контекста проекта нет).
       setThreadDialog({
         open: true,
-        template: data as unknown as ThreadTemplate,
-        targetProjectId: action.targetProjectId ?? null,
+        template: tpl,
+        targetProjectId: action.targetProjectId ?? tpl.default_project_id ?? null,
       })
     } catch (err) {
       toast.error('Не удалось загрузить шаблон треда', {

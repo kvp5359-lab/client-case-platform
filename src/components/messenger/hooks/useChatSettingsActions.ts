@@ -11,7 +11,7 @@
  * и финальный объект, который отдаётся в UI.
  */
 
-import { useCallback, useEffect, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, type RefObject } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import {
@@ -105,12 +105,25 @@ export function useChatSettingsActions({
   const { data: selectedProjectParticipants = [] } = useProjectParticipants(
     open && effectiveProjectId ? effectiveProjectId : undefined,
   )
+  // Workspace-участники грузим ВСЕГДА (не только в no-project) — нужны, чтобы
+  // показать/назначить исполнителя, которого нет среди участников проекта
+  // (напр. владельца): назначение даёт доступ к задаче даже без доступа к проекту.
   const { data: workspaceParticipants = [] } = useWorkspaceParticipants(
-    open && !effectiveProjectId ? (resolvedWorkspaceId ?? undefined) : undefined,
+    open ? (resolvedWorkspaceId ?? undefined) : undefined,
   )
   const effectiveParticipants = effectiveProjectId
     ? selectedProjectParticipants
     : workspaceParticipants
+  // Список для попапа исполнителей: участники проекта + все сотрудники воркспейса
+  // (дедуп по id). Так исполнитель из шаблона, не состоящий в проекте, виден и
+  // выбираем. Прочие потребители effectiveParticipants (упоминания/дефолты) не
+  // затронуты.
+  const assigneeParticipants = useMemo(() => {
+    const byId = new Map<string, (typeof effectiveParticipants)[number]>()
+    for (const p of effectiveParticipants) byId.set(p.id, p)
+    for (const p of workspaceParticipants) if (!byId.has(p.id)) byId.set(p.id, p)
+    return Array.from(byId.values())
+  }, [effectiveParticipants, workspaceParticipants])
 
   // ── Email link (edit mode) ──
   const { data: emailLink } = useEmailLink(chat?.id)
@@ -364,6 +377,7 @@ export function useChatSettingsActions({
     taskStatuses,
     workspaceProjects,
     effectiveParticipants,
+    assigneeParticipants,
     currentStatus,
     emailLink,
     emailSuggestions,

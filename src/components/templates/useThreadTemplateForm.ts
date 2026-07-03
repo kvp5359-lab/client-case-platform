@@ -46,6 +46,10 @@ export function useThreadTemplateForm({
     new Set(template?.access_roles ?? []),
   )
   const [statusId, setStatusId] = useState<string | null>(template?.default_status_id ?? null)
+  const [defaultProjectId, setDefaultProjectId] = useState<string | null>(
+    template?.default_project_id ?? null,
+  )
+  const [defaultDescription, setDefaultDescription] = useState(template?.default_description ?? '')
   const [onCompleteStatusId, setOnCompleteStatusId] = useState<string | null>(
     template?.on_complete_set_project_status_id ?? null,
   )
@@ -133,8 +137,11 @@ export function useThreadTemplateForm({
       icon,
       access_type: accessType,
       access_roles: accessType === 'roles' ? Array.from(selectedRoles) : [],
-      default_status_id: isTask ? statusId : null,
-      deadline_days: (isTask || isEmail) && days != null && !isNaN(days) ? days : null,
+      // Статус и дедлайн — для всех типов треда (задача/чат/email), унифицировано.
+      default_status_id: statusId,
+      default_project_id: defaultProjectId,
+      default_description: defaultDescription.trim() || null,
+      deadline_days: days != null && !isNaN(days) ? days : null,
       on_complete_set_project_status_id: isTask ? onCompleteStatusId : null,
       assignee_ids: isTask || isEmail ? Array.from(assigneeIds) : [],
       default_contact_email: isEmail ? enrichedEmails.map((e) => e.email).join(', ') : '',
@@ -153,6 +160,8 @@ export function useThreadTemplateForm({
     accessType,
     selectedRoles,
     statusId,
+    defaultProjectId,
+    defaultDescription,
     onCompleteStatusId,
     deadlineDays,
     assigneeIds,
@@ -198,6 +207,10 @@ export function useThreadTemplateForm({
     selectedRoles,
     statusId,
     setStatusId,
+    defaultProjectId,
+    setDefaultProjectId,
+    defaultDescription,
+    setDefaultDescription,
     onCompleteStatusId,
     setOnCompleteStatusId,
     deadlineDays,

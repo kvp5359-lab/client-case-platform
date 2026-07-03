@@ -503,7 +503,7 @@ export function ChatSettingsDialog({
 
           {/* Исполнители (для задач, чатов, email) */}
           <ChatSettingsAssignees
-            participants={actions.effectiveParticipants}
+            participants={actions.assigneeParticipants}
             userId={user?.id}
             isEditMode={form.isEditMode}
             editAssigneeSet={actions.editAssigneeSet}

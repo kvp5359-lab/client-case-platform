@@ -8050,6 +8050,8 @@ export type Database = {
           created_by: string | null
           deadline_days: number | null
           default_contact_email: string | null
+          default_description: string | null
+          default_project_id: string | null
           default_status_id: string | null
           description: string | null
           email_subject_template: string | null
@@ -8074,6 +8076,8 @@ export type Database = {
           created_by?: string | null
           deadline_days?: number | null
           default_contact_email?: string | null
+          default_description?: string | null
+          default_project_id?: string | null
           default_status_id?: string | null
           description?: string | null
           email_subject_template?: string | null
@@ -8098,6 +8102,8 @@ export type Database = {
           created_by?: string | null
           deadline_days?: number | null
           default_contact_email?: string | null
+          default_description?: string | null
+          default_project_id?: string | null
           default_status_id?: string | null
           description?: string | null
           email_subject_template?: string | null
@@ -8115,6 +8121,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "thread_templates_default_project_id_fkey"
+            columns: ["default_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "thread_templates_default_status_id_fkey"
             columns: ["default_status_id"]

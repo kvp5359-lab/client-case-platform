@@ -16,6 +16,18 @@ export type ThreadTemplate = {
    * global (shown in workspace settings and in every project's "+" menu).
    */
   owner_project_template_id: string | null
+  /**
+   * Проект по умолчанию. Когда задан — тред из этого шаблона, созданный там,
+   * где нет контекста проекта (глобальное меню «+/Новый»), сразу заводится в
+   * этом проекте. NULL = проект выбирается при создании как раньше.
+   */
+  default_project_id: string | null
+  /**
+   * Описание по умолчанию для создаваемого треда (project_threads.description —
+   * внутренняя заметка команды). Отдельно от `description` — та описывает сам
+   * шаблон (список/поиск). NULL = без предзаполнения.
+   */
+  default_description: string | null
   name: string
   description: string | null
   thread_type: 'chat' | 'task'
@@ -56,6 +68,8 @@ export type ThreadTemplateFormData = {
   access_type: 'all' | 'roles'
   access_roles: string[]
   default_status_id: string | null
+  default_project_id: string | null
+  default_description: string | null
   deadline_days: number | null
   on_complete_set_project_status_id: string | null
   assignee_ids: string[] // participant IDs

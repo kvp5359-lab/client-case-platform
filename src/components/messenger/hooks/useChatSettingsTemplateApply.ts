@@ -87,6 +87,7 @@ export function useChatSettingsTemplateApply({
       })
       form.setTabMode(result.tabMode)
       form.setName(result.name)
+      if (result.description) form.setDescription(result.description)
       form.setAccentColor(result.accentColor)
       form.setIcon(result.icon)
       form.setAccessType(result.accessType)

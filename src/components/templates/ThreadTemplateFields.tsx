@@ -13,13 +13,13 @@
  * где не нужно.
  */
 
-import { useState } from 'react'
+import { createElement, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Users, UserCheck } from 'lucide-react'
+import { Users, UserCheck, CircleDashed, Calendar, Mail } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -27,15 +27,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { safeCssColor } from '@/utils/isValidCssColor'
+import { getStatusIcon } from '@/components/common/status-icons'
+import { acc } from '@/lib/accentPalette'
 import { IconColorPicker } from './IconColorPicker'
 import { StatusPicker } from './StatusPicker'
 import { AssigneesPopover } from '@/components/tasks/AssigneesPopover'
+import { ChatSettingsProjectSelector } from '@/components/messenger/ChatSettingsProjectSelector'
+import { ChatSettingsStatusPopover } from '@/components/messenger/ChatSettingsStatusPopover'
+import { ChatSettingsIconColorPicker } from '@/components/messenger/ChatSettingsIconColorPicker'
 import { EmailRecipientInput, type EmailChip } from './EmailRecipientInput'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
 import type { Tables } from '@/types/database'
 
 type StatusRow = Tables<'statuses'>
+
+/** Форма проекта для селектора «проект по умолчанию» (совпадает с useWorkspaceProjects). */
+export type ThreadTemplateProjectOption = {
+  id: string
+  name: string
+  description: string | null
+  template_id: string | null
+  status_id: string | null
+  project_templates: { name: string } | null
+}
 
 export const PROJECT_ROLE_OPTIONS = [
   { value: 'Администратор', label: 'Администраторы' },
@@ -83,6 +106,22 @@ export type ThreadTemplateFieldsProps = {
   onAccentColorChange: (c: ThreadAccentColor) => void
   icon: string
   onIconChange: (i: string) => void
+
+  /**
+   * Стиль как в форме задачи: название/описание/статус/иконка в единой рамке.
+   * Включается только в редакторе шаблона треда (в «Повторяющихся» — старый вид).
+   */
+  taskStyleThreadBlock?: boolean
+
+  // Описание по умолчанию треда (только в редакторе шаблона, при taskStyleThreadBlock)
+  defaultDescription?: string
+  onDefaultDescriptionChange?: (v: string) => void
+
+  // Проект по умолчанию (только в редакторе шаблона треда)
+  showDefaultProject?: boolean
+  workspaceProjects?: ThreadTemplateProjectOption[]
+  defaultProjectId?: string | null
+  onDefaultProjectChange?: (id: string | null) => void
 
   // Дедлайн «N дней» (только в редакторе шаблона)
   showDeadlineDays?: boolean
@@ -134,6 +173,13 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
     onAccentColorChange,
     icon,
     onIconChange,
+    taskStyleThreadBlock,
+    defaultDescription = '',
+    onDefaultDescriptionChange,
+    showDefaultProject,
+    workspaceProjects = [],
+    defaultProjectId = null,
+    onDefaultProjectChange,
     showDeadlineDays,
     deadlineDays = '',
     onDeadlineDaysChange,
@@ -156,6 +202,12 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
   const [iconColorOpen, setIconColorOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
 
+  const currentStatus = taskStatuses.find((s) => s.id === statusId)
+  // Дедлайн шаблона — «через N дней после создания». Чип выглядит как «Срок»
+  // задачи, но внутри — поле числа дней (дата тут не имеет смысла: шаблон
+  // многоразовый, срок отсчитывается от даты создания треда).
+  const hasDeadline = deadlineDays.trim() !== '' && !isNaN(Number(deadlineDays))
+
   return (
     <div className="flex flex-col gap-3">
       {showTemplateName && (
@@ -172,60 +224,252 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
       )}
 
       <div className="flex flex-col gap-1">
-        <Label className="text-sm text-muted-foreground">Описание</Label>
+        <Label className="text-sm text-muted-foreground">
+          {showTemplateName ? 'Описание шаблона' : 'Описание'}
+        </Label>
         <Input
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
-          placeholder="Краткое описание"
+          placeholder={showTemplateName ? 'Для чего этот шаблон (видно в списке)' : 'Краткое описание'}
         />
       </div>
 
       {showTemplateName && <hr className="border-dashed" />}
 
-      <div className="flex items-end gap-2">
-        <div className="flex flex-col gap-1 flex-1 min-w-0">
+      {taskStyleThreadBlock ? (
+        /* Стиль как в форме задачи: единая рамка «Название треда + Описание»,
+           статус-точка слева и иконка справа внутри строки названия. */
+        <div className="flex flex-col gap-1">
           <Label className="text-sm text-muted-foreground">
             {threadNameLabel}
             <span className="text-muted-foreground/60 ml-1 font-normal text-xs">
               {'({project_name}, {date})'}
             </span>
           </Label>
-          <Input
-            value={threadNameTemplate}
-            onChange={(e) => onThreadNameChange(e.target.value)}
-            placeholder={
-              threadNamePlaceholder ??
-              (isTask
-                ? 'Проверка анкеты: {project_name}'
-                : isEmail
-                  ? 'Запрос: {project_name}'
-                  : 'Обсуждение: {project_name}')
-            }
-            className="text-[15px] font-semibold focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_2px_8px_rgba(0,0,0,0.10)]"
+          <div className="rounded-md border border-input bg-background overflow-hidden transition-shadow focus-within:shadow-[0_2px_8px_rgba(0,0,0,0.10)]">
+            <div className="flex items-center">
+              <ChatSettingsStatusPopover
+                taskStatuses={taskStatuses}
+                currentStatusId={statusId}
+                currentStatus={currentStatus}
+                statusPopoverOpen={statusOpen}
+                onOpenChange={setStatusOpen}
+                onSelect={onStatusChange}
+              />
+              <input
+                value={threadNameTemplate}
+                onChange={(e) => onThreadNameChange(e.target.value)}
+                placeholder={
+                  threadNamePlaceholder ??
+                  (isTask
+                    ? 'Проверка анкеты: {project_name}'
+                    : isEmail
+                      ? 'Запрос: {project_name}'
+                      : 'Обсуждение: {project_name}')
+                }
+                className="flex-1 min-w-0 h-9 pl-2 pr-2 py-1 text-[15px] font-semibold bg-transparent outline-none placeholder:text-muted-foreground/40 placeholder:font-normal"
+              />
+              <ChatSettingsIconColorPicker
+                accentColor={accentColor}
+                icon={icon}
+                onAccentColorChange={onAccentColorChange}
+                onIconChange={onIconChange}
+              />
+            </div>
+            <div className="h-px bg-border mx-2" />
+            <textarea
+              value={defaultDescription}
+              onChange={(e) => onDefaultDescriptionChange?.(e.target.value)}
+              placeholder="Описание — внутренняя заметка команды, клиент не видит…"
+              rows={2}
+              className="w-full resize-none bg-transparent px-3 py-2 text-sm leading-snug outline-none placeholder:text-muted-foreground/40 max-h-64 overflow-y-auto"
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-end gap-2">
+          <div className="flex flex-col gap-1 flex-1 min-w-0">
+            <Label className="text-sm text-muted-foreground">
+              {threadNameLabel}
+              <span className="text-muted-foreground/60 ml-1 font-normal text-xs">
+                {'({project_name}, {date})'}
+              </span>
+            </Label>
+            <Input
+              value={threadNameTemplate}
+              onChange={(e) => onThreadNameChange(e.target.value)}
+              placeholder={
+                threadNamePlaceholder ??
+                (isTask
+                  ? 'Проверка анкеты: {project_name}'
+                  : isEmail
+                    ? 'Запрос: {project_name}'
+                    : 'Обсуждение: {project_name}')
+              }
+              className="text-[15px] font-semibold focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_2px_8px_rgba(0,0,0,0.10)]"
+            />
+          </div>
+
+          {isTask && (
+            <StatusPicker
+              open={statusOpen}
+              onOpenChange={setStatusOpen}
+              statuses={taskStatuses}
+              statusId={statusId}
+              onStatusChange={onStatusChange}
+            />
+          )}
+
+          <IconColorPicker
+            open={iconColorOpen}
+            onOpenChange={setIconColorOpen}
+            accentColor={accentColor}
+            icon={icon}
+            onColorChange={onAccentColorChange}
+            onIconChange={onIconChange}
           />
         </div>
+      )}
 
-        {isTask && (
-          <StatusPicker
-            open={statusOpen}
-            onOpenChange={setStatusOpen}
-            statuses={taskStatuses}
-            statusId={statusId}
-            onStatusChange={onStatusChange}
-          />
-        )}
+      {/* Стиль задачи: дедлайн (датой) + статус + проект чипами одной строкой. */}
+      {taskStyleThreadBlock && (
+        <div className="flex items-center gap-2 flex-wrap -mt-1">
+          {showDeadlineDays && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    'flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors shrink-0 whitespace-nowrap',
+                    hasDeadline
+                      ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                      : 'bg-muted/60 text-muted-foreground hover:bg-muted',
+                  )}
+                  title="Дедлайн: через N дней после создания"
+                >
+                  <Calendar className="w-3 h-3 shrink-0" />
+                  {hasDeadline ? `Через ${Number(deadlineDays)} дн.` : 'Срок'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-56 p-3">
+                <Label className="text-xs text-muted-foreground">Дедлайн</Label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <Input
+                    type="number"
+                    min={0}
+                    className="w-20 h-8"
+                    value={deadlineDays}
+                    onChange={(e) => onDeadlineDaysChange?.(e.target.value)}
+                    placeholder="—"
+                    autoFocus
+                  />
+                  <span className="text-sm text-muted-foreground">дней после создания</span>
+                </div>
+                {hasDeadline && (
+                  <button
+                    type="button"
+                    onClick={() => onDeadlineDaysChange?.('')}
+                    className="mt-2 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Очистить
+                  </button>
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
 
-        <IconColorPicker
-          open={iconColorOpen}
-          onOpenChange={setIconColorOpen}
-          accentColor={accentColor}
-          icon={icon}
-          onColorChange={onAccentColorChange}
-          onIconChange={onIconChange}
-        />
-      </div>
+          {taskStatuses.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={
+                    currentStatus
+                      ? 'flex items-center gap-1.5 text-sm rounded px-2 py-1 transition-colors shrink-0 hover:brightness-95'
+                      : 'flex items-center gap-1.5 text-sm rounded px-2 py-1 transition-colors shrink-0 bg-muted/60 text-muted-foreground hover:bg-muted'
+                  }
+                  style={
+                    currentStatus
+                      ? {
+                          backgroundColor: `color-mix(in srgb, ${safeCssColor(currentStatus.color)} 14%, transparent)`,
+                          color: `color-mix(in srgb, ${safeCssColor(currentStatus.color)} 82%, black)`,
+                        }
+                      : undefined
+                  }
+                >
+                  {currentStatus ? (
+                    <>
+                      {currentStatus.icon ? (
+                        createElement(getStatusIcon(currentStatus.icon), {
+                          className: 'w-3.5 h-3.5 shrink-0',
+                        })
+                      ) : (
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: safeCssColor(currentStatus.color) }}
+                        />
+                      )}
+                      <span className="truncate max-w-[140px]">{currentStatus.name}</span>
+                    </>
+                  ) : (
+                    <>
+                      <CircleDashed className="w-3.5 h-3.5 shrink-0" />
+                      <span>Статус</span>
+                    </>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[180px]">
+                {taskStatuses.map((s) => (
+                  <DropdownMenuItem key={s.id} onClick={() => onStatusChange(s.id)} className="gap-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: safeCssColor(s.color) }}
+                    />
+                    {s.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
-      {(isTask || isEmail) && showDeadlineDays && (
+          {showDefaultProject && (
+            <ChatSettingsProjectSelector
+              workspaceProjects={workspaceProjects}
+              selectedProjectId={defaultProjectId}
+              isEditMode={false}
+              onSelect={(id) => onDefaultProjectChange?.(id)}
+              workspaceId={workspaceId}
+              variant="muted"
+              label="Выбрать проект"
+            />
+          )}
+        </div>
+      )}
+
+      {showDefaultProject && !taskStyleThreadBlock && (
+        <div className="flex flex-col gap-1">
+          <Label className="text-sm text-muted-foreground">
+            Проект по умолчанию
+            <span className="text-muted-foreground/60 ml-1 font-normal text-xs">
+              (тред сразу создаётся в нём)
+            </span>
+          </Label>
+          <div>
+            <ChatSettingsProjectSelector
+              workspaceProjects={workspaceProjects}
+              selectedProjectId={defaultProjectId}
+              isEditMode={false}
+              onSelect={(id) => onDefaultProjectChange?.(id)}
+              workspaceId={workspaceId}
+              variant="muted"
+              label="Без проекта (выбирать при создании)"
+            />
+          </div>
+        </div>
+      )}
+
+      {(isTask || isEmail) && showDeadlineDays && !taskStyleThreadBlock && (
         <div className="flex flex-col gap-1">
           <Label className="text-sm text-muted-foreground">Дедлайн</Label>
           <div className="flex items-center gap-2">
@@ -329,11 +573,17 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
         )}
       </div>
 
-      {isEmail && email && (
-        <>
-          <div className="flex flex-col gap-1">
-            <Label className="text-sm text-muted-foreground">Email получателя</Label>
+      {/* Email-поля + первое сообщение. В task-стиле — единый блок «Письмо»/«Первое
+          сообщение» на светло-акцентном фоне (как в форме задачи). Иначе (окно
+          «Повторяющиеся») — прежний плоский вид. */}
+      {taskStyleThreadBlock ? (
+        isEmail && email ? (
+          <div className={cn('rounded-md p-3 space-y-3', acc.bgSoft(accentColor))}>
+            <Label className="text-sm font-medium flex items-center gap-1.5">
+              <Mail className="h-4 w-4 text-muted-foreground" /> Письмо
+            </Label>
             <EmailRecipientInput
+              prefix="Кому:"
               chips={email.chips}
               inputValue={email.inputValue}
               dropdownOpen={email.dropdownOpen}
@@ -344,38 +594,89 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
               onRemoveChip={email.onRemoveChip}
               onRemoveLast={email.onRemoveLast}
             />
+            <div className="flex items-center gap-2 h-9 px-3 rounded-md border bg-background text-sm focus-within:ring-1 focus-within:ring-ring">
+              <span className="text-muted-foreground/70 shrink-0 select-none">Тема:</span>
+              <input
+                value={email.subject}
+                onChange={(e) => email.onSubjectChange(e.target.value)}
+                placeholder="Запрос документов: {project_name}"
+                className="flex-1 min-w-0 bg-transparent outline-none placeholder:text-muted-foreground/40"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs text-muted-foreground">Текст письма</Label>
+              <Textarea
+                value={initialMessageHtml}
+                onChange={(e) => onInitialMessageChange(e.target.value)}
+                placeholder="Здравствуйте!&#10;&#10;Просим предоставить..."
+                rows={3}
+                className="resize-y text-sm bg-background"
+              />
+            </div>
           </div>
+        ) : (
+          <div className={cn('rounded-md p-3 space-y-1', acc.bgSoft(accentColor))}>
+            <Label className="text-sm font-medium">Первое сообщение</Label>
+            <Textarea
+              value={initialMessageHtml}
+              onChange={(e) => onInitialMessageChange(e.target.value)}
+              placeholder="Текст первого сообщения..."
+              rows={3}
+              className="resize-y text-sm bg-background"
+            />
+          </div>
+        )
+      ) : (
+        <>
+          {isEmail && email && (
+            <>
+              <div className="flex flex-col gap-1">
+                <Label className="text-sm text-muted-foreground">Email получателя</Label>
+                <EmailRecipientInput
+                  chips={email.chips}
+                  inputValue={email.inputValue}
+                  dropdownOpen={email.dropdownOpen}
+                  suggestions={email.suggestions}
+                  onInputChange={email.onInputChange}
+                  onDropdownOpenChange={email.onDropdownOpenChange}
+                  onAddChip={email.onAddChip}
+                  onRemoveChip={email.onRemoveChip}
+                  onRemoveLast={email.onRemoveLast}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label className="text-sm text-muted-foreground">
+                  Тема письма
+                  <span className="text-muted-foreground/60 ml-1 font-normal text-xs">
+                    {'({project_name}, {date})'}
+                  </span>
+                </Label>
+                <Input
+                  value={email.subject}
+                  onChange={(e) => email.onSubjectChange(e.target.value)}
+                  placeholder="Запрос документов: {project_name}"
+                />
+              </div>
+            </>
+          )}
+
           <div className="flex flex-col gap-1">
             <Label className="text-sm text-muted-foreground">
-              Тема письма
-              <span className="text-muted-foreground/60 ml-1 font-normal text-xs">
-                {'({project_name}, {date})'}
-              </span>
+              Шаблон первого сообщения
+              <span className="text-muted-foreground/60 ml-1 font-normal text-xs">(HTML)</span>
             </Label>
-            <Input
-              value={email.subject}
-              onChange={(e) => email.onSubjectChange(e.target.value)}
-              placeholder="Запрос документов: {project_name}"
+            <Textarea
+              value={initialMessageHtml}
+              onChange={(e) => onInitialMessageChange(e.target.value)}
+              placeholder={
+                isEmail ? 'Здравствуйте!\n\nПросим предоставить...' : 'Текст первого сообщения...'
+              }
+              rows={3}
+              className="resize-y text-sm"
             />
           </div>
         </>
       )}
-
-      <div className="flex flex-col gap-1">
-        <Label className="text-sm text-muted-foreground">
-          Шаблон первого сообщения
-          <span className="text-muted-foreground/60 ml-1 font-normal text-xs">(HTML)</span>
-        </Label>
-        <Textarea
-          value={initialMessageHtml}
-          onChange={(e) => onInitialMessageChange(e.target.value)}
-          placeholder={
-            isEmail ? 'Здравствуйте!\n\nПросим предоставить...' : 'Текст первого сообщения...'
-          }
-          rows={3}
-          className="resize-y text-sm"
-        />
-      </div>
     </div>
   )
 }

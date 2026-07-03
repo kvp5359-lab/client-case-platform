@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { SegmentedToggle } from '@/components/ui/segmented-toggle'
 import { useTaskStatuses, useProjectStatusesForTemplate } from '@/hooks/useStatuses'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { useWorkspaceProjects } from '@/components/messenger/hooks/useChatSettingsData'
 import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTemplate'
 import { ThreadTemplateFields } from './ThreadTemplateFields'
 import type { EmailChip } from './EmailRecipientInput'
@@ -98,6 +99,7 @@ function ThreadTemplateDialogBody({
     ownerProjectTemplateId,
   )
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
+  const { data: workspaceProjects = [] } = useWorkspaceProjects(workspaceId)
 
   // Email chips
   const initialEmails: EmailChip[] = (template?.default_contact_email ?? '')
@@ -136,6 +138,10 @@ function ThreadTemplateDialogBody({
     selectedRoles,
     statusId,
     setStatusId,
+    defaultProjectId,
+    setDefaultProjectId,
+    defaultDescription,
+    setDefaultDescription,
     onCompleteStatusId,
     setOnCompleteStatusId,
     deadlineDays,
@@ -191,6 +197,13 @@ function ThreadTemplateDialogBody({
           onAccentColorChange={setAccentColor}
           icon={icon}
           onIconChange={setIcon}
+          taskStyleThreadBlock
+          defaultDescription={defaultDescription}
+          onDefaultDescriptionChange={setDefaultDescription}
+          showDefaultProject
+          workspaceProjects={workspaceProjects}
+          defaultProjectId={defaultProjectId}
+          onDefaultProjectChange={setDefaultProjectId}
           showDeadlineDays
           deadlineDays={deadlineDays}
           onDeadlineDaysChange={setDeadlineDays}
