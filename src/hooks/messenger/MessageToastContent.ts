@@ -128,33 +128,46 @@ export function buildToastContent(
       onClick: onOpen,
     },
     buildAvatar(senderName, avatarUrl, threadIcon),
-    createElement(
-      'div',
-      { className: 'flex-1 min-w-0' },
-      createElement(
+    (() => {
+      // Строка 1 — как во «Входящих»: Проект жирным + (Тред) серым. Личный
+      // диалог (без проекта) → имя треда. Строка 2 — отправитель (не дублируем,
+      // если совпал с заголовком). Дальше — текст сообщений.
+      const topTitle = projectName ?? threadName ?? senderName
+      return createElement(
         'div',
-        { className: 'font-medium text-sm' },
-        senderName,
-        projectName
+        { className: 'flex-1 min-w-0' },
+        createElement(
+          'div',
+          { className: 'font-medium text-sm truncate' },
+          topTitle,
+          projectName && threadName
+            ? createElement(
+                'span',
+                { className: 'font-normal text-muted-foreground ml-1' },
+                `(${threadName})`,
+              )
+            : null,
+        ),
+        senderName !== topTitle
           ? createElement(
-              'span',
-              { className: 'font-normal text-muted-foreground ml-1' },
-              `(${projectName}${threadName ? ` · ${threadName}` : ''})`,
+              'div',
+              { className: 'text-xs font-medium text-foreground/70 mt-0.5 truncate' },
+              senderName,
             )
           : null,
-      ),
-      createElement(
-        'div',
-        { className: 'flex flex-col gap-0.5 mt-0.5' },
-        ...lines.map((line, i) =>
-          createElement(
-            'div',
-            { key: i, className: 'text-xs text-muted-foreground break-words' },
-            line,
+        createElement(
+          'div',
+          { className: 'flex flex-col gap-0.5 mt-0.5' },
+          ...lines.map((line, i) =>
+            createElement(
+              'div',
+              { key: i, className: 'text-xs text-muted-foreground break-words' },
+              line,
+            ),
           ),
         ),
-      ),
-    ),
+      )
+    })(),
     createElement(
       'div',
       {
