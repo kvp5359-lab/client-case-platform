@@ -232,9 +232,6 @@ export const DEFAULT_SIDEBAR_SLOTS: SidebarSlot[] = [
   { id: 'nav:digests', type: 'nav', placement: 'list', order: 4, badge_mode: 'disabled' },
 ]
 
-/** Мягкий лимит на количество иконок в топ-баре. Превышение — только предупреждение. */
-export const TOPBAR_SOFT_LIMIT = 6
-
 export type BadgeModeMeta = {
   value: SidebarBadgeMode
   label: string
@@ -513,12 +510,6 @@ export function sectionIdFromSlotId(id: string): string | null {
 export function quickActionIdFromSlotId(id: string): string | null {
   if (!id.startsWith('quickaction:')) return null
   return id.slice(12)
-}
-
-/** Извлекает uuid ссылки из id вида 'link:<uuid>'. */
-export function linkIdFromSlotId(id: string): string | null {
-  if (!id.startsWith('link:')) return null
-  return id.slice(5)
 }
 
 /**

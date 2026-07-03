@@ -167,11 +167,19 @@ ORDER BY id DESC LIMIT 10;
 
 ## Окружение
 
-| Переменная | Описание |
-|-----------|----------|
-| `NEXT_PUBLIC_SUPABASE_URL` | URL Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Публичный anon ключ |
-| `NEXT_PUBLIC_APP_NAME` | Имя приложения |
+Минимум для запуска фронта — переменные основного приложения (первые три).
+`NEXT_PUBLIC_MODULE_*` нужны только модулю «Подбор ВНЖ»; без них приложение
+поднимется, но этот модуль упадёт при открытии. Шаблон — `.env.example`
+(`cp .env.example .env.local`).
+
+| Переменная | Описание | Обязательна |
+|-----------|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | URL Supabase проекта | да |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Публичный anon ключ | да |
+| `NEXT_PUBLIC_APP_NAME` | Имя приложения | да |
+| `NEXT_PUBLIC_APP_VERSION` | Версия (для отображения) | нет |
+| `NEXT_PUBLIC_MODULE_SUPABASE_URL` | URL внешней базы модуля ВНЖ (mig-modules) | для модуля ВНЖ |
+| `NEXT_PUBLIC_MODULE_SUPABASE_ANON_KEY` | Anon-ключ базы модуля ВНЖ | для модуля ВНЖ |
 
 ## Деплой
 
@@ -215,7 +223,11 @@ ORDER BY id DESC LIMIT 10;
 
 ## Локальная разработка
 
+Требуется **Node ≥22** (Dockerfile собирает на `node:22-alpine`; зафиксировано в
+`package.json` → `engines`).
+
 ```bash
+cp .env.example .env.local   # заполнить значениями Supabase-проекта (см. «Окружение»)
 npm install
 npm run dev          # http://localhost:8080 (Webpack, не Turbopack — см. gotchas)
 npm run build        # production build

@@ -14,10 +14,6 @@
  *  в списке задач). */
 export const ACTIVE_NAV_ITEM_BG_CLASS = 'bg-gray-200'
 
-/** Hover-вариант — отдельный литерал, потому что Tailwind purge не видит
- *  динамические склейки `hover:${X}`. При смене BG обновляй обе. */
-export const ACTIVE_NAV_ITEM_HOVER_BG_CLASS = 'hover:bg-gray-200'
-
 /** Цвет текста активного элемента навигации (вместе с фоном). */
 export const ACTIVE_NAV_ITEM_TEXT_CLASS = 'text-gray-900'
 

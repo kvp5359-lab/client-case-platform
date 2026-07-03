@@ -2,6 +2,9 @@
   "name": "client-case-platform",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev --webpack --port 8080",
     "build": "next build",
