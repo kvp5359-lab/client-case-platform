@@ -100,6 +100,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Безопасность (аудит 2026-07-03, Фаза 1 #4): file_path скачивается из Storage
+    // service-role'ом. Пути в бакете files начинаются с "<workspace_id>/", поэтому
+    // требуем, чтобы каждый file_path принадлежал проверенному воркспейсу — иначе
+    // член одного воркспейса выгрузил бы чужой файл по подобранному пути (IDOR).
+    const foreignDoc = documents.find(
+      (d) => typeof d.file_path !== "string" || !d.file_path.startsWith(`${workspace_id}/`),
+    );
+    if (foreignDoc) {
+      return new Response(
+        JSON.stringify({ error: "One or more documents do not belong to this workspace" }),
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
+      );
+    }
+
     // Get valid Google Drive access token (auto-refreshes if needed)
     const accessToken = await getValidAccessTokenForUser(supabaseServiceRole, user.id);
 

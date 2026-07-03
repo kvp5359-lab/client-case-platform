@@ -79,6 +79,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Безопасность (аудит 2026-07-03, Фаза 1 #4): documentId/documentKitId должны
+    // принадлежать проверенному workspaceId, иначе член одного воркспейса записал
+    // бы файл в чужой документ, подставив свой workspaceId (IDOR).
+    const [docRes, kitRes] = await Promise.all([
+      supabaseAdmin.from("documents").select("workspace_id").eq("id", documentId).maybeSingle(),
+      supabaseAdmin.from("document_kits").select("workspace_id").eq("id", documentKitId).maybeSingle(),
+    ]);
+    if (
+      !docRes.data || docRes.data.workspace_id !== workspaceId ||
+      !kitRes.data || kitRes.data.workspace_id !== workspaceId
+    ) {
+      return new Response(
+        JSON.stringify({ error: "Document or kit does not belong to this workspace" }),
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } }
+      );
+    }
+
     // Get valid Google Drive access token (auto-refreshes if needed)
     const accessToken = await getValidAccessTokenForUser(supabaseAdmin, user.id);
 

@@ -219,7 +219,8 @@ Deno.serve(async (req) => {
       const { error } = await supabaseAdmin
         .from("form_kits")
         .update({ brief_sheet_id: null })
-        .eq("id", formKitId);
+        .eq("id", formKitId)
+        .eq("workspace_id", workspaceId); // аудит 2026-07-03: не трогать чужой воркспейс
 
       if (error) {
         console.error(`${LOG_PREFIX} Failed to disconnect brief:`, error);
@@ -266,6 +267,23 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "briefName is required" }),
         { status: 400, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
+      );
+    }
+
+    // Безопасность (аудит 2026-07-03, Фаза 1 #3): projectId и formKitId должны
+    // принадлежать проверенному workspaceId. Иначе член одного воркспейса, зная
+    // чужой projectId, вытащил бы email участников чужого проекта (IDOR).
+    const [projRes, kitRes] = await Promise.all([
+      supabaseAdmin.from("projects").select("workspace_id").eq("id", projectId).maybeSingle(),
+      supabaseAdmin.from("form_kits").select("workspace_id").eq("id", formKitId).maybeSingle(),
+    ]);
+    if (
+      !projRes.data || projRes.data.workspace_id !== workspaceId ||
+      !kitRes.data || kitRes.data.workspace_id !== workspaceId
+    ) {
+      return new Response(
+        JSON.stringify({ error: "Project or form kit does not belong to this workspace" }),
+        { status: 403, headers: { ...corsHeadersFor(req), "Content-Type": "application/json" } },
       );
     }
 
