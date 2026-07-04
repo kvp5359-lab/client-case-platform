@@ -16,9 +16,30 @@ export type WorkspaceUsage = {
   max_participants: number | null
   max_projects: number | null
   max_storage_mb: number | null
+  plan_code: string | null
+  plan_name: string | null
+  ai_tokens_used: number | null
+  ai_tokens_monthly: number | null
+}
+
+export type Plan = {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  price_monthly: number
+  currency: string
+  max_participants: number | null
+  max_projects: number | null
+  max_tasks: number | null
+  max_storage_mb: number | null
+  ai_tokens_monthly: number | null
+  enabled_modules: string[]
+  sort_order: number
 }
 
 const usageKey = (workspaceId: string) => ['workspace-usage', workspaceId] as const
+const plansKey = ['plans'] as const
 
 export function useWorkspaceUsageAndLimits(workspaceId: string | undefined) {
   return useQuery({
@@ -54,6 +75,22 @@ export function useUpdateWorkspaceLimits(workspaceId: string) {
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: usageKey(workspaceId) }),
+  })
+}
+
+/** Витрина тарифов (все активные). */
+export function usePlans() {
+  return useQuery({
+    queryKey: plansKey,
+    staleTime: 300_000,
+    queryFn: async (): Promise<Plan[]> => {
+      const { data, error } = await supabase
+        .from('plans' as never)
+        .select('*')
+        .order('sort_order' as never)
+      if (error) throw error
+      return (data as unknown as Plan[]) ?? []
+    },
   })
 }
 

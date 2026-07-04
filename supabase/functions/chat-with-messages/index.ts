@@ -4,6 +4,7 @@ import { corsHeadersFor } from "../_shared/edge.ts";
 import { findMissingField, findInvalidUUID } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { performRag } from "../_shared/knowledgeRag.ts";
+import { logAiUsage } from "../_shared/logAiUsage.ts";
 import { isGeminiModel, callGeminiStream, geminiImagePart, geminiPdfPart, geminiTextPart, messagesToGeminiContents, parseGeminiStreamDelta, type GeminiPart, type GeminiContent } from "../_shared/gemini-client.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -337,6 +338,9 @@ Deno.serve(async (req: Request) => {
             const decoder = new TextDecoder();
             let fullText = "";
             let buffer = "";
+            // Учёт: usageMetadata приходит (кумулятивно) в чанках, берём последний.
+            let gUsageIn = 0;
+            let gUsageOut = 0;
 
             while (true) {
               const { done, value } = await reader.read();
@@ -348,15 +352,29 @@ Deno.serve(async (req: Request) => {
 
               for (const line of lines) {
                 if (!line.startsWith("data: ")) continue;
-                const delta = parseGeminiStreamDelta(line.slice(6));
+                const raw = line.slice(6);
+                const delta = parseGeminiStreamDelta(raw);
                 if (delta) {
                   fullText += delta;
                   controller.enqueue(encoder.encode(
                     `event: text\ndata: ${JSON.stringify(delta)}\n\n`,
                   ));
                 }
+                try {
+                  const um = JSON.parse(raw)?.usageMetadata;
+                  if (um) {
+                    gUsageIn = um.promptTokenCount ?? gUsageIn;
+                    gUsageOut = um.candidatesTokenCount ?? gUsageOut;
+                  }
+                } catch { /* не-JSON строки пропускаем */ }
               }
             }
+
+            void logAiUsage({
+              workspaceId: workspace_id, functionName: "chat-with-messages",
+              provider: "google", model: aiModel, userId: user?.id ?? null, feature: "chat",
+              inputTokens: gUsageIn, outputTokens: gUsageOut,
+            });
 
             controller.enqueue(encoder.encode(
               `event: done\ndata: ${JSON.stringify({ answer: fullText })}\n\n`,
@@ -395,6 +413,9 @@ Deno.serve(async (req: Request) => {
             const decoder = new TextDecoder();
             let fullText = "";
             let buffer = "";
+            // Учёт токенов: input в message_start, output накапливается в message_delta.
+            let usageIn = 0;
+            let usageOut = 0;
 
             while (true) {
               const { done, value } = await reader.read();
@@ -414,12 +435,23 @@ Deno.serve(async (req: Request) => {
                     controller.enqueue(encoder.encode(
                       `event: text\ndata: ${JSON.stringify(text)}\n\n`,
                     ));
+                  } else if (parsed.type === "message_start" && parsed.message?.usage) {
+                    usageIn = parsed.message.usage.input_tokens ?? 0;
+                    usageOut = parsed.message.usage.output_tokens ?? 0;
+                  } else if (parsed.type === "message_delta" && parsed.usage?.output_tokens != null) {
+                    usageOut = parsed.usage.output_tokens;
                   }
                 } catch {
                   // Skip malformed JSON lines
                 }
               }
             }
+
+            void logAiUsage({
+              workspaceId: workspace_id, functionName: "chat-with-messages",
+              provider: "anthropic", model: aiModel, userId: user?.id ?? null, feature: "chat",
+              inputTokens: usageIn, outputTokens: usageOut,
+            });
 
             controller.enqueue(encoder.encode(
               `event: done\ndata: ${JSON.stringify({ answer: fullText })}\n\n`,

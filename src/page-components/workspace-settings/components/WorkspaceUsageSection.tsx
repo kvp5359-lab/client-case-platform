@@ -95,9 +95,20 @@ export function WorkspaceUsageSection({ workspaceId }: { workspaceId: string }) 
           <p className="text-sm text-gray-500">Загрузка…</p>
         ) : usage ? (
           <>
+            <div className="flex items-center justify-between pb-2 border-b">
+              <span className="text-sm text-gray-700">Тариф</span>
+              <span className="text-sm font-medium text-gray-900">
+                {usage.plan_name ?? 'Без тарифа (безлимит)'}
+              </span>
+            </div>
             <UsageRow label="Участники" used={usage.participants_count} max={usage.max_participants} />
             <UsageRow label="Проекты" used={usage.projects_count} max={usage.max_projects} />
             <UsageRow label="Хранилище" used={usage.storage_mb} max={usage.max_storage_mb} unit="МБ" />
+            <UsageRow
+              label="Токены ИИ за месяц"
+              used={usage.ai_tokens_used ?? 0}
+              max={usage.ai_tokens_monthly}
+            />
           </>
         ) : (
           <p className="text-sm text-gray-500">Нет данных</p>

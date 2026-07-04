@@ -33,9 +33,16 @@ export interface GeminiCallOptions {
   maxOutputTokens?: number;
   /** Controls thinking mode in Gemini 2.5+. Default: 1024 (low). Set 0 to disable. */
   thinkingBudget?: number;
+  /** Best-effort колбэк с расходом токенов (для учёта). Не влияет на ответ. */
+  onUsage?: (usage: { inputTokens: number; outputTokens: number }) => void;
 }
 
 interface GeminiResponse {
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+  };
   candidates?: Array<{
     content?: {
       parts?: Array<{ text?: string }>;
@@ -97,6 +104,16 @@ export async function callGeminiApi(opts: GeminiCallOptions): Promise<string> {
 
   if (data.error) {
     throw new Error(`Gemini API error: ${data.error.message || "Unknown error"}`);
+  }
+
+  // Best-effort учёт токенов (не влияет на ответ).
+  if (opts.onUsage) {
+    try {
+      opts.onUsage({
+        inputTokens: data.usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
+      });
+    } catch (_e) { /* игнор */ }
   }
 
   // Extract text from all parts

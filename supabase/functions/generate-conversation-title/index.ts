@@ -4,6 +4,7 @@ import { corsHeadersFor } from "../_shared/edge.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { isValidUUID } from "../_shared/validation.ts";
 import { isGeminiModel, callGeminiApi } from "../_shared/gemini-client.ts";
+import { logAiUsage, anthropicUsage } from "../_shared/logAiUsage.ts";
 
 interface GenerateTitleRequest {
   workspace_id: string;
@@ -130,6 +131,11 @@ Deno.serve(async (req: Request) => {
           model: aiModel,
           contents: [{ role: "user", parts: [{ text: titlePrompt }] }],
           thinkingBudget: 0,
+          onUsage: (u) => logAiUsage({
+            workspaceId: workspace_id, functionName: "generate-conversation-title",
+            provider: "google", model: aiModel, userId: user.id, feature: "title",
+            inputTokens: u.inputTokens, outputTokens: u.outputTokens,
+          }),
         });
         generatedTitle = generatedTitle.trim();
       } catch (err) {
@@ -173,6 +179,12 @@ Deno.serve(async (req: Request) => {
 
       const result = await response.json();
       generatedTitle = result.content[0]?.text?.trim() || "";
+      const usage = anthropicUsage(result);
+      await logAiUsage({
+        workspaceId: workspace_id, functionName: "generate-conversation-title",
+        provider: "anthropic", model: titleModel, userId: user.id, feature: "title",
+        inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
+      });
     }
 
     // Clean up the title
