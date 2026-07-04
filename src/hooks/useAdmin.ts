@@ -587,3 +587,34 @@ export async function fetchOwnerEmails(): Promise<OwnerEmailRow[]> {
   if (error) throw error
   return (data as unknown as OwnerEmailRow[]) ?? []
 }
+
+// ── Этап 5: метрики роста ─────────────────────────────────────────────────
+
+export type GrowthMetrics = {
+  totals: {
+    users: number
+    workspaces: number
+    active_ws_7d: number
+    active_ws_30d: number
+    paying: number
+    on_trial: number
+    past_due: number
+  }
+  signups_by_week: Array<{ week: string; count: number }>
+  workspaces_by_week: Array<{ week: string; count: number }>
+  plan_distribution: Array<{ plan: string; count: number }>
+  revenue_by_month: Array<{ month: string; currency: string; amount: number }>
+}
+
+export function useGrowthMetrics(enabled: boolean) {
+  return useQuery({
+    queryKey: ['admin-growth-metrics'],
+    enabled,
+    staleTime: 60_000,
+    queryFn: async (): Promise<GrowthMetrics | null> => {
+      const { data, error } = await supabase.rpc('admin_growth_metrics' as never, {} as never)
+      if (error) throw error
+      return (data as unknown as GrowthMetrics) ?? null
+    },
+  })
+}

@@ -15,6 +15,7 @@ import { BillingTab } from './BillingTab'
 import { HealthTab } from './HealthTab'
 import { UsageTab } from './UsageTab'
 import { AnnouncementsTab } from './AnnouncementsTab'
+import { MetricsTab } from './MetricsTab'
 import { SettingsTab } from './SettingsTab'
 import { AuditTab } from './AuditTab'
 
@@ -24,6 +25,7 @@ const TABS = [
   { key: 'billing', label: 'Биллинг' },
   { key: 'health', label: 'Здоровье' },
   { key: 'usage', label: 'Потребление' },
+  { key: 'metrics', label: 'Метрики' },
   { key: 'announcements', label: 'Объявления' },
   { key: 'settings', label: 'Настройки' },
   { key: 'audit', label: 'Журнал' },
@@ -75,6 +77,7 @@ export function AdminPage() {
       {tab === 'billing' && <BillingTab />}
       {tab === 'health' && <HealthTab />}
       {tab === 'usage' && <UsageTab />}
+      {tab === 'metrics' && <MetricsTab />}
       {tab === 'announcements' && <AnnouncementsTab />}
       {tab === 'settings' && <SettingsTab />}
       {tab === 'audit' && <AuditTab />}
