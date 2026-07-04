@@ -1,6 +1,8 @@
 /**
- * ProjectServicesSection — таблица «Услуги проекта» на вкладке Финансы.
- * Поддерживает добавление, редактирование, удаление и DnD-сортировку.
+ * ProjectServicesSection — «Услуги проекта» на вкладке Финансы.
+ * Список строк-«квитанций» (название + сумма, детали второй строкой) —
+ * формат без минимальной ширины, работает в узкой колонке и на телефоне.
+ * Поддерживает добавление, инлайн-редактирование, удаление и DnD-сортировку.
  */
 
 import { useMemo, useState } from 'react'
@@ -176,56 +178,36 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
           <EmptyState loading={isLoading} emptyText="Добавь первую услугу, чтобы начать учёт" />
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            {/* border-x только у tbody-строк через arbitrary variants —
-                заголовок остаётся без боковых разделителей, а под последней
-                строкой появляется border-b. */}
-            <table
-              className="w-full text-sm
-                [&_thead_th]:border-y
-                [&_thead_th:first-child]:border-l
-                [&_thead_th:last-child]:border-r
-                [&_tbody_tr_td:first-child]:border-l
-                [&_tbody_tr_td:last-child]:border-r
-                [&_tbody_tr:last-child_td]:border-b"
-            >
-              <thead className="bg-gray-50 text-gray-500">
-                  <tr>
-                    <th className="w-8" />
-                    <th className="text-left px-3 py-2 font-medium">Название</th>
-                    <th className="text-right px-3 py-2 font-medium w-24">Кол-во</th>
-                    <th className="text-right px-3 py-2 font-medium w-32">Цена, EUR</th>
-                    <th className="text-right px-3 py-2 font-medium w-24">Налог</th>
-                    <th className="text-right px-3 py-2 font-medium w-32">Сумма, EUR</th>
-                    <th className="px-3 py-2 w-24" />
-                  </tr>
-                </thead>
-                <SortableContext
-                  items={services.map((s) => s.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <tbody>
-                    {services.map((s) => (
-                      <SortableServiceRow
-                        key={s.id}
-                        service={s}
-                        taxOptions={taxRates.map((t) => ({
-                          value: t.id,
-                          label: t.name,
-                          hint: `${Number(t.rate)}%`,
-                        }))}
-                        taxRateById={(id) => {
-                          const t = taxRates.find((r) => r.id === id)
-                          return t ? Number(t.rate) : null
-                        }}
-                        onPatch={(patch) => handlePatch(s.id, patch)}
-                        onEdit={() => openEdit(s)}
-                        onDelete={() => askDelete(s)}
-                        isDeleting={deleteMutation.isPending}
-                      />
-                    ))}
-                  </tbody>
-                </SortableContext>
-            </table>
+            {/* Формат «строка-квитанция» (как у Доходов/Расходов): название и
+                сумма крупно, детали (кол-во × цена · налог) — мелкой второй
+                строкой. Без минимальной ширины таблицы — живёт и в половине
+                экрана, и на телефоне. DnD-сортировка сохранена. */}
+            <div className="rounded-lg border divide-y overflow-hidden">
+              <SortableContext
+                items={services.map((s) => s.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {services.map((s) => (
+                  <SortableServiceRow
+                    key={s.id}
+                    service={s}
+                    taxOptions={taxRates.map((t) => ({
+                      value: t.id,
+                      label: t.name,
+                      hint: `${Number(t.rate)}%`,
+                    }))}
+                    taxRateById={(id) => {
+                      const t = taxRates.find((r) => r.id === id)
+                      return t ? Number(t.rate) : null
+                    }}
+                    onPatch={(patch) => handlePatch(s.id, patch)}
+                    onEdit={() => openEdit(s)}
+                    onDelete={() => askDelete(s)}
+                    isDeleting={deleteMutation.isPending}
+                  />
+                ))}
+              </SortableContext>
+            </div>
             {/* Footer-теги — без боковых границ */}
             <div className="px-3 py-2 flex items-center justify-end gap-2 text-sm tabular-nums">
               {hasAnyTax && (
@@ -298,104 +280,115 @@ function SortableServiceRow({
   }
 
   return (
-    <tr ref={setNodeRef} style={style} className="border-t">
-      <td className="px-2 py-2">
-        <button
-          type="button"
-          className="cursor-grab active:cursor-grabbing touch-none p-1 -m-1 text-gray-400 hover:text-gray-600"
-          aria-label="Перетащить"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-      </td>
-      <td className="px-3 py-2">
-        <InlineEditCell
-          type="text"
-          value={service.name}
-          onCommit={(v) => {
-            const trimmed = v.trim()
-            if (!trimmed || trimmed === service.name) return
-            onPatch({ name: trimmed })
-          }}
-          placeholder="Название"
-        />
-      </td>
-      <td className="px-3 py-2">
-        <InlineEditCell
-          type="number"
-          align="right"
-          value={Number(service.quantity)}
-          format={(v) => (typeof v === 'number' ? v.toLocaleString('ru-RU') : '—')}
-          min={0.01}
-          onCommit={(v) => {
-            if (v <= 0) return
-            onPatch({ quantity: v })
-          }}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <InlineEditCell
-          type="number"
-          align="right"
-          value={Number(service.price)}
-          format={(v) => (typeof v === 'number' ? fmt(v) : '—')}
-          min={0}
-          onCommit={(v) => {
-            if (v < 0) return
-            onPatch({ price: v })
-          }}
-        />
-      </td>
-      <td className="px-3 py-2 text-gray-600">
-        <InlineEditSelect
-          align="right"
-          value={service.tax_rate_id}
-          options={taxOptions}
-          noneLabel="— Без налога —"
-          searchPlaceholder="Поиск ставки"
-          emptyText={
-            service.tax_rate == null
-              ? '—'
-              : `${Number(service.tax_rate).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}%`
-          }
-          onCommit={(id) => {
-            const rate = id ? taxRateById(id) : null
-            onPatch({ tax_rate_id: id, tax_rate: rate })
-          }}
-        />
-      </td>
-      <td className="px-3 py-2 text-right font-medium tabular-nums">
-        {(() => {
-          const sub = Number(service.total ?? 0)
-          const rate = service.tax_rate == null ? 0 : Number(service.tax_rate)
-          return fmt(sub * (1 + rate / 100))
-        })()}
-      </td>
-      <td className="px-3 py-2 text-right">
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-gray-400 hover:text-gray-900"
-            onClick={onEdit}
-            aria-label="Редактировать"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
-            onClick={onDelete}
-            disabled={isDeleting}
-            aria-label="Удалить"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-start gap-1 pl-1.5 pr-3 py-2 group/row${isDragging ? ' bg-white' : ''}`}
+    >
+      <button
+        type="button"
+        className="cursor-grab active:cursor-grabbing touch-none p-1 mt-0.5 text-gray-400 hover:text-gray-600"
+        aria-label="Перетащить"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <InlineEditCell
+              type="text"
+              value={service.name}
+              onCommit={(v) => {
+                const trimmed = v.trim()
+                if (!trimmed || trimmed === service.name) return
+                onPatch({ name: trimmed })
+              }}
+              placeholder="Название"
+            />
+          </div>
+          <div className="w-28 shrink-0 text-right text-sm font-medium tabular-nums py-1">
+            {(() => {
+              const sub = Number(service.total ?? 0)
+              const rate = service.tax_rate == null ? 0 : Number(service.tax_rate)
+              return `${fmt(sub * (1 + rate / 100))} €`
+            })()}
+          </div>
         </div>
-      </td>
-    </tr>
+        <div className="mt-0.5 flex items-center gap-1.5 text-gray-500">
+          <div className="shrink-0 min-w-[1.5rem]">
+            <InlineEditCell
+              type="number"
+              value={Number(service.quantity)}
+              className="text-xs"
+              format={(v) => (typeof v === 'number' ? v.toLocaleString('ru-RU') : '—')}
+              min={0.01}
+              onCommit={(v) => {
+                if (v <= 0) return
+                onPatch({ quantity: v })
+              }}
+            />
+          </div>
+          <span className="text-gray-300 select-none">×</span>
+          <div className="shrink-0 min-w-[3rem]">
+            <InlineEditCell
+              type="number"
+              value={Number(service.price)}
+              className="text-xs"
+              format={(v) => (typeof v === 'number' ? fmt(v) : '—')}
+              min={0}
+              onCommit={(v) => {
+                if (v < 0) return
+                onPatch({ price: v })
+              }}
+            />
+          </div>
+          <span className="text-gray-300 select-none">·</span>
+          <span className="text-gray-400 shrink-0 text-xs select-none">Налог:</span>
+          <div className="min-w-0 max-w-[10rem]">
+            <InlineEditSelect
+              value={service.tax_rate_id}
+              options={taxOptions}
+              className="text-xs"
+              noneLabel="— Без налога —"
+              searchPlaceholder="Поиск ставки"
+              emptyText={
+                service.tax_rate == null
+                  ? '—'
+                  : `${Number(service.tax_rate).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}%`
+              }
+              onCommit={(id) => {
+                const rate = id ? taxRateById(id) : null
+                onPatch({ tax_rate_id: id, tax_rate: rate })
+              }}
+            />
+          </div>
+          {/* Действия — в конце строки деталей: не резервируют пустоту
+              справа от суммы. На тач всегда видны. */}
+          <div className="ml-auto flex items-center gap-0.5 shrink-0 md:opacity-0 md:group-hover/row:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-gray-400 hover:text-gray-900"
+              onClick={onEdit}
+              aria-label="Редактировать"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50"
+              onClick={onDelete}
+              disabled={isDeleting}
+              aria-label="Удалить"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

@@ -91,8 +91,10 @@ export function FinanceSummary({ projectId }: Props) {
     }
   }, [services, incomes, expenses])
 
+  // auto-fit по фактической ширине (а не брейкпоинты окна): при открытой
+  // боковой панели контент уже, и карточки сами переносятся на новый ряд.
   return (
-    <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+    <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
       <StatCard label="Стоимость" value={`${fmt(stats.cost)} EUR`} hint="Услуги проекта с налогом" />
       <StatCard
         label="Доходы"

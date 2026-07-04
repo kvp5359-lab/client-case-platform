@@ -1,6 +1,8 @@
 /**
- * ProjectTransactionsSection — таблица транзакций (доходы или расходы).
+ * ProjectTransactionsSection — список транзакций (доходы или расходы).
  * Единый компонент с пропом type — структура полей и логика идентичные.
+ * Строки-«квитанции» (контрагент + сумма, детали второй строкой) — формат
+ * без минимальной ширины, работает в узкой колонке и на телефоне.
  */
 
 import { useMemo, useState } from 'react'
@@ -211,136 +213,127 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
           <EmptyState loading={isLoading} emptyText={config.emptyText} />
         ) : (
           <>
-            {/* border-x только у tbody-строк через arbitrary variants —
-                заголовок остаётся без боковых разделителей, а под последней
-                строкой появляется border-b. */}
-            <table
-              className="w-full text-sm
-                [&_thead_th]:border-y
-                [&_thead_th:first-child]:border-l
-                [&_thead_th:last-child]:border-r
-                [&_tbody_tr_td:first-child]:border-l
-                [&_tbody_tr_td:last-child]:border-r
-                [&_tbody_tr:last-child_td]:border-b"
-            >
-              <thead className="bg-gray-50 text-gray-500">
-                <tr>
-                  <th className="text-left px-3 py-2 font-medium w-28">Дата</th>
-                  <th className="text-left px-3 py-2 font-medium">{config.subjectLabel}</th>
-                  <th className="text-left px-3 py-2 font-medium">Статья</th>
-                  <th className="text-left px-3 py-2 font-medium">Комментарий</th>
-                  <th className="text-right px-3 py-2 font-medium w-24">Налог</th>
-                  <th className="text-right px-3 py-2 font-medium w-32">Сумма, EUR</th>
-                  <th className="px-3 py-2 w-24" />
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((t) => (
-                  <tr key={t.id} className="border-t">
-                    <td className="px-3 py-2">
-                      <InlineEditCell
-                        type="date"
-                        value={t.date}
-                        onCommit={(v) => {
-                          if (!v || v === t.date) return
-                          handlePatch(t.id, { date: v })
-                        }}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <InlineEditSelect
-                        value={t.participant_id}
-                        options={participantOptions}
-                        emptyText="—"
-                        noneLabel="— Не указан —"
-                        searchPlaceholder="Поиск по имени или email"
-                        popoverEmpty="Никого не нашли"
-                        onCommit={(id) => handlePatch(t.id, { participant_id: id })}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <InlineEditSelect
-                        value={t.category_id}
-                        options={categoryOptions}
-                        emptyText="—"
-                        noneLabel="— Не указана —"
-                        searchPlaceholder="Поиск статьи"
-                        onCommit={(id) => handlePatch(t.id, { category_id: id })}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <InlineEditCell
-                        type="text"
-                        value={t.comment ?? ''}
-                        emptyText="—"
-                        placeholder="Комментарий"
-                        onCommit={(v) => {
-                          const trimmed = v.trim()
-                          const next = trimmed === '' ? null : trimmed
-                          if (next === t.comment) return
-                          handlePatch(t.id, { comment: next })
-                        }}
-                      />
-                    </td>
-                    <td className="px-3 py-2 text-gray-600">
-                      <InlineEditSelect
-                        align="right"
-                        value={t.tax_rate_id}
-                        options={taxOptions}
-                        noneLabel="— Без налога —"
-                        searchPlaceholder="Поиск ставки"
-                        emptyText={
-                          t.tax_rate == null
-                            ? '—'
-                            : `${Number(t.tax_rate).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}%`
-                        }
-                        onCommit={(id) => {
-                          const rate = id ? taxRateById(id) : null
-                          handlePatch(t.id, { tax_rate_id: id, tax_rate: rate })
-                        }}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <InlineEditCell
-                        type="number"
-                        align="right"
-                        value={Number(t.amount)}
-                        format={(v) => (typeof v === 'number' ? fmt(v) : '—')}
-                        min={0.01}
-                        onCommit={(v) => {
-                          if (v <= 0) return
-                          handlePatch(t.id, { amount: v })
-                        }}
-                        className="font-medium"
-                      />
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="flex items-center justify-end gap-1">
+            {/* Формат «строка-квитанция» вместо широкой таблицы: контрагент и
+                сумма крупно, детали (дата · статья · комментарий · налог) —
+                мелкой второй строкой. Не имеет минимальной ширины таблицы,
+                поэтому живёт и в половине экрана, и на телефоне. Все поля
+                редактируются инлайн, как раньше. */}
+            <div className="rounded-lg border divide-y overflow-hidden">
+              {transactions.map((t) => (
+                <div key={t.id} className="px-3 py-2 group/row">
+                  <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <InlineEditSelect
+                          value={t.participant_id}
+                          options={participantOptions}
+                          emptyText="—"
+                          noneLabel="— Не указан —"
+                          searchPlaceholder="Поиск по имени или email"
+                          popoverEmpty="Никого не нашли"
+                          onCommit={(id) => handlePatch(t.id, { participant_id: id })}
+                        />
+                      </div>
+                      <div className="w-28 shrink-0">
+                        <InlineEditCell
+                          type="number"
+                          align="right"
+                          value={Number(t.amount)}
+                          format={(v) => (typeof v === 'number' ? `${fmt(v)} €` : '—')}
+                          min={0.01}
+                          onCommit={(v) => {
+                            if (v <= 0) return
+                            handlePatch(t.id, { amount: v })
+                          }}
+                          className="font-medium tabular-nums"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-1.5 text-gray-500">
+                      <div className="w-20 shrink-0">
+                        <InlineEditCell
+                          type="date"
+                          value={t.date}
+                          className="text-xs"
+                          onCommit={(v) => {
+                            if (!v || v === t.date) return
+                            handlePatch(t.id, { date: v })
+                          }}
+                        />
+                      </div>
+                      <span className="text-gray-300 select-none">·</span>
+                      <div className="min-w-0 max-w-[35%]">
+                        <InlineEditSelect
+                          value={t.category_id}
+                          options={categoryOptions}
+                          className="text-xs"
+                          emptyText="Статья…"
+                          noneLabel="— Не указана —"
+                          searchPlaceholder="Поиск статьи"
+                          onCommit={(id) => handlePatch(t.id, { category_id: id })}
+                        />
+                      </div>
+                      <span className="text-gray-300 select-none">·</span>
+                      <div className="min-w-0 flex-1">
+                        <InlineEditCell
+                          type="text"
+                          value={t.comment ?? ''}
+                          className="text-xs"
+                          emptyText="Комментарий…"
+                          placeholder="Комментарий"
+                          onCommit={(v) => {
+                            const trimmed = v.trim()
+                            const next = trimmed === '' ? null : trimmed
+                            if (next === t.comment) return
+                            handlePatch(t.id, { comment: next })
+                          }}
+                        />
+                      </div>
+                      <span className="text-gray-400 shrink-0 text-xs select-none">Налог:</span>
+                      <div className="shrink-0 max-w-[6rem]">
+                        <InlineEditSelect
+                          value={t.tax_rate_id}
+                          options={taxOptions}
+                          className="text-xs"
+                          noneLabel="— Без налога —"
+                          searchPlaceholder="Поиск ставки"
+                          emptyText={
+                            t.tax_rate == null
+                              ? '—'
+                              : `${Number(t.tax_rate).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}%`
+                          }
+                          onCommit={(id) => {
+                            const rate = id ? taxRateById(id) : null
+                            handlePatch(t.id, { tax_rate_id: id, tax_rate: rate })
+                          }}
+                        />
+                      </div>
+                      {/* Действия — в конце строки деталей: не резервируют
+                          пустоту справа от суммы. На тач всегда видны. */}
+                      <div className="flex items-center gap-0.5 shrink-0 md:opacity-0 md:group-hover/row:opacity-100 transition-opacity">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-gray-400 hover:text-gray-900"
+                          className="h-6 w-6 text-gray-400 hover:text-gray-900"
                           onClick={() => openEdit(t)}
                           aria-label="Редактировать"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                          className="h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50"
                           onClick={() => askDelete(t)}
                           disabled={deleteMutation.isPending}
                           aria-label="Удалить"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+              ))}
+            </div>
           {/* Footer-теги без боковых разделителей.
               Цвет тега «Итого» зависит от типа: доход — синий, расход — красный. */}
           <div className="px-3 py-2 flex items-center justify-end gap-2 text-sm tabular-nums">

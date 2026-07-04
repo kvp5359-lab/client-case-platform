@@ -633,6 +633,21 @@ body[data-panel-open][data-panel-mode="push"] main {
   .composer-fmt-inline > div > button:nth-child(1) { display: none; }
 }
 
+/* Вкладка «Финансы» проекта: две колонки (услуги | доходы+расходы), когда реально
+   хватает ширины КОНТЕНТА (container query — учитывает открытую боковую панель,
+   а не только ширину окна). Левая колонка чуть шире — таблица услуг тяжелее. */
+.finance-cq {
+  container: finance-tab / inline-size;
+}
+@container finance-tab (min-width: 880px) {
+  .finance-grid {
+    /* minmax(0, …) обязателен: голый fr = minmax(auto, fr), и колонка
+       не ужимается ниже min-content содержимого → сетка вылезает за край. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 2.5rem;
+  }
+}
+
 /* AI-ассистент: запрет горизонтального скролла в Radix ScrollArea viewport */
 .side-panel [data-radix-scroll-area-viewport] {
   overflow-x: hidden !important;
