@@ -5,6 +5,7 @@ import { isValidUUID } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { resolveFileLocation } from "../_shared/storageHelpers.ts";
 import { isGeminiModel, callGeminiApi, geminiImagePart, geminiPdfPart, geminiTextPart } from "../_shared/gemini-client.ts";
+import { logAiUsage, anthropicUsage } from "../_shared/logAiUsage.ts";
 
 interface CheckDocumentRequest {
   document_id: string;
@@ -255,6 +256,11 @@ Deno.serve(async (req: Request) => {
           apiKey,
           model,
           contents: [{ role: "user", parts }],
+          onUsage: (u) => logAiUsage({
+            workspaceId: document.workspace_id, functionName: "check-document",
+            provider: "google", model, userId: user.id, feature: "document-check",
+            inputTokens: u.inputTokens, outputTokens: u.outputTokens,
+          }),
         });
       }
 
@@ -280,6 +286,12 @@ Deno.serve(async (req: Request) => {
       }
 
       const result = await resp.json();
+      const _u = anthropicUsage(result);
+      await logAiUsage({
+        workspaceId: document.workspace_id, functionName: "check-document",
+        provider: "anthropic", model, userId: user.id, feature: "document-check",
+        inputTokens: _u.inputTokens, outputTokens: _u.outputTokens,
+      });
       return result.content[0]?.text || "";
     }
 
@@ -354,6 +366,11 @@ Deno.serve(async (req: Request) => {
                   },
                 ],
                 thinkingBudget: 0,
+                onUsage: (u) => logAiUsage({
+                  workspaceId: document.workspace_id, functionName: "check-document",
+                  provider: "google", model: extractionModel, userId: user.id, feature: "text-extraction",
+                  inputTokens: u.inputTokens, outputTokens: u.outputTokens,
+                }),
               });
               console.log(`[CHECK-DOCUMENT] Step 1 done: ${documentTextContent.length} chars in ${(performance.now() - t_api1).toFixed(0)}ms`);
             } catch (err) {

@@ -142,6 +142,8 @@ export async function callAiApi(
     systemPrompt?: string;
     maxTokens?: number;
     geminiThinkingBudget?: number;
+    /** Best-effort колбэк с расходом токенов (для учёта). Не влияет на ответ. */
+    onUsage?: (u: { inputTokens: number; outputTokens: number }) => void;
   },
 ): Promise<{ answer: string } | Response> {
   const corsHeaders = getCorsHeaders(req);
@@ -161,6 +163,7 @@ export async function callAiApi(
         contents: messagesToGeminiContents(simpleMessages),
         systemInstruction: opts.systemPrompt,
         thinkingBudget: opts.geminiThinkingBudget,
+        onUsage: opts.onUsage,
       });
 
       return { answer };
@@ -208,6 +211,14 @@ export async function callAiApi(
   }
 
   const result = await response.json();
+  if (opts.onUsage) {
+    try {
+      opts.onUsage({
+        inputTokens: result?.usage?.input_tokens ?? 0,
+        outputTokens: result?.usage?.output_tokens ?? 0,
+      });
+    } catch (_e) { /* игнор */ }
+  }
   const answer = result.content[0]?.text || "Не удалось получить ответ от нейросети.";
   return { answer };
 }

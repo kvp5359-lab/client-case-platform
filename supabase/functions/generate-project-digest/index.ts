@@ -12,6 +12,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsHeadersFor } from "../_shared/edge.ts";
 import { isValidUUID } from "../_shared/validation.ts";
 import { setupAiChat, callAiApi } from "../_shared/ai-chat-setup.ts";
+import { logAiUsage } from "../_shared/logAiUsage.ts";
 
 const TIMEZONE = "Europe/Madrid";
 const COALESCE_GAP_MINUTES = 30;
@@ -224,6 +225,11 @@ Deno.serve(async (req: Request) => {
         messages: [{ role: "user", content: userMessage }],
         maxTokens: 1200,
         geminiThinkingBudget,
+        onUsage: (u) => logAiUsage({
+          workspaceId: workspace_id, functionName: "generate-project-digest",
+          provider: aiProvider, model, userId: user?.id ?? null, feature: "digest",
+          inputTokens: u.inputTokens, outputTokens: u.outputTokens,
+        }),
       });
       if (llmResult instanceof Response) return llmResult;
       content = llmResult.answer.trim();

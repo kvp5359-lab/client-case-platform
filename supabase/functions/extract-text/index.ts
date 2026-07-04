@@ -5,6 +5,7 @@ import { isValidUUID } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { extractText, getDocumentProxy } from "npm:unpdf";
 import { isGeminiModel, callGeminiApi, geminiImagePart, geminiPdfPart, geminiTextPart } from "../_shared/gemini-client.ts";
+import { logAiUsage, anthropicUsage } from "../_shared/logAiUsage.ts";
 
 /**
  * Edge Function: extract-text
@@ -245,6 +246,11 @@ Deno.serve(async (req: Request) => {
                   ],
                 }],
                 thinkingBudget: 0,
+                onUsage: (u) => logAiUsage({
+                  workspaceId: fileRec.workspace_id, functionName: "extract-text",
+                  provider: "google", model: wsModel, userId: actorUserId ?? null, feature: "text-extraction",
+                  inputTokens: u.inputTokens, outputTokens: u.outputTokens,
+                }),
               });
               const trimmed = (out || "").trim();
               if (trimmed) {
@@ -282,6 +288,12 @@ Deno.serve(async (req: Request) => {
               });
               if (resp.ok) {
                 const r = await resp.json();
+                const _u = anthropicUsage(r);
+                await logAiUsage({
+                  workspaceId: fileRec.workspace_id, functionName: "extract-text",
+                  provider: "anthropic", model: EXTRACTION_MODEL, userId: actorUserId ?? null, feature: "text-extraction",
+                  inputTokens: _u.inputTokens, outputTokens: _u.outputTokens,
+                });
                 const claudeText = (r.content?.[0]?.text || "").trim();
                 if (claudeText) {
                   return new Response(
@@ -656,6 +668,11 @@ Deno.serve(async (req: Request) => {
               ],
             }],
             thinkingBudget: 0,
+            onUsage: (u) => logAiUsage({
+              workspaceId: document.workspace_id, functionName: "extract-text",
+              provider: "google", model: wsModel, userId: userId ?? null, feature: "text-extraction",
+              inputTokens: u.inputTokens, outputTokens: u.outputTokens,
+            }),
           });
           extractionMethod = "gemini-vision";
           const apiMs = Math.round(performance.now() - t_api);
@@ -704,6 +721,12 @@ Deno.serve(async (req: Request) => {
         }
 
         const result = await resp.json();
+        const _u = anthropicUsage(result);
+        await logAiUsage({
+          workspaceId: document.workspace_id, functionName: "extract-text",
+          provider: "anthropic", model: EXTRACTION_MODEL, userId: userId ?? null, feature: "text-extraction",
+          inputTokens: _u.inputTokens, outputTokens: _u.outputTokens,
+        });
         extractedText = result.content[0]?.text || "";
         extractionMethod = "claude-vision";
         const apiMs = Math.round(performance.now() - t_api);
