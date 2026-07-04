@@ -45,6 +45,7 @@ import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useItemLists, useSoftDeleteItemList, type ItemList } from '@/hooks/useItemLists'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useSections, useSectionMaps } from '@/hooks/useSections'
 import { CreateItemListDialog } from '@/components/itemLists/CreateItemListDialog'
 import { ItemListSettingsDialog } from '@/components/itemLists/ItemListSettingsDialog'
@@ -219,7 +220,11 @@ export default function BoardsPage() {
           <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none scroll-fade-right">
             <div className="flex items-center gap-1 bg-muted rounded-full p-1 w-fit group/tabs">
               {isLoading ? (
-                <div className="px-3 py-0.5 text-xs text-muted-foreground">Загрузка...</div>
+                <div className="flex items-center gap-1">
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                  <Skeleton className="h-6 w-24 rounded-full" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
               ) : (
                 <>
                   {boards?.map((board) => (

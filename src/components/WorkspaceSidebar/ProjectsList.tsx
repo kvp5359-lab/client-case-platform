@@ -8,6 +8,7 @@
 
 import { memo, useState, useRef, useEffect, useMemo } from 'react'
 import { Search, X, Plus } from 'lucide-react'
+import { RowsSkeleton } from '@/components/ui/loaders'
 import type { ModuleDefinition } from '@/lib/projectModuleRegistry'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import { usePinnedProjects } from './usePinnedProjects'
@@ -255,7 +256,7 @@ export const ProjectsList = memo(function ProjectsList({
         style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}
       >
         {loading ? (
-          <div className="px-2 py-2 text-sm text-muted-foreground">Загрузка...</div>
+          <RowsSkeleton count={6} className="px-2 py-2" rowClassName="h-7" />
         ) : unpinnedProjects.length === 0 && pinnedProjects.length === 0 ? (
           <div className="px-2 py-2 text-sm text-muted-foreground">
             {projects.length === 0 ? 'Нет проектов' : 'Проекты не найдены'}

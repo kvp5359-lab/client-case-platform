@@ -5,6 +5,7 @@
 import { memo, useEffect, useRef } from 'react'
 import { Inbox, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { RowsSkeleton } from '@/components/ui/loaders'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { DeliveryStatus } from '@/components/messenger/DeliveryIndicator'
@@ -257,9 +258,7 @@ export const InboxSidebar = memo(function InboxSidebar({
       {/* Список чатов */}
       <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
         {isLoading ? (
-          <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-            Загрузка...
-          </div>
+          <RowsSkeleton count={7} className="p-3" rowClassName="h-14" />
         ) : filteredChats.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-muted-foreground">
             {filter === 'unread'
