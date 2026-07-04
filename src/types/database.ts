@@ -14,6 +14,100 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage_events: {
+        Row: {
+          feature: string | null
+          function_name: string | null
+          id: number
+          input_tokens: number
+          meta: Json | null
+          model: string | null
+          occurred_at: string
+          output_tokens: number
+          provider: string | null
+          total_tokens: number
+          user_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          feature?: string | null
+          function_name?: string | null
+          id?: never
+          input_tokens?: number
+          meta?: Json | null
+          model?: string | null
+          occurred_at?: string
+          output_tokens?: number
+          provider?: string | null
+          total_tokens?: number
+          user_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          feature?: string | null
+          function_name?: string | null
+          id?: never
+          input_tokens?: number
+          meta?: Json | null
+          model?: string | null
+          occurred_at?: string
+          output_tokens?: number
+          provider?: string | null
+          total_tokens?: number
+          user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage_monthly: {
+        Row: {
+          input_tokens: number
+          model: string
+          output_tokens: number
+          period: string
+          request_count: number
+          total_tokens: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          period: string
+          request_count?: number
+          total_tokens?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          period?: string
+          request_count?: number
+          total_tokens?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_monthly_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -4661,6 +4755,35 @@ export type Database = {
           },
         ]
       }
+      notification_mute: {
+        Row: {
+          muted_until: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          muted_until: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          muted_until?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_mute_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       oauth_states: {
         Row: {
           created_at: string
@@ -4732,35 +4855,6 @@ export type Database = {
           },
           {
             foreignKeyName: "participant_channels_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      notification_mute: {
-        Row: {
-          muted_until: string
-          updated_at: string
-          user_id: string
-          workspace_id: string
-        }
-        Insert: {
-          muted_until: string
-          updated_at?: string
-          user_id: string
-          workspace_id: string
-        }
-        Update: {
-          muted_until?: string
-          updated_at?: string
-          user_id?: string
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notification_mute_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -4967,6 +5061,105 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plans: {
+        Row: {
+          ai_tokens_monthly: number | null
+          code: string
+          created_at: string
+          currency: string
+          description: string | null
+          enabled_modules: string[]
+          id: string
+          is_active: boolean
+          max_participants: number | null
+          max_projects: number | null
+          max_storage_mb: number | null
+          max_tasks: number | null
+          name: string
+          price_monthly: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          ai_tokens_monthly?: number | null
+          code: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          enabled_modules?: string[]
+          id?: string
+          is_active?: boolean
+          max_participants?: number | null
+          max_projects?: number | null
+          max_storage_mb?: number | null
+          max_tasks?: number | null
+          name: string
+          price_monthly?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_tokens_monthly?: number | null
+          code?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          enabled_modules?: string[]
+          id?: string
+          is_active?: boolean
+          max_participants?: number | null
+          max_projects?: number | null
+          max_storage_mb?: number | null
+          max_tasks?: number | null
+          name?: string
+          price_monthly?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      platform_alert_config: {
+        Row: {
+          bot_token: string | null
+          chat_id: string | null
+          enabled: boolean
+          id: number
+          last_check_at: string
+          updated_at: string
+        }
+        Insert: {
+          bot_token?: string | null
+          chat_id?: string | null
+          enabled?: boolean
+          id?: number
+          last_check_at?: string
+          updated_at?: string
+        }
+        Update: {
+          bot_token?: string | null
+          chat_id?: string | null
+          enabled?: boolean
+          id?: number
+          last_check_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       project_context_item_members: {
         Row: {
@@ -6189,6 +6382,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "project_template_thread_templ_on_complete_set_project_stat_fkey"
+            columns: ["on_complete_set_project_status_id"]
+            isOneToOne: false
+            referencedRelation: "statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_template_thread_templates_default_status_id_fkey"
+            columns: ["default_status_id"]
+            isOneToOne: false
+            referencedRelation: "statuses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "project_template_thread_templates_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -6439,120 +6646,6 @@ export type Database = {
           },
         ]
       }
-      recurring_task_rules: {
-        Row: {
-          accent_color: string
-          access_roles: string[] | null
-          access_type: string
-          assignee_participant_ids: string[]
-          bymonthday: number | null
-          byweekday: number[]
-          create_lead_minutes: number
-          created_at: string
-          created_by: string | null
-          end_time: string | null
-          deleted_at: string | null
-          deleted_by: string | null
-          description: string | null
-          fire_time: string
-          freq: string
-          icon: string
-          id: string
-          initial_message_html: string | null
-          is_active: boolean
-          is_deleted: boolean
-          last_generated_thread_id: string | null
-          last_run_at: string | null
-          member_participant_ids: string[]
-          next_occurrence_at: string | null
-          occurrences_count: number
-          owner_user_id: string | null
-          project_id: string | null
-          source_template_id: string | null
-          starts_on: string | null
-          status_id: string | null
-          timezone: string
-          title: string
-          until_date: string | null
-          updated_at: string
-          workspace_id: string
-        }
-        Insert: {
-          accent_color?: string
-          access_roles?: string[] | null
-          access_type?: string
-          assignee_participant_ids?: string[]
-          bymonthday?: number | null
-          byweekday?: number[]
-          create_lead_minutes?: number
-          created_at?: string
-          created_by?: string | null
-          end_time?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
-          description?: string | null
-          fire_time?: string
-          freq?: string
-          icon?: string
-          id?: string
-          initial_message_html?: string | null
-          is_active?: boolean
-          is_deleted?: boolean
-          last_generated_thread_id?: string | null
-          last_run_at?: string | null
-          member_participant_ids?: string[]
-          next_occurrence_at?: string | null
-          occurrences_count?: number
-          owner_user_id?: string | null
-          project_id?: string | null
-          source_template_id?: string | null
-          starts_on?: string | null
-          status_id?: string | null
-          timezone?: string
-          title: string
-          until_date?: string | null
-          updated_at?: string
-          workspace_id: string
-        }
-        Update: {
-          accent_color?: string
-          access_roles?: string[] | null
-          access_type?: string
-          assignee_participant_ids?: string[]
-          bymonthday?: number | null
-          byweekday?: number[]
-          create_lead_minutes?: number
-          created_at?: string
-          created_by?: string | null
-          end_time?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
-          description?: string | null
-          fire_time?: string
-          freq?: string
-          icon?: string
-          id?: string
-          initial_message_html?: string | null
-          is_active?: boolean
-          is_deleted?: boolean
-          last_generated_thread_id?: string | null
-          last_run_at?: string | null
-          member_participant_ids?: string[]
-          next_occurrence_at?: string | null
-          occurrences_count?: number
-          owner_user_id?: string | null
-          project_id?: string | null
-          source_template_id?: string | null
-          starts_on?: string | null
-          status_id?: string | null
-          timezone?: string
-          title?: string
-          until_date?: string | null
-          updated_at?: string
-          workspace_id?: string
-        }
-        Relationships: []
-      }
       project_threads: {
         Row: {
           accent_color: string
@@ -6729,6 +6822,20 @@ export type Database = {
             columns: ["email_send_account_id"]
             isOneToOne: false
             referencedRelation: "email_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_threads_on_complete_set_project_status_id_fkey"
+            columns: ["on_complete_set_project_status_id"]
+            isOneToOne: false
+            referencedRelation: "statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_threads_recurring_rule_id_fkey"
+            columns: ["recurring_rule_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_task_rules"
             referencedColumns: ["id"]
           },
           {
@@ -7144,6 +7251,135 @@ export type Database = {
           },
         ]
       }
+      recurring_task_rules: {
+        Row: {
+          accent_color: string
+          access_roles: string[] | null
+          access_type: string
+          assignee_participant_ids: string[]
+          bymonthday: number | null
+          byweekday: number[]
+          create_lead_minutes: number
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          end_time: string | null
+          fire_time: string
+          freq: string
+          icon: string
+          id: string
+          initial_message_html: string | null
+          is_active: boolean
+          is_deleted: boolean
+          last_generated_thread_id: string | null
+          last_run_at: string | null
+          member_participant_ids: string[]
+          next_occurrence_at: string | null
+          occurrences_count: number
+          owner_user_id: string | null
+          project_id: string | null
+          source_template_id: string | null
+          starts_on: string | null
+          status_id: string | null
+          timezone: string
+          title: string
+          until_date: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          accent_color?: string
+          access_roles?: string[] | null
+          access_type?: string
+          assignee_participant_ids?: string[]
+          bymonthday?: number | null
+          byweekday?: number[]
+          create_lead_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          end_time?: string | null
+          fire_time?: string
+          freq?: string
+          icon?: string
+          id?: string
+          initial_message_html?: string | null
+          is_active?: boolean
+          is_deleted?: boolean
+          last_generated_thread_id?: string | null
+          last_run_at?: string | null
+          member_participant_ids?: string[]
+          next_occurrence_at?: string | null
+          occurrences_count?: number
+          owner_user_id?: string | null
+          project_id?: string | null
+          source_template_id?: string | null
+          starts_on?: string | null
+          status_id?: string | null
+          timezone?: string
+          title: string
+          until_date?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          accent_color?: string
+          access_roles?: string[] | null
+          access_type?: string
+          assignee_participant_ids?: string[]
+          bymonthday?: number | null
+          byweekday?: number[]
+          create_lead_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          end_time?: string | null
+          fire_time?: string
+          freq?: string
+          icon?: string
+          id?: string
+          initial_message_html?: string | null
+          is_active?: boolean
+          is_deleted?: boolean
+          last_generated_thread_id?: string | null
+          last_run_at?: string | null
+          member_participant_ids?: string[]
+          next_occurrence_at?: string | null
+          occurrences_count?: number
+          owner_user_id?: string | null
+          project_id?: string | null
+          source_template_id?: string | null
+          starts_on?: string | null
+          status_id?: string | null
+          timezone?: string
+          title?: string
+          until_date?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_task_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_task_rules_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_definitions: {
         Row: {
           config: Json
@@ -7295,6 +7531,38 @@ export type Database = {
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      smoke_test_threads: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          note: string | null
+          thread_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          thread_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smoke_test_threads_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: true
+            referencedRelation: "project_threads"
             referencedColumns: ["id"]
           },
         ]
@@ -8360,6 +8628,44 @@ export type Database = {
           },
         ]
       }
+      user_favorites: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          sort_order: number
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          sort_order?: number
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          sort_order?: number
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_favorites_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_settings: {
         Row: {
           audio_playback_rate: number
@@ -8509,6 +8815,51 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "wazzup_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_billing: {
+        Row: {
+          current_period_end: string | null
+          current_period_start: string
+          plan_id: string | null
+          status: string
+          trial_ends_at: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          current_period_end?: string | null
+          current_period_start?: string
+          plan_id?: string | null
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          current_period_end?: string | null
+          current_period_start?: string
+          plan_id?: string | null
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_billing_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_billing_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: true
             referencedRelation: "workspaces"
@@ -8694,6 +9045,38 @@ export type Database = {
           },
         ]
       }
+      workspace_limits: {
+        Row: {
+          max_participants: number | null
+          max_projects: number | null
+          max_storage_mb: number | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          max_participants?: number | null
+          max_projects?: number | null
+          max_storage_mb?: number | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          max_participants?: number | null
+          max_projects?: number | null
+          max_storage_mb?: number | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_limits_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_roles: {
         Row: {
           color: string
@@ -8820,36 +9203,6 @@ export type Database = {
           },
         ]
       }
-      user_favorites: {
-        Row: {
-          created_at: string
-          entity_id: string
-          entity_type: string
-          id: string
-          sort_order: number
-          user_id: string
-          workspace_id: string
-        }
-        Insert: {
-          created_at?: string
-          entity_id: string
-          entity_type: string
-          id?: string
-          sort_order?: number
-          user_id: string
-          workspace_id: string
-        }
-        Update: {
-          created_at?: string
-          entity_id?: string
-          entity_type?: string
-          id?: string
-          sort_order?: number
-          user_id?: string
-          workspace_id?: string
-        }
-        Relationships: []
-      }
       workspace_sidebar_settings: {
         Row: {
           slots: Json
@@ -8881,16 +9234,15 @@ export type Database = {
       }
       workspaces: {
         Row: {
+          accent_overrides: Json
           ai_model: Database["public"]["Enums"]["ai_model"] | null
           anthropic_api_key_id: string | null
           base_currency: string
-          enabled_currencies: string[]
+          channel_defaults: Json
           created_at: string
           custom_domain: string | null
           custom_domain_status: string | null
           custom_domain_verified_at: string | null
-          channel_defaults: Json
-          accent_overrides: Json
           deadline_far_format: string
           deadline_near_format: string
           default_ai_check_prompt: string | null
@@ -8906,6 +9258,7 @@ export type Database = {
           email_mx_verified: boolean
           email_resend_domain_id: string | null
           email_return_path_verified: boolean
+          enabled_currencies: string[]
           gemini_thinking_budget: number | null
           google_api_key_id: string | null
           id: string
@@ -8921,16 +9274,15 @@ export type Database = {
           voyageai_api_key_id: string | null
         }
         Insert: {
+          accent_overrides?: Json
           ai_model?: Database["public"]["Enums"]["ai_model"] | null
           anthropic_api_key_id?: string | null
           base_currency?: string
-          enabled_currencies?: string[]
+          channel_defaults?: Json
           created_at?: string
           custom_domain?: string | null
           custom_domain_status?: string | null
           custom_domain_verified_at?: string | null
-          channel_defaults?: Json
-          accent_overrides?: Json
           deadline_far_format?: string
           deadline_near_format?: string
           default_ai_check_prompt?: string | null
@@ -8946,6 +9298,7 @@ export type Database = {
           email_mx_verified?: boolean
           email_resend_domain_id?: string | null
           email_return_path_verified?: boolean
+          enabled_currencies?: string[]
           gemini_thinking_budget?: number | null
           google_api_key_id?: string | null
           id?: string
@@ -8961,16 +9314,15 @@ export type Database = {
           voyageai_api_key_id?: string | null
         }
         Update: {
+          accent_overrides?: Json
           ai_model?: Database["public"]["Enums"]["ai_model"] | null
           anthropic_api_key_id?: string | null
           base_currency?: string
-          enabled_currencies?: string[]
+          channel_defaults?: Json
           created_at?: string
           custom_domain?: string | null
           custom_domain_status?: string | null
           custom_domain_verified_at?: string | null
-          channel_defaults?: Json
-          accent_overrides?: Json
           deadline_far_format?: string
           deadline_near_format?: string
           default_ai_check_prompt?: string | null
@@ -8986,6 +9338,7 @@ export type Database = {
           email_mx_verified?: boolean
           email_resend_domain_id?: string | null
           email_return_path_verified?: boolean
+          enabled_currencies?: string[]
           gemini_thinking_budget?: number | null
           google_api_key_id?: string | null
           id?: string
@@ -9021,6 +9374,15 @@ export type Database = {
         Args: { p_sentinel: string; p_value: Json }
         Returns: boolean
       }
+      _report_condition_sql: {
+        Args: { p_cond: Json; p_fields: Json }
+        Returns: string
+      }
+      _report_filter_sql: {
+        Args: { p_fields: Json; p_group: Json }
+        Returns: string
+      }
+      _schema_manifest: { Args: never; Returns: Json }
       add_document_version: {
         Args: {
           p_checksum?: string
@@ -9064,10 +9426,39 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_list_workspaces: {
+        Args: never
+        Returns: {
+          ai_tokens_monthly: number
+          ai_tokens_used: number
+          billing_status: string
+          created_at: string
+          participants_count: number
+          plan_code: string
+          plan_name: string
+          projects_count: number
+          storage_mb: number
+          workspace_id: string
+          workspace_name: string
+        }[]
+      }
+      admin_set_workspace_plan: {
+        Args: { p_plan_code: string; p_workspace_id: string }
+        Returns: undefined
+      }
       append_telegram_message_id: {
         Args: { p_chat_id: number; p_message_id: string; p_tg_msg_id: number }
         Returns: undefined
       }
+      can_user_access_board:
+        | {
+            Args: {
+              b: Database["public"]["Tables"]["boards"]["Row"]
+              p_user_id: string
+            }
+            Returns: boolean
+          }
+        | { Args: { p_board_id: string; p_user_id: string }; Returns: boolean }
       can_user_access_thread:
         | { Args: { p_thread_id: string; p_user_id: string }; Returns: boolean }
         | {
@@ -9284,6 +9675,7 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: undefined
       }
+      export_workspace_data: { Args: { p_workspace_id: string }; Returns: Json }
       fill_folder_slot: {
         Args: { p_document_id: string; p_project_id: string; p_slot_id: string }
         Returns: undefined
@@ -9319,6 +9711,7 @@ export type Database = {
       }
       generate_chat_link_code: { Args: never; Returns: string }
       generate_messenger_link_code: { Args: never; Returns: string }
+      generate_recurring_tasks: { Args: never; Returns: number }
       generate_thread_link_code: { Args: never; Returns: string }
       get_accessible_projects: {
         Args: { p_user_id: string; p_workspace_id: string }
@@ -9520,6 +9913,46 @@ export type Database = {
         Returns: {
           delivery_status: string
           thread_id: string
+        }[]
+      }
+      get_inbox_muted_threads: {
+        Args: { p_user_id: string; p_workspace_id: string }
+        Returns: {
+          channel_type: string
+          counterpart_avatar_url: string
+          counterpart_name: string
+          email_contact: string
+          email_subject: string
+          has_unread_reaction: boolean
+          last_event_at: string
+          last_event_sender_avatar_url: string
+          last_event_status_color: string
+          last_event_text: string
+          last_message_at: string
+          last_message_attachment_count: number
+          last_message_attachment_mime: string
+          last_message_attachment_name: string
+          last_message_text: string
+          last_reaction_at: string
+          last_reaction_emoji: string
+          last_reaction_message_preview: string
+          last_reaction_sender_avatar_url: string
+          last_reaction_sender_name: string
+          last_read_at: string
+          last_sender_avatar_url: string
+          last_sender_name: string
+          legacy_channel: string
+          manually_unread: boolean
+          project_id: string
+          project_name: string
+          thread_accent_color: string
+          thread_icon: string
+          thread_id: string
+          thread_name: string
+          thread_type: string
+          unread_count: number
+          unread_event_count: number
+          unread_reaction_count: number
         }[]
       }
       get_inbox_needs_reply_threads: {
@@ -9836,46 +10269,6 @@ export type Database = {
           unread_reaction_count: number
         }[]
       }
-      get_inbox_muted_threads: {
-        Args: { p_user_id: string; p_workspace_id: string }
-        Returns: {
-          channel_type: string
-          counterpart_avatar_url: string
-          counterpart_name: string
-          email_contact: string
-          email_subject: string
-          has_unread_reaction: boolean
-          last_event_at: string
-          last_event_sender_avatar_url: string
-          last_event_status_color: string
-          last_event_text: string
-          last_message_at: string
-          last_message_attachment_count: number
-          last_message_attachment_mime: string
-          last_message_attachment_name: string
-          last_message_text: string
-          last_reaction_at: string
-          last_reaction_emoji: string
-          last_reaction_message_preview: string
-          last_reaction_sender_avatar_url: string
-          last_reaction_sender_name: string
-          last_read_at: string
-          last_sender_avatar_url: string
-          last_sender_name: string
-          legacy_channel: string
-          manually_unread: boolean
-          project_id: string
-          project_name: string
-          thread_accent_color: string
-          thread_icon: string
-          thread_id: string
-          thread_name: string
-          thread_type: string
-          unread_count: number
-          unread_event_count: number
-          unread_reaction_count: number
-        }[]
-      }
       get_inbox_unread_threads: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: {
@@ -9917,9 +10310,8 @@ export type Database = {
         }[]
       }
       get_my_task_counts: { Args: { p_workspace_id: string }; Returns: Json }
-      get_my_thread_notify_level: { Args: { p_thread_id: string }; Returns: string }
-      set_my_thread_notify_level: {
-        Args: { p_thread_id: string; p_level: string }
+      get_my_thread_notify_level: {
+        Args: { p_thread_id: string }
         Returns: string
       }
       get_owner_permissions: { Args: never; Returns: Json }
@@ -10075,6 +10467,16 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_workspace_ai_usage: {
+        Args: { p_period?: string; p_workspace_id: string }
+        Returns: {
+          input_tokens: number
+          output_tokens: number
+          period: string
+          request_count: number
+          total_tokens: number
+        }[]
+      }
       get_workspace_api_key: {
         Args: { workspace_uuid: string }
         Returns: string
@@ -10134,6 +10536,21 @@ export type Database = {
           type: string
           updated_at: string
           workspace_id: string
+        }[]
+      }
+      get_workspace_usage_and_limits: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          ai_tokens_monthly: number
+          ai_tokens_used: number
+          max_participants: number
+          max_projects: number
+          max_storage_mb: number
+          participants_count: number
+          plan_code: string
+          plan_name: string
+          projects_count: number
+          storage_mb: number
         }[]
       }
       get_workspace_voyageai_api_key: {
@@ -10205,6 +10622,7 @@ export type Database = {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: boolean
       }
+      is_platform_admin: { Args: { p_user_id?: string }; Returns: boolean }
       is_project_participant: {
         Args: { p_project_id: string; p_user_id: string }
         Returns: boolean
@@ -10229,6 +10647,20 @@ export type Database = {
       is_workspace_team_member: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: boolean
+      }
+      log_ai_usage: {
+        Args: {
+          p_feature?: string
+          p_function_name?: string
+          p_input_tokens: number
+          p_meta?: Json
+          p_model?: string
+          p_output_tokens: number
+          p_provider?: string
+          p_user_id?: string
+          p_workspace_id: string
+        }
+        Returns: undefined
       }
       log_audit_action: {
         Args: {
@@ -10326,6 +10758,8 @@ export type Database = {
         Returns: undefined
       }
       move_thread_to_project: {
+        // Ручной оверрайд: функция принимает NULL (перенос в «без проекта»),
+        // генератор считает NOT NULL. Держать при регенерации database.ts.
         Args: { p_target_project_id: string | null; p_thread_id: string }
         Returns: undefined
       }
@@ -10348,6 +10782,18 @@ export type Database = {
       reconcile_inbox_report: { Args: never; Returns: Json }
       reconcile_thread_inbox_meta: { Args: never; Returns: number }
       reconcile_thread_unread: { Args: never; Returns: number }
+      recurring_next_occurrence: {
+        Args: {
+          p_after: string
+          p_bymonthday: number
+          p_byweekday: number[]
+          p_fire_time: string
+          p_freq: string
+          p_starts_on: string
+          p_timezone: string
+        }
+        Returns: string
+      }
       refresh_thread_unread_pairs: {
         Args: { p_thread_id: string }
         Returns: undefined
@@ -10357,6 +10803,13 @@ export type Database = {
         Returns: undefined
       }
       reorder_documents: { Args: { p_updates: Json }; Returns: undefined }
+      resolve_channel_default: {
+        Args: { p_channel_key: string; p_workspace_id: string }
+        Returns: {
+          accent_color: string
+          icon: string
+        }[]
+      }
       resolve_email_thread_assignee: {
         Args: {
           p_thread: Database["public"]["Tables"]["project_threads"]["Row"]
@@ -10401,6 +10854,20 @@ export type Database = {
           slug: string
         }[]
       }
+      resolve_workspace_plan: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          ai_tokens_monthly: number
+          enabled_modules: string[]
+          max_participants: number
+          max_projects: number
+          max_storage_mb: number
+          max_tasks: number
+          plan_code: string
+          plan_name: string
+          status: string
+        }[]
+      }
       restore_article_version: {
         Args: { p_version_id: string }
         Returns: string
@@ -10412,10 +10879,6 @@ export type Database = {
       revoke_all_user_sessions: {
         Args: { p_user_id: string }
         Returns: undefined
-      }
-      run_report: {
-        Args: { p_workspace_id: string; p_config: Json }
-        Returns: Json
       }
       route_incoming_to_project: {
         Args: {
@@ -10433,17 +10896,19 @@ export type Database = {
           thread_id: string
         }[]
       }
-      resolve_channel_default: {
-        Args: { p_channel_key: string; p_workspace_id: string }
-        Returns: {
-          accent_color: string
-          icon: string
-        }[]
+      run_platform_alerts: { Args: never; Returns: undefined }
+      run_report: {
+        Args: { p_config: Json; p_workspace_id: string }
+        Returns: Json
       }
       scan_dispatch_failures: { Args: never; Returns: number }
       set_my_preferred_language: {
         Args: { p_language: string }
         Returns: undefined
+      }
+      set_my_thread_notify_level: {
+        Args: { p_level: string; p_thread_id: string }
+        Returns: string
       }
       set_my_thread_subscription: {
         Args: { p_subscribed: boolean; p_thread_id: string }
@@ -10471,6 +10936,7 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      smoke_send_test: { Args: { p_thread_id: string }; Returns: string }
       start_impersonation_session: {
         Args: {
           p_expires_at: string
@@ -10588,6 +11054,10 @@ export type Database = {
           p_workspace_id?: string
         }
         Returns: undefined
+      }
+      workspace_at_limit: {
+        Args: { p_kind: string; p_workspace_id: string }
+        Returns: boolean
       }
     }
     Enums: {
