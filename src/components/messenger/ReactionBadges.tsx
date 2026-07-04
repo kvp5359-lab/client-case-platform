@@ -29,6 +29,8 @@ type ReactionBadgesProps = {
   accent?: MessengerAccent
   /** last_read_at пользователя в этом треде — реакции позже этой метки от других участников считаются непрочитанными. */
   lastReadAt?: string
+  /** Тон контура непрочитанного: red (обычный) или slate (заглушённый тред). */
+  unreadTone?: 'red' | 'slate'
 }
 
 export function ReactionBadges({
@@ -37,6 +39,7 @@ export function ReactionBadges({
   onReact,
   accent = 'blue',
   lastReadAt,
+  unreadTone = 'red',
 }: ReactionBadgesProps) {
   const grouped = groupReactions(reactions)
   if (grouped.size === 0) return null
@@ -72,7 +75,9 @@ export function ReactionBadges({
                     className={cn(
                       'inline-flex items-center gap-1 rounded-full h-7 pl-1.5 pr-0.5 text-xs border-2 transition-colors',
                       isUnread
-                        ? 'bg-red-100 border-red-500 text-red-600'
+                        ? unreadTone === 'slate'
+                          ? 'bg-slate-100 border-slate-500 text-slate-600'
+                          : 'bg-red-100 border-red-500 text-red-600'
                         : cn('border-white', isMine ? ownStyle : otherStyle),
                     )}
                   >

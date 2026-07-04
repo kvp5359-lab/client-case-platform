@@ -556,6 +556,7 @@ function MessageBubbleImpl({
             onReact={(emoji) => onReact(message.id, emoji)}
             accent={accent}
             lastReadAt={lastReadAt}
+            unreadTone={unreadTone}
           />
 
           {/* Timestamp в правом нижнем углу бабла — только когда есть аудио/файлы
