@@ -43,12 +43,34 @@ if (!url || !key) { console.error('✗ Нужны env SUPABASE_URL и SUPABASE_S
 const supabase = createClient(url, key, { auth: { persistSession: false } })
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+// Клиент под смок-бота (для вложений MTProto/email фронт зовёт edge как юзер).
+// Нужны env SUPABASE_ANON_KEY + SMOKE_BOT_PASSWORD. Без них файлы MTProto/email
+// пропускаются (текст/ответ и файлы TG/WA работают и без бота).
+const anon = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+let botClient = null
+if (anon && process.env.SMOKE_BOT_PASSWORD) {
+  const bc = createClient(url, anon, { auth: { persistSession: false } })
+  const { error } = await bc.auth.signInWithPassword({
+    email: process.env.SMOKE_BOT_EMAIL || 'smoke-bot@clientcase.internal',
+    password: process.env.SMOKE_BOT_PASSWORD,
+  })
+  if (error) console.log(`⚠️  логин смок-бота не удался (${error.message}) — файлы MTProto/email пропущу`)
+  else botClient = bc
+}
+
 // Мелкие тест-файлы (генерятся в памяти, в репо не коммитятся).
 const PNG_128 = makePng(128, 128)                                   // валидный 128x128 PNG
 const TXT = Buffer.from('ClientCase smoke-test document ' + new Date().toISOString() + '\n', 'utf8')
 
+// Через force-dispatch вложения реально уходят у TG-группы и Wazzup; у MTProto/
+// email их шлёт edge, вызываемый как юзер (смок-бот).
+const DISPATCH_CHANNELS = new Set(['telegram_group', 'wazzup'])
+const EDGE_BY_CHANNEL = { telegram_mtproto: 'telegram-mtproto-send', email: 'email-internal-send' }
+
 // Загружает файлы в бакет `files` и отправляет как одно сообщение с вложениями.
-async function sendFiles(threadId, files, withText) {
+async function sendFiles(threadId, channel, files, withText) {
+  const useDispatch = DISPATCH_CHANNELS.has(channel)
+  if (!useDispatch && !botClient) throw new Error('нужен смок-бот (SMOKE_BOT_PASSWORD)')
   const msgId = randomUUID()
   const uploaded = []
   for (const f of files) {
@@ -57,11 +79,17 @@ async function sendFiles(threadId, files, withText) {
     if (error) throw new Error('upload: ' + error.message)
     uploaded.push({ name: f.name, size: f.buf.length, mime: f.mime, path })
   }
-  const { data, error } = await supabase.rpc('smoke_send_file', {
-    p_thread_id: threadId, p_message_id: msgId, p_with_text: withText, p_files: uploaded,
+  const { error } = await supabase.rpc('smoke_send_file', {
+    p_thread_id: threadId, p_message_id: msgId, p_with_text: withText, p_files: uploaded, p_dispatch: useDispatch,
   })
   if (error) throw new Error('rpc: ' + error.message)
-  return data
+  if (!useDispatch) {
+    const fn = EDGE_BY_CHANNEL[channel]
+    if (!fn) throw new Error('нет edge для канала ' + channel)
+    const { error: ie } = await botClient.functions.invoke(fn, { body: { message_id: msgId } })
+    if (ie) throw new Error(`invoke ${fn}: ${ie.message}`)
+  }
+  return msgId
 }
 const IMG = { name: 'smoke.png', mime: 'image/png', buf: PNG_128 }
 const DOC = { name: 'smoke.txt', mime: 'text/plain', buf: TXT }
@@ -86,20 +114,15 @@ if (!process.argv.includes('--confirm')) {
   process.exit(0)
 }
 
-// Файловые комбинации идут через dispatch(force) — так вложения реально уходят
-// у TG-группы и Wazzup. У MTProto/email фронт шлёт вложения ПРЯМЫМ invoke
-// (`*-send` с attachments_only), который тут не воспроизводится → для них
-// файловые шаги помечаются n/a (отдельная фаза 2b). Текст/ответ — везде.
-const FILE_CHANNELS = new Set(['telegram_group', 'wazzup'])
 const COMBOS = [
-  { key: 'text', run: async (tid) => (await supabase.rpc('smoke_send_test', { p_thread_id: tid, p_label: 'text' })).data },
-  { key: 'reply', run: async (tid, ctx) => {
+  { key: 'text', run: async (t) => (await supabase.rpc('smoke_send_test', { p_thread_id: t.thread_id, p_label: 'text' })).data },
+  { key: 'reply', run: async (t, ctx) => {
       if (!ctx.lastTextId) throw new Error('нет предыдущего текста для ответа')
-      return (await supabase.rpc('smoke_send_test', { p_thread_id: tid, p_reply_to: ctx.lastTextId, p_label: 'reply' })).data
+      return (await supabase.rpc('smoke_send_test', { p_thread_id: t.thread_id, p_reply_to: ctx.lastTextId, p_label: 'reply' })).data
     } },
-  { key: 'file',      files: true, run: (tid) => sendFiles(tid, [IMG], false) },
-  { key: 'file+text', files: true, run: (tid) => sendFiles(tid, [IMG], true) },
-  { key: 'album',     files: true, run: (tid) => sendFiles(tid, [IMG, DOC], false) },
+  { key: 'file',      files: true, run: (t) => sendFiles(t.thread_id, t.channel, [IMG], false) },
+  { key: 'file+text', files: true, run: (t) => sendFiles(t.thread_id, t.channel, [IMG], true) },
+  { key: 'album',     files: true, run: (t) => sendFiles(t.thread_id, t.channel, [IMG, DOC], false) },
 ]
 
 const results = []
@@ -107,13 +130,13 @@ for (const t of threads) {
   console.log(`\n=== ${t.channel} — ${t.note ?? t.thread_id} ===`)
   const ctx = {}
   for (const combo of COMBOS) {
-    if (combo.files && !FILE_CHANNELS.has(t.channel)) {
-      console.log(`  ${combo.key} … n/a (файлы через прямой invoke — фаза 2b)`)
+    if (combo.files && !DISPATCH_CHANNELS.has(t.channel) && !botClient) {
+      console.log(`  ${combo.key} … n/a (нужен смок-бот: SMOKE_BOT_PASSWORD)`)
       continue
     }
     process.stdout.write(`  ${combo.key} … `)
     try {
-      const msgId = await combo.run(t.thread_id, ctx)
+      const msgId = await combo.run(t, ctx)
       if (!msgId) throw new Error('нет msgId')
       if (combo.key === 'text') ctx.lastTextId = msgId
       const status = await waitSent(msgId)

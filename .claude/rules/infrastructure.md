@@ -292,3 +292,10 @@ npm run test:coverage
 - **Двойная защита от отправки клиенту:** (1) RPC `smoke_send_test` на сервере отклоняет треды вне allowlist; (2) скрипт требует `--confirm` и печатает цели. Пустой allowlist → ничего не шлёт.
 - **Настройка (владелец, один раз):** создать ТЕСТОВЫЙ воркспейс/треды на тест-чатах каждого канала → `INSERT INTO smoke_test_threads (thread_id, channel, note) VALUES ('<uuid>','telegram_group','тест');` Только тестовые чаты, НИКОГДА клиентские.
 - Запуск: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/smoke-channels.mjs --confirm`.
+
+### Смок-матрица каналов (полная — все каналы × комбинации)
+
+- **`scripts/smoke-matrix.mjs`** — по каждому allowlist-треду гоняет: текст, ответ-цитата, файл, файл+текст, альбом. Проверяет доставку (`send_status='sent'`). Ничего не чистит.
+- **Смок-бот:** вложения MTProto/email фронт шлёт через edge как юзер, поэтому раннер логинится под тех-пользователем `smoke-bot@clientcase.internal` (участник ТОЛЬКО тест-проекта, роль «Исполнитель» — blast-radius ограничен тест-тредами). Для TG-группы/Wazzup вложения идут через `dispatch_message_to_channels(force)`.
+- Запуск: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… SUPABASE_ANON_KEY=… SMOKE_BOT_PASSWORD=… node scripts/smoke-matrix.mjs --confirm`. Без бот-пароля файлы MTProto/email пропускаются (текст/ответ/файлы TG-WA работают).
+- allowlist тест-тредов — `smoke_test_threads`; RPC `smoke_send_test`/`smoke_send_file` (проверяют allowlist на сервере).
