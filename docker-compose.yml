@@ -55,7 +55,9 @@ services:
     # такое сам не ловит). Для АВТО-рестарта при unhealthy нужен sidecar
     # willfarrell/autoheal (отдельное решение по инфраструктуре — см. аудит C9).
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3007/health"]
+      # 127.0.0.1, НЕ localhost: в alpine localhost резолвится в IPv6 ::1, а
+      # Fastify слушает IPv4 → wget по localhost даёт ложный «unhealthy».
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3007/health"]
       interval: 30s
       timeout: 5s
       retries: 3
