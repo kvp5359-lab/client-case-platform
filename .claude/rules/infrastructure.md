@@ -277,3 +277,12 @@ npm run test:coverage
   WHERE id=1;
   ```
   `bot_token` — токен любого Telegram-бота (владелец должен разово написать этому боту в личку). `chat_id` — числовой id владельца. Пока `enabled=false` или поля пусты — алерты не шлются.
+
+### Здоровье каналов (read-only, безопасно)
+
+- **`scripts/channel-health.mjs`** — проверяет БЕЗ отправки сообщений: застрявшие исходящие (`pending` >15 мин), незакрытые `message_send_failures`, просроченный Gmail watch у активных ящиков, число MTProto-сессий.
+  ```bash
+  SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/channel-health.mjs
+  ```
+  Гоняется в CI `Ops Checks` ежедневно рядом с детектором дрейфа.
+- **Send-смок** (реальная отправка по каналу) сюда НЕ входит — рискует задеть клиентов. Проводит владелец вручную на выделенном тест-чате (см. `docs/deploy-backlog.md`).

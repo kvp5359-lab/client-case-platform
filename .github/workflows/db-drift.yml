@@ -1,7 +1,8 @@
-name: DB Drift Check
+name: Ops Checks
 
-# Сверяет функции боевой базы с эталоном supabase/schema/functions-manifest.json.
-# Не блокирует деплой — только сигнализирует о расхождении (repo↔prod дрейф).
+# Проверки устойчивости (не блокируют деплой, только сигнализируют):
+#  - дрейф функций repo↔prod (сверка с supabase/schema/functions-manifest.json)
+#  - здоровье каналов мессенджера (застрявшие отправки, сбои, Gmail watch)
 # Требует секрет SUPABASE_SERVICE_ROLE_KEY (Settings → Secrets → Actions).
 # URL берётся из уже существующего NEXT_PUBLIC_SUPABASE_URL.
 
@@ -27,6 +28,11 @@ jobs:
       - run: npm install --legacy-peer-deps
       - name: Проверка дрейфа функций
         run: node scripts/db-drift-check.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Здоровье каналов мессенджера
+        run: node scripts/channel-health.mjs
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
