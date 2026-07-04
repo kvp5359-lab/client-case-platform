@@ -24,6 +24,7 @@ import {
 import { messengerKeys, projectAiKeys } from '@/hooks/queryKeys'
 import { logger } from '@/utils/logger'
 import { perfMark } from '@/utils/perfTrace'
+import { subscribeInboxBroadcast } from './inboxBroadcastBus'
 
 export function useProjectMessages(
   projectId: string | undefined,
@@ -104,73 +105,52 @@ export function useProjectMessages(
     queryClient.invalidateQueries({ queryKey: key })
   }, [threadId, queryClient])
 
-  // Realtime подписка
+  // Realtime подписка.
+  //
+  // Сообщения треда (INSERT/UPDATE/DELETE) — через **Broadcast** из БД (топик
+  // inbox:<ws>, триггер trg_inbox_broadcast), чтобы снять таблицу project_messages
+  // с прямого слежения Postgres Changes (главный источник WAL-нагрузки). Сигнал
+  // несёт только id/флаги (не содержимое) — само сообщение подтягивает refetch
+  // (RLS-авторизованный getMessages), поэтому утечки нет.
+  //
+  // Реакции и вложения оставлены на Postgres Changes — их таблицы малонагружены
+  // и остаются в publication; логика «рефетч если сообщение известно» сохранена.
   useEffect(() => {
     if (!threadId) return
 
     const pendingTimers: ReturnType<typeof setTimeout>[] = []
     const key = messengerKeys.messagesByThreadId(threadId)
     const unreadKey = messengerKeys.unreadCountByThreadId(threadId)
-    // Уникальное имя канала для каждого монтирования (защита от React StrictMode)
-    const channelName = `project-messages:thread:${threadId}:${instanceId}`
-    const realtimeFilter = `thread_id=eq.${threadId}`
 
-    const realtimeChannel = supabase
+    // ── 1. Сообщения треда — через локальную шину (источник broadcast'а —
+    // useWorkspaceMessagesRealtime, единственная supabase-подписка на inbox:<ws>) ──
+    const unsubBus = subscribeInboxBroadcast((p) => {
+      if (p.tbl !== 'project_messages' || p.thread_id !== threadId) return
+
+      if (p.op === 'INSERT') {
+        // Активная мутация sendMessage — mutationFn сам поставит финальную
+        // версию через onSuccess; refetch стёр бы optimistic.
+        if (queryClient.isMutating({ mutationKey: ['sendMessage', threadId] }) > 0) return
+        // Есть вложения — refetch сейчас вернёт сообщение без файлов
+        // (пишутся позже); событие message_attachments придёт отдельно.
+        if (p.has_attachments) return
+        queryClient.refetchQueries({ queryKey: key })
+        queryClient.invalidateQueries({ queryKey: unreadKey })
+        if (channel === 'client' && projectId) {
+          queryClient.invalidateQueries({ queryKey: projectAiKeys.messengerMessages(projectId) })
+        }
+      } else if (p.op === 'UPDATE') {
+        queryClient.refetchQueries({ queryKey: key })
+      } else if (p.op === 'DELETE') {
+        queryClient.refetchQueries({ queryKey: key })
+        queryClient.invalidateQueries({ queryKey: unreadKey })
+      }
+    })
+
+    // ── 2. Реакции и вложения — Postgres Changes (как раньше) ──
+    const channelName = `project-messages-aux:thread:${threadId}:${instanceId}`
+    const auxChannel = supabase
       .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'project_messages',
-          filter: realtimeFilter,
-        },
-        (payload) => {
-          if ((payload.new as { thread_id?: string }).thread_id !== threadId) return
-          // Если для этого треда идёт активная мутация sendMessage —
-          // пропускаем: mutationFn сам поставит финальную версию через
-          // setQueryData в onSuccess, refetch здесь только всё испортил бы
-          // (стёр optimistic, потом получил данные без attachments).
-          if (queryClient.isMutating({ mutationKey: ['sendMessage', threadId] }) > 0) return
-          // Если новое сообщение имеет вложения — рефетч сейчас вернёт его без файлов
-          // (вложения пишутся чуть позже). Пропускаем — событие message_attachments придёт отдельно.
-          const newMsg = payload.new as { has_attachments?: boolean }
-          if (newMsg.has_attachments) return
-          queryClient.refetchQueries({ queryKey: key })
-          queryClient.invalidateQueries({ queryKey: unreadKey })
-          if (channel === 'client' && projectId) {
-            queryClient.invalidateQueries({
-              queryKey: projectAiKeys.messengerMessages(projectId),
-            })
-          }
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'project_messages',
-          filter: realtimeFilter,
-        },
-        (payload) => {
-          if ((payload.new as { thread_id?: string }).thread_id !== threadId) return
-          queryClient.refetchQueries({ queryKey: key })
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'project_messages',
-          filter: realtimeFilter,
-        },
-        () => {
-          queryClient.refetchQueries({ queryKey: key })
-          queryClient.invalidateQueries({ queryKey: unreadKey })
-        },
-      )
       .on(
         'postgres_changes',
         {
@@ -255,8 +235,9 @@ export function useProjectMessages(
       })
 
     return () => {
+      unsubBus()
       pendingTimers.forEach(clearTimeout)
-      supabase.removeChannel(realtimeChannel)
+      supabase.removeChannel(auxChannel)
     }
   }, [threadId, projectId, channel, queryClient, instanceId])
 

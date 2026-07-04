@@ -22,6 +22,7 @@ import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { inboxKeys, messengerKeys, sidebarKeys } from '@/hooks/queryKeys'
+import { emitInboxBroadcast, type InboxBroadcastPayload } from './inboxBroadcastBus'
 
 export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
   const queryClient = useQueryClient()
@@ -99,9 +100,13 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
       broadcastChannel = supabase
         .channel(`inbox:${workspaceId}`, { config: { private: true } })
         .on('broadcast', { event: 'inbox_changed' }, (msg) => {
-          const projectId = (msg.payload as { project_id?: string } | undefined)?.project_id
-          if (projectId) pendingProjectIds.add(projectId)
+          const payload = (msg.payload ?? {}) as InboxBroadcastPayload
+          if (payload.project_id) pendingProjectIds.add(payload.project_id)
           invalidateAll()
+          // Переизлучаем в локальную шину — живая лента открытого чата и тост
+          // нового сообщения слушают её вместо своей supabase-подписки (см.
+          // inboxBroadcastBus: нельзя дважды подписаться на один топик).
+          emitInboxBroadcast(payload)
         })
         .subscribe()
     })

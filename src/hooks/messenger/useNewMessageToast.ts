@@ -23,6 +23,7 @@ import {
   parseTextLine,
 } from './useMessageToastPayload'
 import { playIncomingSound } from './useMessageSound'
+import { subscribeInboxBroadcast } from './inboxBroadcastBus'
 import { useNotificationMute } from '@/hooks/useNotificationMute'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import type { TaskItem } from '@/components/tasks/types'
@@ -47,6 +48,11 @@ type RealtimeThreadPayload = {
   business_connection_id: string | null
   mtproto_session_user_id: string | null
 }
+
+// Дедуп тоста по id сообщения. Одно сообщение = один тост, даже если сигнал из
+// шины пришёл несколько раз (переподключение realtime, HMR в dev, гонки).
+// Без этого один message_id мог добавить свою строку в тост несколько раз.
+const recentToastedMessageIds = new Set<string>()
 
 export function useNewMessageToast(workspaceId: string | undefined) {
   const { user } = useAuth()
@@ -86,23 +92,33 @@ export function useNewMessageToast(workspaceId: string | undefined) {
   useEffect(() => {
     if (!workspaceId || !user) return
 
-    // Уникальное имя канала для каждого монтирования (защита от React StrictMode)
-    const toastChannelName = `msg-toast:${workspaceId}:${instanceId}`
-
-    const channel = supabase
-      .channel(toastChannelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'project_messages',
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        async (payload) => {
+    // Новые сообщения — через локальную шину (источник broadcast'а —
+    // useWorkspaceMessagesRealtime, единственная supabase-подписка на inbox:<ws>).
+    // Сигнал несёт только id сообщения (не содержимое — иначе team/self-сообщения
+    // утекли бы клиентам того же воркспейса). Само сообщение дотягиваем под RLS.
+    const unsubBus = subscribeInboxBroadcast(async (bp) => {
+          if (bp.tbl !== 'project_messages' || bp.op !== 'INSERT' || !bp.message_id) return
+          // Дедуп: одно сообщение = один тост, даже если сигнал пришёл повторно.
+          const mid = bp.message_id
+          if (recentToastedMessageIds.has(mid)) return
+          recentToastedMessageIds.add(mid)
+          setTimeout(() => recentToastedMessageIds.delete(mid), 15_000)
           // Режим «тишина» — не показываем тост и не проигрываем звук.
           if (isMutedRef.current) return
-          const msg = payload.new as RealtimeMessagePayload
+          // Дотягиваем сообщение под RLS: нет доступа к треду / сообщение team|self
+          // и тебе не видно → null → тоста нет (leak-safe, как прежний RLS Postgres Changes).
+          const { data: fetchedMsg } = await supabase
+            .from('project_messages')
+            .select(
+              'id, project_id, workspace_id, sender_participant_id, sender_name, content, channel, thread_id, created_at, reply_to_message_id',
+            )
+            .eq('id', bp.message_id)
+            .maybeSingle()
+          if (!fetchedMsg) return
+          const msg = fetchedMsg as unknown as RealtimeMessagePayload & {
+            id: string
+            reply_to_message_id: string | null
+          }
           const msgChannel: 'client' | 'internal' =
             msg.channel === 'internal' ? 'internal' : 'client'
 
@@ -169,14 +185,13 @@ export function useNewMessageToast(workspaceId: string | undefined) {
                   const { data: mentioned } = await supabase
                     .from('message_mentions')
                     .select('message_id')
-                    .eq('message_id', (payload.new as { id: string }).id)
+                    .eq('message_id', msg.id)
                     .in('participant_id', myPids)
                     .limit(1)
                   allowed = !!mentioned?.length
                   // ответ на моё сообщение
                   if (!allowed) {
-                    const replyToId = (payload.new as { reply_to_message_id?: string | null })
-                      .reply_to_message_id
+                    const replyToId = msg.reply_to_message_id
                     if (replyToId) {
                       const { data: orig } = await supabase
                         .from('project_messages')
@@ -261,7 +276,7 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             (!!threadName && threadName === senderName)
           if (isDirectChat) threadName = null
 
-          const messageId = (payload.new as { id: string }).id
+          const messageId = msg.id
 
           const textLine = await parseTextLine(msg.content, messageId)
           const groupKey = makeGroupKey(msg.project_id, msg.sender_participant_id, msg.thread_id)
@@ -367,15 +382,16 @@ export function useNewMessageToast(workspaceId: string | undefined) {
               onAutoClose: () => groupedLines.delete(groupKey),
             },
           )
-        },
-      )
-      // Тост «Новый диалог» при создании треда внешнего личного диалога.
-      // Закрывает кейс: сотрудник пишет клиенту ПЕРВЫМ в TG/WhatsApp — тред
-      // создаётся, но в «Непрочитанных» не виден (своё сообщение) и обычный
-      // тост сообщения подавлен. Здесь сигнал привязан к самому факту создания
-      // треда, поэтому ловит и собственное первое касание. Для входящего нового
-      // диалога сработает И этот тост, И обычный тост сообщения — поэтому текст
-      // нейтральный, без «вы написали первым».
+    })
+
+    // Тост «Новый диалог» при создании треда — оставлен на Postgres Changes:
+    // таблица project_threads малонагружена (треды создаются редко), выносить её
+    // на Broadcast смысла нет. Закрывает кейс: сотрудник пишет клиенту ПЕРВЫМ в
+    // TG/WhatsApp — тред создаётся, но в «Непрочитанных» не виден (своё сообщение).
+    // Для входящего нового диалога сработает И этот тост, И обычный тост сообщения —
+    // поэтому текст нейтральный, без «вы написали первым».
+    const threadChannel = supabase
+      .channel(`msg-toast-thread:${workspaceId}:${instanceId}`)
       .on(
         'postgres_changes',
         {
@@ -449,7 +465,8 @@ export function useNewMessageToast(workspaceId: string | undefined) {
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      unsubBus()
+      supabase.removeChannel(threadChannel)
     }
   }, [workspaceId, user, queryClient, instanceId])
 }
