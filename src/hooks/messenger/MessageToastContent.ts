@@ -49,6 +49,7 @@ function buildAvatar(
   senderName: string,
   avatarUrl: string | null,
   threadIcon?: string | null,
+  accentColor?: string | null,
 ) {
   const size = 'w-8 h-8 rounded-full'
   const inner = avatarUrl
@@ -72,11 +73,14 @@ function buildAvatar(
   }
 
   const IconComp = getChatIconComponent(threadIcon)
+  // Значок канала — в верхнем правом углу, в акцентном цвете треда (как во «Входящих»).
+  const iconColor = accentColor
+    ? (COLOR_TEXT[accentColor as ThreadAccentColor] ?? 'text-foreground/80')
+    : 'text-foreground/80'
   const badge = createElement(
     'div',
     {
-      className:
-        'absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white border border-border flex items-center justify-center text-foreground/80',
+      className: `absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-white border border-border flex items-center justify-center ${iconColor}`,
     },
     createElement(IconComp, { width: 10, height: 10, className: 'w-2.5 h-2.5' }),
   )
@@ -137,37 +141,43 @@ export function buildToastContent(
       style: { width: 'min(420px, calc(100vw - 24px))' },
       onClick: onOpen,
     },
-    buildAvatar(senderName, avatarUrl, threadIcon),
+    buildAvatar(senderName, avatarUrl, threadIcon, accentColor),
     (() => {
-      // Строка 1: имя отправителя обычным размером + в скобках мелким шрифтом
-      // проект (чёрным) и тред (акцентным цветом треда). У личного диалога без
-      // проекта — только тред. Дальше — текст сообщений.
-      const hasMeta = Boolean(projectName || threadName)
-      const threadAccentClass = accentColor
-        ? (COLOR_TEXT[accentColor as ThreadAccentColor] ?? 'text-muted-foreground')
-        : 'text-muted-foreground'
+      // Строка 1 — идентично «Входящим»: название треда первым, проект серой
+      // плашкой-тегом (grid: короткий проект → тред шире, оба длинных → ≤50%).
+      // Личный диалог без проекта → только тред. Строка 2 — отправитель (если
+      // отличается от заголовка). Дальше — текст сообщений.
+      const mainName = threadName ?? senderName
+      // Имя автора — цветом акцента треда (как во «Входящих»).
+      const senderAccentClass = accentColor
+        ? (COLOR_TEXT[accentColor as ThreadAccentColor] ?? 'text-foreground')
+        : 'text-foreground'
       return createElement(
         'div',
         { className: 'flex-1 min-w-0' },
         createElement(
           'div',
-          { className: 'flex items-baseline gap-1 min-w-0' },
-          createElement('span', { className: 'font-medium text-sm truncate' }, senderName),
-          hasMeta
+          {
+            className: 'grid items-center gap-1 min-w-0 text-sm mb-0.5',
+            style: {
+              gridTemplateColumns: projectName
+                ? 'minmax(0, max-content) fit-content(50%)'
+                : 'minmax(0, 1fr)',
+            },
+          },
+          createElement(
+            'div',
+            { className: 'truncate min-w-0 font-medium text-gray-900' },
+            mainName,
+          ),
+          projectName
             ? createElement(
-                'span',
-                { className: 'shrink-0 truncate max-w-[55%] text-xs' },
-                '(',
-                projectName
-                  ? createElement('span', { className: 'text-foreground' }, projectName)
-                  : null,
-                projectName && threadName
-                  ? createElement('span', { className: 'text-muted-foreground' }, ' · ')
-                  : null,
-                threadName
-                  ? createElement('span', { className: threadAccentClass }, threadName)
-                  : null,
-                ')',
+                'div',
+                {
+                  className:
+                    'truncate min-w-0 justify-self-start rounded bg-gray-100 px-1.5 py-0 text-[12px] leading-[18px] font-medium text-gray-700',
+                },
+                projectName,
               )
             : null,
         ),
@@ -178,6 +188,15 @@ export function buildToastContent(
             createElement(
               'div',
               { key: i, className: 'text-xs text-muted-foreground break-words' },
+              // Первая строка: «Имя автора: текст» (имя — цветом треда). Остальные
+              // сгруппированные сообщения — без префикса.
+              i === 0
+                ? createElement(
+                    'span',
+                    { className: `font-medium ${senderAccentClass}` },
+                    `${senderName}: `,
+                  )
+                : null,
               line,
             ),
           ),
