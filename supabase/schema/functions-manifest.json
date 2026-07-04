@@ -1,0 +1,2490 @@
+[
+  {
+    "args": "p_node jsonb, p_entity text",
+    "lang": "plpgsql",
+    "name": "_board_compile_condition",
+    "returns": "text",
+    "body_md5": "c19a3352044c10e5c659e2f6627d2a3e",
+    "security": "invoker"
+  },
+  {
+    "args": "p_group jsonb, p_entity text",
+    "lang": "plpgsql",
+    "name": "_board_compile_group",
+    "returns": "text",
+    "body_md5": "6603d5525b9fca19342524b29fd451ca",
+    "security": "invoker"
+  },
+  {
+    "args": "p_value jsonb",
+    "lang": "sql",
+    "name": "_board_filter_text_list",
+    "returns": "text",
+    "body_md5": "f7b78e167bde068b538919811536a8c9",
+    "security": "invoker"
+  },
+  {
+    "args": "p_value jsonb",
+    "lang": "sql",
+    "name": "_board_filter_uuid_list",
+    "returns": "text",
+    "body_md5": "b38a698d6770ca5ceb929da2083313ca",
+    "security": "invoker"
+  },
+  {
+    "args": "p_value jsonb, p_sentinel text",
+    "lang": "sql",
+    "name": "_board_value_has_sentinel",
+    "returns": "boolean",
+    "body_md5": "5087ef6d03d04a10ff6290ab24d7a224",
+    "security": "invoker"
+  },
+  {
+    "args": "p_cond jsonb, p_fields jsonb",
+    "lang": "plpgsql",
+    "name": "_report_condition_sql",
+    "returns": "text",
+    "body_md5": "6541544bf7a6b5aafb973f92b3409bd3",
+    "security": "invoker"
+  },
+  {
+    "args": "p_group jsonb, p_fields jsonb",
+    "lang": "plpgsql",
+    "name": "_report_filter_sql",
+    "returns": "text",
+    "body_md5": "aafc5d54f635b5c4bbd49c45e434dc8e",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "add_creator_as_admin",
+    "returns": "trigger",
+    "body_md5": "4ef2ead2abcd6392b8135b48e117ee0e",
+    "security": "definer"
+  },
+  {
+    "args": "p_document_id uuid, p_file_path text, p_file_name text, p_file_size bigint, p_mime_type text, p_checksum text, p_file_id uuid",
+    "lang": "plpgsql",
+    "name": "add_document_version",
+    "returns": "uuid",
+    "body_md5": "1cd4bc1f90fdb1c35006d02b74f0b55d",
+    "security": "definer"
+  },
+  {
+    "args": "p_document_id uuid, p_file_path text, p_file_name text, p_file_size bigint, p_mime_type text, p_checksum text, p_file_id uuid, p_uploaded_by uuid",
+    "lang": "plpgsql",
+    "name": "add_document_version_service",
+    "returns": "uuid",
+    "body_md5": "15bc832a93339a672c2beca9d6cba104",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "add_external_contact_role_to_new_workspace",
+    "returns": "trigger",
+    "body_md5": "1428d5747db3681560729a13a90e2edc",
+    "security": "definer"
+  },
+  {
+    "args": "p_kit_template_id uuid, p_folder_template_ids uuid[], p_start_order_index integer",
+    "lang": "plpgsql",
+    "name": "add_folders_to_kit_template",
+    "returns": "SETOF uuid",
+    "body_md5": "8e6cae78eb4e141b7d063d9c91072c24",
+    "security": "definer"
+  },
+  {
+    "args": "p_conversation_id uuid, p_user_message text, p_assistant_message text, p_user_id uuid, p_document_ids uuid[]",
+    "lang": "plpgsql",
+    "name": "add_message_pair",
+    "returns": "json",
+    "body_md5": "9f0f674d09dc604668837d0099064232",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "admin_list_workspaces",
+    "returns": "TABLE(workspace_id uuid, workspace_name text, created_at timestamp with time zone, plan_code text, plan_name text, billing_status text, participants_count integer, projects_count integer, storage_mb integer, ai_tokens_used bigint, ai_tokens_monthly bigint)",
+    "body_md5": "5c651df6808cd67d25e6e285cc2fd361",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_plan_code text",
+    "lang": "plpgsql",
+    "name": "admin_set_workspace_plan",
+    "returns": "void",
+    "body_md5": "446da30501d1c84db265b853830f0855",
+    "security": "definer"
+  },
+  {
+    "args": "p_message_id uuid, p_tg_msg_id bigint, p_chat_id bigint",
+    "lang": "sql",
+    "name": "append_telegram_message_id",
+    "returns": "void",
+    "body_md5": "ff021ca8fad17338d659510f7c860956",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "auto_advance_project_status",
+    "returns": "trigger",
+    "body_md5": "122883c4b95638fbaec0dab1be686f6d",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "auto_resolve_send_failures_on_sent",
+    "returns": "trigger",
+    "body_md5": "5dde8f329adbd98b002de4adb67b5d99",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "calculate_service_group_total",
+    "returns": "trigger",
+    "body_md5": "c2bcac85bc375770d7ef905476a41b5a",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "calculate_service_item_total",
+    "returns": "trigger",
+    "body_md5": "fea2c5d0f6100bd7ccb1dec435aff6bb",
+    "security": "invoker"
+  },
+  {
+    "args": "b boards, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "can_user_access_board",
+    "returns": "boolean",
+    "body_md5": "b5d88150877af35fc68f112a408a59a3",
+    "security": "definer"
+  },
+  {
+    "args": "p_board_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "can_user_access_board",
+    "returns": "boolean",
+    "body_md5": "b9b261fc24b0b884565b1a53f2c437ea",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "can_user_access_thread",
+    "returns": "boolean",
+    "body_md5": "891e132030835f8516dcef3bc7dffadc",
+    "security": "definer"
+  },
+  {
+    "args": "t project_threads, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "can_user_access_thread",
+    "returns": "boolean",
+    "body_md5": "8294ecec4ebce0f51f34efc5f999ab0a",
+    "security": "definer"
+  },
+  {
+    "args": "p_conversation_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "can_view_conversation",
+    "returns": "boolean",
+    "body_md5": "87eeaf3f0b32d9247a1813daa4274daa",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread_id uuid, p_workspace_id uuid, p_access_type text, p_project_id uuid",
+    "lang": "sql",
+    "name": "can_view_thread",
+    "returns": "boolean",
+    "body_md5": "c7cffaa3e57cac6558d21a0af706f23f",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "check_workspace_participant",
+    "returns": "boolean",
+    "body_md5": "6dfaa18d93776a94558324943616ca9f",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "cleanup_expired_oauth_states",
+    "returns": "void",
+    "body_md5": "79bca181378023dce1805f140f97cfe0",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "cleanup_old_export_progress",
+    "returns": "void",
+    "body_md5": "84018c1f70f12cfb9138c4db03e23c2e",
+    "security": "invoker"
+  },
+  {
+    "args": "p_thread_id uuid",
+    "lang": "plpgsql",
+    "name": "compute_thread_inbox_meta",
+    "returns": "void",
+    "body_md5": "f93a5c1015958c125cd06e1801c3619c",
+    "security": "definer"
+  },
+  {
+    "args": "p_project_id uuid, p_workspace_id uuid, p_access_type text, p_access_roles text[], p_created_by uuid, p_item_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "context_note_visible",
+    "returns": "boolean",
+    "body_md5": "ab2f395227b7d501b5df463d50b1bc75",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_project_id uuid, p_name text, p_start_at timestamp with time zone, p_end_at timestamp with time zone, p_calendar_id uuid, p_google_event_id text",
+    "lang": "plpgsql",
+    "name": "convert_external_event_to_task",
+    "returns": "uuid",
+    "body_md5": "31c6049939a83327be563421eb1a8b00",
+    "security": "definer"
+  },
+  {
+    "args": "p_source_template_id uuid, p_workspace_id uuid, p_new_name text",
+    "lang": "plpgsql",
+    "name": "copy_form_template",
+    "returns": "uuid",
+    "body_md5": "e36b16c8b5b79bf976ed022e917b861a",
+    "security": "definer"
+  },
+  {
+    "args": "p_template_id uuid",
+    "lang": "plpgsql",
+    "name": "copy_thread_template",
+    "returns": "uuid",
+    "body_md5": "1c3446f8c459edd9df1209e3351dea95",
+    "security": "definer"
+  },
+  {
+    "args": "p_article_id uuid, p_comment text",
+    "lang": "plpgsql",
+    "name": "create_article_version",
+    "returns": "uuid",
+    "body_md5": "8b9bf8984db679d0f963bd61e96bca98",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_group_id uuid",
+    "lang": "plpgsql",
+    "name": "create_article_with_group",
+    "returns": "uuid",
+    "body_md5": "bdd5a9159f0f5b5a2d00d4b5c176bc8b",
+    "security": "definer"
+  },
+  {
+    "args": "p_project_id uuid, p_workspace_id uuid, p_created_by uuid, p_title text, p_visibility text, p_type text, p_document_ids uuid[]",
+    "lang": "plpgsql",
+    "name": "create_conversation_with_context",
+    "returns": "uuid",
+    "body_md5": "e701df692ca2f2dde3eb12f0e8f8573c",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "create_default_project_roles",
+    "returns": "trigger",
+    "body_md5": "0a7c916da2d13e896cb1e7e658433688",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "create_default_roles_and_statuses",
+    "returns": "trigger",
+    "body_md5": "e0ad28463185a8a3ebd97912f2152c05",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "create_default_workspace_features",
+    "returns": "trigger",
+    "body_md5": "579121e4a37a2f7c8f3980ba3bf385c1",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "create_default_workspace_roles",
+    "returns": "trigger",
+    "body_md5": "83748f16fa319d59ed17e66e5c44a980",
+    "security": "invoker"
+  },
+  {
+    "args": "p_template_id uuid, p_project_id uuid, p_workspace_id uuid",
+    "lang": "plpgsql",
+    "name": "create_document_kit_from_template",
+    "returns": "uuid",
+    "body_md5": "26174a8163648f53127db5a97b043e3c",
+    "security": "definer"
+  },
+  {
+    "args": "p_document_id uuid, p_workspace_id uuid, p_version integer, p_file_path text, p_file_name text, p_file_size bigint, p_mime_type text, p_uploaded_by uuid, p_file_id uuid, p_is_compressed boolean",
+    "lang": "plpgsql",
+    "name": "create_document_version_atomic",
+    "returns": "json",
+    "body_md5": "b78d589446608a2d3f6fb7795521a9ad",
+    "security": "definer"
+  },
+  {
+    "args": "p_template_id uuid, p_project_id uuid, p_workspace_id uuid",
+    "lang": "plpgsql",
+    "name": "create_form_kit_from_template",
+    "returns": "uuid",
+    "body_md5": "7989de8e8a2618bc831d1f790ce84e32",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "create_owner_participant",
+    "returns": "trigger",
+    "body_md5": "df1e753fa4b8a1c113f3beb7dc4eb8b0",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_name text, p_description text, p_button_label text, p_entity_type text, p_color text, p_order_index integer, p_is_default boolean, p_is_final boolean, p_text_color text",
+    "lang": "plpgsql",
+    "name": "create_status_with_button_label",
+    "returns": "statuses",
+    "body_md5": "99993af24b852f3ee638bbcd9337b1ee",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_project_id uuid, p_title text, p_description text, p_deadline timestamp with time zone, p_document_id uuid, p_document_kit_id uuid, p_form_kit_id uuid, p_created_by uuid, p_assignee_ids uuid[]",
+    "lang": "plpgsql",
+    "name": "create_task_with_assignees",
+    "returns": "uuid",
+    "body_md5": "c7d158a16f86451e2ec355f8549fcb09",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "create_user_settings",
+    "returns": "trigger",
+    "body_md5": "c1b064e1e54fd72d184dea07fe21da4c",
+    "security": "definer"
+  },
+  {
+    "args": "p_status_id uuid",
+    "lang": "plpgsql",
+    "name": "delete_status",
+    "returns": "void",
+    "body_md5": "2d14db47a669539770a60d9194f47dd8",
+    "security": "definer"
+  },
+  {
+    "args": "workspace_uuid uuid",
+    "lang": "plpgsql",
+    "name": "delete_workspace_api_key",
+    "returns": "boolean",
+    "body_md5": "46c33e0dc54641009ed6276c3f6ec4e9",
+    "security": "definer"
+  },
+  {
+    "args": "workspace_uuid uuid",
+    "lang": "plpgsql",
+    "name": "delete_workspace_google_api_key",
+    "returns": "boolean",
+    "body_md5": "984bb9d16407409994454620401643bb",
+    "security": "definer"
+  },
+  {
+    "args": "workspace_uuid uuid",
+    "lang": "plpgsql",
+    "name": "delete_workspace_voyageai_api_key",
+    "returns": "boolean",
+    "body_md5": "51ec194ebc943bc257286e8c3fd712c9",
+    "security": "definer"
+  },
+  {
+    "args": "p_message_id uuid, p_force_attachments boolean",
+    "lang": "plpgsql",
+    "name": "dispatch_message_to_channels",
+    "returns": "void",
+    "body_md5": "3e7db0ccee61db65d4da824e5114a19f",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "dispatch_scheduled_messages",
+    "returns": "integer",
+    "body_md5": "2ddf8ede6166ece3c3f142b8aa4935a4",
+    "security": "definer"
+  },
+  {
+    "args": "p_url text, p_body jsonb, p_message_id uuid, p_function_name text",
+    "lang": "plpgsql",
+    "name": "dispatch_send_http",
+    "returns": "bigint",
+    "body_md5": "471fb2badcd2920fb02d263df483b6c9",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "docbuilder_grant_creator_access",
+    "returns": "trigger",
+    "body_md5": "a8707b6a41029c7c240b0530b75ffdf6",
+    "security": "definer"
+  },
+  {
+    "args": "p_project_id uuid",
+    "lang": "sql",
+    "name": "docbuilder_has_project_access",
+    "returns": "boolean",
+    "body_md5": "fe479afda63cf702eacb4496e7d1b7f0",
+    "security": "definer"
+  },
+  {
+    "args": "p_template_id uuid",
+    "lang": "sql",
+    "name": "docbuilder_has_template_access",
+    "returns": "boolean",
+    "body_md5": "fea94d0f403572ec87fb6f1026d69295",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "sql",
+    "name": "docbuilder_is_admin",
+    "returns": "boolean",
+    "body_md5": "c91409a34e028a35c33189944befd5ff",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "docbuilder_update_updated_at",
+    "returns": "trigger",
+    "body_md5": "c4f28fa49bb5fd52feec44e35535722f",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "sql",
+    "name": "docbuilder_user_email",
+    "returns": "text",
+    "body_md5": "45947dadaf733c8a61a7fcf601b5842c",
+    "security": "definer"
+  },
+  {
+    "args": "p_template_id uuid, p_new_name text",
+    "lang": "plpgsql",
+    "name": "duplicate_project_template",
+    "returns": "uuid",
+    "body_md5": "795c33352ea94d91a473c50e54b82f8d",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "email_thread_assign_owner_after_insert",
+    "returns": "trigger",
+    "body_md5": "fdda6c683f9f6114b10b9a0e2c41f447",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "email_thread_auto_setup_on_insert",
+    "returns": "trigger",
+    "body_md5": "45999bde8dad6763605b9a486c96c980",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "email_thread_reopen_on_incoming_message",
+    "returns": "trigger",
+    "body_md5": "79c3a67d28d3ce2b96d2f5a6a948624b",
+    "security": "definer"
+  },
+  {
+    "args": "p_session_id uuid",
+    "lang": "plpgsql",
+    "name": "end_impersonation_session",
+    "returns": "void",
+    "body_md5": "dd32afa0cb769716e7004d0ff0c37131",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid",
+    "lang": "plpgsql",
+    "name": "export_workspace_data",
+    "returns": "jsonb",
+    "body_md5": "75c1a9dc3dda7c13ade193b8cea88fd6",
+    "security": "definer"
+  },
+  {
+    "args": "p_slot_id uuid, p_document_id uuid, p_project_id uuid",
+    "lang": "plpgsql",
+    "name": "fill_folder_slot",
+    "returns": "void",
+    "body_md5": "5d067735712aea8e34f04e88559965d3",
+    "security": "definer"
+  },
+  {
+    "args": "p_slot_id uuid, p_document_id uuid, p_project_id uuid",
+    "lang": "plpgsql",
+    "name": "fill_slot_atomic",
+    "returns": "void",
+    "body_md5": "ac1a27a814edecdf7d49cfe686dabbfc",
+    "security": "definer"
+  },
+  {
+    "args": "p_slot_id uuid, p_document_id uuid, p_project_id uuid",
+    "lang": "plpgsql",
+    "name": "fill_slot_atomic_service",
+    "returns": "void",
+    "body_md5": "80087aabc02929d615cd368dab2df8ff",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fill_thread_id_from_channel",
+    "returns": "trigger",
+    "body_md5": "65b31ab58fbba9e6969727101fd37733",
+    "security": "invoker"
+  },
+  {
+    "args": "p_workspace_id uuid, p_name text, p_email text, p_phone text, p_telegram_user_id bigint",
+    "lang": "plpgsql",
+    "name": "find_or_create_contact_participant",
+    "returns": "uuid",
+    "body_md5": "d069e3efb9b69d9fb50f6d667635c243",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_document_delete",
+    "returns": "trigger",
+    "body_md5": "4e7fa2867a6a34336e1099806af7a995",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_document_insert",
+    "returns": "trigger",
+    "body_md5": "764badcc87f89cb7b8c9bb006bb197d8",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_document_kit_delete",
+    "returns": "trigger",
+    "body_md5": "032ed1f1e19050d305775aadd1cb34c2",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_document_kit_insert",
+    "returns": "trigger",
+    "body_md5": "051173e724e76d41d1d8cbed6871cd4b",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_document_update",
+    "returns": "trigger",
+    "body_md5": "3f9c8158636f22cea49f6a439b4c3b90",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_folder_delete",
+    "returns": "trigger",
+    "body_md5": "bd2b7bf307bc0251525c99c8100e0be4",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_folder_insert",
+    "returns": "trigger",
+    "body_md5": "bf36d34d0a77a4d21c379decfa522b7a",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_form_field_change",
+    "returns": "trigger",
+    "body_md5": "1c0aff406edff245e9ef5f5a365b7e66",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_participant_change",
+    "returns": "trigger",
+    "body_md5": "334a3005dec0b049bc514002776901f9",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_project_delete",
+    "returns": "trigger",
+    "body_md5": "ac5f4afba320cf080e8085a6425f7024",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_project_update",
+    "returns": "trigger",
+    "body_md5": "fb88c720f66c92249176ec40c8026157",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_task_delete",
+    "returns": "trigger",
+    "body_md5": "5a63ddb3863bc9976a03204f774a50ce",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_task_insert",
+    "returns": "trigger",
+    "body_md5": "0ccd893bee8e9a1abd7de3d8713c97cc",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_audit_task_update",
+    "returns": "trigger",
+    "body_md5": "7b327d818c4329687db01b6abb12f5a6",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_update_project_last_activity",
+    "returns": "trigger",
+    "body_md5": "bb2f9199b7a85b3f9055070224500da9",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_update_project_last_activity_from_form_values",
+    "returns": "trigger",
+    "body_md5": "c83ee63af60900778d7bde76a94e3196",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "fn_update_project_last_activity_self",
+    "returns": "trigger",
+    "body_md5": "6f2767ca5f1565c5b168aa5914098e19",
+    "security": "definer"
+  },
+  {
+    "args": "p_action text, p_resource_type text, p_resource_id uuid, p_details jsonb, p_workspace_id uuid, p_project_id uuid",
+    "lang": "plpgsql",
+    "name": "fn_write_audit_log",
+    "returns": "void",
+    "body_md5": "993e84275c0e3f22b73d41eb7de51901",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "generate_chat_link_code",
+    "returns": "text",
+    "body_md5": "9cd32f4c52835c035f1c4ba5d3cbdbe0",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "generate_messenger_link_code",
+    "returns": "text",
+    "body_md5": "4805f068fd07e1c43c9b92e03d684202",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "generate_recurring_tasks",
+    "returns": "integer",
+    "body_md5": "679bc1160d5737ece60047de82cae329",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "generate_thread_link_code",
+    "returns": "text",
+    "body_md5": "7b0fdd78531d89c8c5b4051d11ca2f9b",
+    "security": "invoker"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "get_accessible_projects",
+    "returns": "TABLE(id uuid, name text, description text, workspace_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone, created_by uuid, deadline timestamp with time zone, status_id uuid, template_id uuid, google_drive_folder_link text, source_folder_id text, export_folder_id text, messenger_link_code text, last_activity_at timestamp with time zone, template_name text, has_active_deadline_task boolean, is_lead_template boolean, final_kind status_final_kind, contact_participant_id uuid)",
+    "body_md5": "57109abaf44fbb666a45925c0af3cb4e",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "get_admin_permissions",
+    "returns": "jsonb",
+    "body_md5": "b210ebc93d625f5b64a476a5280753ae",
+    "security": "invoker"
+  },
+  {
+    "args": "p_article_id uuid",
+    "lang": "plpgsql",
+    "name": "get_article_version_history",
+    "returns": "TABLE(id uuid, version integer, title text, comment text, created_by uuid, created_at timestamp with time zone, is_current boolean)",
+    "body_md5": "182af3274448b0e2091b2d9b07856c45",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid, p_filter jsonb",
+    "lang": "plpgsql",
+    "name": "get_board_filtered_projects",
+    "returns": "TABLE(id uuid, name text, description text, workspace_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone, created_by uuid, deadline timestamp with time zone, status_id uuid, template_id uuid, google_drive_folder_link text, source_folder_id text, export_folder_id text, messenger_link_code text, last_activity_at timestamp with time zone, template_name text, has_active_deadline_task boolean, is_lead_template boolean, final_kind status_final_kind, contact_participant_id uuid, next_task_id uuid, next_task_name text, next_task_deadline timestamp with time zone)",
+    "body_md5": "845a08b8c5c616873f69ae71aff1b2f7",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid, p_filter jsonb",
+    "lang": "plpgsql",
+    "name": "get_board_filtered_threads",
+    "returns": "TABLE(id uuid, name text, type text, workspace_id uuid, project_id uuid, project_name text, status_id uuid, status_name text, status_color text, status_order integer, status_show_to_creator boolean, deadline timestamp with time zone, start_at timestamp with time zone, end_at timestamp with time zone, accent_color text, icon text, is_pinned boolean, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone, created_by uuid, email_unsent boolean)",
+    "body_md5": "a8782fd84e0b488858090ec239875c68",
+    "security": "definer"
+  },
+  {
+    "args": "p_board_id uuid",
+    "lang": "plpgsql",
+    "name": "get_board_lists",
+    "returns": "TABLE(id uuid, board_id uuid, name text, entity_type text, column_index integer, sort_order integer, filters jsonb, sort_by text, sort_dir text, display_mode text, visible_fields text[], group_by text, list_height text, header_color text, card_layout jsonb, calendar_settings jsonb, created_at timestamp with time zone, updated_at timestamp with time zone)",
+    "body_md5": "10c485c51ac951088551d3de7f0f5bba",
+    "security": "invoker"
+  },
+  {
+    "args": "p_thread_id uuid, p_user_id uuid, p_project_id uuid, p_workspace_id uuid",
+    "lang": "plpgsql",
+    "name": "get_chat_state",
+    "returns": "json",
+    "body_md5": "098251fc080ee806345a9574737a1b95",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "get_client_ws_permissions",
+    "returns": "jsonb",
+    "body_md5": "05b7f468ccd55f2950025f38ddc06a9e",
+    "security": "invoker"
+  },
+  {
+    "args": "p_document_id uuid",
+    "lang": "plpgsql",
+    "name": "get_current_document_file",
+    "returns": "TABLE(id uuid, version integer, file_path text, file_name text, file_size bigint, mime_type text, created_at timestamp with time zone)",
+    "body_md5": "2e53f196fb120b619404f2dd4a9c6f70",
+    "security": "definer"
+  },
+  {
+    "args": "p_document_id uuid",
+    "lang": "plpgsql",
+    "name": "get_document_file_history",
+    "returns": "TABLE(id uuid, version integer, file_name text, file_size bigint, uploaded_by uuid, created_at timestamp with time zone, is_current boolean)",
+    "body_md5": "af4b6c40db3348c4684cea173db753e2",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "get_employee_permissions",
+    "returns": "jsonb",
+    "body_md5": "f3e12630cb0935565652067cfe95859a",
+    "security": "invoker"
+  },
+  {
+    "args": "p_project_id uuid",
+    "lang": "plpgsql",
+    "name": "get_history_unread_count",
+    "returns": "bigint",
+    "body_md5": "e78a4aeb3489fa88559fa953728f278b",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "sql",
+    "name": "get_inbox_awaiting_reply_threads",
+    "returns": "TABLE(thread_id uuid, thread_name text, thread_icon text, thread_accent_color text, thread_type text, project_id uuid, project_name text, channel_type text, legacy_channel text, last_message_at timestamp with time zone, last_message_text text, last_message_attachment_name text, last_message_attachment_count integer, last_message_attachment_mime text, last_sender_name text, last_sender_avatar_url text, unread_count bigint, manually_unread boolean, has_unread_reaction boolean, unread_reaction_count bigint, last_reaction_emoji text, last_reaction_at timestamp with time zone, last_reaction_sender_name text, last_reaction_sender_avatar_url text, last_reaction_message_preview text, email_contact text, email_subject text, last_event_at timestamp with time zone, last_event_text text, last_event_status_color text, unread_event_count bigint, counterpart_name text, counterpart_avatar_url text, last_read_at timestamp with time zone, last_event_sender_avatar_url text)",
+    "body_md5": "87b8fb3c6c746bc26d0e86e044802bdf",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "sql",
+    "name": "get_inbox_message_status",
+    "returns": "TABLE(thread_id uuid, delivery_status text)",
+    "body_md5": "3434bfcdb52d4ef2b84f2b7f1fac289a",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "sql",
+    "name": "get_inbox_muted_threads",
+    "returns": "TABLE(thread_id uuid, thread_name text, thread_icon text, thread_accent_color text, thread_type text, project_id uuid, project_name text, channel_type text, legacy_channel text, last_message_at timestamp with time zone, last_message_text text, last_message_attachment_name text, last_message_attachment_count integer, last_message_attachment_mime text, last_sender_name text, last_sender_avatar_url text, unread_count bigint, manually_unread boolean, has_unread_reaction boolean, unread_reaction_count bigint, last_reaction_emoji text, last_reaction_at timestamp with time zone, last_reaction_sender_name text, last_reaction_sender_avatar_url text, last_reaction_message_preview text, email_contact text, email_subject text, last_event_at timestamp with time zone, last_event_text text, last_event_status_color text, unread_event_count bigint, counterpart_name text, counterpart_avatar_url text, last_read_at timestamp with time zone, last_event_sender_avatar_url text)",
+    "body_md5": "26b491c8b859f54dfcf6e89177abe5a3",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "sql",
+    "name": "get_inbox_needs_reply_threads",
+    "returns": "TABLE(thread_id uuid, thread_name text, thread_icon text, thread_accent_color text, thread_type text, project_id uuid, project_name text, channel_type text, legacy_channel text, last_message_at timestamp with time zone, last_message_text text, last_message_attachment_name text, last_message_attachment_count integer, last_message_attachment_mime text, last_sender_name text, last_sender_avatar_url text, unread_count bigint, manually_unread boolean, has_unread_reaction boolean, unread_reaction_count bigint, last_reaction_emoji text, last_reaction_at timestamp with time zone, last_reaction_sender_name text, last_reaction_sender_avatar_url text, last_reaction_message_preview text, email_contact text, email_subject text, last_event_at timestamp with time zone, last_event_text text, last_event_status_color text, unread_event_count bigint, counterpart_name text, counterpart_avatar_url text, last_read_at timestamp with time zone, last_event_sender_avatar_url text)",
+    "body_md5": "9a7709ae4ce860efa1a37475c5fcb548",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid, p_query text, p_limit integer",
+    "lang": "sql",
+    "name": "get_inbox_search_threads",
+    "returns": "TABLE(thread_id uuid, thread_name text, thread_icon text, thread_accent_color text, thread_type text, project_id uuid, project_name text, channel_type text, legacy_channel text, last_message_at timestamp with time zone, last_message_text text, last_message_attachment_name text, last_message_attachment_count integer, last_message_attachment_mime text, last_sender_name text, last_sender_avatar_url text, unread_count bigint, manually_unread boolean, has_unread_reaction boolean, unread_reaction_count bigint, last_reaction_emoji text, last_reaction_at timestamp with time zone, last_reaction_sender_name text, last_reaction_sender_avatar_url text, last_reaction_message_preview text, email_contact text, email_subject text, last_event_at timestamp with time zone, last_event_text text, last_event_status_color text, unread_event_count bigint, counterpart_name text, counterpart_avatar_url text, last_read_at timestamp with time zone, last_event_sender_avatar_url text)",
+    "body_md5": "e1325bf21689d9f1177f1f20179bc61d",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "sql",
+    "name": "get_inbox_thread_aggregates",
+    "returns": "TABLE(thread_id uuid, project_id uuid, legacy_channel text, thread_accent_color text, last_message_at timestamp with time zone, unread_count bigint, unread_event_count bigint, unread_reaction_count bigint, has_unread_reaction boolean, manually_unread boolean, last_reaction_emoji text, last_from_staff boolean, has_external boolean)",
+    "body_md5": "f929c32922f650c580a7648922848055",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid, p_thread_id uuid",
+    "lang": "sql",
+    "name": "get_inbox_thread_one",
+    "returns": "TABLE(thread_id uuid, thread_name text, thread_icon text, thread_accent_color text, thread_type text, project_id uuid, project_name text, channel_type text, legacy_channel text, last_message_at timestamp with time zone, last_message_text text, last_message_attachment_name text, last_message_attachment_count integer, last_message_attachment_mime text, last_sender_name text, last_sender_avatar_url text, unread_count bigint, manually_unread boolean, has_unread_reaction boolean, unread_reaction_count bigint, last_reaction_emoji text, last_reaction_at timestamp with time zone, last_reaction_sender_name text, last_reaction_sender_avatar_url text, last_reaction_message_preview text, email_contact text, email_subject text, last_event_at timestamp with time zone, last_event_text text, last_event_status_color text, unread_event_count bigint, counterpart_name text, counterpart_avatar_url text, last_read_at timestamp with time zone, last_event_sender_avatar_url text)",
+    "body_md5": "050a47c0ae6163dbc1faa57ddd55ee80",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid, p_cursor_sort_at timestamp with time zone, p_cursor_thread_id uuid, p_limit integer",
+    "lang": "sql",
+    "name": "get_inbox_threads_page",
+    "returns": "TABLE(thread_id uuid, thread_name text, thread_icon text, thread_accent_color text, thread_type text, project_id uuid, project_name text, channel_type text, legacy_channel text, last_message_at timestamp with time zone, last_message_text text, last_message_attachment_name text, last_message_attachment_count integer, last_message_attachment_mime text, last_sender_name text, last_sender_avatar_url text, unread_count bigint, manually_unread boolean, has_unread_reaction boolean, unread_reaction_count bigint, last_reaction_emoji text, last_reaction_at timestamp with time zone, last_reaction_sender_name text, last_reaction_sender_avatar_url text, last_reaction_message_preview text, email_contact text, email_subject text, last_event_at timestamp with time zone, last_event_text text, last_event_status_color text, unread_event_count bigint, counterpart_name text, counterpart_avatar_url text, last_read_at timestamp with time zone, last_event_sender_avatar_url text, sort_at timestamp with time zone)",
+    "body_md5": "22a79d9209c9d904cfc909a0b6680efa",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "sql",
+    "name": "get_inbox_threads_v2",
+    "returns": "TABLE(thread_id uuid, thread_name text, thread_icon text, thread_accent_color text, thread_type text, project_id uuid, project_name text, channel_type text, legacy_channel text, last_message_at timestamp with time zone, last_message_text text, last_message_attachment_name text, last_message_attachment_count integer, last_message_attachment_mime text, last_sender_name text, last_sender_avatar_url text, unread_count bigint, manually_unread boolean, has_unread_reaction boolean, unread_reaction_count bigint, last_reaction_emoji text, last_reaction_at timestamp with time zone, last_reaction_sender_name text, last_reaction_sender_avatar_url text, last_reaction_message_preview text, email_contact text, email_subject text, last_event_at timestamp with time zone, last_event_text text, last_event_status_color text, unread_event_count bigint, counterpart_name text, counterpart_avatar_url text, last_read_at timestamp with time zone, last_event_sender_avatar_url text)",
+    "body_md5": "6fdc3c7cd98826416990c5aee2f5de2d",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "sql",
+    "name": "get_inbox_threads_v3",
+    "returns": "TABLE(thread_id uuid, thread_name text, thread_icon text, thread_accent_color text, thread_type text, project_id uuid, project_name text, channel_type text, legacy_channel text, last_message_at timestamp with time zone, last_message_text text, last_message_attachment_name text, last_message_attachment_count integer, last_message_attachment_mime text, last_sender_name text, last_sender_avatar_url text, unread_count bigint, manually_unread boolean, has_unread_reaction boolean, unread_reaction_count bigint, last_reaction_emoji text, last_reaction_at timestamp with time zone, last_reaction_sender_name text, last_reaction_sender_avatar_url text, last_reaction_message_preview text, email_contact text, email_subject text, last_event_at timestamp with time zone, last_event_text text, last_event_status_color text, unread_event_count bigint, counterpart_name text, counterpart_avatar_url text, last_read_at timestamp with time zone, last_event_sender_avatar_url text)",
+    "body_md5": "b8966151fa963ea4ec0133a11f5166f5",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid, p_thread_ids uuid[]",
+    "lang": "sql",
+    "name": "get_inbox_threads_v3_for",
+    "returns": "TABLE(thread_id uuid, thread_name text, thread_icon text, thread_accent_color text, thread_type text, project_id uuid, project_name text, channel_type text, legacy_channel text, last_message_at timestamp with time zone, last_message_text text, last_message_attachment_name text, last_message_attachment_count integer, last_message_attachment_mime text, last_sender_name text, last_sender_avatar_url text, unread_count bigint, manually_unread boolean, has_unread_reaction boolean, unread_reaction_count bigint, last_reaction_emoji text, last_reaction_at timestamp with time zone, last_reaction_sender_name text, last_reaction_sender_avatar_url text, last_reaction_message_preview text, email_contact text, email_subject text, last_event_at timestamp with time zone, last_event_text text, last_event_status_color text, unread_event_count bigint, counterpart_name text, counterpart_avatar_url text, last_read_at timestamp with time zone, last_event_sender_avatar_url text)",
+    "body_md5": "cb5adef68d349a0e29e247fa306216ac",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "sql",
+    "name": "get_inbox_unread_threads",
+    "returns": "TABLE(thread_id uuid, thread_name text, thread_icon text, thread_accent_color text, thread_type text, project_id uuid, project_name text, channel_type text, legacy_channel text, last_message_at timestamp with time zone, last_message_text text, last_message_attachment_name text, last_message_attachment_count integer, last_message_attachment_mime text, last_sender_name text, last_sender_avatar_url text, unread_count bigint, manually_unread boolean, has_unread_reaction boolean, unread_reaction_count bigint, last_reaction_emoji text, last_reaction_at timestamp with time zone, last_reaction_sender_name text, last_reaction_sender_avatar_url text, last_reaction_message_preview text, email_contact text, email_subject text, last_event_at timestamp with time zone, last_event_text text, last_event_status_color text, unread_event_count bigint, counterpart_name text, counterpart_avatar_url text, last_read_at timestamp with time zone, last_event_sender_avatar_url text)",
+    "body_md5": "cede30f78e46d5b91f008de05d04695a",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid",
+    "lang": "sql",
+    "name": "get_my_task_counts",
+    "returns": "json",
+    "body_md5": "054d80a8790f770f9f64e89f04bcfc64",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread_id uuid",
+    "lang": "plpgsql",
+    "name": "get_my_thread_notify_level",
+    "returns": "text",
+    "body_md5": "4c07d6e4be8e8771cf0f51c222bd898a",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "get_owner_permissions",
+    "returns": "jsonb",
+    "body_md5": "287765794bd31d24de2cbb26a15348f5",
+    "security": "invoker"
+  },
+  {
+    "args": "p_workspace_id uuid, p_target_user_id uuid",
+    "lang": "sql",
+    "name": "get_personal_dialogs",
+    "returns": "TABLE(thread_id uuid, thread_name text, thread_icon text, thread_accent_color text, thread_type text, project_id uuid, project_name text, channel text, legacy_channel text, last_message_at timestamp with time zone, last_message_text text, last_message_attachment_name text, last_message_attachment_count integer, last_sender_name text, last_sender_avatar_url text, unread_count bigint, manually_unread boolean, email_contact text, email_subject text, owner_user_id uuid, contact_participant_id uuid)",
+    "body_md5": "4449c0b048a5bd7ca08f3b654613c399",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "sql",
+    "name": "get_project_admin_module_access",
+    "returns": "jsonb",
+    "body_md5": "f4ea7017b441f1f9e77507d27795ef7d",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "get_project_admin_permissions",
+    "returns": "jsonb",
+    "body_md5": "63d20798413da25d560d4e7ee1ada654",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "sql",
+    "name": "get_project_client_module_access",
+    "returns": "jsonb",
+    "body_md5": "4e3f562b7f4fd89775a7de3fe8e7d289",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "get_project_client_permissions",
+    "returns": "jsonb",
+    "body_md5": "a9be3dd2fd9c790b9b4a6f31a6434398",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "sql",
+    "name": "get_project_executor_module_access",
+    "returns": "jsonb",
+    "body_md5": "17f2588ad5165483ca127548d8f2cd2c",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "get_project_executor_permissions",
+    "returns": "jsonb",
+    "body_md5": "c2251db6b79f4c27a073440db7bf27c3",
+    "security": "invoker"
+  },
+  {
+    "args": "p_project_id uuid, p_cursor timestamp with time zone, p_limit integer, p_resource_types text[], p_actions text[], p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "get_project_history",
+    "returns": "TABLE(id uuid, action text, resource_type text, resource_id uuid, details jsonb, created_at timestamp with time zone, actor_user_id uuid, actor_email text, actor_name text)",
+    "body_md5": "74df9688154eebbc7bd51e9010be3d48",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "sql",
+    "name": "get_project_participant_module_access",
+    "returns": "jsonb",
+    "body_md5": "ab1fd2043bba18933d65a2a610806aa8",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "get_project_participant_permissions",
+    "returns": "jsonb",
+    "body_md5": "1992513009731b21123136e6875093cd",
+    "security": "invoker"
+  },
+  {
+    "args": "p_workspace_id uuid, p_period_start timestamp with time zone, p_period_end timestamp with time zone",
+    "lang": "sql",
+    "name": "get_projects_with_activity",
+    "returns": "TABLE(project_id uuid, project_name text, events_count bigint, has_digest boolean)",
+    "body_md5": "0aa990c6c4e39b77e1e73561eb8cd056",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_limit integer",
+    "lang": "sql",
+    "name": "get_recently_viewed",
+    "returns": "TABLE(entity_type text, entity_id uuid, title text, subtitle text, project_id uuid, thread_type text, accent_color text, project_template_id uuid, project_status_id uuid, opened_at timestamp with time zone)",
+    "body_md5": "e4ce1b807f8343b236c5253ed45c73eb",
+    "security": "invoker"
+  },
+  {
+    "args": "p_entity_type text, p_uuid uuid",
+    "lang": "plpgsql",
+    "name": "get_short_id_by_uuid",
+    "returns": "integer",
+    "body_md5": "a15db23f023bd0556a1b75afccddbe68",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "get_sidebar_data",
+    "returns": "json",
+    "body_md5": "cf46d4bf3d59b1039b9a186d77cd8718",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread_id uuid",
+    "lang": "plpgsql",
+    "name": "get_thread_email_address",
+    "returns": "text",
+    "body_md5": "d83446eee97dcf81704d2e88db76e759",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread_id uuid",
+    "lang": "sql",
+    "name": "get_thread_subscribers",
+    "returns": "TABLE(participant_id uuid, subscribed boolean)",
+    "body_md5": "23a56fa9bc899ccfaaba32b824000980",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "sql",
+    "name": "get_total_unread_count",
+    "returns": "bigint",
+    "body_md5": "3655ae656e0a606c8f8f817c93e4c38b",
+    "security": "definer"
+  },
+  {
+    "args": "p_participant_id uuid, p_project_id uuid, p_channel text, p_thread_id uuid",
+    "lang": "sql",
+    "name": "get_unread_messages_count",
+    "returns": "bigint",
+    "body_md5": "87d66872b049cbfee957f5f0b7369729",
+    "security": "invoker"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid, p_can_view_all boolean",
+    "lang": "plpgsql",
+    "name": "get_user_projects",
+    "returns": "SETOF projects",
+    "body_md5": "fc9d96a81af5a5d2d578bd82b76f31c2",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_period date",
+    "lang": "sql",
+    "name": "get_workspace_ai_usage",
+    "returns": "TABLE(period date, total_tokens bigint, input_tokens bigint, output_tokens bigint, request_count integer)",
+    "body_md5": "24457af126685ef1fed2117415ea8a9f",
+    "security": "definer"
+  },
+  {
+    "args": "workspace_uuid uuid",
+    "lang": "plpgsql",
+    "name": "get_workspace_api_key",
+    "returns": "text",
+    "body_md5": "f653a921e88a06fcf74c60c4c8228133",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "get_workspace_boards",
+    "returns": "TABLE(id uuid, workspace_id uuid, name text, description text, access_type text, access_roles text[], created_by uuid, sort_order integer, column_widths jsonb, global_filter jsonb, created_at timestamp with time zone, updated_at timestamp with time zone, short_id integer)",
+    "body_md5": "9716341f5201cb15cb644056142f29ff",
+    "security": "definer"
+  },
+  {
+    "args": "workspace_uuid uuid",
+    "lang": "plpgsql",
+    "name": "get_workspace_google_api_key",
+    "returns": "text",
+    "body_md5": "a21f774a8d4af47acd19372fbe8e8539",
+    "security": "definer"
+  },
+  {
+    "args": "p_id uuid",
+    "lang": "plpgsql",
+    "name": "get_workspace_slug_by_id",
+    "returns": "TABLE(id uuid, slug text, custom_domain text)",
+    "body_md5": "8716dc6e46f4f384d06e98c6372d3935",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "get_workspace_threads",
+    "returns": "TABLE(id uuid, name text, type text, workspace_id uuid, project_id uuid, project_name text, status_id uuid, status_name text, status_color text, status_order integer, status_show_to_creator boolean, deadline timestamp with time zone, start_at timestamp with time zone, end_at timestamp with time zone, accent_color text, icon text, is_pinned boolean, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone, created_by uuid, email_unsent boolean)",
+    "body_md5": "254a6d93b1edd965f53e370372afa8d5",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid",
+    "lang": "sql",
+    "name": "get_workspace_usage_and_limits",
+    "returns": "TABLE(participants_count integer, projects_count integer, storage_mb integer, max_participants integer, max_projects integer, max_storage_mb integer, plan_code text, plan_name text, ai_tokens_used bigint, ai_tokens_monthly bigint)",
+    "body_md5": "7ea4050d2a9f5e94a3e43fd9aae79b39",
+    "security": "definer"
+  },
+  {
+    "args": "workspace_uuid uuid",
+    "lang": "plpgsql",
+    "name": "get_workspace_voyageai_api_key",
+    "returns": "text",
+    "body_md5": "65ba161d8293df6e9e15bdc3fa5e64d4",
+    "security": "definer"
+  },
+  {
+    "args": "p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "get_workspaces_with_counts",
+    "returns": "TABLE(workspace_id uuid, participants_count bigint)",
+    "body_md5": "ef0aa7d66e4b02139ec38cccd1678530",
+    "security": "definer"
+  },
+  {
+    "args": "text, internal, smallint, internal, internal, internal, internal",
+    "lang": "c",
+    "name": "gin_extract_query_trgm",
+    "returns": "internal",
+    "body_md5": "908112f5743e0dc3307ce7da24a3d095",
+    "security": "invoker"
+  },
+  {
+    "args": "text, internal",
+    "lang": "c",
+    "name": "gin_extract_value_trgm",
+    "returns": "internal",
+    "body_md5": "42bc3d69fe7ae6ba4409315e68686e93",
+    "security": "invoker"
+  },
+  {
+    "args": "internal, smallint, text, integer, internal, internal, internal, internal",
+    "lang": "c",
+    "name": "gin_trgm_consistent",
+    "returns": "boolean",
+    "body_md5": "3b5516ee327d210cf276d0f7cbec6a1b",
+    "security": "invoker"
+  },
+  {
+    "args": "internal, smallint, text, integer, internal, internal, internal",
+    "lang": "c",
+    "name": "gin_trgm_triconsistent",
+    "returns": "\"char\"",
+    "body_md5": "ebb9557e4d7f2342aa65aa319bf2f6ad",
+    "security": "invoker"
+  },
+  {
+    "args": "p_workspace_id uuid, p_query text, p_limit integer",
+    "lang": "plpgsql",
+    "name": "global_search",
+    "returns": "TABLE(entity_type text, entity_id uuid, title text, subtitle text, snippet text, rank real, project_id uuid, thread_type text, thread_id uuid, accent_color text, project_template_id uuid, project_status_id uuid)",
+    "body_md5": "108fe3ef010f49f18bd5f61bdab0721d",
+    "security": "invoker"
+  },
+  {
+    "args": "internal",
+    "lang": "c",
+    "name": "gtrgm_compress",
+    "returns": "internal",
+    "body_md5": "0ac3144cfd060482fab5339fe0e2a9e1",
+    "security": "invoker"
+  },
+  {
+    "args": "internal, text, smallint, oid, internal",
+    "lang": "c",
+    "name": "gtrgm_consistent",
+    "returns": "boolean",
+    "body_md5": "00d55f7471e62f08ca85d8d4e61991e7",
+    "security": "invoker"
+  },
+  {
+    "args": "internal",
+    "lang": "c",
+    "name": "gtrgm_decompress",
+    "returns": "internal",
+    "body_md5": "217b0af3efb9f430e911c6e2aeb0aa99",
+    "security": "invoker"
+  },
+  {
+    "args": "internal, text, smallint, oid, internal",
+    "lang": "c",
+    "name": "gtrgm_distance",
+    "returns": "double precision",
+    "body_md5": "374c53a6404b5daf685b2c4222c76a54",
+    "security": "invoker"
+  },
+  {
+    "args": "cstring",
+    "lang": "c",
+    "name": "gtrgm_in",
+    "returns": "gtrgm",
+    "body_md5": "85d9e1867f8d5b1ad99fbeac7a03595e",
+    "security": "invoker"
+  },
+  {
+    "args": "internal",
+    "lang": "c",
+    "name": "gtrgm_options",
+    "returns": "void",
+    "body_md5": "18b083f2c473ca71bc90b18732d82493",
+    "security": "invoker"
+  },
+  {
+    "args": "gtrgm",
+    "lang": "c",
+    "name": "gtrgm_out",
+    "returns": "cstring",
+    "body_md5": "03641c6b5e277450ea5f628094c0a607",
+    "security": "invoker"
+  },
+  {
+    "args": "internal, internal, internal",
+    "lang": "c",
+    "name": "gtrgm_penalty",
+    "returns": "internal",
+    "body_md5": "4f0a4190629a524609fe1b21fc480341",
+    "security": "invoker"
+  },
+  {
+    "args": "internal, internal",
+    "lang": "c",
+    "name": "gtrgm_picksplit",
+    "returns": "internal",
+    "body_md5": "366a79f83941d97999f208690619b79d",
+    "security": "invoker"
+  },
+  {
+    "args": "gtrgm, gtrgm, internal",
+    "lang": "c",
+    "name": "gtrgm_same",
+    "returns": "internal",
+    "body_md5": "e34ae9aee761b36d68942175420b9030",
+    "security": "invoker"
+  },
+  {
+    "args": "internal, internal",
+    "lang": "c",
+    "name": "gtrgm_union",
+    "returns": "gtrgm",
+    "body_md5": "1e514b035bac6c001492f0ec64f222b8",
+    "security": "invoker"
+  },
+  {
+    "args": "p_user_id uuid, p_project_id uuid, p_module text",
+    "lang": "sql",
+    "name": "has_project_module_access",
+    "returns": "boolean",
+    "body_md5": "152ba96c40882ae4d8f3b088fb369627",
+    "security": "definer"
+  },
+  {
+    "args": "p_user_id uuid, p_project_id uuid, p_module text, p_permission text",
+    "lang": "plpgsql",
+    "name": "has_project_permission",
+    "returns": "boolean",
+    "body_md5": "521846de9f3fcf85f7e2a2a40df45900",
+    "security": "definer"
+  },
+  {
+    "args": "p_user_id uuid, p_workspace_id uuid, p_permission text",
+    "lang": "plpgsql",
+    "name": "has_workspace_permission",
+    "returns": "boolean",
+    "body_md5": "0c3fe4b49a691b7217a11e07c0413624",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "sql",
+    "name": "impersonating_owner_id",
+    "returns": "uuid",
+    "body_md5": "28e5d2e41f0948389cf190c1da05227e",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread_id uuid",
+    "lang": "sql",
+    "name": "inbox_accessible_participant_ids",
+    "returns": "TABLE(participant_id uuid)",
+    "body_md5": "3133812106fe19753316c6364b0c68ef",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread_id uuid, p_participant_id uuid",
+    "lang": "sql",
+    "name": "inbox_default_subscribed",
+    "returns": "boolean",
+    "body_md5": "d109fbeee5b58a9d0f5f7f83e3932236",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_feature text",
+    "lang": "plpgsql",
+    "name": "is_feature_enabled",
+    "returns": "boolean",
+    "body_md5": "041d195350fafbb7708eabfc719cafd2",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "sql",
+    "name": "is_impersonating",
+    "returns": "boolean",
+    "body_md5": "2ced19f1b0df3f0af11cf9e1528539a4",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "sql",
+    "name": "is_internal_member",
+    "returns": "boolean",
+    "body_md5": "96137a4e7bbff53572bab4be7ff69899",
+    "security": "definer"
+  },
+  {
+    "args": "p_user_id uuid",
+    "lang": "sql",
+    "name": "is_platform_admin",
+    "returns": "boolean",
+    "body_md5": "7565538e39fda4ea402b1e52b99a4fc6",
+    "security": "definer"
+  },
+  {
+    "args": "p_project_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "is_project_participant",
+    "returns": "boolean",
+    "body_md5": "d0881399f4972a8a73c32b53128af26c",
+    "security": "definer"
+  },
+  {
+    "args": "p_role text",
+    "lang": "sql",
+    "name": "is_staff_role",
+    "returns": "boolean",
+    "body_md5": "7ef38fda1097c335cbd3e1c55580bad0",
+    "security": "invoker"
+  },
+  {
+    "args": "p_participant_id uuid, p_thread_id uuid",
+    "lang": "sql",
+    "name": "is_thread_subscribed",
+    "returns": "boolean",
+    "body_md5": "095c7d7ec749e699ba34f7b6f62d8e38",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread_id uuid",
+    "lang": "plpgsql",
+    "name": "is_thread_subscribed_me",
+    "returns": "boolean",
+    "body_md5": "ef4dd06c36acb915aec48c968c74d295",
+    "security": "definer"
+  },
+  {
+    "args": "p_user_id uuid, p_workspace_id uuid",
+    "lang": "sql",
+    "name": "is_workspace_owner",
+    "returns": "boolean",
+    "body_md5": "f2527c63bf22a7a117257f9676cd5ceb",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "is_workspace_participant",
+    "returns": "boolean",
+    "body_md5": "62a7c3658b230299fa8ba2545f356fea",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "is_workspace_team_member",
+    "returns": "boolean",
+    "body_md5": "8b82820ef5df9a1e7d92af2792a27c48",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "link_participant_to_user",
+    "returns": "trigger",
+    "body_md5": "09aa28c4f9765e9b0d2595c2084afd42",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_input_tokens bigint, p_output_tokens bigint, p_function_name text, p_provider text, p_model text, p_user_id uuid, p_feature text, p_meta jsonb",
+    "lang": "plpgsql",
+    "name": "log_ai_usage",
+    "returns": "void",
+    "body_md5": "73461fd34dcd1485cc2265aa3e55d876",
+    "security": "definer"
+  },
+  {
+    "args": "p_action text, p_resource_type text, p_resource_id uuid, p_details jsonb, p_ip_address inet, p_workspace_id uuid, p_project_id uuid, p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "log_audit_action",
+    "returns": "uuid",
+    "body_md5": "4c70f7cfca4af01100f717b81c245c51",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "mark_thread_read_on_final_status",
+    "returns": "trigger",
+    "body_md5": "cb7c1e85506ff570e7778baf1335a93f",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_from_address text, p_in_reply_to text, p_references text[]",
+    "lang": "plpgsql",
+    "name": "match_inbound_email",
+    "returns": "TABLE(thread_id uuid, project_id uuid, match_method text)",
+    "body_md5": "1f57d33e78472aaec318b8884d329c63",
+    "security": "definer"
+  },
+  {
+    "args": "query_embedding text, match_workspace_id uuid, match_threshold double precision, match_count integer",
+    "lang": "plpgsql",
+    "name": "match_knowledge_chunks",
+    "returns": "TABLE(id uuid, article_id uuid, qa_id uuid, chunk_index integer, chunk_text text, similarity double precision)",
+    "body_md5": "7f40ea658d549e441569955e46acb375",
+    "security": "definer"
+  },
+  {
+    "args": "query_embedding text, article_ids uuid[], match_threshold double precision, match_count integer",
+    "lang": "plpgsql",
+    "name": "match_knowledge_chunks_by_articles",
+    "returns": "TABLE(id uuid, article_id uuid, qa_id uuid, chunk_index integer, chunk_text text, similarity double precision)",
+    "body_md5": "52ed6cc75535c3e0811b9f9fc56939bb",
+    "security": "definer"
+  },
+  {
+    "args": "query_embedding text, filter_article_ids uuid[], filter_qa_ids uuid[], match_threshold double precision, match_count integer",
+    "lang": "plpgsql",
+    "name": "match_knowledge_chunks_by_sources",
+    "returns": "TABLE(id uuid, article_id uuid, qa_id uuid, chunk_index integer, chunk_text text, similarity double precision)",
+    "body_md5": "11cae65ac7d103c25b1aa650ea4ab1d7",
+    "security": "definer"
+  },
+  {
+    "args": "p_target_id uuid, p_source_id uuid",
+    "lang": "plpgsql",
+    "name": "merge_participants",
+    "returns": "json",
+    "body_md5": "c1b1f54b5e70647516fa0c1e3655712b",
+    "security": "definer"
+  },
+  {
+    "args": "p_source_id uuid, p_target_id uuid, p_workspace_id uuid",
+    "lang": "plpgsql",
+    "name": "merge_telegram_contact",
+    "returns": "void",
+    "body_md5": "2730f6313501963b6156d5b93d79b9dd",
+    "security": "definer"
+  },
+  {
+    "args": "p_article_id uuid, p_from_group_id uuid, p_to_group_id uuid",
+    "lang": "plpgsql",
+    "name": "move_article_to_group",
+    "returns": "void",
+    "body_md5": "7473bbceb32778131b3f3cfa1f67aefd",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread_id uuid, p_target_project_id uuid",
+    "lang": "plpgsql",
+    "name": "move_thread_to_project",
+    "returns": "void",
+    "body_md5": "ac9d680e268dd012f279d69770ebf375",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_entity_type text",
+    "lang": "plpgsql",
+    "name": "next_short_id",
+    "returns": "integer",
+    "body_md5": "7bcef812be483f993edc11847736ba98",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "notify_google_calendar_mirror",
+    "returns": "trigger",
+    "body_md5": "e11a4f3e121a4a85706299443e6e4315",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "notify_on_send_status_retry",
+    "returns": "trigger",
+    "body_md5": "12c2d30f5591abfce1e8e128dbf01b13",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "notify_telegram_on_new_message",
+    "returns": "trigger",
+    "body_md5": "6cda5668c9cd2ddd94912ea2b8662ded",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "prevent_writes_during_impersonation",
+    "returns": "trigger",
+    "body_md5": "c057d298d4b0d1240645137cf3bf5499",
+    "security": "definer"
+  },
+  {
+    "args": "p_message_id uuid",
+    "lang": "plpgsql",
+    "name": "publish_scheduled_message",
+    "returns": "void",
+    "body_md5": "14cd70e1e6c8329b638e611e1d8e4b6d",
+    "security": "definer"
+  },
+  {
+    "args": "p_participant_id uuid, p_thread_id uuid",
+    "lang": "plpgsql",
+    "name": "recompute_thread_unread_for",
+    "returns": "void",
+    "body_md5": "5714e71156f321f3045a9a911a27b3ae",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread_id uuid",
+    "lang": "plpgsql",
+    "name": "recompute_thread_unread_pairs",
+    "returns": "void",
+    "body_md5": "c66108413f5233744453fc47ef57cb1a",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "reconcile_inbox_report",
+    "returns": "jsonb",
+    "body_md5": "ed414b897d9683d270692863d9e02d37",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "reconcile_thread_inbox_meta",
+    "returns": "integer",
+    "body_md5": "1d66fe3d89039cd543cd8ff99ef920c0",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "reconcile_thread_unread",
+    "returns": "integer",
+    "body_md5": "13ffc1e0ac7f1e2e60fb7a0a0a72011f",
+    "security": "definer"
+  },
+  {
+    "args": "p_after timestamp with time zone, p_freq text, p_byweekday integer[], p_bymonthday integer, p_fire_time time without time zone, p_timezone text, p_starts_on date",
+    "lang": "plpgsql",
+    "name": "recurring_next_occurrence",
+    "returns": "timestamp with time zone",
+    "body_md5": "5006617ab8872f7301be0d164d9ac50e",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "recurring_task_rules_set_next",
+    "returns": "trigger",
+    "body_md5": "0cc29a4ba6250bf29114bb64f1910398",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "recurring_task_rules_touch_updated_at",
+    "returns": "trigger",
+    "body_md5": "4633c6c82b3b27a7f18ec9c82c12ce56",
+    "security": "invoker"
+  },
+  {
+    "args": "p_thread_id uuid",
+    "lang": "plpgsql",
+    "name": "refresh_thread_unread_pairs",
+    "returns": "void",
+    "body_md5": "09583060b6443f39ae0d60a699a80ecd",
+    "security": "definer"
+  },
+  {
+    "args": "p_list_id uuid, p_item_type text, p_item_ids uuid[]",
+    "lang": "plpgsql",
+    "name": "reorder_board_list_items",
+    "returns": "void",
+    "body_md5": "49e9336ca8810beecc6ba8fc0fc25404",
+    "security": "invoker"
+  },
+  {
+    "args": "p_updates jsonb",
+    "lang": "plpgsql",
+    "name": "reorder_documents",
+    "returns": "void",
+    "body_md5": "f9e068c3ce09cc5b54963b70614472ca",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_channel_key text",
+    "lang": "sql",
+    "name": "resolve_channel_default",
+    "returns": "TABLE(icon text, accent_color text)",
+    "body_md5": "830afd20574c53e01012d658035f9618",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread project_threads",
+    "lang": "plpgsql",
+    "name": "resolve_email_thread_assignee",
+    "returns": "uuid",
+    "body_md5": "52dd62db340572992487fa13e4020d9e",
+    "security": "definer"
+  },
+  {
+    "args": "p_address text",
+    "lang": "plpgsql",
+    "name": "resolve_inbound_email_address",
+    "returns": "TABLE(workspace_id uuid, workspace_slug text, resolution_type text, thread_id uuid, project_id uuid, virtual_address_id uuid, routing_mode text, target_project_id uuid, target_thread_id uuid, default_thread_template_id uuid, default_assignee_user_id uuid, auto_reply_enabled boolean, auto_reply_text text, resolved_email_account_id uuid, resolved_user_id uuid)",
+    "body_md5": "b61fa2370e514bf56d468d6955d0c84a",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_entity_type text, p_short_id integer",
+    "lang": "plpgsql",
+    "name": "resolve_short_id",
+    "returns": "uuid",
+    "body_md5": "03fd90cb931663071aa776139e93ef74",
+    "security": "definer"
+  },
+  {
+    "args": "p_host text",
+    "lang": "plpgsql",
+    "name": "resolve_workspace_by_host",
+    "returns": "TABLE(id uuid, name text, slug text, custom_domain text, resolved_via text)",
+    "body_md5": "fa41700681265b2870d3a5cc8ccc57e0",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid",
+    "lang": "sql",
+    "name": "resolve_workspace_plan",
+    "returns": "TABLE(plan_code text, plan_name text, status text, max_participants integer, max_projects integer, max_tasks integer, max_storage_mb integer, ai_tokens_monthly bigint, enabled_modules text[])",
+    "body_md5": "e20ed04452b17347a57538ab671eaa69",
+    "security": "definer"
+  },
+  {
+    "args": "p_version_id uuid",
+    "lang": "plpgsql",
+    "name": "restore_article_version",
+    "returns": "uuid",
+    "body_md5": "3c153643ec693e916daf612b601855c6",
+    "security": "definer"
+  },
+  {
+    "args": "p_version_id uuid, p_document_id uuid",
+    "lang": "plpgsql",
+    "name": "restore_document_version",
+    "returns": "uuid",
+    "body_md5": "7292fc170b70afcdf82f41c6698cbfff",
+    "security": "definer"
+  },
+  {
+    "args": "p_user_id uuid",
+    "lang": "plpgsql",
+    "name": "revoke_all_user_sessions",
+    "returns": "void",
+    "body_md5": "98ae4be73ec86afb58abae95214e501a",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_source text, p_channel_type text, p_external_id text, p_sender_name text, p_thread_name text",
+    "lang": "plpgsql",
+    "name": "route_incoming_to_project",
+    "returns": "TABLE(participant_id uuid, project_id uuid, thread_id uuid, status text)",
+    "body_md5": "978b062e24085f816e0bc23d8fe8798e",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "run_platform_alerts",
+    "returns": "void",
+    "body_md5": "6d1eb4feb61a4145fd06b21b397a61cf",
+    "security": "definer"
+  },
+  {
+    "args": "p_workspace_id uuid, p_config jsonb",
+    "lang": "plpgsql",
+    "name": "run_report",
+    "returns": "jsonb",
+    "body_md5": "840a9731229871267b0bcaf3d5f639b5",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "scan_dispatch_failures",
+    "returns": "integer",
+    "body_md5": "7c2076b51a7da950fd8dcdc41847d156",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "seed_read_status_on_assignee",
+    "returns": "trigger",
+    "body_md5": "ff138bc57d70cef6a64dfaa4a0f73e60",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "seed_read_status_on_project_access",
+    "returns": "trigger",
+    "body_md5": "a13bc40da5929cf9f0ae6384670c40dc",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "seed_read_status_on_thread_member",
+    "returns": "trigger",
+    "body_md5": "81466af6f0133c2df99f599fa22188c5",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "set_board_short_id",
+    "returns": "trigger",
+    "body_md5": "6e4405814e3318510e7d3d63233dd06c",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "set_default_external_contact_role",
+    "returns": "trigger",
+    "body_md5": "ec762ff8573b9d5721d95d930312340f",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "set_initial_send_status",
+    "returns": "trigger",
+    "body_md5": "c16d2e0dd52001c5e612e20de611f964",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "set_knowledge_article_created_by",
+    "returns": "trigger",
+    "body_md5": "051a379d7af04c39fa48e066782cabb0",
+    "security": "definer"
+  },
+  {
+    "args": "real",
+    "lang": "c",
+    "name": "set_limit",
+    "returns": "real",
+    "body_md5": "c30ba59e63bc3cb36608046c50620e39",
+    "security": "invoker"
+  },
+  {
+    "args": "p_language text",
+    "lang": "plpgsql",
+    "name": "set_my_preferred_language",
+    "returns": "void",
+    "body_md5": "879909d7a6012863e9015a46cedcef15",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread_id uuid, p_level text",
+    "lang": "plpgsql",
+    "name": "set_my_thread_notify_level",
+    "returns": "text",
+    "body_md5": "e85cd68be0ce7161815d0bcf2ff09565",
+    "security": "definer"
+  },
+  {
+    "args": "p_thread_id uuid, p_subscribed boolean",
+    "lang": "plpgsql",
+    "name": "set_my_thread_subscription",
+    "returns": "boolean",
+    "body_md5": "4bfd4f053abf71ec3dd0efb4e0e008a2",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "set_project_short_id",
+    "returns": "trigger",
+    "body_md5": "3391452208273ad554a71962bc4a7e17",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "set_project_thread_short_id",
+    "returns": "trigger",
+    "body_md5": "e042e9e193c81d1d90df9d41fcc48da9",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "set_thread_created_by",
+    "returns": "trigger",
+    "body_md5": "b934ea19ab6acd66a3b228b252072919",
+    "security": "invoker"
+  },
+  {
+    "args": "p_thread_id uuid, p_participant_id uuid, p_subscribed boolean",
+    "lang": "plpgsql",
+    "name": "set_thread_subscription_for",
+    "returns": "boolean",
+    "body_md5": "c667e2fd3a955c1d2ed71cf3e56dc694",
+    "security": "definer"
+  },
+  {
+    "args": "workspace_uuid uuid, api_key text",
+    "lang": "plpgsql",
+    "name": "set_workspace_api_key",
+    "returns": "uuid",
+    "body_md5": "13c053df3e58e1ac9857184788a05f8d",
+    "security": "definer"
+  },
+  {
+    "args": "workspace_uuid uuid, api_key text",
+    "lang": "plpgsql",
+    "name": "set_workspace_google_api_key",
+    "returns": "uuid",
+    "body_md5": "1a174d3538c4b44a042ebe8c85b9d4be",
+    "security": "definer"
+  },
+  {
+    "args": "workspace_uuid uuid, api_key text",
+    "lang": "plpgsql",
+    "name": "set_workspace_voyageai_api_key",
+    "returns": "uuid",
+    "body_md5": "5f4a8162804c77e055a965661d410cce",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "c",
+    "name": "show_limit",
+    "returns": "real",
+    "body_md5": "4be49f417a851b1848da525e573e408d",
+    "security": "invoker"
+  },
+  {
+    "args": "text",
+    "lang": "c",
+    "name": "show_trgm",
+    "returns": "text[]",
+    "body_md5": "42aa0974abb454971132812dcce06cac",
+    "security": "invoker"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "similarity",
+    "returns": "real",
+    "body_md5": "fd931cb85ba442355f277550b8836710",
+    "security": "invoker"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "similarity_dist",
+    "returns": "real",
+    "body_md5": "831e333ae2231e3fb1e6e88a55ccc0a0",
+    "security": "invoker"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "similarity_op",
+    "returns": "boolean",
+    "body_md5": "c62f80a7a7107d232daf8683decbfaf5",
+    "security": "invoker"
+  },
+  {
+    "args": "p_owner_user_id uuid, p_workspace_id uuid, p_target_user_id uuid, p_jti text, p_expires_at timestamp with time zone, p_user_agent text, p_ip text",
+    "lang": "plpgsql",
+    "name": "start_impersonation_session",
+    "returns": "uuid",
+    "body_md5": "fa8138013621b3de9e52e618547b1038",
+    "security": "definer"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "strict_word_similarity",
+    "returns": "real",
+    "body_md5": "523450d477b4e105989795603c58761a",
+    "security": "invoker"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "strict_word_similarity_commutator_op",
+    "returns": "boolean",
+    "body_md5": "49fe0d7b5f628c2f13e21ad6d0c5d28f",
+    "security": "invoker"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "strict_word_similarity_dist_commutator_op",
+    "returns": "real",
+    "body_md5": "e4384ee3a07267eb13f09bb4b042f334",
+    "security": "invoker"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "strict_word_similarity_dist_op",
+    "returns": "real",
+    "body_md5": "bc660db5cc387e8821747f1ecfb347eb",
+    "security": "invoker"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "strict_word_similarity_op",
+    "returns": "boolean",
+    "body_md5": "fa21d1ae2c217ba161bb3f7777e5e020",
+    "security": "invoker"
+  },
+  {
+    "args": "p_list_a_id uuid, p_list_b_id uuid",
+    "lang": "plpgsql",
+    "name": "swap_board_list_sort_order",
+    "returns": "void",
+    "body_md5": "f41e11cdf1bb9d0cc6fbd72c2fd160d6",
+    "security": "invoker"
+  },
+  {
+    "args": "p_kit_id uuid",
+    "lang": "plpgsql",
+    "name": "sync_form_kit_structure",
+    "returns": "void",
+    "body_md5": "b96801010afeffebf65a0bbad048f844",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "sync_knowledge_article_is_published",
+    "returns": "trigger",
+    "body_md5": "ad70ee5ed1a4b65f6029ba22318f6fe6",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "sync_telegram_message_ids",
+    "returns": "trigger",
+    "body_md5": "49f886e45797a16edd4fbf6fba132da9",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "sync_thread_deadline_end_at",
+    "returns": "trigger",
+    "body_md5": "9f21544a8429548a0c2d6906cc54dc89",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "tg_participant_channels_touch_updated_at",
+    "returns": "trigger",
+    "body_md5": "1ea224748b58a660bb9c5efa31e717e1",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "tg_update_inbox_sort_at_from_audit",
+    "returns": "trigger",
+    "body_md5": "b069471c96fb3d719c30ecf055bf9c1a",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "tg_update_inbox_sort_at_from_message",
+    "returns": "trigger",
+    "body_md5": "72d7232958a4bf17850684f2ed8741d3",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "sql",
+    "name": "today_madrid_midnight",
+    "returns": "timestamp with time zone",
+    "body_md5": "4e6fe5889039f07c52add008ed1b0a32",
+    "security": "invoker"
+  },
+  {
+    "args": "p_message_id uuid, p_participant_id uuid, p_emoji text",
+    "lang": "plpgsql",
+    "name": "toggle_message_reaction",
+    "returns": "boolean",
+    "body_md5": "d28d0656b3f2b4591e376082301022da",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "touch_calendars_updated_at",
+    "returns": "trigger",
+    "body_md5": "798ad285be1958a5454630c945e39bcc",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "touch_finance_updated_at",
+    "returns": "trigger",
+    "body_md5": "cc8a16a0a2d866fbb062acf12cc1e448",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "touch_item_lists_updated_at",
+    "returns": "trigger",
+    "body_md5": "9bf6a6e99bb480005bd7a4ff924e73cb",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "touch_mirror_settings_updated_at",
+    "returns": "trigger",
+    "body_md5": "46edc62f38c779035075b21b5e3a92fe",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "touch_pfv_updated_at",
+    "returns": "trigger",
+    "body_md5": "f094863ba7582bbdaa90187173dde06f",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "touch_plan_block_updated_at",
+    "returns": "trigger",
+    "body_md5": "b1ee14c46bb37270dd5ee411a7d1ef56",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "touch_project_context_items_updated_at",
+    "returns": "trigger",
+    "body_md5": "edaa2acf71bb98d96da9c617d61fd54a",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "touch_report_definitions_updated_at",
+    "returns": "trigger",
+    "body_md5": "c6ef2f4c4b44caa5b67404d29c2ce32d",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "touch_workspace_integrations_updated_at",
+    "returns": "trigger",
+    "body_md5": "c73a89c908c53d413055ba015e6fc98a",
+    "security": "invoker"
+  },
+  {
+    "args": "p_workspace_id uuid, p_entity_type recent_entity_type, p_entity_id uuid",
+    "lang": "plpgsql",
+    "name": "track_recent_view",
+    "returns": "void",
+    "body_md5": "e9ba161a3d935b28e2fc14291c35746c",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "trg_inbox_broadcast",
+    "returns": "trigger",
+    "body_md5": "178f867e78433abe6c84fcf766677643",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "trg_mention_recompute",
+    "returns": "trigger",
+    "body_md5": "cfb52b106b47f900358836062713f2e3",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "trg_thread_inbox_meta",
+    "returns": "trigger",
+    "body_md5": "cd695248c5df831183475177e6f323ca",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "trg_thread_unread",
+    "returns": "trigger",
+    "body_md5": "ec4c2deca6c577d7b5a1cc615e9d6463",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "trg_thread_unread_access_project",
+    "returns": "trigger",
+    "body_md5": "cccc8d3cdb6e8564657f6b57f9938174",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "trg_thread_unread_access_thread",
+    "returns": "trigger",
+    "body_md5": "47903f84f3ce50753af1391613597050",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "trg_thread_unread_read_status",
+    "returns": "trigger",
+    "body_md5": "9b2bb736cf49888e212d29b4940adb55",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "trg_thread_unread_subscription",
+    "returns": "trigger",
+    "body_md5": "24673429b928538e1cf7366d624c8f79",
+    "security": "definer"
+  },
+  {
+    "args": "regdictionary, text",
+    "lang": "c",
+    "name": "unaccent",
+    "returns": "text",
+    "body_md5": "732e7240010ae6ee51752c269f22d1d8",
+    "security": "invoker"
+  },
+  {
+    "args": "text",
+    "lang": "c",
+    "name": "unaccent",
+    "returns": "text",
+    "body_md5": "c63fff9d5f6e608be381ae34c5a6bef7",
+    "security": "invoker"
+  },
+  {
+    "args": "internal",
+    "lang": "c",
+    "name": "unaccent_init",
+    "returns": "internal",
+    "body_md5": "3a1118dbb02cc3984f7fa23d2ee3a37e",
+    "security": "invoker"
+  },
+  {
+    "args": "internal, internal, internal, internal",
+    "lang": "c",
+    "name": "unaccent_lexize",
+    "returns": "internal",
+    "body_md5": "c8bbc42e6e1b37ea2584ba9a1006af8f",
+    "security": "invoker"
+  },
+  {
+    "args": "p_article_id uuid, p_group_ids uuid[]",
+    "lang": "plpgsql",
+    "name": "update_article_groups",
+    "returns": "void",
+    "body_md5": "1bcb7b0c60c36684d94db4851540f53f",
+    "security": "definer"
+  },
+  {
+    "args": "p_article_id uuid, p_tag_ids uuid[]",
+    "lang": "plpgsql",
+    "name": "update_article_tags",
+    "returns": "void",
+    "body_md5": "f38598eb59a5286f0db29f8fde9752d7",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "update_conversation_updated_at",
+    "returns": "trigger",
+    "body_md5": "dffaa58c882332c5000c875f020ae532",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "update_export_progress_updated_at",
+    "returns": "trigger",
+    "body_md5": "19524b2afd8ba1b3710b0a377431b049",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "update_form_kit_field_values_updated_at",
+    "returns": "trigger",
+    "body_md5": "c67c42b1a5e782baeed312bab2c936dc",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "update_form_kit_structure_updated_at",
+    "returns": "trigger",
+    "body_md5": "61826a166da1ce45f93ff467d63fc9ce",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "update_knowledge_articles_updated_at",
+    "returns": "trigger",
+    "body_md5": "3f8e606aa43bcb1ac669fa14f8de7dcb",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "update_knowledge_groups_updated_at",
+    "returns": "trigger",
+    "body_md5": "bd74a11971174c13d9af106b8166a85e",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "update_message_on_reaction_change",
+    "returns": "trigger",
+    "body_md5": "ad384f2d6e9a5f2add697e1c3d80eaba",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "update_project_last_activity",
+    "returns": "trigger",
+    "body_md5": "1a49f8affcb634c5c3a232cb08ff691d",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "update_project_templates_updated_at",
+    "returns": "trigger",
+    "body_md5": "8ccebe1c8e5b32a788794f0a78931e91",
+    "security": "invoker"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "update_projects_updated_at",
+    "returns": "trigger",
+    "body_md5": "ffbf47728d40ce61a82795ff05d9dcb3",
+    "security": "invoker"
+  },
+  {
+    "args": "p_qa_id uuid, p_group_ids uuid[]",
+    "lang": "plpgsql",
+    "name": "update_qa_groups",
+    "returns": "void",
+    "body_md5": "d5fb7e89832ef2e19474bfae612dd2ce",
+    "security": "definer"
+  },
+  {
+    "args": "p_qa_id uuid, p_tag_ids uuid[]",
+    "lang": "plpgsql",
+    "name": "update_qa_tags",
+    "returns": "void",
+    "body_md5": "4d04a449f248fd4bdb244857a5471bd1",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "update_source_documents_updated_at",
+    "returns": "trigger",
+    "body_md5": "b8df2460c410ad3395e0b541de7847dc",
+    "security": "invoker"
+  },
+  {
+    "args": "status_id uuid, status_name text, status_description text, status_button_label text, status_color text, status_order_index integer, status_is_default boolean, status_is_final boolean, status_text_color text",
+    "lang": "plpgsql",
+    "name": "update_status_with_button_label",
+    "returns": "statuses",
+    "body_md5": "0043a6485167ead10b6d3189e5e6528e",
+    "security": "definer"
+  },
+  {
+    "args": "p_task_id uuid, p_assignee_ids uuid[], p_assigned_by uuid",
+    "lang": "plpgsql",
+    "name": "update_task_assignees",
+    "returns": "void",
+    "body_md5": "da0aec41e33e96272700c3946be6887b",
+    "security": "definer"
+  },
+  {
+    "args": "p_template_id uuid, p_updates jsonb, p_assignee_ids uuid[]",
+    "lang": "plpgsql",
+    "name": "update_thread_template_with_assignees",
+    "returns": "void",
+    "body_md5": "a105b011915f5d5128b56d3a33309fa1",
+    "security": "definer"
+  },
+  {
+    "args": "",
+    "lang": "plpgsql",
+    "name": "update_updated_at_column",
+    "returns": "trigger",
+    "body_md5": "3210625d1c794f6db7b3c3defc5984dd",
+    "security": "invoker"
+  },
+  {
+    "args": "p_article_id uuid, p_qa_id uuid, p_workspace_id uuid, p_embeddings jsonb",
+    "lang": "plpgsql",
+    "name": "upsert_knowledge_embeddings",
+    "returns": "void",
+    "body_md5": "e941cf967f1c240bf665329420c9f7ea",
+    "security": "definer"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "word_similarity",
+    "returns": "real",
+    "body_md5": "f9acfb3b071c96db4b1bb593b621c747",
+    "security": "invoker"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "word_similarity_commutator_op",
+    "returns": "boolean",
+    "body_md5": "98ece0ccacd71230bea0e7805d310670",
+    "security": "invoker"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "word_similarity_dist_commutator_op",
+    "returns": "real",
+    "body_md5": "db36854b61d077b4cb945606bab01fc6",
+    "security": "invoker"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "word_similarity_dist_op",
+    "returns": "real",
+    "body_md5": "ab0c2cb7ec6c0cbe0937ec3288d2cfda",
+    "security": "invoker"
+  },
+  {
+    "args": "text, text",
+    "lang": "c",
+    "name": "word_similarity_op",
+    "returns": "boolean",
+    "body_md5": "9cb3bc9ce246a2c4c4d17c7205f4a17f",
+    "security": "invoker"
+  },
+  {
+    "args": "p_workspace_id uuid, p_kind text",
+    "lang": "plpgsql",
+    "name": "workspace_at_limit",
+    "returns": "boolean",
+    "body_md5": "039ca799f0fa9a049eb3162005bec75d",
+    "security": "definer"
+  }
+]

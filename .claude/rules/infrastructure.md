@@ -238,3 +238,42 @@ npm test -- path/to/file.test.ts   # один файл
 npm test -- -t "имя теста"         # один кейс
 npm run test:coverage
 ```
+
+## Устойчивость и операции (источник правды БД, дрейф, деплой, алерты)
+
+Введено 2026-07-04 для борьбы с двумя рисками: расхождением кода и боевой базы («дрейф») и ручными ошибками деплоя.
+
+### Источник правды по БД + детектор дрейфа
+
+- **`supabase/schema/prod-functions.sql`** — снимок определений ВСЕХ функций боевой базы (эталон-референс, ~311 функций). Не применять напрямую — это зеркало для сверки.
+- **`supabase/schema/functions-manifest.json`** — компактный отпечаток (имя+сигнатура+md5 тела) каждой функции. Его сверяет детектор дрейфа.
+- **RPC `_schema_function_manifest()`** (только service_role) — возвращает живой отпечаток функций прода (хеши, НЕ тела — тела содержат секреты).
+- **`scripts/db-drift-check.mjs`** — сравнивает прод с эталоном:
+  ```bash
+  SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/db-drift-check.mjs        # отчёт
+  node scripts/db-drift-check.mjs --strict     # код 1 при дрейфе (для CI-гейта)
+  node scripts/db-drift-check.mjs --update      # обновить эталон под текущий прод
+  ```
+- **CI `.github/workflows/db-drift.yml`** — гоняет проверку ежедневно + на PR к миграциям. **Требует секрет `SUPABASE_SERVICE_ROLE_KEY`** (Settings → Secrets → Actions; URL берётся из существующего `NEXT_PUBLIC_SUPABASE_URL`). Не блокирует деплой — только сигналит.
+- **Правило против дрейфа:** любое изменение функции БД — через файл-миграцию; после осознанного изменения запустить `--update` и закоммитить обновлённый манифест. Тогда дрейф ловится сразу, а не копится.
+
+### Деплой Edge Functions без ручных ошибок
+
+- **`scripts/deploy-edge.sh`** — деплой с автоматическим `--no-verify-jwt` там, где он нужен (список внутри, синхронизирован с матрицей авторизации `channels.md`):
+  ```bash
+  scripts/deploy-edge.sh telegram-send-message wazzup-send   # конкретные
+  scripts/deploy-edge.sh --list-nojwt                        # что деплоится с флагом
+  scripts/deploy-edge.sh --all                               # все (осторожно)
+  ```
+  Убирает класс ошибок «забыл флаг → 401 от шлюза». При добавлении нового вебхука/`*-send` — дописать в `NO_JWT_FUNCTIONS` в скрипте.
+
+### Алерты о сбоях в Telegram
+
+- **pg_cron `platform-alerts`** (каждые 10 мин) → `run_platform_alerts()` шлёт владельцу в Telegram, если появились новые провалы отправки (`message_send_failures`) или падения крона.
+- **Настройка (пока «спит»):** заполнить singleton-строку `platform_alert_config` (через MCP/SQL как service_role):
+  ```sql
+  UPDATE public.platform_alert_config
+  SET enabled=true, bot_token='<токен любого бота>', chat_id='<твой numeric Telegram id>'
+  WHERE id=1;
+  ```
+  `bot_token` — токен любого Telegram-бота (владелец должен разово написать этому боту в личку). `chat_id` — числовой id владельца. Пока `enabled=false` или поля пусты — алерты не шлются.

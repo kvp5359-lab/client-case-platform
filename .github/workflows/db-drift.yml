@@ -1,0 +1,32 @@
+name: DB Drift Check
+
+# Сверяет функции боевой базы с эталоном supabase/schema/functions-manifest.json.
+# Не блокирует деплой — только сигнализирует о расхождении (repo↔prod дрейф).
+# Требует секрет SUPABASE_SERVICE_ROLE_KEY (Settings → Secrets → Actions).
+# URL берётся из уже существующего NEXT_PUBLIC_SUPABASE_URL.
+
+on:
+  schedule:
+    - cron: '0 5 * * *'   # ежедневно 05:00 UTC
+  workflow_dispatch: {}
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/schema/**'
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install --legacy-peer-deps
+      - name: Проверка дрейфа функций
+        run: node scripts/db-drift-check.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
