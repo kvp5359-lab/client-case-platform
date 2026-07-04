@@ -102,14 +102,16 @@ export async function parseTextLine(rawContent: string, messageId: string): Prom
   }
 
   const att = attachments?.[0]
+  // Несколько вложений — как во «Входящих»: «имя +N».
+  const extra = (attachments?.length ?? 0) > 1 ? ` +${attachments!.length - 1}` : ''
   if (att?.mime_type?.startsWith('audio/') || att?.mime_type === 'video/ogg') {
-    return '🎤 Голосовое сообщение'
+    return `🎤 Голосовое сообщение${extra}`
   } else if (att?.mime_type?.startsWith('image/')) {
-    return '📷 Фото'
+    return `📷 Фото${extra}`
   } else if (att?.mime_type?.startsWith('video/')) {
-    return '🎥 Видео'
+    return `🎥 Видео${extra}`
   } else if (att) {
-    return `📎 ${att.file_name || 'Файл'}`
+    return `📎 ${att.file_name || 'Файл'}${extra}`
   }
   return '📎 Вложение'
 }
