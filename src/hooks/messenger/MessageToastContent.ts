@@ -51,13 +51,13 @@ function buildAvatar(
   threadIcon?: string | null,
   accentColor?: string | null,
 ) {
-  const size = 'w-8 h-8 rounded-full'
+  const size = 'w-9 h-9 rounded-full'
   const inner = avatarUrl
     ? createElement(Image, {
         src: avatarUrl,
         alt: senderName,
-        width: 32,
-        height: 32,
+        width: 36,
+        height: 36,
         className: `${size} object-cover`,
       })
     : createElement(
@@ -80,7 +80,7 @@ function buildAvatar(
   const badge = createElement(
     'div',
     {
-      className: `absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-white border border-border flex items-center justify-center ${iconColor}`,
+      className: `absolute top-0.5 -right-1.5 w-4 h-4 rounded-full bg-white border border-border flex items-center justify-center ${iconColor}`,
     },
     createElement(IconComp, { width: 10, height: 10, className: 'w-2.5 h-2.5' }),
   )
