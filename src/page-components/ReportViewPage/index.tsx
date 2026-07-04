@@ -88,7 +88,7 @@ export default function ReportViewPage() {
     } else {
       const keys = report.config.columns && report.config.columns.length > 0
         ? report.config.columns
-        : Object.keys(result.rows[0] ?? {})
+        : dataset.detailDefault
       columns = keys.map((key) => ({
         key,
         label: getFieldDef(dataset, key)?.label ?? key,

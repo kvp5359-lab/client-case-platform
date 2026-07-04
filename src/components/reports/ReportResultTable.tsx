@@ -110,9 +110,9 @@ export function ReportResultTable({
 
   // ── Режим списка ────────────────────────────────────────
   if (!isSummary) {
-    const cols = (config.columns && config.columns.length > 0
+    const cols = config.columns && config.columns.length > 0
       ? config.columns
-      : Object.keys(result.rows[0] ?? {}))
+      : dataset?.detailDefault ?? Object.keys(result.rows[0] ?? {})
     return (
       <div className="overflow-x-auto rounded-md border">
         <Table>

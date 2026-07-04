@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react'
+import { ArrowDown, ArrowUp, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -84,18 +85,29 @@ export function ReportSettingsDialog({ workspaceId, report, onClose, onSave, sav
     setConfig({ ...config, measures, sort: undefined })
   }
 
-  const toggleColumn = (key: string) => {
-    const current = config.columns && config.columns.length > 0
-      ? config.columns
-      : dataset.defaultConfig.columns ?? dataset.fields.map((f) => f.key)
-    const has = current.includes(key)
-    const columns = has ? current.filter((c) => c !== key) : [...current, key]
-    setConfig({ ...config, columns })
-  }
-
+  // Колонки режима «Список» — упорядоченный список (порядок = порядок в таблице).
   const activeColumns = config.columns && config.columns.length > 0
     ? config.columns
-    : dataset.fields.map((f) => f.key)
+    : dataset.detailDefault
+
+  const setColumns = (columns: string[]) => setConfig({ ...config, columns })
+
+  const moveColumn = (index: number, delta: -1 | 1) => {
+    const next = [...activeColumns]
+    const target = index + delta
+    if (target < 0 || target >= next.length) return
+    ;[next[index], next[target]] = [next[target], next[index]]
+    setColumns(next)
+  }
+
+  const removeColumn = (key: string) => {
+    if (activeColumns.length <= 1) return
+    setColumns(activeColumns.filter((c) => c !== key))
+  }
+
+  const addColumn = (key: string) => setColumns([...activeColumns, key])
+
+  const availableColumns = dataset.fields.filter((f) => !activeColumns.includes(f.key))
 
   // Селекты уровней группировки: уровень N показывается, если задан уровень N-1.
   const groupSlots = Math.min(config.groupBy.length + 1, 3)
@@ -190,18 +202,62 @@ export function ReportSettingsDialog({ workspaceId, report, onClose, onSave, sav
             </>
           ) : (
             <div className="space-y-1.5">
-              <Label>Колонки</Label>
-              <div className="flex flex-wrap gap-x-5 gap-y-2">
-                {dataset.fields.map((f) => (
-                  <label key={f.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox
-                      checked={activeColumns.includes(f.key)}
-                      onCheckedChange={() => toggleColumn(f.key)}
-                    />
-                    {f.label}
-                  </label>
-                ))}
+              <Label>Колонки (порядок = порядок в таблице)</Label>
+              <div className="space-y-1">
+                {activeColumns.map((key, i) => {
+                  const field = getFieldDef(dataset, key)
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-1.5 rounded-md border bg-muted/30 px-2 py-1"
+                    >
+                      <span className="text-xs text-muted-foreground w-5 text-right shrink-0">
+                        {i + 1}.
+                      </span>
+                      <span className="text-sm flex-1 truncate">{field?.label ?? key}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        disabled={i === 0}
+                        onClick={() => moveColumn(i, -1)}
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        disabled={i === activeColumns.length - 1}
+                        onClick={() => moveColumn(i, 1)}
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground"
+                        disabled={activeColumns.length <= 1}
+                        onClick={() => removeColumn(key)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )
+                })}
               </div>
+              {availableColumns.length > 0 && (
+                <Select value="" onValueChange={addColumn}>
+                  <SelectTrigger className="h-8 w-[220px]">
+                    <SelectValue placeholder="+ Добавить колонку" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableColumns.map((f) => (
+                      <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           )}
 

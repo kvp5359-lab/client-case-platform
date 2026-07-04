@@ -55,6 +55,8 @@ export type ReportDatasetDef = {
   periodField?: string
   /** Дефолт конфига при создании отчёта на этом датасете. */
   defaultConfig: Omit<ReportConfig, 'dataset'>
+  /** Колонки режима «Список» по умолчанию — зеркало detail_default в run_report. */
+  detailDefault: string[]
 }
 
 const CLIENT_FIELD = (key = 'client'): ReportFieldDef => ({
@@ -93,6 +95,7 @@ export const REPORT_DATASETS: Record<ReportDatasetKey, ReportDatasetDef> = {
       { key: 'avg_amount', label: 'Средний платёж', format: 'money', additive: false },
       { key: 'count', label: 'Кол-во', format: 'number', additive: true },
     ],
+    detailDefault: ['date', 'type', 'amount', 'category', 'project', 'participant', 'comment'],
     defaultConfig: {
       mode: 'summary',
       groupBy: [{ field: 'type' }, { field: 'date', granularity: 'month' }],
@@ -120,6 +123,7 @@ export const REPORT_DATASETS: Record<ReportDatasetKey, ReportDatasetDef> = {
       { key: 'sum_quantity', label: 'Кол-во единиц', format: 'number', additive: true },
       { key: 'count', label: 'Строк', format: 'number', additive: true },
     ],
+    detailDefault: ['service', 'project', 'client', 'quantity', 'price', 'total'],
     defaultConfig: {
       mode: 'summary',
       groupBy: [{ field: 'service' }],
@@ -149,6 +153,7 @@ export const REPORT_DATASETS: Record<ReportDatasetKey, ReportDatasetDef> = {
       { key: 'sum_expenses', label: 'Расходы', format: 'money', additive: true },
       { key: 'count', label: 'Проектов', format: 'number', additive: true },
     ],
+    detailDefault: ['client', 'project', 'project_status', 'billed', 'paid', 'balance'],
     defaultConfig: {
       mode: 'summary',
       groupBy: [{ field: 'client' }],
@@ -173,6 +178,7 @@ export const REPORT_DATASETS: Record<ReportDatasetKey, ReportDatasetDef> = {
     measures: [
       { key: 'count', label: 'Проектов', format: 'number', additive: true },
     ],
+    detailDefault: ['project', 'status', 'template', 'client', 'created'],
     defaultConfig: {
       mode: 'summary',
       groupBy: [{ field: 'status' }],
@@ -203,6 +209,7 @@ export const REPORT_DATASETS: Record<ReportDatasetKey, ReportDatasetDef> = {
     measures: [
       { key: 'count', label: 'Тредов', format: 'number', additive: true },
     ],
+    detailDefault: ['thread', 'thread_type', 'status', 'project', 'created', 'deadline'],
     defaultConfig: {
       mode: 'summary',
       groupBy: [{ field: 'thread_type' }, { field: 'status' }],
