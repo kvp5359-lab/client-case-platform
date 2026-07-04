@@ -286,3 +286,10 @@ npm run test:coverage
   ```
   Гоняется в CI `Ops Checks` ежедневно рядом с детектором дрейфа.
 - **Send-смок** (реальная отправка по каналу) сюда НЕ входит — рискует задеть клиентов. Проводит владелец вручную на выделенном тест-чате (см. `docs/deploy-backlog.md`).
+
+### Смок-тест каналов (send-тест, требует настройки владельцем)
+
+- **`scripts/smoke-channels.mjs`** — отправляет РЕАЛЬНОЕ тестовое сообщение в каждый тред из allowlist `smoke_test_threads` и проверяет доставку (`send_status='sent'`).
+- **Двойная защита от отправки клиенту:** (1) RPC `smoke_send_test` на сервере отклоняет треды вне allowlist; (2) скрипт требует `--confirm` и печатает цели. Пустой allowlist → ничего не шлёт.
+- **Настройка (владелец, один раз):** создать ТЕСТОВЫЙ воркспейс/треды на тест-чатах каждого канала → `INSERT INTO smoke_test_threads (thread_id, channel, note) VALUES ('<uuid>','telegram_group','тест');` Только тестовые чаты, НИКОГДА клиентские.
+- Запуск: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/smoke-channels.mjs --confirm`.
