@@ -38,8 +38,14 @@ export type ReportConfig = {
   measures: string[]
   /** Общий формат FilterGroup (как у досок/списков). */
   filter?: FilterGroup
-  /** Колонки для mode='detail' (ключи полей датасета). */
+  /** Колонки для mode='detail' (ключи полей датасета), порядок = порядок в таблице. */
   columns?: string[]
+  /**
+   * Выравнивание колонок режима «Список» (ключ поля → left/right).
+   * Только презентация — сервер это поле игнорирует. Дефолт: числа справа,
+   * остальное слева.
+   */
+  columnAlign?: Record<string, 'left' | 'right'>
   sort?: ReportSort
 }
 

@@ -113,13 +113,17 @@ export function ReportResultTable({
     const cols = config.columns && config.columns.length > 0
       ? config.columns
       : dataset?.detailDefault ?? Object.keys(result.rows[0] ?? {})
+    // Выравнивание: явное из конфига, иначе числа справа, остальное слева.
+    const alignFor = (key: string): 'left' | 'right' =>
+      config.columnAlign?.[key] ??
+      ((dataset && getFieldDef(dataset, key)?.type === 'number') ? 'right' : 'left')
     return (
       <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
               {cols.map((key) => (
-                <TableHead key={key}>
+                <TableHead key={key} className={alignFor(key) === 'right' ? 'text-right' : undefined}>
                   {(dataset && getFieldDef(dataset, key)?.label) || key}
                 </TableHead>
               ))}
@@ -129,7 +133,12 @@ export function ReportResultTable({
             {result.rows.map((row, i) => (
               <TableRow key={i}>
                 {cols.map((key) => (
-                  <TableCell key={key} className="whitespace-nowrap max-w-[320px] truncate">
+                  <TableCell
+                    key={key}
+                    className={`whitespace-nowrap max-w-[320px] truncate ${
+                      alignFor(key) === 'right' ? 'text-right tabular-nums' : ''
+                    }`}
+                  >
                     {detailValue(row, dataset, key)}
                   </TableCell>
                 ))}

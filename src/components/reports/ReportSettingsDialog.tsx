@@ -7,7 +7,22 @@
  */
 
 import { useState } from 'react'
-import { ArrowDown, ArrowUp, X } from 'lucide-react'
+import { AlignLeft, AlignRight, GripVertical, X } from 'lucide-react'
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -37,6 +52,65 @@ import { ReportFilterEditor } from './ReportFilterEditor'
 
 const NONE = '__none__'
 
+/** Строка колонки режима «Список»: drag-handle + выравнивание + удаление. */
+function SortableColumnRow({
+  id,
+  index,
+  label,
+  align,
+  onToggleAlign,
+  onRemove,
+  removable,
+}: {
+  id: string
+  index: number
+  label: string
+  align: 'left' | 'right'
+  onToggleAlign: () => void
+  onRemove: () => void
+  removable: boolean
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`flex items-center gap-1.5 rounded-md border bg-muted/30 px-2 py-1 ${
+        isDragging ? 'opacity-60 z-10 relative' : ''
+      }`}
+    >
+      <button
+        type="button"
+        className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground shrink-0"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <span className="text-xs text-muted-foreground w-4 text-right shrink-0">{index + 1}.</span>
+      <span className="text-sm flex-1 truncate">{label}</span>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 text-muted-foreground"
+        title={align === 'right' ? 'Выравнивание: справа' : 'Выравнивание: слева'}
+        onClick={onToggleAlign}
+      >
+        {align === 'right' ? <AlignRight className="h-3.5 w-3.5" /> : <AlignLeft className="h-3.5 w-3.5" />}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 text-muted-foreground"
+        disabled={!removable}
+        onClick={onRemove}
+      >
+        <X className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  )
+}
+
 type Props = {
   workspaceId: string
   report: ReportDefinition
@@ -49,6 +123,9 @@ export function ReportSettingsDialog({ workspaceId, report, onClose, onSave, sav
   const dataset = getDatasetDef(report.config.dataset)
   const [name, setName] = useState(report.name)
   const [config, setConfig] = useState<ReportConfig>(report.config)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  )
 
   if (!dataset) return null
 
@@ -92,12 +169,29 @@ export function ReportSettingsDialog({ workspaceId, report, onClose, onSave, sav
 
   const setColumns = (columns: string[]) => setConfig({ ...config, columns })
 
-  const moveColumn = (index: number, delta: -1 | 1) => {
-    const next = [...activeColumns]
-    const target = index + delta
-    if (target < 0 || target >= next.length) return
-    ;[next[index], next[target]] = [next[target], next[index]]
-    setColumns(next)
+  const handleColumnDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const from = activeColumns.indexOf(String(active.id))
+    const to = activeColumns.indexOf(String(over.id))
+    if (from < 0 || to < 0) return
+    setColumns(arrayMove(activeColumns, from, to))
+  }
+
+  /** Выравнивание колонки: явное из конфига, иначе числа справа, остальное слева. */
+  const columnAlignOf = (key: string): 'left' | 'right' =>
+    config.columnAlign?.[key] ??
+    (getFieldDef(dataset, key)?.type === 'number' ? 'right' : 'left')
+
+  const toggleColumnAlign = (key: string) => {
+    setConfig({
+      ...config,
+      columns: activeColumns,
+      columnAlign: {
+        ...config.columnAlign,
+        [key]: columnAlignOf(key) === 'right' ? 'left' : 'right',
+      },
+    })
   }
 
   const removeColumn = (key: string) => {
@@ -126,7 +220,7 @@ export function ReportSettingsDialog({ workspaceId, report, onClose, onSave, sav
           </div>
 
           <div className="space-y-1.5">
-            <Label>Вид</Label>
+            <Label className="block">Вид</Label>
             <SegmentedToggle
               value={config.mode}
               onChange={(mode) => setConfig({ ...config, mode: mode as ReportConfig['mode'] })}
@@ -203,49 +297,28 @@ export function ReportSettingsDialog({ workspaceId, report, onClose, onSave, sav
           ) : (
             <div className="space-y-1.5">
               <Label>Колонки (порядок = порядок в таблице)</Label>
-              <div className="space-y-1">
-                {activeColumns.map((key, i) => {
-                  const field = getFieldDef(dataset, key)
-                  return (
-                    <div
-                      key={key}
-                      className="flex items-center gap-1.5 rounded-md border bg-muted/30 px-2 py-1"
-                    >
-                      <span className="text-xs text-muted-foreground w-5 text-right shrink-0">
-                        {i + 1}.
-                      </span>
-                      <span className="text-sm flex-1 truncate">{field?.label ?? key}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        disabled={i === 0}
-                        onClick={() => moveColumn(i, -1)}
-                      >
-                        <ArrowUp className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        disabled={i === activeColumns.length - 1}
-                        onClick={() => moveColumn(i, 1)}
-                      >
-                        <ArrowDown className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-muted-foreground"
-                        disabled={activeColumns.length <= 1}
-                        onClick={() => removeColumn(key)}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleColumnDragEnd}
+              >
+                <SortableContext items={activeColumns} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-1">
+                    {activeColumns.map((key, i) => (
+                      <SortableColumnRow
+                        key={key}
+                        id={key}
+                        index={i}
+                        label={getFieldDef(dataset, key)?.label ?? key}
+                        align={columnAlignOf(key)}
+                        onToggleAlign={() => toggleColumnAlign(key)}
+                        onRemove={() => removeColumn(key)}
+                        removable={activeColumns.length > 1}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
               {availableColumns.length > 0 && (
                 <Select value="" onValueChange={addColumn}>
                   <SelectTrigger className="h-8 w-[220px]">
