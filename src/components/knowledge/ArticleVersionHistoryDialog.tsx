@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useArticleVersions, useArticleVersion } from '@/hooks/knowledge'
 import { sanitizeHtml } from '@/utils/format/sanitizeHtml'
+import { RowsSkeleton } from '@/components/ui/loaders'
 
 type ArticleVersionHistoryDialogProps = {
   open: boolean
@@ -97,7 +98,7 @@ export function ArticleVersionHistoryDialog({
           // Список версий
           <div className="flex-1 overflow-auto">
             {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
+              <RowsSkeleton count={5} className="py-2" />
             ) : versions.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 Нет сохранённых версий. Нажмите «Сохранить» чтобы создать первую.

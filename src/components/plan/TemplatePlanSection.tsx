@@ -44,6 +44,7 @@ import { useTemplatePlan } from '@/hooks/plan/useTemplatePlan'
 import { useThreadTemplatesForProject } from '@/hooks/messenger/useThreadTemplates'
 import { PLAN_TEXT_CLASS } from './planTextClass'
 import type { TemplatePlanBlockRow } from '@/types/plan'
+import { RowsSkeleton } from '@/components/ui/loaders'
 
 type Props = {
   workspaceId: string
@@ -121,7 +122,7 @@ export function TemplatePlanSection({ workspaceId, templateId, enabledModules }:
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Загрузка…</p>
+        <RowsSkeleton count={4} />
       ) : blocks.length === 0 ? (
         <p className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
           План пуст. Добавьте текст или задачу ниже.

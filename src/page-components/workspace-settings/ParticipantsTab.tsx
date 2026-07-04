@@ -19,6 +19,7 @@ import { ROLE_CONFIG, TELEGRAM_ROLE } from './constants/roleConfig'
 import { ParticipantsSidebar } from './components/ParticipantsSidebar'
 import { ParticipantsTable } from './components/ParticipantsTable'
 import { TelegramContactsTable } from './components/TelegramContactsTable'
+import { RowsSkeleton } from '@/components/ui/loaders'
 
 export function ParticipantsTab() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -257,7 +258,7 @@ export function ParticipantsTab() {
         <div ref={scrollRef} className="flex-1 overflow-y-auto border rounded-lg pr-3">
 
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Загрузка...</div>
+            <RowsSkeleton count={6} className="p-3" />
           ) : filteredParticipants.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               {search

@@ -26,6 +26,7 @@ import { InlineGroupsCell, InlineTagsCell } from './components/InlineCells'
 import { ManageGroupsDialog } from './components/ManageGroupsDialog'
 import { ManageTagsDialog } from './components/ManageTagsDialog'
 import type { useKnowledgeBasePage } from './useKnowledgeBasePage'
+import { RowsSkeleton } from '@/components/ui/loaders'
 
 type PageReturn = ReturnType<typeof useKnowledgeBasePage>
 
@@ -138,7 +139,7 @@ export function KnowledgeTableView({ page }: { page: PageReturn }) {
 
       {/* Table */}
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Загрузка...</div>
+        <RowsSkeleton count={6} />
       ) : page.articles.length === 0 ? (
         <Card className="p-12">
           <div className="text-center">
