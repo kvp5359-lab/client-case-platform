@@ -3663,6 +3663,11 @@
       "table_name": "workspaces"
     },
     {
+      "name": "trg_seed_workspace_trial",
+      "def_md5": "78b633b3f5d3adcc6da56b303d0651cd",
+      "table_name": "workspaces"
+    },
+    {
       "name": "trigger_create_default_project_roles",
       "def_md5": "16514197cf6ba3144d3ab8d29ad386db",
       "table_name": "workspaces"
@@ -3760,14 +3765,99 @@
       "body_md5": "9f0f674d09dc604668837d0099064232"
     },
     {
+      "args": "p_note text, p_max_uses integer, p_expires_days integer",
+      "name": "admin_create_invite",
+      "body_md5": "721d773cfab315a39c73ba4f98221e26"
+    },
+    {
+      "args": "p_id uuid",
+      "name": "admin_delete_announcement",
+      "body_md5": "6e42d1d7d19e5e561f2dfd7b33e51677"
+    },
+    {
+      "args": "p_id uuid",
+      "name": "admin_delete_invite",
+      "body_md5": "b04ae2b1fd446231d463483e3baeb099"
+    },
+    {
+      "args": "p_payment_id uuid",
+      "name": "admin_delete_payment",
+      "body_md5": "a660d5e9e648e52f0740286b48d79522"
+    },
+    {
+      "args": "",
+      "name": "admin_get_platform_config",
+      "body_md5": "2defd93b18107272b06123eee43fbed6"
+    },
+    {
+      "args": "",
+      "name": "admin_growth_metrics",
+      "body_md5": "7b80e143debc82929ef475d9c078ca5a"
+    },
+    {
+      "args": "",
+      "name": "admin_list_announcements",
+      "body_md5": "6de38f99cc6989631d44e55bb96a02ad"
+    },
+    {
       "args": "p_limit integer",
       "name": "admin_list_audit",
       "body_md5": "80de575d20b9ff5c56a67ef48a23c3b3"
     },
     {
       "args": "",
+      "name": "admin_list_invites",
+      "body_md5": "bcbec658550470499d2b8a24b3d02f5c"
+    },
+    {
+      "args": "",
+      "name": "admin_list_owner_emails",
+      "body_md5": "ca6e6c6871ace8f5e8c143c9117a1ff7"
+    },
+    {
+      "args": "p_workspace_id uuid, p_limit integer",
+      "name": "admin_list_payments",
+      "body_md5": "4b50764b93124554338f43e6c1280250"
+    },
+    {
+      "args": "",
+      "name": "admin_list_plans",
+      "body_md5": "4c16c3c38fb980d9967d55af8df117d3"
+    },
+    {
+      "args": "p_search text, p_limit integer",
+      "name": "admin_list_users",
+      "body_md5": "d03cf07e79ef5c4697f0273e2800fb4b"
+    },
+    {
+      "args": "",
       "name": "admin_list_workspaces",
       "body_md5": "652ee90011981555e0c5d4c13641724e"
+    },
+    {
+      "args": "",
+      "name": "admin_platform_health",
+      "body_md5": "c6ea4014d9a8a8c5b1b5878980bd4cac"
+    },
+    {
+      "args": "p_workspace_id uuid, p_amount numeric, p_currency text, p_paid_at date, p_period_months integer, p_comment text",
+      "name": "admin_record_payment",
+      "body_md5": "9d26ee075d3c63968815c479f1e209f4"
+    },
+    {
+      "args": "p_workspace_id uuid, p_status text, p_trial_ends_at timestamp with time zone, p_paid_until timestamp with time zone",
+      "name": "admin_set_billing_dates",
+      "body_md5": "757144b164b2122be86387222bdb1d84"
+    },
+    {
+      "args": "p_registration_open boolean, p_default_trial_days integer, p_default_trial_plan_code text",
+      "name": "admin_set_platform_config",
+      "body_md5": "0cc27c1638e779bb0aa9f8debd5a23cf"
+    },
+    {
+      "args": "p_user_id uuid, p_banned boolean",
+      "name": "admin_set_user_banned",
+      "body_md5": "b1a5a10e20f2a0912572e6da94fd2118"
     },
     {
       "args": "p_workspace_id uuid, p_plan_code text",
@@ -3778,6 +3868,21 @@
       "args": "p_workspace_id uuid, p_suspended boolean",
       "name": "admin_suspend_workspace",
       "body_md5": "1b72165c60019ce05cbd19dcffb28ed1"
+    },
+    {
+      "args": "p jsonb",
+      "name": "admin_upsert_announcement",
+      "body_md5": "26bc90842ca88dba5f1c3243fad53258"
+    },
+    {
+      "args": "p jsonb",
+      "name": "admin_upsert_plan",
+      "body_md5": "cc67dcf1581f0fbb4c311020f8ca1972"
+    },
+    {
+      "args": "",
+      "name": "admin_usage_overview",
+      "body_md5": "e8806c08c4c2d81b6f0ff8b79a52c2da"
     },
     {
       "args": "p_workspace_id uuid",
@@ -3858,6 +3963,11 @@
       "args": "p_thread_id uuid",
       "name": "compute_thread_inbox_meta",
       "body_md5": "f93a5c1015958c125cd06e1801c3619c"
+    },
+    {
+      "args": "p_code text",
+      "name": "consume_platform_invite",
+      "body_md5": "82c36056d0c18dc4b99885cb6de0d1d1"
     },
     {
       "args": "p_project_id uuid, p_workspace_id uuid, p_access_type text, p_access_roles text[], p_created_by uuid, p_item_id uuid, p_user_id uuid",
@@ -4183,6 +4293,11 @@
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_accessible_projects",
       "body_md5": "57109abaf44fbb666a45925c0af3cb4e"
+    },
+    {
+      "args": "p_workspace_id uuid",
+      "name": "get_active_announcements",
+      "body_md5": "54baaaa7b8368677e91760daef4261a5"
     },
     {
       "args": "",
@@ -4760,6 +4875,11 @@
       "body_md5": "09583060b6443f39ae0d60a699a80ecd"
     },
     {
+      "args": "",
+      "name": "registration_allowed",
+      "body_md5": "f1a028448ac11bf5a71069faeaec304e"
+    },
+    {
       "args": "p_list_id uuid, p_item_type text, p_item_ids uuid[]",
       "name": "reorder_board_list_items",
       "body_md5": "49e9336ca8810beecc6ba8fc0fc25404"
@@ -4826,6 +4946,11 @@
     },
     {
       "args": "",
+      "name": "run_billing_maintenance",
+      "body_md5": "c861e30896925444e0d792eff54267f6"
+    },
+    {
+      "args": "",
       "name": "run_platform_alerts",
       "body_md5": "6d1eb4feb61a4145fd06b21b397a61cf"
     },
@@ -4853,6 +4978,11 @@
       "args": "",
       "name": "seed_read_status_on_thread_member",
       "body_md5": "81466af6f0133c2df99f599fa22188c5"
+    },
+    {
+      "args": "",
+      "name": "seed_workspace_trial",
+      "body_md5": "9b4c0d005783abfe2c085e6f669e93a2"
     },
     {
       "args": "",
@@ -4955,9 +5085,9 @@
       "body_md5": "c62f80a7a7107d232daf8683decbfaf5"
     },
     {
-      "args": "p_thread_id uuid, p_message_id uuid, p_with_text boolean, p_files jsonb",
+      "args": "p_thread_id uuid, p_message_id uuid, p_with_text boolean, p_files jsonb, p_dispatch boolean",
       "name": "smoke_send_file",
-      "body_md5": "3b9ab04948d263d9749d30ffdc904b26"
+      "body_md5": "1c5dda8fd71db9204bf99d84eabf28aa"
     },
     {
       "args": "p_thread_id uuid, p_reply_to uuid, p_label text",
@@ -4967,7 +5097,7 @@
     {
       "args": "p_owner_user_id uuid, p_workspace_id uuid, p_target_user_id uuid, p_jti text, p_expires_at timestamp with time zone, p_user_agent text, p_ip text",
       "name": "start_impersonation_session",
-      "body_md5": "fa8138013621b3de9e52e618547b1038"
+      "body_md5": "122a9d4f5a62de7185c3c894aba28b9d"
     },
     {
       "args": "text, text",
