@@ -69,8 +69,7 @@ for (const t of threads) {
   }
   if (status === 'sent') { console.log('✓ доставлено'); ok++ }
   else { console.log(`✗ ${status}`); bad++ }
-  // Прибираем тестовое сообщение в сервисе (в канале оно уже доставлено — это тест-чат).
-  await supabase.from('project_messages').update({ is_deleted: true, deleted_at: new Date().toISOString() }).eq('id', msgId)
+  // Не чистим: тест-чаты на то и тестовые — сообщения остаются как история прогонов.
 }
 
 console.log(`\nИтог: доставлено ${ok}, проблем ${bad}`)
