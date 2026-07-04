@@ -5,8 +5,10 @@
  */
 
 import { useState, FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,7 +23,22 @@ import { formatAuthError } from '@/lib/authErrors'
 export function RegisterForm() {
   const { signUp, signInWithGoogle, loading: authLoading } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { redirectDelayed } = useAuthRedirect()
+
+  // Гейт регистрации (админка платформы): закрыта → нужен инвайт-код.
+  // ⚠️ UI-уровень: Google OAuth этот гейт пока обходит.
+  const { data: registrationOpen } = useQuery({
+    queryKey: ['registration-allowed'],
+    staleTime: 60_000,
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await supabase.rpc('registration_allowed' as never, {} as never)
+      if (error) return true // fail-open: не блокируем регистрацию из-за сбоя проверки
+      return data === true
+    },
+  })
+  const [inviteCode, setInviteCode] = useState(() => searchParams?.get('invite') ?? '')
+  const inviteRequired = registrationOpen === false
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -63,6 +80,24 @@ export function RegisterForm() {
     }
 
     setLoading(true)
+
+    // Закрытая регистрация: сначала гасим инвайт (атомарно), без него не пускаем.
+    if (inviteRequired) {
+      if (!inviteCode.trim()) {
+        setError('Регистрация по приглашениям. Введите инвайт-код.')
+        setLoading(false)
+        return
+      }
+      const { data: inviteOk, error: inviteErr } = await supabase.rpc(
+        'consume_platform_invite' as never,
+        { p_code: inviteCode.trim() } as never,
+      )
+      if (inviteErr || inviteOk !== true) {
+        setError('Инвайт-код недействителен или исчерпан')
+        setLoading(false)
+        return
+      }
+    }
 
     const { error } = await signUp(email, password)
 
@@ -158,6 +193,24 @@ export function RegisterForm() {
                 autoComplete="new-password"
               />
             </div>
+
+            {inviteRequired && (
+              <div className="space-y-2">
+                <Label htmlFor="invite-code">Инвайт-код</Label>
+                <Input
+                  id="invite-code"
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  placeholder="Код приглашения"
+                  required
+                  disabled={loading || authLoading || googleLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Регистрация по приглашениям. Код можно получить у администрации сервиса.
+                </p>
+              </div>
+            )}
 
             {error && (
               <div

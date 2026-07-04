@@ -15,6 +15,10 @@ export const adminKeys = {
   workspaces: ['admin-workspaces'] as const,
   workspaceDetails: (id: string) => ['admin-workspace-details', id] as const,
   audit: ['admin-audit'] as const,
+  plans: ['admin-plans'] as const,
+  payments: ['admin-payments'] as const,
+  config: ['admin-platform-config'] as const,
+  invites: ['admin-invites'] as const,
 }
 
 export type AdminWorkspace = {
@@ -181,6 +185,242 @@ export function useAdminAudit(enabled: boolean) {
       const { data, error } = await supabase.rpc('admin_list_audit' as never, { p_limit: 300 } as never)
       if (error) throw error
       return (data as unknown as AdminAuditEntry[]) ?? []
+    },
+  })
+}
+
+// ── Этап 2: биллинг + регистрация ─────────────────────────────────────────
+
+export type AdminPlan = {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  price_monthly: number
+  currency: string
+  max_participants: number | null
+  max_projects: number | null
+  max_tasks: number | null
+  max_storage_mb: number | null
+  ai_tokens_monthly: number | null
+  enabled_modules: string[]
+  is_active: boolean
+  sort_order: number
+}
+
+export type AdminPayment = {
+  id: string
+  workspace_id: string
+  workspace_name: string | null
+  amount: number
+  currency: string
+  paid_at: string
+  period_months: number
+  comment: string | null
+  created_at: string
+}
+
+export type PlatformConfig = {
+  registration_open: boolean
+  default_trial_days: number
+  default_trial_plan_code: string | null
+}
+
+export type AdminInvite = {
+  id: string
+  code: string
+  note: string | null
+  max_uses: number
+  used_count: number
+  expires_at: string | null
+  created_at: string
+}
+
+export function useAdminPlans(enabled: boolean) {
+  return useQuery({
+    queryKey: adminKeys.plans,
+    enabled,
+    staleTime: 30_000,
+    queryFn: async (): Promise<AdminPlan[]> => {
+      const { data, error } = await supabase.rpc('admin_list_plans' as never, {} as never)
+      if (error) throw error
+      return (data as unknown as AdminPlan[]) ?? []
+    },
+  })
+}
+
+export function useUpsertPlan() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (plan: Partial<AdminPlan>) => {
+      const { error } = await supabase.rpc('admin_upsert_plan' as never, { p: plan } as never)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.plans })
+      qc.invalidateQueries({ queryKey: ['plans'] })
+      qc.invalidateQueries({ queryKey: adminKeys.audit })
+    },
+  })
+}
+
+export function useAdminPayments(enabled: boolean) {
+  return useQuery({
+    queryKey: adminKeys.payments,
+    enabled,
+    staleTime: 15_000,
+    queryFn: async (): Promise<AdminPayment[]> => {
+      const { data, error } = await supabase.rpc(
+        'admin_list_payments' as never,
+        { p_workspace_id: null, p_limit: 300 } as never,
+      )
+      if (error) throw error
+      return (data as unknown as AdminPayment[]) ?? []
+    },
+  })
+}
+
+export function useRecordPayment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      workspaceId: string
+      amount: number
+      currency: string
+      paidAt: string
+      periodMonths: number
+      comment: string | null
+    }) => {
+      const { error } = await supabase.rpc('admin_record_payment' as never, {
+        p_workspace_id: input.workspaceId,
+        p_amount: input.amount,
+        p_currency: input.currency,
+        p_paid_at: input.paidAt,
+        p_period_months: input.periodMonths,
+        p_comment: input.comment,
+      } as never)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.payments })
+      qc.invalidateQueries({ queryKey: adminKeys.workspaces })
+      qc.invalidateQueries({ queryKey: adminKeys.audit })
+    },
+  })
+}
+
+export function useDeletePayment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (paymentId: string) => {
+      const { error } = await supabase.rpc('admin_delete_payment' as never, { p_payment_id: paymentId } as never)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.payments })
+      qc.invalidateQueries({ queryKey: adminKeys.audit })
+    },
+  })
+}
+
+export function useSetBillingDates() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      workspaceId: string
+      status: string | null
+      trialEndsAt: string | null
+      paidUntil: string | null
+    }) => {
+      const { error } = await supabase.rpc('admin_set_billing_dates' as never, {
+        p_workspace_id: input.workspaceId,
+        p_status: input.status,
+        p_trial_ends_at: input.trialEndsAt,
+        p_paid_until: input.paidUntil,
+      } as never)
+      if (error) throw error
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: adminKeys.workspaces })
+      qc.invalidateQueries({ queryKey: adminKeys.workspaceDetails(vars.workspaceId) })
+      qc.invalidateQueries({ queryKey: adminKeys.audit })
+    },
+  })
+}
+
+export function usePlatformConfig(enabled: boolean) {
+  return useQuery({
+    queryKey: adminKeys.config,
+    enabled,
+    staleTime: 30_000,
+    queryFn: async (): Promise<PlatformConfig | null> => {
+      const { data, error } = await supabase.rpc('admin_get_platform_config' as never, {} as never)
+      if (error) throw error
+      return (data as unknown as PlatformConfig) ?? null
+    },
+  })
+}
+
+export function useSetPlatformConfig() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (cfg: PlatformConfig) => {
+      const { error } = await supabase.rpc('admin_set_platform_config' as never, {
+        p_registration_open: cfg.registration_open,
+        p_default_trial_days: cfg.default_trial_days,
+        p_default_trial_plan_code: cfg.default_trial_plan_code,
+      } as never)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.config })
+      qc.invalidateQueries({ queryKey: adminKeys.audit })
+    },
+  })
+}
+
+export function useAdminInvites(enabled: boolean) {
+  return useQuery({
+    queryKey: adminKeys.invites,
+    enabled,
+    staleTime: 15_000,
+    queryFn: async (): Promise<AdminInvite[]> => {
+      const { data, error } = await supabase.rpc('admin_list_invites' as never, {} as never)
+      if (error) throw error
+      return (data as unknown as AdminInvite[]) ?? []
+    },
+  })
+}
+
+export function useCreateInvite() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { note: string | null; maxUses: number; expiresDays: number | null }) => {
+      const { data, error } = await supabase.rpc('admin_create_invite' as never, {
+        p_note: input.note,
+        p_max_uses: input.maxUses,
+        p_expires_days: input.expiresDays,
+      } as never)
+      if (error) throw error
+      return data as unknown as { id: string; code: string }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.invites })
+      qc.invalidateQueries({ queryKey: adminKeys.audit })
+    },
+  })
+}
+
+export function useDeleteInvite() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('admin_delete_invite' as never, { p_id: id } as never)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.invites })
+      qc.invalidateQueries({ queryKey: adminKeys.audit })
     },
   })
 }

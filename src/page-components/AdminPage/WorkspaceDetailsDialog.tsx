@@ -5,8 +5,10 @@
  * участники, динамика токенов. Read-only (действия — в таблице).
  */
 
+import { useState } from 'react'
+import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useAdminWorkspaceDetails } from '@/hooks/useAdmin'
+import { useAdminWorkspaceDetails, useSetBillingDates, type AdminWorkspaceDetails } from '@/hooks/useAdmin'
 import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { fmtDate } from './WorkspacesTab'
 
@@ -30,6 +32,71 @@ function KV({ k, v }: { k: string; v: React.ReactNode }) {
 
 const num = (n: number | null | undefined) => (n ?? 0).toLocaleString('ru-RU')
 
+const toDateInput = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : '')
+
+/** Инлайн-редактор статуса и дат биллинга (триал до / оплачено до). */
+function BillingDatesEditor({
+  workspaceId,
+  billing,
+  onDone,
+}: {
+  workspaceId: string
+  billing: AdminWorkspaceDetails['billing']
+  onDone: () => void
+}) {
+  const save = useSetBillingDates()
+  const [status, setStatus] = useState(billing?.status ?? 'active')
+  const [trial, setTrial] = useState(toDateInput(billing?.trial_ends_at))
+  const [paid, setPaid] = useState(toDateInput(billing?.paid_until))
+
+  const onSave = async () => {
+    try {
+      await save.mutateAsync({
+        workspaceId,
+        status,
+        trialEndsAt: trial ? new Date(`${trial}T23:59:59`).toISOString() : null,
+        paidUntil: paid ? new Date(`${paid}T23:59:59`).toISOString() : null,
+      })
+      toast.success('Биллинг обновлён')
+      onDone()
+    } catch (e) {
+      toast.error(getUserFacingErrorMessage(e, 'Не удалось сохранить'))
+    }
+  }
+
+  return (
+    <div className="mt-2 space-y-1.5 rounded border bg-gray-50 p-2">
+      <label className="block text-xs text-gray-600">
+        Статус
+        <select className="mt-0.5 w-full rounded border px-2 py-1 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="trial">Триал</option>
+          <option value="active">Активен</option>
+          <option value="past_due">Просрочен</option>
+          <option value="canceled">Отменён</option>
+        </select>
+      </label>
+      <label className="block text-xs text-gray-600">
+        Триал до
+        <input className="mt-0.5 w-full rounded border px-2 py-1 text-sm" type="date" value={trial} onChange={(e) => setTrial(e.target.value)} />
+      </label>
+      <label className="block text-xs text-gray-600">
+        Оплачено до
+        <input className="mt-0.5 w-full rounded border px-2 py-1 text-sm" type="date" value={paid} onChange={(e) => setPaid(e.target.value)} />
+      </label>
+      <div className="flex justify-end gap-2 pt-1">
+        <button className="rounded border px-2 py-1 text-xs" onClick={onDone}>Отмена</button>
+        <button
+          className="rounded bg-gray-900 px-2 py-1 text-xs text-white disabled:opacity-50"
+          disabled={save.isPending}
+          onClick={onSave}
+        >
+          Сохранить
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function WorkspaceDetailsDialog({
   workspaceId,
   onClose,
@@ -38,6 +105,7 @@ export function WorkspaceDetailsDialog({
   onClose: () => void
 }) {
   const { data, isLoading, error } = useAdminWorkspaceDetails(workspaceId)
+  const [editingBilling, setEditingBilling] = useState(false)
 
   return (
     <Dialog open={!!workspaceId} onOpenChange={(open) => { if (!open) onClose() }}>
@@ -73,6 +141,20 @@ export function WorkspaceDetailsDialog({
                 <KV k="Создан" v={fmtDate(data.workspace?.created_at ?? null)} />
                 {data.workspace?.is_suspended && (
                   <KV k="Заблокирован" v={fmtDate(data.workspace.suspended_at)} />
+                )}
+                {editingBilling ? (
+                  <BillingDatesEditor
+                    workspaceId={workspaceId!}
+                    billing={data.billing}
+                    onDone={() => setEditingBilling(false)}
+                  />
+                ) : (
+                  <button
+                    className="mt-1 text-xs text-blue-600 hover:underline"
+                    onClick={() => setEditingBilling(true)}
+                  >
+                    Изменить статус/даты
+                  </button>
                 )}
               </Section>
 
