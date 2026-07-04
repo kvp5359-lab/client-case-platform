@@ -175,7 +175,7 @@ export function buildToastContent(
                 'div',
                 {
                   className:
-                    'truncate min-w-0 justify-self-start rounded bg-gray-100 px-1.5 py-0 text-[12px] leading-[18px] font-medium text-gray-700',
+                    'truncate min-w-0 justify-self-start rounded bg-[#eceef1] px-1.5 py-0 text-[12px] leading-[18px] font-medium text-gray-700',
                 },
                 projectName,
               )
