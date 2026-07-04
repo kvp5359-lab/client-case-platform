@@ -33,7 +33,7 @@ export function IconColorPicker({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="icon" className="h-9 w-9 flex-shrink-0">
+        <Button variant="outline" size="icon" className="h-9 w-9 flex-shrink-0" aria-label="Выбрать иконку и цвет">
           <div
             className={cn('w-5 h-5 rounded flex items-center justify-center', selectedColorObj?.bg)}
           >

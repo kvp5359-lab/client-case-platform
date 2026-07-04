@@ -114,7 +114,7 @@ export function TelegramLinkDialog({
                   '/link ...'
                 )}
               </div>
-              <Button variant="outline" size="icon" onClick={handleCopy} disabled={!linkCode}>
+              <Button variant="outline" size="icon" onClick={handleCopy} disabled={!linkCode} aria-label="Копировать">
                 <Copy className="h-4 w-4" />
               </Button>
             </div>

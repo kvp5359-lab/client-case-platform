@@ -111,7 +111,7 @@ export function FileUploadZone({ file, onFileSelect, onAnalyze, onBack }: FileUp
               <div className="font-medium">{file.name}</div>
               <div className="text-sm text-muted-foreground">{formatSize(file.size)}</div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => onFileSelect(null)}>
+            <Button variant="ghost" size="icon" onClick={() => onFileSelect(null)} aria-label="Очистить файл">
               <X className="w-4 h-4" />
             </Button>
           </div>

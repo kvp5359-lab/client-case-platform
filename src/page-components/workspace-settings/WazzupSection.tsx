@@ -149,6 +149,7 @@ export function WazzupSection({ workspaceId, employees }: Props) {
                 size="icon"
                 onClick={() => copy(webhookUrl, 'Webhook URL')}
                 title="Скопировать URL"
+                aria-label="Скопировать URL"
               >
                 <Copy className="h-4 w-4" />
               </Button>

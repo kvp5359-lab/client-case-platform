@@ -99,6 +99,7 @@ export function ScheduleSendButton({ disabled, onSchedule, compact, initialValue
           className={compact ? 'h-7 w-7' : 'h-8 w-8'}
           disabled={disabled}
           title="Отправить позже"
+          aria-label="Отправить позже"
         >
           <Clock className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
         </Button>

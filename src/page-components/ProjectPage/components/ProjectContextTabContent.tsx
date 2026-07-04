@@ -119,6 +119,7 @@ export function ProjectContextTabContent({
               variant="ghost"
               className="h-6 w-6 ml-1 text-muted-foreground hover:text-foreground md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 transition-opacity"
               title="Добавить"
+              aria-label="Добавить"
             >
               <Plus className="h-4 w-4" />
             </Button>

@@ -300,10 +300,10 @@ export function BusinessLinkDialog({
             ) : deepLink ? (
               <div className="flex items-center gap-2">
                 <Input value={deepLink} readOnly className="font-mono text-xs" />
-                <Button size="icon" variant="outline" onClick={copyLink} title="Скопировать">
+                <Button size="icon" variant="outline" onClick={copyLink} title="Скопировать" aria-label="Скопировать">
                   <Copy className="h-4 w-4" />
                 </Button>
-                <Button size="icon" variant="outline" asChild title="Открыть">
+                <Button size="icon" variant="outline" asChild title="Открыть" aria-label="Открыть">
                   <a href={deepLink} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-4 w-4" />
                   </a>

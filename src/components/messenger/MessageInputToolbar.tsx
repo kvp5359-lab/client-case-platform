@@ -184,6 +184,7 @@ export function MessageInputToolbar({
             disabled={!hasContent || isPending || isSavingDraft}
             onClick={onSaveDraft}
             title="Сохранить черновик"
+            aria-label="Сохранить черновик"
           >
             <Save className="h-4 w-4" />
           </Button>
@@ -201,6 +202,7 @@ export function MessageInputToolbar({
             className={cn('h-8 w-8', sendButtonClassName ?? sendButtonStyles[accent] ?? sendButtonStyles.blue)}
             disabled={!hasContent || isPending || sendBlocked}
             onClick={onSend}
+            aria-label="Отправить"
           >
             <Send className="h-4 w-4" />
           </Button>

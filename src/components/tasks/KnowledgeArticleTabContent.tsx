@@ -111,6 +111,7 @@ export function KnowledgeArticleTabContent({ articleId, onClose }: Props) {
             className="h-7 w-7 shrink-0"
             onClick={handleDownloadPdf}
             title="Скачать PDF"
+            aria-label="Скачать PDF"
           >
             <Download className="h-4 w-4" />
           </Button>
@@ -121,6 +122,7 @@ export function KnowledgeArticleTabContent({ articleId, onClose }: Props) {
           className="h-7 w-7 shrink-0"
           onClick={onClose}
           title="Скрыть панель"
+          aria-label="Скрыть панель"
         >
           <X className="h-4 w-4" />
         </Button>

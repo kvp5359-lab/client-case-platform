@@ -46,7 +46,7 @@ export function ColumnView({ node, updateAttributes, editor, getPos }: NodeViewP
         <div className="absolute top-1 right-1 md:opacity-0 md:group-hover/column:opacity-100 transition-opacity z-10">
           <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
             <PopoverTrigger asChild>
-              <Button variant="secondary" size="icon" className="h-6 w-6 shadow-sm">
+              <Button variant="secondary" size="icon" className="h-6 w-6 shadow-sm" aria-label="Настройки колонок">
                 <Settings className="h-3 w-3" />
               </Button>
             </PopoverTrigger>

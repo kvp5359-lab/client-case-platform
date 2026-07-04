@@ -188,7 +188,7 @@ export function FilterRuleRow({ condition, onChange, onRemove, entityType, works
       )}
 
       {/* Remove */}
-      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onRemove}>
+      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onRemove} aria-label="Удалить условие">
         <X className="h-3.5 w-3.5" />
       </Button>
     </div>

@@ -201,6 +201,7 @@ export function ParticipantChannelsBlock({ participantId, workspaceId }: Props) 
                   className="size-7"
                   onClick={() => handleDelete(ch)}
                   title="Удалить канал"
+                  aria-label="Удалить канал"
                 >
                   <Trash2 className="size-3.5 text-destructive" />
                 </Button>

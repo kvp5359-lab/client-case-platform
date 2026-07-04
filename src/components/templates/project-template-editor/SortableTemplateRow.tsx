@@ -152,6 +152,7 @@ export function SortableTemplateRow({
           className="h-6 w-6"
           onClick={() => onEdit(t)}
           title="Редактировать"
+          aria-label="Редактировать"
         >
           <Pencil className="w-3 h-3" />
         </Button>
@@ -161,6 +162,7 @@ export function SortableTemplateRow({
           className="h-6 w-6"
           onClick={() => onCopy(t)}
           title="Копировать"
+          aria-label="Копировать"
         >
           <Copy className="w-3 h-3" />
         </Button>
@@ -170,6 +172,7 @@ export function SortableTemplateRow({
           className="h-6 w-6 text-destructive hover:text-destructive"
           onClick={() => onDelete(t.id)}
           title="Удалить"
+          aria-label="Удалить"
         >
           <Trash2 className="w-3 h-3" />
         </Button>

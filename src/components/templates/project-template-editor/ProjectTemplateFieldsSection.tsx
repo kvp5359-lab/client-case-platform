@@ -267,6 +267,7 @@ export function ProjectTemplateFieldsSection({ workspaceId, projectTemplateId }:
                     className="h-5 w-5"
                     disabled={index === 0 || reorderMutation.isPending}
                     onClick={() => move(index, -1)}
+                    aria-label="Переместить вверх"
                   >
                     <ArrowUp className="h-3 w-3" />
                   </Button>
@@ -276,6 +277,7 @@ export function ProjectTemplateFieldsSection({ workspaceId, projectTemplateId }:
                     className="h-5 w-5"
                     disabled={index === linked.length - 1 || reorderMutation.isPending}
                     onClick={() => move(index, 1)}
+                    aria-label="Переместить вниз"
                   >
                     <ArrowDown className="h-3 w-3" />
                   </Button>
@@ -305,6 +307,7 @@ export function ProjectTemplateFieldsSection({ workspaceId, projectTemplateId }:
                     setIsCreateOpen(true)
                   }}
                   title="Редактировать поле"
+                  aria-label="Редактировать поле"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
@@ -315,6 +318,7 @@ export function ProjectTemplateFieldsSection({ workspaceId, projectTemplateId }:
                   onClick={() => handleRemove(l)}
                   disabled={unlinkMutation.isPending}
                   title="Убрать из шаблона"
+                  aria-label="Убрать из шаблона"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

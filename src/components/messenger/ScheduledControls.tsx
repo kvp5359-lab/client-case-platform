@@ -54,6 +54,7 @@ export function ScheduledControls({
           className="h-7 w-7 text-muted-foreground hover:text-destructive"
           onClick={() => onCancel(messageId)}
           title="Отменить"
+          aria-label="Отменить"
         >
           <X className="h-3.5 w-3.5" />
         </Button>

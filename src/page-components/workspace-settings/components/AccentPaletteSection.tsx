@@ -132,6 +132,7 @@ export function AccentPaletteSection({ workspaceId }: Props) {
                     disabled={!isOverridden}
                     title={isOverridden ? 'Сбросить к стандартному' : 'Стандартный цвет'}
                     onClick={() => resetSlug(slug)}
+                    aria-label={isOverridden ? 'Сбросить к стандартному' : 'Стандартный цвет'}
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                   </Button>

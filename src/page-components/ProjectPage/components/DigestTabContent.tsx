@@ -204,6 +204,7 @@ function DigestCard({
             onClick={onRefresh}
             disabled={isRefreshing}
             title="Перегенерировать"
+            aria-label="Перегенерировать"
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </Button>
@@ -213,6 +214,7 @@ function DigestCard({
             className="h-7 w-7 text-gray-400 hover:text-foreground"
             onClick={() => setShowRaw((v) => !v)}
             title={`Сырой таймлайн (${rawCount})`}
+            aria-label="Показать сырой таймлайн"
           >
             {showRaw ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </Button>
@@ -222,6 +224,7 @@ function DigestCard({
             className="h-7 w-7 text-gray-400 hover:text-foreground"
             onClick={onDelete}
             title="Удалить карточку"
+            aria-label="Удалить карточку"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </Button>

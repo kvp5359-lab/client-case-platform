@@ -120,7 +120,7 @@ export function InnerFilterGroupEditor({
             : 'достаточно одного совпадения'}
         </span>
         {depth > 0 && onRemove && (
-          <Button variant="ghost" size="icon" className="h-5 w-5 ml-auto" onClick={onRemove}>
+          <Button variant="ghost" size="icon" className="h-5 w-5 ml-auto" onClick={onRemove} aria-label="Удалить группу условий">
             <X className="h-3 w-3" />
           </Button>
         )}

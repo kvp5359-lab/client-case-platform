@@ -135,6 +135,7 @@ export function ArticleVersionHistoryDialog({
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => setPreviewVersionId(v.id)}
+                        aria-label="Просмотреть версию"
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -145,6 +146,7 @@ export function ArticleVersionHistoryDialog({
                           className="h-8 w-8"
                           onClick={() => onRestore(v.id)}
                           disabled={isRestoring}
+                          aria-label="Восстановить версию"
                         >
                           <RotateCcw className="w-4 h-4" />
                         </Button>

@@ -197,6 +197,7 @@ export function DomainSettingsTab() {
                       size="icon"
                       onClick={() => handleCopy(`https://${slugUrl}`, 'slug-url')}
                       title="Скопировать"
+                      aria-label="Скопировать"
                     >
                       {copiedField === 'slug-url' ? (
                         <Check className="h-4 w-4" />
@@ -204,7 +205,7 @@ export function DomainSettingsTab() {
                         <Copy className="h-4 w-4" />
                       )}
                     </Button>
-                    <Button variant="outline" size="icon" asChild title="Открыть">
+                    <Button variant="outline" size="icon" asChild title="Открыть" aria-label="Открыть">
                       <a href={`https://${slugUrl}`} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="h-4 w-4" />
                       </a>
@@ -242,6 +243,7 @@ export function DomainSettingsTab() {
                         size="icon"
                         onClick={() => handleCopy(`https://${domain.custom_domain}`, 'custom-url')}
                         title="Скопировать URL"
+                        aria-label="Скопировать URL"
                       >
                         {copiedField === 'custom-url' ? (
                           <Check className="h-4 w-4" />

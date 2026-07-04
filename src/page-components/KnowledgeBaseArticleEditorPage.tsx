@@ -54,6 +54,7 @@ export default function KnowledgeBaseArticleEditorPage() {
                     onClick={editor.handleBack}
                     className="shrink-0 h-9 w-9 absolute -left-11"
                     title="Назад к базе знаний"
+                    aria-label="Назад к базе знаний"
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </Button>

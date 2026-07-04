@@ -148,6 +148,7 @@ export function RecurringTasksContent() {
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => openEdit(rule)}
+                          aria-label="Редактировать"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -156,6 +157,7 @@ export function RecurringTasksContent() {
                           size="icon"
                           className="h-7 w-7 text-destructive"
                           onClick={() => handleDelete(rule)}
+                          aria-label="Удалить"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>

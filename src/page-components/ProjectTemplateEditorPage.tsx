@@ -218,6 +218,7 @@ export function ProjectTemplateEditorPage() {
                   className="h-9 w-9 shrink-0"
                   onClick={handleStartEditingName}
                   title="Редактировать название и описание"
+                  aria-label="Редактировать название и описание"
                 >
                   <Pencil className="w-4 h-4" />
                 </Button>

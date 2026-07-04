@@ -211,6 +211,7 @@ export function AudioAttachmentPlayer({
               className={`h-8 w-8 shrink-0 ${isOwn ? 'text-white hover:bg-white/15 hover:text-white' : ''}`}
               onClick={togglePlay}
               disabled={loading || !audioUrl}
+              aria-label={playing ? 'Пауза' : 'Воспроизвести'}
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -272,6 +273,7 @@ export function AudioAttachmentPlayer({
             onClick={handleTranscribe}
             disabled={transcribing}
             title="Распознать текст"
+            aria-label="Распознать текст"
           >
             {transcribing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -285,6 +287,7 @@ export function AudioAttachmentPlayer({
             className={`h-7 w-7 shrink-0 flex items-center justify-center rounded-md ${hoverBtnCls} transition-colors`}
             onClick={() => setTranscriptionOpen(!transcriptionOpen)}
             title={transcriptionOpen ? 'Свернуть' : 'Показать текст'}
+            aria-label={transcriptionOpen ? 'Свернуть' : 'Показать текст'}
           >
             {transcriptionOpen ? (
               <ChevronUp className={`h-4 w-4 ${iconCls}`} />
