@@ -101,7 +101,7 @@ export function WorkspaceUsageSection({ workspaceId }: { workspaceId: string }) 
                 {usage.plan_name ?? 'Без тарифа (безлимит)'}
               </span>
             </div>
-            <UsageRow label="Участники" used={usage.participants_count} max={usage.max_participants} />
+            <UsageRow label="Участники (команда)" used={usage.participants_count} max={usage.max_participants} />
             <UsageRow label="Проекты" used={usage.projects_count} max={usage.max_projects} />
             <UsageRow label="Хранилище" used={usage.storage_mb} max={usage.max_storage_mb} unit="МБ" />
             <UsageRow

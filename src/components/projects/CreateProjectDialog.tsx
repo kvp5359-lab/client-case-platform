@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext'
+import { useWorkspaceLimitStatus } from '@/hooks/useWorkspaceUsage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert } from '@/components/ui/alert'
@@ -44,6 +45,7 @@ export function CreateProjectDialog({
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set())
   const { workspaceId: currentWorkspaceId } = useWorkspaceContext()
+  const { atLimit } = useWorkspaceLimitStatus(currentWorkspaceId)
 
   const activeTemplateId = templateId && templateId !== 'none' ? templateId : undefined
 
@@ -166,6 +168,10 @@ export function CreateProjectDialog({
     }
     if (!name.trim()) {
       setError('Введите название проекта')
+      return
+    }
+    if (atLimit('projects')) {
+      setError('Достигнут лимит проектов по тарифу. Повысьте тариф, чтобы создавать новые.')
       return
     }
 

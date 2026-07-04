@@ -158,6 +158,21 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Жёсткая квота токенов ИИ по тарифу. Best-effort: если проверка сама
+    // сбойнула — пропускаем (не блокируем ИИ из-за ошибки проверки).
+    try {
+      const { data: overQuota } = await supabaseAdmin.rpc("workspace_at_limit", {
+        p_workspace_id: workspace_id,
+        p_kind: "ai_tokens",
+      });
+      if (overQuota === true) {
+        return new Response(
+          JSON.stringify({ error: "Месячная квота ИИ по тарифу исчерпана. Повысьте тариф или дождитесь следующего месяца." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    } catch (_e) { /* проверка недоступна — не блокируем */ }
+
     // Get workspace AI model first to determine provider
     const needsVoyage = !!knowledge_template_id || !!knowledge_all;
     const [workspaceResult, voyageResult] = await Promise.all([

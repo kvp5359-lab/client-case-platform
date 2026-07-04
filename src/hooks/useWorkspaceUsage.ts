@@ -78,6 +78,49 @@ export function useUpdateWorkspaceLimits(workspaceId: string) {
   })
 }
 
+export type LimitMetric = {
+  key: 'participants' | 'projects' | 'storage' | 'ai_tokens'
+  label: string
+  used: number
+  max: number
+  pct: number
+  atLimit: boolean   // >= 100%
+  nearLimit: boolean // >= 95%
+}
+
+/**
+ * Производный статус лимитов воркспейса: что приближается к пределу (≥95%) или
+ * достигнуто (100%). Пустой массив = тарифа/лимитов нет или всё в норме.
+ */
+export function useWorkspaceLimitStatus(workspaceId: string | undefined): {
+  metrics: LimitMetric[]
+  warnings: LimitMetric[]
+  atLimit: (key: LimitMetric['key']) => boolean
+} {
+  const { data } = useWorkspaceUsageAndLimits(workspaceId)
+
+  const build = (key: LimitMetric['key'], label: string, used: number, max: number | null): LimitMetric | null => {
+    if (max == null) return null // нет лимита
+    const pct = max > 0 ? Math.round((used / max) * 100) : 0
+    return { key, label, used, max, pct, atLimit: used >= max, nearLimit: pct >= 95 }
+  }
+
+  const metrics: LimitMetric[] = data
+    ? ([
+        build('participants', 'участники команды', data.participants_count, data.max_participants),
+        build('projects', 'проекты', data.projects_count, data.max_projects),
+        build('storage', 'хранилище', data.storage_mb, data.max_storage_mb),
+        build('ai_tokens', 'токены ИИ', data.ai_tokens_used ?? 0, data.ai_tokens_monthly),
+      ].filter(Boolean) as LimitMetric[])
+    : []
+
+  return {
+    metrics,
+    warnings: metrics.filter((m) => m.nearLimit),
+    atLimit: (key) => metrics.some((m) => m.key === key && m.atLimit),
+  }
+}
+
 /** Витрина тарифов (все активные). */
 export function usePlans() {
   return useQuery({

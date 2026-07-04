@@ -12,6 +12,7 @@
 import { useState, useEffect, useMemo, createContext, useContext } from 'react'
 import { useParams, usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { LimitWarningBanner } from '@/components/workspace/LimitWarningBanner'
 import { WorkspaceSidebarFull } from './WorkspaceSidebarFull'
 import { MobileBottomNav } from './WorkspaceSidebar/MobileBottomNav'
 import { useSidebarCollapsed } from './WorkspaceSidebar/useSidebarCollapsed'
@@ -262,6 +263,7 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
         {/* Main content + right panel root (портал для shell) */}
         <div id="workspace-panel-root" className="flex-1 flex min-w-0 relative overflow-hidden">
           <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[var(--cc-bottom-nav-h)] md:pb-0">
+            {!isClientOnly && <LimitWarningBanner workspaceId={workspaceId} />}
             {children}
           </main>
         </div>
