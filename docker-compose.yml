@@ -49,6 +49,17 @@ services:
       - "3007:3007"
     networks:
       - web
+    # Healthcheck по /health (Fastify, порт 3007). Делает состояние видимым в
+    # `docker ps` (healthy/unhealthy) и даёт сигнал мониторингу при зависании
+    # процесса (когда контейнер жив, но не отвечает — restart:unless-stopped
+    # такое сам не ловит). Для АВТО-рестарта при unhealthy нужен sidecar
+    # willfarrell/autoheal (отдельное решение по инфраструктуре — см. аудит C9).
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3007/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
 networks:
   web:
