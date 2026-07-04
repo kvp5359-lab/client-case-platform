@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -54,7 +55,7 @@ export function RemoveExecutorDialog({
         if (!cancelled) setOptions(opts)
       })
       .catch((e) => {
-        if (!cancelled) toast.error(e instanceof Error ? e.message : 'Не удалось загрузить исполнителей')
+        if (!cancelled) toast.error(getUserFacingErrorMessage(e, 'Не удалось загрузить исполнителей'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

@@ -7,6 +7,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import {
   downloadDocumentsAsZip,
   type DownloadGroupMode,
@@ -46,7 +47,7 @@ export function useKitDownload() {
         setKitDownloadDialog({ open: false, kit: null, isDownloading: false })
       } catch (error) {
         logger.error('Ошибка скачивания набора:', error)
-        toast.error(error instanceof Error ? error.message : 'Ошибка при скачивании документов')
+        toast.error(getUserFacingErrorMessage(error, 'Ошибка при скачивании документов'))
         setKitDownloadDialog((s) => ({ ...s, isDownloading: false }))
       }
     },

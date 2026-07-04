@@ -28,6 +28,7 @@ import { workspaceKeys, workspaceDomainKeys, STALE_TIME } from '@/hooks/queryKey
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 
 const ROOT_DOMAIN = 'clientcase.app'
 
@@ -113,7 +114,7 @@ export function DomainSettingsTab() {
       setCustomDomainInput('')
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? 'Ошибка сохранения')
+      toast.error(getUserFacingErrorMessage(err, 'Ошибка сохранения'))
     },
   })
 
@@ -136,7 +137,7 @@ export function DomainSettingsTab() {
       toast.success('Проверка запущена')
     },
     onError: (err: Error) => {
-      toast.error(err.message)
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось выполнить операцию'))
     },
   })
 

@@ -13,6 +13,7 @@ import {
 import { downloadGeneratedFile } from '@/services/api/documents/documentGenerationService'
 import type { DocumentTemplatePlaceholder } from '@/services/api/documents/documentTemplateService'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 
 export function useDocumentTemplates(workspaceId: string | undefined) {
   return useQuery({
@@ -35,7 +36,7 @@ export function useUploadDocumentTemplate() {
       toast.success('Шаблон документа загружен')
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Ошибка загрузки шаблона')
+      toast.error(getUserFacingErrorMessage(error, 'Ошибка загрузки шаблона'))
     },
   })
 }
@@ -61,7 +62,7 @@ export function useUpdateDocumentTemplate() {
       toast.success('Шаблон обновлён')
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Ошибка обновления')
+      toast.error(getUserFacingErrorMessage(error, 'Ошибка обновления'))
     },
   })
 }
@@ -76,7 +77,7 @@ export function useReplaceDocumentTemplateFile() {
       toast.success('Файл шаблона обновлён')
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Ошибка замены файла')
+      toast.error(getUserFacingErrorMessage(error, 'Ошибка замены файла'))
     },
   })
 }
@@ -91,7 +92,7 @@ export function useDeleteDocumentTemplate() {
       toast.success('Шаблон удалён')
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Ошибка удаления')
+      toast.error(getUserFacingErrorMessage(error, 'Ошибка удаления'))
     },
   })
 }
@@ -108,7 +109,7 @@ export function useGenerateDocument() {
       toast.success('Документ сгенерирован и скачан')
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Ошибка генерации документа')
+      toast.error(getUserFacingErrorMessage(error, 'Ошибка генерации документа'))
     },
   })
 }

@@ -10,6 +10,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 
 export type TranslationSettings = {
   translation_model: string | null
@@ -55,7 +56,7 @@ export function useUpdateTranslationSettings(workspaceId: string | undefined) {
       toast.success('Сохранено')
     },
     onError: (e: unknown) => {
-      toast.error(e instanceof Error ? e.message : 'Ошибка сохранения')
+      toast.error(getUserFacingErrorMessage(e, 'Ошибка сохранения'))
     },
   })
 }

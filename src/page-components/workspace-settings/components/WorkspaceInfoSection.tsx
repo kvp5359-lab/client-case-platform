@@ -5,6 +5,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { Info } from 'lucide-react'
 import { CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -50,7 +51,7 @@ function WorkspaceInfoForm({
       toast.success('Сохранено')
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Ошибка при сохранении')
+      toast.error(getUserFacingErrorMessage(err, 'Ошибка при сохранении'))
     },
   })
 

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -127,7 +128,7 @@ export function ProjectContextItemCard({
       if (res.status === 'done') {
         toast.success('Текст извлечён')
       } else {
-        toast.error('Не удалось извлечь', { description: res.error })
+        toast.error('Не удалось извлечь', { description: getUserFacingErrorMessage(res.error) })
       }
     } catch (err) {
       toast.error('Ошибка', {

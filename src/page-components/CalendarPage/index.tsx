@@ -12,6 +12,7 @@ import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { supabase } from '@/lib/supabase'
 import { calendarKeys } from '@/hooks/queryKeys'
 import { Calendar, dateFnsLocalizer, Views, type View } from 'react-big-calendar'
@@ -229,7 +230,7 @@ export default function CalendarPage() {
       })
     setCreating(false)
     if (error) {
-      toast.error(`Не удалось создать: ${error.message}`)
+      toast.error(getUserFacingErrorMessage(error, 'Не удалось создать'))
       return
     }
     queryClient.invalidateQueries({ queryKey: calendarKeys.all })

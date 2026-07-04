@@ -15,6 +15,7 @@
 import { useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Loader2, RotateCcw, Wand2 } from 'lucide-react'
@@ -103,7 +104,7 @@ export function DigestSettingsTab() {
       toast.success('Настройки Дневника сохранены')
     } catch (err) {
       toast.error('Не удалось сохранить', {
-        description: err instanceof Error ? err.message : String(err),
+        description: getUserFacingErrorMessage(err),
       })
     }
   }
@@ -246,7 +247,7 @@ function TestRunCard({ workspaceId, prompt }: { workspaceId: string | undefined;
       }
     } catch (err) {
       toast.error('Не удалось сгенерировать', {
-        description: err instanceof Error ? err.message : String(err),
+        description: getUserFacingErrorMessage(err),
       })
     }
   }

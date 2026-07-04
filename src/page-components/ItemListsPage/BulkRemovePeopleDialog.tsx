@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react'
 import { Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -52,7 +53,7 @@ export function BulkRemovePeopleDialog({
     setSelected(new Set())
     loader()
       .then((opts) => { if (!cancelled) setOptions(opts) })
-      .catch((e) => { if (!cancelled) toast.error(e instanceof Error ? e.message : 'Не удалось загрузить список') })
+      .catch((e) => { if (!cancelled) toast.error(getUserFacingErrorMessage(e, 'Не удалось загрузить список')) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
     // Грузим один раз при открытии; loader пересоздаётся каждый рендер — в deps не кладём.

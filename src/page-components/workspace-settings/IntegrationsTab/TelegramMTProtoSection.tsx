@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { Loader2, MessageCircle, User } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -85,7 +86,7 @@ export function TelegramMTProtoSection({
       })
     },
     onError: (err) => {
-      toast.error('Не удалось отключить: ' + (err as Error).message)
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось отключить'))
     },
   })
 
@@ -249,7 +250,7 @@ export function MTProtoConnectDialog({
       setStep('code')
       toast.success('Код отправлен в Telegram')
     } catch (err) {
-      toast.error('Не удалось отправить код: ' + (err as Error).message)
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось отправить код'))
     } finally {
       setBusy(false)
     }
@@ -277,7 +278,7 @@ export function MTProtoConnectDialog({
         throw new Error('Неожиданный ответ сервера')
       }
     } catch (err) {
-      toast.error('Ошибка: ' + (err as Error).message)
+      toast.error(getUserFacingErrorMessage(err, 'Ошибка'))
     } finally {
       setBusy(false)
     }
@@ -298,7 +299,7 @@ export function MTProtoConnectDialog({
       onConnected()
       setTimeout(() => onOpenChange(false), 800)
     } catch (err) {
-      toast.error('Неверный пароль: ' + (err as Error).message)
+      toast.error(getUserFacingErrorMessage(err, 'Неверный пароль'))
     } finally {
       setBusy(false)
     }

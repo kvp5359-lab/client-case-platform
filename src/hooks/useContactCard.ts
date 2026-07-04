@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import {
   contactThreadKeys,
   invalidateAfterThreadMove,
@@ -134,7 +135,7 @@ export function useRenameParticipant() {
       toast.success('Контакт переименован')
     },
     onError: (err: Error) => {
-      toast.error(`Не удалось переименовать: ${err.message}`)
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось переименовать'))
     },
   })
 }
@@ -155,7 +156,7 @@ export function useMergeParticipants(workspaceId: string | undefined) {
       toast.success('Контакты объединены')
     },
     onError: (err: Error) => {
-      toast.error(`Не удалось объединить: ${err.message}`)
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось объединить'))
     },
   })
 }

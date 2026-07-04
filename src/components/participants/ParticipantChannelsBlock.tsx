@@ -13,6 +13,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { Mail, Phone, Send, Star, Trash2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -115,7 +116,7 @@ export function ParticipantChannelsBlock({ participantId, workspaceId }: Props) 
       await deleteMut.mutateAsync(channel.id)
       toast.success('Канал удалён')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Не удалось удалить канал')
+      toast.error(getUserFacingErrorMessage(e, 'Не удалось удалить канал'))
     }
   }
 
@@ -128,7 +129,7 @@ export function ParticipantChannelsBlock({ participantId, workspaceId }: Props) 
         channel_type: channel.channel_type,
       })
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Не удалось обновить')
+      toast.error(getUserFacingErrorMessage(e, 'Не удалось обновить'))
     }
   }
 

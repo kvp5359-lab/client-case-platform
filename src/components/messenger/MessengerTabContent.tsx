@@ -52,6 +52,7 @@ import type { ForwardBufferItem } from '@/store/sidePanelStore'
 import { buildForwardContent, toForwardedAttachments, type ForwardMode } from '@/utils/messenger/forwardContent'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 
 type MessengerTabContentProps = {
   projectId?: string
@@ -348,7 +349,7 @@ export function MessengerTabContent({
           })}`,
         )
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Не удалось запланировать')
+        toast.error(getUserFacingErrorMessage(err, 'Не удалось запланировать'))
       }
     },
     [scheduling, state],
@@ -371,7 +372,7 @@ export function MessengerTabContent({
         await scheduling.sendNow(messageId)
         toast.success('Отправлено')
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Не удалось отправить')
+        toast.error(getUserFacingErrorMessage(err, 'Не удалось отправить'))
       }
     },
     [scheduling],
@@ -382,7 +383,7 @@ export function MessengerTabContent({
       try {
         await scheduling.reschedule({ messageId, sendAt })
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Не удалось перепланировать')
+        toast.error(getUserFacingErrorMessage(err, 'Не удалось перепланировать'))
       }
     },
     [scheduling],

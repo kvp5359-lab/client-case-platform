@@ -11,6 +11,7 @@ import type { ExtractionResult } from './autofill/types'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 
 type AutoFillFormDialogProps = {
   open: boolean
@@ -150,7 +151,7 @@ export function AutoFillFormDialog({
     } catch (error) {
       logger.error('Analysis error:', error)
       toast.error('Ошибка анализа', {
-        description: error instanceof Error ? error.message : 'Не удалось извлечь данные',
+        description: getUserFacingErrorMessage(error, 'Не удалось извлечь данные'),
       })
       handleClose()
     } finally {

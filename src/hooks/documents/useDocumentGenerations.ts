@@ -14,6 +14,7 @@ import {
 } from '@/services/api/documents/documentGenerationService'
 import type { DocumentTemplatePlaceholder } from '@/services/api/documents/documentTemplateService'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 
 export function useDocumentGenerations(projectId: string | undefined) {
   return useQuery({
@@ -36,7 +37,7 @@ export function useCreateDocumentGeneration() {
       toast.success('Блок генерации создан')
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Ошибка создания блока генерации')
+      toast.error(getUserFacingErrorMessage(error, 'Ошибка создания блока генерации'))
     },
   })
 }
@@ -56,7 +57,7 @@ export function useUpdateDocumentGeneration() {
       queryClient.invalidateQueries({ queryKey: documentGenerationKeys.all })
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Ошибка сохранения')
+      toast.error(getUserFacingErrorMessage(error, 'Ошибка сохранения'))
     },
   })
 }
@@ -71,7 +72,7 @@ export function useDeleteDocumentGeneration() {
       toast.success('Блок генерации удалён')
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Ошибка удаления')
+      toast.error(getUserFacingErrorMessage(error, 'Ошибка удаления'))
     },
   })
 }
@@ -81,7 +82,7 @@ export function useFillFromFormKit() {
     mutationFn: (params: { projectId: string; placeholders: DocumentTemplatePlaceholder[] }) =>
       fillPlaceholdersFromFormKit(params),
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Ошибка заполнения из анкеты')
+      toast.error(getUserFacingErrorMessage(error, 'Ошибка заполнения из анкеты'))
     },
   })
 }
@@ -90,7 +91,7 @@ export function useGenerateFromGeneration() {
   return useMutation({
     mutationFn: generateDocumentWithValues,
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Ошибка генерации документа')
+      toast.error(getUserFacingErrorMessage(error, 'Ошибка генерации документа'))
     },
   })
 }

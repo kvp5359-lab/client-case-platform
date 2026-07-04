@@ -13,6 +13,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { ChevronDown, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
@@ -129,7 +130,7 @@ export function BulkActionsBar({
       refreshAssignees()
       onClearSelection()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Не удалось выполнить действие')
+      toast.error(getUserFacingErrorMessage(e, 'Не удалось выполнить действие'))
     } finally {
       setPending(false)
     }
@@ -205,7 +206,7 @@ export function BulkActionsBar({
       refresh()
       onClearSelection()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Не удалось обновить статус')
+      toast.error(getUserFacingErrorMessage(e, 'Не удалось обновить статус'))
     } finally {
       setPending(false)
     }
@@ -223,7 +224,7 @@ export function BulkActionsBar({
       refresh()
       onClearSelection()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Не удалось обновить статус')
+      toast.error(getUserFacingErrorMessage(e, 'Не удалось обновить статус'))
     } finally {
       setPending(false)
     }
@@ -245,7 +246,7 @@ export function BulkActionsBar({
       refresh()
       onClearSelection()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Не удалось архивировать')
+      toast.error(getUserFacingErrorMessage(e, 'Не удалось архивировать'))
     } finally {
       setPending(false)
     }
@@ -261,7 +262,7 @@ export function BulkActionsBar({
       refresh()
       onClearSelection()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Не удалось добавить исполнителей')
+      toast.error(getUserFacingErrorMessage(e, 'Не удалось добавить исполнителей'))
     } finally {
       setPending(false)
     }
@@ -276,7 +277,7 @@ export function BulkActionsBar({
       refresh()
       onClearSelection()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Не удалось отстранить исполнителя')
+      toast.error(getUserFacingErrorMessage(e, 'Не удалось отстранить исполнителя'))
     } finally {
       setPending(false)
     }
@@ -296,7 +297,7 @@ export function BulkActionsBar({
       refresh()
       onClearSelection()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Не удалось отстранить исполнителей')
+      toast.error(getUserFacingErrorMessage(e, 'Не удалось отстранить исполнителей'))
     } finally {
       setPending(false)
     }

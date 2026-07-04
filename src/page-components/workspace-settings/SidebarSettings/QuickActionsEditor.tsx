@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
@@ -67,7 +68,7 @@ export function QuickActionsEditor({ workspaceId }: { workspaceId: string }) {
       {
         onError: (err) =>
           toast.error('Не удалось сохранить', {
-            description: err instanceof Error ? err.message : String(err),
+            description: getUserFacingErrorMessage(err),
           }),
       },
     )

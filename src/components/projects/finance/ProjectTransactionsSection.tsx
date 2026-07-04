@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -86,7 +87,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
       { id, patch },
       {
         onError: (e) =>
-          toast.error('Не удалось сохранить', { description: (e as Error).message }),
+          toast.error('Не удалось сохранить', { description: getUserFacingErrorMessage(e) }),
       },
     )
   }
@@ -168,7 +169,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
         setDialogOpen(false)
       },
       onError: (e: unknown) =>
-        toast.error('Не удалось сохранить', { description: (e as Error).message }),
+        toast.error('Не удалось сохранить', { description: getUserFacingErrorMessage(e) }),
     }
     if (editing) {
       updateMutation.mutate({ id: editing.id, form }, handlers)
@@ -187,7 +188,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
     if (!ok) return
     deleteMutation.mutate(trx.id, {
       onSuccess: () => toast.success('Удалено'),
-      onError: (e) => toast.error('Не удалось удалить', { description: (e as Error).message }),
+      onError: (e) => toast.error('Не удалось удалить', { description: getUserFacingErrorMessage(e) }),
     })
   }
 

@@ -18,6 +18,7 @@
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { AppError } from '@/services/errors'
 
 export type ErrorHandlerOptions = {
@@ -110,7 +111,7 @@ export function useAsyncErrorHandler() {
         const e = err instanceof Error ? err : new Error(String(err))
         setError(e)
         if (userMessage) toast.error(userMessage)
-        else if (e instanceof Error) toast.error(e.message || DEFAULT_ERROR_MESSAGE)
+        else if (e instanceof Error) toast.error(getUserFacingErrorMessage(e, DEFAULT_ERROR_MESSAGE))
         return null
       } finally {
         setLoading(false)

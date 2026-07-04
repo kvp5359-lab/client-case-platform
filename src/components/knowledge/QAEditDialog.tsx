@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import {
   createQA,
@@ -136,7 +137,7 @@ function QAEditForm({
       onOpenChange(false)
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Не удалось сохранить Q&A')
+      toast.error(getUserFacingErrorMessage(error, 'Не удалось сохранить Q&A'))
     },
   })
 

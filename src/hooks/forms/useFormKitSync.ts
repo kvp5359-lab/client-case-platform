@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { formKitKeys } from '@/hooks/queryKeys'
 
 type UseFormKitSyncProps = {
@@ -96,7 +97,7 @@ export function useFormKitSync({ formKitId, projectId, googleSheetId }: UseFormK
     },
     onError: (err) => {
       logger.error('Error syncing to Google Sheets:', err)
-      toast.error(err instanceof Error ? err.message : 'Не удалось синхронизировать анкету')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось синхронизировать анкету'))
     },
   })
 

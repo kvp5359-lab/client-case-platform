@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ExternalLink, Trash2, CalendarClock, MapPin } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { externalCalendarKeys, projectKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
 import { useWriteExternalEvent } from '@/hooks/useGoogleCalendar'
 import {
@@ -131,7 +132,7 @@ export function ConvertExternalEventDialog({
       queryClient.invalidateQueries({ queryKey: externalCalendarKeys.byWorkspace(workspaceId) })
       onClose()
     },
-    onError: (e) => toast.error(`Не удалось: ${e instanceof Error ? e.message : 'ошибка'}`),
+    onError: (e) => toast.error(getUserFacingErrorMessage(e, 'Не удалось')),
   })
 
   const handleDelete = () => {

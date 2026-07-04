@@ -19,6 +19,7 @@ import {
 } from '@/hooks/queryKeys'
 import { removeThreadFromInboxCaches } from '@/hooks/shared/threadCacheSync'
 import { logAuditAction } from '@/services/auditService'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import type { ProjectThread, ThreadAccentColor } from './useProjectThreads.types'
 
 /**
@@ -468,7 +469,7 @@ export function useChangeThreadOwner(workspaceId: string | undefined) {
       toast.success('Диалог передан')
     },
     onError: (err: Error) => {
-      toast.error(`Не удалось передать диалог: ${err.message}`)
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось передать диалог'))
     },
   })
 }
@@ -509,7 +510,7 @@ export function useUpdateEmailThreadMeta(workspaceId: string) {
       queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
     },
     onError: (err: Error) => {
-      toast.error(`Не удалось обновить письмо: ${err.message}`)
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось обновить письмо'))
     },
   })
 }

@@ -19,6 +19,7 @@ import { useEffect, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Kanban, ListChecks, FolderOpen } from 'lucide-react'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import {
@@ -187,7 +188,7 @@ export default function BoardsPage() {
           toast.success('Список перемещён в корзину')
           if (activeList?.id === list.id) navigateToBoard(null)
         },
-        onError: (e) => toast.error(e instanceof Error ? e.message : 'Не удалось удалить'),
+        onError: (e) => toast.error(getUserFacingErrorMessage(e, 'Не удалось удалить')),
       },
     )
   }

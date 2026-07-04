@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { DragEndEvent } from '@dnd-kit/core'
@@ -152,7 +153,7 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
       setIsDialogOpen(false)
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось сохранить статус')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось сохранить статус'))
     },
   })
 
@@ -177,7 +178,7 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
       if (context?.previous !== undefined) {
         queryClient.setQueryData(statusesQueryKey(workspaceId ?? ''), context.previous)
       }
-      toast.error(err instanceof Error ? err.message : 'Не удалось удалить статус')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось удалить статус'))
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: statusesQueryKey(workspaceId ?? '') })
@@ -208,7 +209,7 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
       setReassignFor(null)
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось удалить статус')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось удалить статус'))
     },
   })
 
@@ -233,7 +234,7 @@ export function useStatusesDirectory(workspaceId: string | undefined) {
       if (failed?.error) throw failed.error
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось изменить порядок')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось изменить порядок'))
       queryClient.invalidateQueries({ queryKey: statusesQueryKey(workspaceId ?? '') })
     },
   })

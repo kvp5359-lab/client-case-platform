@@ -13,6 +13,7 @@ import { useMemo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { statusKeys, projectKeys } from '@/hooks/queryKeys'
 import type { TemplateProjectStatus } from '@/hooks/useStatuses'
 import type { Database } from '@/types/database'
@@ -97,7 +98,7 @@ export function useProjectTemplateStatusesMutations(params: {
       toast.success(editing ? 'Статус обновлён' : 'Статус создан')
       invalidateAll()
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Не удалось сохранить'),
+    onError: (err) => toast.error(getUserFacingErrorMessage(err, 'Не удалось сохранить')),
   })
 
   // Подключение существующих статусов из справочника — записи в junction.
@@ -118,7 +119,7 @@ export function useProjectTemplateStatusesMutations(params: {
       toast.success('Статусы добавлены')
       invalidateAll()
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Не удалось добавить'),
+    onError: (err) => toast.error(getUserFacingErrorMessage(err, 'Не удалось добавить')),
   })
 
   // Удаление «из шаблона» — отвязка через junction. Справочный статус остаётся.
@@ -135,7 +136,7 @@ export function useProjectTemplateStatusesMutations(params: {
       toast.success('Статус убран из шаблона')
       invalidateAll()
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Не удалось убрать'),
+    onError: (err) => toast.error(getUserFacingErrorMessage(err, 'Не удалось убрать')),
   })
 
   // Реассайн: переводим проекты этого шаблона на новый статус, затем отвязываем.
@@ -165,7 +166,7 @@ export function useProjectTemplateStatusesMutations(params: {
       invalidateAll()
       queryClient.invalidateQueries({ queryKey: projectKeys.byWorkspace(workspaceId) })
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Не удалось'),
+    onError: (err) => toast.error(getUserFacingErrorMessage(err, 'Не удалось')),
   })
 
   const reorderMutation = useMutation({

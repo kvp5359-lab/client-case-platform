@@ -4,6 +4,7 @@
 
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { logAuditAction } from '@/services/auditService'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import type { ProjectPermissionCode } from '@/types/permissions'
@@ -41,7 +42,7 @@ export function useBatchHardDelete({
     try {
       requirePermission?.('documents', 'delete_documents')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Нет прав на удаление')
+      toast.error(getUserFacingErrorMessage(error, 'Нет прав на удаление'))
       return
     }
 

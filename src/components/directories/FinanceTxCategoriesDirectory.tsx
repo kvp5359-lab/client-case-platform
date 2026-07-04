@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -82,7 +83,7 @@ export function FinanceTxCategoriesDirectory({ kind }: Props) {
         setDialogOpen(false)
       },
       onError: (e: unknown) =>
-        toast.error('Не удалось сохранить', { description: (e as Error).message }),
+        toast.error('Не удалось сохранить', { description: getUserFacingErrorMessage(e) }),
     }
     if (editing) {
       updateMutation.mutate({ id: editing.id, form: { name: trimmed } }, handlers)
@@ -101,7 +102,7 @@ export function FinanceTxCategoriesDirectory({ kind }: Props) {
     if (!ok) return
     deleteMutation.mutate(cat.id, {
       onSuccess: () => toast.success('Статья удалена'),
-      onError: (e) => toast.error('Не удалось удалить', { description: (e as Error).message }),
+      onError: (e) => toast.error('Не удалось удалить', { description: getUserFacingErrorMessage(e) }),
     })
   }
 

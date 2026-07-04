@@ -19,6 +19,7 @@ import { ServiceMessage } from '@/components/messenger/ServiceMessage'
 import { AuditPill } from './AuditPill'
 import type { AuditLogEntry } from '@/types/history'
 import { formatLongDate } from '@/utils/format/dateFormat'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import type { TimelineMessageEntry } from '@/hooks/useTimelineMessages'
 import type { MessengerAccent } from '@/components/messenger/utils/messageStyles'
 import { deleteMessage } from '@/services/api/messenger/messengerService'
@@ -122,7 +123,7 @@ export function TimelineFeed({
         queryClient.invalidateQueries({ queryKey: timelineKeys.messages(projectId ?? '', []), exact: false })
         queryClient.invalidateQueries({ queryKey: messengerKeys.all })
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Не удалось удалить сообщение')
+        toast.error(getUserFacingErrorMessage(err, 'Не удалось удалить сообщение'))
       }
     },
     [queryClient, projectId],

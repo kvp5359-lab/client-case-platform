@@ -13,6 +13,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { formKitKeys } from '@/hooks/queryKeys'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import type { RiskLevel } from '@/components/forms/riskLevels'
 
 type FieldValueCacheRow = {
@@ -246,7 +247,7 @@ export function useFormKitSave({ formKitId }: UseFormKitSaveParams) {
     },
     onError: (error: Error) => {
       queryClient.invalidateQueries({ queryKey: formKitKeys.fieldValues(formKitId) })
-      toast.error('Ошибка сохранения риск-оценки', { description: error.message })
+      toast.error('Ошибка сохранения риск-оценки', { description: getUserFacingErrorMessage(error) })
     },
   })
 

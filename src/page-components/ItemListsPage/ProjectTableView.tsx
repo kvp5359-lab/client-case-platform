@@ -8,6 +8,7 @@ import { projectPeopleByRoleKeys } from '@/hooks/queryKeys'
 import { toggleProjectRole } from './bulkExecutorActions'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { useAllProjectStatuses } from '@/hooks/useStatuses'
 import { useFilteredProjects } from '@/components/boards/hooks/useFilteredListData'
 import type { FilterContext, FilterGroup } from '@/lib/filters/types'
@@ -152,7 +153,7 @@ export function ProjectTableView({
         await toggleProjectRole(projectId, participantId, role, present)
         qc.invalidateQueries({ queryKey: projectPeopleByRoleKeys.all })
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Не удалось изменить роль')
+        toast.error(getUserFacingErrorMessage(e, 'Не удалось изменить роль'))
       }
     },
     [qc],

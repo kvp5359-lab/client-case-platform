@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { Copy, ExternalLink, Loader2, Sparkles, User } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -246,7 +247,7 @@ export function BusinessLinkDialog({
       .then(({ data, error }) => {
         if (cancelled) return
         if (error) {
-          toast.error('Не удалось создать ссылку: ' + error.message)
+          toast.error(getUserFacingErrorMessage(error, 'Не удалось создать ссылку'))
           onOpenChange(false)
           return
         }

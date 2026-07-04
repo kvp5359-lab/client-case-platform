@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, GripVertical, Shield } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { Database } from '@/types/database'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
@@ -121,7 +122,7 @@ export function RolesDirectory({ type }: RolesDirectoryProps) {
       setIsDialogOpen(false)
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось сохранить роль')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось сохранить роль'))
     },
   })
 
@@ -148,7 +149,7 @@ export function RolesDirectory({ type }: RolesDirectoryProps) {
       if (context?.previous !== undefined) {
         queryClient.setQueryData(rolesQueryKey(workspaceId ?? '', type), context.previous)
       }
-      toast.error(err instanceof Error ? err.message : 'Не удалось удалить роль')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось удалить роль'))
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: rolesQueryKey(workspaceId ?? '', type) })

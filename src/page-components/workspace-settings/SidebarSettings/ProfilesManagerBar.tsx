@@ -9,6 +9,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { Plus, MoreHorizontal, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -63,7 +64,7 @@ export function ProfilesManagerBar({
       await updatePreset.mutateAsync({ workspaceId, presetId: id, name })
     } catch (err) {
       toast.error('Не удалось переименовать', {
-        description: err instanceof Error ? err.message : String(err),
+        description: getUserFacingErrorMessage(err),
       })
     }
   }
@@ -82,7 +83,7 @@ export function ProfilesManagerBar({
       startRename(id, 'Новый профиль')
     } catch (err) {
       toast.error('Не удалось создать профиль', {
-        description: err instanceof Error ? err.message : String(err),
+        description: getUserFacingErrorMessage(err),
       })
     }
   }
@@ -96,7 +97,7 @@ export function ProfilesManagerBar({
       await setActive.mutateAsync({ workspaceId, presetId: id })
     } catch (err) {
       toast.error('Не удалось дублировать', {
-        description: err instanceof Error ? err.message : String(err),
+        description: getUserFacingErrorMessage(err),
       })
     }
   }
@@ -108,7 +109,7 @@ export function ProfilesManagerBar({
       toast.success('Профиль удалён')
     } catch (err) {
       toast.error('Не удалось удалить', {
-        description: err instanceof Error ? err.message : String(err),
+        description: getUserFacingErrorMessage(err),
       })
     }
   }

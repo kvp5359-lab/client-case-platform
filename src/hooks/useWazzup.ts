@@ -13,6 +13,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { wazzupKeys } from '@/hooks/queryKeys'
 
 export type WazzupSettings = {
@@ -75,7 +76,7 @@ export function useUpsertWazzupSettings(workspaceId: string | undefined) {
       toast.success('Wazzup-ключ сохранён')
     },
     onError: (err: Error) => {
-      toast.error(`Не удалось сохранить ключ: ${err.message}`)
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось сохранить ключ'))
     },
   })
 }
@@ -112,7 +113,7 @@ export function useSetWazzupWebhook(workspaceId: string | undefined) {
       toast.success('Webhook подписан в Wazzup')
     },
     onError: (err: Error) => {
-      toast.error(`Не удалось подписать webhook: ${err.message}`)
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось подписать webhook'))
     },
   })
 }
@@ -135,7 +136,7 @@ export function useFetchWazzupChannels(workspaceId: string | undefined) {
       toast.success(`Загружено каналов: ${result.count}`)
     },
     onError: (err: Error) => {
-      toast.error(`Не удалось загрузить каналы: ${err.message}`)
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось загрузить каналы'))
     },
   })
 }
@@ -157,7 +158,7 @@ export function useAssignWazzupChannelUser(workspaceId: string | undefined) {
       toast.success('Канал привязан')
     },
     onError: (err: Error) => {
-      toast.error(`Не удалось привязать: ${err.message}`)
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось привязать'))
     },
   })
 }

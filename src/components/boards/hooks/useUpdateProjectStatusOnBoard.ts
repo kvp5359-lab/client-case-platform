@@ -17,6 +17,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { accessibleProjectKeys, projectKeys, boardKeys, boardFilteredKeys } from '@/hooks/queryKeys'
 import type { BoardProject } from './useWorkspaceProjects'
 
@@ -59,7 +60,7 @@ export function useUpdateProjectStatusOnBoard(workspaceId: string | undefined) {
       for (const [key, data] of context?.previousFiltered ?? []) {
         queryClient.setQueryData(key, data)
       }
-      toast.error(err instanceof Error ? err.message : 'Не удалось обновить статус проекта')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось обновить статус проекта'))
     },
     onSettled: (_data, _err, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: boardProjectsKey })

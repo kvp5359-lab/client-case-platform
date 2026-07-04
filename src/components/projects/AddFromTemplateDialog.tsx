@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import {
   Dialog,
   DialogContent,
@@ -147,7 +148,7 @@ export function AddFromTemplateDialog({
       }
       onOpenChange(false)
     } catch (e) {
-      toast.error(`Не удалось добавить: ${e instanceof Error ? e.message : 'ошибка'}`)
+      toast.error(getUserFacingErrorMessage(e, 'Не удалось добавить'))
     } finally {
       setSaving(false)
     }

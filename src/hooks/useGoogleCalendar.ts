@@ -14,6 +14,7 @@ import { useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { externalCalendarKeys } from '@/hooks/queryKeys'
 
 // ── Query keys ─────────────────────────────────────────────────────────────
@@ -164,7 +165,7 @@ export function useDisconnectGoogleCalendar() {
       queryClient.invalidateQueries({ queryKey: googleCalendarKeys.remoteList() })
       toast.success('Google Calendar отключён')
     },
-    onError: (e) => toast.error(`Не удалось отключить: ${e instanceof Error ? e.message : 'ошибка'}`),
+    onError: (e) => toast.error(getUserFacingErrorMessage(e, 'Не удалось отключить')),
   })
 }
 
@@ -231,7 +232,7 @@ export function useUpdateCalendarColor() {
       queryClient.invalidateQueries({ queryKey: googleCalendarKeys.calendars(vars.workspace_id) })
       queryClient.invalidateQueries({ queryKey: externalCalendarKeys.all })
     },
-    onError: (e) => toast.error(`Не удалось сменить цвет: ${e instanceof Error ? e.message : 'ошибка'}`),
+    onError: (e) => toast.error(getUserFacingErrorMessage(e, 'Не удалось сменить цвет')),
   })
 }
 
@@ -274,7 +275,7 @@ export function useWriteExternalEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: externalCalendarKeys.all })
     },
-    onError: (e) => toast.error(`Не удалось сохранить в Google Calendar: ${e instanceof Error ? e.message : 'ошибка'}`),
+    onError: (e) => toast.error(getUserFacingErrorMessage(e, 'Не удалось сохранить в Google Calendar')),
   })
 }
 
@@ -346,7 +347,7 @@ export function useUpdateUserCalendarMirror() {
       queryClient.invalidateQueries({ queryKey: googleCalendarKeys.mirror(vars.workspace_id) })
       toast.success('Настройка зеркалирования обновлена')
     },
-    onError: (e) => toast.error(`Ошибка: ${e instanceof Error ? e.message : 'неизвестно'}`),
+    onError: (e) => toast.error(getUserFacingErrorMessage(e, 'Ошибка')),
   })
 }
 

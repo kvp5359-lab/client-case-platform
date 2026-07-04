@@ -13,6 +13,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import type { Database } from '@/types/database'
 
 type BoardListInsert = Database['public']['Tables']['board_lists']['Insert']
@@ -150,7 +151,7 @@ export function CreateFunnelDialog({
       onClose()
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось создать воронку')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось создать воронку'))
     },
   })
 

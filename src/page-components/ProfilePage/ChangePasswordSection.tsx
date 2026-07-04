@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { IntegrationRow } from './IntegrationRow'
 
 const MIN_LENGTH = 8
@@ -37,7 +38,7 @@ export function ChangePasswordSection() {
     const { error } = await supabase.auth.updateUser({ password })
     setSaving(false)
     if (error) {
-      toast.error(error.message || 'Не удалось сменить пароль')
+      toast.error(getUserFacingErrorMessage(error, 'Не удалось сменить пароль'))
       return
     }
     toast.success('Пароль изменён')

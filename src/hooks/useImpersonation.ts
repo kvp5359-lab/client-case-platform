@@ -17,6 +17,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import {
   backupOriginalSession,
   clearOriginalSessionBackup,
@@ -69,7 +70,7 @@ export function useImpersonation(): ImpersonationState {
       )
       if (error || !data) {
         clearOriginalSessionBackup()
-        toast.error(error?.message ?? 'Не удалось войти под пользователем')
+        toast.error(getUserFacingErrorMessage(error, 'Не удалось войти под пользователем'))
         return
       }
 
@@ -84,7 +85,7 @@ export function useImpersonation(): ImpersonationState {
       })
       if (setErr) {
         clearOriginalSessionBackup()
-        toast.error('Не удалось активировать сессию: ' + setErr.message)
+        toast.error(getUserFacingErrorMessage(setErr, 'Не удалось активировать сессию'))
         return
       }
 

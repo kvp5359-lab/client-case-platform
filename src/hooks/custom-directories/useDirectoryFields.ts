@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { customDirectoryKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { safeFetchOrThrow, safeInsertOrThrow, safeUpdateVoidOrThrow, safeDeleteOrThrow } from '@/services/supabase/queryHelpers'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import type {
   CustomDirectoryField,
   CustomDirectoryFieldInsert,
@@ -87,7 +88,7 @@ export function useDirectoryFields(directoryId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: customDirectoryKeys.fields(directoryId ?? '') })
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось обновить поле')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось обновить поле'))
     },
   })
 
@@ -103,7 +104,7 @@ export function useDirectoryFields(directoryId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: customDirectoryKeys.fields(directoryId ?? '') })
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось удалить поле')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось удалить поле'))
     },
   })
 
@@ -118,7 +119,7 @@ export function useDirectoryFields(directoryId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: customDirectoryKeys.fields(directoryId ?? '') })
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось изменить порядок полей')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось изменить порядок полей'))
     },
   })
 

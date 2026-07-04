@@ -15,6 +15,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { Check, ChevronDown, Search, X, UserCircle2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
@@ -135,7 +136,7 @@ export function ProjectContactSection({
       if (context?.previous !== undefined) {
         queryClient.setQueryData(projectKeys.detail(projectId), context.previous)
       }
-      toast.error(e instanceof Error ? e.message : 'Не удалось обновить контакт')
+      toast.error(getUserFacingErrorMessage(e, 'Не удалось обновить контакт'))
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) })

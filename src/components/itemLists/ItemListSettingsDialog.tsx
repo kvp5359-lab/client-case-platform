@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { ArrowDown, ArrowUp, Eye, EyeOff, ListChecks, FolderOpen } from 'lucide-react'
 import {
   Dialog,
@@ -146,7 +147,7 @@ export function ItemListSettingsDialog({ open, onClose, list, workspaceId }: Pro
           toast.success('Настройки сохранены')
           onClose()
         },
-        onError: (e) => toast.error(e instanceof Error ? e.message : 'Не удалось сохранить'),
+        onError: (e) => toast.error(getUserFacingErrorMessage(e, 'Не удалось сохранить')),
       },
     )
   }

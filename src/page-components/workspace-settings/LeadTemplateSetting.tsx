@@ -14,6 +14,7 @@
 import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { Target } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { templatesForRoutingKeys } from '@/hooks/queryKeys'
@@ -113,7 +114,7 @@ export function LeadTemplateSetting({ workspaceId, source }: Props) {
       toast.success('Шаблон лида обновлён')
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось сохранить')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось сохранить'))
     },
   })
 

@@ -13,6 +13,7 @@ import {
   downloadGoogleDriveFile,
 } from '@/services/documents/sourceDocumentService'
 import { useInvalidateSourceDocuments } from './useSourceDocumentsQuery'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import type { SourceDocument } from '@/types/documents'
 
 type UseProjectSourceDocumentsProps = {
@@ -121,7 +122,7 @@ export function useProjectSourceDocuments({
       }
       toast.success('Синхронизация завершена!', { description })
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Ошибка при синхронизации источника')
+      toast.error(getUserFacingErrorMessage(error, 'Ошибка при синхронизации источника'))
     } finally {
       setSyncing(false)
       isSyncingRef.current = false
@@ -185,9 +186,7 @@ export function useProjectSourceDocuments({
         'Файл отправлен на скачивание. Проверьте папку "Загрузки" или всплывающие окна браузера.',
       )
     } catch (error) {
-      toast.error(
-        `Ошибка скачивания файла: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`,
-      )
+      toast.error(getUserFacingErrorMessage(error, 'Не удалось скачать файл'))
     } finally {
       isDownloadingRef.current = false
     }

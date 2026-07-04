@@ -12,6 +12,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from 'next/navigation'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -81,7 +82,7 @@ export function SidebarSettingsTab() {
       toast.success('Настройки сайдбара сохранены')
     } catch (err) {
       toast.error('Не удалось сохранить', {
-        description: err instanceof Error ? err.message : String(err),
+        description: getUserFacingErrorMessage(err),
       })
     }
   }
@@ -252,7 +253,7 @@ function ProjectDisplayToggles({
       {
         onError: (err) =>
           toast.error('Не удалось сохранить', {
-            description: err instanceof Error ? err.message : String(err),
+            description: getUserFacingErrorMessage(err),
           }),
       },
     )
@@ -263,7 +264,7 @@ function ProjectDisplayToggles({
       {
         onError: (err) =>
           toast.error('Не удалось сохранить', {
-            description: err instanceof Error ? err.message : String(err),
+            description: getUserFacingErrorMessage(err),
           }),
       },
     )

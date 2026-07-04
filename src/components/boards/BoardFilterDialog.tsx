@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import {
   Dialog,
   DialogContent,
@@ -73,7 +74,7 @@ export function BoardFilterDialog({ open, onClose, board }: BoardFilterDialogPro
           onClose()
         },
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : 'Не удалось сохранить фильтр')
+          toast.error(getUserFacingErrorMessage(err, 'Не удалось сохранить фильтр'))
         },
       },
     )

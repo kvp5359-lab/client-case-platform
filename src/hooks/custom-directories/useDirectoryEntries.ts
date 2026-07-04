@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { customDirectoryKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import type {
   CustomDirectoryField,
   CustomDirectoryValue,
@@ -176,7 +177,7 @@ export function useDirectoryEntries(directoryId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: customDirectoryKeys.entries(directoryId ?? '') })
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось создать запись')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось создать запись'))
     },
   })
 
@@ -221,7 +222,7 @@ export function useDirectoryEntries(directoryId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: customDirectoryKeys.entries(directoryId ?? '') })
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось обновить запись')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось обновить запись'))
     },
   })
 
@@ -253,7 +254,7 @@ export function useDirectoryEntries(directoryId: string | undefined) {
     },
     onError: (err, _entryId, context) => {
       rollbackEntry(context)
-      toast.error(err instanceof Error ? err.message : 'Не удалось удалить запись')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось удалить запись'))
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: customDirectoryKeys.entries(directoryId ?? '') })
@@ -274,7 +275,7 @@ export function useDirectoryEntries(directoryId: string | undefined) {
     },
     onError: (err, _entryId, context) => {
       rollbackEntry(context)
-      toast.error(err instanceof Error ? err.message : 'Не удалось архивировать запись')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось архивировать запись'))
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: customDirectoryKeys.entries(directoryId ?? '') })

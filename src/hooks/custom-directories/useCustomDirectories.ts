@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { customDirectoryKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { safeFetchOrThrow, safeInsertOrThrow, safeUpdateVoidOrThrow, safeDeleteOrThrow } from '@/services/supabase/queryHelpers'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import type {
   CustomDirectory,
   CustomDirectoryInsert,
@@ -133,7 +134,7 @@ export function useCustomDirectories() {
       })
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось обновить справочник')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось обновить справочник'))
     },
   })
 
@@ -151,7 +152,7 @@ export function useCustomDirectories() {
       })
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось архивировать справочник')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось архивировать справочник'))
     },
   })
 
@@ -169,7 +170,7 @@ export function useCustomDirectories() {
       })
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Не удалось удалить справочник')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось удалить справочник'))
     },
   })
 

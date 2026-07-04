@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/native-table'
 import { Upload, Loader2, FileText } from 'lucide-react'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { useQueryClient } from '@tanstack/react-query'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { bulkCreateQA, reindexAllArticles } from '@/services/api/knowledge/knowledgeSearchService'
@@ -191,7 +192,7 @@ export function QAImportDialog({ workspaceId, open, onOpenChange }: QAImportDial
       toast.success(`Импортировано ${created} записей`)
       handleOpenChange(false)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Ошибка импорта')
+      toast.error(getUserFacingErrorMessage(err, 'Ошибка импорта'))
     } finally {
       setIsImporting(false)
     }

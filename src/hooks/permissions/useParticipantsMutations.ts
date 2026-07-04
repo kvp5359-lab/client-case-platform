@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import type { Participant } from '@/types/entities'
 import { STALE_TIME } from '@/hooks/queryKeys'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 
 const participantKeys = {
   byWorkspace: (workspaceId: string) => ['participants', workspaceId] as const,
@@ -91,7 +92,7 @@ export function useParticipantsMutations(workspaceId: string | undefined) {
       invalidateParticipants()
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Не удалось изменить доступ участника')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось изменить доступ участника'))
     },
   })
 
@@ -187,7 +188,7 @@ export function useParticipantsMutations(workspaceId: string | undefined) {
       toast.success('Участник обновлён')
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Не удалось сохранить участника')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось сохранить участника'))
     },
   })
 
@@ -255,7 +256,7 @@ export function useParticipantsMutations(workspaceId: string | undefined) {
       invalidateParticipants()
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Не удалось выдать пароль')
+      toast.error(getUserFacingErrorMessage(err, 'Не удалось выдать пароль'))
     },
   })
 

@@ -14,6 +14,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { Plus, Library, ArrowUp, ArrowDown, Trash2, Pencil } from 'lucide-react'
 import {
   Card,
@@ -125,7 +126,7 @@ export function ProjectTemplateFieldsSection({ workspaceId, projectTemplateId }:
       setIsLibraryOpen(false)
       setLibrarySelected(new Set())
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Не удалось добавить'),
+    onError: (err) => toast.error(getUserFacingErrorMessage(err, 'Не удалось добавить')),
   })
 
   // Отвязка поля от шаблона
@@ -141,7 +142,7 @@ export function ProjectTemplateFieldsSection({ workspaceId, projectTemplateId }:
       toast.success('Поле убрано из шаблона')
       invalidate()
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Не удалось убрать'),
+    onError: (err) => toast.error(getUserFacingErrorMessage(err, 'Не удалось убрать')),
   })
 
   // Переключение обязательности

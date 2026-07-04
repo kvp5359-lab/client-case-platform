@@ -9,6 +9,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
+import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { logAuditAction } from '@/services/auditService'
 import {
   downloadDocumentsAsZip,
@@ -175,7 +176,7 @@ export function useGlobalBatchActions({
         setDownloadDialogOpen(false)
       } catch (error) {
         logger.error('Ошибка скачивания:', error)
-        toast.error(error instanceof Error ? error.message : 'Ошибка при скачивании документов')
+        toast.error(getUserFacingErrorMessage(error, 'Ошибка при скачивании документов'))
       } finally {
         setIsDownloading(false)
       }
