@@ -46,6 +46,11 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-07-04 — useChatSettingsData: +`currency` в select useWorkspaceProjects (не мессенджер-логика, попутно) ✅
+- **Контекст:** фича валют финансового модуля (workspaces.base_currency / projects.currency). Хук `useWorkspaceProjects` из `useChatSettingsData.ts` переиспользуется страницей «Финансы» воркспейса (селектор проекта в строке журнала и в форме операции) — в его `.select()` добавлено поле `currency` + тип.
+- **Мессенджер не затронут:** чисто аддитивное поле в выборке; ChatSettingsDialog/привязка тредов к проектам его не читают. Канальная логика (dispatch/webhook/send) не тронута. Смок не требуется.
+- **Файл:** `useChatSettingsData.ts` (одна строка select + тип).
+
 ### 2026-07-04 — Деплой mtproto-service (накопленный HEAD) + фикс healthcheck IPv4 ✅ В ПРОДЕ, ⏳ СМОК
 - **Задача:** выкатить накопленные закоммиченные правки mtproto (деплой ручной, не через CI).
 - **Замер перед деплоем (dry-run rsync):** на VPS уже был весь код **кроме `commands.ts`** — июньская волна (soft-delete `raw.ts`, FLOOD_WAIT, album-lock, edit-echo `msg.out`, имя таблицы сессий) задеплоена ранее. Новое ровно одно: `commands.ts` из фичи удаления файлов (2026-07-01) — при отправке MTProto-вложений пишет per-file `message_attachments.telegram_message_id`.
