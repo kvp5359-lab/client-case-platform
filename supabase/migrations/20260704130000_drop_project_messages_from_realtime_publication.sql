@@ -1,0 +1,22 @@
+-- Аудит 2026-07-04, корзина C — Шаг D миграции realtime на Broadcast.
+--
+-- Снимаем project_messages с publication supabase_realtime: сервер реального
+-- времени больше не декодирует WAL этой (самой нагруженной) таблицы. Это главный
+-- источник WAL-нагрузки (~63% времени БД по pg_stat_statements).
+--
+-- ⚠️ ПОРЯДОК КРИТИЧЕН: применять ТОЛЬКО ПОСЛЕ выката фронта, где живая лента
+-- (useProjectMessages) и тост (useNewMessageToast) переведены с Postgres Changes
+-- на Broadcast/шину (коммит perf(realtime) + миграция обогащения триггера
+-- 20260704120000). Иначе старый фронт на postgres_changes потерял бы живые
+-- сообщения.
+--
+-- Broadcast (realtime.send из trg_inbox_broadcast) НЕ зависит от publication —
+-- пишет в realtime.messages напрямую, поэтому лента/тост продолжают работать.
+--
+-- Реакции/вложения/треды остаются в publication: их postgres_changes ещё
+-- используются (useProjectMessages aux-канал, тост «Новый диалог»), они
+-- малонагружены.
+--
+-- Откат: ALTER PUBLICATION supabase_realtime ADD TABLE public.project_messages;
+
+ALTER PUBLICATION supabase_realtime DROP TABLE public.project_messages;
