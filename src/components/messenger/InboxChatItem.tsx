@@ -230,8 +230,9 @@ export const InboxChatItem = memo(function InboxChatItem({
   const accent = accentStyles[chat.thread_accent_color] ?? defaultAccent
   // Заглушённый тред — бейдж непрочитанного светло-серый (архив Telegram),
   // а не в акцент треда.
-  const badgeBg = mutedBadge ? 'bg-gray-300' : accent.badge
-  const badgeText = mutedBadge ? 'text-gray-600' : 'text-white'
+  const badgeBg = mutedBadge ? 'bg-gray-400' : accent.badge
+  // Заглушённые — серый кружок с БЕЛЫМ текстом (как mute-бейдж в Telegram).
+  const badgeText = 'text-white'
   // Значок канала на аватаре: backend схлопывает WhatsApp/Business/MTProto/group
   // в channel_type='telegram', но thread_icon различает прямой канал
   // (whatsapp/telegram/mail/send). Берём иконку по thread_icon, чтобы WhatsApp,
@@ -281,28 +282,49 @@ export const InboxChatItem = memo(function InboxChatItem({
           </div>
         )}
         {/* Значок в углу аватара: канал (в фирменном цвете) или иконка треда */}
-        <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full bg-white border border-gray-200 flex items-center justify-center">
+        <div className="absolute -top-0.5 -right-1.5 w-5 h-5 rounded-full bg-white border border-gray-200 flex items-center justify-center">
           <ChannelIcon className={cn('h-3 w-3', channelColor)} />
         </div>
       </div>
 
       {/* Контент */}
       <div className="flex-1 min-w-0">
-        {/* Строка 1: проект (чат) + время */}
-        <div className="flex items-center justify-between mb-0.5">
-          <span className="text-sm truncate">
+        {/* Строка 1: тред · проект + время.
+            Тред первым (он есть всегда), проект — после через «·» (может не быть).
+            Обрезка: тред получает приоритет и остаток ширины, проект — максимум
+            50%. Так при длинном треде проект не исчезает, а при двух длинных
+            делят строку ~50/50. */}
+        <div className="flex items-center justify-between mb-0.5 gap-2">
+          {/* Тред + проект-плашка. Контейнер content-sized (ужимается лишь при
+              переполнении). Колонки: тред `minmax(0,1fr)` — забирает свободное
+              место (короткий проект → тред шире); проект `fit-content(50%)` —
+              своя ширина, но не больше 50%. Итог: коротко → жмутся влево без
+              пустоты; тред длинный, проект короткий → тред забирает слак; оба
+              длинные → проект упирается в 50%, тред получает остаток ≈ 50/50. */}
+          <span
+            className="grid items-center gap-1 min-w-0 text-sm"
+            style={{
+              gridTemplateColumns:
+                !hideProjectName && chat.project_name
+                  ? 'minmax(0, max-content) fit-content(50%)'
+                  : 'minmax(0, 1fr)',
+            }}
+          >
             <span
               className={cn(
+                'truncate min-w-0',
                 hasUnreadIndicator ? 'font-semibold text-gray-900' : 'font-medium text-gray-700',
               )}
             >
-              {hideProjectName || !chat.project_name ? chat.thread_name : chat.project_name}
+              {chat.thread_name}
             </span>
             {!hideProjectName && chat.project_name && (
-              <span className="text-gray-400 font-normal"> ({chat.thread_name})</span>
+              <span className="truncate min-w-0 justify-self-start rounded bg-gray-100 px-1.5 py-0 text-[12px] leading-[18px] font-normal text-gray-700">
+                {chat.project_name}
+              </span>
             )}
           </span>
-          <span className="text-[11px] text-gray-400 shrink-0 ml-2">
+          <span className="text-[11px] text-gray-400 shrink-0">
             {formatTime(displayTime)}
           </span>
         </div>
