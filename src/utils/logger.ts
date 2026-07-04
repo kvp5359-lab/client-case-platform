@@ -2,8 +2,10 @@
  * Централизованная система логирования
  *
  * В development режиме выводит логи в консоль
- * В production режиме логи не выводятся (можно подключить внешний сервис)
+ * В production — ошибки дополнительно уходят в Sentry (отлов ошибок)
  */
+
+import * as Sentry from '@sentry/nextjs'
 
 const isDevelopment = process.env.NODE_ENV === 'development'
 
@@ -31,10 +33,19 @@ export const logger = {
    */
   error: (...args: unknown[]) => {
     console.error('[ERROR]', ...args)
-    // В production здесь можно дополнительно отправлять в Sentry, LogRocket и т.д.
-    // if (!isDevelopment) {
-    //   Sentry.captureException(args[0])
-    // }
+    if (!isDevelopment) {
+      // Первый аргумент — обычно объект ошибки; остальное кладём в контекст.
+      const err = args[0]
+      const extra = args.length > 1 ? { extra: { details: args.slice(1) } } : undefined
+      if (err instanceof Error) {
+        Sentry.captureException(err, extra)
+      } else {
+        Sentry.captureMessage(
+          typeof err === 'string' ? err : JSON.stringify(err),
+          { level: 'error', ...(extra ?? {}) },
+        )
+      }
+    }
   },
 
   /**

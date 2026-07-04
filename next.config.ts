@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next'
+import { withSentryConfig } from '@sentry/nextjs'
 
 const nextConfig: NextConfig = {
   output: 'standalone',
@@ -37,4 +38,15 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+// Sentry: оборачивает конфиг для перехвата ошибок. Загрузку source-map НЕ
+// включаем (нужен SENTRY_AUTH_TOKEN в CI) — ошибки ловятся и без неё, стеки
+// минифицированы. Включить позже: добавить authToken + sourcemaps.
+export default withSentryConfig(nextConfig, {
+  org: 'kirill-prudnikov',
+  project: 'javascript-nextjs',
+  silent: !process.env.CI,
+  sourcemaps: { disable: true },
+  // Тоннелирование запросов Sentry через свой домен — обходит блокировщики.
+  tunnelRoute: '/monitoring',
+  disableLogger: true,
+})
