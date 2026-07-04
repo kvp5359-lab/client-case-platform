@@ -4925,9 +4925,9 @@
       "body_md5": "c62f80a7a7107d232daf8683decbfaf5"
     },
     {
-      "args": "p_thread_id uuid",
+      "args": "p_thread_id uuid, p_reply_to uuid, p_label text",
       "name": "smoke_send_test",
-      "body_md5": "4503ffc1998a55cc629b6f39b89a120a"
+      "body_md5": "a6ccd874a58635d729e893293c083203"
     },
     {
       "args": "p_owner_user_id uuid, p_workspace_id uuid, p_target_user_id uuid, p_jti text, p_expires_at timestamp with time zone, p_user_agent text, p_ip text",
