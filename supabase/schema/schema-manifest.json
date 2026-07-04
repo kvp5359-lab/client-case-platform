@@ -3715,6 +3715,11 @@
       "body_md5": "5087ef6d03d04a10ff6290ab24d7a224"
     },
     {
+      "args": "p_admin uuid, p_action text, p_workspace uuid, p_target_user uuid, p_details jsonb",
+      "name": "_platform_admin_log",
+      "body_md5": "9f2fea95c31f019fabf4cdeffb6c95e0"
+    },
+    {
       "args": "p_cond jsonb, p_fields jsonb",
       "name": "_report_condition_sql",
       "body_md5": "6541544bf7a6b5aafb973f92b3409bd3"
@@ -3755,14 +3760,29 @@
       "body_md5": "9f0f674d09dc604668837d0099064232"
     },
     {
+      "args": "p_limit integer",
+      "name": "admin_list_audit",
+      "body_md5": "80de575d20b9ff5c56a67ef48a23c3b3"
+    },
+    {
       "args": "",
       "name": "admin_list_workspaces",
-      "body_md5": "5c651df6808cd67d25e6e285cc2fd361"
+      "body_md5": "652ee90011981555e0c5d4c13641724e"
     },
     {
       "args": "p_workspace_id uuid, p_plan_code text",
       "name": "admin_set_workspace_plan",
-      "body_md5": "446da30501d1c84db265b853830f0855"
+      "body_md5": "0d581d5f4409d623f09df5f7beed4c5a"
+    },
+    {
+      "args": "p_workspace_id uuid, p_suspended boolean",
+      "name": "admin_suspend_workspace",
+      "body_md5": "1b72165c60019ce05cbd19dcffb28ed1"
+    },
+    {
+      "args": "p_workspace_id uuid",
+      "name": "admin_workspace_details",
+      "body_md5": "595e5beafc24cebfb51d1f8598873305"
     },
     {
       "args": "p_message_id uuid, p_tg_msg_id bigint, p_chat_id bigint",
@@ -4595,6 +4615,11 @@
       "body_md5": "62a7c3658b230299fa8ba2545f356fea"
     },
     {
+      "args": "p_workspace_id uuid",
+      "name": "is_workspace_suspended",
+      "body_md5": "370d2e017ac3ec8cb3dfae3094319bf0"
+    },
+    {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "is_workspace_team_member",
       "body_md5": "8b82820ef5df9a1e7d92af2792a27c48"
@@ -4743,6 +4768,11 @@
       "args": "p_updates jsonb",
       "name": "reorder_documents",
       "body_md5": "f9e068c3ce09cc5b54963b70614472ca"
+    },
+    {
+      "args": "",
+      "name": "require_platform_admin",
+      "body_md5": "7e35a195fa523f0788548cef8054fda1"
     },
     {
       "args": "p_workspace_id uuid, p_channel_key text",
@@ -4923,6 +4953,11 @@
       "args": "text, text",
       "name": "similarity_op",
       "body_md5": "c62f80a7a7107d232daf8683decbfaf5"
+    },
+    {
+      "args": "p_thread_id uuid, p_message_id uuid, p_with_text boolean, p_files jsonb",
+      "name": "smoke_send_file",
+      "body_md5": "3b9ab04948d263d9749d30ffdc904b26"
     },
     {
       "args": "p_thread_id uuid, p_reply_to uuid, p_label text",
