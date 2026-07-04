@@ -178,23 +178,54 @@ export async function getInboxThreadOne(
 }
 
 /**
- * Все непрочитанные треды инбокса одним запросом, без пагинации и БЕЗ потолка
- * (RPC `get_inbox_unread_threads`). Источник для вкладки «Непрочитанные».
- * Осознанно помеченные (manually_unread) идут первыми. Keyset-пагинация тут
- * недопустима — вернёт каскад догрузки из-за клиентского access-фильтра.
- * Возвращает те же поля, что `get_inbox_threads_v2`.
+ * Сегментные inbox-RPC (unread/awaiting/needs_reply/muted) с одинаковой
+ * сигнатурой (p_workspace_id, p_user_id). Все сортируют по thread_id (ORDER BY),
+ * поэтому пагинируемы range-курсором.
+ *
+ * ⚠️ Пагинация ОБЯЗАТЕЛЬНА (грабля G9): Supabase REST отдаёт максимум 1000 строк
+ * за запрос. Без .range() воркспейс с >1000 тредов в сегменте молча терял «хвост»
+ * (needs_reply уже ~460 строк и растёт). Тянем постранично по 1000, как
+ * getInboxThreadAggregates. Keyset-курсор тут по-прежнему недопустим (клиентский
+ * access-фильтр даёт каскад догрузки) — используем именно range по стабильному
+ * порядку из RPC.
+ */
+type SegmentInboxRpc =
+  | 'get_inbox_unread_threads'
+  | 'get_inbox_awaiting_reply_threads'
+  | 'get_inbox_needs_reply_threads'
+  | 'get_inbox_muted_threads'
+
+async function fetchAllSegmentThreads(
+  rpc: SegmentInboxRpc,
+  workspaceId: string,
+  userId: string,
+  errPrefix: string,
+): Promise<InboxThreadEntry[]> {
+  const all: InboxThreadEntry[] = []
+  for (let from = 0; ; from += AGGREGATES_PAGE) {
+    const { data, error } = await supabase
+      .rpc(rpc, { p_workspace_id: workspaceId, p_user_id: userId })
+      .range(from, from + AGGREGATES_PAGE - 1)
+
+    if (error) throw new ApiError(`${errPrefix}: ${error.message}`)
+    const batch = (data ?? []) as unknown as InboxThreadEntry[]
+    all.push(...batch)
+    if (batch.length < AGGREGATES_PAGE) break
+  }
+  return all
+}
+
+/**
+ * Все непрочитанные треды инбокса (RPC `get_inbox_unread_threads`). Источник для
+ * вкладки «Непрочитанные». Осознанно помеченные (manually_unread) идут первыми.
+ * Постраничная пагинация (см. fetchAllSegmentThreads). Возвращает те же поля,
+ * что `get_inbox_threads_v2`.
  */
 export async function getInboxUnreadThreads(
   workspaceId: string,
   userId: string,
 ): Promise<InboxThreadEntry[]> {
-  const { data, error } = await supabase.rpc('get_inbox_unread_threads', {
-    p_workspace_id: workspaceId,
-    p_user_id: userId,
-  })
-
-  if (error) throw new ApiError(`Ошибка загрузки непрочитанных: ${error.message}`)
-  return (data ?? []) as unknown as InboxThreadEntry[]
+  return fetchAllSegmentThreads('get_inbox_unread_threads', workspaceId, userId, 'Ошибка загрузки непрочитанных')
 }
 
 /**
@@ -210,13 +241,7 @@ export async function getInboxAwaitingReplyThreads(
   workspaceId: string,
   userId: string,
 ): Promise<InboxThreadEntry[]> {
-  const { data, error } = await supabase.rpc('get_inbox_awaiting_reply_threads', {
-    p_workspace_id: workspaceId,
-    p_user_id: userId,
-  })
-
-  if (error) throw new ApiError(`Ошибка загрузки «Ждут ответа»: ${error.message}`)
-  return (data ?? []) as unknown as InboxThreadEntry[]
+  return fetchAllSegmentThreads('get_inbox_awaiting_reply_threads', workspaceId, userId, 'Ошибка загрузки «Ждут ответа»')
 }
 
 /**
@@ -230,13 +255,7 @@ export async function getInboxNeedsReplyThreads(
   workspaceId: string,
   userId: string,
 ): Promise<InboxThreadEntry[]> {
-  const { data, error } = await supabase.rpc('get_inbox_needs_reply_threads', {
-    p_workspace_id: workspaceId,
-    p_user_id: userId,
-  })
-
-  if (error) throw new ApiError(`Ошибка загрузки «Нужно ответить»: ${error.message}`)
-  return (data ?? []) as unknown as InboxThreadEntry[]
+  return fetchAllSegmentThreads('get_inbox_needs_reply_threads', workspaceId, userId, 'Ошибка загрузки «Нужно ответить»')
 }
 
 /**
@@ -252,13 +271,7 @@ export async function getInboxMutedThreads(
   workspaceId: string,
   userId: string,
 ): Promise<InboxThreadEntry[]> {
-  const { data, error } = await supabase.rpc('get_inbox_muted_threads', {
-    p_workspace_id: workspaceId,
-    p_user_id: userId,
-  })
-
-  if (error) throw new ApiError(`Ошибка загрузки «Заглушённые»: ${error.message}`)
-  return (data ?? []) as unknown as InboxThreadEntry[]
+  return fetchAllSegmentThreads('get_inbox_muted_threads', workspaceId, userId, 'Ошибка загрузки «Заглушённые»')
 }
 
 /**
