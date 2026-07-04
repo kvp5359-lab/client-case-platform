@@ -98,8 +98,10 @@ export function ThreadTableView({
       {
         key: 'type',
         getValues: (t) => {
-          const v = t.type ?? 'task'
-          return [{ value: v, label: v === 'task' ? 'Задача' : 'Чат' }]
+          // t.type сужен до task|chat, но в БД бывает 'email'.
+          const v = (t.type as string | null | undefined) ?? 'task'
+          const label = v === 'chat' ? 'Чат' : v === 'email' ? 'Email' : 'Задача'
+          return [{ value: v, label }]
         },
       },
       {

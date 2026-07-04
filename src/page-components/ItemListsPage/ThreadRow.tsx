@@ -123,7 +123,11 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
             return (
               <td key={c.key} className="px-3 py-2">
                 <Badge variant="outline" className="text-xs">
-                  {task.type === 'chat' ? 'Чат' : 'Задача'}
+                  {(() => {
+                    // task.type сужен до task|chat, но в БД бывает 'email'.
+                    const tt = task.type as string | null | undefined
+                    return tt === 'chat' ? 'Чат' : tt === 'email' ? 'Email' : 'Задача'
+                  })()}
                 </Badge>
               </td>
             )
