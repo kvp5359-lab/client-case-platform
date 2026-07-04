@@ -1,7 +1,7 @@
 "use client"
 
 import { NodeViewWrapper, NodeViewContent, NodeViewProps } from '@tiptap/react'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Trash2, ChevronDown, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,30 @@ export function AccordionView({ node, updateAttributes, selected, deleteNode }: 
   const isOpen = (node.attrs.open as boolean) ?? true
   const [editTitle, setEditTitle] = useState(false)
   const [titleInput, setTitleInput] = useState(title)
+
+  // Анимация раскрытия без обрезки контента. Раньше стоял фиксированный
+  // max-h-[2000px] — контент выше 2000px (много шагов/скринов) прятался внутри
+  // спойлера. Теперь: закрыт → 0; при раскрытии анимируем 0 → измеренная высота,
+  // затем снимаем лимит (none), чтобы не резать даже при дозагрузке картинок.
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [maxHeight, setMaxHeight] = useState<string>(isOpen ? 'none' : '0px')
+  const firstRun = useRef(true)
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    if (firstRun.current) {
+      firstRun.current = false
+      return
+    }
+    if (isOpen) {
+      setMaxHeight(`${el.scrollHeight}px`)
+      const t = window.setTimeout(() => setMaxHeight('none'), 220)
+      return () => window.clearTimeout(t)
+    }
+    setMaxHeight(`${el.scrollHeight}px`)
+    const r = requestAnimationFrame(() => setMaxHeight('0px'))
+    return () => cancelAnimationFrame(r)
+  }, [isOpen])
 
   const handleSaveTitle = () => {
     updateAttributes({ title: titleInput })
@@ -88,9 +112,11 @@ export function AccordionView({ node, updateAttributes, selected, deleteNode }: 
 
         {/* Content */}
         <div
+          ref={contentRef}
+          style={{ maxHeight }}
           className={cn(
-            'accordion-content overflow-hidden transition-all duration-200',
-            isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0',
+            'accordion-content overflow-hidden transition-[max-height,opacity] duration-200',
+            isOpen ? 'opacity-100' : 'opacity-0',
           )}
         >
           <NodeViewContent className="px-4 py-3 focus:outline-none [&>p]:m-0 [&>p:not(:last-child)]:mb-2" />
