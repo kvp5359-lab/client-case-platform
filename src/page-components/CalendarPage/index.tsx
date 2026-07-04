@@ -247,10 +247,10 @@ export default function CalendarPage() {
   return (
     <WorkspaceLayout>
       <div className="h-full flex flex-col bg-white">
-        <div className="px-6 py-4 border-b">
+        <div className="px-4 md:px-6 py-4 border-b">
           <h1 className="text-xl font-semibold">Календарь</h1>
         </div>
-        <div ref={calendarRef} className="flex-1 overflow-hidden px-6 py-4">
+        <div ref={calendarRef} className="flex-1 overflow-hidden px-2 md:px-6 py-2 md:py-4">
           <DnDCalendar
             localizer={localizer}
             events={events}
