@@ -9263,11 +9263,13 @@ export type Database = {
           google_api_key_id: string | null
           id: string
           is_deleted: boolean
+          is_suspended: boolean
           knowledge_summary_prompt: string | null
           name: string
           notification_toast_duration: number
           send_delay_seconds: number
           slug: string | null
+          suspended_at: string | null
           translation_model: string | null
           translation_use_thread_context: boolean
           updated_at: string
@@ -9303,11 +9305,13 @@ export type Database = {
           google_api_key_id?: string | null
           id?: string
           is_deleted?: boolean
+          is_suspended?: boolean
           knowledge_summary_prompt?: string | null
           name: string
           notification_toast_duration?: number
           send_delay_seconds?: number
           slug?: string | null
+          suspended_at?: string | null
           translation_model?: string | null
           translation_use_thread_context?: boolean
           updated_at?: string
@@ -9343,11 +9347,13 @@ export type Database = {
           google_api_key_id?: string | null
           id?: string
           is_deleted?: boolean
+          is_suspended?: boolean
           knowledge_summary_prompt?: string | null
           name?: string
           notification_toast_duration?: number
           send_delay_seconds?: number
           slug?: string | null
+          suspended_at?: string | null
           translation_model?: string | null
           translation_use_thread_context?: boolean
           updated_at?: string
@@ -10642,6 +10648,10 @@ export type Database = {
       }
       is_workspace_participant: {
         Args: { p_user_id: string; p_workspace_id: string }
+        Returns: boolean
+      }
+      is_workspace_suspended: {
+        Args: { p_workspace_id: string }
         Returns: boolean
       }
       is_workspace_team_member: {

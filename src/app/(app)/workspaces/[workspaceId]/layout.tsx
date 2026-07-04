@@ -50,5 +50,15 @@ export default async function WorkspaceLayout({
     redirect(`/workspaces?blocked=${workspaceId}`)
   }
 
+  // Блокировка воркспейса целиком (админка платформы). SECURITY DEFINER RPC —
+  // не зависит от RLS на workspaces. При блокировке все участники видят
+  // заглушку на /workspaces независимо от живых access-token'ов.
+  const { data: suspended } = await supabase.rpc('is_workspace_suspended', {
+    p_workspace_id: workspaceId,
+  })
+  if (suspended === true) {
+    redirect(`/workspaces?suspended=${workspaceId}`)
+  }
+
   return <WorkspaceLayoutClient>{children}</WorkspaceLayoutClient>
 }

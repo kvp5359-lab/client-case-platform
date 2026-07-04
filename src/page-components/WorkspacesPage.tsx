@@ -77,6 +77,8 @@ export function WorkspacesPage() {
   // если у юзера нет доступа к запрошенному WS (нет participant'а или
   // can_login=false).
   const blockedWorkspaceId = searchParams?.get('blocked') ?? null
+  // ?suspended=<id> — воркспейс приостановлен админом платформы (layout-гард).
+  const suspendedWorkspaceId = searchParams?.get('suspended') ?? null
 
   // Загрузка workspaces через React Query
   const {
@@ -226,6 +228,15 @@ export function WorkspacesPage() {
             <AlertDescription>
               Доступ к этому рабочему пространству заблокирован. Обратитесь к
               владельцу воркспейса.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {suspendedWorkspaceId && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>
+              Это рабочее пространство приостановлено администрацией сервиса.
+              Обратитесь в поддержку.
             </AlertDescription>
           </Alert>
         )}
