@@ -80,12 +80,15 @@ export function FinanceSummary({ projectId }: Props) {
     // Прибыль = чистые_доходы − чистые_расходы.
     const profit = incomeNet - expenseNet
     const paymentPct = cost > 0 ? (incomeSum / cost) * 100 : null
+    // Остаток к оплате = стоимость − полученные доходы (отрицательный = переплата).
+    const remaining = cost - incomeSum
     return {
       cost,
       incomeSum,
       expenseSum,
       profit,
       paymentPct,
+      remaining,
       taxInIncome,
       taxInExpense,
     }
@@ -117,9 +120,19 @@ export function FinanceSummary({ projectId }: Props) {
         }
       />
       <StatCard
-        label="Оплачено"
-        value={stats.paymentPct === null ? '—' : `${stats.paymentPct.toFixed(0)}%`}
-        hint={stats.paymentPct === null ? 'Нет услуг' : 'От стоимости'}
+        label={stats.remaining < 0 ? 'Переплата' : 'Остаток'}
+        value={
+          stats.paymentPct === null
+            ? '—'
+            : `${fmt(Math.abs(stats.remaining))} EUR`
+        }
+        hint={
+          stats.paymentPct === null
+            ? 'Нет услуг'
+            : stats.remaining === 0
+              ? 'Оплачено полностью'
+              : `Оплачено ${stats.paymentPct.toFixed(0)}% от стоимости`
+        }
       />
     </div>
   )
