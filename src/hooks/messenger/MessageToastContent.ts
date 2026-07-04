@@ -188,9 +188,11 @@ export function buildToastContent(
             createElement(
               'div',
               { key: i, className: 'text-xs text-muted-foreground break-words' },
-              // Первая строка: «Имя автора: текст» (имя — цветом треда). Остальные
-              // сгруппированные сообщения — без префикса.
-              i === 0
+              // Первая строка: «Имя автора: текст» (имя — цветом треда). Префикс
+              // показываем, только если отправитель ≠ заголовку треда: в прямом
+              // 1:1 канале (email/MTProto/Business/WhatsApp) имя треда = собеседник
+              // = отправитель, дубль не нужен. Остальные сгруппированные — без префикса.
+              i === 0 && senderName !== mainName
                 ? createElement(
                     'span',
                     { className: `font-medium ${senderAccentClass}` },
