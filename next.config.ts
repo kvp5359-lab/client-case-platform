@@ -46,7 +46,7 @@ export default withSentryConfig(nextConfig, {
   project: 'javascript-nextjs',
   silent: !process.env.CI,
   sourcemaps: { disable: true },
-  // Тоннелирование запросов Sentry через свой домен — обходит блокировщики.
-  tunnelRoute: '/monitoring',
-  disableLogger: true,
+  // tunnelRoute НЕ включаем: auth-middleware (proxy.ts) редиректит любой путь
+  // → /login, включая туннель, и события Sentry не доходили. Без туннеля SDK
+  // шлёт напрямую в ingest.de.sentry.io.
 })
