@@ -478,3 +478,112 @@ export function useUsageOverview(enabled: boolean) {
     },
   })
 }
+
+// ── Этап 4: пользователи + объявления ─────────────────────────────────────
+
+export type AdminUser = {
+  user_id: string
+  email: string
+  created_at: string
+  last_sign_in_at: string | null
+  is_banned: boolean
+  workspaces: Array<{
+    workspace_id: string
+    workspace_name: string
+    roles: string[] | null
+    can_login: boolean
+  }>
+}
+
+export type AdminAnnouncement = {
+  id: string
+  message: string
+  level: 'info' | 'warning'
+  starts_at: string
+  ends_at: string | null
+  workspace_ids: string[] | null
+  is_active: boolean
+  created_at: string
+}
+
+export function useAdminUsers(search: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['admin-users', search],
+    enabled,
+    staleTime: 30_000,
+    queryFn: async (): Promise<AdminUser[]> => {
+      const { data, error } = await supabase.rpc('admin_list_users' as never, {
+        p_search: search.trim() === '' ? null : search.trim(),
+        p_limit: 500,
+      } as never)
+      if (error) throw error
+      return (data as unknown as AdminUser[]) ?? []
+    },
+  })
+}
+
+export function useSetUserBanned() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userId, banned }: { userId: string; banned: boolean }) => {
+      const { error } = await supabase.rpc('admin_set_user_banned' as never, {
+        p_user_id: userId,
+        p_banned: banned,
+      } as never)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] })
+      qc.invalidateQueries({ queryKey: adminKeys.audit })
+    },
+  })
+}
+
+export function useAdminAnnouncements(enabled: boolean) {
+  return useQuery({
+    queryKey: ['admin-announcements'],
+    enabled,
+    staleTime: 15_000,
+    queryFn: async (): Promise<AdminAnnouncement[]> => {
+      const { data, error } = await supabase.rpc('admin_list_announcements' as never, {} as never)
+      if (error) throw error
+      return (data as unknown as AdminAnnouncement[]) ?? []
+    },
+  })
+}
+
+export function useUpsertAnnouncement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (a: Partial<AdminAnnouncement>) => {
+      const { error } = await supabase.rpc('admin_upsert_announcement' as never, { p: a } as never)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-announcements'] })
+      qc.invalidateQueries({ queryKey: adminKeys.audit })
+    },
+  })
+}
+
+export function useDeleteAnnouncement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('admin_delete_announcement' as never, { p_id: id } as never)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-announcements'] })
+      qc.invalidateQueries({ queryKey: adminKeys.audit })
+    },
+  })
+}
+
+export type OwnerEmailRow = { workspace_name: string; owner_name: string; owner_email: string }
+
+export async function fetchOwnerEmails(): Promise<OwnerEmailRow[]> {
+  const { data, error } = await supabase.rpc('admin_list_owner_emails' as never, {} as never)
+  if (error) throw error
+  return (data as unknown as OwnerEmailRow[]) ?? []
+}
