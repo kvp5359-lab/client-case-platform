@@ -78,6 +78,10 @@ SELECT content, status_code FROM net._http_response ORDER BY created DESC LIMIT 
 
 **Если `supabase secrets list` показывает значение, но функция не видит** — принудительно переустановить тем же `secrets set`. Это «оживит» в рантайме.
 
+**Секрет захардкожен в 3 функциях** (`dispatch_send_http`, `notify_google_calendar_mirror`, `convert_external_event_to_task`). **Ротация** (при утечке): сгенерить новый → сменить в 3 функциях одним серверным `DO`-блоком (`replace(pg_get_functiondef(oid), old, new)` + `EXECUTE`) → `supabase secrets set INTERNAL_FUNCTION_SECRET=<new>` → mtproto-service `.env` (`INTERNAL_SECRET=`) + `docker compose up -d --force-recreate mtproto` → проверить смоком (`scripts/smoke-channels.mjs`). Кратко ротировано 2026-07-04 после утечки (см. ниже).
+
+**🔴 НЕ дампить/коммитить ТЕЛА функций** (`prod-functions.sql` и т.п.) — они содержат этот захардкоженный секрет → GitGuardian-алерт, утечка в публичный репо (инцидент 2026-07-04). Для сверки дрейфа коммитить ТОЛЬКО `schema-manifest.json` (хеши `md5`, без тел). RPC `_schema_manifest()` намеренно отдаёт хеши, не тела.
+
 ## `JWT_SIGNING_SECRET` (impersonation)
 
 Edge Function `impersonate-start` требует env `JWT_SIGNING_SECRET` — HS256 секрет GoTrue (Project Settings → API → JWT Secret). Без него — 500.
