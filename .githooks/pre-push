@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#
+# pre-push — гейт дисциплины устойчивости. НЕ блокирует пуш, только напоминает.
+#
+# 1. Если в пушимых коммитах менялись supabase/migrations — напомнить сверить
+#    дрейф и обновить эталон (schema-manifest.json), если менялись функции/триггеры/RLS.
+# 2. Если менялись supabase/functions или mtproto-service — напомнить про ручной
+#    деплой (CI их НЕ катит) + смок карантина.
+#
+# Активация: git config core.hooksPath .githooks (уже задано в репо).
+# Отключить разово: git push --no-verify.
+
+set -euo pipefail
+range="origin/main..HEAD"
+
+changed=$(git diff --name-only $range 2>/dev/null || true)
+[ -z "$changed" ] && exit 0
+
+warn() { printf '\033[33m⚠️  %s\033[0m\n' "$1"; }
+
+if echo "$changed" | grep -q '^supabase/migrations/'; then
+  warn "Менялись миграции БД."
+  echo "   → если менялись функции/триггеры/RLS, сверь и обнови эталон:"
+  echo "     SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/db-drift-check.mjs"
+  echo "     node scripts/db-drift-check.mjs --update   # если дрейф ожидаемый"
+fi
+
+if echo "$changed" | grep -qE '^supabase/functions/'; then
+  warn "Менялись Edge Functions — CI их НЕ деплоит."
+  echo "   → задеплой вручную: scripts/deploy-edge.sh <name>  (+ смок карантина)"
+fi
+
+if echo "$changed" | grep -q '^mtproto-service/'; then
+  warn "Менялся mtproto-service — деплой ручной (rsync + docker build на VPS)."
+fi
+
+exit 0

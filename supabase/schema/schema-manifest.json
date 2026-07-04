@@ -1,0 +1,5248 @@
+{
+  "policies": [
+    {
+      "name": "ai_usage_events_select",
+      "def_md5": "a34f9d2a41b4259316d3363cdb72f7d1",
+      "table_name": "ai_usage_events"
+    },
+    {
+      "name": "ai_usage_monthly_select",
+      "def_md5": "b71da43bda51a50e75297c4441b9063a",
+      "table_name": "ai_usage_monthly"
+    },
+    {
+      "name": "audit_logs_select",
+      "def_md5": "ed77ecb7517b105fb183d065a2bddfad",
+      "table_name": "audit_logs"
+    },
+    {
+      "name": "board_list_item_order_delete",
+      "def_md5": "145a9cae05e1cee3d26ee540184c036d",
+      "table_name": "board_list_item_order"
+    },
+    {
+      "name": "board_list_item_order_insert",
+      "def_md5": "9580a0ac496e1e415605457c9e90b2d2",
+      "table_name": "board_list_item_order"
+    },
+    {
+      "name": "board_list_item_order_select",
+      "def_md5": "b1b67ff13f82a7e119f05b8bd4f2256d",
+      "table_name": "board_list_item_order"
+    },
+    {
+      "name": "board_list_item_order_update",
+      "def_md5": "7afde1931fed8934a8f9e4a9067877e6",
+      "table_name": "board_list_item_order"
+    },
+    {
+      "name": "board_lists_delete",
+      "def_md5": "0b3dcd0442ef04237aa31ce906c49ba0",
+      "table_name": "board_lists"
+    },
+    {
+      "name": "board_lists_insert",
+      "def_md5": "2ddf551cee764ebca84581178fc7eaa8",
+      "table_name": "board_lists"
+    },
+    {
+      "name": "board_lists_select",
+      "def_md5": "eb5dee46debd3baec4030f29021e84e4",
+      "table_name": "board_lists"
+    },
+    {
+      "name": "board_lists_update",
+      "def_md5": "9610bde805dc55a9223deb30804a6864",
+      "table_name": "board_lists"
+    },
+    {
+      "name": "board_members_delete",
+      "def_md5": "0b3dcd0442ef04237aa31ce906c49ba0",
+      "table_name": "board_members"
+    },
+    {
+      "name": "board_members_insert",
+      "def_md5": "2ddf551cee764ebca84581178fc7eaa8",
+      "table_name": "board_members"
+    },
+    {
+      "name": "board_members_select",
+      "def_md5": "31646ef9d60a6d9adac3b6599368c9ad",
+      "table_name": "board_members"
+    },
+    {
+      "name": "boards_delete",
+      "def_md5": "4c97097fcc1f1acc62a0d0aa36a6aa4a",
+      "table_name": "boards"
+    },
+    {
+      "name": "boards_insert",
+      "def_md5": "9f7a7e4b39bb050ec73c879e167fad53",
+      "table_name": "boards"
+    },
+    {
+      "name": "boards_select",
+      "def_md5": "e6e1ebab7dc1a3eada34f037dee5300e",
+      "table_name": "boards"
+    },
+    {
+      "name": "boards_update",
+      "def_md5": "5c2e6b5dfd57a94a9798e10ba8928d63",
+      "table_name": "boards"
+    },
+    {
+      "name": "calendars_delete_owner",
+      "def_md5": "bd359194c0b90b7a1b0739c3f4810f8d",
+      "table_name": "calendars"
+    },
+    {
+      "name": "calendars_insert_member",
+      "def_md5": "007d2887471283da333c7c70cebb7ce7",
+      "table_name": "calendars"
+    },
+    {
+      "name": "calendars_select_owner",
+      "def_md5": "91cdc68707b961cb42df2cec3fe670d4",
+      "table_name": "calendars"
+    },
+    {
+      "name": "calendars_update_owner",
+      "def_md5": "0fa4001ba0da29d063590e2a06271f8b",
+      "table_name": "calendars"
+    },
+    {
+      "name": "case_profiles_access",
+      "def_md5": "af73b6c40ce8e2067ecdd761f6fa0f81",
+      "table_name": "case_profiles"
+    },
+    {
+      "name": "comments_delete",
+      "def_md5": "58aa6dc39bfccff2a4d294b4fab0f2f1",
+      "table_name": "comments"
+    },
+    {
+      "name": "comments_insert",
+      "def_md5": "798de468ddc3bcccc1271bbb3d0980f5",
+      "table_name": "comments"
+    },
+    {
+      "name": "comments_select",
+      "def_md5": "8a5f57ca2ae22335ebeba1c93cd26b36",
+      "table_name": "comments"
+    },
+    {
+      "name": "comments_update",
+      "def_md5": "0508a0f20e8634b755441c7444f33734",
+      "table_name": "comments"
+    },
+    {
+      "name": "conversation_context_insert",
+      "def_md5": "7d66f43f790b6839f06b00c4d5eb3403",
+      "table_name": "conversation_context"
+    },
+    {
+      "name": "conversation_context_select",
+      "def_md5": "a65597b24388d3ec8e974ae38aa0a876",
+      "table_name": "conversation_context"
+    },
+    {
+      "name": "conversations_delete",
+      "def_md5": "db83a558909a28e32dedec432ca1dfe3",
+      "table_name": "conversations"
+    },
+    {
+      "name": "conversations_insert",
+      "def_md5": "9b91567fb892be1b98af29e8f1f18f0b",
+      "table_name": "conversations"
+    },
+    {
+      "name": "conversations_select",
+      "def_md5": "6d6130b7421572544c6b94270909654c",
+      "table_name": "conversations"
+    },
+    {
+      "name": "conversations_update",
+      "def_md5": "755a5c70f4ae8ea7b683b47571223c7b",
+      "table_name": "conversations"
+    },
+    {
+      "name": "custom_directories_delete",
+      "def_md5": "ce96b89056f41ed3ba1f019d8cf44953",
+      "table_name": "custom_directories"
+    },
+    {
+      "name": "custom_directories_insert",
+      "def_md5": "79acb8774aab3e93cf15d48ae36ce866",
+      "table_name": "custom_directories"
+    },
+    {
+      "name": "custom_directories_select",
+      "def_md5": "6abef109471f148afd7d22f4798e1cc8",
+      "table_name": "custom_directories"
+    },
+    {
+      "name": "custom_directories_update",
+      "def_md5": "4e84f8c45078f162f4df475cef31d1ee",
+      "table_name": "custom_directories"
+    },
+    {
+      "name": "custom_directory_entries_delete",
+      "def_md5": "eabb4fb192f2adc370f15c8455389ee7",
+      "table_name": "custom_directory_entries"
+    },
+    {
+      "name": "custom_directory_entries_insert",
+      "def_md5": "f7c7bfea1508d2d52583ad326a359028",
+      "table_name": "custom_directory_entries"
+    },
+    {
+      "name": "custom_directory_entries_select",
+      "def_md5": "81538bf84ff7551fb33b94591094b752",
+      "table_name": "custom_directory_entries"
+    },
+    {
+      "name": "custom_directory_entries_update",
+      "def_md5": "772a830e41546e959b996f7260fedabd",
+      "table_name": "custom_directory_entries"
+    },
+    {
+      "name": "custom_directory_fields_delete",
+      "def_md5": "eabb4fb192f2adc370f15c8455389ee7",
+      "table_name": "custom_directory_fields"
+    },
+    {
+      "name": "custom_directory_fields_insert",
+      "def_md5": "f7c7bfea1508d2d52583ad326a359028",
+      "table_name": "custom_directory_fields"
+    },
+    {
+      "name": "custom_directory_fields_select",
+      "def_md5": "81538bf84ff7551fb33b94591094b752",
+      "table_name": "custom_directory_fields"
+    },
+    {
+      "name": "custom_directory_fields_update",
+      "def_md5": "772a830e41546e959b996f7260fedabd",
+      "table_name": "custom_directory_fields"
+    },
+    {
+      "name": "custom_directory_values_delete",
+      "def_md5": "90e978963a8b9a1df1f1ff965b35483b",
+      "table_name": "custom_directory_values"
+    },
+    {
+      "name": "custom_directory_values_insert",
+      "def_md5": "d9bc5e59c09e34ffa0ad4ac64128f25a",
+      "table_name": "custom_directory_values"
+    },
+    {
+      "name": "custom_directory_values_select",
+      "def_md5": "6a87eef5770d5c288b19c75d6382d705",
+      "table_name": "custom_directory_values"
+    },
+    {
+      "name": "custom_directory_values_update",
+      "def_md5": "f544b556f6c46391b7e6cbef9ecaeb41",
+      "table_name": "custom_directory_values"
+    },
+    {
+      "name": "allowed_users_admin_write",
+      "def_md5": "05f504cc8fc16faf973df361b9c646ff",
+      "table_name": "docbuilder_allowed_users"
+    },
+    {
+      "name": "allowed_users_select",
+      "def_md5": "8757b629a62b2cb2cbc8e39c76b9c0db",
+      "table_name": "docbuilder_allowed_users"
+    },
+    {
+      "name": "app_settings_admin_write",
+      "def_md5": "05f504cc8fc16faf973df361b9c646ff",
+      "table_name": "docbuilder_app_settings"
+    },
+    {
+      "name": "app_settings_select",
+      "def_md5": "82c6c45ea444c33ce640f8332c51dfae",
+      "table_name": "docbuilder_app_settings"
+    },
+    {
+      "name": "block_context_all",
+      "def_md5": "61cdd7706f74a376be3eb7db2ab9eb12",
+      "table_name": "docbuilder_block_context"
+    },
+    {
+      "name": "block_context_via_project",
+      "def_md5": "cc7f2bc3418a89da81ad9ebe2a7c15ec",
+      "table_name": "docbuilder_block_context"
+    },
+    {
+      "name": "block_versions_all",
+      "def_md5": "9e1c21ba8cc0e43a5cc8d6a9d32174f8",
+      "table_name": "docbuilder_block_versions"
+    },
+    {
+      "name": "block_versions_via_project",
+      "def_md5": "47511c6e4b3a31dd0e3f1a0bbed8b28b",
+      "table_name": "docbuilder_block_versions"
+    },
+    {
+      "name": "blocks_admin_write",
+      "def_md5": "05f504cc8fc16faf973df361b9c646ff",
+      "table_name": "docbuilder_blocks"
+    },
+    {
+      "name": "blocks_owner_access",
+      "def_md5": "da78949f55c38d95fa0b2e17879952c8",
+      "table_name": "docbuilder_blocks"
+    },
+    {
+      "name": "blocks_select",
+      "def_md5": "e55a7000ab6fa4d92ca2591559318267",
+      "table_name": "docbuilder_blocks"
+    },
+    {
+      "name": "project_access_admin",
+      "def_md5": "5de8891cd5b64c6284f1b5a5a216123c",
+      "table_name": "docbuilder_project_access"
+    },
+    {
+      "name": "project_blocks_all",
+      "def_md5": "cdeb373358cf4693f861ba1a62a438c4",
+      "table_name": "docbuilder_project_blocks"
+    },
+    {
+      "name": "project_blocks_via_project",
+      "def_md5": "2d09ea59adf73f7de3dc8a49c1bff61e",
+      "table_name": "docbuilder_project_blocks"
+    },
+    {
+      "name": "project_documents_all",
+      "def_md5": "cdeb373358cf4693f861ba1a62a438c4",
+      "table_name": "docbuilder_project_documents"
+    },
+    {
+      "name": "project_documents_via_project",
+      "def_md5": "1ce2917e4b2397a754d1e42036a946e6",
+      "table_name": "docbuilder_project_documents"
+    },
+    {
+      "name": "projects_admin_delete",
+      "def_md5": "0a594bee0531f408655851714e3fea16",
+      "table_name": "docbuilder_projects"
+    },
+    {
+      "name": "projects_admin_insert_delete",
+      "def_md5": "94c9a6024872b4246ddcfe9118920df6",
+      "table_name": "docbuilder_projects"
+    },
+    {
+      "name": "projects_insert",
+      "def_md5": "e307b2d2eb95fedd172e48c59b11032b",
+      "table_name": "docbuilder_projects"
+    },
+    {
+      "name": "projects_owner",
+      "def_md5": "e6f9962378729e5f82dfb652bf5b7ac0",
+      "table_name": "docbuilder_projects"
+    },
+    {
+      "name": "projects_select",
+      "def_md5": "0c2da8f0d8d3a87352999fd061dab9d2",
+      "table_name": "docbuilder_projects"
+    },
+    {
+      "name": "projects_update",
+      "def_md5": "d6945e7cd993d2ae27b0c307ff1da2df",
+      "table_name": "docbuilder_projects"
+    },
+    {
+      "name": "sections_admin_write",
+      "def_md5": "05f504cc8fc16faf973df361b9c646ff",
+      "table_name": "docbuilder_sections"
+    },
+    {
+      "name": "sections_select",
+      "def_md5": "2fd6382bb0ce6f01bd97f070b18086f7",
+      "table_name": "docbuilder_sections"
+    },
+    {
+      "name": "sections_via_template",
+      "def_md5": "e933d9f17dfa0677ea645d9ecccb0d61",
+      "table_name": "docbuilder_sections"
+    },
+    {
+      "name": "styles_admin_write",
+      "def_md5": "05f504cc8fc16faf973df361b9c646ff",
+      "table_name": "docbuilder_styles"
+    },
+    {
+      "name": "styles_modify",
+      "def_md5": "59fee69dcda704a5fc2bb92f7cbed5d0",
+      "table_name": "docbuilder_styles"
+    },
+    {
+      "name": "styles_select",
+      "def_md5": "2fd6382bb0ce6f01bd97f070b18086f7",
+      "table_name": "docbuilder_styles"
+    },
+    {
+      "name": "subsections_admin_write",
+      "def_md5": "05f504cc8fc16faf973df361b9c646ff",
+      "table_name": "docbuilder_subsections"
+    },
+    {
+      "name": "subsections_select",
+      "def_md5": "92fd326884465c565ade5a770ebb1972",
+      "table_name": "docbuilder_subsections"
+    },
+    {
+      "name": "subsections_via_section",
+      "def_md5": "19a7f650aaa032040c30f58e1861f8a0",
+      "table_name": "docbuilder_subsections"
+    },
+    {
+      "name": "template_access_admin",
+      "def_md5": "5de8891cd5b64c6284f1b5a5a216123c",
+      "table_name": "docbuilder_template_access"
+    },
+    {
+      "name": "templates_admin_delete",
+      "def_md5": "0a594bee0531f408655851714e3fea16",
+      "table_name": "docbuilder_templates"
+    },
+    {
+      "name": "templates_admin_update",
+      "def_md5": "a276b68f8972a14f863542509e0e4877",
+      "table_name": "docbuilder_templates"
+    },
+    {
+      "name": "templates_admin_write",
+      "def_md5": "94c9a6024872b4246ddcfe9118920df6",
+      "table_name": "docbuilder_templates"
+    },
+    {
+      "name": "templates_owner",
+      "def_md5": "e6f9962378729e5f82dfb652bf5b7ac0",
+      "table_name": "docbuilder_templates"
+    },
+    {
+      "name": "templates_select",
+      "def_md5": "52acdc038b800d5471f4250fbb7394c4",
+      "table_name": "docbuilder_templates"
+    },
+    {
+      "name": "Users can insert own settings",
+      "def_md5": "c30833b77fb30adabc6068f6aac8a5a7",
+      "table_name": "docbuilder_user_settings"
+    },
+    {
+      "name": "Users can read own settings",
+      "def_md5": "7712f5d31490cdd5ce631caa1462852b",
+      "table_name": "docbuilder_user_settings"
+    },
+    {
+      "name": "Users can update own settings",
+      "def_md5": "3a415bf09aed3187274e4d60374dedfd",
+      "table_name": "docbuilder_user_settings"
+    },
+    {
+      "name": "document_files_access",
+      "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
+      "table_name": "document_files"
+    },
+    {
+      "name": "document_generations_access",
+      "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
+      "table_name": "document_generations"
+    },
+    {
+      "name": "document_kit_template_folder_slots_access",
+      "def_md5": "7361d9aed23467671fd3e44f2550197d",
+      "table_name": "document_kit_template_folder_slots"
+    },
+    {
+      "name": "document_kit_template_folders_access",
+      "def_md5": "cdd2190434def2782e9a8e4960b48ecc",
+      "table_name": "document_kit_template_folders"
+    },
+    {
+      "name": "document_kit_templates_access",
+      "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
+      "table_name": "document_kit_templates"
+    },
+    {
+      "name": "document_kits_access",
+      "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
+      "table_name": "document_kits"
+    },
+    {
+      "name": "document_templates_access",
+      "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
+      "table_name": "document_templates"
+    },
+    {
+      "name": "documents_access",
+      "def_md5": "ca821c28e15fe68db0466f88646d1ad9",
+      "table_name": "documents"
+    },
+    {
+      "name": "Users can delete own email accounts",
+      "def_md5": "d295adc1c463e81702a47f0543eb10d7",
+      "table_name": "email_accounts"
+    },
+    {
+      "name": "Users can insert own email accounts",
+      "def_md5": "6eeacfb13b3d90aab2b35a7c6fb5788b",
+      "table_name": "email_accounts"
+    },
+    {
+      "name": "Users can update own email accounts",
+      "def_md5": "4e66fcff3f1bb33001042e3b2d141bc4",
+      "table_name": "email_accounts"
+    },
+    {
+      "name": "email_accounts_select",
+      "def_md5": "2a32d06de324501139f18af2d0e10fb9",
+      "table_name": "email_accounts"
+    },
+    {
+      "name": "email_inbound_unmatched_select",
+      "def_md5": "8b1f1a815aee4a671e86ee3bda0daaa9",
+      "table_name": "email_inbound_unmatched"
+    },
+    {
+      "name": "email_inbound_unmatched_update",
+      "def_md5": "4e84f8c45078f162f4df475cef31d1ee",
+      "table_name": "email_inbound_unmatched"
+    },
+    {
+      "name": "email_virtual_addresses_modify",
+      "def_md5": "2f7b5f497c2223257900b9158389de56",
+      "table_name": "email_virtual_addresses"
+    },
+    {
+      "name": "email_virtual_addresses_select",
+      "def_md5": "160331e62a6471410e4e8bbc1a451f5e",
+      "table_name": "email_virtual_addresses"
+    },
+    {
+      "name": "Users can insert export progress for their documents",
+      "def_md5": "e5c2dd652b7d6b17223df271c76fcfd8",
+      "table_name": "export_progress"
+    },
+    {
+      "name": "Users can read their own export progress",
+      "def_md5": "5fea2bbe75efee14d26cbd7326553e8d",
+      "table_name": "export_progress"
+    },
+    {
+      "name": "external_calendar_events_select_owner",
+      "def_md5": "088ff6c10f90e7a892668a7bcbc8d999",
+      "table_name": "external_calendar_events"
+    },
+    {
+      "name": "Authenticated users can view field_definition_composite_items",
+      "def_md5": "7d20977507b7d6a8182e91e985fadf80",
+      "table_name": "field_definition_composite_items"
+    },
+    {
+      "name": "field_definition_composite_items_delete",
+      "def_md5": "ae31e3fd8cfd82ba221dd787a0970e13",
+      "table_name": "field_definition_composite_items"
+    },
+    {
+      "name": "field_definition_composite_items_insert",
+      "def_md5": "31f32f5be58fe721d88dad2da2acc06e",
+      "table_name": "field_definition_composite_items"
+    },
+    {
+      "name": "field_definition_composite_items_update",
+      "def_md5": "404b10d6e1231fb238ac313e1216647d",
+      "table_name": "field_definition_composite_items"
+    },
+    {
+      "name": "authenticated_users_can_view_select_options",
+      "def_md5": "7d20977507b7d6a8182e91e985fadf80",
+      "table_name": "field_definition_select_options"
+    },
+    {
+      "name": "field_definition_select_options_delete",
+      "def_md5": "ae31e3fd8cfd82ba221dd787a0970e13",
+      "table_name": "field_definition_select_options"
+    },
+    {
+      "name": "field_definition_select_options_insert",
+      "def_md5": "31f32f5be58fe721d88dad2da2acc06e",
+      "table_name": "field_definition_select_options"
+    },
+    {
+      "name": "field_definition_select_options_update",
+      "def_md5": "404b10d6e1231fb238ac313e1216647d",
+      "table_name": "field_definition_select_options"
+    },
+    {
+      "name": "service_role_can_manage_select_options",
+      "def_md5": "c4808b5cfc533622a82cb6a83d7b52fb",
+      "table_name": "field_definition_select_options"
+    },
+    {
+      "name": "field_definitions_delete",
+      "def_md5": "0d78f681e330f40cc206a817ed799d26",
+      "table_name": "field_definitions"
+    },
+    {
+      "name": "field_definitions_insert",
+      "def_md5": "9f40329838e0af7fbc61a8801351058b",
+      "table_name": "field_definitions"
+    },
+    {
+      "name": "field_definitions_select",
+      "def_md5": "4fab53656b17c67e4a1a97a0179ca2f8",
+      "table_name": "field_definitions"
+    },
+    {
+      "name": "field_definitions_update",
+      "def_md5": "b9e9c7cfb9dda35c1786d7694940504f",
+      "table_name": "field_definitions"
+    },
+    {
+      "name": "files_access",
+      "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
+      "table_name": "files"
+    },
+    {
+      "name": "finance_services_delete",
+      "def_md5": "24579300f577a40dbf322877be2fb901",
+      "table_name": "finance_services"
+    },
+    {
+      "name": "finance_services_insert",
+      "def_md5": "f0fc9ad22d1e664026d9c499aee0dfc0",
+      "table_name": "finance_services"
+    },
+    {
+      "name": "finance_services_select",
+      "def_md5": "36e62f8061b4339db191702f6c2f4759",
+      "table_name": "finance_services"
+    },
+    {
+      "name": "finance_services_update",
+      "def_md5": "2100dec8f314cee0bcb963651efd458e",
+      "table_name": "finance_services"
+    },
+    {
+      "name": "finance_tax_rates_delete",
+      "def_md5": "279e5eb384d133720e209a9ac8af08ed",
+      "table_name": "finance_tax_rates"
+    },
+    {
+      "name": "finance_tax_rates_insert",
+      "def_md5": "a521fb4081d031aaacfed58ff41fd2f3",
+      "table_name": "finance_tax_rates"
+    },
+    {
+      "name": "finance_tax_rates_select",
+      "def_md5": "0eb8d08ffcf7342bf4771ed74d7ed2b6",
+      "table_name": "finance_tax_rates"
+    },
+    {
+      "name": "finance_tax_rates_update",
+      "def_md5": "12aa572a93e8aba3e8acfc1b5c933f14",
+      "table_name": "finance_tax_rates"
+    },
+    {
+      "name": "finance_tx_categories_delete",
+      "def_md5": "3f452ef967160647265497d2a62550c8",
+      "table_name": "finance_transaction_categories"
+    },
+    {
+      "name": "finance_tx_categories_insert",
+      "def_md5": "891ea76d23e2df67c48ef36bad3e7404",
+      "table_name": "finance_transaction_categories"
+    },
+    {
+      "name": "finance_tx_categories_select",
+      "def_md5": "fd9bc2ea8dd509abfec9265be62aa6ec",
+      "table_name": "finance_transaction_categories"
+    },
+    {
+      "name": "finance_tx_categories_update",
+      "def_md5": "a06226dfc358c1841c7f49b37229c1af",
+      "table_name": "finance_transaction_categories"
+    },
+    {
+      "name": "folder_slots_access",
+      "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
+      "table_name": "folder_slots"
+    },
+    {
+      "name": "folder_template_slots_access",
+      "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
+      "table_name": "folder_template_slots"
+    },
+    {
+      "name": "folder_templates_access",
+      "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
+      "table_name": "folder_templates"
+    },
+    {
+      "name": "folders_access",
+      "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
+      "table_name": "folders"
+    },
+    {
+      "name": "Project participants can delete form field values",
+      "def_md5": "328f2cd6cd9357d4bb574fb4c340cc9c",
+      "table_name": "form_kit_field_values"
+    },
+    {
+      "name": "Project participants can insert form field values",
+      "def_md5": "625300986d1b5558e68533e691e37b4f",
+      "table_name": "form_kit_field_values"
+    },
+    {
+      "name": "Project participants can update form field values",
+      "def_md5": "74ecde3dd0ddf13d93f9119f13b4615c",
+      "table_name": "form_kit_field_values"
+    },
+    {
+      "name": "Users can view form field values in their projects",
+      "def_md5": "a0f64fcac759754e4c23faa0c8deb17b",
+      "table_name": "form_kit_field_values"
+    },
+    {
+      "name": "Users can delete form_kit_fields in their workspace",
+      "def_md5": "3d2f14df1e61361c7521de4e2e4f68bb",
+      "table_name": "form_kit_fields"
+    },
+    {
+      "name": "Users can insert form_kit_fields in their workspace",
+      "def_md5": "a6adc0f391e70374832ba08d129e5570",
+      "table_name": "form_kit_fields"
+    },
+    {
+      "name": "Users can update form_kit_fields in their workspace",
+      "def_md5": "877ad28c22d64c302a8e8a607f8b5e69",
+      "table_name": "form_kit_fields"
+    },
+    {
+      "name": "Users can view form_kit_fields in their workspace",
+      "def_md5": "6d8c9468c901882cab6b48d7763c0abc",
+      "table_name": "form_kit_fields"
+    },
+    {
+      "name": "Users can delete form_kit_sections in their workspace",
+      "def_md5": "432285ee2a5976ddc8d38c1b385e6b7d",
+      "table_name": "form_kit_sections"
+    },
+    {
+      "name": "Users can insert form_kit_sections in their workspace",
+      "def_md5": "e0c05072be5c18f7129330505a96dd9b",
+      "table_name": "form_kit_sections"
+    },
+    {
+      "name": "Users can update form_kit_sections in their workspace",
+      "def_md5": "140108a0bca9fce99f1efaa68d0de019",
+      "table_name": "form_kit_sections"
+    },
+    {
+      "name": "Users can view form_kit_sections in their workspace",
+      "def_md5": "c21c9d93ad34c09c79da6b7f9ec5dceb",
+      "table_name": "form_kit_sections"
+    },
+    {
+      "name": "Users can delete form_kits in their workspace",
+      "def_md5": "ec138c5e4e7dc5ff4665b7f7bdab3306",
+      "table_name": "form_kits"
+    },
+    {
+      "name": "Users can insert form_kits in their workspace",
+      "def_md5": "07c93bcdd3ab51f5e72363a62ccc4e6c",
+      "table_name": "form_kits"
+    },
+    {
+      "name": "Users can update form_kits in their workspace",
+      "def_md5": "92feccf3ee7b024a37150dc4bec7904c",
+      "table_name": "form_kits"
+    },
+    {
+      "name": "Users can view form_kits in their workspace",
+      "def_md5": "19bdcc7909c7d077ff151374830c8702",
+      "table_name": "form_kits"
+    },
+    {
+      "name": "form_template_fields_access",
+      "def_md5": "30a67456654ecfac237f39a0adf71645",
+      "table_name": "form_template_fields"
+    },
+    {
+      "name": "form_template_sections_delete",
+      "def_md5": "b253e7ed180d0e0327ba19472d08b981",
+      "table_name": "form_template_sections"
+    },
+    {
+      "name": "form_template_sections_insert",
+      "def_md5": "643357803a9aaac1ffec2ed9f919534b",
+      "table_name": "form_template_sections"
+    },
+    {
+      "name": "form_template_sections_select",
+      "def_md5": "8e9e8a65433fb957b99447ceb7b3e834",
+      "table_name": "form_template_sections"
+    },
+    {
+      "name": "form_template_sections_update",
+      "def_md5": "64765bd3ff8b808e7895e9b9847e2c21",
+      "table_name": "form_template_sections"
+    },
+    {
+      "name": "form_templates_access",
+      "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
+      "table_name": "form_templates"
+    },
+    {
+      "name": "google_calendar_tokens_delete_own",
+      "def_md5": "121f3e82f7b5d1c230d5f5db37b99aba",
+      "table_name": "google_calendar_tokens"
+    },
+    {
+      "name": "google_calendar_tokens_select_own",
+      "def_md5": "7712f5d31490cdd5ce631caa1462852b",
+      "table_name": "google_calendar_tokens"
+    },
+    {
+      "name": "Users can delete their own tokens",
+      "def_md5": "5529b1ba0b81bf50e03b1308c31cfcff",
+      "table_name": "google_drive_tokens"
+    },
+    {
+      "name": "Users can insert their own tokens",
+      "def_md5": "4ff55b53a4ce4f70f7b3ff19b719cf84",
+      "table_name": "google_drive_tokens"
+    },
+    {
+      "name": "Users can update their own tokens",
+      "def_md5": "eaca55b576d7df90e4496b939a4cf0d8",
+      "table_name": "google_drive_tokens"
+    },
+    {
+      "name": "Users can view their own tokens",
+      "def_md5": "56934e10d85486a3e181243cf350806f",
+      "table_name": "google_drive_tokens"
+    },
+    {
+      "name": "Users can update own history read status",
+      "def_md5": "d99a1ee9eddcc103bd51f5fae3ef4235",
+      "table_name": "history_read_status"
+    },
+    {
+      "name": "Users can upsert own history read status",
+      "def_md5": "810ae91ec99ee16efd30c4a9cbf3aed7",
+      "table_name": "history_read_status"
+    },
+    {
+      "name": "Users can view own history read status",
+      "def_md5": "bf9aaf2886de3c93fce26cba8e1e792c",
+      "table_name": "history_read_status"
+    },
+    {
+      "name": "impersonation_sessions_select",
+      "def_md5": "428c876767d77be5380298fb25d2e5ee",
+      "table_name": "impersonation_sessions"
+    },
+    {
+      "name": "interface_presets_delete",
+      "def_md5": "c65c5f65cc166420b7d6a9520fcfa569",
+      "table_name": "interface_presets"
+    },
+    {
+      "name": "interface_presets_insert",
+      "def_md5": "bf5bdac40e382f710aeebe17e0ac24df",
+      "table_name": "interface_presets"
+    },
+    {
+      "name": "interface_presets_select",
+      "def_md5": "4ce59d8a008d3efb8b98be06ecc6aae5",
+      "table_name": "interface_presets"
+    },
+    {
+      "name": "interface_presets_update",
+      "def_md5": "4a9e823c2b5efb4930d1d137583aee66",
+      "table_name": "interface_presets"
+    },
+    {
+      "name": "item_lists_delete",
+      "def_md5": "d35f2fb0ccaa31e5550e623044ba7084",
+      "table_name": "item_lists"
+    },
+    {
+      "name": "item_lists_insert",
+      "def_md5": "77f33d981ac6257123c0c48ac6b2b052",
+      "table_name": "item_lists"
+    },
+    {
+      "name": "item_lists_select",
+      "def_md5": "973b4c6f93e5a744f5886622620d6d47",
+      "table_name": "item_lists"
+    },
+    {
+      "name": "item_lists_update",
+      "def_md5": "4876b9312bec4d15f573a0310aca9cc8",
+      "table_name": "item_lists"
+    },
+    {
+      "name": "knowledge_article_groups_delete",
+      "def_md5": "e8a81ac72f6153cabfc31c7e2ddfe90e",
+      "table_name": "knowledge_article_groups"
+    },
+    {
+      "name": "knowledge_article_groups_insert",
+      "def_md5": "224e9dd653d6fa2b41b0ae2c5a9e1afd",
+      "table_name": "knowledge_article_groups"
+    },
+    {
+      "name": "knowledge_article_groups_select",
+      "def_md5": "b81f8d89a91a52fbbfc111a066b018a5",
+      "table_name": "knowledge_article_groups"
+    },
+    {
+      "name": "knowledge_article_groups_update",
+      "def_md5": "87661c8b13db813b080696cecee4242b",
+      "table_name": "knowledge_article_groups"
+    },
+    {
+      "name": "knowledge_article_tags_delete",
+      "def_md5": "7c227f5590fd8d86a2c0b7088ea2b76c",
+      "table_name": "knowledge_article_tags"
+    },
+    {
+      "name": "knowledge_article_tags_insert",
+      "def_md5": "12055b82d5efb66a9119ebddd0cc8f60",
+      "table_name": "knowledge_article_tags"
+    },
+    {
+      "name": "knowledge_article_tags_select",
+      "def_md5": "965805939b2c2b1cf625c98def180439",
+      "table_name": "knowledge_article_tags"
+    },
+    {
+      "name": "kat_delete",
+      "def_md5": "56a50cd661553f98193967697766c471",
+      "table_name": "knowledge_article_templates"
+    },
+    {
+      "name": "kat_insert",
+      "def_md5": "5aa8a4c12f66bbd547258d5bfe07e16f",
+      "table_name": "knowledge_article_templates"
+    },
+    {
+      "name": "kat_select",
+      "def_md5": "83fe1f7bc848af31628cb683312feb0d",
+      "table_name": "knowledge_article_templates"
+    },
+    {
+      "name": "kav_access",
+      "def_md5": "76e96683935a8c533033cb8ab013b8c2",
+      "table_name": "knowledge_article_versions"
+    },
+    {
+      "name": "knowledge_articles_delete",
+      "def_md5": "872ac2bd02b8ba73efe61d5278986771",
+      "table_name": "knowledge_articles"
+    },
+    {
+      "name": "knowledge_articles_insert",
+      "def_md5": "3cdda48363d18fc098c894e33ba62319",
+      "table_name": "knowledge_articles"
+    },
+    {
+      "name": "knowledge_articles_select",
+      "def_md5": "3c2502480d8e0a65cc0041ff5e7b7e75",
+      "table_name": "knowledge_articles"
+    },
+    {
+      "name": "knowledge_articles_update",
+      "def_md5": "def0b3b960159b65f7e9cf745a92ccfa",
+      "table_name": "knowledge_articles"
+    },
+    {
+      "name": "knowledge_conversations_delete",
+      "def_md5": "9ec9e74e8d1e3a7b95de4c98391302c3",
+      "table_name": "knowledge_conversations"
+    },
+    {
+      "name": "knowledge_conversations_insert",
+      "def_md5": "810ae91ec99ee16efd30c4a9cbf3aed7",
+      "table_name": "knowledge_conversations"
+    },
+    {
+      "name": "knowledge_conversations_select",
+      "def_md5": "bf9aaf2886de3c93fce26cba8e1e792c",
+      "table_name": "knowledge_conversations"
+    },
+    {
+      "name": "knowledge_conversations_update",
+      "def_md5": "d99a1ee9eddcc103bd51f5fae3ef4235",
+      "table_name": "knowledge_conversations"
+    },
+    {
+      "name": "knowledge_embeddings_select",
+      "def_md5": "160331e62a6471410e4e8bbc1a451f5e",
+      "table_name": "knowledge_embeddings"
+    },
+    {
+      "name": "kgt_delete",
+      "def_md5": "d9c01292b629f42d23f6b1a09141bf84",
+      "table_name": "knowledge_group_templates"
+    },
+    {
+      "name": "kgt_insert",
+      "def_md5": "07b59ca9d0fd57fb1a365103e6ae6848",
+      "table_name": "knowledge_group_templates"
+    },
+    {
+      "name": "kgt_select",
+      "def_md5": "8639e82cac4495e6d6092b1d93acf90a",
+      "table_name": "knowledge_group_templates"
+    },
+    {
+      "name": "knowledge_groups_delete",
+      "def_md5": "213b30f4291a5998818459c867d4d252",
+      "table_name": "knowledge_groups"
+    },
+    {
+      "name": "knowledge_groups_insert",
+      "def_md5": "8518ec35449edde83bab3f58657ce365",
+      "table_name": "knowledge_groups"
+    },
+    {
+      "name": "knowledge_groups_select",
+      "def_md5": "3cf3d9e03de5b4f1721a72b3f8feeea2",
+      "table_name": "knowledge_groups"
+    },
+    {
+      "name": "knowledge_groups_update",
+      "def_md5": "e8e4b2c170986c27508e7ccb8fe64611",
+      "table_name": "knowledge_groups"
+    },
+    {
+      "name": "knowledge_messages_delete",
+      "def_md5": "8b2a79ca914c4eace53ddf9ae57063f5",
+      "table_name": "knowledge_messages"
+    },
+    {
+      "name": "knowledge_messages_insert",
+      "def_md5": "ecafc99a0752868f0b77380083d2de22",
+      "table_name": "knowledge_messages"
+    },
+    {
+      "name": "knowledge_messages_select",
+      "def_md5": "d1d6bd2189ad119228fe208482eb9f30",
+      "table_name": "knowledge_messages"
+    },
+    {
+      "name": "qa_delete",
+      "def_md5": "ec138c5e4e7dc5ff4665b7f7bdab3306",
+      "table_name": "knowledge_qa"
+    },
+    {
+      "name": "qa_insert",
+      "def_md5": "07c93bcdd3ab51f5e72363a62ccc4e6c",
+      "table_name": "knowledge_qa"
+    },
+    {
+      "name": "qa_select",
+      "def_md5": "19bdcc7909c7d077ff151374830c8702",
+      "table_name": "knowledge_qa"
+    },
+    {
+      "name": "qa_update",
+      "def_md5": "92feccf3ee7b024a37150dc4bec7904c",
+      "table_name": "knowledge_qa"
+    },
+    {
+      "name": "qa_groups_delete",
+      "def_md5": "ac10c993cc69e68c3144293226dbf0e2",
+      "table_name": "knowledge_qa_groups"
+    },
+    {
+      "name": "qa_groups_insert",
+      "def_md5": "fca6301179ef076f9a98d9e1be5a5a6b",
+      "table_name": "knowledge_qa_groups"
+    },
+    {
+      "name": "qa_groups_select",
+      "def_md5": "bb626b5033a66ec69f3706288cf5f5b7",
+      "table_name": "knowledge_qa_groups"
+    },
+    {
+      "name": "qa_tags_delete",
+      "def_md5": "ac10c993cc69e68c3144293226dbf0e2",
+      "table_name": "knowledge_qa_tags"
+    },
+    {
+      "name": "qa_tags_insert",
+      "def_md5": "fca6301179ef076f9a98d9e1be5a5a6b",
+      "table_name": "knowledge_qa_tags"
+    },
+    {
+      "name": "qa_tags_select",
+      "def_md5": "bb626b5033a66ec69f3706288cf5f5b7",
+      "table_name": "knowledge_qa_tags"
+    },
+    {
+      "name": "knowledge_tags_delete",
+      "def_md5": "88e5be963cf16412a3633d42c68373d5",
+      "table_name": "knowledge_tags"
+    },
+    {
+      "name": "knowledge_tags_insert",
+      "def_md5": "8e6a9c35cd32caf474cf0057ca3b0e71",
+      "table_name": "knowledge_tags"
+    },
+    {
+      "name": "knowledge_tags_select",
+      "def_md5": "45e72cf5fdef804cdc16c031c379acd7",
+      "table_name": "knowledge_tags"
+    },
+    {
+      "name": "knowledge_tags_update",
+      "def_md5": "9f20e2233bae23d4d890c36991cecdb1",
+      "table_name": "knowledge_tags"
+    },
+    {
+      "name": "message_attachments_insert",
+      "def_md5": "9f87ee43defc4d862ee21d2305c3c934",
+      "table_name": "message_attachments"
+    },
+    {
+      "name": "message_attachments_select",
+      "def_md5": "cd0a3374df8d67092d65f430e72660df",
+      "table_name": "message_attachments"
+    },
+    {
+      "name": "message_context_insert",
+      "def_md5": "b62afc47865b4a07f8a189b6e6f7bf0e",
+      "table_name": "message_context"
+    },
+    {
+      "name": "message_context_select",
+      "def_md5": "a742ea6e967b620f9f85ceb4e7bb5dd4",
+      "table_name": "message_context"
+    },
+    {
+      "name": "message_mentions_insert",
+      "def_md5": "7535ae5a821c52d7bc95567ab27f503e",
+      "table_name": "message_mentions"
+    },
+    {
+      "name": "message_mentions_select",
+      "def_md5": "92f417ab2480e41573b552f1233764eb",
+      "table_name": "message_mentions"
+    },
+    {
+      "name": "message_reactions_delete",
+      "def_md5": "8dc119ee222b5524c55faa6a2730342b",
+      "table_name": "message_reactions"
+    },
+    {
+      "name": "message_reactions_insert",
+      "def_md5": "d2001cdd8a109ee1714fb6b744f1b457",
+      "table_name": "message_reactions"
+    },
+    {
+      "name": "message_reactions_select",
+      "def_md5": "5ec64519de5224753a57edab9d581cc1",
+      "table_name": "message_reactions"
+    },
+    {
+      "name": "message_read_status_insert",
+      "def_md5": "d4d1839774ca6e60082b4ca17606a43b",
+      "table_name": "message_read_status"
+    },
+    {
+      "name": "message_read_status_select",
+      "def_md5": "1ba956a63ddb8fe26476d9095312fa32",
+      "table_name": "message_read_status"
+    },
+    {
+      "name": "message_read_status_update",
+      "def_md5": "dfb79c16a14d473a6aed7e660f10128c",
+      "table_name": "message_read_status"
+    },
+    {
+      "name": "message_send_failures_select",
+      "def_md5": "57b6f9b9a1d3d0875eb66525726c6ffd",
+      "table_name": "message_send_failures"
+    },
+    {
+      "name": "message_send_failures_update",
+      "def_md5": "6368a658959876a1858ba00211705f04",
+      "table_name": "message_send_failures"
+    },
+    {
+      "name": "message_translations_select",
+      "def_md5": "19f7579edab6f61952b7f0604f87a4b1",
+      "table_name": "message_translations"
+    },
+    {
+      "name": "messages_insert",
+      "def_md5": "d3ca0488e57386562a8295db015d6005",
+      "table_name": "messages"
+    },
+    {
+      "name": "messages_select",
+      "def_md5": "a65597b24388d3ec8e974ae38aa0a876",
+      "table_name": "messages"
+    },
+    {
+      "name": "notification_mute_delete",
+      "def_md5": "3d2a76e360af6789ffc999e9c22c1245",
+      "table_name": "notification_mute"
+    },
+    {
+      "name": "notification_mute_insert",
+      "def_md5": "2812dddf6c5b3068c1cb86d6133a50f3",
+      "table_name": "notification_mute"
+    },
+    {
+      "name": "notification_mute_select",
+      "def_md5": "47d366ea94e881dcf1534fa5691112be",
+      "table_name": "notification_mute"
+    },
+    {
+      "name": "notification_mute_update",
+      "def_md5": "e52c6b69f9890e4d662142485e23102f",
+      "table_name": "notification_mute"
+    },
+    {
+      "name": "oauth_states_delete_own",
+      "def_md5": "3d2a76e360af6789ffc999e9c22c1245",
+      "table_name": "oauth_states"
+    },
+    {
+      "name": "oauth_states_insert_own",
+      "def_md5": "2812dddf6c5b3068c1cb86d6133a50f3",
+      "table_name": "oauth_states"
+    },
+    {
+      "name": "oauth_states_select_own",
+      "def_md5": "47d366ea94e881dcf1534fa5691112be",
+      "table_name": "oauth_states"
+    },
+    {
+      "name": "participant_channels_delete",
+      "def_md5": "cfdb2d5fb8b1136cb13dd67b4b63253c",
+      "table_name": "participant_channels"
+    },
+    {
+      "name": "participant_channels_insert",
+      "def_md5": "01421b61c03f4f668b93badeb8aea3a6",
+      "table_name": "participant_channels"
+    },
+    {
+      "name": "participant_channels_select",
+      "def_md5": "5e495bacfd3b34f92a04c701fd148307",
+      "table_name": "participant_channels"
+    },
+    {
+      "name": "participant_channels_update",
+      "def_md5": "47d6f1f63e75285c972afc3de497287f",
+      "table_name": "participant_channels"
+    },
+    {
+      "name": "participants_insert_managers",
+      "def_md5": "1565ec876634bc461f3f92db229d961c",
+      "table_name": "participants"
+    },
+    {
+      "name": "participants_select_same_workspace",
+      "def_md5": "705081f2027e4559e332d78ecd666456",
+      "table_name": "participants"
+    },
+    {
+      "name": "participants_update_managers_or_self",
+      "def_md5": "696a275bda24b373bae935494654e368",
+      "table_name": "participants"
+    },
+    {
+      "name": "perf_traces_insert",
+      "def_md5": "391ee2508136c4c1d8b85cd53bff5a0d",
+      "table_name": "perf_traces"
+    },
+    {
+      "name": "perf_traces_select_own",
+      "def_md5": "1057176cd55d8a6e2539e04346048cdf",
+      "table_name": "perf_traces"
+    },
+    {
+      "name": "Users can manage their own pinned boards",
+      "def_md5": "8bf8e22605ffe39e59763da6ab1bac7d",
+      "table_name": "pinned_boards"
+    },
+    {
+      "name": "Users can manage own pinned projects",
+      "def_md5": "8bf8e22605ffe39e59763da6ab1bac7d",
+      "table_name": "pinned_projects"
+    },
+    {
+      "name": "plans_select",
+      "def_md5": "3bd7885119c7d9e837c556363924120a",
+      "table_name": "plans"
+    },
+    {
+      "name": "project_context_item_members_all",
+      "def_md5": "44263d1ab9e2cfda41327151e1a6c0c0",
+      "table_name": "project_context_item_members"
+    },
+    {
+      "name": "project_context_items_delete",
+      "def_md5": "686fd367511116a53ac728007e29b938",
+      "table_name": "project_context_items"
+    },
+    {
+      "name": "project_context_items_insert",
+      "def_md5": "84927fad6fb415e69e4b4a956509749c",
+      "table_name": "project_context_items"
+    },
+    {
+      "name": "project_context_items_select",
+      "def_md5": "b6588063f587be7a4cdc67a07dc7409c",
+      "table_name": "project_context_items"
+    },
+    {
+      "name": "project_context_items_update",
+      "def_md5": "d0ca84c541acef5b54331e3b92ddffd2",
+      "table_name": "project_context_items"
+    },
+    {
+      "name": "project_digests_delete",
+      "def_md5": "971ca9f3d6742d7c9bcca33afe41aaa7",
+      "table_name": "project_digests"
+    },
+    {
+      "name": "project_digests_insert",
+      "def_md5": "1441c7352857fa0757924f9e6ad6a730",
+      "table_name": "project_digests"
+    },
+    {
+      "name": "project_digests_select",
+      "def_md5": "8c6675972ec88f2ef0b9d9b7006ad819",
+      "table_name": "project_digests"
+    },
+    {
+      "name": "project_digests_update",
+      "def_md5": "5c6b2309bab0582db0b79bfe5f7b31e6",
+      "table_name": "project_digests"
+    },
+    {
+      "name": "pfv_delete",
+      "def_md5": "4480c09a6dd11401f50bb15185bbac4a",
+      "table_name": "project_field_values"
+    },
+    {
+      "name": "pfv_insert",
+      "def_md5": "2de15d36b69657e9df14424f2db5c898",
+      "table_name": "project_field_values"
+    },
+    {
+      "name": "pfv_select",
+      "def_md5": "ede7fa1ce69474930b6b10a7743cf921",
+      "table_name": "project_field_values"
+    },
+    {
+      "name": "pfv_update",
+      "def_md5": "75be0eff36d1d7ff22f7e79acb0323fc",
+      "table_name": "project_field_values"
+    },
+    {
+      "name": "project_messages_delete",
+      "def_md5": "02c45715558cbe6f3ee0e9a58c436be0",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "project_messages_insert",
+      "def_md5": "8636a1bc9bf925c65ef985ec7e981e57",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "project_messages_select",
+      "def_md5": "1f9a45a33046bd5e730bcc87cfb054a3",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "project_messages_update",
+      "def_md5": "9d32ea2d649ae224a4857cc4d144fbd9",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "project_messages_visibility",
+      "def_md5": "c15dd40ac1f767a747377e1f86b7232a",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "Users can create money movements in their projects",
+      "def_md5": "0762e94d6e4569e14bda33def244cd83",
+      "table_name": "project_money_movements"
+    },
+    {
+      "name": "Users can delete money movements in their projects",
+      "def_md5": "87f620425dda4461781e73b0aae8f5aa",
+      "table_name": "project_money_movements"
+    },
+    {
+      "name": "Users can update money movements in their projects",
+      "def_md5": "e6344ce838be6233b125a9f16e2f2133",
+      "table_name": "project_money_movements"
+    },
+    {
+      "name": "Users can view money movements in their projects",
+      "def_md5": "63086153a7413a4d1ea9f89c3441b5a6",
+      "table_name": "project_money_movements"
+    },
+    {
+      "name": "project_participants_delete",
+      "def_md5": "7c23922fa22ba19565817c2deeaf1523",
+      "table_name": "project_participants"
+    },
+    {
+      "name": "project_participants_insert",
+      "def_md5": "e9f6e7380d5e3a8832f990a60e4e46b4",
+      "table_name": "project_participants"
+    },
+    {
+      "name": "project_participants_select",
+      "def_md5": "4512e976736f8f6ef73bb0934352153f",
+      "table_name": "project_participants"
+    },
+    {
+      "name": "project_participants_update",
+      "def_md5": "41cd64cc08f06c276b4224c57fc1624d",
+      "table_name": "project_participants"
+    },
+    {
+      "name": "project_plan_blocks_delete",
+      "def_md5": "0047ebace74619a90bf4051a7b1123b4",
+      "table_name": "project_plan_blocks"
+    },
+    {
+      "name": "project_plan_blocks_insert",
+      "def_md5": "7f9e9098e962f66113db69cbea65d71e",
+      "table_name": "project_plan_blocks"
+    },
+    {
+      "name": "project_plan_blocks_select",
+      "def_md5": "9c13694fe7307dc5d4cfffeb6ec17833",
+      "table_name": "project_plan_blocks"
+    },
+    {
+      "name": "project_plan_blocks_update",
+      "def_md5": "d7d9ec2e16d4e42d082a8ae8b6504de4",
+      "table_name": "project_plan_blocks"
+    },
+    {
+      "name": "project_roles_delete",
+      "def_md5": "59cb96daecd7f4d6a2cbb21f1d4fb370",
+      "table_name": "project_roles"
+    },
+    {
+      "name": "project_roles_insert",
+      "def_md5": "08f2684250521d760b91de20971a35a8",
+      "table_name": "project_roles"
+    },
+    {
+      "name": "project_roles_select",
+      "def_md5": "19bdcc7909c7d077ff151374830c8702",
+      "table_name": "project_roles"
+    },
+    {
+      "name": "project_roles_update",
+      "def_md5": "883c24c14a626c769f8ca034660b064d",
+      "table_name": "project_roles"
+    },
+    {
+      "name": "Users can create service groups in their projects",
+      "def_md5": "0762e94d6e4569e14bda33def244cd83",
+      "table_name": "project_service_groups"
+    },
+    {
+      "name": "Users can delete service groups in their projects",
+      "def_md5": "87f620425dda4461781e73b0aae8f5aa",
+      "table_name": "project_service_groups"
+    },
+    {
+      "name": "Users can update service groups in their projects",
+      "def_md5": "e6344ce838be6233b125a9f16e2f2133",
+      "table_name": "project_service_groups"
+    },
+    {
+      "name": "Users can view service groups in their projects",
+      "def_md5": "63086153a7413a4d1ea9f89c3441b5a6",
+      "table_name": "project_service_groups"
+    },
+    {
+      "name": "Users can create service items in their projects",
+      "def_md5": "0762e94d6e4569e14bda33def244cd83",
+      "table_name": "project_service_items"
+    },
+    {
+      "name": "Users can delete service items in their projects",
+      "def_md5": "87f620425dda4461781e73b0aae8f5aa",
+      "table_name": "project_service_items"
+    },
+    {
+      "name": "Users can update service items in their projects",
+      "def_md5": "e6344ce838be6233b125a9f16e2f2133",
+      "table_name": "project_service_items"
+    },
+    {
+      "name": "Users can view service items in their projects",
+      "def_md5": "63086153a7413a4d1ea9f89c3441b5a6",
+      "table_name": "project_service_items"
+    },
+    {
+      "name": "project_services_delete",
+      "def_md5": "06dfd2b1b2de8610a0bb015a7e1ef0eb",
+      "table_name": "project_services"
+    },
+    {
+      "name": "project_services_insert",
+      "def_md5": "7ac173509369ba56c106cd0c99909d9a",
+      "table_name": "project_services"
+    },
+    {
+      "name": "project_services_select",
+      "def_md5": "ff821b2c36e433aa800d95f5db596944",
+      "table_name": "project_services"
+    },
+    {
+      "name": "project_services_update",
+      "def_md5": "06d63da05825ffb2a037c6ed44ae1dec",
+      "table_name": "project_services"
+    },
+    {
+      "name": "project_tg_chats_insert",
+      "def_md5": "a66bbe8357697a83b7365e03fc2d6098",
+      "table_name": "project_telegram_chats"
+    },
+    {
+      "name": "project_tg_chats_select",
+      "def_md5": "8f88d5643062c7af0801b149a8687113",
+      "table_name": "project_telegram_chats"
+    },
+    {
+      "name": "project_tg_chats_update",
+      "def_md5": "ecf7611f118ad55106fc749ddfc1a7c9",
+      "table_name": "project_telegram_chats"
+    },
+    {
+      "name": "Participants can manage project template document kits",
+      "def_md5": "3727a4afc63dff05be8992f0f094ed5c",
+      "table_name": "project_template_document_kits"
+    },
+    {
+      "name": "Participants can view project template document kits",
+      "def_md5": "0418633050b87a04d1b5f6ea99122599",
+      "table_name": "project_template_document_kits"
+    },
+    {
+      "name": "ptfl_delete",
+      "def_md5": "a442361ba7fea228781031b901747238",
+      "table_name": "project_template_field_links"
+    },
+    {
+      "name": "ptfl_insert",
+      "def_md5": "3237aac4128ae4910f862b60048bf155",
+      "table_name": "project_template_field_links"
+    },
+    {
+      "name": "ptfl_select",
+      "def_md5": "4cabe97cc1d21a78a25234e06ceebfcf",
+      "table_name": "project_template_field_links"
+    },
+    {
+      "name": "ptfl_update",
+      "def_md5": "874f24093d39184fe43746a4676ece0b",
+      "table_name": "project_template_field_links"
+    },
+    {
+      "name": "Participants can manage project template forms",
+      "def_md5": "f85c3e9c0b434cfda09349ffaf54cb70",
+      "table_name": "project_template_forms"
+    },
+    {
+      "name": "Participants can view project template forms",
+      "def_md5": "28d9b6840277e460e7f8f1334d3e6b06",
+      "table_name": "project_template_forms"
+    },
+    {
+      "name": "template_plan_blocks_delete",
+      "def_md5": "087c05605de3b103879910af3598b2b8",
+      "table_name": "project_template_plan_blocks"
+    },
+    {
+      "name": "template_plan_blocks_insert",
+      "def_md5": "95ce07dcc7d43e5842768b7fccefe37a",
+      "table_name": "project_template_plan_blocks"
+    },
+    {
+      "name": "template_plan_blocks_select",
+      "def_md5": "db0ef566e805833a5cfe58c7ccc1db48",
+      "table_name": "project_template_plan_blocks"
+    },
+    {
+      "name": "template_plan_blocks_update",
+      "def_md5": "ff305fdab3ded0c256f155c124ae8c3f",
+      "table_name": "project_template_plan_blocks"
+    },
+    {
+      "name": "pts_select",
+      "def_md5": "7ff28f3a715a990a0f976e871dbb7dae",
+      "table_name": "project_template_statuses"
+    },
+    {
+      "name": "pts_write",
+      "def_md5": "5b5764e134e166a6d0d70a446697386b",
+      "table_name": "project_template_statuses"
+    },
+    {
+      "name": "pttt_select",
+      "def_md5": "8c8d8216f40818a52ba3898c52dfc295",
+      "table_name": "project_template_thread_templates"
+    },
+    {
+      "name": "pttt_write",
+      "def_md5": "d12bb00c142d427e64710e8efb189227",
+      "table_name": "project_template_thread_templates"
+    },
+    {
+      "name": "Participants can create project templates in their workspace",
+      "def_md5": "39eb058cc70fa109f595e0b37e93f3a8",
+      "table_name": "project_templates"
+    },
+    {
+      "name": "Participants can delete project templates in their workspace",
+      "def_md5": "1d1c5d056e5f2d76ba30e2ba6ca23bbf",
+      "table_name": "project_templates"
+    },
+    {
+      "name": "Participants can update project templates in their workspace",
+      "def_md5": "b933ae60f4587044f099cebf1becbd0b",
+      "table_name": "project_templates"
+    },
+    {
+      "name": "Participants can view project templates in their workspace",
+      "def_md5": "cb8a3fcd3f59f7edc36c44671fe5081c",
+      "table_name": "project_templates"
+    },
+    {
+      "name": "project_thread_assignees_delete",
+      "def_md5": "60b3168d12763722da89d3dff39278a9",
+      "table_name": "project_thread_assignees"
+    },
+    {
+      "name": "project_thread_assignees_insert",
+      "def_md5": "07c7394f049cc1423a052f0adfd26b65",
+      "table_name": "project_thread_assignees"
+    },
+    {
+      "name": "project_thread_assignees_select",
+      "def_md5": "552aeb3ed64f133be504d065b606a448",
+      "table_name": "project_thread_assignees"
+    },
+    {
+      "name": "project_thread_email_links_all",
+      "def_md5": "1264bf95dea6588ee236cc0a117e8957",
+      "table_name": "project_thread_email_links"
+    },
+    {
+      "name": "project_thread_members_delete",
+      "def_md5": "7b4ffce3d9d3883957d73023b9930a9c",
+      "table_name": "project_thread_members"
+    },
+    {
+      "name": "project_thread_members_insert",
+      "def_md5": "becb22d44b13ce150d24d88d89bd3605",
+      "table_name": "project_thread_members"
+    },
+    {
+      "name": "project_thread_members_select",
+      "def_md5": "9d6d38b82ee52b958bef228d041ad0db",
+      "table_name": "project_thread_members"
+    },
+    {
+      "name": "pts_select",
+      "def_md5": "30eb738d11c09b6b44c00f755ac2d469",
+      "table_name": "project_thread_subscriptions"
+    },
+    {
+      "name": "pts_write",
+      "def_md5": "67a657ec873882ee6f3a8d72fbf585a3",
+      "table_name": "project_thread_subscriptions"
+    },
+    {
+      "name": "project_threads_delete",
+      "def_md5": "0708c6f89f2ad8724ecb64950ee725e0",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "project_threads_insert",
+      "def_md5": "1e3ee113ce3d1babe785202ab8aa8eab",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "project_threads_select",
+      "def_md5": "b1f8a4c9f72f17f3c4824671b50b3666",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "project_threads_update",
+      "def_md5": "daf9bc222aa62cda625fe15ef390a807",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "project_transactions_delete",
+      "def_md5": "76f8374fbf23b2cceeebad0eddc55ee0",
+      "table_name": "project_transactions"
+    },
+    {
+      "name": "project_transactions_insert",
+      "def_md5": "9da781cd4094c49c8057e70bbb17124d",
+      "table_name": "project_transactions"
+    },
+    {
+      "name": "project_transactions_select",
+      "def_md5": "dcf62f818c13742554721c3176ef92a2",
+      "table_name": "project_transactions"
+    },
+    {
+      "name": "project_transactions_update",
+      "def_md5": "3365914dd7b24aeabfa6646c6216915b",
+      "table_name": "project_transactions"
+    },
+    {
+      "name": "Users can create projects in their workspace",
+      "def_md5": "be6e58d3325d08d5a77d7339bc432336",
+      "table_name": "projects"
+    },
+    {
+      "name": "Users can delete projects in their workspace",
+      "def_md5": "0699294f368a33271907f8ce05bc482e",
+      "table_name": "projects"
+    },
+    {
+      "name": "Users can update projects in their workspace",
+      "def_md5": "643056860e530176a06bec16bcda012d",
+      "table_name": "projects"
+    },
+    {
+      "name": "Users can view projects in their workspace",
+      "def_md5": "75900edb8f0e4c89ba3af2399574a615",
+      "table_name": "projects"
+    },
+    {
+      "name": "quick_replies_delete",
+      "def_md5": "ffed78a1c1666a199170cf6051a48eed",
+      "table_name": "quick_replies"
+    },
+    {
+      "name": "quick_replies_insert",
+      "def_md5": "68a32c644999c9a0828d4953e82addd9",
+      "table_name": "quick_replies"
+    },
+    {
+      "name": "quick_replies_select",
+      "def_md5": "19bdcc7909c7d077ff151374830c8702",
+      "table_name": "quick_replies"
+    },
+    {
+      "name": "quick_replies_update",
+      "def_md5": "e980f349977506e567f591f829081af2",
+      "table_name": "quick_replies"
+    },
+    {
+      "name": "quick_reply_group_templates_delete",
+      "def_md5": "460d5dda06d23bebf0d8d906967b78ac",
+      "table_name": "quick_reply_group_templates"
+    },
+    {
+      "name": "quick_reply_group_templates_insert",
+      "def_md5": "d8118e40c26ad2884aa5725a58fb6e3c",
+      "table_name": "quick_reply_group_templates"
+    },
+    {
+      "name": "quick_reply_group_templates_select",
+      "def_md5": "3cad7046784a5b6d0ce27b9bcce0137e",
+      "table_name": "quick_reply_group_templates"
+    },
+    {
+      "name": "quick_reply_folders_delete",
+      "def_md5": "ffed78a1c1666a199170cf6051a48eed",
+      "table_name": "quick_reply_groups"
+    },
+    {
+      "name": "quick_reply_folders_insert",
+      "def_md5": "68a32c644999c9a0828d4953e82addd9",
+      "table_name": "quick_reply_groups"
+    },
+    {
+      "name": "quick_reply_folders_select",
+      "def_md5": "19bdcc7909c7d077ff151374830c8702",
+      "table_name": "quick_reply_groups"
+    },
+    {
+      "name": "quick_reply_folders_update",
+      "def_md5": "e980f349977506e567f591f829081af2",
+      "table_name": "quick_reply_groups"
+    },
+    {
+      "name": "quick_reply_templates_delete",
+      "def_md5": "a086c80174fb3445e1200c62116dbc3b",
+      "table_name": "quick_reply_templates"
+    },
+    {
+      "name": "quick_reply_templates_insert",
+      "def_md5": "6b875f1e516b5e81bcb55532763674a4",
+      "table_name": "quick_reply_templates"
+    },
+    {
+      "name": "quick_reply_templates_select",
+      "def_md5": "ad03e539cdb6f8e92d0b77a4e922cb41",
+      "table_name": "quick_reply_templates"
+    },
+    {
+      "name": "recently_viewed_delete_own",
+      "def_md5": "121f3e82f7b5d1c230d5f5db37b99aba",
+      "table_name": "recently_viewed"
+    },
+    {
+      "name": "recently_viewed_insert_own",
+      "def_md5": "c30833b77fb30adabc6068f6aac8a5a7",
+      "table_name": "recently_viewed"
+    },
+    {
+      "name": "recently_viewed_select_own",
+      "def_md5": "7712f5d31490cdd5ce631caa1462852b",
+      "table_name": "recently_viewed"
+    },
+    {
+      "name": "recently_viewed_update_own",
+      "def_md5": "84e9bc2281404ffeff7455673edc5a56",
+      "table_name": "recently_viewed"
+    },
+    {
+      "name": "recurring_task_rules_delete",
+      "def_md5": "d3e6a9cde8ed65484502cc6d7ab76f3e",
+      "table_name": "recurring_task_rules"
+    },
+    {
+      "name": "recurring_task_rules_insert",
+      "def_md5": "d128d4945311e8a6c031eb1353553cc5",
+      "table_name": "recurring_task_rules"
+    },
+    {
+      "name": "recurring_task_rules_select",
+      "def_md5": "0f6bab98d49eb63bfa215951476e0077",
+      "table_name": "recurring_task_rules"
+    },
+    {
+      "name": "recurring_task_rules_update",
+      "def_md5": "dbbd920823a8e4b66288fa7133a21143",
+      "table_name": "recurring_task_rules"
+    },
+    {
+      "name": "report_definitions_delete",
+      "def_md5": "d3e6a9cde8ed65484502cc6d7ab76f3e",
+      "table_name": "report_definitions"
+    },
+    {
+      "name": "report_definitions_insert",
+      "def_md5": "942f1d3889805663da9c30678210dcb0",
+      "table_name": "report_definitions"
+    },
+    {
+      "name": "report_definitions_select",
+      "def_md5": "53549bc6889610af9112022788b4696e",
+      "table_name": "report_definitions"
+    },
+    {
+      "name": "report_definitions_update",
+      "def_md5": "dbbd920823a8e4b66288fa7133a21143",
+      "table_name": "report_definitions"
+    },
+    {
+      "name": "Users can create services with permission",
+      "def_md5": "8c70376d1a3839a9af841b9eea22c0fb",
+      "table_name": "services"
+    },
+    {
+      "name": "Users can delete services with permission",
+      "def_md5": "ec138c5e4e7dc5ff4665b7f7bdab3306",
+      "table_name": "services"
+    },
+    {
+      "name": "Users can update services with permission",
+      "def_md5": "92feccf3ee7b024a37150dc4bec7904c",
+      "table_name": "services"
+    },
+    {
+      "name": "Users can view services in their workspace",
+      "def_md5": "19bdcc7909c7d077ff151374830c8702",
+      "table_name": "services"
+    },
+    {
+      "name": "slot_templates_access",
+      "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
+      "table_name": "slot_templates"
+    },
+    {
+      "name": "Users can delete source_documents in their workspace",
+      "def_md5": "63f40d2b1529a481efbab079f62904c0",
+      "table_name": "source_documents"
+    },
+    {
+      "name": "Users can insert source_documents in their workspace",
+      "def_md5": "1e802b57591b0ed34d3d2061b0321c74",
+      "table_name": "source_documents"
+    },
+    {
+      "name": "Users can update source_documents in their workspace",
+      "def_md5": "91f2fa60f8092aebeffcf4af29072477",
+      "table_name": "source_documents"
+    },
+    {
+      "name": "Users can view source_documents in their workspace",
+      "def_md5": "326b47e7a3d98c4469f97762d7f103e7",
+      "table_name": "source_documents"
+    },
+    {
+      "name": "statuses_delete",
+      "def_md5": "45304b9f6f39c12c550d0bf5df805962",
+      "table_name": "statuses"
+    },
+    {
+      "name": "statuses_insert",
+      "def_md5": "88d802773cfec65a66d520c1f01a425c",
+      "table_name": "statuses"
+    },
+    {
+      "name": "statuses_select",
+      "def_md5": "fd4872ccb0ba2770a8bf1c102875fd12",
+      "table_name": "statuses"
+    },
+    {
+      "name": "statuses_update",
+      "def_md5": "0279f834e296a3326a52d7db261fabd5",
+      "table_name": "statuses"
+    },
+    {
+      "name": "task_assignees_delete",
+      "def_md5": "c3f0aae48d22b40bb13224538fdc6464",
+      "table_name": "task_assignees"
+    },
+    {
+      "name": "task_assignees_insert",
+      "def_md5": "0d1567203a5e33f84839555197f6c124",
+      "table_name": "task_assignees"
+    },
+    {
+      "name": "task_assignees_select",
+      "def_md5": "64fc3cbbb7659fedb289d4e8de4968da",
+      "table_name": "task_assignees"
+    },
+    {
+      "name": "task_event_map_select_own",
+      "def_md5": "7712f5d31490cdd5ce631caa1462852b",
+      "table_name": "task_google_event_map"
+    },
+    {
+      "name": "task_panel_tabs_delete_own",
+      "def_md5": "d295adc1c463e81702a47f0543eb10d7",
+      "table_name": "task_panel_tabs"
+    },
+    {
+      "name": "task_panel_tabs_insert_own",
+      "def_md5": "6eeacfb13b3d90aab2b35a7c6fb5788b",
+      "table_name": "task_panel_tabs"
+    },
+    {
+      "name": "task_panel_tabs_select_own",
+      "def_md5": "46d622a32d90e62ea513e3d44699b0f1",
+      "table_name": "task_panel_tabs"
+    },
+    {
+      "name": "task_panel_tabs_update_own",
+      "def_md5": "86e1b8e8e1fc041fb75ff8f3b351bbad",
+      "table_name": "task_panel_tabs"
+    },
+    {
+      "name": "tasks_delete",
+      "def_md5": "0f207388e132d9578ba70026e373a7be",
+      "table_name": "tasks"
+    },
+    {
+      "name": "tasks_insert",
+      "def_md5": "f448a0fe3189cae6ae6c9b6e05680cc3",
+      "table_name": "tasks"
+    },
+    {
+      "name": "tasks_select",
+      "def_md5": "839352eab40a4e19c7403f5e8dba5b66",
+      "table_name": "tasks"
+    },
+    {
+      "name": "tasks_update",
+      "def_md5": "380b02a394d30bdc2afe0091bece1fee",
+      "table_name": "tasks"
+    },
+    {
+      "name": "telegram_business_connections_select",
+      "def_md5": "b36279d5f84fcae04f54147c0105ae56",
+      "table_name": "telegram_business_connections"
+    },
+    {
+      "name": "Users insert own business link tokens",
+      "def_md5": "0b8ab90f25a926cabff5355b524ec484",
+      "table_name": "telegram_business_link_tokens"
+    },
+    {
+      "name": "Users see own business link tokens",
+      "def_md5": "bf9aaf2886de3c93fce26cba8e1e792c",
+      "table_name": "telegram_business_link_tokens"
+    },
+    {
+      "name": "telegram_link_tokens_insert",
+      "def_md5": "6aa8cc05048e1d09239f38ec6683fbc9",
+      "table_name": "telegram_link_tokens"
+    },
+    {
+      "name": "telegram_link_tokens_select",
+      "def_md5": "6b4efa972b6337439fd952f3ef4b5b17",
+      "table_name": "telegram_link_tokens"
+    },
+    {
+      "name": "telegram_mtproto_sessions_select",
+      "def_md5": "65cf2a0ca79fd23afd6775f5ac5737b6",
+      "table_name": "telegram_mtproto_sessions"
+    },
+    {
+      "name": "telegram_user_avatars_select",
+      "def_md5": "7d20977507b7d6a8182e91e985fadf80",
+      "table_name": "telegram_user_avatars"
+    },
+    {
+      "name": "telegram_user_avatars_service",
+      "def_md5": "c4808b5cfc533622a82cb6a83d7b52fb",
+      "table_name": "telegram_user_avatars"
+    },
+    {
+      "name": "thread_template_assignees_delete",
+      "def_md5": "84f24e3179245637782f2b3eb2050858",
+      "table_name": "thread_template_assignees"
+    },
+    {
+      "name": "thread_template_assignees_insert",
+      "def_md5": "53bab739f50df8ce975b19c8ef21b43e",
+      "table_name": "thread_template_assignees"
+    },
+    {
+      "name": "thread_template_assignees_select",
+      "def_md5": "3bced96dea7a5bbeb657a252c802ed85",
+      "table_name": "thread_template_assignees"
+    },
+    {
+      "name": "thread_template_assignees_update",
+      "def_md5": "7d84ba053e826cc9fa933d21f62c17e2",
+      "table_name": "thread_template_assignees"
+    },
+    {
+      "name": "thread_templates_delete",
+      "def_md5": "1df68fd71edccc8d5a54194e523d8731",
+      "table_name": "thread_templates"
+    },
+    {
+      "name": "thread_templates_insert",
+      "def_md5": "0226d7e6acef438200abe9809543c786",
+      "table_name": "thread_templates"
+    },
+    {
+      "name": "thread_templates_select",
+      "def_md5": "326b47e7a3d98c4469f97762d7f103e7",
+      "table_name": "thread_templates"
+    },
+    {
+      "name": "thread_templates_update",
+      "def_md5": "454b611818368e5efa0325f4a742f6c6",
+      "table_name": "thread_templates"
+    },
+    {
+      "name": "user_active_preset_all",
+      "def_md5": "e6f9962378729e5f82dfb652bf5b7ac0",
+      "table_name": "user_active_preset"
+    },
+    {
+      "name": "mirror_settings_delete_own",
+      "def_md5": "121f3e82f7b5d1c230d5f5db37b99aba",
+      "table_name": "user_calendar_mirror_settings"
+    },
+    {
+      "name": "mirror_settings_insert_own",
+      "def_md5": "c30833b77fb30adabc6068f6aac8a5a7",
+      "table_name": "user_calendar_mirror_settings"
+    },
+    {
+      "name": "mirror_settings_select_own",
+      "def_md5": "7712f5d31490cdd5ce631caa1462852b",
+      "table_name": "user_calendar_mirror_settings"
+    },
+    {
+      "name": "mirror_settings_update_own",
+      "def_md5": "84e9bc2281404ffeff7455673edc5a56",
+      "table_name": "user_calendar_mirror_settings"
+    },
+    {
+      "name": "user_favorites_delete",
+      "def_md5": "121f3e82f7b5d1c230d5f5db37b99aba",
+      "table_name": "user_favorites"
+    },
+    {
+      "name": "user_favorites_insert",
+      "def_md5": "c30833b77fb30adabc6068f6aac8a5a7",
+      "table_name": "user_favorites"
+    },
+    {
+      "name": "user_favorites_select",
+      "def_md5": "7712f5d31490cdd5ce631caa1462852b",
+      "table_name": "user_favorites"
+    },
+    {
+      "name": "user_favorites_update",
+      "def_md5": "3a415bf09aed3187274e4d60374dedfd",
+      "table_name": "user_favorites"
+    },
+    {
+      "name": "Users can insert own settings",
+      "def_md5": "4ff55b53a4ce4f70f7b3ff19b719cf84",
+      "table_name": "user_settings"
+    },
+    {
+      "name": "Users can update own settings",
+      "def_md5": "eaca55b576d7df90e4496b939a4cf0d8",
+      "table_name": "user_settings"
+    },
+    {
+      "name": "Users can view own settings",
+      "def_md5": "56934e10d85486a3e181243cf350806f",
+      "table_name": "user_settings"
+    },
+    {
+      "name": "user_telegram_links_select",
+      "def_md5": "32ef420e013fa1f495378e88f41006df",
+      "table_name": "user_telegram_links"
+    },
+    {
+      "name": "Workspace managers update wazzup channels",
+      "def_md5": "4a3ca714cf0d0a35415154039b90f489",
+      "table_name": "wazzup_channels"
+    },
+    {
+      "name": "wazzup_channels_select",
+      "def_md5": "7036c487e709eda7a694a04655d3aaf7",
+      "table_name": "wazzup_channels"
+    },
+    {
+      "name": "Workspace managers manage wazzup settings",
+      "def_md5": "585443461482d2e91713a100a65cf361",
+      "table_name": "wazzup_settings"
+    },
+    {
+      "name": "Workspace managers see wazzup settings",
+      "def_md5": "f5986b5280b1e5172ed995b21a6ed327",
+      "table_name": "wazzup_settings"
+    },
+    {
+      "name": "workspace_billing_select",
+      "def_md5": "b71da43bda51a50e75297c4441b9063a",
+      "table_name": "workspace_billing"
+    },
+    {
+      "name": "workspace_counters_select_participant",
+      "def_md5": "160331e62a6471410e4e8bbc1a451f5e",
+      "table_name": "workspace_counters"
+    },
+    {
+      "name": "workspace_digest_settings_delete",
+      "def_md5": "54ff0dda712d84a5eac3d1b39801dfa8",
+      "table_name": "workspace_digest_settings"
+    },
+    {
+      "name": "workspace_digest_settings_insert",
+      "def_md5": "cc957d24824ef15256f67f8fec258b33",
+      "table_name": "workspace_digest_settings"
+    },
+    {
+      "name": "workspace_digest_settings_select",
+      "def_md5": "e70d90b17d418b3a0d44488dbca17505",
+      "table_name": "workspace_digest_settings"
+    },
+    {
+      "name": "workspace_digest_settings_update",
+      "def_md5": "c1e48f8f812ac8db11ae7895dfee47de",
+      "table_name": "workspace_digest_settings"
+    },
+    {
+      "name": "workspace_email_settings_modify",
+      "def_md5": "2f7b5f497c2223257900b9158389de56",
+      "table_name": "workspace_email_settings"
+    },
+    {
+      "name": "workspace_email_settings_select",
+      "def_md5": "160331e62a6471410e4e8bbc1a451f5e",
+      "table_name": "workspace_email_settings"
+    },
+    {
+      "name": "workspace_features_insert",
+      "def_md5": "ebb68a882868375840d192aed2823b89",
+      "table_name": "workspace_features"
+    },
+    {
+      "name": "workspace_features_select",
+      "def_md5": "19bdcc7909c7d077ff151374830c8702",
+      "table_name": "workspace_features"
+    },
+    {
+      "name": "workspace_features_update",
+      "def_md5": "3a5c399441a74b3e670615139bdaaa94",
+      "table_name": "workspace_features"
+    },
+    {
+      "name": "workspace_integrations_delete",
+      "def_md5": "018dcae9309a23506b19a942cea5642a",
+      "table_name": "workspace_integrations"
+    },
+    {
+      "name": "workspace_integrations_insert",
+      "def_md5": "323e7cd9994ae89ec496b68142f4f513",
+      "table_name": "workspace_integrations"
+    },
+    {
+      "name": "workspace_integrations_select",
+      "def_md5": "42da03ed5414ff3e38a3b512135e6f38",
+      "table_name": "workspace_integrations"
+    },
+    {
+      "name": "workspace_integrations_update",
+      "def_md5": "d67e0e89636d5a4f20f4e5d0a8b5a86e",
+      "table_name": "workspace_integrations"
+    },
+    {
+      "name": "workspace_limits_manage",
+      "def_md5": "3b42e9da36ac571aa2e06cb010f95477",
+      "table_name": "workspace_limits"
+    },
+    {
+      "name": "workspace_limits_select",
+      "def_md5": "b71da43bda51a50e75297c4441b9063a",
+      "table_name": "workspace_limits"
+    },
+    {
+      "name": "workspace_roles_delete",
+      "def_md5": "59cb96daecd7f4d6a2cbb21f1d4fb370",
+      "table_name": "workspace_roles"
+    },
+    {
+      "name": "workspace_roles_insert",
+      "def_md5": "08f2684250521d760b91de20971a35a8",
+      "table_name": "workspace_roles"
+    },
+    {
+      "name": "workspace_roles_select",
+      "def_md5": "19bdcc7909c7d077ff151374830c8702",
+      "table_name": "workspace_roles"
+    },
+    {
+      "name": "workspace_roles_update",
+      "def_md5": "883c24c14a626c769f8ca034660b064d",
+      "table_name": "workspace_roles"
+    },
+    {
+      "name": "ws_section_items_select",
+      "def_md5": "5ae4eef1ccec7b28d53ee99e965b582d",
+      "table_name": "workspace_section_items"
+    },
+    {
+      "name": "ws_section_items_write",
+      "def_md5": "1b83d54ce8420e04ca8dc500babab852",
+      "table_name": "workspace_section_items"
+    },
+    {
+      "name": "ws_sections_select",
+      "def_md5": "0aecb5b4af15aa18ed8cf2a40df8197e",
+      "table_name": "workspace_sections"
+    },
+    {
+      "name": "ws_sections_write",
+      "def_md5": "b9eb557d08a95decf8f3347c60868af0",
+      "table_name": "workspace_sections"
+    },
+    {
+      "name": "workspace_sidebar_settings_delete",
+      "def_md5": "54ff0dda712d84a5eac3d1b39801dfa8",
+      "table_name": "workspace_sidebar_settings"
+    },
+    {
+      "name": "workspace_sidebar_settings_insert",
+      "def_md5": "cc957d24824ef15256f67f8fec258b33",
+      "table_name": "workspace_sidebar_settings"
+    },
+    {
+      "name": "workspace_sidebar_settings_select",
+      "def_md5": "b427028f63c5d77011f3d9096b63e393",
+      "table_name": "workspace_sidebar_settings"
+    },
+    {
+      "name": "workspace_sidebar_settings_update",
+      "def_md5": "c1e48f8f812ac8db11ae7895dfee47de",
+      "table_name": "workspace_sidebar_settings"
+    },
+    {
+      "name": "Authenticated users can create workspaces",
+      "def_md5": "e9f6e7380d5e3a8832f990a60e4e46b4",
+      "table_name": "workspaces"
+    },
+    {
+      "name": "Authenticated users can update workspaces",
+      "def_md5": "09843cf8e3db14d655848ba392041c65",
+      "table_name": "workspaces"
+    },
+    {
+      "name": "Authenticated users can view workspaces",
+      "def_md5": "a56527180561248474cf6e5853e0a2eb",
+      "table_name": "workspaces"
+    }
+  ],
+  "triggers": [
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "4dba65db46113fdc24ca3df1ace8226e",
+      "table_name": "audit_logs"
+    },
+    {
+      "name": "trg_inbox_meta_audit",
+      "def_md5": "deafe45a83c2d9863d0aab1dae1ee346",
+      "table_name": "audit_logs"
+    },
+    {
+      "name": "trg_unread_audit",
+      "def_md5": "ecbffe13350213fcd28f99aa627f36b7",
+      "table_name": "audit_logs"
+    },
+    {
+      "name": "trg_update_inbox_sort_at_from_audit",
+      "def_md5": "e589a69fd6ab5e9a1c6a3a94e53777a7",
+      "table_name": "audit_logs"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "9a0184c7b2253f720226d8013ba4a872",
+      "table_name": "board_lists"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "68e2dddef300ba22379297ac6868339e",
+      "table_name": "board_members"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "3927738727c2a6616871be05ee46f1e2",
+      "table_name": "boards"
+    },
+    {
+      "name": "trg_set_board_short_id",
+      "def_md5": "eac3760055583ddad2d398cb26279783",
+      "table_name": "boards"
+    },
+    {
+      "name": "trg_touch_calendars_updated_at",
+      "def_md5": "abdf973d1e9e5ab67dde287d168a50e4",
+      "table_name": "calendars"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "2cd464f8dd5dd7beac9a587930f800d2",
+      "table_name": "comments"
+    },
+    {
+      "name": "trg_comment_project_activity",
+      "def_md5": "bce1836c28f56e21b870b947b27d3478",
+      "table_name": "comments"
+    },
+    {
+      "name": "update_comments_updated_at",
+      "def_md5": "03b0d9a5371abfb37b20ec249381944d",
+      "table_name": "comments"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "c5d443dfe369212494b5cec699545b1f",
+      "table_name": "conversation_context"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "bda01e40ea6b947b35d41de8bc96c52e",
+      "table_name": "conversations"
+    },
+    {
+      "name": "trg_conversation_project_activity",
+      "def_md5": "a306b7a85ad15c8c2b1e7a70a54a91a2",
+      "table_name": "conversations"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "0aaa3571a162d6c5e15bf7e78f12344d",
+      "table_name": "custom_directories"
+    },
+    {
+      "name": "update_custom_directories_updated_at",
+      "def_md5": "d98d0765a6db13fd33ffade7ac307ea6",
+      "table_name": "custom_directories"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "f8ebe9f63d033a78a248662e31a5578a",
+      "table_name": "custom_directory_entries"
+    },
+    {
+      "name": "update_custom_directory_entries_updated_at",
+      "def_md5": "0d36f0db36b4a4897add3fbd7fa63895",
+      "table_name": "custom_directory_entries"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "75606b63f226a556eb9bd812aac9270d",
+      "table_name": "custom_directory_fields"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "5228f05b535adf2da1f4f7e4bd639bd6",
+      "table_name": "custom_directory_values"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "b3f9e0a366f79123e4b6271d166c685f",
+      "table_name": "docbuilder_allowed_users"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "11306e41b34d41a04ed22676ce509b2d",
+      "table_name": "docbuilder_app_settings"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "705be9e46067c3b1a42ca0ccd4bc7bfe",
+      "table_name": "docbuilder_block_context"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "2a0b54cfed9b130b61eb8f29e488db3c",
+      "table_name": "docbuilder_block_versions"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "a8487ae3ee5bde6056d0c300ecd95321",
+      "table_name": "docbuilder_blocks"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "f1f6813a8b0c9f7a2af41d38884d82a2",
+      "table_name": "docbuilder_project_access"
+    },
+    {
+      "name": "docbuilder_project_blocks_updated_at",
+      "def_md5": "89cdf7cf97213fe24666355821894f39",
+      "table_name": "docbuilder_project_blocks"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "16ddd36ca55d2be47dc572f8b480d1c0",
+      "table_name": "docbuilder_project_blocks"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "86a068f2153bf20cc2be535249a6dd5a",
+      "table_name": "docbuilder_project_documents"
+    },
+    {
+      "name": "docbuilder_grant_creator_access_trg",
+      "def_md5": "37dba865d695fd2dba4b72b75d61d5ef",
+      "table_name": "docbuilder_projects"
+    },
+    {
+      "name": "docbuilder_projects_updated_at",
+      "def_md5": "269f6efe30135e6a0eb8c14859ed74d7",
+      "table_name": "docbuilder_projects"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "e6bce0e39fa0b33a44a0c76c6a7486df",
+      "table_name": "docbuilder_projects"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "522168e7da01d2632b35e09f680c66b6",
+      "table_name": "docbuilder_sections"
+    },
+    {
+      "name": "docbuilder_styles_updated_at",
+      "def_md5": "35951b42712b7ba2b0656232cd5feb63",
+      "table_name": "docbuilder_styles"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "29c3690330c71855837fb8728104556f",
+      "table_name": "docbuilder_styles"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "0f060922d2344e6469c6c6f4faf23c63",
+      "table_name": "docbuilder_subsections"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "89e008b39781b2581eb7be5184b319ad",
+      "table_name": "docbuilder_template_access"
+    },
+    {
+      "name": "docbuilder_templates_updated_at",
+      "def_md5": "622ee45e13badb3cd7641082cfdf8865",
+      "table_name": "docbuilder_templates"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "72224490051103c4d2c068519fddcc2c",
+      "table_name": "docbuilder_templates"
+    },
+    {
+      "name": "docbuilder_user_settings_updated_at",
+      "def_md5": "fff74c7119871a18dc5554d11f5f2f6f",
+      "table_name": "docbuilder_user_settings"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "7b49a7cc47958d33f550ae7a58b8f5bb",
+      "table_name": "docbuilder_user_settings"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "baefe9ad789bfa83652f7f5d47b24a67",
+      "table_name": "document_files"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "654da3a940fb013196c31ebd6aa6c586",
+      "table_name": "document_generations"
+    },
+    {
+      "name": "update_document_generations_updated_at",
+      "def_md5": "99894fc7f760cb4c0ec14991eb3aa5c7",
+      "table_name": "document_generations"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "194cb11763c8df709ef5b5ce2fd5c202",
+      "table_name": "document_kit_template_folder_slots"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "70d5c43ba74fa6cf63954a2addcaee3f",
+      "table_name": "document_kit_template_folders"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "57028c29a109d4f7ca648b58537fec2b",
+      "table_name": "document_kit_templates"
+    },
+    {
+      "name": "update_document_kit_templates_updated_at",
+      "def_md5": "dcdcb6c7dd0049fa11a4d32c5dd9f5be",
+      "table_name": "document_kit_templates"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "be3de7abb0732bcf21b9c8aef28f3131",
+      "table_name": "document_kits"
+    },
+    {
+      "name": "trg_audit_document_kit_delete",
+      "def_md5": "4055ec6b385c36a6be09044e8b24dcec",
+      "table_name": "document_kits"
+    },
+    {
+      "name": "trg_audit_document_kit_insert",
+      "def_md5": "1178de7ad43bcdab61e45a3fb6501a57",
+      "table_name": "document_kits"
+    },
+    {
+      "name": "update_document_kits_updated_at",
+      "def_md5": "dde06735e006fec66c8b494c298da40e",
+      "table_name": "document_kits"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "6d6fdd139b8eb2322cab321380da6389",
+      "table_name": "document_templates"
+    },
+    {
+      "name": "update_document_templates_updated_at",
+      "def_md5": "7ab917f2a4727550edc439fef215673d",
+      "table_name": "document_templates"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "8c898464c6bc4e1a8557db192b3a1d36",
+      "table_name": "documents"
+    },
+    {
+      "name": "trg_audit_document_delete",
+      "def_md5": "cbec273c71a3177eb8ffbbf762b8c967",
+      "table_name": "documents"
+    },
+    {
+      "name": "trg_audit_document_insert",
+      "def_md5": "f3db3b374a4c9ff4db56a754aae7786a",
+      "table_name": "documents"
+    },
+    {
+      "name": "trg_audit_document_update",
+      "def_md5": "3ba2a5820cd40821f4d58cc7bc98834b",
+      "table_name": "documents"
+    },
+    {
+      "name": "trg_document_project_activity",
+      "def_md5": "528f167abb4ca3ef7ad8b446e478d9c0",
+      "table_name": "documents"
+    },
+    {
+      "name": "update_documents_updated_at",
+      "def_md5": "8c3ee15d937d8593f8a1448b4ebd3659",
+      "table_name": "documents"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "4c4e648cff857c7c6e260d09a6c9b5c6",
+      "table_name": "email_accounts"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "e4a99ffc75d817221dfcdff0bb6e12c4",
+      "table_name": "export_progress"
+    },
+    {
+      "name": "update_export_progress_updated_at_trigger",
+      "def_md5": "40e844f13259f3d07b7f5f2e1caf7d26",
+      "table_name": "export_progress"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "83976f8c1a3e8083f112f8855e70e40a",
+      "table_name": "external_outgoing_dedup"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "3442a1b78052e66285403d49afcc63c4",
+      "table_name": "field_definition_composite_items"
+    },
+    {
+      "name": "update_field_definition_composite_items_updated_at",
+      "def_md5": "b68d4e18342ae45ee73366e6d75154f4",
+      "table_name": "field_definition_composite_items"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "425b8760818cc5c43488d05273e20f69",
+      "table_name": "field_definition_select_options"
+    },
+    {
+      "name": "update_field_definition_select_options_updated_at",
+      "def_md5": "b616a3316779d12460e4a0d8dc256625",
+      "table_name": "field_definition_select_options"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "5fbfd4b4cab255eecfff8b637567e447",
+      "table_name": "field_definitions"
+    },
+    {
+      "name": "update_field_definitions_updated_at",
+      "def_md5": "8f76e49a9f072d991c1bb8aea2b57603",
+      "table_name": "field_definitions"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "4427dd40974849233fee13fdf88c381e",
+      "table_name": "files"
+    },
+    {
+      "name": "finance_services_set_updated_at",
+      "def_md5": "622d34e04296f823383c460f02acea09",
+      "table_name": "finance_services"
+    },
+    {
+      "name": "finance_tax_rates_set_updated_at",
+      "def_md5": "c86db7e04e0a21457348320cc02379a4",
+      "table_name": "finance_tax_rates"
+    },
+    {
+      "name": "finance_tx_categories_set_updated_at",
+      "def_md5": "7a2ce767f68dee0e9320739dc23491ea",
+      "table_name": "finance_transaction_categories"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "4770727ad4fbb46fb00c844080462dc5",
+      "table_name": "folder_slots"
+    },
+    {
+      "name": "update_folder_slots_updated_at",
+      "def_md5": "bc5e4d9dbbe45c22352db8e6f1e4a32f",
+      "table_name": "folder_slots"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "f1cf9665f8553483cdc210d20e2a3a59",
+      "table_name": "folder_template_slots"
+    },
+    {
+      "name": "update_folder_template_slots_updated_at",
+      "def_md5": "77155c41685337645471579af33110f1",
+      "table_name": "folder_template_slots"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "27eb506f6ea08c57509b4dcefedae5eb",
+      "table_name": "folder_templates"
+    },
+    {
+      "name": "update_folder_templates_updated_at",
+      "def_md5": "f1621bc87f0db0bb838c12b60a514226",
+      "table_name": "folder_templates"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "aca8c745ce70aa4c030da760d73e9f6c",
+      "table_name": "folders"
+    },
+    {
+      "name": "trg_audit_folder_delete",
+      "def_md5": "6c9d6b7a0badaaf3f8359012ff5b2431",
+      "table_name": "folders"
+    },
+    {
+      "name": "trg_audit_folder_insert",
+      "def_md5": "1eb749b66739b08583e427169990bf8f",
+      "table_name": "folders"
+    },
+    {
+      "name": "update_folders_updated_at",
+      "def_md5": "40099630069ddce522f480992c19ecd9",
+      "table_name": "folders"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "c024b414f9c08d225abe25fa567923dc",
+      "table_name": "form_kit_field_values"
+    },
+    {
+      "name": "trg_audit_form_field_change",
+      "def_md5": "fb59739047460375b7d5abc2f68593bb",
+      "table_name": "form_kit_field_values"
+    },
+    {
+      "name": "trg_form_values_project_activity",
+      "def_md5": "dcfbab7c7600f0f9bd446adac17864a1",
+      "table_name": "form_kit_field_values"
+    },
+    {
+      "name": "trigger_update_form_kit_field_values_updated_at",
+      "def_md5": "1ec1d8363952e42d1ce3d70e655ecc78",
+      "table_name": "form_kit_field_values"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "8361bd2944a73ff02fd6d85240fbd570",
+      "table_name": "form_kit_fields"
+    },
+    {
+      "name": "update_form_kit_fields_updated_at",
+      "def_md5": "372efb51fba86fafb7074aa1d30fafa3",
+      "table_name": "form_kit_fields"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "4b83b88fbfb1a3068efef6d8d8086811",
+      "table_name": "form_kit_sections"
+    },
+    {
+      "name": "update_form_kit_sections_updated_at",
+      "def_md5": "b6de0ea33cc86648775ca77a9575dbb9",
+      "table_name": "form_kit_sections"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "b40d096b5d3b94fa0664679815784fc1",
+      "table_name": "form_kits"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "78f89d80654a028d7dc434718565e52c",
+      "table_name": "form_template_fields"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "9d3accb527a5b3a106fb3a9f8776682e",
+      "table_name": "form_template_sections"
+    },
+    {
+      "name": "update_form_template_sections_updated_at",
+      "def_md5": "cf0957bd99cce6b0db140ca975111a86",
+      "table_name": "form_template_sections"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "8e65cad31ae35b55db9e416a376fdc5b",
+      "table_name": "form_templates"
+    },
+    {
+      "name": "update_form_templates_updated_at",
+      "def_md5": "eb6ddb0b5aab033299f7df3b1e63fe89",
+      "table_name": "form_templates"
+    },
+    {
+      "name": "trg_touch_google_calendar_tokens",
+      "def_md5": "e1f371915bbb1880cdde66f6bb57ead4",
+      "table_name": "google_calendar_tokens"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "047ca9d264e2671b7d9df87ffca1d2d5",
+      "table_name": "google_drive_tokens"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "4add37b84fb4fef3d926de0d065ebc5f",
+      "table_name": "history_read_status"
+    },
+    {
+      "name": "trg_item_lists_touch_updated_at",
+      "def_md5": "35af003ac5b4cf000c975fd1d14a4a8c",
+      "table_name": "item_lists"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "a1c7b691f862f24421abd48719e29d0a",
+      "table_name": "knowledge_article_groups"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "bcdde62cbf9565c96a2bbadba36bf27b",
+      "table_name": "knowledge_article_tags"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "5bffa5b040ff784f58d403dab8d2df58",
+      "table_name": "knowledge_article_templates"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "62b2990f7fec0e2aedb66e9c958a5a50",
+      "table_name": "knowledge_article_versions"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "9fc4a45fc606ffacb9e3a9197a57a560",
+      "table_name": "knowledge_articles"
+    },
+    {
+      "name": "trg_set_knowledge_article_created_by",
+      "def_md5": "29903b7d022f3edb8f1b98dd0939834b",
+      "table_name": "knowledge_articles"
+    },
+    {
+      "name": "trg_sync_is_published",
+      "def_md5": "b09b99f68ec109bee6679fc49c11971f",
+      "table_name": "knowledge_articles"
+    },
+    {
+      "name": "update_knowledge_articles_updated_at",
+      "def_md5": "c9a68f2eba795393e0d139e60e911c47",
+      "table_name": "knowledge_articles"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "8e9e3d69b785917d98ac7f6aa8d81b0b",
+      "table_name": "knowledge_conversations"
+    },
+    {
+      "name": "update_knowledge_conversations_updated_at",
+      "def_md5": "77f5e9f9e6787957301c244c55040de0",
+      "table_name": "knowledge_conversations"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "a524861fb5ac7b1bdaf0b4439a179371",
+      "table_name": "knowledge_embeddings"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "d725d9915bed4dcf8b049dac806c4650",
+      "table_name": "knowledge_group_templates"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "7251e459ba5f0c896389eed246b51112",
+      "table_name": "knowledge_groups"
+    },
+    {
+      "name": "update_knowledge_groups_updated_at",
+      "def_md5": "11b7d42b8421fd010b7ea5eab93bc7a9",
+      "table_name": "knowledge_groups"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "a3ee4f302fd7669d5d5db9c6d1895bc2",
+      "table_name": "knowledge_messages"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "c29e515f9e95671b726e47c53dc31763",
+      "table_name": "knowledge_qa"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "8904e991f38e01a2e7678b8586479924",
+      "table_name": "knowledge_qa_groups"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "ffc3ff26038bfa338cf1a1f8090b2e88",
+      "table_name": "knowledge_qa_tags"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "d208ef66b17e1d337eec7bf68181bb9c",
+      "table_name": "knowledge_tags"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "944e81c85108099ce24ac154677b6e6c",
+      "table_name": "message_attachments"
+    },
+    {
+      "name": "trg_inbox_meta_attachments",
+      "def_md5": "25a085c6f0f143e378308c2f1931693e",
+      "table_name": "message_attachments"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "8d46966a4923e068c6964d8ad113a279",
+      "table_name": "message_context"
+    },
+    {
+      "name": "mention_recompute",
+      "def_md5": "4fe58c39893e7e50cfa772945fcd251d",
+      "table_name": "message_mentions"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "221d2f665a5997b0b1a22d09233c5562",
+      "table_name": "message_reactions"
+    },
+    {
+      "name": "trg_inbox_broadcast_reactions",
+      "def_md5": "f68b0277eb0e25da979739ec2cc159ad",
+      "table_name": "message_reactions"
+    },
+    {
+      "name": "trg_inbox_meta_reactions",
+      "def_md5": "b7460716ed578cb1c5784ef63119f2b1",
+      "table_name": "message_reactions"
+    },
+    {
+      "name": "trg_unread_reactions",
+      "def_md5": "d2f07f18332550a3b81e7bde299d498b",
+      "table_name": "message_reactions"
+    },
+    {
+      "name": "trg_update_message_on_reaction_change",
+      "def_md5": "2d82011aa8639b1d0ea0984f3d9380f4",
+      "table_name": "message_reactions"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "58d492ed3ec05d77981307806fcb7150",
+      "table_name": "message_read_status"
+    },
+    {
+      "name": "trg_unread_read_status",
+      "def_md5": "2afec8a1e0b50b7a7dc93121890bd976",
+      "table_name": "message_read_status"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "4bec03d27e69d1eddfffb8b1b44810b5",
+      "table_name": "messages"
+    },
+    {
+      "name": "trigger_update_conversation_updated_at",
+      "def_md5": "5fab623470084a8370882282af1794e6",
+      "table_name": "messages"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "526cf8d7f00b31b7eeb8c6d94e7d60de",
+      "table_name": "oauth_states"
+    },
+    {
+      "name": "trg_participant_channels_touch_updated_at",
+      "def_md5": "d2af5561fdc113971cc5c9d7963253e8",
+      "table_name": "participant_channels"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "0a31d4d7e4ffb7633dd2a201c8ce4d20",
+      "table_name": "participants"
+    },
+    {
+      "name": "set_default_external_contact_role_trigger",
+      "def_md5": "cb9fb38aaf0596e4a72dd9ff0ecf4720",
+      "table_name": "participants"
+    },
+    {
+      "name": "update_participants_updated_at",
+      "def_md5": "02fe7e95b1a44347ddefea5e5bb51740",
+      "table_name": "participants"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "0c59cdcef7202b548f985b9fc9518c08",
+      "table_name": "pinned_boards"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "81fa4bc0a18082dcde0dd33ad177bd6f",
+      "table_name": "pinned_projects"
+    },
+    {
+      "name": "project_context_items_touch_updated_at",
+      "def_md5": "48b05d8d0322550caee66fd04f0aa2c9",
+      "table_name": "project_context_items"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "d52fa7f5adb9c7e01e33f72415b8ca83",
+      "table_name": "project_digests"
+    },
+    {
+      "name": "pfv_set_updated_at",
+      "def_md5": "89e8fb51be3edac8652ecacfb2aa3df6",
+      "table_name": "project_field_values"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "4efc35d84f8586fb268b2abeba841a3c",
+      "table_name": "project_field_values"
+    },
+    {
+      "name": "auto_fill_thread_id_on_message_insert",
+      "def_md5": "ebc20c1ec2c7c168b60c93bcdb2822ee",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "email_thread_reopen_on_incoming_message_trigger",
+      "def_md5": "47707de37810d1d192817c006884f52e",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "bc4462d91a701d363e7409068a3a08ad",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "trg_auto_resolve_send_failures_on_sent",
+      "def_md5": "b9cde77fdc1fd69f25dadfdea4460309",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "trg_inbox_broadcast_messages",
+      "def_md5": "1a46e32e03a8047097380d1692211659",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "trg_inbox_meta_messages",
+      "def_md5": "1cc672a210faad9530e83ad0a22fce2d",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "trg_message_project_activity",
+      "def_md5": "5b053b4411b8fb7fadb383c6b1ecfeda",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "trg_notify_on_send_status_retry",
+      "def_md5": "a4d78b258709692ae6cf984bb261d2f4",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "trg_set_initial_send_status",
+      "def_md5": "d937b7f32533151ac646c71addcaf63c",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "trg_sync_telegram_message_ids",
+      "def_md5": "a7616a8eba2351dcb851f4630c8009cd",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "trg_unread_messages",
+      "def_md5": "bd89ab7de064695e229e7503379fdfe1",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "trg_update_inbox_sort_at_from_message",
+      "def_md5": "59f7214acbcecb923dc065fc0e602b24",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "trg_update_project_last_activity",
+      "def_md5": "8bfdb91899112c7cec48801579b6978e",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "trigger_telegram_on_new_message",
+      "def_md5": "befccae12051d74d6579dfbd211a12cb",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "update_project_messages_updated_at",
+      "def_md5": "248fd7aade6534f2701ccd3648ac27f9",
+      "table_name": "project_messages"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "1facca46ba3c8da7cb9561c9ca73e478",
+      "table_name": "project_money_movements"
+    },
+    {
+      "name": "update_project_money_movements_updated_at",
+      "def_md5": "b87800b527f0fdde49ef0724d9044f1f",
+      "table_name": "project_money_movements"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "76d13304e710a33a8b0dce91356237b2",
+      "table_name": "project_participants"
+    },
+    {
+      "name": "trg_audit_participant_change",
+      "def_md5": "c10986a04fda0a45fb2d6ca07c4ca781",
+      "table_name": "project_participants"
+    },
+    {
+      "name": "trg_seed_read_status_on_project_access",
+      "def_md5": "96120e3307cf11e8c20561fff3ddb14b",
+      "table_name": "project_participants"
+    },
+    {
+      "name": "trg_unread_access_participants",
+      "def_md5": "b9e0f52e6f9eb8c086ff6d550b210e94",
+      "table_name": "project_participants"
+    },
+    {
+      "name": "trg_project_plan_blocks_touch",
+      "def_md5": "d678a2eb4877ba6abc04a897737b9120",
+      "table_name": "project_plan_blocks"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "3a1434d90d1c3a624be62724093ce6ae",
+      "table_name": "project_roles"
+    },
+    {
+      "name": "update_project_roles_updated_at",
+      "def_md5": "f6bb1255f3772469525f3b616969b922",
+      "table_name": "project_roles"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "a5f719ff0f2a52ac2f14ab3ba276eaf3",
+      "table_name": "project_service_groups"
+    },
+    {
+      "name": "update_project_service_groups_updated_at",
+      "def_md5": "75fe851fcf2988ceeeb99a582b4addbc",
+      "table_name": "project_service_groups"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "bd292c92fd7570e4168c90c6be2afc46",
+      "table_name": "project_service_items"
+    },
+    {
+      "name": "trigger_calculate_service_group_total",
+      "def_md5": "4716a8c8fa1b20e38dd9046314427bae",
+      "table_name": "project_service_items"
+    },
+    {
+      "name": "trigger_calculate_service_item_total",
+      "def_md5": "8a0a6d1e9affccb1c8b3dcd279e435f9",
+      "table_name": "project_service_items"
+    },
+    {
+      "name": "update_project_service_items_updated_at",
+      "def_md5": "97cf5160ceb6bef3514f03f5fa82bd7c",
+      "table_name": "project_service_items"
+    },
+    {
+      "name": "project_services_set_updated_at",
+      "def_md5": "fedc104f77087779f2141bad89e5c120",
+      "table_name": "project_services"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "67c67c09744468212788452709c29b89",
+      "table_name": "project_telegram_chats"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "a5abc4fa5cf78ff0e67c9d10121d7ab3",
+      "table_name": "project_template_document_kits"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "f1ef53c496ff33a8f2add1e7075ae81d",
+      "table_name": "project_template_field_links"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "3ddbd5601a2bd0fcb730a64018bc5730",
+      "table_name": "project_template_forms"
+    },
+    {
+      "name": "trg_template_plan_blocks_touch",
+      "def_md5": "fbc0e8ae544c48a03d8b94633e31dec4",
+      "table_name": "project_template_plan_blocks"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "45f0693c3ef008e3409819482956a1bb",
+      "table_name": "project_template_statuses"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "3028d5ccdce275e5b270938a7df74eab",
+      "table_name": "project_templates"
+    },
+    {
+      "name": "set_project_templates_updated_at",
+      "def_md5": "4b6c194f6d0fb6938c22d5424d3b08e0",
+      "table_name": "project_templates"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "edb8a023c09371e46ee90edac4670147",
+      "table_name": "project_thread_assignees"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "5cfe196d0ef13fc8308734caa6d13efa",
+      "table_name": "project_thread_email_links"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "17ffb490c3222f6844c1a11a3ce73220",
+      "table_name": "project_thread_members"
+    },
+    {
+      "name": "trg_mirror_thread_members",
+      "def_md5": "4137a80cc2af9f7ea421fc6f30310a08",
+      "table_name": "project_thread_members"
+    },
+    {
+      "name": "trg_seed_read_status_on_thread_member",
+      "def_md5": "acfe7da5cc76f168a83751f384f74ee6",
+      "table_name": "project_thread_members"
+    },
+    {
+      "name": "trg_unread_access_members",
+      "def_md5": "ad152b96e911e3405fb5b556d1cc1cb7",
+      "table_name": "project_thread_members"
+    },
+    {
+      "name": "thread_unread_on_subscription",
+      "def_md5": "a1913c8d2d7778d2f908456ccb96e73e",
+      "table_name": "project_thread_subscriptions"
+    },
+    {
+      "name": "auto_set_thread_created_by",
+      "def_md5": "a1c46679858c72c1ccf34d6f9bb3dbbd",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "email_thread_assign_owner_after_insert_trigger",
+      "def_md5": "016709a857f936ff9107f8bedb57d346",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "email_thread_auto_setup_on_insert_trigger",
+      "def_md5": "33641f529da6041241fd48437a1986c5",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "mark_thread_read_on_final_status_trigger",
+      "def_md5": "524c3a07842a3dd77b3d50aef12ea25f",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "d162bda251b679f063a0789c903f36e0",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "set_project_threads_updated_at",
+      "def_md5": "678b337dfc35bdedbccbfa9b63f886bd",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "trg_auto_advance_project_status",
+      "def_md5": "cb22914ee74f18b4661ff06865c14388",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "trg_inbox_broadcast_threads",
+      "def_md5": "6268bb3a87bfe61fec09dd02286c2f11",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "trg_mirror_thread",
+      "def_md5": "639d9f7584aab29703a3d8c30e91f965",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "trg_set_project_thread_short_id",
+      "def_md5": "7bd8a4b5521786fcb5eb05d500cf03ef",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "trg_sync_thread_deadline_end_at",
+      "def_md5": "86dcb00424916dda561ef62fe559282d",
+      "table_name": "project_threads"
+    },
+    {
+      "name": "project_transactions_set_updated_at",
+      "def_md5": "e0a44e6f403745c102d38ef4d4d488e9",
+      "table_name": "project_transactions"
+    },
+    {
+      "name": "on_project_created_add_creator",
+      "def_md5": "3f65bea3bf5f83e17a3b62802685f464",
+      "table_name": "projects"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "7f81b9bd7bd01d373b44aa5fe3f0469a",
+      "table_name": "projects"
+    },
+    {
+      "name": "trg_audit_project_delete",
+      "def_md5": "edcb9cd8b75f32241cbbe82c0d35fecd",
+      "table_name": "projects"
+    },
+    {
+      "name": "trg_audit_project_update",
+      "def_md5": "68f3194fcfc63539fc5789578147768d",
+      "table_name": "projects"
+    },
+    {
+      "name": "trg_project_self_activity",
+      "def_md5": "cb472be8095b9d79d162de0c052e29e2",
+      "table_name": "projects"
+    },
+    {
+      "name": "trg_set_project_short_id",
+      "def_md5": "cd0efe559b8abf016fb3b742b4f62059",
+      "table_name": "projects"
+    },
+    {
+      "name": "trigger_update_projects_updated_at",
+      "def_md5": "1a13f4e78b420d858eadb4d1326d2f89",
+      "table_name": "projects"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "893baffbcb6c74381a0898b228e5d41b",
+      "table_name": "quick_replies"
+    },
+    {
+      "name": "update_quick_replies_updated_at",
+      "def_md5": "91c4580d6e45a889ff09e29102fe0c4b",
+      "table_name": "quick_replies"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "b1be67b7ec66b75553d9045ec0af80df",
+      "table_name": "quick_reply_group_templates"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "da7044385b7946634ee5e4569ecd0780",
+      "table_name": "quick_reply_groups"
+    },
+    {
+      "name": "update_quick_reply_folders_updated_at",
+      "def_md5": "a04424813dbfadf701dfd90771679df8",
+      "table_name": "quick_reply_groups"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "e895329f02c4ca74b463ab8ad1c3d1bf",
+      "table_name": "quick_reply_templates"
+    },
+    {
+      "name": "trg_recurring_set_next",
+      "def_md5": "805e5031d2faecb3f73d47dd3991001a",
+      "table_name": "recurring_task_rules"
+    },
+    {
+      "name": "trg_recurring_touch_updated",
+      "def_md5": "40af3c6cfa666d67b8f1f37743e8de90",
+      "table_name": "recurring_task_rules"
+    },
+    {
+      "name": "trg_report_definitions_touch_updated_at",
+      "def_md5": "fe0550d67ea23523056b91d0af7501c6",
+      "table_name": "report_definitions"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "d46aca70bf40434690bcb9944eaf80dd",
+      "table_name": "services"
+    },
+    {
+      "name": "update_services_updated_at",
+      "def_md5": "0e57c2c574e19bf409f01401388e18ca",
+      "table_name": "services"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "279582ee15ed9cab5e0f4280e5327986",
+      "table_name": "slot_templates"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "8974f948c41dfd86a75dd890ddd5be0a",
+      "table_name": "source_documents"
+    },
+    {
+      "name": "update_source_documents_updated_at",
+      "def_md5": "ff9d2213d22e65ee9fde49f303004ca4",
+      "table_name": "source_documents"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "c35621d1b57cae81af81658baca5a0df",
+      "table_name": "statuses"
+    },
+    {
+      "name": "update_statuses_updated_at",
+      "def_md5": "d79b6439c062ccc4b0e09769171bb97c",
+      "table_name": "statuses"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "ed5fe5a1cc2a77edc0385d334a94bb9e",
+      "table_name": "task_assignees"
+    },
+    {
+      "name": "trg_seed_read_status_on_assignee",
+      "def_md5": "701c1bb1c9dd8c841b5b33d3cca3bd6d",
+      "table_name": "task_assignees"
+    },
+    {
+      "name": "trg_unread_access_assignees",
+      "def_md5": "6faf37cedd1bb41226156c2743afc649",
+      "table_name": "task_assignees"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "3c916ed664cf6870332b5371bfe5cc5c",
+      "table_name": "task_panel_tabs"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "3f525793fef3251c351e6674dd0bde31",
+      "table_name": "tasks"
+    },
+    {
+      "name": "trg_audit_task_delete",
+      "def_md5": "122e747b6c1620477e73143424c5f42b",
+      "table_name": "tasks"
+    },
+    {
+      "name": "trg_audit_task_insert",
+      "def_md5": "8506ea6c6380a218a475a2ab34966681",
+      "table_name": "tasks"
+    },
+    {
+      "name": "trg_audit_task_update",
+      "def_md5": "597af60e11ddb2c6ee13b346fe697728",
+      "table_name": "tasks"
+    },
+    {
+      "name": "trg_task_project_activity",
+      "def_md5": "bc543b07cb37a346ccdb82b3a7ae8e0b",
+      "table_name": "tasks"
+    },
+    {
+      "name": "update_tasks_updated_at",
+      "def_md5": "869ee517c18497dff8e3286e64abd5c2",
+      "table_name": "tasks"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "7ccfc3ebbb08833275df2ba498b30310",
+      "table_name": "telegram_bot_sessions"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "395239e22c076b363f2cdd71f9e4c38c",
+      "table_name": "telegram_business_connections"
+    },
+    {
+      "name": "tbc_set_updated_at",
+      "def_md5": "4c6c669b51a9a98824a4f60af629a666",
+      "table_name": "telegram_business_connections"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "5d5ae473e33faffdbb6257032b702b1d",
+      "table_name": "telegram_business_link_tokens"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "1d1fd66fd9c66c492334cb41f4bc1737",
+      "table_name": "telegram_link_tokens"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "2aabb88893485d2c6f4a624c79ff5e85",
+      "table_name": "telegram_mtproto_auth_states"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "1894cbfe09eee950b6055f67c4b567f1",
+      "table_name": "telegram_mtproto_sessions"
+    },
+    {
+      "name": "tms_set_updated_at",
+      "def_md5": "debe6238291ef3366d42d5d25f38cdde",
+      "table_name": "telegram_mtproto_sessions"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "2c0280be3ecfb753447866c4ffe2517c",
+      "table_name": "thread_template_assignees"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "3ad148fb21a4700c7d113f7f7ebace6f",
+      "table_name": "thread_templates"
+    },
+    {
+      "name": "update_thread_templates_updated_at",
+      "def_md5": "853e0e4af323432a2acf436f4009c62a",
+      "table_name": "thread_templates"
+    },
+    {
+      "name": "trg_touch_mirror_settings",
+      "def_md5": "ae51918186cbc502fa81245cc1e4edf5",
+      "table_name": "user_calendar_mirror_settings"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "37a1e35b0833fb6e8ec12468e1334df6",
+      "table_name": "user_settings"
+    },
+    {
+      "name": "update_user_settings_updated_at",
+      "def_md5": "1f953b383b84e0023bb7c1a6cfafc6c9",
+      "table_name": "user_settings"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "8a8d2590c44c605ade06d30cf5482868",
+      "table_name": "user_telegram_links"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "86edd7051fa92a37f445cbd4caab98aa",
+      "table_name": "wazzup_channels"
+    },
+    {
+      "name": "wazzup_channels_set_updated_at",
+      "def_md5": "99707463bc8259747991d52bf1a13e33",
+      "table_name": "wazzup_channels"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "10c32bd771861c468f50c9425924115e",
+      "table_name": "wazzup_settings"
+    },
+    {
+      "name": "wazzup_settings_set_updated_at",
+      "def_md5": "b201a279e48910124066f5c99756514a",
+      "table_name": "wazzup_settings"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "61bcc659dbad6652a5dde44c65efcf3c",
+      "table_name": "workspace_counters"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "70500f9839707e36e9e684db2a77725a",
+      "table_name": "workspace_digest_settings"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "6a5f6f10ddadd4b24582fc7ea7b14d79",
+      "table_name": "workspace_features"
+    },
+    {
+      "name": "update_workspace_features_updated_at",
+      "def_md5": "201f7fcb6201dab5dc282648e5118ed0",
+      "table_name": "workspace_features"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "4148ef35c3c814b35e68b9a493dc15b4",
+      "table_name": "workspace_integrations"
+    },
+    {
+      "name": "workspace_integrations_set_updated_at",
+      "def_md5": "b1e687ecc1a2f7d2bed0a2170f77d57d",
+      "table_name": "workspace_integrations"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "0189ff8ae870ddb9e4cdba95033ffd35",
+      "table_name": "workspace_roles"
+    },
+    {
+      "name": "update_workspace_roles_updated_at",
+      "def_md5": "7aac066b4f4bc76b34984f45ee09c09b",
+      "table_name": "workspace_roles"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "367f2a855711b7fd833fa82041e5292e",
+      "table_name": "workspace_sidebar_settings"
+    },
+    {
+      "name": "add_external_contact_role_on_workspace_insert",
+      "def_md5": "cc831695915eabaec968873745651135",
+      "table_name": "workspaces"
+    },
+    {
+      "name": "on_workspace_created_create_defaults",
+      "def_md5": "720c5bfc7d863029b3720d8a6ed45267",
+      "table_name": "workspaces"
+    },
+    {
+      "name": "prevent_impersonation_writes",
+      "def_md5": "6bcce471ba3b5a2175da980a52d19b4a",
+      "table_name": "workspaces"
+    },
+    {
+      "name": "trigger_create_default_project_roles",
+      "def_md5": "16514197cf6ba3144d3ab8d29ad386db",
+      "table_name": "workspaces"
+    },
+    {
+      "name": "trigger_create_default_workspace_features",
+      "def_md5": "64562f3d7fbaffeb98709cd415dc8314",
+      "table_name": "workspaces"
+    },
+    {
+      "name": "trigger_create_default_workspace_roles",
+      "def_md5": "8ded0d1fd2312165bdedbce3d6d88754",
+      "table_name": "workspaces"
+    },
+    {
+      "name": "trigger_create_owner_participant",
+      "def_md5": "f559a41f751e354ecc444e2bec72d2ef",
+      "table_name": "workspaces"
+    },
+    {
+      "name": "update_workspaces_updated_at",
+      "def_md5": "5635f28b785e09b4e561dca1063bfcac",
+      "table_name": "workspaces"
+    }
+  ],
+  "functions": [
+    {
+      "args": "p_node jsonb, p_entity text",
+      "name": "_board_compile_condition",
+      "body_md5": "c19a3352044c10e5c659e2f6627d2a3e"
+    },
+    {
+      "args": "p_group jsonb, p_entity text",
+      "name": "_board_compile_group",
+      "body_md5": "6603d5525b9fca19342524b29fd451ca"
+    },
+    {
+      "args": "p_value jsonb",
+      "name": "_board_filter_text_list",
+      "body_md5": "f7b78e167bde068b538919811536a8c9"
+    },
+    {
+      "args": "p_value jsonb",
+      "name": "_board_filter_uuid_list",
+      "body_md5": "b38a698d6770ca5ceb929da2083313ca"
+    },
+    {
+      "args": "p_value jsonb, p_sentinel text",
+      "name": "_board_value_has_sentinel",
+      "body_md5": "5087ef6d03d04a10ff6290ab24d7a224"
+    },
+    {
+      "args": "p_cond jsonb, p_fields jsonb",
+      "name": "_report_condition_sql",
+      "body_md5": "6541544bf7a6b5aafb973f92b3409bd3"
+    },
+    {
+      "args": "p_group jsonb, p_fields jsonb",
+      "name": "_report_filter_sql",
+      "body_md5": "aafc5d54f635b5c4bbd49c45e434dc8e"
+    },
+    {
+      "args": "",
+      "name": "add_creator_as_admin",
+      "body_md5": "4ef2ead2abcd6392b8135b48e117ee0e"
+    },
+    {
+      "args": "p_document_id uuid, p_file_path text, p_file_name text, p_file_size bigint, p_mime_type text, p_checksum text, p_file_id uuid",
+      "name": "add_document_version",
+      "body_md5": "1cd4bc1f90fdb1c35006d02b74f0b55d"
+    },
+    {
+      "args": "p_document_id uuid, p_file_path text, p_file_name text, p_file_size bigint, p_mime_type text, p_checksum text, p_file_id uuid, p_uploaded_by uuid",
+      "name": "add_document_version_service",
+      "body_md5": "15bc832a93339a672c2beca9d6cba104"
+    },
+    {
+      "args": "",
+      "name": "add_external_contact_role_to_new_workspace",
+      "body_md5": "1428d5747db3681560729a13a90e2edc"
+    },
+    {
+      "args": "p_kit_template_id uuid, p_folder_template_ids uuid[], p_start_order_index integer",
+      "name": "add_folders_to_kit_template",
+      "body_md5": "8e6cae78eb4e141b7d063d9c91072c24"
+    },
+    {
+      "args": "p_conversation_id uuid, p_user_message text, p_assistant_message text, p_user_id uuid, p_document_ids uuid[]",
+      "name": "add_message_pair",
+      "body_md5": "9f0f674d09dc604668837d0099064232"
+    },
+    {
+      "args": "",
+      "name": "admin_list_workspaces",
+      "body_md5": "5c651df6808cd67d25e6e285cc2fd361"
+    },
+    {
+      "args": "p_workspace_id uuid, p_plan_code text",
+      "name": "admin_set_workspace_plan",
+      "body_md5": "446da30501d1c84db265b853830f0855"
+    },
+    {
+      "args": "p_message_id uuid, p_tg_msg_id bigint, p_chat_id bigint",
+      "name": "append_telegram_message_id",
+      "body_md5": "ff021ca8fad17338d659510f7c860956"
+    },
+    {
+      "args": "",
+      "name": "auto_advance_project_status",
+      "body_md5": "122883c4b95638fbaec0dab1be686f6d"
+    },
+    {
+      "args": "",
+      "name": "auto_resolve_send_failures_on_sent",
+      "body_md5": "5dde8f329adbd98b002de4adb67b5d99"
+    },
+    {
+      "args": "",
+      "name": "calculate_service_group_total",
+      "body_md5": "c2bcac85bc375770d7ef905476a41b5a"
+    },
+    {
+      "args": "",
+      "name": "calculate_service_item_total",
+      "body_md5": "fea2c5d0f6100bd7ccb1dec435aff6bb"
+    },
+    {
+      "args": "b boards, p_user_id uuid",
+      "name": "can_user_access_board",
+      "body_md5": "b5d88150877af35fc68f112a408a59a3"
+    },
+    {
+      "args": "p_board_id uuid, p_user_id uuid",
+      "name": "can_user_access_board",
+      "body_md5": "b9b261fc24b0b884565b1a53f2c437ea"
+    },
+    {
+      "args": "p_thread_id uuid, p_user_id uuid",
+      "name": "can_user_access_thread",
+      "body_md5": "891e132030835f8516dcef3bc7dffadc"
+    },
+    {
+      "args": "t project_threads, p_user_id uuid",
+      "name": "can_user_access_thread",
+      "body_md5": "8294ecec4ebce0f51f34efc5f999ab0a"
+    },
+    {
+      "args": "p_conversation_id uuid, p_user_id uuid",
+      "name": "can_view_conversation",
+      "body_md5": "87eeaf3f0b32d9247a1813daa4274daa"
+    },
+    {
+      "args": "p_thread_id uuid, p_workspace_id uuid, p_access_type text, p_project_id uuid",
+      "name": "can_view_thread",
+      "body_md5": "c7cffaa3e57cac6558d21a0af706f23f"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "check_workspace_participant",
+      "body_md5": "6dfaa18d93776a94558324943616ca9f"
+    },
+    {
+      "args": "",
+      "name": "cleanup_expired_oauth_states",
+      "body_md5": "79bca181378023dce1805f140f97cfe0"
+    },
+    {
+      "args": "",
+      "name": "cleanup_old_export_progress",
+      "body_md5": "84018c1f70f12cfb9138c4db03e23c2e"
+    },
+    {
+      "args": "p_thread_id uuid",
+      "name": "compute_thread_inbox_meta",
+      "body_md5": "f93a5c1015958c125cd06e1801c3619c"
+    },
+    {
+      "args": "p_project_id uuid, p_workspace_id uuid, p_access_type text, p_access_roles text[], p_created_by uuid, p_item_id uuid, p_user_id uuid",
+      "name": "context_note_visible",
+      "body_md5": "ab2f395227b7d501b5df463d50b1bc75"
+    },
+    {
+      "args": "p_workspace_id uuid, p_project_id uuid, p_name text, p_start_at timestamp with time zone, p_end_at timestamp with time zone, p_calendar_id uuid, p_google_event_id text",
+      "name": "convert_external_event_to_task",
+      "body_md5": "31c6049939a83327be563421eb1a8b00"
+    },
+    {
+      "args": "p_source_template_id uuid, p_workspace_id uuid, p_new_name text",
+      "name": "copy_form_template",
+      "body_md5": "e36b16c8b5b79bf976ed022e917b861a"
+    },
+    {
+      "args": "p_template_id uuid",
+      "name": "copy_thread_template",
+      "body_md5": "1c3446f8c459edd9df1209e3351dea95"
+    },
+    {
+      "args": "p_article_id uuid, p_comment text",
+      "name": "create_article_version",
+      "body_md5": "8b9bf8984db679d0f963bd61e96bca98"
+    },
+    {
+      "args": "p_workspace_id uuid, p_group_id uuid",
+      "name": "create_article_with_group",
+      "body_md5": "bdd5a9159f0f5b5a2d00d4b5c176bc8b"
+    },
+    {
+      "args": "p_project_id uuid, p_workspace_id uuid, p_created_by uuid, p_title text, p_visibility text, p_type text, p_document_ids uuid[]",
+      "name": "create_conversation_with_context",
+      "body_md5": "e701df692ca2f2dde3eb12f0e8f8573c"
+    },
+    {
+      "args": "",
+      "name": "create_default_project_roles",
+      "body_md5": "0a7c916da2d13e896cb1e7e658433688"
+    },
+    {
+      "args": "",
+      "name": "create_default_roles_and_statuses",
+      "body_md5": "e0ad28463185a8a3ebd97912f2152c05"
+    },
+    {
+      "args": "",
+      "name": "create_default_workspace_features",
+      "body_md5": "579121e4a37a2f7c8f3980ba3bf385c1"
+    },
+    {
+      "args": "",
+      "name": "create_default_workspace_roles",
+      "body_md5": "83748f16fa319d59ed17e66e5c44a980"
+    },
+    {
+      "args": "p_template_id uuid, p_project_id uuid, p_workspace_id uuid",
+      "name": "create_document_kit_from_template",
+      "body_md5": "26174a8163648f53127db5a97b043e3c"
+    },
+    {
+      "args": "p_document_id uuid, p_workspace_id uuid, p_version integer, p_file_path text, p_file_name text, p_file_size bigint, p_mime_type text, p_uploaded_by uuid, p_file_id uuid, p_is_compressed boolean",
+      "name": "create_document_version_atomic",
+      "body_md5": "b78d589446608a2d3f6fb7795521a9ad"
+    },
+    {
+      "args": "p_template_id uuid, p_project_id uuid, p_workspace_id uuid",
+      "name": "create_form_kit_from_template",
+      "body_md5": "7989de8e8a2618bc831d1f790ce84e32"
+    },
+    {
+      "args": "",
+      "name": "create_owner_participant",
+      "body_md5": "df1e753fa4b8a1c113f3beb7dc4eb8b0"
+    },
+    {
+      "args": "p_workspace_id uuid, p_name text, p_description text, p_button_label text, p_entity_type text, p_color text, p_order_index integer, p_is_default boolean, p_is_final boolean, p_text_color text",
+      "name": "create_status_with_button_label",
+      "body_md5": "99993af24b852f3ee638bbcd9337b1ee"
+    },
+    {
+      "args": "p_workspace_id uuid, p_project_id uuid, p_title text, p_description text, p_deadline timestamp with time zone, p_document_id uuid, p_document_kit_id uuid, p_form_kit_id uuid, p_created_by uuid, p_assignee_ids uuid[]",
+      "name": "create_task_with_assignees",
+      "body_md5": "c7d158a16f86451e2ec355f8549fcb09"
+    },
+    {
+      "args": "",
+      "name": "create_user_settings",
+      "body_md5": "c1b064e1e54fd72d184dea07fe21da4c"
+    },
+    {
+      "args": "p_status_id uuid",
+      "name": "delete_status",
+      "body_md5": "2d14db47a669539770a60d9194f47dd8"
+    },
+    {
+      "args": "workspace_uuid uuid",
+      "name": "delete_workspace_api_key",
+      "body_md5": "46c33e0dc54641009ed6276c3f6ec4e9"
+    },
+    {
+      "args": "workspace_uuid uuid",
+      "name": "delete_workspace_google_api_key",
+      "body_md5": "984bb9d16407409994454620401643bb"
+    },
+    {
+      "args": "workspace_uuid uuid",
+      "name": "delete_workspace_voyageai_api_key",
+      "body_md5": "51ec194ebc943bc257286e8c3fd712c9"
+    },
+    {
+      "args": "p_message_id uuid, p_force_attachments boolean",
+      "name": "dispatch_message_to_channels",
+      "body_md5": "3e7db0ccee61db65d4da824e5114a19f"
+    },
+    {
+      "args": "",
+      "name": "dispatch_scheduled_messages",
+      "body_md5": "2ddf8ede6166ece3c3f142b8aa4935a4"
+    },
+    {
+      "args": "p_url text, p_body jsonb, p_message_id uuid, p_function_name text",
+      "name": "dispatch_send_http",
+      "body_md5": "471fb2badcd2920fb02d263df483b6c9"
+    },
+    {
+      "args": "",
+      "name": "docbuilder_grant_creator_access",
+      "body_md5": "a8707b6a41029c7c240b0530b75ffdf6"
+    },
+    {
+      "args": "p_project_id uuid",
+      "name": "docbuilder_has_project_access",
+      "body_md5": "fe479afda63cf702eacb4496e7d1b7f0"
+    },
+    {
+      "args": "p_template_id uuid",
+      "name": "docbuilder_has_template_access",
+      "body_md5": "fea94d0f403572ec87fb6f1026d69295"
+    },
+    {
+      "args": "",
+      "name": "docbuilder_is_admin",
+      "body_md5": "c91409a34e028a35c33189944befd5ff"
+    },
+    {
+      "args": "",
+      "name": "docbuilder_update_updated_at",
+      "body_md5": "c4f28fa49bb5fd52feec44e35535722f"
+    },
+    {
+      "args": "",
+      "name": "docbuilder_user_email",
+      "body_md5": "45947dadaf733c8a61a7fcf601b5842c"
+    },
+    {
+      "args": "p_template_id uuid, p_new_name text",
+      "name": "duplicate_project_template",
+      "body_md5": "795c33352ea94d91a473c50e54b82f8d"
+    },
+    {
+      "args": "",
+      "name": "email_thread_assign_owner_after_insert",
+      "body_md5": "fdda6c683f9f6114b10b9a0e2c41f447"
+    },
+    {
+      "args": "",
+      "name": "email_thread_auto_setup_on_insert",
+      "body_md5": "45999bde8dad6763605b9a486c96c980"
+    },
+    {
+      "args": "",
+      "name": "email_thread_reopen_on_incoming_message",
+      "body_md5": "79c3a67d28d3ce2b96d2f5a6a948624b"
+    },
+    {
+      "args": "p_session_id uuid",
+      "name": "end_impersonation_session",
+      "body_md5": "dd32afa0cb769716e7004d0ff0c37131"
+    },
+    {
+      "args": "p_workspace_id uuid",
+      "name": "export_workspace_data",
+      "body_md5": "75c1a9dc3dda7c13ade193b8cea88fd6"
+    },
+    {
+      "args": "p_slot_id uuid, p_document_id uuid, p_project_id uuid",
+      "name": "fill_folder_slot",
+      "body_md5": "5d067735712aea8e34f04e88559965d3"
+    },
+    {
+      "args": "p_slot_id uuid, p_document_id uuid, p_project_id uuid",
+      "name": "fill_slot_atomic",
+      "body_md5": "ac1a27a814edecdf7d49cfe686dabbfc"
+    },
+    {
+      "args": "p_slot_id uuid, p_document_id uuid, p_project_id uuid",
+      "name": "fill_slot_atomic_service",
+      "body_md5": "80087aabc02929d615cd368dab2df8ff"
+    },
+    {
+      "args": "",
+      "name": "fill_thread_id_from_channel",
+      "body_md5": "65b31ab58fbba9e6969727101fd37733"
+    },
+    {
+      "args": "p_workspace_id uuid, p_name text, p_email text, p_phone text, p_telegram_user_id bigint",
+      "name": "find_or_create_contact_participant",
+      "body_md5": "d069e3efb9b69d9fb50f6d667635c243"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_document_delete",
+      "body_md5": "4e7fa2867a6a34336e1099806af7a995"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_document_insert",
+      "body_md5": "764badcc87f89cb7b8c9bb006bb197d8"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_document_kit_delete",
+      "body_md5": "032ed1f1e19050d305775aadd1cb34c2"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_document_kit_insert",
+      "body_md5": "051173e724e76d41d1d8cbed6871cd4b"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_document_update",
+      "body_md5": "3f9c8158636f22cea49f6a439b4c3b90"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_folder_delete",
+      "body_md5": "bd2b7bf307bc0251525c99c8100e0be4"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_folder_insert",
+      "body_md5": "bf36d34d0a77a4d21c379decfa522b7a"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_form_field_change",
+      "body_md5": "1c0aff406edff245e9ef5f5a365b7e66"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_participant_change",
+      "body_md5": "334a3005dec0b049bc514002776901f9"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_project_delete",
+      "body_md5": "ac5f4afba320cf080e8085a6425f7024"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_project_update",
+      "body_md5": "fb88c720f66c92249176ec40c8026157"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_task_delete",
+      "body_md5": "5a63ddb3863bc9976a03204f774a50ce"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_task_insert",
+      "body_md5": "0ccd893bee8e9a1abd7de3d8713c97cc"
+    },
+    {
+      "args": "",
+      "name": "fn_audit_task_update",
+      "body_md5": "7b327d818c4329687db01b6abb12f5a6"
+    },
+    {
+      "args": "",
+      "name": "fn_update_project_last_activity",
+      "body_md5": "bb2f9199b7a85b3f9055070224500da9"
+    },
+    {
+      "args": "",
+      "name": "fn_update_project_last_activity_from_form_values",
+      "body_md5": "c83ee63af60900778d7bde76a94e3196"
+    },
+    {
+      "args": "",
+      "name": "fn_update_project_last_activity_self",
+      "body_md5": "6f2767ca5f1565c5b168aa5914098e19"
+    },
+    {
+      "args": "p_action text, p_resource_type text, p_resource_id uuid, p_details jsonb, p_workspace_id uuid, p_project_id uuid",
+      "name": "fn_write_audit_log",
+      "body_md5": "993e84275c0e3f22b73d41eb7de51901"
+    },
+    {
+      "args": "",
+      "name": "generate_chat_link_code",
+      "body_md5": "9cd32f4c52835c035f1c4ba5d3cbdbe0"
+    },
+    {
+      "args": "",
+      "name": "generate_messenger_link_code",
+      "body_md5": "4805f068fd07e1c43c9b92e03d684202"
+    },
+    {
+      "args": "",
+      "name": "generate_recurring_tasks",
+      "body_md5": "679bc1160d5737ece60047de82cae329"
+    },
+    {
+      "args": "",
+      "name": "generate_thread_link_code",
+      "body_md5": "7b0fdd78531d89c8c5b4051d11ca2f9b"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_accessible_projects",
+      "body_md5": "57109abaf44fbb666a45925c0af3cb4e"
+    },
+    {
+      "args": "",
+      "name": "get_admin_permissions",
+      "body_md5": "b210ebc93d625f5b64a476a5280753ae"
+    },
+    {
+      "args": "p_article_id uuid",
+      "name": "get_article_version_history",
+      "body_md5": "182af3274448b0e2091b2d9b07856c45"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid, p_filter jsonb",
+      "name": "get_board_filtered_projects",
+      "body_md5": "845a08b8c5c616873f69ae71aff1b2f7"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid, p_filter jsonb",
+      "name": "get_board_filtered_threads",
+      "body_md5": "a8782fd84e0b488858090ec239875c68"
+    },
+    {
+      "args": "p_board_id uuid",
+      "name": "get_board_lists",
+      "body_md5": "10c485c51ac951088551d3de7f0f5bba"
+    },
+    {
+      "args": "p_thread_id uuid, p_user_id uuid, p_project_id uuid, p_workspace_id uuid",
+      "name": "get_chat_state",
+      "body_md5": "098251fc080ee806345a9574737a1b95"
+    },
+    {
+      "args": "",
+      "name": "get_client_ws_permissions",
+      "body_md5": "05b7f468ccd55f2950025f38ddc06a9e"
+    },
+    {
+      "args": "p_document_id uuid",
+      "name": "get_current_document_file",
+      "body_md5": "2e53f196fb120b619404f2dd4a9c6f70"
+    },
+    {
+      "args": "p_document_id uuid",
+      "name": "get_document_file_history",
+      "body_md5": "af4b6c40db3348c4684cea173db753e2"
+    },
+    {
+      "args": "",
+      "name": "get_employee_permissions",
+      "body_md5": "f3e12630cb0935565652067cfe95859a"
+    },
+    {
+      "args": "p_project_id uuid",
+      "name": "get_history_unread_count",
+      "body_md5": "e78a4aeb3489fa88559fa953728f278b"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_awaiting_reply_threads",
+      "body_md5": "87b8fb3c6c746bc26d0e86e044802bdf"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_message_status",
+      "body_md5": "3434bfcdb52d4ef2b84f2b7f1fac289a"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_muted_threads",
+      "body_md5": "26b491c8b859f54dfcf6e89177abe5a3"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_needs_reply_threads",
+      "body_md5": "9a7709ae4ce860efa1a37475c5fcb548"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid, p_query text, p_limit integer",
+      "name": "get_inbox_search_threads",
+      "body_md5": "e1325bf21689d9f1177f1f20179bc61d"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_thread_aggregates",
+      "body_md5": "f929c32922f650c580a7648922848055"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid, p_thread_id uuid",
+      "name": "get_inbox_thread_one",
+      "body_md5": "050a47c0ae6163dbc1faa57ddd55ee80"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid, p_cursor_sort_at timestamp with time zone, p_cursor_thread_id uuid, p_limit integer",
+      "name": "get_inbox_threads_page",
+      "body_md5": "22a79d9209c9d904cfc909a0b6680efa"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_threads_v2",
+      "body_md5": "6fdc3c7cd98826416990c5aee2f5de2d"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_threads_v3",
+      "body_md5": "b8966151fa963ea4ec0133a11f5166f5"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid, p_thread_ids uuid[]",
+      "name": "get_inbox_threads_v3_for",
+      "body_md5": "cb5adef68d349a0e29e247fa306216ac"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_unread_threads",
+      "body_md5": "cede30f78e46d5b91f008de05d04695a"
+    },
+    {
+      "args": "p_workspace_id uuid",
+      "name": "get_my_task_counts",
+      "body_md5": "054d80a8790f770f9f64e89f04bcfc64"
+    },
+    {
+      "args": "p_thread_id uuid",
+      "name": "get_my_thread_notify_level",
+      "body_md5": "4c07d6e4be8e8771cf0f51c222bd898a"
+    },
+    {
+      "args": "",
+      "name": "get_owner_permissions",
+      "body_md5": "287765794bd31d24de2cbb26a15348f5"
+    },
+    {
+      "args": "p_workspace_id uuid, p_target_user_id uuid",
+      "name": "get_personal_dialogs",
+      "body_md5": "4449c0b048a5bd7ca08f3b654613c399"
+    },
+    {
+      "args": "",
+      "name": "get_project_admin_module_access",
+      "body_md5": "f4ea7017b441f1f9e77507d27795ef7d"
+    },
+    {
+      "args": "",
+      "name": "get_project_admin_permissions",
+      "body_md5": "63d20798413da25d560d4e7ee1ada654"
+    },
+    {
+      "args": "",
+      "name": "get_project_client_module_access",
+      "body_md5": "4e3f562b7f4fd89775a7de3fe8e7d289"
+    },
+    {
+      "args": "",
+      "name": "get_project_client_permissions",
+      "body_md5": "a9be3dd2fd9c790b9b4a6f31a6434398"
+    },
+    {
+      "args": "",
+      "name": "get_project_executor_module_access",
+      "body_md5": "17f2588ad5165483ca127548d8f2cd2c"
+    },
+    {
+      "args": "",
+      "name": "get_project_executor_permissions",
+      "body_md5": "c2251db6b79f4c27a073440db7bf27c3"
+    },
+    {
+      "args": "p_project_id uuid, p_cursor timestamp with time zone, p_limit integer, p_resource_types text[], p_actions text[], p_user_id uuid",
+      "name": "get_project_history",
+      "body_md5": "74df9688154eebbc7bd51e9010be3d48"
+    },
+    {
+      "args": "",
+      "name": "get_project_participant_module_access",
+      "body_md5": "ab1fd2043bba18933d65a2a610806aa8"
+    },
+    {
+      "args": "",
+      "name": "get_project_participant_permissions",
+      "body_md5": "1992513009731b21123136e6875093cd"
+    },
+    {
+      "args": "p_workspace_id uuid, p_period_start timestamp with time zone, p_period_end timestamp with time zone",
+      "name": "get_projects_with_activity",
+      "body_md5": "0aa990c6c4e39b77e1e73561eb8cd056"
+    },
+    {
+      "args": "p_workspace_id uuid, p_limit integer",
+      "name": "get_recently_viewed",
+      "body_md5": "e4ce1b807f8343b236c5253ed45c73eb"
+    },
+    {
+      "args": "p_entity_type text, p_uuid uuid",
+      "name": "get_short_id_by_uuid",
+      "body_md5": "a15db23f023bd0556a1b75afccddbe68"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_sidebar_data",
+      "body_md5": "cf46d4bf3d59b1039b9a186d77cd8718"
+    },
+    {
+      "args": "p_thread_id uuid",
+      "name": "get_thread_email_address",
+      "body_md5": "d83446eee97dcf81704d2e88db76e759"
+    },
+    {
+      "args": "p_thread_id uuid",
+      "name": "get_thread_subscribers",
+      "body_md5": "23a56fa9bc899ccfaaba32b824000980"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_total_unread_count",
+      "body_md5": "3655ae656e0a606c8f8f817c93e4c38b"
+    },
+    {
+      "args": "p_participant_id uuid, p_project_id uuid, p_channel text, p_thread_id uuid",
+      "name": "get_unread_messages_count",
+      "body_md5": "87d66872b049cbfee957f5f0b7369729"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid, p_can_view_all boolean",
+      "name": "get_user_projects",
+      "body_md5": "fc9d96a81af5a5d2d578bd82b76f31c2"
+    },
+    {
+      "args": "p_workspace_id uuid, p_period date",
+      "name": "get_workspace_ai_usage",
+      "body_md5": "24457af126685ef1fed2117415ea8a9f"
+    },
+    {
+      "args": "workspace_uuid uuid",
+      "name": "get_workspace_api_key",
+      "body_md5": "f653a921e88a06fcf74c60c4c8228133"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_workspace_boards",
+      "body_md5": "9716341f5201cb15cb644056142f29ff"
+    },
+    {
+      "args": "workspace_uuid uuid",
+      "name": "get_workspace_google_api_key",
+      "body_md5": "a21f774a8d4af47acd19372fbe8e8539"
+    },
+    {
+      "args": "p_id uuid",
+      "name": "get_workspace_slug_by_id",
+      "body_md5": "8716dc6e46f4f384d06e98c6372d3935"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_workspace_threads",
+      "body_md5": "254a6d93b1edd965f53e370372afa8d5"
+    },
+    {
+      "args": "p_workspace_id uuid",
+      "name": "get_workspace_usage_and_limits",
+      "body_md5": "7ea4050d2a9f5e94a3e43fd9aae79b39"
+    },
+    {
+      "args": "workspace_uuid uuid",
+      "name": "get_workspace_voyageai_api_key",
+      "body_md5": "65ba161d8293df6e9e15bdc3fa5e64d4"
+    },
+    {
+      "args": "p_user_id uuid",
+      "name": "get_workspaces_with_counts",
+      "body_md5": "ef0aa7d66e4b02139ec38cccd1678530"
+    },
+    {
+      "args": "text, internal, smallint, internal, internal, internal, internal",
+      "name": "gin_extract_query_trgm",
+      "body_md5": "908112f5743e0dc3307ce7da24a3d095"
+    },
+    {
+      "args": "text, internal",
+      "name": "gin_extract_value_trgm",
+      "body_md5": "42bc3d69fe7ae6ba4409315e68686e93"
+    },
+    {
+      "args": "internal, smallint, text, integer, internal, internal, internal, internal",
+      "name": "gin_trgm_consistent",
+      "body_md5": "3b5516ee327d210cf276d0f7cbec6a1b"
+    },
+    {
+      "args": "internal, smallint, text, integer, internal, internal, internal",
+      "name": "gin_trgm_triconsistent",
+      "body_md5": "ebb9557e4d7f2342aa65aa319bf2f6ad"
+    },
+    {
+      "args": "p_workspace_id uuid, p_query text, p_limit integer",
+      "name": "global_search",
+      "body_md5": "108fe3ef010f49f18bd5f61bdab0721d"
+    },
+    {
+      "args": "internal",
+      "name": "gtrgm_compress",
+      "body_md5": "0ac3144cfd060482fab5339fe0e2a9e1"
+    },
+    {
+      "args": "internal, text, smallint, oid, internal",
+      "name": "gtrgm_consistent",
+      "body_md5": "00d55f7471e62f08ca85d8d4e61991e7"
+    },
+    {
+      "args": "internal",
+      "name": "gtrgm_decompress",
+      "body_md5": "217b0af3efb9f430e911c6e2aeb0aa99"
+    },
+    {
+      "args": "internal, text, smallint, oid, internal",
+      "name": "gtrgm_distance",
+      "body_md5": "374c53a6404b5daf685b2c4222c76a54"
+    },
+    {
+      "args": "cstring",
+      "name": "gtrgm_in",
+      "body_md5": "85d9e1867f8d5b1ad99fbeac7a03595e"
+    },
+    {
+      "args": "internal",
+      "name": "gtrgm_options",
+      "body_md5": "18b083f2c473ca71bc90b18732d82493"
+    },
+    {
+      "args": "gtrgm",
+      "name": "gtrgm_out",
+      "body_md5": "03641c6b5e277450ea5f628094c0a607"
+    },
+    {
+      "args": "internal, internal, internal",
+      "name": "gtrgm_penalty",
+      "body_md5": "4f0a4190629a524609fe1b21fc480341"
+    },
+    {
+      "args": "internal, internal",
+      "name": "gtrgm_picksplit",
+      "body_md5": "366a79f83941d97999f208690619b79d"
+    },
+    {
+      "args": "gtrgm, gtrgm, internal",
+      "name": "gtrgm_same",
+      "body_md5": "e34ae9aee761b36d68942175420b9030"
+    },
+    {
+      "args": "internal, internal",
+      "name": "gtrgm_union",
+      "body_md5": "1e514b035bac6c001492f0ec64f222b8"
+    },
+    {
+      "args": "p_user_id uuid, p_project_id uuid, p_module text",
+      "name": "has_project_module_access",
+      "body_md5": "152ba96c40882ae4d8f3b088fb369627"
+    },
+    {
+      "args": "p_user_id uuid, p_project_id uuid, p_module text, p_permission text",
+      "name": "has_project_permission",
+      "body_md5": "521846de9f3fcf85f7e2a2a40df45900"
+    },
+    {
+      "args": "p_user_id uuid, p_workspace_id uuid, p_permission text",
+      "name": "has_workspace_permission",
+      "body_md5": "0c3fe4b49a691b7217a11e07c0413624"
+    },
+    {
+      "args": "",
+      "name": "impersonating_owner_id",
+      "body_md5": "28e5d2e41f0948389cf190c1da05227e"
+    },
+    {
+      "args": "p_thread_id uuid",
+      "name": "inbox_accessible_participant_ids",
+      "body_md5": "3133812106fe19753316c6364b0c68ef"
+    },
+    {
+      "args": "p_thread_id uuid, p_participant_id uuid",
+      "name": "inbox_default_subscribed",
+      "body_md5": "d109fbeee5b58a9d0f5f7f83e3932236"
+    },
+    {
+      "args": "p_workspace_id uuid, p_feature text",
+      "name": "is_feature_enabled",
+      "body_md5": "041d195350fafbb7708eabfc719cafd2"
+    },
+    {
+      "args": "",
+      "name": "is_impersonating",
+      "body_md5": "2ced19f1b0df3f0af11cf9e1528539a4"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "is_internal_member",
+      "body_md5": "96137a4e7bbff53572bab4be7ff69899"
+    },
+    {
+      "args": "p_user_id uuid",
+      "name": "is_platform_admin",
+      "body_md5": "7565538e39fda4ea402b1e52b99a4fc6"
+    },
+    {
+      "args": "p_project_id uuid, p_user_id uuid",
+      "name": "is_project_participant",
+      "body_md5": "d0881399f4972a8a73c32b53128af26c"
+    },
+    {
+      "args": "p_role text",
+      "name": "is_staff_role",
+      "body_md5": "7ef38fda1097c335cbd3e1c55580bad0"
+    },
+    {
+      "args": "p_participant_id uuid, p_thread_id uuid",
+      "name": "is_thread_subscribed",
+      "body_md5": "095c7d7ec749e699ba34f7b6f62d8e38"
+    },
+    {
+      "args": "p_thread_id uuid",
+      "name": "is_thread_subscribed_me",
+      "body_md5": "ef4dd06c36acb915aec48c968c74d295"
+    },
+    {
+      "args": "p_user_id uuid, p_workspace_id uuid",
+      "name": "is_workspace_owner",
+      "body_md5": "f2527c63bf22a7a117257f9676cd5ceb"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "is_workspace_participant",
+      "body_md5": "62a7c3658b230299fa8ba2545f356fea"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "is_workspace_team_member",
+      "body_md5": "8b82820ef5df9a1e7d92af2792a27c48"
+    },
+    {
+      "args": "",
+      "name": "link_participant_to_user",
+      "body_md5": "09aa28c4f9765e9b0d2595c2084afd42"
+    },
+    {
+      "args": "p_workspace_id uuid, p_input_tokens bigint, p_output_tokens bigint, p_function_name text, p_provider text, p_model text, p_user_id uuid, p_feature text, p_meta jsonb",
+      "name": "log_ai_usage",
+      "body_md5": "73461fd34dcd1485cc2265aa3e55d876"
+    },
+    {
+      "args": "p_action text, p_resource_type text, p_resource_id uuid, p_details jsonb, p_ip_address inet, p_workspace_id uuid, p_project_id uuid, p_user_id uuid",
+      "name": "log_audit_action",
+      "body_md5": "4c70f7cfca4af01100f717b81c245c51"
+    },
+    {
+      "args": "",
+      "name": "mark_thread_read_on_final_status",
+      "body_md5": "cb7c1e85506ff570e7778baf1335a93f"
+    },
+    {
+      "args": "p_workspace_id uuid, p_from_address text, p_in_reply_to text, p_references text[]",
+      "name": "match_inbound_email",
+      "body_md5": "1f57d33e78472aaec318b8884d329c63"
+    },
+    {
+      "args": "query_embedding text, match_workspace_id uuid, match_threshold double precision, match_count integer",
+      "name": "match_knowledge_chunks",
+      "body_md5": "7f40ea658d549e441569955e46acb375"
+    },
+    {
+      "args": "query_embedding text, article_ids uuid[], match_threshold double precision, match_count integer",
+      "name": "match_knowledge_chunks_by_articles",
+      "body_md5": "52ed6cc75535c3e0811b9f9fc56939bb"
+    },
+    {
+      "args": "query_embedding text, filter_article_ids uuid[], filter_qa_ids uuid[], match_threshold double precision, match_count integer",
+      "name": "match_knowledge_chunks_by_sources",
+      "body_md5": "11cae65ac7d103c25b1aa650ea4ab1d7"
+    },
+    {
+      "args": "p_target_id uuid, p_source_id uuid",
+      "name": "merge_participants",
+      "body_md5": "c1b1f54b5e70647516fa0c1e3655712b"
+    },
+    {
+      "args": "p_source_id uuid, p_target_id uuid, p_workspace_id uuid",
+      "name": "merge_telegram_contact",
+      "body_md5": "2730f6313501963b6156d5b93d79b9dd"
+    },
+    {
+      "args": "p_article_id uuid, p_from_group_id uuid, p_to_group_id uuid",
+      "name": "move_article_to_group",
+      "body_md5": "7473bbceb32778131b3f3cfa1f67aefd"
+    },
+    {
+      "args": "p_thread_id uuid, p_target_project_id uuid",
+      "name": "move_thread_to_project",
+      "body_md5": "ac9d680e268dd012f279d69770ebf375"
+    },
+    {
+      "args": "p_workspace_id uuid, p_entity_type text",
+      "name": "next_short_id",
+      "body_md5": "7bcef812be483f993edc11847736ba98"
+    },
+    {
+      "args": "",
+      "name": "notify_google_calendar_mirror",
+      "body_md5": "e11a4f3e121a4a85706299443e6e4315"
+    },
+    {
+      "args": "",
+      "name": "notify_on_send_status_retry",
+      "body_md5": "12c2d30f5591abfce1e8e128dbf01b13"
+    },
+    {
+      "args": "",
+      "name": "notify_telegram_on_new_message",
+      "body_md5": "6cda5668c9cd2ddd94912ea2b8662ded"
+    },
+    {
+      "args": "",
+      "name": "prevent_writes_during_impersonation",
+      "body_md5": "c057d298d4b0d1240645137cf3bf5499"
+    },
+    {
+      "args": "p_message_id uuid",
+      "name": "publish_scheduled_message",
+      "body_md5": "14cd70e1e6c8329b638e611e1d8e4b6d"
+    },
+    {
+      "args": "p_participant_id uuid, p_thread_id uuid",
+      "name": "recompute_thread_unread_for",
+      "body_md5": "5714e71156f321f3045a9a911a27b3ae"
+    },
+    {
+      "args": "p_thread_id uuid",
+      "name": "recompute_thread_unread_pairs",
+      "body_md5": "c66108413f5233744453fc47ef57cb1a"
+    },
+    {
+      "args": "",
+      "name": "reconcile_inbox_report",
+      "body_md5": "ed414b897d9683d270692863d9e02d37"
+    },
+    {
+      "args": "",
+      "name": "reconcile_thread_inbox_meta",
+      "body_md5": "1d66fe3d89039cd543cd8ff99ef920c0"
+    },
+    {
+      "args": "",
+      "name": "reconcile_thread_unread",
+      "body_md5": "13ffc1e0ac7f1e2e60fb7a0a0a72011f"
+    },
+    {
+      "args": "p_after timestamp with time zone, p_freq text, p_byweekday integer[], p_bymonthday integer, p_fire_time time without time zone, p_timezone text, p_starts_on date",
+      "name": "recurring_next_occurrence",
+      "body_md5": "5006617ab8872f7301be0d164d9ac50e"
+    },
+    {
+      "args": "",
+      "name": "recurring_task_rules_set_next",
+      "body_md5": "0cc29a4ba6250bf29114bb64f1910398"
+    },
+    {
+      "args": "",
+      "name": "recurring_task_rules_touch_updated_at",
+      "body_md5": "4633c6c82b3b27a7f18ec9c82c12ce56"
+    },
+    {
+      "args": "p_thread_id uuid",
+      "name": "refresh_thread_unread_pairs",
+      "body_md5": "09583060b6443f39ae0d60a699a80ecd"
+    },
+    {
+      "args": "p_list_id uuid, p_item_type text, p_item_ids uuid[]",
+      "name": "reorder_board_list_items",
+      "body_md5": "49e9336ca8810beecc6ba8fc0fc25404"
+    },
+    {
+      "args": "p_updates jsonb",
+      "name": "reorder_documents",
+      "body_md5": "f9e068c3ce09cc5b54963b70614472ca"
+    },
+    {
+      "args": "p_workspace_id uuid, p_channel_key text",
+      "name": "resolve_channel_default",
+      "body_md5": "830afd20574c53e01012d658035f9618"
+    },
+    {
+      "args": "p_thread project_threads",
+      "name": "resolve_email_thread_assignee",
+      "body_md5": "52dd62db340572992487fa13e4020d9e"
+    },
+    {
+      "args": "p_address text",
+      "name": "resolve_inbound_email_address",
+      "body_md5": "b61fa2370e514bf56d468d6955d0c84a"
+    },
+    {
+      "args": "p_workspace_id uuid, p_entity_type text, p_short_id integer",
+      "name": "resolve_short_id",
+      "body_md5": "03fd90cb931663071aa776139e93ef74"
+    },
+    {
+      "args": "p_host text",
+      "name": "resolve_workspace_by_host",
+      "body_md5": "fa41700681265b2870d3a5cc8ccc57e0"
+    },
+    {
+      "args": "p_workspace_id uuid",
+      "name": "resolve_workspace_plan",
+      "body_md5": "e20ed04452b17347a57538ab671eaa69"
+    },
+    {
+      "args": "p_version_id uuid",
+      "name": "restore_article_version",
+      "body_md5": "3c153643ec693e916daf612b601855c6"
+    },
+    {
+      "args": "p_version_id uuid, p_document_id uuid",
+      "name": "restore_document_version",
+      "body_md5": "7292fc170b70afcdf82f41c6698cbfff"
+    },
+    {
+      "args": "p_user_id uuid",
+      "name": "revoke_all_user_sessions",
+      "body_md5": "98ae4be73ec86afb58abae95214e501a"
+    },
+    {
+      "args": "p_workspace_id uuid, p_source text, p_channel_type text, p_external_id text, p_sender_name text, p_thread_name text",
+      "name": "route_incoming_to_project",
+      "body_md5": "978b062e24085f816e0bc23d8fe8798e"
+    },
+    {
+      "args": "",
+      "name": "run_platform_alerts",
+      "body_md5": "6d1eb4feb61a4145fd06b21b397a61cf"
+    },
+    {
+      "args": "p_workspace_id uuid, p_config jsonb",
+      "name": "run_report",
+      "body_md5": "840a9731229871267b0bcaf3d5f639b5"
+    },
+    {
+      "args": "",
+      "name": "scan_dispatch_failures",
+      "body_md5": "7c2076b51a7da950fd8dcdc41847d156"
+    },
+    {
+      "args": "",
+      "name": "seed_read_status_on_assignee",
+      "body_md5": "ff138bc57d70cef6a64dfaa4a0f73e60"
+    },
+    {
+      "args": "",
+      "name": "seed_read_status_on_project_access",
+      "body_md5": "a13bc40da5929cf9f0ae6384670c40dc"
+    },
+    {
+      "args": "",
+      "name": "seed_read_status_on_thread_member",
+      "body_md5": "81466af6f0133c2df99f599fa22188c5"
+    },
+    {
+      "args": "",
+      "name": "set_board_short_id",
+      "body_md5": "6e4405814e3318510e7d3d63233dd06c"
+    },
+    {
+      "args": "",
+      "name": "set_default_external_contact_role",
+      "body_md5": "ec762ff8573b9d5721d95d930312340f"
+    },
+    {
+      "args": "",
+      "name": "set_initial_send_status",
+      "body_md5": "c16d2e0dd52001c5e612e20de611f964"
+    },
+    {
+      "args": "",
+      "name": "set_knowledge_article_created_by",
+      "body_md5": "051a379d7af04c39fa48e066782cabb0"
+    },
+    {
+      "args": "real",
+      "name": "set_limit",
+      "body_md5": "c30ba59e63bc3cb36608046c50620e39"
+    },
+    {
+      "args": "p_language text",
+      "name": "set_my_preferred_language",
+      "body_md5": "879909d7a6012863e9015a46cedcef15"
+    },
+    {
+      "args": "p_thread_id uuid, p_level text",
+      "name": "set_my_thread_notify_level",
+      "body_md5": "e85cd68be0ce7161815d0bcf2ff09565"
+    },
+    {
+      "args": "p_thread_id uuid, p_subscribed boolean",
+      "name": "set_my_thread_subscription",
+      "body_md5": "4bfd4f053abf71ec3dd0efb4e0e008a2"
+    },
+    {
+      "args": "",
+      "name": "set_project_short_id",
+      "body_md5": "3391452208273ad554a71962bc4a7e17"
+    },
+    {
+      "args": "",
+      "name": "set_project_thread_short_id",
+      "body_md5": "e042e9e193c81d1d90df9d41fcc48da9"
+    },
+    {
+      "args": "",
+      "name": "set_thread_created_by",
+      "body_md5": "b934ea19ab6acd66a3b228b252072919"
+    },
+    {
+      "args": "p_thread_id uuid, p_participant_id uuid, p_subscribed boolean",
+      "name": "set_thread_subscription_for",
+      "body_md5": "c667e2fd3a955c1d2ed71cf3e56dc694"
+    },
+    {
+      "args": "workspace_uuid uuid, api_key text",
+      "name": "set_workspace_api_key",
+      "body_md5": "13c053df3e58e1ac9857184788a05f8d"
+    },
+    {
+      "args": "workspace_uuid uuid, api_key text",
+      "name": "set_workspace_google_api_key",
+      "body_md5": "1a174d3538c4b44a042ebe8c85b9d4be"
+    },
+    {
+      "args": "workspace_uuid uuid, api_key text",
+      "name": "set_workspace_voyageai_api_key",
+      "body_md5": "5f4a8162804c77e055a965661d410cce"
+    },
+    {
+      "args": "",
+      "name": "show_limit",
+      "body_md5": "4be49f417a851b1848da525e573e408d"
+    },
+    {
+      "args": "text",
+      "name": "show_trgm",
+      "body_md5": "42aa0974abb454971132812dcce06cac"
+    },
+    {
+      "args": "text, text",
+      "name": "similarity",
+      "body_md5": "fd931cb85ba442355f277550b8836710"
+    },
+    {
+      "args": "text, text",
+      "name": "similarity_dist",
+      "body_md5": "831e333ae2231e3fb1e6e88a55ccc0a0"
+    },
+    {
+      "args": "text, text",
+      "name": "similarity_op",
+      "body_md5": "c62f80a7a7107d232daf8683decbfaf5"
+    },
+    {
+      "args": "p_owner_user_id uuid, p_workspace_id uuid, p_target_user_id uuid, p_jti text, p_expires_at timestamp with time zone, p_user_agent text, p_ip text",
+      "name": "start_impersonation_session",
+      "body_md5": "fa8138013621b3de9e52e618547b1038"
+    },
+    {
+      "args": "text, text",
+      "name": "strict_word_similarity",
+      "body_md5": "523450d477b4e105989795603c58761a"
+    },
+    {
+      "args": "text, text",
+      "name": "strict_word_similarity_commutator_op",
+      "body_md5": "49fe0d7b5f628c2f13e21ad6d0c5d28f"
+    },
+    {
+      "args": "text, text",
+      "name": "strict_word_similarity_dist_commutator_op",
+      "body_md5": "e4384ee3a07267eb13f09bb4b042f334"
+    },
+    {
+      "args": "text, text",
+      "name": "strict_word_similarity_dist_op",
+      "body_md5": "bc660db5cc387e8821747f1ecfb347eb"
+    },
+    {
+      "args": "text, text",
+      "name": "strict_word_similarity_op",
+      "body_md5": "fa21d1ae2c217ba161bb3f7777e5e020"
+    },
+    {
+      "args": "p_list_a_id uuid, p_list_b_id uuid",
+      "name": "swap_board_list_sort_order",
+      "body_md5": "f41e11cdf1bb9d0cc6fbd72c2fd160d6"
+    },
+    {
+      "args": "p_kit_id uuid",
+      "name": "sync_form_kit_structure",
+      "body_md5": "b96801010afeffebf65a0bbad048f844"
+    },
+    {
+      "args": "",
+      "name": "sync_knowledge_article_is_published",
+      "body_md5": "ad70ee5ed1a4b65f6029ba22318f6fe6"
+    },
+    {
+      "args": "",
+      "name": "sync_telegram_message_ids",
+      "body_md5": "49f886e45797a16edd4fbf6fba132da9"
+    },
+    {
+      "args": "",
+      "name": "sync_thread_deadline_end_at",
+      "body_md5": "9f21544a8429548a0c2d6906cc54dc89"
+    },
+    {
+      "args": "",
+      "name": "tg_participant_channels_touch_updated_at",
+      "body_md5": "1ea224748b58a660bb9c5efa31e717e1"
+    },
+    {
+      "args": "",
+      "name": "tg_update_inbox_sort_at_from_audit",
+      "body_md5": "b069471c96fb3d719c30ecf055bf9c1a"
+    },
+    {
+      "args": "",
+      "name": "tg_update_inbox_sort_at_from_message",
+      "body_md5": "72d7232958a4bf17850684f2ed8741d3"
+    },
+    {
+      "args": "",
+      "name": "today_madrid_midnight",
+      "body_md5": "4e6fe5889039f07c52add008ed1b0a32"
+    },
+    {
+      "args": "p_message_id uuid, p_participant_id uuid, p_emoji text",
+      "name": "toggle_message_reaction",
+      "body_md5": "d28d0656b3f2b4591e376082301022da"
+    },
+    {
+      "args": "",
+      "name": "touch_calendars_updated_at",
+      "body_md5": "798ad285be1958a5454630c945e39bcc"
+    },
+    {
+      "args": "",
+      "name": "touch_finance_updated_at",
+      "body_md5": "cc8a16a0a2d866fbb062acf12cc1e448"
+    },
+    {
+      "args": "",
+      "name": "touch_item_lists_updated_at",
+      "body_md5": "9bf6a6e99bb480005bd7a4ff924e73cb"
+    },
+    {
+      "args": "",
+      "name": "touch_mirror_settings_updated_at",
+      "body_md5": "46edc62f38c779035075b21b5e3a92fe"
+    },
+    {
+      "args": "",
+      "name": "touch_pfv_updated_at",
+      "body_md5": "f094863ba7582bbdaa90187173dde06f"
+    },
+    {
+      "args": "",
+      "name": "touch_plan_block_updated_at",
+      "body_md5": "b1ee14c46bb37270dd5ee411a7d1ef56"
+    },
+    {
+      "args": "",
+      "name": "touch_project_context_items_updated_at",
+      "body_md5": "edaa2acf71bb98d96da9c617d61fd54a"
+    },
+    {
+      "args": "",
+      "name": "touch_report_definitions_updated_at",
+      "body_md5": "c6ef2f4c4b44caa5b67404d29c2ce32d"
+    },
+    {
+      "args": "",
+      "name": "touch_workspace_integrations_updated_at",
+      "body_md5": "c73a89c908c53d413055ba015e6fc98a"
+    },
+    {
+      "args": "p_workspace_id uuid, p_entity_type recent_entity_type, p_entity_id uuid",
+      "name": "track_recent_view",
+      "body_md5": "e9ba161a3d935b28e2fc14291c35746c"
+    },
+    {
+      "args": "",
+      "name": "trg_inbox_broadcast",
+      "body_md5": "178f867e78433abe6c84fcf766677643"
+    },
+    {
+      "args": "",
+      "name": "trg_mention_recompute",
+      "body_md5": "cfb52b106b47f900358836062713f2e3"
+    },
+    {
+      "args": "",
+      "name": "trg_thread_inbox_meta",
+      "body_md5": "cd695248c5df831183475177e6f323ca"
+    },
+    {
+      "args": "",
+      "name": "trg_thread_unread",
+      "body_md5": "ec4c2deca6c577d7b5a1cc615e9d6463"
+    },
+    {
+      "args": "",
+      "name": "trg_thread_unread_access_project",
+      "body_md5": "cccc8d3cdb6e8564657f6b57f9938174"
+    },
+    {
+      "args": "",
+      "name": "trg_thread_unread_access_thread",
+      "body_md5": "47903f84f3ce50753af1391613597050"
+    },
+    {
+      "args": "",
+      "name": "trg_thread_unread_read_status",
+      "body_md5": "9b2bb736cf49888e212d29b4940adb55"
+    },
+    {
+      "args": "",
+      "name": "trg_thread_unread_subscription",
+      "body_md5": "24673429b928538e1cf7366d624c8f79"
+    },
+    {
+      "args": "regdictionary, text",
+      "name": "unaccent",
+      "body_md5": "732e7240010ae6ee51752c269f22d1d8"
+    },
+    {
+      "args": "text",
+      "name": "unaccent",
+      "body_md5": "c63fff9d5f6e608be381ae34c5a6bef7"
+    },
+    {
+      "args": "internal",
+      "name": "unaccent_init",
+      "body_md5": "3a1118dbb02cc3984f7fa23d2ee3a37e"
+    },
+    {
+      "args": "internal, internal, internal, internal",
+      "name": "unaccent_lexize",
+      "body_md5": "c8bbc42e6e1b37ea2584ba9a1006af8f"
+    },
+    {
+      "args": "p_article_id uuid, p_group_ids uuid[]",
+      "name": "update_article_groups",
+      "body_md5": "1bcb7b0c60c36684d94db4851540f53f"
+    },
+    {
+      "args": "p_article_id uuid, p_tag_ids uuid[]",
+      "name": "update_article_tags",
+      "body_md5": "f38598eb59a5286f0db29f8fde9752d7"
+    },
+    {
+      "args": "",
+      "name": "update_conversation_updated_at",
+      "body_md5": "dffaa58c882332c5000c875f020ae532"
+    },
+    {
+      "args": "",
+      "name": "update_export_progress_updated_at",
+      "body_md5": "19524b2afd8ba1b3710b0a377431b049"
+    },
+    {
+      "args": "",
+      "name": "update_form_kit_field_values_updated_at",
+      "body_md5": "c67c42b1a5e782baeed312bab2c936dc"
+    },
+    {
+      "args": "",
+      "name": "update_form_kit_structure_updated_at",
+      "body_md5": "61826a166da1ce45f93ff467d63fc9ce"
+    },
+    {
+      "args": "",
+      "name": "update_knowledge_articles_updated_at",
+      "body_md5": "3f8e606aa43bcb1ac669fa14f8de7dcb"
+    },
+    {
+      "args": "",
+      "name": "update_knowledge_groups_updated_at",
+      "body_md5": "bd74a11971174c13d9af106b8166a85e"
+    },
+    {
+      "args": "",
+      "name": "update_message_on_reaction_change",
+      "body_md5": "ad384f2d6e9a5f2add697e1c3d80eaba"
+    },
+    {
+      "args": "",
+      "name": "update_project_last_activity",
+      "body_md5": "1a49f8affcb634c5c3a232cb08ff691d"
+    },
+    {
+      "args": "",
+      "name": "update_project_templates_updated_at",
+      "body_md5": "8ccebe1c8e5b32a788794f0a78931e91"
+    },
+    {
+      "args": "",
+      "name": "update_projects_updated_at",
+      "body_md5": "ffbf47728d40ce61a82795ff05d9dcb3"
+    },
+    {
+      "args": "p_qa_id uuid, p_group_ids uuid[]",
+      "name": "update_qa_groups",
+      "body_md5": "d5fb7e89832ef2e19474bfae612dd2ce"
+    },
+    {
+      "args": "p_qa_id uuid, p_tag_ids uuid[]",
+      "name": "update_qa_tags",
+      "body_md5": "4d04a449f248fd4bdb244857a5471bd1"
+    },
+    {
+      "args": "",
+      "name": "update_source_documents_updated_at",
+      "body_md5": "b8df2460c410ad3395e0b541de7847dc"
+    },
+    {
+      "args": "status_id uuid, status_name text, status_description text, status_button_label text, status_color text, status_order_index integer, status_is_default boolean, status_is_final boolean, status_text_color text",
+      "name": "update_status_with_button_label",
+      "body_md5": "0043a6485167ead10b6d3189e5e6528e"
+    },
+    {
+      "args": "p_task_id uuid, p_assignee_ids uuid[], p_assigned_by uuid",
+      "name": "update_task_assignees",
+      "body_md5": "da0aec41e33e96272700c3946be6887b"
+    },
+    {
+      "args": "p_template_id uuid, p_updates jsonb, p_assignee_ids uuid[]",
+      "name": "update_thread_template_with_assignees",
+      "body_md5": "a105b011915f5d5128b56d3a33309fa1"
+    },
+    {
+      "args": "",
+      "name": "update_updated_at_column",
+      "body_md5": "3210625d1c794f6db7b3c3defc5984dd"
+    },
+    {
+      "args": "p_article_id uuid, p_qa_id uuid, p_workspace_id uuid, p_embeddings jsonb",
+      "name": "upsert_knowledge_embeddings",
+      "body_md5": "e941cf967f1c240bf665329420c9f7ea"
+    },
+    {
+      "args": "text, text",
+      "name": "word_similarity",
+      "body_md5": "f9acfb3b071c96db4b1bb593b621c747"
+    },
+    {
+      "args": "text, text",
+      "name": "word_similarity_commutator_op",
+      "body_md5": "98ece0ccacd71230bea0e7805d310670"
+    },
+    {
+      "args": "text, text",
+      "name": "word_similarity_dist_commutator_op",
+      "body_md5": "db36854b61d077b4cb945606bab01fc6"
+    },
+    {
+      "args": "text, text",
+      "name": "word_similarity_dist_op",
+      "body_md5": "ab0c2cb7ec6c0cbe0937ec3288d2cfda"
+    },
+    {
+      "args": "text, text",
+      "name": "word_similarity_op",
+      "body_md5": "9cb3bc9ce246a2c4c4d17c7205f4a17f"
+    },
+    {
+      "args": "p_workspace_id uuid, p_kind text",
+      "name": "workspace_at_limit",
+      "body_md5": "039ca799f0fa9a049eb3162005bec75d"
+    }
+  ]
+}
