@@ -17,6 +17,7 @@ import { DeadlineFormatSection } from './components/DeadlineFormatSection'
 import { DefaultTaskIconColorSection } from './components/DefaultTaskIconColorSection'
 import { PerfTraceSection } from './components/PerfTraceSection'
 import { InboxReconcileSection } from './components/InboxReconcileSection'
+import { WorkspaceUsageSection } from './components/WorkspaceUsageSection'
 import { SettingsSubNav, type SettingsSubNavGroup } from './components/SettingsSubNav'
 import { SettingsCardForceOpenContext } from './components/SettingsCard'
 
@@ -32,6 +33,7 @@ type SectionId =
   | 'kb-summary'
   | 'reconcile'
   | 'perf'
+  | 'usage'
 
 export function GeneralSettingsTab() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -62,6 +64,7 @@ export function GeneralSettingsTab() {
     {
       title: 'Сервис',
       items: [
+        { id: 'usage', label: 'Использование и данные' },
         { id: 'reconcile', label: 'Сверка Входящих' },
         { id: 'perf', label: 'Диагностика' },
       ],
@@ -88,6 +91,8 @@ export function GeneralSettingsTab() {
         return <VoyageAISettingsSection workspaceId={workspaceId} />
       case 'kb-summary':
         return <KnowledgeSummaryPromptSection workspaceId={workspaceId} />
+      case 'usage':
+        return <WorkspaceUsageSection workspaceId={workspaceId} />
       case 'reconcile':
         return <InboxReconcileSection />
       case 'perf':
