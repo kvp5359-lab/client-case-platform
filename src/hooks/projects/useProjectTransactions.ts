@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { projectTransactionKeys } from '@/hooks/queryKeys'
+import { projectTransactionKeys, workspaceTransactionKeys } from '@/hooks/queryKeys'
 import type { Tables } from '@/types/database'
 
 const STALE_TIME = 5 * 60_000
@@ -61,6 +61,9 @@ function invalidate(queryClient: ReturnType<typeof useQueryClient>, projectId?: 
   // Инвалидируем оба типа списков сразу — вдруг тип сменился при редактировании.
   queryClient.invalidateQueries({ queryKey: projectTransactionKeys.list(projectId, 'income') })
   queryClient.invalidateQueries({ queryKey: projectTransactionKeys.list(projectId, 'expense') })
+  // Общий журнал воркспейса (страница «Финансы») — broad-prefix, workspaceId
+  // в этом хуке недоступен.
+  queryClient.invalidateQueries({ queryKey: workspaceTransactionKeys.all })
 }
 
 export function useCreateProjectTransaction(projectId: string | undefined) {

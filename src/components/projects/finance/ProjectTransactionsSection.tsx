@@ -13,10 +13,14 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
-import { useFinanceTxCategories } from '@/hooks/finance/useFinanceTransactionCategories'
+import {
+  useFinanceTxCategories,
+  useCreateFinanceTxCategory,
+} from '@/hooks/finance/useFinanceTransactionCategories'
 import { useFinanceTaxRates } from '@/hooks/finance/useFinanceTaxRates'
 import { useProjectServices } from '@/hooks/projects/useProjectServices'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { useProjectParticipants } from '@/components/messenger/hooks/useChatSettingsData'
 import {
   useProjectTransactions,
   useCreateProjectTransaction,
@@ -79,10 +83,32 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
   // (стоимость с налогом минус уже полученные доходы) и подставить его в форму.
   const { data: services = [] } = useProjectServices(type === 'income' ? projectId : undefined)
 
+  // Для дохода дефолтный контрагент новой операции — клиент проекта
+  // (деньги почти всегда приходят от него).
+  const { data: projectParticipants = [] } = useProjectParticipants(
+    type === 'income' ? projectId : undefined,
+  )
+  const projectClientId = useMemo(
+    () => projectParticipants.find((p) => p.project_roles.includes('Клиент'))?.id ?? null,
+    [projectParticipants],
+  )
+
   const createMutation = useCreateProjectTransaction(projectId)
   const updateMutation = useUpdateProjectTransaction(projectId)
   const deleteMutation = useDeleteProjectTransaction(projectId)
   const patchMutation = usePatchProjectTransaction(projectId)
+
+  // Создание статьи прямо из инлайн-селектора (строка «+ Создать „…“»).
+  const createCategoryMutation = useCreateFinanceTxCategory(workspaceId, type)
+  const handleCreateCategory = async (name: string): Promise<string | null> => {
+    try {
+      const created = await createCategoryMutation.mutateAsync({ name })
+      return created.id
+    } catch (e) {
+      toast.error('Не удалось создать статью', { description: getUserFacingErrorMessage(e) })
+      return null
+    }
+  }
 
   const handlePatch = (id: string, patch: ProjectTransactionPatch) => {
     patchMutation.mutate(
@@ -221,16 +247,21 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
             <div className="rounded-lg border divide-y overflow-hidden">
               {transactions.map((t) => (
                 <div key={t.id} className="px-3 py-2 group/row">
+                  {/* Главная строка — статья (основной классификатор операции),
+                      контрагент — второстепенно во второй строке. Пустые
+                      «Комментарий…» и «Налог:» не шумят — проявляются при
+                      наведении на строку (инлайн-добавление сохранено). */}
                   <div className="flex items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <InlineEditSelect
-                          value={t.participant_id}
-                          options={participantOptions}
-                          emptyText="—"
-                          noneLabel="— Не указан —"
-                          searchPlaceholder="Поиск по имени или email"
-                          popoverEmpty="Никого не нашли"
-                          onCommit={(id) => handlePatch(t.id, { participant_id: id })}
+                          value={t.category_id}
+                          options={categoryOptions}
+                          emptyText="Статья…"
+                          noneLabel="— Не указана —"
+                          searchPlaceholder="Поиск статьи"
+                          onCommit={(id) => handlePatch(t.id, { category_id: id })}
+                          onCreate={handleCreateCategory}
+                          createLabel="Новая статья"
                         />
                       </div>
                       <div className="w-28 shrink-0">
@@ -263,49 +294,66 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                       <span className="text-gray-300 select-none">·</span>
                       <div className="min-w-0 max-w-[35%]">
                         <InlineEditSelect
-                          value={t.category_id}
-                          options={categoryOptions}
+                          value={t.participant_id}
+                          options={participantOptions}
                           className="text-xs"
-                          emptyText="Статья…"
-                          noneLabel="— Не указана —"
-                          searchPlaceholder="Поиск статьи"
-                          onCommit={(id) => handlePatch(t.id, { category_id: id })}
+                          emptyText={config.subjectLabel + '…'}
+                          noneLabel="— Не указан —"
+                          searchPlaceholder="Поиск по имени или email"
+                          popoverEmpty="Никого не нашли"
+                          onCommit={(id) => handlePatch(t.id, { participant_id: id })}
                         />
                       </div>
-                      <span className="text-gray-300 select-none">·</span>
-                      <div className="min-w-0 flex-1">
-                        <InlineEditCell
-                          type="text"
-                          value={t.comment ?? ''}
-                          className="text-xs"
-                          emptyText="Комментарий…"
-                          placeholder="Комментарий"
-                          onCommit={(v) => {
-                            const trimmed = v.trim()
-                            const next = trimmed === '' ? null : trimmed
-                            if (next === t.comment) return
-                            handlePatch(t.id, { comment: next })
-                          }}
-                        />
+                      <div
+                        className={`flex min-w-0 flex-1 items-center gap-1.5 ${
+                          t.comment?.trim()
+                            ? ''
+                            : 'md:opacity-0 md:group-hover/row:opacity-100 transition-opacity'
+                        }`}
+                      >
+                        <span className="text-gray-300 select-none">·</span>
+                        <div className="min-w-0 flex-1">
+                          <InlineEditCell
+                            type="text"
+                            value={t.comment ?? ''}
+                            className="text-xs"
+                            emptyText="Комментарий…"
+                            placeholder="Комментарий"
+                            onCommit={(v) => {
+                              const trimmed = v.trim()
+                              const next = trimmed === '' ? null : trimmed
+                              if (next === t.comment) return
+                              handlePatch(t.id, { comment: next })
+                            }}
+                          />
+                        </div>
                       </div>
-                      <span className="text-gray-400 shrink-0 text-xs select-none">Налог:</span>
-                      <div className="shrink-0 max-w-[6rem]">
-                        <InlineEditSelect
-                          value={t.tax_rate_id}
-                          options={taxOptions}
-                          className="text-xs"
-                          noneLabel="— Без налога —"
-                          searchPlaceholder="Поиск ставки"
-                          emptyText={
-                            t.tax_rate == null
-                              ? '—'
-                              : `${Number(t.tax_rate).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}%`
-                          }
-                          onCommit={(id) => {
-                            const rate = id ? taxRateById(id) : null
-                            handlePatch(t.id, { tax_rate_id: id, tax_rate: rate })
-                          }}
-                        />
+                      <div
+                        className={`flex shrink-0 items-center gap-1.5 ${
+                          t.tax_rate_id != null || t.tax_rate != null
+                            ? ''
+                            : 'md:opacity-0 md:group-hover/row:opacity-100 transition-opacity'
+                        }`}
+                      >
+                        <span className="text-gray-400 shrink-0 text-xs select-none">Налог:</span>
+                        <div className="shrink-0 max-w-[6rem]">
+                          <InlineEditSelect
+                            value={t.tax_rate_id}
+                            options={taxOptions}
+                            className="text-xs"
+                            noneLabel="— Без налога —"
+                            searchPlaceholder="Поиск ставки"
+                            emptyText={
+                              t.tax_rate == null
+                                ? '—'
+                                : `${Number(t.tax_rate).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}%`
+                            }
+                            onCommit={(id) => {
+                              const rate = id ? taxRateById(id) : null
+                              handlePatch(t.id, { tax_rate_id: id, tax_rate: rate })
+                            }}
+                          />
+                        </div>
                       </div>
                       {/* Действия — в конце строки деталей: не резервируют
                           пустоту справа от суммы. На тач всегда видны. */}
@@ -352,18 +400,23 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
         )}
       </div>
 
-      <ProjectTransactionFormDialog
-        key={editing?.id ?? 'new'}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        workspaceId={workspaceId}
-        type={type}
-        editing={editing}
-        onSave={handleSave}
-        saving={createMutation.isPending || updateMutation.isPending}
-        suggestedAmount={remainingAmount}
-        suggestedLabel="Остаток"
-      />
+      {/* Монтируем по открытию, чтобы стартовые значения формы (контрагент-
+          клиент, остаток) считались на момент клика, а не на маунт страницы. */}
+      {dialogOpen && (
+        <ProjectTransactionFormDialog
+          key={editing?.id ?? 'new'}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          workspaceId={workspaceId}
+          type={type}
+          editing={editing}
+          onSave={handleSave}
+          saving={createMutation.isPending || updateMutation.isPending}
+          suggestedAmount={remainingAmount}
+          suggestedLabel="Остаток"
+          defaultParticipantId={type === 'income' ? projectClientId : null}
+        />
+      )}
 
       <ConfirmDialog
         state={confirm.state}

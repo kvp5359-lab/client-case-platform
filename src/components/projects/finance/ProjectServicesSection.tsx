@@ -40,6 +40,10 @@ import {
   type ProjectServicePatch,
 } from '@/hooks/projects/useProjectServices'
 import { useFinanceTaxRates } from '@/hooks/finance/useFinanceTaxRates'
+import {
+  useFinanceServices,
+  useCreateFinanceService,
+} from '@/hooks/finance/useFinanceServices'
 import { projectServiceKeys } from '@/hooks/queryKeys'
 import { InlineEditCell } from '@/components/ui/inline-edit-cell'
 import { InlineEditSelect } from '@/components/ui/inline-edit-select'
@@ -66,6 +70,54 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
   const reorderMutation = useReorderProjectServices(projectId)
   const patchMutation = usePatchProjectService(projectId)
   const { data: taxRates = [] } = useFinanceTaxRates(workspaceId)
+
+  // Справочник услуг воркспейса — название в строке выбирается из него
+  // (как в форме: выбрал → подтянулись имя и цена). Переименование snapshot'а
+  // под конкретный проект — через диалог (карандаш).
+  const { data: catalog = [] } = useFinanceServices(workspaceId)
+  const createCatalogItem = useCreateFinanceService(workspaceId)
+  const serviceOptions = useMemo(
+    () =>
+      catalog.map((s) => ({
+        value: s.id,
+        label: s.name,
+        hint: `${fmt(Number(s.base_price))} €`,
+      })),
+    [catalog],
+  )
+
+  // Выбор услуги из справочника: подменяем имя и цену на snapshot (то же
+  // поведение, что в ProjectServiceFormDialog.handleSelectService).
+  const handleSelectCatalogService = (rowId: string, catalogId: string) => {
+    const item = catalog.find((c) => c.id === catalogId)
+    if (!item) return
+    handlePatch(rowId, {
+      service_id: item.id,
+      name: item.name,
+      price: Number(item.base_price),
+    })
+  }
+
+  // «+ Новая услуга» из селектора: создаём в справочнике (базовая цена —
+  // текущая цена строки) и сразу привязываем к строке.
+  const handleCreateCatalogService = async (
+    row: ProjectService,
+    name: string,
+  ): Promise<string | null> => {
+    try {
+      const created = await createCatalogItem.mutateAsync({
+        name,
+        base_price: Number(row.price ?? 0),
+      })
+      // Патчим строку прямо здесь: локальный catalog в замыкании ещё старый,
+      // handleSelectCatalogService созданную услугу не найдёт.
+      handlePatch(row.id, { service_id: created.id, name: created.name })
+      return created.id
+    } catch (e) {
+      toast.error('Не удалось создать услугу', { description: getUserFacingErrorMessage(e) })
+      return null
+    }
+  }
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<ProjectService | null>(null)
@@ -191,6 +243,9 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
                   <SortableServiceRow
                     key={s.id}
                     service={s}
+                    serviceOptions={serviceOptions}
+                    onSelectService={(catalogId) => handleSelectCatalogService(s.id, catalogId)}
+                    onCreateService={(name) => handleCreateCatalogService(s, name)}
                     taxOptions={taxRates.map((t) => ({
                       value: t.id,
                       label: t.name,
@@ -252,6 +307,9 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
 
 function SortableServiceRow({
   service,
+  serviceOptions,
+  onSelectService,
+  onCreateService,
   taxOptions,
   taxRateById,
   onPatch,
@@ -260,6 +318,9 @@ function SortableServiceRow({
   isDeleting,
 }: {
   service: ProjectService
+  serviceOptions: { value: string; label: string; hint?: string }[]
+  onSelectService: (catalogId: string) => void
+  onCreateService: (name: string) => Promise<string | null>
   taxOptions: { value: string; label: string; hint?: string }[]
   taxRateById: (id: string) => number | null
   onPatch: (patch: ProjectServicePatch) => void
@@ -297,15 +358,24 @@ function SortableServiceRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
-            <InlineEditCell
-              type="text"
-              value={service.name}
-              onCommit={(v) => {
-                const trimmed = v.trim()
-                if (!trimmed || trimmed === service.name) return
-                onPatch({ name: trimmed })
+            {/* Название = выбор из справочника услуг (выбрал → подтянулись имя
+                и цена), «+ Новая услуга» создаёт запись в справочнике.
+                value=null намеренно: в ячейке всегда показан snapshot-name
+                строки (его можно переименовать под проект через карандаш),
+                а не имя из справочника. */}
+            <InlineEditSelect
+              value={null}
+              options={serviceOptions}
+              className="text-gray-900"
+              emptyText={service.name || '—'}
+              noneLabel={null}
+              searchPlaceholder="Поиск услуги"
+              popoverEmpty="В справочнике услуг пусто"
+              onCommit={(id) => {
+                if (id) onSelectService(id)
               }}
-              placeholder="Название"
+              onCreate={onCreateService}
+              createLabel="Новая услуга"
             />
           </div>
           <div className="w-28 shrink-0 text-right text-sm font-medium tabular-nums py-1">
@@ -344,6 +414,14 @@ function SortableServiceRow({
               }}
             />
           </div>
+          {/* Пустой налог не шумит — проявляется при наведении на строку. */}
+          <div
+            className={`flex min-w-0 items-center gap-1.5 ${
+              service.tax_rate_id != null || service.tax_rate != null
+                ? ''
+                : 'md:opacity-0 md:group-hover/row:opacity-100 transition-opacity'
+            }`}
+          >
           <span className="text-gray-300 select-none">·</span>
           <span className="text-gray-400 shrink-0 text-xs select-none">Налог:</span>
           <div className="min-w-0 max-w-[10rem]">
@@ -363,6 +441,7 @@ function SortableServiceRow({
                 onPatch({ tax_rate_id: id, tax_rate: rate })
               }}
             />
+          </div>
           </div>
           {/* Действия — в конце строки деталей: не резервируют пустоту
               справа от суммы. На тач всегда видны. */}

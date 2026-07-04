@@ -42,7 +42,7 @@ type Props = {
   workspaceId: string
   type: TransactionType
   editing: ProjectTransaction | null
-  onSave: (form: ProjectTransactionFormData) => void
+  onSave: (form: ProjectTransactionFormData, projectId?: string | null) => void
   saving: boolean
   /**
    * Подсказка-сумма (например, остаток к оплате для дохода). Если задано
@@ -52,6 +52,19 @@ type Props = {
   suggestedAmount?: number | null
   /** Подпись тега (например, «Остаток»). */
   suggestedLabel?: string
+  /**
+   * Список проектов — если задан, в форме появляется обязательное поле
+   * «Проект» (режим общего журнала воркспейса), выбранный id уходит
+   * вторым аргументом onSave. На вкладке проекта проп не передаётся.
+   */
+  projects?: { id: string; name: string }[]
+  /** Стартовый проект (при редактировании — проект операции). */
+  initialProjectId?: string | null
+  /**
+   * Дефолтный контрагент для НОВОЙ операции (например, клиент проекта для
+   * дохода). При редактировании игнорируется — берётся контрагент операции.
+   */
+  defaultParticipantId?: string | null
 }
 
 export function ProjectTransactionFormDialog({
@@ -64,6 +77,9 @@ export function ProjectTransactionFormDialog({
   saving,
   suggestedAmount,
   suggestedLabel = 'Остаток',
+  projects,
+  initialProjectId,
+  defaultParticipantId,
 }: Props) {
   const { data: categories = [] } = useFinanceTxCategories(workspaceId, type)
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
@@ -73,7 +89,7 @@ export function ProjectTransactionFormDialog({
   // Инициализация — пересоздание через key={editing?.id ?? 'new'} снаружи.
   const [date, setDate] = useState(editing?.date ?? todayISO())
   const [participantId, setParticipantId] = useState<string | null>(
-    editing?.participant_id ?? null,
+    editing ? editing.participant_id : (defaultParticipantId ?? null),
   )
   const [categoryId, setCategoryId] = useState<string | null>(editing?.category_id ?? null)
   const [amountText, setAmountText] = useState(editing ? String(editing.amount) : '')
@@ -81,6 +97,8 @@ export function ProjectTransactionFormDialog({
   const [taxRateId, setTaxRateId] = useState<string | null>(
     editing ? editing.tax_rate_id : (defaultTax?.id ?? null),
   )
+  const [projectId, setProjectId] = useState<string | null>(initialProjectId ?? null)
+  const showProjectField = projects !== undefined
 
   const labels = TYPE_LABELS[type]
 
@@ -88,20 +106,23 @@ export function ProjectTransactionFormDialog({
 
   const handleSubmit = () => {
     const amount = Number(amountText.replace(',', '.'))
-    onSave({
-      type,
-      date,
-      participant_id: participantId,
-      category_id: categoryId,
-      amount: Number.isFinite(amount) && amount > 0 ? amount : 0,
-      comment: comment.trim() || null,
-      tax_rate_id: taxRateId,
-      tax_rate: selectedTax ? Number(selectedTax.rate) : null,
-    })
+    onSave(
+      {
+        type,
+        date,
+        participant_id: participantId,
+        category_id: categoryId,
+        amount: Number.isFinite(amount) && amount > 0 ? amount : 0,
+        comment: comment.trim() || null,
+        tax_rate_id: taxRateId,
+        tax_rate: selectedTax ? Number(selectedTax.rate) : null,
+      },
+      projectId,
+    )
   }
 
   const amountNum = Number(amountText.replace(',', '.')) || 0
-  const canSave = amountNum > 0 && !!date
+  const canSave = amountNum > 0 && !!date && (!showProjectField || !!projectId)
 
   const hasSuggestion =
     typeof suggestedAmount === 'number' && Number.isFinite(suggestedAmount) && suggestedAmount > 0
@@ -122,6 +143,21 @@ export function ProjectTransactionFormDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {showProjectField && (
+            <div className="space-y-1.5">
+              <Label htmlFor="trx-project">Проект</Label>
+              <SearchableSelect
+                id="trx-project"
+                value={projectId}
+                onChange={setProjectId}
+                options={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
+                placeholder="Выбери проект"
+                noneLabel={null}
+                searchPlaceholder="Поиск проекта"
+                emptyText="Проектов не нашли"
+              />
+            </div>
+          )}
           <div className="flex gap-3">
             <div className="flex-1 min-w-0 space-y-1.5">
               <Label htmlFor="trx-date">Дата</Label>

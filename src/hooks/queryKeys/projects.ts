@@ -168,6 +168,12 @@ export const projectTransactionKeys = {
     ['project-transactions', 'list', projectId, type] as const,
 }
 
+/** Общий журнал доходов/расходов воркспейса (страница «Финансы»). */
+export const workspaceTransactionKeys = {
+  all: ['workspace-transactions'] as const,
+  list: (workspaceId: string) => ['workspace-transactions', 'list', workspaceId] as const,
+}
+
 /**
  * AI-cache, привязанные к проекту: инвалидируется при новых сообщениях
  * мессенджера, чтобы AI-panel перечитал контекст разговора.
