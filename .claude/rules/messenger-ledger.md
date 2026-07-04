@@ -46,6 +46,10 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-07-03 — Аудит: мобильные hover-действия видны на тач (фронт-CSS, не баг) ⏳ ЖДЁТ ДЕПЛОЯ
+- **Часть общей правки B5 (аудит 2026-07-03).** Во всех hover-reveal парах добавлен префикс `md:` (`opacity-0 group-hover:opacity-100` → `md:opacity-0 md:group-hover:opacity-100`) → на <md действия видны, на десктопе как было. Затронуто 8 файлов мессенджера (`MessageActions`, `ComposeField`, `QuickReplyPicker`, `ChatSettingsAccess`, `ChatSettingsNotifications`, `AddToProjectDialog`, `ServiceMessage`, `MessageAttachment`) — **только строки className, канальной логики (dispatch/webhook/send/visibility/реакции) НЕ касался.**
+- Отчёты аудита — `docs/audit/2026-07-03-*`. tsc/eslint 0, 802 теста. Смок после деплоя: на телефоне у сообщения/композера действия (ответить/реагировать/меню) доступны тапом.
+
 ### 2026-07-03 — Тост нового сообщения: полировка верхней строки + прямой чат без дубля (фронт, не баг) ⏳ ЖДЁТ ДЕПЛОЯ
 - **Серия UI-правок `MessageToastContent`/`useNewMessageToast`** (чистый фронт, канальной логики не касался):
   - **Фикс синего контура (баг):** карта `ACCENT_BORDER` не знала расширенную палитру (17 акцентов) → у `brown`/`taupe`/`red`/`black`/`graphite`/`sky`/`green` фолбэк `border-blue-400` (коричневый тред → синий контур). Добавлены все цвета. **Грабля:** `ACCENT_BORDER` — ещё одна точка синхронизации палитры (не входила в «13 точек»), держать с `threadConstants.ts`.
