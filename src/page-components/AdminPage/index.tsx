@@ -11,12 +11,16 @@ import { useState } from 'react'
 import { useIsPlatformAdmin } from '@/hooks/useAdmin'
 import { WorkspacesTab } from './WorkspacesTab'
 import { BillingTab } from './BillingTab'
+import { HealthTab } from './HealthTab'
+import { UsageTab } from './UsageTab'
 import { SettingsTab } from './SettingsTab'
 import { AuditTab } from './AuditTab'
 
 const TABS = [
   { key: 'workspaces', label: 'Воркспейсы' },
   { key: 'billing', label: 'Биллинг' },
+  { key: 'health', label: 'Здоровье' },
+  { key: 'usage', label: 'Потребление' },
   { key: 'settings', label: 'Настройки' },
   { key: 'audit', label: 'Журнал' },
 ] as const
@@ -64,6 +68,8 @@ export function AdminPage() {
 
       {tab === 'workspaces' && <WorkspacesTab />}
       {tab === 'billing' && <BillingTab />}
+      {tab === 'health' && <HealthTab />}
+      {tab === 'usage' && <UsageTab />}
       {tab === 'settings' && <SettingsTab />}
       {tab === 'audit' && <AuditTab />}
     </div>

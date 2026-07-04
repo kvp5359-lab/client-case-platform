@@ -19,6 +19,8 @@ export const adminKeys = {
   payments: ['admin-payments'] as const,
   config: ['admin-platform-config'] as const,
   invites: ['admin-invites'] as const,
+  health: ['admin-health'] as const,
+  usage: ['admin-usage'] as const,
 }
 
 export type AdminWorkspace = {
@@ -421,6 +423,58 @@ export function useDeleteInvite() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: adminKeys.invites })
       qc.invalidateQueries({ queryKey: adminKeys.audit })
+    },
+  })
+}
+
+// ── Этап 3: здоровье платформы + потребление ─────────────────────────────
+
+type WsRef = { workspace_id: string; workspace_name: string | null }
+
+export type PlatformHealth = {
+  stuck_pending: Array<WsRef & { count: number; oldest_at: string }>
+  unresolved_failures: Array<WsRef & { count: number; last_at: string; last_error: string | null }>
+  gmail_watch_expired: Array<WsRef & { email: string; expired_at: string }>
+  mtproto: {
+    active: number
+    stale: Array<WsRef & { tg_username: string | null; last_seen_at: string | null }>
+  }
+  cron_failures_24h: Array<{ jobname: string; count: number; last_at: string; last_message: string | null }>
+  checked_at: string
+}
+
+export type UsageOverview = {
+  top_ai: Array<WsRef & { tokens: number; quota: number | null }>
+  top_storage: Array<WsRef & { mb: number }>
+  top_messages_30d: Array<WsRef & { count: number }>
+  ai_by_month: Array<{ period: string; tokens: number; requests: number }>
+}
+
+export function usePlatformHealth(enabled: boolean) {
+  const qc = useQueryClient()
+  const query = useQuery({
+    queryKey: adminKeys.health,
+    enabled,
+    staleTime: 30_000,
+    queryFn: async (): Promise<PlatformHealth | null> => {
+      const { data, error } = await supabase.rpc('admin_platform_health' as never, {} as never)
+      if (error) throw error
+      return (data as unknown as PlatformHealth) ?? null
+    },
+  })
+  const refresh = () => qc.invalidateQueries({ queryKey: adminKeys.health })
+  return { ...query, refresh }
+}
+
+export function useUsageOverview(enabled: boolean) {
+  return useQuery({
+    queryKey: adminKeys.usage,
+    enabled,
+    staleTime: 60_000,
+    queryFn: async (): Promise<UsageOverview | null> => {
+      const { data, error } = await supabase.rpc('admin_usage_overview' as never, {} as never)
+      if (error) throw error
+      return (data as unknown as UsageOverview) ?? null
     },
   })
 }
