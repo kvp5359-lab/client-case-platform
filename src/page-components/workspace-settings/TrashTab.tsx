@@ -149,7 +149,7 @@ export function TrashTab() {
         type: t.type,
         project_id: t.project_id,
       })
-      toast.success(`${threadTypeLabel(t.type)} «${t.name}» восстановлена`)
+      toast.success(`${threadTypeLabel(t.type)} «${t.name}» восстановлен${t.type === 'task' ? 'а' : ''}`)
     } catch {
       toast.error('Не удалось восстановить')
     } finally {
@@ -190,7 +190,7 @@ export function TrashTab() {
         name: c.name,
         project_id: c.project_id,
       })
-      toast.success(`«${c.name}» восстановлена`)
+      toast.success(`Восстановлено: «${c.name}»`)
     } catch {
       toast.error('Не удалось восстановить')
     } finally {

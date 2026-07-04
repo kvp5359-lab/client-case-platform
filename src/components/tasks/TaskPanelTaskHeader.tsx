@@ -115,7 +115,7 @@ export function TaskPanelTaskHeader({
       {
         onSuccess: () => {
           const name = workspaceProjects.find((p) => p.id === projectId)?.name ?? 'проект'
-          toast.success(`Диалог добавлен в «${name}»`, {
+          toast.success(`Чат добавлен в «${name}»`, {
             action: {
               label: 'Отменить',
               onClick: () => {
