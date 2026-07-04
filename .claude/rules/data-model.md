@@ -236,9 +236,23 @@
 
 **Миграция**: `20260524_slot_ai_prompts.sql`.
 
-## Роуты (67)
+## Отчёты (report_definitions + run_report)
 
-`find src/app -name page.tsx | wc -l`. На 2026-06-27 — **67**.
+Реализовано 2026-07-04. Конструктор отчётов: датасет → фильтр → группировки → показатели, режимы «Сводка»/«Список», быстрый период, CSV-экспорт.
+
+- **Таблица `report_definitions`** — сохранённые отчёты, зеркало модели `item_lists`: `owner_user_id NULL` = общий (меняют владелец/менеджер с `manage_workspace_settings`), NOT NULL = личный. `config jsonb` = `ReportConfig` ([`src/types/reports.ts`](../../src/types/reports.ts)).
+- **RPC `run_report(workspace_id, config)`** — движок ([`20260704130100_run_report_engine.sql`](../../supabase/migrations/20260704130100_run_report_engine.sql)). SECURITY INVOKER (RLS нижележащих таблиц применяется к вызывающему). Клиент передаёт только КЛЮЧИ — датасеты/поля/показатели/операторы резолвятся через **whitelist-реестр внутри функции**, значения фильтров через `quote_literal`. Сырой SQL от клиента невозможен.
+- **Датасеты (v1)**: `transactions` (движение денег), `services` (выставлено), `client_balance` (выставлено − оплачено = долг, вычисляемый), `projects`, `threads` (count по RLS-видимости вызывающего).
+- **⚠️ Два реестра — держать в синхроне**: серверный (в теле `run_report`) и клиентский [`src/lib/reports/registry.ts`](../../src/lib/reports/registry.ts) (лейблы, типы для UI, форматы, дефолтные конфиги). Новое поле/датасет = правка обоих.
+- **Фильтр** — общий `FilterGroup` (`@/lib/filters/types`); UI-редактор отчётов ([`ReportFilterEditor.tsx`](../../src/components/reports/ReportFilterEditor.tsx)) — плоский AND-список, но движок понимает и вложенные группы.
+- **Период** не хранится в отчёте — пресет резолвится в даты на каждый запуск (`applyPeriodToConfig` в [`src/lib/reports/runtime.ts`](../../src/lib/reports/runtime.ts)) → «последние 30 дней» скользящие.
+- **Результат**: summary → строки `g0..gN`/`a0..aM` + серверные `totals`; 2-3 уровня группировки секционируются на клиенте с подытогами (`sectionizeRows`; avg не суммируется — «—»). detail → строки с ключами полей, LIMIT 500 (summary 1000, `limitHit` в ответе).
+- **Хуки/сервис**: [`useReports.ts`](../../src/hooks/useReports.ts), [`reportService.ts`](../../src/services/reportService.ts), ключи `reportKeys`. UI: `/workspaces/[id]/reports` (+ `[reportId]`), пункт сайдбара `nav:reports`.
+- **Ограничения v1**: валюта EUR (как во всём финансовом модуле); «должен» = арифметика счёт−поступления (нет привязки платежа к услуге); кастомные поля проектов в датасеты ещё не включены (план — join `project_field_values` по реестру); графиков нет (таблица + CSV).
+
+## Роуты (69)
+
+`find src/app -name page.tsx | wc -l`. На 2026-07-04 — **69**.
 
 **Root** (1): `/`
 
@@ -248,7 +262,7 @@
 
 **App** — приватные, защищены `(app)/layout.tsx` (52):
 - Top-level: `/app`, `/profile`, `/dashboard`, `/workspaces`, `/select-workspace`
-- Workspace base: `/workspaces/[id]`, `/inbox`, `/inbox/unmatched`, `/tasks`, `/digests`, `/personal-dialogs`, `/calendar`
+- Workspace base: `/workspaces/[id]`, `/inbox`, `/inbox/unmatched`, `/tasks`, `/digests`, `/personal-dialogs`, `/calendar`, `/reports`, `/reports/[reportId]`
 - Projects: `/projects`, `/projects/[projectId]`
 - Boards: `/boards`, `/boards/[boardId]`
 - Lists: `/lists`, `/lists/[listId]`

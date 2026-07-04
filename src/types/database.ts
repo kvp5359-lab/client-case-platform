@@ -7138,6 +7138,59 @@ export type Database = {
           },
         ]
       }
+      report_definitions: {
+        Row: {
+          config: Json
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          id: string
+          is_deleted: boolean
+          name: string
+          owner_user_id: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          id?: string
+          is_deleted?: boolean
+          name: string
+          owner_user_id?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          id?: string
+          is_deleted?: boolean
+          name?: string
+          owner_user_id?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_definitions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           base_price: number
@@ -10346,6 +10399,10 @@ export type Database = {
       revoke_all_user_sessions: {
         Args: { p_user_id: string }
         Returns: undefined
+      }
+      run_report: {
+        Args: { p_workspace_id: string; p_config: Json }
+        Returns: Json
       }
       route_incoming_to_project: {
         Args: {

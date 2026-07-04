@@ -19,6 +19,7 @@ import {
   NotebookText,
   MailQuestion,
   CalendarDays,
+  BarChart3,
   type LucideIcon,
 } from 'lucide-react'
 import type { WorkspacePermission } from '@/types/permissions'
@@ -34,6 +35,7 @@ export type SidebarNavKey =
   | 'people'
   | 'templates'
   | 'digests'
+  | 'reports'
   | 'settings'
 
 export type SidebarPlacement = 'topbar' | 'list'
@@ -195,6 +197,13 @@ export const SIDEBAR_NAV_ITEMS: Record<SidebarNavKey, SidebarItemMeta> = {
     hasAccess: ({ isClientOnly, hasPermission }) =>
       !isClientOnly && hasPermission('view_workspace_digest'),
   },
+  reports: {
+    key: 'reports',
+    label: 'Отчёты',
+    icon: BarChart3,
+    path: 'reports',
+    hasAccess: ({ isClientOnly }) => !isClientOnly,
+  },
   settings: {
     key: 'settings',
     label: 'Настройки',
@@ -216,6 +225,7 @@ export const SIDEBAR_NAV_KEYS: SidebarNavKey[] = [
   'people',
   'templates',
   'digests',
+  'reports',
   'settings',
 ]
 
