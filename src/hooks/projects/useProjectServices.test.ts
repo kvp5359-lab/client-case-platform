@@ -77,6 +77,7 @@ describe('useProjectServices mutations — invalidation', () => {
       price: 100,
       tax_rate_id: null,
       tax_rate: null,
+      is_extra: false,
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -100,6 +101,7 @@ describe('useProjectServices mutations — invalidation', () => {
         price: 200,
         tax_rate_id: null,
         tax_rate: null,
+        is_extra: false,
       },
     })
 
@@ -150,6 +152,7 @@ describe('useProjectServices mutations — invalidation', () => {
       price: 1,
       tax_rate_id: null,
       tax_rate: null,
+      is_extra: false,
     })
 
     await waitFor(() => expect(result.current.isError || result.current.isSuccess).toBe(true))

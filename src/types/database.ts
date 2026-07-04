@@ -5783,6 +5783,7 @@ export type Database = {
           deleted_by: string | null
           id: string
           is_deleted: boolean
+          is_extra: boolean
           name: string
           price: number
           project_id: string
@@ -5800,6 +5801,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
+          is_extra?: boolean
           name: string
           price?: number
           project_id: string
@@ -5817,6 +5819,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
+          is_extra?: boolean
           name?: string
           price?: number
           project_id?: string
@@ -6839,6 +6842,7 @@ export type Database = {
           contact_participant_id: string | null
           created_at: string | null
           created_by: string | null
+          currency: string | null
           deadline: string | null
           deleted_at: string | null
           deleted_by: string | null
@@ -6862,6 +6866,7 @@ export type Database = {
           contact_participant_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          currency?: string | null
           deadline?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -6885,6 +6890,7 @@ export type Database = {
           contact_participant_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          currency?: string | null
           deadline?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -8877,6 +8883,8 @@ export type Database = {
         Row: {
           ai_model: Database["public"]["Enums"]["ai_model"] | null
           anthropic_api_key_id: string | null
+          base_currency: string
+          enabled_currencies: string[]
           created_at: string
           custom_domain: string | null
           custom_domain_status: string | null
@@ -8915,6 +8923,8 @@ export type Database = {
         Insert: {
           ai_model?: Database["public"]["Enums"]["ai_model"] | null
           anthropic_api_key_id?: string | null
+          base_currency?: string
+          enabled_currencies?: string[]
           created_at?: string
           custom_domain?: string | null
           custom_domain_status?: string | null
@@ -8953,6 +8963,8 @@ export type Database = {
         Update: {
           ai_model?: Database["public"]["Enums"]["ai_model"] | null
           anthropic_api_key_id?: string | null
+          base_currency?: string
+          enabled_currencies?: string[]
           created_at?: string
           custom_domain?: string | null
           custom_domain_status?: string | null
@@ -10036,6 +10048,7 @@ export type Database = {
           contact_participant_id: string | null
           created_at: string | null
           created_by: string | null
+          currency: string | null
           deadline: string | null
           deleted_at: string | null
           deleted_by: string | null

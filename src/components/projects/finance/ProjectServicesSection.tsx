@@ -45,6 +45,7 @@ import {
   useCreateFinanceService,
 } from '@/hooks/finance/useFinanceServices'
 import { projectServiceKeys } from '@/hooks/queryKeys'
+import { formatMoney } from '@/lib/currency'
 import { InlineEditCell } from '@/components/ui/inline-edit-cell'
 import { InlineEditSelect } from '@/components/ui/inline-edit-select'
 import { ProjectServiceFormDialog } from './ProjectServiceFormDialog'
@@ -57,9 +58,13 @@ const fmt = (value: number): string =>
 type Props = {
   projectId: string
   workspaceId: string
+  /** Валюта проекта (ISO-код) — только отображение сумм. */
+  currency: string
+  /** Базовая валюта воркспейса — в ней цены справочника услуг. */
+  baseCurrency: string
 }
 
-export function ProjectServicesSection({ projectId, workspaceId }: Props) {
+export function ProjectServicesSection({ projectId, workspaceId, currency, baseCurrency }: Props) {
   const queryClient = useQueryClient()
   const { data, isLoading } = useProjectServices(projectId)
   const services = useMemo(() => data ?? [], [data])
@@ -81,9 +86,9 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
       catalog.map((s) => ({
         value: s.id,
         label: s.name,
-        hint: `${fmt(Number(s.base_price))} €`,
+        hint: formatMoney(Number(s.base_price), baseCurrency),
       })),
-    [catalog],
+    [catalog, baseCurrency],
   )
 
   // Выбор услуги из справочника: подменяем имя и цену на snapshot (то же
@@ -91,10 +96,12 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
   const handleSelectCatalogService = (rowId: string, catalogId: string) => {
     const item = catalog.find((c) => c.id === catalogId)
     if (!item) return
+    // Цены справочника — в базовой валюте. Если валюта проекта другая,
+    // подставлять число «как есть» нельзя — только имя, цену введут руками.
     handlePatch(rowId, {
       service_id: item.id,
       name: item.name,
-      price: Number(item.base_price),
+      ...(currency === baseCurrency ? { price: Number(item.base_price) } : {}),
     })
   }
 
@@ -107,7 +114,9 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
     try {
       const created = await createCatalogItem.mutateAsync({
         name,
-        base_price: Number(row.price ?? 0),
+        // Цена справочника — в базовой валюте: берём цену строки только
+        // если валюта проекта совпадает с базовой.
+        base_price: currency === baseCurrency ? Number(row.price ?? 0) : 0,
       })
       // Патчим строку прямо здесь: локальный catalog в замыкании ещё старый,
       // handleSelectCatalogService созданную услугу не найдёт.
@@ -124,17 +133,33 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
 
   const confirm = useConfirmDialog()
 
-  // Subtotal — без налога; tax — суммарный налог; total — с налогом.
+  // Группировка: сначала пакетные, потом дополнительные (не входят в пакет).
+  // Порядок внутри групп — общий sort_order.
+  const mainServices = useMemo(() => services.filter((s) => !s.is_extra), [services])
+  const extraServices = useMemo(() => services.filter((s) => s.is_extra), [services])
+  // Порядок рендера (пакет → допы) — его же используем для DnD-индексов.
+  const orderedServices = useMemo(
+    () => [...mainServices, ...extraServices],
+    [mainServices, extraServices],
+  )
+
+  // Subtotal — без налога; tax — суммарный налог; total — с налогом;
+  // packageTotal/extraTotal — разбивка «пакет + допы» (обе с налогом).
   const totals = useMemo(() => {
     let subtotal = 0
     let tax = 0
+    let packageTotal = 0
+    let extraTotal = 0
     for (const s of services) {
       const sub = Number(s.total ?? 0)
       subtotal += sub
       const rate = s.tax_rate == null ? 0 : Number(s.tax_rate)
       tax += sub * (rate / 100)
+      const withTax = sub * (1 + rate / 100)
+      if (s.is_extra) extraTotal += withTax
+      else packageTotal += withTax
     }
-    return { subtotal, tax, total: subtotal + tax }
+    return { subtotal, tax, total: subtotal + tax, packageTotal, extraTotal }
   }, [services])
   const hasAnyTax = useMemo(
     () => services.some((s) => s.tax_rate != null && Number(s.tax_rate) > 0),
@@ -146,10 +171,12 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
-    const oldIdx = services.findIndex((s) => s.id === active.id)
-    const newIdx = services.findIndex((s) => s.id === over.id)
+    // Индексы считаем по ПОРЯДКУ РЕНДЕРА (пакет → допы), а не по сырому
+    // services — иначе перетаскивание промахивается при активной группировке.
+    const oldIdx = orderedServices.findIndex((s) => s.id === active.id)
+    const newIdx = orderedServices.findIndex((s) => s.id === over.id)
     if (oldIdx === -1 || newIdx === -1) return
-    const reordered = arrayMove(services, oldIdx, newIdx)
+    const reordered = arrayMove(orderedServices, oldIdx, newIdx)
 
     // Optimistic update
     queryClient.setQueryData(
@@ -198,6 +225,31 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
     )
   }
 
+  // Общий рендер строки для обеих групп (пакет / допы).
+  const renderServiceRow = (s: ProjectService) => (
+    <SortableServiceRow
+      key={s.id}
+      service={s}
+      currency={currency}
+      serviceOptions={serviceOptions}
+      onSelectService={(catalogId) => handleSelectCatalogService(s.id, catalogId)}
+      onCreateService={(name) => handleCreateCatalogService(s, name)}
+      taxOptions={taxRates.map((t) => ({
+        value: t.id,
+        label: t.name,
+        hint: `${Number(t.rate)}%`,
+      }))}
+      taxRateById={(id) => {
+        const t = taxRates.find((r) => r.id === id)
+        return t ? Number(t.rate) : null
+      }}
+      onPatch={(patch) => handlePatch(s.id, patch)}
+      onEdit={() => openEdit(s)}
+      onDelete={() => askDelete(s)}
+      isDeleting={deleteMutation.isPending}
+    />
+  )
+
   const askDelete = async (service: ProjectService) => {
     const ok = await confirm.confirm({
       title: 'Удалить услугу?',
@@ -216,14 +268,15 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
     <section className="group/section">
       <header className="flex items-center gap-3 mb-3">
         <h3 className="text-2xl font-semibold text-gray-900">Услуги проекта</h3>
-        <Button
-          size="sm"
+        {/* Минималистичная кнопка-пилюля в тон плашкам итогов. */}
+        <button
+          type="button"
           onClick={openCreate}
-          className="md:opacity-0 md:group-hover/section:opacity-100 transition-opacity"
+          className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-900 transition-colors md:opacity-0 md:group-hover/section:opacity-100"
         >
-          <Plus className="h-4 w-4 mr-1" />
+          <Plus className="h-3.5 w-3.5" />
           Добавить
-        </Button>
+        </button>
       </header>
       <div>
         {isLoading || services.length === 0 ? (
@@ -236,35 +289,34 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
                 экрана, и на телефоне. DnD-сортировка сохранена. */}
             <div className="rounded-lg border divide-y overflow-hidden">
               <SortableContext
-                items={services.map((s) => s.id)}
+                items={orderedServices.map((s) => s.id)}
                 strategy={verticalListSortingStrategy}
               >
-                {services.map((s) => (
-                  <SortableServiceRow
-                    key={s.id}
-                    service={s}
-                    serviceOptions={serviceOptions}
-                    onSelectService={(catalogId) => handleSelectCatalogService(s.id, catalogId)}
-                    onCreateService={(name) => handleCreateCatalogService(s, name)}
-                    taxOptions={taxRates.map((t) => ({
-                      value: t.id,
-                      label: t.name,
-                      hint: `${Number(t.rate)}%`,
-                    }))}
-                    taxRateById={(id) => {
-                      const t = taxRates.find((r) => r.id === id)
-                      return t ? Number(t.rate) : null
-                    }}
-                    onPatch={(patch) => handlePatch(s.id, patch)}
-                    onEdit={() => openEdit(s)}
-                    onDelete={() => askDelete(s)}
-                    isDeleting={deleteMutation.isPending}
-                  />
-                ))}
+                {mainServices.map(renderServiceRow)}
+                {/* Дополнительные услуги (не входят в пакет) — отдельной
+                    подгруппой с подзаголовком. */}
+                {extraServices.length > 0 && (
+                  <div className="bg-gray-50 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Дополнительно (не в пакете)
+                  </div>
+                )}
+                {extraServices.map(renderServiceRow)}
               </SortableContext>
             </div>
             {/* Footer-теги — без боковых границ */}
             <div className="px-3 py-2 flex items-center justify-end gap-2 text-sm tabular-nums">
+              {extraServices.length > 0 && (
+                <>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-600">
+                    <span className="text-gray-500">Пакет:</span>
+                    <span className="font-medium">{fmt(totals.packageTotal)}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-600">
+                    <span className="text-gray-500">Допы:</span>
+                    <span className="font-medium">+{fmt(totals.extraTotal)}</span>
+                  </span>
+                </>
+              )}
               {hasAnyTax && (
                 <>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-600">
@@ -279,7 +331,7 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
               )}
               <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-900">
                 <span>Итого:</span>
-                <span className="font-semibold">{fmt(totals.total)} EUR</span>
+                <span className="font-semibold">{formatMoney(totals.total, currency)}</span>
               </span>
             </div>
           </DndContext>
@@ -291,6 +343,8 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         workspaceId={workspaceId}
+        currency={currency}
+        baseCurrency={baseCurrency}
         editing={editing}
         onSave={handleSave}
         saving={createMutation.isPending || updateMutation.isPending}
@@ -307,6 +361,7 @@ export function ProjectServicesSection({ projectId, workspaceId }: Props) {
 
 function SortableServiceRow({
   service,
+  currency,
   serviceOptions,
   onSelectService,
   onCreateService,
@@ -318,6 +373,8 @@ function SortableServiceRow({
   isDeleting,
 }: {
   service: ProjectService
+  /** Валюта проекта — для суммы строки. */
+  currency: string
   serviceOptions: { value: string; label: string; hint?: string }[]
   onSelectService: (catalogId: string) => void
   onCreateService: (name: string) => Promise<string | null>
@@ -382,7 +439,7 @@ function SortableServiceRow({
             {(() => {
               const sub = Number(service.total ?? 0)
               const rate = service.tax_rate == null ? 0 : Number(service.tax_rate)
-              return `${fmt(sub * (1 + rate / 100))} €`
+              return formatMoney(sub * (1 + rate / 100), currency)
             })()}
           </div>
         </div>

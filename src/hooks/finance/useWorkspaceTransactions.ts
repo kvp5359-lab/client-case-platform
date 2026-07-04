@@ -24,6 +24,8 @@ const STALE_TIME = 5 * 60_000
 
 export type WorkspaceTransaction = ProjectTransaction & {
   project_name: string
+  /** Валюта проекта (NULL = базовая воркспейса). */
+  project_currency: string | null
 }
 
 /** Все транзакции воркспейса, новые сверху (date DESC, created_at DESC). */
@@ -35,17 +37,20 @@ export function useWorkspaceTransactions(workspaceId: string | undefined) {
     queryFn: async (): Promise<WorkspaceTransaction[]> => {
       const { data, error } = await supabase
         .from('project_transactions')
-        .select('*, projects!inner(id, name, workspace_id, is_deleted)')
+        .select('*, projects!inner(id, name, currency, workspace_id, is_deleted)')
         .eq('projects.workspace_id', workspaceId!)
         .eq('projects.is_deleted', false)
         .eq('is_deleted', false)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })
       if (error) throw error
-      type Row = ProjectTransaction & { projects: { id: string; name: string } | null }
+      type Row = ProjectTransaction & {
+        projects: { id: string; name: string; currency: string | null } | null
+      }
       return ((data ?? []) as Row[]).map(({ projects, ...t }) => ({
         ...t,
         project_name: projects?.name ?? '—',
+        project_currency: projects?.currency ?? null,
       }))
     },
   })

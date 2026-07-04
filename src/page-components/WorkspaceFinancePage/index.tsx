@@ -51,6 +51,8 @@ import {
   useFinanceTxCategories,
   useCreateFinanceTxCategory,
 } from '@/hooks/finance/useFinanceTransactionCategories'
+import { useWorkspaceCurrency } from '@/hooks/finance/useCurrencySettings'
+import { formatMoney, formatMoneyByCurrency } from '@/lib/currency'
 import {
   useWorkspaceTransactions,
   useCreateWorkspaceTransaction,
@@ -65,11 +67,6 @@ import type {
   TransactionType,
 } from '@/hooks/projects/useProjectTransactions'
 import { ProjectTransactionFormDialog } from '@/components/projects/finance/ProjectTransactionFormDialog'
-
-const fmt = (value: number): string =>
-  new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-    value,
-  )
 
 const formatDate = (iso: string): string => {
   const [y, m, d] = iso.split('-')
@@ -111,10 +108,14 @@ function monthLabel(monthKey: string): string {
 
 type MonthGroup = {
   key: string
-  income: number
-  expense: number
+  /** Суммы в разрезе валют (проекты могут быть в разных валютах). */
+  income: Map<string, number>
+  expense: Map<string, number>
   items: WorkspaceTransaction[]
 }
+
+const addTo = (map: Map<string, number>, code: string, value: number) =>
+  map.set(code, (map.get(code) ?? 0) + value)
 
 export default function WorkspaceFinancePage() {
   usePageTitle('Финансы')
@@ -122,6 +123,7 @@ export default function WorkspaceFinancePage() {
 
   const { isOwner, can } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
   const canView = isOwner || can('manage_workspace_settings')
+  const { baseCurrency } = useWorkspaceCurrency(canView ? workspaceId : undefined)
 
   const { data: transactions = [], isLoading } = useWorkspaceTransactions(
     canView ? workspaceId : undefined,
@@ -173,15 +175,28 @@ export default function WorkspaceFinancePage() {
     })
   }, [transactions, typeFilter, projectFilter, period])
 
+  // Валюта строки = валюта её проекта (NULL = базовая воркспейса).
+  const rowCurrency = (t: WorkspaceTransaction) => t.project_currency ?? baseCurrency
+
+  // Итоги в разрезе валют — без конвертации и курсов.
   const totals = useMemo(() => {
-    let income = 0
-    let expense = 0
+    const income = new Map<string, number>()
+    const expense = new Map<string, number>()
+    const balance = new Map<string, number>()
     for (const t of filtered) {
-      if (t.type === 'income') income += Number(t.amount ?? 0)
-      else expense += Number(t.amount ?? 0)
+      const cur = t.project_currency ?? baseCurrency
+      const amount = Number(t.amount ?? 0)
+      if (t.type === 'income') {
+        addTo(income, cur, amount)
+        addTo(balance, cur, amount)
+      } else {
+        addTo(expense, cur, amount)
+        addTo(balance, cur, -amount)
+      }
     }
-    return { income, expense, balance: income - expense }
-  }, [filtered])
+    const balanceNonNegative = [...balance.values()].every((v) => v >= 0)
+    return { income, expense, balance, balanceNonNegative }
+  }, [filtered, baseCurrency])
 
   // Группировка по месяцам — порядок уже date DESC из запроса.
   const groups = useMemo(() => {
@@ -190,15 +205,16 @@ export default function WorkspaceFinancePage() {
       const key = t.date.slice(0, 7)
       let group = result[result.length - 1]
       if (!group || group.key !== key) {
-        group = { key, income: 0, expense: 0, items: [] }
+        group = { key, income: new Map(), expense: new Map(), items: [] }
         result.push(group)
       }
       group.items.push(t)
-      if (t.type === 'income') group.income += Number(t.amount ?? 0)
-      else group.expense += Number(t.amount ?? 0)
+      const cur = t.project_currency ?? baseCurrency
+      if (t.type === 'income') addTo(group.income, cur, Number(t.amount ?? 0))
+      else addTo(group.expense, cur, Number(t.amount ?? 0))
     }
     return result
-  }, [filtered])
+  }, [filtered, baseCurrency])
 
   // ---- Диалог добавления/редактирования ----
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -282,7 +298,7 @@ export default function WorkspaceFinancePage() {
   const askDelete = async (t: WorkspaceTransaction) => {
     const ok = await confirm.confirm({
       title: t.type === 'income' ? 'Удалить доход?' : 'Удалить расход?',
-      description: `Запись на ${fmt(Number(t.amount))} EUR от ${formatDate(t.date)} (${t.project_name}) будет удалена.`,
+      description: `Запись на ${formatMoney(Number(t.amount), rowCurrency(t))} от ${formatDate(t.date)} (${t.project_name}) будет удалена.`,
       confirmText: 'Удалить',
       variant: 'destructive',
     })
@@ -362,19 +378,19 @@ export default function WorkspaceFinancePage() {
           <div className="ml-auto flex flex-wrap items-center gap-2 text-sm tabular-nums">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-0.5 text-blue-900">
               <span>Доходы:</span>
-              <span className="font-semibold">{fmt(totals.income)}</span>
+              <span className="font-semibold">{formatMoneyByCurrency(totals.income)}</span>
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-red-900">
               <span>Расходы:</span>
-              <span className="font-semibold">{fmt(totals.expense)}</span>
+              <span className="font-semibold">{formatMoneyByCurrency(totals.expense)}</span>
             </span>
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 ${
-                totals.balance >= 0 ? 'bg-emerald-100 text-emerald-900' : 'bg-red-100 text-red-900'
+                totals.balanceNonNegative ? 'bg-emerald-100 text-emerald-900' : 'bg-red-100 text-red-900'
               }`}
             >
               <span>Сальдо:</span>
-              <span className="font-semibold">{fmt(totals.balance)} EUR</span>
+              <span className="font-semibold">{formatMoneyByCurrency(totals.balance)}</span>
             </span>
           </div>
         </div>
@@ -395,14 +411,14 @@ export default function WorkspaceFinancePage() {
                 <div className="flex items-baseline justify-between px-1 mb-2">
                   <h2 className="text-sm font-semibold text-gray-900">{monthLabel(group.key)}</h2>
                   <div className="text-xs text-gray-500 tabular-nums">
-                    {group.income > 0 && (
-                      <span className="text-blue-700">+{fmt(group.income)}</span>
+                    {group.income.size > 0 && (
+                      <span className="text-blue-700">+{formatMoneyByCurrency(group.income)}</span>
                     )}
-                    {group.income > 0 && group.expense > 0 && (
+                    {group.income.size > 0 && group.expense.size > 0 && (
                       <span className="text-gray-300"> · </span>
                     )}
-                    {group.expense > 0 && (
-                      <span className="text-red-700">−{fmt(group.expense)}</span>
+                    {group.expense.size > 0 && (
+                      <span className="text-red-700">−{formatMoneyByCurrency(group.expense)}</span>
                     )}
                   </div>
                 </div>
@@ -529,7 +545,7 @@ export default function WorkspaceFinancePage() {
                           value={Number(t.amount)}
                           format={(v) =>
                             typeof v === 'number'
-                              ? `${t.type === 'income' ? '+' : '−'}${fmt(v)} €`
+                              ? `${t.type === 'income' ? '+' : '−'}${formatMoney(v, rowCurrency(t))}`
                               : '—'
                           }
                           min={0.01}
@@ -561,7 +577,8 @@ export default function WorkspaceFinancePage() {
           editing={editing}
           onSave={handleSave}
           saving={createMutation.isPending || updateMutation.isPending}
-          projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+          projects={projects.map((p) => ({ id: p.id, name: p.name, currency: p.currency }))}
+          baseCurrency={baseCurrency}
           initialProjectId={editing?.project_id ?? projectFilter}
         />
       )}

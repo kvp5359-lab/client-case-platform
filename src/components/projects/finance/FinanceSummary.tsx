@@ -7,11 +7,7 @@
 import { useMemo } from 'react'
 import { useProjectServices } from '@/hooks/projects/useProjectServices'
 import { useProjectTransactions } from '@/hooks/projects/useProjectTransactions'
-
-const fmt = (value: number): string =>
-  new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-    value,
-  )
+import { formatMoney, formatAmount as fmt } from '@/lib/currency'
 
 type CardProps = {
   label: string
@@ -41,20 +37,26 @@ function StatCard({ label, value, hint, tone = 'default' }: CardProps) {
 
 type Props = {
   projectId: string
+  /** Валюта проекта (ISO-код) — только отображение сумм. */
+  currency: string
 }
 
-export function FinanceSummary({ projectId }: Props) {
+export function FinanceSummary({ projectId, currency }: Props) {
   const { data: services = [] } = useProjectServices(projectId)
   const { data: incomes = [] } = useProjectTransactions(projectId, 'income')
   const { data: expenses = [] } = useProjectTransactions(projectId, 'expense')
 
   const stats = useMemo(() => {
     // Стоимость = сумма позиций с учётом налога (subtotal + налог сверху).
+    // Параллельно — разбивка «пакет + допы» (is_extra).
     let cost = 0
+    let extraCost = 0
     for (const s of services) {
       const sub = Number(s.total ?? 0)
       const rate = s.tax_rate == null ? 0 : Number(s.tax_rate)
-      cost += sub * (1 + rate / 100)
+      const withTax = sub * (1 + rate / 100)
+      cost += withTax
+      if (s.is_extra) extraCost += withTax
     }
 
     const incomeSum = incomes.reduce((acc, t) => acc + Number(t.amount ?? 0), 0)
@@ -84,6 +86,7 @@ export function FinanceSummary({ projectId }: Props) {
     const remaining = cost - incomeSum
     return {
       cost,
+      extraCost,
       incomeSum,
       expenseSum,
       profit,
@@ -98,20 +101,28 @@ export function FinanceSummary({ projectId }: Props) {
   // боковой панели контент уже, и карточки сами переносятся на новый ряд.
   return (
     <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
-      <StatCard label="Стоимость" value={`${fmt(stats.cost)} EUR`} hint="Услуги проекта с налогом" />
+      <StatCard
+        label="Стоимость"
+        value={formatMoney(stats.cost, currency)}
+        hint={
+          stats.extraCost > 0
+            ? `Пакет ${fmt(stats.cost - stats.extraCost)} + допы ${fmt(stats.extraCost)}`
+            : 'Услуги проекта с налогом'
+        }
+      />
       <StatCard
         label="Доходы"
-        value={`${fmt(stats.incomeSum)} EUR`}
+        value={formatMoney(stats.incomeSum, currency)}
         tone="income"
       />
       <StatCard
         label="Расходы"
-        value={`${fmt(stats.expenseSum)} EUR`}
+        value={formatMoney(stats.expenseSum, currency)}
         tone="expense"
       />
       <StatCard
         label="Прибыль"
-        value={`${fmt(stats.profit)} EUR`}
+        value={formatMoney(stats.profit, currency)}
         tone={stats.profit >= 0 ? 'positive' : 'negative'}
         hint={
           stats.taxInIncome > 0 || stats.taxInExpense > 0
@@ -124,7 +135,7 @@ export function FinanceSummary({ projectId }: Props) {
         value={
           stats.paymentPct === null
             ? '—'
-            : `${fmt(Math.abs(stats.remaining))} EUR`
+            : formatMoney(Math.abs(stats.remaining), currency)
         }
         hint={
           stats.paymentPct === null

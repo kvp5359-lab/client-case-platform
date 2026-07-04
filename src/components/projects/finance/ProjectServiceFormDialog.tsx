@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { formatMoney, currencySymbol, DEFAULT_CURRENCY } from '@/lib/currency'
 import {
   useFinanceServices,
   useCreateFinanceService,
@@ -36,12 +37,11 @@ type Props = {
   editing: ProjectService | null
   onSave: (form: ProjectServiceFormData) => void
   saving: boolean
+  /** Валюта проекта (ISO-код) — только отображение сумм. */
+  currency?: string
+  /** Базовая валюта воркспейса — в ней цены справочника услуг. */
+  baseCurrency?: string
 }
-
-const fmt = (value: number): string =>
-  new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-    value,
-  )
 
 export function ProjectServiceFormDialog({
   open,
@@ -50,6 +50,8 @@ export function ProjectServiceFormDialog({
   editing,
   onSave,
   saving,
+  currency = DEFAULT_CURRENCY,
+  baseCurrency = DEFAULT_CURRENCY,
 }: Props) {
   const { data: catalog = [] } = useFinanceServices(workspaceId)
   const { data: taxRates = [] } = useFinanceTaxRates(workspaceId)
@@ -70,6 +72,7 @@ export function ProjectServiceFormDialog({
   const [taxRateId, setTaxRateId] = useState<string | null>(
     editing ? editing.tax_rate_id : (defaultTax?.id ?? null),
   )
+  const [isExtra, setIsExtra] = useState(editing?.is_extra ?? false)
 
   const [createCatalogOpen, setCreateCatalogOpen] = useState(false)
 
@@ -80,9 +83,10 @@ export function ProjectServiceFormDialog({
     if (fromCatalog) {
       // При выборе услуги из справочника подменяем имя и цену на snapshot.
       // Если пользователь уже что-то ввёл руками — перезаписываем (так проще
-      // и предсказуемо: «выбрал из списка → подтянулось»).
+      // и предсказуемо: «выбрал из списка → подтянулось»). Цены справочника —
+      // в базовой валюте: при другой валюте проекта цену не трогаем.
       setName(fromCatalog.name)
-      setPriceText(String(fromCatalog.base_price))
+      if (currency === baseCurrency) setPriceText(String(fromCatalog.base_price))
     }
   }
 
@@ -93,7 +97,7 @@ export function ProjectServiceFormDialog({
         // Сразу подставляем созданную услугу в форму.
         setServiceId(created.id)
         setName(created.name)
-        setPriceText(String(created.base_price))
+        if (currency === baseCurrency) setPriceText(String(created.base_price))
       },
     })
   }
@@ -111,6 +115,7 @@ export function ProjectServiceFormDialog({
       tax_rate_id: taxRateId,
       // Snapshot процента — чтобы изменения справочника не пересчитывали историю.
       tax_rate: selectedTax ? Number(selectedTax.rate) : null,
+      is_extra: isExtra,
     })
   }
 
@@ -145,7 +150,10 @@ export function ProjectServiceFormDialog({
                     options={catalog.map((s) => ({
                       value: s.id,
                       label: s.name,
-                      hint: Number(s.base_price) > 0 ? `${s.base_price} EUR` : undefined,
+                      hint:
+                        Number(s.base_price) > 0
+                          ? formatMoney(Number(s.base_price), baseCurrency)
+                          : undefined,
                     }))}
                     placeholder="Выбери услугу"
                     noneLabel={null}
@@ -193,7 +201,7 @@ export function ProjectServiceFormDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="proj-service-price">Цена, EUR (без налога)</Label>
+                <Label htmlFor="proj-service-price">Цена, {currencySymbol(currency)} (без налога)</Label>
                 <Input
                   id="proj-service-price"
                   type="number"
@@ -228,20 +236,36 @@ export function ProjectServiceFormDialog({
               />
             </div>
 
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isExtra}
+                onChange={(e) => setIsExtra(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-brand-600"
+              />
+              <span className="text-sm">
+                Дополнительная услуга
+                <span className="block text-xs text-gray-500">
+                  Не входит в пакет, считается по факту — в списке показывается отдельной
+                  группой, в сводке стоимость разбивается на «пакет + допы».
+                </span>
+              </span>
+            </label>
+
             <div className="rounded-md border bg-gray-50 p-3 space-y-1 text-sm tabular-nums">
               <div className="flex justify-between text-gray-600">
                 <span>Без налога</span>
-                <span>{fmt(subtotalNum)} EUR</span>
+                <span>{formatMoney(subtotalNum, currency)}</span>
               </div>
               {selectedTax && (
                 <div className="flex justify-between text-gray-600">
                   <span>{selectedTax.name} ({Number(selectedTax.rate)}%)</span>
-                  <span>+{fmt(taxNum)} EUR</span>
+                  <span>+{formatMoney(taxNum, currency)}</span>
                 </div>
               )}
               <div className="flex justify-between font-semibold pt-1 border-t">
                 <span>Итого</span>
-                <span>{fmt(totalNum)} EUR</span>
+                <span>{formatMoney(totalNum, currency)}</span>
               </div>
             </div>
           </div>

@@ -37,7 +37,7 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('id, short_id, name, description, template_id, status_id, project_templates ( name )')
+        .select('id, short_id, name, description, currency, template_id, status_id, project_templates ( name )')
         .eq('workspace_id', workspaceId!)
         .eq('is_deleted', false)
         // По свежести: last_activity_at обновляется триггерами при сообщениях,
@@ -50,6 +50,7 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
         short_id: number | null
         name: string
         description: string | null
+        currency: string | null
         template_id: string | null
         status_id: string | null
         project_templates: { name: string } | null

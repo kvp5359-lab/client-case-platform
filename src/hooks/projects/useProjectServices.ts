@@ -21,6 +21,8 @@ export type ProjectServiceFormData = {
   tax_rate_id: string | null
   /** Snapshot процента налога (накручивается сверху на subtotal). */
   tax_rate: number | null
+  /** Дополнительная услуга (не входит в пакет) — считается по факту. */
+  is_extra: boolean
 }
 
 /** Список услуг проекта (без удалённых), отсортирован по sort_order. */
@@ -68,6 +70,7 @@ export function useCreateProjectService(projectId: string | undefined) {
           price: form.price,
           tax_rate_id: form.tax_rate_id,
           tax_rate: form.tax_rate,
+          is_extra: form.is_extra,
           sort_order: nextOrder,
         })
         .select('*')
@@ -95,6 +98,7 @@ export function useUpdateProjectService(projectId: string | undefined) {
           price: params.form.price,
           tax_rate_id: params.form.tax_rate_id,
           tax_rate: params.form.tax_rate,
+          is_extra: params.form.is_extra,
         })
         .eq('id', params.id)
         .select('*')
@@ -121,6 +125,7 @@ export type ProjectServicePatch = Partial<{
   price: number
   tax_rate_id: string | null
   tax_rate: number | null
+  is_extra: boolean
 }>
 
 export function usePatchProjectService(projectId: string | undefined) {

@@ -32,14 +32,10 @@ import {
   type ProjectTransactionPatch,
   type TransactionType,
 } from '@/hooks/projects/useProjectTransactions'
+import { formatMoney } from '@/lib/currency'
 import { InlineEditCell } from '@/components/ui/inline-edit-cell'
 import { InlineEditSelect } from '@/components/ui/inline-edit-select'
 import { ProjectTransactionFormDialog } from './ProjectTransactionFormDialog'
-
-const fmt = (value: number): string =>
-  new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-    value,
-  )
 
 const formatDate = (iso: string): string => {
   // dd.MM.yyyy без часовой зоны (date — это просто дата без времени)
@@ -69,9 +65,11 @@ type Props = {
   projectId: string
   workspaceId: string
   type: TransactionType
+  /** Валюта проекта (ISO-код) — только отображение сумм. */
+  currency: string
 }
 
-export function ProjectTransactionsSection({ projectId, workspaceId, type }: Props) {
+export function ProjectTransactionsSection({ projectId, workspaceId, type, currency }: Props) {
   const config = TYPE_CONFIG[type]
   const { data, isLoading } = useProjectTransactions(projectId, type)
   const transactions = useMemo(() => data ?? [], [data])
@@ -209,7 +207,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
   const askDelete = async (trx: ProjectTransaction) => {
     const ok = await confirm.confirm({
       title: type === 'income' ? 'Удалить доход?' : 'Удалить расход?',
-      description: `Запись на ${fmt(Number(trx.amount))} EUR от ${formatDate(trx.date)} будет удалена.`,
+      description: `Запись на ${formatMoney(Number(trx.amount), currency)} от ${formatDate(trx.date)} будет удалена.`,
       confirmText: 'Удалить',
       variant: 'destructive',
     })
@@ -225,14 +223,15 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
     <section className="group/section">
       <header className="flex items-center gap-3 mb-3">
         <h3 className="text-2xl font-semibold text-gray-900">{config.title}</h3>
-        <Button
-          size="sm"
+        {/* Минималистичная кнопка-пилюля в тон плашкам итогов. */}
+        <button
+          type="button"
           onClick={openCreate}
-          className="md:opacity-0 md:group-hover/section:opacity-100 transition-opacity"
+          className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-900 transition-colors md:opacity-0 md:group-hover/section:opacity-100"
         >
-          <Plus className="h-4 w-4 mr-1" />
+          <Plus className="h-3.5 w-3.5" />
           {config.addLabel}
-        </Button>
+        </button>
       </header>
       <div>
         {isLoading || transactions.length === 0 ? (
@@ -269,7 +268,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
                           type="number"
                           align="right"
                           value={Number(t.amount)}
-                          format={(v) => (typeof v === 'number' ? `${fmt(v)} €` : '—')}
+                          format={(v) => (typeof v === 'number' ? formatMoney(v, currency) : '—')}
                           min={0.01}
                           onCommit={(v) => {
                             if (v <= 0) return
@@ -393,7 +392,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
               }`}
             >
               <span>Итого:</span>
-              <span className="font-semibold">{fmt(totalSum)} EUR</span>
+              <span className="font-semibold">{formatMoney(totalSum, currency)}</span>
             </span>
           </div>
           </>
@@ -415,6 +414,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type }: Pro
           suggestedAmount={remainingAmount}
           suggestedLabel="Остаток"
           defaultParticipantId={type === 'income' ? projectClientId : null}
+          currency={currency}
         />
       )}
 

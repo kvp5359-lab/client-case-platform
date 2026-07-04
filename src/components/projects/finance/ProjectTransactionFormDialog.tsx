@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { currencySymbol, DEFAULT_CURRENCY } from '@/lib/currency'
 import { useFinanceTxCategories } from '@/hooks/finance/useFinanceTransactionCategories'
 import { useFinanceTaxRates } from '@/hooks/finance/useFinanceTaxRates'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
@@ -57,7 +58,7 @@ type Props = {
    * «Проект» (режим общего журнала воркспейса), выбранный id уходит
    * вторым аргументом onSave. На вкладке проекта проп не передаётся.
    */
-  projects?: { id: string; name: string }[]
+  projects?: { id: string; name: string; currency?: string | null }[]
   /** Стартовый проект (при редактировании — проект операции). */
   initialProjectId?: string | null
   /**
@@ -65,6 +66,11 @@ type Props = {
    * дохода). При редактировании игнорируется — берётся контрагент операции.
    */
   defaultParticipantId?: string | null
+  /** Валюта проекта (режим вкладки проекта). */
+  currency?: string
+  /** Базовая валюта воркспейса — фолбэк для проектов без явной валюты
+   *  (режим общего журнала). */
+  baseCurrency?: string
 }
 
 export function ProjectTransactionFormDialog({
@@ -80,6 +86,8 @@ export function ProjectTransactionFormDialog({
   projects,
   initialProjectId,
   defaultParticipantId,
+  currency,
+  baseCurrency,
 }: Props) {
   const { data: categories = [] } = useFinanceTxCategories(workspaceId, type)
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
@@ -99,6 +107,14 @@ export function ProjectTransactionFormDialog({
   )
   const [projectId, setProjectId] = useState<string | null>(initialProjectId ?? null)
   const showProjectField = projects !== undefined
+
+  // Валюта: на вкладке проекта приходит пропом; в общем журнале — по
+  // выбранному проекту с фолбэком на базовую воркспейса.
+  const effectiveCurrency = showProjectField
+    ? (projects?.find((p) => p.id === projectId)?.currency ??
+      baseCurrency ??
+      DEFAULT_CURRENCY)
+    : (currency ?? DEFAULT_CURRENCY)
 
   const labels = TYPE_LABELS[type]
 
@@ -170,7 +186,7 @@ export function ProjectTransactionFormDialog({
             </div>
             <div className="flex-1 min-w-0 space-y-1.5">
               <Label htmlFor="trx-amount">
-                Сумма, EUR
+                Сумма, {currencySymbol(effectiveCurrency)}
                 {hasSuggestion && (
                   <button
                     type="button"

@@ -14,6 +14,7 @@ import { KnowledgeSummaryPromptSection } from './components/KnowledgeSummaryProm
 import { NotificationSettingsSection } from './components/NotificationSettingsSection'
 import { SendDelaySettingsSection } from './components/SendDelaySettingsSection'
 import { DeadlineFormatSection } from './components/DeadlineFormatSection'
+import { CurrencySettingsSection } from './components/CurrencySettingsSection'
 import { DefaultTaskIconColorSection } from './components/DefaultTaskIconColorSection'
 import { PerfTraceSection } from './components/PerfTraceSection'
 import { InboxReconcileSection } from './components/InboxReconcileSection'
@@ -26,6 +27,7 @@ type SectionId =
   | 'notifications'
   | 'send-delay'
   | 'deadline'
+  | 'currency'
   | 'task-default'
   | 'ai'
   | 'translation'
@@ -49,6 +51,7 @@ export function GeneralSettingsTab() {
         { id: 'notifications', label: 'Уведомления' },
         { id: 'send-delay', label: 'Задержка отправки' },
         { id: 'deadline', label: 'Формат сроков' },
+        { id: 'currency', label: 'Валюты' },
         { id: 'task-default', label: 'Иконка и цвет задач' },
       ],
     },
@@ -81,6 +84,8 @@ export function GeneralSettingsTab() {
         return <SendDelaySettingsSection workspaceId={workspaceId} />
       case 'deadline':
         return <DeadlineFormatSection workspaceId={workspaceId} />
+      case 'currency':
+        return <CurrencySettingsSection workspaceId={workspaceId} />
       case 'task-default':
         return <DefaultTaskIconColorSection workspaceId={workspaceId} />
       case 'ai':
