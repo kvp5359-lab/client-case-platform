@@ -9,6 +9,8 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAdminWorkspaceDetails, useSetBillingDates, type AdminWorkspaceDetails } from '@/hooks/useAdmin'
+import { useImpersonation } from '@/hooks/useImpersonation'
+import { useAuth } from '@/contexts/AuthContext'
 import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { fmtDate } from './WorkspacesTab'
 
@@ -106,6 +108,9 @@ export function WorkspaceDetailsDialog({
 }) {
   const { data, isLoading, error } = useAdminWorkspaceDetails(workspaceId)
   const [editingBilling, setEditingBilling] = useState(false)
+  const impersonation = useImpersonation()
+  const { user } = useAuth()
+  const currentUserId = user?.id
 
   return (
     <Dialog open={!!workspaceId} onOpenChange={(open) => { if (!open) onClose() }}>
@@ -127,6 +132,24 @@ export function WorkspaceDetailsDialog({
                     <KV k="Имя" v={data.owner.name || '—'} />
                     <KV k="Email" v={data.owner.email ?? '—'} />
                     <KV k="Телефон" v={data.owner.phone ?? '—'} />
+                    {data.owner.user_id && data.owner.user_id !== currentUserId && (
+                      <button
+                        className="mt-1.5 rounded border border-blue-300 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
+                        onClick={() => {
+                          if (window.confirm(
+                            `Войти под владельцем «${data.owner?.name}» в режиме просмотра? ` +
+                            'Изменения будут заблокированы, сессия — 30 минут, вход попадёт в журнал.',
+                          )) {
+                            void impersonation.start({
+                              workspaceId: data.workspace!.id,
+                              targetUserId: data.owner!.user_id!,
+                            })
+                          }
+                        }}
+                      >
+                        👁 Войти под владельцем (просмотр)
+                      </button>
+                    )}
                   </>
                 ) : (
                   <p className="text-sm text-gray-400">Владелец не найден</p>
