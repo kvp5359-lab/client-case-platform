@@ -142,7 +142,7 @@ export function ProjectFlatPlanList({
 
   // ── Группы задач ─────────────────────────────────────────
   const {
-    groups, renameGroup, setGroupCollapsed, deleteGroup,
+    groups, renameGroup, setGroupCollapsed, setGroupColor, setGroupVisibleToClient, deleteGroup,
     assignThreadToGroup, assignBlockToGroup, setGroupOrders,
   } = useProjectTaskGroups(projectId, workspaceId)
   const { data: threadGroupMap } = useProjectThreadGroupMap(projectId)
@@ -442,7 +442,12 @@ export function ProjectFlatPlanList({
 
   const topLevelItems = hasGroups ? displayItems.filter((i) => groupIdOfItem(i) === null) : displayItems
   const childrenOfGroup = (gid: string) => displayItems.filter((i) => groupIdOfItem(i) === gid)
-  const sortedGroups = [...groups].sort((a, b) => a.sort_order - b.sort_order)
+  // Клиенту (не-staff) скрытые группы не показываем ЦЕЛИКОМ — вместе с
+  // содержимым (как visible_to_client у блоков; UI-фильтр, доступ к задачам
+  // по-прежнему решает RLS).
+  const sortedGroups = [...groups]
+    .filter((g) => canEdit || g.visible_to_client)
+    .sort((a, b) => a.sort_order - b.sort_order)
 
   return (
     <PlanDocsProvider projectId={projectId} workspaceId={workspaceId} enabled={hasSlotBlocks}>
@@ -475,6 +480,8 @@ export function ProjectFlatPlanList({
                   onToggleCollapse={() => setGroupCollapsed(g.id, !g.is_collapsed)}
                   onDelete={() => deleteGroup(g.id)}
                   onAddTask={() => handleAddTaskToGroup(g.id)}
+                  onSetColor={(c) => setGroupColor(g.id, c)}
+                  onToggleClientVisible={() => setGroupVisibleToClient(g.id, !g.visible_to_client)}
                   onMoveUp={gi > 0 ? () => moveGroup(g.id, 'up') : undefined}
                   onMoveDown={gi < sortedGroups.length - 1 ? () => moveGroup(g.id, 'down') : undefined}
                   renderChild={(item) => renderRow(item)}

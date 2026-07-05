@@ -12,12 +12,16 @@
 import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { ChevronDown, ChevronRight, Plus, MoreHorizontal, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
+import {
+  ChevronDown, ChevronRight, Plus, MoreHorizontal, Trash2, ArrowUp, ArrowDown, Eye, EyeOff, Ban,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { ACCENT_COLORS, ACCENT_COLOR_GROUPS, COLOR_TEXT } from '@/components/messenger/threadConstants'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { TaskGroupRow } from '@/types/taskGroups'
 import type { MergedItem } from './planTypes'
 
@@ -29,13 +33,16 @@ type Props = {
   onToggleCollapse: () => void
   onDelete: () => void
   onAddTask: () => void
+  onSetColor: (color: string | null) => void
+  onToggleClientVisible: () => void
   onMoveUp?: () => void
   onMoveDown?: () => void
   renderChild: (item: MergedItem) => React.ReactNode
 }
 
 export function PlanGroupContainer({
-  group, children, canEdit, onRename, onToggleCollapse, onDelete, onAddTask, onMoveUp, onMoveDown, renderChild,
+  group, children, canEdit, onRename, onToggleCollapse, onDelete, onAddTask,
+  onSetColor, onToggleClientVisible, onMoveUp, onMoveDown, renderChild,
 }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(group.name)
@@ -44,6 +51,8 @@ export function PlanGroupContainer({
   const count = children.length
   const { setNodeRef, isOver } = useDroppable({ id: `g:${group.id}` })
   const childIds = children.map((c) => c.id)
+  // Цвет заголовка — акцент группы (та же палитра, что у тредов).
+  const accentText = COLOR_TEXT[(group.accent_color ?? '') as ThreadAccentColor] ?? ''
 
   const commitName = () => {
     const v = draft.trim()
@@ -82,11 +91,20 @@ export function PlanGroupContainer({
             type="button"
             disabled={!canEdit}
             onClick={() => canEdit && setEditing(true)}
-            className={cn('flex-1 min-w-0 truncate text-left text-sm font-semibold', canEdit && 'hover:text-foreground')}
+            className={cn(
+              'flex-1 min-w-0 truncate text-left text-sm font-semibold',
+              accentText,
+              canEdit && !accentText && 'hover:text-foreground',
+            )}
             title={canEdit ? 'Переименовать группу' : undefined}
           >
             {group.name || 'Без названия'}
           </button>
+        )}
+
+        {/* Индикатор «скрыта от клиента» — виден только команде (клиент группу не увидит вовсе). */}
+        {!group.visible_to_client && canEdit && (
+          <EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Скрыта от клиента" />
         )}
 
         <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{count}</span>
@@ -125,7 +143,51 @@ export function PlanGroupContainer({
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-[232px]">
+                {/* Палитра цвета группы. Кнопки — не DropdownMenuItem, чтобы меню
+                    не закрывалось на каждый клик (виден результат за меню). */}
+                <div className="px-2 pt-1.5 pb-1">
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Цвет группы</p>
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                    <button
+                      type="button"
+                      className={cn(
+                        'w-5 h-5 rounded-full border border-border flex items-center justify-center ring-offset-2',
+                        !group.accent_color && 'ring-2 ring-muted-foreground/50',
+                      )}
+                      onClick={() => onSetColor(null)}
+                      title="Без цвета"
+                    >
+                      <Ban className="h-3 w-3 text-muted-foreground" />
+                    </button>
+                    {ACCENT_COLOR_GROUPS.map((cg) => (
+                      <div key={cg} className="flex gap-1">
+                        {ACCENT_COLORS.filter((c) => !c.hidden && c.group === cg).map((c) => (
+                          <button
+                            key={c.value}
+                            type="button"
+                            className={cn(
+                              'w-5 h-5 rounded-full ring-offset-2',
+                              c.bg,
+                              group.accent_color === c.value && `ring-2 ${c.ring}`,
+                            )}
+                            onClick={() => onSetColor(c.value)}
+                            title={c.label}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onToggleClientVisible}>
+                  {group.visible_to_client ? (
+                    <><EyeOff className="h-4 w-4 mr-2" /> Скрыть от клиента</>
+                  ) : (
+                    <><Eye className="h-4 w-4 mr-2" /> Показывать клиенту</>
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
                   <Trash2 className="h-4 w-4 mr-2" /> Удалить группу
                 </DropdownMenuItem>
