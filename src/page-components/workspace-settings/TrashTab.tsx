@@ -352,7 +352,7 @@ export function TrashTab() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Lock className="w-4 h-4" />
-              Контекст проекта{' '}
+              Заметки{' '}
               <span className="text-muted-foreground font-normal">({contextItems.length})</span>
             </CardTitle>
             <CardDescription>

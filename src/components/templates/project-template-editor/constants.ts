@@ -67,7 +67,7 @@ export const AVAILABLE_MODULES = [
   },
   {
     id: 'project_context',
-    label: 'Контекст проекта',
+    label: 'Заметки',
     icon: Lock,
     description: 'Внутренние материалы команды — заметки, файлы, скриншоты. Не видны клиентам.',
   },

@@ -214,8 +214,8 @@ export function useMessengerAi(
       if (projectContextActive) {
         activeSources.push(
           sources.projectContext.mode === 'all'
-            ? 'Контекст проекта: все'
-            : `Контекст проекта: ${sources.projectContext.itemIds.length} выбрано`,
+            ? 'Заметки: все'
+            : `Заметки: ${sources.projectContext.itemIds.length} выбрано`,
         )
       }
       if (sources.knowledge === 'project') activeSources.push('БЗ проекта')

@@ -147,7 +147,7 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
   },
   {
     id: 'project-context',
-    label: 'Контекст проекта',
+    label: 'Заметки',
     icon: Lock,
     order: 5.7,
     templateKey: 'project_context',

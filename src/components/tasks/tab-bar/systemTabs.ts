@@ -28,7 +28,7 @@ export const SYSTEM_TABS: SystemTabDef[] = [
   { type: 'documents',  title: 'Документы',          icon: FileText },
   { type: 'forms',      title: 'Анкеты',             icon: FormInput },
   { type: 'materials',  title: 'Полезные материалы', icon: BookOpen },
-  { type: 'project_context', title: 'Контекст проекта', icon: Lock },
+  { type: 'project_context', title: 'Заметки', icon: Lock },
   { type: 'assistant',  title: 'Ассистент',          icon: Bot },
   { type: 'extra',      title: 'Дополнительно',      icon: Settings2 },
 ]

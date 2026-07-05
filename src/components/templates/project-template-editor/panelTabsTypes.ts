@@ -28,7 +28,7 @@ export const SYSTEM_PANEL_TAB_LABELS: Record<SystemPanelTabKey, string> = {
   forms: 'Анкеты',
   materials: 'Полезные материалы',
   assistant: 'AI-ассистент',
-  project_context: 'Контекст проекта',
+  project_context: 'Заметки',
 }
 
 export function isDefaultPanelTabsArray(value: unknown): value is DefaultPanelTabItem[] {
