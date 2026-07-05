@@ -1,18 +1,20 @@
 "use client"
 
 /**
- * Вся DnD-логика плана проекта (вынесена из ProjectFlatPlanList):
+ * Вся DnD-логика плана проекта (вынесена из ProjectFlatPlanList).
  *
- * - плоский вид (без групп): reorder строк одним arrayMove;
- * - вид с группами: multi-container DnD строк (внутри группы, между группами,
- *   на верхний уровень) + перетаскивание САМИХ групп (sortable 'grp:<id>');
- * - живое превью (onDragOver): элемент локально переносится в целевой
- *   контейнер ДО отпускания мыши (dragOverride + localOrder);
- * - синхронная фиксация порядка на drop (localOrder / localGroupOrder —
- *   кэш React Query недостаточно синхронен, иначе отскок строки), сброс
- *   когда серверные данные догнали превью;
- * - collision-стратегия по типу active: группа целится только в группы,
- *   строка — только в строки/зоны.
+ * Модель порядка (единая шкала — см. миграцию 20260705180000):
+ * - ВЕРХНИЙ УРОВЕНЬ — одна последовательность из одиночных строк (group_id NULL)
+ *   и ГРУПП, вперемешку по общей sort_order. Поэтому группу можно перетащить
+ *   между одиночными задачами.
+ * - ДЕТИ ГРУППЫ — своя внутригрупповая последовательность (sort_order среди
+ *   строк этой группы).
+ *
+ * Персистенция после ЛЮБОГО drop — через `persistLayout`: одиночные строки и
+ * группы нумеруются idx*10 по верхнему уровню, дети — idx*10 внутри группы.
+ * Это исключает дрейф двух шкал.
+ *
+ * Плоский вид (без групп) — прежний одиночный arrayMove.
  *
  * Хук колокейтед с фичей (тянет MergedItem из ./planTypes) — в общий слой
  * src/hooks/ его не выносить, тот не должен зависеть от components/.
@@ -34,6 +36,14 @@ import type { TaskGroupRow } from '@/types/taskGroups'
 import type { MergedItem } from './planTypes'
 
 type SortUpdate = { id: string; sort_order: number }
+
+/** Элемент верхнего уровня: одиночная строка ИЛИ группа. */
+export type TopEntry =
+  | { kind: 'item'; id: string; item: MergedItem }
+  | { kind: 'group'; id: string; group: TaskGroupRow }
+
+const GRP = 'grp:'
+const isGroupId = (id: string) => id.startsWith(GRP)
 
 type UsePlanGroupsDndInput = {
   /** Элементы плана в серверном порядке (уже отфильтрованные по видимости). */
@@ -65,16 +75,13 @@ export function usePlanGroupsDnd({
 }: UsePlanGroupsDndInput) {
   const hasGroups = groups.length > 0
 
-  // Локальный перенос перетаскиваемого элемента в целевую группу ВО ВРЕМЯ
-  // drag'а (onDragOver) — иначе превью «внутри группы» появляется только
-  // после отпускания мыши. Держится и после drop'а, пока сервер (карта
-  // membership / блоки) не подтвердит новую группу — без мигания назад.
+  // Живой перенос строки в другой контейнер во время drag'а (onDragOver): id +
+  // целевая группа. Держится и после drop'а до подтверждения сервером.
   const [dragOverride, setDragOverride] = useState<{ id: string; group: string | null } | null>(null)
-  // Локальный порядок СТРОК для dnd: dnd-kit требует, чтобы новый порядок
-  // применялся СИНХРОННО в onDragEnd (как канонический setItems(arrayMove)).
+  // Локальный порядок СТРОК (dnd-kit требует синхронного применения на drop).
   const [localOrder, setLocalOrder] = useState<string[] | null>(null)
-  // Локальный порядок ГРУПП после их перетаскивания (id по порядку).
-  const [localGroupOrder, setLocalGroupOrder] = useState<string[] | null>(null)
+  // Локальный порядок ВЕРХНЕГО УРОВНЯ (id одиночных строк + 'grp:<id>').
+  const [localTopOrder, setLocalTopOrder] = useState<string[] | null>(null)
 
   const realGroupIdOfItem = (item: MergedItem): string | null =>
     item.kind === 'task'
@@ -84,8 +91,7 @@ export function usePlanGroupsDnd({
   const groupIdOfItem = (item: MergedItem): string | null =>
     dragOverride && dragOverride.id === item.id ? dragOverride.group : realGroupIdOfItem(item)
 
-  // Сбрасываем override, когда серверные данные догнали превью (или элемент пропал).
-  // setState — во вложенной функции (конвенция проекта под react-hooks/set-state-in-effect).
+  // Сброс override, когда серверные данные догнали превью.
   useEffect(() => {
     const sync = () => {
       if (!dragOverride) return
@@ -107,7 +113,6 @@ export function usePlanGroupsDnd({
     return [...ordered, ...extra]
   }, [visibleMerged, localOrder])
 
-  // Сбрасываем локальный порядок строк, когда серверный догнал.
   useEffect(() => {
     const sync = () => {
       if (!localOrder) return
@@ -119,40 +124,68 @@ export function usePlanGroupsDnd({
     sync()
   }, [visibleMerged, localOrder])
 
-  // Клиенту (не-staff) скрытые группы не показываем ЦЕЛИКОМ — вместе с
-  // содержимым (как visible_to_client у блоков; UI-фильтр, доступ к задачам
-  // по-прежнему решает RLS).
-  const sortedGroupsBase = [...groups]
-    .filter((g) => canEdit || g.visible_to_client)
-    .sort((a, b) => a.sort_order - b.sort_order)
-  // Локальный порядок групп после drop'а (зеркало localOrder у строк).
-  const sortedGroups = localGroupOrder
-    ? [...sortedGroupsBase].sort(
-        (a, b) => localGroupOrder.indexOf(a.id) - localGroupOrder.indexOf(b.id),
-      )
-    : sortedGroupsBase
+  const itemById = useMemo(() => new Map(displayItems.map((i) => [i.id, i])), [displayItems])
 
-  // Сбрасываем локальный порядок групп, когда серверный догнал.
+  const childrenOfGroup = (gid: string) => displayItems.filter((i) => groupIdOfItem(i) === gid)
+
+  // Видимые группы в серверном порядке (клиенту скрытые не показываем целиком).
+  const visibleGroups = useMemo(
+    () =>
+      [...groups]
+        .filter((g) => canEdit || g.visible_to_client)
+        .sort((a, b) => a.sort_order - b.sort_order),
+    [groups, canEdit],
+  )
+
+  // ── Верхний уровень: одиночные строки + группы, вперемешку по общей шкале ──
+  const topLevelEntries = useMemo<TopEntry[]>(() => {
+    const loose: { entry: TopEntry; sort: number }[] = displayItems
+      .filter((i) => groupIdOfItem(i) === null)
+      .map((i) => ({ entry: { kind: 'item', id: i.id, item: i } as TopEntry, sort: i.sort }))
+    const grp: { entry: TopEntry; sort: number }[] = visibleGroups.map((g) => ({
+      entry: { kind: 'group', id: `${GRP}${g.id}`, group: g } as TopEntry,
+      sort: g.sort_order,
+    }))
+    // На равной sort — одиночная строка раньше группы (детерминированный tiebreak).
+    const base = [...loose, ...grp].sort(
+      (a, b) => a.sort - b.sort || (a.entry.kind === 'item' ? -1 : 1),
+    )
+    let entries = base.map((x) => x.entry)
+    if (localTopOrder) {
+      const byId = new Map(entries.map((e) => [e.id, e]))
+      const ordered = localTopOrder.map((id) => byId.get(id)).filter((x): x is TopEntry => !!x)
+      const known = new Set(localTopOrder)
+      const extra = entries.filter((e) => !known.has(e.id))
+      entries = [...ordered, ...extra]
+    }
+    return entries
+    // groupIdOfItem зависит от dragOverride/карт — покрыто зависимостями.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayItems, visibleGroups, localTopOrder, dragOverride, threadGroupMap, blockGroupById])
+
+  const topEntryIds = useMemo(() => topLevelEntries.map((e) => e.id), [topLevelEntries])
+
+  // Сброс локального порядка верхнего уровня, когда серверный догнал.
   useEffect(() => {
     const sync = () => {
-      if (!localGroupOrder) return
-      const serverIds = [...groups].sort((a, b) => a.sort_order - b.sort_order).map((g) => g.id)
+      if (!localTopOrder) return
+      const looseSorted = displayItems
+        .filter((i) => realGroupIdOfItem(i) === null)
+        .map((i) => ({ id: i.id, sort: i.sort }))
+      const grpSorted = [...visibleGroups].map((g) => ({ id: `${GRP}${g.id}`, sort: g.sort_order }))
+      const serverIds = [...looseSorted, ...grpSorted]
+        .sort((a, b) => a.sort - b.sort)
+        .map((x) => x.id)
       if (
-        serverIds.length === localGroupOrder.length &&
-        serverIds.every((id, i) => id === localGroupOrder[i])
+        serverIds.length === localTopOrder.length &&
+        serverIds.every((id, i) => id === localTopOrder[i])
       ) {
-        setLocalGroupOrder(null)
+        setLocalTopOrder(null)
       }
     }
     sync()
-  }, [groups, localGroupOrder])
-
-  const itemById = useMemo(() => new Map(displayItems.map((i) => [i.id, i])), [displayItems])
-
-  const topLevelItems = hasGroups
-    ? displayItems.filter((i) => groupIdOfItem(i) === null)
-    : displayItems
-  const childrenOfGroup = (gid: string) => displayItems.filter((i) => groupIdOfItem(i) === gid)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayItems, visibleGroups, localTopOrder])
 
   const containerOf = (itemId: string): string => {
     const it = itemById.get(itemId)
@@ -161,21 +194,51 @@ export function usePlanGroupsDnd({
     return g ? `g:${g}` : '__top__'
   }
 
-  const persistReorderSubset = (orderedIds: string[]) => {
+  // ── Единая персистенция раскладки ──
+  // rows — желаемый порядок ВСЕХ строк (loose + дети) с их группой;
+  // topIds — желаемый порядок верхнего уровня (loose id + 'grp:<id>').
+  // Loose-строки и группы нумеруются idx*10 по topIds; дети — idx*10 внутри группы.
+  const persistLayout = (rows: { id: string; kind: MergedItem['kind']; group: string | null }[], topIds: string[]) => {
     const taskU: SortUpdate[] = []
     const blockU: SortUpdate[] = []
-    orderedIds.forEach((id, idx) => {
+    const push = (id: string, kind: MergedItem['kind'], so: number) =>
+      (kind === 'task' ? taskU : blockU).push({ id, sort_order: so })
+
+    // Дети групп — по порядку внутри своей группы.
+    const childCounter = new Map<string, number>()
+    for (const r of rows) {
+      if (r.group !== null) {
+        const idx = childCounter.get(r.group) ?? 0
+        childCounter.set(r.group, idx + 1)
+        push(r.id, r.kind, idx * 10)
+      }
+    }
+    // Верхний уровень — loose-строки и группы по topIds.
+    const kindById = new Map(rows.map((r) => [r.id, r.kind]))
+    const groupU: SortUpdate[] = []
+    topIds.forEach((id, idx) => {
       const so = idx * 10
-      if (itemById.get(id)?.kind === 'task') taskU.push({ id, sort_order: so })
-      else blockU.push({ id, sort_order: so })
+      if (isGroupId(id)) groupU.push({ id: id.slice(GRP.length), sort_order: so })
+      else push(id, kindById.get(id) ?? 'task', so)
     })
+
     if (taskU.length) onReorderTasks(taskU)
     if (blockU.length) void setBlockOrders(blockU)
+    if (groupU.length) void setGroupOrders(groupU)
   }
 
-  // Живое превью: при наведении на другой контейнер локально переносим active
-  // туда (override группы + позиция в localOrder) — элемент виден внутри
-  // группы ДО отпускания мыши. Коммит в БД — в onDragEnd.
+  const rowsFromDisplay = (
+    order: MergedItem[],
+    overrideId?: string,
+    overrideGroup?: string | null,
+  ) =>
+    order.map((i) => ({
+      id: i.id,
+      kind: i.kind,
+      group: i.id === overrideId ? (overrideGroup ?? null) : realGroupIdOfItem(i),
+    }))
+
+  // ── Живое превью строки при переносе в другой контейнер ──
   const handleDragOver = (e: DragOverEvent) => {
     if (!hasGroups) return
     const { active, over } = e
@@ -183,13 +246,15 @@ export function usePlanGroupsDnd({
     const activeId = String(active.id)
     const overId = String(over.id)
     if (activeId === overId) return
+    // Перетаскивание ГРУППЫ: живое превью — нативной стратегией верхнего уровня.
+    if (isGroupId(activeId)) return
     const activeItem = itemById.get(activeId)
     if (!activeItem) return
     const targetContainer = overId === '__top__' || overId.startsWith('g:') ? overId : containerOf(overId)
     const targetGroupId = targetContainer.startsWith('g:') ? targetContainer.slice(2) : null
     if (groupIdOfItem(activeItem) === targetGroupId) return
     setDragOverride({ id: activeId, group: targetGroupId })
-    // Позиция превью: перед over-элементом; в пустую зону — в конец контейнера.
+    // Позиция превью строки: перед over-строкой; в пустую зону — в конец контейнера.
     const ids = displayItems.map((i) => i.id).filter((id) => id !== activeId)
     let insertIdx: number
     if (overId === '__top__' || overId.startsWith('g:')) {
@@ -210,27 +275,27 @@ export function usePlanGroupsDnd({
   const handleGroupedDragEnd = (e: DragEndEvent) => {
     const { active, over } = e
     const activeId = String(active.id)
-    // ── Перетаскивание САМОЙ группы (за ручку) — реордер групп ──
-    if (activeId.startsWith('grp:')) {
-      const overRaw = over ? String(over.id) : ''
-      if (!overRaw.startsWith('grp:')) return
-      const aId = activeId.slice(4)
-      const oId = overRaw.slice(4)
-      if (aId === oId) return
-      const ids = sortedGroups.map((g) => g.id)
-      const oldIdx = ids.indexOf(aId)
-      const newIdx = ids.indexOf(oId)
-      if (oldIdx < 0 || newIdx < 0) return
-      const newIds = arrayMove(ids, oldIdx, newIdx)
-      // Синхронный локальный порядок (как localOrder у строк) — без отскока.
-      setLocalGroupOrder(newIds)
-      setGroupOrders(newIds.map((id, i) => ({ id, sort_order: i * 10 }))).catch(() =>
-        setLocalGroupOrder(null),
-      )
+
+    // ── 1. Перетаскивание ГРУППЫ среди верхнего уровня (между задачами) ──
+    if (isGroupId(activeId)) {
+      if (!over) {
+        setLocalTopOrder(null)
+        return
+      }
+      const overId = String(over.id)
+      // Цель — элемент верхнего уровня (одиночная строка или другая группа).
+      const from = topEntryIds.indexOf(activeId)
+      const to = topEntryIds.indexOf(overId)
+      // Группа целится только в верхний уровень (коллизии отфильтрованы). Если
+      // over не элемент верхнего уровня — игнор.
+      if (to < 0 || from < 0 || from === to) return
+      const newTop = arrayMove(topEntryIds, from, to)
+      setLocalTopOrder(newTop)
+      persistLayout(rowsFromDisplay(displayItems), newTop)
       return
     }
+
     if (!over) {
-      // Дроп мимо — откатываем превью.
       setDragOverride(null)
       setLocalOrder(null)
       return
@@ -238,31 +303,43 @@ export function usePlanGroupsDnd({
     const overId = String(over.id)
     const activeItem = itemById.get(activeId)
     if (!activeItem) return
-    // Целевой контейнер: droppable-зона ('__top__' / 'g:<id>') или элемент.
     const targetContainer = overId === '__top__' || overId.startsWith('g:') ? overId : containerOf(overId)
     const targetGroupId = targetContainer.startsWith('g:') ? targetContainer.slice(2) : null
 
-    // Новый ПОЛНЫЙ порядок через arrayMove по живому displayItems. Это ключ к
-    // «встать в самый низ»: при наведении на последнюю строку контейнера
-    // arrayMove(from → indexOf(over)) кладёт active ПОСЛЕ неё (сдвигает over
-    // вверх), тогда как прежний `targetIds.splice(indexOf(over))` вставлял
-    // ПЕРЕД — до низа было не достать. persistReorderSubset нумерует idx*10
-    // глобально, относительный порядок внутри группы сохраняется (рендер
-    // группирует по group_id, затем сортирует по sort_order).
-    const ids = displayItems.map((i) => i.id)
-    let newIds: string[]
-    if (overId === activeId || overId === '__top__' || overId.startsWith('g:')) {
-      // Дроп на собственное превью или пустую зону — позиция уже расставлена
-      // onDragOver'ом в displayItems, берём её как есть.
-      newIds = ids
-    } else {
-      const from = ids.indexOf(activeId)
-      const to = ids.indexOf(overId)
-      newIds = from >= 0 && to >= 0 ? arrayMove(ids, from, to) : ids
+    // ── 2. Одиночная строка ↔ одиночная строка на верхнем уровне (реордер) ──
+    const overIsTopEntry = topEntryIds.includes(overId)
+    if (targetGroupId === null && overIsTopEntry && !isGroupId(overId)) {
+      const from = topEntryIds.indexOf(activeId)
+      const to = topEntryIds.indexOf(overId)
+      if (from >= 0 && to >= 0 && from !== to) {
+        const newTop = arrayMove(topEntryIds, from, to)
+        setLocalTopOrder(newTop)
+        const curGroup = realGroupIdOfItem(activeItem)
+        if (curGroup !== null) {
+          const assign =
+            activeItem.kind === 'task'
+              ? assignThreadToGroup(activeId, null)
+              : assignBlockToGroup(activeId, null)
+          assign.catch(() => setDragOverride(null))
+        }
+        persistLayout(rowsFromDisplay(displayItems, activeId, null), newTop)
+        return
+      }
     }
-    setLocalOrder(newIds)
-    // Сменить группу, если поменялась (сравниваем с СЕРВЕРНОЙ группой, не с
-    // превью-override). Если мутация упала — снимаем превью, элемент вернётся.
+
+    // ── 3. Строка внутри/между группами (и выход на верхний уровень) ──
+    // Новый порядок строк через arrayMove (ключ к «встать в самый низ»).
+    const rowIds = displayItems.map((i) => i.id)
+    let newRowIds: string[]
+    if (overId === activeId || overId === '__top__' || overId.startsWith('g:')) {
+      newRowIds = rowIds // позиция уже расставлена onDragOver'ом
+    } else {
+      const from = rowIds.indexOf(activeId)
+      const to = rowIds.indexOf(overId)
+      newRowIds = from >= 0 && to >= 0 ? arrayMove(rowIds, from, to) : rowIds
+    }
+    setLocalOrder(newRowIds)
+
     const curGroup = realGroupIdOfItem(activeItem)
     if (curGroup !== targetGroupId) {
       const assign =
@@ -271,7 +348,22 @@ export function usePlanGroupsDnd({
           : assignBlockToGroup(activeId, targetGroupId)
       assign.catch(() => setDragOverride(null))
     }
-    persistReorderSubset(newIds)
+
+    // Верхний уровень: если строка теперь loose — вставить её id рядом с over;
+    // если ушла в группу — убрать из верхнего уровня.
+    let newTop = topEntryIds.filter((id) => id !== activeId)
+    if (targetGroupId === null) {
+      // Куда вставить: перед over-элементом верхнего уровня, иначе в конец.
+      const overTopIdx = overIsTopEntry ? newTop.indexOf(overId) : -1
+      if (overTopIdx >= 0) newTop.splice(overTopIdx, 0, activeId)
+      else newTop = [...newTop, activeId]
+    }
+    setLocalTopOrder(newTop)
+
+    const newRowsOrdered = newRowIds
+      .map((id) => itemById.get(id))
+      .filter((x): x is MergedItem => !!x)
+    persistLayout(rowsFromDisplay(newRowsOrdered, activeId, targetGroupId), newTop)
   }
 
   // Плоский вид (без групп): reorder всего списка одним arrayMove.
@@ -283,10 +375,16 @@ export function usePlanGroupsDnd({
     const newIndex = ids.indexOf(String(over.id))
     if (oldIndex < 0 || newIndex < 0) return
     const newIds = arrayMove(ids, oldIndex, newIndex)
-    // СИНХРОННО фиксируем новый порядок — dnd-kit анимирует из текущего DOM
-    // в новые позиции в том же кадре, без отскока.
     setLocalOrder(newIds)
-    persistReorderSubset(newIds)
+    const taskU: SortUpdate[] = []
+    const blockU: SortUpdate[] = []
+    newIds.forEach((id, idx) => {
+      const it = itemById.get(id)
+      if (it?.kind === 'task') taskU.push({ id, sort_order: idx * 10 })
+      else blockU.push({ id, sort_order: idx * 10 })
+    })
+    if (taskU.length) onReorderTasks(taskU)
+    if (blockU.length) void setBlockOrders(blockU)
   }
 
   const handleDragEnd = (e: DragEndEvent) =>
@@ -295,37 +393,49 @@ export function usePlanGroupsDnd({
   const handleDragCancel = () => {
     setDragOverride(null)
     setLocalOrder(null)
+    setLocalTopOrder(null)
+  }
+
+  // Реордер верхнего уровня стрелками (кнопки в шапке группы): move entry ± 1.
+  const moveTopEntry = (entryId: string, dir: 'up' | 'down') => {
+    const idx = topEntryIds.indexOf(entryId)
+    const swap = dir === 'up' ? idx - 1 : idx + 1
+    if (idx < 0 || swap < 0 || swap >= topEntryIds.length) return
+    const newTop = arrayMove(topEntryIds, idx, swap)
+    setLocalTopOrder(newTop)
+    persistLayout(rowsFromDisplay(displayItems), newTop)
   }
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
-  // Коллизии по типу перетаскиваемого: группа целится ТОЛЬКО в другие группы
-  // ('grp:'), строка — только в строки/зоны (grp-сортablы исключаем, иначе
-  // closestCorners цепляла бы рамку группы вместо её содержимого).
+  // Коллизии по типу active: группа целится ТОЛЬКО в элементы верхнего уровня
+  // (одиночные строки + группы), строка — только в строки/зоны (не в grp:).
   const collisionDetection = useCallback<CollisionDetection>(
     (args) => {
       if (!hasGroups) return closestCenter(args)
-      const isGroupDrag = String(args.active.id).startsWith('grp:')
-      const droppableContainers = args.droppableContainers.filter((c) =>
-        isGroupDrag ? String(c.id).startsWith('grp:') : !String(c.id).startsWith('grp:'),
-      )
-      return isGroupDrag
-        ? closestCenter({ ...args, droppableContainers })
-        : closestCorners({ ...args, droppableContainers })
+      const isGroupDrag = isGroupId(String(args.active.id))
+      if (isGroupDrag) {
+        const droppableContainers = args.droppableContainers.filter((c) =>
+          topEntryIds.includes(String(c.id)),
+        )
+        return closestCenter({ ...args, droppableContainers })
+      }
+      const droppableContainers = args.droppableContainers.filter((c) => !isGroupId(String(c.id)))
+      return closestCorners({ ...args, droppableContainers })
     },
-    [hasGroups],
+    [hasGroups, topEntryIds],
   )
 
   return {
     hasGroups,
     displayItems,
-    topLevelItems,
+    topLevelEntries,
     childrenOfGroup,
-    sortedGroups,
     sensors,
     collisionDetection,
     handleDragOver,
     handleDragEnd,
     handleDragCancel,
+    moveTopEntry,
   }
 }

@@ -50,17 +50,11 @@ function planTextToHtml(s: string): string {
     .join('')
 }
 
-// Droppable-зона верхнего уровня (для дропа задач вне групп).
-function TopLevelDroppable({ children }: { children: React.ReactNode }) {
+// Зона дропа «в самый низ верхнего уровня» — вынести строку из группы на
+// верхний уровень в конец. Тонкая полоса под всеми элементами.
+function TopLevelEndDroppable() {
   const { setNodeRef, isOver } = useDroppable({ id: '__top__' })
-  return (
-    <div
-      ref={setNodeRef}
-      className={`rounded-lg flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child_.border-b]:border-b-0 ${isOver ? 'bg-accent/40' : ''}`}
-    >
-      {children}
-    </div>
-  )
+  return <div ref={setNodeRef} className={`h-4 rounded ${isOver ? 'bg-accent/40' : ''}`} />
 }
 
 type Props = {
@@ -205,14 +199,14 @@ export function ProjectFlatPlanList({
   const {
     hasGroups,
     displayItems,
-    topLevelItems,
+    topLevelEntries,
     childrenOfGroup,
-    sortedGroups,
     sensors,
     collisionDetection,
     handleDragOver,
     handleDragEnd,
     handleDragCancel,
+    moveTopEntry,
   } = usePlanGroupsDnd({
     visibleMerged,
     groups,
@@ -293,20 +287,6 @@ export function ProjectFlatPlanList({
     }
   }
 
-  // Переместить группу вверх/вниз — обмен sort_order с соседней группой.
-  const moveGroup = (groupId: string, dir: 'up' | 'down') => {
-    const sorted = [...groups].sort((a, b) => a.sort_order - b.sort_order)
-    const idx = sorted.findIndex((g) => g.id === groupId)
-    const swapIdx = dir === 'up' ? idx - 1 : idx + 1
-    if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return
-    const a = sorted[idx]
-    const b = sorted[swapIdx]
-    setGroupOrders([
-      { id: a.id, sort_order: b.sort_order },
-      { id: b.id, sort_order: a.sort_order },
-    ])
-  }
-
   const handleAddTaskToGroup = async (groupId: string) => {
     const thread = await createTask.mutateAsync({
       name: 'Новая задача',
@@ -361,47 +341,48 @@ export function ProjectFlatPlanList({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <SortableContext items={displayItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-          {!hasGroups ? (
-            // ── Вид без групп: как раньше, полноценный DnD ──
+        {!hasGroups ? (
+          // ── Вид без групп: плоский список, полноценный DnD ──
+          <SortableContext items={displayItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child_.border-b]:border-b-0">
               {displayItems.map((item) => renderRow(item))}
             </div>
-          ) : (
-            // ── Вид с группами: контейнеры групп + верхний уровень.
-            //    DnD внутри и между группами (multi-container).
-            <div className="group/planroot flex flex-col gap-1">
-              <SortableContext items={topLevelItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-                <TopLevelDroppable>
-                  {topLevelItems.map((item) => renderRow(item))}
-                </TopLevelDroppable>
-              </SortableContext>
-              <SortableContext
-                items={sortedGroups.map((g) => `grp:${g.id}`)}
-                strategy={verticalListSortingStrategy}
-              >
-                {sortedGroups.map((g, gi) => (
+          </SortableContext>
+        ) : (
+          // ── Вид с группами: ЕДИНЫЙ верхний уровень — одиночные строки и группы
+          //    вперемешку по общей sort_order (группу можно перетащить между
+          //    задачами). Дети групп — своя внутригрупповая сортировка.
+          <SortableContext items={topLevelEntries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+            <div className="group/planroot flex flex-col">
+              {topLevelEntries.map((entry, ei) =>
+                entry.kind === 'item' ? (
+                  renderRow(entry.item)
+                ) : (
                   <PlanGroupContainer
-                    key={g.id}
-                    group={g}
+                    key={entry.id}
+                    group={entry.group}
                     canEdit={canEdit}
-                    onRename={(name) => renameGroup(g.id, name)}
-                    onToggleCollapse={() => setGroupCollapsed(g.id, !g.is_collapsed)}
-                    onDelete={() => deleteGroup(g.id)}
-                    onAddTask={() => handleAddTaskToGroup(g.id)}
-                    onSetColor={(c) => setGroupColor(g.id, c)}
-                    onToggleClientVisible={() => setGroupVisibleToClient(g.id, !g.visible_to_client)}
-                    onMoveUp={gi > 0 ? () => moveGroup(g.id, 'up') : undefined}
-                    onMoveDown={gi < sortedGroups.length - 1 ? () => moveGroup(g.id, 'down') : undefined}
+                    onRename={(name) => renameGroup(entry.group.id, name)}
+                    onToggleCollapse={() => setGroupCollapsed(entry.group.id, !entry.group.is_collapsed)}
+                    onDelete={() => deleteGroup(entry.group.id)}
+                    onAddTask={() => handleAddTaskToGroup(entry.group.id)}
+                    onSetColor={(c) => setGroupColor(entry.group.id, c)}
+                    onToggleClientVisible={() =>
+                      setGroupVisibleToClient(entry.group.id, !entry.group.visible_to_client)
+                    }
+                    onMoveUp={ei > 0 ? () => moveTopEntry(entry.id, 'up') : undefined}
+                    onMoveDown={ei < topLevelEntries.length - 1 ? () => moveTopEntry(entry.id, 'down') : undefined}
                     renderChild={(item) => renderRow(item)}
                   >
-                    {childrenOfGroup(g.id)}
+                    {childrenOfGroup(entry.group.id)}
                   </PlanGroupContainer>
-                ))}
-              </SortableContext>
+                ),
+              )}
+              {/* Зона дропа в самый низ верхнего уровня (вынести строку из группы). */}
+              <TopLevelEndDroppable />
             </div>
-          )}
-        </SortableContext>
+          </SortableContext>
+        )}
       </DndContext>
 
       {/* Быстрое добавление: задачи/заголовки/текст/документы, со вставкой в
