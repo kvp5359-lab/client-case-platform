@@ -25,12 +25,15 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { FolderPlus } from 'lucide-react'
 import type { TaskItem } from '@/components/tasks/types'
 import type { TaskTimeValue } from '@/components/tasks/TaskTimePickerPopover'
 import type { TaskStatus } from '@/hooks/useStatuses'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { FolderSlotWithDocument } from '@/components/documents/types'
 import { useProjectPlan } from '@/hooks/plan/useProjectPlan'
+import { useProjectTaskGroups, useProjectThreadGroupMap } from '@/hooks/plan/useProjectTaskGroups'
+import { PlanGroupContainer } from './PlanGroupContainer'
 import { useFolderSlots } from '@/hooks/documents/useFolderSlots'
 import { useProjectPermissions } from '@/hooks/permissions'
 import { isStaffRole } from '@/types/permissions'
@@ -122,6 +125,24 @@ export function ProjectFlatPlanList({
   }, [slots])
 
   const hasSlotBlocks = useMemo(() => blocks.some((b) => b.block_type === 'slot'), [blocks])
+
+  // ── Группы задач ─────────────────────────────────────────
+  const {
+    groups, addGroup, renameGroup, setGroupCollapsed, deleteGroup, assignThreadToGroup,
+  } = useProjectTaskGroups(projectId, workspaceId)
+  const { data: threadGroupMap } = useProjectThreadGroupMap(projectId)
+  const hasGroups = groups.length > 0
+
+  const blockGroupById = useMemo(() => {
+    const m = new Map<string, string | null>()
+    for (const b of blocks) m.set(b.id, b.group_id ?? null)
+    return m
+  }, [blocks])
+
+  const groupIdOfItem = (item: MergedItem): string | null =>
+    item.kind === 'task'
+      ? (threadGroupMap?.[item.id] ?? null)
+      : (blockGroupById.get(item.id) ?? null)
 
   // ── Объединённый порядок: задачи (project_threads) + блоки (plan_blocks) ──
   const merged = useMemo<MergedItem[]>(() => {
@@ -271,6 +292,30 @@ export function ProjectFlatPlanList({
     }
   }
 
+  const handleAddGroup = async () => {
+    const base = groups.length ? Math.max(...groups.map((g) => g.sort_order)) : maxSort
+    await addGroup('Новая группа', base + 10)
+  }
+
+  const handleAddTaskToGroup = async (groupId: string) => {
+    const thread = await createTask.mutateAsync({
+      name: 'Новая задача',
+      accessType: 'all',
+      type: 'task',
+      ...(workspace?.default_task_accent && { accentColor: workspace.default_task_accent as ThreadAccentColor }),
+      ...(workspace?.default_task_icon && { icon: workspace.default_task_icon }),
+    })
+    // Порядок = конец этой группы.
+    const childSorts = [
+      ...tasks.filter((t) => (threadGroupMap?.[t.id] ?? null) === groupId).map((t) => t.sort_order ?? 0),
+      ...blocks.filter((b) => (b.group_id ?? null) === groupId).map((b) => b.sort_order),
+    ]
+    const nextSort = childSorts.length ? Math.max(...childSorts) + 10 : 0
+    onReorderTasks([{ id: thread.id, sort_order: nextSort }])
+    await assignThreadToGroup(thread.id, groupId)
+    onOpenTask(thread.id)
+  }
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -297,40 +342,88 @@ export function ProjectFlatPlanList({
     if (blockUpdates.length) setBlockOrders(blockUpdates)
   }
 
+  // Строка плана. `disabled` — выключить DnD (в виде с группами, до Фазы 4).
+  const renderRow = (item: MergedItem, disabled?: boolean) => (
+    <SortableRow
+      key={item.id}
+      item={item}
+      canEdit={canEdit}
+      sortableDisabled={disabled}
+      workspaceId={workspaceId}
+      taskStatuses={taskStatuses}
+      membersMap={membersMap}
+      finalStatusIds={finalStatusIds}
+      selectedThreadId={selectedThreadId}
+      showProject={showProject}
+      deadlinePending={deadlinePending}
+      onOpenTask={onOpenTask}
+      onStatusChange={onStatusChange}
+      onDeadlineSet={onDeadlineSet}
+      onDeadlineClear={onDeadlineClear}
+      onTimeChange={onTimeChange}
+      onRequestDeleteTask={onRequestDeleteTask}
+      onChangeText={(html) => updateBlock(item.id, { content: html })}
+      onDeleteBlock={() => deleteBlock(item.id)}
+      onQuickAddHere={canEdit && !disabled ? () => setQuickAddAfterSort(item.sort) : undefined}
+    />
+  )
+
+  const topLevelItems = hasGroups ? displayItems.filter((i) => groupIdOfItem(i) === null) : displayItems
+  const childrenOfGroup = (gid: string) => displayItems.filter((i) => groupIdOfItem(i) === gid)
+  const sortedGroups = [...groups].sort((a, b) => a.sort_order - b.sort_order)
+
+  const addGroupButton = canEdit ? (
+    <button
+      type="button"
+      onClick={handleAddGroup}
+      className="mt-2 flex items-center gap-1.5 px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+    >
+      <FolderPlus className="h-4 w-4" /> Добавить группу
+    </button>
+  ) : null
+
   return (
     <PlanDocsProvider projectId={projectId} workspaceId={workspaceId} enabled={hasSlotBlocks}>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext
-          items={displayItems.map((i) => i.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <div className="flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child_.border-b]:border-b-0">
-            {displayItems.map((item) => (
-              <SortableRow
-                key={item.id}
-                item={item}
-                canEdit={canEdit}
-                workspaceId={workspaceId}
-                taskStatuses={taskStatuses}
-                membersMap={membersMap}
-                finalStatusIds={finalStatusIds}
-                selectedThreadId={selectedThreadId}
-                showProject={showProject}
-                deadlinePending={deadlinePending}
-                onOpenTask={onOpenTask}
-                onStatusChange={onStatusChange}
-                onDeadlineSet={onDeadlineSet}
-                onDeadlineClear={onDeadlineClear}
-                onTimeChange={onTimeChange}
-                onRequestDeleteTask={onRequestDeleteTask}
-                onChangeText={(html) => updateBlock(item.id, { content: html })}
-                onDeleteBlock={() => deleteBlock(item.id)}
-                onQuickAddHere={canEdit ? () => setQuickAddAfterSort(item.sort) : undefined}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
+      {!hasGroups ? (
+        // ── Вид без групп: как раньше, полноценный DnD ──
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={displayItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+            <div className="flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child_.border-b]:border-b-0">
+              {displayItems.map((item) => renderRow(item))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        // ── Вид с группами: контейнеры групп + верхний уровень.
+        //    Перетаскивание внутри/между группами — Фаза 4 (пока выключено).
+        <DndContext sensors={sensors} collisionDetection={closestCenter}>
+          <SortableContext items={displayItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+            <div className="group/planroot flex flex-col gap-1">
+              {topLevelItems.length > 0 && (
+                <div className="flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child_.border-b]:border-b-0">
+                  {topLevelItems.map((item) => renderRow(item, true))}
+                </div>
+              )}
+              {sortedGroups.map((g) => (
+                <PlanGroupContainer
+                  key={g.id}
+                  group={g}
+                  canEdit={canEdit}
+                  onRename={(name) => renameGroup(g.id, name)}
+                  onToggleCollapse={() => setGroupCollapsed(g.id, !g.is_collapsed)}
+                  onDelete={() => deleteGroup(g.id)}
+                  onAddTask={() => handleAddTaskToGroup(g.id)}
+                  renderChild={(item) => renderRow(item, true)}
+                >
+                  {childrenOfGroup(g.id)}
+                </PlanGroupContainer>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
+
+      {addGroupButton}
 
       {/* Быстрое добавление: задачи/заголовки/текст/документы, со вставкой в
           позицию quickAddAfterSort (после строки, под которой нажали «+»). */}

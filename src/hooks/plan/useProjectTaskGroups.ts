@@ -16,6 +16,33 @@ const TABLE = 'project_task_groups'
 
 export const taskGroupKeys = {
   byProject: (projectId: string) => ['task-groups', projectId] as const,
+  membership: (projectId: string) => ['task-group-membership', projectId] as const,
+}
+
+/**
+ * Карта «задача → группа» по проекту, лёгким запросом (id, task_group_id).
+ * Так не трогаем тяжёлый RPC get_workspace_threads (и его потребителя
+ * get_board_filtered_threads) — по образцу дозапроса дат в календаре.
+ */
+export function useProjectThreadGroupMap(projectId: string | undefined) {
+  return useQuery({
+    queryKey: taskGroupKeys.membership(projectId ?? ''),
+    enabled: !!projectId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<Record<string, string | null>> => {
+      const { data, error } = await supabase
+        .from('project_threads' as never)
+        .select('id, task_group_id')
+        .eq('project_id' as never, projectId as never)
+        .eq('is_deleted' as never, false as never)
+      if (error) throw error
+      const map: Record<string, string | null> = {}
+      for (const r of (data as unknown as { id: string; task_group_id: string | null }[]) ?? []) {
+        map[r.id] = r.task_group_id ?? null
+      }
+      return map
+    },
+  })
 }
 
 export function useProjectTaskGroups(projectId: string | undefined, workspaceId: string | undefined) {
@@ -89,6 +116,28 @@ export function useProjectTaskGroups(projectId: string | undefined, workspaceId:
     },
   })
 
+  // Назначить/снять группу у задачи (task_group_id) или блока плана (group_id).
+  const assignThread = useMutation({
+    mutationFn: async ({ threadId, groupId }: { threadId: string; groupId: string | null }) => {
+      const { error } = await supabase
+        .from('project_threads' as never)
+        .update({ task_group_id: groupId } as never)
+        .eq('id' as never, threadId as never)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: taskGroupKeys.membership(projectId ?? '') }),
+  })
+  const assignBlock = useMutation({
+    mutationFn: async ({ blockId, groupId }: { blockId: string; groupId: string | null }) => {
+      const { error } = await supabase
+        .from('project_plan_blocks' as never)
+        .update({ group_id: groupId } as never)
+        .eq('id' as never, blockId as never)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['plan'] }),
+  })
+
   const setGroupOrders = useMutation({
     mutationFn: async (updates: { id: string; sort_order: number }[]) => {
       await Promise.all(
@@ -117,6 +166,12 @@ export function useProjectTaskGroups(projectId: string | undefined, workspaceId:
       updateGroup.mutateAsync({ id, updates: { visible_to_client } }),
     deleteGroup: (id: string) => deleteGroup.mutateAsync(id),
     setGroupOrders: (updates: { id: string; sort_order: number }[]) => setGroupOrders.mutateAsync(updates),
-    isMutating: addGroup.isPending || updateGroup.isPending || deleteGroup.isPending || setGroupOrders.isPending,
+    assignThreadToGroup: (threadId: string, groupId: string | null) =>
+      assignThread.mutateAsync({ threadId, groupId }),
+    assignBlockToGroup: (blockId: string, groupId: string | null) =>
+      assignBlock.mutateAsync({ blockId, groupId }),
+    isMutating:
+      addGroup.isPending || updateGroup.isPending || deleteGroup.isPending ||
+      setGroupOrders.isPending || assignThread.isPending || assignBlock.isPending,
   }
 }

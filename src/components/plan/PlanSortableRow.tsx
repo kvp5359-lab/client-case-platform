@@ -60,9 +60,11 @@ export function SortableRow({
   onChangeText,
   onDeleteBlock,
   onQuickAddHere,
+  sortableDisabled,
 }: {
   item: MergedItem
   canEdit: boolean
+  sortableDisabled?: boolean
   workspaceId: string
   taskStatuses: TaskStatus[]
   membersMap: Record<string, AvatarParticipant[]>
@@ -83,7 +85,7 @@ export function SortableRow({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
-    disabled: !canEdit,
+    disabled: !canEdit || !!sortableDisabled,
   })
   const style = { transform: CSS.Transform.toString(transform), transition }
   // Свёрнут ли текстовый блок до одной строки (состояние на блок, key=id).
