@@ -25,6 +25,7 @@ import {
   useSensors,
   useDroppable,
   type DragEndEvent,
+  type DragOverEvent,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import type { TaskItem } from '@/components/tasks/types'
@@ -154,10 +155,29 @@ export function ProjectFlatPlanList({
     return m
   }, [blocks])
 
-  const groupIdOfItem = (item: MergedItem): string | null =>
+  // Локальный перенос перетаскиваемого элемента в целевую группу ВО ВРЕМЯ
+  // drag'а (onDragOver) — иначе превью «внутри группы» появляется только
+  // после отпускания мыши. Держится и после drop'а, пока сервер (карта
+  // membership / блоки) не подтвердит новую группу — без мигания назад.
+  const [dragOverride, setDragOverride] = useState<{ id: string; group: string | null } | null>(null)
+
+  const realGroupIdOfItem = (item: MergedItem): string | null =>
     item.kind === 'task'
       ? (threadGroupMap?.[item.id] ?? null)
       : (blockGroupById.get(item.id) ?? null)
+
+  const groupIdOfItem = (item: MergedItem): string | null =>
+    dragOverride && dragOverride.id === item.id ? dragOverride.group : realGroupIdOfItem(item)
+
+  // Сбрасываем override, когда серверные данные догнали превью (или элемент пропал).
+  useEffect(() => {
+    if (!dragOverride) return
+    const isTask = dragOverride.id in (threadGroupMap ?? {})
+    const real = isTask
+      ? (threadGroupMap?.[dragOverride.id] ?? null)
+      : (blockGroupById.get(dragOverride.id) ?? null)
+    if (real === dragOverride.group) setDragOverride(null)
+  }, [threadGroupMap, blockGroupById, dragOverride])
 
   // ── Объединённый порядок: задачи (project_threads) + блоки (plan_blocks) ──
   const merged = useMemo<MergedItem[]>(() => {
@@ -340,10 +360,48 @@ export function ProjectFlatPlanList({
     if (taskU.length) onReorderTasks(taskU)
     if (blockU.length) setBlockOrders(blockU)
   }
-  const handleGroupedDragEnd = (e: DragEndEvent) => {
+  // Живое превью: при наведении на другой контейнер локально переносим active
+  // туда (override группы + позиция в localOrder) — элемент виден внутри
+  // группы ДО отпускания мыши. Коммит в БД — в onDragEnd.
+  const handleGroupedDragOver = (e: DragOverEvent) => {
     const { active, over } = e
     if (!over) return
     const activeId = String(active.id)
+    const overId = String(over.id)
+    if (activeId === overId) return
+    const activeItem = itemById.get(activeId)
+    if (!activeItem) return
+    const targetContainer = overId === '__top__' || overId.startsWith('g:') ? overId : containerOf(overId)
+    const targetGroupId = targetContainer.startsWith('g:') ? targetContainer.slice(2) : null
+    if (groupIdOfItem(activeItem) === targetGroupId) return
+    setDragOverride({ id: activeId, group: targetGroupId })
+    // Позиция превью: перед over-элементом; в пустую зону — в конец контейнера.
+    const ids = displayItems.map((i) => i.id).filter((id) => id !== activeId)
+    let insertIdx: number
+    if (overId === '__top__' || overId.startsWith('g:')) {
+      let last = -1
+      ids.forEach((id, idx) => {
+        const it = itemById.get(id)
+        if (it && groupIdOfItem(it) === targetGroupId) last = idx
+      })
+      insertIdx = last >= 0 ? last + 1 : ids.length
+    } else {
+      insertIdx = ids.indexOf(overId)
+      if (insertIdx < 0) insertIdx = ids.length
+    }
+    ids.splice(insertIdx, 0, activeId)
+    setLocalOrder(ids)
+  }
+
+  const handleGroupedDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e
+    const activeId = String(active.id)
+    if (!over) {
+      // Дроп мимо — откатываем превью.
+      setDragOverride(null)
+      setLocalOrder(null)
+      return
+    }
     const overId = String(over.id)
     const activeItem = itemById.get(activeId)
     if (!activeItem) return
@@ -354,14 +412,28 @@ export function ProjectFlatPlanList({
     const targetIds = displayItems
       .filter((i) => i.id !== activeId && containerOf(i.id) === targetContainer)
       .map((i) => i.id)
-    let insertIdx = targetIds.indexOf(overId)
-    if (insertIdx < 0) insertIdx = targetIds.length
+    let insertIdx: number
+    if (overId === activeId || overId === '__top__' || overId.startsWith('g:')) {
+      // Дроп на собственное превью или пустую зону — позиция уже отражена в
+      // displayItems (расставлена onDragOver'ом), берём её.
+      const cur = displayItems
+        .filter((i) => containerOf(i.id) === targetContainer)
+        .findIndex((i) => i.id === activeId)
+      insertIdx = cur >= 0 ? cur : targetIds.length
+    } else {
+      insertIdx = targetIds.indexOf(overId)
+      if (insertIdx < 0) insertIdx = targetIds.length
+    }
     targetIds.splice(insertIdx, 0, activeId)
-    // Сменить группу, если поменялась.
-    const curGroup = groupIdOfItem(activeItem)
+    // Сменить группу, если поменялась (сравниваем с СЕРВЕРНОЙ группой, не с
+    // превью-override). Если мутация упала — снимаем превью, элемент вернётся.
+    const curGroup = realGroupIdOfItem(activeItem)
     if (curGroup !== targetGroupId) {
-      if (activeItem.kind === 'task') void assignThreadToGroup(activeId, targetGroupId)
-      else void assignBlockToGroup(activeId, targetGroupId)
+      const assign =
+        activeItem.kind === 'task'
+          ? assignThreadToGroup(activeId, targetGroupId)
+          : assignBlockToGroup(activeId, targetGroupId)
+      assign.catch(() => setDragOverride(null))
     }
     persistReorderSubset(targetIds)
   }
@@ -454,7 +526,12 @@ export function ProjectFlatPlanList({
       <DndContext
         sensors={sensors}
         collisionDetection={hasGroups ? closestCorners : closestCenter}
+        onDragOver={hasGroups ? handleGroupedDragOver : undefined}
         onDragEnd={hasGroups ? handleGroupedDragEnd : handleDragEnd}
+        onDragCancel={() => {
+          setDragOverride(null)
+          setLocalOrder(null)
+        }}
       >
         <SortableContext items={displayItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           {!hasGroups ? (
