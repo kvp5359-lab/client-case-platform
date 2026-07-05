@@ -61,6 +61,8 @@ type PlanContentBlock = {
   sort_order: number
   visible_to_client: boolean
   content: string | null
+  /** Группа-шаблона (project_template_task_groups.id) или null. */
+  group_id?: string | null
 }
 
 type PlanSeedPlan = {
@@ -74,6 +76,8 @@ type PlanSeedPlan = {
     sort_order: number
     visible_to_client: boolean
     content: string | null
+    /** Группа-шаблона (переотображается в проектную группу перед вставкой). */
+    group_id?: string | null
   }[]
 }
 
@@ -127,6 +131,7 @@ export function buildPlanSeed(params: {
         sort_order: index,
         visible_to_client: it.block.visible_to_client,
         content: it.block.content,
+        group_id: it.block.group_id ?? null,
       })
     }
   })
@@ -294,11 +299,41 @@ export async function seedProjectContent(
         .select('*')
         .eq('project_template_id', templateId)
         .order('sort_order', { ascending: true })
-      const contentBlocks = (tmplBlocks ?? []).filter(
+      const allBlocks = (tmplBlocks ?? []) as unknown as {
+        id: string; block_type: string; sort_order: number; visible_to_client: boolean
+        content: string | null; thread_template_id: string | null; group_id: string | null
+      }[]
+      const contentBlocks = allBlocks.filter(
         (b) =>
           (b.block_type === 'heading' || b.block_type === 'text') && selectedBlockIds.has(b.id),
       )
-      if (contentBlocks.length > 0) {
+
+      // Группы шаблона → реальные группы проекта (карта шаблонная→новая).
+      const groupMap = new Map<string, string>()
+      const { data: tmplGroups } = await supabase
+        .from('project_template_task_groups' as never)
+        .select('id, name, sort_order' as never)
+        .eq('project_template_id' as never, templateId as never)
+        .order('sort_order' as never, { ascending: true } as never)
+      const tGroups = (tmplGroups as unknown as { id: string; name: string; sort_order: number }[]) ?? []
+      if (tGroups.length > 0) {
+        const { data: newGroups } = await supabase
+          .from('project_task_groups' as never)
+          .insert(
+            tGroups.map((g) => ({
+              workspace_id: workspaceId, project_id: projectId, name: g.name, sort_order: g.sort_order,
+            })) as never,
+          )
+          .select('id, sort_order' as never)
+        const created = (newGroups as unknown as { id: string; sort_order: number }[]) ?? []
+        // Сопоставляем по sort_order (порядок вставки сохранён).
+        tGroups.forEach((g, i) => {
+          const match = created[i]
+          if (match) groupMap.set(g.id, match.id)
+        })
+      }
+
+      if (contentBlocks.length > 0 || tGroups.length > 0) {
         const { data: createdThreads } = await supabase
           .from('project_threads')
           .select('id, source_template_id')
@@ -306,6 +341,26 @@ export async function seedProjectContent(
         const threadByTemplate = new Map<string, string>()
         for (const t of createdThreads ?? []) {
           if (t.source_template_id) threadByTemplate.set(t.source_template_id, t.id)
+        }
+
+        // Назначаем задачам проекта группу по task-блоку шаблона (thread_template → group).
+        const threadGroupUpdates: { threadId: string; groupId: string }[] = []
+        for (const b of allBlocks) {
+          if (b.block_type === 'task' && b.thread_template_id && b.group_id) {
+            const threadId = threadByTemplate.get(b.thread_template_id)
+            const newGroup = groupMap.get(b.group_id)
+            if (threadId && newGroup) threadGroupUpdates.push({ threadId, groupId: newGroup })
+          }
+        }
+        if (threadGroupUpdates.length > 0) {
+          await Promise.all(
+            threadGroupUpdates.map((u) =>
+              supabase
+                .from('project_threads' as never)
+                .update({ task_group_id: u.groupId } as never)
+                .eq('id' as never, u.threadId as never),
+            ),
+          )
         }
 
         const { taskOrder, planRows } = buildPlanSeed({
@@ -325,7 +380,12 @@ export async function seedProjectContent(
           )
         }
         if (planRows.length > 0) {
-          const { error: planErr } = await supabase.from('project_plan_blocks').insert(planRows)
+          // Переотображаем group_id блоков плана в проектные группы.
+          const rows = planRows.map((r) => ({
+            ...r,
+            group_id: r.group_id ? groupMap.get(r.group_id) ?? null : null,
+          }))
+          const { error: planErr } = await supabase.from('project_plan_blocks').insert(rows as never)
           if (planErr) logger.warn(`Не удалось развернуть план: ${planErr.message}`)
         }
       }

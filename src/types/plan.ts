@@ -48,6 +48,8 @@ export type TemplatePlanBlockRow = {
   content: string | null
   thread_template_id: string | null
   slot_template_id: string | null
+  /** Группа-шаблона (project_template_task_groups.id) или null. */
+  group_id: string | null
   created_at: string
   updated_at: string
 }

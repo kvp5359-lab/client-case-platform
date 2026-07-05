@@ -32,7 +32,13 @@ import {
   Type as TypeIcon,
   CheckSquare,
   AlertTriangle,
+  FolderPlus,
+  FolderInput,
 } from 'lucide-react'
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
+import { useTemplateTaskGroups } from '@/hooks/plan/useTemplateTaskGroups'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
@@ -63,6 +69,10 @@ export function TemplatePlanSection({ workspaceId, templateId, enabledModules }:
     reorderBlocks,
   } = useTemplatePlan(templateId, workspaceId)
   const { data: threadTemplates = [] } = useThreadTemplatesForProject(workspaceId, templateId)
+  const { groups, addGroup, renameGroup, deleteGroup, assignBlockToGroup } =
+    useTemplateTaskGroups(templateId, workspaceId)
+  const hasGroups = groups.length > 0
+  const groupOptions = useMemo(() => groups.map((g) => ({ id: g.id, name: g.name })), [groups])
   const [pickerOpen, setPickerOpen] = useState(false)
   const [selectedTpl, setSelectedTpl] = useState<Set<string>>(new Set())
 
@@ -102,6 +112,31 @@ export function TemplatePlanSection({ workspaceId, templateId, enabledModules }:
     reorderBlocks(arrayMove(ids, oldIndex, newIndex))
   }
 
+  const blocksByGroup = useMemo(() => {
+    const m = new Map<string, TemplatePlanBlockRow[]>()
+    for (const g of groups) m.set(g.id, [])
+    for (const b of blocks) if (b.group_id && m.has(b.group_id)) m.get(b.group_id)!.push(b)
+    return m
+  }, [blocks, groups])
+  const ungroupedBlocks = useMemo(
+    () => blocks.filter((b) => !b.group_id || !blocksByGroup.has(b.group_id)),
+    [blocks, blocksByGroup],
+  )
+
+  const renderTemplateBlock = (block: TemplatePlanBlockRow, disabled?: boolean) => (
+    <SortableTemplateBlock
+      key={block.id}
+      block={block}
+      tpl={block.thread_template_id ? tplMap.get(block.thread_template_id) : undefined}
+      onChangeText={(html) => updateBlock(block.id, { content: html })}
+      onDelete={() => deleteBlock(block.id)}
+      sortableDisabled={disabled}
+      groupOptions={hasGroups ? groupOptions : undefined}
+      currentGroupId={block.group_id}
+      onAssignGroup={hasGroups ? (gid) => assignBlockToGroup(block.id, gid) : undefined}
+    />
+  )
+
   const planEnabled = enabledModules.includes('plan')
 
   return (
@@ -123,25 +158,62 @@ export function TemplatePlanSection({ workspaceId, templateId, enabledModules }:
 
       {isLoading ? (
         <RowsSkeleton count={4} />
-      ) : blocks.length === 0 ? (
+      ) : blocks.length === 0 && !hasGroups ? (
         <p className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
-          План пуст. Добавьте текст или задачу ниже.
+          План пуст. Добавьте текст, задачу или группу ниже.
         </p>
-      ) : (
+      ) : !hasGroups ? (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col rounded-md border">
-              {blocks.map((block) => (
-                <SortableTemplateBlock
-                  key={block.id}
-                  block={block}
-                  tpl={block.thread_template_id ? tplMap.get(block.thread_template_id) : undefined}
-                  onChangeText={(html) => updateBlock(block.id, { content: html })}
-                  onDelete={() => deleteBlock(block.id)}
-                />
-              ))}
+              {blocks.map((block) => renderTemplateBlock(block))}
             </div>
           </SortableContext>
+        </DndContext>
+      ) : (
+        // Вид с группами: секции. DnD-перетаскивание в шаблоне не используется —
+        // назначение группы через дропдаун у блока. Dnd/SortableContext нужны
+        // только чтобы useSortable внутри строк имел контекст (drag отключён).
+        <DndContext sensors={sensors} collisionDetection={closestCenter}>
+        <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+        <div className="space-y-2">
+          {ungroupedBlocks.length > 0 && (
+            <div className="flex flex-col rounded-md border">
+              {ungroupedBlocks.map((block) => renderTemplateBlock(block, true))}
+            </div>
+          )}
+          {groups.map((g) => (
+            <div key={g.id} className="rounded-md border">
+              <div className="flex items-center gap-1.5 border-b bg-muted/30 px-2 py-1.5">
+                <input
+                  defaultValue={g.name}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim()
+                    if (v && v !== g.name) renameGroup(g.id, v)
+                  }}
+                  className="flex-1 min-w-0 bg-transparent text-sm font-semibold outline-none"
+                />
+                <span className="text-xs text-muted-foreground">{blocksByGroup.get(g.id)?.length ?? 0}</span>
+                <Button
+                  type="button" variant="ghost" size="icon"
+                  className="size-6 text-muted-foreground hover:text-destructive"
+                  onClick={() => deleteGroup(g.id)}
+                  title="Удалить группу"
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </div>
+              {(blocksByGroup.get(g.id)?.length ?? 0) === 0 ? (
+                <p className="px-3 py-2 text-xs text-muted-foreground">Пусто — назначьте блоки в группу.</p>
+              ) : (
+                <div className="flex flex-col">
+                  {blocksByGroup.get(g.id)!.map((block) => renderTemplateBlock(block, true))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        </SortableContext>
         </DndContext>
       )}
 
@@ -164,6 +236,15 @@ export function TemplatePlanSection({ workspaceId, templateId, enabledModules }:
           onClick={() => setPickerOpen(true)}
         >
           <CheckSquare className="size-3.5" /> Задача
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1.5 text-xs"
+          onClick={() => addGroup()}
+        >
+          <FolderPlus className="size-3.5" /> Группа
         </Button>
       </div>
 
@@ -242,14 +323,23 @@ function SortableTemplateBlock({
   tpl,
   onChangeText,
   onDelete,
+  sortableDisabled,
+  groupOptions,
+  currentGroupId,
+  onAssignGroup,
 }: {
   block: TemplatePlanBlockRow
   tpl: { name: string } | undefined
   onChangeText: (html: string) => void
   onDelete: () => void
+  sortableDisabled?: boolean
+  groupOptions?: { id: string; name: string }[]
+  currentGroupId?: string | null
+  onAssignGroup?: (groupId: string | null) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: block.id,
+    disabled: !!sortableDisabled,
   })
 
   return (
@@ -260,7 +350,7 @@ function SortableTemplateBlock({
     >
       <button
         type="button"
-        className="mt-1 cursor-grab text-muted-foreground/50 hover:text-muted-foreground"
+        className={`mt-1 text-muted-foreground/50 hover:text-muted-foreground ${sortableDisabled ? 'cursor-default opacity-30' : 'cursor-grab'}`}
         {...attributes}
         {...listeners}
         aria-label="Перетащить"
@@ -284,6 +374,33 @@ function SortableTemplateBlock({
       </div>
 
       <div className="flex items-center pt-0.5">
+        {groupOptions && onAssignGroup && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button" variant="ghost" size="icon"
+                className="size-7 text-muted-foreground"
+                title="В группу"
+              >
+                <FolderInput className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem disabled={!currentGroupId} onClick={() => onAssignGroup(null)}>
+                Без группы
+              </DropdownMenuItem>
+              {groupOptions.map((g) => (
+                <DropdownMenuItem
+                  key={g.id}
+                  disabled={currentGroupId === g.id}
+                  onClick={() => onAssignGroup(g.id)}
+                >
+                  {g.name || 'Без названия'}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         <Button
           type="button"
           variant="ghost"
