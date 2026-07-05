@@ -17,6 +17,7 @@ import { usePageTitle } from '@/hooks/usePageTitle'
 const SETTINGS_TAB_TITLES: Record<string, string> = {
   general: 'Настройки',
   palette: 'Палитра цветов',
+  usage: 'Использование',
   participants: 'Участники',
   permissions: 'Права',
   directories: 'Справочники',
@@ -34,6 +35,7 @@ const SETTINGS_TAB_TITLES: Record<string, string> = {
 const SETTINGS_TAB_DESCRIPTIONS: Record<string, string> = {
   general: 'Основная информация о рабочем пространстве',
   palette: 'Цвета акцента для чатов и задач',
+  usage: 'Тариф, лимиты и статистика ресурсов воркспейса',
   participants: 'Команда воркспейса и контакты',
   permissions: 'Роли и права доступа участников',
   directories: 'Управление справочниками и настройками',
@@ -75,6 +77,9 @@ const DomainSettingsTab = React.lazy(() =>
 const SendFailuresTab = React.lazy(() =>
   import('./workspace-settings/SendFailuresTab').then((m) => ({ default: m.SendFailuresTab })),
 )
+const WorkspaceUsageTab = React.lazy(() =>
+  import('./workspace-settings/WorkspaceUsageTab').then((m) => ({ default: m.WorkspaceUsageTab })),
+)
 
 export function WorkspaceSettingsPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -107,6 +112,7 @@ export function WorkspaceSettingsPage() {
   // Определяем активный таб по URL
   const getActiveTab = () => {
     if (pathname.includes('/palette')) return 'palette'
+    if (pathname.includes('/usage')) return 'usage'
     if (pathname.includes('/participants')) return 'participants'
     if (pathname.includes('/permissions')) return 'permissions'
     if (pathname.includes('/directories')) return 'directories'
@@ -131,7 +137,7 @@ export function WorkspaceSettingsPage() {
       router.replace(`/workspaces/${workspaceId}`)
       return
     }
-    if ((activeTab === 'general' || activeTab === 'palette') && !canManageSettings) {
+    if ((activeTab === 'general' || activeTab === 'palette' || activeTab === 'usage') && !canManageSettings) {
       router.replace(`/workspaces/${workspaceId}/settings/directories`)
     } else if (activeTab === 'participants' && !canManageParticipants) {
       router.replace(`/workspaces/${workspaceId}/settings/general`)
@@ -185,6 +191,7 @@ export function WorkspaceSettingsPage() {
               {activeTab === 'palette' && canManageSettings && workspaceId && (
                 <AccentPaletteSection workspaceId={workspaceId} />
               )}
+              {activeTab === 'usage' && canManageSettings && <WorkspaceUsageTab />}
               {activeTab === 'participants' && canManageParticipants && <ParticipantsTab />}
               {activeTab === 'permissions' && canManageRoles && <PermissionsTab />}
               {(activeTab === 'directories' || pathname.includes('/directories')) && <DirectoriesTab />}

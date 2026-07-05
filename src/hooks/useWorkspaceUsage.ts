@@ -137,6 +137,43 @@ export function usePlans() {
   })
 }
 
+export type WorkspaceStats = {
+  team_members: number
+  contacts: number
+  projects: number
+  threads_total: number
+  tasks_count: number
+  chats_count: number
+  emails_count: number
+  messages_total: number
+  messages_month: number
+  documents_count: number
+  telegram_integrations: number
+  wazzup_channels: number
+  email_accounts: number
+  mtproto_sessions: number
+}
+
+const statsKey = (workspaceId: string) => ['workspace-stats', workspaceId] as const
+
+/** Расширенная статистика ресурсов воркспейса (треды, сообщения, документы, каналы). */
+export function useWorkspaceStats(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: statsKey(workspaceId ?? ''),
+    enabled: !!workspaceId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<WorkspaceStats | null> => {
+      const { data, error } = await supabase.rpc(
+        'get_workspace_stats' as never,
+        { p_workspace_id: workspaceId } as never,
+      )
+      if (error) throw error
+      const rows = data as unknown as WorkspaceStats[]
+      return rows?.[0] ?? null
+    },
+  })
+}
+
 /** Выгрузка структурных данных воркспейса в JSON (только владелец). */
 export function useExportWorkspace(workspaceId: string) {
   return useMutation({

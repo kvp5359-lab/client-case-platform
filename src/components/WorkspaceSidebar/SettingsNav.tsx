@@ -16,6 +16,7 @@ import {
   Lock,
   LayoutDashboard,
   Globe,
+  Gauge,
   BookOpen,
   LayoutTemplate,
   Plug,
@@ -47,6 +48,7 @@ export function SettingsNav({ onNavigate }: { onNavigate?: () => void }) {
       title: 'Пространство',
       items: [
         { key: 'general', label: 'Общие', icon: Settings, show: canSettings },
+        { key: 'usage', label: 'Использование', icon: Gauge, show: canSettings },
         { key: 'palette', label: 'Палитра цветов', icon: Palette, show: canSettings },
         { key: 'participants', label: 'Участники', icon: Users, show: canParticipants },
         { key: 'permissions', label: 'Права доступа', icon: Lock, show: canRoles },
@@ -78,6 +80,7 @@ export function SettingsNav({ onNavigate }: { onNavigate?: () => void }) {
   const activeKey = (() => {
     for (const part of [
       'palette',
+      'usage',
       'participants',
       'permissions',
       'directories',
