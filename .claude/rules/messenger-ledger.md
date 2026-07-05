@@ -46,7 +46,7 @@
 
 ## 🔬 Журнал расследований (хронология)
 
-### 2026-07-05 — Единый слой доступа к файлам (storage adapter, Фаза 1+2) — рефактор, карантин затронут ⭐ КОД ГОТОВ, ⏳ ЖДЁТ ДЕПЛОЯ+СМОК
+### 2026-07-05 — Единый слой доступа к файлам (storage adapter, Фаза 1+2) — рефактор, карантин затронут ⭐ В ПРОДЕ, СМОК 31/31 ✓
 - **Задача (не баг):** подготовить лёгкий переезд файлового хранилища с Supabase Storage на R2/B2 — свести весь доступ к файлам в единые адаптеры, чтобы менять один модуль, а не искать `.storage.from(...)` по всему коду.
 - **Сделано (поведение НЕ меняется — фасады делегируют в тот же supabase.storage):**
   - **Фронт (Фаза 1):** `src/lib/storage/` (`index.ts` фасад + client-free `buckets.ts` с `STORAGE_BUCKETS`). 11 браузерных файлов переведены. Прямого `supabase.storage` во фронте нет.
@@ -58,7 +58,7 @@
 - **⏳ Деплой (карантин, строго со смоком):** edge всех затронутых функций (мессенджер — `--no-verify-jwt`) + mtproto rsync+rebuild + фронт push. Смок-матрица (`scripts/smoke-matrix.mjs`) по всем каналам.
 - **Файлы:** `src/lib/storage/{index,buckets}.ts`, `supabase/functions/_shared/storage.ts` + ~22 edge, `mtproto-service/src/storage.ts`+2, `inboundProcessing.ts`.
 
-### 2026-07-05 — Самолечение привязки бота при kick/«chat not found» (карантин, edge) ⭐ ЗАДЕПЛОЕНО, ⏳ ЖДЁТ СМОК
+### 2026-07-05 — Самолечение привязки бота при kick/«chat not found» (карантин, edge) ⭐ В ПРОДЕ, СМОК ПРОЙДЕН (31/31)
 - **Закрывает бэклог-пункт из записи ниже (07-05, смок-матрица):** устаревшая привязка `project_telegram_chats.integration_id` «залипала» на выгнанном из группы боте-секретаре → отправка через него падала `chat not found`/`bot was kicked` БЕЗ самолечения. В проде незаметно (реальные сообщения идут через личный бот сотрудника), но фолбэк-путь секретаря был битый; смок-матрица это и вскрыла.
 - **Что было:** `resolveBotToken` самолечит только когда `integration_id` **NULL или интеграция мертва в БД** (деактивирована/удалена). Рантайм-случай «бот жив в БД (`is_active=true`), но кикнут из TG-группы» не покрывался: для секретаря (не employee) фолбэка нет → сразу `markMessageFailed`.
 - **Фикс (`_shared/telegramBotToken.ts` + `telegram-send-message/index.ts`):** новые хелперы `isBotNotInChatError(desc)` (матчит `chat not found`/`bot was kicked`/`bot is not a member`/`group chat was deactivated` — НЕ «not enough rights», это иное) и `rebindSecretaryInGroup(chatId)` (через `findSecretaryInGroup` = getChat по каждому активному workspace_bot воркспейса находит того, кто РЕАЛЬНО в группе; кикнутого getChat сам отсеет; переписывает `integration_id`, возвращает токен). В `sendTextWithFallbacks` после employee→secretary фолбэка: если финальный `!tgData.ok && isBotNotInChatError` → rebind + повтор ОДИН раз новым секретарём (с префиксом «Имя:», reply→blockquote-цитата, `integration_id` стамп снят). Гард `found.integrationId === chat.integration_id` не даёт зациклить, если бот жив и фейл был не про членство.
