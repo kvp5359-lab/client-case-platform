@@ -135,6 +135,16 @@ ORDER BY id DESC LIMIT 10;
 - **От шлюза Supabase**: тело пустое или generic → redeploy функции с `--no-verify-jwt`.
 - **От нашего кода** (`{"error":"Unauthorized"}`): проверить `INTERNAL_FUNCTION_SECRET`/`x-internal-secret` (см. [`gotchas.md`](./gotchas.md#internal_function_secret--x-internal-secret)).
 
+## Файловое хранилище (Storage) — единый слой
+
+Файлы (документы, вложения мессенджера) лежат в бакетах Supabase Storage: `files` (основной, ~3.7 ГБ), `document-files`, `message-attachments`, `document-templates`, публичные `participant-avatars`/`docbuilder*`. Всего ~4.3 ГБ / ~5.5к объектов (на 2026-07-05).
+
+**Абстракция под будущий переезд (R2/B2).** Чтобы сменить бэкенд хранилища не переписывая полкода, доступ к файлам вынесен в единый слой:
+- **Фронтенд (ГОТОВО, Фаза 1):** [`src/lib/storage/`](../../src/lib/storage/index.ts) — `STORAGE_BUCKETS` (константы бакетов, литералы в коде запрещены) + функции `uploadToStorage`/`downloadFromStorage`/`createStorageSignedUrl`/`getStoragePublicUrl`/`removeFromStorage`/`listStorage`. Все компоненты/хуки/сервисы ходят через них, `supabase.storage.from(...)` напрямую во фронте больше нет. При переезде на R2 меняются ВНУТРЕННОСТИ этих функций, сигнатуры — нет.
+- **Server/Edge (⏳ Фаза 2, карантин):** ещё НЕ унифицировано — прямые `supabase.storage` в edge-функциях (мессенджер приём/отправка — `_shared/storeAttachment.ts`, `telegram-webhook-v2/media.ts`, `telegram-send-message/attachments.ts`, `wazzup-send`, `email-internal-send`, gmail, документы), в `mtproto-service` и в Next-API `src/app/api/resend-webhook/inboundProcessing.ts`. Свести в `_shared/storage.ts` + аналог в mtproto — **со смок-матрицей** (`scripts/smoke-matrix.mjs`), т.к. это приём/отправка файлов в каналы.
+
+**Бэкап.** Ежедневные бэкапы Supabase покрывают только БД — файлы нет. Ночной инкрементальный бэкап приватных бакетов на диск VPS: `scripts/backup-storage.mjs` (dep-free) через крон 3:30 (`scripts/backup-storage-vps.sh`, off-project копия в `/opt/clientcase/storage-backup`). На терабайтах диск VPS не потянет — целевое решение при росте: R2/B2 (дешевле + бесплатный egress).
+
 ## mtproto-service
 
 `mtproto-service/` — отдельный Node 20 сервис на Fastify + gramjs. Держит MTProto-сессии сотрудников (TG «как личный аккаунт»: реакции в обе стороны, read-receipts, online presence, typing). **Только private chats**; групповые — на бот-секретаре.

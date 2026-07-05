@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { STORAGE_BUCKETS, removeFromStorage, uploadToStorage } from '@/lib/storage'
 import type { Json, TablesUpdate } from '@/types/database'
 import { safeFetchOrThrow, safeDeleteOrThrow, safeUpdateOrThrow } from '../../supabase/queryHelpers'
 import { DocumentTemplateError } from '../../errors'
@@ -85,9 +86,7 @@ export async function uploadDocumentTemplate(params: {
   const fileName = `${crypto.randomUUID()}.docx`
   const filePath = `${workspaceId}/${fileName}`
 
-  const { error: uploadError } = await supabase.storage
-    .from('document-templates')
-    .upload(filePath, file, {
+  const { error: uploadError } = await uploadToStorage(STORAGE_BUCKETS.documentTemplates, filePath, file, {
       contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     })
 
@@ -103,7 +102,7 @@ export async function uploadDocumentTemplate(params: {
     })
 
   if (extractError) {
-    await supabase.storage.from('document-templates').remove([filePath])
+    await removeFromStorage(STORAGE_BUCKETS.documentTemplates, [filePath])
     throw new DocumentTemplateError('Не удалось извлечь плейсхолдеры', extractError)
   }
 
@@ -130,7 +129,7 @@ export async function uploadDocumentTemplate(params: {
       DocumentTemplateError,
     )
   } catch (error) {
-    await supabase.storage.from('document-templates').remove([filePath])
+    await removeFromStorage(STORAGE_BUCKETS.documentTemplates, [filePath])
     throw error
   }
 }
@@ -166,9 +165,7 @@ export async function deleteDocumentTemplate(id: string): Promise<void> {
   )
 
   // логируем ошибку Storage-удаления (orphaned файл лучше чем потеря записи)
-  const { error: storageError } = await supabase.storage
-    .from('document-templates')
-    .remove([template.file_path])
+  const { error: storageError } = await removeFromStorage(STORAGE_BUCKETS.documentTemplates, [template.file_path])
   if (storageError) {
     logger.error('Failed to delete template file from storage:', storageError)
   }
@@ -192,9 +189,7 @@ export async function replaceDocumentTemplateFile(params: {
   const fileName = `${crypto.randomUUID()}.docx`
   const filePath = `${workspaceId}/${fileName}`
 
-  const { error: uploadError } = await supabase.storage
-    .from('document-templates')
-    .upload(filePath, file, {
+  const { error: uploadError } = await uploadToStorage(STORAGE_BUCKETS.documentTemplates, filePath, file, {
       contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     })
 
@@ -210,7 +205,7 @@ export async function replaceDocumentTemplateFile(params: {
     })
 
   if (extractError) {
-    await supabase.storage.from('document-templates').remove([filePath])
+    await removeFromStorage(STORAGE_BUCKETS.documentTemplates, [filePath])
     throw new DocumentTemplateError('Не удалось извлечь плейсхолдеры', extractError)
   }
 
@@ -246,9 +241,7 @@ export async function replaceDocumentTemplateFile(params: {
     )
 
     // 6. Удалить старый файл из Storage
-    const { error: removeError } = await supabase.storage
-      .from('document-templates')
-      .remove([existing.file_path])
+    const { error: removeError } = await removeFromStorage(STORAGE_BUCKETS.documentTemplates, [existing.file_path])
     if (removeError) {
       logger.error('Failed to delete old template file from storage:', removeError)
     }
@@ -256,7 +249,7 @@ export async function replaceDocumentTemplateFile(params: {
     return updated
   } catch (error) {
     // Откат: удаляем новый файл если не удалось обновить запись
-    await supabase.storage.from('document-templates').remove([filePath])
+    await removeFromStorage(STORAGE_BUCKETS.documentTemplates, [filePath])
     throw error
   }
 }

@@ -6,6 +6,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { STORAGE_BUCKETS, removeFromStorage, uploadToStorage } from '@/lib/storage'
 import { TablesInsert } from '@/types/database'
 import { documentKitKeys, kitlessDocumentKeys, messengerAiKeys } from '@/hooks/queryKeys'
 import { triggerTextExtraction } from '@/services/documents/textExtractionService'
@@ -107,7 +108,7 @@ export function useDocumentUpload(projectId?: string) {
       const filePath = `${workspaceId}/${newDoc.id}/v1_${timestamp}.${fileExt}`
 
       // 5. Загружаем файл в Storage (бакет 'files')
-      const { error: uploadError } = await supabase.storage.from('files').upload(filePath, file, {
+      const { error: uploadError } = await uploadToStorage(STORAGE_BUCKETS.files, filePath, file, {
         cacheControl: '3600',
         upsert: false,
       })
@@ -155,7 +156,7 @@ export function useDocumentUpload(projectId?: string) {
         .single()
 
       if (filesRecordError) {
-        await supabase.storage.from('files').remove([filePath])
+        await removeFromStorage(STORAGE_BUCKETS.files, [filePath])
         await supabase.from('documents').delete().eq('id', newDoc.id)
         throw new Error(`Ошибка создания записи файла: ${filesRecordError.message}`)
       }
@@ -173,7 +174,7 @@ export function useDocumentUpload(projectId?: string) {
 
       if (fileError) {
         await supabase.from('files').delete().eq('id', filesRecord.id)
-        await supabase.storage.from('files').remove([filePath])
+        await removeFromStorage(STORAGE_BUCKETS.files, [filePath])
         await supabase.from('documents').delete().eq('id', newDoc.id)
         throw new Error(`Ошибка сохранения метаданных файла: ${fileError.message}`)
       }

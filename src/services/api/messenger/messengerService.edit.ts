@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import { STORAGE_BUCKETS, removeFromStorage } from '@/lib/storage'
 import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
 import {
@@ -109,12 +110,12 @@ export async function deleteMessage(messageId: string): Promise<void> {
           .eq('id', att.file_id)
           .maybeSingle()
         if (fileRecord) {
-          await supabase.storage.from(fileRecord.bucket).remove([fileRecord.storage_path])
+          await removeFromStorage(fileRecord.bucket, [fileRecord.storage_path])
         }
         await supabase.from('files').delete().eq('id', att.file_id)
       }
     } else {
-      await supabase.storage.from('message-attachments').remove([att.storage_path])
+      await removeFromStorage(STORAGE_BUCKETS.messageAttachments, [att.storage_path])
     }
   }
 

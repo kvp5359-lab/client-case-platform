@@ -25,7 +25,7 @@ import { MenuBar } from './menu-bar'
 import { cn } from '@/lib/utils'
 import { logger } from '@/utils/logger'
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { supabase } from '@/lib/supabase'
+import { STORAGE_BUCKETS, createStorageSignedUrl, uploadToStorage } from '@/lib/storage'
 import { toast } from 'sonner'
 
 /** Настройки загрузки изображений в Storage */
@@ -53,13 +53,13 @@ async function uploadImageToStorage(file: File, config: ImageUploadConfig): Prom
   const uuid = crypto.randomUUID()
   const path = `${config.workspaceId}/knowledge/${config.articleId}/${uuid}.${ext}`
 
-  const { error } = await supabase.storage.from('files').upload(path, file)
+  const { error } = await uploadToStorage(STORAGE_BUCKETS.files, path, file)
   if (error) {
     logger.error('[Image upload] Storage error:', error.message, error)
     throw error
   }
 
-  const { data } = await supabase.storage.from('files').createSignedUrl(path, 60 * 60 * 24 * 365)
+  const { data } = await createStorageSignedUrl(STORAGE_BUCKETS.files, path, 60 * 60 * 24 * 365)
   if (!data?.signedUrl) throw new Error('Не удалось получить URL изображения')
   return data.signedUrl
 }

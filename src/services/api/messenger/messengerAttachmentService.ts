@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { STORAGE_BUCKETS, createStorageSignedUrl, downloadFromStorage, removeFromStorage, uploadToStorage } from '@/lib/storage'
 import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
 import type { MessageAttachment } from './messengerService.types'
@@ -35,9 +36,7 @@ export async function uploadAttachments(
         const safeFileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
         const storagePath = `${workspaceId}/${projectId}/${messageId}/${safeFileName}`
 
-        const { error: uploadError } = await supabase.storage
-          .from('files')
-          .upload(storagePath, file, {
+        const { error: uploadError } = await uploadToStorage(STORAGE_BUCKETS.files, storagePath, file, {
             upsert: false,
             contentType: file.type || 'application/octet-stream',
           })
@@ -107,9 +106,7 @@ export async function uploadAttachments(
           if (dbCleanupError)
             logger.error('Ошибка очистки записей вложений при откате:', dbCleanupError)
         })
-      await supabase.storage
-        .from('files')
-        .remove(uploadedPaths)
+      await removeFromStorage(STORAGE_BUCKETS.files, uploadedPaths)
         .then(({ error: cleanupError }) => {
           if (cleanupError) logger.error('Ошибка очистки файлов вложений при откате:', cleanupError)
         })
@@ -152,13 +149,13 @@ export async function deleteAttachmentFileIfOrphaned(att: {
         .eq('id', att.file_id)
         .maybeSingle()
       if (fileRecord) {
-        await supabase.storage.from(fileRecord.bucket).remove([fileRecord.storage_path])
+        await removeFromStorage(fileRecord.bucket, [fileRecord.storage_path])
       }
       await supabase.from('files').delete().eq('id', att.file_id)
     }
   } else {
     // Legacy-путь (file_id=null): файл лежит в bucket message-attachments по storage_path.
-    await supabase.storage.from('message-attachments').remove([att.storage_path])
+    await removeFromStorage(STORAGE_BUCKETS.messageAttachments, [att.storage_path])
   }
 }
 
@@ -443,9 +440,7 @@ export async function getAttachmentUrl(
 ): Promise<string> {
   const { bucket, path } = await resolveBucketAndPath(storagePath, fileId)
 
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(
+  const { data, error } = await createStorageSignedUrl(bucket, 
       path,
       SIGNED_URL_EXPIRY_SEC,
       downloadName ? { download: downloadName } : undefined,
@@ -470,7 +465,7 @@ export async function downloadAttachmentAsFile(
   fileId?: string | null,
 ): Promise<File> {
   const { bucket, path } = await resolveBucketAndPath(storagePath, fileId)
-  const { data, error } = await supabase.storage.from(bucket).download(path)
+  const { data, error } = await downloadFromStorage(bucket, path)
   if (error) throw new ConversationError(`Ошибка скачивания файла: ${error.message}`)
   return new File([data], fileName, { type: mimeType || 'application/octet-stream' })
 }
@@ -486,7 +481,7 @@ export async function fetchAttachmentBlob(
 ): Promise<Blob> {
   const { bucket, path } = await resolveBucketAndPath(storagePath, fileId)
 
-  const { data, error } = await supabase.storage.from(bucket).download(path)
+  const { data, error } = await downloadFromStorage(bucket, path)
 
   if (error) throw new ConversationError(`Ошибка скачивания: ${error.message}`)
 

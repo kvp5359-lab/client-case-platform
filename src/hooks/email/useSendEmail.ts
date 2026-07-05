@@ -14,6 +14,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { STORAGE_BUCKETS, uploadToStorage } from '@/lib/storage'
 import { logger } from '@/utils/logger'
 import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
@@ -72,9 +73,7 @@ export function useSendEmail(projectId: string, workspaceId: string, threadId: s
             const safeFileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
             const storagePath = `${workspaceId}/${projectId}/email-attachments/${safeFileName}`
 
-            const { error: uploadError } = await supabase.storage
-              .from('files')
-              .upload(storagePath, file, {
+            const { error: uploadError } = await uploadToStorage(STORAGE_BUCKETS.files, storagePath, file, {
                 upsert: false,
                 contentType: file.type || 'application/octet-stream',
               })

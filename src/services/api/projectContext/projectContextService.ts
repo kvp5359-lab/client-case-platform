@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import { STORAGE_BUCKETS, removeFromStorage, uploadToStorage } from '@/lib/storage'
 import { logger } from '@/utils/logger'
 import type { Database } from '@/types/database'
 
@@ -55,7 +56,7 @@ async function insertFileRecord(workspaceId: string, projectId: string, file: Fi
   const fileName = `${crypto.randomUUID()}${safeExt}`
   const storagePath = `${workspaceId}/${projectId}/context/${fileName}`
 
-  const { error: uploadError } = await supabase.storage.from('files').upload(storagePath, file, {
+  const { error: uploadError } = await uploadToStorage(STORAGE_BUCKETS.files, storagePath, file, {
     contentType: file.type || undefined,
     upsert: false,
   })
@@ -78,7 +79,7 @@ async function insertFileRecord(workspaceId: string, projectId: string, file: Fi
 
   if (fileErr || !fileRecord) {
     try {
-      await supabase.storage.from('files').remove([storagePath])
+      await removeFromStorage(STORAGE_BUCKETS.files, [storagePath])
     } catch (cleanupErr) {
       logger.error('projectContextService cleanup failed', cleanupErr)
     }
@@ -158,7 +159,7 @@ export async function createFileItem({
     // cleanup: удалить файл и запись о нём
     try {
       await supabase.from('files').delete().eq('id', fileRecord.id)
-      await supabase.storage.from('files').remove([fileRecord.storage_path])
+      await removeFromStorage(STORAGE_BUCKETS.files, [fileRecord.storage_path])
     } catch (cleanupErr) {
       logger.error('projectContextService createFileItem cleanup failed', cleanupErr)
     }
@@ -271,7 +272,7 @@ export async function hardDeleteItem(id: string): Promise<void> {
   if (item?.file_id && item.file && 'storage_path' in item.file) {
     try {
       await supabase.from('files').delete().eq('id', item.file_id)
-      await supabase.storage.from('files').remove([(item.file as { storage_path: string }).storage_path])
+      await removeFromStorage(STORAGE_BUCKETS.files, [(item.file as { storage_path: string }).storage_path])
     } catch (cleanupErr) {
       logger.error('projectContextService hardDeleteItem cleanup failed', cleanupErr)
     }

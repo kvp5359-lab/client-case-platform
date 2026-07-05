@@ -1,5 +1,6 @@
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { STORAGE_BUCKETS, removeFromStorage, uploadToStorage } from '@/lib/storage'
 import { logger } from '@/utils/logger'
 import { triggerTextExtraction } from '@/services/documents/textExtractionService'
 import { getKitIdForFolder } from '@/services/documents/documentKitUtils'
@@ -138,9 +139,7 @@ export function useSourceDocumentUpload({
     const storagePath = `${workspaceId}/${newDoc.id}/v1_${timestamp}.${fileExt}`
     const fileSize = parseInt(String(metadata.size || '0'), 10)
 
-    const { error: uploadError } = await supabase.storage
-      .from('files')
-      .upload(storagePath, fileBlob, {
+    const { error: uploadError } = await uploadToStorage(STORAGE_BUCKETS.files, storagePath, fileBlob, {
         contentType: metadata.mimeType,
         upsert: false,
       })
@@ -173,7 +172,7 @@ export function useSourceDocumentUpload({
 
     if (filesRecordError) {
       try {
-        await supabase.storage.from('files').remove([storagePath])
+        await removeFromStorage(STORAGE_BUCKETS.files, [storagePath])
         await hardDeleteDocument(newDoc.id)
       } catch (cleanupError) {
         logger.error('Ошибка очистки после неудачной записи файла:', {
@@ -199,7 +198,7 @@ export function useSourceDocumentUpload({
     if (fileRecordError) {
       try {
         await supabase.from('files').delete().eq('id', filesRecord.id)
-        await supabase.storage.from('files').remove([storagePath])
+        await removeFromStorage(STORAGE_BUCKETS.files, [storagePath])
         await hardDeleteDocument(newDoc.id)
       } catch (cleanupError) {
         logger.error('Ошибка очистки документа после неудачной записи файла:', {

@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import type { Participant } from '@/types/entities'
-import { supabase } from '@/lib/supabase'
+import { STORAGE_BUCKETS, getStoragePublicUrl, uploadToStorage } from '@/lib/storage'
 import { logger } from '@/utils/logger'
 import { getInitials } from '@/utils/avatarHelpers'
 import {
@@ -154,15 +154,11 @@ export function EditParticipantDialog({
       const ext = file.name.split('.').pop() || 'jpg'
       const storagePath = `${participant.workspace_id}/${participant.id}.${ext}`
 
-      const { error } = await supabase.storage
-        .from('participant-avatars')
-        .upload(storagePath, file, { upsert: true })
+      const { error } = await uploadToStorage(STORAGE_BUCKETS.participantAvatars, storagePath, file, { upsert: true })
 
       if (error) throw error
 
-      const { data: urlData } = supabase.storage
-        .from('participant-avatars')
-        .getPublicUrl(storagePath)
+      const { data: urlData } = getStoragePublicUrl(STORAGE_BUCKETS.participantAvatars, storagePath)
 
       // Добавляем timestamp для сброса кеша
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`

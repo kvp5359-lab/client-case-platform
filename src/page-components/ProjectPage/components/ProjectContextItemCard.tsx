@@ -32,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { supabase } from '@/lib/supabase'
+import { createStorageSignedUrl } from '@/lib/storage'
 import {
   useRenameContextItem,
   useRunContextExtraction,
@@ -110,9 +110,7 @@ export function ProjectContextItemCard({
   const handleDownload = async () => {
     if (!item.file) return
     try {
-      const { data, error } = await supabase.storage
-        .from(item.file.bucket)
-        .createSignedUrl(item.file.storage_path, 60)
+      const { data, error } = await createStorageSignedUrl(item.file.bucket, item.file.storage_path, 60)
       if (error || !data?.signedUrl) throw error ?? new Error('Не удалось получить ссылку')
       window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
     } catch (err) {
@@ -314,9 +312,7 @@ function ScreenshotPreview({
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
     let cancelled = false
-    supabase.storage
-      .from(file.bucket)
-      .createSignedUrl(file.storage_path, 60 * 60)
+    createStorageSignedUrl(file.bucket, file.storage_path, 60 * 60)
       .then(({ data, error }) => {
         if (cancelled) return
         if (error) return

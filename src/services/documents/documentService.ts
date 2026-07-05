@@ -6,6 +6,13 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import {
+  STORAGE_BUCKETS,
+  uploadToStorage,
+  removeFromStorage,
+  createStorageSignedUrl,
+  downloadFromStorage,
+} from '@/lib/storage'
 import { logger } from '@/utils/logger'
 import { DocumentError } from '../errors'
 import { safeFetchOrThrow, safeDeleteOrThrow, safeUpdateOrThrow } from '../supabase/queryHelpers'
@@ -55,7 +62,7 @@ export async function uploadDocument({
     const fileName = `${crypto.randomUUID()}.${fileExt}`
     const filePath = `${workspaceId}/${projectId}/${kitId}/${fileName}`
 
-    const { error: uploadError } = await supabase.storage.from('files').upload(filePath, file)
+    const { error: uploadError } = await uploadToStorage(STORAGE_BUCKETS.files, filePath, file)
 
     if (uploadError) {
       try {
@@ -82,7 +89,7 @@ export async function uploadDocument({
 
     if (fileRecordError || !fileRecord) {
       try {
-        await supabase.storage.from('files').remove([filePath])
+        await removeFromStorage(STORAGE_BUCKETS.files, [filePath])
         await supabase.from('documents').delete().eq('id', document.id)
       } catch (cleanupErr) {
         logger.error('uploadDocument cleanup failed:', cleanupErr)
@@ -112,7 +119,7 @@ export async function uploadDocument({
     if (fileError || !documentFile) {
       try {
         await supabase.from('files').delete().eq('id', fileRecord.id)
-        await supabase.storage.from('files').remove([filePath])
+        await removeFromStorage(STORAGE_BUCKETS.files, [filePath])
         await supabase.from('documents').delete().eq('id', document.id)
       } catch (cleanupErr) {
         logger.error('uploadDocument cleanup failed:', cleanupErr)
@@ -202,7 +209,7 @@ export async function hardDeleteDocument(documentId: string): Promise<void> {
     // Файлы без file_id (legacy): удаляем по file_path из бакета
     const legacyPaths = docFiles.filter((df) => !df.file_id).map((df) => df.file_path)
     if (legacyPaths.length > 0) {
-      await supabase.storage.from('document-files').remove(legacyPaths)
+      await removeFromStorage(STORAGE_BUCKETS.documentFiles, legacyPaths)
     }
 
     if (fileIds.length > 0) {
@@ -240,7 +247,7 @@ export async function hardDeleteDocument(documentId: string): Promise<void> {
         })
         await Promise.all(
           Array.from(byBucket.entries()).map(([bucket, paths]) =>
-            supabase.storage.from(bucket).remove(paths),
+            removeFromStorage(bucket, paths),
           ),
         )
         await supabase.from('files').delete().in('id', orphanIds)
@@ -304,7 +311,7 @@ export async function getDocumentPublicUrl(
   try {
     const { bucket, path } = await resolveFileBucket(filePath, fileId)
 
-    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600)
+    const { data, error } = await createStorageSignedUrl(bucket, path, 3600)
 
     if (error || !data) {
       logger.error('Ошибка создания signed URL:', error)
@@ -328,7 +335,7 @@ export async function downloadDocumentBlob(
   try {
     const { bucket, path } = await resolveFileBucket(filePath, fileId)
 
-    const { data, error } = await supabase.storage.from(bucket).download(path)
+    const { data, error } = await downloadFromStorage(bucket, path)
 
     if (error || !data) {
       throw new DocumentError('Не удалось скачать файл', error)
