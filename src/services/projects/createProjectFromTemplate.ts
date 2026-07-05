@@ -309,28 +309,34 @@ export async function seedProjectContent(
       )
 
       // Группы шаблона → реальные группы проекта (карта шаблонная→новая).
+      // Вставляем ПО ОДНОЙ (id из ответа каждой) — сопоставление точное по
+      // построению, не зависит от порядка строк bulk-ответа и дублей sort_order.
       const groupMap = new Map<string, string>()
       const { data: tmplGroups } = await supabase
         .from('project_template_task_groups' as never)
-        .select('id, name, sort_order' as never)
+        .select('id, name, sort_order, accent_color, visible_to_client' as never)
         .eq('project_template_id' as never, templateId as never)
         .order('sort_order' as never, { ascending: true } as never)
-      const tGroups = (tmplGroups as unknown as { id: string; name: string; sort_order: number }[]) ?? []
-      if (tGroups.length > 0) {
-        const { data: newGroups } = await supabase
+      const tGroups =
+        (tmplGroups as unknown as {
+          id: string; name: string; sort_order: number
+          accent_color: string | null; visible_to_client: boolean
+        }[]) ?? []
+      for (const g of tGroups) {
+        const { data: newGroup } = await supabase
           .from('project_task_groups' as never)
-          .insert(
-            tGroups.map((g) => ({
-              workspace_id: workspaceId, project_id: projectId, name: g.name, sort_order: g.sort_order,
-            })) as never,
-          )
-          .select('id, sort_order' as never)
-        const created = (newGroups as unknown as { id: string; sort_order: number }[]) ?? []
-        // Сопоставляем по sort_order (порядок вставки сохранён).
-        tGroups.forEach((g, i) => {
-          const match = created[i]
-          if (match) groupMap.set(g.id, match.id)
-        })
+          .insert({
+            workspace_id: workspaceId,
+            project_id: projectId,
+            name: g.name,
+            sort_order: g.sort_order,
+            accent_color: g.accent_color,
+            visible_to_client: g.visible_to_client,
+          } as never)
+          .select('id' as never)
+          .single()
+        const created = newGroup as unknown as { id: string } | null
+        if (created) groupMap.set(g.id, created.id)
       }
 
       if (contentBlocks.length > 0 || tGroups.length > 0) {
