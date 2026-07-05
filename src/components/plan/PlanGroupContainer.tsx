@@ -10,7 +10,7 @@
  */
 
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Plus, MoreHorizontal, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, MoreHorizontal, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -27,11 +27,13 @@ type Props = {
   onToggleCollapse: () => void
   onDelete: () => void
   onAddTask: () => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
   renderChild: (item: MergedItem) => React.ReactNode
 }
 
 export function PlanGroupContainer({
-  group, children, canEdit, onRename, onToggleCollapse, onDelete, onAddTask, renderChild,
+  group, children, canEdit, onRename, onToggleCollapse, onDelete, onAddTask, onMoveUp, onMoveDown, renderChild,
 }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(group.name)
@@ -87,6 +89,24 @@ export function PlanGroupContainer({
 
         {canEdit && (
           <>
+            <Button
+              variant="ghost" size="icon"
+              className="h-6 w-6 text-muted-foreground disabled:opacity-30"
+              onClick={onMoveUp}
+              disabled={!onMoveUp}
+              title="Переместить группу выше"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost" size="icon"
+              className="h-6 w-6 text-muted-foreground disabled:opacity-30"
+              onClick={onMoveDown}
+              disabled={!onMoveDown}
+              title="Переместить группу ниже"
+            >
+              <ArrowDown className="h-4 w-4" />
+            </Button>
             <Button
               variant="ghost" size="icon"
               className="h-6 w-6 text-muted-foreground md:opacity-0 md:group-hover/planroot:opacity-100"

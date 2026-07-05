@@ -128,7 +128,7 @@ export function ProjectFlatPlanList({
 
   // ── Группы задач ─────────────────────────────────────────
   const {
-    groups, addGroup, renameGroup, setGroupCollapsed, deleteGroup, assignThreadToGroup,
+    groups, addGroup, renameGroup, setGroupCollapsed, deleteGroup, assignThreadToGroup, setGroupOrders,
   } = useProjectTaskGroups(projectId, workspaceId)
   const { data: threadGroupMap } = useProjectThreadGroupMap(projectId)
   const hasGroups = groups.length > 0
@@ -297,6 +297,20 @@ export function ProjectFlatPlanList({
     await addGroup('Новая группа', base + 10)
   }
 
+  // Переместить группу вверх/вниз — обмен sort_order с соседней группой.
+  const moveGroup = (groupId: string, dir: 'up' | 'down') => {
+    const sorted = [...groups].sort((a, b) => a.sort_order - b.sort_order)
+    const idx = sorted.findIndex((g) => g.id === groupId)
+    const swapIdx = dir === 'up' ? idx - 1 : idx + 1
+    if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return
+    const a = sorted[idx]
+    const b = sorted[swapIdx]
+    setGroupOrders([
+      { id: a.id, sort_order: b.sort_order },
+      { id: b.id, sort_order: a.sort_order },
+    ])
+  }
+
   const handleAddTaskToGroup = async (groupId: string) => {
     const thread = await createTask.mutateAsync({
       name: 'Новая задача',
@@ -403,7 +417,7 @@ export function ProjectFlatPlanList({
                   {topLevelItems.map((item) => renderRow(item, true))}
                 </div>
               )}
-              {sortedGroups.map((g) => (
+              {sortedGroups.map((g, gi) => (
                 <PlanGroupContainer
                   key={g.id}
                   group={g}
@@ -412,6 +426,8 @@ export function ProjectFlatPlanList({
                   onToggleCollapse={() => setGroupCollapsed(g.id, !g.is_collapsed)}
                   onDelete={() => deleteGroup(g.id)}
                   onAddTask={() => handleAddTaskToGroup(g.id)}
+                  onMoveUp={gi > 0 ? () => moveGroup(g.id, 'up') : undefined}
+                  onMoveDown={gi < sortedGroups.length - 1 ? () => moveGroup(g.id, 'down') : undefined}
                   renderChild={(item) => renderRow(item, true)}
                 >
                   {childrenOfGroup(g.id)}
