@@ -219,6 +219,63 @@ export async function resolveBotToken(
 }
 
 /**
+ * Признак рантайм-ошибки Telegram «бот физически не в группе» (кикнули /
+ * группа не найдена / не участник). Отличается от ошибки прав или reply —
+ * означает, что привязка `project_telegram_chats.integration_id` протухла и
+ * надо искать другого живого секретаря. НЕ включаем «not enough rights»
+ * (бот в группе, но без прав — rebind не поможет и может увести не туда).
+ */
+export function isBotNotInChatError(description?: string | null): boolean {
+  if (!description) return false;
+  const d = description.toLowerCase();
+  return (
+    d.includes("chat not found") ||
+    d.includes("bot was kicked") ||
+    d.includes("bot is not a member") ||
+    d.includes("group chat was deactivated")
+  );
+}
+
+/**
+ * Реактивный self-heal привязки: текущий секретарь вернул «бот не в группе».
+ * Ищем ДРУГОГО живого секретаря воркспейса, который реально сидит в группе
+ * (getChat ok — кикнутого бота findSecretaryInGroup сам отсеет), переписываем
+ * `project_telegram_chats.integration_id` и возвращаем его токен. null — если
+ * ни один секретарь воркспейса больше не в группе.
+ *
+ * Вызывается из telegram-send-message при рантайм-фейле отправки, в дополнение
+ * к DB-level self-heal внутри resolveBotToken (тот лечит только NULL/мёртвую
+ * интеграцию, но не «бот жив в БД, но кикнут из группы»).
+ */
+export async function rebindSecretaryInGroup(
+  service: SupabaseClient,
+  telegramChatId: number,
+): Promise<ResolvedToken | null> {
+  const { data: chat } = await service
+    .from("project_telegram_chats")
+    .select("id, workspace_id, integration_id")
+    .eq("telegram_chat_id", telegramChatId)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!chat?.workspace_id) return null;
+
+  const found = await findSecretaryInGroup(service, telegramChatId, chat.workspace_id);
+  if (!found) return null;
+  // Тот же бот, что уже привязан, снова прошёл getChat — значит он в группе, а
+  // фейл был не про членство. Rebind не нужен (и не должен зациклить повтор).
+  if (found.integrationId === chat.integration_id) return null;
+
+  await service
+    .from("project_telegram_chats")
+    .update({ integration_id: found.integrationId })
+    .eq("id", chat.id);
+  console.log(
+    `[rebindSecretaryInGroup] healed binding for chat ${telegramChatId}: ${chat.integration_id ?? "null"} -> ${found.integrationId}`,
+  );
+  return found;
+}
+
+/**
  * Для webhook'а /link: определить какой integration_id записать в
  * project_telegram_chats при подключении группы.
  *

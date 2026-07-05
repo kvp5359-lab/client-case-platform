@@ -9,7 +9,7 @@ import { corsHeadersFor } from "../_shared/edge.ts";
 import { safeJsonParse, findMissingField, isValidUUID } from "../_shared/validation.ts";
 import { htmlToTelegramHtml, escapeHtmlEntities, isHtmlContent } from "../_shared/htmlFormatting.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
-import { resolveBotToken, findEmployeeBot, ERR_NO_SECRETARY_IN_GROUP } from "../_shared/telegramBotToken.ts";
+import { resolveBotToken, findEmployeeBot, ERR_NO_SECRETARY_IN_GROUP, isBotNotInChatError, rebindSecretaryInGroup } from "../_shared/telegramBotToken.ts";
 import { detectChatMigration } from "../_shared/telegramMigration.ts";
 import { isReplyNotFoundError, loadReplyQuoteHtml } from "./helpers.ts";
 import { sendAttachmentsWithFallback } from "./attachments.ts";
@@ -457,6 +457,44 @@ Deno.serve(async (req: Request) => {
           .update({ telegram_bot_integration_id: null, telegram_error_detail: fallbackDetail })
           .eq("id", body.message_id)
           .throwOnError();
+      }
+
+      // Self-heal привязки секретаря: отправка провалилась с «бот не в группе»
+      // (кикнули секретаря / привязка протухла на другого бота). Ищем ДРУГОГО
+      // живого секретаря воркспейса в этой группе, переписываем привязку и
+      // повторяем ОДИН раз. Дополняет DB-level self-heal в resolveBotToken
+      // (тот лечит только NULL/мёртвую интеграцию, но не кикнутого бота).
+      if (!tgData.ok && isBotNotInChatError(tgData.description)) {
+        const rebind = await rebindSecretaryInGroup(serviceClient, activeChatId);
+        if (rebind) {
+          const healPayload: Record<string, unknown> = {
+            ...payload,
+            chat_id: activeChatId,
+            text: opts.secretaryFormattedText,
+          };
+          // reply_parameters завязан на нумерацию прежнего бота — новому боту он
+          // неизвестен. Сбрасываем и вставляем blockquote-цитату оригинала.
+          if (healPayload.reply_parameters) {
+            delete healPayload.reply_parameters;
+            const quote = await loadReplyQuoteHtml(serviceClient, body.message_id);
+            if (quote) healPayload.text = `${quote}\n${opts.secretaryFormattedText}`;
+          }
+          tgResponse = await fetch(
+            `https://api.telegram.org/bot${rebind.token}/sendMessage`,
+            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(healPayload) },
+          );
+          tgData = await tgResponse.json();
+          activeToken = rebind.token;
+          // Отправлено новым секретарём → стамп прежнего бота не актуален.
+          activeIntegrationId = null;
+          await serviceClient
+            .from("project_messages")
+            .update({
+              telegram_bot_integration_id: null,
+              telegram_error_detail: `secretary_rebind: healed binding to ${rebind.integrationId}; via=${opts.via}`,
+            })
+            .eq("id", body.message_id);
+        }
       }
 
       return {
