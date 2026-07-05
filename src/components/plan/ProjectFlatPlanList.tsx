@@ -20,8 +20,10 @@ import {
   DndContext,
   PointerSensor,
   closestCenter,
+  closestCorners,
   useSensor,
   useSensors,
+  useDroppable,
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
@@ -55,6 +57,19 @@ function planTextToHtml(s: string): string {
     .split('\n')
     .map((l) => `<p>${escapeBlockHtml(l)}</p>`)
     .join('')
+}
+
+// Droppable-зона верхнего уровня (для дропа задач вне групп).
+function TopLevelDroppable({ children }: { children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: '__top__' })
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-lg flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child_.border-b]:border-b-0 ${isOver ? 'bg-accent/40' : ''}`}
+    >
+      {children}
+    </div>
+  )
 }
 
 type Props = {
@@ -128,7 +143,8 @@ export function ProjectFlatPlanList({
 
   // ── Группы задач ─────────────────────────────────────────
   const {
-    groups, addGroup, renameGroup, setGroupCollapsed, deleteGroup, assignThreadToGroup, setGroupOrders,
+    groups, addGroup, renameGroup, setGroupCollapsed, deleteGroup,
+    assignThreadToGroup, assignBlockToGroup, setGroupOrders,
   } = useProjectTaskGroups(projectId, workspaceId)
   const { data: threadGroupMap } = useProjectThreadGroupMap(projectId)
   const hasGroups = groups.length > 0
@@ -311,6 +327,51 @@ export function ProjectFlatPlanList({
     ])
   }
 
+  // ── DnD между/внутри групп (multi-container, только onDragEnd) ──
+  const itemById = useMemo(() => new Map(displayItems.map((i) => [i.id, i])), [displayItems])
+  const containerOf = (itemId: string): string => {
+    const it = itemById.get(itemId)
+    if (!it) return '__top__'
+    const g = groupIdOfItem(it)
+    return g ? `g:${g}` : '__top__'
+  }
+  const persistReorderSubset = (orderedIds: string[]) => {
+    const taskU: { id: string; sort_order: number }[] = []
+    const blockU: { id: string; sort_order: number }[] = []
+    orderedIds.forEach((id, idx) => {
+      const so = idx * 10
+      if (itemById.get(id)?.kind === 'task') taskU.push({ id, sort_order: so })
+      else blockU.push({ id, sort_order: so })
+    })
+    if (taskU.length) onReorderTasks(taskU)
+    if (blockU.length) setBlockOrders(blockU)
+  }
+  const handleGroupedDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e
+    if (!over) return
+    const activeId = String(active.id)
+    const overId = String(over.id)
+    const activeItem = itemById.get(activeId)
+    if (!activeItem) return
+    // Целевой контейнер: droppable-зона ('__top__' / 'g:<id>') или элемент.
+    const targetContainer = overId === '__top__' || overId.startsWith('g:') ? overId : containerOf(overId)
+    const targetGroupId = targetContainer.startsWith('g:') ? targetContainer.slice(2) : null
+    // Новый порядок целевого контейнера: его элементы (без active) + active на позиции over.
+    const targetIds = displayItems
+      .filter((i) => i.id !== activeId && containerOf(i.id) === targetContainer)
+      .map((i) => i.id)
+    let insertIdx = targetIds.indexOf(overId)
+    if (insertIdx < 0) insertIdx = targetIds.length
+    targetIds.splice(insertIdx, 0, activeId)
+    // Сменить группу, если поменялась.
+    const curGroup = groupIdOfItem(activeItem)
+    if (curGroup !== targetGroupId) {
+      if (activeItem.kind === 'task') void assignThreadToGroup(activeId, targetGroupId)
+      else void assignBlockToGroup(activeId, targetGroupId)
+    }
+    persistReorderSubset(targetIds)
+  }
+
   const handleAddTaskToGroup = async (groupId: string) => {
     const thread = await createTask.mutateAsync({
       name: 'Новая задача',
@@ -401,7 +462,11 @@ export function ProjectFlatPlanList({
 
   return (
     <PlanDocsProvider projectId={projectId} workspaceId={workspaceId} enabled={hasSlotBlocks}>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={hasGroups ? closestCorners : closestCenter}
+        onDragEnd={hasGroups ? handleGroupedDragEnd : handleDragEnd}
+      >
         <SortableContext items={displayItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           {!hasGroups ? (
             // ── Вид без групп: как раньше, полноценный DnD ──
@@ -410,13 +475,13 @@ export function ProjectFlatPlanList({
             </div>
           ) : (
             // ── Вид с группами: контейнеры групп + верхний уровень.
-            //    Перетаскивание внутри/между группами — Фаза 4 (пока выключено).
+            //    DnD внутри и между группами (multi-container).
             <div className="group/planroot flex flex-col gap-1">
-              {topLevelItems.length > 0 && (
-                <div className="flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child_.border-b]:border-b-0">
-                  {topLevelItems.map((item) => renderRow(item, true))}
-                </div>
-              )}
+              <SortableContext items={topLevelItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                <TopLevelDroppable>
+                  {topLevelItems.map((item) => renderRow(item))}
+                </TopLevelDroppable>
+              </SortableContext>
               {sortedGroups.map((g, gi) => (
                 <PlanGroupContainer
                   key={g.id}
@@ -428,7 +493,7 @@ export function ProjectFlatPlanList({
                   onAddTask={() => handleAddTaskToGroup(g.id)}
                   onMoveUp={gi > 0 ? () => moveGroup(g.id, 'up') : undefined}
                   onMoveDown={gi < sortedGroups.length - 1 ? () => moveGroup(g.id, 'down') : undefined}
-                  renderChild={(item) => renderRow(item, true)}
+                  renderChild={(item) => renderRow(item)}
                 >
                   {childrenOfGroup(g.id)}
                 </PlanGroupContainer>

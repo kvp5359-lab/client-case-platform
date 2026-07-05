@@ -10,6 +10,8 @@
  */
 
 import { useState } from 'react'
+import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { ChevronDown, ChevronRight, Plus, MoreHorizontal, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -40,6 +42,8 @@ export function PlanGroupContainer({
 
   const collapsed = group.is_collapsed
   const count = children.length
+  const { setNodeRef, isOver } = useDroppable({ id: `g:${group.id}` })
+  const childIds = children.map((c) => c.id)
 
   const commitName = () => {
     const v = draft.trim()
@@ -131,20 +135,22 @@ export function PlanGroupContainer({
         )}
       </div>
 
-      {/* Содержимое */}
+      {/* Содержимое — droppable-зона + сортировка внутри группы */}
       {!collapsed && (
-        <div className="pb-1">
-          {count === 0 ? (
-            <div className="px-3 py-2 text-xs text-muted-foreground">
-              Пусто. {canEdit && 'Нажмите + чтобы добавить задачу.'}
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {children.map((item) => (
-                <div key={item.id}>{renderChild(item)}</div>
-              ))}
-            </div>
-          )}
+        <div ref={setNodeRef} className={cn('pb-1 rounded-b-lg', isOver && 'bg-accent/40')}>
+          <SortableContext items={childIds} strategy={verticalListSortingStrategy}>
+            {count === 0 ? (
+              <div className="px-3 py-3 text-xs text-muted-foreground">
+                Пусто. {canEdit && 'Перетащите задачу сюда или нажмите +.'}
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                {children.map((item) => (
+                  <div key={item.id}>{renderChild(item)}</div>
+                ))}
+              </div>
+            )}
+          </SortableContext>
         </div>
       )}
     </div>
