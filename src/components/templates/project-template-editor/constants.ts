@@ -11,7 +11,6 @@ import {
   MessagesSquare,
   BookOpen,
   Lock,
-  ListChecks,
   Compass,
 } from 'lucide-react'
 import type { Database } from '@/types/database'
@@ -41,12 +40,6 @@ export const AVAILABLE_MODULES = [
     label: 'Задачи',
     icon: CheckSquare,
     description: 'Задачи проекта',
-  },
-  {
-    id: 'plan',
-    label: 'План',
-    icon: ListChecks,
-    description: 'Наглядный план проекта: текст, задачи и документы под списком задач',
   },
   {
     id: 'chats',
