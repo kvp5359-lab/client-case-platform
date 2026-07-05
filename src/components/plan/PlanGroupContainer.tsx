@@ -73,22 +73,27 @@ export function PlanGroupContainer({
       // Translate, НЕ Transform: у группы (высокий блок) среди коротких строк
       // dnd-kit добавлял scaleX/scaleY → визуальное сплющивание при drag'е.
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn('mb-1 rounded-lg border border-border/70 bg-muted/20', isDragging && 'opacity-60 z-10 relative')}
+      className={cn(
+        'group/plangroup relative mb-1 rounded-lg border border-border/70 bg-muted/20',
+        isDragging && 'opacity-60 z-10',
+      )}
     >
+      {/* Ручка перетаскивания — в левом жёлобе, как у строк (абсолютом, по hover). */}
+      {canEdit && (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="absolute -left-6 top-2.5 cursor-grab touch-none p-0.5 md:opacity-0 transition-opacity active:cursor-grabbing md:group-hover/plangroup:opacity-100"
+          aria-label="Перетащить группу"
+          title="Перетащить группу"
+        >
+          <GripVertical className="size-4 text-muted-foreground/40" />
+        </button>
+      )}
+
       {/* Заголовок группы */}
       <div className="flex items-center gap-1.5 px-2 py-1.5">
-        {canEdit && (
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            className="p-0.5 -ml-0.5 text-muted-foreground/50 hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
-            aria-label="Перетащить группу"
-            title="Перетащить группу"
-          >
-            <GripVertical className="h-4 w-4" />
-          </button>
-        )}
         <button
           type="button"
           onClick={onToggleCollapse}
