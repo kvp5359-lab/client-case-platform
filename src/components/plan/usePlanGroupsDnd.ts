@@ -241,23 +241,26 @@ export function usePlanGroupsDnd({
     // Целевой контейнер: droppable-зона ('__top__' / 'g:<id>') или элемент.
     const targetContainer = overId === '__top__' || overId.startsWith('g:') ? overId : containerOf(overId)
     const targetGroupId = targetContainer.startsWith('g:') ? targetContainer.slice(2) : null
-    // Новый порядок целевого контейнера: его элементы (без active) + active на позиции over.
-    const targetIds = displayItems
-      .filter((i) => i.id !== activeId && containerOf(i.id) === targetContainer)
-      .map((i) => i.id)
-    let insertIdx: number
+
+    // Новый ПОЛНЫЙ порядок через arrayMove по живому displayItems. Это ключ к
+    // «встать в самый низ»: при наведении на последнюю строку контейнера
+    // arrayMove(from → indexOf(over)) кладёт active ПОСЛЕ неё (сдвигает over
+    // вверх), тогда как прежний `targetIds.splice(indexOf(over))` вставлял
+    // ПЕРЕД — до низа было не достать. persistReorderSubset нумерует idx*10
+    // глобально, относительный порядок внутри группы сохраняется (рендер
+    // группирует по group_id, затем сортирует по sort_order).
+    const ids = displayItems.map((i) => i.id)
+    let newIds: string[]
     if (overId === activeId || overId === '__top__' || overId.startsWith('g:')) {
-      // Дроп на собственное превью или пустую зону — позиция уже отражена в
-      // displayItems (расставлена onDragOver'ом), берём её.
-      const cur = displayItems
-        .filter((i) => containerOf(i.id) === targetContainer)
-        .findIndex((i) => i.id === activeId)
-      insertIdx = cur >= 0 ? cur : targetIds.length
+      // Дроп на собственное превью или пустую зону — позиция уже расставлена
+      // onDragOver'ом в displayItems, берём её как есть.
+      newIds = ids
     } else {
-      insertIdx = targetIds.indexOf(overId)
-      if (insertIdx < 0) insertIdx = targetIds.length
+      const from = ids.indexOf(activeId)
+      const to = ids.indexOf(overId)
+      newIds = from >= 0 && to >= 0 ? arrayMove(ids, from, to) : ids
     }
-    targetIds.splice(insertIdx, 0, activeId)
+    setLocalOrder(newIds)
     // Сменить группу, если поменялась (сравниваем с СЕРВЕРНОЙ группой, не с
     // превью-override). Если мутация упала — снимаем превью, элемент вернётся.
     const curGroup = realGroupIdOfItem(activeItem)
@@ -268,7 +271,7 @@ export function usePlanGroupsDnd({
           : assignBlockToGroup(activeId, targetGroupId)
       assign.catch(() => setDragOverride(null))
     }
-    persistReorderSubset(targetIds)
+    persistReorderSubset(newIds)
   }
 
   // Плоский вид (без групп): reorder всего списка одним arrayMove.
