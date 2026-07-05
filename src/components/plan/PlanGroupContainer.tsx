@@ -230,7 +230,7 @@ export function PlanGroupContainer({
                 Пусто. {canEdit && 'Перетащите задачу сюда или нажмите +.'}
               </div>
             ) : (
-              <div className="flex flex-col">
+              <div className="flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child_.border-b]:border-b-0">
                 {children.map((item) => (
                   <div key={item.id}>{renderChild(item)}</div>
                 ))}
