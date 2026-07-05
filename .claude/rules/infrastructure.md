@@ -295,7 +295,7 @@ npm run test:coverage
 
 ### Смок-матрица каналов (полная — все каналы × комбинации)
 
-- **`scripts/smoke-matrix.mjs`** — по каждому allowlist-треду гоняет: текст, ответ-цитата, файл, файл+текст, альбом. Проверяет доставку (`send_status='sent'`). Ничего не чистит.
+- **`scripts/smoke-matrix.mjs`** — по каждому allowlist-треду гоняет: текст, ответ-цитата, файл, файл+текст, альбом, реакция, правка, удаление (где канал поддерживает — реакция на своё есть только у Wazzup, правка у TG-группы, удаление у TG-группы/MTProto). Проверяет доставку/результат. Ничего не чистит.
 - **Смок-бот:** вложения MTProto/email фронт шлёт через edge как юзер, поэтому раннер логинится под тех-пользователем `smoke-bot@clientcase.internal` (участник ТОЛЬКО тест-проекта, роль «Исполнитель» — blast-radius ограничен тест-тредами). Для TG-группы/Wazzup вложения идут через `dispatch_message_to_channels(force)`.
 - Запуск: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… SUPABASE_ANON_KEY=… SMOKE_BOT_PASSWORD=… node scripts/smoke-matrix.mjs --confirm`. Без бот-пароля файлы MTProto/email пропускаются (текст/ответ/файлы TG-WA работают).
 - allowlist тест-тредов — `smoke_test_threads`; RPC `smoke_send_test`/`smoke_send_file` (проверяют allowlist на сервере).

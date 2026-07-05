@@ -114,15 +114,63 @@ if (!process.argv.includes('--confirm')) {
   process.exit(0)
 }
 
+async function sendAndWait(threadId, label, replyTo) {
+  const { data, error } = await supabase.rpc('smoke_send_test', { p_thread_id: threadId, p_label: label, p_reply_to: replyTo ?? null })
+  if (error) throw new Error('rpc: ' + error.message)
+  const st = await waitSent(data); if (st !== 'sent') throw new Error(st)
+  return data
+}
+async function extIds(msgId) {
+  const { data } = await supabase.from('project_messages')
+    .select('telegram_message_id, telegram_message_ids, telegram_chat_id, wazzup_message_id').eq('id', msgId).single()
+  const m = data || {}
+  const tgIds = m.telegram_message_ids?.length ? m.telegram_message_ids : (m.telegram_message_id != null ? [m.telegram_message_id] : [])
+  return { ...m, tgIds }
+}
+// Применимость комбо по каналу. Смок шлёт/действует на СВОИ сообщения, поэтому
+// некоторые операции недоступны по природе канала (не баг):
+//  - MTProto не даёт реагировать на СВОЁ сообщение → реакция только Wazzup;
+//  - WhatsApp/Wazzup ограничивает удаление своего только что отправленного → удаление TG/MTProto;
+//  - правка нативно только у Telegram-группы (Wazzup/email не редактируются).
+const REACT_CH = new Set(['wazzup'])
+const EDIT_CH = new Set(['telegram_group'])
+const DELETE_CH = new Set(['telegram_group', 'telegram_mtproto'])
+const GATES = {
+  files: (t) => DISPATCH_CHANNELS.has(t.channel) || !!botClient,
+  react: (t) => !!botClient && REACT_CH.has(t.channel),
+  edit: (t) => !!botClient && EDIT_CH.has(t.channel),
+  del: (t) => !!botClient && DELETE_CH.has(t.channel),
+}
+
 const COMBOS = [
-  { key: 'text', run: async (t) => (await supabase.rpc('smoke_send_test', { p_thread_id: t.thread_id, p_label: 'text' })).data },
-  { key: 'reply', run: async (t, ctx) => {
-      if (!ctx.lastTextId) throw new Error('нет предыдущего текста для ответа')
-      return (await supabase.rpc('smoke_send_test', { p_thread_id: t.thread_id, p_reply_to: ctx.lastTextId, p_label: 'reply' })).data
+  { key: 'text', run: async (t, ctx) => { ctx.lastTextId = await sendAndWait(t.thread_id, 'text'); return true } },
+  { key: 'reply', run: async (t, ctx) => { if (!ctx.lastTextId) throw new Error('нет текста'); await sendAndWait(t.thread_id, 'reply', ctx.lastTextId); return true } },
+  { key: 'file',      gate: 'files', run: async (t) => { const st = await waitSent(await sendFiles(t.thread_id, t.channel, [IMG], false)); if (st !== 'sent') throw new Error(st); return true } },
+  { key: 'file+text', gate: 'files', run: async (t) => { const st = await waitSent(await sendFiles(t.thread_id, t.channel, [IMG], true)); if (st !== 'sent') throw new Error(st); return true } },
+  { key: 'album',     gate: 'files', run: async (t) => { const st = await waitSent(await sendFiles(t.thread_id, t.channel, [IMG, DOC], false)); if (st !== 'sent') throw new Error(st); return true } },
+  { key: 'reaction', gate: 'react', run: async (t) => {
+      const id = await sendAndWait(t.thread_id, 'react')
+      const fn = t.channel === 'wazzup' ? 'wazzup-send-reaction' : 'telegram-mtproto-react'
+      const { data, error } = await botClient.functions.invoke(fn, { body: { message_id: id, emoji: '👍' } })
+      if (error) throw new Error(fn + ': ' + error.message)
+      if (data?.ok === false) throw new Error(data.reason || 'ok=false'); return true
     } },
-  { key: 'file',      files: true, run: (t) => sendFiles(t.thread_id, t.channel, [IMG], false) },
-  { key: 'file+text', files: true, run: (t) => sendFiles(t.thread_id, t.channel, [IMG], true) },
-  { key: 'album',     files: true, run: (t) => sendFiles(t.thread_id, t.channel, [IMG, DOC], false) },
+  { key: 'edit', gate: 'edit', run: async (t) => {
+      const id = await sendAndWait(t.thread_id, 'to-edit'); const m = await extIds(id)
+      const { data, error } = await botClient.functions.invoke('telegram-edit-message', {
+        body: { message_id: id, content: '🔧 Смок [edited] — можно игнорировать', sender_name: 'Smoke Bot', sender_role: 'Владелец', telegram_chat_id: m.telegram_chat_id, telegram_message_id: m.telegram_message_id } })
+      if (error) throw new Error('edit: ' + error.message)
+      if (data?.ok === false) throw new Error(data.reason || 'ok=false'); return true
+    } },
+  { key: 'delete', gate: 'del', run: async (t) => {
+      const id = await sendAndWait(t.thread_id, 'to-delete'); const m = await extIds(id)
+      let res
+      if (t.channel === 'telegram_group') res = await botClient.functions.invoke('telegram-delete-message', { body: { telegram_chat_id: m.telegram_chat_id, telegram_message_ids: m.tgIds } })
+      else if (t.channel === 'telegram_mtproto') res = await botClient.functions.invoke('telegram-mtproto-delete', { body: { message_id: id, telegram_message_ids: m.tgIds } })
+      else res = await botClient.functions.invoke('wazzup-delete', { body: { message_id: id, wazzup_message_id: m.wazzup_message_id } })
+      if (res.error) throw new Error('delete: ' + res.error.message)
+      if (res.data?.ok === false) throw new Error(res.data.reason || 'ok=false'); return true
+    } },
 ]
 
 const results = []
@@ -130,21 +178,13 @@ for (const t of threads) {
   console.log(`\n=== ${t.channel} — ${t.note ?? t.thread_id} ===`)
   const ctx = {}
   for (const combo of COMBOS) {
-    if (combo.files && !DISPATCH_CHANNELS.has(t.channel) && !botClient) {
-      console.log(`  ${combo.key} … n/a (нужен смок-бот: SMOKE_BOT_PASSWORD)`)
-      continue
-    }
+    if (combo.gate && !GATES[combo.gate](t)) { console.log(`  ${combo.key} … n/a`); continue }
     process.stdout.write(`  ${combo.key} … `)
     try {
-      const msgId = await combo.run(t, ctx)
-      if (!msgId) throw new Error('нет msgId')
-      if (combo.key === 'text') ctx.lastTextId = msgId
-      const status = await waitSent(msgId)
-      console.log(status === 'sent' ? '✓' : `✗ ${status}`)
-      results.push({ channel: t.channel, combo: combo.key, ok: status === 'sent' })
+      await combo.run(t, ctx)
+      console.log('✓'); results.push({ channel: t.channel, combo: combo.key, ok: true })
     } catch (e) {
-      console.log(`✗ ${e.message}`)
-      results.push({ channel: t.channel, combo: combo.key, ok: false })
+      console.log(`✗ ${e.message}`); results.push({ channel: t.channel, combo: combo.key, ok: false })
     }
   }
 }
