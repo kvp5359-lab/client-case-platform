@@ -11,9 +11,10 @@
 
 import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import {
-  ChevronDown, ChevronRight, Plus, MoreHorizontal, Trash2, ArrowUp, ArrowDown, Eye, EyeOff, Ban,
+  ChevronDown, ChevronRight, Plus, MoreHorizontal, Trash2, ArrowUp, ArrowDown, Eye, EyeOff, Ban, GripVertical,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -50,6 +51,11 @@ export function PlanGroupContainer({
   const collapsed = group.is_collapsed
   const count = children.length
   const { setNodeRef, isOver } = useDroppable({ id: `g:${group.id}` })
+  // Сортировка самой группы (drag за ручку в заголовке). Id с префиксом
+  // 'grp:' — отличаем от droppable-зоны содержимого ('g:<id>') и от строк.
+  const {
+    attributes, listeners, setNodeRef: setSortableRef, transform, transition, isDragging,
+  } = useSortable({ id: `grp:${group.id}`, disabled: !canEdit })
   const childIds = children.map((c) => c.id)
   // Цвет заголовка — акцент группы (та же палитра, что у тредов).
   const accentText = COLOR_TEXT[(group.accent_color ?? '') as ThreadAccentColor] ?? ''
@@ -62,9 +68,25 @@ export function PlanGroupContainer({
   }
 
   return (
-    <div className="mb-1 rounded-lg border border-border/70 bg-muted/20">
+    <div
+      ref={setSortableRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn('mb-1 rounded-lg border border-border/70 bg-muted/20', isDragging && 'opacity-60 z-10 relative')}
+    >
       {/* Заголовок группы */}
       <div className="flex items-center gap-1.5 px-2 py-1.5">
+        {canEdit && (
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="p-0.5 -ml-0.5 text-muted-foreground/50 hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
+            aria-label="Перетащить группу"
+            title="Перетащить группу"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        )}
         <button
           type="button"
           onClick={onToggleCollapse}

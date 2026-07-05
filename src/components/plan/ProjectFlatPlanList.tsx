@@ -15,7 +15,7 @@
  * в `QuickAddModal`.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   DndContext,
   PointerSensor,
@@ -24,6 +24,7 @@ import {
   useSensor,
   useSensors,
   useDroppable,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
 } from '@dnd-kit/core'
@@ -160,6 +161,8 @@ export function ProjectFlatPlanList({
   // после отпускания мыши. Держится и после drop'а, пока сервер (карта
   // membership / блоки) не подтвердит новую группу — без мигания назад.
   const [dragOverride, setDragOverride] = useState<{ id: string; group: string | null } | null>(null)
+  // Локальный порядок ГРУПП после их перетаскивания (id по порядку).
+  const [localGroupOrder, setLocalGroupOrder] = useState<string[] | null>(null)
 
   const realGroupIdOfItem = (item: MergedItem): string | null =>
     item.kind === 'task'
@@ -364,6 +367,7 @@ export function ProjectFlatPlanList({
   // туда (override группы + позиция в localOrder) — элемент виден внутри
   // группы ДО отпускания мыши. Коммит в БД — в onDragEnd.
   const handleGroupedDragOver = (e: DragOverEvent) => {
+    if (!hasGroups) return
     const { active, over } = e
     if (!over) return
     const activeId = String(active.id)
@@ -396,6 +400,25 @@ export function ProjectFlatPlanList({
   const handleGroupedDragEnd = (e: DragEndEvent) => {
     const { active, over } = e
     const activeId = String(active.id)
+    // ── Перетаскивание САМОЙ группы (за ручку) — реордер групп ──
+    if (activeId.startsWith('grp:')) {
+      const overRaw = over ? String(over.id) : ''
+      if (!overRaw.startsWith('grp:')) return
+      const aId = activeId.slice(4)
+      const oId = overRaw.slice(4)
+      if (aId === oId) return
+      const ids = sortedGroups.map((g) => g.id)
+      const oldIdx = ids.indexOf(aId)
+      const newIdx = ids.indexOf(oId)
+      if (oldIdx < 0 || newIdx < 0) return
+      const newIds = arrayMove(ids, oldIdx, newIdx)
+      // Синхронный локальный порядок (как localOrder у строк) — без отскока.
+      setLocalGroupOrder(newIds)
+      setGroupOrders(newIds.map((id, i) => ({ id, sort_order: i * 10 }))).catch(() =>
+        setLocalGroupOrder(null),
+      )
+      return
+    }
     if (!over) {
       // Дроп мимо — откатываем превью.
       setDragOverride(null)
@@ -459,6 +482,23 @@ export function ProjectFlatPlanList({
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
+  // Коллизии по типу перетаскиваемого: группа целится ТОЛЬКО в другие группы
+  // ('grp:'), строка — только в строки/зоны (grp-сортablы исключаем, иначе
+  // closestCorners цепляла бы рамку группы вместо её содержимого).
+  const collisionDetection = useCallback<CollisionDetection>(
+    (args) => {
+      if (!hasGroups) return closestCenter(args)
+      const isGroupDrag = String(args.active.id).startsWith('grp:')
+      const droppableContainers = args.droppableContainers.filter((c) =>
+        isGroupDrag ? String(c.id).startsWith('grp:') : !String(c.id).startsWith('grp:'),
+      )
+      return isGroupDrag
+        ? closestCenter({ ...args, droppableContainers })
+        : closestCorners({ ...args, droppableContainers })
+    },
+    [hasGroups],
+  )
+
   const handleDragEnd = (e: DragEndEvent) => {
     // В виде с группами DnD пока выключен (Фаза 4) — двухуровневый порядок
     // требует отдельной логики; плоский arrayMove здесь некорректен.
@@ -517,16 +557,34 @@ export function ProjectFlatPlanList({
   // Клиенту (не-staff) скрытые группы не показываем ЦЕЛИКОМ — вместе с
   // содержимым (как visible_to_client у блоков; UI-фильтр, доступ к задачам
   // по-прежнему решает RLS).
-  const sortedGroups = [...groups]
+  const sortedGroupsBase = [...groups]
     .filter((g) => canEdit || g.visible_to_client)
     .sort((a, b) => a.sort_order - b.sort_order)
+  // Локальный порядок групп после drop'а (зеркало localOrder у строк).
+  const sortedGroups = localGroupOrder
+    ? [...sortedGroupsBase].sort(
+        (a, b) => localGroupOrder.indexOf(a.id) - localGroupOrder.indexOf(b.id),
+      )
+    : sortedGroupsBase
+
+  // Сбрасываем локальный порядок групп, когда серверный догнал.
+  useEffect(() => {
+    if (!localGroupOrder) return
+    const serverIds = [...groups].sort((a, b) => a.sort_order - b.sort_order).map((g) => g.id)
+    if (
+      serverIds.length === localGroupOrder.length &&
+      serverIds.every((id, i) => id === localGroupOrder[i])
+    ) {
+      setLocalGroupOrder(null)
+    }
+  }, [groups, localGroupOrder])
 
   return (
     <PlanDocsProvider projectId={projectId} workspaceId={workspaceId} enabled={hasSlotBlocks}>
       <DndContext
         sensors={sensors}
-        collisionDetection={hasGroups ? closestCorners : closestCenter}
-        onDragOver={hasGroups ? handleGroupedDragOver : undefined}
+        collisionDetection={collisionDetection}
+        onDragOver={handleGroupedDragOver}
         onDragEnd={hasGroups ? handleGroupedDragEnd : handleDragEnd}
         onDragCancel={() => {
           setDragOverride(null)
@@ -548,24 +606,29 @@ export function ProjectFlatPlanList({
                   {topLevelItems.map((item) => renderRow(item))}
                 </TopLevelDroppable>
               </SortableContext>
-              {sortedGroups.map((g, gi) => (
-                <PlanGroupContainer
-                  key={g.id}
-                  group={g}
-                  canEdit={canEdit}
-                  onRename={(name) => renameGroup(g.id, name)}
-                  onToggleCollapse={() => setGroupCollapsed(g.id, !g.is_collapsed)}
-                  onDelete={() => deleteGroup(g.id)}
-                  onAddTask={() => handleAddTaskToGroup(g.id)}
-                  onSetColor={(c) => setGroupColor(g.id, c)}
-                  onToggleClientVisible={() => setGroupVisibleToClient(g.id, !g.visible_to_client)}
-                  onMoveUp={gi > 0 ? () => moveGroup(g.id, 'up') : undefined}
-                  onMoveDown={gi < sortedGroups.length - 1 ? () => moveGroup(g.id, 'down') : undefined}
-                  renderChild={(item) => renderRow(item)}
-                >
-                  {childrenOfGroup(g.id)}
-                </PlanGroupContainer>
-              ))}
+              <SortableContext
+                items={sortedGroups.map((g) => `grp:${g.id}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                {sortedGroups.map((g, gi) => (
+                  <PlanGroupContainer
+                    key={g.id}
+                    group={g}
+                    canEdit={canEdit}
+                    onRename={(name) => renameGroup(g.id, name)}
+                    onToggleCollapse={() => setGroupCollapsed(g.id, !g.is_collapsed)}
+                    onDelete={() => deleteGroup(g.id)}
+                    onAddTask={() => handleAddTaskToGroup(g.id)}
+                    onSetColor={(c) => setGroupColor(g.id, c)}
+                    onToggleClientVisible={() => setGroupVisibleToClient(g.id, !g.visible_to_client)}
+                    onMoveUp={gi > 0 ? () => moveGroup(g.id, 'up') : undefined}
+                    onMoveDown={gi < sortedGroups.length - 1 ? () => moveGroup(g.id, 'down') : undefined}
+                    renderChild={(item) => renderRow(item)}
+                  >
+                    {childrenOfGroup(g.id)}
+                  </PlanGroupContainer>
+                ))}
+              </SortableContext>
             </div>
           )}
         </SortableContext>
